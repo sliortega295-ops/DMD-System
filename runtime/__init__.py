@@ -1,47 +1,11 @@
 """Validated mechanism compatibility layer for the DistillSchedule refactor.
 
-The stable public API lives under :mod:`distillschedule`.  These modules are
-kept importable while real Helios operations migrate behind typed adapters.
+The stable public API lives under :mod:`distillschedule`.  Modules under this
+package are intentionally imported explicitly (for example,
+``from runtime.host_admission import ...``) while the strangler migration is in
+progress.
+
+Do not eagerly import mechanism modules here: several validated mechanisms have
+optional PyTorch/Helios/DeepSpeed dependencies, while lightweight plan and host
+admission tooling must remain importable in CPU-only development/CI environments.
 """
-
-from .activation_offload import (
-    ActivationOffloadRegistration,
-    AuditedSavedTensorOffloader,
-    install_activation_offload_hooks,
-)
-from .dmd_boundary import (
-    critic_denoising_loss,
-    detached_dmd_surrogate_loss,
-    dmd_input_gradient,
-    flow_prediction_to_x0,
-)
-from .ema import TrainableStateEMA
-from .frequency import Stage3FrequencyStep, stage3_frequency_step
-from .host_admission import (
-    HostAdmission,
-    MinimumSharePlan,
-    SharedBlockCandidate,
-    evaluate_host_admission,
-    plan_minimum_shared_blocks,
-)
-from .residency import ModuleResidencyBackend, ResidencyPolicy
-
-__all__ = [
-    "ActivationOffloadRegistration",
-    "AuditedSavedTensorOffloader",
-    "HostAdmission",
-    "MinimumSharePlan",
-    "ModuleResidencyBackend",
-    "ResidencyPolicy",
-    "SharedBlockCandidate",
-    "Stage3FrequencyStep",
-    "TrainableStateEMA",
-    "critic_denoising_loss",
-    "detached_dmd_surrogate_loss",
-    "dmd_input_gradient",
-    "evaluate_host_admission",
-    "flow_prediction_to_x0",
-    "install_activation_offload_hooks",
-    "plan_minimum_shared_blocks",
-    "stage3_frequency_step",
-]
