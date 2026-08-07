@@ -1,0 +1,19 @@
+{
+  "workload": {
+    "schedule": {
+      "generator_update_every": 5,
+      "critic_update_every": 1,
+      "ema_update_every": 1,
+      "ema_start_step": 0,
+      "ema_after_critic": true
+    },
+    "branches": {
+      "dmd": true,
+      "gan": false,
+      "reward": false,
+      "vae_decode": false,
+      "ema": true,
+      "classifier_free_guidance": true
+    }
+  }
+}

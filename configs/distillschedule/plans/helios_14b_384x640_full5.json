@@ -1,0 +1,95 @@
+{
+  "include": [
+    "../fragments/helios_14b_models.json",
+    "../fragments/video_384x640_f81.json",
+    "../fragments/dmd_full5.json",
+    "../fragments/helios_a_local_lifecycle.json"
+  ],
+  "schema_version": "1",
+  "id": "helios-14b-384x640-full5-refactor-v1",
+  "workload": {
+    "name": "helios-stage3-dmd-full5",
+    "metadata": {
+      "execution_scope": "full_dmd_cycle",
+      "external_rollout_compatible": false
+    }
+  },
+  "hardware": {
+    "nodes": 1,
+    "local_world_size": 1,
+    "world_size": 1,
+    "gpu_memory_gib": 40,
+    "node_memory_gib": 760,
+    "reserve_gib": 64,
+    "device_type": "cuda"
+  },
+  "rank_groups": [
+    {
+      "name": "combined",
+      "ranks": [
+        0
+      ],
+      "components": [
+        "generator",
+        "score",
+        "critic",
+        "ema"
+      ]
+    }
+  ],
+  "training_backends": {
+    "generator": {
+      "kind": "deepspeed",
+      "zero_stage": 1,
+      "parameter_offload": "none",
+      "optimizer_offload": "cpu",
+      "gradient_checkpointing": true,
+      "config_path": "../../../scripts/accelerate_configs/zero1_cpu_optimizer_offload.json"
+    },
+    "score": {
+      "kind": "deepspeed",
+      "zero_stage": 1,
+      "parameter_offload": "none",
+      "optimizer_offload": "cpu",
+      "gradient_checkpointing": true,
+      "config_path": "../../../scripts/accelerate_configs/zero1_cpu_optimizer_offload.json"
+    }
+  },
+  "rollout": {
+    "engine": "native",
+    "protocol": "in_process",
+    "exact_version": true,
+    "max_version_staleness": 0
+  },
+  "evidence": {
+    "run_id": "helios-14b-384x640-full5-refactor-v1",
+    "output_dir": "${ENV:DISTILLSCHEDULE_OUTPUT_DIR:-../../../artifacts/runs/refactor_v1_full5}",
+    "start_step": 10,
+    "steps": 5,
+    "instrumentation": "memory",
+    "semantic_assertions": true,
+    "metadata": {
+      "initial_versions": {
+        "generator": 2,
+        "critic": 10,
+        "ema": 10
+      }
+    },
+    "operation_trace": "${ENV:DISTILLSCHEDULE_TRACE_BUNDLE:-/share/project/shuchenweng/DistillSchedule_assets/m0/traces/syn_feature_trace_v2_steps20}",
+    "checkpoint": "${ENV:DISTILLSCHEDULE_CHECKPOINT:-/share/project/shuchenweng/yongyan_liu/DistillSchedule/artifacts/runs/iteration65_m0_b4fast_canonical_checkpoint10_001/checkpoint-10}"
+  },
+  "legacy": {
+    "config_path": "../../experiments/iteration45_m0_b0a_a100_substrate_384x640.yaml",
+    "entrypoint": "../../../train_helios.py",
+    "python_executable": "python",
+    "cwd": "../../../",
+    "extra_env": {
+      "DISTILLSCHEDULE_SKIP_VALIDATION": "1",
+      "DISTILLSCHEDULE_SKIP_FINAL_SAVE": "1"
+    }
+  },
+  "metadata": {
+    "migration_stage": "legacy_helios_entrypoint",
+    "notes": "Algorithm semantics remain in train_helios.py; lifecycle and schedule are now typed."
+  }
+}

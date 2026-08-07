@@ -1,0 +1,88 @@
+{
+  "schema_version": "1",
+  "id": "generic-ar-dmd-vllm-critic-only",
+  "workload": {
+    "name": "autoregressive-dmd-critic-only",
+    "adapter": "generic",
+    "generator": {
+      "name": "student-generator",
+      "family": "autoregressive_transformer",
+      "size": "8b",
+      "role": "generator",
+      "checkpoint": "/models/student-8b",
+      "precision": "bf16",
+      "adapter": {"kind": "lora", "rank": 64, "trainable": true}
+    },
+    "score": {
+      "name": "score-model",
+      "family": "autoregressive_transformer",
+      "size": "8b",
+      "role": "score",
+      "checkpoint": "/models/score-8b",
+      "precision": "bf16",
+      "adapter": {"kind": "lora", "rank": 64, "trainable": true}
+    },
+    "shape": {
+      "batch_size": 8,
+      "frames": 1,
+      "resolution": [1, 2048],
+      "latent": {"channels": 1, "frames": 1, "height": 1, "width": 2048},
+      "pyramid": [[1, 2048]],
+      "text_tokens": 2048
+    },
+    "schedule": {
+      "generator_update_every": 5,
+      "critic_update_every": 1,
+      "ema_update_every": 1,
+      "ema_start_step": 0
+    },
+    "branches": {
+      "dmd": true,
+      "gan": false,
+      "reward": false,
+      "vae_decode": false,
+      "ema": true,
+      "classifier_free_guidance": false
+    }
+  },
+  "hardware": {
+    "nodes": 1,
+    "local_world_size": 8,
+    "world_size": 8,
+    "gpu_memory_gib": 80,
+    "node_memory_gib": 1024,
+    "reserve_gib": 64
+  },
+  "rank_groups": [
+    {"name": "generator-train", "ranks": [0, 1, 2, 3], "components": ["generator", "ema"]},
+    {"name": "score-train", "ranks": [4, 5, 6, 7], "components": ["score", "critic"]}
+  ],
+  "training_backends": {
+    "generator": {"kind": "deepspeed", "zero_stage": 3, "optimizer_offload": "cpu"},
+    "score": {"kind": "deepspeed", "zero_stage": 3, "optimizer_offload": "cpu"}
+  },
+  "rollout": {
+    "engine": "vllm",
+    "endpoint": "http://127.0.0.1:8000",
+    "protocol": "http",
+    "exact_version": true,
+    "max_version_staleness": 0
+  },
+  "lifecycle": {
+    "split_modulation": false,
+    "construction_wave_size": 4,
+    "swap_wave_size": 0,
+    "prefetch_distance": 0
+  },
+  "evidence": {
+    "run_id": "generic-ar-dmd-vllm-critic-only",
+    "output_dir": "../../../artifacts/runs/generic_ar_vllm_dry_run",
+    "start_step": 11,
+    "steps": 4,
+    "instrumentation": "timing",
+    "semantic_assertions": true,
+    "metadata": {
+      "initial_versions": {"generator": 3, "critic": 11, "ema": 11}
+    }
+  }
+}

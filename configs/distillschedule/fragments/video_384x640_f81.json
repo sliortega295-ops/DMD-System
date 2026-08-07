@@ -1,0 +1,17 @@
+{
+  "workload": {
+    "shape": {
+      "batch_size": 1,
+      "frames": 81,
+      "resolution": {"height": 384, "width": 640},
+      "latent": {
+        "channels": 16,
+        "frames": 9,
+        "height": 48,
+        "width": 80
+      },
+      "pyramid": [[12, 20], [24, 40], [48, 80]],
+      "text_tokens": 512
+    }
+  }
+}

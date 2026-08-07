@@ -1,0 +1,33 @@
+{
+  "workload": {
+    "adapter": "helios",
+    "generator": {
+      "name": "helios-distilled-generator",
+      "family": "helios",
+      "size": "14b",
+      "role": "generator",
+      "checkpoint": "${ENV:HELIOS_DISTILLED_ROOT:-/share/project/shuchenweng/DistillSchedule_assets/Helios-Distilled}",
+      "subfolder": "transformer_ode",
+      "precision": "bf16",
+      "adapter": {
+        "kind": "lora",
+        "rank": 256,
+        "trainable": true
+      }
+    },
+    "score": {
+      "name": "helios-base-score",
+      "family": "helios",
+      "size": "14b",
+      "role": "score",
+      "checkpoint": "${ENV:HELIOS_BASE_ROOT:-/share/project/shuchenweng/Helios/weights/Helios-Base}",
+      "subfolder": "transformer",
+      "precision": "bf16",
+      "adapter": {
+        "kind": "lora",
+        "rank": 256,
+        "trainable": true
+      }
+    }
+  }
+}
