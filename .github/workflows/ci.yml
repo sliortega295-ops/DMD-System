@@ -1,0 +1,28 @@
+name: refactor-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  typed-runtime:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[test]'
+      - name: Compile
+        run: python -m compileall -q src scripts/distillctl.py
+      - name: Focused refactor tests
+        run: pytest -q tests/test_refactor_*.py
+      - name: Validate generic plan
+        run: python scripts/distillctl.py validate configs/distillschedule/plans/generic_autoregressive_dmd_vllm_critic_only.json
