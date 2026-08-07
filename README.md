@@ -4,7 +4,7 @@
 
 The current prototype grows out of our Helios Stage-3 DMD work, but the runtime boundary is deliberately model-agnostic: model family, model size, spatial/temporal shape, update frequency, training backend, rollout engine, placement, residency, and lifecycle policy are represented explicitly instead of being hard-coded into one training script.
 
-> Status: **research prototype / refactor v1**. The typed runtime is available and the existing Helios training path is retained behind a compatibility adapter while operations are migrated incrementally.
+> Status: **research prototype / refactor v1**. The typed runtime is available now. Helios integration uses a strangler adapter so the validated training implementation can be migrated operation by operation rather than rewritten at once.
 
 ## Motivation
 
@@ -49,20 +49,20 @@ That separation lets the same DMD workload be evaluated at different model sizes
 ## Quick start
 
 ```bash
-python -m pip install -e .
+python -m pip install -e '.[test]'
 
 python scripts/distillctl.py validate \
-  configs/distillschedule/plans/helios_14b_384x640_full5.json
+  configs/distillschedule/plans/generic_autoregressive_dmd_vllm_critic_only.json
 
 python scripts/distillctl.py show \
-  configs/distillschedule/plans/helios_14b_384x640_full5.json
+  configs/distillschedule/plans/generic_autoregressive_dmd_vllm_critic_only.json
 
-python scripts/distillctl.py run \
-  configs/distillschedule/plans/helios_14b_384x640_full5.json \
-  --dry-run
+pytest -q tests/test_refactor_config.py \
+          tests/test_refactor_protocol.py \
+          tests/test_refactor_rollout.py
 ```
 
-Every compiled run writes immutable `resolved_plan.json` and `compiled_run.json` artifacts before entering the model-specific path.
+The generic plan is intentionally plan-only: it validates and compiles without importing vLLM. A native model adapter or remote rollout client is required before execution.
 
 ## Composable configuration
 
@@ -79,7 +79,7 @@ This makes model size, resolution, update schedule, and lifecycle policy indepen
 
 ## Helios integration
 
-`HeliosDMDAdapter` currently follows a **strangler migration**:
+`HeliosDMDAdapter` follows a **strangler migration**:
 
 ```text
 ExecutionPlan
@@ -87,6 +87,8 @@ ExecutionPlan
     → validated runtime configuration
     → source-faithful Helios training path
 ```
+
+The adapter and template are kept in this repository so plans can be validated and rendered. The large upstream Helios model implementation and private research assets/checkpoints are **not vendored into this cleaned mainline**; on the cluster, the adapter points to the existing Helios research checkout.
 
 We intentionally do not rewrite the validated Helios DMD loss, rollout, optimizer, EMA, operation-trace, or memory mechanisms in one step. Native operations are migrated only after parity checks against the existing path.
 
@@ -107,13 +109,14 @@ The rollout interface carries an explicit `ModelVersion`; the default contract i
 
 ```text
 configs/distillschedule/     composable plans and fragments
+configs/experiments/         compatibility configuration templates
 docs/architecture/           refactor design and migration notes
-src/distillschedule/         new typed runtime
-runtime/                     validated legacy/runtime mechanisms retained for migration
-legacy/                      archived Level-3 prototype workloads
+src/distillschedule/         typed runtime
 scripts/distillctl.py        lightweight CLI entry point
-tests/                       runtime/refactor regression tests
+tests/test_refactor_*.py     focused refactor regression tests
 ```
+
+Historical one-off probes, multi-hundred-GB run artifacts, checkpoints, model weights, Nsight reports, and the full autoresearch iteration archive are intentionally excluded from this clean repository. They remain evidence, not mainline runtime code.
 
 ## Design principles
 
@@ -130,17 +133,30 @@ The current direction is to turn the hand-tuned Helios experiments into a schedu
 
 The intended evaluation is the **performance–memory Pareto frontier** across model sizes, resolutions, workloads, and hardware rather than a single peak-speed number.
 
+Current engineering sequence:
+
+```text
+new/legacy parity
+→ reserve-admitted Full5 baseline
+→ Plan-C critic-only + Plan-G generator-update + transition
+→ lifecycle/placement planner
+→ second DMD workload
+→ GAN stress path / external rollout engine / H100 evaluation
+```
+
 ## Development
 
 ```bash
 python -m pip install -e '.[test]'
-pytest -q
+pytest -q tests/test_refactor_config.py \
+          tests/test_refactor_protocol.py \
+          tests/test_refactor_rollout.py
 ```
 
-The refactor-specific regression tests cover configuration resolution, adapter validation, DMD protocol compilation, executor behavior, and rollout/version contracts.
+The original refactor-v1 verification on the source snapshot passed 17 focused refactor tests; the detailed record is in `docs/architecture/refactor_v1_status.json`.
 
 ## Upstream and license
 
-The research prototype originated from work on the open-source [Helios](https://github.com/PKU-YuanGroup/Helios) codebase. Upstream model code and retained compatibility components remain subject to their corresponding notices and licenses.
+The research prototype originated from work on the open-source Helios codebase. Upstream model code and retained compatibility components remain subject to their corresponding notices and licenses.
 
-This repository is distributed under the Apache-2.0 license unless a subcomponent states otherwise.
+The DistillSchedule refactor follows the Apache-2.0 license used by the source snapshot unless a subcomponent states otherwise.
