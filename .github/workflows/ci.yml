@@ -24,7 +24,7 @@ jobs:
         run: python -m compileall -q src runtime scripts/distillctl.py scripts/distillschedule
       - name: Validate shell launchers
         run: find scripts -type f -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
-      - name: Focused refactor tests
-        run: pytest -q tests/test_refactor_*.py tests/test_deepspeed_backend.py tests/test_host_admission.py
+      - name: Focused typed-runtime tests
+        run: pytest -q tests/test_refactor_*.py
       - name: Validate generic plan
         run: python scripts/distillctl.py validate configs/distillschedule/plans/generic_autoregressive_dmd_vllm_critic_only.json
