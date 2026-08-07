@@ -1,37 +1,41 @@
 # DMD-System
 
-**DMD-System** is a research runtime for scheduling and executing multi-model diffusion distillation workloads.
+**DMD-System** is a research runtime for scheduling and executing multi-model diffusion-distillation workloads.
 
-The current prototype grows out of our Helios Stage-3 DMD work, but the runtime boundary is deliberately model-agnostic: model family, model size, spatial/temporal shape, update frequency, training backend, rollout engine, placement, residency, and lifecycle policy are represented explicitly instead of being hard-coded into one training script.
+The project grows out of our Helios Stage-3 DMD work, but the runtime boundary is deliberately model-agnostic: model family, model size, spatial/temporal shape, update frequency, training backend, rollout engine, placement, residency and lifecycle policy are explicit inputs rather than branches inside one giant training script.
 
-> Status: **research prototype / refactor v1**. The typed runtime is available now. Helios integration uses a strangler adapter so the validated training implementation can be migrated operation by operation rather than rewritten at once.
+> **Status: research prototype / refactor v0.2.** The typed runtime is the target architecture. Validated Helios/A100 runtime mechanisms are retained in a compatibility layer and are being migrated operation by operation under numerical/version parity gates.
 
-## Motivation
+## Why DMD needs a runtime
 
-DMD-style training is a compound workload rather than a single-model training loop. A typical cycle may involve a trainable Generator, shared Real/Fake Score or Critic modes, optional Teacher/GAN/Reward/VAE branches, different update frequencies, parameter-version barriers, and different memory/placement policies across logical steps.
+A DMD training cycle is a compound workload rather than a single-model loop. It may involve a trainable Generator, shared Real/Fake Score or Critic modes, Teacher/EMA state, optional GAN/Reward/VAE branches, different update frequencies, parameter-version barriers, and different memory/placement policies at different logical steps.
 
-The systems problem is therefore not only “how do we fit one model?”, but **how do we schedule several physical model states and their lifetimes without changing training semantics?**
+The systems problem is therefore not only “how do we fit one model?” but:
+
+> **How should several physical model states be placed, materialized, pipelined and transitioned without changing the DMD training semantics?**
 
 ## Architecture
 
 ```text
-ExecutionPlan
-    ↓
-DMD protocol compiler
-    ↓
-Model Adapter
-    ↓
-Training / Rollout Backend
-    ↓
-DistillExecutor
+WorkloadSpec + ModelSpec + ShapeSpec
+                ↓
+          ExecutionPlan
+                ↓
+        DMD protocol compiler
+                ↓
+           Model Adapter
+                ↓
+     Training / Rollout Backend
+                ↓
+          DistillExecutor
 ```
 
-The main package is under `src/distillschedule/`:
+The stable architecture lives under `src/distillschedule/`:
 
 ```text
 src/distillschedule/
 ├── core/                 # typed specs, plans, contracts, capabilities
-├── workloads/dmd/        # DMD logical schedule and protocol compiler
+├── workloads/dmd/        # DMD schedule and logical operation graph
 ├── adapters/             # Helios and generic model-family adapters
 ├── backends/
 │   ├── training/         # training backend interfaces
@@ -39,14 +43,38 @@ src/distillschedule/
 └── runtime/              # executor, role runner, version synchronization
 ```
 
-Two specifications are kept separate:
+`WorkloadSpec` describes algorithm semantics. `ExecutionPlan` describes physical execution: rank groups, backend, residency, block streaming, activation offload, construction/swap waves, rollout provider and evidence contract. Keeping them separate lets the same DMD workload be evaluated at different model sizes, resolutions and hardware configurations without duplicating the training logic.
 
-- **WorkloadSpec**: algorithm semantics — models, shapes, branches, update frequencies.
-- **ExecutionPlan**: physical execution — rank groups, backend, residency, streaming, offload, construction/swap waves, rollout engine, and evidence contract.
+## Validated mechanism layer
 
-That separation lets the same DMD workload be evaluated at different model sizes, resolutions, hardware configurations, or rollout backends without duplicating the training logic.
+The root `runtime/` package is intentionally retained during the strangler migration. These are not mock interfaces: they are mechanisms extracted from the real Helios/A100 research path and protected by correctness tests.
+
+```text
+runtime/
+├── activation_offload.py       # audited saved-tensor CPU offload
+├── frozen_block_streaming.py   # immutable block streaming + checkpoint interlock
+├── immutable_model_backing.py  # node-shared frozen-state backing
+├── residency.py                # physical-state ownership/version safety
+├── host_admission.py           # node budget and reserve admission
+├── ema.py                      # trainable-state-only EMA
+├── dmd_boundary.py             # DMD and Critic gradient boundaries
+├── deepspeed_backend.py        # ZeRO backend/offload contract
+├── zero3_checkpoint.py
+├── zero_partition.py
+├── precast_checkpoint.py
+├── operation_trace.py          # operation-keyed exact replay
+├── rollout_trace.py            # nested rollout/autograd tracing
+├── trace.py                    # phase/NVTX tracing
+├── critic_pool*.py             # Critic-only pool/transport/checkpoint/trace
+├── generator_update_gate.py
+└── m1_action_library.py
+```
+
+The long-term direction is to move these mechanisms behind the typed package once the new execution path matches the validated implementation in tensor identity, loss, parameter-version order, optimizer update and EMA transition.
 
 ## Quick start
+
+The typed plan/compiler path has no heavyweight model dependency:
 
 ```bash
 python -m pip install -e '.[test]'
@@ -55,18 +83,72 @@ python scripts/distillctl.py validate \
   configs/distillschedule/plans/generic_autoregressive_dmd_vllm_critic_only.json
 
 python scripts/distillctl.py show \
-  configs/distillschedule/plans/generic_autoregressive_dmd_vllm_critic_only.json
+  configs/distillschedule/plans/helios_14b_384x640_full5.json
 
-pytest -q tests/test_refactor_config.py \
-          tests/test_refactor_protocol.py \
-          tests/test_refactor_rollout.py
+python scripts/distillctl.py run \
+  configs/distillschedule/plans/helios_14b_384x640_full5.json \
+  --dry-run
 ```
 
-The generic plan is intentionally plan-only: it validates and compiles without importing vLLM. A native model adapter or remote rollout client is required before execution.
+Every compiled run writes immutable `resolved_plan.json` and `compiled_run.json` artifacts before entering the model-specific path.
 
-## Composable configuration
+## Helios integration
 
-The Helios example composes reusable fragments instead of copying an entire launcher:
+`HeliosDMDAdapter` follows a strangler migration:
+
+```text
+ExecutionPlan
+    → HeliosDMDAdapter
+    → validated runtime configuration
+    → pinned Helios training checkout
+```
+
+The full upstream Helios model tree, weights and private cluster assets are **not vendored** here. On the cluster the adapter points to a pinned Helios checkout. Reusable DMD-System mechanisms are kept in this repository; one-off historical launchers and raw experiment output are not.
+
+Current parity order:
+
+```text
+Critic-only operation
+→ Generator-update operation
+→ complete Full5 cycle
+→ tensor/loss/version/optimizer/EMA parity
+→ migrate Helios batch/rollout/loss/checkpoint boundaries
+```
+
+## Critic-only and rollout engines
+
+Differentiable Generator training and no-grad rollout are separate interfaces:
+
+```text
+Differentiable Generator     # autograd required
+RolloutProvider              # no-grad sample production
+```
+
+`RolloutProvider` carries an explicit `ModelVersion`; the default contract is exact synchronization (`max_version_staleness = 0`). Native, remote, vLLM and SGLang facades are included. A serving engine is only used when a model-specific adapter actually supports the corresponding generation protocol; there is no silent fallback from Helios diffusion rollout to an LLM serving API.
+
+The validated compatibility layer also includes the real Critic-pool contracts: rank topology, bounded queue, fixed-width P2P metadata, commit ACK/version checks, rank-qualified operation traces and Helios no-grad rollout primitives.
+
+## Nsight / NVTX profiling
+
+Profiling code is first-class source because it is needed to explain system behavior:
+
+```text
+profiling/nsight/
+scripts/distillschedule/
+├── run_nsys_locked.sh
+├── nsys_profile_command.sh
+├── analyze_w16_pool_nsys.py
+├── plot_w16_nsys_latest.py
+└── bench_transfer.py
+```
+
+`run_nsys_locked.sh` locks an idle GPU node, records source/environment metadata, captures an explicit NVTX/CUDA-profiler range and validates the report. Nsight output is diagnostic evidence; formal speedups come from separate unprofiled matched runs.
+
+Raw `.nsys-rep`, SQLite exports and generated figures are intentionally excluded from normal Git history.
+
+## Configuration
+
+The Helios example composes reusable fragments rather than cloning launchers:
 
 ```text
 helios_14b_models.json
@@ -75,72 +157,60 @@ helios_14b_models.json
 + helios_a_local_lifecycle.json
 ```
 
-This makes model size, resolution, update schedule, and lifecycle policy independently replaceable.
-
-## Helios integration
-
-`HeliosDMDAdapter` follows a **strangler migration**:
-
-```text
-ExecutionPlan
-    → HeliosDMDAdapter
-    → validated runtime configuration
-    → source-faithful Helios training path
-```
-
-The adapter and template are kept in this repository so plans can be validated and rendered. The large upstream Helios model implementation and private research assets/checkpoints are **not vendored into this cleaned mainline**; on the cluster, the adapter points to the existing Helios research checkout.
-
-We intentionally do not rewrite the validated Helios DMD loss, rollout, optimizer, EMA, operation-trace, or memory mechanisms in one step. Native operations are migrated only after parity checks against the existing path.
-
-The first parity targets are one Critic-only operation and one complete Full5 cycle, followed by tensor/loss/version/optimizer/EMA equivalence.
-
-## Rollout engines
-
-Critic-only rollout is separated from differentiable Generator training:
-
-```text
-Differentiable Generator path   # autograd required
-RolloutProvider path            # no-grad sample production
-```
-
-The rollout interface carries an explicit `ModelVersion`; the default contract is exact synchronization (`max_version_staleness = 0`). Facades for remote, vLLM, and SGLang backends are included, but the current Helios diffusion/history protocol is **not** claimed to be directly compatible with text-LLM serving APIs; a model-specific transport adapter is required.
+This makes model size, resolution, update schedule and lifecycle policy independently replaceable. Shape-sensitive policies are profiled for explicit `(model, precision, batch, frames, resolution)` buckets rather than pretending all shapes are interchangeable.
 
 ## Repository layout
 
 ```text
-configs/distillschedule/     composable plans and fragments
-configs/experiments/         compatibility configuration templates
-docs/architecture/           refactor design and migration notes
-src/distillschedule/         typed runtime
-scripts/distillctl.py        lightweight CLI entry point
-tests/test_refactor_*.py     focused refactor regression tests
+configs/distillschedule/       composable typed plans and fragments
+docs/architecture/             design, migration boundary, source inventory
+src/distillschedule/           stable typed runtime/API
+runtime/                       validated compatibility mechanisms
+scripts/distillschedule/       reusable experiment/profiling utilities
+profiling/nsight/              profiler conventions and claim boundary
+tests/                         refactor + mechanism correctness tests
 ```
 
-Historical one-off probes, multi-hundred-GB run artifacts, checkpoints, model weights, Nsight reports, and the full autoresearch iteration archive are intentionally excluded from this clean repository. They remain evidence, not mainline runtime code.
+See `docs/architecture/v0.2_source_inventory.md` for the explicit keep/archive policy.
+
+## What is intentionally not in Git
+
+The cleaned repository does **not** contain model weights, 100-GB checkpoints, `.nsys-rep` files, raw rank logs, tensor dumps, generated videos, private datasets, or hundreds of iteration-specific failed launcher/manifests. Those are immutable experiment artifacts rather than reusable source code.
+
+The repository also avoids copying the complete upstream Helios tree. DMD-System remains a DMD runtime with a Helios adapter, not a permanent fork of one workload.
 
 ## Design principles
 
-1. **Semantics first.** Placement or overlap must not cross optimizer/version barriers.
-2. **Physical state is explicit.** Logical Real/Fake/Critic roles may share one physical Score state.
-3. **Shape is part of the plan.** Memory policies are profiled for model/precision/batch/frame/resolution buckets rather than assuming arbitrary dynamic shapes.
-4. **Backends are pluggable.** DeepSpeed/FSDP-style training and native/remote rollout are execution choices, not workload semantics.
-5. **Evidence is immutable.** Formal runs resolve their effective plan before launch.
-6. **No silent fallback.** Unsupported rollout/backend combinations fail closed.
+1. **Semantics first.** Placement and overlap cannot cross optimizer/version barriers.
+2. **Physical state is explicit.** Logical Real/Fake/Critic modes may share one physical Score state.
+3. **Lifecycle is phase-specific.** Construction admission, steady residency and transition peaks are different constraints.
+4. **Shape is part of the plan.** Memory and performance profiles are keyed by workload shape.
+5. **Backends are pluggable.** DeepSpeed/FSDP and native/remote rollout are execution choices, not workload semantics.
+6. **Evidence is immutable.** Formal runs bind resolved plan, trace, checkpoint and source identity before launch.
+7. **No silent fallback.** Unsupported model/backend combinations fail closed.
 
-## MLSys roadmap
+## MLSys direction
 
-The current direction is to turn the hand-tuned Helios experiments into a scheduler that jointly reasons about Generator/Score/Teacher/Critic placement, parameter and activation residency, frozen-block streaming and prefetch, construction and swap concurrency, node/NUMA budgets, update frequency and parameter versions, microbatch wavefronts, and external rollout providers.
+The current paper direction is a **frequency-, version-, and lifecycle-aware scheduler for multi-model diffusion distillation**. The scheduler should jointly reason about:
 
-The intended evaluation is the **performance–memory Pareto frontier** across model sizes, resolutions, workloads, and hardware rather than a single peak-speed number.
+- Generator / Score / Teacher / Critic placement;
+- parameter residency, sharding, streaming and offload;
+- activation lifetime and gradient boundaries;
+- construction and swap concurrency under node/NUMA budgets;
+- microbatch producer/consumer overlap;
+- phase transitions across different DMD update frequencies; and
+- native or external rollout providers.
+
+The intended evaluation is the end-to-end performance–memory Pareto frontier across model sizes, resolutions, workloads and hardware, not a single isolated microbenchmark.
 
 Current engineering sequence:
 
 ```text
-new/legacy parity
+new/validated-path parity
 → reserve-admitted Full5 baseline
-→ Plan-C critic-only + Plan-G generator-update + transition
+→ Critic-only Plan C + Generator-update Plan G + transition
 → lifecycle/placement planner
-→ second DMD workload
+→ second real DMD workload
 → GAN stress path / external rollout engine / H100 evaluation
 ```
 
@@ -148,15 +218,13 @@ new/legacy parity
 
 ```bash
 python -m pip install -e '.[test]'
-pytest -q tests/test_refactor_config.py \
-          tests/test_refactor_protocol.py \
-          tests/test_refactor_rollout.py
+pytest -q tests/test_refactor_*.py
 ```
 
-The original refactor-v1 verification on the source snapshot passed 17 focused refactor tests; the detailed record is in `docs/architecture/refactor_v1_status.json`.
+Mechanism tests that import PyTorch/Helios are expected to run in the research environment with those optional dependencies installed. CI keeps the typed package lightweight and separately compile-checks the restored compatibility/runtime source.
 
 ## Upstream and license
 
 The research prototype originated from work on the open-source Helios codebase. Upstream model code and retained compatibility components remain subject to their corresponding notices and licenses.
 
-The DistillSchedule refactor follows the Apache-2.0 license used by the source snapshot unless a subcomponent states otherwise.
+The DistillSchedule refactor follows Apache-2.0 unless a subcomponent states otherwise.
