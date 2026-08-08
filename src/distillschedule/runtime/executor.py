@@ -108,11 +108,32 @@ class DistillExecutor:
         if not output_dir.is_absolute():
             output_dir = (loaded_plan.base_dir / output_dir).resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
-        (output_dir / "resolved_plan.json").write_text(
+        artifact_suffix = ""
+        if plan.hardware.nodes > 1:
+            raw_node_rank = os.environ.get("DISTILLSCHEDULE_NODE_RANK")
+            if raw_node_rank is None:
+                raise ContractViolation(
+                    "multi-node execution requires DISTILLSCHEDULE_NODE_RANK",
+                    path="hardware.nodes",
+                )
+            try:
+                node_rank = int(raw_node_rank)
+            except ValueError as exc:
+                raise ContractViolation(
+                    "DISTILLSCHEDULE_NODE_RANK must be an integer",
+                    path="hardware.nodes",
+                ) from exc
+            if not 0 <= node_rank < plan.hardware.nodes:
+                raise ContractViolation(
+                    "DISTILLSCHEDULE_NODE_RANK is outside the plan node range",
+                    path="hardware.nodes",
+                )
+            artifact_suffix = f".node{node_rank}"
+        (output_dir / f"resolved_plan{artifact_suffix}.json").write_text(
             json.dumps(plan.to_dict(), indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
-        (output_dir / "compiled_run.json").write_text(
+        (output_dir / f"compiled_run{artifact_suffix}.json").write_text(
             json.dumps(compiled.to_dict(), indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )

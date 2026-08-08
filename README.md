@@ -109,10 +109,12 @@ For the current two-node BAAI A100 environment, copy and source
 `configs/distillschedule/server/baai_2x8_a100.env.example`, then run
 `scripts/distillschedule/baai_server_smoke.sh`.  The smoke gate validates the
 external Helios checkout, assets, typed plan, rendered configuration and command
-without launching a model or claiming a GPU result.  Multi-node execution still
-uses the validated external launcher until the typed executor gains a coordinator;
-the single-process `distillctl run` command must not be presented as a world16
-launcher.
+without launching a model or claiming a GPU result.  Multi-node execution uses one fail-closed typed node runner per host; each
+runner compiles the same `ExecutionPlan` with a node-qualified rank and invokes
+`distillctl run`.  `scripts/distillschedule/launch_routea_world16_typed_node.sh`
+holds the node GPU lock through teardown.  There is not yet a general cluster
+coordinator, so a single local `distillctl run` process must not be presented as
+a world16 launcher.
 
 Current parity order:
 

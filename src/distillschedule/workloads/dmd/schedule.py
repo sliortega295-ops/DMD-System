@@ -29,7 +29,10 @@ class DMDUpdateSchedule:
         critic_update = logical_step % self.schedule.critic_update_every == 0
         ema_update = (
             self.branches.ema
-            and logical_step >= self.schedule.ema_start_step
+            and (
+                self.schedule.ema_bootstrap_before_start
+                or logical_step >= self.schedule.ema_start_step
+            )
             and logical_step % self.schedule.ema_update_every == 0
         )
         if generator_update and critic_update:

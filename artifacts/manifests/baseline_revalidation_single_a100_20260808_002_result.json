@@ -1,0 +1,13 @@
+{
+  "schema_version": "distillschedule.aborted_run.v1",
+  "run_id": "baseline_revalidation_single_a100_20260808_002",
+  "status": "ABORTED_BY_USER_SCOPE_MISMATCH",
+  "reason": "Single-A100 refactor plan did not test the requested latest Obsidian Route-A Full5 world16 baseline.",
+  "completed_before_abort": [
+    "construction",
+    "resume checkpoint-10",
+    "logical step 10"
+  ],
+  "performance_claim": "Not Run",
+  "preservation": "Logs and artifacts retained; do not use as baseline evidence."
+}
