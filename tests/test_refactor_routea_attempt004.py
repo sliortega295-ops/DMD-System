@@ -452,6 +452,7 @@ def test_baai_smoke_isolates_bytecode_on_shared_filesystem() -> None:
     assert script.index("export PYTHONPYCACHEPREFIX") < script.index(
         '"${PYTHON}" -m compileall'
     )
+    assert 'cat "${OUT}/node_contract_summary.json" >&2' in script
 
 
 def test_dry_run_stage_is_never_reused_as_real_evidence() -> None:

@@ -85,7 +85,7 @@ mkdir -p "${DISTILLSCHEDULE_FROZEN_BLOCK_MMAP_CACHE}" "${DISTILLSCHEDULE_IMMUTAB
 RENDERED="${DISTILLSCHEDULE_OUTPUT_DIR}/resolved_helios_config.node${NODE_RANK}.yaml"
 require_file "${RENDERED}"
 
-"${PYTHON}" "${ROOT}/scripts/distillschedule/build_routea_evidence_contract.py" node \
+if ! "${PYTHON}" "${ROOT}/scripts/distillschedule/build_routea_evidence_contract.py" node \
   --node-rank "${NODE_RANK}" \
   --plan "${PLAN}" \
   --repo-root "${ROOT}" \
@@ -98,7 +98,10 @@ require_file "${RENDERED}"
   --asset "generator=${GENERATOR_ROOT}" \
   --asset "score=${SCORE_ROOT}" \
   --asset "data=${DATA_ROOT}" \
-  --output "${OUT}/node_contract.json" >"${OUT}/node_contract_summary.json"
+  --output "${OUT}/node_contract.json" >"${OUT}/node_contract_summary.json"; then
+  cat "${OUT}/node_contract_summary.json" >&2
+  exit 2
+fi
 
 "${PYTHON}" - "${OUT}/node_contract.json" <<'PY'
 import json, pathlib, sys
