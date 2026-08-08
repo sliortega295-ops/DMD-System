@@ -471,6 +471,15 @@ def test_routea_plan_explicitly_freezes_accumulation() -> None:
     assert command[index + 1] == "1"
 
 
+def test_routea_controller_helpers_are_executable() -> None:
+    for relative in (
+        "scripts/distillschedule/remote_stage_wrapper.sh",
+        "scripts/distillschedule/cancel_remote_stage.sh",
+        "scripts/distillschedule/launch_routea_world16_typed_node.sh",
+    ):
+        assert (ROOT / relative).stat().st_mode & 0o111, relative
+
+
 def test_routea_controller_summarizes_remote_root_on_compute_host() -> None:
     args = CONTROLLER.parser().parse_args(
         [
