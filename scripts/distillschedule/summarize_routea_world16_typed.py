@@ -663,7 +663,10 @@ def topology_summary(path: Path) -> dict[str, Any]:
     value = load_json_mapping(path)
     records = value.get("records")
     if isinstance(records, list):
-        global_ranks = sorted(int(record["global_rank"]) for record in records)
+        global_ranks = sorted(
+            int(record["global_rank"] if "global_rank" in record else record["rank"])
+            for record in records
+        )
         hosts = sorted({str(record["hostname"]) for record in records})
         per_host = collections.Counter(str(record["hostname"]) for record in records)
         local_by_host = {

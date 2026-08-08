@@ -243,11 +243,16 @@ for _ in $(seq 1 120); do [[ -f "${TOPOLOGY}" ]] && break; sleep 1; done
 [[ -f "${TOPOLOGY}" ]] || { echo topology_manifest_missing >&2; exit 87; }
 "${PYTHON}" - "${TOPOLOGY}" <<'PY'
 import json, pathlib, sys
+from distillschedule.runtime.topology import validate_topology_probe_payload
+
 p=pathlib.Path(sys.argv[1]); v=json.loads(p.read_text())
-assert v.get('status') == 'PASS', v
-assert v.get('world_size') == 16, v
-assert sorted(v.get('global_ranks', [])) == list(range(16)), v
-assert len(v.get('hosts', [])) == 2, v
+validate_topology_probe_payload(
+    v,
+    expected_nodes=2,
+    expected_local_world_size=8,
+    expected_world_size=16,
+    require_cuda=True,
+)
 PY
 {
   echo topology_path="${TOPOLOGY}"

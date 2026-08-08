@@ -13,7 +13,11 @@ from distillschedule.runtime.launch_config import (
     render_accelerate_config,
     require_routea_zero1_contract,
 )
-from distillschedule.runtime.topology import TopologyRecord, validate_topology_records
+from distillschedule.runtime.topology import (
+    TopologyRecord,
+    validate_topology_probe_payload,
+    validate_topology_records,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -86,6 +90,51 @@ def test_world16_topology_accepts_two_hosts_and_sixteen_unique_ranks() -> None:
     )
     assert summary.ranks_by_node[0] == tuple(range(8))
     assert summary.ranks_by_node[1] == tuple(range(8, 16))
+
+
+def test_world16_probe_payload_round_trips_its_nested_summary() -> None:
+    records = _world16_records()
+    summary = validate_topology_records(
+        records,
+        expected_nodes=2,
+        expected_local_world_size=8,
+        expected_world_size=16,
+    )
+    payload = {
+        "schema_version": "distillschedule.topology_probe.v1",
+        "status": "PASS",
+        "summary": summary.to_dict(),
+        "records": [record.to_dict() for record in records],
+    }
+    assert validate_topology_probe_payload(
+        payload,
+        expected_nodes=2,
+        expected_local_world_size=8,
+        expected_world_size=16,
+    ) == summary
+
+
+def test_world16_probe_payload_rejects_summary_record_disagreement() -> None:
+    records = _world16_records()
+    summary = validate_topology_records(
+        records,
+        expected_nodes=2,
+        expected_local_world_size=8,
+        expected_world_size=16,
+    ).to_dict()
+    summary["world_size"] = 8
+    with pytest.raises(ContractViolation, match="summary does not match"):
+        validate_topology_probe_payload(
+            {
+                "schema_version": "distillschedule.topology_probe.v1",
+                "status": "PASS",
+                "summary": summary,
+                "records": [record.to_dict() for record in records],
+            },
+            expected_nodes=2,
+            expected_local_world_size=8,
+            expected_world_size=16,
+        )
 
 
 def test_world16_topology_rejects_two_independent_world8_groups() -> None:
