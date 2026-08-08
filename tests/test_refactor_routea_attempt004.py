@@ -455,6 +455,18 @@ def test_baai_smoke_isolates_bytecode_on_shared_filesystem() -> None:
     assert 'cat "${OUT}/node_contract_summary.json" >&2' in script
 
 
+def test_routea_plan_explicitly_freezes_accumulation() -> None:
+    plan = json.loads(
+        (
+            ROOT
+            / "configs/distillschedule/plans/helios_routea_full5_world16_typed.json"
+        ).read_text()
+    )
+    command = plan["legacy"]["command"]
+    index = command.index("--gradient_accumulation_steps")
+    assert command[index + 1] == "1"
+
+
 def test_dry_run_stage_is_never_reused_as_real_evidence() -> None:
     dry = {
         "status": "PASS",

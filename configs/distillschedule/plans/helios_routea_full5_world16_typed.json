@@ -169,6 +169,8 @@
       "{master_port}",
       "--mixed_precision",
       "bf16",
+      "--gradient_accumulation_steps",
+      "1",
       "--config_file",
       "${ENV:DISTILLSCHEDULE_ACCELERATE_CONFIG}",
       "--debug",
