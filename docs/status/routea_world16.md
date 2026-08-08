@@ -3,7 +3,7 @@
 **Status date:** 2026-08-08  
 **Live tracker:** [Issue #2](https://github.com/sliortega295-ops/DMD-System/issues/2)  
 **Active integration branch:** `codex/routea-world16-repository-hardening`
-**Evidence state:** source hardening updated; new cluster acceptance still Not Run
+**Evidence state:** dual-host N0 smoke passed; new cluster acceptance still Not Run
 
 This page records accepted evidence, not intent. The frozen workload is defined separately in [`../contracts/routea_full5_world16.md`](../contracts/routea_full5_world16.md).
 
@@ -14,7 +14,7 @@ This page records accepted evidence, not intent. The frozen workload is defined 
 | 001 | Failed before model construction | The typed wrapper invoked Accelerate without exposing the matching environment's `bin` directory; Accelerate could not resolve `deepspeed`. No training step ran and OOM deltas were zero. | Launcher failure only |
 | 002 | Failed at checkpoint world-size gate | Each host formed an independent world8 group. The world16 ZeRO-1 checkpoint correctly rejected the topology before a training step. | Topology failure only |
 | 003 | **Legacy PARTIAL** (historically `Not Run` at the Issue #2 snapshot) | The job later exited with 16 rank traces and checkpoint-15, but its mixed legacy launcher manifest and missing in-run Attempt-004 topology/evidence contract cannot be retroactively repaired. The hardened replay measured a diagnostic 646.7306-s window, but it is not claimable. | Functional candidate only; no accepted timing claim |
-| 004 | **Not Run** | The hardened coordinator, node contracts and summarizer now exist in source, but no immutable two-node result has passed them yet. | None |
+| 004 | **Not Run** | Dual-host N0 source/config smoke passed at commit `a625c09` (46 tests per host). Four immutable N1 launch IDs were preserved, but all stopped before model construction: helper execute bits, runtime-version probing, pinned-Accelerate config validation, then a 19-minute LeoFS permission/lookup stall. The last attempt never acquired the GPU locks and both worker transports ended 255; no training or OOM evidence was produced. | N0/pre-model infrastructure evidence only |
 
 `Running` is not a result. Attempt 003's later files are preserved as legacy partial
 evidence; they do not become an Attempt-004 PASS merely because both worker return
@@ -35,6 +35,15 @@ The repository now has code and documentation for:
 - a resumable No-GAN suite DAG, target-graph Generator offload search and paired timing driver.
 
 These are **source-complete, cluster-validation pending** until the updated smoke test and a real two-node run execute on the target environment.
+
+The N0 fixes are initialization-only and do not change the Full5 workload: node-local
+Python bytecode caches avoid shared-filesystem races, GAS=1 remains explicit in the
+launcher/Helios contracts, runtime versions come from package metadata, and the
+pinned Accelerate release now parses the generated YAML during smoke. The LeoFS
+failure signatures were `__leofs_get_access_perm` and `leofs_lookup_v1`; GPU memory
+remained zero and the node locks remained available. A new N1 attempt is permitted
+only after those uninterruptible waiters have exited and `/share/project` access is
+healthy again.
 
 ## Still open
 
