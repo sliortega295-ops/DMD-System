@@ -388,6 +388,16 @@ def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser()
     result.add_argument("--suite", required=True, type=Path)
     result.add_argument("--hosts", required=True, type=parse_hosts)
+    result.add_argument(
+        "--master-addr",
+        default=os.environ.get("DISTILLSCHEDULE_MASTER_ADDR"),
+        help="compute-network rendezvous address; never inferred from SSH targets",
+    )
+    result.add_argument(
+        "--master-port",
+        type=int,
+        default=int(os.environ.get("DISTILLSCHEDULE_MASTER_PORT", "29677")),
+    )
     result.add_argument("--run-id", required=True)
     result.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[2])
     result.add_argument("--site-env")
@@ -480,6 +490,13 @@ def main(argv: list[str] | None = None) -> int:
             from_stage=args.from_stage,
             stop_after=args.stop_after,
         )
+        if "n1_routea_attempt004" in selected and not args.master_addr:
+            raise RuntimeError(
+                "--master-addr (or DISTILLSCHEDULE_MASTER_ADDR) is required; "
+                "SSH targets are not valid process-group rendezvous addresses"
+            )
+        if not 1 <= args.master_port <= 65535:
+            raise RuntimeError("--master-port must be in [1, 65535]")
     except (OSError, RuntimeError, subprocess.CalledProcessError) as exc:
         print(json.dumps({"status": "FAIL", "error": str(exc)}))
         return 2
@@ -497,6 +514,8 @@ def main(argv: list[str] | None = None) -> int:
         "suite_sha256": sha256_file(suite_path),
         "repo_head": git_head(root),
         "hosts": list(args.hosts),
+        "master_addr": args.master_addr,
+        "master_port": args.master_port,
         "run_id": args.run_id,
         "selected_stages": sorted(selected),
         "site_env": site_env,
@@ -625,6 +644,8 @@ def main(argv: list[str] | None = None) -> int:
             "hosts_csv": ",".join(args.hosts),
             "host0": args.hosts[0],
             "host1": args.hosts[1],
+            "master_addr": str(args.master_addr or ""),
+            "master_port": str(args.master_port),
             "suite_run_id": args.run_id,
             "stage_id": stage_id,
             "stage_run_id": stage_run_id,

@@ -100,6 +100,10 @@ stages:
       - "{repo_root}"
       - --site-env
       - "{site_env}"
+      - --master-addr
+      - "{master_addr}"
+      - --master-port
+      - "{master_port}"
       - --resume
 
   - id: n2_target_g_offload_search

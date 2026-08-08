@@ -400,6 +400,8 @@ def test_suite_remote_pair_qualifies_preflight_output_by_node(tmp_path: Path) ->
         "repo_root": "/repo",
         "suite_run_id": "suite",
         "stage_run_id": "stage",
+        "master_addr": "10.0.0.1",
+        "master_port": "29677",
     }
     command = SUITE.format_command(stages["n0_preflight"]["command"], context)
     pair = SUITE.RemotePair(
@@ -417,6 +419,29 @@ def test_suite_remote_pair_qualifies_preflight_output_by_node(tmp_path: Path) ->
     commands = pair.commands()
     assert "node_0" in commands[0][-1]
     assert "node_1" in commands[1][-1]
+
+
+def test_suite_routea_command_uses_explicit_compute_rendezvous() -> None:
+    suite = SUITE.expand_env(
+        SUITE.load_yaml(
+            ROOT / "configs/distillschedule/suites/helios_no_gan_world16.yaml"
+        )
+    )
+    _order, stages = SUITE.stage_map(suite)
+    command = SUITE.format_command(
+        stages["n1_routea_attempt004"]["command"],
+        {
+            "python": "/python",
+            "repo_root": "/repo",
+            "hosts_csv": "ssh-node0,ssh-node1",
+            "stage_run_id": "attempt",
+            "site_env": "/site.env",
+            "master_addr": "172.24.129.137",
+            "master_port": "29677",
+        },
+    )
+    assert command[command.index("--master-addr") + 1] == "172.24.129.137"
+    assert command[command.index("--master-port") + 1] == "29677"
 
 
 def test_dry_run_stage_is_never_reused_as_real_evidence() -> None:

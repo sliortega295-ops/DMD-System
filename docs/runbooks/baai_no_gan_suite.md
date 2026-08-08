@@ -10,6 +10,8 @@ preserves downstream stages as `NOT_RUN` after a failed gate.
 python scripts/distillschedule/run_no_gan_suite.py \
   --suite configs/distillschedule/suites/helios_no_gan_world16.yaml \
   --hosts <node0-ssh-target>,<node1-ssh-target> \
+  --master-addr <node0-compute-network-ip> \
+  --master-port <unused-port> \
   --run-id <new-immutable-suite-id> \
   --repo-root "$PWD" \
   --resume
@@ -17,6 +19,8 @@ python scripts/distillschedule/run_no_gan_suite.py \
 
 Use `--dry-run` first. Dry-run results are labelled `DRY_RUN` and are deliberately
 ineligible for later `--resume` reuse. Real execution requires a clean repository.
+The rendezvous address is explicit and must be reachable from both compute nodes;
+the coordinator refuses to infer it from proxy/SSH login targets.
 
 ## Frozen main contract
 
