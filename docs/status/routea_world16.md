@@ -45,6 +45,17 @@ remained zero and the node locks remained available. A new N1 attempt is permitt
 only after those uninterruptible waiters have exited and `/share/project` access is
 healthy again.
 
+A bounded live recovery audit at `2026-08-08T12:40:22Z` additionally found four
+LeoFS D-state tasks and 444 zombies on node 0, and two LeoFS D-state tasks and 300
+zombies on node 1. The Route-A tasks have pending `SIGKILL`, but an uninterruptible
+kernel lookup cannot be reaped until LeoFS returns. Neither container has
+`CAP_SYS_ADMIN`, and its Kubernetes service account receives HTTP 403 for pod
+inspection, so a client remount or safe job restart cannot be performed from inside
+the allocation. The exact audit is preserved in
+`artifacts/manifests/routea_attempt004_leofs_recovery_20260808.json`. This remains an
+external infrastructure block before model construction, not OOM and not Full5
+evidence.
+
 ## Still open
 
 Issue #2 remains open because the new source has not passed a real Attempt 004 on the

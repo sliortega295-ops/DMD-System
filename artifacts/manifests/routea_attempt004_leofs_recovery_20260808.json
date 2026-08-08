@@ -1,0 +1,63 @@
+{
+  "schema_version": "distillschedule.infrastructure_failure.v1",
+  "recorded_at_utc": "2026-08-08T12:40:22Z",
+  "repository_head": "3f979e224947117dc259255ad0b1fe1a8ec92394",
+  "run_id": "routea_attempt004_full5_world16_20260808_004",
+  "status": "NOT_RUN",
+  "stage_reached": "before_remote_wrapper_and_gpu_lock",
+  "semantic_workload_started": false,
+  "model_construction_started": false,
+  "gpu_work_started": false,
+  "new_oom_observed": false,
+  "failure_class": "external_leofs_kernel_client_stall",
+  "failure_signatures": [
+    "leofs_mds_error",
+    "__leofs_get_access_perm",
+    "leofs_lookup_v1",
+    "d_alloc_parallel"
+  ],
+  "nodes": {
+    "node0": {
+      "host": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+      "d_state_processes": 4,
+      "zombie_processes": 444,
+      "gpu_compute_processes": 0,
+      "gpu_lock": "AVAILABLE",
+      "cgroup_memory_events": {
+        "oom": 0,
+        "oom_kill": 1,
+        "note": "historical oom_kill counter; no increment during this attempt"
+      },
+      "effective_cap_sys_admin": false
+    },
+    "node1": {
+      "host": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+      "d_state_processes": 2,
+      "zombie_processes": 300,
+      "gpu_compute_processes": 0,
+      "gpu_lock": "AVAILABLE",
+      "cgroup_memory_events": {
+        "oom": 0,
+        "oom_kill": 1,
+        "note": "historical oom_kill counter; no increment during this attempt"
+      },
+      "effective_cap_sys_admin": false
+    }
+  },
+  "bounded_recovery_actions": [
+    "sent SIGKILL to only the identified Route-A and diagnostic process trees",
+    "verified SIGKILL remains pending while tasks are in uninterruptible sleep",
+    "verified root LeoFS mount metadata can be stat'ed but the actual site-env lookup still stalls",
+    "verified the LeoFS MDS address 10.8.208.6 responds to ICMP",
+    "verified the containers cannot remount or reset LeoFS because CAP_SYS_ADMIN is unavailable",
+    "verified the Kubernetes service account cannot read or restart its pod (HTTP 403)"
+  ],
+  "rejected_paths": [
+    "do not relaunch while killed D-state workers remain",
+    "do not treat shell timeout as a safe LeoFS probe because the stat child itself becomes uninterruptible",
+    "do not kill PID 1 or force-reboot the job container because restart policy and node-local cache retention are not guaranteed",
+    "do not reinterpret this infrastructure stall as Helios OOM or a training negative result"
+  ],
+  "validated_recovery_requirement": "platform-side restart or LeoFS client repair, followed by disappearance of all killed D-state tasks and a fresh dual-host N0 smoke before a new immutable N1 launch",
+  "next_experiment": "NOT_RUN"
+}
