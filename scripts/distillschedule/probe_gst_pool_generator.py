@@ -104,7 +104,12 @@ def _optimizer_config() -> dict[str, Any]:
         "train_micro_batch_size_per_gpu": 1,
         "gradient_accumulation_steps": 2,
         "fp16": {"enabled": False},
-        "bf16": {"enabled": False},
+        # The immutable world8 G3 checkpoint was produced by the official
+        # BF16 ZeRO-1 path.  DeepSpeed includes the precision mode in its
+        # optimizer-shard filename (``bf16_zero_pp_rank_*``), so disabling
+        # BF16 here is not a harmless execution preference: it makes the
+        # loader request a different, nonexistent checkpoint layout.
+        "bf16": {"enabled": True},
         "communication_data_type": "fp32",
         "gradient_clipping": 1.0,
         "zero_allow_untested_optimizer": True,

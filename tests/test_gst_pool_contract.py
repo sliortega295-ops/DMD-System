@@ -27,6 +27,7 @@ from runtime.operation_trace import (
     write_operation_trace_bundle_manifest,
 )
 from scripts.distillschedule import summarize_gst_pool_candidate
+from scripts.distillschedule.probe_gst_pool_generator import _optimizer_config
 
 
 def _candidate(tmp_path: Path, **changes) -> Path:
@@ -64,6 +65,13 @@ def test_candidate_is_fail_closed(tmp_path: Path) -> None:
     )
     with pytest.raises(ValueError, match="duplicates"):
         GeneratorOffloadCandidate.load(bad)
+
+
+def test_generator_runtime_precision_matches_native_world8_checkpoint() -> None:
+    config = _optimizer_config()
+    assert config["fp16"]["enabled"] is False
+    assert config["bf16"]["enabled"] is True
+    assert config["zero_optimization"]["stage"] == 1
 
 
 def test_source_identity_is_two_rank_qualified_waves() -> None:
