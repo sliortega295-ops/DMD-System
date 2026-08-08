@@ -241,7 +241,118 @@ def _cancel_remote(
     )
 
 
-def _run_summary(root: Path, run_id: str, output: Path) -> int:
+def _remote_site_env(args: argparse.Namespace, remote_root: Path) -> Path:
+    site_env = Path(args.site_env)
+    if not site_env.is_absolute():
+        site_env = remote_root / site_env
+    return site_env
+
+
+def _remote_summary_command(
+    *,
+    args: argparse.Namespace,
+    identity: Mapping[str, Any],
+) -> tuple[list[str], Path]:
+    remote_root = Path(str(identity["remote_root"]))
+    site_env = _remote_site_env(args, remote_root)
+    remote_output = (
+        remote_root / "artifacts" / "manifests" / f"{args.run_id}_result.json"
+    )
+    summarizer = remote_root / "scripts/distillschedule/summarize_routea_world16_typed.py"
+    remote = (
+        f"set -Eeuo pipefail; source {shlex.quote(str(site_env))}; "
+        f"export DMD_SYSTEM_ROOT={shlex.quote(str(remote_root))}; "
+        'python_bin="${DISTILLSCHEDULE_PYTHON:-python3}"; '
+        f'"$python_bin" {shlex.quote(str(summarizer))} '
+        f"--run-id {shlex.quote(args.run_id)} "
+        f"--root {shlex.quote(str(remote_root))} "
+        f"--output {shlex.quote(str(remote_output))}"
+    )
+    return remote_bash(args.ssh, args.hosts[0], remote), remote_output
+
+
+def _node_manifests_complete(
+    *,
+    args: argparse.Namespace,
+    identity: Mapping[str, Any],
+    root: Path,
+) -> bool:
+    remote_root = Path(str(identity["remote_root"]))
+    if remote_root == root:
+        run_dir = root / "artifacts" / "runs" / args.run_id
+        return all(
+            (
+                run_dir
+                / "launcher"
+                / f"node_{rank}"
+                / "launch_manifest.txt"
+            ).is_file()
+            for rank in (0, 1)
+        )
+    paths = [
+        remote_root
+        / "artifacts"
+        / "runs"
+        / args.run_id
+        / "launcher"
+        / f"node_{rank}"
+        / "launch_manifest.txt"
+        for rank in (0, 1)
+    ]
+    command = "set -Eeuo pipefail; " + " && ".join(
+        f"test -f {shlex.quote(str(path))}" for path in paths
+    )
+    return (
+        subprocess.run(
+            remote_bash(args.ssh, args.hosts[0], command),
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=90,
+        ).returncode
+        == 0
+    )
+
+
+def _run_summary(
+    *,
+    args: argparse.Namespace,
+    identity: Mapping[str, Any],
+    root: Path,
+    output: Path,
+) -> int:
+    remote_root = Path(str(identity["remote_root"]))
+    if remote_root != root:
+        command, remote_output = _remote_summary_command(
+            args=args,
+            identity=identity,
+        )
+        summary = subprocess.run(command, check=False)
+        if summary.returncode != 0:
+            return int(summary.returncode)
+        fetch = subprocess.run(
+            remote_bash(
+                args.ssh,
+                args.hosts[0],
+                f"cat {shlex.quote(str(remote_output))}",
+            ),
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=90,
+        )
+        if fetch.returncode != 0:
+            print(fetch.stderr, file=sys.stderr, end="")
+            return int(fetch.returncode)
+        try:
+            payload = json.loads(fetch.stdout)
+            if not isinstance(payload, Mapping):
+                raise ValueError("remote result is not a JSON object")
+        except (json.JSONDecodeError, ValueError) as exc:
+            print(f"invalid remote summary result: {exc}", file=sys.stderr)
+            return 2
+        atomic_json(output, payload)
+        return 0
     command = [
         sys.executable,
         str(root / "scripts/distillschedule/summarize_routea_world16_typed.py"),
@@ -349,12 +460,17 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.summarize_only or args.resume:
-        node_manifests = [
-            run_dir / "launcher" / f"node_{rank}" / "launch_manifest.txt"
-            for rank in (0, 1)
-        ]
-        if all(path.is_file() for path in node_manifests):
-            summary_rc = _run_summary(root, args.run_id, output)
+        if _node_manifests_complete(
+            args=args,
+            identity=identity,
+            root=root,
+        ):
+            summary_rc = _run_summary(
+                args=args,
+                identity=identity,
+                root=root,
+                output=output,
+            )
             if summary_rc == 0 and _existing_result(output):
                 print(json.dumps({"status": "SUMMARIZED", "result": str(output)}))
                 return 0
@@ -479,7 +595,12 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    summary_rc = _run_summary(root, args.run_id, output)
+    summary_rc = _run_summary(
+        args=args,
+        identity=identity,
+        root=root,
+        output=output,
+    )
     result = _existing_result(output)
     status = result.get("status") if result else "MISSING_RESULT"
     print(

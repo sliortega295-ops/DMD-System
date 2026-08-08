@@ -44,6 +44,10 @@ SUMMARIZER = load_script(
     "routea_summarizer",
     ROOT / "scripts/distillschedule/summarize_routea_world16_typed.py",
 )
+CONTROLLER = load_script(
+    "routea_controller",
+    ROOT / "scripts/distillschedule/run_routea_world16.py",
+)
 SUITE = load_script(
     "no_gan_suite",
     ROOT / "scripts/distillschedule/run_no_gan_suite.py",
@@ -465,6 +469,35 @@ def test_routea_plan_explicitly_freezes_accumulation() -> None:
     command = plan["legacy"]["command"]
     index = command.index("--gradient_accumulation_steps")
     assert command[index + 1] == "1"
+
+
+def test_routea_controller_summarizes_remote_root_on_compute_host() -> None:
+    args = CONTROLLER.parser().parse_args(
+        [
+            "--hosts",
+            "node0,node1",
+            "--run-id",
+            "attempt004",
+            "--repo-root",
+            "/local/repo",
+            "--remote-root",
+            "/remote/repo",
+            "--site-env",
+            "/shared/site.env",
+            "--ssh",
+            "ssh-wrapper",
+        ]
+    )
+    command, output = CONTROLLER._remote_summary_command(
+        args=args,
+        identity={"remote_root": "/remote/repo"},
+    )
+    assert command[:2] == ["ssh-wrapper", "node0"]
+    assert "source /shared/site.env" in command[-1]
+    assert "/remote/repo/scripts/distillschedule/summarize_routea_world16_typed.py" in command[-1]
+    assert output == Path(
+        "/remote/repo/artifacts/manifests/attempt004_result.json"
+    )
 
 
 def test_dry_run_stage_is_never_reused_as_real_evidence() -> None:
