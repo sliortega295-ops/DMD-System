@@ -9,11 +9,17 @@
   "id": "helios-routea-full5-world16-typed-revalidation-v1",
   "workload": {
     "name": "helios-stage3-dmd-full5-routea-world16",
+    "generator": {
+      "checkpoint": "${ENV:HELIOS_DISTILLED_ROOT:-/share/project/shuchenweng/DistillSchedule_assets/Helios-Distilled}"
+    },
+    "score": {
+      "checkpoint": "${ENV:HELIOS_BASE_ROOT:-/home/shuchenweng/xty/Helios-main/weights}"
+    },
     "metadata": {
       "execution_scope": "continuous_full5_steps_10_14",
       "external_rollout_compatible": false,
       "data_roots": [
-        "/share/project/shuchenweng/DistillSchedule_assets/m0/datasets/syn_feature_rank16"
+        "${ENV:HELIOS_DATA_ROOT:-/share/project/shuchenweng/DistillSchedule_assets/m0/datasets/syn_feature_rank16}"
       ]
     },
     "schedule": {
@@ -94,8 +100,8 @@
     "steps": 5,
     "instrumentation": "memory",
     "semantic_assertions": true,
-    "operation_trace": "/share/project/shuchenweng/DistillSchedule_assets/m0/traces/syn_feature_trace_rank16_v3_sync_steps20",
-    "checkpoint": "/share/project/shuchenweng/yongyan_liu/DistillSchedule/artifacts/runs/iteration124_m0_b4fast_zero1_shared_cw4_x16_checkpoint10/checkpoint-10",
+    "operation_trace": "${ENV:DISTILLSCHEDULE_TRACE_BUNDLE:-/share/project/shuchenweng/DistillSchedule_assets/m0/traces/syn_feature_trace_rank16_v3_sync_steps20}",
+    "checkpoint": "${ENV:DISTILLSCHEDULE_CHECKPOINT:-/share/project/shuchenweng/yongyan_liu/DistillSchedule/artifacts/runs/iteration124_m0_b4fast_zero1_shared_cw4_x16_checkpoint10/checkpoint-10}",
     "metadata": {
       "initial_versions": {
         "generator": 2,
@@ -115,10 +121,10 @@
     "extra_env": {
       "PYTHONPATH": "${ENV:HELIOS_RUNTIME_ROOT}",
       "TOKENIZERS_PARALLELISM": "false",
-      "HF_HOME": "/share/project/shuchenweng/DistillSchedule_assets/hf_home_official_torch210",
+      "HF_HOME": "${ENV:DISTILLSCHEDULE_HF_HOME:-/share/project/shuchenweng/DistillSchedule_assets/hf_home_official_torch210}",
       "HF_HUB_OFFLINE": "1",
       "TRANSFORMERS_OFFLINE": "1",
-      "LOCAL_KERNELS": "kernels-community/flash-attn2=/share/project/shuchenweng/DistillSchedule_assets/hf_home_official_torch210/hub/models--kernels-community--flash-attn2/snapshots/6a810a7a010ba2aad6613f1f0f7b226fb8bdee3c/build/torch210-cxx11-cu128-x86_64-linux",
+      "LOCAL_KERNELS": "kernels-community/flash-attn2=${ENV:DISTILLSCHEDULE_FLASH_ATTN_KERNEL:-/share/project/shuchenweng/DistillSchedule_assets/hf_home_official_torch210/hub/models--kernels-community--flash-attn2/snapshots/6a810a7a010ba2aad6613f1f0f7b226fb8bdee3c/build/torch210-cxx11-cu128-x86_64-linux}",
       "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True,garbage_collection_threshold:0.9",
       "TORCH_NCCL_ENABLE_MONITORING": "1",
       "TORCH_NCCL_ASYNC_ERROR_HANDLING": "1",
@@ -132,8 +138,8 @@
       "OMP_NUM_THREADS": "1",
       "DISTILLSCHEDULE_VALIDATE_TRACE_INPUT": "1",
       "DISTILLSCHEDULE_DIRECT_BF16_LOAD": "1",
-      "DISTILLSCHEDULE_PRECAST_GENERATOR_PATH": "/share/project/shuchenweng/DistillSchedule_assets/precast/helios-distilled-transformer-ode-mixed-bf16-v1",
-      "DISTILLSCHEDULE_PRECAST_SCORE_PATH": "/share/project/shuchenweng/DistillSchedule_assets/precast/helios-score-transformer-mixed-bf16-v1",
+      "DISTILLSCHEDULE_PRECAST_GENERATOR_PATH": "${ENV:DISTILLSCHEDULE_PRECAST_GENERATOR_PATH:-/share/project/shuchenweng/DistillSchedule_assets/precast/helios-distilled-transformer-ode-mixed-bf16-v1}",
+      "DISTILLSCHEDULE_PRECAST_SCORE_PATH": "${ENV:DISTILLSCHEDULE_PRECAST_SCORE_PATH:-/share/project/shuchenweng/DistillSchedule_assets/precast/helios-score-transformer-mixed-bf16-v1}",
       "DISTILLSCHEDULE_STAGED_ZERO3_PREPARE": "1",
       "DISTILLSCHEDULE_RELEASE_PREPROCESSORS": "1",
       "DISTILLSCHEDULE_SPARSE_EMA": "1",
@@ -173,6 +179,7 @@
   },
   "metadata": {
     "migration_stage": "typed_world16_compatibility_execution",
-    "claim_boundary": "new typed plan/executor; pinned validated Helios algorithm path; one-run diagnostic consistency validation, not formal speedup"
+    "contract_document": "docs/contracts/routea_full5_world16.md",
+    "claim_boundary": "typed plan/executor plus pinned validated Helios algorithm path; one-run diagnostic consistency only, never a formal speedup"
   }
 }
