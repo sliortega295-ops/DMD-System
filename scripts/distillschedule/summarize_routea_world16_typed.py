@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import collections
 import csv
+from decimal import Decimal, InvalidOperation
 import hashlib
 import json
 import re
@@ -137,6 +138,7 @@ def read_jsonl_tail_safe(path: Path) -> JsonlReadResult:
 
 def resource_summary(path: Path) -> dict[str, Any]:
     rows: list[tuple[float, int, int]] = []
+    invalid_rows = 0
     if not path.is_file():
         return {"status": "MISSING", "samples": 0}
     with path.open(newline="") as handle:
@@ -149,15 +151,17 @@ def resource_summary(path: Path) -> dict[str, Any]:
                 rows.append(
                     (
                         float(row["unix_time"]),
-                        int(row["cgroup_bytes"]),
-                        int(row["host_used_bytes"]),
+                        int(Decimal(row["cgroup_bytes"])),
+                        int(Decimal(row["host_used_bytes"])),
                     )
                 )
-            except (TypeError, ValueError):
+            except (InvalidOperation, TypeError, ValueError):
+                invalid_rows += 1
                 continue
     return {
         "status": "MEASURED" if rows else "EMPTY",
         "samples": len(rows),
+        "invalid_rows": invalid_rows,
         "span_seconds": rows[-1][0] - rows[0][0] if rows else None,
         "cgroup_peak_bytes": max((row[1] for row in rows), default=None),
         "host_used_peak_bytes": max((row[2] for row in rows), default=None),

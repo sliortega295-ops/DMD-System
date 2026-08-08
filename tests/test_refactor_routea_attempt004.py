@@ -440,6 +440,24 @@ def test_gpu_inventory_normalizes_nvidia_smi_csv_spacing(tmp_path: Path) -> None
     assert parsed["rows"][0]["uuid"] == "GPU-0"
 
 
+def test_resource_summary_accepts_scientific_host_byte_samples(tmp_path: Path) -> None:
+    resource = tmp_path / "resource.csv"
+    resource.write_text(
+        "unix_time,cgroup_bytes,host_used_bytes,gpu_used_mib,gpu_util_percent\n"
+        "1.0,227458215936,3.8044e+10,0:0,0:0\n"
+        "2.5,761400000000,7.2400e+11,1:2,3:4\n"
+    )
+    summary = SUMMARIZER.resource_summary(resource)
+    assert summary == {
+        "status": "MEASURED",
+        "samples": 2,
+        "invalid_rows": 0,
+        "span_seconds": 1.5,
+        "cgroup_peak_bytes": 761400000000,
+        "host_used_peak_bytes": 724000000000,
+    }
+
+
 def test_strict_launcher_manifest_rejects_attempt003_mixed_csv(tmp_path: Path) -> None:
     manifest = tmp_path / "launch_manifest.txt"
     manifest.write_text(
