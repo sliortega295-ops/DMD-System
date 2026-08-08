@@ -1,0 +1,154 @@
+schema_version: distillschedule.no_gan_suite.v1
+suite_id: helios-no-gan-world16-v1
+claim_boundary: >-
+  Reuse accepted or bounded historical evidence, run only current gaps, and claim
+  no Route-A/Route-B speedup until the final matched repeated timing stage passes.
+remote:
+  site_env: configs/distillschedule/server/baai_2x8_a100.env.example
+frozen_workload:
+  hardware: 2x8-a100-40gb
+  world_size: 16
+  resolution: [384, 640]
+  latent: [1, 16, 9, 48, 80]
+  micro_batch_per_gpu: 1
+  gradient_accumulation_steps: 1
+  global_batch: 16
+  branches:
+    dmd: true
+    ema: true
+    gan: false
+    reward: false
+    vae_decode: false
+  backend:
+    zero_stage: 1
+    optimizer_offload: cpu
+    parameter_offload: none
+  memory_acceptance: actual_oom_only
+stages:
+  - id: r0_routea_formal_baseline
+    title: Reuse accepted old Route-A formal baseline
+    disposition: REUSED_ACCEPTED
+    manifest: ${ENV:DISTILLSCHEDULE_ROUTEA_FORMAL_RESULT:-/share/project/shuchenweng/yongyan_liu/DistillSchedule/artifacts/manifests/task7_full5_routea_exact_b0_gs_fullstream_wave8_gate_result_001.json}
+    accepted_manifest_statuses: [PASS]
+    required: true
+    depends_on: []
+
+  - id: r1_pinned_prefetch_diagnostics
+    title: Reuse pinned-memory and prefetch diagnostics
+    disposition: REUSED_BOUNDED_DIAGNOSTIC
+    manifest: ${ENV:DISTILLSCHEDULE_PINNED_PREFETCH_RESULT:-}
+    accepted_manifest_statuses: [PASS, PARTIAL, BOUNDED]
+    required: false
+    depends_on: []
+
+  - id: r2_critic_placement_diagnostics
+    title: Reuse bounded Critic-only placement experiments
+    disposition: REUSED_BOUNDED_DIAGNOSTIC
+    manifest: ${ENV:DISTILLSCHEDULE_CRITIC_PLACEMENT_RESULT:-}
+    accepted_manifest_statuses: [PASS, PARTIAL, BOUNDED]
+    required: false
+    depends_on: []
+
+  - id: r3_step15_isolated_diagnostic
+    title: Reuse isolated Step15-A evidence as diagnostic only
+    disposition: REUSED_BOUNDED_DIAGNOSTIC
+    manifest: ${ENV:DISTILLSCHEDULE_STEP15_RESULT:-}
+    accepted_manifest_statuses: [PASS, PARTIAL, BOUNDED]
+    required: false
+    depends_on: []
+
+  - id: r4_exact_b0_capacity_diagnostic
+    title: Reuse historical exact-B0 capacity evidence without treating it as target-graph search bounds
+    disposition: REUSED_BOUNDED_DIAGNOSTIC
+    manifest: ${ENV:DISTILLSCHEDULE_EXACT_B0_CAPACITY_RESULT:-}
+    accepted_manifest_statuses: [PASS, PARTIAL, BOUNDED, OOM]
+    required: false
+    depends_on: []
+
+  - id: r5_known_failure_evidence
+    title: Reuse ZeRO-2, old-trace and legacy-launcher failure evidence
+    disposition: REUSED_BOUNDED_DIAGNOSTIC
+    manifest: ${ENV:DISTILLSCHEDULE_KNOWN_FAILURE_RESULT:-}
+    accepted_manifest_statuses: [FAIL, PARTIAL, OOM, BOUNDED]
+    required: false
+    depends_on: []
+
+  - id: n0_preflight
+    title: Source, asset and typed-plan preflight on both hosts
+    disposition: RUN_REQUIRED
+    executor: dual_host
+    timeout_seconds: 900
+    depends_on: [r0_routea_formal_baseline]
+    command:
+      - env
+      - DISTILLSCHEDULE_PLAN={repo_root}/configs/distillschedule/plans/helios_routea_full5_world16_typed.json
+      - DISTILLSCHEDULE_OUTPUT_DIR={repo_root}/artifacts/suites/{suite_run_id}/preflight/{stage_run_id}/node_${DISTILLSCHEDULE_NODE_RANK}
+      - {repo_root}/scripts/distillschedule/baai_server_smoke.sh
+
+  - id: n1_routea_attempt004
+    title: Typed Route-A Attempt 004 functional acceptance
+    disposition: RUN_REQUIRED
+    executor: local
+    depends_on: [n0_preflight]
+    command:
+      - python
+      - {repo_root}/scripts/distillschedule/run_routea_world16.py
+      - --hosts
+      - {hosts_csv}
+      - --run-id
+      - {stage_run_id}
+      - --repo-root
+      - {repo_root}
+      - --site-env
+      - {site_env}
+      - --resume
+
+  - id: n2_target_g_offload_search
+    title: Fresh target-graph anchor and measured-minimum Generator block-offload search
+    disposition: RUN_REQUIRED
+    executor: g_offload
+    depends_on: [n1_routea_attempt004]
+    candidate_command_env: DISTILLSCHEDULE_GST_POOL_CANDIDATE_COMMAND
+    continuous_command_env: DISTILLSCHEDULE_GST_POOL_CONTINUOUS_COMMAND
+    command:
+      - python
+      - {repo_root}/scripts/distillschedule/run_g_offload_search.py
+      - --search-id
+      - {stage_run_id}
+      - --run-root
+      - {repo_root}/artifacts/g_offload_search
+      - --contract
+      - ${ENV:DISTILLSCHEDULE_GST_POOL_CONTRACT:-{repo_root}/artifacts/runs/{suite_run_id}-n1_routea_attempt004/preregistration/evidence_contract.json}
+      - --candidate-command-template
+      - {candidate_command}
+      - --continuous-command-template
+      - {continuous_command}
+      - --resume
+
+  - id: n6_live_step10_transition
+    title: Live Step10-A to Route-B redistribution gate
+    disposition: RUN_REQUIRED
+    executor: external_env
+    command_env: DISTILLSCHEDULE_ROUTE_B_TRANSITION_COMMAND
+    depends_on: [n2_target_g_offload_search]
+
+  - id: n7_routeb_steps10_19
+    title: Continuous Route-B steps 10-19 correctness
+    disposition: RUN_REQUIRED
+    executor: external_env
+    command_env: DISTILLSCHEDULE_ROUTE_B_CONTINUOUS_COMMAND
+    depends_on: [n6_live_step10_transition]
+
+  - id: n8_matched_paired_formal_timing
+    title: Matched Route-A and Route-B formal timing with at least three trials each
+    disposition: RUN_REQUIRED
+    executor: external_env
+    command_env: DISTILLSCHEDULE_PAIRED_FORMAL_COMMAND
+    depends_on: [n1_routea_attempt004, n7_routeb_steps10_19]
+
+  - id: n9_representative_nsight
+    title: Optional representative Nsight run after formal timing
+    disposition: OPTIONAL
+    executor: external_env
+    command_env: DISTILLSCHEDULE_REPRESENTATIVE_NSYS_COMMAND
+    depends_on: [n8_matched_paired_formal_timing]
