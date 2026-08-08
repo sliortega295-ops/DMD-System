@@ -10,11 +10,10 @@ import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import TYPE_CHECKING, Any, Mapping
 
-import torch
-
-from .operation_trace import tensor_sha256
+if TYPE_CHECKING:
+    import torch
 
 
 TARGET_EXECUTION_GRAPH = "target_no_gan_gst_pool"
@@ -123,7 +122,7 @@ class GeneratorOffloadCandidate:
 class NegativePromptAsset:
     root: Path
     manifest: dict[str, Any]
-    embedding: torch.Tensor
+    embedding: "torch.Tensor"
 
     @classmethod
     def load(
@@ -132,6 +131,10 @@ class NegativePromptAsset:
         *,
         verify_payload_sha256: bool = True,
     ) -> "NegativePromptAsset":
+        import torch
+
+        from .operation_trace import tensor_sha256
+
         root = Path(root).resolve()
         manifest = json.loads((root / "manifest.json").read_text())
         if manifest.get("schema_version") != NEGATIVE_PROMPT_SCHEMA:
@@ -172,12 +175,16 @@ class NegativePromptAsset:
 def write_negative_prompt_asset(
     root: str | Path,
     *,
-    embedding: torch.Tensor,
+    embedding: "torch.Tensor",
     model_root: str | Path,
     tokenizer_subfolder: str = "tokenizer",
     text_encoder_subfolder: str = "text_encoder",
 ) -> NegativePromptAsset:
     """Write an immutable official negative-prompt tensor plus provenance."""
+
+    import torch
+
+    from .operation_trace import tensor_sha256
 
     root = Path(root).resolve()
     root.mkdir(parents=True, exist_ok=True)
