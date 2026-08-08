@@ -1,0 +1,15 @@
+{
+  "schema_version": "distillschedule.typed_routea_world16.launch_failure.v1",
+  "run_id": "routea_world16_typed_revalidation_20260808_001",
+  "status": "FAILED_BEFORE_MODEL_CONSTRUCTION",
+  "failure_signature": "FileNotFoundError: [Errno 2] No such file or directory: 'deepspeed'",
+  "root_cause": "typed node wrapper invoked the frozen Accelerate executable without prepending its bin directory to PATH",
+  "gpu_work": "Not Run",
+  "training_steps": "Not Run",
+  "oom_delta": [
+    0,
+    0
+  ],
+  "validated_recovery": "prepend frozen PYENV/bin; one bounded non-invasive retry under a new immutable run id",
+  "claim": "no performance or model result"
+}

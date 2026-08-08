@@ -19,3 +19,7 @@ A dry run exposed and fixed a real semantic gap before GPU launch: Helios execut
 ## Claim boundary
 
 This is one diagnostic-instrumented revalidation launch. It can establish functional and approximate timing consistency, not a formal repeated performance distribution or speedup. Cold construction remains excluded from the five-step comparison.
+
+## Launch attempt 001
+
+**Failed before model construction.** The typed wrapper invoked the frozen `accelerate` executable without adding the same environment's `bin` directory to `PATH`; Accelerate could not locate `deepspeed`. Both node OOM deltas were zero and no training step ran. The immutable failure is retained and permits one non-invasive wrapper retry under a new run ID.

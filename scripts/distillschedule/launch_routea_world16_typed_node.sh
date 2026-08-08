@@ -43,6 +43,7 @@ fi
 [[ ! -e "${CACHE_ROOT}" ]] || { echo node_cache_exists >&2; exit 82; }
 mkdir -p "${NODE_LOG}" "${CACHE_ROOT}/frozen" "${CACHE_ROOT}/immutable"
 
+export PATH="${PYENV}/bin:${PATH}"
 export PYTHONPATH="${ROOT}/src:${ROOT}:${HELIOS_ROOT}"
 export DISTILLSCHEDULE_RUN_ID="${RUN_ID}"
 export DISTILLSCHEDULE_OUTPUT_DIR="${OUT}"
