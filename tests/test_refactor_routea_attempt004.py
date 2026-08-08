@@ -456,7 +456,7 @@ def test_baai_smoke_isolates_bytecode_on_shared_filesystem() -> None:
         '"${PYTHON}" -m compileall'
     )
     assert 'cat "${OUT}/node_contract_summary.json" >&2' in script
-    assert "load_config_from_file(path)" in script
+    assert "load_config_from_file(str(path))" in script
     assert "gradient_accumulation_steps: 1" not in script
 
 

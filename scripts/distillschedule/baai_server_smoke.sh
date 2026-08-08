@@ -60,7 +60,7 @@ import pathlib, sys
 from accelerate.commands.config.config_args import load_config_from_file
 
 path = pathlib.Path(sys.argv[1])
-config = load_config_from_file(path)
+config = load_config_from_file(str(path))
 assert config.distributed_type.value == "DEEPSPEED"
 assert config.num_machines == 2
 assert config.num_processes == 16
