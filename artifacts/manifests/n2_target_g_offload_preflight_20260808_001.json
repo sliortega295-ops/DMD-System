@@ -1,0 +1,79 @@
+{
+  "schema_version": "distillschedule.iteration_preflight.v2",
+  "run_id": "n2_target_g_offload_preflight_20260808_001",
+  "created_at_utc": "2026-08-08T16:16:49Z",
+  "milestone": "No-GAN suite N2 target Generator offload search",
+  "gate": "target G/S/T executor implementation gate",
+  "authorized_hypothesis": "In the fixed 8G Generator plus 4S Student plus 4T Teacher Step15-A graph, a fresh all-40 Generator streaming anchor can establish a valid block profile and enable a bounded search for the minimum streamed frozen-block set while Student and Teacher remain resident.",
+  "live_substrate": {
+    "repository": "/home/lyy/DMD-System_pr3_fix_20260808_01",
+    "head": "b728ac169d8c18f8e5d33eb06da464c952a7cd3b",
+    "branch": "codex/pr3-ci-and-suite-fix",
+    "git_status": "clean",
+    "remote_repository": "/share/project/shuchenweng/yongyan_liu/DMD-System_pr3_0cd40e4",
+    "remote_head_node0": "b728ac169d8c18f8e5d33eb06da464c952a7cd3b",
+    "remote_head_node1": "b728ac169d8c18f8e5d33eb06da464c952a7cd3b",
+    "remote_untracked_preserved": "artifacts/manifests/routea_attempt005_full5_world16_20260808_002_result.json",
+    "focused_remote_tests": "33 passed",
+    "gpu_compute_processes_node0": 0,
+    "gpu_compute_processes_node1": 0,
+    "d_state_processes_node0": 0,
+    "d_state_processes_node1": 0,
+    "cgroup_oom_kill_counter_node0": 1,
+    "cgroup_oom_kill_counter_node1": 1,
+    "new_oom_observed": false,
+    "assets_present": true,
+    "assets_size": "1.9T"
+  },
+  "frozen_contract": {
+    "resolution": [384, 640],
+    "latent": [1, 16, 9, 48, 80],
+    "global_batch": 16,
+    "generator_world_size": 8,
+    "generator_micro_batch_per_gpu": 1,
+    "generator_gradient_accumulation_steps": 2,
+    "generator_backend": "ZeRO-1 with CPU optimizer offload and no parameter offload",
+    "student_pool": "4 resident Helios-Base plus C11 Critic-LoRA inference ranks",
+    "teacher_pool": "4 resident immutable Helios-Base inference ranks",
+    "operation_trace_bundle": "/share/project/shuchenweng/DistillSchedule_assets/m0/traces/syn_feature_trace_rank16_v3_sync_steps20",
+    "operation_trace_bundle_sha256": "9e282f4bc24eb589d259e5e5603cae02fa5cd0c6cdd0f06f7c5416461e4564d0",
+    "logical_initial_state": "G3/C11",
+    "logical_step": 15,
+    "gan": false,
+    "reward": false,
+    "vae_decode": false,
+    "ema": "not executed in isolated Step15-A capacity search",
+    "mutable_policy": "Generator immutable frozen-block streamed index set only"
+  },
+  "matching_prior_evidence": [
+    {
+      "mechanism": "ZeRO-2 repeated-gradient partition reduction failure",
+      "conclusion": "bounded prior negative; do not retest",
+      "recovery": "ZeRO-1"
+    },
+    {
+      "mechanism": "Iteration 237 isolated Step15-A 8G+4S+4T",
+      "conclusion": "source-level prototype only; ZeRO-3, synthetic tensors, sampled DMD noise/timestep and random negative embedding violate the current trace contract",
+      "artifact": "/home/lyy/.cache/distillschedule_n2_source_audit_20260808/iteration237_prereg.json"
+    },
+    {
+      "mechanism": "historical exact-B0 tail-1/tail-3/tail-5/all-40",
+      "conclusion": "Route-A capacity diagnostics are not target G/S/T search bounds"
+    }
+  ],
+  "rejected_or_superseded_paths": [
+    "ZeRO-2",
+    "direct reuse of the Iteration 237 launcher",
+    "random or zero negative-prompt embeddings",
+    "randomly resampled DMD timestep/noise",
+    "historical Route-A tail bounds as N2 observations",
+    "launching run_g_offload_search.py with an empty external candidate seam"
+  ],
+  "new_falsifiable_question": "Can the current audited ZeRO-1, rank-qualified trace, exact G3/C11 target state and official negative-prompt contract complete a fresh target-graph all-40 anchor without OOM, semantic drift, or leaked streamed state?",
+  "decision": {
+    "implementation": "GO",
+    "gpu_launch_before_executor_and_smoke": "NO_GO",
+    "reason": "The search controller exists, but no target candidate executor is configured. The legacy executor changes the measured contract and cannot be invoked directly."
+  },
+  "measurement_status": "Not Run"
+}

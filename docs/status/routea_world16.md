@@ -62,9 +62,10 @@ evidence.
 
 Issue #2 remains open because the compatibility adapter still invokes the pinned external
 `train_helios.py`, and the one-run diagnostic timing missed its consistency band.
-The No-GAN suite's target G/S/T candidate executor, live
-Step10-A→B redistribution, continuous Route-B steps10–19 and matched formal launch
-commands are still explicit external seams; their results remain `Not Run`.
+The No-GAN suite now has a narrow source implementation for the target G/S/T
+capacity-candidate executor, but its fresh all-40 anchor and block search remain
+`Not Run`. Live Step10-A→B redistribution, continuous Route-B steps10–19 and
+matched formal launch commands are still explicit external seams.
 
 ## Attempt 005-002 measured result
 
