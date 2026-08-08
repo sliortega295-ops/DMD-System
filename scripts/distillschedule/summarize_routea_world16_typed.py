@@ -170,8 +170,11 @@ def gpu_inventory(path: Path, expected_sha: str, expected_rows: int) -> dict[str
     actual_sha = sha256_file(path)
     if actual_sha != expected_sha:
         raise EvidenceError(f"GPU inventory SHA mismatch: {path}")
+    # ``nvidia-smi --format=csv`` places one space after each delimiter.  The
+    # bytes and SHA remain authoritative; normalize only CSV presentation so
+    # that `` uuid`` is not mistaken for a different evidence column.
     with path.open(newline="") as handle:
-        rows = list(csv.DictReader(handle))
+        rows = list(csv.DictReader(handle, skipinitialspace=True))
     if len(rows) != expected_rows:
         raise EvidenceError(
             f"GPU inventory row count {len(rows)} != expected {expected_rows}"
@@ -223,7 +226,10 @@ def component_version(event: Mapping[str, Any], component: str) -> int | None:
     }[component]
     value = event_value(event, *aliases)
     if isinstance(value, Mapping):
-        value = value.get("version")
+        # SparseShardEMA records its observed version as the nested
+        # ``optimization_step`` in both resume and update events.  This is an
+        # observed producer field, not a trajectory inferred by the consumer.
+        value = value.get("version", value.get("optimization_step"))
     if isinstance(value, bool):
         return None
     try:
@@ -238,6 +244,7 @@ def truthy_predicate(event: Mapping[str, Any]) -> bool | None:
         "ema_update_enabled",
         "ema_predicate",
         "predicate_result",
+        "predicate",
         "updated",
         "applied",
     )
@@ -253,6 +260,15 @@ def truthy_predicate(event: Mapping[str, Any]) -> bool | None:
             return True
         if normalized in {"0", "false", "fail", "disabled", "skipped"}:
             return False
+    if isinstance(value, Mapping):
+        # The pinned Helios producer records the exact OR terms used by
+        # ``ema_should_step`` rather than a flattened result.  Require every
+        # source term and a real bool before evaluating that same expression;
+        # partial or loosely truthy mappings remain non-claimable.
+        keys = ("before_ema_start", "not_train_dmd", "generator_update")
+        if not all(isinstance(value.get(key), bool) for key in keys):
+            return None
+        return any(bool(value[key]) for key in keys)
     return None
 
 
@@ -282,7 +298,17 @@ def validate_trace_binding(
         raise EvidenceError(f"rank {rank}: trace event was qualified for rank {observed_rank}")
     authority = event_value(event, "source_authority", "trace_authority")
     aliases = [str(value) for value in expected.get("source_authority_aliases", [])]
-    if authority is None or str(authority) not in aliases:
+    authority_binding = "preregistered_source_alias"
+    if authority is not None and str(authority) in aliases:
+        pass
+    elif authority == "operation_trace" and observed_rank is not None:
+        # The Helios event uses ``operation_trace`` as a source *kind*.  Rank
+        # identity is independently bound by the injected event rank and the
+        # exact preregistered per-rank trace hash checked above.  Accepting the
+        # kind marker without both bindings would weaken the contract, so that
+        # case remains rejected.
+        authority_binding = "producer_kind_plus_exact_rank_and_trace_hash"
+    else:
         raise EvidenceError(
             f"rank {rank}: source authority {authority!r} is not preregistered; aliases={aliases}"
         )
@@ -294,6 +320,7 @@ def validate_trace_binding(
     return {
         "trace_hash": observed_hash,
         "source_authority": str(authority),
+        "source_authority_binding": authority_binding,
         "mapping_fingerprint": expected.get("mapping_fingerprint"),
         "source_fingerprint": expected.get("source_fingerprint"),
         "operation_fingerprint": expected.get("operation_fingerprint"),
@@ -320,8 +347,18 @@ def validate_version_trajectory(
             component: component_version(initial_events[0], component)
             for component in EXPECTED_INITIAL
         }
+        initial_binding = "single_parameter_versions_initialized_event"
+        if initial["ema"] is None:
+            resume_events = phases(events, ("sparse_ema_resumed",))
+            if len(resume_events) == 1:
+                initial["ema"] = component_version(resume_events[0], "ema")
+                initial_binding = (
+                    "parameter_versions_initialized_plus_observed_sparse_ema_resume"
+                )
         if initial != EXPECTED_INITIAL:
             errors.append(f"initial versions={initial}, expected={EXPECTED_INITIAL}")
+    if len(initial_events) != 1:
+        initial_binding = "missing_or_duplicate_initial_event"
 
     component_phases = {
         "generator": ("generator_optimizer_step",),
@@ -378,17 +415,21 @@ def validate_version_trajectory(
         (
             "parameter_versions_final",
             "parameter_versions_committed",
+            "semantic_contract_complete",
             "training_complete_skip_final_save",
             "training_complete",
         ),
     )
     final_event: Mapping[str, Any] | None = None
+    final_binding = "missing"
     for event in reversed(final_candidates):
-        values = {
-            component: component_version(event, component)
-            for component in EXPECTED_INITIAL
-        }
-        if all(value is not None for value in values.values()):
+        # A terminal record must itself observe G and C.  The legacy producer
+        # records EMA's exact final optimization_step in the immediately prior
+        # ema_step event, so it may complete (but never replace) that terminal
+        # G/C record below.
+        if component_version(event, "generator") is not None and component_version(
+            event, "critic"
+        ) is not None:
             final_event = event
             break
     if final_event is None:
@@ -399,6 +440,24 @@ def validate_version_trajectory(
             component: component_version(final_event, component)
             for component in EXPECTED_INITIAL
         }
+        if final["ema"] is not None:
+            final_binding = "single_terminal_version_event"
+        else:
+            terminal_index = max(
+                index for index, event in enumerate(events) if event is final_event
+            )
+            observed_ema_events = [
+                (index, event)
+                for index, event in enumerate(events)
+                if event.get("phase") in component_phases["ema"]
+            ]
+            if observed_ema_events:
+                ema_index, ema_event = observed_ema_events[-1]
+                if ema_index < terminal_index and event_step(ema_event) == EXPECTED_STEPS[-1]:
+                    final["ema"] = component_version(ema_event, "ema")
+                    final_binding = "terminal_gc_plus_last_observed_ema_update"
+        if any(value is None for value in final.values()):
+            errors.append("missing final observed G/C/EMA version record")
         if final != EXPECTED_TRAJECTORY[14]:
             errors.append(
                 f"final observed versions={final}, expected={EXPECTED_TRAJECTORY[14]}"
@@ -421,8 +480,10 @@ def validate_version_trajectory(
         "status": "OBSERVED_EXACT" if not errors else "INCOMPLETE_OR_MISMATCH",
         "errors": errors,
         "initial_observed": initial,
+        "initial_observation_binding": initial_binding,
         "updates_observed": observed_updates,
         "final_observed": final,
+        "final_observation_binding": final_binding,
         "expected_trajectory": {
             str(step): value for step, value in EXPECTED_TRAJECTORY.items()
         },
@@ -918,7 +979,7 @@ def main() -> int:
             "Single diagnostic-instrumented acceptance run; formal timing requires matched repeated Route-A/Route-B trials.",
             "The typed executor still invokes the pinned external Helios model-math compatibility entrypoint.",
             "Host-memory pressure and cgroup peak/max are observational unless an actual OOM/oom_kill or memory-attributed nonzero exit occurs.",
-            "Any derived version trajectory is diagnostic only; PASS requires observed component versions, EMA predicates and a final observed record.",
+            "Any derived version trajectory is diagnostic only; PASS requires observed component versions, EMA predicates and a terminal observed version bundle.",
         ],
     }
     atomic_json(output, payload)

@@ -193,6 +193,35 @@ def _load_summarizer_module():
     return module
 
 
+def test_trace_binding_accepts_helios_kind_only_with_exact_rank_and_hash() -> None:
+    module = _load_summarizer_module()
+    expected = {
+        "trace_hash": "a" * 64,
+        "source_authority_aliases": ["rank0"],
+        "mapping_fingerprint": "mapping",
+        "source_fingerprint": "source",
+        "operation_fingerprint": "operations",
+    }
+    event = {
+        "phase": "operation_trace_input_validated",
+        "rank": 0,
+        "trace_hash": "a" * 64,
+        "source_authority": "operation_trace",
+    }
+
+    result = module.validate_trace_binding([event], expected, rank=0)
+
+    assert result["source_authority_binding"] == (
+        "producer_kind_plus_exact_rank_and_trace_hash"
+    )
+    with pytest.raises(module.EvidenceError, match="qualified for rank"):
+        module.validate_trace_binding([{**event, "rank": 1}], expected, rank=0)
+    with pytest.raises(module.EvidenceError, match="trace hash"):
+        module.validate_trace_binding(
+            [{**event, "trace_hash": "b" * 64}], expected, rank=0
+        )
+
+
 def test_jsonl_reader_ignores_only_unterminated_partial_tail(tmp_path: Path) -> None:
     module = _load_summarizer_module()
     path = tmp_path / "rank_0.jsonl"

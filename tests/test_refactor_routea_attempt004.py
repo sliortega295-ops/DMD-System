@@ -357,6 +357,89 @@ def test_version_trajectory_requires_observed_ema_predicate_and_final_record() -
     assert any("final observed" in error for error in missing_final["errors"])
 
 
+def test_version_trajectory_accepts_pinned_helios_nested_ema_schema() -> None:
+    events = [
+        {
+            "phase": "sparse_ema_resumed",
+            "ema": {"optimization_step": 10, "decay": 0.0},
+        },
+        {
+            "phase": "parameter_versions_initialized",
+            "generator_version": 2,
+            "critic_version": 10,
+        },
+    ]
+    for step in range(10, 15):
+        if step == 10:
+            events.append(
+                {
+                    "phase": "generator_optimizer_step",
+                    "global_step": step,
+                    "generator_version": 3,
+                }
+            )
+        events.extend(
+            [
+                {
+                    "phase": "critic_optimizer_step",
+                    "global_step": step,
+                    "critic_version": step + 1,
+                },
+                {
+                    "phase": "ema_step",
+                    "global_step": step,
+                    "ema": {"optimization_step": step + 1, "decay": 0.0},
+                    "optimization_step_before": step,
+                    "predicate": {
+                        "before_ema_start": True,
+                        "not_train_dmd": False,
+                        "generator_update": step == 10,
+                    },
+                },
+            ]
+        )
+    events.append(
+        {
+            "phase": "semantic_contract_complete",
+            "global_step": 15,
+            "generator_version": 3,
+            "critic_version": 15,
+        }
+    )
+
+    result = SUMMARIZER.validate_version_trajectory(events, rank=0)
+
+    assert result["status"] == "OBSERVED_EXACT"
+    assert result["initial_observed"] == {"generator": 2, "critic": 10, "ema": 10}
+    assert result["initial_observation_binding"].endswith("sparse_ema_resume")
+    assert result["final_observed"] == {"generator": 3, "critic": 15, "ema": 15}
+    assert result["final_observation_binding"] == (
+        "terminal_gc_plus_last_observed_ema_update"
+    )
+
+
+def test_nested_ema_schema_remains_fail_closed_on_partial_predicate() -> None:
+    event = {
+        "phase": "ema_step",
+        "ema": {"optimization_step": 11},
+        "predicate": {"before_ema_start": True},
+    }
+    assert SUMMARIZER.component_version(event, "ema") == 11
+    assert SUMMARIZER.truthy_predicate(event) is None
+
+
+def test_gpu_inventory_normalizes_nvidia_smi_csv_spacing(tmp_path: Path) -> None:
+    inventory = tmp_path / "gpu_inventory.csv"
+    inventory.write_text(
+        "index, uuid, name, memory.total [MiB], memory.free [MiB]\n"
+        "0, GPU-0, NVIDIA A100-SXM4-40GB, 40960 MiB, 40339 MiB\n"
+    )
+    parsed = SUMMARIZER.gpu_inventory(
+        inventory, SUMMARIZER.sha256_file(inventory), expected_rows=1
+    )
+    assert parsed["rows"][0]["uuid"] == "GPU-0"
+
+
 def test_strict_launcher_manifest_rejects_attempt003_mixed_csv(tmp_path: Path) -> None:
     manifest = tmp_path / "launch_manifest.txt"
     manifest.write_text(
