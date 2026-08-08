@@ -82,8 +82,7 @@ stages:
     command:
       - env
       - DISTILLSCHEDULE_PLAN={repo_root}/configs/distillschedule/plans/helios_routea_full5_world16_typed.json
-      - DISTILLSCHEDULE_OUTPUT_DIR={repo_root}/artifacts/suites/{suite_run_id}/preflight/{stage_run_id}/node_${DISTILLSCHEDULE_NODE_RANK}
-      - {repo_root}/scripts/distillschedule/baai_server_smoke.sh
+      - "{repo_root}/scripts/distillschedule/baai_server_smoke.sh"
 
   - id: n1_routea_attempt004
     title: Typed Route-A Attempt 004 functional acceptance
@@ -91,16 +90,16 @@ stages:
     executor: local
     depends_on: [n0_preflight]
     command:
-      - python
-      - {repo_root}/scripts/distillschedule/run_routea_world16.py
+      - "{python}"
+      - "{repo_root}/scripts/distillschedule/run_routea_world16.py"
       - --hosts
-      - {hosts_csv}
+      - "{hosts_csv}"
       - --run-id
-      - {stage_run_id}
+      - "{stage_run_id}"
       - --repo-root
-      - {repo_root}
+      - "{repo_root}"
       - --site-env
-      - {site_env}
+      - "{site_env}"
       - --resume
 
   - id: n2_target_g_offload_search
@@ -110,19 +109,21 @@ stages:
     depends_on: [n1_routea_attempt004]
     candidate_command_env: DISTILLSCHEDULE_GST_POOL_CANDIDATE_COMMAND
     continuous_command_env: DISTILLSCHEDULE_GST_POOL_CONTINUOUS_COMMAND
+    contract_env: DISTILLSCHEDULE_GST_POOL_CONTRACT
+    contract_default: "{repo_root}/artifacts/runs/{suite_run_id}-n1_routea_attempt004/preregistration/evidence_contract.json"
     command:
-      - python
-      - {repo_root}/scripts/distillschedule/run_g_offload_search.py
+      - "{python}"
+      - "{repo_root}/scripts/distillschedule/run_g_offload_search.py"
       - --search-id
-      - {stage_run_id}
+      - "{stage_run_id}"
       - --run-root
-      - {repo_root}/artifacts/g_offload_search
+      - "{repo_root}/artifacts/g_offload_search"
       - --contract
-      - ${ENV:DISTILLSCHEDULE_GST_POOL_CONTRACT:-{repo_root}/artifacts/runs/{suite_run_id}-n1_routea_attempt004/preregistration/evidence_contract.json}
+      - "{contract}"
       - --candidate-command-template
-      - {candidate_command}
+      - "{candidate_command}"
       - --continuous-command-template
-      - {continuous_command}
+      - "{continuous_command}"
       - --resume
 
   - id: n6_live_step10_transition

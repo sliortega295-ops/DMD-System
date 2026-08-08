@@ -12,6 +12,7 @@
 | See what belongs in Git versus experiment storage | [`docs/architecture/v0.2_source_inventory.md`](docs/architecture/v0.2_source_inventory.md) |
 | Read the frozen Route-A Full5 world16 semantics | [`docs/contracts/routea_full5_world16.md`](docs/contracts/routea_full5_world16.md) |
 | Run the BAAI two-node compatibility path | [`docs/runbooks/baai_routea_world16.md`](docs/runbooks/baai_routea_world16.md) |
+| Inspect or launch the staged No-GAN suite | [`docs/runbooks/baai_no_gan_suite.md`](docs/runbooks/baai_no_gan_suite.md) |
 | Check the latest accepted/not-run status | [`docs/status/routea_world16.md`](docs/status/routea_world16.md) |
 | Understand result manifests and claim labels | [`artifacts/manifests/README.md`](artifacts/manifests/README.md) |
 
@@ -50,10 +51,11 @@ The repository now contains fail-closed building blocks for that path:
 - node-qualified Accelerate config rendering with explicit `standard` multi-node launcher;
 - executable/source identity recording;
 - a cheap 16-rank Gloo/NCCL topology probe before any 14B model construction;
-- node-local locking, resource evidence and immutable compiled artifacts; and
-- a summarizer that keeps functional success, timing consistency and 64-GiB host-reserve admission separate.
+- node-local locking, resource evidence and immutable compiled artifacts;
+- a central two-host coordinator with peer-failure cancellation; and
+- a summarizer that rejects actual CUDA/cgroup OOM while retaining host pressure as diagnostic evidence.
 
-It still does **not** contain a single controller that starts both hosts, cancels the peer on failure and owns finalization. Until that coordinator is implemented and validated, the two node workers must be started together by an external scheduler or operator. A successful topology probe is necessary, not sufficient, for a successful Full5 run.
+The coordinator and evidence path are source-complete but still require a new real Attempt 004 cluster acceptance. The No-GAN suite additionally contains a resumable DAG and bounded search/timing drivers; its target G/S/T candidate, live redistribution and continuous Route-B executors remain explicit external command seams and are therefore `Not Run`, not implemented results.
 
 ## Quick start
 
@@ -100,6 +102,6 @@ Weights, checkpoints, private datasets, raw rank logs, `.nsys-rep` files, SQLite
 
 ## Claim discipline
 
-A result is not accepted merely because a process returned zero. Route-A evidence must establish the declared topology, exact logical steps and optimizer counts, parameter-version transition, checkpoint inventory, lifecycle cleanup and absence of OOM. Timing is claimable only after functional success and a valid matched baseline. Host-reserve admission is reported independently from functional success.
+A result is not accepted merely because a process returned zero. Route-A evidence must establish the declared topology, exact logical steps and optimizer counts, parameter-version transition, checkpoint inventory, lifecycle cleanup and absence of OOM. Timing is claimable only after functional success and a valid matched baseline. Host and cgroup pressure remain measured diagnostics; only an actual CUDA OOM, cgroup OOM/OOM-kill, or memory-attributed nonzero exit rejects memory admission.
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) before changing a frozen plan, compatibility seam or evidence schema.

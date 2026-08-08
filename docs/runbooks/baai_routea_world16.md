@@ -1,6 +1,6 @@
 # Runbook: BAAI Route-A Full5 world16 compatibility path
 
-This runbook executes the frozen contract in [`../contracts/routea_full5_world16.md`](../contracts/routea_full5_world16.md). It does not authorize workload changes. The current shell entrypoint is a **per-host worker**; an external scheduler or operator must start both nodes together because the repository does not yet provide the central coordinator tracked in Issue #2.
+This runbook executes the frozen contract in [`../contracts/routea_full5_world16.md`](../contracts/routea_full5_world16.md). It does not authorize workload changes. The authoritative entrypoint is now the central coordinator; the per-host worker remains an implementation detail and manual recovery tool.
 
 ## 1. Prepare the same site profile on both nodes
 
@@ -45,27 +45,29 @@ export MASTER_ADDR=<node-0-reachable-ip>
 export MASTER_PORT=<unused-port>
 ```
 
-The worker records the resolved plan digest after includes and environment expansion. The result summarizer compares evidence from both nodes; a future central preregistration manifest will make this cross-node check pre-launch rather than post-launch.
+Each worker validates its own node-qualified resolved invocation. Before model
+construction, the coordinator finalizes a shared semantic plan/config/trace/checkpoint
+contract while retaining node-local raw plan and invocation digests separately.
 
 Confirm both nodes have no GPU process and that the selected master and probe ports are unused. By default the topology probe uses `MASTER_PORT + 1`; set `DISTILLSCHEDULE_PROBE_PORT` explicitly when that port is unavailable.
 
-## 4. Start both host workers
+## 4. Start through the central coordinator
 
-Start node 0 and node 1 close together through the cluster scheduler or two controlled shells.
-
-Node 0:
+From a clean checkout that is visible at the same path on both hosts:
 
 ```bash
-scripts/distillschedule/launch_routea_world16_typed_node.sh \
-  0 "${RUN_ID}" "${DMD_HEAD}" "${PLAN_SHA}" "${MASTER_ADDR}" "${MASTER_PORT}"
+python scripts/distillschedule/run_routea_world16.py \
+  --hosts <node0-ssh-target>,<node1-ssh-target> \
+  --run-id "${RUN_ID}" \
+  --repo-root "$PWD" \
+  --site-env configs/distillschedule/server/baai_2x8_a100.env.example
 ```
 
-Node 1:
-
-```bash
-scripts/distillschedule/launch_routea_world16_typed_node.sh \
-  1 "${RUN_ID}" "${DMD_HEAD}" "${PLAN_SHA}" "${MASTER_ADDR}" "${MASTER_PORT}"
-```
+The coordinator owns both SSH workers, requests peer cancellation after a failure,
+runs strict finalization once both workers stop and exits nonzero unless the curated
+Attempt 004 result is `PASS`. Use `--dry-run` to inspect commands and
+`--summarize-only` only for already complete immutable evidence. A dry-run is never
+reusable as real evidence.
 
 Each worker first:
 
@@ -75,7 +77,9 @@ Each worker first:
 4. joins a cheap 16-rank Gloo control group and NCCL all-reduce; and
 5. proceeds to `train_helios.py` only when `topology_probe.json` is `PASS`.
 
-This prevents another expensive “two independent world8” checkpoint attempt. It does not provide cross-host peer cancellation: if one worker dies after the model launch, stop the peer through the scheduler and preserve both node logs.
+This prevents another expensive “two independent world8” checkpoint attempt. The
+worker still supports direct manual invocation for diagnosis, but manual launches are
+not the authoritative Attempt 004 path.
 
 ## 5. Preserve evidence and summarize
 
@@ -83,13 +87,11 @@ Raw run evidence stays under the ignored directory:
 
 ```text
 artifacts/runs/<RUN_ID>/
-├── topology_probe.json
-├── compiled_run.node0.json
-├── compiled_run.node1.json
-├── resolved_plan.node0.json
-├── resolved_plan.node1.json
-├── resolved_helios_config.node0.yaml
-├── resolved_helios_config.node1.yaml
+├── preregistration/
+│   ├── topology.json
+│   ├── node_0_contract.json
+│   ├── node_1_contract.json
+│   └── evidence_contract.json
 ├── launcher/node_0/
 ├── launcher/node_1/
 ├── phase_trace/rank_*.jsonl
@@ -104,7 +106,12 @@ python scripts/distillschedule/summarize_routea_world16_typed.py \
   --baseline-result "${DISTILLSCHEDULE_BASELINE_RESULT}"
 ```
 
-The output is written to `artifacts/manifests/<RUN_ID>_result.json`. Review `functional_status`, `timing.status`, `reserve_admission.status` and `evidence_errors` separately. Do not publish a performance number from `PARTIAL`, `CRASH`, `OOM`, `CONTRACT_FAIL` or `EVIDENCE_INVALID` output.
+The output is written to `artifacts/manifests/<RUN_ID>_result.json`. Review `status`,
+`timing.status`, `memory_observation` and `evidence_errors` separately. There is no
+64-GiB reserve PASS/FAIL gate: high cgroup or host use is retained as evidence but
+rejects only when an actual CUDA/cgroup OOM or memory-attributed nonzero exit occurs.
+Do not publish a performance number from `PARTIAL`, `CRASH`, `OOM`, `FAIL` or
+invalid evidence.
 
 ## 6. Close the loop
 
@@ -114,6 +121,6 @@ A result may be linked from Issue #2 only after:
 - the topology manifest is `PASS`;
 - checkpoint-15 inventory is non-empty;
 - the summarizer completes without evidence errors; and
-- source, resolved-plan and runtime identities match across nodes.
+- source, normalized semantic-plan/config and runtime identities match across nodes.
 
 Commit only the small curated result manifest and status-document update. Keep raw logs, checkpoints, traces and profiler outputs in experiment storage.

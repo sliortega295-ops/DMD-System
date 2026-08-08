@@ -48,6 +48,8 @@ artifacts/figures/**
 artifacts/tables/**
 artifacts/environment/**
 artifacts/runs/**
+artifacts/suites/**
+artifacts/g_offload_search/**
 .env-distillschedule/
 *.nsys-rep
 *.sqlite

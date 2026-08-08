@@ -17,6 +17,7 @@ A contract answers **what must remain equivalent**. It must not contain mutable 
 ## Runbooks
 
 - [`runbooks/baai_routea_world16.md`](runbooks/baai_routea_world16.md): environment, preflight, two-host worker launch, topology probe and summarization.
+- [`runbooks/baai_no_gan_suite.md`](runbooks/baai_no_gan_suite.md): central suite entrypoint, evidence reuse, external executor seams and `Not Run` boundaries.
 
 A runbook answers **how to execute the current implementation**. It may change when tooling changes, but it may not silently change the frozen contract.
 

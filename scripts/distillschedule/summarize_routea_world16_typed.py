@@ -15,6 +15,7 @@ import csv
 import hashlib
 import json
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -48,6 +49,23 @@ CUDA_OOM = re.compile(
 
 class EvidenceError(RuntimeError):
     pass
+
+
+@dataclass(frozen=True)
+class JsonlReadResult:
+    """Tail-safe JSONL result with tuple-compatible unpacking.
+
+    The named fields keep evidence handling readable for callers, while
+    ``__iter__`` preserves the earlier ``events, truncated = ...`` API used by
+    the strict rank summarizer.
+    """
+
+    events: list[dict[str, Any]]
+    ignored_partial_tail: bool
+
+    def __iter__(self):
+        yield self.events
+        yield self.ignored_partial_tail
 
 
 def atomic_json(path: Path, value: Mapping[str, Any]) -> None:
@@ -95,7 +113,7 @@ def integer(value: str | None, *, default: int | None = None) -> int | None:
         return default
 
 
-def read_jsonl_tail_safe(path: Path) -> tuple[list[dict[str, Any]], bool]:
+def read_jsonl_tail_safe(path: Path) -> JsonlReadResult:
     data = path.read_bytes()
     lines = data.splitlines(keepends=True)
     events: list[dict[str, Any]] = []
@@ -110,11 +128,11 @@ def read_jsonl_tail_safe(path: Path) -> tuple[list[dict[str, Any]], bool]:
             if index == len(lines) - 1 and not complete_line:
                 truncated_tail = True
                 continue
-            raise EvidenceError(f"{path}: malformed complete JSONL record: {exc}") from exc
+            raise EvidenceError(f"{path}: malformed JSONL complete record: {exc}") from exc
         if not isinstance(value, dict):
             raise EvidenceError(f"{path}: JSONL record must be an object")
         events.append(value)
-    return events, truncated_tail
+    return JsonlReadResult(events=events, ignored_partial_tail=truncated_tail)
 
 
 def resource_summary(path: Path) -> dict[str, Any]:

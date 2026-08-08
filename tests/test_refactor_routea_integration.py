@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -159,9 +161,9 @@ def test_jsonl_reader_rejects_malformed_complete_record(tmp_path: Path) -> None:
         module.read_jsonl_tail_safe(path)
 
 
-def test_summarizer_closes_a_complete_world16_run(tmp_path: Path) -> None:
-    module = _load_summarizer_module()
-    run = tmp_path / "run"
+def test_legacy_world16_artifact_is_not_promoted_to_attempt004(tmp_path: Path) -> None:
+    run_id = "synthetic-legacy"
+    run = tmp_path / "artifacts" / "runs" / run_id
     identity_values = {
         "dmd_system_head": "d" * 40,
         "dmd_system_plan_sha256": "1" * 64,
@@ -258,15 +260,27 @@ def test_summarizer_closes_a_complete_world16_run(tmp_path: Path) -> None:
         json.dumps({"timing_summary": {"global_training_window_seconds": 5.0}})
     )
     output = tmp_path / "result.json"
-    result = module.summarize(
-        run_id="synthetic",
-        root=tmp_path,
-        run_dir=run,
-        output=output,
-        baseline_result=baseline,
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts/distillschedule/summarize_routea_world16_typed.py"),
+            "--run-id",
+            run_id,
+            "--root",
+            str(tmp_path),
+            "--output",
+            str(output),
+            "--baseline-result",
+            str(baseline),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
     )
-    assert result["status"] == "PASS"
-    assert result["functional_status"] == "PASS"
-    assert result["timing"]["status"] == "PASS"
-    assert result["evidence_errors"] == []
+    assert completed.returncode != 0
     assert output.is_file()
+    result = json.loads(output.read_text())
+    assert result["status"] == "PARTIAL"
+    assert result["claimable"] is False
+    assert result["timing"]["status"] == "NOT_CLAIMABLE"
+    assert result["evidence_errors"]

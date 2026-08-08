@@ -89,6 +89,40 @@ def extract_window(result: Mapping[str, Any]) -> float:
     return window
 
 
+def distribution_summary(values: Sequence[float]) -> dict[str, float | int]:
+    """Return explicit dispersion alongside the preregistered median.
+
+    Formal runs require at least three pairs, so sample standard deviation and
+    coefficient of variation are well-defined.  Median absolute deviation is
+    retained as a robust companion because one straggler can dominate a
+    two-node training window.
+    """
+
+    normalized = [float(value) for value in values]
+    if len(normalized) < 2 or any(
+        not math.isfinite(value) or value <= 0 for value in normalized
+    ):
+        raise RuntimeError(
+            "formal timing distribution requires at least two positive finite values"
+        )
+    mean = statistics.fmean(normalized)
+    median = statistics.median(normalized)
+    sample_stdev = statistics.stdev(normalized)
+    return {
+        "count": len(normalized),
+        "min": min(normalized),
+        "max": max(normalized),
+        "range": max(normalized) - min(normalized),
+        "mean": mean,
+        "median": median,
+        "sample_stdev": sample_stdev,
+        "coefficient_of_variation": sample_stdev / mean,
+        "median_absolute_deviation": statistics.median(
+            abs(value - median) for value in normalized
+        ),
+    }
+
+
 def validate_result(path: Path, expected_digest: str) -> dict[str, Any]:
     result = load_json(path)
     if result.get("status") != "PASS" or result.get("claimable") is not True:
@@ -273,6 +307,11 @@ def main(argv: list[str] | None = None) -> int:
             ),
             "median_routea_seconds": statistics.median(a_values),
             "median_routeb_seconds": statistics.median(b_values),
+            "distributions": {
+                "routea_seconds": distribution_summary(a_values),
+                "routeb_seconds": distribution_summary(b_values),
+                "paired_speedup": distribution_summary(ratios),
+            },
             "claim_boundary": "Matched unprofiled pairs only; diagnostic and failed attempts excluded.",
         }
         atomic_json(root / "result.json", result)

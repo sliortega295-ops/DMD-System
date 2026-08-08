@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 SCHEMA = "distillschedule.g_offload_search.v1"
+CAPACITY_FAILURE_STATUSES = frozenset({"OOM", "CAPACITY_REJECTED"})
 
 
 def canonical(value: Any) -> bytes:
@@ -102,7 +103,7 @@ def validate_result(
     *,
     candidate_path: Path,
     contract_digest: str,
-    accepted_statuses: Sequence[str] = ("PASS", "OOM", "FAIL"),
+    accepted_statuses: Sequence[str] = ("PASS", "OOM", "CAPACITY_REJECTED", "FAIL"),
 ) -> dict[str, Any]:
     result = load_json(result_path)
     status = result.get("status")
@@ -119,6 +120,24 @@ def validate_result(
     ) != "resident":
         raise RuntimeError(f"{result_path}: S/T residency contract changed")
     return result
+
+
+def is_capacity_failure(status: object) -> bool:
+    return status in CAPACITY_FAILURE_STATUSES
+
+
+def minimum_is_exact(
+    *,
+    passing_size: int,
+    failing_size: int | None,
+    observations: Mapping[int, Mapping[str, Any]],
+    nonmonotonic: bool,
+) -> bool:
+    if nonmonotonic:
+        return False
+    if passing_size == 0:
+        return observations.get(0, {}).get("status") == "PASS"
+    return failing_size is not None and passing_size == failing_size + 1
 
 
 def run_candidate(
@@ -168,7 +187,7 @@ def run_candidate(
             candidate_path=candidate_path,
             contract_digest=contract_digest,
         )
-        if resume and existing["status"] == "PASS":
+        if resume:
             return {"run_id": candidate_id, "reused": True, **existing}
         raise RuntimeError(
             f"immutable candidate result already exists with status={existing['status']}; use a new search ID"
@@ -198,6 +217,11 @@ def run_candidate(
     result = validate_result(
         result_path, candidate_path=candidate_path, contract_digest=contract_digest
     )
+    if completed.returncode != 0 and not is_capacity_failure(result.get("status")):
+        raise RuntimeError(
+            f"{candidate_id}: command returned {completed.returncode} with "
+            f"non-capacity status={result.get('status')!r}"
+        )
     return {"run_id": candidate_id, "reused": False, **result}
 
 
@@ -289,7 +313,7 @@ def main(argv: list[str] | None = None) -> int:
                 json.dumps(
                     {
                         "status": "FAIL",
-                        "error": "search ID exists; resume only reuses exact PASS candidates",
+                        "error": "search ID exists; --resume only reuses immutable validated candidate results",
                     }
                 )
             )
@@ -375,9 +399,14 @@ def main(argv: list[str] | None = None) -> int:
             observations[size] = outcome
             if outcome.get("status") == "PASS":
                 passing_size = size
-            else:
+            elif is_capacity_failure(outcome.get("status")):
                 failing_size = size
                 break
+            else:
+                raise RuntimeError(
+                    f"candidate g{size} failed outside the capacity contract: "
+                    f"status={outcome.get('status')!r}"
+                )
 
         if failing_size is not None and passing_size - failing_size > 1:
             for size in range(passing_size - 1, failing_size, -1):
@@ -398,9 +427,14 @@ def main(argv: list[str] | None = None) -> int:
                 observations[size] = outcome
                 if outcome.get("status") == "PASS":
                     passing_size = size
-                else:
+                elif is_capacity_failure(outcome.get("status")):
                     failing_size = size
                     break
+                else:
+                    raise RuntimeError(
+                        f"candidate g{size} failed outside the capacity contract: "
+                        f"status={outcome.get('status')!r}"
+                    )
 
         tested = sorted(observations)
         nonmonotonic = any(
@@ -410,10 +444,11 @@ def main(argv: list[str] | None = None) -> int:
             for larger in tested
             if smaller < larger
         )
-        exact_minimum = (
-            not nonmonotonic
-            and failing_size is not None
-            and passing_size == failing_size + 1
+        exact_minimum = minimum_is_exact(
+            passing_size=passing_size,
+            failing_size=failing_size,
+            observations=observations,
+            nonmonotonic=nonmonotonic,
         )
         validation: dict[str, Any] | None = None
         if exact_minimum and args.continuous_command_template:

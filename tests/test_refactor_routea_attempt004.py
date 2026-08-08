@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
+import sys
 
 import pytest
 from omegaconf import OmegaConf
@@ -27,7 +28,15 @@ def load_script(name: str, path: Path):
     spec = importlib.util.spec_from_file_location(name, path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    # dataclasses and other import-time helpers resolve annotations through
+    # sys.modules.  Mirror normal import semantics before executing a script
+    # loaded directly from its filesystem path.
+    sys.modules[name] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        sys.modules.pop(name, None)
+        raise
     return module
 
 
@@ -38,6 +47,14 @@ SUMMARIZER = load_script(
 SUITE = load_script(
     "no_gan_suite",
     ROOT / "scripts/distillschedule/run_no_gan_suite.py",
+)
+OFFLOAD = load_script(
+    "g_offload_search",
+    ROOT / "scripts/distillschedule/run_g_offload_search.py",
+)
+PAIRED = load_script(
+    "paired_formal",
+    ROOT / "scripts/distillschedule/run_paired_formal.py",
 )
 
 
@@ -235,12 +252,16 @@ def test_node_contracts_require_same_normalized_training_contract(
     checkpoint = tmp_path / "checkpoint"
     checkpoint.mkdir()
     (checkpoint / "state.json").write_text("{}")
-    loaded = load_plan(PLAN)
     contracts = []
     for rank in (0, 1):
         monkeypatch.setenv("DISTILLSCHEDULE_NODE_RANK", str(rank))
         accel = accelerate_config(tmp_path / f"accelerate-{rank}.yaml", rank)
         monkeypatch.setenv("DISTILLSCHEDULE_ACCELERATE_CONFIG", str(accel))
+        # The raw resolved digest is node-qualified because the launcher path
+        # is part of the compiled invocation.  Production compiles each node
+        # after rendering its own Accelerate config, then normalizes the shared
+        # training contract before the two node contracts are compared.
+        loaded = load_plan(PLAN)
         config = rendered_config(
             tmp_path / f"rendered-{rank}.yaml", output_dir=f"/run/node-{rank}"
         )
@@ -263,6 +284,11 @@ def test_node_contracts_require_same_normalized_training_contract(
         contracts.append(path)
     final = finalize_node_contracts(contracts)
     validate_final_contract(final)
+    node_payloads = [json.loads(path.read_text()) for path in contracts]
+    assert len(
+        {payload["node"]["resolved_plan_digest"] for payload in node_payloads}
+    ) == 2
+    assert len({payload["shared_digest"] for payload in node_payloads}) == 1
     assert final["status"] == "PASS"
     assert final["shared"]["batch_contract"]["global_batch"] == 16
     assert final["shared"]["memory_acceptance"]["host_reserve_gate"] is False
@@ -360,3 +386,72 @@ def test_suite_dag_marks_target_search_as_run_required() -> None:
     assert "n2_target_g_offload_search" in SUITE.select_stages(
         order, only=[], from_stage="n2_target_g_offload_search", stop_after=None
     )
+
+
+def test_suite_remote_pair_qualifies_preflight_output_by_node(tmp_path: Path) -> None:
+    suite = SUITE.expand_env(
+        SUITE.load_yaml(
+            ROOT / "configs/distillschedule/suites/helios_no_gan_world16.yaml"
+        )
+    )
+    _order, stages = SUITE.stage_map(suite)
+    context = {
+        "python": "/python",
+        "repo_root": "/repo",
+        "suite_run_id": "suite",
+        "stage_run_id": "stage",
+    }
+    command = SUITE.format_command(stages["n0_preflight"]["command"], context)
+    pair = SUITE.RemotePair(
+        ssh="ssh",
+        hosts=("node0", "node1"),
+        root=tmp_path,
+        site_env="site.env",
+        suite_run_id="suite",
+        stage_id="n0_preflight",
+        stage_run_id="stage",
+        command=command,
+        log_dir=tmp_path / "logs",
+        dry_run=True,
+    )
+    commands = pair.commands()
+    assert "node_0" in commands[0][-1]
+    assert "node_1" in commands[1][-1]
+
+
+def test_dry_run_stage_is_never_reused_as_real_evidence() -> None:
+    dry = {
+        "status": "PASS",
+        "dry_run": True,
+        "stage_contract_digest": "same",
+    }
+    assert not SUITE.reusable_stage_result(dry, stage_contract_digest="same")
+    assert SUITE.dependency_accepted("DRY_RUN", dry_run=True)
+    assert not SUITE.dependency_accepted("DRY_RUN", dry_run=False)
+
+
+def test_offload_search_treats_only_capacity_outcomes_as_bounds() -> None:
+    assert OFFLOAD.is_capacity_failure("OOM")
+    assert OFFLOAD.is_capacity_failure("CAPACITY_REJECTED")
+    assert not OFFLOAD.is_capacity_failure("FAIL")
+    assert not OFFLOAD.is_capacity_failure("EVIDENCE_INVALID")
+
+
+def test_offload_search_recognizes_zero_block_minimum() -> None:
+    observations = {40: {"status": "PASS"}, 0: {"status": "PASS"}}
+    assert OFFLOAD.minimum_is_exact(
+        passing_size=0,
+        failing_size=None,
+        observations=observations,
+        nonmonotonic=False,
+    )
+
+
+def test_formal_timing_reports_dispersion() -> None:
+    summary = PAIRED.distribution_summary([10.0, 12.0, 14.0])
+    assert summary["count"] == 3
+    assert summary["median"] == 12.0
+    assert summary["range"] == 4.0
+    assert summary["sample_stdev"] == 2.0
+    assert summary["coefficient_of_variation"] == pytest.approx(1.0 / 6.0)
+    assert summary["median_absolute_deviation"] == 2.0

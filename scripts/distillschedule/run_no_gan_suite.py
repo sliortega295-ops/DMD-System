@@ -154,6 +154,24 @@ def select_stages(
     return selected
 
 
+def dependency_accepted(status: object, *, dry_run: bool) -> bool:
+    """Allow simulated dependencies only inside the current dry-run."""
+
+    return status in ACCEPTED or (dry_run and status == "DRY_RUN")
+
+
+def reusable_stage_result(
+    result: Mapping[str, Any], *, stage_contract_digest: str
+) -> bool:
+    """A dry-run can never satisfy a later real execution dependency."""
+
+    return (
+        result.get("status") in ACCEPTED
+        and result.get("dry_run") is not True
+        and result.get("stage_contract_digest") == stage_contract_digest
+    )
+
+
 def format_command(value: Any, context: Mapping[str, str]) -> list[str]:
     if isinstance(value, str):
         return shlex.split(value.format(**context))
@@ -230,6 +248,15 @@ class RemotePair:
             f"DISTILLSCHEDULE_STAGE_ID={self.stage_id}",
             f"DISTILLSCHEDULE_STAGE_RUN_ID={self.stage_run_id}",
             f"DISTILLSCHEDULE_NODE_RANK={rank}",
+            "DISTILLSCHEDULE_OUTPUT_DIR="
+            + str(
+                self.root
+                / "artifacts/suites"
+                / self.suite_run_id
+                / "preflight"
+                / self.stage_run_id
+                / f"node_{rank}"
+            ),
         ]
         remote = (
             f"set -Eeuo pipefail; source {shlex.quote(str(site_env))}; "
@@ -536,7 +563,9 @@ def main(argv: list[str] | None = None) -> int:
         unmet = [
             dependency
             for dependency in dependencies
-            if results.get(dependency, {}).get("status") not in ACCEPTED
+            if not dependency_accepted(
+                results.get(dependency, {}).get("status"), dry_run=args.dry_run
+            )
         ]
         if blocked or unmet:
             result = {
@@ -564,12 +593,13 @@ def main(argv: list[str] | None = None) -> int:
             continue
 
         previous = load_json(latest_path) if latest_path.is_file() else None
-        if previous and args.resume and previous.get("status") in ACCEPTED:
-            if previous.get("stage_contract_digest") == stage_contract:
-                reused = dict(previous)
-                reused["resumed"] = True
-                results[stage_id] = reused
-                continue
+        if previous and args.resume and reusable_stage_result(
+            previous, stage_contract_digest=stage_contract
+        ):
+            reused = dict(previous)
+            reused["resumed"] = True
+            results[stage_id] = reused
+            continue
         force = stage_id in args.force_rerun_stage
         if previous and previous.get("status") not in ACCEPTED and not force:
             result = {
@@ -590,6 +620,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         attempt_dir.mkdir(parents=True)
         context = {
+            "python": sys.executable,
             "repo_root": str(root),
             "hosts_csv": ",".join(args.hosts),
             "host0": args.hosts[0],
@@ -670,6 +701,16 @@ def main(argv: list[str] | None = None) -> int:
                         context = dict(context)
                         context["candidate_command"] = candidate
                         context["continuous_command"] = continuous
+                        contract_variable = str(stage.get("contract_env") or "")
+                        contract_default = str(stage.get("contract_default") or "")
+                        contract = os.environ.get(contract_variable, "")
+                        if not contract:
+                            contract = contract_default.format(**context)
+                        if not contract:
+                            raise RuntimeError(
+                                "target G/S/T evidence contract is not configured"
+                            )
+                        context["contract"] = contract
                 if command_value is not None:
                     command = format_command(command_value, context)
                     if args.dry_run:
@@ -703,7 +744,7 @@ def main(argv: list[str] | None = None) -> int:
 
         status = execution.get("status")
         if status == "DRY_RUN":
-            final_status = "PASS"
+            final_status = "DRY_RUN"
         elif status == "NOT_RUN":
             final_status = "NOT_RUN"
         else:
@@ -722,14 +763,16 @@ def main(argv: list[str] | None = None) -> int:
         atomic_json(attempt_dir / "result.json", result)
         atomic_json(latest_path, result)
         results[stage_id] = result
-        if final_status not in ACCEPTED:
+        if not dependency_accepted(final_status, dry_run=args.dry_run):
             blocked = True
 
-    overall = "PASS" if all(
-        result.get("status") in ACCEPTED or result.get("status") == "OPTIONAL"
+    accepted_for_run = ACCEPTED | ({"DRY_RUN"} if args.dry_run else set())
+    successful = all(
+        result.get("status") in accepted_for_run or result.get("status") == "OPTIONAL"
         for stage_id, result in results.items()
         if stage_id in selected
-    ) else "PARTIAL"
+    )
+    overall = ("DRY_RUN" if args.dry_run else "PASS") if successful else "PARTIAL"
     summary = {
         "schema_version": SCHEMA,
         "suite_id": suite.get("suite_id"),
@@ -756,7 +799,7 @@ def main(argv: list[str] | None = None) -> int:
             sort_keys=True,
         )
     )
-    return 0 if overall == "PASS" else 1
+    return 0 if overall in {"PASS", "DRY_RUN"} else 1
 
 
 if __name__ == "__main__":

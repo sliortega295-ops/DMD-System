@@ -629,10 +629,30 @@ def build_node_contract(
         name: asset_identity(asset_path)
         for name, asset_path in sorted((assets or {}).items())
     }
+
+    # The fully resolved plan and compiled invocation intentionally contain
+    # node-local launch details (machine rank, rendered Accelerate config path,
+    # and output path).  Validate those values locally above, but do not place
+    # them in the two-node shared digest.  Otherwise two correct node-qualified
+    # launchers can never preregister the same world16 execution contract.
+    shared_plan = dict(plan)
+    resolved_plan_digest = str(shared_plan.pop("resolved_digest"))
+    shared_plan["semantic_digest"] = object_digest(shared_plan)
+    shared_compiled = {
+        "plan_id": compiled["plan_id"],
+        "command_contract": compiled["command_contract"],
+    }
+    shared_rendered = {
+        "normalized_digest": rendered["normalized_digest"],
+        "allowlisted_non_training_fields": rendered[
+            "allowlisted_non_training_fields"
+        ],
+        "training_contract": rendered["training_contract"],
+    }
     shared: dict[str, object] = {
-        "plan": plan,
-        "compiled": compiled,
-        "rendered_helios": rendered,
+        "plan": shared_plan,
+        "compiled": shared_compiled,
+        "rendered_helios": shared_rendered,
         "launcher": {
             "distributed_type": accelerate.distributed_type,
             "num_machines": accelerate.num_machines,
@@ -668,6 +688,8 @@ def build_node_contract(
         "shared": shared,
         "node": {
             "machine_rank": accelerate.machine_rank,
+            "resolved_plan_digest": resolved_plan_digest,
+            "compiled_invocation_digest": compiled["invocation_digest"],
             "accelerate_config_path": str(accelerate.path),
             "accelerate_config_sha256": accelerate.sha256,
             "rendered_config_path": str(Path(rendered_config_path).resolve()),
