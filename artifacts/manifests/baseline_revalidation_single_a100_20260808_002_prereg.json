@@ -1,0 +1,79 @@
+{
+  "allowed_change": "wrapper only: direct python -> one-rank accelerate launch",
+  "claim_boundary": "integration/correctness validation; timing diagnostic only and not compared causally with frozen 58.0576 s A-local",
+  "compiled": {
+    "command": [
+      "/tmp/distillschedule-helios-official-torch210/bin/accelerate",
+      "launch",
+      "--num_machines",
+      "1",
+      "--num_processes",
+      "1",
+      "--mixed_precision",
+      "bf16",
+      "--use_deepspeed",
+      "--zero_stage",
+      "1",
+      "--offload_optimizer_device",
+      "cpu",
+      "--offload_param_device",
+      "none",
+      "--gradient_accumulation_steps",
+      "1",
+      "--gradient_clipping",
+      "1.0",
+      "--debug",
+      "/share/project/shuchenweng/yongyan_liu/DistillSchedule/train_helios.py",
+      "--config",
+      "/share/project/shuchenweng/yongyan_liu/DMD-System/artifacts/runs/baseline_revalidation_single_a100_20260808_002/resolved_helios_config.yaml"
+    ],
+    "config_sha256": "57e792d1496c39fdd5156773a32b8510e5abbbf88c9431b03b642e1fb79f0a44",
+    "digest": "c1dcb8daa568f00c35d3e5752b876a3da214942fe277af5c1b1d33441ff2b0b9",
+    "final_versions": {
+      "critic": 15,
+      "ema": 15,
+      "generator": 3
+    }
+  },
+  "created_at": "2026-08-08T04:10:24.048350+00:00",
+  "decision": "GO_ONE_BOUNDED_RECOVERY",
+  "fail_closed": [
+    "any OOM",
+    "trace/version/semantic assertion",
+    "wrong final G3/C15/EMA15",
+    "missing full 40+40 block coverage",
+    "nonzero exit"
+  ],
+  "frozen": {
+    "backend": "ZeRO-1 CPU optimizer offload",
+    "checkpoint": "/share/project/shuchenweng/yongyan_liu/DistillSchedule/artifacts/runs/iteration65_m0_b4fast_canonical_checkpoint10_001/checkpoint-10",
+    "latent": [
+      1,
+      16,
+      9,
+      48,
+      80
+    ],
+    "lifecycle": "B4 host-private, stream 40+40 window1, activation offload 32MiB, split modulation, no prefetch",
+    "resolution": [
+      384,
+      640
+    ],
+    "steps": [
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "trace": "/share/project/shuchenweng/DistillSchedule_assets/m0/traces/syn_feature_trace_v2_steps20"
+  },
+  "gpu": "CUDA_VISIBLE_DEVICES=0",
+  "hypothesis": "With only the wrapper corrected to accelerate launch, the typed plan replays official 384x640 step10-14 on the validated B4/ZeRO-1 substrate.",
+  "node": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+  "prior_failure": "baseline_revalidation_single_a100_20260808_001: default process group absent before training; no OOM and zero steps completed",
+  "run_id": "baseline_revalidation_single_a100_20260808_002",
+  "schema": "distillschedule.baseline_revalidation_prereg.v1",
+  "source_head": "f1a7fd1fab2165ef62410035108db805f5e87d0b",
+  "status": "PREREGISTERED_NOT_RUN"
+}
