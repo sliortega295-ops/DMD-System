@@ -480,6 +480,15 @@ def test_routea_controller_helpers_are_executable() -> None:
         assert (ROOT / relative).stat().st_mode & 0o111, relative
 
 
+def test_routea_worker_uses_package_metadata_for_runtime_versions() -> None:
+    script = (
+        ROOT / "scripts/distillschedule/launch_routea_world16_typed_node.sh"
+    ).read_text()
+    assert "package_version('accelerate')" in script
+    assert "package_version('deepspeed')" in script
+    assert "[str(accelerate),'--version']" not in script
+
+
 def test_routea_controller_summarizes_remote_root_on_compute_host() -> None:
     args = CONTROLLER.parser().parse_args(
         [

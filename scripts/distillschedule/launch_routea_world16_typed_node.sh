@@ -115,7 +115,7 @@ FINAL_CONTRACT="${PREREG_DIR}/evidence_contract.json"
 # GPU inventory is deliberately separate from the strict key=value manifest.
 nvidia-smi --query-gpu=index,uuid,name,memory.total,memory.free --format=csv >"${GPU_INVENTORY}"
 "${PYTHON}" - "${RUNTIME_IDENTITY}" "${PYTHON}" "${ACCELERATE}" "${DEEPSPEED}" "${HELIOS_ROOT}" <<'PY'
-import hashlib, json, pathlib, subprocess, sys
+import hashlib, importlib.metadata, json, pathlib, subprocess, sys
 out, python, accelerate, deepspeed, helios = map(pathlib.Path, sys.argv[1:])
 def sha(path):
     h=hashlib.sha256()
@@ -124,11 +124,16 @@ def sha(path):
     return h.hexdigest()
 def version(command):
     return subprocess.check_output(command, text=True, stderr=subprocess.STDOUT).strip()
+def package_version(name):
+    return importlib.metadata.version(name)
 payload={
   'schema_version':'distillschedule.runtime_identity.v1',
   'python':{'path':str(python.resolve()),'sha256':sha(python),'version':version([str(python),'--version'])},
-  'accelerate':{'path':str(accelerate.resolve()),'sha256':sha(accelerate),'version':version([str(accelerate),'--version'])},
-  'deepspeed':{'path':str(deepspeed.resolve()),'sha256':sha(deepspeed),'version':version([str(deepspeed),'--version'])},
+  # Console-script option support differs across the pinned Accelerate and
+  # DeepSpeed releases.  Package metadata is the stable version identity; the
+  # executable SHA still binds the concrete launcher used below.
+  'accelerate':{'path':str(accelerate.resolve()),'sha256':sha(accelerate),'version':package_version('accelerate')},
+  'deepspeed':{'path':str(deepspeed.resolve()),'sha256':sha(deepspeed),'version':package_version('deepspeed')},
   'helios':{
     'root':str(helios.resolve()),
     'head':version(['git','-C',str(helios),'rev-parse','HEAD']),
