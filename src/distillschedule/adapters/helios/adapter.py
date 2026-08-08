@@ -329,6 +329,10 @@ class HeliosDMDAdapter(DMDModelAdapter):
         )
         if workload.generator.subfolder is not None:
             config.model_config.subfolder = workload.generator.subfolder
+        # Helios uses the Base checkpoint both as the common pretrained root and
+        # as the physical Real/Fake/Critic Score backbone.  Keeping both fields
+        # plan-derived avoids leaking a machine-specific path from the template.
+        config.model_config.pretrained_model_name_or_path = workload.score.checkpoint
         config.model_config.real_score_model_name_or_path = workload.score.checkpoint
         if workload.score.subfolder is not None:
             config.model_config.critic_subfolder = workload.score.subfolder
@@ -345,6 +349,19 @@ class HeliosDMDAdapter(DMDModelAdapter):
             )
 
         training = config.training_config
+        data_roots = workload.metadata.get("data_roots")
+        if data_roots is not None:
+            if not isinstance(data_roots, (list, tuple)) or not data_roots:
+                raise ContractViolation(
+                    "Helios workload.metadata.data_roots must be a non-empty list",
+                    path="workload.metadata.data_roots",
+                )
+            if any(not isinstance(item, str) or not item.strip() for item in data_roots):
+                raise ContractViolation(
+                    "Helios data roots must be non-empty strings",
+                    path="workload.metadata.data_roots",
+                )
+            config.data_config.gan_data_root = list(data_roots)
         training.max_train_steps = plan.evidence.start_step + plan.evidence.steps
         training.train_batch_size = workload.shape.batch_size
         training.latent_window_size = [workload.shape.latent.frames]

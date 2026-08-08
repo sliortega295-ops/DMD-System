@@ -72,6 +72,8 @@ def test_helios_adapter_renders_runtime_config_from_plan() -> None:
     assert config.model_config.lora_rank == 256
     assert config.model_config.critic_lora_rank == 256
     assert config.model_config.critic_subfolder == "transformer"
+    assert config.model_config.pretrained_model_name_or_path == config.model_config.real_score_model_name_or_path
+    assert config.data_config.gan_data_root
     assert config.data_config.single_height == 384
     assert config.data_config.single_width == 640
 

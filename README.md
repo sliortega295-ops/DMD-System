@@ -105,6 +105,15 @@ ExecutionPlan
 
 The full upstream Helios model tree, weights and private cluster assets are **not vendored** here. On the cluster the adapter points to a pinned Helios checkout. Reusable DMD-System mechanisms are kept in this repository; one-off historical launchers and raw experiment output are not.
 
+For the current two-node BAAI A100 environment, copy and source
+`configs/distillschedule/server/baai_2x8_a100.env.example`, then run
+`scripts/distillschedule/baai_server_smoke.sh`.  The smoke gate validates the
+external Helios checkout, assets, typed plan, rendered configuration and command
+without launching a model or claiming a GPU result.  Multi-node execution still
+uses the validated external launcher until the typed executor gains a coordinator;
+the single-process `distillctl run` command must not be presented as a world16
+launcher.
+
 Current parity order:
 
 ```text
