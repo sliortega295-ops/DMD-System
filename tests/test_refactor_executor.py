@@ -35,6 +35,7 @@ def test_world16_dry_run_writes_node_qualified_artifacts(tmp_path: Path, monkeyp
     monkeypatch.setenv("HELIOS_RUNTIME_ROOT", str(ROOT))
     monkeypatch.setenv("DISTILLSCHEDULE_PYTHON", "/runtime/python")
     monkeypatch.setenv("DISTILLSCHEDULE_ACCELERATE", "/runtime/accelerate")
+    monkeypatch.setenv("DISTILLSCHEDULE_ACCELERATE_CONFIG", str(ROOT / "scripts/accelerate_configs/multi_node_zero1_cpu_optimizer_offload.yaml"))
     plan = ROOT / "configs/distillschedule/plans/helios_routea_full5_world16_typed.json"
     loaded = load_plan(plan)
     result = DistillExecutor().run(loaded, repo_root=ROOT, dry_run=True)

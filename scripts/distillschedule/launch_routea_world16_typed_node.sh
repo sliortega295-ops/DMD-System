@@ -55,6 +55,7 @@ export DISTILLSCHEDULE_MASTER_PORT="${MASTER_PORT}"
 export HELIOS_RUNTIME_ROOT="${HELIOS_ROOT}"
 export DISTILLSCHEDULE_PYTHON="${PYTHON}"
 export DISTILLSCHEDULE_ACCELERATE="${ACCELERATE}"
+export DISTILLSCHEDULE_ACCELERATE_CONFIG="${ROOT}/scripts/accelerate_configs/multi_node_zero1_cpu_optimizer_offload.yaml"
 
 MANIFEST="${NODE_LOG}/launch_manifest.txt"
 MONITOR="${NODE_LOG}/resource.csv"

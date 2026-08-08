@@ -1,0 +1,15 @@
+{
+  "schema_version": "distillschedule.typed_routea_world16.launch_failure.v1",
+  "run_id": "routea_world16_typed_revalidation_20260808_002",
+  "status": "FAILED_AT_CHECKPOINT_WORLD_SIZE_GATE",
+  "failure_signature": "checkpoint DP world size 16 but current world size is 8",
+  "root_cause": "Accelerate CLI DeepSpeed default selected pdsh/local eight-rank launcher independently on each host",
+  "gpu_work": "construction and optimizer initialization only; no training step",
+  "training_steps": "Not Run",
+  "oom_delta": [
+    0,
+    0
+  ],
+  "validated_recovery": "explicit standard multi-node Accelerate config backed by ZeRO-1; require cheap world16 topology probe before another 14B launch",
+  "claim": "no performance result"
+}

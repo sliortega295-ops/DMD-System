@@ -128,6 +128,7 @@ def _world16_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, node_rank: int
     monkeypatch.setenv("HELIOS_RUNTIME_ROOT", str(ROOT))
     monkeypatch.setenv("DISTILLSCHEDULE_PYTHON", "/runtime/python")
     monkeypatch.setenv("DISTILLSCHEDULE_ACCELERATE", "/runtime/accelerate")
+    monkeypatch.setenv("DISTILLSCHEDULE_ACCELERATE_CONFIG", str(ROOT / "scripts/accelerate_configs/multi_node_zero1_cpu_optimizer_offload.yaml"))
 
 
 def test_world16_routea_plan_is_exact_typed_baseline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -162,7 +163,11 @@ def test_world16_routea_plan_is_exact_typed_baseline(tmp_path: Path, monkeypatch
     assert command[command.index("--num_machines") + 1] == "2"
     assert command[command.index("--num_processes") + 1] == "16"
     assert command[command.index("--machine_rank") + 1] == "0"
-    assert command[command.index("--zero_stage") + 1] == "1"
+    assert "--use_deepspeed" not in command
+    accel_config = Path(command[command.index("--config_file") + 1])
+    accel_text = accel_config.read_text()
+    assert "deepspeed_multinode_launcher: standard" in accel_text
+    assert "zero1_cpu_optimizer_offload.json" in accel_text
     assert command[-1].endswith("resolved_helios_config.node0.yaml")
     rendered = OmegaConf.create(next(iter(invocation.generated_files.values())))
     assert rendered.training_config.resume_from_checkpoint.endswith("checkpoint-10")

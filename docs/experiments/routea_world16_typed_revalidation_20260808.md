@@ -23,3 +23,7 @@ This is one diagnostic-instrumented revalidation launch. It can establish functi
 ## Launch attempt 001
 
 **Failed before model construction.** The typed wrapper invoked the frozen `accelerate` executable without adding the same environment's `bin` directory to `PATH`; Accelerate could not locate `deepspeed`. Both node OOM deltas were zero and no training step ran. The immutable failure is retained and permits one non-invasive wrapper retry under a new run ID.
+
+## Launch attempt 002
+
+**Failed at checkpoint world-size gate; no training step ran.** The CLI-selected DeepSpeed launcher defaulted to `pdsh`, and each host independently formed a local world8. The world16 ZeRO-1 checkpoint correctly rejected the mismatch. There was no new OOM and this is not the known ZeRO-2 gradient failure. The bounded recovery replaces launcher inference with an explicit `standard` multi-node Accelerate config whose referenced DeepSpeed config is ZeRO-1. A cheap process-group probe must demonstrate 16 unique global ranks before another model launch.
