@@ -42,7 +42,6 @@ deepspeed_config:
   deepspeed_config_file: ${ROOT}/scripts/accelerate_configs/zero1_cpu_optimizer_offload.json
   deepspeed_multinode_launcher: standard
 fsdp_config: {}
-gradient_accumulation_steps: 1
 machine_rank: ${NODE_RANK}
 main_training_function: main
 mixed_precision: bf16
@@ -55,6 +54,17 @@ tpu_use_cluster: false
 tpu_use_sudo: false
 use_cpu: false
 EOF
+
+"${PYTHON}" - "${ACCEL_CONFIG}" <<'PY'
+import pathlib, sys
+from accelerate.commands.config.config_args import load_config_from_file
+
+path = pathlib.Path(sys.argv[1])
+config = load_config_from_file(path)
+assert config.distributed_type.value == "DEEPSPEED"
+assert config.num_machines == 2
+assert config.num_processes == 16
+PY
 
 export PATH="${PYENV}/bin:${PATH}"
 export DMD_SYSTEM_ROOT="${ROOT}"

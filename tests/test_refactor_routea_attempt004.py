@@ -155,7 +155,6 @@ def accelerate_config(path: Path, node_rank: int) -> Path:
                 "deepspeed_config:",
                 f"  deepspeed_config_file: {ROOT / 'scripts/accelerate_configs/zero1_cpu_optimizer_offload.json'}",
                 "  deepspeed_multinode_launcher: standard",
-                "gradient_accumulation_steps: 1",
                 f"machine_rank: {node_rank}",
                 "main_training_function: main",
                 "mixed_precision: bf16",
@@ -457,6 +456,8 @@ def test_baai_smoke_isolates_bytecode_on_shared_filesystem() -> None:
         '"${PYTHON}" -m compileall'
     )
     assert 'cat "${OUT}/node_contract_summary.json" >&2' in script
+    assert "load_config_from_file(path)" in script
+    assert "gradient_accumulation_steps: 1" not in script
 
 
 def test_routea_plan_explicitly_freezes_accumulation() -> None:

@@ -86,7 +86,6 @@ deepspeed_config:
   deepspeed_config_file: ${DS_CONFIG}
   deepspeed_multinode_launcher: standard
 fsdp_config: {}
-gradient_accumulation_steps: 1
 machine_rank: ${NODE_RANK}
 main_training_function: main
 mixed_precision: bf16
