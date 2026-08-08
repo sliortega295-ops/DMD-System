@@ -32,3 +32,42 @@ The bounded recovery selected an explicit `standard` multi-node Accelerate confi
 At the moment Issue #2 was created, Attempt 003 had reached real world16 checkpoint resume. It had not produced a complete 16-rank trace, checkpoint-15 inventory or accepted summarizer output. Its repository status is therefore **Not Run**, not success and not a timing result. Creating the GitHub issue and adaptation branch did not interrupt the server process.
 
 A later result may supersede this label only by linking an immutable curated manifest and updating the authoritative status page.
+
+## Launch attempt 005-001
+
+After LeoFS recovered, the pre-model topology probe established one real world16
+group across two hosts and completed its NCCL collective. The launcher then rejected
+the valid producer payload because its consumer still expected obsolete top-level
+topology fields. Both workers exited before model construction. This failure is
+preserved in `artifacts/manifests/routea_attempt005_001_topology_validator_failure.json`.
+
+## Launch attempt 005-002
+
+The topology consumer was corrected without changing the workload, and the real
+world16 launch completed at DMD-System commit `d4a27a3`:
+
+- 16/16 rank traces cover steps 10–14;
+- Generator/Critic/EMA update counts per rank are 1/5/5;
+- observed versions are G2/C10/EMA10 → G3/C15/EMA15;
+- all activation-offload and Generator/Score streamer final live bytes are zero;
+- both worker return codes are zero, checkpoint-15 has 97 files totaling
+  99,826,243,285 bytes, and neither node's OOM counters increased.
+
+The first strict postprocessor returned `PARTIAL` with 210 errors. Direct comparison
+with the preserved, previously accepted Route-A producer showed that all errors came
+from evidence-schema interpretation: nested `ema.optimization_step`, the structured
+three-term EMA OR predicate, `operation_trace` as a source-kind marker, spaces in
+`nvidia-smi` CSV headers, and scientific notation in host-memory samples. Commits
+`35cc87b` and `2ea09d4` corrected only the consumer and added fail-closed tests; no
+raw event, checkpoint, model policy, trace, loss or optimizer state was changed.
+The replay changed 210 errors to zero and produced functional/evidence `PASS`.
+
+The diagnostic window is 767.166962 s (153.433392 s/logical step,
+0.104280 samples/s), **11.389% slower** than the 688.725684-s frozen reference.
+It therefore refutes the preregistered ±10% consistency hypothesis. It remains a
+single instrumented run and must not be used as a formal speedup result.
+
+Curated evidence:
+
+- `artifacts/manifests/routea_attempt005_002_result.json`
+- `artifacts/manifests/routea_attempt005_002_acceptance.json`
