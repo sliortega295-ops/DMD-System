@@ -18,4 +18,6 @@ def test_dry_run_writes_resolved_and_compiled_artifacts(tmp_path: Path, monkeypa
     assert (result.output_dir / "resolved_plan.json").is_file()
     assert (result.output_dir / "compiled_run.json").is_file()
     assert (result.output_dir / "resolved_helios_config.yaml").is_file()
-    assert result.command[1].endswith("train_helios.py")
+    assert result.command[0].endswith("accelerate")
+    assert "launch" in result.command
+    assert any(token.endswith("train_helios.py") for token in result.command)

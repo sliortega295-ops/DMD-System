@@ -87,7 +87,32 @@
       "DISTILLSCHEDULE_SKIP_VALIDATION": "1",
       "DISTILLSCHEDULE_SKIP_FINAL_SAVE": "1",
       "PYTHONPATH": "${ENV:HELIOS_RUNTIME_ROOT:-../../../}"
-    }
+    },
+    "command": [
+      "${ENV:DISTILLSCHEDULE_ACCELERATE:-accelerate}",
+      "launch",
+      "--num_machines",
+      "1",
+      "--num_processes",
+      "1",
+      "--mixed_precision",
+      "bf16",
+      "--use_deepspeed",
+      "--zero_stage",
+      "1",
+      "--offload_optimizer_device",
+      "cpu",
+      "--offload_param_device",
+      "none",
+      "--gradient_accumulation_steps",
+      "1",
+      "--gradient_clipping",
+      "1.0",
+      "--debug",
+      "{entrypoint}",
+      "--config",
+      "{config}"
+    ]
   },
   "metadata": {
     "migration_stage": "legacy_helios_entrypoint",

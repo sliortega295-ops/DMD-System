@@ -1,0 +1,24 @@
+{
+  "bounded_recovery": "replace only the wrapper command with single-process accelerate launch using ZeRO-1; no workload, trace, lifecycle, model, loss, or update changes",
+  "console_sha256": "a9647620fdf9adebb4b16f7b45596916f4c43c17048f548b29bd49e3d34852dd",
+  "evidence": {
+    "console": "artifacts/logs/baseline_revalidation_single_a100_20260808_001/console.log",
+    "post_events": "artifacts/logs/baseline_revalidation_single_a100_20260808_001/memory_events_after.txt",
+    "pre_events": "artifacts/logs/baseline_revalidation_single_a100_20260808_001/memory_events_before.txt",
+    "resource": "artifacts/logs/baseline_revalidation_single_a100_20260808_001/resource.tsv"
+  },
+  "failure_signature": "ValueError: Default process group has not been initialized at accelerator.wait_for_everyone",
+  "oom_delta": 0,
+  "return_code": 2,
+  "root_cause": "typed legacy invocation called python directly; validated Helios entrypoint requires accelerate launch even for one rank",
+  "run_id": "baseline_revalidation_single_a100_20260808_001",
+  "schema": "distillschedule.baseline_revalidation_result.v1",
+  "status": "FAILED_BEFORE_TRAINING_BOUNDED_WRAPPER_DEFECT",
+  "training_steps_completed": 0,
+  "wall": {
+    "end_unix": 1786162091.6233697,
+    "return_code": 2,
+    "start_unix": 1786161997.7312562,
+    "wall_seconds": 93.89211344718933
+  }
+}

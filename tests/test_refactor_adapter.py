@@ -25,6 +25,9 @@ def test_helios_adapter_maps_typed_lifecycle_to_legacy_environment() -> None:
     assert env["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_BLOCK_COUNT"] == "40"
     assert env["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_WINDOW"] == "1"
     assert env["DISTILLSCHEDULE_LOGICAL_START_STEP"] == "0"
+    assert invocation.command[0].endswith("accelerate")
+    assert invocation.command[1] == "launch"
+    assert "--use_deepspeed" in invocation.command
     assert invocation.command[-2] == "--config"
     assert invocation.command[-1].endswith("resolved_helios_config.yaml")
     assert len(invocation.generated_files) == 1
