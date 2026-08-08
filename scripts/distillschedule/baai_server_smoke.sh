@@ -30,6 +30,10 @@ for directory in "${TRACE}" "${CHECKPOINT}" "${DATA_ROOT}" "${GENERATOR_ROOT}" "
 mkdir -p "${OUT}"
 cleanup() { rm -rf "${OUT}" 2>/dev/null || true; }
 trap cleanup EXIT
+# Both hosts see the same project filesystem.  Keep every Python bytecode write
+# under this node-qualified scratch directory so concurrent smoke gates cannot
+# race while replacing a shared ``__pycache__`` entry.
+export PYTHONPYCACHEPREFIX="${OUT}/pycache"
 ACCEL_CONFIG="${OUT}/accelerate.yaml"
 cat >"${ACCEL_CONFIG}" <<EOF
 compute_environment: LOCAL_MACHINE
