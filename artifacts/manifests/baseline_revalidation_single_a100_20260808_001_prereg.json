@@ -1,0 +1,119 @@
+{
+  "authorized_hypothesis": "The organized typed Helios plan can replay the previously validated B4 lifecycle substrate for official 384x640 steps 10-14 without OOM or semantic/version failure.",
+  "claim_boundary": [
+    "Correctness/integration revalidation only; not a new optimization claim.",
+    "Uses corrected operation trace v2 and ZeRO-1; historical A-local 58.0576 s used an older frozen timing contract, so timing is diagnostic and not a direct regression denominator.",
+    "No reduced-resolution fallback, no branch/loss/update removal, no ZeRO-2 retry."
+  ],
+  "compiled": {
+    "command": [
+      "/tmp/distillschedule-helios-official-torch210/bin/python",
+      "/share/project/shuchenweng/yongyan_liu/DistillSchedule/train_helios.py",
+      "--config",
+      "/share/project/shuchenweng/yongyan_liu/DMD-System/artifacts/runs/baseline_revalidation_single_a100_20260808_001/resolved_helios_config.yaml"
+    ],
+    "config_sha256": "f7ba73518d392b1337efa04b8d5534fdda1cd7c105d7754862371d33139912ca",
+    "plan_digest": "ae8a97067628c1b94dc381c15ac55113dabcecfee9a8ab5a1960ff1007db773a",
+    "protocol": [
+      {
+        "kind": "full",
+        "step": 10
+      },
+      {
+        "kind": "critic_only",
+        "step": 11
+      },
+      {
+        "kind": "critic_only",
+        "step": 12
+      },
+      {
+        "kind": "critic_only",
+        "step": 13
+      },
+      {
+        "kind": "critic_only",
+        "step": 14
+      }
+    ]
+  },
+  "contracts": {
+    "backend": "single-rank ZeRO-1 with CPU optimizer offload",
+    "branches": {
+      "dmd": true,
+      "ema": true,
+      "gan": false,
+      "reward": false,
+      "vae_decode": false
+    },
+    "checkpoint": "/share/project/shuchenweng/yongyan_liu/DistillSchedule/artifacts/runs/iteration65_m0_b4fast_canonical_checkpoint10_001/checkpoint-10",
+    "dtype": "bf16",
+    "expected_final_versions": {
+      "critic": 15,
+      "ema": 15,
+      "generator": 3
+    },
+    "latent": [
+      1,
+      16,
+      9,
+      48,
+      80
+    ],
+    "lifecycle": {
+      "activation_offload_threshold_bytes": 33554432,
+      "frozen_blocks": {
+        "generator": 40,
+        "host_policy": "HOST_PRIVATE",
+        "pinned": false,
+        "score": 40,
+        "window": 1
+      },
+      "prefetch_distance": 0,
+      "split_modulation": true
+    },
+    "logical_steps": [
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "resolution": [
+      384,
+      640
+    ],
+    "source_frames": 81,
+    "trace": "/share/project/shuchenweng/DistillSchedule_assets/m0/traces/syn_feature_trace_v2_steps20"
+  },
+  "created_at": "2026-08-08T04:05:39.642126+00:00",
+  "decision": "GO",
+  "fail_closed": [
+    "any GPU/host OOM",
+    "non-finite loss",
+    "trace identity mismatch",
+    "wrong G/C/EMA version or update schedule",
+    "missing 40-block lifecycle coverage",
+    "nonzero return code"
+  ],
+  "gate": "new DMD-System typed-adapter real-14B integration validation",
+  "gpu": "CUDA_VISIBLE_DEVICES=0",
+  "node": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+  "prior_evidence": [
+    "old runtime artifacts/manifests/iteration_100_m0_a_local_freeze.json",
+    "old runtime artifacts/manifests/iteration_065_m0_b4fast_canonical_checkpoint10.json",
+    "known ZeRO-2 multi-rank double-reduction path is rejected; use validated ZeRO-1 substrate"
+  ],
+  "run_id": "baseline_revalidation_single_a100_20260808_001",
+  "schema": "distillschedule.baseline_revalidation_prereg.v1",
+  "source": {
+    "dmd_head": "a8ab8fbed38ef55b097a9decebcf21328d82f780",
+    "dmd_status": "",
+    "runtime_dirty_entries": 228,
+    "runtime_head": "d9490cf1256fc1165e10774a68978e0479c4ccb0",
+    "runtime_status_sha256": "e4e2424056c7cad0790c8d1c59d7fc0d7be43bef682b7aec1f39fc273e1d52ef",
+    "runtime_tracked_diff_sha256": "d234fbe57fa26201fa3b11949b5e104a0360d33e9df6d170aebc490c7d7c784b",
+    "runtime_untracked_inventory_sha256": "562742349ed8e2e513d4ef3cdd7259f463478b28c61420eca01faa442276030c"
+  },
+  "status": "PREREGISTERED_NOT_RUN"
+}
