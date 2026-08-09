@@ -64,3 +64,34 @@ No N2 performance or capacity result exists yet.
 4. Only if the anchor passes, freeze its measured block order and enter the
    preregistered coarse-to-linear search. A non-capacity failure stops the search;
    historical Route-A probes are never substituted.
+
+## Bounded execution result
+
+The fresh Attempt-002 anchor and probes `g32`, `g24`, `g16`, `g12`, `g8`, `g4`
+and `g2` all passed the fixed real-14B, official-384x640 isolated Step15-A
+capacity/correctness contract at source HEAD `1ac4f02`. Each completed run has
+16/16 rank results, exact trace/x0 identities and exactly one `G3 -> G4`
+Generator update while Student remains C11 and Teacher remains the official
+frozen base.
+
+The user stopped the search after `g4=[0,24,1,5]` had passed and selected it as
+the conservative downstream point. `g2=[0,24]` had already completed and was
+summarized PASS before the stop took effect, so it is retained as supplemental
+capacity evidence. `g1` was stopped before either launcher began, and `g0`,
+continuous transition/Full5 validation and formal timing remain **Not Run**.
+Consequently the exact minimum is **Not Claimable**.
+
+For the selected `g4` point, Generator peak allocated/reserved memory is
+34.906/36.010 GiB. Its Generator-rank-0 streaming profile records 56 block
+materializations, 36.653 GiB issued block bytes and 19.799 s summed H2D wall
+time, versus 560, 366.533 GiB and 362.814 s for all-40. These are diagnostic
+capacity counters, not formal end-to-end timing or cluster-wide PCIe intervals.
+
+One infrastructure failure was recovered without rerunning model work: default
+SSH chose an unresponsive IPv6 gateway path while postprocessing `g8`. Both
+preserved worker manifests had return code 0 and 16/16 rank outputs; forcing IPv4
+allowed hash-validated summarization. No new cgroup OOM occurred.
+
+See
+`artifacts/manifests/n2_target_g_offload_bounded_search_20260808_002_result.json`
+for the complete observations, hashes, raw-run pointers and Not-Run boundaries.
