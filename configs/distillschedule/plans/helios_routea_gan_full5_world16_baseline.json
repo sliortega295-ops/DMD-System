@@ -38,11 +38,20 @@
       "initial_versions": {
         "generator": 200,
         "critic": 1000,
-        "ema": 1000
+        "ema": 800
       },
+      "expected_final_versions": {
+        "generator": 201,
+        "critic": 1005,
+        "ema": 801
+      },
+      "ema_update_steps": [
+        1000
+      ],
+      "ema_schedule": "official post-ema_start_step DMD predicate: update iff TRAIN_GENERATOR; checkpoint-1000 optimization_step=800",
       "checkpointing_steps": 1005,
       "gan_start_step": 1000,
-      "official_schedule_reference": "PKU-YuanGroup/Helios@47219a0:stage_3_post_gan_version.yaml",
+      "official_schedule_reference": "PKU-YuanGroup/Helios@47219a0:stage_3_post_gan_version.yaml+train_helios.py",
       "timing_claim": "functional_baseline_first; repeated formal timing required before speedup denominator",
       "comparison_baseline_run_id": null,
       "diagnostic_consistency_relative_band": null,
