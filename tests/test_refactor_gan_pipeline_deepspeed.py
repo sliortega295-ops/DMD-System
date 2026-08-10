@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from runtime.gan_pipeline_deepspeed import backward_low_vram_gan_micro_wave
+from distillschedule.runtime.gan_pipeline_deepspeed import backward_low_vram_gan_micro_wave
 
 
 class FakeEngine:
