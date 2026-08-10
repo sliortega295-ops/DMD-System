@@ -32,6 +32,7 @@ def _set_plan_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         "HELIOS_RUNTIME_ROOT": tmp_path / "helios",
         "DISTILLSCHEDULE_PYTHON": tmp_path / "bin/python",
         "DISTILLSCHEDULE_ACCELERATE": tmp_path / "bin/accelerate",
+        "DISTILLSCHEDULE_ACCELERATE_CONFIG": tmp_path / "accelerate.yaml",
     }
     for name, value in values.items():
         monkeypatch.setenv(name, str(value))
