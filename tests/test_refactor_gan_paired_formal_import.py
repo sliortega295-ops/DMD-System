@@ -11,4 +11,4 @@ def test_gan_paired_formal_script_imports() -> None:
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    assert module.SCHEMA == "distillschedule.gan_paired_formal_timing.v1"
+    assert module.SCHEMA == "distillschedule.gan_paired_formal_timing.v2"
