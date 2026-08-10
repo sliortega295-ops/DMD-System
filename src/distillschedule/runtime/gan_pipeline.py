@@ -1,9 +1,9 @@
 """Version-safe world16 GAN pipeline contracts.
 
 The primary candidate keeps a persistent 8 Generator + 8 Score layout across
-an entire Helios GAN cycle.  Score ranks are a read-only DMD/GAN-G gradient
+an entire Helios GAN cycle. Score ranks are a read-only DMD/GAN-G gradient
 service on Generator-update steps and the trainable Critic/GAN-D service on
-every logical step.  Tensor movement may overlap, optimizer/version boundaries
+every logical step. Tensor movement may overlap, optimizer/version boundaries
 may not.
 """
 from __future__ import annotations
@@ -271,18 +271,31 @@ class GanPipelineQueueState:
 
 
 class GanPipelinePlanner:
-    """Compile exact optimizer/version order for the proposed 8G+8Score pipeline."""
+    """Compile official optimizer/version order for the proposed 8G+8Score pipeline."""
 
     def __init__(
         self,
         *,
         generator_update_every: int = 5,
+        ema_start_step: int = 750,
+        ema_bootstrap_before_start: bool = True,
+        ema_generator_only_after_start: bool = True,
         batch: GanPipelineBatchContract = GanPipelineBatchContract(),
     ) -> None:
         if generator_update_every != 5:
             raise ValueError("Helios GAN contract fixes dfake_gen_update_ratio=5")
+        if ema_start_step != 750:
+            raise ValueError("official GAN baseline fixes ema_start_step=750")
         self.generator_update_every = generator_update_every
+        self.ema_start_step = ema_start_step
+        self.ema_bootstrap_before_start = bool(ema_bootstrap_before_start)
+        self.ema_generator_only_after_start = bool(ema_generator_only_after_start)
         self.batch = batch
+
+    def _ema_update(self, step: int, generator_update: bool) -> bool:
+        if step < self.ema_start_step:
+            return self.ema_bootstrap_before_start
+        return generator_update if self.ema_generator_only_after_start else True
 
     def compile(
         self,
@@ -354,6 +367,8 @@ class GanPipelinePlanner:
                 )
                 current = after_g
 
+            # Official order is Generator commit first, then the same-step Critic
+            # rollout, so a Generator-update step consumes the newly committed G.
             for wave in range(self.batch.micro_waves_per_logical_step):
                 result.extend(
                     (
@@ -400,19 +415,20 @@ class GanPipelinePlanner:
                 )
             )
             current = after_c
-            after_ema = VersionState(current.generator, current.critic, current.ema + 1)
-            result.append(
-                PipelineOperation(
-                    logical_step=step,
-                    phase=GanPipelinePhase.EMA_COMMIT,
-                    versions_before=current,
-                    versions_after=after_ema,
-                    score_trainable=None,
-                    optimizer_commit="ema",
-                    overlap_lane="barrier",
+            if self._ema_update(step, train_generator):
+                after_ema = VersionState(current.generator, current.critic, current.ema + 1)
+                result.append(
+                    PipelineOperation(
+                        logical_step=step,
+                        phase=GanPipelinePhase.EMA_COMMIT,
+                        versions_before=current,
+                        versions_after=after_ema,
+                        score_trainable=None,
+                        optimizer_commit="ema",
+                        overlap_lane="barrier",
+                    )
                 )
-            )
-            current = after_ema
+                current = after_ema
         return tuple(result)
 
 
@@ -430,12 +446,26 @@ def summarize_operations(operations: Iterable[PipelineOperation]) -> dict[str, o
     }
 
 
-def expected_final_versions(*, start_step: int, steps: int, initial: VersionState) -> VersionState:
-    generator_updates = sum(step % 5 == 0 for step in range(start_step, start_step + steps))
+def expected_final_versions(
+    *,
+    start_step: int,
+    steps: int,
+    initial: VersionState,
+    generator_update_every: int = 5,
+    ema_start_step: int = 750,
+) -> VersionState:
+    generator_updates = 0
+    ema_updates = 0
+    for step in range(start_step, start_step + steps):
+        train_g = step % generator_update_every == 0
+        generator_updates += int(train_g)
+        # This helper represents the official DMD regime: bootstrap before 750,
+        # then EMA only on Generator-update steps.
+        ema_updates += int(step < ema_start_step or train_g)
     return VersionState(
         generator=initial.generator + generator_updates,
         critic=initial.critic + steps,
-        ema=initial.ema + steps,
+        ema=initial.ema + ema_updates,
     )
 
 
