@@ -5,8 +5,10 @@ from pathlib import Path
 
 import pytest
 
+from distillschedule.core.config import load_plan
 from distillschedule.core.contracts import ContractViolation
 from distillschedule.runtime.gan_baseline import (
+    EXPECTED_EMA_STEPS,
     EXPECTED_FINAL,
     EXPECTED_INITIAL,
     EXPECTED_STEPS,
@@ -16,6 +18,7 @@ from distillschedule.runtime.gan_baseline import (
     validate_rendered_gan_config,
 )
 from distillschedule.runtime.routea_evidence import object_digest
+from distillschedule.workloads.dmd.schedule import DMDUpdateSchedule
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAN = ROOT / "configs/distillschedule/plans/helios_routea_gan_full5_world16_baseline.json"
@@ -44,13 +47,34 @@ def test_gan_plan_is_full_offload_world16_and_uses_1000_1004(
     _set_plan_env(monkeypatch, tmp_path)
     result = validate_gan_plan(PLAN)
     assert result["expected_steps"] == list(EXPECTED_STEPS)
-    assert result["initial_versions"] == EXPECTED_INITIAL
-    assert result["final_versions"] == EXPECTED_FINAL
+    assert result["ema_update_steps"] == list(EXPECTED_EMA_STEPS)
+    assert result["initial_versions"] == EXPECTED_INITIAL == {
+        "generator": 200,
+        "critic": 1000,
+        "ema": 800,
+    }
+    assert result["final_versions"] == EXPECTED_FINAL == {
+        "generator": 201,
+        "critic": 1005,
+        "ema": 801,
+    }
+
+
+def test_typed_gan_schedule_matches_official_post_750_ema_predicate(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _set_plan_env(monkeypatch, tmp_path)
+    plan = load_plan(PLAN).plan
+    intents = DMDUpdateSchedule(plan.workload.schedule, plan.workload.branches).compile_range(1000, 5)
+    assert [item.logical_step for item in intents if item.generator_update] == [1000]
+    assert [item.logical_step for item in intents if item.critic_update] == list(EXPECTED_STEPS)
+    assert [item.logical_step for item in intents if item.ema_update] == [1000]
 
 
 def test_official_gan_frequency_cycle_is_source_faithful() -> None:
     schedule = expected_gan_schedule()["steps"]
     assert schedule["1000"]["train_generator"] is True
+    assert schedule["1000"]["ema_update"] is True
     assert "gan_G_loss" in schedule["1000"]["generator_path"]
     for step in EXPECTED_STEPS:
         item = schedule[str(step)]
@@ -59,6 +83,7 @@ def test_official_gan_frequency_cycle_is_source_faithful() -> None:
     for step in EXPECTED_STEPS[1:]:
         assert schedule[str(step)]["train_generator"] is False
         assert schedule[str(step)]["generator_path"] == []
+        assert schedule[str(step)]["ema_update"] is False
 
 
 def _minimal_rendered_config(checkpoint: Path) -> dict:
@@ -90,6 +115,7 @@ def _minimal_rendered_config(checkpoint: Path) -> dict:
             "gradient_accumulation_steps": 1,
             "mixed_precision": "bf16",
             "use_ema": True,
+            "ema_start_step": 750,
             "is_use_reward_model": False,
             "max_train_steps": 1005,
             "checkpointing_steps": 1005,

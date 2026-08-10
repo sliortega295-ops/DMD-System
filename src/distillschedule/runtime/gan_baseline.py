@@ -29,11 +29,15 @@ GAN_NODE_SCHEMA = "distillschedule.routea_gan_world16.node_contract.v1"
 OFFICIAL_HELIOS_REFERENCE_COMMIT = "47219a07860f158ce56a3b1d1ee2e012aab5c39b"
 OFFICIAL_GAN_CONFIG_SHA = "a98abf36df8b0179deefb5b1df2de028087822f6"
 EXPECTED_STEPS = (1000, 1001, 1002, 1003, 1004)
-EXPECTED_INITIAL = {"generator": 200, "critic": 1000, "ema": 1000}
-EXPECTED_FINAL = {"generator": 201, "critic": 1005, "ema": 1005}
+EXPECTED_EMA_STEPS = (1000,)
+EXPECTED_INITIAL = {"generator": 200, "critic": 1000, "ema": 800}
+EXPECTED_FINAL = {"generator": 201, "critic": 1005, "ema": 801}
 EXPECTED_TRAJECTORY = {
-    step: {"generator": 201, "critic": step + 1, "ema": step + 1}
-    for step in EXPECTED_STEPS
+    1000: {"generator": 201, "critic": 1001, "ema": 801},
+    1001: {"generator": 201, "critic": 1002, "ema": 801},
+    1002: {"generator": 201, "critic": 1003, "ema": 801},
+    1003: {"generator": 201, "critic": 1004, "ema": 801},
+    1004: {"generator": 201, "critic": 1005, "ema": 801},
 }
 
 OFFICIAL_GAN_FIELDS: Mapping[str, Any] = {
@@ -62,6 +66,7 @@ OFFICIAL_GAN_FIELDS: Mapping[str, Any] = {
     "training_config.gradient_accumulation_steps": 1,
     "training_config.mixed_precision": "bf16",
     "training_config.use_ema": True,
+    "training_config.ema_start_step": 750,
     "training_config.is_use_reward_model": False,
     "data_config.single_height": 384,
     "data_config.single_width": 640,
@@ -113,13 +118,17 @@ def expected_gan_schedule() -> dict[str, Any]:
                 "r1_r2_regularization",
                 "single_joint_critic_optimizer_step",
             ],
-            "ema_after_critic": True,
+            "ema_update": train_g,
+            "ema_after_critic": train_g,
         }
     return {
         "source": "official_helios_train_helios_and_utils_helios_post",
         "gan_start_step": 1000,
         "generator_update_every": 5,
         "critic_update_every": 1,
+        "ema_start_step": 750,
+        "ema_post_start_rule": "DMD mode updates EMA only when TRAIN_GENERATOR is true",
+        "ema_update_steps": list(EXPECTED_EMA_STEPS),
         "steps": per_step,
         "score_ownership": "GAN heads live on the Helios-Base Score backbone and share the Critic optimizer.",
         "low_vram_critic_rule": "denoising and GAN/R1/R2 backwards feed one Critic optimizer update",
@@ -140,6 +149,8 @@ def validate_official_gan_source(helios_root: str | Path) -> dict[str, Any]:
         "is_use_gan=USE_GAN",
         "critic_optimizer.step()",
         "gan_critic_trainable_params",
+        "or TRAIN_GENERATOR",
+        "ema_transformer.step(transformer.parameters())",
     )
     required_helper = (
         "class Gan_D_Loss_With_Cached_Grad",
@@ -181,6 +192,9 @@ def validate_gan_plan(plan_path: str | Path) -> dict[str, Any]:
         "workload.schedule.generator_update_every": 5,
         "workload.schedule.critic_update_every": 1,
         "workload.schedule.ema_update_every": 1,
+        "workload.schedule.ema_start_step": 750,
+        "workload.schedule.ema_bootstrap_before_start": True,
+        "workload.schedule.ema_generator_only_after_start": True,
         "workload.schedule.ema_after_critic": True,
         "workload.branches.dmd": True,
         "workload.branches.gan": True,
@@ -194,6 +208,12 @@ def validate_gan_plan(plan_path: str | Path) -> dict[str, Any]:
     initial = _lookup(raw, "evidence.metadata.initial_versions")
     if initial != EXPECTED_INITIAL:
         raise ContractViolation(f"initial versions={initial}, expected={EXPECTED_INITIAL}", path="evidence.metadata.initial_versions")
+    final = _lookup(raw, "evidence.metadata.expected_final_versions")
+    if final != EXPECTED_FINAL:
+        raise ContractViolation(f"final versions={final}, expected={EXPECTED_FINAL}", path="evidence.metadata.expected_final_versions")
+    ema_steps = _lookup(raw, "evidence.metadata.ema_update_steps")
+    if ema_steps != list(EXPECTED_EMA_STEPS):
+        raise ContractViolation(f"EMA steps={ema_steps}, expected={list(EXPECTED_EMA_STEPS)}", path="evidence.metadata.ema_update_steps")
     for component in ("generator", "score"):
         backend = _lookup(raw, f"training_backends.{component}")
         for key, expected in {
@@ -220,6 +240,7 @@ def validate_gan_plan(plan_path: str | Path) -> dict[str, Any]:
         "plan_digest": loaded.digest,
         "source_files": [str(path) for path in loaded.source_files],
         "expected_steps": list(EXPECTED_STEPS),
+        "ema_update_steps": list(EXPECTED_EMA_STEPS),
         "initial_versions": dict(EXPECTED_INITIAL),
         "final_versions": dict(EXPECTED_FINAL),
     }
@@ -415,7 +436,7 @@ def validate_final_contract(value: Mapping[str, Any]) -> None:
 
 
 __all__ = [
-    "EXPECTED_FINAL", "EXPECTED_INITIAL", "EXPECTED_STEPS", "EXPECTED_TRAJECTORY",
+    "EXPECTED_EMA_STEPS", "EXPECTED_FINAL", "EXPECTED_INITIAL", "EXPECTED_STEPS", "EXPECTED_TRAJECTORY",
     "GAN_NODE_SCHEMA", "GAN_SCHEMA", "atomic_json", "build_node_contract",
     "expected_gan_schedule", "finalize_node_contracts", "load_json_mapping",
     "sha256_file", "validate_common_rank_synchronized_trace", "validate_final_contract",

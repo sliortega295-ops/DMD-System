@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import collections
 import csv
 import json
 import os
@@ -12,6 +11,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from distillschedule.runtime.gan_baseline import (
+    EXPECTED_EMA_STEPS,
     EXPECTED_FINAL,
     EXPECTED_INITIAL,
     EXPECTED_STEPS,
@@ -55,16 +55,20 @@ def memory_events(text: str) -> dict[str, int]:
     tokens = text.replace(";", " ").split()
     out: dict[str, int] = {}
     for i in range(0, len(tokens) - 1, 2):
-        try: out[tokens[i]] = int(tokens[i + 1])
-        except ValueError: pass
+        try:
+            out[tokens[i]] = int(tokens[i + 1])
+        except ValueError:
+            pass
     return out
 
 
 def as_int(value: Any, default: int | None = None) -> int | None:
     if value is None or value in {"", "unavailable", "max"} or isinstance(value, bool):
         return default
-    try: return int(value)
-    except (TypeError, ValueError): return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def read_jsonl(path: Path) -> tuple[list[dict[str, Any]], bool]:
@@ -93,10 +97,12 @@ def event_value(event: Mapping[str, Any], *keys: str) -> Any:
         value = event.get(outer)
         if isinstance(value, Mapping):
             containers.append(value)
-            if isinstance(value.get("versions"), Mapping): containers.append(value["versions"])
+            if isinstance(value.get("versions"), Mapping):
+                containers.append(value["versions"])
     for key in keys:
         for container in containers:
-            if key in container: return container[key]
+            if key in container:
+                return container[key]
     return None
 
 
@@ -108,10 +114,11 @@ def version_of(event: Mapping[str, Any], component: str) -> int | None:
     aliases = {
         "generator": ("generator_version", "g_version", "generator"),
         "critic": ("critic_version", "c_version", "critic"),
-        "ema": ("ema_version", "ema"),
+        "ema": ("ema_version", "ema_optimization_step", "ema"),
     }[component]
     value = event_value(event, *aliases)
-    if isinstance(value, Mapping): value = value.get("version")
+    if isinstance(value, Mapping):
+        value = value.get("version", value.get("optimization_step"))
     return as_int(value)
 
 
@@ -122,12 +129,16 @@ def phase(events: Sequence[Mapping[str, Any]], *names: str) -> list[Mapping[str,
 
 def ema_applied(event: Mapping[str, Any]) -> bool | None:
     value = event_value(event, "ema_update_enabled", "ema_predicate", "predicate_result", "updated", "applied")
-    if isinstance(value, bool): return value
-    if isinstance(value, (int, float)): return bool(value)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
     if isinstance(value, str):
         lowered = value.lower().strip()
-        if lowered in {"1", "true", "enabled", "applied", "pass"}: return True
-        if lowered in {"0", "false", "disabled", "skipped", "fail"}: return False
+        if lowered in {"1", "true", "enabled", "applied", "pass"}:
+            return True
+        if lowered in {"0", "false", "disabled", "skipped", "fail"}:
+            return False
     return None
 
 
@@ -161,7 +172,7 @@ def validate_versions(events: Sequence[Mapping[str, Any]], rank: int) -> dict[st
     specs = {
         "generator": (("generator_optimizer_step",), [1000]),
         "critic": (("critic_optimizer_step",), list(EXPECTED_STEPS)),
-        "ema": (("ema_step", "ema_optimizer_step", "ema_update"), list(EXPECTED_STEPS)),
+        "ema": (("ema_step", "ema_optimizer_step", "ema_update"), list(EXPECTED_EMA_STEPS)),
     }
     observed: dict[str, Any] = {}
     for component, (names, expected_steps) in specs.items():
@@ -191,7 +202,13 @@ def validate_versions(events: Sequence[Mapping[str, Any]], rank: int) -> dict[st
             break
     if final != EXPECTED_FINAL:
         errors.append(f"final={final}, expected={EXPECTED_FINAL}")
-    return {"status": "OBSERVED_EXACT" if not errors else "MISMATCH", "errors": errors, "initial": initial, "updates": observed, "final": final}
+    return {
+        "status": "OBSERVED_EXACT" if not errors else "MISMATCH",
+        "errors": errors,
+        "initial": initial,
+        "updates": observed,
+        "final": final,
+    }
 
 
 def summarize_rank(path: Path, expected_trace: Mapping[str, Any]) -> dict[str, Any]:
@@ -202,16 +219,24 @@ def summarize_rank(path: Path, expected_trace: Mapping[str, Any]) -> dict[str, A
     ends = {step_of(e): float(event_value(e, "time_unix")) for e in events if e.get("phase") == "training_step_end" and step_of(e) is not None and event_value(e, "time_unix") is not None}
     if sorted(starts) != list(EXPECTED_STEPS) or sorted(ends) != list(EXPECTED_STEPS):
         errors.append(f"step coverage starts={sorted(starts)} ends={sorted(ends)}")
-    if partial: errors.append("incomplete final JSONL tail")
-    try: trace = validate_trace(events, expected_trace, rank)
-    except EvidenceError as exc: trace = {"status":"FAIL","error":str(exc)}; errors.append(str(exc))
-    versions = validate_versions(events, rank); errors.extend(versions["errors"])
+    if partial:
+        errors.append("incomplete final JSONL tail")
+    try:
+        trace = validate_trace(events, expected_trace, rank)
+    except EvidenceError as exc:
+        trace = {"status":"FAIL","error":str(exc)}
+        errors.append(str(exc))
+    versions = validate_versions(events, rank)
+    errors.extend(versions["errors"])
     activation = [as_int(event_value(e, "live_cpu_bytes"), -1) for e in phase(events, "activation_offload_final")]
     streamers = [as_int(event_value(e, "resident_bytes"), -1) for e in phase(events, "frozen_block_streamer_final")]
-    if activation != [0]: errors.append(f"activation final={activation}, expected=[0]")
-    if streamers != [0, 0]: errors.append(f"streamer final={streamers}, expected=[0,0]")
+    if activation != [0]:
+        errors.append(f"activation final={activation}, expected=[0]")
+    if streamers != [0, 0]:
+        errors.append(f"streamer final={streamers}, expected=[0,0]")
     complete = len(phase(events, "training_complete_skip_final_save", "training_complete")) == 1
-    if not complete: errors.append("training completion event count !=1")
+    if not complete:
+        errors.append("training completion event count !=1")
     return {
         "rank": rank,
         "status": "PASS" if not errors else "FAIL",
@@ -226,12 +251,15 @@ def summarize_rank(path: Path, expected_trace: Mapping[str, Any]) -> dict[str, A
 
 
 def resource_summary(path: Path) -> dict[str, Any]:
-    if not path.is_file(): return {"status":"MISSING","samples":0}
+    if not path.is_file():
+        return {"status":"MISSING","samples":0}
     rows = []
     with path.open(newline="") as handle:
         for row in csv.DictReader(handle):
-            try: rows.append((float(row["unix_time"]), int(row["cgroup_bytes"]), int(row["host_used_bytes"])))
-            except (KeyError, TypeError, ValueError): pass
+            try:
+                rows.append((float(row["unix_time"]), int(row["cgroup_bytes"]), int(row["host_used_bytes"])))
+            except (KeyError, TypeError, ValueError):
+                pass
     return {
         "status": "MEASURED" if rows else "EMPTY",
         "samples": len(rows),
@@ -282,7 +310,8 @@ def validate_topology(path: Path) -> dict[str, Any]:
     if (summary.get("world_size"), summary.get("nodes"), summary.get("local_world_size")) != (16, 2, 8):
         raise EvidenceError("topology dimensions mismatch")
     ranks = sorted(as_int(r.get("rank"), -1) for r in records if isinstance(r, Mapping))
-    if ranks != list(RANKS): raise EvidenceError(f"topology ranks={ranks}, expected0..15")
+    if ranks != list(RANKS):
+        raise EvidenceError(f"topology ranks={ranks}, expected0..15")
     return payload
 
 
@@ -290,8 +319,10 @@ def timing(ranks: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     starts, ends = {s:[] for s in EXPECTED_STEPS}, {s:[] for s in EXPECTED_STEPS}
     for rank in ranks:
         for step in EXPECTED_STEPS:
-            if rank["step_start_unix"].get(step) is not None: starts[step].append(float(rank["step_start_unix"][step]))
-            if rank["step_end_unix"].get(step) is not None: ends[step].append(float(rank["step_end_unix"][step]))
+            if rank["step_start_unix"].get(step) is not None:
+                starts[step].append(float(rank["step_start_unix"][step]))
+            if rank["step_end_unix"].get(step) is not None:
+                ends[step].append(float(rank["step_end_unix"][step]))
     if not all(len(starts[s]) == 16 and len(ends[s]) == 16 for s in EXPECTED_STEPS):
         return {"status":"NOT_CLAIMABLE","formal_speedup_claim":False}
     window = max(max(v) for v in ends.values()) - min(min(v) for v in starts.values())
@@ -311,19 +342,27 @@ def summarize(run_id: str, root: Path, output: Path | None = None) -> dict[str, 
     errors: list[str] = []
     if not contract_path.is_file():
         result = {"schema_version":"distillschedule.routea_gan_world16.result.v1","run_id":run_id,"status":"PARTIAL","errors":[f"missing {contract_path}"]}
-        atomic_json(destination, result); return result
+        atomic_json(destination, result)
+        return result
     try:
-        contract = load_json_mapping(contract_path); validate_final_contract(contract)
+        contract = load_json_mapping(contract_path)
+        validate_final_contract(contract)
     except Exception as exc:
-        contract = {}; errors.append(f"evidence contract invalid: {exc}")
+        contract = {}
+        errors.append(f"evidence contract invalid: {exc}")
     contract_sha = sha256_file(contract_path)
 
     nodes = []
     for rank in (0,1):
-        try: nodes.append(summarize_node(run, rank, contract_sha))
-        except Exception as exc: errors.append(str(exc))
-    try: topology = validate_topology(run / "preregistration/topology.json")
-    except Exception as exc: topology = None; errors.append(str(exc))
+        try:
+            nodes.append(summarize_node(run, rank, contract_sha))
+        except Exception as exc:
+            errors.append(str(exc))
+    try:
+        topology = validate_topology(run / "preregistration/topology.json")
+    except Exception as exc:
+        topology = None
+        errors.append(str(exc))
 
     expected_traces: dict[int, Mapping[str, Any]] = {}
     shared = contract.get("shared") if isinstance(contract, Mapping) else None
@@ -334,25 +373,38 @@ def summarize(run_id: str, root: Path, output: Path | None = None) -> dict[str, 
     ranks = []
     for path in rank_files:
         rank = int(path.stem.split("_")[-1])
-        if rank not in expected_traces: errors.append(f"rank{rank}: no preregistered trace"); continue
+        if rank not in expected_traces:
+            errors.append(f"rank{rank}: no preregistered trace")
+            continue
         try:
-            item = summarize_rank(path, expected_traces[rank]); ranks.append(item); errors.extend(item["errors"])
-        except Exception as exc: errors.append(str(exc))
+            item = summarize_rank(path, expected_traces[rank])
+            ranks.append(item)
+            errors.extend(item["errors"])
+        except Exception as exc:
+            errors.append(str(exc))
     observed = sorted(item["rank"] for item in ranks)
-    if observed != list(RANKS): errors.append(f"phase ranks={observed}, expected0..15")
+    if observed != list(RANKS):
+        errors.append(f"phase ranks={observed}, expected0..15")
 
     checkpoint = directory_inventory(run/"checkpoint-1005") if (run/"checkpoint-1005").is_dir() else None
-    if checkpoint is None or checkpoint.file_count == 0: errors.append("checkpoint-1005 missing/empty")
+    if checkpoint is None or checkpoint.file_count == 0:
+        errors.append("checkpoint-1005 missing/empty")
     source_schedule = shared.get("official_schedule") if isinstance(shared, Mapping) else None
-    if not isinstance(source_schedule, Mapping): errors.append("official GAN schedule binding missing")
+    if not isinstance(source_schedule, Mapping):
+        errors.append("official GAN schedule binding missing")
     memory_failure = any(node.get("memory_observation",{}).get("memory_failure") is True for node in nodes)
     nonzero = any(node.get("final_return_code") != 0 for node in nodes)
     exact = len(ranks)==16 and all(rank.get("status")=="PASS" for rank in ranks)
-    if memory_failure: status="OOM"
-    elif len(nodes)<2 or len(ranks)<16: status="PARTIAL"
-    elif nonzero: status="CRASH"
-    elif errors or not exact or topology is None: status="CONTRACT_FAIL"
-    else: status="PASS"
+    if memory_failure:
+        status="OOM"
+    elif len(nodes)<2 or len(ranks)<16:
+        status="PARTIAL"
+    elif nonzero:
+        status="CRASH"
+    elif errors or not exact or topology is None:
+        status="CONTRACT_FAIL"
+    else:
+        status="PASS"
 
     result = {
         "schema_version":"distillschedule.routea_gan_world16.result.v1",
@@ -366,7 +418,9 @@ def summarize(run_id: str, root: Path, output: Path | None = None) -> dict[str, 
             "gan_start_step":1000,
             "critic_optimizer_updates":5,
             "generator_optimizer_updates":1,
-            "ema_updates":5,
+            "ema_updates":len(EXPECTED_EMA_STEPS),
+            "ema_update_steps":list(EXPECTED_EMA_STEPS),
+            "ema_post_start_rule":"after ema_start_step=750 in DMD mode, update only on TRAIN_GENERATOR",
             "low_vram_joint_critic_backward_one_optimizer_step":True,
             "schedule_binding":source_schedule,
         },
@@ -392,10 +446,15 @@ def summarize(run_id: str, root: Path, output: Path | None = None) -> dict[str, 
 
 
 def main() -> int:
-    p=argparse.ArgumentParser(); p.add_argument("--run-id",required=True); p.add_argument("--root",type=Path,default=Path(__file__).resolve().parents[2]); p.add_argument("--output",type=Path)
-    a=p.parse_args(); result=summarize(a.run_id,a.root.expanduser().resolve(),a.output.expanduser().resolve() if a.output else None)
+    p=argparse.ArgumentParser()
+    p.add_argument("--run-id",required=True)
+    p.add_argument("--root",type=Path,default=Path(__file__).resolve().parents[2])
+    p.add_argument("--output",type=Path)
+    a=p.parse_args()
+    result=summarize(a.run_id,a.root.expanduser().resolve(),a.output.expanduser().resolve() if a.output else None)
     print(json.dumps({"status":result["status"],"run_id":result["run_id"],"rank_count":len(result.get("ranks",[])),"timing_status":result.get("timing",{}).get("status")},sort_keys=True))
     return 0 if result["status"]=="PASS" else 2
 
 
-if __name__ == "__main__": raise SystemExit(main())
+if __name__ == "__main__":
+    raise SystemExit(main())
