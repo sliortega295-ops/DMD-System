@@ -1,0 +1,59 @@
+{
+  "include": [
+    "helios_routea_full5_world16_typed.json"
+  ],
+  "schema_version": "1",
+  "id": "helios-routea-gan-full5-world16-baseline-v1",
+  "workload": {
+    "name": "helios-stage3-dmd-gan-full5-routea-world16",
+    "metadata": {
+      "execution_scope": "official_gan_active_full5_steps_1000_1004",
+      "external_rollout_compatible": false,
+      "data_roots": [
+        "${ENV:HELIOS_GAN_DATA_ROOT}"
+      ],
+      "official_gan_reference_commit": "47219a07860f158ce56a3b1d1ee2e012aab5c39b",
+      "official_gan_start_step": 1000,
+      "gan_schedule_owner": "pinned_helios_compatibility_entrypoint"
+    },
+    "branches": {
+      "dmd": true,
+      "gan": true,
+      "reward": false,
+      "vae_decode": false,
+      "ema": true,
+      "classifier_free_guidance": true
+    }
+  },
+  "evidence": {
+    "run_id": "${ENV:DISTILLSCHEDULE_RUN_ID:-routea_gan_world16_baseline}",
+    "output_dir": "${ENV:DISTILLSCHEDULE_OUTPUT_DIR}",
+    "start_step": 1000,
+    "steps": 5,
+    "instrumentation": "memory",
+    "semantic_assertions": true,
+    "operation_trace": "${ENV:DISTILLSCHEDULE_GAN_TRACE_BUNDLE}",
+    "checkpoint": "${ENV:DISTILLSCHEDULE_GAN_CHECKPOINT}",
+    "metadata": {
+      "initial_versions": {
+        "generator": 200,
+        "critic": 1000,
+        "ema": 1000
+      },
+      "checkpointing_steps": 1005,
+      "gan_start_step": 1000,
+      "official_schedule_reference": "PKU-YuanGroup/Helios@47219a0:stage_3_post_gan_version.yaml",
+      "timing_claim": "functional_baseline_first; repeated formal timing required before speedup denominator",
+      "comparison_baseline_run_id": null,
+      "diagnostic_consistency_relative_band": null
+    }
+  },
+  "metadata": {
+    "migration_stage": "typed_world16_gan_compatibility_baseline",
+    "contract_document": "docs/contracts/routea_gan_full5_world16.md",
+    "claim_boundary": "official Helios GAN math/schedule through pinned compatibility entrypoint; Route-A full-offload baseline only; no pipeline overlap"
+  },
+  "hardware": {
+    "reserve_gib": 0
+  }
+}
