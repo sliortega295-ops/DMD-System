@@ -7,7 +7,7 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from runtime.gan_pipeline import (
+from distillschedule.runtime.gan_pipeline import (
     GanPipelinePlanner,
     VersionState,
     expected_final_versions,
