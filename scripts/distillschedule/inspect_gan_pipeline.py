@@ -21,7 +21,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--steps", type=int, default=10)
     p.add_argument("--generator-version", type=int, default=200)
     p.add_argument("--critic-version", type=int, default=1000)
-    p.add_argument("--ema-version", type=int, default=1000)
+    p.add_argument("--ema-version", type=int, default=800)
     p.add_argument("--output", type=Path)
     return p
 
