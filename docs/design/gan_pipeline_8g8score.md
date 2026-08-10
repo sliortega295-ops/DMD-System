@@ -26,7 +26,7 @@ For each micro-wave:
 ```text
 G rank:
   differentiable official rollout -> x_fake with local autograd graph
-  send detach(x_fake) + trace identity to paired Score rank
+  send detach(x_fake) + trace/version identity to paired Score rank
 
 Score rank (read-only parameters):
   official compute_distribution_matching_loss(
@@ -43,6 +43,8 @@ G rank:
 After exactly two waves, perform **one** Generator optimizer/scheduler step. Score/Critic/GAN parameters are frozen during this service and their version must not change.
 
 The important consequence is that Score never has to move onto Generator GPUs. This removes the largest transition that a time-sharing GAN implementation would otherwise introduce.
+
+The branch now has a concrete bidirectional P2P wire contract for this boundary: request/reply headers bind run nonce, logical step, micro-wave, paired ranks, G/C versions, trace SHA and BF16 latent/gradient checksums. The transport refuses version/trace/checksum drift and requires all outstanding P2P work to be flushed at barriers.
 
 ## Same-step Critic phase
 
@@ -70,10 +72,22 @@ wave1 denoise backward
 wave1 GAN/R1/R2 backward
 -----------------------
 one Critic optimizer/scheduler commit
-one EMA commit
 ```
 
-The implementation must validate DeepSpeed loss normalization/GAS=2 on the target cluster before this is accepted as numerically matched.
+The DeepSpeed boundary helper for this four-backward/one-step rule is implemented. The remaining GPU gate is to prove on the target stack that GAS=2 loss normalization is numerically matched to the official world16 Route-A denominator.
+
+## EMA boundary
+
+The official GAN window is after `ema_start_step=750`. In DMD mode, Helios calls EMA only when `TRAIN_GENERATOR` is true. Therefore:
+
+```text
+checkpoint-1000: EMA optimization_step = 800
+step1000:         EMA 800 -> 801
+steps1001-1004:  no EMA update
+step1005:         next EMA update
+```
+
+So Critic-only steps do not need a Generator/EMA residency transition. EMA remains an after-Critic barrier only on Generator-update steps. This is both source-faithful and slightly simpler than the earlier provisional every-step EMA schedule.
 
 ## Critic-only steps
 
@@ -94,11 +108,13 @@ Before the next Generator-update step (`s+5`), the queue must be fully flushed s
 
 Compared with a dynamic `8G + 4FakeScore + 4RealScore -> 8G + 8Critic` layout, persistent 8G+8Score has three advantages:
 
-1. **No 14B redistribution at the 5-step boundary.** Only adapter/GAN-head grad mode changes.
-2. **The upstream DMD implementation can remain the Score-side math owner.** A single Score rank can execute the official Real/Fake Score mode switches and GAN-G cached-grad path instead of reimplementing those internals across two physical pools.
+1. **No 14B redistribution at the 5-step boundary.** Only Critic/GAN-head grad mode changes.
+2. **The upstream DMD implementation remains the Score-side math owner.** A Score rank can execute the official Real/Fake Score switches and GAN-G path instead of reimplementing those internals across two physical pools.
 3. **The matched global batch is clean.** Two waves × eight ranks × microbatch1 = 16 for both G and Score.
 
 A split 4+4 Score service can still be evaluated later if profiling shows the Generator-update score service dominates. It should be a separate placement experiment, not the first correctness target.
+
+A second performance optimization can also be tested after correctness: double-buffer the two Generator-update micro-waves so G wave1 forward overlaps Score wave0 gradient computation, and then G wave0 backward overlaps Score wave1 computation. This is not enabled by default because retaining two differentiable Generator wave lifetimes may raise A100-40GB activation pressure; it needs its own memory/parity gate.
 
 ## Hard correctness barriers
 
@@ -108,23 +124,26 @@ The pipeline is rejected if any of the following occurs:
 - Generator commit occurs before both score-gradient replies arrive;
 - same-step Critic rollout uses the pre-update Generator version;
 - Critic steps once per micro-wave instead of once per logical batch16;
-- EMA occurs before the Critic commit;
-- a Generator-update step starts with a non-empty rollout queue;
+- EMA occurs on post-750 Critic-only steps or before the same-step Critic commit;
+- a Generator-update step starts with a non-empty rollout queue or outstanding P2P work;
 - trace/RNG identity, batch16, GAN/R1/R2 settings, ZeRO-1, loss weights, or official update predicates differ from the matched GAN Route-A contract.
 
 ## Current implementation boundary
 
 Implemented in this branch:
 
-- `runtime/gan_pipeline.py`: topology, batch, queue, version and optimizer-boundary state machines;
-- `runtime/gan_pipeline_helios.py`: source-faithful Score-side latent-gradient boundary using upstream `compute_distribution_matching_loss`;
+- `src/distillschedule/runtime/gan_pipeline.py`: topology, batch, queue, version and optimizer/EMA barrier state machines;
+- `src/distillschedule/runtime/gan_pipeline_deepspeed.py`: two-wave/four-backward/one-Critic-step DeepSpeed boundary;
+- `runtime/gan_pipeline_helios.py`: source-faithful Score-side latent-gradient extraction using upstream `compute_distribution_matching_loss`;
+- `runtime/gan_pipeline_transport.py`: bidirectional Generator↔Score latent/gradient P2P transport contract;
 - `configs/distillschedule/pipelines/helios_gan_world16_8g8score.json`: frozen candidate contract;
-- refactor regression tests for the five-step and two-cycle version schedule.
+- `scripts/distillschedule/inspect_gan_pipeline.py`: exact schedule/version renderer;
+- focused refactor regressions for the five-step, two-cycle and DeepSpeed accumulation rules.
 
 Still required before a performance claim:
 
-- real world16 P2P latent/gradient transport;
-- a Critic GAN micro-wave worker that proves DeepSpeed GAS=2 produces one update after four low-VRAM backwards;
-- rank-qualified GAN trace fields for all crop/R1/random inputs;
-- continuous steps1000-1009 parity against matched sequential GAN Route-A;
-- at least three matched unprofiled timing pairs.
+- integrate the P2P primitives into real world16 Generator and Score model workers;
+- extend rank-qualified GAN trace coverage to every crop/R1/noise/random input consumed by the split boundary;
+- prove DeepSpeed GAS=2 loss normalization and G/C gradient parity against matched sequential GAN Route-A;
+- continuous steps1000–1009 parity, including both Generator boundaries;
+- at least three matched unprofiled Route-A vs pipeline timing pairs.
