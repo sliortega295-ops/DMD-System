@@ -1,6 +1,6 @@
 # Runbook: BAAI Route-A GAN-on baseline
 
-This runbook executes the frozen contract in [`../contracts/routea_gan_full5_world16.md`](../contracts/routea_gan_full5_world16.md). It is deliberately sequential/full-offload; do not add pipeline overlap while establishing the baseline.
+This runbook executes the frozen contract in [`../contracts/routea_gan_full5_world16.md`](../contracts/routea_gan_full5_world16.md). The default denominator remains sequential/full-offload. A separate capacity-search mode may vary only the frozen Generator/Score streaming set; it must not add pipeline overlap, prefetch, or change GAN math.
 
 ## 1. Prepare immutable GAN assets
 
@@ -78,3 +78,37 @@ artifacts/manifests/<run-id>_result.json
 `PASS` requires exact world16/trace/version/checkpoint/lifecycle/no-OOM evidence. A high cgroup peak without OOM is diagnostic only. The timing field from this first run is also diagnostic only.
 
 After one functional PASS, run at least three low-overhead independent repetitions from the same canonical checkpoint/trace contract before freezing the formal GAN Route-A performance denominator.
+
+## 5. Search the minimum frozen-block offload set
+
+After the GAN assets and default baseline path are valid, the minimum-block search can be launched with one command:
+
+```bash
+python scripts/distillschedule/run_gan_offload_search.py \
+  --hosts <node0>,<node1> \
+  --master-addr <node0-compute-network-ip> \
+  --master-port <unused-port> \
+  --search-id gan-minblock-001 \
+  --site-env /secure/path/baai_gan.env \
+  --repo-root "$PWD" \
+  --resume
+```
+
+The searched variable is deliberately simple and symmetric:
+
+```text
+k = streamed/offloaded frozen Transformer blocks per backbone
+Generator blocks = Score blocks = [40-k, ..., 39]
+```
+
+Everything else remains frozen: official steps1000–1004, DMD+GAN+EMA branches, GAN-G/GAN-D/R1/R2 order, one joint Critic update per step, ZeRO-1 CPU optimizer offload, MB1/GAS1/global-batch16, 384×640, checkpoint/trace, activation policy, prefetch=0 and no pipeline overlap.
+
+The driver first requires a fresh `k=40` PASS anchor under this GAN execution graph. It then tests `k=0`; when that is an actual capacity failure, it binary-searches the nested tail sets until it has adjacent fail/pass counts. Only strict `PASS` or actual CUDA/cgroup OOM may move a search bound. Infrastructure, evidence, trace, version or correctness failures abort the search instead of being interpreted as insufficient memory.
+
+The selected `k*` is run once more under a fresh immutable run ID. The final result is written under:
+
+```text
+artifacts/g_offload_search/gan-<search-id>/result.json
+```
+
+Important interpretation: `k*` is **per backbone**. The symmetric baseline therefore streams `2 × k*` Transformer blocks in total across Generator and Score. These search runs are capacity/correctness evidence only and never enter the formal timing table. An asymmetric Generator-vs-Score search, if later needed, is a separate experiment.
