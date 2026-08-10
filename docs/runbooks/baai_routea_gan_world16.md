@@ -61,11 +61,13 @@ The expected logical window is:
 
 ```text
 1000: Generator+DMD+GAN-G → G update → Critic+GAN-D/R1/R2 → one C update → EMA
-1001: Critic+GAN-D/R1/R2 → one C update → EMA
-1002: Critic+GAN-D/R1/R2 → one C update → EMA
-1003: Critic+GAN-D/R1/R2 → one C update → EMA
-1004: Critic+GAN-D/R1/R2 → one C update → EMA
+1001: Critic+GAN-D/R1/R2 → one C update → no EMA
+1002: Critic+GAN-D/R1/R2 → one C update → no EMA
+1003: Critic+GAN-D/R1/R2 → one C update → no EMA
+1004: Critic+GAN-D/R1/R2 → one C update → no EMA
 ```
+
+This follows the official post-`ema_start_step=750` DMD predicate: EMA is updated only when `TRAIN_GENERATOR` is true. A source-faithful `checkpoint-1000` therefore starts at EMA `optimization_step=800` and the five-step window ends at `801`.
 
 ## 4. Inspect the result
 
@@ -75,7 +77,7 @@ The curated result is written under:
 artifacts/manifests/<run-id>_result.json
 ```
 
-`PASS` requires exact world16/trace/version/checkpoint/lifecycle/no-OOM evidence. A high cgroup peak without OOM is diagnostic only. The timing field from this first run is also diagnostic only.
+`PASS` requires exact world16/trace/version/checkpoint/lifecycle/no-OOM evidence, including G200/C1000/EMA800 → G201/C1005/EMA801 and exactly one EMA event at step1000. A high cgroup peak without OOM is diagnostic only. The timing field from this first run is also diagnostic only.
 
 After one functional PASS, run at least three low-overhead independent repetitions from the same canonical checkpoint/trace contract before freezing the formal GAN Route-A performance denominator.
 
@@ -101,7 +103,7 @@ k = streamed/offloaded frozen Transformer blocks per backbone
 Generator blocks = Score blocks = [40-k, ..., 39]
 ```
 
-Everything else remains frozen: official steps1000–1004, DMD+GAN+EMA branches, GAN-G/GAN-D/R1/R2 order, one joint Critic update per step, ZeRO-1 CPU optimizer offload, MB1/GAS1/global-batch16, 384×640, checkpoint/trace, activation policy, prefetch=0 and no pipeline overlap.
+Everything else remains frozen: official steps1000–1004, DMD+GAN branches, the official one-update EMA predicate, GAN-G/GAN-D/R1/R2 order, one joint Critic update per step, ZeRO-1 CPU optimizer offload, MB1/GAS1/global-batch16, 384×640, checkpoint/trace, activation policy, prefetch=0 and no pipeline overlap.
 
 The driver first requires a fresh `k=40` PASS anchor under this GAN execution graph. It then tests `k=0`; when that is an actual capacity failure, it binary-searches the nested tail sets until it has adjacent fail/pass counts. Only strict `PASS` or actual CUDA/cgroup OOM may move a search bound. Infrastructure, evidence, trace, version or correctness failures abort the search instead of being interpreted as insufficient memory.
 
