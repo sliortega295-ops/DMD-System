@@ -14,7 +14,7 @@
       ],
       "official_gan_reference_commit": "47219a07860f158ce56a3b1d1ee2e012aab5c39b",
       "official_gan_start_step": 1000,
-      "gan_schedule_owner": "pinned_helios_compatibility_entrypoint"
+      "gan_schedule_owner": "pinned_helios_train_helios_via_diagnostics_only_compat_wrapper"
     },
     "schedule": {
       "generator_update_every": 5,
@@ -54,32 +54,35 @@
         "critic": 1005,
         "ema": 801
       },
-      "ema_update_steps": [
-        1000
-      ],
+      "ema_update_steps": [1000],
       "ema_schedule": "official post-ema_start_step DMD predicate: update iff TRAIN_GENERATOR; checkpoint-1000 optimization_step=800",
       "checkpointing_steps": 1005,
       "gan_start_step": 1000,
       "official_schedule_reference": "PKU-YuanGroup/Helios@47219a0:stage_3_post_gan_version.yaml+train_helios.py",
-      "timing_claim": "functional_baseline_first; repeated formal timing required before speedup denominator",
+      "timing_claim": "functional baseline first; formal timing requires exact stochastic/DiT fairness receipts and repeated unprofiled pairs",
+      "fairness_claim": "same seed is insufficient; formal comparison binds consumed operation-keyed random tensor identities and exact complete DiT forward counts for logical slots0-15",
       "comparison_baseline_run_id": null,
       "diagnostic_consistency_relative_band": null,
       "capacity_search_override": "only frozen block streaming count/indices/window may vary through the DISTILLSCHEDULE_GAN_* variables; search runs are capacity/correctness only"
     }
   },
   "legacy": {
+    "entrypoint": "../../../scripts/distillschedule/helios_gan_compat_entrypoint.py",
     "extra_env": {
+      "PYTHONPATH": "${ENV:DMD_SYSTEM_ROOT:-/share/project/shuchenweng/yongyan_liu/DMD-System}/src:${ENV:DMD_SYSTEM_ROOT:-/share/project/shuchenweng/yongyan_liu/DMD-System}:${ENV:HELIOS_RUNTIME_ROOT}",
       "DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_WINDOW": "${ENV:DISTILLSCHEDULE_GAN_STREAMING_WINDOW:-1}",
       "DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_COMPONENTS": "${ENV:DISTILLSCHEDULE_GAN_STREAMING_COMPONENTS:-generator,score}",
       "DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_BLOCK_COUNT": "${ENV:DISTILLSCHEDULE_GAN_STREAMED_BLOCK_COUNT:-40}",
       "DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_INDICES": "${ENV:DISTILLSCHEDULE_GAN_STREAMED_BLOCK_INDICES:-0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39}",
-      "DISTILLSCHEDULE_GAN_CAPACITY_SEARCH": "${ENV:DISTILLSCHEDULE_GAN_CAPACITY_SEARCH:-0}"
+      "DISTILLSCHEDULE_GAN_CAPACITY_SEARCH": "${ENV:DISTILLSCHEDULE_GAN_CAPACITY_SEARCH:-0}",
+      "DISTILLSCHEDULE_GAN_NSYS_EXACT_RANGE": "${ENV:DISTILLSCHEDULE_GAN_NSYS_EXACT_RANGE:-0}",
+      "DISTILLSCHEDULE_GAN_NSYS_RECEIPT_DIR": "${ENV:DISTILLSCHEDULE_GAN_NSYS_RECEIPT_DIR:-/tmp/distillschedule_gan_nsys_disabled}"
     }
   },
   "metadata": {
     "migration_stage": "typed_world16_gan_compatibility_baseline",
     "contract_document": "docs/contracts/routea_gan_full5_world16.md",
-    "claim_boundary": "official Helios GAN math/schedule through pinned compatibility entrypoint; defaults to Route-A full-offload/no-overlap; controlled minimum-block search may vary only the frozen streaming set and is never a formal timing run"
+    "claim_boundary": "official Helios GAN math/schedule through a diagnostics-only wrapper; formal timing requires stochastic/DiT receipt parity; capacity search is never a formal timing run"
   },
   "hardware": {
     "reserve_gib": 0
