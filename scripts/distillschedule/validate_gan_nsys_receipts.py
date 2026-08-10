@@ -22,12 +22,14 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--receipt-dir", required=True, type=Path)
     parser.add_argument("--world-size", type=int, default=16)
+    parser.add_argument("--local-world-size", type=int, default=8)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     try:
         result = validate_nsys_receipts(
             args.receipt_dir.expanduser().resolve(),
             expected_world_size=args.world_size,
+            expected_local_world_size=args.local_world_size,
         )
     except (OSError, ValueError, TypeError) as exc:
         result = {
