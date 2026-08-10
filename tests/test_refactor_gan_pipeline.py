@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from runtime.gan_pipeline import (
+from distillschedule.runtime.gan_pipeline import (
     CriticAccumulationState,
     GanPipelinePhase,
     GanPipelinePlanner,
