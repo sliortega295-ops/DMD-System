@@ -27,7 +27,7 @@ def test_world16_gan_pipeline_keeps_persistent_8g8score_layout() -> None:
 
 def test_step1000_commits_generator_before_same_step_critic_rollout() -> None:
     planner = GanPipelinePlanner()
-    initial = VersionState(generator=200, critic=1000, ema=1000)
+    initial = VersionState(generator=200, critic=1000, ema=800)
     operations = planner.compile(start_step=1000, steps=1, initial=initial)
     phases = [operation.phase for operation in operations]
     assert phases[0] is GanPipelinePhase.FLUSH
@@ -40,13 +40,16 @@ def test_step1000_commits_generator_before_same_step_critic_rollout() -> None:
 
     g_commit_index = phases.index(GanPipelinePhase.GENERATOR_COMMIT)
     first_critic_rollout = phases.index(GanPipelinePhase.CRITIC_ROLLOUT)
+    ema_index = phases.index(GanPipelinePhase.EMA_COMMIT)
+    critic_commit_index = phases.index(GanPipelinePhase.CRITIC_COMMIT)
     assert g_commit_index < first_critic_rollout
+    assert critic_commit_index < ema_index
     assert operations[first_critic_rollout].versions_before.generator == 201
     assert operations[first_critic_rollout].versions_before.critic == 1000
 
 
 def test_first_gan_active_full5_has_exact_official_versions() -> None:
-    initial = VersionState(generator=200, critic=1000, ema=1000)
+    initial = VersionState(generator=200, critic=1000, ema=800)
     operations = GanPipelinePlanner().compile(
         start_step=1000,
         steps=5,
@@ -55,14 +58,14 @@ def test_first_gan_active_full5_has_exact_official_versions() -> None:
     summary = summarize_operations(operations)
     assert summary["generator_commits"] == 1
     assert summary["critic_commits"] == 5
-    assert summary["ema_commits"] == 5
+    assert summary["ema_commits"] == 1
     expected = expected_final_versions(start_step=1000, steps=5, initial=initial)
-    assert expected == VersionState(generator=201, critic=1005, ema=1005)
+    assert expected == VersionState(generator=201, critic=1005, ema=801)
     assert operations[-1].versions_after == expected
 
 
 def test_two_full_cycles_flush_again_before_step1005_generator_update() -> None:
-    initial = VersionState(generator=200, critic=1000, ema=1000)
+    initial = VersionState(generator=200, critic=1000, ema=800)
     operations = GanPipelinePlanner().compile(
         start_step=1000,
         steps=10,
@@ -71,8 +74,16 @@ def test_two_full_cycles_flush_again_before_step1005_generator_update() -> None:
     step1005 = [operation for operation in operations if operation.logical_step == 1005]
     assert step1005[0].phase is GanPipelinePhase.FLUSH
     assert step1005[0].queue_must_be_empty is True
-    assert step1005[0].versions_before == VersionState(201, 1005, 1005)
-    assert operations[-1].versions_after == VersionState(202, 1010, 1010)
+    assert step1005[0].versions_before == VersionState(201, 1005, 801)
+    assert operations[-1].versions_after == VersionState(202, 1010, 802)
+    assert summarize_operations(operations)["ema_commits"] == 2
+
+
+def test_post_start_critic_only_steps_do_not_touch_ema() -> None:
+    initial = VersionState(generator=201, critic=1001, ema=801)
+    operations = GanPipelinePlanner().compile(start_step=1001, steps=4, initial=initial)
+    assert all(op.phase is not GanPipelinePhase.EMA_COMMIT for op in operations)
+    assert operations[-1].versions_after == VersionState(201, 1005, 801)
 
 
 def test_score_gradient_service_is_read_only_for_critic_state() -> None:
