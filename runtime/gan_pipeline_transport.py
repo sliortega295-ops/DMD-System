@@ -13,8 +13,8 @@ from .critic_pool_transport import PendingP2PSend, tensor_identity
 
 GAN_BOUNDARY_MAGIC = 0x47414E47524144  # "GANGRAD"
 GAN_BOUNDARY_SCHEMA = 1
-REQUEST_I64_COUNT = 25
-REPLY_I64_COUNT = 27
+REQUEST_I64_COUNT = 24
+REPLY_I64_COUNT = 26
 LATENT_SHAPE = (1, 16, 9, 48, 80)
 
 
@@ -66,7 +66,7 @@ class GanGradientRequestHeader:
             self.generator_version,
             self.critic_version,
             *LATENT_SHAPE,
-            1,  # BF16 dtype code
+            1,
             int(self.checksum_kind),
             *_digest_i64(self.trace_sha256),
             *_digest_i64(self.payload_checksum),
