@@ -4,7 +4,8 @@ Unlike Nsight diagnostics this recorder adds no barrier, CUDA event, CUDA
 synchronize, or profiler API call. Each rank records only two host timestamps:
 immediately before its first model compute at logical step1000 and immediately
 after its step1004 Critic optimizer commit. The global five-step window is
-``max(stop) - min(start)`` across world16.
+``max(stop) - min(start)`` across world16, so stragglers are included while
+post-step visualization/checkpoint/final-save work is excluded.
 """
 from __future__ import annotations
 import json,os,socket,time
@@ -24,7 +25,10 @@ class GanFull5TimingRange:
         enabled=os.environ.get("DISTILLSCHEDULE_GAN_EXACT_TIMING","1").strip().lower() in {"1","true","yes","on"}; rank=int(os.environ.get("RANK","-1")); path=None
         if enabled:
             root=os.environ.get("DISTILLSCHEDULE_GAN_TIMING_RECEIPT_DIR","").strip()
-            if not root:raise ValueError("DISTILLSCHEDULE_GAN_TIMING_RECEIPT_DIR is required for exact GAN timing")
+            if not root:
+                output=os.environ.get("DISTILLSCHEDULE_OUTPUT_DIR","").strip()
+                if output:root=str(Path(output)/"timing_receipts")
+            if not root:raise ValueError("DISTILLSCHEDULE_GAN_TIMING_RECEIPT_DIR or DISTILLSCHEDULE_OUTPUT_DIR is required for exact GAN timing")
             if rank<0:raise ValueError("RANK is required for exact GAN timing")
             path=Path(root)/f"rank_{rank:03d}.json"
         return cls(receipt_path=path,rank=rank,enabled=enabled)
