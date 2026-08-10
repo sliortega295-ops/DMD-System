@@ -1,0 +1,80 @@
+# Runbook: BAAI Route-A GAN-on baseline
+
+This runbook executes the frozen contract in [`../contracts/routea_gan_full5_world16.md`](../contracts/routea_gan_full5_world16.md). It is deliberately sequential/full-offload; do not add pipeline overlap while establishing the baseline.
+
+## 1. Prepare immutable GAN assets
+
+Before reserving GPUs, prepare one source-faithful GAN continuation state:
+
+- GAN Stage-3 data root;
+- canonical `checkpoint-1000` produced under the GAN-on continuation contract;
+- rank16 operation-trace bundle covering steps1000–1004 with the normal rank-synchronized DiT exit schedule.
+
+Do **not** reuse the No-GAN checkpoint-10/trace10–14 and do not change `gan_start_step` to make an old artifact fit.
+
+Copy the example site profile to an untracked path on both nodes and fill the GAN assets:
+
+```bash
+cp configs/distillschedule/server/baai_gan_2x8_a100.env.example /secure/path/baai_gan.env
+```
+
+Set and audit:
+
+```bash
+export HELIOS_GAN_DATA_ROOT=/path/to/gan/data
+export DISTILLSCHEDULE_GAN_TRACE_BUNDLE=/path/to/rank16/trace1000_1004
+export DISTILLSCHEDULE_GAN_CHECKPOINT=/path/to/checkpoint-1000
+export DISTILLSCHEDULE_EXPECTED_HELIOS_HEAD="$(git -C "$HELIOS_RUNTIME_ROOT" rev-parse HEAD)"
+export DISTILLSCHEDULE_EXPECTED_HELIOS_ENTRYPOINT_SHA256="$(sha256sum "$HELIOS_RUNTIME_ROOT/train_helios.py" | awk '{print $1}')"
+```
+
+The Helios checkout must be clean and must contain the official low-VRAM joint Critic-backward fix.
+
+## 2. Structural dry run
+
+From the controller node:
+
+```bash
+python scripts/distillschedule/run_routea_gan_world16.py \
+  --hosts <node0>,<node1> \
+  --run-id gan-routea-dryrun-001 \
+  --site-env /secure/path/baai_gan.env \
+  --dry-run
+```
+
+A dry run only freezes the controller identity and prints the two remote commands. It does not construct a model.
+
+## 3. Real functional baseline
+
+Use a fresh immutable run ID:
+
+```bash
+python scripts/distillschedule/run_routea_gan_world16.py \
+  --hosts <node0>,<node1> \
+  --run-id gan-routea-functional-001 \
+  --site-env /secure/path/baai_gan.env
+```
+
+Each host worker performs source/config/trace/checkpoint checks, builds a normalized two-node evidence contract, runs the world16 NCCL topology probe, and only then starts the official Helios training entrypoint.
+
+The expected logical window is:
+
+```text
+1000: Generator+DMD+GAN-G → G update → Critic+GAN-D/R1/R2 → one C update → EMA
+1001: Critic+GAN-D/R1/R2 → one C update → EMA
+1002: Critic+GAN-D/R1/R2 → one C update → EMA
+1003: Critic+GAN-D/R1/R2 → one C update → EMA
+1004: Critic+GAN-D/R1/R2 → one C update → EMA
+```
+
+## 4. Inspect the result
+
+The curated result is written under:
+
+```text
+artifacts/manifests/<run-id>_result.json
+```
+
+`PASS` requires exact world16/trace/version/checkpoint/lifecycle/no-OOM evidence. A high cgroup peak without OOM is diagnostic only. The timing field from this first run is also diagnostic only.
+
+After one functional PASS, run at least three low-overhead independent repetitions from the same canonical checkpoint/trace contract before freezing the formal GAN Route-A performance denominator.
