@@ -25,7 +25,7 @@
     "optimizer_updates_per_logical_step": {
       "generator": "1 iff step % 5 == 0",
       "critic": 1,
-      "ema": 1
+      "ema": "before step750 every step; at/after step750 iff Generator updates"
     }
   },
   "generator_update_step": {
@@ -51,11 +51,14 @@
       "GAN-D + R1/R2 backward"
     ],
     "logical_step_commit": "after both micro-waves, exactly one Critic optimizer/scheduler update",
-    "ema": "after Critic commit"
+    "ema": "after Critic commit only when official EMA predicate is true; for steps1000-1004 only step1000"
   },
   "gan_semantics": {
     "gan_start_step": 1000,
     "generator_update_every": 5,
+    "ema_start_step": 750,
+    "ema_generator_only_after_start": true,
+    "checkpoint_1000_ema_optimization_step": 800,
     "official_low_vram_cache_grad": true,
     "gan_heads_live_on_score_backbone": true,
     "r1_enabled": true,
