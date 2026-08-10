@@ -1,0 +1,90 @@
+# Frozen contract: Route-A GAN-on Full5 world16 baseline
+
+This contract defines the conservative **GAN-on baseline** used before any GAN pipeline work. The model math and update order remain owned by a pinned Helios `train_helios.py`; DMD-System only supplies the world16 launch, full-offload lifecycle, trace/checkpoint binding and evidence gates.
+
+## Why the window is 1000–1004
+
+The official Helios GAN training configuration keeps `gan_start_step=1000` and defines `TRAIN_GENERATOR = global_step % dfake_gen_update_ratio == 0` with `dfake_gen_update_ratio=5`. Therefore the first complete GAN-active frequency cycle is steps **1000, 1001, 1002, 1003, 1004**. The baseline must not rewrite `gan_start_step` merely to reuse an earlier checkpoint.
+
+A canonical GAN-on `checkpoint-1000` and a rank-qualified trace covering 1000–1004 are required. A No-GAN checkpoint/trace is a different contract and is not interchangeable.
+
+## Frozen workload
+
+| Field | Value |
+|---|---|
+| Hardware | 2 nodes × 8 A100-40GB; world16 |
+| Resolution | 384×640 |
+| Latent | `[B,16,9,48,80]`, micro-batch 1/rank |
+| Global batch | 16, GAS=1 |
+| Precision | BF16 |
+| Logical steps | 1000–1004 |
+| Branches | DMD + GAN + EMA on; Reward and DMD-VAE-decode off |
+| Generator frequency | every 5 steps |
+| Critic frequency | every step |
+| GAN activation | official `gan_start_step=1000` |
+| Initial versions | G200 / C1000 / EMA1000 |
+| Final versions | G201 / C1005 / EMA1005 |
+| Training backend | ZeRO-1 + CPU optimizer offload; no parameter offload fallback |
+| Pipeline overlap | none |
+| Prefetch | 0 |
+
+The G/C/EMA version numbering follows the checkpoint convention already used by the No-GAN Route-A contract: a `checkpoint-N` is the state before logical step `N` executes.
+
+## Official GAN schedule
+
+Step 1000 is the Generator-update step. The pinned Helios control flow is:
+
+```text
+Generator rollout
+→ DMD Generator loss
+→ GAN-G loss through the Score/GAN discriminator path
+→ Generator backward/update (G200→G201)
+→ Critic denoising loss + GAN-D real/fake + R1/R2
+→ one joint Critic optimizer update (C1000→C1001)
+→ EMA (EMA1000→EMA1001)
+```
+
+Steps 1001–1004 skip the Generator update but keep the official Critic/GAN-D path and EMA:
+
+```text
+Critic denoising loss + GAN-D real/fake + R1/R2
+→ one Critic optimizer update
+→ EMA
+```
+
+GAN is **not a third 14B backbone**. The discriminator heads live on the Helios-Base Score backbone. During the Generator GAN-G phase the official code freezes GAN-Critic trainables; it re-enables them before the Critic/GAN-D phase.
+
+In official GAN low-VRAM mode the denoising backward and GAN/R1/R2 backward are accumulated into **one** Critic optimizer update. DMD-System must not split this into two optimizer steps or reorder the losses.
+
+## Conservative offload baseline
+
+The baseline intentionally optimizes for feasibility and semantic clarity rather than speed:
+
+- all 40 frozen Generator blocks use host-shared immutable streaming, window 1;
+- all 40 frozen Score blocks use the same policy;
+- CPU optimizer offload is enabled for Generator and Score/Critic trainables;
+- Generator-selected saved activations use the existing 32-MiB offload threshold;
+- prefetch distance is zero and no G/C/GAN overlap is allowed;
+- VAE temporary residency follows the official GAN low-VRAM path for real-latent preparation and is returned to CPU afterward;
+- no minimum-offload search is used for this baseline.
+
+The public Helios GAN example uses its own DeepSpeed configuration. This systems baseline deliberately keeps the already validated Route-A **ZeRO-1 CPU-optimizer substrate**; the source-faithful requirement applies to model math, branch predicates, loss composition, optimizer-update count/order and EMA order. A known-bad ZeRO-2 fallback is not authorized.
+
+## Trace scope
+
+Formal baseline traces cover only the common production path: every rank must use the same frozen pyramid/denoising exit schedule for the same logical operation. Any rank-local DiT-step schedule is out of scope and fails preregistration.
+
+## Acceptance
+
+A run is accepted only when:
+
+1. both nodes normalize to the same GAN contract and pinned Helios source identity;
+2. world16 topology/NCCL passes before 14B construction;
+3. rendered config matches the official GAN fields including `gan_start_step=1000`, low-VRAM GAN mode, GAN weights/hooks and R1/R2 settings;
+4. all 16 ranks bind to the preregistered synchronized trace and execute steps1000–1004;
+5. observed versions are exactly G200/C1000/EMA1000 → G201/C1005/EMA1005 with 1 Generator, 5 Critic and 5 EMA updates;
+6. `checkpoint-1005` is non-empty;
+7. activation/streaming final live residency is zero;
+8. both workers return zero and no CUDA/cgroup OOM/OOM-kill is observed.
+
+The first accepted run is a functional/diagnostic baseline. Formal timing requires repeated low-overhead runs before it can serve as a speedup denominator for a future GAN pipeline.
