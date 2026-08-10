@@ -70,6 +70,7 @@
       "DISTILLSCHEDULE_GAN_NSYS_RECEIPT_DIR": "${ENV:DISTILLSCHEDULE_GAN_NSYS_RECEIPT_DIR:-/tmp/distillschedule_gan_nsys_disabled}"
     },
     "command": [
+      "bash",
       "${ENV:DMD_SYSTEM_ROOT:-/share/project/shuchenweng/yongyan_liu/DMD-System}/scripts/distillschedule/gan_launch_shim.sh",
       "${ENV:DISTILLSCHEDULE_ACCELERATE}",
       "launch",
