@@ -28,6 +28,51 @@
       "ema": "before step750 every step; at/after step750 iff Generator updates"
     }
   },
+  "fairness_contract": {
+    "comparison_window": [1000, 1001, 1002, 1003, 1004],
+    "principle": "same consumed stochastic tensors/control decisions, not merely the same RNG seed",
+    "logical_sample_mapping": {
+      "baseline": "logical_sample_slot == world16 rank",
+      "pipeline": "wave=slot//8, generator_rank=slot%8, score_rank=8+(slot%8)"
+    },
+    "dit_schedule": {
+      "scope": "global_rank0_broadcast_equivalent",
+      "rank_local_exception": "out_of_scope",
+      "required_identity": "per logical sample and rollout: identical 3-stage exits and therefore identical complete DiT forward counts"
+    },
+    "generator_update_step_required_consumed_roles": [
+      "source_primary",
+      "source_secondary",
+      "text_embedding",
+      "processed_generator_history",
+      "generator_rollout_entry_noise",
+      "generator_rollout_renoise_sequence",
+      "generator_block_noise_stage1",
+      "generator_block_noise_stage2",
+      "generator_dmd_timestep",
+      "generator_dmd_noise",
+      "generator_gan_g_noise",
+      "generator_gan_g_crop"
+    ],
+    "critic_step_required_consumed_roles": [
+      "source_primary",
+      "source_secondary",
+      "text_embedding",
+      "processed_critic_history",
+      "critic_rollout_entry_noise",
+      "critic_rollout_renoise_sequence",
+      "critic_block_noise_stage1",
+      "critic_block_noise_stage2",
+      "critic_timestep",
+      "critic_noise",
+      "gan_d_fake_crop",
+      "gan_d_real_crop",
+      "gan_d_r1_crop",
+      "r1_epsilon"
+    ],
+    "r2": "disabled because frozen official contract has r2_weight=0",
+    "formal_timing_gate": "baseline and pipeline must emit receipts that normalize to the same fairness_contract_digest"
+  },
   "generator_update_step": {
     "queue_policy": "flush before Generator-update",
     "score_parameter_state": "frozen/read-only",
@@ -72,5 +117,11 @@
     "prefetch": "off until correctness; add only after matched pipeline PASS",
     "memory_failure": "actual CUDA/cgroup OOM or memory-attributed nonzero exit"
   },
-  "claim_boundary": "prototype scheduling contract only until a real world16 execution proves tensor/loss/version/optimizer/EMA parity against the official GAN Route-A baseline"
+  "profiling_contract": {
+    "formal_speedup": "unprofiled paired wall clock only",
+    "nsight": "diagnostic only",
+    "nsight_exact_range": "cudaProfilerStart before first model compute at step1000; cudaProfilerStop after step1004 Critic commit",
+    "nsight_receipt_required": true
+  },
+  "claim_boundary": "prototype scheduling contract only until a real world16 execution proves exact consumed stochastic/DiT, tensor/loss/version/optimizer/EMA parity against the official GAN Route-A baseline"
 }
