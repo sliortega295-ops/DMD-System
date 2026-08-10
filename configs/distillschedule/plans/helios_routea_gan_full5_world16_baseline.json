@@ -16,6 +16,15 @@
       "official_gan_start_step": 1000,
       "gan_schedule_owner": "pinned_helios_compatibility_entrypoint"
     },
+    "schedule": {
+      "generator_update_every": 5,
+      "critic_update_every": 1,
+      "ema_update_every": 1,
+      "ema_start_step": 750,
+      "ema_bootstrap_before_start": true,
+      "ema_generator_only_after_start": true,
+      "ema_after_critic": true
+    },
     "branches": {
       "dmd": true,
       "gan": true,
