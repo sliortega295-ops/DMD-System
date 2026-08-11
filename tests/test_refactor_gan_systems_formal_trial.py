@@ -170,6 +170,48 @@ def test_prepare_result_path_creates_parent_but_preserves_immutability(
         raise AssertionError("existing formal result was accepted")
 
 
+def test_pipeline_failure_classifier_requires_explicit_capacity_evidence(
+    tmp_path: Path,
+) -> None:
+    launcher = tmp_path / "launcher"
+    results = tmp_path / "results"
+    launcher.mkdir()
+    results.mkdir()
+    (launcher / "node_0.log").write_text("NCCL watchdog timeout\n")
+    (launcher / "node_0.memory.events.before").write_text(
+        "oom 7\noom_kill 3\n"
+    )
+    (launcher / "node_0.memory.events.after").write_text(
+        "oom 7\noom_kill 3\n"
+    )
+    first = MODULE._classify_pipeline_failure_evidence(tmp_path)
+    assert first["actual_capacity_failure"] is False
+
+    (results / "rank_000.json").write_text(
+        json.dumps({"status": "FAIL", "error": "CUDA out of memory"})
+    )
+    second = MODULE._classify_pipeline_failure_evidence(tmp_path)
+    assert second["actual_capacity_failure"] is True
+    assert second["cuda_signatures"]["cuda_out_of_memory"] is True
+
+
+def test_pipeline_failure_classifier_accepts_positive_cgroup_delta(
+    tmp_path: Path,
+) -> None:
+    launcher = tmp_path / "launcher"
+    launcher.mkdir()
+    (launcher / "node_1.memory.events.before").write_text(
+        "oom 4\noom_kill 1\n"
+    )
+    (launcher / "node_1.memory.events.after").write_text(
+        "oom 5\noom_kill 2\n"
+    )
+    value = MODULE._classify_pipeline_failure_evidence(tmp_path)
+    assert value["actual_capacity_failure"] is True
+    assert value["cgroup"][1]["oom_delta"] == 1
+    assert value["cgroup"][1]["oom_kill_delta"] == 1
+
+
 def test_formal_wrapper_pins_baseline_execution_fix_head(tmp_path: Path) -> None:
     args = MODULE.parser().parse_args(
         [

@@ -162,6 +162,104 @@ def _rsync_from(host: str, source: str, destination: Path) -> None:
     )
 
 
+def _memory_events(path: Path) -> dict[str, int]:
+    if not path.is_file():
+        return {}
+    values: dict[str, int] = {}
+    for line in path.read_text(errors="replace").splitlines():
+        fields = line.split()
+        if len(fields) != 2:
+            continue
+        try:
+            values[fields[0]] = int(fields[1])
+        except ValueError:
+            continue
+    return values
+
+
+def _classify_pipeline_failure_evidence(root: Path) -> dict[str, Any]:
+    """Classify only observed capacity signatures; never infer OOM from rc/NCCL."""
+
+    text_parts: list[str] = []
+    for path in sorted((root / "launcher").glob("*.log")):
+        text_parts.append(path.read_text(errors="replace"))
+    for path in sorted((root / "results").glob("rank_*.json")):
+        text_parts.append(path.read_text(errors="replace"))
+    text = "\n".join(text_parts)
+    cuda_patterns = {
+        "torch_out_of_memory": r"(?:torch\.)?OutOfMemoryError",
+        "cuda_out_of_memory": r"CUDA out of memory",
+    }
+    cuda_matches = {
+        name: bool(re.search(pattern, text, flags=re.IGNORECASE))
+        for name, pattern in cuda_patterns.items()
+    }
+    cgroup: list[dict[str, Any]] = []
+    for node_rank in (0, 1):
+        before = _memory_events(
+            root / "launcher" / f"node_{node_rank}.memory.events.before"
+        )
+        after = _memory_events(
+            root / "launcher" / f"node_{node_rank}.memory.events.after"
+        )
+        cgroup.append(
+            {
+                "node_rank": node_rank,
+                "before": before,
+                "after": after,
+                "oom_delta": after.get("oom", 0) - before.get("oom", 0),
+                "oom_kill_delta": after.get("oom_kill", 0)
+                - before.get("oom_kill", 0),
+            }
+        )
+    cuda_oom = any(cuda_matches.values())
+    cgroup_oom = any(
+        row["oom_delta"] > 0 or row["oom_kill_delta"] > 0 for row in cgroup
+    )
+    return {
+        "schema_version": "distillschedule.gan_pipeline_failure_classification.v1",
+        "cuda_signatures": cuda_matches,
+        "cgroup": cgroup,
+        "actual_capacity_failure": bool(cuda_oom or cgroup_oom),
+        "classification_rule": (
+            "capacity only if an explicit CUDA OutOfMemory signature or positive "
+            "cgroup oom/oom_kill delta is observed; return code, NCCL, timeout, and "
+            "missing artifacts are not capacity evidence"
+        ),
+    }
+
+
+def _collect_pipeline_failure_evidence(
+    args: argparse.Namespace, *, run_root: Path, destination: Path
+) -> dict[str, Any]:
+    """Best-effort fetch of a failed immutable candidate's small evidence set."""
+
+    destination.mkdir(parents=True, exist_ok=False)
+    fetched: list[str] = []
+    errors: dict[str, str] = {}
+    for relative in ("launcher", "results", "block_streaming", "activation_offload"):
+        try:
+            _rsync_from(
+                args.hosts[0],
+                f"{run_root}/{relative}/",
+                destination / relative,
+            )
+            fetched.append(relative)
+        except BaseException as exc:
+            errors[relative] = repr(exc)
+    classification = _classify_pipeline_failure_evidence(destination)
+    report = {
+        "schema_version": "distillschedule.gan_pipeline_failure_evidence.v1",
+        "status": "COLLECTED" if fetched else "UNAVAILABLE",
+        "remote_run_root": str(run_root),
+        "fetched": fetched,
+        "collection_errors": errors,
+        "classification": classification,
+    }
+    _atomic_json(destination / "failure_evidence.json", report)
+    return report
+
+
 def _assert_remote_idle(hosts: Sequence[str]) -> None:
     audit = r'''set -euo pipefail
 test -x /usr/bin/nvidia-smi || command -v nvidia-smi >/dev/null
@@ -672,13 +770,14 @@ def main() -> int:
             "optimized role/phase residency requires --capacity-search until its gate passes"
         )
     run_log = args.result_path.parent / f"{args.family}_controller.log"
+    pipeline_launch_attempted = False
     try:
         _assert_remote_idle(args.hosts)
-        run_root = (
-            _baseline_launch(args, run_log)
-            if args.family == "baseline"
-            else _pipeline_launch(args, run_log)
-        )
+        if args.family == "baseline":
+            run_root = _baseline_launch(args, run_log)
+        else:
+            pipeline_launch_attempted = True
+            run_root = _pipeline_launch(args, run_log)
         summary = _remote_finalize(args, args.family, run_root)
         _assert_remote_idle(args.hosts)
         _fetch_and_write_result(
@@ -691,6 +790,21 @@ def main() -> int:
         print(json.dumps({"status": "PASS", "result": str(args.result_path)}, sort_keys=True))
         return 0
     except BaseException as exc:
+        failure_evidence = None
+        failure_evidence_error = None
+        remote_run_root = None
+        if args.family == "pipeline" and pipeline_launch_attempted:
+            remote_run_root = (
+                args.pipeline_remote_root / "artifacts" / "runs" / args.run_id
+            )
+            try:
+                failure_evidence = _collect_pipeline_failure_evidence(
+                    args,
+                    run_root=remote_run_root,
+                    destination=args.result_path.parent / "failure_evidence",
+                )
+            except BaseException as evidence_exc:
+                failure_evidence_error = repr(evidence_exc)
         failure = {
             "schema_version": "distillschedule.gan_systems_formal_trial.v1",
             "status": "FAIL",
@@ -698,6 +812,11 @@ def main() -> int:
             "family": args.family,
             "run_id": args.run_id,
             "error": repr(exc),
+            "remote_run_root": (
+                None if remote_run_root is None else str(remote_run_root)
+            ),
+            "failure_evidence": failure_evidence,
+            "failure_evidence_error": failure_evidence_error,
         }
         _atomic_json(args.result_path, failure)
         print(json.dumps(failure, sort_keys=True))

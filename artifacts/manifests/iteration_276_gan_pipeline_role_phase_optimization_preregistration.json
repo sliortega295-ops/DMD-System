@@ -141,10 +141,27 @@
   "decision": "GO_BOUNDED_CAPACITY_CORRECTNESS_GATE",
   "dmd_source_after_local_edit": {
     "scripts/distillschedule/build_gan_execution_receipts.py": "8c6a93256ffe4883b0e0648d6e3b35365fe9af5d6427f46a5f0314bfce1251ed",
-    "scripts/distillschedule/run_gan_systems_formal_trial.py": "97c6a1cf9848a81e546ba21abc8c74450307f0f69c6e7fe99da0851d0c350a98",
+    "scripts/distillschedule/run_gan_systems_formal_trial.py": "1a63cccc100b7d461f169e797f37c044fd9bbd1b4690c2416f8542c160fa400b",
     "src/distillschedule/runtime/gan_execution_receipts.py": "7cfb71c4f7420a0d9ca20b653ab0a69c54ba971decc94c838f3011159a993fef",
     "tests/test_refactor_gan_execution_receipts.py": "bee621e748d4d7d7df1b8f73c110ecabde481532fdd0827fd0a82650cbf63421",
-    "tests/test_refactor_gan_systems_formal_trial.py": "37fa6ce8d4e9ed7667aac95a40785b76f4dee56c5f24214881daa00989ab44f7"
+    "tests/test_refactor_gan_systems_formal_trial.py": "e2bbf6223b67389158d8d2edcdc13ae34306154425bd4ab7047ea30b4835f0b6"
+  },
+  "failure_evidence_contract": {
+    "capacity_only_if": "explicit CUDA OutOfMemory signature or positive cgroup oom/oom_kill delta",
+    "not_capacity": [
+      "nonzero return code",
+      "NCCL error",
+      "timeout",
+      "missing artifact",
+      "trace or code error"
+    ],
+    "preserve_on_failure": [
+      "launcher",
+      "rank results",
+      "block streaming",
+      "activation offload",
+      "cgroup deltas"
+    ]
   },
   "frozen_contract": {
     "gas": 2,
@@ -228,7 +245,7 @@
   },
   "status": "IMPLEMENTED_LOCAL_REMOTE_NOT_RUN",
   "validation": {
-    "focused_tests": "20 passed",
+    "focused_tests": "22 passed",
     "no_torch_refactor_tests": "119 passed",
     "real_14b": "NOT_RUN_REMOTE_SSH_TIMEOUT",
     "torch_cuda_tests": "NOT_RUN_LOCAL_NO_TORCH"
