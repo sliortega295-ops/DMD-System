@@ -1,0 +1,56 @@
+{
+  "authorized_hypothesis": "Under the frozen all40/window1/no-prefetch policy, Sequential world16 and persistent 8G+8Score execute identical logical GAN Full5 work; only placement and scheduling differ.",
+  "created_at": "2026-08-11T08:48:48.130391+00:00",
+  "current_gate": "Pipeline exact-timing gate PASS; baseline formal must fresh-rerun after actual-consumption launcher fix before paired timing.",
+  "falsifiable_next_question": "Does a fresh baseline run emit 16 actual-consumption logs and pass fairness, compute, and exact timing under the new frozen contract?",
+  "frozen_contract_digest": "e7bb6638e2d2d7356b93c90c0ac73a577f59cdeacf4f70a0c45b2cd29fac95a0",
+  "live_substrate": {
+    "assets": "present",
+    "cgroup_new_oom": 0,
+    "gpu_processes": "none after gate runs",
+    "tests": "35 PASS in frozen remote environment"
+  },
+  "matching_prior_evidence": [
+    "run008 actual-consumption receipts PASS",
+    "ZeRO-2 double-reduction bounded negative; keep ZeRO-1"
+  ],
+  "minimal_nonsemantic_fixes": [
+    "formal wrapper accepts repository run-id convention and creates result parent",
+    "remote baseline summarizer exports DMD-System and Helios runtime PYTHONPATH",
+    "baseline node launcher records actual operation-trace consumption under the immutable run root"
+  ],
+  "new_evidence": [
+    {
+      "compute": "PASS",
+      "fairness": "PASS",
+      "full5_seconds": 1014.788817054,
+      "oom_delta": 0,
+      "run": "gan_pipeline_formal_gate_20260811_003",
+      "status": "PASS",
+      "timing": "PASS",
+      "updates": "G1/C5/EMA1",
+      "world_size": 16
+    },
+    {
+      "new_oom": 0,
+      "reason": "formal launcher omitted actual-consumption access directory; no fairness receipt can be reconstructed",
+      "run": "gan_baseline_formal_gate_20260811_001",
+      "status": "FAIL correctness receipt / diagnostic timing only",
+      "training": "steps1000-1004 completed"
+    }
+  ],
+  "rejected_paths": [
+    "reuse run008 inputs without actual current-run consumption",
+    "promote baseline diagnostic timing",
+    "change GAN/DMD math or fixed memory policy",
+    "Nsight or minimum-offload before paired formal"
+  ],
+  "schema_version": "distillschedule.iteration_preflight.v2",
+  "source_identity": {
+    "baseline_math_ancestor": "0fe99e15233919e5cbcff03ea7d179c03f235b58",
+    "baseline_remote_head": "99aa0a31cd1fd5aebcb1d72bd721ece5fd09b683",
+    "pipeline_base_head": "03394bc6f58ef1001c759e993d06a32a3c23af3f",
+    "pipeline_probe_sha256": "fb846cbd6797eee7b8ad098902c6f57fce3878d790e77edd6bf1a65eb857c0f4"
+  },
+  "status": "GO"
+}

@@ -1,0 +1,97 @@
+from __future__ import annotations
+
+import importlib.util
+import json
+import re
+from pathlib import Path
+from types import SimpleNamespace
+
+
+SCRIPT = (
+    Path(__file__).resolve().parents[1]
+    / "scripts"
+    / "distillschedule"
+    / "run_gan_systems_formal_trial.py"
+)
+SPEC = importlib.util.spec_from_file_location("run_gan_systems_formal_trial", SCRIPT)
+assert SPEC is not None and SPEC.loader is not None
+MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(MODULE)
+
+
+def test_workload_digest_requires_explicit_sha256(tmp_path: Path) -> None:
+    contract = tmp_path / "contract.json"
+    contract.write_text(json.dumps({"workload_contract_digest": "a" * 64}))
+    assert MODULE._workload_digest(contract) == "a" * 64
+
+    contract.write_text(json.dumps({"workload_contract_digest": "short"}))
+    try:
+        MODULE._workload_digest(contract)
+    except RuntimeError as exc:
+        assert "lacks a SHA256" in str(exc)
+    else:
+        raise AssertionError("malformed workload digest was accepted")
+
+
+def test_pipeline_worker_freezes_exact_formal_and_gas2_contract(tmp_path: Path) -> None:
+    args = SimpleNamespace(
+        master_addr="10.0.0.1",
+        master_port=30001,
+        timeout_seconds=20000,
+        run_nonce=123,
+        pipeline_remote_root=Path("/remote/dmd"),
+        pipeline_runtime_root=Path("/remote/runtime"),
+        config=Path("/assets/config.yaml"),
+        target_package=Path("/assets/target"),
+        trace_bundle=Path("/assets/trace"),
+        generator_root=Path("/assets/generator"),
+        score_root=Path("/assets/score"),
+        negative_prompt=Path("/assets/negative.pt"),
+        pipeline_mmap=Path("/assets/mmap"),
+    )
+    script = MODULE._pipeline_worker_script(args, 1, tmp_path / "run")
+    assert "--nnodes=2" in script
+    assert "--nproc-per-node=8" in script
+    assert "--node-rank=1" in script
+    assert "DISTILLSCHEDULE_GAN_EXACT_TIMING=1" in script
+    assert "DISTILLSCHEDULE_GAN_NSYS_PROFILE=0" in script
+    assert "--detailed-events" in script
+    assert "distillschedule_gpu_node.lock" in script
+
+
+def test_formal_run_id_contract_accepts_artifact_convention() -> None:
+    pattern = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+    assert pattern.fullmatch("gan_pipeline_formal_gate_20260811_001")
+    assert pattern.fullmatch("pair0-baseline.001")
+    assert pattern.fullmatch("../escape") is None
+
+
+def test_prepare_result_path_creates_parent_but_preserves_immutability(
+    tmp_path: Path,
+) -> None:
+    result = tmp_path / "nested" / "result.json"
+    MODULE._prepare_result_path(result)
+    assert result.parent.is_dir()
+    result.write_text("{}")
+    try:
+        MODULE._prepare_result_path(result)
+    except RuntimeError as exc:
+        assert "immutable result already exists" in str(exc)
+    else:
+        raise AssertionError("existing formal result was accepted")
+
+
+def test_formal_wrapper_pins_baseline_execution_fix_head(tmp_path: Path) -> None:
+    args = MODULE.parser().parse_args(
+        [
+            "--family",
+            "baseline",
+            "--run-id",
+            "formal_001",
+            "--result-path",
+            str(tmp_path / "result.json"),
+            "--workload-contract",
+            str(tmp_path / "contract.json"),
+        ]
+    )
+    assert args.baseline_expected_head == "99aa0a31cd1fd5aebcb1d72bd721ece5fd09b683"

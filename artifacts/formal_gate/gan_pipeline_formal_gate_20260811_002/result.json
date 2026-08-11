@@ -1,0 +1,8 @@
+{
+  "claimable": false,
+  "error": "FileNotFoundError(2, 'No such file or directory')",
+  "family": "pipeline",
+  "run_id": "gan_pipeline_formal_gate_20260811_002",
+  "schema_version": "distillschedule.gan_systems_formal_trial.v1",
+  "status": "FAIL"
+}

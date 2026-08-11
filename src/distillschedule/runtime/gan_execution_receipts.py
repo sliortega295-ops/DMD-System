@@ -157,15 +157,30 @@ def _load_accesses(
     return grouped, file_counts
 
 
-def _allowed_rank_set(family: str, slot: int, key: str) -> set[int]:
+def _required_rank_set(family: str, slot: int, key: str) -> set[int]:
+    """Return the physical ranks that must consume one logical tensor.
+
+    The split executor deliberately replays source/conditioning tensors on
+    both role ranks.  Generator rollout randomness remains Generator-owned,
+    while DMD/GAN/Critic-loss randomness is Score-owned.  Requiring equality
+    (rather than merely accepting a subset) prevents a receipt from passing
+    when one side silently skipped a required replay lookup.
+    """
+
     if family == "baseline":
         return {slot}
     address = GanLogicalSampleAddress.for_slot(slot)
     generator_rank = address.pipeline_generator_rank
     score_rank = address.pipeline_score_rank
+    if key.startswith("sample/"):
+        return {generator_rank, score_rank}
     if "/generator/" in key:
         score_suffixes = ("dmd_timestep", "dmd_noise", "gan_g_noise", "gan_g_crop")
-        return {score_rank} if key.endswith(score_suffixes) else {generator_rank}
+        if key.endswith(score_suffixes):
+            return {score_rank}
+        if key.endswith(_HISTORY_SUFFIXES):
+            return {generator_rank, score_rank}
+        return {generator_rank}
     if "/critic/" in key:
         score_suffixes = (
             "critic_timestep",
@@ -175,10 +190,12 @@ def _allowed_rank_set(family: str, slot: int, key: str) -> set[int]:
             "gan_d_r1_crop",
             "r1_epsilon",
         )
-        return {score_rank} if key.endswith(score_suffixes) else {generator_rank}
-    # Source tensors can be consumed by either persistent role.  The role-level
-    # phase checks below still require every phase-specific tensor on its owner.
-    return {generator_rank, score_rank}
+        if key.endswith(score_suffixes):
+            return {score_rank}
+        if key.endswith(_HISTORY_SUFFIXES) or key.endswith("entry_noise"):
+            return {generator_rank, score_rank}
+        return {generator_rank}
+    raise ValueError(f"unclassified operation-trace tensor key: {key}")
 
 
 def _observed_hash(
@@ -192,12 +209,12 @@ def _observed_hash(
     rows = accesses.get((slot, key), [])
     if not rows:
         raise ValueError(f"required tensor was not actually consumed: slot={slot} key={key}")
-    allowed = _allowed_rank_set(family, slot, key)
+    required = _required_rank_set(family, slot, key)
     observed_ranks = {int(row["rank"]) for row in rows}
-    if not observed_ranks <= allowed:
+    if observed_ranks != required:
         raise ValueError(
-            f"tensor consumed by wrong physical rank slot={slot} key={key}: "
-            f"observed={sorted(observed_ranks)} allowed={sorted(allowed)}"
+            f"tensor physical-consumer set drift slot={slot} key={key}: "
+            f"observed={sorted(observed_ranks)} required={sorted(required)}"
         )
     descriptor = traces[slot]["tensors"][key]
     return str(descriptor["sha256"])
@@ -455,9 +472,24 @@ def _block_event_proof(
                 len(GENERATOR_UPDATE_STEPS) * 4 + len(FULL5_STEPS) * 2
             )
 
+    block_roots = [
+        candidate
+        for candidate in (
+            run_root / "block_streaming",
+            run_root / "results" / "block_streaming",
+        )
+        if candidate.is_dir()
+    ]
+    if len(block_roots) != 1:
+        raise ValueError(
+            "expected exactly one block-streaming evidence root, observed "
+            f"{[str(path) for path in block_roots]}"
+        )
+    block_root = block_roots[0]
+
     proof: dict[str, Any] = {}
     for (rank, component), expected in sorted(expected_by_rank.items()):
-        path = run_root / "block_streaming" / f"rank_{rank:03d}_{component}.jsonl"
+        path = block_root / f"rank_{rank:03d}_{component}.jsonl"
         if not path.is_file():
             raise ValueError(f"missing physical call evidence: {path}")
         rows = _load_jsonl(path)

@@ -1,0 +1,36 @@
+{
+  "claimable": true,
+  "diagnostic_only": false,
+  "global_training_window_seconds": 1014.788817054,
+  "logical_steps": [
+    1000,
+    1001,
+    1002,
+    1003,
+    1004
+  ],
+  "max_rank_elapsed_seconds": 1012.833590273,
+  "min_rank_elapsed_seconds": 939.73068867,
+  "profiled": false,
+  "rank_count": 16,
+  "receipts": [
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_formal_gate_20260811_003/timing_receipts/rank_000.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_formal_gate_20260811_003/timing_receipts/rank_001.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_formal_gate_20260811_003/timing_receipts/rank_002.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_formal_gate_20260811_003/timing_receipts/rank_003.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_formal_gate_20260811_003/timing_receipts/rank_004.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_formal_gate_20260811_003/timing_receipts/rank_005.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_formal_gate_20260811_003/timing_receipts/rank_006.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_formal_gate_20260811_003/timing_receipts/rank_007.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_formal_gate_20260811_003/timing_receipts/rank_008.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_formal_gate_20260811_003/timing_receipts/rank_009.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_formal_gate_20260811_003/timing_receipts/rank_010.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_formal_gate_20260811_003/timing_receipts/rank_011.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_formal_gate_20260811_003/timing_receipts/rank_012.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_formal_gate_20260811_003/timing_receipts/rank_013.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_formal_gate_20260811_003/timing_receipts/rank_014.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_formal_gate_20260811_003/timing_receipts/rank_015.json"
+  ],
+  "schema_version": "distillschedule.gan_full5_timing_bundle.v1",
+  "status": "PASS"
+}

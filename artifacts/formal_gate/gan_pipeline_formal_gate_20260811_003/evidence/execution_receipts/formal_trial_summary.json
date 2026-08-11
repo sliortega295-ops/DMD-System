@@ -1,0 +1,142 @@
+{
+  "batch_ok": true,
+  "ema_ok": true,
+  "ema_optimization_steps": {
+    "0": 801,
+    "1": 801,
+    "10": null,
+    "11": null,
+    "12": null,
+    "13": null,
+    "14": null,
+    "15": null,
+    "2": 801,
+    "3": 801,
+    "4": 801,
+    "5": 801,
+    "6": 801,
+    "7": 801,
+    "8": null,
+    "9": null
+  },
+  "family": "pipeline",
+  "lifecycle_ok": true,
+  "max_allocated_bytes": 33652875264,
+  "max_reserved_bytes": 36148609024,
+  "oom": [
+    {
+      "node": 0,
+      "oom_delta": 0,
+      "oom_kill_delta": 0
+    },
+    {
+      "node": 1,
+      "oom_delta": 0,
+      "oom_kill_delta": 0
+    }
+  ],
+  "rank_count": 16,
+  "rank_statuses": {
+    "0": "PASS",
+    "1": "PASS",
+    "10": "PASS",
+    "11": "PASS",
+    "12": "PASS",
+    "13": "PASS",
+    "14": "PASS",
+    "15": "PASS",
+    "2": "PASS",
+    "3": "PASS",
+    "4": "PASS",
+    "5": "PASS",
+    "6": "PASS",
+    "7": "PASS",
+    "8": "PASS",
+    "9": "PASS"
+  },
+  "records_ok": true,
+  "run_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_formal_gate_20260811_003",
+  "status": "PASS",
+  "updates": {
+    "0": {
+      "critic": 0,
+      "ema": 1,
+      "generator": 1
+    },
+    "1": {
+      "critic": 0,
+      "ema": 1,
+      "generator": 1
+    },
+    "10": {
+      "critic": 5,
+      "ema": 0,
+      "generator": 0
+    },
+    "11": {
+      "critic": 5,
+      "ema": 0,
+      "generator": 0
+    },
+    "12": {
+      "critic": 5,
+      "ema": 0,
+      "generator": 0
+    },
+    "13": {
+      "critic": 5,
+      "ema": 0,
+      "generator": 0
+    },
+    "14": {
+      "critic": 5,
+      "ema": 0,
+      "generator": 0
+    },
+    "15": {
+      "critic": 5,
+      "ema": 0,
+      "generator": 0
+    },
+    "2": {
+      "critic": 0,
+      "ema": 1,
+      "generator": 1
+    },
+    "3": {
+      "critic": 0,
+      "ema": 1,
+      "generator": 1
+    },
+    "4": {
+      "critic": 0,
+      "ema": 1,
+      "generator": 1
+    },
+    "5": {
+      "critic": 0,
+      "ema": 1,
+      "generator": 1
+    },
+    "6": {
+      "critic": 0,
+      "ema": 1,
+      "generator": 1
+    },
+    "7": {
+      "critic": 0,
+      "ema": 1,
+      "generator": 1
+    },
+    "8": {
+      "critic": 5,
+      "ema": 0,
+      "generator": 0
+    },
+    "9": {
+      "critic": 5,
+      "ema": 0,
+      "generator": 0
+    }
+  }
+}

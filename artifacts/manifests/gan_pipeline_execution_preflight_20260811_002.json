@@ -1,0 +1,78 @@
+{
+  "schema_version": "distillschedule.iteration_preflight.v2",
+  "created_at": "2026-08-11T03:15:00-04:00",
+  "status": "GO",
+  "current_gate": "PR4 sequential GAN Full5 actual-consumption fairness and compute inventory PASS; PR5 real executor is the next gate",
+  "authorized_hypothesis": "A persistent 8G+8Score executor can replay the exact PR4 systems-only GAN bootstrap and rank-qualified operation trace with role-local ZeRO-1/GAS2, all-40 frozen-block streaming, and the same Generator-selected activation-offload policy, changing only physical scheduling.",
+  "frozen_contracts": {
+    "logical_steps": [1000, 1001, 1002, 1003, 1004],
+    "resolution": [384, 640],
+    "world_size": 16,
+    "logical_global_batch": 16,
+    "pipeline_layout": "ranks0-7 Generator; ranks8-15 Score/Critic",
+    "micro_waves_per_logical_step": 2,
+    "role_dp_world_size": 8,
+    "micro_batch_per_role_rank": 1,
+    "gradient_accumulation_steps": 2,
+    "generator_commits": 1,
+    "critic_commits": 5,
+    "ema_commits": 1,
+    "deepspeed": "ZeRO-1 CPU optimizer offload; no parameter offload; gradient_clipping=1.0",
+    "bootstrap_hash": "c528dd62b72267570f42b61c36a0926da85e1e0176930efcf72649ef8da3776e",
+    "trace_bundle_hash": "d31d4d473a3574b5b39e50ad2b5e72e17aee7baf707130ea0513092553f7cd15",
+    "fixed_memory_policy": {
+      "generator_streamed_blocks": "0-39",
+      "score_streamed_blocks": "0-39",
+      "streaming_window": 1,
+      "host_policy": "HOST_SHARED_IMMUTABLE",
+      "prefetch": false,
+      "generator_selected_activation_offload": true,
+      "activation_offload_min_bytes": 33554432,
+      "score_activation_offload": false
+    }
+  },
+  "live_substrate": {
+    "dmd_system_head": "03394bc6f58ef1001c759e993d06a32a3c23af3f",
+    "helios_runtime_head": "70466dd9cffff0da88ab5f9e45423426c0eb7be5",
+    "dmd_system_tree": "clean",
+    "helios_runtime_tree": "clean",
+    "gpu_processes": "none on either node",
+    "cgroup_oom_current": 0,
+    "cgroup_oom_kill_historical": 1,
+    "assets": "systems bootstrap v2, rank16 trace v1, and GAN precast assets present on both nodes"
+  },
+  "matching_prior_evidence": [
+    "gan_seq_systems_functional_20260811_008: world16 steps1000-1004 functional PASS",
+    "run008 actual-consumption fairness: 80 entries and 2432 lookups PASS",
+    "run008 physical compute inventory: 80 entries PASS",
+    "run008 fixed memory policy: all40/window1/no-prefetch plus Generator-selected activation offload >=32MiB",
+    "ZeRO-2 double-reduction is a prior bounded negative; ZeRO-1 is the validated substrate"
+  ],
+  "rejected_or_superseded_paths": [
+    "ZeRO-2 retry",
+    "training to checkpoint-1000",
+    "same-seed-only fairness",
+    "using run008 diagnostic timing as a formal denominator",
+    "minimum-offload search before fixed-policy paired timing",
+    "Nsight before formal unprofiled timing",
+    "changing GAN/DMD math, global batch, update frequency, or official branch predicates"
+  ],
+  "new_falsifiable_question": "Can the real 8G+8Score executor complete the two-wave logical batch16 with exactly one G commit, five C commits, one EMA commit, and receipts identical to the frozen sequential workload before any timing claim?",
+  "allowed_changes": [
+    "one real pipeline executor and its thin launcher/wrapper",
+    "role-local world8 checkpoint retarget/import command wiring",
+    "minimal Score GAN model-construction extension",
+    "minimal precomputed Critic rollout input seam in the pinned Helios runtime",
+    "tests, validators, manifests, reports, and append-only research log",
+    "transport metadata only when required for exact semantics"
+  ],
+  "stop_conditions": [
+    "semantic contract drift",
+    "exact trace/fairness or compute inventory mismatch",
+    "more than one G commit or more/less than five C commits",
+    "EMA count differs from one",
+    "GAS2 or role-local DP8 batch contract mismatch",
+    "known ZeRO-2 failure path reintroduced",
+    "repair expands beyond a minimal execution blocker"
+  ]
+}

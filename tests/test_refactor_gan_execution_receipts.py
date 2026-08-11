@@ -224,3 +224,158 @@ def test_physical_call_shortcut_is_rejected(tmp_path: Path) -> None:
             trace_bundle=trace_root,
             expected_streamed_block_count=1,
         )
+
+
+def _convert_fixture_to_pipeline(run_root: Path, trace_root: Path) -> None:
+    access_root = run_root / "trace_access"
+    for path in access_root.glob("rank_*.jsonl"):
+        path.unlink()
+    handles = {
+        rank: (access_root / f"rank_{rank:03d}.jsonl").open("w")
+        for rank in range(16)
+    }
+    try:
+        for slot in range(16):
+            trace = json.loads((trace_root / f"rank{slot}" / "trace.json").read_text())
+            generator_rank = slot % 8
+            score_rank = 8 + generator_rank
+            for key, descriptor in trace["tensors"].items():
+                if key.startswith("sample/"):
+                    ranks = (generator_rank, score_rank)
+                elif "/generator/" in key:
+                    if key.endswith(("dmd_timestep", "dmd_noise", "gan_g_noise", "gan_g_crop")):
+                        ranks = (score_rank,)
+                    elif key.endswith(
+                        (
+                            "continuous_history",
+                            "history_short",
+                            "history_mid",
+                            "history_long",
+                            "indices_hidden_states",
+                            "indices_history_short",
+                            "indices_history_mid",
+                            "indices_history_long",
+                        )
+                    ):
+                        ranks = (generator_rank, score_rank)
+                    else:
+                        ranks = (generator_rank,)
+                elif "/critic/" in key:
+                    if key.endswith(
+                        (
+                            "critic_timestep",
+                            "critic_noise",
+                            "gan_d_fake_crop",
+                            "gan_d_real_crop",
+                            "gan_d_r1_crop",
+                            "r1_epsilon",
+                        )
+                    ):
+                        ranks = (score_rank,)
+                    elif key.endswith(
+                        (
+                            "continuous_history",
+                            "history_short",
+                            "history_mid",
+                            "history_long",
+                            "indices_hidden_states",
+                            "indices_history_short",
+                            "indices_history_mid",
+                            "indices_history_long",
+                            "entry_noise",
+                        )
+                    ):
+                        ranks = (generator_rank, score_rank)
+                    else:
+                        ranks = (generator_rank,)
+                else:
+                    raise AssertionError(key)
+                for rank in ranks:
+                    handles[rank].write(
+                        json.dumps(
+                            {
+                                "rank": rank,
+                                "key": key,
+                                "sha256": descriptor["sha256"],
+                                "trace_hash": trace["trace_hash"],
+                            }
+                        )
+                        + "\n"
+                    )
+    finally:
+        for handle in handles.values():
+            handle.close()
+
+    old = run_root / "block_streaming"
+    for path in old.glob("*.jsonl"):
+        path.unlink()
+    old.rmdir()
+    block_root = run_root / "results" / "block_streaming"
+    block_root.mkdir(parents=True)
+    for rank, component, calls in (
+        *((rank, "generator", 36) for rank in range(8)),
+        *((rank, "score", 28) for rank in range(8, 16)),
+    ):
+        rows = [{"event": "streamer_installed", "streamed_block_indices": [39]}]
+        for _ in range(calls):
+            rows.extend(
+                (
+                    {
+                        "event": "materialize_block",
+                        "block_index": 39,
+                        "generation": "EAGER_FORWARD",
+                    },
+                    {"event": "release_block", "block_index": 39},
+                )
+            )
+        (block_root / f"rank_{rank:03d}_{component}.jsonl").write_text(
+            "".join(json.dumps(row) + "\n" for row in rows)
+        )
+
+
+def test_pipeline_actual_consumption_and_nested_physical_receipts_pass(
+    tmp_path: Path,
+) -> None:
+    run_root, trace_root = _make_fixture(tmp_path, local_source_index=True)
+    _convert_fixture_to_pipeline(run_root, trace_root)
+    built = build_gan_execution_receipts(
+        family="pipeline",
+        run_root=run_root,
+        trace_bundle=trace_root,
+        expected_streamed_block_count=1,
+    )
+    assert built["provenance"]["status"] == "PASS"
+    assert (
+        built["provenance"]["physical_call_proof"]["rank_000_generator"][
+            "observed_logical_forwards_per_block"
+        ]
+        == 36
+    )
+    assert (
+        built["provenance"]["physical_call_proof"]["rank_008_score"][
+            "observed_logical_forwards_per_block"
+        ]
+        == 28
+    )
+
+
+def test_pipeline_missing_shared_history_consumer_fails(tmp_path: Path) -> None:
+    run_root, trace_root = _make_fixture(tmp_path, local_source_index=True)
+    _convert_fixture_to_pipeline(run_root, trace_root)
+    path = run_root / "trace_access" / "rank_008.jsonl"
+    rows = [
+        json.loads(line)
+        for line in path.read_text().splitlines()
+        if not (
+            json.loads(line)["trace_hash"] == _sha("trace-0")
+            and json.loads(line)["key"] == "step/1000/generator/continuous_history"
+        )
+    ]
+    path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    with pytest.raises(ValueError, match="physical-consumer set drift"):
+        build_gan_execution_receipts(
+            family="pipeline",
+            run_root=run_root,
+            trace_bundle=trace_root,
+            expected_streamed_block_count=1,
+        )
