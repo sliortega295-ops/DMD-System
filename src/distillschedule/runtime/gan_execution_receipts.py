@@ -420,9 +420,12 @@ def _block_event_proof(
     expected_by_rank: dict[tuple[int, str], int] = {}
     if family == "baseline":
         for rank in LOGICAL_SAMPLE_SLOTS:
-            expected_by_rank[(rank, "generator")] = sum(
-                _logical_calls(traces[rank], "generator" if step == 1000 else "critic", step)
-                for step in FULL5_STEPS
+            expected_by_rank[(rank, "generator")] = (
+                _logical_calls(traces[rank], "generator", 1000)
+                + sum(
+                    _logical_calls(traces[rank], "critic", step)
+                    for step in FULL5_STEPS
+                )
             )
             expected_by_rank[(rank, "score")] = len(GENERATOR_UPDATE_STEPS) * sum(
                 GENERATOR_FIXED_CALLS[key]
@@ -441,11 +444,12 @@ def _block_event_proof(
         for lane in range(8):
             slots = (lane, lane + 8)
             expected_by_rank[(lane, "generator")] = sum(
-                _logical_calls(
-                    traces[slot], "generator" if step == 1000 else "critic", step
+                _logical_calls(traces[slot], "generator", 1000)
+                + sum(
+                    _logical_calls(traces[slot], "critic", step)
+                    for step in FULL5_STEPS
                 )
                 for slot in slots
-                for step in FULL5_STEPS
             )
             expected_by_rank[(lane + 8, "score")] = len(slots) * (
                 len(GENERATOR_UPDATE_STEPS) * 4 + len(FULL5_STEPS) * 2

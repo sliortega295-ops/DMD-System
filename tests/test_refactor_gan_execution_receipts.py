@@ -128,7 +128,9 @@ def _make_fixture(
                     )
                     + "\n"
                 )
-        for component, calls in (("generator", 15), ("score", 14)):
+        # Generator GPUs execute one differentiable rollout at step1000 plus
+        # one Critic-data rollout at every step1000--1004: 3 + 5*3 = 18.
+        for component, calls in (("generator", 18), ("score", 14)):
             path = run_root / "block_streaming" / f"rank_{slot:03d}_{component}.jsonl"
             rows = [
                 {
@@ -174,7 +176,7 @@ def test_actual_consumption_and_physical_call_receipts_pass(tmp_path: Path) -> N
         built["provenance"]["physical_call_proof"]["rank_000_generator"][
             "observed_logical_forwards_per_block"
         ]
-        == 15
+        == 18
     )
 
 
