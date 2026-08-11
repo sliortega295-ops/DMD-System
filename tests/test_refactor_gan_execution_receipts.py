@@ -15,15 +15,16 @@ def _sha(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
 
-def _tensor_keys(slot: int) -> list[str]:
+def _tensor_keys(slot: int, *, local_source_index: bool = False) -> list[str]:
+    source_slot = 0 if local_source_index else slot
     source = [
-        f"sample/{slot}/primary/x0",
-        f"sample/{slot}/primary/history",
-        f"sample/{slot}/primary/target",
-        f"sample/{slot}/secondary/x0",
-        f"sample/{slot}/secondary/history",
-        f"sample/{slot}/secondary/target",
-        f"sample/{slot}/text_embedding",
+        f"sample/{source_slot}/primary/x0",
+        f"sample/{source_slot}/primary/history",
+        f"sample/{source_slot}/primary/target",
+        f"sample/{source_slot}/secondary/x0",
+        f"sample/{source_slot}/secondary/history",
+        f"sample/{source_slot}/secondary/target",
+        f"sample/{source_slot}/text_embedding",
     ]
     keys = list(source)
     history = (
@@ -86,7 +87,9 @@ def _rollout(key: str) -> dict:
     }
 
 
-def _make_fixture(tmp_path: Path) -> tuple[Path, Path]:
+def _make_fixture(
+    tmp_path: Path, *, local_source_index: bool = False
+) -> tuple[Path, Path]:
     trace_root = tmp_path / "trace"
     run_root = tmp_path / "run"
     (run_root / "trace_access").mkdir(parents=True)
@@ -96,7 +99,7 @@ def _make_fixture(tmp_path: Path) -> tuple[Path, Path]:
         trace_hash = _sha(f"trace-{slot}")
         rank_root = trace_root / f"rank{slot}"
         rank_root.mkdir(parents=True)
-        keys = _tensor_keys(slot)
+        keys = _tensor_keys(slot, local_source_index=local_source_index)
         operations = [_rollout("step/1000/generator/rollout")]
         operations.extend(
             _rollout(f"step/{step}/critic/rollout")
@@ -173,6 +176,18 @@ def test_actual_consumption_and_physical_call_receipts_pass(tmp_path: Path) -> N
         ]
         == 15
     )
+
+
+def test_rank_qualified_trace_may_use_local_sample_zero_keys(tmp_path: Path) -> None:
+    run_root, trace_root = _make_fixture(tmp_path, local_source_index=True)
+    built = build_gan_execution_receipts(
+        family="baseline",
+        run_root=run_root,
+        trace_bundle=trace_root,
+        expected_streamed_block_count=1,
+    )
+    assert built["provenance"]["status"] == "PASS"
+    assert len(built["fairness"]["entries"]) == 80
 
 
 def test_manifest_value_without_actual_history_consumption_fails(tmp_path: Path) -> None:

@@ -257,7 +257,22 @@ def _source_roles(
     accesses: Mapping[tuple[int, str], list[dict[str, Any]]],
     traces: Mapping[int, Mapping[str, Any]],
 ) -> dict[str, str]:
-    prefix = f"sample/{slot}"
+    # Each rank-qualified Helios trace stores its *local* batch item under a
+    # local sample index (currently ``sample/0``).  The logical global slot is
+    # already bound by the rank-qualified trace hash; it must not be reused as
+    # a tensor-key index.  Accept either local or globally numbered trace
+    # bundles, but require one unambiguous source prefix per logical slot.
+    source_prefixes = {
+        "/".join(str(key).split("/")[:2])
+        for key in traces[slot]["tensors"]
+        if str(key).startswith("sample/") and len(str(key).split("/")) >= 3
+    }
+    if len(source_prefixes) != 1:
+        raise ValueError(
+            f"logical slot {slot} has ambiguous source prefixes: "
+            f"{sorted(source_prefixes)}"
+        )
+    prefix = next(iter(source_prefixes))
     return {
         "source_primary": _packed_hash(
             family=family,
