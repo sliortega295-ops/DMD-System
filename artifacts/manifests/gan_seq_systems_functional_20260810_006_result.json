@@ -1,0 +1,40 @@
+{
+  "schema_version": "distillschedule.gan_world16.functional_failure.v1",
+  "run_id": "gan_seq_systems_functional_20260810_006",
+  "status": "FAILED_AT_CRITIC_ROLLOUT_STALE_GENERATOR_PLACEMENT",
+  "classification": "functional_correctness_run_not_formal_timing",
+  "workload": {
+    "world_size": 16,
+    "shape": "384x640",
+    "logical_steps": [1000, 1001, 1002, 1003, 1004],
+    "systems_only_bootstrap": "systems_only_gan_bootstrap_v2",
+    "bootstrap_artifact_hash": "c528dd62b72267570f42b61c36a0926da85e1e0176930efcf72649ef8da3776e"
+  },
+  "observed_progress": {
+    "rank_phase_trace_count": 16,
+    "generator_optimizer_step_1000_rank_receipts": 16,
+    "critic_optimizer_step_1000_rank_receipts": 16,
+    "ema_step_1000_rank_receipts": 16,
+    "critic_optimizer_step_1001_rank_receipts": 16,
+    "ema_skipped_1001_rank_receipts": 16,
+    "training_step_end_rank_receipts": {
+      "1000": 16,
+      "1001": 16
+    }
+  },
+  "failure_signature": "RuntimeError: Input type (CUDABFloat16Type) and weight type (CPUBFloat16Type) should be the same",
+  "failure_location": "step1002 Critic rollout, Generator patch_embedding Conv3d",
+  "root_cause": "After GAN-active step1001, Score remained GPU-resident because EMA was correctly skipped above ema_start_step. The wave-swap Critic entry assumed Generator was already resident, so the next rollout consumed CUDA latents with Generator non-streamed state still on CPU. Earlier pre-EMA workloads masked this missing transition because EMA swapped Generator back after every step.",
+  "matching_prior_failure": "none found; this control-flow edge is specific to GAN-active Critic-only steps above ema_start_step",
+  "capacity_failure": false,
+  "cgroup_oom_delta": [0, 0],
+  "peak_cgroup_bytes": [600195186688, 601306611712],
+  "peak_gpu_used_mib": [38276, 38276],
+  "training_math_changed_by_fix": false,
+  "validated_repair": "Before Critic rollout, inspect only non-streamed model parameters; if Generator compute state is not on the target device, perform the existing Score-to-Generator wave swap. Streamed frozen blocks remain intentionally CPU-backed and are excluded from the predicate.",
+  "runtime_fix_commit": "a2b25e6200ec9e37ac45119fa9718b8b3b7312bc",
+  "runtime_tests": "316 passed",
+  "formal_performance_claim": "Not Run",
+  "pipeline": "Not Run",
+  "evidence_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_seq_systems_functional_20260810_006"
+}
