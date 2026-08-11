@@ -23,6 +23,7 @@ control executes GAN-active steps 1000--1004.
 | `...005` | FAIL | semantic observer began after official GAN low-VRAM backward/commit | No |
 | `...006` | FAIL | step1002 Generator patch embedding remained on CPU after skipped EMA | No |
 | `...007` | **PASS** | none; all steps 1000--1004 and checkpoint-1005 complete | No |
+| `...008` | **PASS** | none; complete actual-consumption and physical-call receipts | No |
 
 Run007 observed exactly one Generator update, five Critic updates and one EMA
 update on every rank. Final observed versions were G201/C1005/EMA801. Both
@@ -41,8 +42,20 @@ it does not derive versions from the schedule or change training math.
 
 ## Current gate
 
-Sequential world16 functional execution: **PASS**.
+Sequential world16 functional execution: **PASS**.  Run008 additionally closes
+the actual-consumption fairness and compute-inventory gate: 16 rank-qualified
+access logs contain 2,432 observed tensor lookups; the normalized fairness and
+compute receipts each contain all 80 logical sample-step entries.  Their
+contract digests are respectively
+`b7104c0729f44d28963dff90fca6d51b293798d9dc0ba718b1d3af7d6985de66`
+and `482dfd6cc0b27747adb0ef835cfea187dd6c7769d847e443853b46ab06d2af34`.
+Independent block events reconcile 31 logical Generator-backbone forwards and
+14 logical Score-backbone forwards per rank, with checkpoint recomputation
+reported separately (3 and 11 respectively) and balanced releases.
 
-Still **Not Run**: baseline actual-consumption fairness receipt, compute
-inventory receipt, low-overhead formal baseline timing, real persistent
+Run008's exact-range receipt is structurally valid (609.593 s), but it remains
+diagnostic because the run enabled correctness and detailed lifecycle
+instrumentation.  It is not the low-overhead formal denominator.
+
+Still **Not Run**: low-overhead formal baseline timing, real persistent
 8G+8Score pipeline, paired trials, Nsight, and minimum-offload search.
