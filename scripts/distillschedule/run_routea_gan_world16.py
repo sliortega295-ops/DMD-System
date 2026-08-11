@@ -164,16 +164,16 @@ def run_summary(args: argparse.Namespace, *, root: Path, remote_root: Path, outp
         f"--run-id {shlex.quote(args.run_id)} --root {shlex.quote(str(remote_root))} --output {shlex.quote(str(remote_output))}"
     )
     rc = subprocess.run(remote(args.ssh, args.hosts[0], command), check=False).returncode
-    if rc != 0: return rc
     fetched = subprocess.run(
         remote(args.ssh, args.hosts[0], f"cat {shlex.quote(str(remote_output))}"),
         check=False, capture_output=True, text=True, timeout=90,
     )
-    if fetched.returncode != 0: return int(fetched.returncode)
+    if fetched.returncode != 0:
+        return rc if rc != 0 else int(fetched.returncode)
     value = json.loads(fetched.stdout)
     if not isinstance(value, Mapping): return 2
     atomic_json(output, value)
-    return 0
+    return rc
 
 
 def main(argv: list[str] | None = None) -> int:

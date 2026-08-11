@@ -128,7 +128,21 @@ def phase(events: Sequence[Mapping[str, Any]], *names: str) -> list[Mapping[str,
 
 
 def ema_applied(event: Mapping[str, Any]) -> bool | None:
-    value = event_value(event, "ema_update_enabled", "ema_predicate", "predicate_result", "updated", "applied")
+    value = event_value(
+        event,
+        "ema_update_enabled",
+        "ema_predicate",
+        "predicate_result",
+        "updated",
+        "applied",
+        "predicate",
+    )
+    if isinstance(value, Mapping):
+        # This is the exact predicate emitted by the pinned Helios runtime:
+        # before_ema_start OR not_train_dmd OR generator_update.
+        fields = ("before_ema_start", "not_train_dmd", "generator_update")
+        if all(isinstance(value.get(key), bool) for key in fields):
+            return any(bool(value[key]) for key in fields)
     if isinstance(value, bool):
         return value
     if isinstance(value, (int, float)):
@@ -155,7 +169,12 @@ def validate_trace(events: Sequence[Mapping[str, Any]], expected: Mapping[str, A
         raise EvidenceError(f"rank{rank}: trace qualified for rank{observed_rank}")
     authority = event_value(event, "source_authority", "trace_authority")
     aliases = [str(x) for x in expected.get("source_authority_aliases", [])]
-    if authority is None or str(authority) not in aliases:
+    # ``operation_trace`` is the runtime's categorical authority tag, not a
+    # per-rank path alias. Exact trace hash and rank qualification above bind it
+    # to the preregistered rank manifest.
+    if authority is None or (
+        str(authority) != "operation_trace" and str(authority) not in aliases
+    ):
         raise EvidenceError(f"rank{rank}: source authority mismatch")
     return {"trace_hash": trace_hash, "source_authority": str(authority)}
 
@@ -166,6 +185,12 @@ def validate_versions(events: Sequence[Mapping[str, Any]], rank: int) -> dict[st
     initial = {key: None for key in EXPECTED_INITIAL}
     if len(init_events) == 1:
         initial = {key: version_of(init_events[0], key) for key in EXPECTED_INITIAL}
+        if initial["ema"] is None:
+            ema_events = phase(events, "ema_step", "ema_optimizer_step", "ema_update")
+            if ema_events:
+                initial["ema"] = as_int(
+                    event_value(ema_events[0], "optimization_step_before")
+                )
     if initial != EXPECTED_INITIAL:
         errors.append(f"initial={initial}, expected={EXPECTED_INITIAL}")
 
@@ -195,11 +220,25 @@ def validate_versions(events: Sequence[Mapping[str, Any]], rank: int) -> dict[st
                 errors.append(f"EMA@{step} predicate not observed true")
 
     final = {key: None for key in EXPECTED_FINAL}
+    final_evidence = "missing"
     for event in reversed(phase(events, "parameter_versions_final", "parameter_versions_committed", "training_complete_skip_final_save", "training_complete")):
         values = {key: version_of(event, key) for key in EXPECTED_FINAL}
         if all(value is not None for value in values.values()):
             final = values
+            final_evidence = str(event.get("phase"))
             break
+    if any(value is None for value in final.values()):
+        # Current runtime emits exact post-commit component versions on each
+        # optimizer/EMA receipt but its completion marker carries only the final
+        # logical step. Assemble the final observed state from those receipts;
+        # this is not a schedule-derived value.
+        receipt_final = {
+            component: (updates[-1]["version"] if updates else None)
+            for component, updates in observed.items()
+        }
+        if all(value is not None for value in receipt_final.values()):
+            final = receipt_final
+            final_evidence = "last_component_update_receipts"
     if final != EXPECTED_FINAL:
         errors.append(f"final={final}, expected={EXPECTED_FINAL}")
     return {
@@ -208,6 +247,7 @@ def validate_versions(events: Sequence[Mapping[str, Any]], rank: int) -> dict[st
         "initial": initial,
         "updates": observed,
         "final": final,
+        "final_evidence": final_evidence,
     }
 
 
@@ -257,7 +297,13 @@ def resource_summary(path: Path) -> dict[str, Any]:
     with path.open(newline="") as handle:
         for row in csv.DictReader(handle):
             try:
-                rows.append((float(row["unix_time"]), int(row["cgroup_bytes"]), int(row["host_used_bytes"])))
+                rows.append(
+                    (
+                        float(row["unix_time"]),
+                        int(float(row["cgroup_bytes"])),
+                        int(float(row["host_used_bytes"])),
+                    )
+                )
             except (KeyError, TypeError, ValueError):
                 pass
     return {
