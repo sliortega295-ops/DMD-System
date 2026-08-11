@@ -60,6 +60,11 @@ def test_gan_plan_is_full_offload_world16_and_uses_1000_1004(
         "ema": 801,
     }
 
+    invocation = load_plan(PLAN).plan.to_dict()["legacy"]["extra_env"]
+    pythonpath = invocation["PYTHONPATH"].split(":")
+    assert pythonpath[0].endswith("/src")
+    assert pythonpath[1] == str(tmp_path / "helios")
+
 
 def test_gan_shared_plan_contract_excludes_node_qualified_resolution_digest(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path

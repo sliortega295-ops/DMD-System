@@ -63,7 +63,7 @@ fi
 mkdir -p "${NODE_LOG}" "${PREREG_DIR}" "${CACHE_ROOT}/frozen" "${CACHE_ROOT}/immutable"
 
 export PATH="${PYENV}/bin:${PATH}"
-export PYTHONPATH="${ROOT}/src:${ROOT}:${HELIOS_ROOT}"
+export PYTHONPATH="${ROOT}/src:${HELIOS_ROOT}:${ROOT}"
 export DISTILLSCHEDULE_RUN_ID="${RUN_ID}"
 export DISTILLSCHEDULE_OUTPUT_DIR="${OUT}"
 export DISTILLSCHEDULE_FROZEN_BLOCK_MMAP_CACHE="${CACHE_ROOT}/frozen"
@@ -81,6 +81,20 @@ export HELIOS_DISTILLED_ROOT="${GENERATOR_ROOT}"
 export HELIOS_BASE_ROOT="${SCORE_ROOT}"
 export DISTILLSCHEDULE_PRECAST_GENERATOR_PATH="${PRECAST_GENERATOR}"
 export DISTILLSCHEDULE_PRECAST_SCORE_PATH="${PRECAST_SCORE}"
+
+RUNTIME_IMPORT_ROOT="$(
+cd "${HELIOS_ROOT}"
+"${PYTHON}" - <<'PY'
+from pathlib import Path
+import runtime
+import runtime.deepspeed_phase_state
+print(Path(runtime.__file__).resolve().parent)
+PY
+)"
+[[ "${RUNTIME_IMPORT_ROOT}" == "$(realpath "${HELIOS_ROOT}/runtime")" ]] || {
+  echo "helios_runtime_shadowed=${RUNTIME_IMPORT_ROOT}" >&2
+  exit 4
+}
 
 ACCEL_CONFIG="${NODE_LOG}/accelerate_world16_node${NODE_RANK}.yaml"
 cat >"${ACCEL_CONFIG}.tmp" <<EOF
