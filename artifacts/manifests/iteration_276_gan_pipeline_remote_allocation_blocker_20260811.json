@@ -1,0 +1,35 @@
+{
+  "claim_boundary": "No performance or capacity claim from local code/tests/accounting predictions.",
+  "created_at": "2026-08-11T15:43:44.506333+00:00",
+  "goal": "real correctness-gated GAN Pipeline Full5 in 300-400 seconds",
+  "iteration": 276,
+  "local_implementation": {
+    "dmd_commit": "67d72941d6cceaa55cee2fbf35711aebdc115c21",
+    "focused_tests": "22 passed",
+    "no_torch_refactor_tests": "121 passed",
+    "runtime_commit": "171e3bf38605b790b26341496d714cbf3766fb03"
+  },
+  "missing_completion_evidence": [
+    "2x8 A100 Candidate-A capacity admission",
+    "16-rank fairness/compute/update/lifecycle/OOM PASS",
+    "fresh exact Full5 timing in 300-400 seconds",
+    "three independent formal optimized timing launches"
+  ],
+  "observed": {
+    "node0": {
+      "command_contract": "timeout10 SSH BatchMode ConnectTimeout5; hostname and GPU-count only",
+      "return_code": 255,
+      "stderr": "Connection to ssh.platform-multi.baai.ac.cn closed by remote host.",
+      "stdout": ""
+    },
+    "node1": {
+      "command_contract": "timeout10 SSH BatchMode ConnectTimeout5; hostname and GPU-count only",
+      "return_code": 255,
+      "stderr": "Connection to ssh.platform-multi.baai.ac.cn closed by remote host.",
+      "stdout": ""
+    }
+  },
+  "resume_requirement": "two live 8xA100 job SSH endpoints with shared project/assets mount",
+  "schema_version": "distillschedule.gan_pipeline_remote_blocker.v1",
+  "status": "BLOCKED_EXTERNAL_ALLOCATION_UNAVAILABLE"
+}
