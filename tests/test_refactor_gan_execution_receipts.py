@@ -359,6 +359,104 @@ def test_pipeline_actual_consumption_and_nested_physical_receipts_pass(
     )
 
 
+def test_pipeline_generator_phase_residency_is_reconciled_separately(
+    tmp_path: Path,
+) -> None:
+    run_root, trace_root = _make_fixture(tmp_path, local_source_index=True)
+    _convert_fixture_to_pipeline(run_root, trace_root)
+    block_root = run_root / "results" / "block_streaming"
+    for rank in range(8):
+        rows = [{"event": "streamer_installed", "streamed_block_indices": [39]}]
+        # Two logical samples, each with three Step1000 train-rollout calls.
+        for _ in range(6):
+            rows.extend(
+                (
+                    {
+                        "event": "materialize_block",
+                        "block_index": 39,
+                        "generation": "EAGER_FORWARD",
+                    },
+                    {"event": "release_block", "block_index": 39},
+                )
+            )
+        rows.extend(
+            (
+                {"event": "phase_resident_enter"},
+                {
+                    "event": "materialize_block",
+                    "block_index": 39,
+                    "generation": "PHASE_RESIDENT_NO_GRAD",
+                },
+                {"event": "release_block", "block_index": 39},
+                {"event": "phase_resident_exit"},
+            )
+        )
+        (block_root / f"rank_{rank:03d}_generator.jsonl").write_text(
+            "".join(json.dumps(row) + "\n" for row in rows)
+        )
+
+    built = build_gan_execution_receipts(
+        family="pipeline",
+        run_root=run_root,
+        trace_bundle=trace_root,
+        expected_generator_streamed_block_count=1,
+        expected_score_streamed_block_count=1,
+        generator_critic_phase_resident=True,
+    )
+    proof = built["provenance"]["physical_call_proof"]["rank_000_generator"]
+    assert proof["expected_logical_forwards"] == 36
+    assert proof["expected_eager_logical_forwards"] == 6
+    assert proof["expected_no_grad_logical_forwards"] == 30
+    assert proof["observed_phase_materializations_per_block"] == 1
+    assert proof["generator_critic_phase_resident"] is True
+
+
+def test_pipeline_role_specific_resident_score_is_proved_from_rank_results(
+    tmp_path: Path,
+) -> None:
+    run_root, trace_root = _make_fixture(tmp_path, local_source_index=True)
+    _convert_fixture_to_pipeline(run_root, trace_root)
+    block_root = run_root / "results" / "block_streaming"
+    for rank in range(8, 16):
+        (block_root / f"rank_{rank:03d}_score.jsonl").unlink()
+    zero_stats = {
+        "captured_parameter_count": 0,
+        "captured_bytes": 0,
+        "streamed_block_count": 0,
+        "materialize_count": 0,
+        "materialized_bytes": 0,
+        "release_count": 0,
+        "released_bytes": 0,
+        "resident_bytes": 0,
+    }
+    result_root = run_root / "results"
+    for rank in range(16):
+        (result_root / f"rank_{rank:03d}.json").write_text(
+            json.dumps(
+                {
+                    "status": "PASS",
+                    "rank": rank,
+                    "role": "generator" if rank < 8 else "score",
+                    "streamer_stats": zero_stats,
+                    "streaming_policy": {
+                        "streamed_block_count": 1 if rank < 8 else 0,
+                        "generator_critic_phase_resident": False,
+                    },
+                }
+            )
+        )
+    built = build_gan_execution_receipts(
+        family="pipeline",
+        run_root=run_root,
+        trace_bundle=trace_root,
+        expected_generator_streamed_block_count=1,
+        expected_score_streamed_block_count=0,
+    )
+    proof = built["provenance"]["physical_call_proof"]
+    assert proof["rank_000_generator"]["streamed_block_indices"] == [39]
+    assert proof["rank_008_score"]["streamed_block_indices"] == []
+
+
 def test_pipeline_missing_shared_history_consumer_fails(tmp_path: Path) -> None:
     run_root, trace_root = _make_fixture(tmp_path, local_source_index=True)
     _convert_fixture_to_pipeline(run_root, trace_root)

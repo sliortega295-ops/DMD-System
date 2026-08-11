@@ -90,6 +90,33 @@ def _workload_digest(path: Path) -> str:
     return digest
 
 
+def _role_streaming_policy(args: argparse.Namespace) -> tuple[int, int, bool]:
+    legacy = int(getattr(args, "streamed_block_count", 40))
+    generator = getattr(args, "generator_streamed_block_count", None)
+    score = getattr(args, "score_streamed_block_count", None)
+    if (generator is None) != (score is None):
+        raise RuntimeError(
+            "Generator and Score streamed-block counts must be specified together"
+        )
+    if generator is None:
+        generator = score = legacy
+    generator = int(generator)
+    score = int(score)
+    if not 0 <= generator <= 40 or not 0 <= score <= 40:
+        raise RuntimeError("role streamed-block counts must be in [0,40]")
+    phase_resident = bool(
+        getattr(args, "generator_critic_phase_resident", False)
+    )
+    return generator, score, phase_resident
+
+
+def _tail_indices(count: int) -> tuple[int, ...]:
+    count = int(count)
+    if not 0 <= count <= 40:
+        raise ValueError("streamed-block count must be in [0,40]")
+    return tuple(range(40 - count, 40)) if count else ()
+
+
 def _run(command: Sequence[str], *, log: Path, timeout: int = 24000) -> None:
     log.parent.mkdir(parents=True, exist_ok=True)
     with log.open("wb") as handle:
@@ -226,9 +253,14 @@ def _pipeline_worker_script(args: argparse.Namespace, node_rank: int, run_root: 
     command_text = shlex.join(command)
     exact_timing = "0" if profile_nsys else "1"
     nsys_profile = "1" if profile_nsys else "0"
-    streamed_count = int(getattr(args, "streamed_block_count", 40))
-    streamed_indices = ",".join(
-        str(index) for index in range(40 - streamed_count, 40)
+    generator_streamed_count, score_streamed_count, phase_resident = (
+        _role_streaming_policy(args)
+    )
+    generator_streamed_indices = ",".join(
+        str(index) for index in _tail_indices(generator_streamed_count)
+    )
+    score_streamed_indices = ",".join(
+        str(index) for index in _tail_indices(score_streamed_count)
     )
     capacity_search = "1" if bool(getattr(args, "capacity_search", False)) else "0"
     return f'''set -Eeuo pipefail
@@ -255,8 +287,12 @@ export DISTILLSCHEDULE_OPERATION_TRACE_ACCESS_DIR={shlex.quote(str(run_root / 't
 export DISTILLSCHEDULE_STABLE_BLOCK_NOISE=1 DISTILLSCHEDULE_NSYS_ANNOTATE=1
 export DISTILLSCHEDULE_GAN_NSYS_PROFILE={nsys_profile} DISTILLSCHEDULE_GAN_EXACT_TIMING={exact_timing}
 export DISTILLSCHEDULE_GAN_CAPACITY_SEARCH={capacity_search}
-export DISTILLSCHEDULE_GAN_STREAMED_BLOCK_COUNT={streamed_count}
-export DISTILLSCHEDULE_GAN_STREAMED_BLOCK_INDICES={shlex.quote(streamed_indices)}
+unset DISTILLSCHEDULE_GAN_STREAMED_BLOCK_COUNT DISTILLSCHEDULE_GAN_STREAMED_BLOCK_INDICES
+export DISTILLSCHEDULE_GAN_GENERATOR_STREAMED_BLOCK_COUNT={generator_streamed_count}
+export DISTILLSCHEDULE_GAN_GENERATOR_STREAMED_BLOCK_INDICES={shlex.quote(generator_streamed_indices)}
+export DISTILLSCHEDULE_GAN_SCORE_STREAMED_BLOCK_COUNT={score_streamed_count}
+export DISTILLSCHEDULE_GAN_SCORE_STREAMED_BLOCK_INDICES={shlex.quote(score_streamed_indices)}
+export DISTILLSCHEDULE_GAN_GENERATOR_CRITIC_PHASE_RESIDENT={1 if phase_resident else 0}
 export DISTILLSCHEDULE_GAN_TIMING_RECEIPT_DIR={shlex.quote(str(timing_root))}
 set +e
 timeout --signal=TERM --kill-after=180s {args.timeout_seconds}s {command_text} > {shlex.quote(str(rank_log))} 2>&1
@@ -340,6 +376,16 @@ def _remote_finalize(args: argparse.Namespace, family: str, run_root: Path) -> d
     )
     run_evidence_root = run_root if family == "baseline" else run_root
     profile_nsys = bool(getattr(args, "profile_nsys", False))
+    generator_streamed_count, score_streamed_count, phase_resident = (
+        _role_streaming_policy(args)
+    )
+    role_receipt_args = ""
+    if family == "pipeline":
+        role_receipt_args = (
+            f" --expected-generator-streamed-block-count {generator_streamed_count}"
+            f" --expected-score-streamed-block-count {score_streamed_count}"
+            + (" --generator-critic-phase-resident" if phase_resident else "")
+        )
     timing_validation = "" if profile_nsys else f'''\
 {shlex.quote(str(PYTHON_REMOTE))} {shlex.quote(str(dmd_root / 'scripts/distillschedule/validate_gan_timing_receipts.py'))} \\
   --receipt-dir {shlex.quote(str(run_root / 'timing_receipts'))} --world-size 16 \\
@@ -360,7 +406,7 @@ test ! -e {shlex.quote(str(receipt_root))} || {{ echo receipt_root_exists >&2; e
 {shlex.quote(str(PYTHON_REMOTE))} {shlex.quote(str(dmd_root / 'scripts/distillschedule/build_gan_execution_receipts.py'))} \
   --family {family} --run-root {shlex.quote(str(run_evidence_root))} \
   --trace-bundle {shlex.quote(str(args.trace_bundle))} \
-  --output-dir {shlex.quote(str(receipt_root))} --expected-streamed-block-count {int(getattr(args, 'streamed_block_count', 40))}
+  --output-dir {shlex.quote(str(receipt_root))} --expected-streamed-block-count {int(getattr(args, 'streamed_block_count', 40))}{role_receipt_args}
 {timing_validation}{profile_validation}
 '''
     _ssh_checked(args.hosts[0], build)
@@ -379,6 +425,17 @@ if {family!r}=='pipeline':
   out['updates']={{str(v.get('rank')):v.get('updates') for v in values}}
   out['max_allocated_bytes']=max(int(v.get('max_allocated_bytes',0)) for v in values) if values else 0
   out['max_reserved_bytes']=max(int(v.get('max_reserved_bytes',0)) for v in values) if values else 0
+  out['streamer_stats_by_role']={{}}
+  for role in ('generator','score'):
+    rows=[v for v in values if v.get('role')==role]
+    out['streamer_stats_by_role'][role]={{
+      key:[row.get('streamer_stats',{{}}).get(key) for row in rows]
+      for key in (
+        'streamed_block_count','materialize_count','materialized_bytes',
+        'h2d_wall_seconds','peak_resident_bytes','phase_resident_enter_count',
+        'phase_resident_exit_count','resident_bytes'
+      )
+    }}
   out['ema_optimization_steps']={{str(v.get('rank')):v.get('ema_optimization_step') for v in values}}
   expected_resolved={{'dp_world_size':8,'train_micro_batch_size_per_gpu':1,
                      'gradient_accumulation_steps':2,'train_batch_size':16}}
@@ -468,6 +525,9 @@ def _fetch_and_write_result(
     workload_digest: str,
     remote_summary: Mapping[str, Any],
 ) -> None:
+    generator_streamed_count, score_streamed_count, phase_resident = (
+        _role_streaming_policy(args)
+    )
     evidence = args.result_path.parent / "evidence"
     evidence.mkdir(parents=True, exist_ok=False)
     _rsync_from(
@@ -519,11 +579,10 @@ def _fetch_and_write_result(
         "remote_summary": dict(remote_summary),
         "fixed_memory_policy": {
             "generator_streamed_blocks": list(
-                range(40 - int(getattr(args, "streamed_block_count", 40)), 40)
+                _tail_indices(generator_streamed_count)
             ),
-            "score_streamed_blocks": list(
-                range(40 - int(getattr(args, "streamed_block_count", 40)), 40)
-            ),
+            "score_streamed_blocks": list(_tail_indices(score_streamed_count)),
+            "generator_critic_phase_resident": phase_resident,
             "streaming_window": 1,
             "host_policy": "HOST_SHARED_IMMUTABLE",
             "prefetch": False,
@@ -567,6 +626,9 @@ def parser() -> argparse.ArgumentParser:
         help="capacity/correctness candidate; never formal-speedup eligible",
     )
     p.add_argument("--streamed-block-count", type=int, default=40)
+    p.add_argument("--generator-streamed-block-count", type=int)
+    p.add_argument("--score-streamed-block-count", type=int)
+    p.add_argument("--generator-critic-phase-resident", action="store_true")
     return p
 
 
@@ -591,10 +653,24 @@ def main() -> int:
         raise SystemExit("--capacity-search is implemented only for the pipeline worker")
     if args.profile_nsys and args.capacity_search:
         raise SystemExit("Nsight and capacity search must remain separate runs")
-    if not 0 <= args.streamed_block_count <= 40:
-        raise SystemExit("--streamed-block-count must be in [0,40]")
-    if args.streamed_block_count != 40 and not args.capacity_search:
-        raise SystemExit("non-default streaming requires --capacity-search")
+    try:
+        generator_count, score_count, phase_resident = _role_streaming_policy(args)
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
+    if args.family != "pipeline" and (
+        generator_count != args.streamed_block_count
+        or score_count != args.streamed_block_count
+        or phase_resident
+    ):
+        raise SystemExit("role-aware streaming is implemented only for pipeline")
+    if (
+        generator_count != 40
+        or score_count != 40
+        or phase_resident
+    ) and not args.capacity_search:
+        raise SystemExit(
+            "optimized role/phase residency requires --capacity-search until its gate passes"
+        )
     run_log = args.result_path.parent / f"{args.family}_controller.log"
     try:
         _assert_remote_idle(args.hosts)

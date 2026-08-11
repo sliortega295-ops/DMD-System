@@ -430,21 +430,32 @@ def _block_event_proof(
     family: str,
     run_root: Path,
     traces: Mapping[int, Mapping[str, Any]],
-    expected_streamed_block_count: int,
+    expected_generator_streamed_block_count: int,
+    expected_score_streamed_block_count: int,
+    generator_critic_phase_resident: bool,
 ) -> dict[str, Any]:
-    if expected_streamed_block_count < 0:
-        raise ValueError("expected streamed block count cannot be negative")
+    expected_counts = {
+        "generator": int(expected_generator_streamed_block_count),
+        "score": int(expected_score_streamed_block_count),
+    }
+    if any(count < 0 or count > 40 for count in expected_counts.values()):
+        raise ValueError("expected streamed block counts must be in [0,40]")
+    if family != "pipeline" and generator_critic_phase_resident:
+        raise ValueError("Generator Critic-phase residency is pipeline-only")
+
     expected_by_rank: dict[tuple[int, str], int] = {}
+    eager_expected_by_rank: dict[tuple[int, str], int] = {}
+    no_grad_expected_by_rank: dict[tuple[int, str], int] = {}
     if family == "baseline":
         for rank in LOGICAL_SAMPLE_SLOTS:
-            expected_by_rank[(rank, "generator")] = (
+            generator_calls = (
                 _logical_calls(traces[rank], "generator", 1000)
                 + sum(
                     _logical_calls(traces[rank], "critic", step)
                     for step in FULL5_STEPS
                 )
             )
-            expected_by_rank[(rank, "score")] = len(GENERATOR_UPDATE_STEPS) * sum(
+            score_calls = len(GENERATOR_UPDATE_STEPS) * sum(
                 GENERATOR_FIXED_CALLS[key]
                 for key in (
                     "dmd_fake_cond_score_forwards",
@@ -457,45 +468,89 @@ def _block_event_proof(
                 CRITIC_FIXED_CALLS["critic_denoise_score_forwards"]
                 + CRITIC_FIXED_CALLS["gan_d_score_forwards"]
             )
+            expected_by_rank[(rank, "generator")] = generator_calls
+            expected_by_rank[(rank, "score")] = score_calls
+            eager_expected_by_rank[(rank, "generator")] = generator_calls
+            eager_expected_by_rank[(rank, "score")] = score_calls
+            no_grad_expected_by_rank[(rank, "generator")] = 0
+            no_grad_expected_by_rank[(rank, "score")] = 0
     else:
         for lane in range(8):
             slots = (lane, lane + 8)
-            expected_by_rank[(lane, "generator")] = sum(
-                _logical_calls(traces[slot], "generator", 1000)
-                + sum(
+            train_calls = sum(
+                _logical_calls(traces[slot], "generator", 1000) for slot in slots
+            )
+            critic_rollout_calls = sum(
+                sum(
                     _logical_calls(traces[slot], "critic", step)
                     for step in FULL5_STEPS
                 )
                 for slot in slots
             )
-            expected_by_rank[(lane + 8, "score")] = len(slots) * (
+            score_calls = len(slots) * (
                 len(GENERATOR_UPDATE_STEPS) * 4 + len(FULL5_STEPS) * 2
             )
+            expected_by_rank[(lane, "generator")] = train_calls + critic_rollout_calls
+            expected_by_rank[(lane + 8, "score")] = score_calls
+            eager_expected_by_rank[(lane, "generator")] = (
+                train_calls if generator_critic_phase_resident else train_calls + critic_rollout_calls
+            )
+            eager_expected_by_rank[(lane + 8, "score")] = score_calls
+            no_grad_expected_by_rank[(lane, "generator")] = (
+                critic_rollout_calls if generator_critic_phase_resident else 0
+            )
+            no_grad_expected_by_rank[(lane + 8, "score")] = 0
 
-    if expected_streamed_block_count == 0:
-        if family != "pipeline":
-            raise ValueError("resident k=0 proof is currently defined only for pipeline")
-        event_files = list((run_root / "block_streaming").glob("*.jsonl"))
-        event_files += list(
-            (run_root / "results" / "block_streaming").glob("*.jsonl")
+    result_roots = [
+        candidate
+        for candidate in (run_root / "results", run_root)
+        if (candidate / "rank_000.json").is_file()
+    ]
+    block_roots = [
+        candidate
+        for candidate in (
+            run_root / "block_streaming",
+            run_root / "results" / "block_streaming",
         )
+        if candidate.is_dir()
+    ]
+    if any(expected_counts.values()):
+        if len(block_roots) != 1:
+            raise ValueError(
+                "expected exactly one block-streaming evidence root, observed "
+                f"{[str(path) for path in block_roots]}"
+            )
+        block_root = block_roots[0]
+    else:
+        event_files = list((run_root / "block_streaming").glob("*.jsonl"))
+        event_files += list((run_root / "results" / "block_streaming").glob("*.jsonl"))
         if event_files:
             raise ValueError(
-                "k=0 resident candidate unexpectedly emitted block-streaming events: "
+                "resident candidate unexpectedly emitted block-streaming events: "
                 f"{[str(path) for path in event_files[:3]]}"
             )
-        result_roots = [
-            candidate
-            for candidate in (run_root / "results", run_root)
-            if (candidate / "rank_000.json").is_file()
-        ]
-        if len(result_roots) != 1:
-            raise ValueError(
-                "expected exactly one resident-result root, observed "
-                f"{[str(path) for path in result_roots]}"
-            )
-        proof: dict[str, Any] = {}
-        for (rank, component), expected in sorted(expected_by_rank.items()):
+        block_root = None
+
+    proof: dict[str, Any] = {}
+    for (rank, component), expected in sorted(expected_by_rank.items()):
+        streamed_count = expected_counts[component]
+        expected_phase_resident = bool(
+            family == "pipeline"
+            and component == "generator"
+            and generator_critic_phase_resident
+        )
+        if streamed_count == 0:
+            if len(result_roots) != 1:
+                raise ValueError(
+                    "expected exactly one resident-result root, observed "
+                    f"{[str(path) for path in result_roots]}"
+                )
+            if block_root is not None:
+                unexpected = block_root / f"rank_{rank:03d}_{component}.jsonl"
+                if unexpected.exists():
+                    raise ValueError(
+                        f"resident role unexpectedly emitted block-streaming events: {unexpected}"
+                    )
             path = result_roots[0] / f"rank_{rank:03d}.json"
             value = json.loads(path.read_text())
             expected_role = "generator" if component == "generator" else "score"
@@ -521,32 +576,24 @@ def _block_event_proof(
             }
             if drift:
                 raise ValueError(f"k=0 resident lifecycle drift in {path}: {drift}")
+            policy = value.get("streaming_policy")
+            if isinstance(policy, Mapping):
+                if int(policy.get("streamed_block_count", -1)) != 0:
+                    raise ValueError(f"resident role policy receipt drift in {path}")
+                if bool(policy.get("generator_critic_phase_resident")) != expected_phase_resident:
+                    raise ValueError(f"resident phase policy receipt drift in {path}")
             proof[f"rank_{rank:03d}_{component}"] = {
                 "path": str(path.resolve()),
                 "streamed_block_indices": [],
                 "expected_logical_forwards": expected,
+                "expected_no_grad_logical_forwards": no_grad_expected_by_rank[(rank, component)],
                 "physical_call_accounting": "resident_model_no_stream_events",
+                "generator_critic_phase_resident": expected_phase_resident,
                 "materialize_release_balanced": True,
             }
-        return proof
+            continue
 
-    block_roots = [
-        candidate
-        for candidate in (
-            run_root / "block_streaming",
-            run_root / "results" / "block_streaming",
-        )
-        if candidate.is_dir()
-    ]
-    if len(block_roots) != 1:
-        raise ValueError(
-            "expected exactly one block-streaming evidence root, observed "
-            f"{[str(path) for path in block_roots]}"
-        )
-    block_root = block_roots[0]
-
-    proof: dict[str, Any] = {}
-    for (rank, component), expected in sorted(expected_by_rank.items()):
+        assert block_root is not None
         path = block_root / f"rank_{rank:03d}_{component}.jsonl"
         if not path.is_file():
             raise ValueError(f"missing physical call evidence: {path}")
@@ -555,45 +602,81 @@ def _block_event_proof(
         if len(installed) != 1:
             raise ValueError(f"streamer install receipt drift: {path}")
         indices = [int(value) for value in installed[0].get("streamed_block_indices", [])]
-        if len(indices) != expected_streamed_block_count:
+        if len(indices) != streamed_count:
             raise ValueError(
-                f"streamed block policy drift in {path}: {len(indices)} != {expected_streamed_block_count}"
+                f"streamed block policy drift in {path}: {len(indices)} != {streamed_count}"
             )
-        logical_counts: Counter[int] = Counter()
+        eager_counts: Counter[int] = Counter()
         recompute_counts: Counter[int] = Counter()
+        phase_counts: Counter[int] = Counter()
         release_counts: Counter[int] = Counter()
+        phase_enters = 0
+        phase_exits = 0
         for row in rows:
             event = row.get("event")
             if event == "materialize_block":
                 block = int(row["block_index"])
-                if row.get("generation") == "CHECKPOINT_RECOMPUTE":
+                generation = row.get("generation")
+                if generation == "CHECKPOINT_RECOMPUTE":
                     recompute_counts[block] += 1
+                elif generation == "PHASE_RESIDENT_NO_GRAD":
+                    phase_counts[block] += 1
                 else:
-                    logical_counts[block] += 1
+                    eager_counts[block] += 1
             elif event == "release_block":
                 release_counts[int(row["block_index"])] += 1
-        if set(logical_counts) != set(indices):
-            raise ValueError(f"logical block evidence inventory drift: {path}")
-        if any(logical_counts[index] != expected for index in indices):
+            elif event == "phase_resident_enter":
+                phase_enters += 1
+            elif event == "phase_resident_exit":
+                phase_exits += 1
+
+        expected_eager = eager_expected_by_rank[(rank, component)]
+        if set(eager_counts) != set(indices):
+            raise ValueError(f"eager block evidence inventory drift: {path}")
+        if any(eager_counts[index] != expected_eager for index in indices):
             raise ValueError(
                 f"physical logical call count mismatch rank={rank} component={component}: "
-                f"observed={dict(logical_counts)} expected_each={expected}"
+                f"observed={dict(eager_counts)} expected_each={expected_eager}"
             )
-        materialized_total = sum(logical_counts.values()) + sum(recompute_counts.values())
+        if expected_phase_resident:
+            if set(phase_counts) != set(indices) or any(
+                phase_counts[index] != 1 for index in indices
+            ):
+                raise ValueError(f"phase-resident block evidence drift: {path}")
+            if phase_enters != 1 or phase_exits != 1:
+                raise ValueError(
+                    f"phase-resident scope imbalance in {path}: {phase_enters}/{phase_exits}"
+                )
+        elif phase_counts or phase_enters or phase_exits:
+            raise ValueError(f"unexpected phase-resident evidence: {path}")
+
+        materialized_total = (
+            sum(eager_counts.values())
+            + sum(recompute_counts.values())
+            + sum(phase_counts.values())
+        )
         if sum(release_counts.values()) != materialized_total:
             raise ValueError(f"materialize/release imbalance: {path}")
         proof[f"rank_{rank:03d}_{component}"] = {
             "path": str(path.resolve()),
             "streamed_block_indices": indices,
             "expected_logical_forwards": expected,
-            "observed_logical_forwards_per_block": expected,
+            "expected_eager_logical_forwards": expected_eager,
+            "expected_no_grad_logical_forwards": no_grad_expected_by_rank[(rank, component)],
+            "observed_eager_materializations_per_block": expected_eager,
+            "observed_logical_forwards_per_block": (
+                None if expected_phase_resident else expected
+            ),
+            "observed_phase_materializations_per_block": (
+                1 if expected_phase_resident else 0
+            ),
             "checkpoint_recompute_forwards_per_block": (
                 recompute_counts[indices[0]] if indices else 0
             ),
+            "generator_critic_phase_resident": expected_phase_resident,
             "materialize_release_balanced": True,
         }
     return proof
-
 
 def build_gan_execution_receipts(
     *,
@@ -601,6 +684,9 @@ def build_gan_execution_receipts(
     run_root: str | Path,
     trace_bundle: str | Path,
     expected_streamed_block_count: int = 40,
+    expected_generator_streamed_block_count: int | None = None,
+    expected_score_streamed_block_count: int | None = None,
+    generator_critic_phase_resident: bool = False,
 ) -> dict[str, Any]:
     if family not in {"baseline", "pipeline"}:
         raise ValueError("family must be baseline or pipeline")
@@ -685,7 +771,17 @@ def build_gan_execution_receipts(
         family=family,
         run_root=run_root,
         traces=traces,
-        expected_streamed_block_count=expected_streamed_block_count,
+        expected_generator_streamed_block_count=(
+            expected_streamed_block_count
+            if expected_generator_streamed_block_count is None
+            else expected_generator_streamed_block_count
+        ),
+        expected_score_streamed_block_count=(
+            expected_streamed_block_count
+            if expected_score_streamed_block_count is None
+            else expected_score_streamed_block_count
+        ),
+        generator_critic_phase_resident=generator_critic_phase_resident,
     )
     access_counts = {
         f"slot_{slot:02d}/{key}": len(rows)
@@ -720,12 +816,20 @@ def write_gan_execution_receipts(
     trace_bundle: str | Path,
     output_dir: str | Path,
     expected_streamed_block_count: int = 40,
+    expected_generator_streamed_block_count: int | None = None,
+    expected_score_streamed_block_count: int | None = None,
+    generator_critic_phase_resident: bool = False,
 ) -> dict[str, str]:
     built = build_gan_execution_receipts(
         family=family,
         run_root=run_root,
         trace_bundle=trace_bundle,
         expected_streamed_block_count=expected_streamed_block_count,
+        expected_generator_streamed_block_count=(
+            expected_generator_streamed_block_count
+        ),
+        expected_score_streamed_block_count=expected_score_streamed_block_count,
+        generator_critic_phase_resident=generator_critic_phase_resident,
     )
     output_dir = Path(output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)

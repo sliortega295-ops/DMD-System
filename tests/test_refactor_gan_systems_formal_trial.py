@@ -110,9 +110,42 @@ def test_pipeline_capacity_candidate_changes_only_streamed_tail_contract(
     )
     script = MODULE._pipeline_worker_script(args, 0, tmp_path / "run")
     assert "DISTILLSCHEDULE_GAN_CAPACITY_SEARCH=1" in script
-    assert "DISTILLSCHEDULE_GAN_STREAMED_BLOCK_COUNT=4" in script
-    assert "DISTILLSCHEDULE_GAN_STREAMED_BLOCK_INDICES=36,37,38,39" in script
+    assert "DISTILLSCHEDULE_GAN_GENERATOR_STREAMED_BLOCK_COUNT=4" in script
+    assert "DISTILLSCHEDULE_GAN_GENERATOR_STREAMED_BLOCK_INDICES=36,37,38,39" in script
+    assert "DISTILLSCHEDULE_GAN_SCORE_STREAMED_BLOCK_COUNT=4" in script
+    assert "DISTILLSCHEDULE_GAN_SCORE_STREAMED_BLOCK_INDICES=36,37,38,39" in script
     assert "DISTILLSCHEDULE_GAN_NSYS_PROFILE=0" in script
+
+
+def test_pipeline_role_aware_phase_resident_candidate_is_fail_closed(
+    tmp_path: Path,
+) -> None:
+    args = SimpleNamespace(
+        master_addr="10.0.0.1",
+        master_port=30001,
+        timeout_seconds=20000,
+        run_nonce=123,
+        profile_nsys=False,
+        capacity_search=True,
+        streamed_block_count=40,
+        generator_streamed_block_count=40,
+        score_streamed_block_count=4,
+        generator_critic_phase_resident=True,
+        pipeline_remote_root=Path("/remote/dmd"),
+        pipeline_runtime_root=Path("/remote/runtime"),
+        config=Path("/assets/config.yaml"),
+        target_package=Path("/assets/target"),
+        trace_bundle=Path("/assets/trace"),
+        generator_root=Path("/assets/generator"),
+        score_root=Path("/assets/score"),
+        negative_prompt=Path("/assets/negative.pt"),
+        pipeline_mmap=Path("/assets/mmap"),
+    )
+    script = MODULE._pipeline_worker_script(args, 0, tmp_path / "run")
+    assert "DISTILLSCHEDULE_GAN_GENERATOR_STREAMED_BLOCK_COUNT=40" in script
+    assert "DISTILLSCHEDULE_GAN_SCORE_STREAMED_BLOCK_COUNT=4" in script
+    assert "DISTILLSCHEDULE_GAN_SCORE_STREAMED_BLOCK_INDICES=36,37,38,39" in script
+    assert "DISTILLSCHEDULE_GAN_GENERATOR_CRITIC_PHASE_RESIDENT=1" in script
 
 
 def test_formal_run_id_contract_accepts_artifact_convention() -> None:
