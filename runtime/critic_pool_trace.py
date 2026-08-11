@@ -27,7 +27,7 @@ from .operation_trace import (
 )
 
 
-CRITIC_POOL_TRACE_SCHEMA = "distillschedule.critic_pool_trace.v3"
+CRITIC_POOL_TRACE_SCHEMA = "distillschedule.critic_pool_trace.v4"
 REQUIRED_CONTRACT = {
     "resolution": [384, 640],
     "stage_spatial_shapes": [[12, 20], [24, 40], [48, 80]],
@@ -37,9 +37,8 @@ REQUIRED_CONTRACT = {
 }
 RANK_CONTROL_CONTRACT = {
     "ordinary_stage_exits": "global_rank0_broadcast",
-    "allowed_rank_local_exception": (
-        "is_use_gt_history && is_amplify_first_chunk && all_history_zero"
-    ),
+    "rank_local_stage_exit_exception": "forbidden_by_experiment_contract",
+    "per_rank_call_count": "identical_per_operation_and_step",
 }
 
 

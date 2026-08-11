@@ -357,6 +357,107 @@ def test_version_trajectory_requires_observed_ema_predicate_and_final_record() -
     assert any("final observed" in error for error in missing_final["errors"])
 
 
+def test_version_trajectory_accepts_pinned_helios_nested_ema_schema() -> None:
+    events = [
+        {
+            "phase": "sparse_ema_resumed",
+            "ema": {"optimization_step": 10, "decay": 0.0},
+        },
+        {
+            "phase": "parameter_versions_initialized",
+            "generator_version": 2,
+            "critic_version": 10,
+        },
+    ]
+    for step in range(10, 15):
+        if step == 10:
+            events.append(
+                {
+                    "phase": "generator_optimizer_step",
+                    "global_step": step,
+                    "generator_version": 3,
+                }
+            )
+        events.extend(
+            [
+                {
+                    "phase": "critic_optimizer_step",
+                    "global_step": step,
+                    "critic_version": step + 1,
+                },
+                {
+                    "phase": "ema_step",
+                    "global_step": step,
+                    "ema": {"optimization_step": step + 1, "decay": 0.0},
+                    "optimization_step_before": step,
+                    "predicate": {
+                        "before_ema_start": True,
+                        "not_train_dmd": False,
+                        "generator_update": step == 10,
+                    },
+                },
+            ]
+        )
+    events.append(
+        {
+            "phase": "semantic_contract_complete",
+            "global_step": 15,
+            "generator_version": 3,
+            "critic_version": 15,
+        }
+    )
+
+    result = SUMMARIZER.validate_version_trajectory(events, rank=0)
+
+    assert result["status"] == "OBSERVED_EXACT"
+    assert result["initial_observed"] == {"generator": 2, "critic": 10, "ema": 10}
+    assert result["initial_observation_binding"].endswith("sparse_ema_resume")
+    assert result["final_observed"] == {"generator": 3, "critic": 15, "ema": 15}
+    assert result["final_observation_binding"] == (
+        "terminal_gc_plus_last_observed_ema_update"
+    )
+
+
+def test_nested_ema_schema_remains_fail_closed_on_partial_predicate() -> None:
+    event = {
+        "phase": "ema_step",
+        "ema": {"optimization_step": 11},
+        "predicate": {"before_ema_start": True},
+    }
+    assert SUMMARIZER.component_version(event, "ema") == 11
+    assert SUMMARIZER.truthy_predicate(event) is None
+
+
+def test_gpu_inventory_normalizes_nvidia_smi_csv_spacing(tmp_path: Path) -> None:
+    inventory = tmp_path / "gpu_inventory.csv"
+    inventory.write_text(
+        "index, uuid, name, memory.total [MiB], memory.free [MiB]\n"
+        "0, GPU-0, NVIDIA A100-SXM4-40GB, 40960 MiB, 40339 MiB\n"
+    )
+    parsed = SUMMARIZER.gpu_inventory(
+        inventory, SUMMARIZER.sha256_file(inventory), expected_rows=1
+    )
+    assert parsed["rows"][0]["uuid"] == "GPU-0"
+
+
+def test_resource_summary_accepts_scientific_host_byte_samples(tmp_path: Path) -> None:
+    resource = tmp_path / "resource.csv"
+    resource.write_text(
+        "unix_time,cgroup_bytes,host_used_bytes,gpu_used_mib,gpu_util_percent\n"
+        "1.0,227458215936,3.8044e+10,0:0,0:0\n"
+        "2.5,761400000000,7.2400e+11,1:2,3:4\n"
+    )
+    summary = SUMMARIZER.resource_summary(resource)
+    assert summary == {
+        "status": "MEASURED",
+        "samples": 2,
+        "invalid_rows": 0,
+        "span_seconds": 1.5,
+        "cgroup_peak_bytes": 761400000000,
+        "host_used_peak_bytes": 724000000000,
+    }
+
+
 def test_strict_launcher_manifest_rejects_attempt003_mixed_csv(tmp_path: Path) -> None:
     manifest = tmp_path / "launch_manifest.txt"
     manifest.write_text(
@@ -517,6 +618,181 @@ def test_routea_controller_summarizes_remote_root_on_compute_host() -> None:
     assert output == Path(
         "/remote/repo/artifacts/manifests/attempt004_result.json"
     )
+
+
+def test_routea_controller_passes_selected_plan_to_worker(tmp_path: Path) -> None:
+    args = CONTROLLER.parser().parse_args(
+        [
+            "--hosts",
+            "node0,node1",
+            "--run-id",
+            "ra16_f5_pr4_20260808_001",
+            "--repo-root",
+            str(ROOT),
+            "--remote-root",
+            "/remote/repo",
+            "--plan",
+            "configs/distillschedule/plans/helios_ra16_f5_pr4.json",
+        ]
+    )
+    identity = CONTROLLER._manifest_identity(args, ROOT)
+    command = CONTROLLER._worker_command(
+        args=args,
+        identity=identity,
+        node_rank=0,
+        host="node0",
+    )
+    assert identity["experiment_id"] == "RA16-F5-PR4"
+    assert "configs/distillschedule/plans/helios_ra16_f5_pr4.json" in command[-1]
+
+
+def test_ra16_f5_pr4_controller_rejects_ambiguous_run_id() -> None:
+    args = CONTROLLER.parser().parse_args(
+        [
+            "--hosts",
+            "node0,node1",
+            "--run-id",
+            "world16_latest",
+            "--repo-root",
+            str(ROOT),
+            "--plan",
+            "configs/distillschedule/plans/helios_ra16_f5_pr4.json",
+        ]
+    )
+    with pytest.raises(RuntimeError, match="must start with"):
+        CONTROLLER._manifest_identity(args, ROOT)
+
+
+def test_ra16_f5_pr4_ec_controller_requires_distinct_run_id() -> None:
+    accepted = CONTROLLER.parser().parse_args(
+        [
+            "--hosts",
+            "node0,node1",
+            "--run-id",
+            "ra16_f5_pr4_ec_20260808_001",
+            "--repo-root",
+            str(ROOT),
+            "--plan",
+            "configs/distillschedule/plans/helios_ra16_f5_pr4_ec.json",
+        ]
+    )
+    assert CONTROLLER._manifest_identity(accepted, ROOT)["experiment_id"] == (
+        "RA16-F5-PR4-EC"
+    )
+
+    rejected = CONTROLLER.parser().parse_args(
+        [
+            "--hosts",
+            "node0,node1",
+            "--run-id",
+            "ra16_f5_pr4_20260808_003",
+            "--repo-root",
+            str(ROOT),
+            "--plan",
+            "configs/distillschedule/plans/helios_ra16_f5_pr4_ec.json",
+        ]
+    )
+    with pytest.raises(RuntimeError, match="ra16_f5_pr4_ec_"):
+        CONTROLLER._manifest_identity(rejected, ROOT)
+
+
+def test_ra16_f5_pr8_controller_requires_distinct_run_id() -> None:
+    accepted = CONTROLLER.parser().parse_args(
+        [
+            "--hosts",
+            "node0,node1",
+            "--run-id",
+            "ra16_f5_pr8_20260809_001",
+            "--repo-root",
+            str(ROOT),
+            "--plan",
+            "configs/distillschedule/plans/helios_ra16_f5_pr8.json",
+        ]
+    )
+    assert CONTROLLER._manifest_identity(accepted, ROOT)["experiment_id"] == (
+        "RA16-F5-PR8"
+    )
+
+    rejected = CONTROLLER.parser().parse_args(
+        [
+            "--hosts",
+            "node0,node1",
+            "--run-id",
+            "ra16_f5_pr4_20260809_004",
+            "--repo-root",
+            str(ROOT),
+            "--plan",
+            "configs/distillschedule/plans/helios_ra16_f5_pr8.json",
+        ]
+    )
+    with pytest.raises(RuntimeError, match="ra16_f5_pr8_"):
+        CONTROLLER._manifest_identity(rejected, ROOT)
+
+
+def test_ra16_f5_pr12_controller_requires_distinct_run_id() -> None:
+    accepted = CONTROLLER.parser().parse_args(
+        [
+            "--hosts",
+            "node0,node1",
+            "--run-id",
+            "ra16_f5_pr12_20260809_001",
+            "--repo-root",
+            str(ROOT),
+            "--plan",
+            "configs/distillschedule/plans/helios_ra16_f5_pr12.json",
+        ]
+    )
+    assert CONTROLLER._manifest_identity(accepted, ROOT)["experiment_id"] == (
+        "RA16-F5-PR12"
+    )
+
+    rejected = CONTROLLER.parser().parse_args(
+        [
+            "--hosts",
+            "node0,node1",
+            "--run-id",
+            "ra16_f5_pr8_20260809_002",
+            "--repo-root",
+            str(ROOT),
+            "--plan",
+            "configs/distillschedule/plans/helios_ra16_f5_pr12.json",
+        ]
+    )
+    with pytest.raises(RuntimeError, match="ra16_f5_pr12_"):
+        CONTROLLER._manifest_identity(rejected, ROOT)
+
+
+def test_ra16_f5_glp_offload_controller_requires_distinct_run_id() -> None:
+    accepted = CONTROLLER.parser().parse_args(
+        [
+            "--hosts",
+            "node0,node1",
+            "--run-id",
+            "ra16_f5_glp_offload_20260809_001",
+            "--repo-root",
+            str(ROOT),
+            "--plan",
+            "configs/distillschedule/plans/helios_ra16_f5_glp_offload.json",
+        ]
+    )
+    assert CONTROLLER._manifest_identity(accepted, ROOT)["experiment_id"] == (
+        "RA16-F5-GLP-OFFLOAD"
+    )
+
+    rejected = CONTROLLER.parser().parse_args(
+        [
+            "--hosts",
+            "node0,node1",
+            "--run-id",
+            "ra16_f5_pr12_20260809_003",
+            "--repo-root",
+            str(ROOT),
+            "--plan",
+            "configs/distillschedule/plans/helios_ra16_f5_glp_offload.json",
+        ]
+    )
+    with pytest.raises(RuntimeError, match="ra16_f5_glp_offload_"):
+        CONTROLLER._manifest_identity(rejected, ROOT)
 
 
 def test_dry_run_stage_is_never_reused_as_real_evidence() -> None:

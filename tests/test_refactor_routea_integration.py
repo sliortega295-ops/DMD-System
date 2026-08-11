@@ -13,7 +13,11 @@ from distillschedule.runtime.launch_config import (
     render_accelerate_config,
     require_routea_zero1_contract,
 )
-from distillschedule.runtime.topology import TopologyRecord, validate_topology_records
+from distillschedule.runtime.topology import (
+    TopologyRecord,
+    validate_topology_probe_payload,
+    validate_topology_records,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -88,6 +92,51 @@ def test_world16_topology_accepts_two_hosts_and_sixteen_unique_ranks() -> None:
     assert summary.ranks_by_node[1] == tuple(range(8, 16))
 
 
+def test_world16_probe_payload_round_trips_its_nested_summary() -> None:
+    records = _world16_records()
+    summary = validate_topology_records(
+        records,
+        expected_nodes=2,
+        expected_local_world_size=8,
+        expected_world_size=16,
+    )
+    payload = {
+        "schema_version": "distillschedule.topology_probe.v1",
+        "status": "PASS",
+        "summary": summary.to_dict(),
+        "records": [record.to_dict() for record in records],
+    }
+    assert validate_topology_probe_payload(
+        payload,
+        expected_nodes=2,
+        expected_local_world_size=8,
+        expected_world_size=16,
+    ) == summary
+
+
+def test_world16_probe_payload_rejects_summary_record_disagreement() -> None:
+    records = _world16_records()
+    summary = validate_topology_records(
+        records,
+        expected_nodes=2,
+        expected_local_world_size=8,
+        expected_world_size=16,
+    ).to_dict()
+    summary["world_size"] = 8
+    with pytest.raises(ContractViolation, match="summary does not match"):
+        validate_topology_probe_payload(
+            {
+                "schema_version": "distillschedule.topology_probe.v1",
+                "status": "PASS",
+                "summary": summary,
+                "records": [record.to_dict() for record in records],
+            },
+            expected_nodes=2,
+            expected_local_world_size=8,
+            expected_world_size=16,
+        )
+
+
 def test_world16_topology_rejects_two_independent_world8_groups() -> None:
     records = _world16_records()
     records[8] = TopologyRecord(
@@ -142,6 +191,35 @@ def _load_summarizer_module():
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def test_trace_binding_accepts_helios_kind_only_with_exact_rank_and_hash() -> None:
+    module = _load_summarizer_module()
+    expected = {
+        "trace_hash": "a" * 64,
+        "source_authority_aliases": ["rank0"],
+        "mapping_fingerprint": "mapping",
+        "source_fingerprint": "source",
+        "operation_fingerprint": "operations",
+    }
+    event = {
+        "phase": "operation_trace_input_validated",
+        "rank": 0,
+        "trace_hash": "a" * 64,
+        "source_authority": "operation_trace",
+    }
+
+    result = module.validate_trace_binding([event], expected, rank=0)
+
+    assert result["source_authority_binding"] == (
+        "producer_kind_plus_exact_rank_and_trace_hash"
+    )
+    with pytest.raises(module.EvidenceError, match="qualified for rank"):
+        module.validate_trace_binding([{**event, "rank": 1}], expected, rank=0)
+    with pytest.raises(module.EvidenceError, match="trace hash"):
+        module.validate_trace_binding(
+            [{**event, "trace_hash": "b" * 64}], expected, rank=0
+        )
 
 
 def test_jsonl_reader_ignores_only_unterminated_partial_tail(tmp_path: Path) -> None:
@@ -237,7 +315,24 @@ def test_legacy_world16_artifact_is_not_promoted_to_attempt004(tmp_path: Path) -
             )
         events.extend(
             [
-                {"phase": "activation_offload_final", "stats": {"live_cpu_bytes": 0}},
+                {
+                    "phase": "activation_offload_installed",
+                    "logical_component": "generator_selected",
+                },
+                {
+                    "phase": "activation_offload_installed",
+                    "logical_component": "critic_train",
+                },
+                {
+                    "phase": "activation_offload_final",
+                    "logical_component": "generator_selected",
+                    "stats": {"live_cpu_bytes": 0},
+                },
+                {
+                    "phase": "activation_offload_final",
+                    "logical_component": "critic_train",
+                    "stats": {"live_cpu_bytes": 0},
+                },
                 {
                     "phase": "frozen_block_streamer_final",
                     "stats": {"resident_bytes": 0, "materialized_bytes": 10, "materialize_count": 1},

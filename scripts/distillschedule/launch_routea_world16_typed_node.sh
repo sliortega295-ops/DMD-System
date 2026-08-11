@@ -10,9 +10,12 @@ EXPECTED_HEAD="${3:?expected DMD-System HEAD}"
 EXPECTED_PLAN_SHA="${4:?expected plan sha256}"
 MASTER_ADDR="${5:?master address}"
 MASTER_PORT="${6:?master port}"
+PLAN_REL="${7:?repository-relative typed plan path}"
 [[ "${NODE_RANK}" == 0 || "${NODE_RANK}" == 1 ]] || { echo invalid_node_rank >&2; exit 2; }
 [[ "${RUN_ID}" =~ ^[A-Za-z0-9._-]+$ ]] || { echo invalid_run_id >&2; exit 2; }
 [[ "${MASTER_PORT}" =~ ^[0-9]+$ ]] || { echo invalid_master_port >&2; exit 2; }
+[[ "${PLAN_REL}" =~ ^configs/distillschedule/plans/[A-Za-z0-9._/-]+\.json$ ]] || { echo invalid_plan_path >&2; exit 2; }
+[[ "${PLAN_REL}" != *".."* ]] || { echo invalid_plan_path >&2; exit 2; }
 
 ROOT="${DMD_SYSTEM_ROOT:-/share/project/shuchenweng/yongyan_liu/DMD-System}"
 HELIOS_ROOT="${HELIOS_RUNTIME_ROOT:-/share/project/shuchenweng/yongyan_liu/DistillSchedule}"
@@ -20,7 +23,7 @@ PYENV="${DISTILLSCHEDULE_PYENV:-/tmp/distillschedule-helios-official-torch210}"
 PYTHON="${PYENV}/bin/python"
 ACCELERATE="${PYENV}/bin/accelerate"
 DEEPSPEED="${PYENV}/bin/deepspeed"
-PLAN="${ROOT}/configs/distillschedule/plans/helios_routea_full5_world16_typed.json"
+PLAN="${ROOT}/${PLAN_REL}"
 DS_CONFIG="${ROOT}/scripts/accelerate_configs/zero1_cpu_optimizer_offload.json"
 OUT="${ROOT}/artifacts/runs/${RUN_ID}"
 NODE_LOG="${OUT}/launcher/node_${NODE_RANK}"
@@ -151,6 +154,7 @@ PY
   echo started_at="$(date -Is)"
   echo dmd_system_head="${EXPECTED_HEAD}"
   echo dmd_system_plan_sha256="${EXPECTED_PLAN_SHA}"
+  echo dmd_system_plan_path="${PLAN_REL}"
   echo helios_head="$(git -C "${HELIOS_ROOT}" rev-parse HEAD)"
   echo helios_entrypoint_sha256="$(sha256sum "${HELIOS_ROOT}/train_helios.py" | awk '{print $1}')"
   echo python_path="$(readlink -f "${PYTHON}")"
@@ -243,11 +247,16 @@ for _ in $(seq 1 120); do [[ -f "${TOPOLOGY}" ]] && break; sleep 1; done
 [[ -f "${TOPOLOGY}" ]] || { echo topology_manifest_missing >&2; exit 87; }
 "${PYTHON}" - "${TOPOLOGY}" <<'PY'
 import json, pathlib, sys
+from distillschedule.runtime.topology import validate_topology_probe_payload
+
 p=pathlib.Path(sys.argv[1]); v=json.loads(p.read_text())
-assert v.get('status') == 'PASS', v
-assert v.get('world_size') == 16, v
-assert sorted(v.get('global_ranks', [])) == list(range(16)), v
-assert len(v.get('hosts', [])) == 2, v
+validate_topology_probe_payload(
+    v,
+    expected_nodes=2,
+    expected_local_world_size=8,
+    expected_world_size=16,
+    require_cuda=True,
+)
 PY
 {
   echo topology_path="${TOPOLOGY}"

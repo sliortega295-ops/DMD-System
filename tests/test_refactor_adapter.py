@@ -115,6 +115,12 @@ def test_external_helios_rollout_compiles_but_is_not_silently_run() -> None:
 
 
 WORLD16_PLAN = ROOT / "configs/distillschedule/plans/helios_routea_full5_world16_typed.json"
+RA16_F5_PR4_PLAN = ROOT / "configs/distillschedule/plans/helios_ra16_f5_pr4.json"
+RA16_F5_PR4_EC_PLAN = ROOT / "configs/distillschedule/plans/helios_ra16_f5_pr4_ec.json"
+RA16_F5_PR8_PLAN = ROOT / "configs/distillschedule/plans/helios_ra16_f5_pr8.json"
+RA16_F5_PR12_PLAN = ROOT / "configs/distillschedule/plans/helios_ra16_f5_pr12.json"
+RA16_F5_GLP_OFFLOAD_PLAN = ROOT / "configs/distillschedule/plans/helios_ra16_f5_glp_offload.json"
+RA16_F5_GLP_SCORE4_PLAN = ROOT / "configs/distillschedule/plans/helios_ra16_f5_glp_score4.json"
 
 
 def _world16_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, node_rank: int) -> None:
@@ -182,6 +188,259 @@ def test_world16_routea_plan_is_exact_typed_baseline(tmp_path: Path, monkeypatch
     assert rendered.training_config.dmd_generator_deepspeed_config.endswith(
         "zero1_cpu_optimizer_offload.json"
     )
+
+
+def test_ra16_f5_pr4_has_distinct_identity_and_phase_policy(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _world16_env(monkeypatch, tmp_path, 0)
+    monkeypatch.setenv("DISTILLSCHEDULE_RUN_ID", "ra16_f5_pr4_test")
+    loaded = load_plan(RA16_F5_PR4_PLAN)
+    compiled = DistillExecutor().compile(loaded, repo_root=ROOT)
+    invocation = compiled.adapter_plan.invocation
+    assert invocation is not None
+    env = invocation.environment
+
+    assert loaded.plan.plan_id == "helios-ra16-f5-pr4-v1"
+    assert loaded.plan.hardware.reserve_gib == 0
+    assert loaded.plan.evidence.metadata["experiment_id"] == "RA16-F5-PR4"
+    assert loaded.plan.evidence.metadata["comparison_baseline_experiment_id"] == "RA16-F5-FS40"
+    assert compiled.adapter_plan.protocol.final_versions == {
+        "generator": 3,
+        "critic": 15,
+        "ema": 15,
+    }
+    assert env["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_COMPONENTS"] == "generator"
+    assert env["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_BLOCK_COUNT"] == "4"
+    assert env["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_INDICES"] == "0,24,1,5"
+    assert env["DISTILLSCHEDULE_PHASE_RESIDENT_CRITIC_GENERATOR"] == "1"
+    assert env["DISTILLSCHEDULE_ACTIVATION_OFFLOAD_COMPONENTS"] == (
+        "generator_selected,critic_train"
+    )
+    assert "score" not in env["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_COMPONENTS"].split(",")
+
+
+def test_ra16_f5_pr4_ec_changes_only_bounded_allocator_policy(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _world16_env(monkeypatch, tmp_path, 0)
+    monkeypatch.setenv("DISTILLSCHEDULE_RUN_ID", "ra16_f5_pr4_ec_test")
+    parent = load_plan(RA16_F5_PR4_PLAN)
+    recovery = load_plan(RA16_F5_PR4_EC_PLAN)
+    compiled = DistillExecutor().compile(recovery, repo_root=ROOT)
+    invocation = compiled.adapter_plan.invocation
+    assert invocation is not None
+
+    assert recovery.plan.evidence.metadata["experiment_id"] == "RA16-F5-PR4-EC"
+    assert recovery.plan.evidence.metadata["parent_experiment_id"] == "RA16-F5-PR4"
+    assert recovery.plan.lifecycle == parent.plan.lifecycle
+    assert recovery.plan.workload.schedule == parent.plan.workload.schedule
+    assert recovery.plan.hardware == parent.plan.hardware
+    assert invocation.environment["DISTILLSCHEDULE_EMPTY_CACHE_BEFORE_BACKWARD"] == "1"
+
+
+def test_ra16_f5_pr8_changes_only_generator_streamed_set(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _world16_env(monkeypatch, tmp_path, 0)
+    monkeypatch.setenv("DISTILLSCHEDULE_RUN_ID", "ra16_f5_pr8_test")
+    parent = load_plan(RA16_F5_PR4_PLAN)
+    candidate = load_plan(RA16_F5_PR8_PLAN)
+    compiled = DistillExecutor().compile(candidate, repo_root=ROOT)
+    invocation = compiled.adapter_plan.invocation
+    assert invocation is not None
+    env = invocation.environment
+
+    assert candidate.plan.plan_id == "helios-ra16-f5-pr8-v1"
+    assert candidate.plan.evidence.metadata["experiment_id"] == "RA16-F5-PR8"
+    assert candidate.plan.evidence.metadata["parent_experiment_id"] == "RA16-F5-PR4"
+    assert candidate.plan.workload.schedule == parent.plan.workload.schedule
+    assert candidate.plan.hardware == parent.plan.hardware
+    assert candidate.plan.training_backends == parent.plan.training_backends
+    assert compiled.adapter_plan.protocol.final_versions == {
+        "generator": 3,
+        "critic": 15,
+        "ema": 15,
+    }
+    assert env["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_COMPONENTS"] == "generator"
+    assert env["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_BLOCK_COUNT"] == "8"
+    assert env["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_INDICES"] == (
+        "0,24,1,5,8,25,10,32"
+    )
+    assert env["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_WINDOW"] == "1"
+    assert env["DISTILLSCHEDULE_PHASE_RESIDENT_CRITIC_GENERATOR"] == "1"
+    assert env["DISTILLSCHEDULE_ACTIVATION_OFFLOAD_COMPONENTS"] == (
+        "generator_selected,critic_train"
+    )
+    assert "score" not in env["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_COMPONENTS"].split(",")
+    assert "DISTILLSCHEDULE_EMPTY_CACHE_BEFORE_BACKWARD" not in env
+
+
+def test_ra16_f5_pr12_changes_only_generator_streamed_set(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _world16_env(monkeypatch, tmp_path, 0)
+    monkeypatch.setenv("DISTILLSCHEDULE_RUN_ID", "ra16_f5_pr12_test")
+    parent = load_plan(RA16_F5_PR8_PLAN)
+    candidate = load_plan(RA16_F5_PR12_PLAN)
+    compiled = DistillExecutor().compile(candidate, repo_root=ROOT)
+    invocation = compiled.adapter_plan.invocation
+    assert invocation is not None
+    env = invocation.environment
+
+    assert candidate.plan.plan_id == "helios-ra16-f5-pr12-v1"
+    assert candidate.plan.evidence.metadata["experiment_id"] == "RA16-F5-PR12"
+    assert candidate.plan.evidence.metadata["parent_experiment_id"] == "RA16-F5-PR8"
+    assert candidate.plan.workload.schedule == parent.plan.workload.schedule
+    assert candidate.plan.hardware == parent.plan.hardware
+    assert candidate.plan.training_backends == parent.plan.training_backends
+    assert compiled.adapter_plan.protocol.final_versions == {
+        "generator": 3,
+        "critic": 15,
+        "ema": 15,
+    }
+    assert env["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_COMPONENTS"] == "generator"
+    assert env["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_BLOCK_COUNT"] == "12"
+    assert env["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_INDICES"] == (
+        "0,24,1,5,8,25,10,32,36,15,16,26"
+    )
+    assert env["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_WINDOW"] == "1"
+    assert env["DISTILLSCHEDULE_PHASE_RESIDENT_CRITIC_GENERATOR"] == "1"
+    assert env["DISTILLSCHEDULE_ACTIVATION_OFFLOAD_COMPONENTS"] == (
+        "generator_selected,critic_train"
+    )
+    assert "score" not in env["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_COMPONENTS"].split(",")
+    assert "DISTILLSCHEDULE_EMPTY_CACHE_BEFORE_BACKWARD" not in env
+
+
+def test_ra16_f5_glp_offload_changes_only_typed_engine_state_policy(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _world16_env(monkeypatch, tmp_path, 0)
+    monkeypatch.setenv("DISTILLSCHEDULE_RUN_ID", "ra16_f5_glp_offload_test")
+    parent = load_plan(RA16_F5_PR12_PLAN)
+    candidate = load_plan(RA16_F5_GLP_OFFLOAD_PLAN)
+    compiled = DistillExecutor().compile(candidate, repo_root=ROOT)
+    invocation = compiled.adapter_plan.invocation
+    assert invocation is not None
+
+    assert candidate.plan.plan_id == "helios-ra16-f5-glp-offload-v1"
+    assert candidate.plan.evidence.metadata["experiment_id"] == "RA16-F5-GLP-OFFLOAD"
+    assert candidate.plan.evidence.metadata["parent_experiment_id"] == "RA16-F5-PR12"
+    assert candidate.plan.workload.schedule == parent.plan.workload.schedule
+    assert candidate.plan.hardware == parent.plan.hardware
+    assert candidate.plan.training_backends == parent.plan.training_backends
+    assert candidate.plan.lifecycle.frozen_block_streaming == parent.plan.lifecycle.frozen_block_streaming
+    assert candidate.plan.lifecycle.activation_offload == parent.plan.lifecycle.activation_offload
+    assert candidate.plan.lifecycle.critic_phase_offload_generator_lp_state
+    assert not parent.plan.lifecycle.critic_phase_offload_generator_lp_state
+    assert invocation.environment[
+        "DISTILLSCHEDULE_CRITIC_PHASE_OFFLOAD_GENERATOR_LP_STATE"
+    ] == "1"
+    assert invocation.environment["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_BLOCK_COUNT"] == "12"
+    assert invocation.environment["DISTILLSCHEDULE_ACTIVATION_OFFLOAD_MIN_BYTES"] == str(32 * 1024 * 1024)
+
+
+def test_glp_offload_rejects_non_zero1_generator_backend(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from distillschedule.core.plan import ExecutionPlan
+
+    _world16_env(monkeypatch, tmp_path, 0)
+    loaded = load_plan(RA16_F5_GLP_OFFLOAD_PLAN)
+    raw = loaded.plan.to_dict()
+    raw["training_backends"]["generator"]["zero_stage"] = 2
+    plan = ExecutionPlan.from_mapping(raw)
+    with pytest.raises(ContractViolation, match="requires Generator ZeRO-1"):
+        default_registry().get("helios").validate(plan)
+
+
+def test_ra16_f5_glp_score4_changes_only_score_streamed_set(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _world16_env(monkeypatch, tmp_path, 0)
+    monkeypatch.setenv("DISTILLSCHEDULE_RUN_ID", "ra16_f5_glp_score4_test")
+    parent = load_plan(RA16_F5_GLP_OFFLOAD_PLAN)
+    candidate = load_plan(RA16_F5_GLP_SCORE4_PLAN)
+    compiled = DistillExecutor().compile(candidate, repo_root=ROOT)
+    invocation = compiled.adapter_plan.invocation
+    assert invocation is not None
+    env = invocation.environment
+
+    assert candidate.plan.plan_id == "helios-ra16-f5-glp-score4-v1"
+    assert candidate.plan.evidence.metadata["experiment_id"] == (
+        "RA16-F5-GLP-SCORE4"
+    )
+    assert candidate.plan.evidence.metadata["parent_experiment_id"] == (
+        "RA16-F5-GLP-OFFLOAD"
+    )
+    assert candidate.plan.workload.schedule == parent.plan.workload.schedule
+    assert candidate.plan.hardware == parent.plan.hardware
+    assert candidate.plan.training_backends == parent.plan.training_backends
+    assert candidate.plan.lifecycle.activation_offload == (
+        parent.plan.lifecycle.activation_offload
+    )
+    assert candidate.plan.lifecycle.critic_phase_offload_generator_lp_state
+    assert candidate.plan.lifecycle.frozen_block_streaming.block_indices == (
+        parent.plan.lifecycle.frozen_block_streaming.block_indices
+    )
+    assert candidate.plan.lifecycle.frozen_block_streaming.score_block_indices == (
+        36,
+        37,
+        38,
+        39,
+    )
+    assert env["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_COMPONENTS"] == (
+        "generator,score"
+    )
+    assert env["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_INDICES"] == (
+        "0,24,1,5,8,25,10,32,36,15,16,26"
+    )
+    assert env["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_SCORE_INDICES"] == (
+        "36,37,38,39"
+    )
+    assert env["DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_WINDOW"] == "1"
+    assert env["DISTILLSCHEDULE_CRITIC_PHASE_OFFLOAD_GENERATOR_LP_STATE"] == "1"
+
+
+def test_score_specific_indices_require_score_streaming_component(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from distillschedule.core.plan import ExecutionPlan
+
+    _world16_env(monkeypatch, tmp_path, 0)
+    loaded = load_plan(RA16_F5_GLP_SCORE4_PLAN)
+    raw = loaded.plan.to_dict()
+    raw["lifecycle"]["frozen_block_streaming"]["components"] = ["generator"]
+    plan = ExecutionPlan.from_mapping(raw)
+    with pytest.raises(ContractViolation, match="require enabled Score streaming"):
+        default_registry().get("helios").validate(plan)
+
+
+def test_phase_resident_policy_requires_generator_streaming(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from distillschedule.core.plan import ExecutionPlan
+
+    _world16_env(monkeypatch, tmp_path, 0)
+    loaded = load_plan(RA16_F5_PR4_PLAN)
+    raw = loaded.plan.to_dict()
+    raw["lifecycle"]["frozen_block_streaming"]["components"] = ["score"]
+    plan = ExecutionPlan.from_mapping(raw)
+    with pytest.raises(
+        ContractViolation,
+        match="requires Generator block streaming",
+    ):
+        default_registry().get("helios").validate(plan)
 
 
 def test_world16_routea_node_qualified_invocations(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

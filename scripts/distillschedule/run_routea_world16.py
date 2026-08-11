@@ -146,6 +146,30 @@ def _manifest_identity(args: argparse.Namespace, root: Path) -> dict[str, Any]:
     if not plan.is_file():
         raise RuntimeError(f"plan does not exist: {plan}")
     expected_head = args.expected_head or git_head(root)
+    plan_payload = load_json(plan)
+    evidence = plan_payload.get("evidence", {})
+    evidence_metadata = (
+        evidence.get("metadata", {}) if isinstance(evidence, dict) else {}
+    )
+    experiment_id = (
+        evidence_metadata.get("experiment_id")
+        if isinstance(evidence_metadata, dict)
+        else None
+    )
+    required_run_prefix = {
+        "RA16-F5-PR4": "ra16_f5_pr4_",
+        "RA16-F5-PR4-EC": "ra16_f5_pr4_ec_",
+        "RA16-F5-PR8": "ra16_f5_pr8_",
+        "RA16-F5-PR12": "ra16_f5_pr12_",
+        "RA16-F5-GLP-OFFLOAD": "ra16_f5_glp_offload_",
+        "RA16-F5-GLP-SCORE4": "ra16_f5_glp_score4_",
+    }.get(experiment_id)
+    if required_run_prefix is not None and not args.run_id.startswith(
+        required_run_prefix
+    ):
+        raise RuntimeError(
+            f"{experiment_id} run IDs must start with {required_run_prefix!r}"
+        )
     return {
         "schema_version": SCHEMA,
         "run_id": args.run_id,
@@ -156,6 +180,7 @@ def _manifest_identity(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         "remote_root": str(remote_root),
         "site_env": args.site_env,
         "plan": args.plan,
+        "experiment_id": experiment_id,
         "plan_sha256": sha256_file(plan),
         "expected_head": expected_head,
         "worker_script": "scripts/distillschedule/launch_routea_world16_typed_node.sh",
@@ -210,6 +235,7 @@ def _worker_command(
         str(identity["plan_sha256"]),
         str(identity["master_addr"]),
         str(identity["master_port"]),
+        str(identity["plan"]),
     ]
     remote = (
         f"set -Eeuo pipefail; source {shlex.quote(str(site_env))}; "
