@@ -1,0 +1,97 @@
+{
+  "baseline_result": "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/manifests/gan_systems_paired_formal_20260811_002-pair02-baseline_result.json",
+  "baseline_status": "PASS",
+  "family": "baseline",
+  "nodes": [
+    {
+      "final_return_code": 0,
+      "host": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+      "memory_observation": {
+        "cgroup_memory_peak_after": null,
+        "host_reserve_gate": false,
+        "memory_failure": false,
+        "oom_delta": 0,
+        "oom_kill_delta": 0,
+        "policy": "actual_oom_only"
+      },
+      "node_rank": 0,
+      "resource": {
+        "cgroup_peak_bytes": 629331771392,
+        "host_used_peak_bytes": 586842000000,
+        "samples": 1132,
+        "status": "MEASURED"
+      },
+      "runtime_identity": {
+        "accelerate": {
+          "path": "/tmp/distillschedule-helios-official-torch210/bin/accelerate",
+          "sha256": "55e23583028d7373e24231f0159defe085a36836098c83c08b7205368f2789bf",
+          "version": "1.12.0"
+        },
+        "deepspeed": {
+          "path": "/tmp/distillschedule-helios-official-torch210/bin/deepspeed",
+          "sha256": "8fea1eee673999a5770daf56ebf9a9b7e89d903a37b1821dae4d472ffde9bc0c",
+          "version": "0.18.4"
+        },
+        "helios": {
+          "dirty": false,
+          "entrypoint_sha256": "f1dd9c3076e737aa1e578cc47e50c14ba8fa4a7623141dd7d8258c36e4534993",
+          "head": "c66e413856fda81ec280f0e8e0dd361da0c85830",
+          "root": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_gan_runtime_20260810",
+          "utils_post_sha256": "f46e18f768df09f6e43cbc2ffb2ee96ec0e61f71411e1224335721dbfcdb0dab"
+        },
+        "python": {
+          "path": "/share/project/shuchenweng/.conda/envs/distillschedule-bootstrap-py310/bin/python3.10",
+          "sha256": "4c8caf210fd4160c1027adfa161540627fdb6a58c4b22015245b2d5c42d213e7",
+          "version": "Python 3.10.20"
+        },
+        "schema_version": "distillschedule.gan_runtime_identity.v1"
+      }
+    },
+    {
+      "final_return_code": 0,
+      "host": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+      "memory_observation": {
+        "cgroup_memory_peak_after": null,
+        "host_reserve_gate": false,
+        "memory_failure": false,
+        "oom_delta": 0,
+        "oom_kill_delta": 0,
+        "policy": "actual_oom_only"
+      },
+      "node_rank": 1,
+      "resource": {
+        "cgroup_peak_bytes": 594310529024,
+        "host_used_peak_bytes": 595181000000,
+        "samples": 1131,
+        "status": "MEASURED"
+      },
+      "runtime_identity": {
+        "accelerate": {
+          "path": "/tmp/distillschedule-helios-official-torch210/bin/accelerate",
+          "sha256": "55e23583028d7373e24231f0159defe085a36836098c83c08b7205368f2789bf",
+          "version": "1.12.0"
+        },
+        "deepspeed": {
+          "path": "/tmp/distillschedule-helios-official-torch210/bin/deepspeed",
+          "sha256": "8fea1eee673999a5770daf56ebf9a9b7e89d903a37b1821dae4d472ffde9bc0c",
+          "version": "0.18.4"
+        },
+        "helios": {
+          "dirty": false,
+          "entrypoint_sha256": "f1dd9c3076e737aa1e578cc47e50c14ba8fa4a7623141dd7d8258c36e4534993",
+          "head": "c66e413856fda81ec280f0e8e0dd361da0c85830",
+          "root": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_gan_runtime_20260810",
+          "utils_post_sha256": "f46e18f768df09f6e43cbc2ffb2ee96ec0e61f71411e1224335721dbfcdb0dab"
+        },
+        "python": {
+          "path": "/share/project/shuchenweng/.conda/envs/distillschedule-bootstrap-py310/bin/python3.10",
+          "sha256": "4c8caf210fd4160c1027adfa161540627fdb6a58c4b22015245b2d5c42d213e7",
+          "version": "Python 3.10.20"
+        },
+        "schema_version": "distillschedule.gan_runtime_identity.v1"
+      }
+    }
+  ],
+  "run_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_systems_paired_formal_20260811_002-pair02-baseline",
+  "status": "PASS"
+}

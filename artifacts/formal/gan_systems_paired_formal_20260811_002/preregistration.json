@@ -1,0 +1,24 @@
+{
+  "baseline_command_digest": "4ae12975cb84d848ba7368e3d9b7c9920b2936e688609bb18901b9b7724b8080",
+  "created_at": "2026-08-11T09:14:20.792203+00:00",
+  "formal_window": [
+    1000,
+    1001,
+    1002,
+    1003,
+    1004
+  ],
+  "order_policy": "alternate baseline/pipeline then pipeline/baseline",
+  "pipeline_command_digest": "56fbd4e1e2f39c98c61fca5ca7cf7376a486fce09e7db2b346a2aae2dad12c88",
+  "profiled_runs_allowed": false,
+  "required_evidence": [
+    "gan_fairness_receipt",
+    "gan_compute_receipt",
+    "gan_timing_receipt_dir"
+  ],
+  "run_id": "gan_systems_paired_formal_20260811_002",
+  "schema_version": "distillschedule.gan_paired_formal_timing.v2",
+  "trials": 3,
+  "workload_contract_digest": "e7bb6638e2d2d7356b93c90c0ac73a577f59cdeacf4f70a0c45b2cd29fac95a0",
+  "workload_contract_sha256": "18d298b095a256603216e6b0d912920ae7b76b194adf560e99bac2b387de5648"
+}

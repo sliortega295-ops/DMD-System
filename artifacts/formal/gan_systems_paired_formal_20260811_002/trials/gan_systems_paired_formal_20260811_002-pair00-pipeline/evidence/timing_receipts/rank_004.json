@@ -1,0 +1,17 @@
+{
+  "diagnostic_only": false,
+  "host": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+  "local_elapsed_seconds": 1137.228578494,
+  "logical_window": [
+    1000,
+    1004
+  ],
+  "profiled": false,
+  "rank": 4,
+  "schema_version": "distillschedule.gan_full5_timing_rank.v1",
+  "start_point": "before_first_model_compute",
+  "start_unix_ns": 1786441357656534069,
+  "status": "PASS",
+  "stop_point": "after_step1004_critic_commit",
+  "stop_unix_ns": 1786442494885112563
+}

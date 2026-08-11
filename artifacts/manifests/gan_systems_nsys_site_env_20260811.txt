@@ -1,0 +1,22 @@
+1d9d53ba8deef70053f344b24053503a2e52c761f6b8fb0fa84c788b60898c82  /share/project/shuchenweng/yongyan_liu/gan_systems_nsys_20260811.env
+# Immutable site profile for systems-only GAN baseline/pipeline formal trials.
+export HELIOS_RUNTIME_ROOT=/share/project/shuchenweng/yongyan_liu/DistillSchedule_gan_runtime_20260810
+export DISTILLSCHEDULE_PYENV=/tmp/distillschedule-helios-official-torch210
+export DISTILLSCHEDULE_PYTHON=/tmp/distillschedule-helios-official-torch210/bin/python
+export DISTILLSCHEDULE_ACCELERATE=/tmp/distillschedule-helios-official-torch210/bin/accelerate
+export DISTILLSCHEDULE_DEEPSPEED=/tmp/distillschedule-helios-official-torch210/bin/deepspeed
+export HELIOS_DISTILLED_ROOT=/share/project/shuchenweng/DistillSchedule_assets/Helios-Distilled
+export HELIOS_BASE_ROOT=/home/shuchenweng/xty/Helios-main/weights
+export DISTILLSCHEDULE_PRECAST_GENERATOR_PATH=/share/project/shuchenweng/DistillSchedule_assets/precast/helios-distilled-transformer-ode-mixed-bf16-v1
+export DISTILLSCHEDULE_PRECAST_SCORE_PATH=/share/project/shuchenweng/DistillSchedule_assets/precast/helios-score-transformer-mixed-bf16-gan-systems-v2
+export HELIOS_GAN_DATA_ROOT=/share/project/shuchenweng/DistillSchedule_assets/m0/datasets/syn_feature_rank16
+export DISTILLSCHEDULE_GAN_TRACE_BUNDLE=/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_trace_rank16_v1
+export DISTILLSCHEDULE_GAN_CHECKPOINT=/share/project/shuchenweng/DistillSchedule_assets/gan/systems_only_gan_bootstrap_v2/checkpoint-1000
+export DISTILLSCHEDULE_EXPECTED_HELIOS_HEAD=c66e413856fda81ec280f0e8e0dd361da0c85830
+export DISTILLSCHEDULE_EXPECTED_HELIOS_ENTRYPOINT_SHA256=f1dd9c3076e737aa1e578cc47e50c14ba8fa4a7623141dd7d8258c36e4534993
+export DISTILLSCHEDULE_GAN_NSYS_PROFILE=1
+export DISTILLSCHEDULE_GAN_NSYS_EXACT_RANGE=0
+export HF_HOME=/share/project/shuchenweng/DistillSchedule_assets/hf_home_official_torch210
+export HF_HUB_OFFLINE=1
+export TRANSFORMERS_OFFLINE=1
+export WANDB_MODE=offline

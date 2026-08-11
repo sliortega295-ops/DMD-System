@@ -1,0 +1,36 @@
+{
+  "claimable": true,
+  "diagnostic_only": false,
+  "global_training_window_seconds": 596.234346715,
+  "logical_steps": [
+    1000,
+    1001,
+    1002,
+    1003,
+    1004
+  ],
+  "max_rank_elapsed_seconds": 594.263614538,
+  "min_rank_elapsed_seconds": 594.232445997,
+  "profiled": false,
+  "rank_count": 16,
+  "receipts": [
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_systems_paired_formal_20260811_002-pair01-baseline/timing_receipts/rank_000.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_systems_paired_formal_20260811_002-pair01-baseline/timing_receipts/rank_001.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_systems_paired_formal_20260811_002-pair01-baseline/timing_receipts/rank_002.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_systems_paired_formal_20260811_002-pair01-baseline/timing_receipts/rank_003.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_systems_paired_formal_20260811_002-pair01-baseline/timing_receipts/rank_004.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_systems_paired_formal_20260811_002-pair01-baseline/timing_receipts/rank_005.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_systems_paired_formal_20260811_002-pair01-baseline/timing_receipts/rank_006.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_systems_paired_formal_20260811_002-pair01-baseline/timing_receipts/rank_007.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_systems_paired_formal_20260811_002-pair01-baseline/timing_receipts/rank_008.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_systems_paired_formal_20260811_002-pair01-baseline/timing_receipts/rank_009.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_systems_paired_formal_20260811_002-pair01-baseline/timing_receipts/rank_010.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_systems_paired_formal_20260811_002-pair01-baseline/timing_receipts/rank_011.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_systems_paired_formal_20260811_002-pair01-baseline/timing_receipts/rank_012.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_systems_paired_formal_20260811_002-pair01-baseline/timing_receipts/rank_013.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_systems_paired_formal_20260811_002-pair01-baseline/timing_receipts/rank_014.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_systems_paired_formal_20260811_002-pair01-baseline/timing_receipts/rank_015.json"
+  ],
+  "schema_version": "distillschedule.gan_full5_timing_bundle.v1",
+  "status": "PASS"
+}

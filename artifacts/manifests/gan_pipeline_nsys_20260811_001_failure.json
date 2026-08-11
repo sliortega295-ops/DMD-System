@@ -1,0 +1,65 @@
+{
+  "claim_boundary": "This is an instrumentation failure after the profiled logical window, not a GAN workload correctness result and not a speed measurement.",
+  "completed_workload_evidence": {
+    "logical_window": [
+      1000,
+      1004
+    ],
+    "noncontroller_elapsed_seconds_range": [
+      1256.23264456,
+      1256.23413798
+    ],
+    "noncontroller_latest_stop_utc": "2026-08-11T12:44:21.899266Z",
+    "noncontroller_range_receipts": 14,
+    "observed_receipt_ranks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "rank_result_tree_file_count_observed": 38
+  },
+  "decision": "NO_RETRY_SAME_MECHANISM",
+  "downstream": {
+    "baseline_nsys": "PASS preserved",
+    "offload_search": "NOT_RUN_AT_THIS_RECORD",
+    "pipeline_nsys": "FAIL"
+  },
+  "evidence_label": "Measured diagnostic profiler failure",
+  "failure_signature": {
+    "controller_result": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/nsight/gan_pipeline_nsys_20260811_001/result.json",
+    "controller_result_sha256": "e4165e2736893caf692c7a3208c350a007115e628a5958efbb6cea9fc70ff438",
+    "live_gpu_processes_per_node_at_bounded_stop": 5,
+    "missing_controller_receipts": [
+      0,
+      8
+    ],
+    "node_return_codes": [
+      143,
+      143
+    ],
+    "nsys_reports_finalized": 0,
+    "wait_state": "futex_wait_queue_me"
+  },
+  "formal_speedup_eligible": false,
+  "matching_prior_bounded_negative": {
+    "artifact": "/home/lyy/DistillSchedule_gan_runtime_20260810/artifacts/manifests/iteration_255_step15a_b1_a32_frozen_block_streaming_w1_world16_nsys_profile_failure_evidence.json",
+    "mechanism": "node-local cudaProfilerStop followed by distributed teardown/barrier can reproduce a post-compute hang with missing rank receipts and no finalized report",
+    "sha256": "5369c6b661fe469e598738cf2d6be60d4a5fdc193badea6ededdf963fc807c88"
+  },
+  "recorded_at": "2026-08-11T13:05:36.807593+00:00",
+  "remote_run_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_nsys_20260811_001",
+  "run_id": "gan_pipeline_nsys_20260811_001",
+  "schema_version": "distillschedule.gan_pipeline_nsys_failure.v1",
+  "status": "FAIL_CAPTURE_NO_REPORT"
+}

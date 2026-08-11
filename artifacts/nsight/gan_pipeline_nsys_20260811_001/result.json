@@ -1,0 +1,8 @@
+{
+  "claimable": false,
+  "error": "RuntimeError('pipeline node failure return_codes=[143, 143]')",
+  "family": "pipeline",
+  "run_id": "gan_pipeline_nsys_20260811_001",
+  "schema_version": "distillschedule.gan_systems_formal_trial.v1",
+  "status": "FAIL"
+}

@@ -379,3 +379,46 @@ def test_pipeline_missing_shared_history_consumer_fails(tmp_path: Path) -> None:
             trace_bundle=trace_root,
             expected_streamed_block_count=1,
         )
+
+
+def test_pipeline_resident_k0_proves_no_streamer_events(tmp_path: Path) -> None:
+    run_root, trace_root = _make_fixture(tmp_path, local_source_index=True)
+    _convert_fixture_to_pipeline(run_root, trace_root)
+    block_root = run_root / "results" / "block_streaming"
+    for path in block_root.glob("*.jsonl"):
+        path.unlink()
+    block_root.rmdir()
+    zero_stats = {
+        "captured_parameter_count": 0,
+        "captured_bytes": 0,
+        "streamed_block_count": 0,
+        "materialize_count": 0,
+        "materialized_bytes": 0,
+        "release_count": 0,
+        "released_bytes": 0,
+        "resident_bytes": 0,
+    }
+    result_root = run_root / "results"
+    for rank in range(16):
+        (result_root / f"rank_{rank:03d}.json").write_text(
+            json.dumps(
+                {
+                    "status": "PASS",
+                    "rank": rank,
+                    "role": "generator" if rank < 8 else "score",
+                    "streamer_stats": zero_stats,
+                }
+            )
+        )
+    built = build_gan_execution_receipts(
+        family="pipeline",
+        run_root=run_root,
+        trace_bundle=trace_root,
+        expected_streamed_block_count=0,
+    )
+    proof = built["provenance"]["physical_call_proof"]
+    assert len(proof) == 16
+    assert proof["rank_000_generator"]["streamed_block_indices"] == []
+    assert proof["rank_008_score"]["physical_call_accounting"] == (
+        "resident_model_no_stream_events"
+    )

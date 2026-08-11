@@ -1,0 +1,7 @@
+{
+  "claimable": false,
+  "completed_pairs": [],
+  "error": "gan_systems_paired_formal_20260811_001-pair00-baseline: command failed rc=2",
+  "schema_version": "distillschedule.gan_paired_formal_timing.v2",
+  "status": "FAIL"
+}

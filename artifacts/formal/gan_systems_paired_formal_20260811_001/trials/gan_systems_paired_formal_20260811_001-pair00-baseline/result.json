@@ -1,0 +1,8 @@
+{
+  "claimable": false,
+  "error": "RuntimeError('command failed rc=2: /usr/bin/python3 /home/lyy/DMD-System_gan_baseline_pr4/scripts/distillschedule/run_routea_gan_world16.py --hosts baai-helios-node0,baai-helios-node1 --run-id gan_systems_paired_formal_20260811_001-pair00-baseline --repo-root /home/lyy/DMD-System_gan_baseline_pr4 --remote-root /share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810 --site-env /share/project/shuchenweng/yongyan_liu/gan_systems_formal_20260811.env --master-addr 172.24.129.137 --master-port 30865 --expected-head 99aa0a31cd1fd5aebcb1d72bd721ece5fd09b683 --timeout-seconds 20000; log=/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_001/trials/gan_systems_paired_formal_20260811_001-pair00-baseline/baseline_controller.log')",
+  "family": "baseline",
+  "run_id": "gan_systems_paired_formal_20260811_001-pair00-baseline",
+  "schema_version": "distillschedule.gan_systems_formal_trial.v1",
+  "status": "FAIL"
+}

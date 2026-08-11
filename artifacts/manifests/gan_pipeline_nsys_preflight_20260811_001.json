@@ -1,0 +1,39 @@
+{
+  "authorized_hypothesis": "An exact-range diagnostic Nsight capture can attribute the persistent 8G+8Score Full5 slowdown without changing its frozen workload or entering the formal speed table.",
+  "current_gate": "formal 3-pair baseline/pipeline correctness and exact timing PASS; diagnostic pipeline Nsight authorized; minimum-offload still deferred until profile completes",
+  "decision": "GO",
+  "frozen_contracts": [
+    "systems-only GAN bootstrap c528dd62...",
+    "operation-keyed trace d31d4d47...",
+    "logical steps1000-1004; 384x640 BF16; G1/C5/EMA1",
+    "DP8 MB1 GAS2 batch16 pipeline and world16 sequential denominator",
+    "all40 window1 HOST_SHARED_IMMUTABLE no-prefetch fixed memory policy",
+    "formal timing artifacts are immutable and no profiled run is speedup-eligible"
+  ],
+  "go_conditions": [
+    "source and runtime hooks compile and focused tests pass",
+    "both nodes GPU-idle and node lock acquirable immediately before launch",
+    "no overwrite of formal artifacts"
+  ],
+  "live_substrate": {
+    "cgroup_current_oom_delta": "not launched; historical oom_kill counters unchanged",
+    "gpu_processes": "none at preflight; only historical defunct nsys processes",
+    "pipeline_git_head": "52784c345f144a388c0a69a336ef5aae439eb396",
+    "runtime_probe_sha256": "a8cdd4de23bc00bf6cde8b4e07b7371d12c648c438fb23f9f7ed0941caa97282"
+  },
+  "matching_prior_evidence": {
+    "baseline_nsys_summary": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/manifests/gan_baseline_nsys_20260811_001_summary.txt",
+    "formal_paired_result": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/result.json",
+    "formal_status": "PASS",
+    "pipeline_formal_gate": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal_gate/gan_pipeline_formal_gate_20260811_003/result.json"
+  },
+  "new_falsifiable_question": "Can the same pipeline worker emit 16 exact range receipts and two nonempty node reports over exactly step1000 first compute through step1004 Critic commit while preserving fairness and compute receipts?",
+  "rejected_or_superseded_paths": [
+    "formal timing under Nsight",
+    "offload search before fixed-policy attribution",
+    "new overlap or altered GAN/DMD math",
+    "ZeRO-2 known double-reduction path"
+  ],
+  "schema_version": "distillschedule.iteration_preflight.v2",
+  "status": "GO"
+}

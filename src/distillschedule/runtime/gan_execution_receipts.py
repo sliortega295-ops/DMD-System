@@ -432,8 +432,8 @@ def _block_event_proof(
     traces: Mapping[int, Mapping[str, Any]],
     expected_streamed_block_count: int,
 ) -> dict[str, Any]:
-    if expected_streamed_block_count <= 0:
-        raise ValueError("physical call proof requires at least one streamed block")
+    if expected_streamed_block_count < 0:
+        raise ValueError("expected streamed block count cannot be negative")
     expected_by_rank: dict[tuple[int, str], int] = {}
     if family == "baseline":
         for rank in LOGICAL_SAMPLE_SLOTS:
@@ -471,6 +471,64 @@ def _block_event_proof(
             expected_by_rank[(lane + 8, "score")] = len(slots) * (
                 len(GENERATOR_UPDATE_STEPS) * 4 + len(FULL5_STEPS) * 2
             )
+
+    if expected_streamed_block_count == 0:
+        if family != "pipeline":
+            raise ValueError("resident k=0 proof is currently defined only for pipeline")
+        event_files = list((run_root / "block_streaming").glob("*.jsonl"))
+        event_files += list(
+            (run_root / "results" / "block_streaming").glob("*.jsonl")
+        )
+        if event_files:
+            raise ValueError(
+                "k=0 resident candidate unexpectedly emitted block-streaming events: "
+                f"{[str(path) for path in event_files[:3]]}"
+            )
+        result_roots = [
+            candidate
+            for candidate in (run_root / "results", run_root)
+            if (candidate / "rank_000.json").is_file()
+        ]
+        if len(result_roots) != 1:
+            raise ValueError(
+                "expected exactly one resident-result root, observed "
+                f"{[str(path) for path in result_roots]}"
+            )
+        proof: dict[str, Any] = {}
+        for (rank, component), expected in sorted(expected_by_rank.items()):
+            path = result_roots[0] / f"rank_{rank:03d}.json"
+            value = json.loads(path.read_text())
+            expected_role = "generator" if component == "generator" else "score"
+            if value.get("status") != "PASS" or value.get("role") != expected_role:
+                raise ValueError(f"invalid resident candidate result: {path}")
+            stats = value.get("streamer_stats")
+            if not isinstance(stats, Mapping):
+                raise ValueError(f"missing resident lifecycle stats: {path}")
+            zero_fields = (
+                "captured_parameter_count",
+                "captured_bytes",
+                "streamed_block_count",
+                "materialize_count",
+                "materialized_bytes",
+                "release_count",
+                "released_bytes",
+                "resident_bytes",
+            )
+            drift = {
+                name: stats.get(name)
+                for name in zero_fields
+                if stats.get(name) != 0
+            }
+            if drift:
+                raise ValueError(f"k=0 resident lifecycle drift in {path}: {drift}")
+            proof[f"rank_{rank:03d}_{component}"] = {
+                "path": str(path.resolve()),
+                "streamed_block_indices": [],
+                "expected_logical_forwards": expected,
+                "physical_call_accounting": "resident_model_no_stream_events",
+                "materialize_release_balanced": True,
+            }
+        return proof
 
     block_roots = [
         candidate

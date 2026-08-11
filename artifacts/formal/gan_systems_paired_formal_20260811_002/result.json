@@ -1,0 +1,436 @@
+{
+  "baseline_seconds": [
+    656.125119729,
+    596.234346715,
+    658.338258614
+  ],
+  "claim_boundary": "Exact unprofiled model-compute Full5 windows only; stochastic/DiT/model-call parity required.",
+  "claimable": true,
+  "distributions": {
+    "baseline": {
+      "coefficient_of_variation": 0.055321486644634967,
+      "count": 3,
+      "max": 658.338258614,
+      "mean": 636.899241686,
+      "median": 656.125119729,
+      "min": 596.234346715,
+      "sample_stdev": 35.234212892910186
+    },
+    "pipeline": {
+      "coefficient_of_variation": 0.05924075833433585,
+      "count": 3,
+      "max": 1170.196847944,
+      "mean": 1117.5352898123333,
+      "median": 1139.194008663,
+      "min": 1043.21501283,
+      "sample_stdev": 66.20363803386441
+    },
+    "speedup": {
+      "coefficient_of_variation": 0.011947807787195543,
+      "count": 3,
+      "max": 0.5759555569459609,
+      "mean": 0.5700262038749854,
+      "median": 0.5715354355355323,
+      "min": 0.562587619143463,
+      "sample_stdev": 0.006810563517563064
+    }
+  },
+  "geometric_mean_paired_speedup": 0.5699990105220677,
+  "logical_steps": [
+    1000,
+    1001,
+    1002,
+    1003,
+    1004
+  ],
+  "median_paired_speedup": 0.5715354355355323,
+  "pair_count": 3,
+  "paired_speedup_baseline_over_pipeline": [
+    0.5759555569459609,
+    0.5715354355355323,
+    0.562587619143463
+  ],
+  "pairs": [
+    {
+      "baseline": {
+        "compute_path": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-baseline/evidence/execution_receipts/gan_compute_receipt.json",
+        "compute_sha256": "670061238b003fa512287547a1ad0873f25e9f2c61e9dd9557c163551510756d",
+        "fairness_path": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-baseline/evidence/execution_receipts/gan_fairness_receipt.json",
+        "fairness_sha256": "77e49ac2618ead91b117df1eed6515575ba7b0cac0783c4bd57319a77293effc",
+        "family": "baseline",
+        "result_path": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-baseline/result.json",
+        "result_sha256": "40c88c24ebff880b293b0c532f8171b1e4288afa03aeb47fa383b974e7b0ed84",
+        "run_id": "gan_systems_paired_formal_20260811_002-pair00-baseline",
+        "seconds": 656.125119729,
+        "timing": {
+          "claimable": true,
+          "diagnostic_only": false,
+          "global_training_window_seconds": 656.125119729,
+          "logical_steps": [
+            1000,
+            1001,
+            1002,
+            1003,
+            1004
+          ],
+          "max_rank_elapsed_seconds": 654.162184708,
+          "min_rank_elapsed_seconds": 654.160143202,
+          "profiled": false,
+          "rank_count": 16,
+          "receipts": [
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-baseline/evidence/timing_receipts/rank_000.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-baseline/evidence/timing_receipts/rank_001.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-baseline/evidence/timing_receipts/rank_002.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-baseline/evidence/timing_receipts/rank_003.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-baseline/evidence/timing_receipts/rank_004.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-baseline/evidence/timing_receipts/rank_005.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-baseline/evidence/timing_receipts/rank_006.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-baseline/evidence/timing_receipts/rank_007.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-baseline/evidence/timing_receipts/rank_008.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-baseline/evidence/timing_receipts/rank_009.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-baseline/evidence/timing_receipts/rank_010.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-baseline/evidence/timing_receipts/rank_011.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-baseline/evidence/timing_receipts/rank_012.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-baseline/evidence/timing_receipts/rank_013.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-baseline/evidence/timing_receipts/rank_014.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-baseline/evidence/timing_receipts/rank_015.json"
+          ],
+          "schema_version": "distillschedule.gan_full5_timing_bundle.v1",
+          "status": "PASS"
+        },
+        "timing_receipt_dir": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-baseline/evidence/timing_receipts"
+      },
+      "compute_inventory": {
+        "compute_contract_digest": "482dfd6cc0b27747adb0ef835cfea187dd6c7769d847e443853b46ab06d2af34",
+        "fixed_critic_score_forwards_per_sample": 2,
+        "fixed_generator_score_forwards_per_sample": 4,
+        "gan_d_batched_items_per_sample": 3,
+        "schema_version": "distillschedule.gan_compute_pair.v1",
+        "status": "PASS"
+      },
+      "fairness": {
+        "fairness_contract_digest": "b7104c0729f44d28963dff90fca6d51b293798d9dc0ba718b1d3af7d6985de66",
+        "guarantee": "same logical source/random tensors and same complete DiT forward counts; physical scheduling may differ",
+        "logical_samples_per_step": 16,
+        "logical_window": [
+          1000,
+          1004
+        ],
+        "sample_mapping_digest": "dc367927c55dde768fdbf42e4771b69259c4432cef002987be3ac93d0837674e",
+        "schema_version": "distillschedule.gan_fairness_pair.v1",
+        "status": "PASS",
+        "trace_bundle_hash": "d31d4d473a3574b5b39e50ad2b5e72e17aee7baf707130ea0513092553f7cd15"
+      },
+      "launch_order": [
+        "baseline",
+        "pipeline"
+      ],
+      "pair_index": 0,
+      "pipeline": {
+        "compute_path": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-pipeline/evidence/execution_receipts/gan_compute_receipt.json",
+        "compute_sha256": "52746478d75d7112955db0413f001df258c76a6058725fd0f233ebc527659a42",
+        "fairness_path": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-pipeline/evidence/execution_receipts/gan_fairness_receipt.json",
+        "fairness_sha256": "069069ba2ba5f15bc75ed532c25c5ed3d456dc681f44786d8f0f35c269dc3b96",
+        "family": "pipeline",
+        "result_path": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-pipeline/result.json",
+        "result_sha256": "2d1420f574ba16c5b4a3d2c795e8bf597d98fc573dadea6250c025784cc36542",
+        "run_id": "gan_systems_paired_formal_20260811_002-pair00-pipeline",
+        "seconds": 1139.194008663,
+        "timing": {
+          "claimable": true,
+          "diagnostic_only": false,
+          "global_training_window_seconds": 1139.194008663,
+          "logical_steps": [
+            1000,
+            1001,
+            1002,
+            1003,
+            1004
+          ],
+          "max_rank_elapsed_seconds": 1137.228718529,
+          "min_rank_elapsed_seconds": 1066.36428069,
+          "profiled": false,
+          "rank_count": 16,
+          "receipts": [
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-pipeline/evidence/timing_receipts/rank_000.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-pipeline/evidence/timing_receipts/rank_001.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-pipeline/evidence/timing_receipts/rank_002.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-pipeline/evidence/timing_receipts/rank_003.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-pipeline/evidence/timing_receipts/rank_004.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-pipeline/evidence/timing_receipts/rank_005.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-pipeline/evidence/timing_receipts/rank_006.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-pipeline/evidence/timing_receipts/rank_007.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-pipeline/evidence/timing_receipts/rank_008.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-pipeline/evidence/timing_receipts/rank_009.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-pipeline/evidence/timing_receipts/rank_010.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-pipeline/evidence/timing_receipts/rank_011.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-pipeline/evidence/timing_receipts/rank_012.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-pipeline/evidence/timing_receipts/rank_013.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-pipeline/evidence/timing_receipts/rank_014.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-pipeline/evidence/timing_receipts/rank_015.json"
+          ],
+          "schema_version": "distillschedule.gan_full5_timing_bundle.v1",
+          "status": "PASS"
+        },
+        "timing_receipt_dir": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair00-pipeline/evidence/timing_receipts"
+      }
+    },
+    {
+      "baseline": {
+        "compute_path": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-baseline/evidence/execution_receipts/gan_compute_receipt.json",
+        "compute_sha256": "670061238b003fa512287547a1ad0873f25e9f2c61e9dd9557c163551510756d",
+        "fairness_path": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-baseline/evidence/execution_receipts/gan_fairness_receipt.json",
+        "fairness_sha256": "77e49ac2618ead91b117df1eed6515575ba7b0cac0783c4bd57319a77293effc",
+        "family": "baseline",
+        "result_path": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-baseline/result.json",
+        "result_sha256": "d0102795f39e7873afa592ac85e9bc5d91f9158d551fbe7fd8aed91f2a03d4c4",
+        "run_id": "gan_systems_paired_formal_20260811_002-pair01-baseline",
+        "seconds": 596.234346715,
+        "timing": {
+          "claimable": true,
+          "diagnostic_only": false,
+          "global_training_window_seconds": 596.234346715,
+          "logical_steps": [
+            1000,
+            1001,
+            1002,
+            1003,
+            1004
+          ],
+          "max_rank_elapsed_seconds": 594.263614538,
+          "min_rank_elapsed_seconds": 594.232445997,
+          "profiled": false,
+          "rank_count": 16,
+          "receipts": [
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-baseline/evidence/timing_receipts/rank_000.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-baseline/evidence/timing_receipts/rank_001.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-baseline/evidence/timing_receipts/rank_002.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-baseline/evidence/timing_receipts/rank_003.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-baseline/evidence/timing_receipts/rank_004.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-baseline/evidence/timing_receipts/rank_005.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-baseline/evidence/timing_receipts/rank_006.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-baseline/evidence/timing_receipts/rank_007.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-baseline/evidence/timing_receipts/rank_008.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-baseline/evidence/timing_receipts/rank_009.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-baseline/evidence/timing_receipts/rank_010.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-baseline/evidence/timing_receipts/rank_011.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-baseline/evidence/timing_receipts/rank_012.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-baseline/evidence/timing_receipts/rank_013.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-baseline/evidence/timing_receipts/rank_014.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-baseline/evidence/timing_receipts/rank_015.json"
+          ],
+          "schema_version": "distillschedule.gan_full5_timing_bundle.v1",
+          "status": "PASS"
+        },
+        "timing_receipt_dir": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-baseline/evidence/timing_receipts"
+      },
+      "compute_inventory": {
+        "compute_contract_digest": "482dfd6cc0b27747adb0ef835cfea187dd6c7769d847e443853b46ab06d2af34",
+        "fixed_critic_score_forwards_per_sample": 2,
+        "fixed_generator_score_forwards_per_sample": 4,
+        "gan_d_batched_items_per_sample": 3,
+        "schema_version": "distillschedule.gan_compute_pair.v1",
+        "status": "PASS"
+      },
+      "fairness": {
+        "fairness_contract_digest": "b7104c0729f44d28963dff90fca6d51b293798d9dc0ba718b1d3af7d6985de66",
+        "guarantee": "same logical source/random tensors and same complete DiT forward counts; physical scheduling may differ",
+        "logical_samples_per_step": 16,
+        "logical_window": [
+          1000,
+          1004
+        ],
+        "sample_mapping_digest": "dc367927c55dde768fdbf42e4771b69259c4432cef002987be3ac93d0837674e",
+        "schema_version": "distillschedule.gan_fairness_pair.v1",
+        "status": "PASS",
+        "trace_bundle_hash": "d31d4d473a3574b5b39e50ad2b5e72e17aee7baf707130ea0513092553f7cd15"
+      },
+      "launch_order": [
+        "pipeline",
+        "baseline"
+      ],
+      "pair_index": 1,
+      "pipeline": {
+        "compute_path": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-pipeline/evidence/execution_receipts/gan_compute_receipt.json",
+        "compute_sha256": "52746478d75d7112955db0413f001df258c76a6058725fd0f233ebc527659a42",
+        "fairness_path": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-pipeline/evidence/execution_receipts/gan_fairness_receipt.json",
+        "fairness_sha256": "069069ba2ba5f15bc75ed532c25c5ed3d456dc681f44786d8f0f35c269dc3b96",
+        "family": "pipeline",
+        "result_path": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-pipeline/result.json",
+        "result_sha256": "4f5024be5d471573f702e7087992ac8b17096b652a706eecc85f3003ddeb8a9b",
+        "run_id": "gan_systems_paired_formal_20260811_002-pair01-pipeline",
+        "seconds": 1043.21501283,
+        "timing": {
+          "claimable": true,
+          "diagnostic_only": false,
+          "global_training_window_seconds": 1043.21501283,
+          "logical_steps": [
+            1000,
+            1001,
+            1002,
+            1003,
+            1004
+          ],
+          "max_rank_elapsed_seconds": 1041.247871279,
+          "min_rank_elapsed_seconds": 963.726017702,
+          "profiled": false,
+          "rank_count": 16,
+          "receipts": [
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-pipeline/evidence/timing_receipts/rank_000.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-pipeline/evidence/timing_receipts/rank_001.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-pipeline/evidence/timing_receipts/rank_002.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-pipeline/evidence/timing_receipts/rank_003.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-pipeline/evidence/timing_receipts/rank_004.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-pipeline/evidence/timing_receipts/rank_005.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-pipeline/evidence/timing_receipts/rank_006.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-pipeline/evidence/timing_receipts/rank_007.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-pipeline/evidence/timing_receipts/rank_008.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-pipeline/evidence/timing_receipts/rank_009.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-pipeline/evidence/timing_receipts/rank_010.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-pipeline/evidence/timing_receipts/rank_011.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-pipeline/evidence/timing_receipts/rank_012.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-pipeline/evidence/timing_receipts/rank_013.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-pipeline/evidence/timing_receipts/rank_014.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-pipeline/evidence/timing_receipts/rank_015.json"
+          ],
+          "schema_version": "distillschedule.gan_full5_timing_bundle.v1",
+          "status": "PASS"
+        },
+        "timing_receipt_dir": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair01-pipeline/evidence/timing_receipts"
+      }
+    },
+    {
+      "baseline": {
+        "compute_path": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-baseline/evidence/execution_receipts/gan_compute_receipt.json",
+        "compute_sha256": "670061238b003fa512287547a1ad0873f25e9f2c61e9dd9557c163551510756d",
+        "fairness_path": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-baseline/evidence/execution_receipts/gan_fairness_receipt.json",
+        "fairness_sha256": "77e49ac2618ead91b117df1eed6515575ba7b0cac0783c4bd57319a77293effc",
+        "family": "baseline",
+        "result_path": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-baseline/result.json",
+        "result_sha256": "62a2de84857653c58b4218246574d2d45d6e6675fc21577032b18d73f1a69de4",
+        "run_id": "gan_systems_paired_formal_20260811_002-pair02-baseline",
+        "seconds": 658.338258614,
+        "timing": {
+          "claimable": true,
+          "diagnostic_only": false,
+          "global_training_window_seconds": 658.338258614,
+          "logical_steps": [
+            1000,
+            1001,
+            1002,
+            1003,
+            1004
+          ],
+          "max_rank_elapsed_seconds": 656.367021495,
+          "min_rank_elapsed_seconds": 656.363506776,
+          "profiled": false,
+          "rank_count": 16,
+          "receipts": [
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-baseline/evidence/timing_receipts/rank_000.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-baseline/evidence/timing_receipts/rank_001.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-baseline/evidence/timing_receipts/rank_002.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-baseline/evidence/timing_receipts/rank_003.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-baseline/evidence/timing_receipts/rank_004.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-baseline/evidence/timing_receipts/rank_005.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-baseline/evidence/timing_receipts/rank_006.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-baseline/evidence/timing_receipts/rank_007.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-baseline/evidence/timing_receipts/rank_008.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-baseline/evidence/timing_receipts/rank_009.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-baseline/evidence/timing_receipts/rank_010.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-baseline/evidence/timing_receipts/rank_011.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-baseline/evidence/timing_receipts/rank_012.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-baseline/evidence/timing_receipts/rank_013.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-baseline/evidence/timing_receipts/rank_014.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-baseline/evidence/timing_receipts/rank_015.json"
+          ],
+          "schema_version": "distillschedule.gan_full5_timing_bundle.v1",
+          "status": "PASS"
+        },
+        "timing_receipt_dir": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-baseline/evidence/timing_receipts"
+      },
+      "compute_inventory": {
+        "compute_contract_digest": "482dfd6cc0b27747adb0ef835cfea187dd6c7769d847e443853b46ab06d2af34",
+        "fixed_critic_score_forwards_per_sample": 2,
+        "fixed_generator_score_forwards_per_sample": 4,
+        "gan_d_batched_items_per_sample": 3,
+        "schema_version": "distillschedule.gan_compute_pair.v1",
+        "status": "PASS"
+      },
+      "fairness": {
+        "fairness_contract_digest": "b7104c0729f44d28963dff90fca6d51b293798d9dc0ba718b1d3af7d6985de66",
+        "guarantee": "same logical source/random tensors and same complete DiT forward counts; physical scheduling may differ",
+        "logical_samples_per_step": 16,
+        "logical_window": [
+          1000,
+          1004
+        ],
+        "sample_mapping_digest": "dc367927c55dde768fdbf42e4771b69259c4432cef002987be3ac93d0837674e",
+        "schema_version": "distillschedule.gan_fairness_pair.v1",
+        "status": "PASS",
+        "trace_bundle_hash": "d31d4d473a3574b5b39e50ad2b5e72e17aee7baf707130ea0513092553f7cd15"
+      },
+      "launch_order": [
+        "baseline",
+        "pipeline"
+      ],
+      "pair_index": 2,
+      "pipeline": {
+        "compute_path": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-pipeline/evidence/execution_receipts/gan_compute_receipt.json",
+        "compute_sha256": "52746478d75d7112955db0413f001df258c76a6058725fd0f233ebc527659a42",
+        "fairness_path": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-pipeline/evidence/execution_receipts/gan_fairness_receipt.json",
+        "fairness_sha256": "069069ba2ba5f15bc75ed532c25c5ed3d456dc681f44786d8f0f35c269dc3b96",
+        "family": "pipeline",
+        "result_path": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-pipeline/result.json",
+        "result_sha256": "71db848fada0fa16a7b09f6de6c2688a7a9922889296198f87b8b9ac83ec323f",
+        "run_id": "gan_systems_paired_formal_20260811_002-pair02-pipeline",
+        "seconds": 1170.196847944,
+        "timing": {
+          "claimable": true,
+          "diagnostic_only": false,
+          "global_training_window_seconds": 1170.196847944,
+          "logical_steps": [
+            1000,
+            1001,
+            1002,
+            1003,
+            1004
+          ],
+          "max_rank_elapsed_seconds": 1168.22349529,
+          "min_rank_elapsed_seconds": 1098.387932156,
+          "profiled": false,
+          "rank_count": 16,
+          "receipts": [
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-pipeline/evidence/timing_receipts/rank_000.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-pipeline/evidence/timing_receipts/rank_001.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-pipeline/evidence/timing_receipts/rank_002.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-pipeline/evidence/timing_receipts/rank_003.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-pipeline/evidence/timing_receipts/rank_004.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-pipeline/evidence/timing_receipts/rank_005.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-pipeline/evidence/timing_receipts/rank_006.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-pipeline/evidence/timing_receipts/rank_007.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-pipeline/evidence/timing_receipts/rank_008.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-pipeline/evidence/timing_receipts/rank_009.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-pipeline/evidence/timing_receipts/rank_010.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-pipeline/evidence/timing_receipts/rank_011.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-pipeline/evidence/timing_receipts/rank_012.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-pipeline/evidence/timing_receipts/rank_013.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-pipeline/evidence/timing_receipts/rank_014.json",
+            "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-pipeline/evidence/timing_receipts/rank_015.json"
+          ],
+          "schema_version": "distillschedule.gan_full5_timing_bundle.v1",
+          "status": "PASS"
+        },
+        "timing_receipt_dir": "/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan_systems_paired_formal_20260811_002/trials/gan_systems_paired_formal_20260811_002-pair02-pipeline/evidence/timing_receipts"
+      }
+    }
+  ],
+  "pipeline_seconds": [
+    1139.194008663,
+    1043.21501283,
+    1170.196847944
+  ],
+  "profiled": false,
+  "schema_version": "distillschedule.gan_paired_formal_timing.v2",
+  "status": "PASS",
+  "workload_contract_digest": "e7bb6638e2d2d7356b93c90c0ac73a577f59cdeacf4f70a0c45b2cd29fac95a0"
+}
