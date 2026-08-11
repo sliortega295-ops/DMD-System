@@ -4,10 +4,14 @@ import json
 from pathlib import Path
 
 import pytest
+import torch
 
 from distillschedule.core.contracts import ContractViolation
 from distillschedule.runtime.gan_baseline import validate_systems_gan_bootstrap
-from scripts.distillschedule.build_systems_gan_bootstrap import gan_head_specs
+from scripts.distillschedule.build_systems_gan_bootstrap import (
+    gan_head_specs,
+    zero1_partition_with_tail_padding,
+)
 from scripts.distillschedule.build_systems_gan_trace import _crop, _seed
 
 
@@ -26,6 +30,20 @@ def test_gan_trace_rng_is_operation_keyed() -> None:
     c = _crop(seed=_seed(7, 4, 1000, "gan_g_crop"))
     assert a.equal(b)
     assert not a.equal(c) or _seed(7, 3, 1000, "gan_g_crop") != _seed(7, 4, 1000, "gan_g_crop")
+
+
+def test_zero1_last_rank_materializes_explicit_optimizer_padding() -> None:
+    raw = torch.arange(13, dtype=torch.float32)
+    first, first_padding = zero1_partition_with_tail_padding(
+        raw, lower=0, partition_numel=8
+    )
+    last, last_padding = zero1_partition_with_tail_padding(
+        raw, lower=8, partition_numel=8
+    )
+    assert first_padding == 0
+    assert first.tolist() == list(map(float, range(8)))
+    assert last_padding == 3
+    assert last.tolist() == [8.0, 9.0, 10.0, 11.0, 12.0, 0.0, 0.0, 0.0]
 
 
 def _write_bootstrap(root: Path, *, artifact_hash: str = "a" * 64) -> None:

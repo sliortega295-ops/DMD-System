@@ -273,6 +273,27 @@ def build_combined_raw(
     return outputs
 
 
+def zero1_partition_with_tail_padding(
+    raw: torch.Tensor, *, lower: int, partition_numel: int
+) -> tuple[torch.Tensor, int]:
+    """Materialize one fixed-width ZeRO-1 partition.
+
+    DeepSpeed keeps every data-parallel optimizer partition at the same flat
+    length.  The final rank therefore owns explicit zero padding whenever the
+    logical parameter count is not divisible by the DP alignment.  Omitting
+    those elements leaves Adam ``exp_avg``/``exp_avg_sq`` shorter than the
+    reduced gradient partition and only fails at the first optimizer step.
+    """
+
+    if lower < 0 or partition_numel <= 0 or lower > raw.numel():
+        raise ValueError("invalid ZeRO-1 partition bounds")
+    valid = min(partition_numel, raw.numel() - lower)
+    partition = torch.zeros(partition_numel, dtype=raw.dtype, device="cpu")
+    if valid:
+        partition[:valid].copy_(raw.narrow(0, lower, valid))
+    return partition, partition_numel - valid
+
+
 def replace_critic_optimizer(
     *,
     source_checkpoint: Path,
@@ -299,10 +320,25 @@ def replace_critic_optimizer(
         optimizer = payload["optimizer_state_dict"]
         state = optimizer["base_optimizer_state"]["state"][0]
         lower = rank * partition_numel
-        upper = min(total, lower + partition_numel)
-        optimizer["single_partition_of_fp32_groups"] = [raw["master"][lower:upper].clone()]
-        state["exp_avg"] = raw["first_moment"][lower:upper].clone()
-        state["exp_avg_sq"] = raw["second_moment"][lower:upper].clone()
+        master, rank_padding = zero1_partition_with_tail_padding(
+            raw["master"], lower=lower, partition_numel=partition_numel
+        )
+        first_moment, first_padding = zero1_partition_with_tail_padding(
+            raw["first_moment"], lower=lower, partition_numel=partition_numel
+        )
+        second_moment, second_padding = zero1_partition_with_tail_padding(
+            raw["second_moment"], lower=lower, partition_numel=partition_numel
+        )
+        if first_padding != rank_padding or second_padding != rank_padding:
+            raise AssertionError("ZeRO-1 master/moment padding differs")
+        expected_padding = padding if rank == 15 else 0
+        if rank_padding != expected_padding:
+            raise AssertionError(
+                f"rank{rank} padding mismatch: {rank_padding} != {expected_padding}"
+            )
+        optimizer["single_partition_of_fp32_groups"] = [master]
+        state["exp_avg"] = first_moment
+        state["exp_avg_sq"] = second_moment
         optimizer["param_slice_mappings"] = [
             fragment_mapping(
                 shapes=shapes,
@@ -322,8 +358,9 @@ def replace_critic_optimizer(
             {
                 "rank": rank,
                 "path": str(target_path),
-                "elements": upper - lower,
-                "padding": padding if rank == 15 else 0,
+                "elements": partition_numel,
+                "logical_elements": partition_numel - rank_padding,
+                "padding": rank_padding,
                 "bytes": target_path.stat().st_size,
                 "sha256": sha256_file(target_path),
             }
