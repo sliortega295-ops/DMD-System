@@ -27,7 +27,7 @@ PREREG_DIR="${OUT}/preregistration"
 CACHE_ROOT="${DISTILLSCHEDULE_CACHE_ROOT:-/tmp/distillschedule_gan_routea/${RUN_ID}/node_${NODE_RANK}}"
 LOCK_FILE="${DISTILLSCHEDULE_NODE_LOCK:-/tmp/distillschedule_gpu_node.lock}"
 TRACE_BUNDLE="${DISTILLSCHEDULE_GAN_TRACE_BUNDLE:?set rank-qualified GAN trace bundle for steps1000-1004}"
-CHECKPOINT="${DISTILLSCHEDULE_GAN_CHECKPOINT:?set canonical GAN checkpoint-1000}"
+CHECKPOINT="${DISTILLSCHEDULE_GAN_CHECKPOINT:?set immutable systems-only GAN bootstrap checkpoint-1000}"
 DATA_ROOT="${HELIOS_GAN_DATA_ROOT:?set GAN Stage-3 dataset root}"
 GENERATOR_ROOT="${HELIOS_DISTILLED_ROOT:?set Helios-Distilled root}"
 SCORE_ROOT="${HELIOS_BASE_ROOT:?set Helios-Base root}"
@@ -37,6 +37,7 @@ EXPECTED_HELIOS_HEAD="${DISTILLSCHEDULE_EXPECTED_HELIOS_HEAD:?pin the validated 
 EXPECTED_HELIOS_ENTRYPOINT_SHA="${DISTILLSCHEDULE_EXPECTED_HELIOS_ENTRYPOINT_SHA256:?pin train_helios.py SHA256}"
 
 [[ "$(basename "${CHECKPOINT}")" == "checkpoint-1000" ]] || { echo gan_checkpoint_must_be_checkpoint_1000 >&2; exit 5; }
+[[ -f "${CHECKPOINT}/systems_only_gan_bootstrap.json" ]] || { echo systems_only_gan_bootstrap_marker_missing >&2; exit 5; }
 for executable in "${PYTHON}" "${ACCELERATE}" "${DEEPSPEED}"; do
   [[ -x "${executable}" ]] || { echo "runtime_missing=${executable}" >&2; exit 3; }
 done

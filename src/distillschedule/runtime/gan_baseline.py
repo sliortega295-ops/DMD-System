@@ -7,6 +7,7 @@ lifecycle used as the later GAN-pipeline denominator.
 from __future__ import annotations
 
 import copy
+import os
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -39,6 +40,7 @@ EXPECTED_TRAJECTORY = {
     1003: {"generator": 201, "critic": 1004, "ema": 801},
     1004: {"generator": 201, "critic": 1005, "ema": 801},
 }
+SYSTEMS_BOOTSTRAP_SCHEMA = "distillschedule.systems_only_gan_bootstrap.v1"
 
 OFFICIAL_GAN_FIELDS: Mapping[str, Any] = {
     "training_config.dmd_is_low_vram_mode": True,
@@ -269,6 +271,64 @@ def validate_rendered_gan_config(path: str | Path, *, checkpoint: str | Path) ->
     }
 
 
+def validate_systems_gan_bootstrap(path: str | Path) -> dict[str, Any]:
+    root = Path(path).expanduser().resolve()
+    if root.name != "checkpoint-1000":
+        raise ContractViolation("systems GAN bootstrap must be named checkpoint-1000 for official control flow", path=str(root))
+    marker_path = root / "systems_only_gan_bootstrap.json"
+    marker = load_json_mapping(marker_path)
+    required = {
+        "schema_version": SYSTEMS_BOOTSTRAP_SCHEMA,
+        "status": "PASS",
+        "classification": "systems_only_gan_bootstrap",
+        "logical_control_window": list(EXPECTED_STEPS),
+        "logical_schedule_versions": EXPECTED_INITIAL,
+        "official_checkpoint_1000": False,
+        "source_faithful_continuation": False,
+        "generator_optimizer_materialized_from_source": True,
+        "critic_lora_optimizer_materialized_from_source": True,
+        "gan_head_optimizer_materialized": True,
+    }
+    for key, expected in required.items():
+        if marker.get(key) != expected:
+            raise ContractViolation(f"observed {marker.get(key)!r}, expected {expected!r}", path=f"{marker_path}:{key}")
+    artifact_hash = marker.get("artifact_hash")
+    if not isinstance(artifact_hash, str) or len(artifact_hash) != 64:
+        raise ContractViolation("bootstrap artifact hash is missing", path=str(marker_path))
+    head = marker.get("gan_head_manifest")
+    if not isinstance(head, Mapping) or int(head.get("logical_numel", 0)) <= 0:
+        raise ContractViolation("GAN-head manifest is missing", path=str(marker_path))
+    relative_paths = [
+        head.get("path"),
+        marker.get("critic_model", {}).get("path") if isinstance(marker.get("critic_model"), Mapping) else None,
+        marker.get("ema", {}).get("path") if isinstance(marker.get("ema"), Mapping) else None,
+    ]
+    optimizer = marker.get("critic_optimizer")
+    if not isinstance(optimizer, Mapping) or optimizer.get("zero_stage") != 1 or optimizer.get("world_size") != 16:
+        raise ContractViolation("bootstrap Critic optimizer is not ZeRO-1 world16", path=str(marker_path))
+    files = optimizer.get("files")
+    if not isinstance(files, list) or len(files) != 16:
+        raise ContractViolation("bootstrap lacks 16 Critic optimizer shards", path=str(marker_path))
+    relative_paths.extend(item.get("path") for item in files if isinstance(item, Mapping))
+    for relative in relative_paths:
+        if not isinstance(relative, str) or not (root / relative).is_file():
+            raise ContractViolation(f"bootstrap payload is missing: {relative!r}", path=str(root))
+    expected_hash = os.environ.get("DISTILLSCHEDULE_GAN_BOOTSTRAP_ARTIFACT_HASH")
+    if expected_hash and expected_hash != artifact_hash:
+        raise ContractViolation("bootstrap artifact hash differs from pinned site value", path=str(marker_path))
+    return {
+        "classification": marker["classification"],
+        "artifact_hash": artifact_hash,
+        "marker_path": str(marker_path),
+        "marker_sha256": sha256_file(marker_path),
+        "source_checkpoint": marker.get("source_checkpoint"),
+        "source_parameter_versions": marker.get("source_parameter_versions"),
+        "logical_schedule_versions": marker["logical_schedule_versions"],
+        "official_checkpoint_1000": False,
+        "optimizer_materialized": True,
+    }
+
+
 def _trace_steps(trace: Mapping[str, Any]) -> set[int]:
     return {
         int(op["control"]["global_step"])
@@ -347,6 +407,7 @@ def build_node_contract(
     ).to_dict()
     trace = validate_common_rank_synchronized_trace(trace_bundle_path)
     checkpoint = directory_inventory(checkpoint_path)
+    bootstrap = validate_systems_gan_bootstrap(checkpoint_path)
     runtime_identity = load_json_mapping(runtime_identity_path)
     source = validate_official_gan_source(helios_root)
     compiled = load_json_mapping(compiled_preflight_path)
@@ -373,6 +434,7 @@ def build_node_contract(
             "ranks": trace["ranks"],
         },
         "checkpoint": checkpoint.to_dict(),
+        "systems_only_bootstrap": bootstrap,
         "source": source,
         "runtime_identity": runtime_identity,
         "assets": {name: asset_identity(path) for name, path in sorted(assets.items())},
@@ -441,4 +503,5 @@ __all__ = [
     "expected_gan_schedule", "finalize_node_contracts", "load_json_mapping",
     "sha256_file", "validate_common_rank_synchronized_trace", "validate_final_contract",
     "validate_gan_plan", "validate_official_gan_source", "validate_rendered_gan_config",
+    "validate_systems_gan_bootstrap",
 ]
