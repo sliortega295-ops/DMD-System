@@ -1,0 +1,47 @@
+{
+  "created_at": "2026-08-11T09:13:22.598800+00:00",
+  "current_gate": "Sequential and Pipeline standalone correctness/timing gates PASS; paired formal timing authorized.",
+  "frozen_contract_digest": "e7bb6638e2d2d7356b93c90c0ac73a577f59cdeacf4f70a0c45b2cd29fac95a0",
+  "go_reason": "All exact correctness, update-count, GAS2, lifecycle, OOM, fairness, compute, and timing gates pass independently.",
+  "pairing_contract": {
+    "fixed_memory_policy": "all40/window1/HOST_SHARED_IMMUTABLE/no-prefetch",
+    "fresh_restart": true,
+    "order": [
+      "baseline->pipeline",
+      "pipeline->baseline",
+      "baseline->pipeline"
+    ],
+    "pairs": 3,
+    "profiled": false,
+    "speedup_denominator": "same-pair exact Sequential Full5"
+  },
+  "pipeline_gate": {
+    "actual_access_lookups": 2944,
+    "compute_digest": "482dfd6cc0b27747adb0ef835cfea187dd6c7769d847e443853b46ab06d2af34",
+    "fairness_digest": "b7104c0729f44d28963dff90fca6d51b293798d9dc0ba718b1d3af7d6985de66",
+    "full5_seconds": 1014.788817054,
+    "new_oom": 0,
+    "note": "standalone pipeline gate used predecessor workload manifest; correctness digests match but it is not used as a formal paired sample",
+    "run": "gan_pipeline_formal_gate_20260811_003",
+    "status": "PASS"
+  },
+  "schema_version": "distillschedule.iteration_preflight.v2",
+  "sequential_gate": {
+    "actual_access_lookups": 2432,
+    "compute_digest": "482dfd6cc0b27747adb0ef835cfea187dd6c7769d847e443853b46ab06d2af34",
+    "fairness_digest": "b7104c0729f44d28963dff90fca6d51b293798d9dc0ba718b1d3af7d6985de66",
+    "full5_seconds": 563.164143118,
+    "new_oom": 0,
+    "run": "gan_baseline_formal_gate_20260811_002",
+    "status": "PASS"
+  },
+  "status": "GO",
+  "stop_conditions": [
+    "any receipt failure",
+    "workload digest drift",
+    "new OOM",
+    "wrong G/C/EMA commits",
+    "profiled run",
+    "source/config drift"
+  ]
+}
