@@ -1,0 +1,33 @@
+{
+  "schema_version": "distillschedule.gan_world16.functional_failure.v1",
+  "run_id": "gan_seq_systems_functional_20260810_005",
+  "status": "FAILED_AT_GAN_LOW_VRAM_SEMANTIC_OBSERVER",
+  "classification": "functional_correctness_run_not_formal_timing",
+  "workload": {
+    "world_size": 16,
+    "shape": "384x640",
+    "logical_steps": [1000, 1001, 1002, 1003, 1004],
+    "systems_only_bootstrap": "systems_only_gan_bootstrap_v2",
+    "bootstrap_artifact_hash": "c528dd62b72267570f42b61c36a0926da85e1e0176930efcf72649ef8da3776e"
+  },
+  "observed_progress": {
+    "rank_phase_trace_count": 16,
+    "generator_optimizer_step_1000_rank_receipts": 16,
+    "critic_loss_returned_after_internal_low_vram_commit_rank_receipts": 16,
+    "outer_critic_version_receipts": 0,
+    "ema_update_rank_receipts": 0
+  },
+  "failure_signature": "semantic Critic gradient observation does not support GAN low-VRAM mode",
+  "root_cause": "DistillSchedule began its trainable-gradient observer after the official low-VRAM _critic_loss had already performed both Critic backwards and its DeepSpeed commit, then deliberately rejected that official branch",
+  "capacity_failure": false,
+  "cgroup_oom_delta": [0, 0],
+  "peak_cgroup_bytes": [596337405952, 586284298240],
+  "peak_gpu_used_mib": [38276, 38276],
+  "training_math_changed_by_fix": false,
+  "validated_repair": "start the existing hook observer before _critic_loss and close it after the official function returns; do not alter either backward, the DeepSpeed boundary, the optimizer commit, or losses",
+  "runtime_fix_commit": "08291cf188bcd0318876b895c997facddcd4f833",
+  "runtime_tests": "314 passed",
+  "formal_performance_claim": "Not Run",
+  "pipeline": "Not Run",
+  "evidence_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_seq_systems_functional_20260810_005"
+}

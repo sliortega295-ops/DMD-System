@@ -1,0 +1,51 @@
+{
+  "schema_version": "distillschedule.iteration_preflight.v2",
+  "created_at": "2026-08-11T00:07:10-04:00",
+  "status": "GO",
+  "current_gate": "Sequential GAN Full5 functional PASS; actual-consumption fairness and compute-inventory gates open",
+  "authorized_hypothesis": "The existing PR4 runtime evidence can be converted into fail-closed actual-consumption and physical-call receipts, after which the PR5 prototype can be connected to real world16 execution without changing Helios GAN math.",
+  "frozen_contracts": {
+    "logical_steps": [1000, 1001, 1002, 1003, 1004],
+    "resolution": [384, 640],
+    "world_size": 16,
+    "global_batch": 16,
+    "baseline": "sequential world16 ZeRO-1 CPU-optimizer full-offload",
+    "pipeline": "persistent 8G+8Score, two waves, GAS2, one G commit, five C commits, one EMA commit",
+    "bootstrap_hash": "c528dd62b72267570f42b61c36a0926da85e1e0176930efcf72649ef8da3776e",
+    "trace_bundle_hash": "d31d4d473a3574b5b39e50ad2b5e72e17aee7baf707130ea0513092553f7cd15"
+  },
+  "live_substrate": {
+    "dmd_system_head": "7e000a56672e897610b484d4b27080e49fde2bde",
+    "helios_runtime_head": "90ec90de9b3737666c35f8bc3afb7ee4ca47efd2",
+    "gpu_processes": "none on either node",
+    "cgroup_oom": 0,
+    "historical_cgroup_oom_kill": 1,
+    "assets": "bootstrap and trace present on both nodes",
+    "tests": "PR4 170 passed, 1 skipped"
+  },
+  "matching_prior_evidence": [
+    "run004: ZeRO-1 tail-padding failure, recovered by systems bootstrap v2",
+    "run005: low-VRAM observer-scope failure, recovered without changing math",
+    "run006: post-EMA Generator placement failure, recovered by compute-state residency guard",
+    "run007: real 14B sequential world16 Full5 functional PASS"
+  ],
+  "rejected_or_superseded_paths": [
+    "ZeRO-2 retry: known double-reduction failure",
+    "checkpoint-1000 training: unnecessary for systems-only experiment",
+    "same-seed fairness: insufficient",
+    "diagnostic run007 timing as formal denominator: rejected",
+    "Nsight or minimum-offload search before paired formal timing: deferred"
+  ],
+  "new_falsifiable_question": "Do actual trace accesses plus physical streamed-block events prove all 80 logical sample-step stochastic identities and the official model-call inventory without relying only on the trace manifest?",
+  "allowed_changes": [
+    "receipt builder and validators",
+    "tests and append-only evidence",
+    "one minimal trace-consumption instrumentation fix if a required value is not actually observed"
+  ],
+  "stop_conditions": [
+    "semantic contract drift",
+    "missing actual-consumption evidence",
+    "unexplained model-call mismatch",
+    "known failure reproduced without materially new evidence"
+  ]
+}

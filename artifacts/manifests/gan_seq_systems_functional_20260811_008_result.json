@@ -1,0 +1,2300 @@
+{
+  "checkpoint_1005": {
+    "entries": [
+      {
+        "bytes": 13,
+        "path": "critic/latest"
+      },
+      {
+        "bytes": 2492731752,
+        "path": "critic/pytorch_lora_weights.safetensors"
+      },
+      {
+        "bytes": 1676017413,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_0_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 1676011215,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_10_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 1676011087,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_11_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 1676010959,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_12_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 1676011471,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_13_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 1676010831,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_14_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 1676012495,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_15_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 1676017541,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_1_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 1676017285,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_2_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 1676017669,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_3_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 1676017413,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_4_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 1676017669,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_5_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 1676017285,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_6_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 1676017477,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_7_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 1676016901,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_8_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 1676010629,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_9_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 33095085353,
+        "path": "critic/pytorch_model/mp_rank_00_model_states.pt"
+      },
+      {
+        "bytes": 16449,
+        "path": "critic/random_states_0.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "critic/random_states_1.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "critic/random_states_10.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "critic/random_states_11.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "critic/random_states_12.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "critic/random_states_13.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "critic/random_states_14.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "critic/random_states_15.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "critic/random_states_2.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "critic/random_states_3.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "critic/random_states_4.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "critic/random_states_5.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "critic/random_states_6.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "critic/random_states_7.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "critic/random_states_8.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "critic/random_states_9.pkl"
+      },
+      {
+        "bytes": 1401,
+        "path": "critic/scheduler.bin"
+      },
+      {
+        "bytes": 2024635671,
+        "path": "critic/transformer_partial.pth"
+      },
+      {
+        "bytes": 33270,
+        "path": "critic/zero_to_fp32.py"
+      },
+      {
+        "bytes": 2216,
+        "path": "distributed_checkpoint/.metadata"
+      },
+      {
+        "bytes": 1261,
+        "path": "distributed_checkpoint/__0_0.distcp"
+      },
+      {
+        "bytes": 0,
+        "path": "distributed_checkpoint/__10_0.distcp"
+      },
+      {
+        "bytes": 0,
+        "path": "distributed_checkpoint/__11_0.distcp"
+      },
+      {
+        "bytes": 0,
+        "path": "distributed_checkpoint/__12_0.distcp"
+      },
+      {
+        "bytes": 0,
+        "path": "distributed_checkpoint/__13_0.distcp"
+      },
+      {
+        "bytes": 0,
+        "path": "distributed_checkpoint/__14_0.distcp"
+      },
+      {
+        "bytes": 0,
+        "path": "distributed_checkpoint/__15_0.distcp"
+      },
+      {
+        "bytes": 1261,
+        "path": "distributed_checkpoint/__1_0.distcp"
+      },
+      {
+        "bytes": 1261,
+        "path": "distributed_checkpoint/__2_0.distcp"
+      },
+      {
+        "bytes": 1261,
+        "path": "distributed_checkpoint/__3_0.distcp"
+      },
+      {
+        "bytes": 1261,
+        "path": "distributed_checkpoint/__4_0.distcp"
+      },
+      {
+        "bytes": 1261,
+        "path": "distributed_checkpoint/__5_0.distcp"
+      },
+      {
+        "bytes": 1261,
+        "path": "distributed_checkpoint/__6_0.distcp"
+      },
+      {
+        "bytes": 1261,
+        "path": "distributed_checkpoint/__7_0.distcp"
+      },
+      {
+        "bytes": 1261,
+        "path": "distributed_checkpoint/__8_0.distcp"
+      },
+      {
+        "bytes": 0,
+        "path": "distributed_checkpoint/__9_0.distcp"
+      },
+      {
+        "bytes": 13,
+        "path": "latest"
+      },
+      {
+        "bytes": 1069536607,
+        "path": "model_ema/sparse_ema-00000.pt"
+      },
+      {
+        "bytes": 1073600563,
+        "path": "model_ema/sparse_ema-00001.pt"
+      },
+      {
+        "bytes": 360030967,
+        "path": "model_ema/sparse_ema-00002.pt"
+      },
+      {
+        "bytes": 106786,
+        "path": "model_ema/sparse_ema_manifest.json"
+      },
+      {
+        "bytes": 2502988776,
+        "path": "pytorch_lora_weights.safetensors"
+      },
+      {
+        "bytes": 938590213,
+        "path": "pytorch_model/bf16_zero_pp_rank_0_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590351,
+        "path": "pytorch_model/bf16_zero_pp_rank_10_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590223,
+        "path": "pytorch_model/bf16_zero_pp_rank_11_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590415,
+        "path": "pytorch_model/bf16_zero_pp_rank_12_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590095,
+        "path": "pytorch_model/bf16_zero_pp_rank_13_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590479,
+        "path": "pytorch_model/bf16_zero_pp_rank_14_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590287,
+        "path": "pytorch_model/bf16_zero_pp_rank_15_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590277,
+        "path": "pytorch_model/bf16_zero_pp_rank_1_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590149,
+        "path": "pytorch_model/bf16_zero_pp_rank_2_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590405,
+        "path": "pytorch_model/bf16_zero_pp_rank_3_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590085,
+        "path": "pytorch_model/bf16_zero_pp_rank_4_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590469,
+        "path": "pytorch_model/bf16_zero_pp_rank_5_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590213,
+        "path": "pytorch_model/bf16_zero_pp_rank_6_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590277,
+        "path": "pytorch_model/bf16_zero_pp_rank_7_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590277,
+        "path": "pytorch_model/bf16_zero_pp_rank_8_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590213,
+        "path": "pytorch_model/bf16_zero_pp_rank_9_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 31128764244,
+        "path": "pytorch_model/mp_rank_00_model_states.pt"
+      },
+      {
+        "bytes": 16449,
+        "path": "random_states_0.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "random_states_1.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "random_states_10.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "random_states_11.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "random_states_12.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "random_states_13.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "random_states_14.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "random_states_15.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "random_states_2.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "random_states_3.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "random_states_4.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "random_states_5.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "random_states_6.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "random_states_7.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "random_states_8.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "random_states_9.pkl"
+      },
+      {
+        "bytes": 1401,
+        "path": "scheduler.bin"
+      },
+      {
+        "bytes": 58133463,
+        "path": "transformer_partial.pth"
+      },
+      {
+        "bytes": 33270,
+        "path": "zero_to_fp32.py"
+      }
+    ],
+    "file_count": 97,
+    "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_seq_systems_functional_20260811_008/checkpoint-1005",
+    "structural_digest": "406c414a1ad4957e97a1659c6b9489b9599c3bf3ebe8c49695c56f580306447a",
+    "total_bytes": 115639903431
+  },
+  "claim_scope": "official Helios GAN-on Route-A full-offload baseline; first PASS is functional/diagnostic, not yet a formal speedup denominator",
+  "errors": [],
+  "nodes": [
+    {
+      "final_return_code": 0,
+      "host": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+      "memory_observation": {
+        "cgroup_memory_peak_after": null,
+        "host_reserve_gate": false,
+        "memory_failure": false,
+        "oom_delta": 0,
+        "oom_kill_delta": 0,
+        "policy": "actual_oom_only"
+      },
+      "node_rank": 0,
+      "resource": {
+        "cgroup_peak_bytes": 600024436736,
+        "host_used_peak_bytes": 591002000000,
+        "samples": 1080,
+        "status": "MEASURED"
+      },
+      "runtime_identity": {
+        "accelerate": {
+          "path": "/tmp/distillschedule-helios-official-torch210/bin/accelerate",
+          "sha256": "55e23583028d7373e24231f0159defe085a36836098c83c08b7205368f2789bf",
+          "version": "1.12.0"
+        },
+        "deepspeed": {
+          "path": "/tmp/distillschedule-helios-official-torch210/bin/deepspeed",
+          "sha256": "8fea1eee673999a5770daf56ebf9a9b7e89d903a37b1821dae4d472ffde9bc0c",
+          "version": "0.18.4"
+        },
+        "helios": {
+          "dirty": false,
+          "entrypoint_sha256": "f1dd9c3076e737aa1e578cc47e50c14ba8fa4a7623141dd7d8258c36e4534993",
+          "head": "c66e413856fda81ec280f0e8e0dd361da0c85830",
+          "root": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_gan_runtime_20260810",
+          "utils_post_sha256": "f46e18f768df09f6e43cbc2ffb2ee96ec0e61f71411e1224335721dbfcdb0dab"
+        },
+        "python": {
+          "path": "/share/project/shuchenweng/.conda/envs/distillschedule-bootstrap-py310/bin/python3.10",
+          "sha256": "4c8caf210fd4160c1027adfa161540627fdb6a58c4b22015245b2d5c42d213e7",
+          "version": "Python 3.10.20"
+        },
+        "schema_version": "distillschedule.gan_runtime_identity.v1"
+      }
+    },
+    {
+      "final_return_code": 0,
+      "host": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+      "memory_observation": {
+        "cgroup_memory_peak_after": null,
+        "host_reserve_gate": false,
+        "memory_failure": false,
+        "oom_delta": 0,
+        "oom_kill_delta": 0,
+        "policy": "actual_oom_only"
+      },
+      "node_rank": 1,
+      "resource": {
+        "cgroup_peak_bytes": 609916502016,
+        "host_used_peak_bytes": 593864000000,
+        "samples": 1093,
+        "status": "MEASURED"
+      },
+      "runtime_identity": {
+        "accelerate": {
+          "path": "/tmp/distillschedule-helios-official-torch210/bin/accelerate",
+          "sha256": "55e23583028d7373e24231f0159defe085a36836098c83c08b7205368f2789bf",
+          "version": "1.12.0"
+        },
+        "deepspeed": {
+          "path": "/tmp/distillschedule-helios-official-torch210/bin/deepspeed",
+          "sha256": "8fea1eee673999a5770daf56ebf9a9b7e89d903a37b1821dae4d472ffde9bc0c",
+          "version": "0.18.4"
+        },
+        "helios": {
+          "dirty": false,
+          "entrypoint_sha256": "f1dd9c3076e737aa1e578cc47e50c14ba8fa4a7623141dd7d8258c36e4534993",
+          "head": "c66e413856fda81ec280f0e8e0dd361da0c85830",
+          "root": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_gan_runtime_20260810",
+          "utils_post_sha256": "f46e18f768df09f6e43cbc2ffb2ee96ec0e61f71411e1224335721dbfcdb0dab"
+        },
+        "python": {
+          "path": "/share/project/shuchenweng/.conda/envs/distillschedule-bootstrap-py310/bin/python3.10",
+          "sha256": "4c8caf210fd4160c1027adfa161540627fdb6a58c4b22015245b2d5c42d213e7",
+          "version": "Python 3.10.20"
+        },
+        "schema_version": "distillschedule.gan_runtime_identity.v1"
+      }
+    }
+  ],
+  "observed_ranks": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "official_semantics": {
+    "critic_optimizer_updates": 5,
+    "ema_post_start_rule": "after ema_start_step=750 in DMD mode, update only on TRAIN_GENERATOR",
+    "ema_update_steps": [
+      1000
+    ],
+    "ema_updates": 1,
+    "final_versions": {
+      "critic": 1005,
+      "ema": 801,
+      "generator": 201
+    },
+    "gan_start_step": 1000,
+    "generator_optimizer_updates": 1,
+    "initial_versions": {
+      "critic": 1000,
+      "ema": 800,
+      "generator": 200
+    },
+    "logical_steps": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004
+    ],
+    "low_vram_joint_critic_backward_one_optimizer_step": true,
+    "schedule_binding": {
+      "critic_update_every": 1,
+      "ema_post_start_rule": "DMD mode updates EMA only when TRAIN_GENERATOR is true",
+      "ema_start_step": 750,
+      "ema_update_steps": [
+        1000
+      ],
+      "gan_start_step": 1000,
+      "generator_update_every": 5,
+      "low_vram_critic_rule": "denoising and GAN/R1/R2 backwards feed one Critic optimizer update",
+      "score_ownership": "GAN heads live on the Helios-Base Score backbone and share the Critic optimizer.",
+      "source": "official_helios_train_helios_and_utils_helios_post",
+      "steps": {
+        "1000": {
+          "critic_path": [
+            "critic_denoising_loss",
+            "gan_D_real_loss",
+            "gan_D_fake_loss",
+            "r1_r2_regularization",
+            "single_joint_critic_optimizer_step"
+          ],
+          "ema_after_critic": true,
+          "ema_update": true,
+          "gan_active": true,
+          "generator_path": [
+            "generator_rollout",
+            "dmd_generator_loss",
+            "gan_G_loss",
+            "generator_optimizer_step"
+          ],
+          "train_generator": true
+        },
+        "1001": {
+          "critic_path": [
+            "critic_denoising_loss",
+            "gan_D_real_loss",
+            "gan_D_fake_loss",
+            "r1_r2_regularization",
+            "single_joint_critic_optimizer_step"
+          ],
+          "ema_after_critic": false,
+          "ema_update": false,
+          "gan_active": true,
+          "generator_path": [],
+          "train_generator": false
+        },
+        "1002": {
+          "critic_path": [
+            "critic_denoising_loss",
+            "gan_D_real_loss",
+            "gan_D_fake_loss",
+            "r1_r2_regularization",
+            "single_joint_critic_optimizer_step"
+          ],
+          "ema_after_critic": false,
+          "ema_update": false,
+          "gan_active": true,
+          "generator_path": [],
+          "train_generator": false
+        },
+        "1003": {
+          "critic_path": [
+            "critic_denoising_loss",
+            "gan_D_real_loss",
+            "gan_D_fake_loss",
+            "r1_r2_regularization",
+            "single_joint_critic_optimizer_step"
+          ],
+          "ema_after_critic": false,
+          "ema_update": false,
+          "gan_active": true,
+          "generator_path": [],
+          "train_generator": false
+        },
+        "1004": {
+          "critic_path": [
+            "critic_denoising_loss",
+            "gan_D_real_loss",
+            "gan_D_fake_loss",
+            "r1_r2_regularization",
+            "single_joint_critic_optimizer_step"
+          ],
+          "ema_after_critic": false,
+          "ema_update": false,
+          "gan_active": true,
+          "generator_path": [],
+          "train_generator": false
+        }
+      }
+    }
+  },
+  "offload_baseline": {
+    "generator_frozen_blocks": "0-39 streamed window1",
+    "optimizer_offload": "cpu",
+    "pipeline_overlap": false,
+    "prefetch_distance": 0,
+    "score_frozen_blocks": "0-39 streamed window1",
+    "vae": "official GAN low-VRAM temporary GPU residency then CPU"
+  },
+  "ranks": [
+    {
+      "errors": [],
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 0,
+      "raw_sha256": "96d3fa4260438f84602b5b4b312b038d376e270efd1d3fab78e41c3a380887ac",
+      "status": "PASS",
+      "step_end_unix": {
+        "1000": 1786423194.238421,
+        "1001": 1786423298.122858,
+        "1002": 1786423387.6177385,
+        "1003": 1786423469.8771448,
+        "1004": 1786423568.8465438
+      },
+      "step_start_unix": {
+        "1000": 1786422958.9083674,
+        "1001": 1786423194.879724,
+        "1002": 1786423298.7098682,
+        "1003": 1786423388.2143362,
+        "1004": 1786423470.4602757
+      },
+      "trace": {
+        "source_authority": "operation_trace",
+        "trace_hash": "61f738f7c6ecd5830ba81c1fc372ef3dcc75c24ef15de98fe9e0bd2c8a5b8bca"
+      },
+      "versions": {
+        "errors": [],
+        "final": {
+          "critic": 1005,
+          "ema": 801,
+          "generator": 201
+        },
+        "final_evidence": "last_component_update_receipts",
+        "initial": {
+          "critic": 1000,
+          "ema": 800,
+          "generator": 200
+        },
+        "status": "OBSERVED_EXACT",
+        "updates": {
+          "critic": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 1001
+            },
+            {
+              "predicate": null,
+              "step": 1001,
+              "version": 1002
+            },
+            {
+              "predicate": null,
+              "step": 1002,
+              "version": 1003
+            },
+            {
+              "predicate": null,
+              "step": 1003,
+              "version": 1004
+            },
+            {
+              "predicate": null,
+              "step": 1004,
+              "version": 1005
+            }
+          ],
+          "ema": [
+            {
+              "predicate": true,
+              "step": 1000,
+              "version": 801
+            }
+          ],
+          "generator": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 201
+            }
+          ]
+        }
+      }
+    },
+    {
+      "errors": [],
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 1,
+      "raw_sha256": "106e84e01d02c8e893eea1596cf7878454d54592d3af0144725b7397b9f31102",
+      "status": "PASS",
+      "step_end_unix": {
+        "1000": 1786423196.0163383,
+        "1001": 1786423298.5183697,
+        "1002": 1786423387.664173,
+        "1003": 1786423469.8916516,
+        "1004": 1786423568.8565493
+      },
+      "step_start_unix": {
+        "1000": 1786422958.9109747,
+        "1001": 1786423196.8591063,
+        "1002": 1786423299.1182127,
+        "1003": 1786423388.2679155,
+        "1004": 1786423470.4912515
+      },
+      "trace": {
+        "source_authority": "operation_trace",
+        "trace_hash": "466259e64ff06347ab8c47f4ff1cc8036bf8210aaca28b9e12c1cbd1624cfd20"
+      },
+      "versions": {
+        "errors": [],
+        "final": {
+          "critic": 1005,
+          "ema": 801,
+          "generator": 201
+        },
+        "final_evidence": "last_component_update_receipts",
+        "initial": {
+          "critic": 1000,
+          "ema": 800,
+          "generator": 200
+        },
+        "status": "OBSERVED_EXACT",
+        "updates": {
+          "critic": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 1001
+            },
+            {
+              "predicate": null,
+              "step": 1001,
+              "version": 1002
+            },
+            {
+              "predicate": null,
+              "step": 1002,
+              "version": 1003
+            },
+            {
+              "predicate": null,
+              "step": 1003,
+              "version": 1004
+            },
+            {
+              "predicate": null,
+              "step": 1004,
+              "version": 1005
+            }
+          ],
+          "ema": [
+            {
+              "predicate": true,
+              "step": 1000,
+              "version": 801
+            }
+          ],
+          "generator": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 201
+            }
+          ]
+        }
+      }
+    },
+    {
+      "errors": [],
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 2,
+      "raw_sha256": "d64b11c9e21a1316464d89c8cda73faa51f87d7f5227950d149ab39349ff067a",
+      "status": "PASS",
+      "step_end_unix": {
+        "1000": 1786423193.9537072,
+        "1001": 1786423298.5300963,
+        "1002": 1786423387.5126917,
+        "1003": 1786423469.9937232,
+        "1004": 1786423568.789979
+      },
+      "step_start_unix": {
+        "1000": 1786422958.9056304,
+        "1001": 1786423194.7309191,
+        "1002": 1786423299.1174047,
+        "1003": 1786423388.0973735,
+        "1004": 1786423470.580037
+      },
+      "trace": {
+        "source_authority": "operation_trace",
+        "trace_hash": "4cd81201bbc2e11bbdcd472e64f2b05f1d97b876e412c17321cacf1a9f616c4b"
+      },
+      "versions": {
+        "errors": [],
+        "final": {
+          "critic": 1005,
+          "ema": 801,
+          "generator": 201
+        },
+        "final_evidence": "last_component_update_receipts",
+        "initial": {
+          "critic": 1000,
+          "ema": 800,
+          "generator": 200
+        },
+        "status": "OBSERVED_EXACT",
+        "updates": {
+          "critic": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 1001
+            },
+            {
+              "predicate": null,
+              "step": 1001,
+              "version": 1002
+            },
+            {
+              "predicate": null,
+              "step": 1002,
+              "version": 1003
+            },
+            {
+              "predicate": null,
+              "step": 1003,
+              "version": 1004
+            },
+            {
+              "predicate": null,
+              "step": 1004,
+              "version": 1005
+            }
+          ],
+          "ema": [
+            {
+              "predicate": true,
+              "step": 1000,
+              "version": 801
+            }
+          ],
+          "generator": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 201
+            }
+          ]
+        }
+      }
+    },
+    {
+      "errors": [],
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 3,
+      "raw_sha256": "6219d2631c649ee9ef92de13766e1653a94b2431af5f2271ec853d4e6da36e0c",
+      "status": "PASS",
+      "step_end_unix": {
+        "1000": 1786423196.4483352,
+        "1001": 1786423298.502699,
+        "1002": 1786423387.6529162,
+        "1003": 1786423470.0262032,
+        "1004": 1786423568.8598847
+      },
+      "step_start_unix": {
+        "1000": 1786422958.8929598,
+        "1001": 1786423197.1499767,
+        "1002": 1786423299.0916708,
+        "1003": 1786423388.244734,
+        "1004": 1786423470.6141548
+      },
+      "trace": {
+        "source_authority": "operation_trace",
+        "trace_hash": "056c8a672a4dc9b58dfbe75de9d98f82bbd7afa4dad7b1a9c0c704acf8141c22"
+      },
+      "versions": {
+        "errors": [],
+        "final": {
+          "critic": 1005,
+          "ema": 801,
+          "generator": 201
+        },
+        "final_evidence": "last_component_update_receipts",
+        "initial": {
+          "critic": 1000,
+          "ema": 800,
+          "generator": 200
+        },
+        "status": "OBSERVED_EXACT",
+        "updates": {
+          "critic": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 1001
+            },
+            {
+              "predicate": null,
+              "step": 1001,
+              "version": 1002
+            },
+            {
+              "predicate": null,
+              "step": 1002,
+              "version": 1003
+            },
+            {
+              "predicate": null,
+              "step": 1003,
+              "version": 1004
+            },
+            {
+              "predicate": null,
+              "step": 1004,
+              "version": 1005
+            }
+          ],
+          "ema": [
+            {
+              "predicate": true,
+              "step": 1000,
+              "version": 801
+            }
+          ],
+          "generator": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 201
+            }
+          ]
+        }
+      }
+    },
+    {
+      "errors": [],
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 4,
+      "raw_sha256": "ea6fa678e3ca5b7c424912867c09db8db1ebec9e590bf5c0ad8a1d9c38319cce",
+      "status": "PASS",
+      "step_end_unix": {
+        "1000": 1786423196.3002207,
+        "1001": 1786423298.2652614,
+        "1002": 1786423387.6446614,
+        "1003": 1786423470.050032,
+        "1004": 1786423568.8677678
+      },
+      "step_start_unix": {
+        "1000": 1786422958.8933015,
+        "1001": 1786423197.0191689,
+        "1002": 1786423298.8711889,
+        "1003": 1786423388.2666297,
+        "1004": 1786423470.643059
+      },
+      "trace": {
+        "source_authority": "operation_trace",
+        "trace_hash": "8a3bab9d6231c3e442b84c3f2a729ce3fde011cc20bc0871c7160b47941554d8"
+      },
+      "versions": {
+        "errors": [],
+        "final": {
+          "critic": 1005,
+          "ema": 801,
+          "generator": 201
+        },
+        "final_evidence": "last_component_update_receipts",
+        "initial": {
+          "critic": 1000,
+          "ema": 800,
+          "generator": 200
+        },
+        "status": "OBSERVED_EXACT",
+        "updates": {
+          "critic": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 1001
+            },
+            {
+              "predicate": null,
+              "step": 1001,
+              "version": 1002
+            },
+            {
+              "predicate": null,
+              "step": 1002,
+              "version": 1003
+            },
+            {
+              "predicate": null,
+              "step": 1003,
+              "version": 1004
+            },
+            {
+              "predicate": null,
+              "step": 1004,
+              "version": 1005
+            }
+          ],
+          "ema": [
+            {
+              "predicate": true,
+              "step": 1000,
+              "version": 801
+            }
+          ],
+          "generator": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 201
+            }
+          ]
+        }
+      }
+    },
+    {
+      "errors": [],
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 5,
+      "raw_sha256": "ea55d33f70886aaa35a25a1d51372c2189e9ed5ec008388f0d7d7b6779c2762d",
+      "status": "PASS",
+      "step_end_unix": {
+        "1000": 1786423195.8486423,
+        "1001": 1786423298.4267125,
+        "1002": 1786423387.5074215,
+        "1003": 1786423469.9969249,
+        "1004": 1786423568.7638397
+      },
+      "step_start_unix": {
+        "1000": 1786422958.9038393,
+        "1001": 1786423196.4619322,
+        "1002": 1786423298.9996674,
+        "1003": 1786423388.0955408,
+        "1004": 1786423470.5755155
+      },
+      "trace": {
+        "source_authority": "operation_trace",
+        "trace_hash": "fb0ded3cbd2d55e657ccc1040cbdeb7d5de60a7eab02617bac94217c9879af7c"
+      },
+      "versions": {
+        "errors": [],
+        "final": {
+          "critic": 1005,
+          "ema": 801,
+          "generator": 201
+        },
+        "final_evidence": "last_component_update_receipts",
+        "initial": {
+          "critic": 1000,
+          "ema": 800,
+          "generator": 200
+        },
+        "status": "OBSERVED_EXACT",
+        "updates": {
+          "critic": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 1001
+            },
+            {
+              "predicate": null,
+              "step": 1001,
+              "version": 1002
+            },
+            {
+              "predicate": null,
+              "step": 1002,
+              "version": 1003
+            },
+            {
+              "predicate": null,
+              "step": 1003,
+              "version": 1004
+            },
+            {
+              "predicate": null,
+              "step": 1004,
+              "version": 1005
+            }
+          ],
+          "ema": [
+            {
+              "predicate": true,
+              "step": 1000,
+              "version": 801
+            }
+          ],
+          "generator": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 201
+            }
+          ]
+        }
+      }
+    },
+    {
+      "errors": [],
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 6,
+      "raw_sha256": "5bc82583d1abacdc48644dead6ad4146eb09c06fec554a01cdca68dd64ecbea0",
+      "status": "PASS",
+      "step_end_unix": {
+        "1000": 1786423195.8007455,
+        "1001": 1786423298.424955,
+        "1002": 1786423387.651038,
+        "1003": 1786423470.036732,
+        "1004": 1786423568.7752948
+      },
+      "step_start_unix": {
+        "1000": 1786422958.909749,
+        "1001": 1786423196.4545927,
+        "1002": 1786423299.0066066,
+        "1003": 1786423388.2564144,
+        "1004": 1786423470.6303248
+      },
+      "trace": {
+        "source_authority": "operation_trace",
+        "trace_hash": "b6b7eabf1cb98a5040c59163aeb5579d43f4230dca838da772fd504dff16166d"
+      },
+      "versions": {
+        "errors": [],
+        "final": {
+          "critic": 1005,
+          "ema": 801,
+          "generator": 201
+        },
+        "final_evidence": "last_component_update_receipts",
+        "initial": {
+          "critic": 1000,
+          "ema": 800,
+          "generator": 200
+        },
+        "status": "OBSERVED_EXACT",
+        "updates": {
+          "critic": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 1001
+            },
+            {
+              "predicate": null,
+              "step": 1001,
+              "version": 1002
+            },
+            {
+              "predicate": null,
+              "step": 1002,
+              "version": 1003
+            },
+            {
+              "predicate": null,
+              "step": 1003,
+              "version": 1004
+            },
+            {
+              "predicate": null,
+              "step": 1004,
+              "version": 1005
+            }
+          ],
+          "ema": [
+            {
+              "predicate": true,
+              "step": 1000,
+              "version": 801
+            }
+          ],
+          "generator": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 201
+            }
+          ]
+        }
+      }
+    },
+    {
+      "errors": [],
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 7,
+      "raw_sha256": "b344f2593cfd850171d95936cbd2ce225c69e9b2b0ceb9a4201ff7886431845f",
+      "status": "PASS",
+      "step_end_unix": {
+        "1000": 1786423194.4254837,
+        "1001": 1786423298.5110278,
+        "1002": 1786423387.6483603,
+        "1003": 1786423469.9650679,
+        "1004": 1786423568.8181798
+      },
+      "step_start_unix": {
+        "1000": 1786422958.9138734,
+        "1001": 1786423195.02692,
+        "1002": 1786423299.090528,
+        "1003": 1786423388.2326393,
+        "1004": 1786423470.5402422
+      },
+      "trace": {
+        "source_authority": "operation_trace",
+        "trace_hash": "8d7f00cbdae84e74c7c58009a81a0109c1387f39f6535368f48091e0c002ee4c"
+      },
+      "versions": {
+        "errors": [],
+        "final": {
+          "critic": 1005,
+          "ema": 801,
+          "generator": 201
+        },
+        "final_evidence": "last_component_update_receipts",
+        "initial": {
+          "critic": 1000,
+          "ema": 800,
+          "generator": 200
+        },
+        "status": "OBSERVED_EXACT",
+        "updates": {
+          "critic": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 1001
+            },
+            {
+              "predicate": null,
+              "step": 1001,
+              "version": 1002
+            },
+            {
+              "predicate": null,
+              "step": 1002,
+              "version": 1003
+            },
+            {
+              "predicate": null,
+              "step": 1003,
+              "version": 1004
+            },
+            {
+              "predicate": null,
+              "step": 1004,
+              "version": 1005
+            }
+          ],
+          "ema": [
+            {
+              "predicate": true,
+              "step": 1000,
+              "version": 801
+            }
+          ],
+          "generator": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 201
+            }
+          ]
+        }
+      }
+    },
+    {
+      "errors": [],
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 8,
+      "raw_sha256": "c3131a39a5efe8f357727299b8474e48148f97f9df09c87bf70b01974cfcd4aa",
+      "status": "PASS",
+      "step_end_unix": {
+        "1000": 1786423196.1017485,
+        "1001": 1786423300.2510695,
+        "1002": 1786423389.5062516,
+        "1003": 1786423471.9724064,
+        "1004": 1786423570.8461514
+      },
+      "step_start_unix": {
+        "1000": 1786422960.8403223,
+        "1001": 1786423196.9048576,
+        "1002": 1786423300.8325272,
+        "1003": 1786423390.0928195,
+        "1004": 1786423472.5503755
+      },
+      "trace": {
+        "source_authority": "operation_trace",
+        "trace_hash": "36e2d4447d438e242aef46fc4e85746980ff70ec4333315763e5dde679ccaeb3"
+      },
+      "versions": {
+        "errors": [],
+        "final": {
+          "critic": 1005,
+          "ema": 801,
+          "generator": 201
+        },
+        "final_evidence": "last_component_update_receipts",
+        "initial": {
+          "critic": 1000,
+          "ema": 800,
+          "generator": 200
+        },
+        "status": "OBSERVED_EXACT",
+        "updates": {
+          "critic": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 1001
+            },
+            {
+              "predicate": null,
+              "step": 1001,
+              "version": 1002
+            },
+            {
+              "predicate": null,
+              "step": 1002,
+              "version": 1003
+            },
+            {
+              "predicate": null,
+              "step": 1003,
+              "version": 1004
+            },
+            {
+              "predicate": null,
+              "step": 1004,
+              "version": 1005
+            }
+          ],
+          "ema": [
+            {
+              "predicate": true,
+              "step": 1000,
+              "version": 801
+            }
+          ],
+          "generator": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 201
+            }
+          ]
+        }
+      }
+    },
+    {
+      "errors": [],
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 9,
+      "raw_sha256": "b1d4fbcd8928e5906f22a59e2bd32bd89b75e1008ca6d1f4261409a6b0c845cb",
+      "status": "PASS",
+      "step_end_unix": {
+        "1000": 1786423197.9725573,
+        "1001": 1786423300.333822,
+        "1002": 1786423389.5647845,
+        "1003": 1786423471.952774,
+        "1004": 1786423570.8344026
+      },
+      "step_start_unix": {
+        "1000": 1786422960.8341312,
+        "1001": 1786423199.037841,
+        "1002": 1786423300.9454794,
+        "1003": 1786423390.1504343,
+        "1004": 1786423472.5195198
+      },
+      "trace": {
+        "source_authority": "operation_trace",
+        "trace_hash": "cb21a975ea30523365a326f614dcd22611c8833808a2a535225d55b931dcfdb3"
+      },
+      "versions": {
+        "errors": [],
+        "final": {
+          "critic": 1005,
+          "ema": 801,
+          "generator": 201
+        },
+        "final_evidence": "last_component_update_receipts",
+        "initial": {
+          "critic": 1000,
+          "ema": 800,
+          "generator": 200
+        },
+        "status": "OBSERVED_EXACT",
+        "updates": {
+          "critic": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 1001
+            },
+            {
+              "predicate": null,
+              "step": 1001,
+              "version": 1002
+            },
+            {
+              "predicate": null,
+              "step": 1002,
+              "version": 1003
+            },
+            {
+              "predicate": null,
+              "step": 1003,
+              "version": 1004
+            },
+            {
+              "predicate": null,
+              "step": 1004,
+              "version": 1005
+            }
+          ],
+          "ema": [
+            {
+              "predicate": true,
+              "step": 1000,
+              "version": 801
+            }
+          ],
+          "generator": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 201
+            }
+          ]
+        }
+      }
+    },
+    {
+      "errors": [],
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 10,
+      "raw_sha256": "a0360300a73e088e261a001f7b24d16a62a29677c798314d20b70d9e5dd656e6",
+      "status": "PASS",
+      "step_end_unix": {
+        "1000": 1786423197.30312,
+        "1001": 1786423300.2810638,
+        "1002": 1786423389.5025022,
+        "1003": 1786423471.9103904,
+        "1004": 1786423570.8044467
+      },
+      "step_start_unix": {
+        "1000": 1786422960.8588223,
+        "1001": 1786423197.9636562,
+        "1002": 1786423300.8673553,
+        "1003": 1786423390.0822585,
+        "1004": 1786423472.4775593
+      },
+      "trace": {
+        "source_authority": "operation_trace",
+        "trace_hash": "9f9080748fa0defe19e38c571450c1f0b4bdf8a61ea83c6eb50ef2ae96fa6de3"
+      },
+      "versions": {
+        "errors": [],
+        "final": {
+          "critic": 1005,
+          "ema": 801,
+          "generator": 201
+        },
+        "final_evidence": "last_component_update_receipts",
+        "initial": {
+          "critic": 1000,
+          "ema": 800,
+          "generator": 200
+        },
+        "status": "OBSERVED_EXACT",
+        "updates": {
+          "critic": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 1001
+            },
+            {
+              "predicate": null,
+              "step": 1001,
+              "version": 1002
+            },
+            {
+              "predicate": null,
+              "step": 1002,
+              "version": 1003
+            },
+            {
+              "predicate": null,
+              "step": 1003,
+              "version": 1004
+            },
+            {
+              "predicate": null,
+              "step": 1004,
+              "version": 1005
+            }
+          ],
+          "ema": [
+            {
+              "predicate": true,
+              "step": 1000,
+              "version": 801
+            }
+          ],
+          "generator": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 201
+            }
+          ]
+        }
+      }
+    },
+    {
+      "errors": [],
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 11,
+      "raw_sha256": "dee3349c6328ca9f3a9686a32e1e635ba800c8276d62c632bb190dfcab196e4b",
+      "status": "PASS",
+      "step_end_unix": {
+        "1000": 1786423198.690023,
+        "1001": 1786423300.2046163,
+        "1002": 1786423389.500579,
+        "1003": 1786423471.93488,
+        "1004": 1786423570.7871356
+      },
+      "step_start_unix": {
+        "1000": 1786422960.8259034,
+        "1001": 1786423199.435601,
+        "1002": 1786423300.792245,
+        "1003": 1786423390.0733068,
+        "1004": 1786423472.5184267
+      },
+      "trace": {
+        "source_authority": "operation_trace",
+        "trace_hash": "a06b1117a55d08397a5d6a8ac95932f58967ae33996395290272acac2c9be9ea"
+      },
+      "versions": {
+        "errors": [],
+        "final": {
+          "critic": 1005,
+          "ema": 801,
+          "generator": 201
+        },
+        "final_evidence": "last_component_update_receipts",
+        "initial": {
+          "critic": 1000,
+          "ema": 800,
+          "generator": 200
+        },
+        "status": "OBSERVED_EXACT",
+        "updates": {
+          "critic": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 1001
+            },
+            {
+              "predicate": null,
+              "step": 1001,
+              "version": 1002
+            },
+            {
+              "predicate": null,
+              "step": 1002,
+              "version": 1003
+            },
+            {
+              "predicate": null,
+              "step": 1003,
+              "version": 1004
+            },
+            {
+              "predicate": null,
+              "step": 1004,
+              "version": 1005
+            }
+          ],
+          "ema": [
+            {
+              "predicate": true,
+              "step": 1000,
+              "version": 801
+            }
+          ],
+          "generator": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 201
+            }
+          ]
+        }
+      }
+    },
+    {
+      "errors": [],
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 12,
+      "raw_sha256": "fe815e7ec5270bfc74defba0b9126a98a2cb5ef72bb3c5dfcacf645f55d36797",
+      "status": "PASS",
+      "step_end_unix": {
+        "1000": 1786423197.532811,
+        "1001": 1786423300.286018,
+        "1002": 1786423389.4446578,
+        "1003": 1786423471.80505,
+        "1004": 1786423570.8445923
+      },
+      "step_start_unix": {
+        "1000": 1786422960.8691208,
+        "1001": 1786423198.1821747,
+        "1002": 1786423300.8621407,
+        "1003": 1786423390.0235488,
+        "1004": 1786423472.3767421
+      },
+      "trace": {
+        "source_authority": "operation_trace",
+        "trace_hash": "02a5fb618ebf69e9dfbe48e57556cd26f5a0d5dc421a9315a71c0a9951a48006"
+      },
+      "versions": {
+        "errors": [],
+        "final": {
+          "critic": 1005,
+          "ema": 801,
+          "generator": 201
+        },
+        "final_evidence": "last_component_update_receipts",
+        "initial": {
+          "critic": 1000,
+          "ema": 800,
+          "generator": 200
+        },
+        "status": "OBSERVED_EXACT",
+        "updates": {
+          "critic": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 1001
+            },
+            {
+              "predicate": null,
+              "step": 1001,
+              "version": 1002
+            },
+            {
+              "predicate": null,
+              "step": 1002,
+              "version": 1003
+            },
+            {
+              "predicate": null,
+              "step": 1003,
+              "version": 1004
+            },
+            {
+              "predicate": null,
+              "step": 1004,
+              "version": 1005
+            }
+          ],
+          "ema": [
+            {
+              "predicate": true,
+              "step": 1000,
+              "version": 801
+            }
+          ],
+          "generator": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 201
+            }
+          ]
+        }
+      }
+    },
+    {
+      "errors": [],
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 13,
+      "raw_sha256": "e69c68d23702f46a076427bd6dd8b303e28737c210e8eddf6a93fae3e549f83d",
+      "status": "PASS",
+      "step_end_unix": {
+        "1000": 1786423196.6459184,
+        "1001": 1786423300.1477914,
+        "1002": 1786423389.5280657,
+        "1003": 1786423471.8386345,
+        "1004": 1786423570.6228337
+      },
+      "step_start_unix": {
+        "1000": 1786422960.8419392,
+        "1001": 1786423197.2472177,
+        "1002": 1786423300.722921,
+        "1003": 1786423390.1063054,
+        "1004": 1786423472.4000459
+      },
+      "trace": {
+        "source_authority": "operation_trace",
+        "trace_hash": "9795b6d0613069a255b0814aee4bb62c11b36b3223c6218e13ebc98964755546"
+      },
+      "versions": {
+        "errors": [],
+        "final": {
+          "critic": 1005,
+          "ema": 801,
+          "generator": 201
+        },
+        "final_evidence": "last_component_update_receipts",
+        "initial": {
+          "critic": 1000,
+          "ema": 800,
+          "generator": 200
+        },
+        "status": "OBSERVED_EXACT",
+        "updates": {
+          "critic": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 1001
+            },
+            {
+              "predicate": null,
+              "step": 1001,
+              "version": 1002
+            },
+            {
+              "predicate": null,
+              "step": 1002,
+              "version": 1003
+            },
+            {
+              "predicate": null,
+              "step": 1003,
+              "version": 1004
+            },
+            {
+              "predicate": null,
+              "step": 1004,
+              "version": 1005
+            }
+          ],
+          "ema": [
+            {
+              "predicate": true,
+              "step": 1000,
+              "version": 801
+            }
+          ],
+          "generator": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 201
+            }
+          ]
+        }
+      }
+    },
+    {
+      "errors": [],
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 14,
+      "raw_sha256": "292a730cbe22246f8ba26c53a8f93a65932cfb78de7debff8ded6c1cec2739af",
+      "status": "PASS",
+      "step_end_unix": {
+        "1000": 1786423196.5850494,
+        "1001": 1786423300.3108873,
+        "1002": 1786423389.5507267,
+        "1003": 1786423471.9169421,
+        "1004": 1786423570.8194778
+      },
+      "step_start_unix": {
+        "1000": 1786422960.8402855,
+        "1001": 1786423197.2103662,
+        "1002": 1786423300.908823,
+        "1003": 1786423390.1495109,
+        "1004": 1786423472.4869418
+      },
+      "trace": {
+        "source_authority": "operation_trace",
+        "trace_hash": "dfbb7bca5505f494875889e9c483156c7e8cb8403deb95394b9fdb0e990fbe75"
+      },
+      "versions": {
+        "errors": [],
+        "final": {
+          "critic": 1005,
+          "ema": 801,
+          "generator": 201
+        },
+        "final_evidence": "last_component_update_receipts",
+        "initial": {
+          "critic": 1000,
+          "ema": 800,
+          "generator": 200
+        },
+        "status": "OBSERVED_EXACT",
+        "updates": {
+          "critic": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 1001
+            },
+            {
+              "predicate": null,
+              "step": 1001,
+              "version": 1002
+            },
+            {
+              "predicate": null,
+              "step": 1002,
+              "version": 1003
+            },
+            {
+              "predicate": null,
+              "step": 1003,
+              "version": 1004
+            },
+            {
+              "predicate": null,
+              "step": 1004,
+              "version": 1005
+            }
+          ],
+          "ema": [
+            {
+              "predicate": true,
+              "step": 1000,
+              "version": 801
+            }
+          ],
+          "generator": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 201
+            }
+          ]
+        }
+      }
+    },
+    {
+      "errors": [],
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 15,
+      "raw_sha256": "c68747ac2afa7ba47d2e93e7ed0a9cb6db5dcf9c522758045d685e74c24dc71a",
+      "status": "PASS",
+      "step_end_unix": {
+        "1000": 1786423198.9652731,
+        "1001": 1786423300.9493735,
+        "1002": 1786423389.640121,
+        "1003": 1786423472.002344,
+        "1004": 1786423570.7637517
+      },
+      "step_start_unix": {
+        "1000": 1786422960.8434746,
+        "1001": 1786423199.8153586,
+        "1002": 1786423302.516938,
+        "1003": 1786423390.3168828,
+        "1004": 1786423472.5598679
+      },
+      "trace": {
+        "source_authority": "operation_trace",
+        "trace_hash": "72fcebc8027cce26fe0aeca35ff7bfe40ed67de349d7d63a83e53994233807a6"
+      },
+      "versions": {
+        "errors": [],
+        "final": {
+          "critic": 1005,
+          "ema": 801,
+          "generator": 201
+        },
+        "final_evidence": "last_component_update_receipts",
+        "initial": {
+          "critic": 1000,
+          "ema": 800,
+          "generator": 200
+        },
+        "status": "OBSERVED_EXACT",
+        "updates": {
+          "critic": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 1001
+            },
+            {
+              "predicate": null,
+              "step": 1001,
+              "version": 1002
+            },
+            {
+              "predicate": null,
+              "step": 1002,
+              "version": 1003
+            },
+            {
+              "predicate": null,
+              "step": 1003,
+              "version": 1004
+            },
+            {
+              "predicate": null,
+              "step": 1004,
+              "version": 1005
+            }
+          ],
+          "ema": [
+            {
+              "predicate": true,
+              "step": 1000,
+              "version": 801
+            }
+          ],
+          "generator": [
+            {
+              "predicate": null,
+              "step": 1000,
+              "version": 201
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "run_id": "gan_seq_systems_functional_20260811_008",
+  "schema_version": "distillschedule.routea_gan_world16.result.v1",
+  "status": "PASS",
+  "timing": {
+    "claimable": true,
+    "formal_speedup_claim": false,
+    "global_training_window_seconds": 611.9531915187836,
+    "samples_per_second": 0.13072895297996734,
+    "status": "MEASURED_DIAGNOSTIC",
+    "weighted_step_seconds": 122.39063830375672
+  },
+  "topology": {
+    "records": [
+      {
+        "cuda_device_count": 8,
+        "cuda_device_index": 0,
+        "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+        "local_rank": 0,
+        "local_world_size": 8,
+        "node_rank": 0,
+        "rank": 0,
+        "world_size": 16
+      },
+      {
+        "cuda_device_count": 8,
+        "cuda_device_index": 1,
+        "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+        "local_rank": 1,
+        "local_world_size": 8,
+        "node_rank": 0,
+        "rank": 1,
+        "world_size": 16
+      },
+      {
+        "cuda_device_count": 8,
+        "cuda_device_index": 2,
+        "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+        "local_rank": 2,
+        "local_world_size": 8,
+        "node_rank": 0,
+        "rank": 2,
+        "world_size": 16
+      },
+      {
+        "cuda_device_count": 8,
+        "cuda_device_index": 3,
+        "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+        "local_rank": 3,
+        "local_world_size": 8,
+        "node_rank": 0,
+        "rank": 3,
+        "world_size": 16
+      },
+      {
+        "cuda_device_count": 8,
+        "cuda_device_index": 4,
+        "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+        "local_rank": 4,
+        "local_world_size": 8,
+        "node_rank": 0,
+        "rank": 4,
+        "world_size": 16
+      },
+      {
+        "cuda_device_count": 8,
+        "cuda_device_index": 5,
+        "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+        "local_rank": 5,
+        "local_world_size": 8,
+        "node_rank": 0,
+        "rank": 5,
+        "world_size": 16
+      },
+      {
+        "cuda_device_count": 8,
+        "cuda_device_index": 6,
+        "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+        "local_rank": 6,
+        "local_world_size": 8,
+        "node_rank": 0,
+        "rank": 6,
+        "world_size": 16
+      },
+      {
+        "cuda_device_count": 8,
+        "cuda_device_index": 7,
+        "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+        "local_rank": 7,
+        "local_world_size": 8,
+        "node_rank": 0,
+        "rank": 7,
+        "world_size": 16
+      },
+      {
+        "cuda_device_count": 8,
+        "cuda_device_index": 0,
+        "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+        "local_rank": 0,
+        "local_world_size": 8,
+        "node_rank": 1,
+        "rank": 8,
+        "world_size": 16
+      },
+      {
+        "cuda_device_count": 8,
+        "cuda_device_index": 1,
+        "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+        "local_rank": 1,
+        "local_world_size": 8,
+        "node_rank": 1,
+        "rank": 9,
+        "world_size": 16
+      },
+      {
+        "cuda_device_count": 8,
+        "cuda_device_index": 2,
+        "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+        "local_rank": 2,
+        "local_world_size": 8,
+        "node_rank": 1,
+        "rank": 10,
+        "world_size": 16
+      },
+      {
+        "cuda_device_count": 8,
+        "cuda_device_index": 3,
+        "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+        "local_rank": 3,
+        "local_world_size": 8,
+        "node_rank": 1,
+        "rank": 11,
+        "world_size": 16
+      },
+      {
+        "cuda_device_count": 8,
+        "cuda_device_index": 4,
+        "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+        "local_rank": 4,
+        "local_world_size": 8,
+        "node_rank": 1,
+        "rank": 12,
+        "world_size": 16
+      },
+      {
+        "cuda_device_count": 8,
+        "cuda_device_index": 5,
+        "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+        "local_rank": 5,
+        "local_world_size": 8,
+        "node_rank": 1,
+        "rank": 13,
+        "world_size": 16
+      },
+      {
+        "cuda_device_count": 8,
+        "cuda_device_index": 6,
+        "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+        "local_rank": 6,
+        "local_world_size": 8,
+        "node_rank": 1,
+        "rank": 14,
+        "world_size": 16
+      },
+      {
+        "cuda_device_count": 8,
+        "cuda_device_index": 7,
+        "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+        "local_rank": 7,
+        "local_world_size": 8,
+        "node_rank": 1,
+        "rank": 15,
+        "world_size": 16
+      }
+    ],
+    "schema_version": "distillschedule.topology_probe.v1",
+    "status": "PASS",
+    "summary": {
+      "hosts_by_node": {
+        "0": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+        "1": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0"
+      },
+      "local_world_size": 8,
+      "nodes": 2,
+      "ranks_by_node": {
+        "0": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "1": [
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ]
+      },
+      "world_size": 16
+    }
+  }
+}

@@ -6,7 +6,19 @@ This contract defines the conservative **GAN-on baseline** used before GAN pipel
 
 The official Helios GAN configuration keeps `gan_start_step=1000` and defines `TRAIN_GENERATOR = global_step % dfake_gen_update_ratio == 0` with `dfake_gen_update_ratio=5`. Therefore the first complete GAN-active frequency cycle is steps **1000, 1001, 1002, 1003, 1004**. The baseline must not rewrite `gan_start_step` merely to reuse an earlier checkpoint.
 
-A canonical GAN-on `checkpoint-1000` and a rank-qualified trace covering 1000–1004 are required. A No-GAN checkpoint/trace is a different contract and is not interchangeable.
+A source-faithful run requires a canonical GAN-on `checkpoint-1000`.  The
+systems experiment may instead use one immutable artifact explicitly marked
+`systems_only_gan_bootstrap`: real Generator/Critic/Adam/scheduler tensors come
+from a validated earlier checkpoint, official GAN heads are initialized once
+from a fixed seed, and all optimizer buffers are materialized before timing.
+It is never described as an official checkpoint-1000 continuation.  Both
+baseline and pipeline must fresh-restart the same artifact.
+
+A rank-qualified operation trace covering 1000–1004 is required in either
+case.  For the systems bootstrap, source-shaped steps10–14 tensors may be
+remapped to logical1000–1004 only when GAN noise, crop, and R1 epsilon values
+are added as explicit operation-keyed tensors and actual consumption is
+receipted.
 
 ## Frozen workload
 

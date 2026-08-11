@@ -1,0 +1,30 @@
+{
+  "schema_version": "distillschedule.gan_world16.functional_failure.v1",
+  "run_id": "gan_seq_systems_functional_20260810_004",
+  "status": "FAILED_AT_FIRST_CRITIC_OPTIMIZER_STEP",
+  "classification": "functional_correctness_run_not_formal_timing",
+  "workload": {
+    "world_size": 16,
+    "shape": "384x640",
+    "logical_steps": [1000, 1001, 1002, 1003, 1004],
+    "systems_only_bootstrap": "systems_only_gan_bootstrap_v1",
+    "bootstrap_artifact_hash": "757763d4b051306fcc9d8d003de8b39f21f1a11f95af0b923df6d76a591ec696"
+  },
+  "observed_progress": {
+    "rank_phase_trace_count": 16,
+    "generator_optimizer_step_1000_rank_receipts": 16,
+    "critic_optimizer_step_rank_receipts": 0,
+    "ema_update_rank_receipts": 0
+  },
+  "failure_signature": "rank15 Adam exp_avg length 139667127 but reduced gradient partition length 139667154",
+  "root_cause": "the systems-only bootstrap omitted the explicit 27-element ZeRO-1 tail padding from rank15 FP32 master and Adam moment tensors",
+  "capacity_failure": false,
+  "cgroup_oom_delta": [0, 0],
+  "peak_cgroup_bytes": [614160662528, 609220407296],
+  "peak_gpu_used_mib": [38276, 38276],
+  "training_math_changed_by_fix": false,
+  "validated_repair": "materialize fixed-width ZeRO-1 FP32 master/exp_avg/exp_avg_sq partitions and keep the final 27 elements zero; build a new immutable bootstrap artifact rather than mutating v1",
+  "formal_performance_claim": "Not Run",
+  "pipeline": "Not Run",
+  "evidence_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_seq_systems_functional_20260810_004"
+}

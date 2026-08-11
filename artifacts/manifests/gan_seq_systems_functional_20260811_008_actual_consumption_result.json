@@ -1,0 +1,100 @@
+{
+  "actual_consumption": {
+    "actual_access_rows": 2432,
+    "compute_contract_digest": "482dfd6cc0b27747adb0ef835cfea187dd6c7769d847e443853b46ab06d2af34",
+    "compute_entries": 80,
+    "fairness_contract_digest": "b7104c0729f44d28963dff90fca6d51b293798d9dc0ba718b1d3af7d6985de66",
+    "fairness_entries": 80,
+    "generator_checkpoint_recompute_forwards_per_rank": 3,
+    "generator_logical_dit_forwards_per_rank": 31,
+    "materialize_release_balanced": true,
+    "rank_access_files": 16,
+    "score_checkpoint_recompute_forwards_per_rank": 11,
+    "score_logical_forwards_per_rank": 14,
+    "status": "PASS"
+  },
+  "bounded_evidence_tool_repairs": [
+    {
+      "bug": "rank-qualified traces use local sample/0 keys",
+      "commit": "199064d6c8985008790f1836747607354c098a5d",
+      "training_math_changed": false
+    },
+    {
+      "bug": "step1000 has both Generator-update and Critic-data rollouts",
+      "commit": "0fe99e15233919e5cbcff03ea7d179c03f235b58",
+      "training_math_changed": false
+    }
+  ],
+  "classification": "correctness_instrumented_diagnostic_not_formal_denominator",
+  "environment": {
+    "backend": "ZeRO-1 with CPU optimizer offload",
+    "fixed_memory_policy": "Generator+Score all40 frozen-block streaming, window1, no prefetch",
+    "gpu": "A100-40GB",
+    "gpus_per_node": 8,
+    "nodes": 2,
+    "precision": "BF16",
+    "shape": "384x640",
+    "world_size": 16
+  },
+  "functional": {
+    "cgroup_oom_delta": 0,
+    "cgroup_oom_kill_delta": 0,
+    "checkpoint_1005": "PASS",
+    "critic_updates_per_rank": 5,
+    "cuda_oom_delta": 0,
+    "ema_updates_per_rank": 1,
+    "final_versions": {
+      "critic": 1005,
+      "ema": 801,
+      "generator": 201
+    },
+    "generator_updates_per_rank": 1,
+    "logical_steps": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004
+    ],
+    "rank_count": 16
+  },
+  "iteration": 271,
+  "memory": {
+    "gpu_max_allocated_bytes": 36687222784,
+    "gpu_max_reserved_bytes": 39210450944,
+    "node0_cgroup_peak_bytes": 600024436736,
+    "node1_cgroup_peak_bytes": 609916502016
+  },
+  "not_run": [
+    "low-overhead formal baseline denominator",
+    "real persistent 8G+8Score pipeline",
+    "paired formal trials",
+    "Nsight",
+    "minimum-offload search"
+  ],
+  "raw_artifacts": "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810/artifacts/runs/gan_seq_systems_functional_20260811_008",
+  "receipt_sha256": {
+    "compute": "670061238b003fa512287547a1ad0873f25e9f2c61e9dd9557c163551510756d",
+    "fairness": "77e49ac2618ead91b117df1eed6515575ba7b0cac0783c4bd57319a77293effc",
+    "functional_summary": "a88ef3f0a1d4ed417503361bed6f1c1ea2383e3cecd27fb832a5e75997245b08",
+    "provenance": "926da0743887c31dc077251a315199f6ff55878eb877e9fc004c8328ae19aaa2",
+    "timing_validation": "a86e142e45b0f4e3ded7b168049d5c716eb3ab5e9a02ceef0c89e7aab3e4a5dd"
+  },
+  "run_id": "gan_seq_systems_functional_20260811_008",
+  "schema_version": "distillschedule.gan_actual_consumption_result.v1",
+  "source": {
+    "bootstrap_artifact_hash": "c528dd62b72267570f42b61c36a0926da85e1e0176930efcf72649ef8da3776e",
+    "dmd_system_commit": "0fe99e15233919e5cbcff03ea7d179c03f235b58",
+    "operation_trace_bundle_hash": "d31d4d473a3574b5b39e50ad2b5e72e17aee7baf707130ea0513092553f7cd15",
+    "runtime_commit": "c66e413856fda81ec280f0e8e0dd361da0c85830"
+  },
+  "status": "PASS",
+  "timing": {
+    "exact_range_seconds": 609.592914539,
+    "formal_speedup_denominator": false,
+    "max_rank_elapsed_seconds": 607.655228564,
+    "min_rank_elapsed_seconds": 607.641231078,
+    "reason": "correctness run enabled actual-consumption and detailed lifecycle instrumentation",
+    "receipt_structure": "PASS"
+  }
+}

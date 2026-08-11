@@ -59,7 +59,7 @@
   "legacy": {
     "entrypoint": "../../../scripts/distillschedule/helios_gan_compat_entrypoint.py",
     "extra_env": {
-      "PYTHONPATH": "${ENV:DMD_SYSTEM_ROOT:-/share/project/shuchenweng/yongyan_liu/DMD-System}/src:${ENV:DMD_SYSTEM_ROOT:-/share/project/shuchenweng/yongyan_liu/DMD-System}:${ENV:HELIOS_RUNTIME_ROOT}",
+      "PYTHONPATH": "${ENV:DMD_SYSTEM_ROOT:-/share/project/shuchenweng/yongyan_liu/DMD-System}/src:${ENV:HELIOS_RUNTIME_ROOT}:${ENV:DMD_SYSTEM_ROOT:-/share/project/shuchenweng/yongyan_liu/DMD-System}",
       "DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_WINDOW": "${ENV:DISTILLSCHEDULE_GAN_STREAMING_WINDOW:-1}",
       "DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_COMPONENTS": "${ENV:DISTILLSCHEDULE_GAN_STREAMING_COMPONENTS:-generator,score}",
       "DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_BLOCK_COUNT": "${ENV:DISTILLSCHEDULE_GAN_STREAMED_BLOCK_COUNT:-40}",

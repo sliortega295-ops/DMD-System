@@ -13,6 +13,7 @@ from distillschedule.runtime.gan_baseline import (
     EXPECTED_INITIAL,
     EXPECTED_STEPS,
     expected_gan_schedule,
+    normalize_shared_plan_contract,
     validate_common_rank_synchronized_trace,
     validate_gan_plan,
     validate_rendered_gan_config,
@@ -58,6 +59,28 @@ def test_gan_plan_is_full_offload_world16_and_uses_1000_1004(
         "critic": 1005,
         "ema": 801,
     }
+
+    invocation = load_plan(PLAN).plan.to_dict()["legacy"]["extra_env"]
+    pythonpath = invocation["PYTHONPATH"].split(":")
+    assert pythonpath[0].endswith("/src")
+    assert pythonpath[1] == str(tmp_path / "helios")
+
+
+def test_gan_shared_plan_contract_excludes_node_qualified_resolution_digest(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _set_plan_env(monkeypatch, tmp_path)
+    node0 = validate_gan_plan(PLAN)
+    monkeypatch.setenv("DISTILLSCHEDULE_OUTPUT_DIR", str(tmp_path / "run-node1"))
+    monkeypatch.setenv("DISTILLSCHEDULE_FROZEN_BLOCK_MMAP_CACHE", str(tmp_path / "frozen-node1"))
+    monkeypatch.setenv("DISTILLSCHEDULE_IMMUTABLE_MODEL_MMAP_CACHE", str(tmp_path / "immutable-node1"))
+    node1 = validate_gan_plan(PLAN)
+
+    shared0, resolved0 = normalize_shared_plan_contract(node0)
+    shared1, resolved1 = normalize_shared_plan_contract(node1)
+    assert resolved0 != resolved1
+    assert shared0 == shared1
+    assert shared0["semantic_digest"] == shared1["semantic_digest"]
 
 
 def test_typed_gan_schedule_matches_official_post_750_ema_predicate(

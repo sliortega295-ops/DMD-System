@@ -42,8 +42,14 @@ def main()->None:
     root=Path(os.environ["HELIOS_RUNTIME_ROOT"]).expanduser().resolve(); upstream=root/"train_helios.py"
     if not upstream.is_file():raise FileNotFoundError(f"pinned Helios entrypoint missing: {upstream}")
     timing,nsys=_install_hooks()
-    try:runpy.run_path(str(upstream),run_name="__main__")
+    completed=False
+    try:
+        runpy.run_path(str(upstream),run_name="__main__")
+        completed=True
     finally:
-        timing.assert_complete()
-        if nsys.enabled:nsys.assert_complete()
+        # Preserve the upstream exception as the root cause.  Receipt
+        # completeness is only meaningful after the workload itself returns.
+        if completed:
+            timing.assert_complete()
+            if nsys.enabled:nsys.assert_complete()
 if __name__=="__main__":main()
