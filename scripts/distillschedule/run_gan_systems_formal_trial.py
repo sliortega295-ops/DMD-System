@@ -226,6 +226,11 @@ def _pipeline_worker_script(args: argparse.Namespace, node_rank: int, run_root: 
     command_text = shlex.join(command)
     exact_timing = "0" if profile_nsys else "1"
     nsys_profile = "1" if profile_nsys else "0"
+    streamed_count = int(getattr(args, "streamed_block_count", 40))
+    streamed_indices = ",".join(
+        str(index) for index in range(40 - streamed_count, 40)
+    )
+    capacity_search = "1" if bool(getattr(args, "capacity_search", False)) else "0"
     return f'''set -Eeuo pipefail
 exec 9>/tmp/distillschedule_gpu_node.lock
 flock -n 9 || {{ echo gpu_lock_busy >&2; exit 73; }}
@@ -249,6 +254,9 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True,garbage_collection_thres
 export DISTILLSCHEDULE_OPERATION_TRACE_ACCESS_DIR={shlex.quote(str(run_root / 'trace_access'))}
 export DISTILLSCHEDULE_STABLE_BLOCK_NOISE=1 DISTILLSCHEDULE_NSYS_ANNOTATE=1
 export DISTILLSCHEDULE_GAN_NSYS_PROFILE={nsys_profile} DISTILLSCHEDULE_GAN_EXACT_TIMING={exact_timing}
+export DISTILLSCHEDULE_GAN_CAPACITY_SEARCH={capacity_search}
+export DISTILLSCHEDULE_GAN_STREAMED_BLOCK_COUNT={streamed_count}
+export DISTILLSCHEDULE_GAN_STREAMED_BLOCK_INDICES={shlex.quote(streamed_indices)}
 export DISTILLSCHEDULE_GAN_TIMING_RECEIPT_DIR={shlex.quote(str(timing_root))}
 set +e
 timeout --signal=TERM --kill-after=180s {args.timeout_seconds}s {command_text} > {shlex.quote(str(rank_log))} 2>&1
@@ -352,7 +360,7 @@ test ! -e {shlex.quote(str(receipt_root))} || {{ echo receipt_root_exists >&2; e
 {shlex.quote(str(PYTHON_REMOTE))} {shlex.quote(str(dmd_root / 'scripts/distillschedule/build_gan_execution_receipts.py'))} \
   --family {family} --run-root {shlex.quote(str(run_evidence_root))} \
   --trace-bundle {shlex.quote(str(args.trace_bundle))} \
-  --output-dir {shlex.quote(str(receipt_root))} --expected-streamed-block-count 40
+  --output-dir {shlex.quote(str(receipt_root))} --expected-streamed-block-count {int(getattr(args, 'streamed_block_count', 40))}
 {timing_validation}{profile_validation}
 '''
     _ssh_checked(args.hosts[0], build)
@@ -498,8 +506,9 @@ def _fetch_and_write_result(
         "family": family,
         "run_id": args.run_id,
         "profiled": profile_nsys,
-        "diagnostic_only": profile_nsys,
-        "formal_speedup_eligible": not profile_nsys,
+        "diagnostic_only": profile_nsys or bool(getattr(args, "capacity_search", False)),
+        "formal_speedup_eligible": not profile_nsys and not bool(getattr(args, "capacity_search", False)),
+        "capacity_search": bool(getattr(args, "capacity_search", False)),
         "logical_steps": [1000, 1001, 1002, 1003, 1004],
         "workload_contract_digest": workload_digest,
         "gan_fairness_receipt": str(receipt_root / "gan_fairness_receipt.json"),
@@ -509,8 +518,12 @@ def _fetch_and_write_result(
         "remote_run_root": str(run_root),
         "remote_summary": dict(remote_summary),
         "fixed_memory_policy": {
-            "generator_streamed_blocks": list(range(40)),
-            "score_streamed_blocks": list(range(40)),
+            "generator_streamed_blocks": list(
+                range(40 - int(getattr(args, "streamed_block_count", 40)), 40)
+            ),
+            "score_streamed_blocks": list(
+                range(40 - int(getattr(args, "streamed_block_count", 40)), 40)
+            ),
             "streaming_window": 1,
             "host_policy": "HOST_SHARED_IMMUTABLE",
             "prefetch": False,
@@ -548,6 +561,12 @@ def parser() -> argparse.ArgumentParser:
         action="store_true",
         help="diagnostic exact-range Nsight run; never formal-speedup eligible",
     )
+    p.add_argument(
+        "--capacity-search",
+        action="store_true",
+        help="capacity/correctness candidate; never formal-speedup eligible",
+    )
+    p.add_argument("--streamed-block-count", type=int, default=40)
     return p
 
 
@@ -568,6 +587,14 @@ def main() -> int:
     workload_digest = _workload_digest(args.workload_contract)
     if args.profile_nsys and args.family != "pipeline":
         raise SystemExit("--profile-nsys is implemented only for the pipeline worker")
+    if args.capacity_search and args.family != "pipeline":
+        raise SystemExit("--capacity-search is implemented only for the pipeline worker")
+    if args.profile_nsys and args.capacity_search:
+        raise SystemExit("Nsight and capacity search must remain separate runs")
+    if not 0 <= args.streamed_block_count <= 40:
+        raise SystemExit("--streamed-block-count must be in [0,40]")
+    if args.streamed_block_count != 40 and not args.capacity_search:
+        raise SystemExit("non-default streaming requires --capacity-search")
     run_log = args.result_path.parent / f"{args.family}_controller.log"
     try:
         _assert_remote_idle(args.hosts)

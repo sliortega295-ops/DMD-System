@@ -87,6 +87,34 @@ def test_pipeline_worker_profiles_same_command_but_disables_formal_timing(
     assert "DISTILLSCHEDULE_PYTHON=" in script
 
 
+def test_pipeline_capacity_candidate_changes_only_streamed_tail_contract(
+    tmp_path: Path,
+) -> None:
+    args = SimpleNamespace(
+        master_addr="10.0.0.1",
+        master_port=30001,
+        timeout_seconds=20000,
+        run_nonce=123,
+        profile_nsys=False,
+        capacity_search=True,
+        streamed_block_count=4,
+        pipeline_remote_root=Path("/remote/dmd"),
+        pipeline_runtime_root=Path("/remote/runtime"),
+        config=Path("/assets/config.yaml"),
+        target_package=Path("/assets/target"),
+        trace_bundle=Path("/assets/trace"),
+        generator_root=Path("/assets/generator"),
+        score_root=Path("/assets/score"),
+        negative_prompt=Path("/assets/negative.pt"),
+        pipeline_mmap=Path("/assets/mmap"),
+    )
+    script = MODULE._pipeline_worker_script(args, 0, tmp_path / "run")
+    assert "DISTILLSCHEDULE_GAN_CAPACITY_SEARCH=1" in script
+    assert "DISTILLSCHEDULE_GAN_STREAMED_BLOCK_COUNT=4" in script
+    assert "DISTILLSCHEDULE_GAN_STREAMED_BLOCK_INDICES=36,37,38,39" in script
+    assert "DISTILLSCHEDULE_GAN_NSYS_PROFILE=0" in script
+
+
 def test_formal_run_id_contract_accepts_artifact_convention() -> None:
     pattern = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
     assert pattern.fullmatch("gan_pipeline_formal_gate_20260811_001")
