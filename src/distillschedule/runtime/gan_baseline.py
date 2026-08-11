@@ -248,6 +248,25 @@ def validate_gan_plan(plan_path: str | Path) -> dict[str, Any]:
     }
 
 
+def normalize_shared_plan_contract(
+    plan: Mapping[str, Any],
+) -> tuple[dict[str, Any], str]:
+    """Separate node-qualified resolution identity from shared GAN semantics.
+
+    ``load_plan`` resolves environment-backed output, cache, and launcher paths,
+    so its digest is intentionally different for node 0 and node 1.  The
+    resolved digest still has to match that node's compiled preflight, but it
+    must not enter the cross-node shared digest.  This mirrors the already
+    validated Route-A evidence contract and leaves all training fields in the
+    shared payload.
+    """
+
+    shared = dict(plan)
+    resolved_digest = str(shared.pop("plan_digest"))
+    shared["semantic_digest"] = object_digest(shared)
+    return shared, resolved_digest
+
+
 def validate_rendered_gan_config(path: str | Path, *, checkpoint: str | Path) -> dict[str, Any]:
     candidate = Path(path).expanduser().resolve()
     config = _load_yaml(candidate)
@@ -413,8 +432,9 @@ def build_node_contract(
     compiled = load_json_mapping(compiled_preflight_path)
     if compiled.get("plan_digest") != plan["plan_digest"]:
         raise ContractViolation("compiled plan digest mismatch", path="compiled_preflight.plan_digest")
+    shared_plan, resolved_plan_digest = normalize_shared_plan_contract(plan)
     shared = {
-        "plan": plan,
+        "plan": shared_plan,
         "rendered_config": {
             "normalized_digest": rendered["normalized_digest"],
             "official_gan_fields": rendered["official_gan_fields"],
@@ -446,6 +466,7 @@ def build_node_contract(
         "shared": shared,
         "shared_digest": object_digest(shared),
         "node": {
+            "resolved_plan_digest": resolved_plan_digest,
             "rendered_config_path": rendered["path"],
             "rendered_config_sha256": rendered["sha256"],
             "accelerate_config_path": str(Path(accelerate_config_path).resolve()),
@@ -503,5 +524,5 @@ __all__ = [
     "expected_gan_schedule", "finalize_node_contracts", "load_json_mapping",
     "sha256_file", "validate_common_rank_synchronized_trace", "validate_final_contract",
     "validate_gan_plan", "validate_official_gan_source", "validate_rendered_gan_config",
-    "validate_systems_gan_bootstrap",
+    "validate_systems_gan_bootstrap", "normalize_shared_plan_contract",
 ]
