@@ -1,0 +1,24 @@
+{
+  "schema_version": "distillschedule.iteration_result.v1",
+  "iteration": 305,
+  "date": "2026-08-10",
+  "status": "PASS_PROFILE_ONLY",
+  "dmd_head": "4841dc38f5edd0f64d4f73493853b78753b2385b",
+  "profile_sha256": "883cfc6bb235ed36f52047907f5a7e40afff0c9ff9aa7bf7102a5569e0331be0",
+  "model": "real Helios-Distilled Generator with Stage-3 LoRA inventory",
+  "record_count": 613,
+  "finite_record_count": 613,
+  "minimum_effective_threshold": 10240,
+  "selected_candidate": {
+    "stage3_module_granularity_threshold": 8000000,
+    "selected_leaf_count": 47,
+    "selected_transformer_blocks": 40,
+    "maximum_leaf_parameter_numel": 382065152,
+    "two_block_parameter_numel": 764130304,
+    "prefetch_bucket_elements": 402653184,
+    "max_live_parameters": 805306368,
+    "static_admission": "one block fits prefetch bucket and two blocks fit max-live element cap"
+  },
+  "performance": "Not Run",
+  "claim_boundary": "CPU read-only policy-selection profile; no speedup or correctness claim"
+}

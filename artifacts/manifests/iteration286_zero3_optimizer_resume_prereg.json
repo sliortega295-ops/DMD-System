@@ -1,0 +1,57 @@
+{
+  "schema_version": "distillschedule.iteration286.zero3_optimizer_resume_prereg.v1",
+  "iteration": 286,
+  "created_at_utc": "2026-08-10T11:45:00Z",
+  "gate": "ZeRO-3 logical-checkpoint resumed optimizer wrapper gate",
+  "decision": "GO",
+  "authorized_hypothesis": "The validated ZeRO-3 compute backend is reusable unchanged; the remaining failure is limited to custom logical-checkpoint restoration encoding optimizer step=2 with a representation incompatible with the nested concrete PyTorch Adam-family optimizer. Discovering the actual wrapper chain and restoring the concrete optimizer's native singleton step tensor will allow a real ZeRO-3 optimizer update without changing model, trace, loss, batch, checkpoint values, or schedule.",
+  "falsifiable_question": "Can a real DP2 DeepSpeed ZeRO-3 wrapper restore logical master/m/v/step=2, execute backward and optimizer.step, and advance the exact step value to 3 before any further 14B retry?",
+  "live_substrate": {
+    "dmd_head": "628e8bdb943fa074c71b6d38e93ef3c5f189c41a",
+    "runtime_head": "ec1462bfb84ca444b3beae216c66632744e0d369",
+    "dmd_clean": true,
+    "runtime_clean": true,
+    "gpus_idle_both_nodes": true,
+    "dmd_tests": "220 passed",
+    "trace_bundle_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3"
+  },
+  "matching_prior_evidence": [
+    {
+      "artifact": "artifacts/manifests/iteration285_strict_trace_real14b_attempt003_optimizer_step_type_failure.json",
+      "conclusion": "Both real-14B GAS2 rollout/backward waves completed; first resumed optimizer step rejected Python integer state_steps."
+    },
+    {
+      "artifact": "artifacts/manifests/iteration285_strict_trace_real14b_attempt004_repeated_optimizer_failure.json",
+      "conclusion": "Shallow isinstance repair stopped at the ZeRO-3 wrapper and reproduced the same signature; no more 16-GPU patch retries in Iteration 285."
+    },
+    {
+      "artifact": "artifacts/manifests/iteration281_zero3_logical_restore_gate_result.json",
+      "conclusion": "Per-parameter master/m/v/shard mapping passed, but that gate inspected restored values only and never called the wrapped optimizer step."
+    },
+    {
+      "artifact": "historical Iteration 229/230 ZeRO-3 evidence",
+      "conclusion": "ZeRO-3 forward/backward/update passed when optimizer state was freshly initialized; it did not test cross-layout logical G2 optimizer-state restoration."
+    }
+  ],
+  "rejected_or_superseded_paths": [
+    "another immediate 16-GPU retry",
+    "changing ZeRO stage, trace, call schedule, batch, loss, optimizer hyperparameters, EMA, or role placement",
+    "blindly substituting the historical fresh-optimizer launcher",
+    "inferring the concrete optimizer type from the outer ZeRO wrapper"
+  ],
+  "allowed_changes": [
+    "runtime/critic_pool_checkpoint.py",
+    "tests/test_routeb_checkpoint.py",
+    "a DP2 real DeepSpeed wrapper-level restore-and-step gate",
+    "iteration286 manifests and append-only research_log.md"
+  ],
+  "bounded_sequence": [
+    "read-only wrapper-chain introspection under the exact DeepSpeed/PyTorch environment",
+    "one representation fix derived from the actual nested optimizer contract",
+    "DP2 ZeRO-3 logical restore plus real backward/optimizer step",
+    "focused and full CPU/unit tests",
+    "only after all preceding gates pass, one real-14B same-contract correctness retry"
+  ],
+  "performance": "Not Run",
+  "correctness": "Not Run"
+}

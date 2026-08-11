@@ -1,0 +1,48 @@
+{
+  "schema_version": "distillschedule.iteration_prereg.v1",
+  "iteration": 284,
+  "status": "ACTIVE",
+  "frozen_before_code_change": true,
+  "gate": "Route-B continuous Full5 production phase-world refactor",
+  "go_decision": "GO",
+  "question": "Can the production real-14B Full5 executor preserve Step10-A as default-world8 DP8 ZeRO-3 and then re-form the same live processes as the global world16 per-node 2G+6C Critic phase?",
+  "hypothesis": "The already-passed two-node phase-reinitialization mechanism will preserve G2-to-G3, gather logical G3 before engine destruction, create a clean global world16, redistribute only logical G3 trainables, and retain the exact Critic/EMA/version schedule without the slower ZeRO-1 Step10-A fallback.",
+  "authorized_changes": [
+    "production process-world initialization and destruction",
+    "node-local to global rank mapping",
+    "cross-node phase lifecycle barriers",
+    "launcher topology for the same live processes",
+    "fail-closed tests and evidence"
+  ],
+  "frozen_contracts": {
+    "resolution": "384x640",
+    "trace_bundle_sha256": "9e282f4bc24eb589d259e5e5603cae02fa5cd0c6cdd0f06f7c5416461e4564d0",
+    "logical_checkpoint_sha256": "68eed293970be008764ee6acadb2aac6ce54de2ce1f55a17fca2246f0d04e4aa",
+    "step10a": "8G+4S+4T; Generator DP8 ZeRO-3 MB1 GAS2 global16; CPU optimizer; no parameter offload",
+    "critic_phase": "per-node 2G+6C; global 4G+12C; Critic DP12 ZeRO-1 MB1 GAS1 global12",
+    "versions": "G2/C10/EMA10 -> G3/C15/EMA15",
+    "ema_updates": 5,
+    "critic_updates": 5,
+    "ack_policy": "ACK_FREE_NCCL_SEND_COMPLETION_BACKPRESSURE",
+    "numerical_contract": "iteration280_full5_2g6c_continuous_numerical_contract_v1"
+  },
+  "matching_prior_evidence": [
+    "iteration281 Attempt005: transition feasible but Step10-A ZeRO-1 was 93.563083 s and is superseded",
+    "iteration282: ZeRO-3 subgroup forward in a larger default world stalled; default-world ZeRO-3 padded update passed",
+    "iteration283 Attempt004: two-node local-default-world to global-world reinitialization passed"
+  ],
+  "rejected_paths": [
+    "Step10-A ZeRO-1 fallback",
+    "Step10-A ZeRO-3 subgroup inside a global default world16",
+    "in-place reinterpretation of ZeRO-3 shards as resident parameters",
+    "using historical 48.551620 s as an exact-current-trace denominator"
+  ],
+  "execution_order": [
+    "unit and source tests",
+    "full CPU test suite",
+    "real-14B correctness only",
+    "formal timing only after correctness PASS"
+  ],
+  "performance_status": "Not Run",
+  "real14b_status": "Not Run"
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": "distillschedule.iteration_preflight.v1",
+  "iteration": 297,
+  "date": "2026-08-10",
+  "status": "PREREGISTERED_GO",
+  "current_gate": "strict-v4 Step10-A ZeRO-3 materialization scheduling",
+  "authorized_hypothesis": "one-frozen-block prefetch plus a two-block live cap hides more ZeRO-3 AllGather after 2M trainable persistence",
+  "candidate": {
+    "stage3_param_persistence_threshold": 2000000,
+    "stage3_prefetch_bucket_elements": 402653184,
+    "stage3_max_live_parameters": 805306368,
+    "stage3_max_reuse_distance": 268435456,
+    "allgather_bucket_elements": 16777216,
+    "overlap_comm": false
+  },
+  "block_inventory": {
+    "frozen_block_count": 40,
+    "elements_per_block": 351394304,
+    "bf16_gib_per_block": 0.654523,
+    "prefetch_capacity_blocks": 1.146,
+    "live_capacity_blocks": 2.292
+  },
+  "baseline": {
+    "strict_v4_seconds": 123.11550586891826,
+    "persistence2m_seconds": 116.82945310149807,
+    "target_range_seconds": [85,105]
+  },
+  "frozen": {
+    "trace": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+    "step10a": "DP8 ZeRO-3 MB1 GAS2 global16; two selected graphs and two backwards; G2->G3 once",
+    "resolution": "384x640",
+    "loss_optimizer_clip_precision": "unchanged",
+    "allgather_bucket_overlap_comm_reuse_distance": "unchanged from Iteration 296 except explicit live/prefetch fields above"
+  },
+  "matching_prior_evidence": [
+    "Iteration 291 Nsight AllGather-dominant NCCL union",
+    "Iteration 296 persistence exact boundary fingerprints and no OOM",
+    "precast inventory: each frozen block has 351,394,304 elements",
+    "Iteration 296 node0 GPU peak 31,762 MiB leaves bounded headroom"
+  ],
+  "rejected_paths": [
+    "changing graph/call count",
+    "old reduced-backward anchor",
+    "ZeRO-2",
+    "enabling overlap_comm in the same iteration",
+    "changing reuse distance or allgather bucket"
+  ],
+  "refutation": [
+    "OOM or allocator admission failure",
+    "trace/call/selected/backward/update fingerprint differs",
+    "Step10-A >=110.804 s"
+  ],
+  "decision_rules": {
+    "positive_target": "Step10-A <=105 s",
+    "partial": "105 s < Step10-A < 110.804 s",
+    "negative": "Step10-A >=110.804 s or admission/correctness failure"
+  },
+  "allowed_changes": [
+    "runtime/deepspeed_backend.py optional stage3 prefetch/live fields",
+    "Step10 executor/launcher fail-closed configuration plumbing",
+    "tests, manifests, docs and append-only research log"
+  ],
+  "claim_boundary": "one preliminary low-overhead admission/timing run; exact combined Full5 correctness required before final claim",
+  "decision": "GO"
+}

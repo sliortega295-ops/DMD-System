@@ -1,0 +1,31 @@
+{
+  "schema_version": "distillschedule.iteration_preflight.v1",
+  "iteration": 308,
+  "date": "2026-08-10",
+  "status": "PREREGISTERED_GO",
+  "current_gate": "combined strict-v4 Step10 block leaves plus persistent-pinned transition",
+  "authorized_hypothesis": "the exact-passing combined candidate keeps Step10 <=105 seconds and transition <=25 seconds across three independent low-overhead Full5 launches",
+  "frozen_candidate": {
+    "step10a_explicit_leaf_class": "HeliosTransformerBlock",
+    "step10a_leaf_count": 40,
+    "step10a_persistence_threshold": 2000000,
+    "step10a_prefetch_bucket_elements": 402653184,
+    "step10a_max_live_parameters": 805306368,
+    "step10a_max_reuse_distance": 268435456,
+    "step10a_overlap_comm": false,
+    "transition_h2d_policy": "persistent_pinned",
+    "transition_cleanup": "post_full5 main thread",
+    "correctness_binding_sha256": "1ff4b4a11d81053f3149d0a7f24bf9b7d6b51bc0bfc7f18ad8b22ea969f12377"
+  },
+  "runs": 3,
+  "run_policy": "independent launches from the same logical G2/C10/EMA10 state; retain every success/failure",
+  "metrics": ["Step10 world max", "transition world max", "Critic world max", "Full5 world max", "post-boundary cleanup", "cgroup/GPU peak", "OOM delta"],
+  "success": [
+    "all wrappers and ranks PASS",
+    "median Step10 <=105 seconds",
+    "median transition <=25 seconds",
+    "no exact-binding drift or OOM"
+  ],
+  "claim_boundary": "timing remains batch12 resource-throughput Pareto, not a matched-batch16 Route-A speedup",
+  "decision": "GO"
+}

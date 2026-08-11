@@ -1,0 +1,43 @@
+{
+  "schema_version": "distillschedule.iteration_preregistration.v1",
+  "iteration": 275,
+  "experiment_id": "RB16-F5-PIPE-MATCH16",
+  "title": "Common post-Step10-A transition checkpoint causal recovery",
+  "status": "PREREGISTERED",
+  "authorized_scope": [
+    "world-aligned G3/C10/EMA10 transition checkpoint save and load",
+    "critic-phase-only sequential correctness from common checkpoint",
+    "critic-phase-only pipeline correctness from common checkpoint",
+    "strict rank/event/checkpoint comparison"
+  ],
+  "frozen_contract": {
+    "world_size": 16,
+    "generator_ranks": "0-7",
+    "critic_ranks": "8-15",
+    "generator_version": 3,
+    "critic_initial_version": 10,
+    "critic_final_version": 15,
+    "ema_initial_step": 10,
+    "ema_final_step": 15,
+    "critic_dp": 8,
+    "micro_batch_per_gpu": 1,
+    "gradient_accumulation_steps": 2,
+    "global_batch": 16,
+    "physical_micro_waves": 10,
+    "optimizer_commits": 5,
+    "gradient_clipping": 1.0,
+    "zero_stage": 1,
+    "resolution": "384x640",
+    "trace_bundle_hash": "9e282f4bc24eb589d259e5e5603cae02fa5cd0c6cdd0f06f7c5416461e4564d0",
+    "trace_binding_hash": "e6a5ef2f60b00ef79dfd5b8e94ce5d9c7446da39453fb9c9fcb0f0e5039fc15b"
+  },
+  "rejected_paths": [
+    "post-hoc numerical threshold derived from the independent Full5 pair",
+    "rerunning ZeRO-2",
+    "changing trace, loss, batch, GAS, clipping, EMA or block policy",
+    "formal timing before common-transition pairwise correctness",
+    "Candidate B before Candidate A closes"
+  ],
+  "success_gate": "Both schedules restore the same transition package, pass exact identity/version/queue checks, complete C10-to-C15 and EMA10-to-EMA15, and satisfy a preregistered same-layout direct-state comparison.",
+  "performance_status": "Not Run"
+}

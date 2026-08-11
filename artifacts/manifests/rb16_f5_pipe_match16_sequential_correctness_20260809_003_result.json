@@ -1,0 +1,47 @@
+{
+  "errors": [],
+  "experiment_id": "RB16-F5-PIPE-MATCH16",
+  "identities": {
+    "execution_trace_bundle_hash": "9e282f4bc24eb589d259e5e5603cae02fa5cd0c6cdd0f06f7c5416461e4564d0",
+    "logical_manifest_hash": "68eed293970be008764ee6acadb2aac6ce54de2ce1f55a17fca2246f0d04e4aa",
+    "routeb_trace_binding_hash": "e6a5ef2f60b00ef79dfd5b8e94ce5d9c7446da39453fb9c9fcb0f0e5039fc15b",
+    "state_provenance_trace_hash": "bd97ddc9cf0e51e791a50ce13586126599d3667fd4684505c142ed177096f12f"
+  },
+  "mode": "correctness",
+  "node_cgroup_sampled_peaks_bytes": {
+    "node_0": 481452437504,
+    "node_1": 521302720512
+  },
+  "phase": {
+    "checkpoint_15": {
+      "bytes": 94723665006,
+      "critic_optimizer_shards": 8,
+      "file_count": 40,
+      "generator_optimizer_shards": 8,
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/runs/rb16_f5_pipe_match16_sequential_correctness_20260809_003/execution/checkpoint-15",
+      "rng_files": 16,
+      "sparse_ema": true
+    },
+    "critic_commits": 5,
+    "critic_waves": 80,
+    "ema_commits": 5,
+    "generator_waves": 80,
+    "scope": "continuous_full5_step10_to_step14"
+  },
+  "rank_count": 16,
+  "run_id": "rb16_f5_pipe_match16_sequential_correctness_20260809_003",
+  "schedule": "sequential",
+  "schema_version": "distillschedule.routeb_full5_candidate_a_summary.v1",
+  "status": "PASS",
+  "step10a": {
+    "generator_sources": 16,
+    "generator_updates": 1,
+    "student_sources": 16,
+    "teacher_sources": 16
+  },
+  "timing": {
+    "critic_phase_makespan_seconds": 369.50191178312525,
+    "full5_makespan_seconds": 701.129548584111,
+    "label": "diagnostic"
+  }
+}

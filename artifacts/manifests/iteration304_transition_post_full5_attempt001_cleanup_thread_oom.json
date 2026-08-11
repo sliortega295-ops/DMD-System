@@ -1,0 +1,40 @@
+{
+  "schema_version": "distillschedule.iteration_result.v1",
+  "iteration": 304,
+  "attempt": 1,
+  "date": "2026-08-10",
+  "run_id": "rb16_f5_iter304_persistent_cache_post_full5_correctness_20260810_001",
+  "status": "FAIL_POST_FULL5_CLEANUP_GPU_OOM",
+  "claim_valid": false,
+  "dmd_head": "b2207da4240f4439af01cef3974ab0fcab99b8c9",
+  "runtime_head": "ec1462bfb84ca444b3beae216c66632744e0d369",
+  "trace_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+  "observed_before_cleanup": {
+    "step10a_world_max_seconds": 122.90433225920424,
+    "transition_world_max_seconds": 23.715669326018542,
+    "critic_phase_seconds_observed_rank4": 164.52011039294302,
+    "full5_execution_seconds_observed_rank4": 310.43058032379486,
+    "generator_version": 3,
+    "critic_version": 15,
+    "ema_version": 15
+  },
+  "failure": {
+    "ranks": [4, 7],
+    "boundary": "after_step15a_boundary_outside_full5_timing",
+    "operation": "background trim_host_allocator followed by mandatory drain",
+    "error": "CUDA error: out of memory",
+    "classification": "GPU cleanup-path OOM; not a cgroup host OOM and not a Step10 rollout OOM",
+    "other_ranks": "blocked at the final control barrier until operator termination"
+  },
+  "resources": {
+    "node0_cgroup_peak_bytes": 713661657088,
+    "node1_cgroup_peak_bytes": 257071157248,
+    "node0_memory_events_oom_before_after": [0, 0],
+    "node1_memory_events_oom_before_after": [0, 0],
+    "node0_gpu_peak_mib": 40094,
+    "node1_gpu_peak_mib": 37002
+  },
+  "operator_action": "terminated only the failed run on both nodes after preserving artifacts",
+  "interpretation": "The measured pre-cleanup timings are diagnostic only. The post-Full5 background thread is unnecessary because it is immediately joined; it invalidated the run at teardown.",
+  "artifact_root": "artifacts/runs/rb16_f5_iter304_persistent_cache_post_full5_correctness_20260810_001"
+}

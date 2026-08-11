@@ -1,0 +1,35 @@
+{
+  "errors": [],
+  "experiment_id": "RB16-F5-PIPE-MATCH16",
+  "identities": {
+    "execution_trace_bundle_hash": "9e282f4bc24eb589d259e5e5603cae02fa5cd0c6cdd0f06f7c5416461e4564d0",
+    "logical_manifest_hash": "68eed293970be008764ee6acadb2aac6ce54de2ce1f55a17fca2246f0d04e4aa",
+    "routeb_trace_binding_hash": "e6a5ef2f60b00ef79dfd5b8e94ce5d9c7446da39453fb9c9fcb0f0e5039fc15b",
+    "state_provenance_trace_hash": "bd97ddc9cf0e51e791a50ce13586126599d3667fd4684505c142ed177096f12f"
+  },
+  "mode": "transition",
+  "node_cgroup_sampled_peaks_bytes": {
+    "node_0": 483474747392,
+    "node_1": 531545894912
+  },
+  "phase": {
+    "critic_phase": "Not Run",
+    "scope": "transition_only"
+  },
+  "rank_count": 16,
+  "run_id": "rb16_f5_pipe_match16_transition_20260809_004",
+  "schedule": "sequential",
+  "schema_version": "distillschedule.routeb_full5_candidate_a_summary.v1",
+  "status": "PASS",
+  "step10a": {
+    "generator_sources": 16,
+    "generator_updates": 1,
+    "student_sources": 16,
+    "teacher_sources": 16
+  },
+  "timing": {
+    "critic_phase_makespan_seconds": 0.0,
+    "full5_makespan_seconds": 330.7043093852699,
+    "label": "diagnostic"
+  }
+}

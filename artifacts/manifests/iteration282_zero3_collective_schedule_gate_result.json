@@ -1,0 +1,107 @@
+{
+  "decision": {
+    "formal_timing": "NOT_RUN",
+    "historical_48_551620_seconds": "not an exact-trace denominator; it remains backend evidence only",
+    "real14b_correctness": "NOT_RUN",
+    "separate_default_world8_step10a": "GO_FOR_PREREGISTERED_PHASE_REINITIALIZATION_GATE",
+    "single_world16_zero3_subgroup": "NO_GO"
+  },
+  "evidence": {
+    "default_world_log": {
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/profile/iteration282_zero3_padded_default_world_gate_20260810_002/launcher.log",
+      "sha256": "477c4b711fcfc7c3af9374b71faac22f6bb11f954c918e35567aafea408f2e84"
+    },
+    "default_world_summary": {
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/profile/iteration282_zero3_padded_default_world_gate_20260810_002/summary.json",
+      "sha256": "7947844bcde763b2c75d68dec8b323b032c127602b46235d52350b374f9a3681"
+    },
+    "group_inventory_rank0": {
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/profile/iteration282_zero3_subgroup_group_inventory_20260810_001/rank_00.json",
+      "sha256": "6eca10f2fc3ea8cc1a9e5e601159266dc8ace3f230423c67c76b8791eef5b212"
+    },
+    "runtime_helper": {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_rb16_f5_pipeline_20260809/helios/utils/utils_helios_post.py",
+      "sha256": "59486b62a5e00bf665db0e0c1de7def93e9702edcb7e188c1ee019ecb57596f9"
+    },
+    "subgroup_log": {
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/profile/iteration282_zero3_padded_subgroup_gate_20260810_003/launcher.log",
+      "sha256": "f76e06d82b6008562d1d5e6c4e60b48395f7cc7929b630b0dcbf3ed8dbd3f250"
+    },
+    "subgroup_rc": {
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/profile/iteration282_zero3_padded_subgroup_gate_20260810_003/launcher.rc",
+      "sha256": "ca2ebdf97d7469496b1f4b78958f9dc8447efdcb623953fee7b6996b762f6fff"
+    }
+  },
+  "iteration": 282,
+  "next_contract": "Step10-A remains 8G+4S+4T with Generator default-world8 ZeRO-3. After exact G2->G3 gather and destruction of the obsolete ZeRO-3 representation, processes rejoin a world16 target phase and redistribute only logical G3 trainables into the per-node 2G+6C resident Generator pool. Critic phase remains DP12 ZeRO-1.",
+  "preserved_nonsemantic_harness_failure": {
+    "cause": "toy model returned width 8 and the prefix rank fed it into a width-16 layer on the next physical slot",
+    "policy_or_workload_change": false,
+    "run": "iteration282_zero3_padded_default_world_gate_20260810_001",
+    "status": "FAIL_HARNESS_SHAPE"
+  },
+  "question": "Can the exact rank-qualified Step10 trace run collective-safely under DP8 ZeRO-3, and can that engine execute as a subgroup of the continuous world16 process graph?",
+  "results": {
+    "default_world_gate": {
+      "global_steps": [
+        1,
+        1
+      ],
+      "interpretation": "The collective-safe exact schedule itself is valid when ZeRO-3 owns its default DP world, matching the validated historical Step10-A substrate.",
+      "logical_exits": [
+        0,
+        2
+      ],
+      "modes": [
+        [
+          "padding",
+          "padding",
+          "selected"
+        ],
+        [
+          "prefix",
+          "prefix",
+          "selected"
+        ]
+      ],
+      "physical_calls": [
+        3,
+        3
+      ],
+      "return_code": 0,
+      "selected_calls": [
+        1,
+        1
+      ],
+      "status": "PASS",
+      "world_size": 2
+    },
+    "dmd_tests": {
+      "status": "PASS",
+      "tests": "17 passed focused; 212 passed, 1 skipped full"
+    },
+    "runtime_cpu_semantics": {
+      "policy": "defer each rank true selected call to a common final stage slot; earlier exits execute discarded no-grad padding",
+      "status": "PASS",
+      "tests": "6 passed focused; 322 passed full"
+    },
+    "subgroup_forward_gate": {
+      "interpretation": "DeepSpeed ZeRO-3 initialization in a strict subgroup is insufficient; forward remains unsafe in the combined default-world graph. No further subgroup patch escalation is authorized.",
+      "oom_delta": 0,
+      "oom_kill_delta": 0,
+      "optimizer_group_global_ranks": [
+        0,
+        1
+      ],
+      "parameter_group_global_ranks": [
+        0,
+        1
+      ],
+      "return_code": 124,
+      "stage": "both DP2 ZeRO-3 members entered the first no-grad forward; neither returned before 120 s",
+      "status": "FAIL_TIMEOUT"
+    }
+  },
+  "schema_version": "distillschedule.iteration282.zero3_collective_schedule_gate_result.v1",
+  "status": "PARTIAL_PASS_ARCHITECTURE_REJECTED"
+}

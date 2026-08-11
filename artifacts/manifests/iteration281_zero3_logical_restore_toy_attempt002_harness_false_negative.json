@@ -1,0 +1,18 @@
+{
+  "schema_version": "distillschedule.bounded_gate_failure.v1",
+  "status": "HARNESS_FALSE_NEGATIVE",
+  "iteration": 281,
+  "run_id": "iteration281_zero3_logical_restore_toy_20260810_002",
+  "failure_signature": "rank1 exact=false although all recorded master/moment/low-shard values match the intended padded ZeRO-3 partition",
+  "root_cause": "The toy assertion added 10/20 to padding zeros when constructing expected Adam moments. ZeRO padding must remain zero.",
+  "runtime_change_required": false,
+  "gpu_rerun_required": false,
+  "reason_no_rerun": "The raw per-rank artifacts contain every compared element, so the corrected predicate can be evaluated offline without consuming another GPU attempt.",
+  "oom_delta": 0,
+  "oom_kill_delta": 0,
+  "evidence": {
+    "console": {"path": "artifacts/profile/iteration281_zero3_logical_restore_toy_20260810_002/console.log", "sha256": "98e9276373a64e865ca3b89a213f04c354601844d13d473f1cfed504d387a6b3"},
+    "rank0": {"path": "artifacts/profile/iteration281_zero3_logical_restore_toy_20260810_002/package/rank_00.json", "sha256": "0c28b1b1341280ac507423ea2042eed339996594a5568e94bbe89b7ee4645dba"},
+    "rank1": {"path": "artifacts/profile/iteration281_zero3_logical_restore_toy_20260810_002/package/rank_01.json", "sha256": "a44527bd2d4ea6e3586ce48890e66e7d7f8db9a80094dc723d09876081bf3adc"}
+  }
+}

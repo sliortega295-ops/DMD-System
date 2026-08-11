@@ -1,0 +1,667 @@
+{
+  "aggregates": {
+    "critic_backward_end_total": 0,
+    "critic_optimizer_step_total": 0,
+    "generator_optimizer_step_total": 16,
+    "offload_after_allocated_bytes": {
+      "count": 16,
+      "max": 2575966720,
+      "mean": 2575966432.0,
+      "min": 2575966208
+    },
+    "offload_count": {
+      "count": 16,
+      "max": 2502885376,
+      "mean": 2502885376.0,
+      "min": 2502885376
+    },
+    "offloaded_bytes": {
+      "count": 16,
+      "max": 2502885376,
+      "mean": 2502885376.0,
+      "min": 2502885376
+    },
+    "pre_backward_allocated_bytes": {
+      "count": 16,
+      "max": 33723116544,
+      "mean": 33723116544.0,
+      "min": 33723116544
+    },
+    "pre_backward_driver_free_bytes": {
+      "count": 16,
+      "max": 5446696960,
+      "mean": 5392171008.0,
+      "min": 5320867840
+    }
+  },
+  "ooms": [
+    {
+      "allocated": 37.84,
+      "console": "node_0",
+      "free": 216.38,
+      "rank": 3,
+      "request": 216.0,
+      "reserved": 324.23,
+      "source": "[rank3]:   File \"/share/project/shuchenweng/yongyan_liu/DistillSchedule_ra16_f5_pr4_20260808/helios/modules/transformer_helios.py\", line 1640, in forward",
+      "total": 39.39,
+      "used": 39.14
+    },
+    {
+      "allocated": 37.84,
+      "console": "node_0",
+      "free": 196.38,
+      "rank": 4,
+      "request": 216.0,
+      "reserved": 344.23,
+      "source": "[rank4]:   File \"/share/project/shuchenweng/yongyan_liu/DistillSchedule_ra16_f5_pr4_20260808/helios/modules/transformer_helios.py\", line 1640, in forward",
+      "total": 39.39,
+      "used": 39.16
+    },
+    {
+      "allocated": 37.9,
+      "console": "node_0",
+      "free": 212.38,
+      "rank": 0,
+      "request": 216.0,
+      "reserved": 365.73,
+      "source": "[rank0]:   File \"/share/project/shuchenweng/yongyan_liu/DistillSchedule_ra16_f5_pr4_20260808/helios/modules/transformer_helios.py\", line 1640, in forward",
+      "total": 39.39,
+      "used": 39.15
+    },
+    {
+      "allocated": 37.9,
+      "console": "node_0",
+      "free": 212.38,
+      "rank": 5,
+      "request": 216.0,
+      "reserved": 325.73,
+      "source": "[rank5]:   File \"/share/project/shuchenweng/yongyan_liu/DistillSchedule_ra16_f5_pr4_20260808/helios/modules/transformer_helios.py\", line 1640, in forward",
+      "total": 39.39,
+      "used": 39.15
+    },
+    {
+      "allocated": 38.01,
+      "console": "node_0",
+      "free": 212.38,
+      "rank": 7,
+      "request": 216.0,
+      "reserved": 248.73,
+      "source": "[rank7]:   File \"/share/project/shuchenweng/yongyan_liu/DistillSchedule_ra16_f5_pr4_20260808/helios/modules/transformer_helios.py\", line 1640, in forward",
+      "total": 39.39,
+      "used": 39.15
+    },
+    {
+      "allocated": 37.96,
+      "console": "node_0",
+      "free": 196.38,
+      "rank": 2,
+      "request": 216.0,
+      "reserved": 307.23,
+      "source": "[rank2]:   File \"/share/project/shuchenweng/yongyan_liu/DistillSchedule_ra16_f5_pr4_20260808/helios/modules/transformer_helios.py\", line 1640, in forward",
+      "total": 39.39,
+      "used": 39.16
+    },
+    {
+      "allocated": 38.01,
+      "console": "node_0",
+      "free": 212.38,
+      "rank": 6,
+      "request": 216.0,
+      "reserved": 248.73,
+      "source": "[rank6]:   File \"/share/project/shuchenweng/yongyan_liu/DistillSchedule_ra16_f5_pr4_20260808/helios/modules/transformer_helios.py\", line 1640, in forward",
+      "total": 39.39,
+      "used": 39.15
+    },
+    {
+      "allocated": 38.01,
+      "console": "node_0",
+      "free": 96.38,
+      "rank": 1,
+      "request": 216.0,
+      "reserved": 388.73,
+      "source": "[rank1]:   File \"/share/project/shuchenweng/yongyan_liu/DistillSchedule_ra16_f5_pr4_20260808/helios/modules/transformer_helios.py\", line 1640, in forward",
+      "total": 39.39,
+      "used": 39.26
+    },
+    {
+      "allocated": 37.84,
+      "console": "node_1",
+      "free": 196.38,
+      "rank": 12,
+      "request": 216.0,
+      "reserved": 344.23,
+      "source": "[rank12]:   File \"/share/project/shuchenweng/yongyan_liu/DistillSchedule_ra16_f5_pr4_20260808/helios/modules/transformer_helios.py\", line 1640, in forward",
+      "total": 39.39,
+      "used": 39.16
+    },
+    {
+      "allocated": 37.96,
+      "console": "node_1",
+      "free": 156.38,
+      "rank": 10,
+      "request": 216.0,
+      "reserved": 347.23,
+      "source": "[rank10]:   File \"/share/project/shuchenweng/yongyan_liu/DistillSchedule_ra16_f5_pr4_20260808/helios/modules/transformer_helios.py\", line 1640, in forward",
+      "total": 39.39,
+      "used": 39.2
+    },
+    {
+      "allocated": 37.9,
+      "console": "node_1",
+      "free": 172.38,
+      "rank": 13,
+      "request": 216.0,
+      "reserved": 365.73,
+      "source": "[rank13]:   File \"/share/project/shuchenweng/yongyan_liu/DistillSchedule_ra16_f5_pr4_20260808/helios/modules/transformer_helios.py\", line 1640, in forward",
+      "total": 39.39,
+      "used": 39.19
+    },
+    {
+      "allocated": 38.01,
+      "console": "node_1",
+      "free": 132.38,
+      "rank": 15,
+      "request": 216.0,
+      "reserved": 328.73,
+      "source": "[rank15]:   File \"/share/project/shuchenweng/yongyan_liu/DistillSchedule_ra16_f5_pr4_20260808/helios/modules/transformer_helios.py\", line 1640, in forward",
+      "total": 39.39,
+      "used": 39.23
+    },
+    {
+      "allocated": 37.96,
+      "console": "node_1",
+      "free": 172.38,
+      "rank": 14,
+      "request": 216.0,
+      "reserved": 347.23,
+      "source": "[rank14]:   File \"/share/project/shuchenweng/yongyan_liu/DistillSchedule_ra16_f5_pr4_20260808/helios/modules/transformer_helios.py\", line 1640, in forward",
+      "total": 39.39,
+      "used": 39.19
+    },
+    {
+      "allocated": 37.91,
+      "console": "node_1",
+      "free": 212.38,
+      "rank": 8,
+      "request": 216.0,
+      "reserved": 356.55,
+      "source": "[rank8]:   File \"/share/project/shuchenweng/yongyan_liu/DistillSchedule_ra16_f5_pr4_20260808/helios/modules/transformer_helios.py\", line 767, in _materialize_scale_shift_component",
+      "total": 39.39,
+      "used": 39.15
+    },
+    {
+      "allocated": 37.96,
+      "console": "node_1",
+      "free": 156.38,
+      "rank": 11,
+      "request": 216.0,
+      "reserved": 267.23,
+      "source": "[rank11]:   File \"/share/project/shuchenweng/yongyan_liu/DistillSchedule_ra16_f5_pr4_20260808/helios/modules/transformer_helios.py\", line 1640, in forward",
+      "total": 39.39,
+      "used": 39.2
+    },
+    {
+      "allocated": 38.01,
+      "console": "node_1",
+      "free": 176.38,
+      "rank": 9,
+      "request": 216.0,
+      "reserved": 308.73,
+      "source": "[rank9]:   File \"/share/project/shuchenweng/yongyan_liu/DistillSchedule_ra16_f5_pr4_20260808/helios/modules/transformer_helios.py\", line 1640, in forward",
+      "total": 39.39,
+      "used": 39.18
+    }
+  ],
+  "rank_count": 16,
+  "records": {
+    "0": {
+      "critic_backward_end_count": 0,
+      "critic_optimizer_step_count": 0,
+      "generator_optimizer_step_count": 1,
+      "offload_after_allocated_bytes": [
+        2575966720
+      ],
+      "offload_before_allocated_bytes": [
+        null
+      ],
+      "offload_count": 1,
+      "offload_driver_free_bytes": [
+        38583795712
+      ],
+      "offloaded_bytes": [
+        2502885376
+      ],
+      "pre_backward_allocated_bytes": [
+        33723116544
+      ],
+      "pre_backward_count": 1,
+      "pre_backward_driver_free_bytes": [
+        5421531136
+      ],
+      "pre_backward_reserved_bytes": [
+        35880173568
+      ]
+    },
+    "1": {
+      "critic_backward_end_count": 0,
+      "critic_optimizer_step_count": 0,
+      "generator_optimizer_step_count": 1,
+      "offload_after_allocated_bytes": [
+        2575966208
+      ],
+      "offload_before_allocated_bytes": [
+        null
+      ],
+      "offload_count": 1,
+      "offload_driver_free_bytes": [
+        38608961536
+      ],
+      "offloaded_bytes": [
+        2502885376
+      ],
+      "pre_backward_allocated_bytes": [
+        33723116544
+      ],
+      "pre_backward_count": 1,
+      "pre_backward_driver_free_bytes": [
+        5446696960
+      ],
+      "pre_backward_reserved_bytes": [
+        35880173568
+      ]
+    },
+    "2": {
+      "critic_backward_end_count": 0,
+      "critic_optimizer_step_count": 0,
+      "generator_optimizer_step_count": 1,
+      "offload_after_allocated_bytes": [
+        2575966720
+      ],
+      "offload_before_allocated_bytes": [
+        null
+      ],
+      "offload_count": 1,
+      "offload_driver_free_bytes": [
+        38567018496
+      ],
+      "offloaded_bytes": [
+        2502885376
+      ],
+      "pre_backward_allocated_bytes": [
+        33723116544
+      ],
+      "pre_backward_count": 1,
+      "pre_backward_driver_free_bytes": [
+        5404753920
+      ],
+      "pre_backward_reserved_bytes": [
+        35880173568
+      ]
+    },
+    "3": {
+      "critic_backward_end_count": 0,
+      "critic_optimizer_step_count": 0,
+      "generator_optimizer_step_count": 1,
+      "offload_after_allocated_bytes": [
+        2575966208
+      ],
+      "offload_before_allocated_bytes": [
+        null
+      ],
+      "offload_count": 1,
+      "offload_driver_free_bytes": [
+        38462160896
+      ],
+      "offloaded_bytes": [
+        2502885376
+      ],
+      "pre_backward_allocated_bytes": [
+        33723116544
+      ],
+      "pre_backward_count": 1,
+      "pre_backward_driver_free_bytes": [
+        5320867840
+      ],
+      "pre_backward_reserved_bytes": [
+        35880173568
+      ]
+    },
+    "4": {
+      "critic_backward_end_count": 0,
+      "critic_optimizer_step_count": 0,
+      "generator_optimizer_step_count": 1,
+      "offload_after_allocated_bytes": [
+        2575966720
+      ],
+      "offload_before_allocated_bytes": [
+        null
+      ],
+      "offload_count": 1,
+      "offload_driver_free_bytes": [
+        38483132416
+      ],
+      "offloaded_bytes": [
+        2502885376
+      ],
+      "pre_backward_allocated_bytes": [
+        33723116544
+      ],
+      "pre_backward_count": 1,
+      "pre_backward_driver_free_bytes": [
+        5320867840
+      ],
+      "pre_backward_reserved_bytes": [
+        35880173568
+      ]
+    },
+    "5": {
+      "critic_backward_end_count": 0,
+      "critic_optimizer_step_count": 0,
+      "generator_optimizer_step_count": 1,
+      "offload_after_allocated_bytes": [
+        2575966208
+      ],
+      "offload_before_allocated_bytes": [
+        null
+      ],
+      "offload_count": 1,
+      "offload_driver_free_bytes": [
+        38541852672
+      ],
+      "offloaded_bytes": [
+        2502885376
+      ],
+      "pre_backward_allocated_bytes": [
+        33723116544
+      ],
+      "pre_backward_count": 1,
+      "pre_backward_driver_free_bytes": [
+        5379588096
+      ],
+      "pre_backward_reserved_bytes": [
+        35880173568
+      ]
+    },
+    "6": {
+      "critic_backward_end_count": 0,
+      "critic_optimizer_step_count": 0,
+      "generator_optimizer_step_count": 1,
+      "offload_after_allocated_bytes": [
+        2575966208
+      ],
+      "offload_before_allocated_bytes": [
+        null
+      ],
+      "offload_count": 1,
+      "offload_driver_free_bytes": [
+        38518784000
+      ],
+      "offloaded_bytes": [
+        2502885376
+      ],
+      "pre_backward_allocated_bytes": [
+        33723116544
+      ],
+      "pre_backward_count": 1,
+      "pre_backward_driver_free_bytes": [
+        5421531136
+      ],
+      "pre_backward_reserved_bytes": [
+        35880173568
+      ]
+    },
+    "7": {
+      "critic_backward_end_count": 0,
+      "critic_optimizer_step_count": 0,
+      "generator_optimizer_step_count": 1,
+      "offload_after_allocated_bytes": [
+        2575966208
+      ],
+      "offload_before_allocated_bytes": [
+        null
+      ],
+      "offload_count": 1,
+      "offload_driver_free_bytes": [
+        38520881152
+      ],
+      "offloaded_bytes": [
+        2502885376
+      ],
+      "pre_backward_allocated_bytes": [
+        33723116544
+      ],
+      "pre_backward_count": 1,
+      "pre_backward_driver_free_bytes": [
+        5421531136
+      ],
+      "pre_backward_reserved_bytes": [
+        35880173568
+      ]
+    },
+    "8": {
+      "critic_backward_end_count": 0,
+      "critic_optimizer_step_count": 0,
+      "generator_optimizer_step_count": 1,
+      "offload_after_allocated_bytes": [
+        2575966208
+      ],
+      "offload_before_allocated_bytes": [
+        null
+      ],
+      "offload_count": 1,
+      "offload_driver_free_bytes": [
+        38583795712
+      ],
+      "offloaded_bytes": [
+        2502885376
+      ],
+      "pre_backward_allocated_bytes": [
+        33723116544
+      ],
+      "pre_backward_count": 1,
+      "pre_backward_driver_free_bytes": [
+        5421531136
+      ],
+      "pre_backward_reserved_bytes": [
+        35880173568
+      ]
+    },
+    "9": {
+      "critic_backward_end_count": 0,
+      "critic_optimizer_step_count": 0,
+      "generator_optimizer_step_count": 1,
+      "offload_after_allocated_bytes": [
+        2575966720
+      ],
+      "offload_before_allocated_bytes": [
+        null
+      ],
+      "offload_count": 1,
+      "offload_driver_free_bytes": [
+        38611058688
+      ],
+      "offloaded_bytes": [
+        2502885376
+      ],
+      "pre_backward_allocated_bytes": [
+        33723116544
+      ],
+      "pre_backward_count": 1,
+      "pre_backward_driver_free_bytes": [
+        5446696960
+      ],
+      "pre_backward_reserved_bytes": [
+        35880173568
+      ]
+    },
+    "10": {
+      "critic_backward_end_count": 0,
+      "critic_optimizer_step_count": 0,
+      "generator_optimizer_step_count": 1,
+      "offload_after_allocated_bytes": [
+        2575966208
+      ],
+      "offload_before_allocated_bytes": [
+        null
+      ],
+      "offload_count": 1,
+      "offload_driver_free_bytes": [
+        38543949824
+      ],
+      "offloaded_bytes": [
+        2502885376
+      ],
+      "pre_backward_allocated_bytes": [
+        33723116544
+      ],
+      "pre_backward_count": 1,
+      "pre_backward_driver_free_bytes": [
+        5404753920
+      ],
+      "pre_backward_reserved_bytes": [
+        35880173568
+      ]
+    },
+    "11": {
+      "critic_backward_end_count": 0,
+      "critic_optimizer_step_count": 0,
+      "generator_optimizer_step_count": 1,
+      "offload_after_allocated_bytes": [
+        2575966720
+      ],
+      "offload_before_allocated_bytes": [
+        null
+      ],
+      "offload_count": 1,
+      "offload_driver_free_bytes": [
+        38418120704
+      ],
+      "offloaded_bytes": [
+        2502885376
+      ],
+      "pre_backward_allocated_bytes": [
+        33723116544
+      ],
+      "pre_backward_count": 1,
+      "pre_backward_driver_free_bytes": [
+        5320867840
+      ],
+      "pre_backward_reserved_bytes": [
+        35880173568
+      ]
+    },
+    "12": {
+      "critic_backward_end_count": 0,
+      "critic_optimizer_step_count": 0,
+      "generator_optimizer_step_count": 1,
+      "offload_after_allocated_bytes": [
+        2575966208
+      ],
+      "offload_before_allocated_bytes": [
+        null
+      ],
+      "offload_count": 1,
+      "offload_driver_free_bytes": [
+        38462160896
+      ],
+      "offloaded_bytes": [
+        2502885376
+      ],
+      "pre_backward_allocated_bytes": [
+        33723116544
+      ],
+      "pre_backward_count": 1,
+      "pre_backward_driver_free_bytes": [
+        5320867840
+      ],
+      "pre_backward_reserved_bytes": [
+        35880173568
+      ]
+    },
+    "13": {
+      "critic_backward_end_count": 0,
+      "critic_optimizer_step_count": 0,
+      "generator_optimizer_step_count": 1,
+      "offload_after_allocated_bytes": [
+        2575966720
+      ],
+      "offload_before_allocated_bytes": [
+        null
+      ],
+      "offload_count": 1,
+      "offload_driver_free_bytes": [
+        38543949824
+      ],
+      "offloaded_bytes": [
+        2502885376
+      ],
+      "pre_backward_allocated_bytes": [
+        33723116544
+      ],
+      "pre_backward_count": 1,
+      "pre_backward_driver_free_bytes": [
+        5379588096
+      ],
+      "pre_backward_reserved_bytes": [
+        35880173568
+      ]
+    },
+    "14": {
+      "critic_backward_end_count": 0,
+      "critic_optimizer_step_count": 0,
+      "generator_optimizer_step_count": 1,
+      "offload_after_allocated_bytes": [
+        2575966720
+      ],
+      "offload_before_allocated_bytes": [
+        null
+      ],
+      "offload_count": 1,
+      "offload_driver_free_bytes": [
+        38564921344
+      ],
+      "offloaded_bytes": [
+        2502885376
+      ],
+      "pre_backward_allocated_bytes": [
+        33723116544
+      ],
+      "pre_backward_count": 1,
+      "pre_backward_driver_free_bytes": [
+        5421531136
+      ],
+      "pre_backward_reserved_bytes": [
+        35880173568
+      ]
+    },
+    "15": {
+      "critic_backward_end_count": 0,
+      "critic_optimizer_step_count": 0,
+      "generator_optimizer_step_count": 1,
+      "offload_after_allocated_bytes": [
+        2575966208
+      ],
+      "offload_before_allocated_bytes": [
+        null
+      ],
+      "offload_count": 1,
+      "offload_driver_free_bytes": [
+        38562824192
+      ],
+      "offloaded_bytes": [
+        2502885376
+      ],
+      "pre_backward_allocated_bytes": [
+        33723116544
+      ],
+      "pre_backward_count": 1,
+      "pre_backward_driver_free_bytes": [
+        5421531136
+      ],
+      "pre_backward_reserved_bytes": [
+        35880173568
+      ]
+    }
+  },
+  "schema_version": "distillschedule.ra16_f5_glp_offload.analysis.v1"
+}

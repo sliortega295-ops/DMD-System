@@ -1,0 +1,43 @@
+{
+  "schema_version": "distillschedule.rb16_full5_2g6c_continuous_attempt.v1",
+  "iteration": 280,
+  "attempt": 3,
+  "run_id": "rb16_full5_cont_2g6c_pipeline_correctness_20260810_003",
+  "status": "FAIL",
+  "measurement": "Measured",
+  "stage": "live_transition_destructive_alias_release",
+  "first_failure": {
+    "ranks": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "type": "RuntimeError",
+    "error": "Expected use_count of t1 to be 1 or 2 with an AccumulateGrad node but got 3",
+    "mechanism": "In-place torch.utils.swap_tensors was rejected on trainable Parameter objects with additional DeepSpeed/autograd aliases."
+  },
+  "measured": {
+    "allocated_before_gib": 26.474663734436035,
+    "partial_allocated_at_failure_gib_range": [
+      5.593,
+      21.712
+    ],
+    "cgroup_oom_delta": 0,
+    "cgroup_oom_kill_delta": 0,
+    "target_score_materialization_started": false,
+    "pipeline_entered": false
+  },
+  "conclusion": "Meta/swap destructive-release variants are rejected. Do not continue escalating this path.",
+  "validated_recovery": {
+    "policy": "STANDARD_SYNCHRONOUS_MODULE_TO_CPU_THEN_DROP",
+    "rationale": "Helios already validates whole-model CPU/GPU movement, and a CUDA mini probe verified module.to(cpu) updates optimizer Parameter aliases and releases GPU storage.",
+    "tradeoff": "One measured transition D2H is added; no checkpoint roundtrip and no repeated movement in the five-update Critic phase."
+  },
+  "evidence": [
+    "artifacts/runs/rb16_full5_cont_2g6c_pipeline_correctness_20260810_003/execution/ranks/rank_03.json",
+    "artifacts/runs/rb16_full5_cont_2g6c_pipeline_correctness_20260810_003/launcher/node_0/console.log"
+  ]
+}

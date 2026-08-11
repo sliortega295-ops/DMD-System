@@ -1,0 +1,48 @@
+{
+  "authorized_hypothesis": "A Critic-capable physical Score can execute Teacher mode with adapters disabled and then be reused as resident Critic; CPU-side exact verification closes the only cross-device wrapper failure.",
+  "changes": [
+    "cross-device logical-copy verification compares the restored target on the CPU source device",
+    "all Step10-A Score ranks construct one Critic-capable physical Score; Teacher calls disable the adapter; transition reuses the same object"
+  ],
+  "decision": "GO",
+  "experiment_id": "RB16-F5-PIPE-MATCH16",
+  "formal_timing": "Not Run",
+  "frozen_contracts": {
+    "candidate_b": "Not Run until Candidate A passes",
+    "critic": "resident DP8 MB1 GAS2 batch16; ZeRO-1 CPU optimizer; clip=1.0",
+    "generator": "DP8 MB1 GAS2 batch16; g4 blocks [0,24,1,5] only during Step10-A",
+    "initial_state": "G2/C10/EMA10",
+    "resolution": "384x640",
+    "score_streaming": "forbidden",
+    "target_transition_state": "G3/C10/EMA10"
+  },
+  "gate": "Candidate-A transition-only",
+  "iteration": 269,
+  "matching_prior_evidence": [
+    "iteration268_rb16_candidate_a_transition_lifetime_failure.json",
+    "rb16_f5_pipe_match16_transition_20260809_002_result.json"
+  ],
+  "mode": "transition",
+  "rejected_paths": [
+    "ZeRO-2",
+    "ZeRO-3/FSDP",
+    "second 14B Score construction",
+    "Score streaming fallback",
+    "batch/trace/loss changes"
+  ],
+  "run_id": "rb16_f5_pipe_match16_transition_20260809_003",
+  "schedule": "sequential",
+  "schema_version": "distillschedule.iteration_preregistration.v1",
+  "stop_conditions": [
+    "any exact identity/state/version failure",
+    "any CUDA or cgroup OOM",
+    "any duplicate Score construction",
+    "any hidden streaming",
+    "any rank incomplete"
+  ],
+  "tests": {
+    "cuda_cross_device_exact_test": "passed",
+    "focused": "14 passed",
+    "full": "176 passed, 1 skipped"
+  }
+}

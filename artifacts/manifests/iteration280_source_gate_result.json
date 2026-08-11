@@ -1,0 +1,24 @@
+{
+  "schema_version": "distillschedule.rb16_full5_2g6c_continuous_source_gate.v1",
+  "iteration": 280,
+  "experiment_id": "RB16-F5-CONT-8G4S4T-TO-2G6C",
+  "status": "PASS",
+  "measurement": "Measured",
+  "source_parent_head": "d62e854e3fa3665db4e52881df0e8771f3cfb72c",
+  "runtime_head": "32f621ae8637c546f766bc52544b2bf8f7d394d2",
+  "focused_test": {
+    "command": "python -m pytest -q tests/test_routeb_full5_2g6c_continuous.py tests/test_routeb_candidate_b_executor.py tests/test_routeb_full5.py tests/test_routeb_checkpoint.py",
+    "passed": 32,
+    "failed": 0,
+    "seconds": 5.69
+  },
+  "full_test": {
+    "command": "python -m pytest -q",
+    "passed": 200,
+    "failed": 0,
+    "seconds": 17.00
+  },
+  "gpu_work": "Not Run",
+  "correctness_gate": "Not Run",
+  "performance": "Not Run"
+}

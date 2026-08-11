@@ -1,0 +1,37 @@
+{
+  "change_scope": "PEFT adapter execution state only; enable adapters and assert nonempty trainables before exact C10 restore",
+  "decision": "GO",
+  "experiment_id": "RB16-F5-PIPE-MATCH16",
+  "frozen_contracts": [
+    "384x640",
+    "G2/C10/EMA10",
+    "DP8 MB1 GAS2 batch16",
+    "ZeRO-1 CPU optimizer",
+    "clip1",
+    "Score resident",
+    "one physical Score per rank",
+    "no Candidate B"
+  ],
+  "iteration": 270,
+  "matching_prior_evidence": [
+    "iteration269_rb16_candidate_a_score_reuse_result.json"
+  ],
+  "mode": "transition",
+  "new_falsifiable_question": "Does explicit adapter reactivation restore the exact Critic trainable inventory and allow all 8 Score ranks to enter resident DP8 C10?",
+  "run_id": "rb16_f5_pipe_match16_transition_20260809_004",
+  "schedule": "sequential",
+  "schema_version": "distillschedule.iteration_preregistration.v1",
+  "stop_conditions": [
+    "inventory mismatch",
+    "state/version mismatch",
+    "CUDA/cgroup OOM",
+    "duplicate construction",
+    "hidden Score streaming",
+    "incomplete rank"
+  ],
+  "tests": {
+    "focused": "15 passed",
+    "full": "177 passed, 1 skipped"
+  },
+  "timing": "Not Run"
+}

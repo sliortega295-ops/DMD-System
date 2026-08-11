@@ -1,0 +1,22 @@
+{
+  "schema_version": "distillschedule.experiment_supersession.v1",
+  "status": "SUPERSEDED_BACKEND_MISMATCH",
+  "iteration": 281,
+  "superseded_run": "rb16_full5_cont_2g6c_pipeline_correctness_20260810_005",
+  "preservation": "Original rank logs, state exports, launcher logs, and summary remain unchanged.",
+  "valid_evidence": [
+    "DP8 ZeRO-1 to resident 4G plus DP12 12C live transition completed",
+    "five Critic and five EMA updates completed",
+    "actual-OOM admission passed"
+  ],
+  "invalid_claims": [
+    "target Step10-A performance",
+    "comparison with the validated ZeRO-3 48.551620-second Step10-A anchor",
+    "formal Full5 speedup"
+  ],
+  "reason": "The run used DP8 ZeRO-1 plus G4 block streaming/activation offload for Step10-A, whereas the frozen validated 8G+4S+4T Step10-A backend is DP8 ZeRO-3 with block-local checkpointing and no parameter offload.",
+  "measured_step10a_seconds": 93.56308287102729,
+  "validated_reference_seconds": 48.551619730424136,
+  "slowdown_x": 1.927084696,
+  "replacement_preregistration": "artifacts/manifests/iteration281_full5_2g6c_zero3_step10a_prereg.json"
+}

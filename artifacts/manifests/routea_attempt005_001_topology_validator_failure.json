@@ -1,0 +1,26 @@
+{
+  "schema_version": "distillschedule.pre_model_failure.v1",
+  "recorded_at_utc": "2026-08-08T14:55:15Z",
+  "run_id": "routea_attempt005_full5_world16_20260808_001",
+  "status": "NOT_RUN",
+  "stage_reached": "post_topology_probe_pre_model_validation",
+  "semantic_workload_started": false,
+  "model_construction_started": false,
+  "gpu_work_started": false,
+  "new_oom_observed": false,
+  "worker_return_codes": {
+    "0": 1,
+    "1": 1
+  },
+  "probe_status": "PASS",
+  "probe_world_size": 16,
+  "probe_nodes": 2,
+  "probe_local_world_size": 8,
+  "probe_sha256": "7094f0574be706780abe0bcbd91712547173f13a7fe89d4dfd242c85cae854f8",
+  "failure_class": "topology_probe_consumer_schema_mismatch",
+  "failure_signature": "launcher expected top-level world_size/global_ranks/hosts while distillschedule.topology_probe.v1 serializes summary plus rank records",
+  "root_cause": "The producer and launcher consumer implemented incompatible interpretations of the same topology payload. The actual 16-rank Gloo and NCCL topology probe passed.",
+  "bounded_fix": "Validate the probe payload through the shared typed topology validator and make the final summarizer accept the producer's rank field.",
+  "contract_effect": "pre-model evidence validation only; no model, trace, optimizer, offload, batch, precision, or training semantic changed",
+  "next_run_id": "routea_attempt005_full5_world16_20260808_002"
+}

@@ -1,0 +1,80 @@
+{
+  "schema_version": "distillschedule.rb16_full5_2g6c_zero3_step10a_prereg.v1",
+  "status": "ACTIVE",
+  "iteration": 281,
+  "experiment_id": "RB16-F5-Z3STEP10A-TO-2G6C",
+  "gate": "User correction: restore the previously validated ZeRO-3 Step10-A backend before any Full5 performance claim",
+  "preflight": {
+    "decision": "GO",
+    "authorized_hypothesis": "The continuous Full5 executor can reuse the validated DP8 ZeRO-3 Step10-A backend, then transfer only logical G3 trainable state into four resident no-grad Generator replicas for the DP12 2G+6C Critic phase.",
+    "falsifiable_question": "Does Step10-A return near the measured 48.551620-second anchor while preserving G2-to-G3, trace, optimizer, and transition correctness?",
+    "live_source_head_before_change": "6971c959b3fc2d7369d7677377067c78ab442fa1",
+    "matching_prior_evidence": [
+      "/home/lyy/runtime_score4_work_20260809_001/artifacts/manifests/iteration_237_step15a_w16_8g4s4t_b16_gate_result.json",
+      "/home/lyy/runtime_score4_work_20260809_001/artifacts/manifests/iteration_230_a15_g8_zero3_checkpoint_integration_result.json",
+      "/home/lyy/runtime_score4_work_20260809_001/artifacts/manifests/iteration_229_zero3_direct_checkpoint_parity_result.json"
+    ],
+    "rejected_or_superseded_paths": [
+      "Attempt005 DP8 ZeRO-1 Step10-A as a performance result",
+      "in-place conversion of a live ZeRO-3 engine into a resident Generator",
+      "ZeRO-2 double-reduction repair escalation",
+      "continuing formal timing before backend parity is restored"
+    ]
+  },
+  "frozen_contract": {
+    "world_size": 16,
+    "resolution": [384, 640],
+    "step10a": {
+      "layout": "8G+4S+4T",
+      "generator_backend": "ZeRO-3",
+      "generator_dp": 8,
+      "micro_batch_per_rank": 1,
+      "gradient_accumulation_steps": 2,
+      "global_batch": 16,
+      "parameter_offload": false,
+      "optimizer_offload": "cpu",
+      "checkpoint_policy": "zero3_metadata_tolerant_block_local_non_reentrant",
+      "frozen_block_streaming": false,
+      "activation_offload": false,
+      "versions": "G2/C10/EMA10 -> G3/C10/EMA10"
+    },
+    "transition": {
+      "source": "DP8 ZeRO-3 G3 logical trainable state",
+      "target": "ranks 0,1,8,9 full resident BF16 Generator",
+      "policy": "gather logical G3, destroy obsolete ZeRO-3, materialize preconstructed targets, broadcast target representation",
+      "whole_model_checkpoint_roundtrip": false,
+      "in_place_engine_conversion": false
+    },
+    "critic_phase": {
+      "layout": "2G+6C per node; global 4G+12C",
+      "critic_backend": "ZeRO-1 CPU optimizer",
+      "critic_dp": 12,
+      "micro_batch_per_rank": 1,
+      "gradient_accumulation_steps": 1,
+      "global_batch": 12,
+      "critic_updates": 5,
+      "ema_updates": 5,
+      "schedule": "ACK-free queue-bounded Pipeline"
+    }
+  },
+  "measured_anchors": {
+    "validated_zero3_step10a_seconds": 48.551619730424136,
+    "superseded_zero1_attempt005_step10a_seconds": 93.56308287102729,
+    "superseded_slowdown_x": 1.927084696,
+    "claim": "The backend-mismatched Attempt005 is transition feasibility evidence only, not performance evidence."
+  },
+  "bounded_sequence": [
+    "focused and full CPU tests",
+    "one cheap real DeepSpeed ZeRO-3 logical-restore gate",
+    "one continuous Pipeline correctness run",
+    "fail closed if Step10-A backend, versions, identities, queue, EMA, or target state fail",
+    "only after correctness, compare Step10-A timing to the historical anchor",
+    "only after parity, run Sequential and formal paired timing"
+  ],
+  "not_run_at_preregistration": [
+    "corrected real-14B continuous Full5",
+    "corrected Sequential",
+    "corrected formal timing",
+    "matched-batch causal comparison against Candidate A"
+  ]
+}

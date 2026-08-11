@@ -1,0 +1,24 @@
+{
+  "schema_version": "distillschedule.iteration_preregistration.v1",
+  "iteration": 276,
+  "experiment_id": "RB16-F5-PIPE-MATCH16",
+  "title": "Common-transition Sequential repeatability floor",
+  "status": "PREREGISTERED",
+  "transition_manifest_sha256": "444a6740debbe37d7014ebaa45da23398f162652f6179d09537e60e3c304dee0",
+  "runs": ["sequential_s1", "sequential_s2"],
+  "exact_fields": [
+    "transition restore trainable and optimizer summaries",
+    "trace identity",
+    "x0 checksum",
+    "noise checksum",
+    "timestep",
+    "parameter versions",
+    "optimizer and scheduler step counts",
+    "queue flush",
+    "EMA recurrence and checksum"
+  ],
+  "numerical_floor_fields": ["master", "exp_avg", "exp_avg_sq"],
+  "pipeline_limit_rule": "each direct-state metric must be <= 1.5x the frozen Sequential-pair floor; if the floor is exact zero, Pipeline must be exact",
+  "rejected_paths": ["post-hoc threshold change", "ZeRO-2", "formal timing", "Candidate B"],
+  "performance_status": "Not Run"
+}

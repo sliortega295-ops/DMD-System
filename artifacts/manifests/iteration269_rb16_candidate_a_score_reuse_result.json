@@ -1,0 +1,49 @@
+{
+  "candidate_b": "Not Run",
+  "cascade": "other C ranks failed or were cancelled in DeepSpeed broadcast after Teacher ranks exited",
+  "evidence_label": "Measured diagnostic failure",
+  "experiment_id": "RB16-F5-PIPE-MATCH16",
+  "failure": {
+    "mechanism": "PEFT disable_adapters made Teacher-execution LoRA non-trainable; transition attempted logical restore before re-enabling adapter",
+    "ranks": [
+      12,
+      13,
+      14,
+      15
+    ],
+    "signature": "logical trainable inventory mismatch; Critic LoRA missing from requires_grad inventory after Teacher calls disabled adapters"
+  },
+  "formal_timing": "Not Run",
+  "iteration": 269,
+  "measured": {
+    "cgroup_oom_kill_delta": 0,
+    "node_sampled_cgroup_peaks_bytes": {
+      "node0": 384826535936,
+      "node1": 244660817920
+    },
+    "teacher_step10a_complete_allocated_gib": 31.48817777633667,
+    "teacher_step10a_peak_allocated_gib": 32.69962215423584,
+    "teacher_step10a_ready_allocated_gib": 31.479265689849854
+  },
+  "mode": "transition",
+  "next_bounded_fix": "call enable_adapters and assert exact Critic trainable inventory before C10 restore; no policy or tensor value change",
+  "run_id": "rb16_f5_pipe_match16_transition_20260809_003",
+  "schema_version": "distillschedule.iteration_result.v1",
+  "source_heads": {
+    "dmd": "c60fc899a6971dc2db0762e174a6ef7dfa047675",
+    "runtime": "722f2438c3d03c4ca55be34ba0a2cce6d6057adf"
+  },
+  "status": "FAIL",
+  "strict_summary": {
+    "path": "artifacts/manifests/rb16_f5_pipe_match16_transition_20260809_003_result.json",
+    "sha256": "05250fa3ed337e6dbfdf54bac787b998cd7b6a63c616351b5465fbcff034f9e9"
+  },
+  "verified": [
+    "all Score ranks constructed one Critic-capable physical Score",
+    "Step10-A completed",
+    "Teacher resident peak remained below 40GB",
+    "previous duplicate-Score OOM absent",
+    "previous cross-device torch.equal failure absent",
+    "no cgroup OOM delta"
+  ]
+}

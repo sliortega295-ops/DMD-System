@@ -1,0 +1,82 @@
+{
+  "authorized_hypothesis": "Step10-A Generator g4 plus phase-resident g4 Critic rollouts and unstreamed Score can complete exact Route-A Full5 while preserving 1G/5C/5EMA semantics.",
+  "created_at": "2026-08-09T03:02:25.735473+00:00",
+  "decision": {
+    "gpu_launch": "NO-GO pending live two-node audit",
+    "local_implementation": "GO",
+    "reason": "SSH authentication succeeds but remote exec currently stalls until client timeout; GPU ownership, cgroup OOM state and remote HEAD cannot yet be verified."
+  },
+  "experiment_id": "RA16-F5-PR4",
+  "falsifiable_question": "Can the combined policy finish all 16 ranks through checkpoint-15 with exact versions/trace, five EMA updates, balanced lifecycle handles and zero actual OOM?",
+  "frozen_contracts": {
+    "backend": "world16 ZeRO-1 CPU optimizer",
+    "checkpoint": "canonical world16 checkpoint-10",
+    "final_versions": {
+      "critic": 15,
+      "ema": 15,
+      "generator": 3
+    },
+    "host_admission": "actual OOM only; 64-GiB reserve diagnostic only",
+    "initial_versions": {
+      "critic": 10,
+      "ema": 10,
+      "generator": 2
+    },
+    "shape": "official 384x640, latent [B,16,9,48,80]",
+    "steps": [
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "trace": "rank-qualified world16 trace v3",
+    "updates": {
+      "critic": 5,
+      "ema": 5,
+      "generator": 1
+    }
+  },
+  "gate": "continuous Full5 functional/admission gate before any timing claim",
+  "lifecycle_delta": {
+    "activation_offload": [
+      "generator_selected",
+      "critic_train"
+    ],
+    "critic_generator": "materialize selected g4 once per no-grad rollout phase",
+    "score_block_streaming": false,
+    "step10a_generator_streamed_indices": [
+      0,
+      24,
+      1,
+      5
+    ]
+  },
+  "matching_prior_evidence": [
+    "artifacts/manifests/routea_attempt005_002_result.json (RA16-F5-FS40 Full5 functional PASS)",
+    "artifacts/manifests/n2_target_g_offload_bounded_search_20260808_002_result.json (GST16-A-G4 isolated PASS)",
+    "DistillSchedule research iterations 185/194/196 (resident no-grad G and resident Score/Critic isolated gates)"
+  ],
+  "measurement_status": {
+    "external_runtime_cuda_tests": "Not Run",
+    "local_refactor_tests": "57 passed",
+    "real14b_full5": "Not Run",
+    "timing": "Not Run"
+  },
+  "rejected_or_superseded_paths": [
+    "Do not call this run merely world16.",
+    "Do not reuse CP8 isolated skip-EMA semantics.",
+    "Do not re-enter ZeRO-2 double-reduction debugging.",
+    "Do not treat GST16-A-G4 isolated capacity as Full5 evidence.",
+    "Do not mutate or rename RA16-F5-FS40 artifacts."
+  ],
+  "run_id": "ra16_f5_pr4_20260808_001",
+  "schema_version": "distillschedule.ra16_f5_pr4.preflight.v1",
+  "source": {
+    "dmd_system_branch": "codex/pr3-ci-and-suite-fix",
+    "dmd_system_head": "894be31b41fde4f08783022dd0cdd928f35e28d5",
+    "external_runtime_stage": "/home/lyy/DistillSchedule_ra16_f5_pr4_stage_20260808",
+    "lifecycle_sha256": "2079008ff6cd08bc7139033892207c8e444ebe7473aad4c65abd81106c0a33f9",
+    "plan_sha256": "dbdfd6c3c8b0b8180cc2dd454943791c3f5ed64289a8cc89dfaca66924447e95"
+  }
+}

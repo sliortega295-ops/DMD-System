@@ -1,0 +1,47 @@
+{
+  "schema_version": "distillschedule.iteration_failure.v1",
+  "iteration": 280,
+  "experiment_id": "RB16-F5-CONT-8G4S4T-TO-2G6C",
+  "run_id": "rb16_full5_cont_2g6c_pipeline_correctness_20260810_004",
+  "status": "MEASURED_FAILURE",
+  "failure_stage": "first_critic_backward_after_live_transition",
+  "source_head": "767ba57a09aa7df3684326e60cc13bc6f75a5196",
+  "frozen_contract": {
+    "step10a_layout": "8G+4S+4T",
+    "target_layout": "per-node 2G+6C; global 4G+12C",
+    "zero_stage": 1,
+    "optimizer_offload": "cpu",
+    "resolution": "384x640",
+    "trace": "syn_feature_trace_rank16_v3_sync_steps20",
+    "schedule": "pipeline_ack_free"
+  },
+  "measured": {
+    "step10a_world_wall_seconds": 93.70296680391766,
+    "rank6_transition_seconds": 44.169034409103915,
+    "rank6_source_before_allocated_gib": 26.474663734436035,
+    "rank6_source_after_module_cpu_allocated_gib": 2.363467216491699,
+    "rank6_released_allocated_gib": 24.111196517944336,
+    "rank6_source_d2h_seconds": 11.726799773983657,
+    "rank6_target_critic_ready_allocated_gib": 31.43748188018799,
+    "known_isolated_target_critic_ready_allocated_gib": 29.07401466369629,
+    "rank6_failure_max_allocated_gib": 36.750062465667725,
+    "failed_allocation_mib": 292.0,
+    "driver_free_mib": 280.38,
+    "cgroup_oom_kill_delta": 0
+  },
+  "failure_signature": "module.to(cpu) released Parameter views but left approximately 2.3635 GiB of obsolete Step10-A ZeRO-1 BF16 flat storage; target resident Critic then OOMed in its first backward",
+  "root_cause_conclusion": "The residual magnitude matches the obsolete Step10-A trainable BF16 ZeRO-1 flat group (about 2.321 GiB) plus small bookkeeping. DeepSpeed optimizer-owned bit16_groups_flat and partition views outlive module.to(cpu).",
+  "validated_recovery_path": "Use standard alias-safe module.to(cpu), then destroy the obsolete ZeRO-1 optimizer hooks and clear non-owning partition views before dropping bit16_groups_flat. This is legal only after the source role's final parameter use.",
+  "rejected_paths": [
+    "to_empty(meta): aliases in the DeepSpeed optimizer retained the original storage",
+    "torch.utils.swap_tensors to meta: rejected by PyTorch use_count=3 and partially released state",
+    "ZeRO-2: prior bounded double-reduction failure",
+    "changing target Critic residency or batch semantics before removing the measured obsolete owner"
+  ],
+  "evidence": {
+    "rank06_json": "artifacts/runs/rb16_full5_cont_2g6c_pipeline_correctness_20260810_004/execution/ranks/rank_06.json",
+    "rank06_json_sha256": "b0da932389afeacdd93dd54decaaaf38761c7e382838f61ddb0e1d0eeb51ae6d",
+    "isolated_resident_critic_reference_run": "rb16_f5_pipe_2g6c_sequential_s1_20260810_004"
+  },
+  "claim_boundary": "No Full5 correctness or performance result; Step10-A and transition measurements are diagnostic only."
+}

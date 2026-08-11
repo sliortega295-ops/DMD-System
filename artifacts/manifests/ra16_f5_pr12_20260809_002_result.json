@@ -1,0 +1,3633 @@
+{
+  "checkpoint_15": {
+    "status": "MISSING"
+  },
+  "claim_scope": "non-claimable partial/failure evidence",
+  "claimable": false,
+  "evidence_contract": {
+    "contract_digest": "d69d4665eceb50a71251c1b70ba55c35782a80750bf720a75b43c55d85f1ece0",
+    "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_ra16_f5_pr4_20260808/artifacts/runs/ra16_f5_pr12_20260809_002/preregistration/evidence_contract.json",
+    "sha256": "d31e582180532083feb79dfc0a30e620de0ffa404b54320506c0e363cb59e50c",
+    "shared_digest": "b44749709f4e67bf077c493d17138b346f971886b1f1b5cd41ee8c57106f71ed"
+  },
+  "evidence_errors": [
+    "rank 0: step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+    "rank 0: critic update count=0, expected=5",
+    "rank 0: critic update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 0: ema update count=0, expected=5",
+    "rank 0: ema update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 0: missing final observed G/C/EMA version record",
+    "rank 0: activation offload final live bytes=[], expected=[0]",
+    "rank 0: streamer final resident bytes=[], expected=[0, 0]",
+    "rank 0: training completion event count is not exactly one",
+    "rank 1: step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+    "rank 1: critic update count=0, expected=5",
+    "rank 1: critic update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 1: ema update count=0, expected=5",
+    "rank 1: ema update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 1: missing final observed G/C/EMA version record",
+    "rank 1: activation offload final live bytes=[], expected=[0]",
+    "rank 1: streamer final resident bytes=[], expected=[0, 0]",
+    "rank 1: training completion event count is not exactly one",
+    "rank 2: step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+    "rank 2: critic update count=0, expected=5",
+    "rank 2: critic update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 2: ema update count=0, expected=5",
+    "rank 2: ema update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 2: missing final observed G/C/EMA version record",
+    "rank 2: activation offload final live bytes=[], expected=[0]",
+    "rank 2: streamer final resident bytes=[], expected=[0, 0]",
+    "rank 2: training completion event count is not exactly one",
+    "rank 3: step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+    "rank 3: critic update count=0, expected=5",
+    "rank 3: critic update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 3: ema update count=0, expected=5",
+    "rank 3: ema update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 3: missing final observed G/C/EMA version record",
+    "rank 3: activation offload final live bytes=[], expected=[0]",
+    "rank 3: streamer final resident bytes=[], expected=[0, 0]",
+    "rank 3: training completion event count is not exactly one",
+    "rank 4: step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+    "rank 4: critic update count=0, expected=5",
+    "rank 4: critic update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 4: ema update count=0, expected=5",
+    "rank 4: ema update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 4: missing final observed G/C/EMA version record",
+    "rank 4: activation offload final live bytes=[], expected=[0]",
+    "rank 4: streamer final resident bytes=[], expected=[0, 0]",
+    "rank 4: training completion event count is not exactly one",
+    "rank 5: step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+    "rank 5: critic update count=0, expected=5",
+    "rank 5: critic update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 5: ema update count=0, expected=5",
+    "rank 5: ema update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 5: missing final observed G/C/EMA version record",
+    "rank 5: activation offload final live bytes=[], expected=[0]",
+    "rank 5: streamer final resident bytes=[], expected=[0, 0]",
+    "rank 5: training completion event count is not exactly one",
+    "rank 6: step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+    "rank 6: critic update count=0, expected=5",
+    "rank 6: critic update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 6: ema update count=0, expected=5",
+    "rank 6: ema update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 6: missing final observed G/C/EMA version record",
+    "rank 6: activation offload final live bytes=[], expected=[0]",
+    "rank 6: streamer final resident bytes=[], expected=[0, 0]",
+    "rank 6: training completion event count is not exactly one",
+    "rank 7: step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+    "rank 7: critic update count=0, expected=5",
+    "rank 7: critic update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 7: ema update count=0, expected=5",
+    "rank 7: ema update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 7: missing final observed G/C/EMA version record",
+    "rank 7: activation offload final live bytes=[], expected=[0]",
+    "rank 7: streamer final resident bytes=[], expected=[0, 0]",
+    "rank 7: training completion event count is not exactly one",
+    "rank 8: step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+    "rank 8: critic update count=0, expected=5",
+    "rank 8: critic update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 8: ema update count=0, expected=5",
+    "rank 8: ema update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 8: missing final observed G/C/EMA version record",
+    "rank 8: activation offload final live bytes=[], expected=[0]",
+    "rank 8: streamer final resident bytes=[], expected=[0, 0]",
+    "rank 8: training completion event count is not exactly one",
+    "rank 9: step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+    "rank 9: critic update count=0, expected=5",
+    "rank 9: critic update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 9: ema update count=0, expected=5",
+    "rank 9: ema update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 9: missing final observed G/C/EMA version record",
+    "rank 9: activation offload final live bytes=[], expected=[0]",
+    "rank 9: streamer final resident bytes=[], expected=[0, 0]",
+    "rank 9: training completion event count is not exactly one",
+    "rank 10: step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+    "rank 10: critic update count=0, expected=5",
+    "rank 10: critic update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 10: ema update count=0, expected=5",
+    "rank 10: ema update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 10: missing final observed G/C/EMA version record",
+    "rank 10: activation offload final live bytes=[], expected=[0]",
+    "rank 10: streamer final resident bytes=[], expected=[0, 0]",
+    "rank 10: training completion event count is not exactly one",
+    "rank 11: step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+    "rank 11: critic update count=0, expected=5",
+    "rank 11: critic update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 11: ema update count=0, expected=5",
+    "rank 11: ema update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 11: missing final observed G/C/EMA version record",
+    "rank 11: activation offload final live bytes=[], expected=[0]",
+    "rank 11: streamer final resident bytes=[], expected=[0, 0]",
+    "rank 11: training completion event count is not exactly one",
+    "rank 12: step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+    "rank 12: critic update count=0, expected=5",
+    "rank 12: critic update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 12: ema update count=0, expected=5",
+    "rank 12: ema update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 12: missing final observed G/C/EMA version record",
+    "rank 12: activation offload final live bytes=[], expected=[0]",
+    "rank 12: streamer final resident bytes=[], expected=[0, 0]",
+    "rank 12: training completion event count is not exactly one",
+    "rank 13: step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+    "rank 13: critic update count=0, expected=5",
+    "rank 13: critic update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 13: ema update count=0, expected=5",
+    "rank 13: ema update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 13: missing final observed G/C/EMA version record",
+    "rank 13: activation offload final live bytes=[], expected=[0]",
+    "rank 13: streamer final resident bytes=[], expected=[0, 0]",
+    "rank 13: training completion event count is not exactly one",
+    "rank 14: step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+    "rank 14: critic update count=0, expected=5",
+    "rank 14: critic update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 14: ema update count=0, expected=5",
+    "rank 14: ema update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 14: missing final observed G/C/EMA version record",
+    "rank 14: activation offload final live bytes=[], expected=[0]",
+    "rank 14: streamer final resident bytes=[], expected=[0, 0]",
+    "rank 14: training completion event count is not exactly one",
+    "rank 15: step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+    "rank 15: critic update count=0, expected=5",
+    "rank 15: critic update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 15: ema update count=0, expected=5",
+    "rank 15: ema update steps=[], expected=[10, 11, 12, 13, 14]",
+    "rank 15: missing final observed G/C/EMA version record",
+    "rank 15: activation offload final live bytes=[], expected=[0]",
+    "rank 15: streamer final resident bytes=[], expected=[0, 0]",
+    "rank 15: training completion event count is not exactly one",
+    "checkpoint-15: /share/project/shuchenweng/yongyan_liu/DMD-System_ra16_f5_pr4_20260808/artifacts/runs/ra16_f5_pr12_20260809_002/checkpoint-15: directory does not exist"
+  ],
+  "frozen_contract": {
+    "final_versions": {
+      "critic": 15,
+      "ema": 15,
+      "generator": 3
+    },
+    "global_batch": 16,
+    "gradient_accumulation_steps": 1,
+    "initial_versions": {
+      "critic": 10,
+      "ema": 10,
+      "generator": 2
+    },
+    "latent": [
+      1,
+      16,
+      9,
+      48,
+      80
+    ],
+    "micro_batch_per_gpu": 1,
+    "optimizer_offload": "cpu",
+    "parameter_offload": "none",
+    "resolution": [
+      384,
+      640
+    ],
+    "steps": [
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "world_size": 16,
+    "zero_stage": 1
+  },
+  "gpu": {
+    "max_allocated_bytes": 39691921920,
+    "max_reserved_bytes": 40307261440
+  },
+  "legacy_attempt003_policy": {
+    "reason": "invalid mixed key=value/CSV launcher manifest and no in-run topology/evidence contract",
+    "retroactive_repair_allowed": false,
+    "status": "PARTIAL"
+  },
+  "lifecycle": {
+    "max_materialize_count_per_rank": 0,
+    "max_materialized_bytes_per_rank": 0
+  },
+  "limitations": [
+    "Single diagnostic-instrumented acceptance run; formal timing requires matched repeated Route-A/Route-B trials.",
+    "The typed executor still invokes the pinned external Helios model-math compatibility entrypoint.",
+    "Host-memory pressure and cgroup peak/max are observational unless an actual OOM/oom_kill or memory-attributed nonzero exit occurs.",
+    "Any derived version trajectory is diagnostic only; PASS requires observed component versions, EMA predicates and a terminal observed version bundle."
+  ],
+  "memory_observation": {
+    "host_reserve_pass_fail_removed": true,
+    "memory_failure_nodes": [
+      0,
+      1
+    ],
+    "node_observations": [
+      {
+        "acceptance_policy": "actual_oom_only",
+        "cgroup_memory_current_after": 247296000000,
+        "cgroup_memory_current_before": 191216939008,
+        "cgroup_memory_max": 816043786240,
+        "cgroup_memory_peak_after": null,
+        "cgroup_memory_peak_before": null,
+        "cuda_oom_signature": true,
+        "high_pressure_without_oom_is_failure": false,
+        "host_reserve_gate": false,
+        "memory_failure": true,
+        "oom_delta": 0,
+        "oom_kill_delta": 0
+      },
+      {
+        "acceptance_policy": "actual_oom_only",
+        "cgroup_memory_current_after": 247249125376,
+        "cgroup_memory_current_before": 189604196352,
+        "cgroup_memory_max": 816043786240,
+        "cgroup_memory_peak_after": null,
+        "cgroup_memory_peak_before": null,
+        "cuda_oom_signature": true,
+        "high_pressure_without_oom_is_failure": false,
+        "host_reserve_gate": false,
+        "memory_failure": true,
+        "oom_delta": 0,
+        "oom_kill_delta": 0
+      }
+    ],
+    "normative_gate": "actual_oom_only"
+  },
+  "nodes": [
+    {
+      "console_path": "/share/project/shuchenweng/yongyan_liu/DMD-System_ra16_f5_pr4_20260808/artifacts/runs/ra16_f5_pr12_20260809_002/launcher/node_0/console.log",
+      "console_sha256": "3d8926071d023d9e70feb5a6573d96cd8c4248c871622ef030f720c25dcc6cfc",
+      "final_return_code": 2,
+      "gpu_inventory": {
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_ra16_f5_pr4_20260808/artifacts/runs/ra16_f5_pr12_20260809_002/launcher/node_0/gpu_inventory.csv",
+        "rows": [
+          {
+            "index": "0",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-37ef51e2-9094-844f-1e66-417ef772ce6f"
+          },
+          {
+            "index": "1",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-6df6d7bd-47ee-5c80-2b19-d1a9243767e4"
+          },
+          {
+            "index": "2",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-938f17e4-b171-f484-f785-42f3ab477ced"
+          },
+          {
+            "index": "3",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-11bbad58-4191-719d-f194-d15f3194b4e1"
+          },
+          {
+            "index": "4",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-ae125430-0005-fc2b-95fb-ff42ba722ef9"
+          },
+          {
+            "index": "5",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-dbdb626f-39c9-32ce-7ff7-69631db0de65"
+          },
+          {
+            "index": "6",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-2cbbce0b-d21a-a102-ba95-ef5d1bc080c1"
+          },
+          {
+            "index": "7",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-83cebcf3-06b9-c0dc-7853-c1c80dc3a89e"
+          }
+        ],
+        "sha256": "84487afdaa377d82796768c13b001477527856ae97e591c589206aa6b5729183"
+      },
+      "host": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+      "manifest_path": "/share/project/shuchenweng/yongyan_liu/DMD-System_ra16_f5_pr4_20260808/artifacts/runs/ra16_f5_pr12_20260809_002/launcher/node_0/launch_manifest.txt",
+      "manifest_sha256": "f71903c30a99a368755910da4ea7f66829600b6398f3eff584f2106b663d46f6",
+      "memory_observation": {
+        "acceptance_policy": "actual_oom_only",
+        "cgroup_memory_current_after": 247296000000,
+        "cgroup_memory_current_before": 191216939008,
+        "cgroup_memory_max": 816043786240,
+        "cgroup_memory_peak_after": null,
+        "cgroup_memory_peak_before": null,
+        "cuda_oom_signature": true,
+        "high_pressure_without_oom_is_failure": false,
+        "host_reserve_gate": false,
+        "memory_failure": true,
+        "oom_delta": 0,
+        "oom_kill_delta": 0
+      },
+      "node_contract_sha256": "7e5d269479fea82982bf1cbe185047f5e668b74f8eeb660ec8ffeb8f3e8d6193",
+      "node_rank": 0,
+      "rendered_config_sha256": "534e6ab43eda30164bd37f1e3040f33fc8d564fc6c3d73b6342815e0bb8c9002",
+      "resource": {
+        "cgroup_peak_bytes": 766831501312,
+        "host_used_peak_bytes": 586183000000,
+        "invalid_rows": 0,
+        "samples": 693,
+        "span_seconds": 880.1799826622009,
+        "status": "MEASURED"
+      },
+      "runtime_identity": {
+        "accelerate": {
+          "path": "/tmp/distillschedule-helios-official-torch210/bin/accelerate",
+          "sha256": "55e23583028d7373e24231f0159defe085a36836098c83c08b7205368f2789bf",
+          "version": "1.12.0"
+        },
+        "deepspeed": {
+          "path": "/tmp/distillschedule-helios-official-torch210/bin/deepspeed",
+          "sha256": "8fea1eee673999a5770daf56ebf9a9b7e89d903a37b1821dae4d472ffde9bc0c",
+          "version": "0.18.4"
+        },
+        "helios": {
+          "dirty": false,
+          "entrypoint_sha256": "431329ed074a4cb0817842d093e4c7a025aef8ede2420ce95c7d9f9cb1821364",
+          "head": "0d66b4237ec68e8e4bc9991e543cf40a833f4e23",
+          "root": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_ra16_f5_pr4_20260808"
+        },
+        "python": {
+          "path": "/share/project/shuchenweng/.conda/envs/distillschedule-bootstrap-py310/bin/python3.10",
+          "sha256": "4c8caf210fd4160c1027adfa161540627fdb6a58c4b22015245b2d5c42d213e7",
+          "version": "Python 3.10.20"
+        },
+        "schema_version": "distillschedule.runtime_identity.v1"
+      },
+      "topology_sha256": "7094f0574be706780abe0bcbd91712547173f13a7fe89d4dfd242c85cae854f8"
+    },
+    {
+      "console_path": "/share/project/shuchenweng/yongyan_liu/DMD-System_ra16_f5_pr4_20260808/artifacts/runs/ra16_f5_pr12_20260809_002/launcher/node_1/console.log",
+      "console_sha256": "72eb20a479926b189776290626b451cd2139b9354c66a83297b6655164d880a5",
+      "final_return_code": 2,
+      "gpu_inventory": {
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_ra16_f5_pr4_20260808/artifacts/runs/ra16_f5_pr12_20260809_002/launcher/node_1/gpu_inventory.csv",
+        "rows": [
+          {
+            "index": "0",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-cad55364-e014-c35f-337e-db899afd1c6a"
+          },
+          {
+            "index": "1",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-a904c6f6-6410-dc0f-c7c3-efc068004617"
+          },
+          {
+            "index": "2",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-79ab3e5e-e382-1f9c-bede-1900666e9283"
+          },
+          {
+            "index": "3",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-bab43db0-a051-0419-39f7-e33effa9445b"
+          },
+          {
+            "index": "4",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-44bddf94-7411-b3ad-f195-fdbdd12fa73e"
+          },
+          {
+            "index": "5",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-af8dba1f-f74e-6a55-bb9e-6c8961edbd6e"
+          },
+          {
+            "index": "6",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-5edaa614-d5f8-8a3f-11ec-b128f8d029f3"
+          },
+          {
+            "index": "7",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-01fff32a-1dd6-93a7-1aae-60d378382961"
+          }
+        ],
+        "sha256": "047d1e4f03e33213e3a37c41a84ccc26538a5078da12ae549dc9542d4612d6e4"
+      },
+      "host": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+      "manifest_path": "/share/project/shuchenweng/yongyan_liu/DMD-System_ra16_f5_pr4_20260808/artifacts/runs/ra16_f5_pr12_20260809_002/launcher/node_1/launch_manifest.txt",
+      "manifest_sha256": "bd66ddd2352bc18fd02e34e2806e4d2b0d6faf3f5316801c772eedb945f90579",
+      "memory_observation": {
+        "acceptance_policy": "actual_oom_only",
+        "cgroup_memory_current_after": 247249125376,
+        "cgroup_memory_current_before": 189604196352,
+        "cgroup_memory_max": 816043786240,
+        "cgroup_memory_peak_after": null,
+        "cgroup_memory_peak_before": null,
+        "cuda_oom_signature": true,
+        "high_pressure_without_oom_is_failure": false,
+        "host_reserve_gate": false,
+        "memory_failure": true,
+        "oom_delta": 0,
+        "oom_kill_delta": 0
+      },
+      "node_contract_sha256": "8976d3700c260081dd8696ec2622fb8362319abea9931fa3e6850691d6fc5922",
+      "node_rank": 1,
+      "rendered_config_sha256": "534e6ab43eda30164bd37f1e3040f33fc8d564fc6c3d73b6342815e0bb8c9002",
+      "resource": {
+        "cgroup_peak_bytes": 766018150400,
+        "host_used_peak_bytes": 588488000000,
+        "invalid_rows": 0,
+        "samples": 695,
+        "span_seconds": 880.0497114658356,
+        "status": "MEASURED"
+      },
+      "runtime_identity": {
+        "accelerate": {
+          "path": "/tmp/distillschedule-helios-official-torch210/bin/accelerate",
+          "sha256": "55e23583028d7373e24231f0159defe085a36836098c83c08b7205368f2789bf",
+          "version": "1.12.0"
+        },
+        "deepspeed": {
+          "path": "/tmp/distillschedule-helios-official-torch210/bin/deepspeed",
+          "sha256": "8fea1eee673999a5770daf56ebf9a9b7e89d903a37b1821dae4d472ffde9bc0c",
+          "version": "0.18.4"
+        },
+        "helios": {
+          "dirty": false,
+          "entrypoint_sha256": "431329ed074a4cb0817842d093e4c7a025aef8ede2420ce95c7d9f9cb1821364",
+          "head": "0d66b4237ec68e8e4bc9991e543cf40a833f4e23",
+          "root": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_ra16_f5_pr4_20260808"
+        },
+        "python": {
+          "path": "/share/project/shuchenweng/.conda/envs/distillschedule-bootstrap-py310/bin/python3.10",
+          "sha256": "4c8caf210fd4160c1027adfa161540627fdb6a58c4b22015245b2d5c42d213e7",
+          "version": "Python 3.10.20"
+        },
+        "schema_version": "distillschedule.runtime_identity.v1"
+      },
+      "topology_sha256": "7094f0574be706780abe0bcbd91712547173f13a7fe89d4dfd242c85cae854f8"
+    }
+  ],
+  "rank_count": 16,
+  "rank_status": {
+    "0": "FAIL",
+    "1": "FAIL",
+    "10": "FAIL",
+    "11": "FAIL",
+    "12": "FAIL",
+    "13": "FAIL",
+    "14": "FAIL",
+    "15": "FAIL",
+    "2": "FAIL",
+    "3": "FAIL",
+    "4": "FAIL",
+    "5": "FAIL",
+    "6": "FAIL",
+    "7": "FAIL",
+    "8": "FAIL",
+    "9": "FAIL"
+  },
+  "ranks": [
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_installed": 2,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_loss_end": 1,
+        "critic_loss_start": 1,
+        "critic_optimizer_created": 1,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "frozen_block_streamer_install_end": 1,
+        "frozen_block_streamer_install_start": 1,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 1,
+        "immutable_model_backing_install_end": 2,
+        "immutable_model_cache_prepare_end": 2,
+        "immutable_model_cache_prepare_start": 2,
+        "main_start": 1,
+        "model_move_end": 10,
+        "model_move_start": 10,
+        "model_swap_end": 4,
+        "model_swap_start": 4,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "phase_resident_frozen_blocks_end": 1,
+        "phase_resident_frozen_blocks_start": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_step_start": 1
+      },
+      "cuda": {
+        "max_allocated_bytes": 39691921920,
+        "max_reserved_bytes": 40307261440
+      },
+      "errors": [
+        "step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+        "critic update count=0, expected=5",
+        "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+        "ema update count=0, expected=5",
+        "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+        "missing final observed G/C/EMA version record",
+        "activation offload final live bytes=[], expected=[0]",
+        "streamer final resident bytes=[], expected=[0, 0]",
+        "training completion event count is not exactly one"
+      ],
+      "event_count": 80,
+      "lifecycle": {
+        "activation_live_final": [],
+        "streamer_materialize_count": 0,
+        "streamer_materialized_bytes": 0,
+        "streamer_resident_final": []
+      },
+      "rank": 0,
+      "raw_sha256": "e0a1fdb017c7927064ecf7ac090d7661bf977f02aa8de87f98cd4fb1b2d02f79",
+      "status": "FAIL",
+      "step_end_unix": {},
+      "step_start_unix": {
+        "10": 1786261708.0039294
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "4e902284ff2498ff34ee4bc38a34ddbf009a1caa07e6df1ac8fd124b19f2d2af",
+        "operation_fingerprint": "4feebc9f22e737cf0e87eefd9121c1d4b76818ddba9af4b2da0102a9f4b7ff8d",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "c8b7bc4a62bbe25727a0cc4486dfeb34f513b3a0cbc193fd05d96c1d81598df4",
+        "trace_hash": "b5ae077fcbabf64fc183dbecb7bdef1336016f1a1d11547618afb9ce5a7cc8a9"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [
+          "critic update count=0, expected=5",
+          "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+          "ema update count=0, expected=5",
+          "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+          "missing final observed G/C/EMA version record"
+        ],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "missing",
+        "final_observed": {
+          "critic": null,
+          "ema": null,
+          "generator": null
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "INCOMPLETE_OR_MISMATCH",
+        "updates_observed": {
+          "critic": [],
+          "ema": [],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_installed": 2,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_loss_end": 1,
+        "critic_loss_start": 1,
+        "critic_optimizer_created": 1,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "frozen_block_streamer_install_end": 1,
+        "frozen_block_streamer_install_start": 1,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 1,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 10,
+        "model_move_start": 10,
+        "model_swap_end": 4,
+        "model_swap_start": 4,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "phase_resident_frozen_blocks_end": 1,
+        "phase_resident_frozen_blocks_start": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_step_start": 1
+      },
+      "cuda": {
+        "max_allocated_bytes": 39691921920,
+        "max_reserved_bytes": 40307261440
+      },
+      "errors": [
+        "step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+        "critic update count=0, expected=5",
+        "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+        "ema update count=0, expected=5",
+        "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+        "missing final observed G/C/EMA version record",
+        "activation offload final live bytes=[], expected=[0]",
+        "streamer final resident bytes=[], expected=[0, 0]",
+        "training completion event count is not exactly one"
+      ],
+      "event_count": 76,
+      "lifecycle": {
+        "activation_live_final": [],
+        "streamer_materialize_count": 0,
+        "streamer_materialized_bytes": 0,
+        "streamer_resident_final": []
+      },
+      "rank": 1,
+      "raw_sha256": "6785be67f4af44ae88a7bad98ee6154afe72b7540e26cf35eb5972981e5574ec",
+      "status": "FAIL",
+      "step_end_unix": {},
+      "step_start_unix": {
+        "10": 1786261708.0129623
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "51c2142412e239df9e869ff3c0cde34ac1486900799b2c83079333db9af58f1a",
+        "operation_fingerprint": "dc5d00102fdd523a6e902ca1d503fa085cca977174842370184de17fa68e64da",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "40b3626a98dc01927c4bc037c480af95146dfe03efdd3c5fab73505c11a88d16",
+        "trace_hash": "50f366d31cfd623edb911e03ba670b30c9af256dc972d07a34c4589043421182"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [
+          "critic update count=0, expected=5",
+          "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+          "ema update count=0, expected=5",
+          "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+          "missing final observed G/C/EMA version record"
+        ],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "missing",
+        "final_observed": {
+          "critic": null,
+          "ema": null,
+          "generator": null
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "INCOMPLETE_OR_MISMATCH",
+        "updates_observed": {
+          "critic": [],
+          "ema": [],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_installed": 2,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_loss_end": 1,
+        "critic_loss_start": 1,
+        "critic_optimizer_created": 1,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "frozen_block_streamer_install_end": 1,
+        "frozen_block_streamer_install_start": 1,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 1,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 10,
+        "model_move_start": 10,
+        "model_swap_end": 4,
+        "model_swap_start": 4,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "phase_resident_frozen_blocks_end": 1,
+        "phase_resident_frozen_blocks_start": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_step_start": 1
+      },
+      "cuda": {
+        "max_allocated_bytes": 39691921920,
+        "max_reserved_bytes": 40307261440
+      },
+      "errors": [
+        "step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+        "critic update count=0, expected=5",
+        "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+        "ema update count=0, expected=5",
+        "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+        "missing final observed G/C/EMA version record",
+        "activation offload final live bytes=[], expected=[0]",
+        "streamer final resident bytes=[], expected=[0, 0]",
+        "training completion event count is not exactly one"
+      ],
+      "event_count": 76,
+      "lifecycle": {
+        "activation_live_final": [],
+        "streamer_materialize_count": 0,
+        "streamer_materialized_bytes": 0,
+        "streamer_resident_final": []
+      },
+      "rank": 2,
+      "raw_sha256": "eb2fa6cb6871bec979b461c374a6889629593102469931fbb0abaab6c7180584",
+      "status": "FAIL",
+      "step_end_unix": {},
+      "step_start_unix": {
+        "10": 1786261708.007909
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "47f8e6d5bc8d6d6be490c3d54062eec3f19028725ee08ed2d3132689212a8c4e",
+        "operation_fingerprint": "e871a8a761bda8a1c9d9970d029fe306a04c330a9d17f45ace9e2c9a5745db51",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "244a6778c26dbf3c3a70df4a10529045856ff701babb47a0d38cc2151f510c25",
+        "trace_hash": "722a249c849ebc7f7e64502b81ded6ab3ab7aa2f2d4860c70150bdd30ee1d988"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [
+          "critic update count=0, expected=5",
+          "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+          "ema update count=0, expected=5",
+          "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+          "missing final observed G/C/EMA version record"
+        ],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "missing",
+        "final_observed": {
+          "critic": null,
+          "ema": null,
+          "generator": null
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "INCOMPLETE_OR_MISMATCH",
+        "updates_observed": {
+          "critic": [],
+          "ema": [],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_installed": 2,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_loss_end": 1,
+        "critic_loss_start": 1,
+        "critic_optimizer_created": 1,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "frozen_block_streamer_install_end": 1,
+        "frozen_block_streamer_install_start": 1,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 1,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 10,
+        "model_move_start": 10,
+        "model_swap_end": 4,
+        "model_swap_start": 4,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "phase_resident_frozen_blocks_end": 1,
+        "phase_resident_frozen_blocks_start": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_step_start": 1
+      },
+      "cuda": {
+        "max_allocated_bytes": 38362468352,
+        "max_reserved_bytes": 38962987008
+      },
+      "errors": [
+        "step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+        "critic update count=0, expected=5",
+        "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+        "ema update count=0, expected=5",
+        "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+        "missing final observed G/C/EMA version record",
+        "activation offload final live bytes=[], expected=[0]",
+        "streamer final resident bytes=[], expected=[0, 0]",
+        "training completion event count is not exactly one"
+      ],
+      "event_count": 76,
+      "lifecycle": {
+        "activation_live_final": [],
+        "streamer_materialize_count": 0,
+        "streamer_materialized_bytes": 0,
+        "streamer_resident_final": []
+      },
+      "rank": 3,
+      "raw_sha256": "0fe3f2717b49a8d7c583e83de6dab48ce5793928285f7a00ca03a463086e4705",
+      "status": "FAIL",
+      "step_end_unix": {},
+      "step_start_unix": {
+        "10": 1786261708.023195
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "36a5ab1484a6f23e5e61bc06d46717b37ffcbeae3d88176b55e1381ba3da8305",
+        "operation_fingerprint": "a706a3c8f0bf21be8d244dd0aa1f842de72e4ac80ec005c5391823a97184b90f",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "3828fb850f952778dd9725bc73e3cc66c23f09cd9fc3c3cc612048a8c699e553",
+        "trace_hash": "693f7037f9590dcdce4539fead5b0d6100fe62d8db8249ad7dcea938a80de6fd"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [
+          "critic update count=0, expected=5",
+          "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+          "ema update count=0, expected=5",
+          "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+          "missing final observed G/C/EMA version record"
+        ],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "missing",
+        "final_observed": {
+          "critic": null,
+          "ema": null,
+          "generator": null
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "INCOMPLETE_OR_MISMATCH",
+        "updates_observed": {
+          "critic": [],
+          "ema": [],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_installed": 2,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_loss_end": 1,
+        "critic_loss_start": 1,
+        "critic_optimizer_created": 1,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "frozen_block_streamer_install_end": 1,
+        "frozen_block_streamer_install_start": 1,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 1,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 10,
+        "model_move_start": 10,
+        "model_swap_end": 4,
+        "model_swap_start": 4,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "phase_resident_frozen_blocks_end": 1,
+        "phase_resident_frozen_blocks_start": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_step_start": 1
+      },
+      "cuda": {
+        "max_allocated_bytes": 39691921920,
+        "max_reserved_bytes": 40307261440
+      },
+      "errors": [
+        "step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+        "critic update count=0, expected=5",
+        "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+        "ema update count=0, expected=5",
+        "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+        "missing final observed G/C/EMA version record",
+        "activation offload final live bytes=[], expected=[0]",
+        "streamer final resident bytes=[], expected=[0, 0]",
+        "training completion event count is not exactly one"
+      ],
+      "event_count": 76,
+      "lifecycle": {
+        "activation_live_final": [],
+        "streamer_materialize_count": 0,
+        "streamer_materialized_bytes": 0,
+        "streamer_resident_final": []
+      },
+      "rank": 4,
+      "raw_sha256": "a9fa9c776eddfbaf6f9cd774a059a642fd388e5b537e90b11f14a19894a4cb44",
+      "status": "FAIL",
+      "step_end_unix": {},
+      "step_start_unix": {
+        "10": 1786261708.0070596
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "61503e5484236b114481077a53ada933b4f069b15f0351d87439b54a43d42518",
+        "operation_fingerprint": "c23487f9b7f68696a31e1b1a8f7fec91f465cbc01dd9f40710bc578c959e50b7",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "319cd3d9e4fa079f9b4ab0625de8260ded35f85e0ea7e008bdb60cd75a2296d6",
+        "trace_hash": "64378d043faff5fadf4ae49468c316bd23420bc22024408c7ead61e6cb85dcec"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [
+          "critic update count=0, expected=5",
+          "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+          "ema update count=0, expected=5",
+          "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+          "missing final observed G/C/EMA version record"
+        ],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "missing",
+        "final_observed": {
+          "critic": null,
+          "ema": null,
+          "generator": null
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "INCOMPLETE_OR_MISMATCH",
+        "updates_observed": {
+          "critic": [],
+          "ema": [],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_installed": 2,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_loss_end": 1,
+        "critic_loss_start": 1,
+        "critic_optimizer_created": 1,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "frozen_block_streamer_install_end": 1,
+        "frozen_block_streamer_install_start": 1,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 1,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 10,
+        "model_move_start": 10,
+        "model_swap_end": 4,
+        "model_swap_start": 4,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "phase_resident_frozen_blocks_end": 1,
+        "phase_resident_frozen_blocks_start": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_step_start": 1
+      },
+      "cuda": {
+        "max_allocated_bytes": 39691921920,
+        "max_reserved_bytes": 40307261440
+      },
+      "errors": [
+        "step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+        "critic update count=0, expected=5",
+        "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+        "ema update count=0, expected=5",
+        "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+        "missing final observed G/C/EMA version record",
+        "activation offload final live bytes=[], expected=[0]",
+        "streamer final resident bytes=[], expected=[0, 0]",
+        "training completion event count is not exactly one"
+      ],
+      "event_count": 76,
+      "lifecycle": {
+        "activation_live_final": [],
+        "streamer_materialize_count": 0,
+        "streamer_materialized_bytes": 0,
+        "streamer_resident_final": []
+      },
+      "rank": 5,
+      "raw_sha256": "69518be30dc54e6aa45af22f17fbbe5cef7bc55f43ba1c9c06a6c618532f8344",
+      "status": "FAIL",
+      "step_end_unix": {},
+      "step_start_unix": {
+        "10": 1786261708.0005777
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "769e377823b3653645a34d25b56130957b9a0481fa19fcf37d4cdcd565b21ee5",
+        "operation_fingerprint": "037252ee00956ab3d52c36fdc058d7586cad02a579e77a6cf08f94542b85192b",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "afd6b56f5723db25492d3a9498cca10cad186f9d32d47667a55fcc28ff83d86d",
+        "trace_hash": "bf224998521f1793712ee8c5c2ee0c84a2d134c603fb8fa3be6eec4a45329df9"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [
+          "critic update count=0, expected=5",
+          "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+          "ema update count=0, expected=5",
+          "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+          "missing final observed G/C/EMA version record"
+        ],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "missing",
+        "final_observed": {
+          "critic": null,
+          "ema": null,
+          "generator": null
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "INCOMPLETE_OR_MISMATCH",
+        "updates_observed": {
+          "critic": [],
+          "ema": [],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_installed": 2,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_loss_end": 1,
+        "critic_loss_start": 1,
+        "critic_optimizer_created": 1,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "frozen_block_streamer_install_end": 1,
+        "frozen_block_streamer_install_start": 1,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 1,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 10,
+        "model_move_start": 10,
+        "model_swap_end": 4,
+        "model_swap_start": 4,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "phase_resident_frozen_blocks_end": 1,
+        "phase_resident_frozen_blocks_start": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_step_start": 1
+      },
+      "cuda": {
+        "max_allocated_bytes": 38432277504,
+        "max_reserved_bytes": 39027998720
+      },
+      "errors": [
+        "step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+        "critic update count=0, expected=5",
+        "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+        "ema update count=0, expected=5",
+        "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+        "missing final observed G/C/EMA version record",
+        "activation offload final live bytes=[], expected=[0]",
+        "streamer final resident bytes=[], expected=[0, 0]",
+        "training completion event count is not exactly one"
+      ],
+      "event_count": 76,
+      "lifecycle": {
+        "activation_live_final": [],
+        "streamer_materialize_count": 0,
+        "streamer_materialized_bytes": 0,
+        "streamer_resident_final": []
+      },
+      "rank": 6,
+      "raw_sha256": "91556906092da62388e3c17c8fe4b1e49e0b461cb2ed05cebe291e0b1f83995e",
+      "status": "FAIL",
+      "step_end_unix": {},
+      "step_start_unix": {
+        "10": 1786261708.0109947
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "57048500ef55c899fd81babe00bd1c213ec25e278f2aea60fd6fc9e0eae2b53a",
+        "operation_fingerprint": "18b04d1c40a7805baaef9a3eac217612e9ecf49610d4c5b06a08d7a2036310f7",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "d3605b092cd356851e0965d1e7a3dd0d874c673a779743fdd004c246e0be76ee",
+        "trace_hash": "7268746b28907ccb9a48036be4fd4a2b7c76225a10b21f55726028a5a8a72396"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [
+          "critic update count=0, expected=5",
+          "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+          "ema update count=0, expected=5",
+          "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+          "missing final observed G/C/EMA version record"
+        ],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "missing",
+        "final_observed": {
+          "critic": null,
+          "ema": null,
+          "generator": null
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "INCOMPLETE_OR_MISMATCH",
+        "updates_observed": {
+          "critic": [],
+          "ema": [],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_installed": 2,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_loss_end": 1,
+        "critic_loss_start": 1,
+        "critic_optimizer_created": 1,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "frozen_block_streamer_install_end": 1,
+        "frozen_block_streamer_install_start": 1,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 1,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 10,
+        "model_move_start": 10,
+        "model_swap_end": 4,
+        "model_swap_start": 4,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "phase_resident_frozen_blocks_end": 1,
+        "phase_resident_frozen_blocks_start": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_step_start": 1
+      },
+      "cuda": {
+        "max_allocated_bytes": 38432277504,
+        "max_reserved_bytes": 39027998720
+      },
+      "errors": [
+        "step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+        "critic update count=0, expected=5",
+        "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+        "ema update count=0, expected=5",
+        "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+        "missing final observed G/C/EMA version record",
+        "activation offload final live bytes=[], expected=[0]",
+        "streamer final resident bytes=[], expected=[0, 0]",
+        "training completion event count is not exactly one"
+      ],
+      "event_count": 76,
+      "lifecycle": {
+        "activation_live_final": [],
+        "streamer_materialize_count": 0,
+        "streamer_materialized_bytes": 0,
+        "streamer_resident_final": []
+      },
+      "rank": 7,
+      "raw_sha256": "271bf77b3ecc515d40f00117b500640316e16a9ecc509b684d0b464dbbc0f7a3",
+      "status": "FAIL",
+      "step_end_unix": {},
+      "step_start_unix": {
+        "10": 1786261708.0087783
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "4a9ae42aeb64778a3650fe7982782597257e1eadc28c3fc4b8fc1eff174e88bc",
+        "operation_fingerprint": "82c7ff92ea48e8bf7dc15212b7fe4e614245171b0bcd42073d7c37795be11322",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "21fbf900a7b3ed1a372e9d85343bbcbee0f4515d4a62f8e5894a25fde790c569",
+        "trace_hash": "0f9c48c34d7e2d4babb1f4cfb998acee38342c0865671f691a91b0e362ec547e"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [
+          "critic update count=0, expected=5",
+          "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+          "ema update count=0, expected=5",
+          "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+          "missing final observed G/C/EMA version record"
+        ],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "missing",
+        "final_observed": {
+          "critic": null,
+          "ema": null,
+          "generator": null
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "INCOMPLETE_OR_MISMATCH",
+        "updates_observed": {
+          "critic": [],
+          "ema": [],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_installed": 2,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_loss_end": 1,
+        "critic_loss_start": 1,
+        "critic_optimizer_created": 1,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "frozen_block_streamer_install_end": 1,
+        "frozen_block_streamer_install_start": 1,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 1,
+        "immutable_model_backing_install_end": 2,
+        "immutable_model_cache_prepare_end": 2,
+        "immutable_model_cache_prepare_start": 2,
+        "main_start": 1,
+        "model_move_end": 10,
+        "model_move_start": 10,
+        "model_swap_end": 4,
+        "model_swap_start": 4,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "phase_resident_frozen_blocks_end": 1,
+        "phase_resident_frozen_blocks_start": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_step_start": 1
+      },
+      "cuda": {
+        "max_allocated_bytes": 39691921920,
+        "max_reserved_bytes": 40307261440
+      },
+      "errors": [
+        "step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+        "critic update count=0, expected=5",
+        "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+        "ema update count=0, expected=5",
+        "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+        "missing final observed G/C/EMA version record",
+        "activation offload final live bytes=[], expected=[0]",
+        "streamer final resident bytes=[], expected=[0, 0]",
+        "training completion event count is not exactly one"
+      ],
+      "event_count": 80,
+      "lifecycle": {
+        "activation_live_final": [],
+        "streamer_materialize_count": 0,
+        "streamer_materialized_bytes": 0,
+        "streamer_resident_final": []
+      },
+      "rank": 8,
+      "raw_sha256": "5a89fcc6a070fd227908593dbdaed7b02cf86f0882d32566bf361dc442bdb28e",
+      "status": "FAIL",
+      "step_end_unix": {},
+      "step_start_unix": {
+        "10": 1786261709.7068672
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "ddd4228851f91c068c9675401f846e4796655e73731c003f94a93ba5498c81ba",
+        "operation_fingerprint": "a0a83bf8d449724491d3a7b596c98b6dff8a994a8e7e29ed48aed9648a52c5e2",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "96e876fcf20eb6e21def6e52cc4d5c6bc61323b0cb6f41744ace1794169271a9",
+        "trace_hash": "fe4deb070a1d6c40993fb5b952351d86be7ad053322d0689d94ddf60418b7830"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [
+          "critic update count=0, expected=5",
+          "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+          "ema update count=0, expected=5",
+          "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+          "missing final observed G/C/EMA version record"
+        ],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "missing",
+        "final_observed": {
+          "critic": null,
+          "ema": null,
+          "generator": null
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "INCOMPLETE_OR_MISMATCH",
+        "updates_observed": {
+          "critic": [],
+          "ema": [],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_installed": 2,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_loss_end": 1,
+        "critic_loss_start": 1,
+        "critic_optimizer_created": 1,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "frozen_block_streamer_install_end": 1,
+        "frozen_block_streamer_install_start": 1,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 1,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 10,
+        "model_move_start": 10,
+        "model_swap_end": 4,
+        "model_swap_start": 4,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "phase_resident_frozen_blocks_end": 1,
+        "phase_resident_frozen_blocks_start": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_step_start": 1
+      },
+      "cuda": {
+        "max_allocated_bytes": 39691921920,
+        "max_reserved_bytes": 40307261440
+      },
+      "errors": [
+        "step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+        "critic update count=0, expected=5",
+        "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+        "ema update count=0, expected=5",
+        "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+        "missing final observed G/C/EMA version record",
+        "activation offload final live bytes=[], expected=[0]",
+        "streamer final resident bytes=[], expected=[0, 0]",
+        "training completion event count is not exactly one"
+      ],
+      "event_count": 76,
+      "lifecycle": {
+        "activation_live_final": [],
+        "streamer_materialize_count": 0,
+        "streamer_materialized_bytes": 0,
+        "streamer_resident_final": []
+      },
+      "rank": 9,
+      "raw_sha256": "29d24284136de3d0a6947547f4ea3c58b7edbc9872d44ec75245b0d90c223b17",
+      "status": "FAIL",
+      "step_end_unix": {},
+      "step_start_unix": {
+        "10": 1786261709.7041166
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "3143dce8cca5afb9bd07a0a50f827b847c24f0ebe323918c505f1e6775d77d6c",
+        "operation_fingerprint": "19d752024e59281a7eca64d9aae1f77c6dc0c3efb1e33cb5c4348ba4dafd5276",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "65ff851a54aa437aa193ab09534f680367583b2377cddb63e84040e6cdfad31c",
+        "trace_hash": "521bcca07d0630529d37a4fdb907bfdea2e55e6f5620d7554865092d6a443591"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [
+          "critic update count=0, expected=5",
+          "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+          "ema update count=0, expected=5",
+          "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+          "missing final observed G/C/EMA version record"
+        ],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "missing",
+        "final_observed": {
+          "critic": null,
+          "ema": null,
+          "generator": null
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "INCOMPLETE_OR_MISMATCH",
+        "updates_observed": {
+          "critic": [],
+          "ema": [],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_installed": 2,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_loss_end": 1,
+        "critic_loss_start": 1,
+        "critic_optimizer_created": 1,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "frozen_block_streamer_install_end": 1,
+        "frozen_block_streamer_install_start": 1,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 1,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 10,
+        "model_move_start": 10,
+        "model_swap_end": 4,
+        "model_swap_start": 4,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "phase_resident_frozen_blocks_end": 1,
+        "phase_resident_frozen_blocks_start": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_step_start": 1
+      },
+      "cuda": {
+        "max_allocated_bytes": 38362467840,
+        "max_reserved_bytes": 38962987008
+      },
+      "errors": [
+        "step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+        "critic update count=0, expected=5",
+        "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+        "ema update count=0, expected=5",
+        "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+        "missing final observed G/C/EMA version record",
+        "activation offload final live bytes=[], expected=[0]",
+        "streamer final resident bytes=[], expected=[0, 0]",
+        "training completion event count is not exactly one"
+      ],
+      "event_count": 76,
+      "lifecycle": {
+        "activation_live_final": [],
+        "streamer_materialize_count": 0,
+        "streamer_materialized_bytes": 0,
+        "streamer_resident_final": []
+      },
+      "rank": 10,
+      "raw_sha256": "5e9b413c27ca592217ec95c8020d14714eee0d495af4383902fe5c138124695c",
+      "status": "FAIL",
+      "step_end_unix": {},
+      "step_start_unix": {
+        "10": 1786261709.7297516
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "3cea2ea6a06ef304224e70218aed16f84475ebda0cc44990348f0c3e441934c4",
+        "operation_fingerprint": "45bae0fd55d558eeacc75872e48dd85ae2c63deddf34607977e174cab08a121d",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "188413fb8ddd71b9351842c6dee75b421653eabcd72f967ac7c04b939d1d2897",
+        "trace_hash": "9fbc77d272414714829a26e458007905132bd563f5335975d124b03f61deb5de"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [
+          "critic update count=0, expected=5",
+          "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+          "ema update count=0, expected=5",
+          "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+          "missing final observed G/C/EMA version record"
+        ],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "missing",
+        "final_observed": {
+          "critic": null,
+          "ema": null,
+          "generator": null
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "INCOMPLETE_OR_MISMATCH",
+        "updates_observed": {
+          "critic": [],
+          "ema": [],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_installed": 2,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_loss_end": 1,
+        "critic_loss_start": 1,
+        "critic_optimizer_created": 1,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "frozen_block_streamer_install_end": 1,
+        "frozen_block_streamer_install_start": 1,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 1,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 10,
+        "model_move_start": 10,
+        "model_swap_end": 4,
+        "model_swap_start": 4,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "phase_resident_frozen_blocks_end": 1,
+        "phase_resident_frozen_blocks_start": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_step_start": 1
+      },
+      "cuda": {
+        "max_allocated_bytes": 38432277504,
+        "max_reserved_bytes": 39027998720
+      },
+      "errors": [
+        "step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+        "critic update count=0, expected=5",
+        "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+        "ema update count=0, expected=5",
+        "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+        "missing final observed G/C/EMA version record",
+        "activation offload final live bytes=[], expected=[0]",
+        "streamer final resident bytes=[], expected=[0, 0]",
+        "training completion event count is not exactly one"
+      ],
+      "event_count": 76,
+      "lifecycle": {
+        "activation_live_final": [],
+        "streamer_materialize_count": 0,
+        "streamer_materialized_bytes": 0,
+        "streamer_resident_final": []
+      },
+      "rank": 11,
+      "raw_sha256": "3745aace61ec35e83e012c1686d2f8fce4a077d199e25ca78f1f41ac6988d322",
+      "status": "FAIL",
+      "step_end_unix": {},
+      "step_start_unix": {
+        "10": 1786261709.7018287
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "69e55242265e021fac3e43b792d050e69f98850299a1718a3de46bd782233e7c",
+        "operation_fingerprint": "88146000d7ab2ae41c315e010d98fd3e4b3a49c6a1e2d144e0eee76b60d39aa2",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "772ee6b32063760ecd6f86dbd3bbf8077b23645b79398364e51dff4caedc934f",
+        "trace_hash": "b1d9f6a74b2ad035785a8457d5185f7f80ea26375fbde8f27a2153ee182696ad"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [
+          "critic update count=0, expected=5",
+          "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+          "ema update count=0, expected=5",
+          "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+          "missing final observed G/C/EMA version record"
+        ],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "missing",
+        "final_observed": {
+          "critic": null,
+          "ema": null,
+          "generator": null
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "INCOMPLETE_OR_MISMATCH",
+        "updates_observed": {
+          "critic": [],
+          "ema": [],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_installed": 2,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_loss_end": 1,
+        "critic_loss_start": 1,
+        "critic_optimizer_created": 1,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "frozen_block_streamer_install_end": 1,
+        "frozen_block_streamer_install_start": 1,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 1,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 10,
+        "model_move_start": 10,
+        "model_swap_end": 4,
+        "model_swap_start": 4,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "phase_resident_frozen_blocks_end": 1,
+        "phase_resident_frozen_blocks_start": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_step_start": 1
+      },
+      "cuda": {
+        "max_allocated_bytes": 39691921920,
+        "max_reserved_bytes": 40307261440
+      },
+      "errors": [
+        "step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+        "critic update count=0, expected=5",
+        "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+        "ema update count=0, expected=5",
+        "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+        "missing final observed G/C/EMA version record",
+        "activation offload final live bytes=[], expected=[0]",
+        "streamer final resident bytes=[], expected=[0, 0]",
+        "training completion event count is not exactly one"
+      ],
+      "event_count": 76,
+      "lifecycle": {
+        "activation_live_final": [],
+        "streamer_materialize_count": 0,
+        "streamer_materialized_bytes": 0,
+        "streamer_resident_final": []
+      },
+      "rank": 12,
+      "raw_sha256": "eeafe308cfa789d2a8a927e4193a8b3066f49f5e06768746ccf05f6378853a05",
+      "status": "FAIL",
+      "step_end_unix": {},
+      "step_start_unix": {
+        "10": 1786261709.6995194
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "a5b1265d94cb00ede647ba2ade1d9df84ce6441ef0aeeb2e605345bd9cfc4016",
+        "operation_fingerprint": "f070192f95d9a675c202354605208e6293156d4607ed0cc791c1213b4aaa2ff3",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "831f88f2ef39bf84d183aeba4e2207278fc6b3ec5832dfe4f0967f2607281389",
+        "trace_hash": "ad7d5179b4e4ca8b1768041d019fe3c4f7bd63863b9f689c446fe89755460a17"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [
+          "critic update count=0, expected=5",
+          "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+          "ema update count=0, expected=5",
+          "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+          "missing final observed G/C/EMA version record"
+        ],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "missing",
+        "final_observed": {
+          "critic": null,
+          "ema": null,
+          "generator": null
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "INCOMPLETE_OR_MISMATCH",
+        "updates_observed": {
+          "critic": [],
+          "ema": [],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_installed": 2,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_loss_end": 1,
+        "critic_loss_start": 1,
+        "critic_optimizer_created": 1,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "frozen_block_streamer_install_end": 1,
+        "frozen_block_streamer_install_start": 1,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 1,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 10,
+        "model_move_start": 10,
+        "model_swap_end": 4,
+        "model_swap_start": 4,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "phase_resident_frozen_blocks_end": 1,
+        "phase_resident_frozen_blocks_start": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_step_start": 1
+      },
+      "cuda": {
+        "max_allocated_bytes": 39691921920,
+        "max_reserved_bytes": 40307261440
+      },
+      "errors": [
+        "step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+        "critic update count=0, expected=5",
+        "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+        "ema update count=0, expected=5",
+        "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+        "missing final observed G/C/EMA version record",
+        "activation offload final live bytes=[], expected=[0]",
+        "streamer final resident bytes=[], expected=[0, 0]",
+        "training completion event count is not exactly one"
+      ],
+      "event_count": 76,
+      "lifecycle": {
+        "activation_live_final": [],
+        "streamer_materialize_count": 0,
+        "streamer_materialized_bytes": 0,
+        "streamer_resident_final": []
+      },
+      "rank": 13,
+      "raw_sha256": "fcaef40f187788c7b4b0c49ddc174edecf39265086d6b609643ef31623d3485a",
+      "status": "FAIL",
+      "step_end_unix": {},
+      "step_start_unix": {
+        "10": 1786261709.696194
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "da9c93c89a1ddd5cdb5116cae25c29f80d7dd7c49d9e28de54d3942bd426d5e2",
+        "operation_fingerprint": "a4a4533de956f0087752088ef3b8517df96f5f1f6d64bf31f5ab86bac1780434",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "ccdc4066c09b53607d33fa9be0b4ca1c9e1c35a968d3c22a3d873aff0e5fad71",
+        "trace_hash": "03cdbbb88194f668b459643e4737396c4e20c5d854d3d153b7fba5fc91c835c4"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [
+          "critic update count=0, expected=5",
+          "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+          "ema update count=0, expected=5",
+          "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+          "missing final observed G/C/EMA version record"
+        ],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "missing",
+        "final_observed": {
+          "critic": null,
+          "ema": null,
+          "generator": null
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "INCOMPLETE_OR_MISMATCH",
+        "updates_observed": {
+          "critic": [],
+          "ema": [],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_installed": 2,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_loss_end": 1,
+        "critic_loss_start": 1,
+        "critic_optimizer_created": 1,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "frozen_block_streamer_install_end": 1,
+        "frozen_block_streamer_install_start": 1,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 1,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 10,
+        "model_move_start": 10,
+        "model_swap_end": 4,
+        "model_swap_start": 4,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "phase_resident_frozen_blocks_end": 1,
+        "phase_resident_frozen_blocks_start": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_step_start": 1
+      },
+      "cuda": {
+        "max_allocated_bytes": 38362468352,
+        "max_reserved_bytes": 38962987008
+      },
+      "errors": [
+        "step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+        "critic update count=0, expected=5",
+        "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+        "ema update count=0, expected=5",
+        "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+        "missing final observed G/C/EMA version record",
+        "activation offload final live bytes=[], expected=[0]",
+        "streamer final resident bytes=[], expected=[0, 0]",
+        "training completion event count is not exactly one"
+      ],
+      "event_count": 76,
+      "lifecycle": {
+        "activation_live_final": [],
+        "streamer_materialize_count": 0,
+        "streamer_materialized_bytes": 0,
+        "streamer_resident_final": []
+      },
+      "rank": 14,
+      "raw_sha256": "e638d0da9242a8ca6aa711968f6dd8109ba48a22e58f2b7fdb92d3b67c2446c7",
+      "status": "FAIL",
+      "step_end_unix": {},
+      "step_start_unix": {
+        "10": 1786261709.6939478
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "1f7bfb9cb617848a3e84b23b2699fc7227feca8c8917b1c48335f1a220125e3c",
+        "operation_fingerprint": "eca31cff2c4578119eb5d9c7fd18ef44bb3f770ba98bfed0dd465a5c282f5726",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "715ffae5101924a4adaf7f1e1d28ec81da02b347ecae0d44e51ad88c269b7fc3",
+        "trace_hash": "2c695ed068af10af3b23493526cc527ac5c5671183a934bba6bdffb73a0456fb"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [
+          "critic update count=0, expected=5",
+          "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+          "ema update count=0, expected=5",
+          "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+          "missing final observed G/C/EMA version record"
+        ],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "missing",
+        "final_observed": {
+          "critic": null,
+          "ema": null,
+          "generator": null
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "INCOMPLETE_OR_MISMATCH",
+        "updates_observed": {
+          "critic": [],
+          "ema": [],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_installed": 2,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_loss_end": 1,
+        "critic_loss_start": 1,
+        "critic_optimizer_created": 1,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "frozen_block_streamer_install_end": 1,
+        "frozen_block_streamer_install_start": 1,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 1,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 10,
+        "model_move_start": 10,
+        "model_swap_end": 4,
+        "model_swap_start": 4,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "phase_resident_frozen_blocks_end": 1,
+        "phase_resident_frozen_blocks_start": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_step_start": 1
+      },
+      "cuda": {
+        "max_allocated_bytes": 38362467840,
+        "max_reserved_bytes": 38962987008
+      },
+      "errors": [
+        "step coverage starts=[10] ends=[], expected=[10, 11, 12, 13, 14]",
+        "critic update count=0, expected=5",
+        "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+        "ema update count=0, expected=5",
+        "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+        "missing final observed G/C/EMA version record",
+        "activation offload final live bytes=[], expected=[0]",
+        "streamer final resident bytes=[], expected=[0, 0]",
+        "training completion event count is not exactly one"
+      ],
+      "event_count": 76,
+      "lifecycle": {
+        "activation_live_final": [],
+        "streamer_materialize_count": 0,
+        "streamer_materialized_bytes": 0,
+        "streamer_resident_final": []
+      },
+      "rank": 15,
+      "raw_sha256": "c48b01c673655c4dbb191d522f6a18c8adc6f8aa5919974c6717a0fa50124f13",
+      "status": "FAIL",
+      "step_end_unix": {},
+      "step_start_unix": {
+        "10": 1786261709.7004943
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "6bef80ced587c15d27429684039659b09aa13fd69b66c0750626c6abf36bf56a",
+        "operation_fingerprint": "431ad52eefb8147264c651cb2785a68dfde8fb3b55036e282c85cb2624bcb38b",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "63fd2e7ee4ed94214476e1541100407c97921d68d6e664f916d8ec55fc9b629f",
+        "trace_hash": "bea68a2f333462e7b0705de4ec3227684159442077f5a5112a18f5af3f4703e9"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [
+          "critic update count=0, expected=5",
+          "critic update steps=[], expected=[10, 11, 12, 13, 14]",
+          "ema update count=0, expected=5",
+          "ema update steps=[], expected=[10, 11, 12, 13, 14]",
+          "missing final observed G/C/EMA version record"
+        ],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "missing",
+        "final_observed": {
+          "critic": null,
+          "ema": null,
+          "generator": null
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "INCOMPLETE_OR_MISMATCH",
+        "updates_observed": {
+          "critic": [],
+          "ema": [],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "run_id": "ra16_f5_pr12_20260809_002",
+  "schema_version": "distillschedule.typed_routea_world16.revalidation.v2",
+  "status": "OOM",
+  "timing": {
+    "reason": "functional/evidence contract did not pass",
+    "status": "NOT_CLAIMABLE"
+  },
+  "topology": {
+    "errors": [],
+    "global_ranks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "hosts": [
+      "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+      "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0"
+    ],
+    "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_ra16_f5_pr4_20260808/artifacts/runs/ra16_f5_pr12_20260809_002/preregistration/topology.json",
+    "raw": {
+      "records": [
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 0,
+          "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+          "local_rank": 0,
+          "local_world_size": 8,
+          "node_rank": 0,
+          "rank": 0,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 1,
+          "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+          "local_rank": 1,
+          "local_world_size": 8,
+          "node_rank": 0,
+          "rank": 1,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 2,
+          "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+          "local_rank": 2,
+          "local_world_size": 8,
+          "node_rank": 0,
+          "rank": 2,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 3,
+          "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+          "local_rank": 3,
+          "local_world_size": 8,
+          "node_rank": 0,
+          "rank": 3,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 4,
+          "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+          "local_rank": 4,
+          "local_world_size": 8,
+          "node_rank": 0,
+          "rank": 4,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 5,
+          "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+          "local_rank": 5,
+          "local_world_size": 8,
+          "node_rank": 0,
+          "rank": 5,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 6,
+          "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+          "local_rank": 6,
+          "local_world_size": 8,
+          "node_rank": 0,
+          "rank": 6,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 7,
+          "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+          "local_rank": 7,
+          "local_world_size": 8,
+          "node_rank": 0,
+          "rank": 7,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 0,
+          "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+          "local_rank": 0,
+          "local_world_size": 8,
+          "node_rank": 1,
+          "rank": 8,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 1,
+          "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+          "local_rank": 1,
+          "local_world_size": 8,
+          "node_rank": 1,
+          "rank": 9,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 2,
+          "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+          "local_rank": 2,
+          "local_world_size": 8,
+          "node_rank": 1,
+          "rank": 10,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 3,
+          "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+          "local_rank": 3,
+          "local_world_size": 8,
+          "node_rank": 1,
+          "rank": 11,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 4,
+          "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+          "local_rank": 4,
+          "local_world_size": 8,
+          "node_rank": 1,
+          "rank": 12,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 5,
+          "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+          "local_rank": 5,
+          "local_world_size": 8,
+          "node_rank": 1,
+          "rank": 13,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 6,
+          "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+          "local_rank": 6,
+          "local_world_size": 8,
+          "node_rank": 1,
+          "rank": 14,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 7,
+          "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+          "local_rank": 7,
+          "local_world_size": 8,
+          "node_rank": 1,
+          "rank": 15,
+          "world_size": 16
+        }
+      ],
+      "schema_version": "distillschedule.topology_probe.v1",
+      "status": "PASS",
+      "summary": {
+        "hosts_by_node": {
+          "0": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+          "1": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0"
+        },
+        "local_world_size": 8,
+        "nodes": 2,
+        "ranks_by_node": {
+          "0": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "1": [
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ]
+        },
+        "world_size": 16
+      }
+    },
+    "sha256": "7094f0574be706780abe0bcbd91712547173f13a7fe89d4dfd242c85cae854f8",
+    "status": "PASS"
+  }
+}

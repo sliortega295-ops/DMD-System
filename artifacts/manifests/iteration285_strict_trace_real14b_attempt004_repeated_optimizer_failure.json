@@ -1,0 +1,41 @@
+{
+  "dmd_head": "ed3f7000bbd800873be48209736e98f48232bdd8",
+  "failure_signature": {
+    "boundary": "first resumed Step10-A AdamW optimizer step after two GAS2 rollouts/backwards",
+    "error": "RuntimeError: API has changed, state_steps argument must contain a list of singleton tensors",
+    "failed_global_ranks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "new_oom": false,
+    "new_oom_kill": false,
+    "same_magnitude_as_attempt003": true,
+    "same_mechanism_as_attempt003": true
+  },
+  "iteration": 285,
+  "measured_resource_peaks": {
+    "node0_cgroup_gib": 333.8841972351074,
+    "node0_max_per_gpu_mib": 31986.0,
+    "node1_cgroup_gib": 74.57315444946289,
+    "node1_max_per_gpu_mib": 36754.0,
+    "performance_use": "diagnostic_only"
+  },
+  "preserved_run_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/runs/rb16_f5_stricttrace_v4_pipeline_correctness_20260810_004",
+  "rejected_repair": {
+    "action": "production code and unit-only assertion reverted; evidence commit retained in history",
+    "commit": "ed3f7000bbd800873be48209736e98f48232bdd8",
+    "mechanism": "isinstance check stopped at ZeRO-3 wrapper because wrapper already exposes state; it never inspected the nested concrete AdamW"
+  },
+  "run_id": "rb16_f5_stricttrace_v4_pipeline_correctness_20260810_004",
+  "runtime_head": "ec1462bfb84ca444b3beae216c66632744e0d369",
+  "schema_version": "distillschedule.iteration285.real14b_attempt004_repeated_optimizer_failure.v1",
+  "status": "REPEATED_KNOWN_FAILURE_STOPPED",
+  "stop_rule": "same signature repeated after one bounded repair; no further patch or GPU retry in Iteration 285",
+  "trace_bundle_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3"
+}

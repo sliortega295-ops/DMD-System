@@ -1,0 +1,26 @@
+{
+  "bounded_fix": "wrap only target-state injection in torch.no_grad, matching production materialization helper",
+  "evidence": {
+    "node0_log": {
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/profile/iteration283_phase_reinitialization_gate_20260810_003/node0.log",
+      "sha256": "0457f1979f3755d26db63dd3a6b21ad1971f49026985ad78f2499bc6dc497e48"
+    },
+    "node1_log": {
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/profile/iteration283_phase_reinitialization_gate_20260810_003/node1.log",
+      "sha256": "a57351e0bf68dbec8ecbc9360d59b0536a5541cbaba50229f2c2c7cb3d283df7"
+    }
+  },
+  "failure": "rank0 copied gathered G1 into a requires-grad leaf without torch.no_grad",
+  "oom_delta": 0,
+  "oom_kill_delta": 0,
+  "schema_version": "distillschedule.iteration283.phase_reinitialization_attempt003.v1",
+  "semantic_change": false,
+  "status": "FAIL_HARNESS_LEAF_COPY_GUARD",
+  "verified": [
+    "Phase-A ZeRO-3 update/gather",
+    "Phase-A group destroy",
+    "Phase-B global world4 init",
+    "DeepSpeed Phase-B cdb attach",
+    "target group creation"
+  ]
+}

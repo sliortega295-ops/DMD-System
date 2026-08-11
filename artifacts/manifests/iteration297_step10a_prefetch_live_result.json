@@ -1,0 +1,34 @@
+{
+  "schema_version": "distillschedule.iteration_result.v1",
+  "iteration": 297,
+  "date": "2026-08-10",
+  "status": "BOUNDED_NEGATIVE_BOUNDARY_IDENTITY_PASS",
+  "run_id": "rb16_step10a_iter297_persist2m_prefetch384m_live768m_timing_20260810_001",
+  "source_head": "295d13c538771d5e5c726b501def9d7f5e168ad0",
+  "claim_boundary": "one preliminary Step10-only timing run; full post-update state and Full5 formal timing Not Run",
+  "metrics": {
+    "generator_rank_step10a_median_seconds": 115.48951340152416,
+    "world_max_step10a_seconds": 120.90967687312514,
+    "wave0_rollout_median_seconds": 19.27530078345444,
+    "wave0_backward_median_seconds": 36.0826208795188,
+    "wave1_rollout_median_seconds": 21.213109653443098,
+    "wave1_backward_median_seconds": 37.35456841287669,
+    "node0_cgroup_peak_bytes": 359993237504,
+    "node0_gpu_peak_mib_each": 31762,
+    "oom_delta": 0
+  },
+  "relative_to_iteration287": {
+    "generator_median_improvement_percent": 6.194,
+    "world_max_improvement_percent": 6.274
+  },
+  "relative_to_iteration296": {
+    "generator_median_improvement_percent": 1.147
+  },
+  "boundary_correctness": {
+    "trace_x0_gradient_loss": "exact for 8 ranks x 2 waves",
+    "versions": "G2->G3 once; C10/EMA10 unchanged"
+  },
+  "source_attribution": "DeepSpeed parameter_offload selects the default stream when overlap_comm=false, so prefetch cannot overlap model compute",
+  "refutation": "Step10-A remained above 110.804 seconds",
+  "next": "same bounded policy with overlap_comm=true"
+}

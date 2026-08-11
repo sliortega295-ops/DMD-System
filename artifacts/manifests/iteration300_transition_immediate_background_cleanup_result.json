@@ -1,0 +1,39 @@
+{
+  "schema_version": "distillschedule.iteration_result.v1",
+  "iteration": 300,
+  "date": "2026-08-10",
+  "status": "BOUNDED_NEGATIVE_EXACT_FULL5_PASS",
+  "run_id": "rb16_f5_iter300_persistent_pinned_deferred_cleanup_correctness_20260810_001",
+  "source_head": "162eef5e27aa96fb3732f5ac2ec435ae275421fe",
+  "runtime_head": "ec1462bfb84ca444b3beae216c66632744e0d369",
+  "claim_boundary": "one exact correctness/profile run; formal repeated timing Not Run",
+  "summary_sha256": "76b7bf788ed88d703a3fbe3ad7dc89ffcef8c48830dab0695800e7b6c886c2ef",
+  "metrics": {
+    "step10a_world_max_seconds": 124.91614717897028,
+    "transition_world_max_seconds": 40.980166488094255,
+    "critic_phase_seconds": 163.09901939099655,
+    "full5_seconds": 333.1029575881548,
+    "direct_h2d_cuda_interval_max_seconds": 2.94653515625,
+    "target_materialization_wall_max_seconds": 3.5276350090280175,
+    "background_cleanup_wall_max_seconds": 26.179999662097543,
+    "cleanup_join_wait_max_seconds": 0.00014678901061415672,
+    "g3_broadcast_max_seconds": 19.244618789991364,
+    "student_initialize_max_seconds": 27.20774769806303,
+    "target_ready_fence_max_seconds": 11.048339901026338,
+    "node0_cgroup_peak_bytes": 716753629184,
+    "node1_cgroup_peak_bytes": 171579322368,
+    "oom_delta": 0
+  },
+  "relative_to_iteration299": {
+    "transition_regression_percent": 32.6767,
+    "full5_regression_percent": 1.4072
+  },
+  "correctness": {
+    "status": "PASS",
+    "ranks": "16/16",
+    "versions": "G2/C10/EMA10 -> G3/C15/EMA15",
+    "payloads_and_queues": "exact and flushed"
+  },
+  "refutation": "cleanup overlapped the target setup critical path and transition exceeded 27.798541 seconds",
+  "next": "one bounded late-start cleanup trial after target-ready, inside Critic timing"
+}

@@ -1,0 +1,45 @@
+{
+  "schema_version": "distillschedule.iteration_preflight.v2",
+  "iteration": 264,
+  "experiment_id": "RA16-F5-GLP-SCORE4",
+  "gate": "Route-A world16 Full5 functional admission",
+  "authorized_hypothesis": "Streaming exactly Score frozen blocks 36-39 with window 1, in addition to the verified Generator LP-state phase offload, supplies the remaining Critic checkpoint-backward headroom.",
+  "frozen_parent": "RA16-F5-GLP-OFFLOAD",
+  "frozen_contract": {
+    "resolution": [384, 640],
+    "world_size": 16,
+    "micro_batch_per_gpu": 1,
+    "gradient_accumulation_steps": 1,
+    "global_batch": 16,
+    "steps": [10, 11, 12, 13, 14],
+    "checkpoint": "checkpoint-10",
+    "trace": "rank16 operation trace v3",
+    "zero_stage": 1,
+    "optimizer_offload": "cpu",
+    "generator_streamed_blocks": [0, 24, 1, 5, 8, 25, 10, 32, 36, 15, 16, 26],
+    "generator_lp_state_phase_offload": true,
+    "activation_offload_threshold_mib": 32,
+    "ema_updates_expected": 5
+  },
+  "only_change": {
+    "score_streamed_blocks": [36, 37, 38, 39],
+    "window": 1,
+    "host_policy": "HOST_SHARED_IMMUTABLE"
+  },
+  "matching_prior_evidence": {
+    "iteration_263": "GLP offload removed exactly 2,502,885,376 bytes/rank but all ranks later OOMed in Critic checkpoint recomputation on a 216-MiB request.",
+    "validated_recovery_reference": "RA16-F5-FS40 completed Full5 with all 40 Score blocks streamed."
+  },
+  "rejected_paths": [
+    "unchanged retry",
+    "Generator g16",
+    "ZeRO-2",
+    "activation threshold change",
+    "shape/trace/loss/update-order change",
+    "post-hoc Score block sweep"
+  ],
+  "falsifiable_question": "Does one preregistered four-block Score lifecycle change admit complete Full5 while preserving exact semantics?",
+  "decision": "GO",
+  "attempt_budget": 1,
+  "formal_timing": "NOT_RUN"
+}

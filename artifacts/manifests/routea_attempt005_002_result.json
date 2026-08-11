@@ -1,0 +1,5075 @@
+{
+  "checkpoint_15": {
+    "entries": [
+      {
+        "bytes": 13,
+        "path": "critic/latest"
+      },
+      {
+        "bytes": 2492731752,
+        "path": "critic/pytorch_lora_weights.safetensors"
+      },
+      {
+        "bytes": 934744005,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_0_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 934744143,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_10_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 934744079,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_11_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 934744143,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_12_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 934744079,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_13_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 934744207,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_14_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 934744015,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_15_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 934744261,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_1_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 934743941,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_2_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 934744261,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_3_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 934743941,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_4_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 934744325,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_5_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 934743941,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_6_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 934744197,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_7_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 934744005,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_8_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 934744133,
+        "path": "critic/pytorch_model/bf16_zero_pp_rank_9_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 31118503730,
+        "path": "critic/pytorch_model/mp_rank_00_model_states.pt"
+      },
+      {
+        "bytes": 16449,
+        "path": "critic/random_states_0.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "critic/random_states_1.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "critic/random_states_10.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "critic/random_states_11.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "critic/random_states_12.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "critic/random_states_13.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "critic/random_states_14.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "critic/random_states_15.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "critic/random_states_2.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "critic/random_states_3.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "critic/random_states_4.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "critic/random_states_5.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "critic/random_states_6.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "critic/random_states_7.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "critic/random_states_8.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "critic/random_states_9.pkl"
+      },
+      {
+        "bytes": 1401,
+        "path": "critic/scheduler.bin"
+      },
+      {
+        "bytes": 47875109,
+        "path": "critic/transformer_partial.pth"
+      },
+      {
+        "bytes": 33270,
+        "path": "critic/zero_to_fp32.py"
+      },
+      {
+        "bytes": 2209,
+        "path": "distributed_checkpoint/.metadata"
+      },
+      {
+        "bytes": 1261,
+        "path": "distributed_checkpoint/__0_0.distcp"
+      },
+      {
+        "bytes": 0,
+        "path": "distributed_checkpoint/__10_0.distcp"
+      },
+      {
+        "bytes": 0,
+        "path": "distributed_checkpoint/__11_0.distcp"
+      },
+      {
+        "bytes": 0,
+        "path": "distributed_checkpoint/__12_0.distcp"
+      },
+      {
+        "bytes": 0,
+        "path": "distributed_checkpoint/__13_0.distcp"
+      },
+      {
+        "bytes": 0,
+        "path": "distributed_checkpoint/__14_0.distcp"
+      },
+      {
+        "bytes": 0,
+        "path": "distributed_checkpoint/__15_0.distcp"
+      },
+      {
+        "bytes": 1261,
+        "path": "distributed_checkpoint/__1_0.distcp"
+      },
+      {
+        "bytes": 1261,
+        "path": "distributed_checkpoint/__2_0.distcp"
+      },
+      {
+        "bytes": 1261,
+        "path": "distributed_checkpoint/__3_0.distcp"
+      },
+      {
+        "bytes": 1261,
+        "path": "distributed_checkpoint/__4_0.distcp"
+      },
+      {
+        "bytes": 1261,
+        "path": "distributed_checkpoint/__5_0.distcp"
+      },
+      {
+        "bytes": 1261,
+        "path": "distributed_checkpoint/__6_0.distcp"
+      },
+      {
+        "bytes": 1261,
+        "path": "distributed_checkpoint/__7_0.distcp"
+      },
+      {
+        "bytes": 1261,
+        "path": "distributed_checkpoint/__8_0.distcp"
+      },
+      {
+        "bytes": 0,
+        "path": "distributed_checkpoint/__9_0.distcp"
+      },
+      {
+        "bytes": 13,
+        "path": "latest"
+      },
+      {
+        "bytes": 1069536607,
+        "path": "model_ema/sparse_ema-00000.pt"
+      },
+      {
+        "bytes": 1073600563,
+        "path": "model_ema/sparse_ema-00001.pt"
+      },
+      {
+        "bytes": 360030967,
+        "path": "model_ema/sparse_ema-00002.pt"
+      },
+      {
+        "bytes": 106784,
+        "path": "model_ema/sparse_ema_manifest.json"
+      },
+      {
+        "bytes": 2502988776,
+        "path": "pytorch_lora_weights.safetensors"
+      },
+      {
+        "bytes": 938590213,
+        "path": "pytorch_model/bf16_zero_pp_rank_0_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590351,
+        "path": "pytorch_model/bf16_zero_pp_rank_10_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590223,
+        "path": "pytorch_model/bf16_zero_pp_rank_11_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590415,
+        "path": "pytorch_model/bf16_zero_pp_rank_12_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590095,
+        "path": "pytorch_model/bf16_zero_pp_rank_13_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590479,
+        "path": "pytorch_model/bf16_zero_pp_rank_14_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590287,
+        "path": "pytorch_model/bf16_zero_pp_rank_15_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590277,
+        "path": "pytorch_model/bf16_zero_pp_rank_1_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590149,
+        "path": "pytorch_model/bf16_zero_pp_rank_2_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590405,
+        "path": "pytorch_model/bf16_zero_pp_rank_3_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590085,
+        "path": "pytorch_model/bf16_zero_pp_rank_4_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590469,
+        "path": "pytorch_model/bf16_zero_pp_rank_5_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590213,
+        "path": "pytorch_model/bf16_zero_pp_rank_6_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590277,
+        "path": "pytorch_model/bf16_zero_pp_rank_7_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590277,
+        "path": "pytorch_model/bf16_zero_pp_rank_8_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 938590213,
+        "path": "pytorch_model/bf16_zero_pp_rank_9_mp_rank_00_optim_states.pt"
+      },
+      {
+        "bytes": 31128775956,
+        "path": "pytorch_model/mp_rank_00_model_states.pt"
+      },
+      {
+        "bytes": 16449,
+        "path": "random_states_0.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "random_states_1.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "random_states_10.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "random_states_11.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "random_states_12.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "random_states_13.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "random_states_14.pkl"
+      },
+      {
+        "bytes": 16464,
+        "path": "random_states_15.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "random_states_2.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "random_states_3.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "random_states_4.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "random_states_5.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "random_states_6.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "random_states_7.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "random_states_8.pkl"
+      },
+      {
+        "bytes": 16449,
+        "path": "random_states_9.pkl"
+      },
+      {
+        "bytes": 1401,
+        "path": "scheduler.bin"
+      },
+      {
+        "bytes": 58133463,
+        "path": "transformer_partial.pth"
+      },
+      {
+        "bytes": 33270,
+        "path": "zero_to_fp32.py"
+      }
+    ],
+    "file_count": 97,
+    "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_pr3_0cd40e4/artifacts/runs/routea_attempt005_full5_world16_20260808_002/checkpoint-15",
+    "status": "PASS",
+    "structural_digest": "4653adf85b32de7aa31db10b2fbc470b4bb2b86df40cf9de73cc43cdf435fcdc",
+    "total_bytes": 99826243285
+  },
+  "claim_scope": "one-run functional acceptance and diagnostic consistency of the typed Route-A world16 path; not a formal repeated speedup",
+  "claimable": true,
+  "evidence_contract": {
+    "contract_digest": "1d634393bffed554f002d51d9a10d581961a8453534edb1b0f357f7a85a09ba7",
+    "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_pr3_0cd40e4/artifacts/runs/routea_attempt005_full5_world16_20260808_002/preregistration/evidence_contract.json",
+    "sha256": "21d4652951aaae853d4d27431c91a593f55a1afc700d4da97f82f239b0ca4ab6",
+    "shared_digest": "73664b63bd714d902c8c413ec39815656f85f8ae33a36db93b43ed2499502d5e"
+  },
+  "evidence_errors": [],
+  "frozen_contract": {
+    "final_versions": {
+      "critic": 15,
+      "ema": 15,
+      "generator": 3
+    },
+    "global_batch": 16,
+    "gradient_accumulation_steps": 1,
+    "initial_versions": {
+      "critic": 10,
+      "ema": 10,
+      "generator": 2
+    },
+    "latent": [
+      1,
+      16,
+      9,
+      48,
+      80
+    ],
+    "micro_batch_per_gpu": 1,
+    "optimizer_offload": "cpu",
+    "parameter_offload": "none",
+    "resolution": [
+      384,
+      640
+    ],
+    "steps": [
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "world_size": 16,
+    "zero_stage": 1
+  },
+  "gpu": {
+    "max_allocated_bytes": 33804603904,
+    "max_reserved_bytes": 36335255552
+  },
+  "legacy_attempt003_policy": {
+    "reason": "invalid mixed key=value/CSV launcher manifest and no in-run topology/evidence contract",
+    "retroactive_repair_allowed": false,
+    "status": "PARTIAL"
+  },
+  "lifecycle": {
+    "max_materialize_count_per_rank": 2680,
+    "max_materialized_bytes_per_rank": 1883473469440
+  },
+  "limitations": [
+    "Single diagnostic-instrumented acceptance run; formal timing requires matched repeated Route-A/Route-B trials.",
+    "The typed executor still invokes the pinned external Helios model-math compatibility entrypoint.",
+    "Host-memory pressure and cgroup peak/max are observational unless an actual OOM/oom_kill or memory-attributed nonzero exit occurs.",
+    "Any derived version trajectory is diagnostic only; PASS requires observed component versions, EMA predicates and a terminal observed version bundle."
+  ],
+  "memory_observation": {
+    "host_reserve_pass_fail_removed": true,
+    "memory_failure_nodes": [],
+    "node_observations": [
+      {
+        "acceptance_policy": "actual_oom_only",
+        "cgroup_memory_current_after": 281821159424,
+        "cgroup_memory_current_before": 226851184640,
+        "cgroup_memory_max": 816043786240,
+        "cgroup_memory_peak_after": null,
+        "cgroup_memory_peak_before": null,
+        "cuda_oom_signature": false,
+        "high_pressure_without_oom_is_failure": false,
+        "host_reserve_gate": false,
+        "memory_failure": false,
+        "oom_delta": 0,
+        "oom_kill_delta": 0
+      },
+      {
+        "acceptance_policy": "actual_oom_only",
+        "cgroup_memory_current_after": 264521879552,
+        "cgroup_memory_current_before": 227471265792,
+        "cgroup_memory_max": 816043786240,
+        "cgroup_memory_peak_after": null,
+        "cgroup_memory_peak_before": null,
+        "cuda_oom_signature": false,
+        "high_pressure_without_oom_is_failure": false,
+        "host_reserve_gate": false,
+        "memory_failure": false,
+        "oom_delta": 0,
+        "oom_kill_delta": 0
+      }
+    ],
+    "normative_gate": "actual_oom_only"
+  },
+  "nodes": [
+    {
+      "console_path": "/share/project/shuchenweng/yongyan_liu/DMD-System_pr3_0cd40e4/artifacts/runs/routea_attempt005_full5_world16_20260808_002/launcher/node_0/console.log",
+      "console_sha256": "0d0753da0170d4381bd42ae0a32518c15a289b17ae44287df855a866747f26c8",
+      "final_return_code": 0,
+      "gpu_inventory": {
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_pr3_0cd40e4/artifacts/runs/routea_attempt005_full5_world16_20260808_002/launcher/node_0/gpu_inventory.csv",
+        "rows": [
+          {
+            "index": "0",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-37ef51e2-9094-844f-1e66-417ef772ce6f"
+          },
+          {
+            "index": "1",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-6df6d7bd-47ee-5c80-2b19-d1a9243767e4"
+          },
+          {
+            "index": "2",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-938f17e4-b171-f484-f785-42f3ab477ced"
+          },
+          {
+            "index": "3",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-11bbad58-4191-719d-f194-d15f3194b4e1"
+          },
+          {
+            "index": "4",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-ae125430-0005-fc2b-95fb-ff42ba722ef9"
+          },
+          {
+            "index": "5",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-dbdb626f-39c9-32ce-7ff7-69631db0de65"
+          },
+          {
+            "index": "6",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-2cbbce0b-d21a-a102-ba95-ef5d1bc080c1"
+          },
+          {
+            "index": "7",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-83cebcf3-06b9-c0dc-7853-c1c80dc3a89e"
+          }
+        ],
+        "sha256": "84487afdaa377d82796768c13b001477527856ae97e591c589206aa6b5729183"
+      },
+      "host": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+      "manifest_path": "/share/project/shuchenweng/yongyan_liu/DMD-System_pr3_0cd40e4/artifacts/runs/routea_attempt005_full5_world16_20260808_002/launcher/node_0/launch_manifest.txt",
+      "manifest_sha256": "9b6871858b0df67a965f59255c18cbe47410fca9eb26b067ce8dbe903c92d7c0",
+      "memory_observation": {
+        "acceptance_policy": "actual_oom_only",
+        "cgroup_memory_current_after": 281821159424,
+        "cgroup_memory_current_before": 226851184640,
+        "cgroup_memory_max": 816043786240,
+        "cgroup_memory_peak_after": null,
+        "cgroup_memory_peak_before": null,
+        "cuda_oom_signature": false,
+        "high_pressure_without_oom_is_failure": false,
+        "host_reserve_gate": false,
+        "memory_failure": false,
+        "oom_delta": 0,
+        "oom_kill_delta": 0
+      },
+      "node_contract_sha256": "11620ffc329b74a12d3835df17aec4d215c96805d82b7808d8da89a799991045",
+      "node_rank": 0,
+      "rendered_config_sha256": "2134ac6c9fab0b3293dad6a6164d8925e817b2073ab118e616dd7509cb1e4196",
+      "resource": {
+        "cgroup_peak_bytes": 798765285376,
+        "host_used_peak_bytes": 582947000000,
+        "invalid_rows": 0,
+        "samples": 1236,
+        "span_seconds": 1558.3882746696472,
+        "status": "MEASURED"
+      },
+      "runtime_identity": {
+        "accelerate": {
+          "path": "/tmp/distillschedule-helios-official-torch210/bin/accelerate",
+          "sha256": "55e23583028d7373e24231f0159defe085a36836098c83c08b7205368f2789bf",
+          "version": "1.12.0"
+        },
+        "deepspeed": {
+          "path": "/tmp/distillschedule-helios-official-torch210/bin/deepspeed",
+          "sha256": "8fea1eee673999a5770daf56ebf9a9b7e89d903a37b1821dae4d472ffde9bc0c",
+          "version": "0.18.4"
+        },
+        "helios": {
+          "dirty": false,
+          "entrypoint_sha256": "137f2035c5ef179761dcdc5fc8ce2b90fb77152eeba123a6a260a4d26a9f6ddf",
+          "head": "4093bc4ee328835bbc19ef6c466eb2d286422b4f",
+          "root": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_routea_compat_20260807"
+        },
+        "python": {
+          "path": "/share/project/shuchenweng/.conda/envs/distillschedule-bootstrap-py310/bin/python3.10",
+          "sha256": "4c8caf210fd4160c1027adfa161540627fdb6a58c4b22015245b2d5c42d213e7",
+          "version": "Python 3.10.20"
+        },
+        "schema_version": "distillschedule.runtime_identity.v1"
+      },
+      "topology_sha256": "7094f0574be706780abe0bcbd91712547173f13a7fe89d4dfd242c85cae854f8"
+    },
+    {
+      "console_path": "/share/project/shuchenweng/yongyan_liu/DMD-System_pr3_0cd40e4/artifacts/runs/routea_attempt005_full5_world16_20260808_002/launcher/node_1/console.log",
+      "console_sha256": "41cd49af07654f9004ad2dde5396c2fbab6b501956da0f7e4a9a0fddc9c64144",
+      "final_return_code": 0,
+      "gpu_inventory": {
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_pr3_0cd40e4/artifacts/runs/routea_attempt005_full5_world16_20260808_002/launcher/node_1/gpu_inventory.csv",
+        "rows": [
+          {
+            "index": "0",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-cad55364-e014-c35f-337e-db899afd1c6a"
+          },
+          {
+            "index": "1",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-a904c6f6-6410-dc0f-c7c3-efc068004617"
+          },
+          {
+            "index": "2",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-79ab3e5e-e382-1f9c-bede-1900666e9283"
+          },
+          {
+            "index": "3",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-bab43db0-a051-0419-39f7-e33effa9445b"
+          },
+          {
+            "index": "4",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-44bddf94-7411-b3ad-f195-fdbdd12fa73e"
+          },
+          {
+            "index": "5",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-af8dba1f-f74e-6a55-bb9e-6c8961edbd6e"
+          },
+          {
+            "index": "6",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-5edaa614-d5f8-8a3f-11ec-b128f8d029f3"
+          },
+          {
+            "index": "7",
+            "memory.free [MiB]": "40339 MiB",
+            "memory.total [MiB]": "40960 MiB",
+            "name": "NVIDIA A100-SXM4-40GB",
+            "uuid": "GPU-01fff32a-1dd6-93a7-1aae-60d378382961"
+          }
+        ],
+        "sha256": "047d1e4f03e33213e3a37c41a84ccc26538a5078da12ae549dc9542d4612d6e4"
+      },
+      "host": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+      "manifest_path": "/share/project/shuchenweng/yongyan_liu/DMD-System_pr3_0cd40e4/artifacts/runs/routea_attempt005_full5_world16_20260808_002/launcher/node_1/launch_manifest.txt",
+      "manifest_sha256": "15cb9beedc5dc6fcc4dd2c9c660bae309268ac847dcda11794acf43bd1342b0e",
+      "memory_observation": {
+        "acceptance_policy": "actual_oom_only",
+        "cgroup_memory_current_after": 264521879552,
+        "cgroup_memory_current_before": 227471265792,
+        "cgroup_memory_max": 816043786240,
+        "cgroup_memory_peak_after": null,
+        "cgroup_memory_peak_before": null,
+        "cuda_oom_signature": false,
+        "high_pressure_without_oom_is_failure": false,
+        "host_reserve_gate": false,
+        "memory_failure": false,
+        "oom_delta": 0,
+        "oom_kill_delta": 0
+      },
+      "node_contract_sha256": "421110172be148102308b28486e14294178a3bbdc195b446c7434327e1dca4c4",
+      "node_rank": 1,
+      "rendered_config_sha256": "2134ac6c9fab0b3293dad6a6164d8925e817b2073ab118e616dd7509cb1e4196",
+      "resource": {
+        "cgroup_peak_bytes": 782242111488,
+        "host_used_peak_bytes": 586263000000,
+        "invalid_rows": 0,
+        "samples": 1249,
+        "span_seconds": 1558.1615722179413,
+        "status": "MEASURED"
+      },
+      "runtime_identity": {
+        "accelerate": {
+          "path": "/tmp/distillschedule-helios-official-torch210/bin/accelerate",
+          "sha256": "55e23583028d7373e24231f0159defe085a36836098c83c08b7205368f2789bf",
+          "version": "1.12.0"
+        },
+        "deepspeed": {
+          "path": "/tmp/distillschedule-helios-official-torch210/bin/deepspeed",
+          "sha256": "8fea1eee673999a5770daf56ebf9a9b7e89d903a37b1821dae4d472ffde9bc0c",
+          "version": "0.18.4"
+        },
+        "helios": {
+          "dirty": false,
+          "entrypoint_sha256": "137f2035c5ef179761dcdc5fc8ce2b90fb77152eeba123a6a260a4d26a9f6ddf",
+          "head": "4093bc4ee328835bbc19ef6c466eb2d286422b4f",
+          "root": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_routea_compat_20260807"
+        },
+        "python": {
+          "path": "/share/project/shuchenweng/.conda/envs/distillschedule-bootstrap-py310/bin/python3.10",
+          "sha256": "4c8caf210fd4160c1027adfa161540627fdb6a58c4b22015245b2d5c42d213e7",
+          "version": "Python 3.10.20"
+        },
+        "schema_version": "distillschedule.runtime_identity.v1"
+      },
+      "topology_sha256": "7094f0574be706780abe0bcbd91712547173f13a7fe89d4dfd242c85cae854f8"
+    }
+  ],
+  "rank_count": 16,
+  "rank_status": {
+    "0": "PASS",
+    "1": "PASS",
+    "10": "PASS",
+    "11": "PASS",
+    "12": "PASS",
+    "13": "PASS",
+    "14": "PASS",
+    "15": "PASS",
+    "2": "PASS",
+    "3": "PASS",
+    "4": "PASS",
+    "5": "PASS",
+    "6": "PASS",
+    "7": "PASS",
+    "8": "PASS",
+    "9": "PASS"
+  },
+  "ranks": [
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_final": 1,
+        "activation_offload_installed": 1,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_backward_end": 5,
+        "critic_loss_end": 5,
+        "critic_loss_start": 5,
+        "critic_optimizer_created": 1,
+        "critic_optimizer_step": 5,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "ema_step": 5,
+        "frozen_block_streamer_final": 2,
+        "frozen_block_streamer_install_end": 2,
+        "frozen_block_streamer_install_start": 2,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 2,
+        "immutable_model_backing_final": 2,
+        "immutable_model_backing_install_end": 2,
+        "immutable_model_cache_prepare_end": 2,
+        "immutable_model_cache_prepare_start": 2,
+        "main_start": 1,
+        "model_move_end": 28,
+        "model_move_start": 28,
+        "model_swap_end": 13,
+        "model_swap_start": 13,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_contract_complete": 1,
+        "semantic_critic_gradient_observed": 1,
+        "semantic_critic_only_entry": 1,
+        "semantic_critic_only_exit": 1,
+        "semantic_critic_post_step": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_checkpoint_save_end": 1,
+        "sparse_ema_checkpoint_save_start": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_complete_skip_final_save": 1,
+        "training_step_end": 5,
+        "training_step_start": 5
+      },
+      "cuda": {
+        "max_allocated_bytes": 33727460864,
+        "max_reserved_bytes": 36335255552
+      },
+      "errors": [],
+      "event_count": 179,
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_materialize_count": 2160,
+        "streamer_materialized_bytes": 1518023393280,
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 0,
+      "raw_sha256": "bd3e786b9aecf138cf59cef9c1c316b3d38879042ec2a9c4a0a9aca814a4c977",
+      "status": "PASS",
+      "step_end_unix": {
+        "10": 1786202209.9300444,
+        "11": 1786202321.633502,
+        "12": 1786202438.6995263,
+        "13": 1786202554.3268702,
+        "14": 1786202691.2037666
+      },
+      "step_start_unix": {
+        "10": 1786201926.3631887,
+        "11": 1786202210.8084657,
+        "12": 1786202322.4525793,
+        "13": 1786202439.4242392,
+        "14": 1786202555.0667825
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "4e902284ff2498ff34ee4bc38a34ddbf009a1caa07e6df1ac8fd124b19f2d2af",
+        "operation_fingerprint": "4feebc9f22e737cf0e87eefd9121c1d4b76818ddba9af4b2da0102a9f4b7ff8d",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "c8b7bc4a62bbe25727a0cc4486dfeb34f513b3a0cbc193fd05d96c1d81598df4",
+        "trace_hash": "b5ae077fcbabf64fc183dbecb7bdef1336016f1a1d11547618afb9ce5a7cc8a9"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "terminal_gc_plus_last_observed_ema_update",
+        "final_observed": {
+          "critic": 15,
+          "ema": 15,
+          "generator": 3
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "OBSERVED_EXACT",
+        "updates_observed": {
+          "critic": [
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "ema": [
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_final": 1,
+        "activation_offload_installed": 1,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_backward_end": 5,
+        "critic_loss_end": 5,
+        "critic_loss_start": 5,
+        "critic_optimizer_created": 1,
+        "critic_optimizer_step": 5,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "ema_step": 5,
+        "frozen_block_streamer_final": 2,
+        "frozen_block_streamer_install_end": 2,
+        "frozen_block_streamer_install_start": 2,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 2,
+        "immutable_model_backing_final": 2,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 28,
+        "model_move_start": 28,
+        "model_swap_end": 13,
+        "model_swap_start": 13,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_contract_complete": 1,
+        "semantic_critic_gradient_observed": 1,
+        "semantic_critic_only_entry": 1,
+        "semantic_critic_only_exit": 1,
+        "semantic_critic_post_step": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_checkpoint_save_end": 1,
+        "sparse_ema_checkpoint_save_start": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_complete_skip_final_save": 1,
+        "training_step_end": 5,
+        "training_step_start": 5
+      },
+      "cuda": {
+        "max_allocated_bytes": 33804603904,
+        "max_reserved_bytes": 36335255552
+      },
+      "errors": [],
+      "event_count": 175,
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_materialize_count": 2440,
+        "streamer_materialized_bytes": 1714804203520,
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 1,
+      "raw_sha256": "92d0f5cc49ab339626eacae79f0548b9d712f757226f1631ba1b109a71134f9a",
+      "status": "PASS",
+      "step_end_unix": {
+        "10": 1786202208.0935519,
+        "11": 1786202320.6800177,
+        "12": 1786202437.2972143,
+        "13": 1786202553.6268106,
+        "14": 1786202690.7785904
+      },
+      "step_start_unix": {
+        "10": 1786201926.3577871,
+        "11": 1786202208.6966414,
+        "12": 1786202321.3180883,
+        "13": 1786202437.8911588,
+        "14": 1786202554.285559
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "51c2142412e239df9e869ff3c0cde34ac1486900799b2c83079333db9af58f1a",
+        "operation_fingerprint": "dc5d00102fdd523a6e902ca1d503fa085cca977174842370184de17fa68e64da",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "40b3626a98dc01927c4bc037c480af95146dfe03efdd3c5fab73505c11a88d16",
+        "trace_hash": "50f366d31cfd623edb911e03ba670b30c9af256dc972d07a34c4589043421182"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "terminal_gc_plus_last_observed_ema_update",
+        "final_observed": {
+          "critic": 15,
+          "ema": 15,
+          "generator": 3
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "OBSERVED_EXACT",
+        "updates_observed": {
+          "critic": [
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "ema": [
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_final": 1,
+        "activation_offload_installed": 1,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_backward_end": 5,
+        "critic_loss_end": 5,
+        "critic_loss_start": 5,
+        "critic_optimizer_created": 1,
+        "critic_optimizer_step": 5,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "ema_step": 5,
+        "frozen_block_streamer_final": 2,
+        "frozen_block_streamer_install_end": 2,
+        "frozen_block_streamer_install_start": 2,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 2,
+        "immutable_model_backing_final": 2,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 28,
+        "model_move_start": 28,
+        "model_swap_end": 13,
+        "model_swap_start": 13,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_contract_complete": 1,
+        "semantic_critic_gradient_observed": 1,
+        "semantic_critic_only_entry": 1,
+        "semantic_critic_only_exit": 1,
+        "semantic_critic_post_step": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_checkpoint_save_end": 1,
+        "sparse_ema_checkpoint_save_start": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_complete_skip_final_save": 1,
+        "training_step_end": 5,
+        "training_step_start": 5
+      },
+      "cuda": {
+        "max_allocated_bytes": 33804603904,
+        "max_reserved_bytes": 36335255552
+      },
+      "errors": [],
+      "event_count": 175,
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_materialize_count": 2240,
+        "streamer_materialized_bytes": 1574246481920,
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 2,
+      "raw_sha256": "e087d32962c3a0b6233700242c343cc8d44616f5583ccdb8fccd233653bfc438",
+      "status": "PASS",
+      "step_end_unix": {
+        "10": 1786202207.5137832,
+        "11": 1786202320.105556,
+        "12": 1786202436.7957985,
+        "13": 1786202553.412163,
+        "14": 1786202690.1954553
+      },
+      "step_start_unix": {
+        "10": 1786201926.3563356,
+        "11": 1786202208.1548505,
+        "12": 1786202320.6997414,
+        "13": 1786202437.3980274,
+        "14": 1786202553.992693
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "47f8e6d5bc8d6d6be490c3d54062eec3f19028725ee08ed2d3132689212a8c4e",
+        "operation_fingerprint": "e871a8a761bda8a1c9d9970d029fe306a04c330a9d17f45ace9e2c9a5745db51",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "244a6778c26dbf3c3a70df4a10529045856ff701babb47a0d38cc2151f510c25",
+        "trace_hash": "722a249c849ebc7f7e64502b81ded6ab3ab7aa2f2d4860c70150bdd30ee1d988"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "terminal_gc_plus_last_observed_ema_update",
+        "final_observed": {
+          "critic": 15,
+          "ema": 15,
+          "generator": 3
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "OBSERVED_EXACT",
+        "updates_observed": {
+          "critic": [
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "ema": [
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_final": 1,
+        "activation_offload_installed": 1,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_backward_end": 5,
+        "critic_loss_end": 5,
+        "critic_loss_start": 5,
+        "critic_optimizer_created": 1,
+        "critic_optimizer_step": 5,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "ema_step": 5,
+        "frozen_block_streamer_final": 2,
+        "frozen_block_streamer_install_end": 2,
+        "frozen_block_streamer_install_start": 2,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 2,
+        "immutable_model_backing_final": 2,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 28,
+        "model_move_start": 28,
+        "model_swap_end": 13,
+        "model_swap_start": 13,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_contract_complete": 1,
+        "semantic_critic_gradient_observed": 1,
+        "semantic_critic_only_entry": 1,
+        "semantic_critic_only_exit": 1,
+        "semantic_critic_post_step": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_checkpoint_save_end": 1,
+        "sparse_ema_checkpoint_save_start": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_complete_skip_final_save": 1,
+        "training_step_end": 5,
+        "training_step_start": 5
+      },
+      "cuda": {
+        "max_allocated_bytes": 33804603904,
+        "max_reserved_bytes": 36335255552
+      },
+      "errors": [],
+      "event_count": 175,
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_materialize_count": 2440,
+        "streamer_materialized_bytes": 1714804203520,
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 3,
+      "raw_sha256": "fdf0e1f1e2aaae3a033ab84341382716f99d085a842d012c17c8cb9964319afb",
+      "status": "PASS",
+      "step_end_unix": {
+        "10": 1786202208.0967078,
+        "11": 1786202321.1023035,
+        "12": 1786202437.331492,
+        "13": 1786202553.9135814,
+        "14": 1786202691.0843372
+      },
+      "step_start_unix": {
+        "10": 1786201926.3629594,
+        "11": 1786202208.6882832,
+        "12": 1786202321.67722,
+        "13": 1786202437.9066377,
+        "14": 1786202554.487475
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "36a5ab1484a6f23e5e61bc06d46717b37ffcbeae3d88176b55e1381ba3da8305",
+        "operation_fingerprint": "a706a3c8f0bf21be8d244dd0aa1f842de72e4ac80ec005c5391823a97184b90f",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "3828fb850f952778dd9725bc73e3cc66c23f09cd9fc3c3cc612048a8c699e553",
+        "trace_hash": "693f7037f9590dcdce4539fead5b0d6100fe62d8db8249ad7dcea938a80de6fd"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "terminal_gc_plus_last_observed_ema_update",
+        "final_observed": {
+          "critic": 15,
+          "ema": 15,
+          "generator": 3
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "OBSERVED_EXACT",
+        "updates_observed": {
+          "critic": [
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "ema": [
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_final": 1,
+        "activation_offload_installed": 1,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_backward_end": 5,
+        "critic_loss_end": 5,
+        "critic_loss_start": 5,
+        "critic_optimizer_created": 1,
+        "critic_optimizer_step": 5,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "ema_step": 5,
+        "frozen_block_streamer_final": 2,
+        "frozen_block_streamer_install_end": 2,
+        "frozen_block_streamer_install_start": 2,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 2,
+        "immutable_model_backing_final": 2,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 28,
+        "model_move_start": 28,
+        "model_swap_end": 13,
+        "model_swap_start": 13,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_contract_complete": 1,
+        "semantic_critic_gradient_observed": 1,
+        "semantic_critic_only_entry": 1,
+        "semantic_critic_only_exit": 1,
+        "semantic_critic_post_step": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_checkpoint_save_end": 1,
+        "sparse_ema_checkpoint_save_start": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_complete_skip_final_save": 1,
+        "training_step_end": 5,
+        "training_step_start": 5
+      },
+      "cuda": {
+        "max_allocated_bytes": 33804603904,
+        "max_reserved_bytes": 36335255552
+      },
+      "errors": [],
+      "event_count": 175,
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_materialize_count": 1880,
+        "streamer_materialized_bytes": 1321242583040,
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 4,
+      "raw_sha256": "5f769cbfb2d3ea04623a37f4c5528dc88d044d806a935167f63533ea00f6fe2b",
+      "status": "PASS",
+      "step_end_unix": {
+        "10": 1786202208.6846714,
+        "11": 1786202320.3150039,
+        "12": 1786202436.988281,
+        "13": 1786202553.7296073,
+        "14": 1786202691.1577237
+      },
+      "step_start_unix": {
+        "10": 1786201926.3801072,
+        "11": 1786202209.2954838,
+        "12": 1786202320.9286835,
+        "13": 1786202437.5565746,
+        "14": 1786202554.3152773
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "61503e5484236b114481077a53ada933b4f069b15f0351d87439b54a43d42518",
+        "operation_fingerprint": "c23487f9b7f68696a31e1b1a8f7fec91f465cbc01dd9f40710bc578c959e50b7",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "319cd3d9e4fa079f9b4ab0625de8260ded35f85e0ea7e008bdb60cd75a2296d6",
+        "trace_hash": "64378d043faff5fadf4ae49468c316bd23420bc22024408c7ead61e6cb85dcec"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "terminal_gc_plus_last_observed_ema_update",
+        "final_observed": {
+          "critic": 15,
+          "ema": 15,
+          "generator": 3
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "OBSERVED_EXACT",
+        "updates_observed": {
+          "critic": [
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "ema": [
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_final": 1,
+        "activation_offload_installed": 1,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_backward_end": 5,
+        "critic_loss_end": 5,
+        "critic_loss_start": 5,
+        "critic_optimizer_created": 1,
+        "critic_optimizer_step": 5,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "ema_step": 5,
+        "frozen_block_streamer_final": 2,
+        "frozen_block_streamer_install_end": 2,
+        "frozen_block_streamer_install_start": 2,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 2,
+        "immutable_model_backing_final": 2,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 28,
+        "model_move_start": 28,
+        "model_swap_end": 13,
+        "model_swap_start": 13,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_contract_complete": 1,
+        "semantic_critic_gradient_observed": 1,
+        "semantic_critic_only_entry": 1,
+        "semantic_critic_only_exit": 1,
+        "semantic_critic_post_step": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_checkpoint_save_end": 1,
+        "sparse_ema_checkpoint_save_start": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_complete_skip_final_save": 1,
+        "training_step_end": 5,
+        "training_step_start": 5
+      },
+      "cuda": {
+        "max_allocated_bytes": 33804603904,
+        "max_reserved_bytes": 36335255552
+      },
+      "errors": [],
+      "event_count": 175,
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_materialize_count": 2040,
+        "streamer_materialized_bytes": 1433688760320,
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 5,
+      "raw_sha256": "54df1781189c8cd41d8c564ba0e1a7649c1c00cef9a47db86be46e99d7daf48a",
+      "status": "PASS",
+      "step_end_unix": {
+        "10": 1786202210.1500518,
+        "11": 1786202321.8353424,
+        "12": 1786202438.8407114,
+        "13": 1786202554.55071,
+        "14": 1786202691.4062197
+      },
+      "step_start_unix": {
+        "10": 1786201926.3608913,
+        "11": 1786202210.9511425,
+        "12": 1786202322.48767,
+        "13": 1786202439.4178429,
+        "14": 1786202555.2353761
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "769e377823b3653645a34d25b56130957b9a0481fa19fcf37d4cdcd565b21ee5",
+        "operation_fingerprint": "037252ee00956ab3d52c36fdc058d7586cad02a579e77a6cf08f94542b85192b",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "afd6b56f5723db25492d3a9498cca10cad186f9d32d47667a55fcc28ff83d86d",
+        "trace_hash": "bf224998521f1793712ee8c5c2ee0c84a2d134c603fb8fa3be6eec4a45329df9"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "terminal_gc_plus_last_observed_ema_update",
+        "final_observed": {
+          "critic": 15,
+          "ema": 15,
+          "generator": 3
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "OBSERVED_EXACT",
+        "updates_observed": {
+          "critic": [
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "ema": [
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_final": 1,
+        "activation_offload_installed": 1,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_backward_end": 5,
+        "critic_loss_end": 5,
+        "critic_loss_start": 5,
+        "critic_optimizer_created": 1,
+        "critic_optimizer_step": 5,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "ema_step": 5,
+        "frozen_block_streamer_final": 2,
+        "frozen_block_streamer_install_end": 2,
+        "frozen_block_streamer_install_start": 2,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 2,
+        "immutable_model_backing_final": 2,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 28,
+        "model_move_start": 28,
+        "model_swap_end": 13,
+        "model_swap_start": 13,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_contract_complete": 1,
+        "semantic_critic_gradient_observed": 1,
+        "semantic_critic_only_entry": 1,
+        "semantic_critic_only_exit": 1,
+        "semantic_critic_post_step": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_checkpoint_save_end": 1,
+        "sparse_ema_checkpoint_save_start": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_complete_skip_final_save": 1,
+        "training_step_end": 5,
+        "training_step_start": 5
+      },
+      "cuda": {
+        "max_allocated_bytes": 33804603904,
+        "max_reserved_bytes": 36335255552
+      },
+      "errors": [],
+      "event_count": 175,
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_materialize_count": 2480,
+        "streamer_materialized_bytes": 1742915747840,
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 6,
+      "raw_sha256": "3443f2d74b24afb5cb28754606d4224b7a8cf89c97c72d4ed829c2bfcd7dccba",
+      "status": "PASS",
+      "step_end_unix": {
+        "10": 1786202209.0158122,
+        "11": 1786202324.0654624,
+        "12": 1786202438.1010954,
+        "13": 1786202556.2862878,
+        "14": 1786202691.8087616
+      },
+      "step_start_unix": {
+        "10": 1786201926.363688,
+        "11": 1786202210.296834,
+        "12": 1786202325.0987916,
+        "13": 1786202439.1143215,
+        "14": 1786202556.8913689
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "57048500ef55c899fd81babe00bd1c213ec25e278f2aea60fd6fc9e0eae2b53a",
+        "operation_fingerprint": "18b04d1c40a7805baaef9a3eac217612e9ecf49610d4c5b06a08d7a2036310f7",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "d3605b092cd356851e0965d1e7a3dd0d874c673a779743fdd004c246e0be76ee",
+        "trace_hash": "7268746b28907ccb9a48036be4fd4a2b7c76225a10b21f55726028a5a8a72396"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "terminal_gc_plus_last_observed_ema_update",
+        "final_observed": {
+          "critic": 15,
+          "ema": 15,
+          "generator": 3
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "OBSERVED_EXACT",
+        "updates_observed": {
+          "critic": [
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "ema": [
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_final": 1,
+        "activation_offload_installed": 1,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_backward_end": 5,
+        "critic_loss_end": 5,
+        "critic_loss_start": 5,
+        "critic_optimizer_created": 1,
+        "critic_optimizer_step": 5,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "ema_step": 5,
+        "frozen_block_streamer_final": 2,
+        "frozen_block_streamer_install_end": 2,
+        "frozen_block_streamer_install_start": 2,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 2,
+        "immutable_model_backing_final": 2,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 28,
+        "model_move_start": 28,
+        "model_swap_end": 13,
+        "model_swap_start": 13,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_contract_complete": 1,
+        "semantic_critic_gradient_observed": 1,
+        "semantic_critic_only_entry": 1,
+        "semantic_critic_only_exit": 1,
+        "semantic_critic_post_step": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_checkpoint_save_end": 1,
+        "sparse_ema_checkpoint_save_start": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_complete_skip_final_save": 1,
+        "training_step_end": 5,
+        "training_step_start": 5
+      },
+      "cuda": {
+        "max_allocated_bytes": 33804603904,
+        "max_reserved_bytes": 36335255552
+      },
+      "errors": [],
+      "event_count": 175,
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_materialize_count": 2280,
+        "streamer_materialized_bytes": 1602358026240,
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 7,
+      "raw_sha256": "a711f75621953f568c64a3b89526e5bd5d0eb52c7fb8bdc25c191d26834eca9d",
+      "status": "PASS",
+      "step_end_unix": {
+        "10": 1786202208.043683,
+        "11": 1786202321.3400965,
+        "12": 1786202436.7737236,
+        "13": 1786202553.1294658,
+        "14": 1786202690.4379194
+      },
+      "step_start_unix": {
+        "10": 1786201926.3651907,
+        "11": 1786202208.6668835,
+        "12": 1786202321.914113,
+        "13": 1786202437.4783723,
+        "14": 1786202553.704986
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "4a9ae42aeb64778a3650fe7982782597257e1eadc28c3fc4b8fc1eff174e88bc",
+        "operation_fingerprint": "82c7ff92ea48e8bf7dc15212b7fe4e614245171b0bcd42073d7c37795be11322",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "21fbf900a7b3ed1a372e9d85343bbcbee0f4515d4a62f8e5894a25fde790c569",
+        "trace_hash": "0f9c48c34d7e2d4babb1f4cfb998acee38342c0865671f691a91b0e362ec547e"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "terminal_gc_plus_last_observed_ema_update",
+        "final_observed": {
+          "critic": 15,
+          "ema": 15,
+          "generator": 3
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "OBSERVED_EXACT",
+        "updates_observed": {
+          "critic": [
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "ema": [
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_final": 1,
+        "activation_offload_installed": 1,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_backward_end": 5,
+        "critic_loss_end": 5,
+        "critic_loss_start": 5,
+        "critic_optimizer_created": 1,
+        "critic_optimizer_step": 5,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "ema_step": 5,
+        "frozen_block_streamer_final": 2,
+        "frozen_block_streamer_install_end": 2,
+        "frozen_block_streamer_install_start": 2,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 2,
+        "immutable_model_backing_final": 2,
+        "immutable_model_backing_install_end": 2,
+        "immutable_model_cache_prepare_end": 2,
+        "immutable_model_cache_prepare_start": 2,
+        "main_start": 1,
+        "model_move_end": 28,
+        "model_move_start": 28,
+        "model_swap_end": 13,
+        "model_swap_start": 13,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_contract_complete": 1,
+        "semantic_critic_gradient_observed": 1,
+        "semantic_critic_only_entry": 1,
+        "semantic_critic_only_exit": 1,
+        "semantic_critic_post_step": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_checkpoint_save_end": 1,
+        "sparse_ema_checkpoint_save_start": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_complete_skip_final_save": 1,
+        "training_step_end": 5,
+        "training_step_start": 5
+      },
+      "cuda": {
+        "max_allocated_bytes": 33804603904,
+        "max_reserved_bytes": 36335255552
+      },
+      "errors": [],
+      "event_count": 179,
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_materialize_count": 2280,
+        "streamer_materialized_bytes": 1602358026240,
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 8,
+      "raw_sha256": "1a62df74d82f7508ee8b9d1319fc2ef888e93b7c7a2637b9ed85debeb4254aa0",
+      "status": "PASS",
+      "step_end_unix": {
+        "10": 1786202209.3591378,
+        "11": 1786202322.0550878,
+        "12": 1786202438.667437,
+        "13": 1786202555.063216,
+        "14": 1786202692.5504706
+      },
+      "step_start_unix": {
+        "10": 1786201927.964525,
+        "11": 1786202210.0540802,
+        "12": 1786202322.7210884,
+        "13": 1786202439.2866156,
+        "14": 1786202555.7105913
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "ddd4228851f91c068c9675401f846e4796655e73731c003f94a93ba5498c81ba",
+        "operation_fingerprint": "a0a83bf8d449724491d3a7b596c98b6dff8a994a8e7e29ed48aed9648a52c5e2",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "96e876fcf20eb6e21def6e52cc4d5c6bc61323b0cb6f41744ace1794169271a9",
+        "trace_hash": "fe4deb070a1d6c40993fb5b952351d86be7ad053322d0689d94ddf60418b7830"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "terminal_gc_plus_last_observed_ema_update",
+        "final_observed": {
+          "critic": 15,
+          "ema": 15,
+          "generator": 3
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "OBSERVED_EXACT",
+        "updates_observed": {
+          "critic": [
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "ema": [
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_final": 1,
+        "activation_offload_installed": 1,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_backward_end": 5,
+        "critic_loss_end": 5,
+        "critic_loss_start": 5,
+        "critic_optimizer_created": 1,
+        "critic_optimizer_step": 5,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "ema_step": 5,
+        "frozen_block_streamer_final": 2,
+        "frozen_block_streamer_install_end": 2,
+        "frozen_block_streamer_install_start": 2,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 2,
+        "immutable_model_backing_final": 2,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 28,
+        "model_move_start": 28,
+        "model_swap_end": 13,
+        "model_swap_start": 13,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_contract_complete": 1,
+        "semantic_critic_gradient_observed": 1,
+        "semantic_critic_only_entry": 1,
+        "semantic_critic_only_exit": 1,
+        "semantic_critic_post_step": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_checkpoint_save_end": 1,
+        "sparse_ema_checkpoint_save_start": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_complete_skip_final_save": 1,
+        "training_step_end": 5,
+        "training_step_start": 5
+      },
+      "cuda": {
+        "max_allocated_bytes": 33804603904,
+        "max_reserved_bytes": 36335255552
+      },
+      "errors": [],
+      "event_count": 175,
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_materialize_count": 2080,
+        "streamer_materialized_bytes": 1461800304640,
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 9,
+      "raw_sha256": "7a1bf8de7315b3fbd82d019639ca357addb37847b03ebabd2d86742776e5678a",
+      "status": "PASS",
+      "step_end_unix": {
+        "10": 1786202208.9938927,
+        "11": 1786202321.9097316,
+        "12": 1786202438.0849812,
+        "13": 1786202554.9339683,
+        "14": 1786202691.5341504
+      },
+      "step_start_unix": {
+        "10": 1786201927.9667306,
+        "11": 1786202209.5942724,
+        "12": 1786202322.4707634,
+        "13": 1786202438.6709025,
+        "14": 1786202555.5183444
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "3143dce8cca5afb9bd07a0a50f827b847c24f0ebe323918c505f1e6775d77d6c",
+        "operation_fingerprint": "19d752024e59281a7eca64d9aae1f77c6dc0c3efb1e33cb5c4348ba4dafd5276",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "65ff851a54aa437aa193ab09534f680367583b2377cddb63e84040e6cdfad31c",
+        "trace_hash": "521bcca07d0630529d37a4fdb907bfdea2e55e6f5620d7554865092d6a443591"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "terminal_gc_plus_last_observed_ema_update",
+        "final_observed": {
+          "critic": 15,
+          "ema": 15,
+          "generator": 3
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "OBSERVED_EXACT",
+        "updates_observed": {
+          "critic": [
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "ema": [
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_final": 1,
+        "activation_offload_installed": 1,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_backward_end": 5,
+        "critic_loss_end": 5,
+        "critic_loss_start": 5,
+        "critic_optimizer_created": 1,
+        "critic_optimizer_step": 5,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "ema_step": 5,
+        "frozen_block_streamer_final": 2,
+        "frozen_block_streamer_install_end": 2,
+        "frozen_block_streamer_install_start": 2,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 2,
+        "immutable_model_backing_final": 2,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 28,
+        "model_move_start": 28,
+        "model_swap_end": 13,
+        "model_swap_start": 13,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_contract_complete": 1,
+        "semantic_critic_gradient_observed": 1,
+        "semantic_critic_only_entry": 1,
+        "semantic_critic_only_exit": 1,
+        "semantic_critic_post_step": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_checkpoint_save_end": 1,
+        "sparse_ema_checkpoint_save_start": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_complete_skip_final_save": 1,
+        "training_step_end": 5,
+        "training_step_start": 5
+      },
+      "cuda": {
+        "max_allocated_bytes": 33804603904,
+        "max_reserved_bytes": 36335255552
+      },
+      "errors": [],
+      "event_count": 175,
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_materialize_count": 2680,
+        "streamer_materialized_bytes": 1883473469440,
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 10,
+      "raw_sha256": "473a3b1830de9590db5ae36b9a08933611c3c8f51073f8f8f26c63287b81a9d5",
+      "status": "PASS",
+      "step_end_unix": {
+        "10": 1786202208.9805033,
+        "11": 1786202321.906344,
+        "12": 1786202438.529464,
+        "13": 1786202554.5097141,
+        "14": 1786202691.8135269
+      },
+      "step_start_unix": {
+        "10": 1786201927.9696128,
+        "11": 1786202209.6128366,
+        "12": 1786202322.5354548,
+        "13": 1786202439.107745,
+        "14": 1786202555.2099514
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "3cea2ea6a06ef304224e70218aed16f84475ebda0cc44990348f0c3e441934c4",
+        "operation_fingerprint": "45bae0fd55d558eeacc75872e48dd85ae2c63deddf34607977e174cab08a121d",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "188413fb8ddd71b9351842c6dee75b421653eabcd72f967ac7c04b939d1d2897",
+        "trace_hash": "9fbc77d272414714829a26e458007905132bd563f5335975d124b03f61deb5de"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "terminal_gc_plus_last_observed_ema_update",
+        "final_observed": {
+          "critic": 15,
+          "ema": 15,
+          "generator": 3
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "OBSERVED_EXACT",
+        "updates_observed": {
+          "critic": [
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "ema": [
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_final": 1,
+        "activation_offload_installed": 1,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_backward_end": 5,
+        "critic_loss_end": 5,
+        "critic_loss_start": 5,
+        "critic_optimizer_created": 1,
+        "critic_optimizer_step": 5,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "ema_step": 5,
+        "frozen_block_streamer_final": 2,
+        "frozen_block_streamer_install_end": 2,
+        "frozen_block_streamer_install_start": 2,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 2,
+        "immutable_model_backing_final": 2,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 28,
+        "model_move_start": 28,
+        "model_swap_end": 13,
+        "model_swap_start": 13,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_contract_complete": 1,
+        "semantic_critic_gradient_observed": 1,
+        "semantic_critic_only_entry": 1,
+        "semantic_critic_only_exit": 1,
+        "semantic_critic_post_step": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_checkpoint_save_end": 1,
+        "sparse_ema_checkpoint_save_start": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_complete_skip_final_save": 1,
+        "training_step_end": 5,
+        "training_step_start": 5
+      },
+      "cuda": {
+        "max_allocated_bytes": 33804603904,
+        "max_reserved_bytes": 36335255552
+      },
+      "errors": [],
+      "event_count": 175,
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_materialize_count": 1960,
+        "streamer_materialized_bytes": 1377465671680,
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 11,
+      "raw_sha256": "308d55cfb81646e4e4015549b9786b06b551bfbb3e820cdb6f71ad457b734ff0",
+      "status": "PASS",
+      "step_end_unix": {
+        "10": 1786202209.2520943,
+        "11": 1786202321.8781855,
+        "12": 1786202438.3779216,
+        "13": 1786202554.909129,
+        "14": 1786202692.206605
+      },
+      "step_start_unix": {
+        "10": 1786201927.9662244,
+        "11": 1786202209.8767867,
+        "12": 1786202322.4999952,
+        "13": 1786202439.057275,
+        "14": 1786202555.5666149
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "69e55242265e021fac3e43b792d050e69f98850299a1718a3de46bd782233e7c",
+        "operation_fingerprint": "88146000d7ab2ae41c315e010d98fd3e4b3a49c6a1e2d144e0eee76b60d39aa2",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "772ee6b32063760ecd6f86dbd3bbf8077b23645b79398364e51dff4caedc934f",
+        "trace_hash": "b1d9f6a74b2ad035785a8457d5185f7f80ea26375fbde8f27a2153ee182696ad"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "terminal_gc_plus_last_observed_ema_update",
+        "final_observed": {
+          "critic": 15,
+          "ema": 15,
+          "generator": 3
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "OBSERVED_EXACT",
+        "updates_observed": {
+          "critic": [
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "ema": [
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_final": 1,
+        "activation_offload_installed": 1,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_backward_end": 5,
+        "critic_loss_end": 5,
+        "critic_loss_start": 5,
+        "critic_optimizer_created": 1,
+        "critic_optimizer_step": 5,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "ema_step": 5,
+        "frozen_block_streamer_final": 2,
+        "frozen_block_streamer_install_end": 2,
+        "frozen_block_streamer_install_start": 2,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 2,
+        "immutable_model_backing_final": 2,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 28,
+        "model_move_start": 28,
+        "model_swap_end": 13,
+        "model_swap_start": 13,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_contract_complete": 1,
+        "semantic_critic_gradient_observed": 1,
+        "semantic_critic_only_entry": 1,
+        "semantic_critic_only_exit": 1,
+        "semantic_critic_post_step": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_checkpoint_save_end": 1,
+        "sparse_ema_checkpoint_save_start": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_complete_skip_final_save": 1,
+        "training_step_end": 5,
+        "training_step_start": 5
+      },
+      "cuda": {
+        "max_allocated_bytes": 33804603904,
+        "max_reserved_bytes": 36335255552
+      },
+      "errors": [],
+      "event_count": 175,
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_materialize_count": 2400,
+        "streamer_materialized_bytes": 1686692659200,
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 12,
+      "raw_sha256": "67a219512a24cfe706f59dccccda44910f28ecbf8e0a1857d6b97e5f4d364f9f",
+      "status": "PASS",
+      "step_end_unix": {
+        "10": 1786202210.4893,
+        "11": 1786202323.135551,
+        "12": 1786202439.9684873,
+        "13": 1786202555.914047,
+        "14": 1786202693.523298
+      },
+      "step_start_unix": {
+        "10": 1786201927.9678347,
+        "11": 1786202211.1650362,
+        "12": 1786202323.756143,
+        "13": 1786202440.7133043,
+        "14": 1786202556.606089
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "a5b1265d94cb00ede647ba2ade1d9df84ce6441ef0aeeb2e605345bd9cfc4016",
+        "operation_fingerprint": "f070192f95d9a675c202354605208e6293156d4607ed0cc791c1213b4aaa2ff3",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "831f88f2ef39bf84d183aeba4e2207278fc6b3ec5832dfe4f0967f2607281389",
+        "trace_hash": "ad7d5179b4e4ca8b1768041d019fe3c4f7bd63863b9f689c446fe89755460a17"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "terminal_gc_plus_last_observed_ema_update",
+        "final_observed": {
+          "critic": 15,
+          "ema": 15,
+          "generator": 3
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "OBSERVED_EXACT",
+        "updates_observed": {
+          "critic": [
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "ema": [
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_final": 1,
+        "activation_offload_installed": 1,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_backward_end": 5,
+        "critic_loss_end": 5,
+        "critic_loss_start": 5,
+        "critic_optimizer_created": 1,
+        "critic_optimizer_step": 5,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "ema_step": 5,
+        "frozen_block_streamer_final": 2,
+        "frozen_block_streamer_install_end": 2,
+        "frozen_block_streamer_install_start": 2,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 2,
+        "immutable_model_backing_final": 2,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 28,
+        "model_move_start": 28,
+        "model_swap_end": 13,
+        "model_swap_start": 13,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_contract_complete": 1,
+        "semantic_critic_gradient_observed": 1,
+        "semantic_critic_only_entry": 1,
+        "semantic_critic_only_exit": 1,
+        "semantic_critic_post_step": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_checkpoint_save_end": 1,
+        "sparse_ema_checkpoint_save_start": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_complete_skip_final_save": 1,
+        "training_step_end": 5,
+        "training_step_start": 5
+      },
+      "cuda": {
+        "max_allocated_bytes": 33804603904,
+        "max_reserved_bytes": 36335255552
+      },
+      "errors": [],
+      "event_count": 175,
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_materialize_count": 2000,
+        "streamer_materialized_bytes": 1405577216000,
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 13,
+      "raw_sha256": "1c14bd9ece866280c85df9683e13fb5a46aff0c4571e0c74b864d11265a3bfe7",
+      "status": "PASS",
+      "step_end_unix": {
+        "10": 1786202210.480404,
+        "11": 1786202323.2264912,
+        "12": 1786202439.494959,
+        "13": 1786202556.075489,
+        "14": 1786202692.8805604
+      },
+      "step_start_unix": {
+        "10": 1786201927.9654233,
+        "11": 1786202211.1504831,
+        "12": 1786202323.85744,
+        "13": 1786202440.3423436,
+        "14": 1786202556.6802998
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "da9c93c89a1ddd5cdb5116cae25c29f80d7dd7c49d9e28de54d3942bd426d5e2",
+        "operation_fingerprint": "a4a4533de956f0087752088ef3b8517df96f5f1f6d64bf31f5ab86bac1780434",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "ccdc4066c09b53607d33fa9be0b4ca1c9e1c35a968d3c22a3d873aff0e5fad71",
+        "trace_hash": "03cdbbb88194f668b459643e4737396c4e20c5d854d3d153b7fba5fc91c835c4"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "terminal_gc_plus_last_observed_ema_update",
+        "final_observed": {
+          "critic": 15,
+          "ema": 15,
+          "generator": 3
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "OBSERVED_EXACT",
+        "updates_observed": {
+          "critic": [
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "ema": [
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_final": 1,
+        "activation_offload_installed": 1,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_backward_end": 5,
+        "critic_loss_end": 5,
+        "critic_loss_start": 5,
+        "critic_optimizer_created": 1,
+        "critic_optimizer_step": 5,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "ema_step": 5,
+        "frozen_block_streamer_final": 2,
+        "frozen_block_streamer_install_end": 2,
+        "frozen_block_streamer_install_start": 2,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 2,
+        "immutable_model_backing_final": 2,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 28,
+        "model_move_start": 28,
+        "model_swap_end": 13,
+        "model_swap_start": 13,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_contract_complete": 1,
+        "semantic_critic_gradient_observed": 1,
+        "semantic_critic_only_entry": 1,
+        "semantic_critic_only_exit": 1,
+        "semantic_critic_post_step": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_checkpoint_save_end": 1,
+        "sparse_ema_checkpoint_save_start": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_complete_skip_final_save": 1,
+        "training_step_end": 5,
+        "training_step_start": 5
+      },
+      "cuda": {
+        "max_allocated_bytes": 33804603904,
+        "max_reserved_bytes": 36335255552
+      },
+      "errors": [],
+      "event_count": 175,
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_materialize_count": 2120,
+        "streamer_materialized_bytes": 1489911848960,
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 14,
+      "raw_sha256": "bd96f951f2eeb48b0389acf41c45033d9389336377b580c02aa9f787cac61d76",
+      "status": "PASS",
+      "step_end_unix": {
+        "10": 1786202209.1537788,
+        "11": 1786202322.0622046,
+        "12": 1786202438.5520327,
+        "13": 1786202554.8266668,
+        "14": 1786202692.0507758
+      },
+      "step_start_unix": {
+        "10": 1786201927.9605572,
+        "11": 1786202209.7190225,
+        "12": 1786202322.6466248,
+        "13": 1786202439.1774049,
+        "14": 1786202555.4006567
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "1f7bfb9cb617848a3e84b23b2699fc7227feca8c8917b1c48335f1a220125e3c",
+        "operation_fingerprint": "eca31cff2c4578119eb5d9c7fd18ef44bb3f770ba98bfed0dd465a5c282f5726",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "715ffae5101924a4adaf7f1e1d28ec81da02b347ecae0d44e51ad88c269b7fc3",
+        "trace_hash": "2c695ed068af10af3b23493526cc527ac5c5671183a934bba6bdffb73a0456fb"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "terminal_gc_plus_last_observed_ema_update",
+        "final_observed": {
+          "critic": 15,
+          "ema": 15,
+          "generator": 3
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "OBSERVED_EXACT",
+        "updates_observed": {
+          "critic": [
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "ema": [
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "counts": {
+        "accelerators_ready": 1,
+        "activation_offload_final": 1,
+        "activation_offload_installed": 1,
+        "backbones_cast_and_placed": 1,
+        "checkpoint_resume_complete": 1,
+        "critic_backward_end": 5,
+        "critic_loss_end": 5,
+        "critic_loss_start": 5,
+        "critic_optimizer_created": 1,
+        "critic_optimizer_step": 5,
+        "deepspeed_redundant_model_hook_skipped": 2,
+        "dense_ema_source_skipped_for_sparse_policy": 1,
+        "ema_step": 5,
+        "frozen_block_streamer_final": 2,
+        "frozen_block_streamer_install_end": 2,
+        "frozen_block_streamer_install_start": 2,
+        "generator_adapter_added": 1,
+        "generator_backbone_loaded": 1,
+        "generator_backward_end": 1,
+        "generator_loss_end": 1,
+        "generator_loss_start": 1,
+        "generator_optimizer_created": 1,
+        "generator_optimizer_step": 1,
+        "generator_pre_device_move_skipped": 1,
+        "generator_prepare_end": 1,
+        "generator_prepare_start": 1,
+        "generator_swapped_before_score_prepare": 1,
+        "hybrid_residency_ownership_resolved": 2,
+        "immutable_model_backing_final": 2,
+        "immutable_model_backing_install_end": 2,
+        "main_start": 1,
+        "model_move_end": 28,
+        "model_move_start": 28,
+        "model_swap_end": 13,
+        "model_swap_start": 13,
+        "operation_trace_input_validated": 1,
+        "parameter_versions_initialized": 1,
+        "preprocessors_and_negative_prompt_ready": 1,
+        "preprocessors_released": 1,
+        "score_adapter_added": 1,
+        "score_backbone_loaded": 1,
+        "score_pre_device_move_skipped": 1,
+        "score_prepare_end": 1,
+        "score_prepare_start": 1,
+        "semantic_contract_complete": 1,
+        "semantic_critic_gradient_observed": 1,
+        "semantic_critic_only_entry": 1,
+        "semantic_critic_only_exit": 1,
+        "semantic_critic_post_step": 1,
+        "semantic_critic_pre_backward": 1,
+        "semantic_generator_gradient_observed": 1,
+        "semantic_generator_post_step": 1,
+        "semantic_generator_pre_backward": 1,
+        "sparse_ema_checkpoint_save_end": 1,
+        "sparse_ema_checkpoint_save_start": 1,
+        "sparse_ema_resumed": 1,
+        "split_modulation_enabled": 2,
+        "stage3_dataset_built": 1,
+        "training_complete_skip_final_save": 1,
+        "training_step_end": 5,
+        "training_step_start": 5
+      },
+      "cuda": {
+        "max_allocated_bytes": 33804603904,
+        "max_reserved_bytes": 36335255552
+      },
+      "errors": [],
+      "event_count": 175,
+      "lifecycle": {
+        "activation_live_final": [
+          0
+        ],
+        "streamer_materialize_count": 2520,
+        "streamer_materialized_bytes": 1771027292160,
+        "streamer_resident_final": [
+          0,
+          0
+        ]
+      },
+      "rank": 15,
+      "raw_sha256": "bb1e39a8bfc5234f3e1316b655a55b69e4aacaa5e080088ba6b087345d614098",
+      "status": "PASS",
+      "step_end_unix": {
+        "10": 1786202210.1098373,
+        "11": 1786202323.1038556,
+        "12": 1786202439.9776046,
+        "13": 1786202556.186897,
+        "14": 1786202693.3203495
+      },
+      "step_start_unix": {
+        "10": 1786201927.9698312,
+        "11": 1786202210.933129,
+        "12": 1786202323.7877715,
+        "13": 1786202440.543138,
+        "14": 1786202556.7626755
+      },
+      "tail_truncated": false,
+      "trace": {
+        "mapping_fingerprint": "6bef80ced587c15d27429684039659b09aa13fd69b66c0750626c6abf36bf56a",
+        "operation_fingerprint": "431ad52eefb8147264c651cb2785a68dfde8fb3b55036e282c85cb2624bcb38b",
+        "operation_fingerprint_binding": "trace_hash_commits_preregistered_trace_manifest_and_operations",
+        "source_authority": "operation_trace",
+        "source_authority_binding": "producer_kind_plus_exact_rank_and_trace_hash",
+        "source_fingerprint": "63fd2e7ee4ed94214476e1541100407c97921d68d6e664f916d8ec55fc9b629f",
+        "trace_hash": "bea68a2f333462e7b0705de4ec3227684159442077f5a5112a18f5af3f4703e9"
+      },
+      "versions": {
+        "derived_trajectory_diagnostic_only": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "derived_values_are_claimable": false,
+        "errors": [],
+        "expected_trajectory": {
+          "10": {
+            "critic": 11,
+            "ema": 11,
+            "generator": 3
+          },
+          "11": {
+            "critic": 12,
+            "ema": 12,
+            "generator": 3
+          },
+          "12": {
+            "critic": 13,
+            "ema": 13,
+            "generator": 3
+          },
+          "13": {
+            "critic": 14,
+            "ema": 14,
+            "generator": 3
+          },
+          "14": {
+            "critic": 15,
+            "ema": 15,
+            "generator": 3
+          }
+        },
+        "final_observation_binding": "terminal_gc_plus_last_observed_ema_update",
+        "final_observed": {
+          "critic": 15,
+          "ema": 15,
+          "generator": 3
+        },
+        "initial_observation_binding": "parameter_versions_initialized_plus_observed_sparse_ema_resume",
+        "initial_observed": {
+          "critic": 10,
+          "ema": 10,
+          "generator": 2
+        },
+        "status": "OBSERVED_EXACT",
+        "updates_observed": {
+          "critic": [
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "critic_optimizer_step",
+              "predicate": null,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "ema": [
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 10,
+              "version": 11
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 11,
+              "version": 12
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 12,
+              "version": 13
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 13,
+              "version": 14
+            },
+            {
+              "phase": "ema_step",
+              "predicate": true,
+              "step": 14,
+              "version": 15
+            }
+          ],
+          "generator": [
+            {
+              "phase": "generator_optimizer_step",
+              "predicate": null,
+              "step": 10,
+              "version": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "run_id": "routea_attempt005_full5_world16_20260808_002",
+  "schema_version": "distillschedule.typed_routea_world16.revalidation.v2",
+  "status": "PASS",
+  "timing": {
+    "baseline_global_training_window_seconds": 688.725683927536,
+    "formal_speedup_claim": false,
+    "global_step_wall_span_seconds": {
+      "10": 284.1329643726349,
+      "11": 115.91061186790466,
+      "12": 119.27786326408386,
+      "13": 118.88826036453247,
+      "14": 139.81831192970276
+    },
+    "global_training_window_seconds": 767.1669623851776,
+    "relative_delta_vs_baseline": 0.11389335447797055,
+    "samples_per_second": 0.10427977731375998,
+    "status": "MEASURED_DIAGNOSTIC",
+    "weighted_step_seconds": 153.4333924770355,
+    "within_preregistered_10pct_diagnostic_band": false
+  },
+  "topology": {
+    "errors": [],
+    "global_ranks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "hosts": [
+      "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+      "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0"
+    ],
+    "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_pr3_0cd40e4/artifacts/runs/routea_attempt005_full5_world16_20260808_002/preregistration/topology.json",
+    "raw": {
+      "records": [
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 0,
+          "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+          "local_rank": 0,
+          "local_world_size": 8,
+          "node_rank": 0,
+          "rank": 0,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 1,
+          "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+          "local_rank": 1,
+          "local_world_size": 8,
+          "node_rank": 0,
+          "rank": 1,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 2,
+          "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+          "local_rank": 2,
+          "local_world_size": 8,
+          "node_rank": 0,
+          "rank": 2,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 3,
+          "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+          "local_rank": 3,
+          "local_world_size": 8,
+          "node_rank": 0,
+          "rank": 3,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 4,
+          "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+          "local_rank": 4,
+          "local_world_size": 8,
+          "node_rank": 0,
+          "rank": 4,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 5,
+          "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+          "local_rank": 5,
+          "local_world_size": 8,
+          "node_rank": 0,
+          "rank": 5,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 6,
+          "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+          "local_rank": 6,
+          "local_world_size": 8,
+          "node_rank": 0,
+          "rank": 6,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 7,
+          "hostname": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+          "local_rank": 7,
+          "local_world_size": 8,
+          "node_rank": 0,
+          "rank": 7,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 0,
+          "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+          "local_rank": 0,
+          "local_world_size": 8,
+          "node_rank": 1,
+          "rank": 8,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 1,
+          "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+          "local_rank": 1,
+          "local_world_size": 8,
+          "node_rank": 1,
+          "rank": 9,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 2,
+          "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+          "local_rank": 2,
+          "local_world_size": 8,
+          "node_rank": 1,
+          "rank": 10,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 3,
+          "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+          "local_rank": 3,
+          "local_world_size": 8,
+          "node_rank": 1,
+          "rank": 11,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 4,
+          "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+          "local_rank": 4,
+          "local_world_size": 8,
+          "node_rank": 1,
+          "rank": 12,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 5,
+          "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+          "local_rank": 5,
+          "local_world_size": 8,
+          "node_rank": 1,
+          "rank": 13,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 6,
+          "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+          "local_rank": 6,
+          "local_world_size": 8,
+          "node_rank": 1,
+          "rank": 14,
+          "world_size": 16
+        },
+        {
+          "cuda_device_count": 8,
+          "cuda_device_index": 7,
+          "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+          "local_rank": 7,
+          "local_world_size": 8,
+          "node_rank": 1,
+          "rank": 15,
+          "world_size": 16
+        }
+      ],
+      "schema_version": "distillschedule.topology_probe.v1",
+      "status": "PASS",
+      "summary": {
+        "hosts_by_node": {
+          "0": "job-394365a4-c3d6-4278-8fac-7c47ea90a91f-master-0",
+          "1": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0"
+        },
+        "local_world_size": 8,
+        "nodes": 2,
+        "ranks_by_node": {
+          "0": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "1": [
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ]
+        },
+        "world_size": 16
+      }
+    },
+    "sha256": "7094f0574be706780abe0bcbd91712547173f13a7fe89d4dfd242c85cae854f8",
+    "status": "PASS"
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "attempt_budget": 1,
+  "authorization_source": "explicit user decision after review of PR8 and the 1.274-GiB activation candidate",
+  "authorized_hypothesis": "Adding the next four frozen Generator blocks to PR8 provides enough checkpoint-backward headroom for exact Route-A Full5.",
+  "candidate_run_id": "ra16_f5_pr12_20260809_001",
+  "created_at_utc": "2026-08-09T07:04:08Z",
+  "decision": "GO_AFTER_TEST_AND_DUAL_HOST_SMOKE",
+  "experiment_id": "RA16-F5-PR12",
+  "formal_timing": "NOT_RUN",
+  "frozen_contract": {
+    "activation_offload_components": [
+      "generator_selected",
+      "critic_train"
+    ],
+    "activation_offload_threshold_mib": 32,
+    "expected_final_versions": {
+      "critic": 15,
+      "ema": 15,
+      "generator": 3
+    },
+    "generator_streamed_blocks": [
+      0,
+      24,
+      1,
+      5,
+      8,
+      25,
+      10,
+      32,
+      36,
+      15,
+      16,
+      26
+    ],
+    "global_batch": 16,
+    "gradient_accumulation_steps": 1,
+    "host_admission_policy": "actual_oom_only",
+    "initial_versions": {
+      "critic": 10,
+      "ema": 10,
+      "generator": 2
+    },
+    "latent": [
+      1,
+      16,
+      9,
+      48,
+      80
+    ],
+    "micro_batch_per_gpu": 1,
+    "optimizer_offload": "cpu",
+    "phase_resident_critic_generator": true,
+    "resolution": [
+      384,
+      640
+    ],
+    "score_block_streaming": false,
+    "steps": [
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "streaming_window": 1,
+    "world_size": 16,
+    "zero_stage": 1
+  },
+  "gate": "continuous_full5_functional_admission",
+  "live_preflight": {
+    "active_gpu_compute_processes_node0": 0,
+    "active_gpu_compute_processes_node1": 0,
+    "cgroup_oom_kill_node0": 1,
+    "cgroup_oom_kill_node1": 1,
+    "cgroup_oom_node0": 0,
+    "cgroup_oom_node1": 0,
+    "dmd_head_before_prereg": "dff24bb263d6ef233e5f430592c9b600f29a6bc8",
+    "focused_tests_before_changes": "63 passed",
+    "generator_assets_node0_node1": "PASS",
+    "local_and_remote_clean": true,
+    "runtime_head": "494229b99f66b36d6153a85c6a34e2445b667331",
+    "score_assets_node0_node1": "PASS"
+  },
+  "matching_prior_evidence": [
+    {
+      "artifact": "artifacts/manifests/ra16_f5_pr8_20260809_001_failure.json",
+      "conclusion": "g8 freed exactly 2.618 GiB/rank pre-backward but later checkpoint recomputation failed on a 216-MiB allocation.",
+      "sha256": "f0e31dd2ce921447706fa93d8d8f60028137f1e3cd60d1010b6fbb4c0167a272"
+    },
+    {
+      "artifact": "artifacts/manifests/n2_target_g_offload_bounded_search_20260808_002_result.json",
+      "conclusion": "The isolated g12 point passed, but that split-role Step15-A graph is not transferable Full5 evidence.",
+      "sha256": "22378fe8aa4dd8b682e8f4146c46aca79d6616fcbc13e864f84f52e9d34e75b3"
+    }
+  ],
+  "new_falsifiable_question": "Does the additional 2.618-GiB four-block capacity admit the exact combined Full5 graph, or does later backward state again refill it?",
+  "rejected_or_superseded_paths": [
+    "PR8 rerun",
+    "automatic g16 search",
+    "PR4 empty-cache escalation",
+    "ZeRO-2 double reduction",
+    "activation-policy change",
+    "reduced resolution or altered trace",
+    "performance claim from a single functional run"
+  ],
+  "schema_version": "distillschedule.ra16_f5_pr12_preflight.v1"
+}

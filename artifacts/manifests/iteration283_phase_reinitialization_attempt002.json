@@ -1,0 +1,28 @@
+{
+  "bounded_fix": "Attach DeepSpeed to the existing native torch Phase-B group on every rank, then assert world4. This is the same initialization-only substrate already used by Candidate B.",
+  "evidence": {
+    "node0_log": {
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/profile/iteration283_phase_reinitialization_gate_20260810_002/node0.log",
+      "sha256": "3223517f8f98c1625dbfa4354a29a12ebf795d8a51f2137754a77307da8809a9"
+    },
+    "node1_log": {
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/profile/iteration283_phase_reinitialization_gate_20260810_002/node1.log",
+      "sha256": "c620969f4c98b53aa9eff0c1337e45c15ebd0be2e4f010b5d754fe3edef5eab0"
+    }
+  },
+  "failure": "Node1 ranks asserted deepspeed.comm.cdb is unset immediately after native torch Phase-B initialization.",
+  "oom_delta": 0,
+  "oom_kill_delta": 0,
+  "return_codes": {
+    "node0": "controlled stop after peer fail",
+    "node1": 1
+  },
+  "root_cause": "Node1 had no Phase-A DeepSpeed engine, so unlike node0 it had never attached a TorchBackend wrapper. The gate checked deepspeed.comm before calling deepspeed.init_distributed(..., dist_init_required=False).",
+  "schema_version": "distillschedule.iteration283.phase_reinitialization_attempt002.v1",
+  "semantic_change": false,
+  "status": "FAIL_HARNESS_DEEPSPEED_BACKEND_ATTACH",
+  "verified": [
+    "Phase-A ready both nodes",
+    "Phase-B TCPStore creation and global world4 initialization succeeded"
+  ]
+}

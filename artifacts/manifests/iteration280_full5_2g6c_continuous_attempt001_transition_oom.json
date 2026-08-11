@@ -1,0 +1,56 @@
+{
+  "schema_version": "distillschedule.rb16_full5_2g6c_continuous_attempt.v1",
+  "iteration": 280,
+  "attempt": 1,
+  "run_id": "rb16_full5_cont_2g6c_pipeline_correctness_20260810_001",
+  "status": "FAIL",
+  "measurement": "Measured",
+  "stage": "live_transition_switch_to_critic_before_pipeline",
+  "first_failure": {
+    "ranks": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "type": "torch.OutOfMemoryError",
+    "operation": "target_model.to(device)",
+    "failed_allocation_mib": [
+      20,
+      50
+    ],
+    "allocated_gib": [
+      38.06,
+      38.07
+    ],
+    "cause": "The obsolete Step10-A Generator remained at about 26.475 GiB allocated because DeepSpeed retained the engine/module cycle after local reference deletion; the incoming resident Score partially materialized on top."
+  },
+  "measured": {
+    "step10a_wall_seconds_max": 96.945925982669,
+    "switching_rank_step10a_allocated_gib": 26.475,
+    "cgroup_oom_delta": 0,
+    "cgroup_oom_kill_delta": 0,
+    "pipeline_entered": false,
+    "critic_updates": 0,
+    "ema_updates": 0
+  },
+  "cascade": "NCCL TCPStore/communicator failures on peer ranks followed the first CUDA OOM and are not independent root causes.",
+  "bounded_recovery": {
+    "policy": "DROP_OBSOLETE_ROLE_STORAGE_TO_META_NO_D2H",
+    "semantic_scope": "Only ranks 2-7 after their final Step10-A Generator use and after G3 is retained/broadcast by the target Generator pool.",
+    "forbidden": [
+      "ZeRO-2",
+      "whole-model transition checkpoint",
+      "resolution/batch/trace/loss changes",
+      "CPU D2H offload of obsolete weights"
+    ],
+    "next_attempt_limit": 1
+  },
+  "evidence": [
+    "artifacts/runs/rb16_full5_cont_2g6c_pipeline_correctness_20260810_001/execution/ranks/rank_02.json",
+    "artifacts/runs/rb16_full5_cont_2g6c_pipeline_correctness_20260810_001/launcher/node_0/console.log",
+    "artifacts/runs/rb16_full5_cont_2g6c_pipeline_correctness_20260810_001/launcher/node_0/launch_manifest.txt"
+  ]
+}

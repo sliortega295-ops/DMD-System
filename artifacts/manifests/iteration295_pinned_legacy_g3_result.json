@@ -1,0 +1,36 @@
+{
+  "schema_version": "distillschedule.iteration_result.v1",
+  "iteration": 295,
+  "date": "2026-08-10",
+  "status": "BOUNDED_NEGATIVE_CORRECTNESS_PASS",
+  "run_id": "rb16_f5_iter295_pinned64x2_g3legacy_correctness_20260810_001",
+  "source_head": "f4f2800373749a1b677685ca49656dea2814e6e0",
+  "summary_status": "PASS",
+  "claim_boundary": "single correctness/profile run; formal repeated timing Not Run",
+  "metrics": {
+    "step10a_seconds": 124.91869312012568,
+    "transition_seconds": 47.88101278315298,
+    "critic_phase_seconds": 170.2070903549902,
+    "full5_seconds": 346.6890926361084,
+    "target_h2d_max_seconds": 28.955583614995703,
+    "g3_broadcast_max_seconds": 14.097394376061857,
+    "node0_cgroup_peak_bytes": 363020435456,
+    "node1_cgroup_peak_bytes": 172666871808,
+    "oom_delta": 0
+  },
+  "relative_to_iteration293": {
+    "transition_improvement_percent": 3.929,
+    "target_h2d_max_improvement_percent": 12.702,
+    "g3_broadcast_regression_percent": 29.716,
+    "full5_regression_percent": 1.424
+  },
+  "correctness": {
+    "ranks": "16/16 PASS",
+    "trace_and_input_identities": "exact",
+    "versions": "G3/C15/EMA15",
+    "payloads": "60 generated and 60 consumed",
+    "queue_flush": true
+  },
+  "refutation": "transition improvement below 10 percent; legacy broadcast did not remove critical-path variability",
+  "next": "stop G3 bucket tuning and execute preregistered Step10-A 2M persistence candidate"
+}

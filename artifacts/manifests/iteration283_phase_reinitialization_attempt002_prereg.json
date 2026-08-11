@@ -1,0 +1,25 @@
+{
+  "created_at": "2026-08-10T08:03:55.577941+00:00",
+  "frozen_from_attempt001": [
+    "model",
+    "ZeRO stages",
+    "logical exits",
+    "state gather/broadcast",
+    "rank mapping",
+    "versions",
+    "groups",
+    "acceptance",
+    "timeout"
+  ],
+  "only_change": "pop TORCHELASTIC_USE_AGENT_STORE after Phase-A destroy, before Phase-B explicit tcp init",
+  "question": "Does removing the stale Phase-A elastic agent-store hint allow explicit Phase-B rank0 to host the new TCPStore and complete the unchanged transition gate?",
+  "real14b": "Not Run",
+  "schema_version": "distillschedule.iteration283.phase_reinitialization_attempt002_prereg.v1",
+  "status": "ACTIVE",
+  "stop_conditions": [
+    "second rendezvous timeout",
+    "state/version mismatch",
+    "OOM"
+  ],
+  "timing": "Not Run"
+}

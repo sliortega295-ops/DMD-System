@@ -1,0 +1,125 @@
+{
+  "allowed_changes": [
+    "optional post-exit no-grad dummy Transformer calls",
+    "diagnostic stage markers in correctness mode"
+  ],
+  "claim_boundary": "Padding overhead is part of the exact ZeRO-3 schedule and may refute ZeRO-3 as the fastest exact-trace backend.",
+  "correctness_gate": [
+    "all DP8 ranks issue identical physical stage call counts",
+    "per-rank logical trace identities exact",
+    "x0 matches the accepted unsharded exact-trace reference under the existing numerical contract",
+    "one G2 to G3 optimizer commit",
+    "five C and five EMA commits",
+    "queue and NCCL flush",
+    "no new OOM"
+  ],
+  "created_at": "2026-08-10T07:36:07.899989+00:00",
+  "forbidden_changes": [
+    "trace decisions",
+    "logical x0 state updates",
+    "selected autograd calls",
+    "loss",
+    "batch/update counts",
+    "optimizer",
+    "EMA",
+    "target 2G+6C schedule",
+    "tolerance"
+  ],
+  "frozen": {
+    "critic_updates": 5,
+    "ema_updates": 5,
+    "generator_backend": "DP8 ZeRO-3, MB1, GAS2, global batch16, CPU optimizer offload, no parameter offload",
+    "latent_shape": [
+      1,
+      16,
+      9,
+      48,
+      80
+    ],
+    "layout": "8G+4S+4T Step10-A then per-node 2G+6C",
+    "logical_manifest_hash": "68eed293970be008764ee6acadb2aac6ce54de2ce1f55a17fca2246f0d04e4aa",
+    "resolution": [
+      384,
+      640
+    ],
+    "runtime_head": "4b2b8e65b698d088b23b487af1895aade42409c9",
+    "schedule": "pipeline",
+    "target_critic": "DP12 ZeRO-1, MB1, GAS1, global batch12",
+    "trace_bundle_hash": "9e282f4bc24eb589d259e5e5603cae02fa5cd0c6cdd0f06f7c5416461e4564d0",
+    "versions": "G2/C10/EMA10 -> G3/C15/EMA15"
+  },
+  "gate": "exact_trace_DP8_Zero3_collective_safe_Step10A_correctness",
+  "performance": "Not Run until correctness passes",
+  "physical_collective_plan": {
+    "historical_48_5516_seconds_is_formal_denominator": false,
+    "historical_iteration237_synchronized_calls_estimate": 8,
+    "padding_increase_vs_slowest_unpadded_rank": 0.4666666666666667,
+    "slowest_unpadded_generator_rank_calls": 15,
+    "total_physical_calls_per_generator_rank": 22,
+    "wave0": {
+      "logical_call_counts": [
+        4,
+        4,
+        4,
+        8,
+        4,
+        4,
+        6,
+        7
+      ],
+      "padded_stage_exits": [
+        2,
+        3,
+        3
+      ],
+      "physical_calls_per_rank": 11,
+      "source_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    "wave1": {
+      "logical_call_counts": [
+        4,
+        3,
+        7,
+        7,
+        4,
+        6,
+        9,
+        8
+      ],
+      "padded_stage_exits": [
+        3,
+        2,
+        3
+      ],
+      "physical_calls_per_rank": 11,
+      "source_ids": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ]
+    }
+  },
+  "question": "Can collective-safe stage padding complete exact rank-qualified Step10-A without changing per-sample logical outputs or Generator update semantics?",
+  "schema_version": "distillschedule.iteration282.zero3_collective_padded_step10a_prereg.v1",
+  "status": "ACTIVE",
+  "stop_conditions": [
+    "any rank call-order mismatch",
+    "any exact trace/x0/version mismatch",
+    "deadlock or timeout",
+    "new OOM"
+  ]
+}

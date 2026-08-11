@@ -1,0 +1,466 @@
+{
+  "bundle_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+  "classification": "Measured control/manifest validation; real-14B Not Run",
+  "new_trace": "/share/project/shuchenweng/DistillSchedule_assets/m0/traces/syn_feature_trace_rank16_v4_strict_sync_steps20",
+  "old_trace": "/share/project/shuchenweng/DistillSchedule_assets/m0/traces/syn_feature_trace_rank16_v3_sync_steps20",
+  "old_trace_rejected": "step/0/critic/rollout rank 0 retains forbidden local-exception fields: ['local_exception_seed', 'official_local_exception_predicate']",
+  "rank_control_validation": {
+    "cross_rank_call_count_parity": true,
+    "global_entry_count": 384,
+    "local_exception_entry_count": 0,
+    "operation_count": 24,
+    "operations": [
+      {
+        "logical_call_count": 6,
+        "operation": "step/0/critic/rollout",
+        "per_stage_call_counts": [
+          2,
+          2,
+          2
+        ],
+        "physical_call_count": 6,
+        "rank_count": 16,
+        "synchronized_exit": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "logical_call_count": 4,
+        "operation": "step/0/generator/rollout",
+        "per_stage_call_counts": [
+          1,
+          2,
+          1
+        ],
+        "physical_call_count": 4,
+        "rank_count": 16,
+        "synchronized_exit": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "logical_call_count": 5,
+        "operation": "step/1/critic/rollout",
+        "per_stage_call_counts": [
+          2,
+          2,
+          1
+        ],
+        "physical_call_count": 5,
+        "rank_count": 16,
+        "synchronized_exit": [
+          1,
+          1,
+          0
+        ]
+      },
+      {
+        "logical_call_count": 6,
+        "operation": "step/10/critic/rollout",
+        "per_stage_call_counts": [
+          2,
+          2,
+          2
+        ],
+        "physical_call_count": 6,
+        "rank_count": 16,
+        "synchronized_exit": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "logical_call_count": 4,
+        "operation": "step/10/generator/rollout",
+        "per_stage_call_counts": [
+          2,
+          1,
+          1
+        ],
+        "physical_call_count": 4,
+        "rank_count": 16,
+        "synchronized_exit": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "logical_call_count": 6,
+        "operation": "step/11/critic/rollout",
+        "per_stage_call_counts": [
+          2,
+          2,
+          2
+        ],
+        "physical_call_count": 6,
+        "rank_count": 16,
+        "synchronized_exit": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "logical_call_count": 5,
+        "operation": "step/12/critic/rollout",
+        "per_stage_call_counts": [
+          2,
+          2,
+          1
+        ],
+        "physical_call_count": 5,
+        "rank_count": 16,
+        "synchronized_exit": [
+          1,
+          1,
+          0
+        ]
+      },
+      {
+        "logical_call_count": 4,
+        "operation": "step/13/critic/rollout",
+        "per_stage_call_counts": [
+          2,
+          1,
+          1
+        ],
+        "physical_call_count": 4,
+        "rank_count": 16,
+        "synchronized_exit": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "logical_call_count": 6,
+        "operation": "step/14/critic/rollout",
+        "per_stage_call_counts": [
+          2,
+          2,
+          2
+        ],
+        "physical_call_count": 6,
+        "rank_count": 16,
+        "synchronized_exit": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "logical_call_count": 4,
+        "operation": "step/15/critic/rollout",
+        "per_stage_call_counts": [
+          1,
+          2,
+          1
+        ],
+        "physical_call_count": 4,
+        "rank_count": 16,
+        "synchronized_exit": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "logical_call_count": 4,
+        "operation": "step/15/generator/rollout",
+        "per_stage_call_counts": [
+          1,
+          2,
+          1
+        ],
+        "physical_call_count": 4,
+        "rank_count": 16,
+        "synchronized_exit": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "logical_call_count": 5,
+        "operation": "step/16/critic/rollout",
+        "per_stage_call_counts": [
+          2,
+          2,
+          1
+        ],
+        "physical_call_count": 5,
+        "rank_count": 16,
+        "synchronized_exit": [
+          1,
+          1,
+          0
+        ]
+      },
+      {
+        "logical_call_count": 6,
+        "operation": "step/17/critic/rollout",
+        "per_stage_call_counts": [
+          2,
+          2,
+          2
+        ],
+        "physical_call_count": 6,
+        "rank_count": 16,
+        "synchronized_exit": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "logical_call_count": 4,
+        "operation": "step/18/critic/rollout",
+        "per_stage_call_counts": [
+          1,
+          2,
+          1
+        ],
+        "physical_call_count": 4,
+        "rank_count": 16,
+        "synchronized_exit": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "logical_call_count": 5,
+        "operation": "step/19/critic/rollout",
+        "per_stage_call_counts": [
+          2,
+          1,
+          2
+        ],
+        "physical_call_count": 5,
+        "rank_count": 16,
+        "synchronized_exit": [
+          1,
+          0,
+          1
+        ]
+      },
+      {
+        "logical_call_count": 4,
+        "operation": "step/2/critic/rollout",
+        "per_stage_call_counts": [
+          1,
+          1,
+          2
+        ],
+        "physical_call_count": 4,
+        "rank_count": 16,
+        "synchronized_exit": [
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "logical_call_count": 6,
+        "operation": "step/3/critic/rollout",
+        "per_stage_call_counts": [
+          2,
+          2,
+          2
+        ],
+        "physical_call_count": 6,
+        "rank_count": 16,
+        "synchronized_exit": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "logical_call_count": 3,
+        "operation": "step/4/critic/rollout",
+        "per_stage_call_counts": [
+          1,
+          1,
+          1
+        ],
+        "physical_call_count": 3,
+        "rank_count": 16,
+        "synchronized_exit": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "logical_call_count": 6,
+        "operation": "step/5/critic/rollout",
+        "per_stage_call_counts": [
+          2,
+          2,
+          2
+        ],
+        "physical_call_count": 6,
+        "rank_count": 16,
+        "synchronized_exit": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "logical_call_count": 6,
+        "operation": "step/5/generator/rollout",
+        "per_stage_call_counts": [
+          2,
+          2,
+          2
+        ],
+        "physical_call_count": 6,
+        "rank_count": 16,
+        "synchronized_exit": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "logical_call_count": 3,
+        "operation": "step/6/critic/rollout",
+        "per_stage_call_counts": [
+          1,
+          1,
+          1
+        ],
+        "physical_call_count": 3,
+        "rank_count": 16,
+        "synchronized_exit": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "logical_call_count": 5,
+        "operation": "step/7/critic/rollout",
+        "per_stage_call_counts": [
+          2,
+          2,
+          1
+        ],
+        "physical_call_count": 5,
+        "rank_count": 16,
+        "synchronized_exit": [
+          1,
+          1,
+          0
+        ]
+      },
+      {
+        "logical_call_count": 4,
+        "operation": "step/8/critic/rollout",
+        "per_stage_call_counts": [
+          1,
+          1,
+          2
+        ],
+        "physical_call_count": 4,
+        "rank_count": 16,
+        "synchronized_exit": [
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "logical_call_count": 4,
+        "operation": "step/9/critic/rollout",
+        "per_stage_call_counts": [
+          1,
+          2,
+          1
+        ],
+        "physical_call_count": 4,
+        "rank_count": 16,
+        "synchronized_exit": [
+          0,
+          1,
+          0
+        ]
+      }
+    ],
+    "rank_count": 16,
+    "semantics": "official_helios_normal_rank0_broadcast_strict",
+    "status": "PASS"
+  },
+  "schema_version": "distillschedule.strict_rank_trace_validation.v1",
+  "status": "PASS",
+  "step10a_plans": [
+    {
+      "dummy_call_counts": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "logical_call_counts": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "physical_call_count_per_rank": 4,
+      "stage_exits": [
+        1,
+        0,
+        0
+      ],
+      "wave": 0
+    },
+    {
+      "dummy_call_counts": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "logical_call_counts": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "physical_call_count_per_rank": 4,
+      "stage_exits": [
+        1,
+        0,
+        0
+      ],
+      "wave": 1
+    }
+  ],
+  "tensor_payload_hashes_equal_v3": true,
+  "timing_claim": "Not Run; correctness repair is not a speedup"
+}

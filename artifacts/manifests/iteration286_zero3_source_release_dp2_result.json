@@ -1,0 +1,48 @@
+{
+  "schema_version": "distillschedule.gate_result.v1",
+  "iteration": 286,
+  "gate": "zero3_source_release_after_last_owner_drop",
+  "status": "PASS",
+  "environment": {
+    "torch": "2.10.0+cu128",
+    "deepspeed": "0.18.4",
+    "world_size": 2,
+    "zero_stage": 3,
+    "optimizer_offload": "cpu"
+  },
+  "attempts": [
+    {
+      "id": "attempt001",
+      "status": "HARNESS_FAIL",
+      "reason": "the diagnostic retained live loss and parameter aliases"
+    },
+    {
+      "id": "attempt002",
+      "status": "RELEASE_PASS_REPORTING_FAIL",
+      "reason": "release validation passed, then reporting dereferenced the intentionally cleared engine"
+    },
+    {
+      "id": "attempt003",
+      "status": "PASS",
+      "rank_results": [
+        "artifacts/traces/iteration286_zero3_source_release_dp2_attempt003/rank_00.json",
+        "artifacts/traces/iteration286_zero3_source_release_dp2_attempt003/rank_01.json"
+      ]
+    }
+  ],
+  "checks": {
+    "logical_master_m_v_restore_exact": true,
+    "optimizer_step_2_to_3": true,
+    "engine_step_2_to_3": true,
+    "scheduler_step_2_to_3": true,
+    "global_master_changed": true,
+    "optimizer_state_finite": true,
+    "allocated_storage_decreased_on_all_ranks": true,
+    "released_allocated_gib_per_rank": [9.5367431640625e-07, 9.5367431640625e-07],
+    "new_oom": false,
+    "new_oom_kill": false
+  },
+  "repair": "Split teardown from verification and measure only after the caller clears its final engine owner.",
+  "scope": "lifetime ownership and fail-closed instrumentation only; no workload or training semantic change",
+  "decision": "GO for one same-contract real-14B strict-v4 correctness retry"
+}

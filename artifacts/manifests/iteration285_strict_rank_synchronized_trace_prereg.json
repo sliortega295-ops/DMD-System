@@ -1,0 +1,79 @@
+{
+  "allowed_changes": [
+    "operation-trace generator and strict validator",
+    "current Full5 trace binding/executor to remove padding from normal path",
+    "unit tests, active launcher trace default/hash",
+    "append-only logs/manifests/docs and Obsidian note",
+    "one previously identified initialization-only Phase-A barrier recovery"
+  ],
+  "authorized_hypothesis": "For the official normal synchronized path used by all future experiments, every rank executes the same per-stage and total physical/logical DiT call count for each logical operation and step.",
+  "created_at": "2026-08-10T10:40:00-04:00",
+  "excluded_scope": {
+    "implementation": "do not modify read-only upstream; active trace/replay must reject it",
+    "policy": "excluded from the measured normal-path experiment contract by user authorization",
+    "upstream_special_branch": "is_use_gt_history && is_amplify_first_chunk && all_history_zero with is_sync=False"
+  },
+  "falsification": "Any rank differs in initial exit, executed exit, per-stage call_count, total logical call_count, or physical call count for the same operation/step; or any local-exception marker survives active validation.",
+  "frozen_contracts": {
+    "loss_optimizer_ema_batch_versions": "unchanged",
+    "models": "real Helios-Distilled Generator and Helios-Base Score",
+    "old_artifacts": "preserve; no overwrite",
+    "resolution": [
+      384,
+      640
+    ],
+    "timing_claim": "trace repair is correctness-only and cannot be counted as speedup",
+    "trace_classification": "SYN-FEATURE"
+  },
+  "gate": "rank-qualified schedule parity before any real-14B construction",
+  "iteration": 285,
+  "live_substrate": {
+    "dmd_head": "43b2a575dfab828237eeba5054b839030459fe46",
+    "gpu_processes": "none on node0/node1",
+    "new_cgroup_oom": "none",
+    "runtime_head": "fad336ae874dcf52451e0fbfa0e8e82a47b888e5"
+  },
+  "matching_prior_evidence": {
+    "correct_strict_calls_per_wave": 4,
+    "correct_strict_calls_two_waves": 8,
+    "correct_strict_step10_exit": [
+      1,
+      0,
+      0
+    ],
+    "local_exception_entries": 268,
+    "old_bundle_hash": "9e282f4bc24eb589d259e5e5603cae02fa5cd0c6cdd0f06f7c5416461e4564d0",
+    "old_trace": "/share/project/shuchenweng/DistillSchedule_assets/m0/traces/syn_feature_trace_rank16_v3_sync_steps20",
+    "padded_physical_calls_per_rank": 22,
+    "step10_wave0_logical_calls": [
+      4,
+      4,
+      4,
+      8,
+      4,
+      4,
+      6,
+      7
+    ],
+    "step10_wave1_logical_calls": [
+      4,
+      3,
+      7,
+      7,
+      4,
+      6,
+      9,
+      8
+    ]
+  },
+  "milestone": "Continuous Full5 trace-contract correction",
+  "next_command": "implement strict validator/generator tests, generate immutable v4 trace, run CPU suites",
+  "rejected_paths": [
+    "retain local exception and pad it as baseline",
+    "count trace correction as speedup",
+    "overwrite or delete v3 artifacts",
+    "launch timing before strict trace correctness"
+  ],
+  "schema_version": "distillschedule.iteration_prereg.v1",
+  "status": "GO"
+}

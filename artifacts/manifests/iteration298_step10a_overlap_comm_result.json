@@ -1,0 +1,34 @@
+{
+  "schema_version": "distillschedule.iteration_result.v1",
+  "iteration": 298,
+  "date": "2026-08-10",
+  "status": "BOUNDED_NEGATIVE_BOUNDARY_IDENTITY_PASS",
+  "run_id": "rb16_step10a_iter298_persist2m_prefetch384m_live768m_overlap_timing_20260810_001",
+  "source_head": "87a35285a525ebe668f4e1fba751b5cf6cba1c13",
+  "claim_boundary": "one preliminary Step10-only timing run; formal repeats and Full5 full-state exactness Not Run",
+  "metrics": {
+    "generator_rank_step10a_median_seconds": 120.46544843842275,
+    "world_max_step10a_seconds": 124.96375708701089,
+    "wave0_rollout_median_seconds": 20.041639177012257,
+    "wave0_backward_median_seconds": 37.00813803891651,
+    "wave1_rollout_median_seconds": 20.544713977491483,
+    "wave1_backward_median_seconds": 41.34900564001873,
+    "node0_cgroup_peak_bytes": 358040174592,
+    "node0_gpu_peak_mib_min": 33314,
+    "node0_gpu_peak_mib_max": 33514,
+    "oom_delta": 0
+  },
+  "relative_to_iteration287": {
+    "generator_median_improvement_percent": 2.152,
+    "world_max_improvement_percent": 3.131
+  },
+  "relative_to_iteration297": {
+    "generator_median_regression_percent": 4.308
+  },
+  "boundary_correctness": {
+    "trace_x0_gradient_loss": "exact for 8 ranks x 2 waves",
+    "versions": "G2->G3 once; C10/EMA10 unchanged"
+  },
+  "refutation": "Step10-A remained above 110.804 seconds and async regressed synchronous window",
+  "next": "close bounded Step10 ZeRO3 knob tuning; test persistent pinned target backing for transition"
+}

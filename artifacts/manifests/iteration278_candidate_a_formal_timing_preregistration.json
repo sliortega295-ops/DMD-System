@@ -1,0 +1,61 @@
+{
+  "allowed_changes": [
+    "explicit critic-timing launcher/summarizer mode",
+    "omit trainable SHA and optimizer state checksums inside measured window",
+    "omit EMA compare/checksum but retain official EMA step and version recurrence",
+    "bind every timing rank to the frozen PASS correctness evaluation"
+  ],
+  "base_dmd_head": "314e52fe9960ecc3a5d5f6cad666c5f04bd8036f",
+  "base_runtime_head": "88cfb35b844625d47a61291f9ca951ded7def3b1",
+  "candidate_b": "Not Run until all Candidate A formal rounds pass",
+  "decision": "GO",
+  "experiment_id": "RB16-F5-PIPE-MATCH16",
+  "forbidden_changes": [
+    "trace, batch, loss, optimizer, EMA update, placement, ZeRO or schedule semantics",
+    "checkpoint save in timing runs",
+    "Candidate B before Candidate A timing completes",
+    "post-hoc repetition removal"
+  ],
+  "formal_metric": "max across ranks critic_subgraph_execution_seconds",
+  "formal_order": [
+    "round1 Sequential then Pipeline",
+    "round2 Pipeline then Sequential",
+    "round3 Sequential then Pipeline"
+  ],
+  "frozen_contracts": {
+    "correctness_evaluation_sha256": "ae14b13417aa3f13be3539c5132c17476cc230b4129db85df23fa7859611e8ce",
+    "critic_commits": 5,
+    "critic_dp": 8,
+    "ema_commits": 5,
+    "gas": 2,
+    "global_batch": 16,
+    "gradient_clipping": 1.0,
+    "micro_batch": 1,
+    "optimizer_offload": "cpu",
+    "physical_critic_waves": 10,
+    "placement": "8G+8C",
+    "shape": "384x640",
+    "transition_manifest_sha256": "444a6740debbe37d7014ebaa45da23398f162652f6179d09537e60e3c304dee0",
+    "zero_stage": 1
+  },
+  "iteration": 278,
+  "question": "What is the same-layout Pipeline speedup after removing correctness-only instrumentation from the common-transition Critic measured window?",
+  "schema_version": "distillschedule.iteration_preregistration.v1",
+  "secondary_metrics": [
+    "critic_phase_wall_seconds",
+    "per-role stage time",
+    "queue and ACK wait",
+    "node cgroup sampled peak",
+    "GPU peak"
+  ],
+  "stop_conditions": [
+    "correctness binding mismatch",
+    "trace/version/queue/EMA recurrence failure",
+    "OOM or process leak",
+    "source/config drift"
+  ],
+  "warmup": [
+    "one independent Sequential critic-timing launch",
+    "one independent Pipeline critic-timing launch"
+  ]
+}

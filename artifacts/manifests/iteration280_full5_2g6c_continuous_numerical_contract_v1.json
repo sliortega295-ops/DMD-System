@@ -1,0 +1,36 @@
+{
+  "schema_version": "distillschedule.rb16_full5_2g6c_continuous_numerical_contract.v1",
+  "status": "ACTIVE",
+  "frozen_before_first_gpu_run": true,
+  "experiment_id": "RB16-F5-CONT-8G4S4T-TO-2G6C",
+  "scope": "same-layout continuous Full5 Sequential versus Pipeline, DP12 Critic target",
+  "exact_primary_contract": [
+    "rank-qualified Step10-A trace/x0/fake/detached-gradient identities",
+    "G2-to-G3 and C10-to-C15 and EMA10-to-EMA15 version trajectories",
+    "live 8G4S4T-to-4G12C transition semantics",
+    "60 Critic trace/x0/noise/timestep identities",
+    "ACK-free queue delivery and flush",
+    "Generator G3 unchanged during Critic phase",
+    "initial DP12 optimizer partitions exact"
+  ],
+  "numerical_limits": {
+    "source": "pre-run frozen Candidate-A five-update same-layout envelope; reused unchanged as a strict provisional ceiling, not fitted to this candidate",
+    "loss_max_abs": 0.00016754865646362305,
+    "critic": {
+      "master": {
+        "relative_l2": 0.000029419547343271334,
+        "max_abs": 0.000006276422539031046
+      },
+      "exp_avg": {
+        "relative_l2": 0.007623718564191509,
+        "max_abs": 0.000091552734375
+      },
+      "exp_avg_sq": {
+        "relative_l2": 0.0004151180822427585,
+        "max_abs": 1.7378738448314834e-9
+      }
+    }
+  },
+  "failure_policy": "Any exact or numerical failure blocks formal timing; thresholds may not be relaxed after observing results.",
+  "claim_boundary": "Batch12 resource-throughput Pareto only; not a matched-batch16 speedup."
+}

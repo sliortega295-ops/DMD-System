@@ -1,0 +1,103 @@
+{
+  "authorized_hypothesis": "With the trace-key collision removed, the unchanged g12 plan can execute far enough to answer exact Full5 functional admission.",
+  "candidate_run_id": "ra16_f5_pr12_20260809_002",
+  "capacity_candidate_budget": {
+    "new_policy_attempt": false,
+    "policies": 1,
+    "policy": "g12"
+  },
+  "decision": "GO_EXACT_RECOVERY_AFTER_NON_SEMANTIC_TRACE_FIX",
+  "experiment_id": "RA16-F5-PR12",
+  "formal_timing": "NOT_RUN",
+  "frozen_contract": {
+    "activation_offload_components": [
+      "generator_selected",
+      "critic_train"
+    ],
+    "activation_offload_threshold_mib": 32,
+    "expected_final_versions": {
+      "critic": 15,
+      "ema": 15,
+      "generator": 3
+    },
+    "generator_streamed_blocks": [
+      0,
+      24,
+      1,
+      5,
+      8,
+      25,
+      10,
+      32,
+      36,
+      15,
+      16,
+      26
+    ],
+    "global_batch": 16,
+    "gradient_accumulation_steps": 1,
+    "host_admission_policy": "actual_oom_only",
+    "initial_versions": {
+      "critic": 10,
+      "ema": 10,
+      "generator": 2
+    },
+    "latent": [
+      1,
+      16,
+      9,
+      48,
+      80
+    ],
+    "micro_batch_per_gpu": 1,
+    "optimizer_offload": "cpu",
+    "phase_resident_critic_generator": true,
+    "plan_sha256": "7a22646c2b1741351a680487a337cdbd9729c936d60ee04134c35fee11026dcb",
+    "resolution": [
+      384,
+      640
+    ],
+    "score_block_streaming": false,
+    "steps": [
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "streaming_window": 1,
+    "world_size": 16,
+    "zero_stage": 1
+  },
+  "live_preflight": {
+    "active_gpu_compute_processes_node0": 0,
+    "active_gpu_compute_processes_node1": 0,
+    "cgroup_oom_kill_node0": 1,
+    "cgroup_oom_kill_node1": 1,
+    "cgroup_oom_node0": 0,
+    "cgroup_oom_node1": 0,
+    "runtime_focused_tests": "35 passed, 1 expected warning",
+    "runtime_worktree_clean_after_commit": true
+  },
+  "matching_prior_evidence": {
+    "artifact": "artifacts/manifests/ra16_f5_pr12_20260809_001_failure.json",
+    "new_evidence": "All ranks crossed Step10 Generator backward/update with zero allocator or cgroup OOM.",
+    "status": "FAIL_INSTRUMENTATION_AFTER_G_UPDATE"
+  },
+  "only_source_change": {
+    "production_delta": "phase trace metadata key phase -> resident_phase",
+    "runtime_head_after": "0d66b4237ec68e8e4bc9991e543cf40a833f4e23",
+    "runtime_head_before": "494229b99f66b36d6153a85c6a34e2445b667331",
+    "test_delta": "regression test for phase-resident start/end trace records"
+  },
+  "rejected_paths": [
+    "plan change",
+    "activation threshold change",
+    "g16",
+    "ZeRO-2",
+    "reduced shape",
+    "altered trace",
+    "formal timing claim"
+  ],
+  "schema_version": "distillschedule.ra16_f5_pr12_recovery_preflight.v1"
+}

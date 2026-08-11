@@ -1,0 +1,36 @@
+{
+  "schema_version": "distillschedule.autoresearch.preregistration.v1",
+  "iteration": 272,
+  "experiment_id": "RB16-F5-PIPE-MATCH16",
+  "gate": "Candidate-A Sequential correctness checkpoint-15",
+  "status": "PREREGISTERED",
+  "current_head": "c5d9aa990826e98b63393dcba573258ba8840ce9",
+  "failed_run": "rb16_f5_pipe_match16_sequential_correctness_20260809_002",
+  "failed_result": "artifacts/manifests/rb16_f5_pipe_match16_sequential_correctness_20260809_002_result.json",
+  "new_evidence": {
+    "all_critic_activation_scopes_completed": 10,
+    "generator_final_exact_checksums_completed": 8,
+    "critic_exact_epilogues_completed": 8,
+    "checkpoint15_directory_created": true,
+    "checkpoint15_payload_files": 0,
+    "generator_gpu_utilization_while_stuck": "8/8 at 100%",
+    "critic_gpu_utilization_while_stuck": "8/8 at 0%",
+    "new_cgroup_oom": false,
+    "deepspeed_source_contract": "DeepSpeedEngine.save_checkpoint requires all processes and uses default-world barriers"
+  },
+  "hypothesis": "Calling Generator and Critic DeepSpeed save_checkpoint concurrently on all 16 ranks, with identical tags and disjoint roots, satisfies DeepSpeed default-world collectives while preserving each engine's existing DP8 state layout.",
+  "refutation": "The next immutable run does not create a complete checkpoint-15, deadlocks, collides paths, changes state/version semantics, fails strict summarization, or incurs OOM.",
+  "allowed_changes": [
+    "world-aligned concurrent G/C checkpoint calls",
+    "disjoint generator and critic checkpoint roots",
+    "checkpoint progress markers",
+    "unit tests and append-only artifacts"
+  ],
+  "forbidden_changes": [
+    "training execution before checkpoint",
+    "trace/batch/GAS/loss/optimizer/EMA semantics",
+    "placement/offload/ZeRO policy",
+    "Pipeline or Candidate B"
+  ],
+  "decision": "GO_ONE_BOUNDED_VERIFICATION"
+}

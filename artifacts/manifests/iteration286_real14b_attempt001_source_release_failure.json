@@ -1,0 +1,43 @@
+{
+  "schema_version": "distillschedule.iteration_result.v1",
+  "iteration": 286,
+  "status": "FAIL_CLOSED",
+  "classification": "initialization_only_phase_transition_ownership_check",
+  "run_id": "rb16_f5_stricttrace_v4_z3resume_correctness_20260810_001",
+  "source_head": "bdac4760fa6bdfa06dfff3febcfbecc2eed3e9dd",
+  "runtime_head": "ec1462bfb84ca444b3beae216c66632744e0d369",
+  "trace_bundle_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+  "logical_manifest_hash": "68eed293970be008764ee6acadb2aac6ce54de2ce1f55a17fca2246f0d04e4aa",
+  "verified_progress": {
+    "topology_gate": "PASS",
+    "step10a_strict_trace": "PASS",
+    "step10a_gas2_forward_backward": "PASS",
+    "generator_optimizer_step": "PASS_G2_TO_G3",
+    "g3_collective_materialization": "PASS",
+    "phase_b_critic_steps": "Not Run",
+    "ema_steps": "Not Run",
+    "full5_correctness": "Not Run",
+    "performance": "Not Run"
+  },
+  "failure": {
+    "signature": "obsolete ZeRO-3 source storage did not decrease",
+    "affected_ranks": [0, 1, 2, 3, 4, 5, 6, 7],
+    "location": "_destroy_obsolete_zero3_engine",
+    "mechanism": "CUDA allocation was checked inside the destroy helper while the caller still retained the final step10a_engine alias",
+    "semantic_scope": "none; fail-closed lifetime instrumentation fired before Phase-B materialization",
+    "new_oom": false,
+    "new_oom_kill": false
+  },
+  "diagnostic_resources": {
+    "node0_cgroup_peak_gib": 350.3354148864746,
+    "node1_cgroup_peak_gib": 73.2890625,
+    "node0_gpu_peak_mib_per_device": [31986, 31986, 31986, 31986, 31986, 31986, 31986, 31986],
+    "node1_gpu_peak_mib_per_device": [36754, 36754, 36754, 36754, 35786, 35786, 35786, 35786]
+  },
+  "evidence": {
+    "run_root": "artifacts/runs/rb16_f5_stricttrace_v4_z3resume_correctness_20260810_001",
+    "node0_console": "artifacts/runs/rb16_f5_stricttrace_v4_z3resume_correctness_20260810_001/launcher/node_0/console.log",
+    "node1_console": "artifacts/runs/rb16_f5_stricttrace_v4_z3resume_correctness_20260810_001/launcher/node_1/console.log"
+  },
+  "claim_boundary": "This is not a model, trace, optimizer, numerical, OOM, or performance result."
+}

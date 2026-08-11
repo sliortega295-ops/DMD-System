@@ -1,0 +1,48 @@
+{
+  "schema_version": "distillschedule.iteration_preflight.v1",
+  "iteration": 303,
+  "date": "2026-08-10",
+  "status": "PREREGISTERED_GO",
+  "current_gate": "strict-v4 Step10-A bounded pinned checkpoint-boundary policy",
+  "authorized_hypothesis": "replacing only the three proven pageable checkpoint-boundary saved-tensor classes with synchronous pinned host handles reduces exposed copy time without changing graph or numerical semantics",
+  "candidate": {
+    "name": "Step10A-BoundaryPinnedSync-v1",
+    "offload_allowlist": [
+      {"shape": [1,11040,5120], "dtype": "torch.bfloat16", "logical_bytes": 113049600},
+      {"shape": [1,4560,5120], "dtype": "torch.bfloat16", "logical_bytes": 46694400},
+      {"shape": [1,2940,5120], "dtype": "torch.bfloat16", "logical_bytes": 30105600}
+    ],
+    "copy": "synchronous D2H pack and synchronous H2D unpack",
+    "host_memory": "pinned",
+    "step10a_static_window": "Iteration297 persistence2M prefetch384M live768M reuse256M overlap_comm=false",
+    "transition_for_full5_correctness": "Iteration299 persistent_pinned immediate cleanup"
+  },
+  "frozen": {
+    "trace": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+    "step10a": "DP8 ZeRO-3 MB1 GAS2 global16, two selected graphs and two backwards",
+    "versions": "G2/C10/EMA10 -> G3/C15/EMA15",
+    "graph_loss_optimizer_clip_precision": "unchanged"
+  },
+  "matching_prior_evidence": [
+    "Iteration302 observed each allowlisted saved-tensor signature exactly 80 times on every Generator rank",
+    "Iteration291 Nsight observed the same dominant pageable D2H sizes/counts",
+    "Iteration297 is the strongest measured legal Step10-A static ZeRO-3 window at 115.489513 s median"
+  ],
+  "required_order": [
+    "CPU and CUDA-mini exact parity tests",
+    "real strict-v4 continuous Full5 correctness with exact state/identity checks",
+    "only after correctness PASS, one Step10-only low-overhead preliminary timing run"
+  ],
+  "refutation": [
+    "any trace/x0/gradient/loss/version/optimizer/EMA mismatch",
+    "OOM, pinned handle leak, alias mismatch, or live-byte leak",
+    "preliminary Step10-A median >= 110.804 s"
+  ],
+  "decision_rules": {
+    "target": "Step10-A median <= 105 s",
+    "partial_positive": "105 s < median < 110.804 s",
+    "bounded_negative": "median >= 110.804 s or admission/correctness failure"
+  },
+  "claim_boundary": "single bounded static policy candidate; async prefetch and formal repeats remain Not Run",
+  "decision": "GO"
+}

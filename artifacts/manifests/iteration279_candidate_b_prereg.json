@@ -1,0 +1,66 @@
+{
+  "schema_version": "distillschedule.routeb_candidate_b_prereg.v1",
+  "status": "ACTIVE",
+  "iteration": 279,
+  "experiment_id": "RB16-F5-PIPE-2G6C",
+  "gate": "Candidate A PASS authorizes bounded Candidate B Pareto experiment",
+  "preflight": {
+    "decision": "GO",
+    "authorized_hypothesis": "At fixed DP12/MB1/GAS1/global-batch-12 semantics, Pipeline-Q1 may reduce the five-update Critic-phase makespan versus same-layout Sequential and may improve the resource-throughput Pareto relative to Candidate A without being used as its speedup denominator.",
+    "matching_prior_evidence": [
+      "artifacts/manifests/iteration278_candidate_a_formal_timing_result.json",
+      "Candidate A established legal G(next) || C(current) overlap at matched batch16.",
+      "ZeRO-2 double reduction is a bounded prior failure; Candidate B remains on validated ZeRO-1."
+    ],
+    "rejected_or_superseded_paths": [
+      "ZeRO-2",
+      "ZeRO-3/FSDP",
+      "direct batch12-vs-batch16 speedup claim",
+      "rerunning Step10-A",
+      "changing trace, loss, EMA, clip, or optimizer semantics"
+    ],
+    "new_falsifiable_question": "Does 4G+12C Pipeline-Q1 beat 4G+12C Sequential by at least 10% at the same batch12 contract while preserving exact identities and remaining within a frozen same-layout numerical noise band?"
+  },
+  "frozen_contract": {
+    "world_size": 16,
+    "per_node_layout": "2G+6C",
+    "generator_ranks": [0, 1, 8, 9],
+    "critic_ranks": [2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15],
+    "critic_dp": 12,
+    "micro_batch_per_rank": 1,
+    "gradient_accumulation_steps": 1,
+    "global_batch_per_update": 12,
+    "logical_critic_updates": 5,
+    "logical_samples": 60,
+    "gradient_clipping": 1.0,
+    "optimizer": "ZeRO-1 CPU optimizer offload",
+    "generator_optimizer_during_critic_phase": "BACKING_ONLY / not materialized",
+    "generator_version": "G3 unchanged",
+    "critic_version": "C10 to C15",
+    "ema_version": "EMA10 to EMA15 with five official bootstrap updates",
+    "resolution": [384, 640],
+    "data": "operation-keyed rank-qualified SYN-FEATURE"
+  },
+  "immutable_inputs": {
+    "trace_bundle_hash": "9e282f4bc24eb589d259e5e5603cae02fa5cd0c6cdd0f06f7c5416461e4564d0",
+    "critic_logical_manifest_hash": "68eed293970be008764ee6acadb2aac6ce54de2ce1f55a17fca2246f0d04e4aa",
+    "source_transition_manifest_sha256": "444a6740debbe37d7014ebaa45da23398f162652f6179d09537e60e3c304dee0",
+    "transition_package_hash": "pending_export"
+  },
+  "bounded_sequence": [
+    "export and validate lightweight G3/C10/EMA10 Candidate-B transition package",
+    "construct target DP12 layout and pass actual-OOM admission",
+    "Sequential correctness run S1",
+    "Sequential correctness repeat S2 and freeze observed same-layout numerical floor before Pipeline",
+    "Pipeline correctness P1 and fail-closed evaluation",
+    "only after PASS, independent warm-up and three fresh-process formal timing pairs"
+  ],
+  "success_thresholds": {
+    "clear_positive": ">=15% Pipeline makespan reduction versus same-layout Sequential",
+    "pass": ">=10%",
+    "performance_neutral": "5%-10%",
+    "bounded_stop": "<5% after one bottleneck attribution",
+    "claim_boundary": "Candidate B is a batch12 Pareto point, never the denominator for Candidate A batch16 speedup"
+  },
+  "measurement": "Not Run"
+}

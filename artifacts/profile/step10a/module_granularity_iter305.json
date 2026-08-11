@@ -1,0 +1,6643 @@
+{
+  "finite_record_count": 613,
+  "generator_metadata": {
+    "backbone_root": "/share/project/shuchenweng/DistillSchedule_assets/Helios-Distilled",
+    "block_count": 40,
+    "exclude_modules": [
+      "down",
+      "up"
+    ],
+    "gradient_checkpointing": true,
+    "has_adapter": true,
+    "load_root": "/share/project/shuchenweng/DistillSchedule_assets/precast/helios-distilled-transformer-ode-mixed-bf16-v1",
+    "loading_mode": "mixed_bf16_precast_direct",
+    "lora_rank": 256,
+    "mode": "train",
+    "precast_manifest_sha256": "26aef5faec7b44f4c41a5da8c9fb8e404d907c3b3f72ff3b7cc8a8fbf018b25d",
+    "role": "generator",
+    "split_modulation": true,
+    "subfolder": "transformer_ode",
+    "target_count": 409,
+    "trainable_dtype_inventory": [
+      "torch.float32"
+    ],
+    "trainable_numel": 1251442688,
+    "trainable_tensor_count": 818
+  },
+  "hostname": "job-84c7ad0e-0a2c-43e5-8b4a-64cfad184798-master-0",
+  "minimum_effective_threshold": 10240,
+  "pid": 3214370,
+  "record_count": 614,
+  "records": [
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 1,
+      "granularity": 10240,
+      "module_type": "HeliosOutputNorm",
+      "name": "norm_out",
+      "oversized_excluded": false,
+      "parameter_numel": 10240
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 413712,
+      "module_type": "Linear",
+      "name": "proj_out",
+      "oversized_excluded": false,
+      "parameter_numel": 1654848
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 414976,
+      "module_type": "Conv3d",
+      "name": "patch_short",
+      "oversized_excluded": false,
+      "parameter_numel": 1659904
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 673024,
+      "module_type": "Linear",
+      "name": "condition_embedder.time_embedder.linear_1",
+      "oversized_excluded": false,
+      "parameter_numel": 2692096
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 1017088,
+      "module_type": "Conv3d",
+      "name": "patch_mid",
+      "oversized_excluded": false,
+      "parameter_numel": 4068352
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 9,
+      "granularity": 3503672,
+      "module_type": "TimestepEmbedding",
+      "name": "condition_embedder.time_embedder",
+      "oversized_excluded": false,
+      "parameter_numel": 31533056
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 9,
+      "granularity": 5797432,
+      "module_type": "PixArtAlphaTextProjection",
+      "name": "condition_embedder.text_embedder",
+      "oversized_excluded": false,
+      "parameter_numel": 52176896
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 5833984,
+      "module_type": "Linear",
+      "name": "condition_embedder.text_embedder.linear_1",
+      "oversized_excluded": false,
+      "parameter_numel": 23335936
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 5833984,
+      "module_type": "Conv3d",
+      "name": "patch_long",
+      "oversized_excluded": false,
+      "parameter_numel": 23335936
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.0.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.0.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.1.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.1.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.10.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.10.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.11.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.11.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.12.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.12.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.13.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.13.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.14.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.14.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.15.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.15.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.16.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.16.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.17.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.17.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.18.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.18.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.19.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.19.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.2.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.2.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.20.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.20.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.21.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.21.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.22.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.22.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.23.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.23.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.24.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.24.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.25.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.25.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.26.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.26.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.27.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.27.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.28.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.28.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.29.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.29.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.3.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.3.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.30.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.30.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.31.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.31.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.32.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.32.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.33.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.33.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.34.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.34.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.35.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.35.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.36.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.36.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.37.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.37.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.38.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.38.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.39.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.39.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.4.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.4.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.5.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.5.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.6.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.6.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.7.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.7.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.8.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.8.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.9.attn1",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 19,
+      "granularity": 6072320,
+      "module_type": "HeliosAttention",
+      "name": "blocks.9.attn2",
+      "oversized_excluded": false,
+      "parameter_numel": 115374080
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.0.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.0.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.0.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.0.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.0.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.0.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.0.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.0.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.1.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.1.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.1.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.1.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.1.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.1.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.1.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.1.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.10.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.10.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.10.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.10.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.10.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.10.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.10.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.10.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.11.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.11.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.11.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.11.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.11.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.11.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.11.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.11.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.12.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.12.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.12.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.12.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.12.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.12.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.12.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.12.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.13.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.13.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.13.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.13.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.13.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.13.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.13.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.13.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.14.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.14.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.14.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.14.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.14.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.14.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.14.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.14.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.15.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.15.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.15.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.15.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.15.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.15.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.15.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.15.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.16.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.16.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.16.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.16.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.16.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.16.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.16.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.16.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.17.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.17.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.17.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.17.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.17.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.17.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.17.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.17.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.18.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.18.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.18.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.18.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.18.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.18.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.18.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.18.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.19.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.19.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.19.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.19.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.19.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.19.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.19.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.19.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.2.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.2.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.2.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.2.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.2.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.2.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.2.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.2.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.20.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.20.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.20.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.20.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.20.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.20.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.20.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.20.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.21.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.21.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.21.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.21.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.21.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.21.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.21.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.21.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.22.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.22.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.22.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.22.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.22.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.22.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.22.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.22.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.23.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.23.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.23.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.23.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.23.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.23.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.23.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.23.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.24.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.24.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.24.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.24.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.24.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.24.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.24.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.24.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.25.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.25.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.25.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.25.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.25.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.25.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.25.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.25.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.26.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.26.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.26.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.26.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.26.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.26.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.26.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.26.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.27.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.27.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.27.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.27.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.27.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.27.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.27.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.27.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.28.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.28.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.28.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.28.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.28.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.28.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.28.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.28.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.29.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.29.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.29.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.29.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.29.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.29.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.29.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.29.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.3.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.3.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.3.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.3.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.3.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.3.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.3.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.3.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.30.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.30.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.30.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.30.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.30.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.30.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.30.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.30.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.31.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.31.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.31.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.31.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.31.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.31.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.31.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.31.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.32.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.32.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.32.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.32.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.32.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.32.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.32.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.32.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.33.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.33.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.33.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.33.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.33.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.33.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.33.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.33.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.34.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.34.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.34.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.34.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.34.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.34.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.34.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.34.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.35.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.35.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.35.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.35.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.35.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.35.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.35.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.35.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.36.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.36.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.36.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.36.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.36.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.36.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.36.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.36.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.37.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.37.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.37.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.37.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.37.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.37.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.37.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.37.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.38.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.38.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.38.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.38.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.38.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.38.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.38.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.38.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.39.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.39.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.39.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.39.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.39.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.39.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.39.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.39.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.4.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.4.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.4.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.4.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.4.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.4.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.4.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.4.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.5.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.5.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.5.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.5.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.5.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.5.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.5.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.5.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.6.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.6.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.6.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.6.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.6.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.6.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.6.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.6.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.7.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.7.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.7.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.7.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.7.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.7.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.7.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.7.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.8.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.8.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.8.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.8.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.8.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.8.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.8.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.8.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.9.attn1.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.9.attn1.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.9.attn1.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.9.attn1.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.9.attn2.to_k",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.9.attn2.to_out.0",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.9.attn2.to_q",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "blocks.9.attn2.to_v",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "condition_embedder.text_embedder.linear_2",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 7210240,
+      "module_type": "Linear",
+      "name": "condition_embedder.time_embedder.linear_2",
+      "oversized_excluded": false,
+      "parameter_numel": 28840960
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.0",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.1",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.10",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.11",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.12",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.13",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.14",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.15",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.16",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.17",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.18",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.19",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.2",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.20",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.21",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.22",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.23",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.24",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.25",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.26",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.27",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.28",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.29",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.3",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.30",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.31",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.32",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.33",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.34",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.35",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.36",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.37",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.38",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.39",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.4",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.5",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.6",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.7",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.8",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 50,
+      "granularity": 7641303,
+      "module_type": "HeliosTransformerBlock",
+      "name": "blocks.9",
+      "oversized_excluded": false,
+      "parameter_numel": 382065152
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 23,
+      "granularity": 10878352,
+      "module_type": "HeliosTimeTextEmbedding",
+      "name": "condition_embedder",
+      "oversized_excluded": false,
+      "parameter_numel": 250202112
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.0.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.1.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.10.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.11.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.12.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.13.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.14.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.15.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.16.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.17.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.18.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.19.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.2.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.20.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.21.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.22.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.23.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.24.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.25.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.26.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.27.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.28.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.29.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.3.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.30.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.31.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.32.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.33.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.34.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.35.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.36.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.37.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.38.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.39.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.4.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.5.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.6.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.7.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.8.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 10,
+      "granularity": 15127603,
+      "module_type": "FeedForward",
+      "name": "blocks.9.ffn",
+      "oversized_excluded": false,
+      "parameter_numel": 151276032
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.0.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.1.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.10.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.11.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.12.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.13.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.14.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.15.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.16.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.17.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.18.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.19.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.2.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.20.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.21.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.22.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.23.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.24.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.25.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.26.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.27.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.28.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.29.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.3.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.30.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.31.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.32.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.33.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.34.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.35.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.36.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.37.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.38.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.39.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.4.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.5.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.6.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.7.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.8.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 5,
+      "granularity": 15128473,
+      "module_type": "GELU",
+      "name": "blocks.9.ffn.net.0",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.0.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.1.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.10.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.11.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.12.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.13.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.14.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.15.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.16.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.17.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.18.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.19.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.2.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.20.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.21.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.22.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.23.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.24.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.25.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.26.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.27.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.28.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.29.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.3.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.30.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.31.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.32.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.33.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.34.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.35.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.36.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.37.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.38.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.39.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.4.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.5.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.6.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.7.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.8.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18908416,
+      "module_type": "Linear",
+      "name": "blocks.9.ffn.net.2",
+      "oversized_excluded": false,
+      "parameter_numel": 75633664
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.0.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.1.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.10.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.11.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.12.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.13.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.14.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.15.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.16.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.17.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.18.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.19.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.2.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.20.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.21.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.22.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.23.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.24.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.25.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.26.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.27.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.28.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.29.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.3.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.30.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.31.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.32.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.33.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.34.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.35.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.36.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.37.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.38.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.39.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.4.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.5.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.6.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.7.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.8.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 18910592,
+      "module_type": "Linear",
+      "name": "blocks.9.ffn.net.0.proj",
+      "oversized_excluded": false,
+      "parameter_numel": 75642368
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 4,
+      "granularity": 41623040,
+      "module_type": "Linear",
+      "name": "condition_embedder.time_proj",
+      "oversized_excluded": false,
+      "parameter_numel": 166492160
+    },
+    {
+      "container_excluded": false,
+      "descendant_layer_count": 2042,
+      "granularity": 9223372036854775807,
+      "module_type": "HeliosTransformer3DModel",
+      "name": "<root>",
+      "oversized_excluded": true,
+      "parameter_numel": 15563870272
+    }
+  ],
+  "schema_version": "distillschedule.zero3_module_granularity.v1",
+  "status": "PASS",
+  "thresholds": {
+    "1000": {
+      "selected": [],
+      "selected_count": 0,
+      "selected_parameter_numel_sum": 0
+    },
+    "10000": {
+      "selected": [],
+      "selected_count": 0,
+      "selected_parameter_numel_sum": 0
+    },
+    "100000": {
+      "selected": [
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 1,
+          "granularity": 10240,
+          "module_type": "HeliosOutputNorm",
+          "name": "norm_out",
+          "oversized_excluded": false,
+          "parameter_numel": 10240
+        }
+      ],
+      "selected_count": 1,
+      "selected_parameter_numel_sum": 10240
+    },
+    "1000000": {
+      "selected": [
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 1,
+          "granularity": 10240,
+          "module_type": "HeliosOutputNorm",
+          "name": "norm_out",
+          "oversized_excluded": false,
+          "parameter_numel": 10240
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 4,
+          "granularity": 414976,
+          "module_type": "Conv3d",
+          "name": "patch_short",
+          "oversized_excluded": false,
+          "parameter_numel": 1659904
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 4,
+          "granularity": 413712,
+          "module_type": "Linear",
+          "name": "proj_out",
+          "oversized_excluded": false,
+          "parameter_numel": 1654848
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 4,
+          "granularity": 673024,
+          "module_type": "Linear",
+          "name": "condition_embedder.time_embedder.linear_1",
+          "oversized_excluded": false,
+          "parameter_numel": 2692096
+        }
+      ],
+      "selected_count": 4,
+      "selected_parameter_numel_sum": 6017088
+    },
+    "10000000": {
+      "selected": [
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 1,
+          "granularity": 10240,
+          "module_type": "HeliosOutputNorm",
+          "name": "norm_out",
+          "oversized_excluded": false,
+          "parameter_numel": 10240
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 4,
+          "granularity": 5833984,
+          "module_type": "Conv3d",
+          "name": "patch_long",
+          "oversized_excluded": false,
+          "parameter_numel": 23335936
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 4,
+          "granularity": 1017088,
+          "module_type": "Conv3d",
+          "name": "patch_mid",
+          "oversized_excluded": false,
+          "parameter_numel": 4068352
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 4,
+          "granularity": 414976,
+          "module_type": "Conv3d",
+          "name": "patch_short",
+          "oversized_excluded": false,
+          "parameter_numel": 1659904
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 4,
+          "granularity": 413712,
+          "module_type": "Linear",
+          "name": "proj_out",
+          "oversized_excluded": false,
+          "parameter_numel": 1654848
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.0",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.1",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.10",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.11",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.12",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.13",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.14",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.15",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.16",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.17",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.18",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.19",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.2",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.20",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.21",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.22",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.23",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.24",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.25",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.26",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.27",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.28",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.29",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.3",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.30",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.31",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.32",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.33",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.34",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.35",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.36",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.37",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.38",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.39",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.4",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.5",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.6",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.7",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.8",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.9",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 9,
+          "granularity": 5797432,
+          "module_type": "PixArtAlphaTextProjection",
+          "name": "condition_embedder.text_embedder",
+          "oversized_excluded": false,
+          "parameter_numel": 52176896
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 9,
+          "granularity": 3503672,
+          "module_type": "TimestepEmbedding",
+          "name": "condition_embedder.time_embedder",
+          "oversized_excluded": false,
+          "parameter_numel": 31533056
+        }
+      ],
+      "selected_count": 47,
+      "selected_parameter_numel_sum": 15397045312
+    },
+    "2000000": {
+      "selected": [
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 1,
+          "granularity": 10240,
+          "module_type": "HeliosOutputNorm",
+          "name": "norm_out",
+          "oversized_excluded": false,
+          "parameter_numel": 10240
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 4,
+          "granularity": 1017088,
+          "module_type": "Conv3d",
+          "name": "patch_mid",
+          "oversized_excluded": false,
+          "parameter_numel": 4068352
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 4,
+          "granularity": 414976,
+          "module_type": "Conv3d",
+          "name": "patch_short",
+          "oversized_excluded": false,
+          "parameter_numel": 1659904
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 4,
+          "granularity": 413712,
+          "module_type": "Linear",
+          "name": "proj_out",
+          "oversized_excluded": false,
+          "parameter_numel": 1654848
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 4,
+          "granularity": 673024,
+          "module_type": "Linear",
+          "name": "condition_embedder.time_embedder.linear_1",
+          "oversized_excluded": false,
+          "parameter_numel": 2692096
+        }
+      ],
+      "selected_count": 5,
+      "selected_parameter_numel_sum": 10085440
+    },
+    "20000000": {
+      "selected": [
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 23,
+          "granularity": 10878352,
+          "module_type": "HeliosTimeTextEmbedding",
+          "name": "condition_embedder",
+          "oversized_excluded": false,
+          "parameter_numel": 250202112
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 1,
+          "granularity": 10240,
+          "module_type": "HeliosOutputNorm",
+          "name": "norm_out",
+          "oversized_excluded": false,
+          "parameter_numel": 10240
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 4,
+          "granularity": 5833984,
+          "module_type": "Conv3d",
+          "name": "patch_long",
+          "oversized_excluded": false,
+          "parameter_numel": 23335936
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 4,
+          "granularity": 1017088,
+          "module_type": "Conv3d",
+          "name": "patch_mid",
+          "oversized_excluded": false,
+          "parameter_numel": 4068352
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 4,
+          "granularity": 414976,
+          "module_type": "Conv3d",
+          "name": "patch_short",
+          "oversized_excluded": false,
+          "parameter_numel": 1659904
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 4,
+          "granularity": 413712,
+          "module_type": "Linear",
+          "name": "proj_out",
+          "oversized_excluded": false,
+          "parameter_numel": 1654848
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.0",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.1",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.10",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.11",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.12",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.13",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.14",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.15",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.16",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.17",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.18",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.19",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.2",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.20",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.21",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.22",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.23",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.24",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.25",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.26",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.27",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.28",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.29",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.3",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.30",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.31",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.32",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.33",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.34",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.35",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.36",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.37",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.38",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.39",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.4",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.5",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.6",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.7",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.8",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 50,
+          "granularity": 7641303,
+          "module_type": "HeliosTransformerBlock",
+          "name": "blocks.9",
+          "oversized_excluded": false,
+          "parameter_numel": 382065152
+        }
+      ],
+      "selected_count": 46,
+      "selected_parameter_numel_sum": 15563537472
+    },
+    "5000000": {
+      "selected": [
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 1,
+          "granularity": 10240,
+          "module_type": "HeliosOutputNorm",
+          "name": "norm_out",
+          "oversized_excluded": false,
+          "parameter_numel": 10240
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 4,
+          "granularity": 1017088,
+          "module_type": "Conv3d",
+          "name": "patch_mid",
+          "oversized_excluded": false,
+          "parameter_numel": 4068352
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 4,
+          "granularity": 414976,
+          "module_type": "Conv3d",
+          "name": "patch_short",
+          "oversized_excluded": false,
+          "parameter_numel": 1659904
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 4,
+          "granularity": 413712,
+          "module_type": "Linear",
+          "name": "proj_out",
+          "oversized_excluded": false,
+          "parameter_numel": 1654848
+        },
+        {
+          "container_excluded": false,
+          "descendant_layer_count": 9,
+          "granularity": 3503672,
+          "module_type": "TimestepEmbedding",
+          "name": "condition_embedder.time_embedder",
+          "oversized_excluded": false,
+          "parameter_numel": 31533056
+        }
+      ],
+      "selected_count": 5,
+      "selected_parameter_numel_sum": 38926400
+    }
+  },
+  "type_summary": {
+    "Conv3d": {
+      "count": 3,
+      "max": 5833984,
+      "median": 1017088,
+      "min": 414976
+    },
+    "FeedForward": {
+      "count": 40,
+      "max": 15127603,
+      "median": 15127603,
+      "min": 15127603
+    },
+    "GELU": {
+      "count": 40,
+      "max": 15128473,
+      "median": 15128473,
+      "min": 15128473
+    },
+    "HeliosAttention": {
+      "count": 80,
+      "max": 6072320,
+      "median": 6072320,
+      "min": 6072320
+    },
+    "HeliosOutputNorm": {
+      "count": 1,
+      "max": 10240,
+      "median": 10240,
+      "min": 10240
+    },
+    "HeliosTimeTextEmbedding": {
+      "count": 1,
+      "max": 10878352,
+      "median": 10878352,
+      "min": 10878352
+    },
+    "HeliosTransformerBlock": {
+      "count": 40,
+      "max": 7641303,
+      "median": 7641303,
+      "min": 7641303
+    },
+    "Linear": {
+      "count": 406,
+      "max": 41623040,
+      "median": 7210240,
+      "min": 413712
+    },
+    "PixArtAlphaTextProjection": {
+      "count": 1,
+      "max": 5797432,
+      "median": 5797432,
+      "min": 5797432
+    },
+    "TimestepEmbedding": {
+      "count": 1,
+      "max": 3503672,
+      "median": 3503672,
+      "min": 3503672
+    }
+  }
+}

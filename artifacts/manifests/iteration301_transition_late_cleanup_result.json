@@ -1,0 +1,38 @@
+{
+  "schema_version": "distillschedule.iteration_result.v1",
+  "iteration": 301,
+  "date": "2026-08-10",
+  "status": "TRANSITION_TARGET_PASS_END_TO_END_GUARDRAIL_FAIL",
+  "run_id": "rb16_f5_iter301_persistent_pinned_late_cleanup_correctness_20260810_001",
+  "source_head": "2375d107a51abcade6ce46b84ffa0c8b6cc1f16f",
+  "runtime_head": "ec1462bfb84ca444b3beae216c66632744e0d369",
+  "claim_boundary": "one exact correctness/profile run; formal repeated timing Not Run",
+  "summary_sha256": "74199aec519b2bde82e77d7d5b300dd11af571515c28e2875c3ef76f882cee6c",
+  "metrics": {
+    "step10a_world_max_seconds": 141.1022157059051,
+    "transition_world_max_seconds": 23.83773069595918,
+    "critic_phase_seconds": 184.96488767117262,
+    "full5_seconds": 350.0644543841481,
+    "g3_broadcast_max_seconds": 6.578637004829943,
+    "student_initialize_max_seconds": 9.787566249724478,
+    "cleanup_wall_max_seconds": 20.585752398939803,
+    "cleanup_join_wait_max_seconds": 0.00013917312026023865,
+    "node0_cgroup_peak_bytes": 714701598720,
+    "node1_cgroup_peak_bytes": 173750935552,
+    "oom_delta": 0
+  },
+  "relative": {
+    "transition_improvement_vs_pageable_percent": 52.1708,
+    "transition_improvement_vs_iteration299_percent": 22.8219,
+    "full5_regression_vs_iteration299_percent": 6.5710,
+    "full5_regression_vs_pageable_percent": 2.4121
+  },
+  "correctness": {
+    "status": "PASS",
+    "ranks": "16/16",
+    "versions": "G2/C10/EMA10 -> G3/C15/EMA15",
+    "payloads_and_queues": "exact and flushed"
+  },
+  "decision": "transition target positive, overall candidate rejected by Full5 guardrail",
+  "next": "close transition cleanup tuning; attribute Step10-A checkpoint-boundary traffic"
+}

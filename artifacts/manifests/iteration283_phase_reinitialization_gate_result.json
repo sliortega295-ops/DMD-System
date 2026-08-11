@@ -1,0 +1,75 @@
+{
+  "claim_boundary": "Toy real-NCCL/DeepSpeed process-world gate only. Real-14B Full5 correctness and timing remain Not Run.",
+  "decision": "GO to refactor the production Full5 worker/launcher so Step10-A owns independent node-local default worlds and the 2G+6C Critic phase owns the reinitialized global world16. Preserve gather-before-destroy and no in-place ZeRO reinterpretation.",
+  "evidence": {
+    "node0_log": {
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/profile/iteration283_phase_reinitialization_gate_20260810_004/node0.log",
+      "sha256": "b2b8c97efdd4aae48ea2e3cf6c4c75b4f2f9c90fa65aba45e4fe92eaacfb8a9b"
+    },
+    "node1_log": {
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/profile/iteration283_phase_reinitialization_gate_20260810_004/node1.log",
+      "sha256": "f22786a89f216eb72f1ca335b4884065243006035daa7e62a88d61af89ff6320"
+    },
+    "rank_files": {
+      "0": "3a1109ba2f683831cd1ce87f3255ff2ff9b59b072d646f9a2644f8365c01942e",
+      "1": "0248432545a5cea7bd92af76b3f31c8a3bd223de712bc64f13e9a619ee2717ef",
+      "2": "acd46a41507c0d365408a8f728a5a366a6cf41beb0f61f4c81e4b928520d74f4",
+      "3": "61db4af89d1f39c2e99c0567c7269dd9359e4a2abe65550e67d1aca11ae0aec3"
+    },
+    "summary": {
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/profile/iteration283_phase_reinitialization_gate_20260810_004/summary.json",
+      "sha256": "38f6797c64589ab7a8c372628722f004e11dcadfae1cdaea1ad9359363d7ec61"
+    }
+  },
+  "iteration": 283,
+  "oom_delta": {
+    "node0": 0,
+    "node1": 0
+  },
+  "oom_kill_delta": {
+    "node0": 0,
+    "node1": 0
+  },
+  "result": {
+    "all_flushed": true,
+    "critic_versions": [
+      1,
+      1
+    ],
+    "generator_versions": [
+      1,
+      1
+    ],
+    "phase_a_worlds": {
+      "node0": 2,
+      "node1": 2
+    },
+    "phase_b_world": 4,
+    "roles": [
+      "resident_generator",
+      "critic_zero1",
+      "resident_generator",
+      "critic_zero1"
+    ],
+    "schema_version": "distillschedule.phase_reinitialization_gate.v1",
+    "status": "PASS"
+  },
+  "return_codes": {
+    "node0": 0,
+    "node1": 0
+  },
+  "run_id": "iteration283_phase_reinitialization_gate_20260810_004",
+  "schema_version": "distillschedule.iteration283.phase_reinitialization_gate_result.v1",
+  "status": "PASS",
+  "verified": [
+    "independent node-local Phase-A default worlds",
+    "default-world ZeRO-3 divergent-exit padded forward/backward/update",
+    "logical G1 gather before obsolete engine destroy",
+    "Phase-A process groups destroyed",
+    "explicit global Phase-B world creation",
+    "DeepSpeed backend reattached to new world",
+    "target Generator state broadcast exact",
+    "target Critic ZeRO-1 subgroup update",
+    "global flush"
+  ]
+}

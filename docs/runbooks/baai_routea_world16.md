@@ -65,7 +65,7 @@ python scripts/distillschedule/run_routea_world16.py \
 
 The coordinator owns both SSH workers, requests peer cancellation after a failure,
 runs strict finalization once both workers stop and exits nonzero unless the curated
-Attempt 004 result is `PASS`. Use `--dry-run` to inspect commands and
+Attempt 005-002 is the current accepted functional/evidence result. Use `--dry-run` to inspect commands and
 `--summarize-only` only for already complete immutable evidence. A dry-run is never
 reusable as real evidence.
 

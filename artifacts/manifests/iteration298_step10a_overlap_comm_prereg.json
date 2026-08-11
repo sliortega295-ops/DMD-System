@@ -1,0 +1,51 @@
+{
+  "schema_version": "distillschedule.iteration_preflight.v1",
+  "iteration": 298,
+  "date": "2026-08-10",
+  "status": "PREREGISTERED_GO",
+  "current_gate": "strict-v4 Step10-A asynchronous ZeRO-3 parameter prefetch",
+  "authorized_hypothesis": "DeepSpeed's dedicated communication stream can overlap the bounded one-block-ahead all-gather with block compute",
+  "candidate": {
+    "stage3_param_persistence_threshold": 2000000,
+    "stage3_prefetch_bucket_elements": 402653184,
+    "stage3_max_live_parameters": 805306368,
+    "stage3_max_reuse_distance": 268435456,
+    "allgather_bucket_elements": 16777216,
+    "overlap_comm": true,
+    "contiguous_gradients": false
+  },
+  "baseline": {
+    "strict_v4_seconds": 123.11550586891826,
+    "synchronous_window_seconds": 115.48951340152416,
+    "target_range_seconds": [85,105]
+  },
+  "matching_prior_evidence": [
+    "Iteration 297 exact boundary identity and memory admission",
+    "DeepSpeed parameter_offload.py: overlap_comm=false selects default stream; true creates dedicated stream",
+    "Iteration 291 Nsight AllGather-dominant NCCL union"
+  ],
+  "frozen": {
+    "trace_graph_batch_update": "strict-v4 DP8 MB1 GAS2 global16, two selected graphs/two backwards, G2->G3",
+    "precision_loss_optimizer_clip": "unchanged",
+    "persistence_prefetch_live_reuse_allgather": "identical to Iteration 297",
+    "placement_backend_stage": "unchanged DP8 ZeRO-3"
+  },
+  "rejected_paths": [
+    "further synchronous bucket tuning",
+    "ZeRO-2",
+    "graph/call removal",
+    "changing contiguous_gradients in the same iteration"
+  ],
+  "refutation": [
+    "OOM or allocator admission failure",
+    "trace/x0/gradient/loss/version fingerprint differs",
+    "Step10-A >=110.804 s"
+  ],
+  "decision_rules": {
+    "positive_target": "Step10-A <=105 s",
+    "partial": "105 s < Step10-A < 110.804 s",
+    "negative": "Step10-A >=110.804 s or admission/correctness failure"
+  },
+  "claim_boundary": "one preliminary low-overhead admission/timing run; exact combined Full5 correctness required before final claim",
+  "decision": "GO"
+}

@@ -1,0 +1,69 @@
+{
+  "schema_version": "distillschedule.ra16_f5_pr8_preflight.v1",
+  "created_at_utc": "2026-08-09T04:24:14Z",
+  "experiment_id": "RA16-F5-PR8",
+  "candidate_run_id": "ra16_f5_pr8_20260809_001",
+  "decision": "GO_AFTER_TEST_AND_DUAL_HOST_SMOKE",
+  "gate": "continuous_full5_functional_admission",
+  "authorized_hypotheses": [
+    "Eight streamed Generator frozen blocks provide enough Step10 checkpoint-backward headroom for the exact combined Route-A graph.",
+    "Existing low-overhead rank events can identify lower-reuse GPU-memory candidates without changing admission."
+  ],
+  "frozen_contract": {
+    "world_size": 16,
+    "resolution": [384, 640],
+    "latent": [1, 16, 9, 48, 80],
+    "steps": [10, 11, 12, 13, 14],
+    "initial_versions": {"generator": 2, "critic": 10, "ema": 10},
+    "expected_final_versions": {"generator": 3, "critic": 15, "ema": 15},
+    "zero_stage": 1,
+    "optimizer_offload": "cpu",
+    "generator_streamed_blocks": [0, 24, 1, 5, 8, 25, 10, 32],
+    "streaming_window": 1,
+    "score_block_streaming": false,
+    "phase_resident_critic_generator": true,
+    "activation_offload_components": ["generator_selected", "critic_train"],
+    "activation_offload_threshold_mib": 32,
+    "host_admission_policy": "actual_oom_only"
+  },
+  "matching_prior_evidence": [
+    {
+      "artifact": "artifacts/manifests/ra16_f5_pr4_20260808_002_failure.json",
+      "sha256": "2e1e306bfd14387b4ee55eed9881730cc5e12dd0fa59f22f001e7f0866c027e9",
+      "conclusion": "PR4 failed on 16/16 ranks at the 216-MiB Step10 backward allocation."
+    },
+    {
+      "artifact": "artifacts/manifests/n2_target_g_offload_bounded_search_20260808_002_result.json",
+      "sha256": "22378fe8aa4dd8b682e8f4146c46aca79d6616fcbc13e864f84f52e9d34e75b3",
+      "conclusion": "Isolated g8 passed but is not transferable Full5 evidence."
+    }
+  ],
+  "rejected_paths": [
+    "PR4 allocator empty-cache patch escalation",
+    "ZeRO-2 double-reduction path",
+    "reduced resolution or altered trace",
+    "performance claims from this single functional attempt"
+  ],
+  "live_preflight": {
+    "dmd_head": "9e66a7c4291b118ebd994d362b63f134db52f76a",
+    "runtime_head": "494229b99f66b36d6153a85c6a34e2445b667331",
+    "local_and_remote_clean": true,
+    "focused_tests": "59 passed",
+    "active_gpu_compute_processes_node0": 0,
+    "active_gpu_compute_processes_node1": 0,
+    "cgroup_oom_node0": 0,
+    "cgroup_oom_node1": 0,
+    "cgroup_oom_kill_node0": 1,
+    "cgroup_oom_kill_node1": 1
+  },
+  "memory_analysis_contract": {
+    "mode": "offline_existing_low_overhead_events",
+    "per_rank_required": true,
+    "storage_aware": true,
+    "does_not_hold_tensor_references": true,
+    "full_allocator_snapshot": "NOT_RUN",
+    "unclassified_bytes_must_not_be_called_redundant": true
+  },
+  "attempt_budget": 1,
+  "formal_timing": "NOT_RUN"
+}

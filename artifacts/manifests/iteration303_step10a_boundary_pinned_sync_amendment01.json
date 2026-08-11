@@ -1,0 +1,25 @@
+{
+  "schema_version": "distillschedule.preregistration_amendment.v1",
+  "iteration": 303,
+  "date": "2026-08-10",
+  "status": "FAIL_CLOSED_STATIC_ADMISSION_AMENDMENT",
+  "supersedes_field": "transition_for_full5_correctness only",
+  "original": "Iteration299 persistent_pinned immediate cleanup",
+  "replacement": "module_to transition for Step10 policy-isolation correctness",
+  "reason": {
+    "node0_memory_max_bytes": 816043786240,
+    "iteration299_node0_peak_bytes": 739236196352,
+    "candidate_boundary_pinned_bytes_per_rank": 15187968000,
+    "candidate_generator_ranks": 8,
+    "candidate_boundary_pinned_bytes_node0": 121503744000,
+    "conservative_combined_peak_bytes": 860739940352,
+    "predicted_deficit_bytes": 44696154112
+  },
+  "unchanged": [
+    "Step10-A trace/graph/batch/loss/optimizer/precision/backend",
+    "exact-signature boundary policy",
+    "correctness-before-timing order",
+    "performance thresholds"
+  ],
+  "claim_boundary": "This does not change Step10 semantics; it prevents a statically rejected concurrent-host-residency combination. Joint transition results remain Not Run."
+}

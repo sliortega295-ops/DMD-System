@@ -1,0 +1,55 @@
+{
+  "schema_version": "distillschedule.iteration_preflight.v1",
+  "iteration": 296,
+  "date": "2026-08-10",
+  "status": "PREREGISTERED_GO",
+  "current_gate": "strict-v4 Step10-A lifecycle optimization",
+  "authorized_hypothesis": "persisting per-parameter trainables up to 2,000,000 elements removes repeated ZeRO-3 all-gather materialization and reduces Step10-A without changing its graph or update",
+  "candidate": {
+    "stage3_param_persistence_threshold": 2000000,
+    "stop_after_step10a": true,
+    "mode": "low-overhead timing",
+    "all_other_step10a_zero3_fields": "frozen"
+  },
+  "baseline": {
+    "run": "iteration287 strict-v4 low-overhead",
+    "step10a_seconds": 123.11550586891826,
+    "target_range_seconds": [85, 105]
+  },
+  "static_admission": {
+    "covered_trainable_tensors": 737,
+    "covered_trainable_bf16_gib": 1.789,
+    "covered_frozen_bf16_gib": 0.019,
+    "historical_peak_allocated_gib": 31.24
+  },
+  "frozen": {
+    "trace": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+    "step10a": "DP8 ZeRO-3 MB1 GAS2 global16; two selected graphs and two backwards; G2->G3 once",
+    "resolution": "384x640",
+    "loss_optimizer_clip_precision": "unchanged",
+    "communication_buckets_overlap_live_reuse": "unchanged"
+  },
+  "matching_prior_evidence": [
+    "Iteration 291 Nsight: 49.235 s NCCL union dominated by AllGather",
+    "Iteration 291 inventory: 2M covers 737 trainables / 1.789 GiB and negligible frozen state",
+    "Iteration 287 strict-v4 low-overhead baseline 123.115506 s"
+  ],
+  "rejected_paths": [
+    "old 48.55 s reduced-backward anchor",
+    "removing selected calls or backwards",
+    "ZeRO-2",
+    "simultaneously changing prefetch/live/reuse windows"
+  ],
+  "refutation": [
+    "OOM or allocator admission failure",
+    "trace/call/selected/backward/update fingerprint differs",
+    "Step10-A >=110.804 s (less than 10 percent improvement)"
+  ],
+  "decision_rules": {
+    "positive_target": "Step10-A <=105 s",
+    "partial": "105 s < Step10-A < 110.804 s",
+    "negative": "Step10-A >=110.804 s or admission/correctness failure"
+  },
+  "claim_boundary": "one preliminary low-overhead admission/timing run; exact combined Full5 correctness required before formal performance claim",
+  "decision": "GO"
+}

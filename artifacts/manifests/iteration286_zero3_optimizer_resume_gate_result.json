@@ -1,0 +1,58 @@
+{
+  "schema_version": "distillschedule.iteration286.zero3_optimizer_resume_gate_result.v1",
+  "iteration": 286,
+  "status": "PASS",
+  "answer": "Yes. The prior ZeRO-3 compute backend is reusable; the missing boundary was the first optimizer step after custom logical G2 state restoration.",
+  "environment": {
+    "torch": "2.10.0+cu128",
+    "deepspeed": "0.18.4",
+    "world_size": 2,
+    "zero_stage": 3,
+    "optimizer_offload": "cpu"
+  },
+  "causal_finding": {
+    "wrapper_chain": [
+      "deepspeed.runtime.zero.stage3.DeepSpeedZeroOptimizer_Stage3",
+      "torch.optim.adamw.AdamW"
+    ],
+    "outer_and_nested_share_state_mapping": true,
+    "prior_shallow_repair_failure": "The outer ZeRO-3 wrapper already exposes state, so the shallow unwrap stopped before identifying nested AdamW and retained a Python integer step.",
+    "validated_repair": "Discover the deepest concrete optimizer and reconstruct logical step=2 as the singleton FP32 Tensor required by PyTorch Adam/AdamW; master weights and Adam moments are unchanged."
+  },
+  "attempts": [
+    {
+      "run_id": "iteration286_zero3_wrapper_restore_step_20260810_001",
+      "status": "HARNESS_FALSE_NEGATIVE",
+      "evidence": "Both ranks restored exact master/m/v, advanced optimizer 2->3, engine 2->3 and scheduler 2->3 without the API error. Rank1's arbitrary tiny toy update rounded to no representable FP32 master change, so an over-strong per-shard change assertion returned rc=1.",
+      "oom_delta": 0,
+      "oom_kill_delta": 0
+    },
+    {
+      "run_id": "iteration286_zero3_wrapper_restore_step_20260810_002",
+      "status": "PASS",
+      "rank_count": 2,
+      "exact_restore_before_step_all_ranks": true,
+      "optimizer_steps_before_all_ranks": [2],
+      "optimizer_steps_after_all_ranks": [3],
+      "engine_global_step_after_all_ranks": 3,
+      "scheduler_step_after_all_ranks": 3,
+      "global_master_changed": true,
+      "global_optimizer_state_finite": true,
+      "oom_delta": 0,
+      "oom_kill_delta": 0
+    }
+  ],
+  "tests": {
+    "focused": "7 passed",
+    "full_dmd": "220 passed",
+    "git_diff_check": "PASS"
+  },
+  "artifacts": {
+    "preregistration": "artifacts/manifests/iteration286_zero3_optimizer_resume_prereg.json",
+    "gate_source": "artifacts/manifests/iteration286_zero3_wrapper_restore_step_gate.py",
+    "attempt001": "artifacts/profile/iteration286_zero3_wrapper_restore_step_20260810_001",
+    "attempt002": "artifacts/profile/iteration286_zero3_wrapper_restore_step_20260810_002"
+  },
+  "claim_boundary": "This proves the exact DeepSpeed ZeRO-3 wrapper-level logical restore and first resumed optimizer-step API boundary. Real-14B G2->G3, role transition, Critic, EMA, and timing remain Not Run after this repair.",
+  "next_action": "Commit the validated restore change, synchronize/verify both nodes, then run exactly one same-contract strict-v4 real-14B correctness retry."
+}

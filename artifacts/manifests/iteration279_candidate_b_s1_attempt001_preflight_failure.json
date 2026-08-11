@@ -1,0 +1,12 @@
+{
+  "schema_version": "distillschedule.routeb_candidate_b_operational_failure.v1",
+  "status": "FAIL_PREFLIGHT_NO_MODEL_EXECUTION",
+  "run_id": "rb16_f5_pipe_2g6c_sequential_s1_20260809_001",
+  "failure_stage": "world16 topology probe before model construction",
+  "failure_signature": "required environment variable DISTILLSCHEDULE_NODE_RANK is missing",
+  "root_cause": "Candidate-B launcher omitted the already required topology-probe node-rank environment variable.",
+  "semantic_effect": "none; no 14B model was constructed and no correctness or timing result exists",
+  "bounded_recovery": "export DISTILLSCHEDULE_NODE_RANK exactly as the validated Candidate-A launcher does, rerun tests, and use a new run ID",
+  "new_cgroup_oom": false,
+  "measurement": "Measured operational failure; not a model result"
+}

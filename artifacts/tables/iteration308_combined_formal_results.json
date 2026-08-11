@@ -1,0 +1,131 @@
+{
+  "aggregate": {
+    "critic_phase_world_max_seconds": {
+      "cv_percent": 4.208682281758333,
+      "max": 167.17925196979195,
+      "median": 158.49351479578763,
+      "min": 150.8156673037447,
+      "population_stdev": 6.684628099767796
+    },
+    "full5_plus_cleanup_seconds": {
+      "cv_percent": 3.780925003741628,
+      "max": 304.22623809659854,
+      "median": 293.0164285171777,
+      "min": 277.3495054000523,
+      "population_stdev": 11.022558037479278
+    },
+    "full5_world_max_seconds": {
+      "cv_percent": 3.7176996470069086,
+      "max": 290.5835978407413,
+      "median": 279.93400824209675,
+      "min": 265.3156519699842,
+      "population_stdev": 10.357923361398706
+    },
+    "node0_cgroup_peak_bytes": {
+      "cv_percent": 0.09979465898462951,
+      "max": 715354959872,
+      "median": 713935241216,
+      "min": 713764634624,
+      "population_stdev": 712884755.0508008
+    },
+    "node1_cgroup_peak_bytes": {
+      "cv_percent": 0.12479839105263044,
+      "max": 257721450496,
+      "median": 257717686272,
+      "min": 257037897728,
+      "population_stdev": 321346303.434027
+    },
+    "post_full5_cleanup_world_max_seconds": {
+      "cv_percent": 5.16109259871019,
+      "max": 13.642640255857259,
+      "median": 13.082420275080949,
+      "min": 12.03385343006812,
+      "population_stdev": 0.6667944799273161
+    },
+    "reported_samples_per_second": {
+      "cv_percent": 3.7476643574584316,
+      "max": 0.22614572323380286,
+      "median": 0.21433623008787805,
+      "min": 0.20648102799279092,
+      "population_stdev": 0.008082000352224304
+    },
+    "reported_samples_per_second_per_gpu": {
+      "cv_percent": 3.7476643574584316,
+      "max": 0.014134107702112679,
+      "median": 0.013396014380492378,
+      "min": 0.012905064249549432,
+      "population_stdev": 0.000505125022014019
+    },
+    "step10a_world_max_seconds": {
+      "cv_percent": 1.8432990949713914,
+      "max": 104.77462686086074,
+      "median": 104.68667651806027,
+      "min": 100.68884347891435,
+      "population_stdev": 1.9056649500276401
+    },
+    "transition_world_max_seconds": {
+      "cv_percent": 10.226523438319063,
+      "max": 21.682651007082313,
+      "median": 17.776481905952096,
+      "min": 17.393357255961746,
+      "population_stdev": 1.938011077466811
+    }
+  },
+  "runs": [
+    {
+      "critic_phase_world_max_seconds": 167.17925196979195,
+      "full5_plus_cleanup_seconds": 304.22623809659854,
+      "full5_world_max_seconds": 290.5835978407413,
+      "node0_cgroup_peak_bytes": 715354959872,
+      "node0_oom_delta": 0,
+      "node1_cgroup_peak_bytes": 257717686272,
+      "node1_oom_delta": 0,
+      "post_full5_cleanup_world_max_seconds": 13.642640255857259,
+      "reported_samples_per_second": 0.20648102799279092,
+      "reported_samples_per_second_per_gpu": 0.012905064249549432,
+      "round": 1,
+      "run_id": "rb16_f5_iter308_combined_formal_r1_20260810",
+      "status": "PASS",
+      "step10a_world_max_seconds": 104.77462686086074,
+      "summary_sha256": "5607ccaf282dab81fdfbabc2451585ac9b04a2b39d1b122beb182aa34f415397",
+      "transition_world_max_seconds": 21.682651007082313
+    },
+    {
+      "critic_phase_world_max_seconds": 150.8156673037447,
+      "full5_plus_cleanup_seconds": 277.3495054000523,
+      "full5_world_max_seconds": 265.3156519699842,
+      "node0_cgroup_peak_bytes": 713764634624,
+      "node0_oom_delta": 0,
+      "node1_cgroup_peak_bytes": 257037897728,
+      "node1_oom_delta": 0,
+      "post_full5_cleanup_world_max_seconds": 12.03385343006812,
+      "reported_samples_per_second": 0.22614572323380286,
+      "reported_samples_per_second_per_gpu": 0.014134107702112679,
+      "round": 2,
+      "run_id": "rb16_f5_iter308_combined_formal_r2_20260810",
+      "status": "PASS",
+      "step10a_world_max_seconds": 100.68884347891435,
+      "summary_sha256": "7cbb3926633902c9ea924226c1d50d6b38b92770cb972a6f01c6927554c65d08",
+      "transition_world_max_seconds": 17.776481905952096
+    },
+    {
+      "critic_phase_world_max_seconds": 158.49351479578763,
+      "full5_plus_cleanup_seconds": 293.0164285171777,
+      "full5_world_max_seconds": 279.93400824209675,
+      "node0_cgroup_peak_bytes": 713935241216,
+      "node0_oom_delta": 0,
+      "node1_cgroup_peak_bytes": 257721450496,
+      "node1_oom_delta": 0,
+      "post_full5_cleanup_world_max_seconds": 13.082420275080949,
+      "reported_samples_per_second": 0.21433623008787805,
+      "reported_samples_per_second_per_gpu": 0.013396014380492378,
+      "round": 3,
+      "run_id": "rb16_f5_iter308_combined_formal_r3_20260810",
+      "status": "PASS",
+      "step10a_world_max_seconds": 104.68667651806027,
+      "summary_sha256": "5c995b9926ae5667dd2c2b76365b7957d715fc89624669950863e18957658da3",
+      "transition_world_max_seconds": 17.393357255961746
+    }
+  ],
+  "schema_version": "distillschedule.formal_timing_table.v1"
+}

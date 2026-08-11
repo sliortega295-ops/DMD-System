@@ -1,0 +1,43 @@
+{
+  "bounded_fix": {
+    "focused_tests": "41 passed",
+    "full_tests": "218 passed, 1 skipped",
+    "model_loss_batch_optimizer_ema_changed": false,
+    "policy": "introduce directory-only wait helper and retain file-only payload fences",
+    "semantic_contract_changed": false,
+    "trace_changed": false
+  },
+  "claim_scope": "initialization_only_no_model_or_correctness_or_performance_claim",
+  "failure_signature": {
+    "blocked_rank_behavior": "each node local-rank0 polled Path.is_file on execution/exchange directory; remaining fourteen ranks waited in node-local NCCL barrier",
+    "boundary": "phase_a_exchange_directory_publication",
+    "execution_rank_json_count": 0,
+    "launcher_return_code": 143,
+    "mechanism": "directory_passed_to_file_only_wait_helper",
+    "model_construction_started": false,
+    "new_oom": false,
+    "new_oom_kill": false
+  },
+  "iteration": 285,
+  "logical_manifest_hash": "68eed293970be008764ee6acadb2aac6ce54de2ce1f55a17fca2246f0d04e4aa",
+  "measured_resource_peaks": {
+    "interpretation": "NCCL barrier context only; not a model-memory measurement",
+    "node0_cgroup_gib": 27.30356216430664,
+    "node1_cgroup_gib": 19.515830993652344,
+    "per_gpu_process_mib": 1100.0
+  },
+  "next_action": "one retry of the same real-14B v4 correctness gate after committing the initialization-only fix",
+  "parent_dmd_head": "2e31d03dd65d31780b2e9f0037a086038ad7240d",
+  "preserved_run_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/runs/rb16_f5_stricttrace_v4_pipeline_correctness_20260810_001",
+  "prior_failure_search": {
+    "matching_mechanism_found": false,
+    "material_difference": "current failure is a path-type bug before the first Phase-A file marker, not the prior Gloo-group mechanism",
+    "related_prior_attempt": "Iteration 284 Attempt001 extra Phase-A Gloo barrier"
+  },
+  "run_id": "rb16_f5_stricttrace_v4_pipeline_correctness_20260810_001",
+  "runtime_head": "ec1462bfb84ca444b3beae216c66632744e0d369",
+  "schema_version": "distillschedule.iteration285.real14b_attempt001_init_failure.v1",
+  "status": "BOUNDED_HARNESS_FAILURE",
+  "trace_bundle": "/share/project/shuchenweng/DistillSchedule_assets/m0/traces/syn_feature_trace_rank16_v4_strict_sync_steps20",
+  "trace_bundle_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3"
+}

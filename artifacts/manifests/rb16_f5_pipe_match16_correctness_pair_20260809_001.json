@@ -1,0 +1,535 @@
+{
+  "errors": [
+    {
+      "rank": 0,
+      "semantic_sections": [
+        "step10a",
+        "transition",
+        "critic_phase"
+      ]
+    },
+    {
+      "field": "x0_exact",
+      "rank": 0
+    },
+    {
+      "field": "generator_sha_exact",
+      "rank": 0
+    },
+    {
+      "field": "ema_exact",
+      "rank": 0
+    },
+    {
+      "rank": 1,
+      "semantic_sections": [
+        "step10a",
+        "transition",
+        "critic_phase"
+      ]
+    },
+    {
+      "field": "x0_exact",
+      "rank": 1
+    },
+    {
+      "field": "generator_sha_exact",
+      "rank": 1
+    },
+    {
+      "rank": 2,
+      "semantic_sections": [
+        "step10a",
+        "transition",
+        "critic_phase"
+      ]
+    },
+    {
+      "field": "x0_exact",
+      "rank": 2
+    },
+    {
+      "field": "generator_sha_exact",
+      "rank": 2
+    },
+    {
+      "rank": 3,
+      "semantic_sections": [
+        "step10a",
+        "transition",
+        "critic_phase"
+      ]
+    },
+    {
+      "field": "x0_exact",
+      "rank": 3
+    },
+    {
+      "field": "generator_sha_exact",
+      "rank": 3
+    },
+    {
+      "rank": 4,
+      "semantic_sections": [
+        "step10a",
+        "transition",
+        "critic_phase"
+      ]
+    },
+    {
+      "field": "x0_exact",
+      "rank": 4
+    },
+    {
+      "field": "generator_sha_exact",
+      "rank": 4
+    },
+    {
+      "rank": 5,
+      "semantic_sections": [
+        "step10a",
+        "transition",
+        "critic_phase"
+      ]
+    },
+    {
+      "field": "x0_exact",
+      "rank": 5
+    },
+    {
+      "field": "generator_sha_exact",
+      "rank": 5
+    },
+    {
+      "rank": 6,
+      "semantic_sections": [
+        "step10a",
+        "transition",
+        "critic_phase"
+      ]
+    },
+    {
+      "field": "x0_exact",
+      "rank": 6
+    },
+    {
+      "field": "generator_sha_exact",
+      "rank": 6
+    },
+    {
+      "rank": 7,
+      "semantic_sections": [
+        "step10a",
+        "transition",
+        "critic_phase"
+      ]
+    },
+    {
+      "field": "x0_exact",
+      "rank": 7
+    },
+    {
+      "field": "generator_sha_exact",
+      "rank": 7
+    },
+    {
+      "rank": 8,
+      "semantic_sections": [
+        "step10a",
+        "critic_phase"
+      ]
+    },
+    {
+      "field": "prediction_exact",
+      "rank": 8
+    },
+    {
+      "field": "x0_exact",
+      "rank": 8
+    },
+    {
+      "field": "loss_exact",
+      "rank": 8
+    },
+    {
+      "field": "final_trainable_exact",
+      "rank": 8
+    },
+    {
+      "field": "final_optimizer_exact",
+      "rank": 8
+    },
+    {
+      "rank": 9,
+      "semantic_sections": [
+        "step10a",
+        "critic_phase"
+      ]
+    },
+    {
+      "field": "prediction_exact",
+      "rank": 9
+    },
+    {
+      "field": "x0_exact",
+      "rank": 9
+    },
+    {
+      "field": "loss_exact",
+      "rank": 9
+    },
+    {
+      "field": "final_trainable_exact",
+      "rank": 9
+    },
+    {
+      "field": "final_optimizer_exact",
+      "rank": 9
+    },
+    {
+      "rank": 10,
+      "semantic_sections": [
+        "step10a",
+        "critic_phase"
+      ]
+    },
+    {
+      "field": "prediction_exact",
+      "rank": 10
+    },
+    {
+      "field": "x0_exact",
+      "rank": 10
+    },
+    {
+      "field": "loss_exact",
+      "rank": 10
+    },
+    {
+      "field": "final_trainable_exact",
+      "rank": 10
+    },
+    {
+      "field": "final_optimizer_exact",
+      "rank": 10
+    },
+    {
+      "rank": 11,
+      "semantic_sections": [
+        "step10a",
+        "critic_phase"
+      ]
+    },
+    {
+      "field": "prediction_exact",
+      "rank": 11
+    },
+    {
+      "field": "x0_exact",
+      "rank": 11
+    },
+    {
+      "field": "loss_exact",
+      "rank": 11
+    },
+    {
+      "field": "final_trainable_exact",
+      "rank": 11
+    },
+    {
+      "field": "final_optimizer_exact",
+      "rank": 11
+    },
+    {
+      "rank": 12,
+      "semantic_sections": [
+        "step10a",
+        "critic_phase"
+      ]
+    },
+    {
+      "field": "prediction_exact",
+      "rank": 12
+    },
+    {
+      "field": "x0_exact",
+      "rank": 12
+    },
+    {
+      "field": "loss_exact",
+      "rank": 12
+    },
+    {
+      "field": "final_trainable_exact",
+      "rank": 12
+    },
+    {
+      "field": "final_optimizer_exact",
+      "rank": 12
+    },
+    {
+      "rank": 13,
+      "semantic_sections": [
+        "step10a",
+        "critic_phase"
+      ]
+    },
+    {
+      "field": "prediction_exact",
+      "rank": 13
+    },
+    {
+      "field": "x0_exact",
+      "rank": 13
+    },
+    {
+      "field": "loss_exact",
+      "rank": 13
+    },
+    {
+      "field": "final_trainable_exact",
+      "rank": 13
+    },
+    {
+      "field": "final_optimizer_exact",
+      "rank": 13
+    },
+    {
+      "rank": 14,
+      "semantic_sections": [
+        "step10a",
+        "critic_phase"
+      ]
+    },
+    {
+      "field": "prediction_exact",
+      "rank": 14
+    },
+    {
+      "field": "x0_exact",
+      "rank": 14
+    },
+    {
+      "field": "loss_exact",
+      "rank": 14
+    },
+    {
+      "field": "final_trainable_exact",
+      "rank": 14
+    },
+    {
+      "field": "final_optimizer_exact",
+      "rank": 14
+    },
+    {
+      "rank": 15,
+      "semantic_sections": [
+        "step10a",
+        "critic_phase"
+      ]
+    },
+    {
+      "field": "prediction_exact",
+      "rank": 15
+    },
+    {
+      "field": "x0_exact",
+      "rank": 15
+    },
+    {
+      "field": "loss_exact",
+      "rank": 15
+    },
+    {
+      "field": "final_trainable_exact",
+      "rank": 15
+    },
+    {
+      "field": "final_optimizer_exact",
+      "rank": 15
+    }
+  ],
+  "pipeline_run": "rb16_f5_pipe_match16_pipeline_correctness_20260809_001",
+  "rank_count": 16,
+  "ranks": [
+    {
+      "ema_exact": false,
+      "generator_sha_exact": false,
+      "pipeline_sha256": "1fb948fab03ac485fc87090b035d55bb77e6318027efd6c3eb9c8f9c28a36eec",
+      "rank": 0,
+      "role": "generator",
+      "semantic_exact": false,
+      "sequential_sha256": "5421c16ee149f6c1c7710a6f7a0d5d7494a80518d14e53f98d1289d19553f645",
+      "x0_exact": false
+    },
+    {
+      "ema_exact": true,
+      "generator_sha_exact": false,
+      "pipeline_sha256": "42de56219d7ea3570ba597552c8b680d36004eb8e6a8b370f7e99965c15918fa",
+      "rank": 1,
+      "role": "generator",
+      "semantic_exact": false,
+      "sequential_sha256": "5ca69ec08a46822a9acbee94e88dc4d4e087d726a688fe8a4def1bddc3a5d2d9",
+      "x0_exact": false
+    },
+    {
+      "ema_exact": true,
+      "generator_sha_exact": false,
+      "pipeline_sha256": "5f87e7ed37f7ceee5703a78a704aadff16071ae0bc09d9a6abd40ee8a96a7a40",
+      "rank": 2,
+      "role": "generator",
+      "semantic_exact": false,
+      "sequential_sha256": "570f824a37f3d538ee19f84b4599d9347bd3b1fc260ab62d5f168141f18b3903",
+      "x0_exact": false
+    },
+    {
+      "ema_exact": true,
+      "generator_sha_exact": false,
+      "pipeline_sha256": "5d40b266f6194386b0a96839d7d2b385ae86354b6958e2b5fa1c9a5d512681c8",
+      "rank": 3,
+      "role": "generator",
+      "semantic_exact": false,
+      "sequential_sha256": "f13c0f975fba310179e715711ec4c5080ac865efd62108353b448a23a473c17f",
+      "x0_exact": false
+    },
+    {
+      "ema_exact": true,
+      "generator_sha_exact": false,
+      "pipeline_sha256": "917b10a8e8ccf6173a0b7d143af633264135a6bbbcffd00b7d1c200076555753",
+      "rank": 4,
+      "role": "generator",
+      "semantic_exact": false,
+      "sequential_sha256": "b725f7e8c7907cabd59f45447c6af3eca7508a4d4a8942412fcb73a11e07ffca",
+      "x0_exact": false
+    },
+    {
+      "ema_exact": true,
+      "generator_sha_exact": false,
+      "pipeline_sha256": "df1aa92fcc6c71d65f97668c833d34ad2d75c1555a78495d9e3a268a1a68d570",
+      "rank": 5,
+      "role": "generator",
+      "semantic_exact": false,
+      "sequential_sha256": "83d3c5b7b0d6b268424767e343d11307924a5d9ffc9f9e6b078305ef8c741ba6",
+      "x0_exact": false
+    },
+    {
+      "ema_exact": true,
+      "generator_sha_exact": false,
+      "pipeline_sha256": "04a19bf0a06edd93a4779ad7224ebc831c69867c935159926f5b577d0fb2fca5",
+      "rank": 6,
+      "role": "generator",
+      "semantic_exact": false,
+      "sequential_sha256": "fee62f2af0aaa59766ddbeac737c570f3bf7421fd831742a704be63db62ce1ce",
+      "x0_exact": false
+    },
+    {
+      "ema_exact": true,
+      "generator_sha_exact": false,
+      "pipeline_sha256": "8e312805bcfc7d85e6e9604942a49d3f7a091ddc3a1c5c4388ac3db8c45350fc",
+      "rank": 7,
+      "role": "generator",
+      "semantic_exact": false,
+      "sequential_sha256": "a6954df356ed48c0a9c0a2fbea16909fc4f68db947c154dab6cf5b0e34e8ea28",
+      "x0_exact": false
+    },
+    {
+      "final_optimizer_exact": false,
+      "final_trainable_exact": false,
+      "loss_exact": false,
+      "pipeline_sha256": "822c9fb317ff0dae57c844b9be520aa7307d87230024159e1ff18da8980bbc37",
+      "prediction_exact": false,
+      "rank": 8,
+      "role": "score",
+      "semantic_exact": false,
+      "sequential_sha256": "aeaa85d066ea9f1b60b875f48a0430efe9cc166d8df7053700665520126fdded",
+      "x0_exact": false
+    },
+    {
+      "final_optimizer_exact": false,
+      "final_trainable_exact": false,
+      "loss_exact": false,
+      "pipeline_sha256": "282bb38f6839ff324313f51db7502df13790d72837675c19e58579ce950efee5",
+      "prediction_exact": false,
+      "rank": 9,
+      "role": "score",
+      "semantic_exact": false,
+      "sequential_sha256": "cd513a99f872a969dcdb0f1e8bc30bf8f8073185f917334c2d2e56807e7b0f40",
+      "x0_exact": false
+    },
+    {
+      "final_optimizer_exact": false,
+      "final_trainable_exact": false,
+      "loss_exact": false,
+      "pipeline_sha256": "d1a0bf126ce2fab3dc2cee8156320364b1ba9de551d024a06c6388e3db6a4cb9",
+      "prediction_exact": false,
+      "rank": 10,
+      "role": "score",
+      "semantic_exact": false,
+      "sequential_sha256": "0fa9f1f549de2cc1c0d560458cd0c31636151b83cefdb9cabd0e4cf61e4ddafd",
+      "x0_exact": false
+    },
+    {
+      "final_optimizer_exact": false,
+      "final_trainable_exact": false,
+      "loss_exact": false,
+      "pipeline_sha256": "36f6a7ae6babdd3f2ca509af231489c0ef04dfecca83e0fe2824061e75575157",
+      "prediction_exact": false,
+      "rank": 11,
+      "role": "score",
+      "semantic_exact": false,
+      "sequential_sha256": "b6b9467d64ce00cd3bfe0f83de8d3671387e881079b71c377394b6309aa9df6f",
+      "x0_exact": false
+    },
+    {
+      "final_optimizer_exact": false,
+      "final_trainable_exact": false,
+      "loss_exact": false,
+      "pipeline_sha256": "fd2a6040a33bbd73d07d5d4299ec6b2780264af442a2f729f3b2ff430cc73701",
+      "prediction_exact": false,
+      "rank": 12,
+      "role": "score",
+      "semantic_exact": false,
+      "sequential_sha256": "ed940d39ebd578207b52d6521953c47b14ba0168b0db0f7a002c43bf33ba797f",
+      "x0_exact": false
+    },
+    {
+      "final_optimizer_exact": false,
+      "final_trainable_exact": false,
+      "loss_exact": false,
+      "pipeline_sha256": "dd7b17a9e2a2640142e69a7adf5e083080d7e25012bc1ed90275d42ce8d491ba",
+      "prediction_exact": false,
+      "rank": 13,
+      "role": "score",
+      "semantic_exact": false,
+      "sequential_sha256": "ec6648e44aa8d9c35c61006b4fe541a95c1577c96220c3e2166483672946005f",
+      "x0_exact": false
+    },
+    {
+      "final_optimizer_exact": false,
+      "final_trainable_exact": false,
+      "loss_exact": false,
+      "pipeline_sha256": "053cd882f220102ef65c2228e91c5936d413732c23d1be0f5025c25a3ad5d0e7",
+      "prediction_exact": false,
+      "rank": 14,
+      "role": "score",
+      "semantic_exact": false,
+      "sequential_sha256": "0612d73551254e4e8fdfeb4994081cb482b4a030acbaf50311b7b5d4d63ce105",
+      "x0_exact": false
+    },
+    {
+      "final_optimizer_exact": false,
+      "final_trainable_exact": false,
+      "loss_exact": false,
+      "pipeline_sha256": "a898336764c250dbf5f527e61027418a47d9c1636c4c1a80c34717a5760c5fa4",
+      "prediction_exact": false,
+      "rank": 15,
+      "role": "score",
+      "semantic_exact": false,
+      "sequential_sha256": "96ca96d4918a7c54470c9caa93c0f873b4db9127f2501a02dbe42a99f28206ee",
+      "x0_exact": false
+    }
+  ],
+  "schema_version": "distillschedule.routeb_candidate_a_pair.v1",
+  "sequential_run": "rb16_f5_pipe_match16_sequential_correctness_20260809_003",
+  "status": "FAIL"
+}

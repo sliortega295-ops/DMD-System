@@ -1,0 +1,176 @@
+{
+  "claimable_full5": false,
+  "evidence": {
+    "analysis": "artifacts/manifests/ra16_f5_glp_offload_20260809_001_analysis.json",
+    "controller": "artifacts/runs/ra16_f5_glp_offload_20260809_001/controller/controller_manifest.json",
+    "preflight": "artifacts/manifests/ra16_f5_glp_offload_preflight_20260809_001.json",
+    "raw_root": "artifacts/runs/ra16_f5_glp_offload_20260809_001",
+    "sha256": {
+      "analysis": "33a9eb138d96e31639b6bb8c4835b1d1220896a9ce54e35f899e916d1e827dec",
+      "controller": "a990fe0ab0210be15bade06afc2891018bc5815deb339d82ec15bcfb50eda659",
+      "node0_console": "63b4cfe7408802c05d1b5d9ab473d76e53d48d1fdbe2a5b9ee3db99085689905",
+      "node1_console": "fa81e41364a7d54813b891d9184a1e470d2613fe009edf1975bc1bb4b95c3f44",
+      "strict_summary": "38a1f84959fb26f75d1df23fd0f595b67210d61a75fcbb5f0696206cf1f3de6f"
+    },
+    "small_cuda_gate": "artifacts/runs/ra16_f5_glp_offload_20260809_001/small_cuda_gate.json",
+    "strict_summary": "artifacts/manifests/ra16_f5_glp_offload_20260809_001_result.json"
+  },
+  "experiment_id": "RA16-F5-GLP-OFFLOAD",
+  "failure": {
+    "cgroup_oom_increment": [
+      0,
+      0
+    ],
+    "cgroup_oom_kill_increment": [
+      0,
+      0
+    ],
+    "direct_cuda_oom_ranks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "driver_free_mib_range": [
+      96.38,
+      216.38
+    ],
+    "immediate_worst_rank_deficit_mib_lower_bound": 119.62,
+    "operation": "Step10 resident Score/Critic checkpoint recomputation/backward after successful typed Generator LP-state offload",
+    "pytorch_allocated_gib_range": [
+      37.84,
+      38.01
+    ],
+    "request_mib_distribution": {
+      "216.0": 16
+    },
+    "sampled_node_cgroup_peak_gib": [
+      701.6222190856934,
+      712.7525482177734
+    ],
+    "source_distribution": {
+      "transformer_helios.py:1640 residual_add": 15,
+      "transformer_helios.py:767 modulation_component": 1
+    }
+  },
+  "failure_signature": "typed GLP offload exact 2,502,885,376-byte reduction, followed by all-rank Critic checkpoint-backward 216-MiB CUDA OOM at 37.84--38.01 GiB allocated",
+  "formal_timing": "NOT_RUN",
+  "frozen_contract": {
+    "activation_offload_threshold_mib": 32,
+    "checkpoint": "checkpoint-10",
+    "ema_updates_expected": 5,
+    "generator_streamed_blocks": [
+      0,
+      24,
+      1,
+      5,
+      8,
+      25,
+      10,
+      32,
+      36,
+      15,
+      16,
+      26
+    ],
+    "global_batch": 16,
+    "gradient_accumulation_steps": 1,
+    "latent": [
+      1,
+      16,
+      9,
+      48,
+      80
+    ],
+    "micro_batch_per_gpu": 1,
+    "optimizer_offload": "cpu",
+    "resolution": [
+      384,
+      640
+    ],
+    "score_block_streaming": false,
+    "steps": [
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "trace": "rank16 operation trace v3",
+    "world_size": 16,
+    "zero_stage": 1
+  },
+  "gates": {
+    "checkpoint10_resume": "PASS",
+    "checkpoint15": "NOT_RUN",
+    "construction": "PASS",
+    "critic_backward": "FAIL_CUDA_OOM_16_OF_16",
+    "critic_forward_loss": "PASS",
+    "critic_update": 0,
+    "ema_update": 0,
+    "step10_generator_backward": "PASS",
+    "step10_generator_optimizer": "PASS",
+    "steps11_14": "NOT_RUN",
+    "typed_lp_state_inventory": "PASS_EXACT_2502885376_BYTES_PER_RANK",
+    "typed_lp_state_offload": "PASS_16_OF_16",
+    "world16_topology": "PASS"
+  },
+  "interpretation": {
+    "not_causal_next_step": "Increasing Generator frozen-block streaming from g12 to g16 cannot reduce this Critic-phase peak because Generator frozen-block residency is already zero at Critic entry.",
+    "refuted": "That state alone was not sufficient to admit the unstreamed resident Score/Critic backward.",
+    "remaining_unknown": "The additional completion headroom beyond the immediate current-allocation lower bound is not measured; do not infer it from the first failed 216-MiB request.",
+    "verified": "The hypothesized 2.331-GiB replicated Generator LP flat state was real and fully removable at the legal Critic boundary; semantic Critic pre-backward allocation fell by exactly the same byte count on every rank.",
+    "why_near_capacity_is_not_no_effect": "Checkpoint recomputation consumed the newly available headroom before failing later. OOM-site allocation therefore returned near device capacity; the causal metric is the exact pre-backward reduction plus the shifted source-site distribution."
+  },
+  "mechanism_result": {
+    "critic_backward_ends_observed_across_ranks": 0,
+    "critic_optimizer_steps_observed_across_ranks": 0,
+    "generator_optimizer_steps_observed_across_ranks": 16,
+    "glp_pre_backward_allocated_bytes_per_rank": 33723116544,
+    "measured_pre_backward_reduction_bytes_per_rank": 2502885376,
+    "measured_pre_backward_reduction_gib_per_rank": 2.33099365234375,
+    "offload_passed_on_ranks": 16,
+    "offloaded_bytes_per_rank": 2502885376,
+    "offloaded_gib_per_rank": 2.33099365234375,
+    "post_offload_generator_allocated_bytes_range": [
+      2575966208,
+      2575966720
+    ],
+    "pr12_pre_backward_allocated_bytes_per_rank": 36226001920,
+    "reduction_matches_typed_storage_exactly": true,
+    "typed_state": "Generator DeepSpeed ZeRO-1 BF16 bit16_groups_flat"
+  },
+  "next_candidates_not_run": [
+    "Selective Score/Critic frozen-block streaming under a separate preregistration",
+    "A separately typed audit/release of remaining inactive Generator runtime storage",
+    "A changed Critic activation policy"
+  ],
+  "rejected_paths": [
+    "unchanged retry",
+    "automatic g16",
+    "ZeRO-2",
+    "threshold/shape/trace/EMA changes",
+    "formal timing on failed run"
+  ],
+  "run_id": "ra16_f5_glp_offload_20260809_001",
+  "schema_version": "distillschedule.ra16_f5_glp_offload.bounded_negative.v1",
+  "source": {
+    "dmd_execution_head": "56ba8eba8873bb73db04d72bc350f5de6183a4ec",
+    "plan_sha256": "c3c9c29443b64c7e4f51026781173fd91973ebb129353e1d17db61c66d09dba5",
+    "runtime_head": "13f39e6f5180b36bba09cbf6bdbe9d4353f5fbe4"
+  },
+  "status": "BOUNDED_NEGATIVE_CUDA_OOM",
+  "validated_recovery": "None within this bounded action. Preserve the typed primitive; do not retry unchanged, do not use g16 as a Critic-phase repair, and require a new preregistered state class/policy."
+}

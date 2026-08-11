@@ -1,0 +1,29 @@
+{
+  "bounded_fix": "Remove TORCHELASTIC_USE_AGENT_STORE only after Phase-A default group destruction and before explicit Phase-B init_process_group. Rank/world/master address/port remain explicit and unchanged.",
+  "evidence": {
+    "node0_log": {
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/profile/iteration283_phase_reinitialization_gate_20260810_001/node0.log",
+      "sha256": "1b163ac063fd89f373cb435d293f6eea3e7fd5f837af6c334bcd78d3e43658c7"
+    },
+    "node1_log": {
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/profile/iteration283_phase_reinitialization_gate_20260810_001/node1.log",
+      "sha256": "130f4b700b1343c511096d85577841ae4af883997119ab643af6b15d70707ea9"
+    },
+    "pytorch_source": "torch/distributed/rendezvous.py:_create_c10d_store lines 169-195"
+  },
+  "failure": "All four Phase-B ranks behaved as TCPStore clients; no server bound port 29853.",
+  "oom_delta": 0,
+  "oom_kill_delta": 0,
+  "phase_a_markers": [
+    "phase_a_node_0.ready",
+    "phase_a_node_1.ready"
+  ],
+  "return_codes": {
+    "node0": 124,
+    "node1": 124
+  },
+  "root_cause": "torchrun exported TORCHELASTIC_USE_AGENT_STORE=True for the Phase-A agent store. PyTorch rendezvous.py therefore forces is_master=False for every new tcp:// store, including explicit Phase-B global rank 0.",
+  "schema_version": "distillschedule.iteration283.phase_reinitialization_attempt001.v1",
+  "semantic_change": false,
+  "status": "FAIL_HARNESS_RENDEZVOUS_ENV"
+}

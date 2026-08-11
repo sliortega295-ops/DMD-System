@@ -1,0 +1,111 @@
+{
+  "schema_version": "distillschedule.rb16_full5_2g6c_continuous_prereg.v1",
+  "status": "ACTIVE",
+  "iteration": 280,
+  "experiment_id": "RB16-F5-CONT-8G4S4T-TO-2G6C",
+  "gate": "User-authorized continuous Full5 integration after bounded Candidate-A and ACK-free 2G+6C evidence",
+  "preflight": {
+    "decision": "GO",
+    "authorized_hypothesis": "A live 8G+4S+4T Step10-A can transition in memory to per-node 2G+6C and execute an ACK-free five-update DP12 Critic pipeline faster than the same-layout Sequential schedule without changing trace, loss, optimizer, batch, or version semantics.",
+    "falsifiable_question": "Can one continuous official-shape run complete G2/C10/EMA10 to G3/C15/EMA15 with Step10-A 8G+4S+4T, a live 4G+12C transition, ACK-free one-batch-ahead execution, and no whole-model transition checkpoint round trip?",
+    "live_substrate": {
+      "dmd_head": "d62e854e3fa3665db4e52881df0e8771f3cfb72c",
+      "runtime_head": "32f621ae8637c546f766bc52544b2bf8f7d394d2",
+      "gpu_state": "16 A100 GPUs free at preflight",
+      "historical_cgroup_oom_kill": 1,
+      "new_oom_increment_allowed": 0
+    },
+    "matching_prior_evidence": [
+      "artifacts/manifests/iteration278_candidate_a_formal_timing_result.json",
+      "docs/experiments/rb16_f5_pipeline_20260809.md",
+      "/share/project/shuchenweng/yongyan_liu/DistillSchedule/docs/36_task_status_registry.md",
+      "/share/project/shuchenweng/yongyan_liu/DistillSchedule_it219_8g8c_b8_ackless/scripts/distillschedule/probe_critic_pool_world16_batch12.py",
+      "Measured ACK-free 4G+12C four-update gate: 161.475 seconds; bounded functional evidence only.",
+      "Measured pre-change Step10-A anchors used only as regression guards: unprofiled gate 48.55 seconds and profiled Generator leaf span 56.45 seconds."
+    ],
+    "validated_recovery_paths": [
+      "native torch.distributed initialization before DeepSpeed attach with dist_init_required=false",
+      "globally serialized process-group construction",
+      "ZeRO-1 CPU optimizer offload",
+      "NCCL send-completion backpressure without per-route optimizer ACK"
+    ],
+    "rejected_or_superseded_paths": [
+      "ZeRO-2 double-reduction repair escalation",
+      "ZeRO-3 or FSDP",
+      "direct DeepSpeed-owned default process-group initialization",
+      "racing overlapping subgroup creation",
+      "per-route CriticCommitAck",
+      "whole-14B transition checkpoint save and reload",
+      "serialized Step10-A rollout0-backward0-rollout1-backward1 schedule",
+      "reduced resolution, changed trace, changed batch, changed loss, or changed EMA recurrence"
+    ]
+  },
+  "frozen_contract": {
+    "world_size": 16,
+    "resolution": [384, 640],
+    "full_latent_shape": [1, 16, 9, 48, 80],
+    "step10a_layout": {
+      "generator_ranks": [0, 1, 2, 3, 4, 5, 6, 7],
+      "student_ranks": [8, 9, 10, 11],
+      "teacher_ranks": [12, 13, 14, 15],
+      "generator_dp": 8,
+      "micro_batch_per_rank": 1,
+      "gradient_accumulation_steps": 2,
+      "global_batch": 16
+    },
+    "critic_layout": {
+      "per_node": "2G+6C",
+      "generator_ranks": [0, 1, 8, 9],
+      "critic_ranks": [2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15],
+      "critic_dp": 12,
+      "micro_batch_per_rank": 1,
+      "gradient_accumulation_steps": 1,
+      "global_batch": 12,
+      "logical_updates": 5,
+      "logical_samples": 60
+    },
+    "versions": "G2/C10/EMA10 -> G3/C15/EMA15",
+    "generator_updates": 1,
+    "critic_updates": 5,
+    "ema_updates": 5,
+    "critic_gradient_clipping": 1.0,
+    "backend": "ZeRO-1 with CPU optimizer offload",
+    "transport": "node-local NCCL G-to-C; send completion supplies bounded backpressure; no per-route ACK",
+    "queue": "one ready future global batch; produced minus committed <= 2; all sends drained at Step15-A boundary",
+    "data": "operation-keyed rank-qualified SYN-FEATURE"
+  },
+  "immutable_inputs": {
+    "trace_bundle_hash": "9e282f4bc24eb589d259e5e5603cae02fa5cd0c6cdd0f06f7c5416461e4564d0",
+    "logical_step10_manifest_hash": "68eed293970be008764ee6acadb2aac6ce54de2ce1f55a17fca2246f0d04e4aa"
+  },
+  "bounded_sequence": [
+    "source and schedule-only unit tests",
+    "one continuous Pipeline correctness gate",
+    "one continuous Sequential correctness gate from the same immutable state",
+    "same-layout numerical and identity comparison",
+    "only after PASS, low-overhead Sequential and Pipeline timing"
+  ],
+  "timing_scope": {
+    "included": [
+      "Step10-A",
+      "live role and state transition",
+      "Step10-B",
+      "steps 11-14",
+      "five EMA updates",
+      "required barriers and payload communication"
+    ],
+    "excluded_but_reported": [
+      "cold construction",
+      "preconstruction of switching-role CPU models",
+      "topology preflight",
+      "correctness-only SHA and state export",
+      "final checkpoint save"
+    ]
+  },
+  "success": {
+    "correctness": "exact identities and versions plus frozen same-layout numerical contract",
+    "performance": "Pipeline at least 10 percent faster than same-layout Sequential over the identical continuous Full5 timing scope",
+    "step10a_regression_guard": "A 115.799-second Step10-A is rejected as the known serialized-graph regression; it is not a baseline."
+  },
+  "measurement": "Not Run"
+}

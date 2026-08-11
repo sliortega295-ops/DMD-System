@@ -1,0 +1,166 @@
+{
+  "classification": {
+    "diagnostic_timing_band": "REFUTED_OUTSIDE_PREREGISTERED_10_PERCENT",
+    "formal_repeated_timing": "NOT_RUN",
+    "functional_evidence": "PASS",
+    "speedup_claim": false
+  },
+  "evidence": {
+    "all_rank_status_pass": true,
+    "contract_digest": "1d634393bffed554f002d51d9a10d581961a8453534edb1b0f357f7a85a09ba7",
+    "contract_sha256": "21d4652951aaae853d4d27431c91a593f55a1afc700d4da97f82f239b0ca4ab6",
+    "lifecycle_final": {
+      "activation_live_bytes": 0,
+      "generator_streamer_resident_bytes": 0,
+      "score_streamer_resident_bytes": 0
+    },
+    "phase_trace_rank_count": 16,
+    "phase_trace_sha256_inventory_digest": "b9d03e4cbce0a6489924326b0fd82c652a4d988714bf41240fb315a0cb94e95a",
+    "topology_sha256": "7094f0574be706780abe0bcbd91712547173f13a7fe89d4dfd242c85cae854f8",
+    "trace_binding": "exact rank plus exact trace hash on all 16 ranks",
+    "update_counts_per_rank": {
+      "critic": 5,
+      "ema": 5,
+      "generator": 1
+    },
+    "version_transition": "G2/C10/EMA10 -> G3/C15/EMA15"
+  },
+  "execution": {
+    "controller_manifest_path": "artifacts/runs/routea_attempt005_full5_world16_20260808_002/controller/controller_manifest.json",
+    "controller_manifest_sha256": "38801d4443311d2c68f8837044d9d1cdc5c1ab0f224244179821d5fccc7b2832",
+    "helios_entrypoint_sha256": "137f2035c5ef179761dcdc5fc8ce2b90fb77152eeba123a6a260a4d26a9f6ddf",
+    "helios_head": "4093bc4ee328835bbc19ef6c466eb2d286422b4f",
+    "peer_cancelled": false,
+    "raw_dmd_system_head": "d4a27a3e383b257799220aaa36282cf22d349fc7",
+    "remote_run_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_pr3_0cd40e4/artifacts/runs/routea_attempt005_full5_world16_20260808_002",
+    "worker_return_codes": [
+      0,
+      0
+    ]
+  },
+  "frozen_contract": {
+    "final_versions": {
+      "critic": 15,
+      "ema": 15,
+      "generator": 3
+    },
+    "global_batch": 16,
+    "gradient_accumulation_steps": 1,
+    "initial_versions": {
+      "critic": 10,
+      "ema": 10,
+      "generator": 2
+    },
+    "latent": [
+      1,
+      16,
+      9,
+      48,
+      80
+    ],
+    "micro_batch_per_gpu": 1,
+    "optimizer_offload": "cpu",
+    "parameter_offload": "none",
+    "resolution": [
+      384,
+      640
+    ],
+    "steps": [
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "world_size": 16,
+    "zero_stage": 1
+  },
+  "limitations": [
+    "Single diagnostic-instrumented launch; no formal repeated timing or speedup claim.",
+    "The measured window is 11.389% slower than the frozen reference and misses the preregistered +/-10% consistency band.",
+    "Actual-OOM-only acceptance passed, but node0 cgroup peak left only about 16.1 GiB below its cgroup maximum.",
+    "Typed orchestration still invokes the pinned external Helios model-math entrypoint.",
+    "N2 target-graph Generator minimum-offload executor remains NOT_RUN and must not reuse historical tail-1/3/5/all-40 bounds."
+  ],
+  "measured": {
+    "checkpoint_15": {
+      "file_count": 97,
+      "structural_digest": "4653adf85b32de7aa31db10b2fbc470b4bb2b86df40cf9de73cc43cdf435fcdc",
+      "total_bytes": 99826243285
+    },
+    "global_training_window_seconds": 767.1669623851776,
+    "gpu_max_allocated_bytes": 33804603904,
+    "gpu_max_reserved_bytes": 36335255552,
+    "max_materialize_count_per_rank": 2680,
+    "max_materialized_bytes_per_rank": 1883473469440,
+    "node_cgroup_max_bytes": {
+      "0": 816043786240,
+      "1": 816043786240
+    },
+    "node_cgroup_peak_bytes": {
+      "0": 798765285376,
+      "1": 782242111488
+    },
+    "node_host_used_peak_bytes": {
+      "0": 582947000000,
+      "1": 586263000000
+    },
+    "oom_delta": {
+      "0": 0,
+      "1": 0
+    },
+    "oom_kill_delta": {
+      "0": 0,
+      "1": 0
+    },
+    "reference_window_seconds": 688.725683927536,
+    "relative_delta_vs_reference": 0.11389335447797055,
+    "samples_per_second": 0.10427977731375998,
+    "step_wall_span_seconds": {
+      "10": 284.1329643726349,
+      "11": 115.91061186790466,
+      "12": 119.27786326408386,
+      "13": 118.88826036453247,
+      "14": 139.81831192970276
+    },
+    "weighted_step_seconds": 153.4333924770355,
+    "within_preregistered_10pct_band": false
+  },
+  "next_gate": {
+    "blocker": "DISTILLSCHEDULE_GST_POOL_CANDIDATE_COMMAND and continuous executor are not implemented/configured",
+    "stage": "n2_target_g_offload_search",
+    "status": "NOT_RUN"
+  },
+  "postprocessing": {
+    "after": {
+      "error_count": 0,
+      "path": "artifacts/manifests/routea_attempt005_002_result.json",
+      "sha256": "061b2925e736400b7217778502cb3495192635f08e1bce3e502a3ccd0c2274fc",
+      "status": "PASS"
+    },
+    "before": {
+      "error_count": 210,
+      "sha256": "9f2bdcac56799d6f041da7b6fa598914d14c1ec367b45652693d5c40c4cdca8c",
+      "status": "PARTIAL"
+    },
+    "classification": "schema_compatibility_only_no_raw_event_or_model_change",
+    "consumer_fix_head": "2ea09d45bd5bd585e51dfd11f3cab4d8fa59b04c",
+    "resolved_signatures": {
+      "gpu_inventory_csv_leading_space": 2,
+      "nested_sparse_ema_initial_version": 16,
+      "nested_sparse_ema_update_version": 80,
+      "operation_trace_kind_vs_rank_identity": 16,
+      "resource_scientific_notation_rows": "1236+1249 valid rows; 0 invalid",
+      "structured_ema_or_predicate": 80,
+      "terminal_gc_plus_observed_ema_bundle": 16
+    },
+    "tests": {
+      "local": "53 passed",
+      "node0": "53 passed",
+      "node1": "53 passed"
+    }
+  },
+  "recorded_date": "2026-08-08",
+  "run_id": "routea_attempt005_full5_world16_20260808_002",
+  "schema_version": "distillschedule.routea_attempt005.acceptance.v1"
+}

@@ -1,0 +1,116 @@
+{
+  "claim_boundary": "one low-overhead diagnostic; formal repeats Not Run",
+  "correctness_binding_sha256": "1ff4b4a11d81053f3149d0a7f24bf9b7d6b51bc0bfc7f18ad8b22ea969f12377",
+  "generator_rank_seconds": {
+    "max": 87.9953936340753,
+    "median": 87.99517075158656,
+    "min": 87.99499344499782
+  },
+  "iteration": 307,
+  "records": [
+    {
+      "leaf_count": 40,
+      "rank": 0,
+      "status": "PASS",
+      "step10a_wall_seconds": 87.9953936340753
+    },
+    {
+      "leaf_count": 40,
+      "rank": 1,
+      "status": "PASS",
+      "step10a_wall_seconds": 87.99523756816052
+    },
+    {
+      "leaf_count": 40,
+      "rank": 2,
+      "status": "PASS",
+      "step10a_wall_seconds": 87.99508041003719
+    },
+    {
+      "leaf_count": 40,
+      "rank": 3,
+      "status": "PASS",
+      "step10a_wall_seconds": 87.99527529906482
+    },
+    {
+      "leaf_count": 40,
+      "rank": 4,
+      "status": "PASS",
+      "step10a_wall_seconds": 87.9950465161819
+    },
+    {
+      "leaf_count": 40,
+      "rank": 5,
+      "status": "PASS",
+      "step10a_wall_seconds": 87.99526646290906
+    },
+    {
+      "leaf_count": 40,
+      "rank": 6,
+      "status": "PASS",
+      "step10a_wall_seconds": 87.9951039350126
+    },
+    {
+      "leaf_count": 40,
+      "rank": 7,
+      "status": "PASS",
+      "step10a_wall_seconds": 87.99499344499782
+    },
+    {
+      "leaf_count": 0,
+      "rank": 8,
+      "status": "PASS",
+      "step10a_wall_seconds": 92.60536483908072
+    },
+    {
+      "leaf_count": 0,
+      "rank": 9,
+      "status": "PASS",
+      "step10a_wall_seconds": 92.60560582624748
+    },
+    {
+      "leaf_count": 0,
+      "rank": 10,
+      "status": "PASS",
+      "step10a_wall_seconds": 92.60550187900662
+    },
+    {
+      "leaf_count": 0,
+      "rank": 11,
+      "status": "PASS",
+      "step10a_wall_seconds": 92.60561539418995
+    },
+    {
+      "leaf_count": 0,
+      "rank": 12,
+      "status": "PASS",
+      "step10a_wall_seconds": 92.60560338199139
+    },
+    {
+      "leaf_count": 0,
+      "rank": 13,
+      "status": "PASS",
+      "step10a_wall_seconds": 92.60560115799308
+    },
+    {
+      "leaf_count": 0,
+      "rank": 14,
+      "status": "PASS",
+      "step10a_wall_seconds": 92.60558449616656
+    },
+    {
+      "leaf_count": 0,
+      "rank": 15,
+      "status": "PASS",
+      "step10a_wall_seconds": 92.60561595484614
+    }
+  ],
+  "run_id": "rb16_step10a_iter307_explicit_block_leaf_timing_20260810_001",
+  "schema_version": "distillschedule.step10a_timing.v1",
+  "status": "PASS_PRELIMINARY_LOW_OVERHEAD",
+  "world_boundary_seconds": {
+    "max": 92.60561595484614,
+    "median": 90.30037923657801,
+    "min": 87.99499344499782
+  }
+}

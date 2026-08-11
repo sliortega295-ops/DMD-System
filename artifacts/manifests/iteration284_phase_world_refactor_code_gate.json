@@ -1,0 +1,35 @@
+{
+  "schema_version": "distillschedule.code_gate_result.v1",
+  "iteration": 284,
+  "status": "PASS",
+  "scope": "production Full5 process-world refactor before real-14B launch",
+  "dmd_tests": {
+    "command": "python -m pytest -q",
+    "passed": 215,
+    "failed": 0
+  },
+  "runtime_tests": {
+    "command": "python -m pytest -q tests",
+    "passed": 322,
+    "failed": 0,
+    "note": "repository-root discovery intentionally excludes preserved artifact snapshots"
+  },
+  "focused_tests": {
+    "command": "python -m pytest -q tests/test_routeb_full5_2g6c_continuous.py",
+    "passed": 19,
+    "failed": 0
+  },
+  "verified_order": [
+    "Step10-A node0 default-world8 ZeRO-3",
+    "exact padded trace execution",
+    "logical G3 gather",
+    "obsolete ZeRO-3 engine destruction",
+    "Phase-A Gloo/default group destruction",
+    "explicit global world16 reinitialization",
+    "target group construction",
+    "logical G3 broadcast",
+    "DP12 ZeRO-1 Critic phase"
+  ],
+  "real14b_correctness": "Not Run",
+  "formal_timing": "Not Run"
+}

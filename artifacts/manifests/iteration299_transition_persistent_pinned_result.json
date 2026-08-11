@@ -1,0 +1,41 @@
+{
+  "schema_version": "distillschedule.iteration_result.v1",
+  "iteration": 299,
+  "date": "2026-08-10",
+  "status": "PARTIAL_POSITIVE_EXACT_FULL5_PASS",
+  "run_id": "rb16_f5_iter299_persistent_pinned_transition_correctness_20260810_001",
+  "source_head": "9885508f8f90b9af8551133aa617fa91b4b3049f",
+  "runtime_head": "ec1462bfb84ca444b3beae216c66632744e0d369",
+  "claim_boundary": "one exact correctness/profile run; formal repeated timing Not Run",
+  "summary_sha256": "9940fb0a0610391306ea9486ab528c96a3b25b433ccfce7ce762372439ecec01",
+  "metrics": {
+    "step10a_world_max_seconds": 132.89993517333642,
+    "transition_world_max_seconds": 30.88726762891747,
+    "critic_phase_seconds": 160.7086902190931,
+    "full5_seconds": 328.4805317199789,
+    "direct_h2d_cuda_interval_max_seconds": 2.769706298828125,
+    "target_materialization_wall_max_seconds": 14.062337547075003,
+    "synchronous_allocator_trim_max_seconds": 11.277463471051306,
+    "cold_pin_preparation_max_seconds": 42.41493440209888,
+    "node0_runtime_owned_pinned_bytes": 264383106048,
+    "node1_runtime_owned_pinned_bytes": 62372217600,
+    "node0_cgroup_peak_bytes": 739236196352,
+    "node1_cgroup_peak_bytes": 178212835328,
+    "oom_delta": 0
+  },
+  "relative_to_iteration293": {
+    "transition_improvement_percent": 38.0262,
+    "full5_improvement_percent": 3.9023,
+    "step10a_regression_percent": 6.395
+  },
+  "correctness": {
+    "status": "PASS",
+    "ranks": "16/16",
+    "trace_x0_gradient_loss_and_versions": "exact under frozen contract",
+    "versions": "G2/C10/EMA10 -> G3/C15/EMA15",
+    "payloads": "60 generated / 60 consumed",
+    "queues": "flushed"
+  },
+  "decision": "PARTIAL: crossed 10 percent gate but transition remains above 25 seconds",
+  "next": "defer allocator cache cleanup to overlap with Critic phase and join before Full5 completion"
+}

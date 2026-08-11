@@ -1,0 +1,38 @@
+{
+  "schema_version": "distillschedule.iteration_result.v1",
+  "iteration": 294,
+  "date": "2026-08-10",
+  "status": "BOUNDED_NEGATIVE_CORRECTNESS_PASS",
+  "run_id": "rb16_f5_iter294_pinned64x2_g3b128_correctness_20260810_001",
+  "source_head": "7b67932a48bb74ee84364d3949cdb27d249ec49c",
+  "summary_status": "PASS",
+  "claim_boundary": "single correctness/profile run; formal repeated timing Not Run",
+  "baseline_run": "rb16_f5_iter292_transition_instrumentation_correctness_20260810_001",
+  "metrics": {
+    "step10a_seconds": 120.92197456490248,
+    "transition_seconds": 46.08692844212055,
+    "critic_phase_seconds": 167.26141642499715,
+    "full5_seconds": 335.2535022008233,
+    "target_h2d_max_seconds": 29.745483750011772,
+    "g3_broadcast_max_seconds": 15.400286415126175,
+    "pinned_arena_bytes_per_switch_rank": 268435456,
+    "node0_cgroup_peak_bytes": 357551136768,
+    "node1_cgroup_peak_bytes": 171137269760,
+    "oom_delta": 0
+  },
+  "relative_to_instrumented_baseline": {
+    "transition_improvement_percent": 7.529,
+    "target_h2d_max_improvement_percent": 10.321,
+    "g3_broadcast_regression_percent": 41.704,
+    "full5_improvement_percent": 1.921
+  },
+  "correctness": {
+    "ranks": "16/16 PASS",
+    "trace_and_input_identities": "exact",
+    "versions": "G3/C15/EMA15",
+    "payloads": "60 generated and 60 consumed",
+    "queue_flush": true
+  },
+  "refutation": "transition improvement was below preregistered 10 percent",
+  "next": "keep bounded pinned64x2 and restore legacy fixed-order per-tensor G3 broadcast"
+}

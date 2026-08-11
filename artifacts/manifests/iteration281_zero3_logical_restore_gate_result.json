@@ -1,0 +1,29 @@
+{
+  "schema_version": "distillschedule.zero3_logical_restore_gate_result.v1",
+  "status": "PASS_OFFLINE_REEVALUATION_OF_COMPLETE_RAW_VALUES",
+  "iteration": 281,
+  "run_id": "iteration281_zero3_logical_restore_toy_20260810_002",
+  "world_size": 2,
+  "zero_stage": 3,
+  "optimizer_offload": "cpu",
+  "partitioning": "per_parameter_zero3_with_zero_tail_padding",
+  "checks": {
+    "rank0_master_exact": true,
+    "rank0_exp_avg_exact": true,
+    "rank0_exp_avg_sq_exact": true,
+    "rank0_low_partition_exact": true,
+    "rank1_master_exact": true,
+    "rank1_exp_avg_exact_after_correct_padding_predicate": true,
+    "rank1_exp_avg_sq_exact_after_correct_padding_predicate": true,
+    "rank1_low_partition_exact": true,
+    "optimizer_step_exact": true,
+    "engine_global_step_exact": true,
+    "oom_delta_zero": true
+  },
+  "raw_rank1_expected": {
+    "a": {"master": [3.0, 4.0, 0.0], "exp_avg": [13.0, 14.0, 0.0], "exp_avg_sq": [23.0, 24.0, 0.0]},
+    "b": {"master": [7.0, 0.0], "exp_avg": [17.0, 0.0], "exp_avg_sq": [27.0, 0.0]}
+  },
+  "claim_boundary": "Validates the real DeepSpeed ZeRO-3 local state API and logical-to-per-parameter shard mapping. It does not validate the 14B transition, which remains Not Run.",
+  "gpu_rerun": "Not Run; complete raw values were re-evaluated offline after fixing a test-only padding predicate."
+}

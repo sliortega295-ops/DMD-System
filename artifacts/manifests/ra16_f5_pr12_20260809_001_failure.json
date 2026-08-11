@@ -1,0 +1,81 @@
+{
+  "bounded_conclusion": "g12 crossed the PR8 Step10 Generator checkpoint-backward OOM and completed the Generator optimizer update. The run then failed before Critic training in a duplicate phase-trace keyword; this does not answer Full5 completion.",
+  "capacity_evidence": {
+    "interpretation": "Measured evidence that g12 admits the Step10 Generator backward/update boundary; not evidence of Full5 admission.",
+    "new_last_completed_events": [
+      "generator_backward_end",
+      "semantic_generator_post_step",
+      "generator_optimizer_step"
+    ],
+    "prior_failure_boundary": "PR8 failed during Step10 Generator checkpoint recomputation on a 216-MiB allocation."
+  },
+  "claimable_full5": false,
+  "evidence": {
+    "controller_manifest": "artifacts/runs/ra16_f5_pr12_20260809_001/controller/controller_manifest.json",
+    "node0_console_sha256": "e8600843e05046860414abba503eb234fd14ef510ab54d20837c0233276a1b9b",
+    "node1_console_sha256": "43c355fd3109bcfb69566e88671d72e5f66f8a2e0141851ebb14653e7139dcdc",
+    "raw_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_ra16_f5_pr4_20260808/artifacts/runs/ra16_f5_pr12_20260809_001"
+  },
+  "experiment_id": "RA16-F5-PR12",
+  "failure": {
+    "allocator_num_ooms_max": 0,
+    "cgroup_oom_increment": 0,
+    "cgroup_oom_kill_increment": 0,
+    "cuda_oom_ranks": [],
+    "exception": "TypeError: OptimizedLowVRAMManager._record() got multiple values for argument 'phase'",
+    "mechanism": "The positional trace event name and metadata keyword both used phase.",
+    "operation": "OptimizedLowVRAMManager.phase_resident_frozen_blocks trace entry at critic_loss_start",
+    "semantic_class": "NON_SEMANTIC_INSTRUMENTATION_FIELD_COLLISION"
+  },
+  "formal_timing": "NOT_RUN",
+  "gates": {
+    "checkpoint10_resume": "PASS",
+    "checkpoint15": "NOT_RUN",
+    "critic_updates_completed": 0,
+    "dual_host_smoke": "PASS_65_TESTS_PER_HOST",
+    "ema_updates_completed": 0,
+    "model_construction": "PASS",
+    "step10_critic": "FAIL_BEFORE_FORWARD_IN_TRACE_RECORD",
+    "step10_generator_backward": "PASS",
+    "step10_generator_forward_loss": "PASS",
+    "step10_generator_update": "PASS",
+    "steps11_14": "NOT_RUN",
+    "world16_topology": "PASS"
+  },
+  "node_resources": {
+    "node0_memory_events_after": {
+      "high": 0,
+      "low": 0,
+      "max": 220,
+      "oom": 0,
+      "oom_kill": 1
+    },
+    "node0_sampled_cgroup_peak_bytes": 770251071488,
+    "node0_sampled_cgroup_peak_gib": 717.3522109985352,
+    "node1_memory_events_after": {
+      "high": 0,
+      "low": 0,
+      "max": 595,
+      "oom": 0,
+      "oom_kill": 1
+    },
+    "node1_sampled_cgroup_peak_bytes": 766037565440,
+    "node1_sampled_cgroup_peak_gib": 713.4280776977539
+  },
+  "recovery": {
+    "authorized": true,
+    "g16_authorized": false,
+    "next_run_id": "ra16_f5_pr12_20260809_002",
+    "only_change": "Rename trace metadata key phase to resident_phase and add regression coverage.",
+    "reason": "One bounded non-invasive verification is permitted for the newly reached instrumentation path.",
+    "runtime_fix_commit": "0d66b4237ec68e8e4bc9991e543cf40a833f4e23"
+  },
+  "run_id": "ra16_f5_pr12_20260809_001",
+  "schema_version": "distillschedule.ra16_f5_pr12_failure.v1",
+  "source": {
+    "dmd_execution_head": "5b072d2f030e9ba9d902bd202ed7e63ae98f4b34",
+    "plan_sha256": "7a22646c2b1741351a680487a337cdbd9729c936d60ee04134c35fee11026dcb",
+    "runtime_head": "494229b99f66b36d6153a85c6a34e2445b667331"
+  },
+  "status": "FAIL_INSTRUMENTATION_AFTER_G_UPDATE"
+}

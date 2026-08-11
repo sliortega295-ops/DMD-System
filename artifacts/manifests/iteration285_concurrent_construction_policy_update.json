@@ -1,0 +1,30 @@
+{
+  "claim_boundary": {
+    "cold_start_excluded_from_steady_timing": true,
+    "fallback": "fail closed on actual OOM; do not silently restore wave=4",
+    "not_counted_as_speedup": true,
+    "real_14b_admission": "Not Run"
+  },
+  "historical_baselines_modified": false,
+  "iteration": 285,
+  "new_policy": {
+    "effective_local_construction_concurrency": 8,
+    "future_target_preconstruction": "all admitted target ranks concurrently",
+    "manifest_construction_wave": 8,
+    "normalized_lifecycle_equivalent": "construction_wave_size=0",
+    "precast": "mixed-BF16 direct load",
+    "source_construction": "all eight local ranks concurrently"
+  },
+  "old_policy": {
+    "construction_wave": 4,
+    "status": "SUPERSEDED_INITIALIZATION_ONLY"
+  },
+  "schema_version": "distillschedule.initialization_policy_update.v1",
+  "scope": "future continuous Full5 2G+6C launches only",
+  "semantic_or_timing_denominator_change": false,
+  "status": "CODE_VALIDATED_NOT_RUN",
+  "tests": {
+    "command": "python -m pytest -q tests/test_routeb_full5_2g6c_continuous.py",
+    "focused": "20 passed"
+  }
+}

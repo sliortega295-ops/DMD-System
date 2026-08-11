@@ -1,0 +1,44 @@
+{
+  "schema_version": "distillschedule.iteration_preflight.v1",
+  "iteration": 302,
+  "date": "2026-08-10",
+  "status": "PREREGISTERED_GO",
+  "current_gate": "strict-v4 Step10-A ownership census",
+  "authorized_hypothesis": "the Nsight D2H tensors of 113049600, 46694400 and 30105600 bytes are checkpoint-boundary saved tensors, each expected 80 times across two waves and 40 blocks",
+  "candidate": {
+    "policy_change": false,
+    "scope": "Step10-A selected Generator calls only",
+    "instrumentation": "pass-through saved_tensors_hooks census with no CPU copy and no retained metadata tensors",
+    "run_mode": "Step10-only diagnostic",
+    "step10a_policy": "frozen baseline persistence0 overlap_comm_false"
+  },
+  "matching_prior_evidence": [
+    "Nsight saw each of the three D2H sizes exactly 80 times in checkpoint backward",
+    "the sizes equal BF16 [1,11040,5120], [1,4560,5120], [1,2940,5120]",
+    "none matches frozen checkpoint tensor storage",
+    "two waves x forty blocks predicts eighty boundary saves per stage shape"
+  ],
+  "frozen": {
+    "trace": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+    "step10a": "DP8 ZeRO-3 MB1 GAS2 global16, two selected graphs and two backwards",
+    "graph_loss_optimizer_versions": "unchanged"
+  },
+  "safety": {
+    "pack_returns_original_tensor": true,
+    "unpack_returns_same_tensor": true,
+    "events_store_metadata_only": true,
+    "no_timing_claim": true,
+    "exact_boundary_identity_required": true
+  },
+  "refutation": [
+    "exact trace/x0/gradient/loss mismatch",
+    "OOM or lifetime extension",
+    "observed saved-tensor shape/count signature does not match Nsight D2H signature"
+  ],
+  "decision_rules": {
+    "go_activation_policy": "all three size/count signatures match and hooks close without leak",
+    "no_go": "signature mismatch or correctness/admission failure"
+  },
+  "claim_boundary": "causal ownership diagnostic only; no speedup",
+  "decision": "GO"
+}

@@ -1,0 +1,51 @@
+{
+  "baseline_metrics": {
+    "g3_broadcast_max_seconds": 10.868068222999574,
+    "generator_h2d_max_seconds": 28.799421686911955,
+    "group_create_max_seconds": 0.6655259355902672,
+    "switch_critic_h2d_max_seconds": 33.16886533237994,
+    "transition_seconds": 49.839245170820504
+  },
+  "baseline_run": "rb16_f5_iter292_transition_instrumentation_correctness_20260810_001",
+  "candidate": {
+    "chunk_mib": 64,
+    "g3_broadcast_bucket_mib": 128,
+    "g3_order": "logical parameter_names exact",
+    "pinned_arena_bound": "two slots per encountered dtype",
+    "slot_count": 2,
+    "transition_h2d_policy": "bounded_pinned"
+  },
+  "claim_boundary": "one correctness/profile trial; formal repeated performance Not Run",
+  "date": "2026-08-10",
+  "decision": "GO",
+  "exact_checks": [
+    "registered Tensor/Parameter object preserved",
+    "value/shape/dtype/stride preserved",
+    "G3 per-tensor inventory/order/SHA",
+    "all frozen trace and version identities",
+    "60 generated/consumed payloads",
+    "C15/EMA15 and queue flush",
+    "no OOM/leak"
+  ],
+  "frozen": {
+    "communicator_policy": "existing validated pair+singleton groups",
+    "schedule": "pipeline",
+    "step10a_graph_batch_backend": "strict-v4 DP8 ZeRO-3 MB1 GAS2 global16",
+    "step10a_param_persistence_threshold": 0,
+    "target": "global 4G+12C DP12 ZeRO-1",
+    "trace": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+    "versions": "G2/C10/EMA10 -> G3/C15/EMA15"
+  },
+  "head_before_change": "0e8e3f84ddc1dcb246e86e54285337532d3eaf50",
+  "hypothesis": "64-MiB two-slot pinned staging plus 128-MiB fixed-order G3 buckets reduces the 49.839245 s transition into the 10-25 s target without semantic drift.",
+  "iteration": 294,
+  "refutation": [
+    "any alias/layout guard fails",
+    "OOM or pinned-memory failure",
+    "any exact correctness mismatch",
+    "transition >=44.855321 s (less than 10% improvement)",
+    "arena or queue unbounded"
+  ],
+  "schema_version": "distillschedule.iteration_preflight.v1",
+  "status": "PREREGISTERED_GO"
+}

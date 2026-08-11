@@ -1,0 +1,41 @@
+{
+  "schema_version": "distillschedule.iteration_preflight.v1",
+  "iteration": 306,
+  "date": "2026-08-10",
+  "status": "PREREGISTERED_GO",
+  "current_gate": "strict-v4 Step10-A ZeRO-3 fetch granularity",
+  "authorized_hypothesis": "grouping each HeliosTransformerBlock as one ZeRO-3 leaf fetch reduces fine-grained all-gather launches enough to move Step10-A toward 105 seconds without changing the graph or versions",
+  "candidate": {
+    "stage3_module_granularity_threshold": 8000000,
+    "reason": "smallest round threshold above the measured 7641303 Transformer-block granularity",
+    "selected_leaf_count": 47,
+    "selected_transformer_blocks": 40,
+    "maximum_leaf_parameter_numel": 382065152
+  },
+  "static_admission": {
+    "prefetch_bucket_elements": 402653184,
+    "max_live_parameters": 805306368,
+    "two_block_parameter_numel": 764130304,
+    "admitted": true
+  },
+  "frozen": {
+    "trace_graph_batch_versions_loss_optimizer_ema_placement_backend": "strict-v4 unchanged",
+    "step10a": "DP8 ZeRO-3 MB1 GAS2 global16, persistence 2M, prefetch 384M, max-live 768M, max-reuse 256M, overlap false",
+    "transition": "persistent_pinned post_full5 main-thread cleanup",
+    "activation_pinning": false
+  },
+  "sequence": [
+    "unit/full tests",
+    "one exact continuous Full5 correctness run",
+    "only if exact PASS, one low-overhead Step10-only timing diagnostic",
+    "if Step10 <=105 seconds, preregister formal repeats; otherwise stop this threshold family after one Nsight attribution only if needed"
+  ],
+  "refutation": [
+    "any OOM or exact mismatch",
+    "leaf classification differs from CPU census",
+    "Step10 low-overhead world-max >=115.489513 seconds",
+    "materially worse Full5"
+  ],
+  "claim_boundary": "one threshold only; no threshold sweep and no performance claim before exact correctness",
+  "decision": "GO"
+}

@@ -1,0 +1,39 @@
+{
+  "schema_version": "distillschedule.iteration_preflight.v1",
+  "iteration": 304,
+  "date": "2026-08-10",
+  "status": "PREREGISTERED_GO",
+  "current_gate": "strict-v4 transition persistent target cache lifetime",
+  "authorized_hypothesis": "retaining the already materialized persistent pinned target backing until after the Step15-A boundary preserves the 23.84-second transition without contending with Critic compute",
+  "candidate": {
+    "step10a": "Iteration297 strongest static ZeRO-3 window; no activation pinning",
+    "transition_h2d_policy": "persistent_pinned",
+    "transition_cleanup_policy": "post_full5",
+    "g3_broadcast": "legacy validated path",
+    "semantic_change": false
+  },
+  "matching_prior_evidence": [
+    "Iteration301 transition 23.837731 s with exact Full5 correctness",
+    "Iteration301 cleanup join was negligible but cleanup work overlapped Critic and raised Critic to 184.964888 s",
+    "Iteration301 node0 peak 714701598720 bytes is below memory.max 816043786240"
+  ],
+  "frozen": {
+    "trace_graph_batch_versions": "strict-v4 G2/C10/EMA10 -> G3/C15/EMA15",
+    "placement_backend_loss_optimizer_precision": "unchanged",
+    "boundary_pinned_activation": false
+  },
+  "refutation": [
+    "OOM or host/GPU leak at final cleanup",
+    "any exact correctness/state/queue mismatch",
+    "transition >25 s",
+    "Critic phase >168.75 s",
+    "Full5 >328.480532 s"
+  ],
+  "decision_rules": {
+    "positive": "transition <=25 s, Critic <=168.75 s and Full5 <=328.480532 s",
+    "partial": "correct/admitted and transition target met but one performance guardrail missed",
+    "negative": "admission/correctness failure or transition target missed"
+  },
+  "claim_boundary": "one exact Full5 run; formal repeats Not Run until positive",
+  "decision": "GO"
+}

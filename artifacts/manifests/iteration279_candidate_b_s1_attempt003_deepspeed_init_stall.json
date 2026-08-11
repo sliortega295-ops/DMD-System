@@ -1,0 +1,35 @@
+{
+  "schema_version": "distillschedule.failure.v1",
+  "status": "FAIL",
+  "measurement_kind": "Measured",
+  "iteration": 279,
+  "candidate": "RB16-F5-PIPE-2G6C",
+  "run_id": "rb16_f5_pipe_2g6c_sequential_s1_20260810_003",
+  "schedule": "sequential",
+  "mode": "correctness",
+  "dmd_head": "b320aea8efa08ee02c102854509268ef37c5fb89",
+  "runtime_head": "32f621ae8637c546f766bc52544b2bf8f7d394d2",
+  "failure_stage": "cold_initialization_process_group_creation_before_model_construction",
+  "failure_signature": "Direct deepspeed.init_distributed default-group initialization again stalled Candidate-B subgroup creation; zero rank results and no model construction after 318 seconds",
+  "observations": {
+    "rank_result_count": 0,
+    "elapsed_before_bounded_operator_stop_seconds": 318,
+    "gpu_utilization_percent": 0,
+    "cgroup_oom_increment": 0
+  },
+  "causal_controls": {
+    "native_torch_init_then_group_graph": "PASS",
+    "direct_deepspeed_init_then_group_graph": "STALL reproduced",
+    "native_torch_init_then_deepspeed_attach_then_group_graph": "PASS"
+  },
+  "semantic_result": "Not Run",
+  "performance_result": "Not Run",
+  "root_cause_conclusion": "The failing differentiator is ownership of default process-group initialization by this DeepSpeed/Torch build, not Candidate-B group topology itself",
+  "validated_recovery": "torch.distributed.init_process_group first, then deepspeed.init_distributed(dist_init_required=False), retaining DeepSpeed ZeRO-1 for Student",
+  "contract_changes": [],
+  "rejected_paths": [
+    "further subgroup topology changes",
+    "ZeRO stage changes",
+    "workload/trace/batch/EMA changes"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "schema_version": "distillschedule.autoresearch.preregistration.v1",
+  "iteration": 274,
+  "experiment_id": "RB16-F5-PIPE-MATCH16",
+  "gate": "Candidate-A Pipeline correctness",
+  "status": "PREREGISTERED",
+  "current_dmd_head": "9086ee75d689e2a4a14ba7e6973b279364bdb39e",
+  "current_runtime_head": "1763ed5ad873b0627201a55b167449e23ea87bd5",
+  "sequential_run": "rb16_f5_pipe_match16_sequential_correctness_20260809_003",
+  "sequential_result": "artifacts/manifests/rb16_f5_pipe_match16_sequential_correctness_20260809_003_result.json",
+  "sequential_status": "PASS",
+  "hypothesis": "Queue-depth-1 Pipeline changes only the legal overlap order and preserves the rank-qualified trace, G3/C15/EMA15 version path, five serial Critic commits, queue flush, lifecycle release and final checkpoint state relative to Sequential.",
+  "refutation": "Any exact identity, version, wave cardinality, queue, checkpoint, OOM or same-layout numerical contract failure; any deadlock; or any implicit batch/update change.",
+  "allowed_changes": [
+    "schedule=pipeline using the already implemented Candidate-A executor",
+    "append-only run evidence and strict summary"
+  ],
+  "forbidden_changes": [
+    "trace, batch, GAS, loss, optimizer, EMA or clipping semantics",
+    "placement, ZeRO stage, residency or streaming policy",
+    "timing claims before correctness",
+    "Candidate B"
+  ],
+  "decision": "GO_PIPELINE_CORRECTNESS"
+}

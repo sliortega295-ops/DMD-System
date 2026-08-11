@@ -1,0 +1,73 @@
+{
+  "allowed_changes": [
+    "timing-only --stop-after-step10a early exit after the existing cross-node Step10-A completion barrier",
+    "timing-diagnostic-only synchronization splitting engine.backward from engine.step",
+    "launcher flag and structural tests",
+    "manifests, logs, reports, append-only research_log"
+  ],
+  "authorized_question": "Under the exact passed strict-v4 Step10-A contract, does removing correctness-only per-call synchronization, memory census, trainable/optimizer checks, and post-Step10 phases materially reduce the measured 118.897-124.320 second Step10-A, and if not which of rollout, backward, or engine.step remains dominant?",
+  "created_at": "2026-08-10T09:46:00-04:00",
+  "decision": "GO_ONE_LOW_OVERHEAD_STEP10A_ONLY_RUN",
+  "forbidden_changes": [
+    "model math, loss, optimizer, checkpoint, trace, batch, ZeRO stage, precision, call sequence",
+    "transition, Critic phase, EMA, Sequential/Pipeline timing, Full5 rerun",
+    "threshold relaxation or use of historical 48.55 s as an exact speedup denominator"
+  ],
+  "frozen_contract": {
+    "calls_per_wave": 4,
+    "correctness_binding_sha256": "4b698e7cd959baf39d41dabbe9f40abfd4a085b46563007f70d34b1448c03eae",
+    "generator": "DP8 ZeRO-3, MB1, GAS2, global batch16, CPU optimizer, no parameter offload",
+    "logical_manifest_hash": "68eed293970be008764ee6acadb2aac6ce54de2ce1f55a17fca2246f0d04e4aa",
+    "logical_state": "G2/C10/EMA10",
+    "model": "real Helios 14B Generator plus real Base Student/Teacher",
+    "optimizer": "existing Step10-A AdamW contract, unchanged",
+    "schedule": "two selected graphs first, then two ordered backward microsteps and one optimizer update",
+    "selected_calls_per_wave": [
+      1,
+      2,
+      3
+    ],
+    "shape": "official 384x640; latent [1,16,9,48,80]",
+    "stage_calls_per_wave": [
+      2,
+      1,
+      1
+    ],
+    "trace": "syn_feature_trace_rank16_v4_strict_sync_steps20",
+    "trace_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3"
+  },
+  "gate": "continuous Full5 correctness PASS; formal performance Not Run",
+  "hypothesis": "The correctness tracer inflates the observed Step10-A. A timing-mode Step10-A-only run should reduce the node-wide wall by at least 25 percent. If wall remains above 90 seconds, the instrumentation-only explanation is refuted and one bounded Step10-A Nsight capture is authorized.",
+  "iteration": 287,
+  "matching_prior_evidence": {
+    "current_backward_plus_step_s_medians": [
+      37.032053,
+      40.640049
+    ],
+    "current_correctness_run": "rb16_f5_stricttrace_v4_z3resume_correctness_20260810_003",
+    "current_generator_rank_wall_s_median": 118.8965576,
+    "current_gradient_wait_s_total_median": 0.008763,
+    "current_node_wall_s_max": 124.3202926,
+    "current_rollout_s_medians": [
+      19.286196,
+      19.535524
+    ],
+    "historical_anchor": "iteration237 isolated Step15-A, 48.551620 s diagnostic",
+    "historical_anchor_mismatch": "different sampled trace/gradient lineage, fresh optimizer semantics, and old source; not a formal denominator"
+  },
+  "next_if_slow": "one bounded Nsight Systems capture scoped only to Step10-A; no Full5 rerun",
+  "preflight": {
+    "assets_and_cuda": "PASS",
+    "cgroup_oom_kill_counter_before": {
+      "node0": 1,
+      "node1": 1
+    },
+    "dmd_base_head": "1f3693f4130dd98822cbf63fdf6bd290543b3206",
+    "gpu_processes": "none on both nodes",
+    "repos_clean": true,
+    "runtime_head": "ec1462bfb84ca444b3beae216c66632744e0d369",
+    "tests": "219 passed, 1 skipped with PYTHONPATH=src:."
+  },
+  "schema_version": "distillschedule.step10a_timing_diagnostic_prereg.v1",
+  "status": "PREREGISTERED_NOT_RUN"
+}

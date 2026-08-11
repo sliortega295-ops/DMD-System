@@ -1,0 +1,39 @@
+{
+  "iteration": 285,
+  "removed": {
+    "launcher_argument": "--construction-wave",
+    "manifest_field": "construction_wave",
+    "parser_argument": "args.construction_wave",
+    "source_admission_loop": "for begin in range(0, 8, args.construction_wave)"
+  },
+  "retained": {
+    "construction_policy": "concurrent_all_local_ranks",
+    "historical_candidate_launchers": "unchanged provenance",
+    "post_construction_barrier_count": 1,
+    "precast": "mixed-BF16 direct load",
+    "routea_swap_wave_size": 8
+  },
+  "schema_version": "distillschedule.initialization_policy_removal.v1",
+  "scope": "active continuous Full5 2G+6C launcher/executor only",
+  "semantic_audit": {
+    "direct_execution_equivalent": true,
+    "ema_changed": false,
+    "loss_changed": false,
+    "model_changed": false,
+    "optimizer_changed": false,
+    "previous_active_value": 8,
+    "previous_wave_count": 1,
+    "steady_timing_denominator_changed": false,
+    "swap_policy_changed": false,
+    "trace_changed_by_this_removal": false
+  },
+  "status": "CODE_VALIDATED_REAL14B_NOT_RUN",
+  "supersedes": "iteration285_concurrent_construction_policy_update.json",
+  "verification": {
+    "focused_tests": "21 passed",
+    "full_tests": "216 passed, 1 skipped",
+    "python_compile": "PASS",
+    "real14b_concurrent_admission": "Not Run",
+    "shell_syntax": "PASS"
+  }
+}

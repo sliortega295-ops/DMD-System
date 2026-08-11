@@ -1,0 +1,13 @@
+{
+  "schema_version": "distillschedule.bounded_gate_failure.v1",
+  "status": "FAIL_TEST_FIXTURE",
+  "iteration": 281,
+  "run_id": "iteration281_zero3_logical_restore_toy_20260810_001",
+  "failure_signature": "LambdaLR.load_state_dict KeyError: lr_lambdas",
+  "root_cause": "The synthetic logical-checkpoint fixture stored only last_epoch instead of a complete LambdaLR state_dict. The real logical_world16_step10_v3 package contains the full scheduler state.",
+  "code_under_test_reached": "ZeRO-3 engine construction and per-parameter master/moment injection completed before scheduler fixture validation.",
+  "oom": false,
+  "gpu_processes_after": 0,
+  "validated_recovery": "Add the missing standard LambdaLR state fields to the toy fixture and perform one bounded rerun. No runtime policy or threshold changes.",
+  "evidence": "artifacts/profile/iteration281_zero3_logical_restore_toy_20260810_001/console.log"
+}

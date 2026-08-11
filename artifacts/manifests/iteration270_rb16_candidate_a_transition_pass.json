@@ -1,0 +1,53 @@
+{
+  "candidate_b": "Not Run",
+  "correctness": "transition PASS; no critic wave executed",
+  "diagnostic_full5_transition_seconds": 330.7043093852699,
+  "experiment_id": "RB16-F5-PIPE-MATCH16",
+  "formal_timing": "Not Run",
+  "generator_transition": {
+    "critic_phase_policy": "resident",
+    "g4_promoted_bytes": 2811154432
+  },
+  "identities": {
+    "execution_trace_bundle_hash": "9e282f4bc24eb589d259e5e5603cae02fa5cd0c6cdd0f06f7c5416461e4564d0",
+    "logical_manifest_hash": "68eed293970be008764ee6acadb2aac6ce54de2ce1f55a17fca2246f0d04e4aa",
+    "routeb_trace_binding_hash": "e6a5ef2f60b00ef79dfd5b8e94ce5d9c7446da39453fb9c9fcb0f0e5039fc15b",
+    "state_provenance_trace_hash": "bd97ddc9cf0e51e791a50ce13586126599d3667fd4684505c142ed177096f12f"
+  },
+  "iteration": 270,
+  "mode": "transition",
+  "node_cgroup_sampled_peaks_bytes": {
+    "node_0": 483474747392,
+    "node_1": 531545894912
+  },
+  "run_id": "rb16_f5_pipe_match16_transition_20260809_004",
+  "schema_version": "distillschedule.iteration_result.v1",
+  "score_transition": {
+    "all_model_reused": true,
+    "critic_trainable_numel": 1246314496,
+    "critic_trainable_tensor_count": 812,
+    "one_physical_score_per_rank": true,
+    "resident_allocated_gib": 29.082927227020264,
+    "score_streaming": false
+  },
+  "source_heads": {
+    "dmd": "0f360b2c58b4127a567db98b2e34f37bbad017a0",
+    "runtime": "356b8def8ff9cee6b22f6d54f5691481994b56a9"
+  },
+  "status": "PASS",
+  "step10a": {
+    "generator_sources": 16,
+    "generator_updates": 1,
+    "student_sources": 16,
+    "teacher_sources": 16
+  },
+  "strict_summary": {
+    "path": "artifacts/manifests/rb16_f5_pipe_match16_transition_20260809_004_result.json",
+    "sha256": "f4a60adc711d00648bccfbe5d54a73ee7eef5b8ffd81ef98032c3855d008701b"
+  },
+  "versions": {
+    "critic": "C10 preserved",
+    "ema": "EMA10 preserved",
+    "generator": "G2_to_G3"
+  }
+}

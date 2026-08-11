@@ -1,0 +1,110 @@
+{
+  "bounded_successor": {
+    "attempt_budget": 1,
+    "experiment_id": "RA16-F5-PR4-EC",
+    "only_change": "DISTILLSCHEDULE_EMPTY_CACHE_BEFORE_BACKWARD=1"
+  },
+  "claimable": false,
+  "contract": {
+    "expected_final_versions": {
+      "critic": 15,
+      "ema": 15,
+      "generator": 3
+    },
+    "generator_streamed_blocks": [
+      0,
+      24,
+      1,
+      5
+    ],
+    "initial_versions": {
+      "critic": 10,
+      "ema": 10,
+      "generator": 2
+    },
+    "phase_resident_critic_generator": true,
+    "resolution": [
+      384,
+      640
+    ],
+    "score_block_streaming": false,
+    "steps": [
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "world_size": 16
+  },
+  "evidence_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_ra16_f5_pr4_20260808/artifacts/runs/ra16_f5_pr4_20260808_002",
+  "experiment_id": "RA16-F5-PR4",
+  "failure": {
+    "affected_ranks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "cgroup_oom_increment": 0,
+    "cuda_oom_count": 16,
+    "failed_allocation_mib": 216,
+    "observed_driver_free_mib_range": [
+      102.38,
+      210.38
+    ],
+    "observed_reserved_unallocated_mib_range": [
+      205.1,
+      371.39
+    ],
+    "operation": "transformer_helios.py:1640 FP32 residual/FF temporary",
+    "stage": "step10 generator backward checkpoint recomputation"
+  },
+  "gates": {
+    "checkpoint10_resume": "PASS",
+    "checkpoint15": "NOT_RUN",
+    "model_construction": "PASS",
+    "source_config_evidence_smoke": "PASS",
+    "step10_generator_backward": "FAIL_CUDA_OOM",
+    "step10_generator_forward_loss": "PASS",
+    "steps11_14": "NOT_RUN",
+    "world16_gloo_nccl_topology": "PASS"
+  },
+  "interpretation": "The isolated GST16-A-G4 capacity PASS does not transfer to the combined continuous Route-A graph. Exact PR4 admission is refuted; no timing or speedup claim is permitted.",
+  "observed_final_versions": {
+    "critic": 10,
+    "ema": 10,
+    "generator": 2
+  },
+  "resources": {
+    "node0_cgroup_peak_bytes": 771124654080,
+    "node0_cgroup_peak_gib": 718.1657981872559,
+    "node1_cgroup_peak_bytes": 768528412672,
+    "node1_cgroup_peak_gib": 715.747859954834
+  },
+  "run_id": "ra16_f5_pr4_20260808_002",
+  "schema_version": "distillschedule.ra16_f5_pr4_failure.v1",
+  "source": {
+    "dmd_head": "4fa7f82096ba545b29d5363fa81a24c3b536c264",
+    "plan_sha256": "dbdfd6c3c8b0b8180cc2dd454943791c3f5ed64289a8cc89dfaca66924447e95",
+    "runtime_head": "494229b99f66b36d6153a85c6a34e2445b667331"
+  },
+  "status": "FAIL_CUDA_OOM",
+  "updates_completed": {
+    "critic": 0,
+    "ema": 0,
+    "generator": 0
+  }
+}

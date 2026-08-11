@@ -1,0 +1,35 @@
+{
+  "schema_version": "distillschedule.iteration_preflight.v1",
+  "iteration": 307,
+  "date": "2026-08-10",
+  "status": "PREREGISTERED_GO",
+  "current_gate": "strict-v4 Step10-A block-integral ZeRO-3 fetch",
+  "authorized_hypothesis": "explicitly marking only the 40 HeliosTransformerBlock instances as ZeRO-3 leaves preserves mixed-dtype embedding semantics while reducing block-internal fetch launches",
+  "new_evidence": "Iteration306 proved the scalar threshold's collateral TimestepEmbedding/PixArt leaves cause an exact dtype failure before block execution",
+  "candidate": {
+    "stage3_module_granularity_threshold": 0,
+    "explicit_leaf_class": "HeliosTransformerBlock",
+    "expected_leaf_count": 40,
+    "maximum_leaf_parameter_numel": 382065152
+  },
+  "static_admission": {
+    "prefetch_bucket_elements": 402653184,
+    "max_live_parameters": 805306368,
+    "two_block_parameter_numel": 764130304,
+    "admitted": true
+  },
+  "frozen": "strict-v4 trace, graph, precision, parameter dtypes, DP8 ZeRO-3 MB1/GAS2/global16, optimizer, versions, transition, placement and all other ZeRO knobs",
+  "sequence": [
+    "fail-closed leaf inventory tests",
+    "full test suite",
+    "one exact continuous Full5 run",
+    "only after exact PASS, one low-overhead Step10 diagnostic"
+  ],
+  "refutation": [
+    "leaf inventory is not exactly 40 Transformer blocks",
+    "any exact mismatch, dtype failure or OOM",
+    "Step10 low-overhead world-max >=115.489513 seconds"
+  ],
+  "repair_budget": "one explicit-block candidate; no further leaf-selection repair if it fails",
+  "decision": "GO"
+}

@@ -1,0 +1,135 @@
+{
+  "schema_version": "distillschedule.iteration_result.v1",
+  "iteration": 286,
+  "status": "PASS",
+  "classification": "real14b_continuous_full5_internal_correctness",
+  "experiment_id": "RB16-F5-CONT-8G4S4T-TO-2G6C",
+  "run_id": "rb16_f5_stricttrace_v4_z3resume_correctness_20260810_003",
+  "source_head": "0fb0363d2772947df1446ce6e742ec551684dcbf",
+  "runtime_head": "ec1462bfb84ca444b3beae216c66632744e0d369",
+  "environment": {
+    "torch": "2.10.0+cu128",
+    "deepspeed": "0.18.4",
+    "gpu": "NVIDIA A100-SXM4-40GB",
+    "world_size": 16,
+    "nodes": 2
+  },
+  "inputs": {
+    "resolution": [384, 640],
+    "full_latent_shape": [1, 16, 9, 48, 80],
+    "trace_bundle": "syn_feature_trace_rank16_v4_strict_sync_steps20",
+    "trace_bundle_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+    "logical_package": "logical_world16_step10_v3",
+    "logical_manifest_hash": "68eed293970be008764ee6acadb2aac6ce54de2ce1f55a17fca2246f0d04e4aa"
+  },
+  "contract": {
+    "schedule": "pipeline",
+    "step10a": {
+      "generator_ranks": [0, 1, 2, 3, 4, 5, 6, 7],
+      "student_ranks": [8, 9, 10, 11],
+      "teacher_ranks": [12, 13, 14, 15],
+      "generator_backend": "ZeRO-3",
+      "optimizer_offload": "cpu",
+      "parameter_offload": false,
+      "micro_batch": 1,
+      "gradient_accumulation_steps": 2,
+      "global_batch": 16
+    },
+    "target": {
+      "generator_ranks": [0, 1, 8, 9],
+      "critic_ranks": [2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15],
+      "critic_backend": "ZeRO-1_CPU_optimizer",
+      "critic_parameter_policy": "RESIDENT",
+      "critic_micro_batch": 1,
+      "critic_gradient_accumulation_steps": 1,
+      "critic_global_batch": 12,
+      "transport": "ACK_FREE_NCCL_SEND_COMPLETION_BACKPRESSURE"
+    }
+  },
+  "verified_correctness": {
+    "rank_status": "16_of_16_PASS",
+    "step10a_source_identities": 16,
+    "step10a_generator_update": "G2_to_G3_exact_once",
+    "g3_target_sha256": "cc9ce4dd39981b5213a40dc119f8965e0c475f7ba806dfcdad60e1a6d3f4003f",
+    "g3_unchanged_and_gradient_free_in_critic_phase": true,
+    "critic_payloads_generated": 60,
+    "critic_payloads_consumed": 60,
+    "unique_target_trace_identities": 60,
+    "critic_version": "C10_to_C15",
+    "critic_optimizer_steps": 5,
+    "critic_scheduler_steps": 5,
+    "ema_version": "EMA10_to_EMA15",
+    "ema_updates": 5,
+    "ema_decay": 0.0,
+    "ema_matches_generator_exact_each_update": true,
+    "final_versions": "G3_C15_EMA15",
+    "next_boundary": "Step15-A_not_executed",
+    "producer_and_consumer_slots_empty": true,
+    "outstanding_transport": 0,
+    "per_route_commit_ack": false
+  },
+  "strict_call_count_audit": {
+    "status": "PASS",
+    "step10a_calls_per_wave_per_generator_rank": 4,
+    "step10a_stage_calls": [2, 1, 1],
+    "step10a_dummy_calls": 0,
+    "critic_rollout_calls_by_logical_step_10_to_14": [6, 6, 5, 4, 6],
+    "critic_rollout_stage_calls_by_logical_step_10_to_14": [
+      [2, 2, 2],
+      [2, 2, 2],
+      [2, 2, 1],
+      [2, 1, 1],
+      [2, 2, 2]
+    ],
+    "cross_rank_parity_within_each_step": true,
+    "all_critic_rollouts_no_grad": true,
+    "artifact": "artifacts/runs/rb16_f5_stricttrace_v4_z3resume_correctness_20260810_003/summary/strict_call_count_audit_v2.json",
+    "artifact_sha256": "23406f4d8e3472380325a79062df1717d26a72f42b10b9478237672d9b9b2a01",
+    "superseded_posthoc_check": "strict_call_count_audit.json incorrectly assumed six calls at every Critic step; it is an audit-contract failure, not an execution failure"
+  },
+  "source_release": {
+    "policy": "DESTROY_OBSOLETE_DP8_ZERO3_BEFORE_TARGET_MATERIALIZATION",
+    "source_ranks": 8,
+    "drained_partition_tensors_per_rank": 1919,
+    "drained_partition_bytes_per_rank": 3890967568,
+    "released_allocated_gib_per_rank": 3.6245064735412598,
+    "legal_point": "after exact G3 extraction and before target materialization"
+  },
+  "resources": {
+    "node0_cgroup_peak_gib": 330.7939758300781,
+    "node1_cgroup_peak_gib": 158.99128341674805,
+    "new_oom": false,
+    "new_oom_kill": false,
+    "target_generator_peak_allocated_gib": 33.75759029388428,
+    "target_generator_peak_reserved_gib": 34.80078125,
+    "target_critic_peak_allocated_gib": 34.41065835952759,
+    "target_critic_peak_reserved_gib": 35.048828125
+  },
+  "diagnostic_timing_only": {
+    "mode": "correctness_with_sha_and_detailed_instrumentation",
+    "step10a_wall_seconds": 124.32029257621616,
+    "transition_wall_seconds": 50.65550368512049,
+    "critic_phase_wall_seconds": 168.49733960907906,
+    "full5_execution_seconds": 344.84601882845163,
+    "formal_performance": "Not Run"
+  },
+  "evidence": {
+    "run_root": "artifacts/runs/rb16_f5_stricttrace_v4_z3resume_correctness_20260810_003",
+    "summary": "artifacts/runs/rb16_f5_stricttrace_v4_z3resume_correctness_20260810_003/summary/correctness_summary.json",
+    "summary_sha256": "4b698e7cd959baf39d41dabbe9f40abfd4a085b46563007f70d34b1448c03eae",
+    "rank_json_inventory_sha256": "ecca2d7302a19b8c80404a62962557422cbf122c56ee08961bf030f98a441e2b",
+    "launcher_evidence_inventory_sha256": "3d154457b4b7dd194a08e8460093b4e86f7924c5c9ac1f7e44326ef7ab27a317"
+  },
+  "validation": {
+    "full_test_command": "PYTHONPATH=src:. pytest -q",
+    "full_test_result": "219 passed, 1 skipped",
+    "git_diff_check": "PASS"
+  },
+  "claim_boundary": {
+    "continuous_full5_functional_correctness": "PASS",
+    "same_layout_sequential_pipeline_numerical_comparison": "Not Run",
+    "formal_low_overhead_timing": "Not Run",
+    "causal_pipeline_speedup": "Not Run",
+    "matched_batch16_comparison": "Not Run"
+  }
+}

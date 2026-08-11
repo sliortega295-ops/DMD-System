@@ -1,0 +1,32 @@
+{
+  "schema_version": "distillschedule.zero3_subgroup_barrier_gate_result.v1",
+  "iteration": 281,
+  "status": "PASS",
+  "run_id": "iteration281_zero3_subgroup_barrier_gate_20260810_001",
+  "world_size": 4,
+  "zero3_dp_members": [0, 1],
+  "default_world_nonmembers": [2, 3],
+  "optimizer_offload": "cpu",
+  "parameter_offload": false,
+  "results": {
+    "rank0_redirected_bare_barriers": 3,
+    "rank1_redirected_bare_barriers": 3,
+    "world4_control_flush": true,
+    "return_code": 0,
+    "oom_delta": 0,
+    "oom_kill_delta": 0,
+    "gpu_processes_after": 0
+  },
+  "evidence": {
+    "console": {
+      "path": "artifacts/profile/iteration281_zero3_subgroup_barrier_gate_20260810_001/console.log",
+      "sha256": "a04e8bc2e2ee5f321cd0f8e95601d1953e20f2ea5cea4fe79f671366cee0f6b1"
+    },
+    "summary": {
+      "path": "artifacts/profile/iteration281_zero3_subgroup_barrier_gate_20260810_001/package/summary.json",
+      "sha256": "19c6fce5eb2d3bd07436363ab59fd690982fe337f227ec4a07d8d4fa371438a7"
+    }
+  },
+  "claim_boundary": "Validates that a real DeepSpeed 0.18.4 ZeRO-3 engine can initialize in a strict DP subgroup while nonmembers wait on a default-world control fence. It does not validate the 14B transition or timing.",
+  "decision": "GO for one corrected real16 correctness retry; formal timing remains blocked."
+}

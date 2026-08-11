@@ -1,0 +1,36 @@
+{
+  "schema_version": "distillschedule.iteration_result.v1",
+  "iteration": 302,
+  "date": "2026-08-10",
+  "status": "PASS_OWNERSHIP_SIGNATURE",
+  "run_id": "rb16_step10a_iter302_saved_tensor_census_20260810_001",
+  "source_head": "4b39a0d2ff220a11fcee6c93d03985262ae05686",
+  "summary_sha256": "a23dcce8d5cce67157c2e21101e76c95901e82eca401582b8c29f125ad652399",
+  "claim_boundary": "metadata-only causal ownership diagnostic; no speedup claim",
+  "observations": {
+    "generator_ranks": 8,
+    "scope_count_per_rank": 6,
+    "pack_count_per_rank": 1302,
+    "unpack_count_per_rank": 1298,
+    "signature_count_per_rank": 40,
+    "expected_and_observed_per_rank": {
+      "bf16_1x11040x5120_bytes": {"bytes": 113049600, "expected": 80, "observed": 80},
+      "bf16_1x4560x5120_bytes": {"bytes": 46694400, "expected": 80, "observed": 80},
+      "bf16_1x2940x5120_bytes": {"bytes": 30105600, "expected": 80, "observed": 80}
+    },
+    "logical_saved_storage_gib_per_rank_all_signatures": 22.891823,
+    "node0_cgroup_peak_bytes": 379505057792,
+    "node1_cgroup_peak_bytes": 79576207360,
+    "oom_delta": 0
+  },
+  "correctness": {
+    "rank_status": "16/16 PASS",
+    "pack_returns_original_tensor": true,
+    "unpack_returns_same_tensor": true,
+    "retained_tensor_references": 0,
+    "frozen_trace_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+    "timing_mode_gate": "prior exact Iter295 correctness summary SHA 0f1d8bedba46192a8b7c931ff981afe2b0131a31c3c929e911ca8e810f2a5f95"
+  },
+  "performance": "Not applicable; profiler adds metadata events and is not a timing result",
+  "decision": "GO_BOUNDARY_PINNED_SYNC_POLICY_ISOLATION"
+}

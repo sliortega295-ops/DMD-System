@@ -1,0 +1,41 @@
+{
+  "schema_version": "distillschedule.bounded_gate_failure.v1",
+  "iteration": 281,
+  "status": "FAIL_PRE_TIMING_TARGET_EMA_DTYPE_MISMATCH",
+  "run_id": "rb16_full5_cont_zero3step10a_2g6c_pipeline_correctness_20260810_002",
+  "scope": "cold target preconstruction and EMA restore; Step10-A measured window Not Run",
+  "failure_signature": "SparseShardEMA.load_pretrained rejected module.condition_embedder.time_embedder.linear_1.lora_A.default.weight because checkpoint and target tensor metadata differed.",
+  "root_cause": {
+    "confidence": "tensor-inspection-confirmed",
+    "checkpoint_tensor": "BF16 [256,256]",
+    "preconstructed_target_tensor": "FP32 [256,256]",
+    "mechanism": "The prior validated ZeRO-1 path loaded EMA after DeepSpeed had cast trainable LoRA parameters to BF16. The new cold preconstructed resident Generator had not passed through DeepSpeed, so its LoRA Parameters remained FP32. The resident execution contract is BF16; this is a representation-restore omission, not numerical tolerance or EMA-policy drift.",
+    "step10a_zero3_subgroup_barriers_passed": true,
+    "step10a_generator_contract_resolved": "DP8 MB1 GAS2 global16 ZeRO-3",
+    "step10a_executed": false,
+    "not_an_oom": true
+  },
+  "evidence": {
+    "rank0_result": {
+      "path": "artifacts/runs/rb16_full5_cont_zero3step10a_2g6c_pipeline_correctness_20260810_002/execution/ranks/rank_00.json",
+      "sha256": "5f93b89d21cec043f22ee2a430893461d8cb290799f3581fa23b5eaad1971098"
+    },
+    "node0_console": {
+      "path": "artifacts/runs/rb16_full5_cont_zero3step10a_2g6c_pipeline_correctness_20260810_002/launcher/node_0/console.log",
+      "sha256": "497dd353a57429ed3706acb03b231c8d5e721bf996705fa24eb1571a82ad34f3"
+    },
+    "node1_console": {
+      "path": "artifacts/runs/rb16_full5_cont_zero3step10a_2g6c_pipeline_correctness_20260810_002/launcher/node_1/console.log",
+      "sha256": "4f46ef29609e2be7dc5878d7b525c6a58cf83d85e023a829788404f5133d7cbf"
+    },
+    "node0_oom_delta": 0,
+    "node1_oom_delta": 0
+  },
+  "bounded_recovery": "Cast only trainable LoRA Parameters of each cold preconstructed resident Generator to BF16 before EMA restore and G3 injection; keep frozen mixed-precision RMSNorm/backbone tensors unchanged. Add CPU exact tests and permit one real16 retry.",
+  "rejected_paths": [
+    "skip EMA",
+    "cast EMA checkpoint to FP32",
+    "cast the entire mixed-precision Generator to BF16",
+    "relax metadata validation"
+  ]
+}

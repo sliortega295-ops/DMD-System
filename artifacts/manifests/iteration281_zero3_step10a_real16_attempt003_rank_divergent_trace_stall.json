@@ -1,0 +1,254 @@
+{
+  "artifacts": {
+    "node0_console": {
+      "path": "artifacts/runs/rb16_full5_cont_zero3step10a_2g6c_pipeline_correctness_20260810_003/launcher/node_0/console.log",
+      "sha256": "d8645e239a6712b1e04fedcb13c801ef837ca79d493d527ba16509aa54496a48"
+    },
+    "node0_resource": {
+      "path": "artifacts/runs/rb16_full5_cont_zero3step10a_2g6c_pipeline_correctness_20260810_003/launcher/node_0/resource.csv",
+      "sha256": "56b700b1b22621d159a1c139c1a506ac233dc4e677e88965426e697972a954e7"
+    },
+    "node1_console": {
+      "path": "artifacts/runs/rb16_full5_cont_zero3step10a_2g6c_pipeline_correctness_20260810_003/launcher/node_1/console.log",
+      "sha256": "97c875268311f6e807569163e355ef3bea7fa73212ba12f566c81268a3775b48"
+    },
+    "node1_resource": {
+      "path": "artifacts/runs/rb16_full5_cont_zero3step10a_2g6c_pipeline_correctness_20260810_003/launcher/node_1/resource.csv",
+      "sha256": "4a36074e46a6ce7c900f34e9232dcd8f3383b3fc2f0f47ca8f62c8735b77f790"
+    }
+  },
+  "created_at": "2026-08-10T07:25:08.595836+00:00",
+  "facts": {
+    "all_ranks_reached_ready_stage": true,
+    "dmd_head": "e891854be19cb6bf5a6ffc8eb55170bec0294726",
+    "elapsed_without_step10a_payload_seconds_lower_bound": 1500,
+    "logical_manifest_hash": "68eed293970be008764ee6acadb2aac6ce54de2ce1f55a17fca2246f0d04e4aa",
+    "manual_stop_return_code": 130,
+    "new_cgroup_oom_events": 0,
+    "new_cgroup_oom_kills": 0,
+    "node0_gpu_util_after_ready_observed_max_percent": 1,
+    "rank_status_before_stop": "RUNNING",
+    "redirected_bare_deepspeed_barriers_per_generator_rank": 3,
+    "runtime_head": "b42f44562ab0b93927f4de7317e06dc3b751577e",
+    "step10a_payload_count": 0,
+    "trace_bundle_hash": "9e282f4bc24eb589d259e5e5603cae02fa5cd0c6cdd0f06f7c5416461e4564d0",
+    "zero3_initialization_passed": true
+  },
+  "historical_comparison": {
+    "comparable_as_speed_denominator": false,
+    "current_input_control": "operation-keyed exact rank-qualified trace with legal rank-local zero-history exceptions",
+    "historical_input_control": "synthetic per-rank data with rank-zero synchronized rollout control and an explicit zero-history safety preflight",
+    "iteration237_step15a_seconds": 48.551619730424136
+  },
+  "hypothesis": "The subgroup barrier and resident-target EMA representation fixes are sufficient to reach and complete Step10-A.",
+  "performance": "Not Run",
+  "question": "Can the restored DP8 ZeRO-3 Step10-A backend execute the exact rank-qualified Step10 trace inside the continuous Full5 world16 job?",
+  "recovery": "Do not return to ZeRO-1 as the performance candidate. Add a fail-closed trace/collective compatibility gate and implement exact collective-safe padded slots (or another preregistered exact-control method) before the next real DP8 ZeRO-3 launch.",
+  "result": "REFUTED_OR_NOT_IDENTIFIABLE_BEFORE_FIRST_OUTPUT",
+  "run_id": "rb16_full5_cont_zero3step10a_2g6c_pipeline_correctness_20260810_003",
+  "schema_version": "distillschedule.iteration281.zero3_step10a_attempt003_failure.v1",
+  "status": "STOPPED_FAIL_CLOSED",
+  "trace_collective_safety_audit": {
+    "causal_claim_limit": "The run lacked boundary markers between checksum, trace load, and first physical forward. The divergent trace proves naive execution is unsafe, but this attempt alone does not locate the exact blocking line.",
+    "reason": "Each ZeRO-3 parameter all-gather group requires an identical physical Transformer call order, while exact official rank-local zero-history exceptions produce different Step10 call counts.",
+    "status": "FAIL_FOR_NAIVE_DP8_ZERO3",
+    "waves": [
+      {
+        "padded_call_count": 11,
+        "padded_stage_exits": [
+          2,
+          3,
+          3
+        ],
+        "records": [
+          {
+            "call_count": 4,
+            "scope": "rank_local_amplified_gt_zero_history_exception",
+            "source_rank": 0,
+            "stage_exits": [
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "call_count": 4,
+            "scope": "global_rank0_broadcast_equivalent",
+            "source_rank": 1,
+            "stage_exits": [
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "call_count": 4,
+            "scope": "global_rank0_broadcast_equivalent",
+            "source_rank": 2,
+            "stage_exits": [
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "call_count": 8,
+            "scope": "rank_local_amplified_gt_zero_history_exception",
+            "source_rank": 3,
+            "stage_exits": [
+              0,
+              2,
+              3
+            ]
+          },
+          {
+            "call_count": 4,
+            "scope": "global_rank0_broadcast_equivalent",
+            "source_rank": 4,
+            "stage_exits": [
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "call_count": 4,
+            "scope": "global_rank0_broadcast_equivalent",
+            "source_rank": 5,
+            "stage_exits": [
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "call_count": 6,
+            "scope": "rank_local_amplified_gt_zero_history_exception",
+            "source_rank": 6,
+            "stage_exits": [
+              2,
+              1,
+              0
+            ]
+          },
+          {
+            "call_count": 7,
+            "scope": "rank_local_amplified_gt_zero_history_exception",
+            "source_rank": 7,
+            "stage_exits": [
+              1,
+              3,
+              0
+            ]
+          }
+        ],
+        "unique_call_counts": [
+          4,
+          6,
+          7,
+          8
+        ],
+        "wave": 0
+      },
+      {
+        "padded_call_count": 11,
+        "padded_stage_exits": [
+          3,
+          2,
+          3
+        ],
+        "records": [
+          {
+            "call_count": 4,
+            "scope": "global_rank0_broadcast_equivalent",
+            "source_rank": 8,
+            "stage_exits": [
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "call_count": 3,
+            "scope": "rank_local_amplified_gt_zero_history_exception",
+            "source_rank": 9,
+            "stage_exits": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "call_count": 7,
+            "scope": "rank_local_amplified_gt_zero_history_exception",
+            "source_rank": 10,
+            "stage_exits": [
+              1,
+              2,
+              1
+            ]
+          },
+          {
+            "call_count": 7,
+            "scope": "rank_local_amplified_gt_zero_history_exception",
+            "source_rank": 11,
+            "stage_exits": [
+              2,
+              2,
+              0
+            ]
+          },
+          {
+            "call_count": 4,
+            "scope": "global_rank0_broadcast_equivalent",
+            "source_rank": 12,
+            "stage_exits": [
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "call_count": 6,
+            "scope": "rank_local_amplified_gt_zero_history_exception",
+            "source_rank": 13,
+            "stage_exits": [
+              3,
+              0,
+              0
+            ]
+          },
+          {
+            "call_count": 9,
+            "scope": "rank_local_amplified_gt_zero_history_exception",
+            "source_rank": 14,
+            "stage_exits": [
+              3,
+              0,
+              3
+            ]
+          },
+          {
+            "call_count": 8,
+            "scope": "rank_local_amplified_gt_zero_history_exception",
+            "source_rank": 15,
+            "stage_exits": [
+              3,
+              1,
+              1
+            ]
+          }
+        ],
+        "unique_call_counts": [
+          3,
+          4,
+          6,
+          7,
+          8,
+          9
+        ],
+        "wave": 1
+      }
+    ]
+  }
+}

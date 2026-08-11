@@ -1,0 +1,23 @@
+{
+  "schema_version": "distillschedule.iteration_preflight.v1",
+  "iteration": 305,
+  "date": "2026-08-10",
+  "status": "PREREGISTERED_GO",
+  "current_gate": "strict-v4 Step10-A ZeRO-3 fetch overhead",
+  "authorized_hypothesis": "the real Generator contains fine-grained modules that DeepSpeed can safely fetch as integral leaf units, potentially reducing the 35187 observed NCCL kernels",
+  "matching_prior_evidence": [
+    "strict Step10 Nsight: NCCL interval union 49.2352 seconds and 35187 NCCL kernels on rank0",
+    "Iteration298 overlap_comm regressed and is closed",
+    "Iteration303 pinned saved-tensor boundaries regressed and are closed",
+    "DeepSpeed 0.18.4 exposes stage3_module_granularity_threshold specifically to reduce fine-grained hook and separate all-gather overhead"
+  ],
+  "allowed_changes": "read-only CPU construction and exact DeepSpeed-compatible module granularity census; no GPU policy or timing run",
+  "frozen": "official Generator weights/LoRA inventory and strict-v4 workload contracts",
+  "evidence_needed": [
+    "reproducible module-name/type/parameter/layer/granularity inventory",
+    "minimum effective threshold",
+    "bounded candidate whose grouped live parameters can be statically admitted"
+  ],
+  "refutation": "no effective fine-grained modules below a safely admitted threshold or candidate grouping exceeds the existing GPU headroom",
+  "decision": "GO"
+}

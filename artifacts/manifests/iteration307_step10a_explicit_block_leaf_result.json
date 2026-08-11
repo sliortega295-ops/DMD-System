@@ -1,0 +1,40 @@
+{
+  "schema_version": "distillschedule.iteration_result.v1",
+  "iteration": 307,
+  "date": "2026-08-10",
+  "status": "PASS_PRELIMINARY",
+  "dmd_head": "6be198fc86dd9a5b14ffe24abd2cb31de8b7867b",
+  "correctness_run": "rb16_f5_iter307_explicit_block_leaf_correctness_20260810_001",
+  "correctness_summary_sha256": "1ff4b4a11d81053f3149d0a7f24bf9b7d6b51bc0bfc7f18ad8b22ea969f12377",
+  "correctness": {
+    "ranks": "16/16 PASS",
+    "leaf_inventory": "exactly 40 HeliosTransformerBlock leaves on each Step10 Generator rank",
+    "versions": "G3/C15/EMA15",
+    "payloads": "60/60",
+    "oom_delta": 0
+  },
+  "exact_profile_seconds": {
+    "step10a_world_max": 106.77968298923224,
+    "step10a_generator_rank_max": 102.88423762097955,
+    "transition_world_max": 21.522316844202578,
+    "critic_world_max": 168.79844247177243,
+    "full5_world_max": 300.3946914700791
+  },
+  "low_overhead_run": "rb16_step10a_iter307_explicit_block_leaf_timing_20260810_001",
+  "low_overhead_seconds": {
+    "step10a_generator_rank_median": 87.99517075158656,
+    "step10a_generator_rank_max": 87.9953936340753,
+    "step10a_world_boundary_max": 92.60561595484614
+  },
+  "comparison": {
+    "iter297_generator_median_seconds": 115.489513,
+    "generator_time_reduction_percent": 23.806787,
+    "generator_speedup": 1.312453,
+    "strict_world_max_seconds": 129.003622,
+    "world_boundary_time_reduction_percent": 28.214716,
+    "world_boundary_speedup": 1.393043,
+    "step10_target_seconds": "85-105",
+    "target_met": true
+  },
+  "claim_boundary": "one exact correctness/profile run plus one low-overhead diagnostic; three-run formal timing Not Run"
+}

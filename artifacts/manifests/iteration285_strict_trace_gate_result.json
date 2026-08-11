@@ -1,0 +1,54 @@
+{
+  "answer": "YES through both real-14B GAS2 rollout/backward waves; end-to-end Full5 remains blocked after that boundary",
+  "claim_boundary": "trace synchronization validated; end-to-end correctness and all performance claims Not Run",
+  "current_blocker": "logical ZeRO-3 optimizer restore must identify the nested concrete optimizer and reproduce its native step-state representation; requires separate preregistration and a real wrapper-level optimizer-step gate",
+  "iteration": 285,
+  "next_action": "separate checkpoint-restore iteration; no additional trace-policy changes",
+  "question": "Does strict cross-rank synchronization remove the real Step10-A ZeRO-3 model-call divergence?",
+  "real14b_evidence": {
+    "backward_completed_to_engine_step": true,
+    "both_waves_entered_all_ranks": true,
+    "collective_order_stall": false,
+    "critic_phase_completed": false,
+    "ema_completed": false,
+    "generator_ranks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "optimizer_update_completed": false,
+    "run_ids": [
+      "rb16_f5_stricttrace_v4_pipeline_correctness_20260810_003",
+      "rb16_f5_stricttrace_v4_pipeline_correctness_20260810_004"
+    ],
+    "trace_or_call_count_failure": false
+  },
+  "rejected_paths": [
+    "rank-local special-exception v3 measured workload",
+    "collective padding/dummy calls",
+    "Python ProcessGroup identity assertion",
+    "shallow direct-AdamW type inference"
+  ],
+  "schema_version": "distillschedule.iteration285.strict_rank_trace_gate_result.v1",
+  "static_contract": {
+    "dummy_calls": 0,
+    "local_exception_entries": 0,
+    "physical_calls_across_gas2_per_rank": 8,
+    "physical_calls_per_wave_per_rank": 4,
+    "rank_count": 16,
+    "step10a_synchronized_exits": [
+      1,
+      0,
+      0
+    ],
+    "v3_rejected_fail_closed": true
+  },
+  "status": "PARTIAL",
+  "trace_bundle": "/share/project/shuchenweng/DistillSchedule_assets/m0/traces/syn_feature_trace_rank16_v4_strict_sync_steps20",
+  "trace_bundle_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3"
+}

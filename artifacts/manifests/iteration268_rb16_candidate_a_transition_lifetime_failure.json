@@ -1,0 +1,75 @@
+{
+  "candidate_b": "Not Run",
+  "cgroup_oom_kill_delta": {
+    "node0": 0,
+    "node1": 0
+  },
+  "evidence_label": "Measured diagnostic failure",
+  "experiment_id": "RB16-F5-PIPE-MATCH16",
+  "formal_timing": "Not Run",
+  "frozen_contracts": [
+    "384x640",
+    "G2/C10/EMA10",
+    "DP8 MB1 GAS2 batch16",
+    "ZeRO-1 CPU optimizer",
+    "clip=1.0",
+    "Score resident/no streaming fallback",
+    "one G/five C/five EMA updates"
+  ],
+  "iteration": 268,
+  "next_bounded_fix": [
+    "verify copied trainables on CPU when source/target devices differ",
+    "construct Teacher execution ranks with Critic-capable shared physical Score and reuse it for Critic instead of constructing a second 14B Score"
+  ],
+  "node_sampled_cgroup_peaks_bytes": {
+    "node0": 482711662592,
+    "node1": 257979453440
+  },
+  "rank_status": {
+    "rank_00": "RUNNING",
+    "rank_01": "RUNNING",
+    "rank_02": "RUNNING",
+    "rank_03": "RUNNING",
+    "rank_04": "RUNNING",
+    "rank_05": "RUNNING",
+    "rank_06": "RUNNING",
+    "rank_07": "RUNNING",
+    "rank_08": "FAIL",
+    "rank_09": "FAIL",
+    "rank_10": "FAIL",
+    "rank_11": "FAIL",
+    "rank_12": "OOM",
+    "rank_13": "OOM",
+    "rank_14": "OOM",
+    "rank_15": "OOM"
+  },
+  "run_id": "rb16_f5_pipe_match16_transition_20260809_002",
+  "schema_version": "distillschedule.iteration.v1",
+  "scope": "Candidate-A transition-only; Candidate B remains Not Run",
+  "source_heads": {
+    "dmd": "a74ca03a506a7f066d05a86e75e7a36fb1b4bd53",
+    "runtime": "b2082091eb502d5389000a26e283b04eb9adf069"
+  },
+  "step10a": {
+    "generator_update": "G2_to_G3 observed before barrier cancellation",
+    "score_exchange": "input_00..15, fake_00..15 as role-produced, gradient_00..15 present as applicable",
+    "status": "completed_before_transition_failure"
+  },
+  "strict_summary": {
+    "path": "artifacts/manifests/rb16_f5_pipe_match16_transition_20260809_002_result.json",
+    "sha256": "ca916548f4097db1d50929ec4a584e566e5ea22c2e165759cfb966d45037b351"
+  },
+  "transition": {
+    "status": "FAIL",
+    "student_ranks_8_11": {
+      "classification": "nonsemantic verification-wrapper bug",
+      "exception": "Expected all tensors to be on the same device",
+      "failure": "cross-device exact verification used torch.equal(CUDA_target, CPU_source)"
+    },
+    "teacher_ranks_12_15": {
+      "classification": "physical-state reuse/lifetime bug",
+      "exception": "CUDA out of memory inside DeepSpeed module.to(device)",
+      "failure": "second 14B Score construction overlapped retained first physical Score allocation"
+    }
+  }
+}

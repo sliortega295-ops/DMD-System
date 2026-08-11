@@ -1,0 +1,49 @@
+{
+  "schema_version": "distillschedule.rb16_full5_2g6c_continuous_attempt.v1",
+  "iteration": 280,
+  "attempt": 2,
+  "run_id": "rb16_full5_cont_2g6c_pipeline_correctness_20260810_002",
+  "status": "FAIL",
+  "measurement": "Measured",
+  "stage": "live_transition_release_guard_before_target_score_materialization",
+  "first_failure": {
+    "ranks": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "type": "AssertionError",
+    "error": "relinquished Generator did not release its expected CUDA storage",
+    "mechanism": "Module.to_empty(meta) replaced module Parameter objects, while DeepSpeed optimizer aliases retained the original CUDA Parameters."
+  },
+  "measured": {
+    "allocated_before_gib": 26.474663734436035,
+    "allocated_after_module_to_empty_gib": 26.47466230392456,
+    "reserved_after_gib_range": [
+      26.51953125,
+      26.576171875
+    ],
+    "driver_free_after_gib_range": [
+      11.5179443359375,
+      11.5902099609375
+    ],
+    "cgroup_oom_delta": 0,
+    "cgroup_oom_kill_delta": 0,
+    "target_score_materialization_started": false,
+    "pipeline_entered": false
+  },
+  "bounded_recovery": {
+    "policy": "IN_PLACE_SWAP_ORIGINAL_PARAMETER_AND_BUFFER_OBJECTS_TO_META",
+    "evidence": "A mini CUDA probe verified torch.utils.swap_tensors changes both module and optimizer aliases to meta and releases CUDA allocation.",
+    "scope": "Only obsolete ranks 2-7 after final Step10-A Generator use.",
+    "next_attempt_limit": 1
+  },
+  "cascade": "Peer NCCL/TCPStore failures followed the release assertion and are not independent root causes.",
+  "evidence": [
+    "artifacts/runs/rb16_full5_cont_2g6c_pipeline_correctness_20260810_002/execution/ranks/rank_03.json",
+    "artifacts/runs/rb16_full5_cont_2g6c_pipeline_correctness_20260810_002/launcher/node_0/console.log"
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "schema_version": "distillschedule.iteration_result.v1",
+  "iteration": 303,
+  "date": "2026-08-10",
+  "status": "BOUNDED_NEGATIVE_CORRECTNESS_PASS",
+  "correctness_run": "rb16_f5_iter303_boundary_pinned_sync_correctness_20260810_001",
+  "timing_run": "rb16_step10a_iter303_boundary_pinned_sync_timing_20260810_001",
+  "source_head": "272b038c286d66a1dbbbef22f9612d8db076a1b8",
+  "correctness_summary_sha256": "1f636d7e23d1a439ebb828a1fb5bd61baca8a09b177cfdb17790db3b3c2dddcb",
+  "correctness": {
+    "status": "PASS",
+    "ranks": "16/16",
+    "versions": "G3/C15/EMA15",
+    "payloads": "60/60",
+    "oom_delta": 0,
+    "offload_cpu_copy_count_range_per_rank": [235,240],
+    "offload_peak_live_gib_range_per_rank": [13.890839,14.144897],
+    "final_live_cpu_bytes": 0
+  },
+  "timing": {
+    "generator_phase_sum_median_seconds": 133.83167736313771,
+    "generator_phase_sum_min_seconds": 133.6371970330365,
+    "generator_phase_sum_max_seconds": 133.90498214168474,
+    "world_max_step10a_seconds": 141.008760410361,
+    "wave0_rollout_median_seconds": 24.643378822132945,
+    "wave0_backward_median_seconds": 40.36084268754348,
+    "wave1_rollout_median_seconds": 25.2535473840544,
+    "wave1_backward_median_seconds": 42.08799386397004,
+    "node0_cgroup_peak_bytes": 510986096640,
+    "node1_cgroup_peak_bytes": 79579795456,
+    "node0_gpu_peak_mib_per_rank": 31762
+  },
+  "comparison": {
+    "iteration297_median_seconds": 115.48951340152416,
+    "regression_vs_iteration297_percent": 15.88,
+    "strict_v4_baseline_seconds": 123.11550586891826,
+    "regression_vs_strict_v4_percent": 8.70,
+    "preregistered_positive_threshold_seconds": 110.804
+  },
+  "interpretation": "Selective pinned saved-tensor offload adds synchronous allocation/copy work instead of replacing the dominant existing copy path. Async is not authorized after the synchronous prerequisite regressed.",
+  "claim_boundary": "one exact Full5 correctness run plus one preliminary Step10-only timing run; no formal repeats",
+  "decision": "CLOSE_BOUNDARY_PINNING_FAMILY"
+}

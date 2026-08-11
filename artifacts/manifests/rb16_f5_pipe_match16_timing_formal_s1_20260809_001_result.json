@@ -1,0 +1,45 @@
+{
+  "errors": [],
+  "experiment_id": "RB16-F5-PIPE-MATCH16",
+  "identities": {
+    "execution_trace_bundle_hash": "9e282f4bc24eb589d259e5e5603cae02fa5cd0c6cdd0f06f7c5416461e4564d0",
+    "logical_manifest_hash": "68eed293970be008764ee6acadb2aac6ce54de2ce1f55a17fca2246f0d04e4aa",
+    "routeb_trace_binding_hash": "e6a5ef2f60b00ef79dfd5b8e94ce5d9c7446da39453fb9c9fcb0f0e5039fc15b",
+    "state_provenance_trace_hash": "bd97ddc9cf0e51e791a50ce13586126599d3667fd4684505c142ed177096f12f",
+    "transition_manifest_sha256": "444a6740debbe37d7014ebaa45da23398f162652f6179d09537e60e3c304dee0"
+  },
+  "mode": "critic-timing",
+  "node_cgroup_sampled_peaks_bytes": {
+    "node_0": 357145251840,
+    "node_1": 359664001024
+  },
+  "phase": {
+    "checkpoint_15": "Not Run",
+    "critic_commits": 5,
+    "critic_waves": 80,
+    "ema_commits": 5,
+    "generator_waves": 80,
+    "scope": "critic_phase_from_common_transition_checkpoint"
+  },
+  "rank_count": 16,
+  "run_id": "rb16_f5_pipe_match16_timing_formal_s1_20260809_001",
+  "schedule": "sequential",
+  "schema_version": "distillschedule.routeb_full5_candidate_a_summary.v1",
+  "status": "PASS",
+  "step10a": "Not Run",
+  "timing": {
+    "critic_phase_makespan_seconds": 354.89183570910245,
+    "critic_subgraph_makespan_seconds": 354.8930504829623,
+    "full5_makespan_seconds": 0.0,
+    "label": "formal_candidate_run"
+  },
+  "timing_correctness_binding": {
+    "candidate_run": "rb16_f5_pipe_match16_common_transition_pipeline_p1_20260809_001",
+    "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/manifests/rb16_f5_pipe_match16_common_transition_pipeline_p1_contract_eval_20260809_001.json",
+    "reference_run": "rb16_f5_pipe_match16_common_transition_sequential_s1_20260809_001",
+    "schema_version": "distillschedule.routeb_timing_correctness_binding.v1",
+    "sha256": "ae14b13417aa3f13be3539c5132c17476cc230b4129db85df23fa7859611e8ce",
+    "status": "PASS",
+    "transition_manifest_sha256": "444a6740debbe37d7014ebaa45da23398f162652f6179d09537e60e3c304dee0"
+  }
+}

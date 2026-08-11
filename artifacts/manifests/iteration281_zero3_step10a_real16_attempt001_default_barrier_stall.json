@@ -1,0 +1,39 @@
+{
+  "schema_version": "distillschedule.bounded_gate_failure.v1",
+  "iteration": 281,
+  "status": "FAIL_COLD_INIT_SUBGROUP_DEFAULT_BARRIER_STALL",
+  "run_id": "rb16_full5_cont_zero3step10a_2g6c_pipeline_correctness_20260810_001",
+  "scope": "cold construction only; Step10-A measured window Not Run",
+  "started_at": "2026-08-10T05:13:00Z",
+  "stopped_at": "2026-08-10T05:53:54Z",
+  "observed_stall_seconds_at_least": 2400,
+  "failure_signature": "Generator ranks 0-7 remain after DeepSpeed Before creating fp16 partitions; non-Generator ranks 8-15 wait at the outer Gloo control barrier; node0 GPUs spin while node1 GPUs are idle.",
+  "root_cause": {
+    "confidence": "source-confirmed",
+    "mechanism": "DeepSpeed 0.18.4 ZeRO-3 stage3._create_fp16_partitions_with_defragmentation calls deepspeed.comm.barrier() without a group at stage3.py:773. In the continuous world16 process graph only ranks 0-7 call deepspeed.initialize, so the bare barrier targets the world16 default NCCL group and waits forever for ranks 8-15. The validated 48.551620-second run launched the eight Generator ranks as their own default world8 and therefore did not expose this mismatch.",
+    "not_a_training_result": true,
+    "not_an_oom": true
+  },
+  "evidence": {
+    "node0_console": {
+      "path": "artifacts/runs/rb16_full5_cont_zero3step10a_2g6c_pipeline_correctness_20260810_001/launcher/node_0/console.log",
+      "sha256": "cb21a41ee5138bfd50ef02ff04c0a931fb7c0854046b3997897b8c38c048e0b6"
+    },
+    "node1_console": {
+      "path": "artifacts/runs/rb16_full5_cont_zero3step10a_2g6c_pipeline_correctness_20260810_001/launcher/node_1/console.log",
+      "sha256": "7a538ae0bb1228e18027aa988715b21c225c6c43076af9b461c888a98f52fe64"
+    },
+    "deepspeed_source": "/tmp/distillschedule-helios-official-torch210/lib/python3.10/site-packages/deepspeed/runtime/zero/stage3.py:772-774",
+    "node0_final_return_code": 130,
+    "node1_final_return_code": 130,
+    "node0_oom_delta": 0,
+    "node1_oom_delta": 0
+  },
+  "bounded_recovery": "Route only bare DeepSpeed barriers executed inside subgroup ZeRO-3 initialization to the engine DP8 group, without editing site-packages. First validate with a world4/default-world plus DP2 ZeRO-3 subgroup toy; allow one corrected real16 retry only if that gate passes.",
+  "rejected_paths": [
+    "wait longer and call the stall slow ZeRO-3",
+    "return to ZeRO-1 Step10-A",
+    "patch installed DeepSpeed globally",
+    "let non-Generator ranks create unrelated fake ZeRO-3 engines"
+  ]
+}

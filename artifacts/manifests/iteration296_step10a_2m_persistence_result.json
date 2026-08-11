@@ -1,0 +1,35 @@
+{
+  "schema_version": "distillschedule.iteration_result.v1",
+  "iteration": 296,
+  "date": "2026-08-10",
+  "status": "BOUNDED_NEGATIVE_BOUNDARY_IDENTITY_PASS",
+  "run_id": "rb16_step10a_iter296_persistence2m_timing_20260810_001",
+  "source_head": "979d774b2eb1ec1e4a6ec0b05ea3c1f47a466848",
+  "claim_boundary": "one preliminary Step10-only timing run; post-update full-state exactness and Full5 formal timing Not Run",
+  "metrics": {
+    "generator_rank_step10a_median_seconds": 116.82945310149807,
+    "world_max_step10a_seconds": 118.85919069265947,
+    "wave0_rollout_median_seconds": 19.705991419614293,
+    "wave0_backward_median_seconds": 36.111826386884786,
+    "wave1_rollout_median_seconds": 19.68693302141037,
+    "wave1_backward_median_seconds": 39.85883831558749,
+    "node0_cgroup_peak_bytes": 356686761984,
+    "node0_gpu_peak_mib_each": 31762,
+    "persistent_parameter_objects": 1432,
+    "persistent_parameter_elements": 967692352,
+    "oom_delta": 0
+  },
+  "relative_to_iteration287": {
+    "generator_median_improvement_percent": 5.106,
+    "world_max_improvement_percent": 7.863
+  },
+  "boundary_correctness": {
+    "eight_rank_two_wave_trace_identity": "exact",
+    "x0_sha": "exact",
+    "gradient_sha": "exact",
+    "surrogate_loss": "exact",
+    "versions": "G2->G3 once; C10 and EMA10 unchanged"
+  },
+  "refutation": "Step10-A improvement below 10 percent and above 105-second target",
+  "next": "2M persistence plus one-block prefetch / two-block live window"
+}

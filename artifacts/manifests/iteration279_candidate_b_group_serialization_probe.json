@@ -1,0 +1,27 @@
+{
+  "schema_version": "distillschedule.probe.v1",
+  "status": "PASS",
+  "measurement_kind": "Measured",
+  "iteration": 279,
+  "candidate": "RB16-F5-PIPE-2G6C",
+  "question": "Can Candidate B create all world16 role, twelve P2P, twelve ACK, and twelve singleton groups without rank-order drift?",
+  "only_change": "interleave each NCCL P2P group with its Gloo ACK group and serialize every subgroup creation with the world16 Gloo control plane",
+  "scope": "cold_initialization_only",
+  "world_size": 16,
+  "nodes": 2,
+  "gpus_per_node": 8,
+  "result": "CANDIDATE_B_GROUP_PROBE_PASS",
+  "started_utc": "2026-08-10T00:24:31Z",
+  "completed_utc": "2026-08-10T00:24:43Z",
+  "elapsed_upper_bound_seconds": 12,
+  "correctness_result": "process-group creation and final world control barrier passed on all ranks",
+  "training_result": "Not Run",
+  "performance_result": "Not Run",
+  "contract_changes": [],
+  "tests": {
+    "focused": "25 passed",
+    "full": "191 passed, 1 skipped"
+  },
+  "source_artifact": "artifacts/probe_candidate_b_groups_20260810.py",
+  "supersedes_failure_attempt": "iteration279_candidate_b_s1_attempt002_group_creation_stall.json"
+}

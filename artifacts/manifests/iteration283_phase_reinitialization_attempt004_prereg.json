@@ -1,0 +1,19 @@
+{
+  "created_at": "2026-08-10T08:07:44.254584+00:00",
+  "failure_policy": "If this attempt exposes any nontrivial process-world, collective, or state mismatch, close the candidate rather than patch escalating.",
+  "frozen_from_attempt003": [
+    "model",
+    "state",
+    "rank mapping",
+    "groups",
+    "ZeRO stages",
+    "versions",
+    "acceptance",
+    "timeout"
+  ],
+  "only_change": "guard target leaf parameter copy with torch.no_grad",
+  "real14b": "Not Run",
+  "schema_version": "distillschedule.iteration283.phase_reinitialization_attempt004_prereg.v1",
+  "status": "ACTIVE",
+  "timing": "Not Run"
+}

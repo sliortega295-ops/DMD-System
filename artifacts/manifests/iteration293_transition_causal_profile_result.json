@@ -1,0 +1,348 @@
+{
+  "causal_conclusion": {
+    "communicator_collapse_production_decision": "NO-GO at this gate because measured group-creation ceiling is below 2% of transition; retain current validated groups unless a separate critic-phase hypothesis is registered",
+    "dominant": "pageable-source whole-module target H2D on switching ranks",
+    "evidence": "group creation max 0.666031s vs transition 49.839245s",
+    "generator_h2d_max_seconds": 28.799421686911955,
+    "next_candidate": "bounded pinned ping-pong target materialization plus fixed-order bucketed G3 broadcast",
+    "refuted": "serialized Phase-B group creation is the dominant transition cost",
+    "retained_student_init_interpretation": "37-38s host wall includes waiting inside DP12 initialization for switching ranks; switching ranks show 3.6-5.8s local DS initialization after H2D",
+    "switch_critic_h2d_max_seconds": 33.16862497618422
+  },
+  "claim_boundary": {
+    "formal_performance": "Not Run",
+    "instrumentation_overhead": "not separately paired; run is correctness/causal profile only",
+    "new_speedup": "Not Run"
+  },
+  "classification": "real14b_strictv4_transition_causal_profile",
+  "contract": {
+    "policy_change_from_iteration286": "none; timing instrumentation only",
+    "step10a": "DP8 ZeRO-3 MB1 GAS2 global16 strict-v4",
+    "target": "global 4G+12C DP12 ZeRO-1 CPU optimizer",
+    "trace_sha256": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+    "versions": "G2/C10/EMA10 -> G3/C15/EMA15"
+  },
+  "correctness": {
+    "errors": [],
+    "final_versions": "G3_C15_EMA15",
+    "payloads": "60_generated_60_consumed",
+    "queue_flush": true,
+    "rank_status": "16_of_16_PASS",
+    "summary_status": "PASS"
+  },
+  "evidence": {
+    "run_root": "artifacts/runs/rb16_f5_iter292_transition_instrumentation_correctness_20260810_001",
+    "summary": "artifacts/runs/rb16_f5_iter292_transition_instrumentation_correctness_20260810_001/summary/correctness_summary.json",
+    "summary_sha256": "eeb902d930efa6b6256fcef93640f0128f62b8495240f1f713933f080ad00b4d"
+  },
+  "iteration": 293,
+  "metrics": {
+    "critic_phase_wall_seconds": 165.79424545215443,
+    "full5_execution_seconds": 341.8193558342755,
+    "g3_broadcast_max_seconds": 10.868301066104323,
+    "logical_optimizer_restore_max_seconds": 2.1113374431151897,
+    "phase_b_group_create_max_seconds": 0.6660312758758664,
+    "phase_b_world_init_max_seconds": 1.6167815909720957,
+    "retained_critic_deepspeed_initialize_max_seconds": 37.82771199941635,
+    "source_release_fence_max_seconds": 4.222727606073022,
+    "step10a_wall_seconds": 124.91157976398245,
+    "switch_to_critic_deepspeed_initialize_max_seconds": 5.78052588715218,
+    "switch_to_critic_target_h2d_max_seconds": 33.16862497618422,
+    "target_generator_h2d_max_seconds": 28.799421686911955,
+    "target_ready_fence_max_seconds": 3.9695638958364725,
+    "transition_wall_seconds": 49.839245170820504
+  },
+  "rank_student_initialization_subphases": {
+    "10": {
+      "contract_assert_host_wall_seconds": 2.1319836378097534e-05,
+      "deepspeed_initialize_host_wall_seconds": 37.82771199941635,
+      "logical_optimizer_restore_host_wall_seconds": 1.9649317627772689,
+      "optimizer_scheduler_adapter_prepare_host_wall_seconds": 0.014878938905894756,
+      "runtime_hook_install_host_wall_seconds": 0.01530724111944437
+    },
+    "11": {
+      "contract_assert_host_wall_seconds": 1.1872965842485428e-05,
+      "deepspeed_initialize_host_wall_seconds": 37.80078270891681,
+      "logical_optimizer_restore_host_wall_seconds": 1.999028722755611,
+      "optimizer_scheduler_adapter_prepare_host_wall_seconds": 0.016507639084011316,
+      "runtime_hook_install_host_wall_seconds": 0.015846615191549063
+    },
+    "12": {
+      "contract_assert_host_wall_seconds": 9.979121387004852e-06,
+      "deepspeed_initialize_host_wall_seconds": 37.670743694063276,
+      "logical_optimizer_restore_host_wall_seconds": 1.1105864509008825,
+      "optimizer_scheduler_adapter_prepare_host_wall_seconds": 0.014869400765746832,
+      "runtime_hook_install_host_wall_seconds": 0.014665544033050537
+    },
+    "13": {
+      "contract_assert_host_wall_seconds": 2.031773328781128e-05,
+      "deepspeed_initialize_host_wall_seconds": 37.802452304866165,
+      "logical_optimizer_restore_host_wall_seconds": 1.8624493503011763,
+      "optimizer_scheduler_adapter_prepare_host_wall_seconds": 0.01616317592561245,
+      "runtime_hook_install_host_wall_seconds": 0.020375467371195555
+    },
+    "14": {
+      "contract_assert_host_wall_seconds": 1.3877172023057938e-05,
+      "deepspeed_initialize_host_wall_seconds": 37.70412408420816,
+      "logical_optimizer_restore_host_wall_seconds": 1.4111238797195256,
+      "optimizer_scheduler_adapter_prepare_host_wall_seconds": 0.02662750892341137,
+      "runtime_hook_install_host_wall_seconds": 0.017191665712743998
+    },
+    "15": {
+      "contract_assert_host_wall_seconds": 1.1682044714689255e-05,
+      "deepspeed_initialize_host_wall_seconds": 36.86133857257664,
+      "logical_optimizer_restore_host_wall_seconds": 0.7829698361456394,
+      "optimizer_scheduler_adapter_prepare_host_wall_seconds": 0.016130874399095774,
+      "runtime_hook_install_host_wall_seconds": 0.015011750161647797
+    },
+    "2": {
+      "contract_assert_host_wall_seconds": 1.3524899259209633e-05,
+      "deepspeed_initialize_host_wall_seconds": 4.421180207980797,
+      "logical_optimizer_restore_host_wall_seconds": 1.8358896060381085,
+      "optimizer_scheduler_adapter_prepare_host_wall_seconds": 0.014475859934464097,
+      "runtime_hook_install_host_wall_seconds": 0.015630918089300394
+    },
+    "3": {
+      "contract_assert_host_wall_seconds": 1.891585998237133e-05,
+      "deepspeed_initialize_host_wall_seconds": 4.735391777008772,
+      "logical_optimizer_restore_host_wall_seconds": 2.1063202070072293,
+      "optimizer_scheduler_adapter_prepare_host_wall_seconds": 0.02012830995954573,
+      "runtime_hook_install_host_wall_seconds": 0.029580160975456238
+    },
+    "4": {
+      "contract_assert_host_wall_seconds": 1.4247139915823936e-05,
+      "deepspeed_initialize_host_wall_seconds": 4.544256690889597,
+      "logical_optimizer_restore_host_wall_seconds": 2.1113374431151897,
+      "optimizer_scheduler_adapter_prepare_host_wall_seconds": 0.01447686180472374,
+      "runtime_hook_install_host_wall_seconds": 0.016323300078511238
+    },
+    "5": {
+      "contract_assert_host_wall_seconds": 1.3886019587516785e-05,
+      "deepspeed_initialize_host_wall_seconds": 5.78052588715218,
+      "logical_optimizer_restore_host_wall_seconds": 0.8729431710671633,
+      "optimizer_scheduler_adapter_prepare_host_wall_seconds": 0.01483042212203145,
+      "runtime_hook_install_host_wall_seconds": 0.16681639500893652
+    },
+    "6": {
+      "contract_assert_host_wall_seconds": 2.098013646900654e-05,
+      "deepspeed_initialize_host_wall_seconds": 3.573219073936343,
+      "logical_optimizer_restore_host_wall_seconds": 1.8346386458724737,
+      "optimizer_scheduler_adapter_prepare_host_wall_seconds": 0.014701297041028738,
+      "runtime_hook_install_host_wall_seconds": 0.0293332829605788
+    },
+    "7": {
+      "contract_assert_host_wall_seconds": 3.3593038097023964e-05,
+      "deepspeed_initialize_host_wall_seconds": 5.034723399905488,
+      "logical_optimizer_restore_host_wall_seconds": 1.8528434420004487,
+      "optimizer_scheduler_adapter_prepare_host_wall_seconds": 0.01482911896891892,
+      "runtime_hook_install_host_wall_seconds": 0.02490802714601159
+    }
+  },
+  "rank_transition_subphases": {
+    "0": {
+      "g3_broadcast_wall_seconds": 4.901278319070116,
+      "g3_extract_fence_wall_seconds": 0.006792200030758977,
+      "g3_extract_local_host_wall_seconds": 3.2800511999521405,
+      "phase_a_world_destroy_wall_seconds": 0.7565736761316657,
+      "phase_b_group_create_wall_seconds": 0.08746590581722558,
+      "phase_b_world_init_wall_seconds": 0.6839400159660727,
+      "source_release_fence_wall_seconds": 3.949089268920943,
+      "source_release_local_host_wall_seconds": 1.048551174113527,
+      "target_model_h2d_wall_seconds": 28.799421686911955,
+      "target_ready_fence_wall_seconds": 3.4522153979633003
+    },
+    "1": {
+      "g3_broadcast_wall_seconds": 6.522832409013063,
+      "g3_extract_fence_wall_seconds": 1.7808807219844311,
+      "g3_extract_local_host_wall_seconds": 1.3823829609900713,
+      "phase_a_world_destroy_wall_seconds": 0.8624042419251055,
+      "phase_b_group_create_wall_seconds": 0.6629862410482019,
+      "phase_b_world_init_wall_seconds": 0.0022420589812099934,
+      "source_release_fence_wall_seconds": 4.034427423030138,
+      "source_release_local_host_wall_seconds": 0.9633572630118579,
+      "target_model_h2d_wall_seconds": 27.17536171991378,
+      "target_ready_fence_wall_seconds": 3.6366371721960604
+    },
+    "10": {
+      "g3_extract_fence_wall_seconds": 4.034344150219113,
+      "g3_extract_local_host_wall_seconds": 3.6372803151607513e-06,
+      "phase_a_world_destroy_wall_seconds": 0.5576829239726067,
+      "phase_b_group_create_wall_seconds": 0.6452215849421918,
+      "phase_b_world_init_wall_seconds": 1.0600897171534598,
+      "source_release_fence_wall_seconds": 0.5313201979734004,
+      "source_release_local_host_wall_seconds": 9.988900274038315e-06,
+      "student_initialize_total_host_wall_seconds": 39.823766929097474,
+      "target_ready_fence_wall_seconds": 0.0012025623582303524
+    },
+    "11": {
+      "g3_extract_fence_wall_seconds": 4.03427872620523,
+      "g3_extract_local_host_wall_seconds": 3.977678716182709e-06,
+      "phase_a_world_destroy_wall_seconds": 0.5441073686815798,
+      "phase_b_group_create_wall_seconds": 0.6531515810638666,
+      "phase_b_world_init_wall_seconds": 1.0656717573292553,
+      "source_release_fence_wall_seconds": 0.531408404931426,
+      "source_release_local_host_wall_seconds": 8.8568776845932e-06,
+      "student_initialize_total_host_wall_seconds": 39.83301928313449,
+      "target_ready_fence_wall_seconds": 0.03671758063137531
+    },
+    "12": {
+      "g3_extract_fence_wall_seconds": 4.034204795956612,
+      "g3_extract_local_host_wall_seconds": 4.808884114027023e-06,
+      "phase_a_world_destroy_wall_seconds": 0.5437026000581682,
+      "phase_b_group_create_wall_seconds": 0.2946746167726815,
+      "phase_b_world_init_wall_seconds": 1.4245863417163491,
+      "source_release_fence_wall_seconds": 0.5311391851864755,
+      "source_release_local_host_wall_seconds": 6.06197863817215e-06,
+      "student_initialize_total_host_wall_seconds": 38.811729649081826,
+      "target_ready_fence_wall_seconds": 1.0216601458378136
+    },
+    "13": {
+      "g3_extract_fence_wall_seconds": 4.034185529220849,
+      "g3_extract_local_host_wall_seconds": 4.248227924108505e-06,
+      "phase_a_world_destroy_wall_seconds": 0.5672168033197522,
+      "phase_b_group_create_wall_seconds": 0.2061937479302287,
+      "phase_b_world_init_wall_seconds": 1.4895142237655818,
+      "source_release_fence_wall_seconds": 0.5314281932078302,
+      "source_release_local_host_wall_seconds": 6.3818879425525665e-06,
+      "student_initialize_total_host_wall_seconds": 39.70242898305878,
+      "target_ready_fence_wall_seconds": 0.15115152904763818
+    },
+    "14": {
+      "g3_extract_fence_wall_seconds": 4.033605387900025,
+      "g3_extract_local_host_wall_seconds": 5.55114820599556e-06,
+      "phase_a_world_destroy_wall_seconds": 0.5576088638044894,
+      "phase_b_group_create_wall_seconds": 0.0884480457752943,
+      "phase_b_world_init_wall_seconds": 1.6167815909720957,
+      "source_release_fence_wall_seconds": 0.5310626998543739,
+      "source_release_local_host_wall_seconds": 1.015886664390564e-05,
+      "student_initialize_total_host_wall_seconds": 39.16002062894404,
+      "target_ready_fence_wall_seconds": 0.6889106635935605
+    },
+    "15": {
+      "g3_extract_fence_wall_seconds": 4.034237016923726,
+      "g3_extract_local_host_wall_seconds": 3.987923264503479e-06,
+      "phase_a_world_destroy_wall_seconds": 0.5434813699685037,
+      "phase_b_group_create_wall_seconds": 0.6660312758758664,
+      "phase_b_world_init_wall_seconds": 1.0531521141529083,
+      "source_release_fence_wall_seconds": 0.5314302570186555,
+      "source_release_local_host_wall_seconds": 7.153954356908798e-06,
+      "student_initialize_total_host_wall_seconds": 37.676240742672235,
+      "target_ready_fence_wall_seconds": 2.170940258074552
+    },
+    "2": {
+      "g3_extract_fence_wall_seconds": 1.7809124421328306,
+      "g3_extract_local_host_wall_seconds": 1.5040984558872879,
+      "phase_a_world_destroy_wall_seconds": 0.9093861060682684,
+      "phase_b_group_create_wall_seconds": 0.6161778550595045,
+      "phase_b_world_init_wall_seconds": 0.0021116521675139666,
+      "source_release_fence_wall_seconds": 4.032668200088665,
+      "source_release_local_host_wall_seconds": 0.9650911800563335,
+      "student_initialize_total_host_wall_seconds": 6.288147712824866,
+      "target_model_h2d_wall_seconds": 32.34773746388964,
+      "target_ready_fence_wall_seconds": 1.1945931750815362
+    },
+    "3": {
+      "g3_extract_fence_wall_seconds": 1.7808436709456146,
+      "g3_extract_local_host_wall_seconds": 1.502480410039425,
+      "phase_a_world_destroy_wall_seconds": 0.9088636559899896,
+      "phase_b_group_create_wall_seconds": 0.6159191250335425,
+      "phase_b_world_init_wall_seconds": 0.0026465351693332195,
+      "source_release_fence_wall_seconds": 3.8633736190386117,
+      "source_release_local_host_wall_seconds": 1.1344298429321498,
+      "student_initialize_total_host_wall_seconds": 6.892553390935063,
+      "target_model_h2d_wall_seconds": 32.33099180296995,
+      "target_ready_fence_wall_seconds": 0.5803830290678889
+    },
+    "4": {
+      "g3_extract_fence_wall_seconds": 1.780862286919728,
+      "g3_extract_local_host_wall_seconds": 1.4979449058882892,
+      "phase_a_world_destroy_wall_seconds": 0.8889254149980843,
+      "phase_b_group_create_wall_seconds": 0.6363497171550989,
+      "phase_b_world_init_wall_seconds": 0.002274580067023635,
+      "source_release_fence_wall_seconds": 4.12818271596916,
+      "source_release_local_host_wall_seconds": 0.8696151250042021,
+      "student_initialize_total_host_wall_seconds": 6.687433606013656,
+      "target_model_h2d_wall_seconds": 32.37413919204846,
+      "target_ready_fence_wall_seconds": 0.79382533300668
+    },
+    "5": {
+      "g3_extract_fence_wall_seconds": 1.7808840170037001,
+      "g3_extract_local_host_wall_seconds": 1.5043119098991156,
+      "phase_a_world_destroy_wall_seconds": 0.9080736690666527,
+      "phase_b_group_create_wall_seconds": 0.6171190179884434,
+      "phase_b_world_init_wall_seconds": 0.002359570935368538,
+      "source_release_fence_wall_seconds": 4.222727606073022,
+      "source_release_local_host_wall_seconds": 0.7750189078506082,
+      "student_initialize_total_host_wall_seconds": 6.836395898833871,
+      "target_model_h2d_wall_seconds": 30.801939581986517,
+      "target_ready_fence_wall_seconds": 2.2130241761915386
+    },
+    "6": {
+      "g3_extract_fence_wall_seconds": 1.7808939369861037,
+      "g3_extract_local_host_wall_seconds": 1.4965361959766597,
+      "phase_a_world_destroy_wall_seconds": 0.8971242101397365,
+      "phase_b_group_create_wall_seconds": 0.629143183119595,
+      "phase_b_world_init_wall_seconds": 0.0013397079892456532,
+      "source_release_fence_wall_seconds": 4.062907106941566,
+      "source_release_local_host_wall_seconds": 0.9347802551928908,
+      "student_initialize_total_host_wall_seconds": 5.452963931020349,
+      "target_model_h2d_wall_seconds": 33.16862497618422,
+      "target_ready_fence_wall_seconds": 1.216222648974508
+    },
+    "7": {
+      "g3_extract_fence_wall_seconds": 1.7808803408406675,
+      "g3_extract_local_host_wall_seconds": 1.4913315139710903,
+      "phase_a_world_destroy_wall_seconds": 0.8836586058605462,
+      "phase_b_group_create_wall_seconds": 0.6421934198588133,
+      "phase_b_world_init_wall_seconds": 0.00179566303268075,
+      "source_release_fence_wall_seconds": 3.8782859959173948,
+      "source_release_local_host_wall_seconds": 1.1193338378798217,
+      "student_initialize_total_host_wall_seconds": 6.928606647066772,
+      "target_model_h2d_wall_seconds": 32.365014240844175,
+      "target_ready_fence_wall_seconds": 0.5476443930529058
+    },
+    "8": {
+      "g3_broadcast_wall_seconds": 10.868301066104323,
+      "g3_extract_fence_wall_seconds": 4.034747845958918,
+      "g3_extract_local_host_wall_seconds": 4.017725586891174e-06,
+      "phase_a_world_destroy_wall_seconds": 0.5426796288229525,
+      "phase_b_group_create_wall_seconds": 0.49025177070870996,
+      "phase_b_world_init_wall_seconds": 1.2300822027027607,
+      "source_release_fence_wall_seconds": 0.15039420314133167,
+      "source_release_local_host_wall_seconds": 0.3810246931388974,
+      "target_model_h2d_wall_seconds": 22.807671138085425,
+      "target_ready_fence_wall_seconds": 3.9695638958364725
+    },
+    "9": {
+      "g3_broadcast_wall_seconds": 9.426227316260338,
+      "g3_extract_fence_wall_seconds": 4.034224733244628,
+      "g3_extract_local_host_wall_seconds": 4.198402166366577e-06,
+      "phase_a_world_destroy_wall_seconds": 0.552860755007714,
+      "phase_b_group_create_wall_seconds": 0.5592861357145011,
+      "phase_b_world_init_wall_seconds": 1.1508758589625359,
+      "source_release_fence_wall_seconds": 0.037626275792717934,
+      "source_release_local_host_wall_seconds": 0.49375712079927325,
+      "target_model_h2d_wall_seconds": 24.296783389989287,
+      "target_ready_fence_wall_seconds": 3.846184466034174
+    }
+  },
+  "resources": [
+    {
+      "cgroup_peak_bytes": 359300886528,
+      "node": 0,
+      "oom_delta": 0,
+      "oom_kill_delta": 0
+    },
+    {
+      "cgroup_peak_bytes": 171745939456,
+      "node": 1,
+      "oom_delta": 0,
+      "oom_kill_delta": 0
+    }
+  ],
+  "run_id": "rb16_f5_iter292_transition_instrumentation_correctness_20260810_001",
+  "runtime_head": "ec1462bfb84ca444b3beae216c66632744e0d369",
+  "schema_version": "distillschedule.iteration_result.v1",
+  "source_head": "8bef5a7ccdd4a12e0f8357fd6ca9bd078f15d8e3",
+  "status": "PASS"
+}

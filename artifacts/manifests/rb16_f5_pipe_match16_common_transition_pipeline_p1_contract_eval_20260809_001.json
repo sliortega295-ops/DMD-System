@@ -1,0 +1,9 @@
+{
+  "candidate_run": "rb16_f5_pipe_match16_common_transition_pipeline_p1_20260809_001",
+  "contract_transition_manifest_sha256": "444a6740debbe37d7014ebaa45da23398f162652f6179d09537e60e3c304dee0",
+  "errors": [],
+  "observed_loss_max_abs": 5.805492401123047e-05,
+  "reference_run": "rb16_f5_pipe_match16_common_transition_sequential_s1_20260809_001",
+  "schema_version": "distillschedule.routeb_candidate_a_numerical_evaluation.v1",
+  "status": "PASS"
+}

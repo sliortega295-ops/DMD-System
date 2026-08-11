@@ -1,0 +1,32 @@
+{
+  "schema_version": "distillschedule.iteration_preflight.v1",
+  "iteration": 304,
+  "amendment": 1,
+  "date": "2026-08-10",
+  "status": "PREREGISTERED_GO",
+  "matching_failure": "attempt001 failed only in the post-Step15-A background pinned-cache trim on ranks 4 and 7; all measured Full5 work completed first",
+  "root_cause_hypothesis": "post_full5 starts a Python cleanup thread and immediately joins it, providing no overlap while moving torch host allocator and GC work off the main CUDA-owning thread",
+  "bounded_repair": "execute the identical trim_host_allocator operation synchronously on the main thread after CUDA synchronization and after the frozen Full5 timer; record cleanup wall time separately",
+  "frozen": {
+    "step10a_zero3_window": {
+      "persistence_threshold": 2000000,
+      "prefetch_bucket_elements": 402653184,
+      "max_live_parameters": 805306368,
+      "max_reuse_distance": 268435456,
+      "overlap_comm": false
+    },
+    "transition_h2d_policy": "persistent_pinned",
+    "transition_cleanup_boundary": "after Step15-A boundary and outside frozen Full5 timer",
+    "trace_graph_batch_versions_loss_optimizer_ema_placement_backend": "unchanged"
+  },
+  "success": [
+    "all 16 ranks PASS exact state and identity checks",
+    "G3/C15/EMA15 and 60/60 payloads",
+    "no GPU or cgroup OOM",
+    "post-Full5 synchronous cleanup PASS and no remaining GPU process",
+    "transition <=25 seconds"
+  ],
+  "claim_boundary": "cleanup wall time is reported separately and is not silently dropped from lifecycle accounting; one exact correctness run, formal repeats remain Not Run",
+  "repair_budget": "one non-invasive verification attempt",
+  "decision": "GO"
+}

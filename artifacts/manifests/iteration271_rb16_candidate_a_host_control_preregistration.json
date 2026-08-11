@@ -1,0 +1,44 @@
+{
+  "schema_version": "distillschedule.autoresearch.preregistration.v1",
+  "iteration": 271,
+  "experiment_id": "RB16-F5-PIPE-MATCH16",
+  "gate": "Candidate-A Sequential correctness",
+  "status": "PREREGISTERED",
+  "current_head": "7a61ae4005603957e4292ba06db987b469452a61",
+  "failed_run": "rb16_f5_pipe_match16_sequential_correctness_20260809_001",
+  "failed_result": "artifacts/manifests/rb16_f5_pipe_match16_sequential_correctness_20260809_001_result.json",
+  "observed_signature": {
+    "failure": "NCCL control barrier watchdog timeout",
+    "process_group": "PG1 global control group",
+    "sequence": 11,
+    "operation": "ALLREDUCE NumelIn=1",
+    "timeout_ms": 600000,
+    "waiting_ranks": [8, 9, 10, 11, 12, 13, 14, 15],
+    "critic_activation_scopes_completed_per_rank": 10,
+    "checkpoint15_directory_created": true,
+    "new_cgroup_oom": false
+  },
+  "prior_evidence_search": {
+    "matching_bounded_failure_found": false,
+    "searched": [
+      "Runtime research_log/docs/manifests",
+      "DMD-System docs/manifests"
+    ]
+  },
+  "hypothesis": "The failure is a control-plane watchdog artifact: role-asymmetric exact-check/checkpoint host work left Critic ranks in a CUDA/NCCL barrier for more than ten minutes after all ten Critic activation scopes completed. Moving only global lifecycle fences to a two-hour Gloo group will let the unchanged model/data NCCL collectives finish without changing Full5 semantics.",
+  "refutation": "The next immutable Sequential correctness run still deadlocks, changes collective order, fails an exact/version/queue check, or incurs a new OOM.",
+  "allowed_changes": [
+    "global lifecycle control group backend NCCL to Gloo",
+    "explicit two-hour control-plane timeout",
+    "low-volume correctness progress markers",
+    "unit tests and append-only artifacts"
+  ],
+  "forbidden_changes": [
+    "trace/batch/GAS/loss/optimizer/EMA semantics",
+    "model placement or offload policy",
+    "ZeRO stage",
+    "Pipeline execution",
+    "Candidate B"
+  ],
+  "decision": "GO_ONE_BOUNDED_VERIFICATION"
+}

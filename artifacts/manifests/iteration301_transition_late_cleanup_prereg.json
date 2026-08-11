@@ -1,0 +1,46 @@
+{
+  "schema_version": "distillschedule.iteration_preflight.v1",
+  "iteration": 301,
+  "date": "2026-08-10",
+  "status": "PREREGISTERED_GO",
+  "current_gate": "strict-v4 late safe-release scheduling",
+  "authorized_hypothesis": "starting pinned-cache cleanup only after global target readiness avoids the measured G3 and Student-initialization contention and moves transition below 25 seconds while cleanup overlaps Critic work",
+  "candidate": {
+    "transition_h2d_policy": "persistent_pinned",
+    "pinned_cleanup_policy": "late_deferred_at_critic_phase_entry",
+    "cleanup_join": "before Full5 success",
+    "step10a_param_persistence_threshold": 0,
+    "g3_broadcast_bucket_mib": 0
+  },
+  "new_evidence": [
+    "Iteration 300 direct H2D remained below 2.95 seconds",
+    "early cleanup raised G3 broadcast max from 8.81 to 19.24 seconds",
+    "early cleanup raised Student initialization max from 20.54 to 27.21 seconds",
+    "cleanup finished long before final join but harmed the wrong overlap window"
+  ],
+  "frozen": {
+    "trace": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+    "versions": "G2/C10/EMA10 -> G3/C15/EMA15",
+    "workload_and_physical_contract": "unchanged from Iteration 299"
+  },
+  "safety": {
+    "no_cleanup_before_target_ready": true,
+    "cleanup_counted_in_critic_and_full5_if_exposed": true,
+    "cleanup_joined_before_success": true,
+    "exception_cleanup_required": true,
+    "actual_oom_authority": true
+  },
+  "refutation": [
+    "any exact correctness/version/queue failure",
+    "actual OOM or cleanup leak",
+    "transition greater than or equal to 27.798541 seconds",
+    "Full5 more than 5 percent slower than Iteration 299"
+  ],
+  "decision_rules": {
+    "transition_target": "<=25 seconds",
+    "full5_guardrail": "<=344.904558 seconds",
+    "bounded_negative": "transition >=27.798541 seconds or guardrail/correctness failure"
+  },
+  "claim_boundary": "one exact correctness/profile run; formal repeated timing Not Run",
+  "decision": "GO"
+}

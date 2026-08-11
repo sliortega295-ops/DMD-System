@@ -1,0 +1,71 @@
+{
+  "bounded_fix": {
+    "focused_tests": "31 passed",
+    "full_tests": "219 passed, 1 skipped",
+    "model_loss_batch_zero_stage_ema_changed": false,
+    "policy": "preserve step value 2 but encode as singleton FP32 tensor for torch Adam/AdamW; retain integer for DeepSpeedCPUAdam-like optimizers",
+    "semantic_contract_changed": false,
+    "trace_changed": false,
+    "unit_gate": "restored optimizer executes one actual AdamW step and advances 2 to 3"
+  },
+  "claim_scope": "real14b_trace_control_progress_only_no_end_to_end_correctness_or_performance_claim",
+  "dmd_head": "0e5f58b79c694b92651546b5011706c6f2e38df7",
+  "failure_signature": {
+    "boundary": "first resumed Step10-A AdamW optimizer step",
+    "error": "RuntimeError: API has changed, state_steps argument must contain a list of singleton tensors",
+    "failed_global_ranks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "logical_optimizer_step": 2,
+    "mechanism": "logical ZeRO-3 restore stored optimizer step as Python int although concrete client optimizer is torch.optim.AdamW",
+    "new_oom": false,
+    "new_oom_kill": false
+  },
+  "iteration": 285,
+  "measured_resource_peaks": {
+    "node0_cgroup_gib": 336.04571533203125,
+    "node0_max_per_gpu_mib": 31986.0,
+    "node1_cgroup_gib": 74.7823715209961,
+    "node1_max_per_gpu_mib": 36754.0,
+    "performance_use": "diagnostic_only"
+  },
+  "next_action": "one final same-contract correctness retry; any further nontrivial failure closes Iteration 285 for review",
+  "preserved_run_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/runs/rb16_f5_stricttrace_v4_pipeline_correctness_20260810_003",
+  "run_id": "rb16_f5_stricttrace_v4_pipeline_correctness_20260810_003",
+  "runtime_head": "ec1462bfb84ca444b3beae216c66632744e0d369",
+  "schema_version": "distillschedule.iteration285.real14b_attempt003_optimizer_step_representation_failure.v1",
+  "status": "BOUNDED_POST_TRACE_OPTIMIZER_API_FAILURE",
+  "trace_bundle_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+  "trace_progress": {
+    "backward_reached": true,
+    "collective_stall": false,
+    "expected_calls_across_gas2_per_rank": 8,
+    "expected_calls_per_wave_per_rank": 4,
+    "generator_ranks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "interpretation": "strict synchronized trace executed through both real-14B rollout/backward waves; run failed only after entering optimizer step",
+    "optimizer_step_reached": true,
+    "step10a_waves_entered": 2,
+    "synchronized_stage_exits": [
+      1,
+      0,
+      0
+    ],
+    "trace_or_call_count_assertion": false
+  }
+}

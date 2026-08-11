@@ -1,0 +1,29 @@
+{
+  "acceptance": [
+    "one Phase-A Generator optimizer commit",
+    "Phase-A default groups destroyed",
+    "DeepSpeed sees Phase-B world4",
+    "target Generator checksums exact",
+    "one Phase-B Critic commit",
+    "all four ranks flush",
+    "no OOM"
+  ],
+  "created_at": "2026-08-10T07:59:10.879022+00:00",
+  "formal_timing": "Not Run",
+  "frozen": {
+    "phase_a": "node0 default-world2 ZeRO-3 divergent-exit padded update; node1 default-world2 control",
+    "phase_b": "global world4; two resident Generator replicas plus DP2 ZeRO-1 Critic",
+    "state_transition": "gather updated logical trainables before source engine destroy, then broadcast after global reinitialization"
+  },
+  "iteration": 283,
+  "question": "Can independent node-local default ZeRO-3 worlds be destroyed and reinitialized as one global target world without losing updated logical state or leaving stale collectives?",
+  "real14b": "Not Run until this gate passes",
+  "schema_version": "distillschedule.iteration283.phase_reinitialization_gate_prereg.v1",
+  "status": "ACTIVE",
+  "stop_conditions": [
+    "timeout",
+    "stale process group",
+    "state/version mismatch",
+    "new OOM"
+  ]
+}

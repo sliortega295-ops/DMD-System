@@ -1,0 +1,50 @@
+{
+  "schema_version": "distillschedule.routea_v3_backward_lineage_audit.v1",
+  "iteration": 288,
+  "status": "PASS",
+  "classification": "Preserved-artifact semantic audit; no new GPU run",
+  "baseline": {
+    "name": "RA16-F5-FS40",
+    "run_id": "routea_attempt005_full5_world16_20260808_002",
+    "world_size": 16,
+    "micro_batch_per_gpu": 1,
+    "gradient_accumulation_steps": 1,
+    "global_batch": 16,
+    "trace_bundle": "syn_feature_trace_rank16_v3_sync_steps20",
+    "functional_status": "PASS under its frozen legacy-v3 contract",
+    "formal_repeated_timing": "Not Run"
+  },
+  "step10_generator_rank_lineage": [
+    {"rank": 0, "exit": [1,0,0], "physical_calls": 4, "connected_selected_calls": [1,2,3]},
+    {"rank": 1, "exit": [1,0,0], "physical_calls": 4, "connected_selected_calls": [1,2,3]},
+    {"rank": 2, "exit": [1,0,0], "physical_calls": 4, "connected_selected_calls": [1,2,3]},
+    {"rank": 3, "exit": [0,2,3], "physical_calls": 8, "connected_selected_calls": [7]},
+    {"rank": 4, "exit": [1,0,0], "physical_calls": 4, "connected_selected_calls": [1,2,3]},
+    {"rank": 5, "exit": [1,0,0], "physical_calls": 4, "connected_selected_calls": [1,2,3]},
+    {"rank": 6, "exit": [2,1,0], "physical_calls": 6, "connected_selected_calls": [4,5]},
+    {"rank": 7, "exit": [1,3,0], "physical_calls": 7, "connected_selected_calls": [5,6]},
+    {"rank": 8, "exit": [1,0,0], "physical_calls": 4, "connected_selected_calls": [1,2,3]},
+    {"rank": 9, "exit": [0,0,0], "physical_calls": 3, "connected_selected_calls": [0,1,2]},
+    {"rank": 10, "exit": [1,2,1], "physical_calls": 7, "connected_selected_calls": [6]},
+    {"rank": 11, "exit": [2,2,0], "physical_calls": 7, "connected_selected_calls": [5,6]},
+    {"rank": 12, "exit": [1,0,0], "physical_calls": 4, "connected_selected_calls": [1,2,3]},
+    {"rank": 13, "exit": [3,0,0], "physical_calls": 6, "connected_selected_calls": [3,4,5]},
+    {"rank": 14, "exit": [3,0,3], "physical_calls": 9, "connected_selected_calls": [8]},
+    {"rank": 15, "exit": [3,1,1], "physical_calls": 8, "connected_selected_calls": [7]}
+  ],
+  "distribution": {
+    "ranks_with_3_connected_selected_calls": 9,
+    "ranks_with_2_connected_selected_calls": 3,
+    "ranks_with_1_connected_selected_call": 4,
+    "mean_connected_selected_calls_per_sample": 2.3125,
+    "physical_call_range_per_rank": [3,9],
+    "generator_backward_invocations_per_rank": 1
+  },
+  "comparison_to_strict_v4": {
+    "strict_v4_exit": [1,0,0],
+    "strict_v4_connected_selected_calls_per_sample": 3,
+    "routea_v3_same_lineage_on_every_rank": false,
+    "matched_performance_denominator": false
+  },
+  "conclusion": "The accepted Route-A world16 run is functionally valid for its frozen v3 trace, but it did not execute the same rank-synchronized Step10 backward workload as strict-v4. A strict-v4 Route-A rerun is required before direct performance comparison."
+}

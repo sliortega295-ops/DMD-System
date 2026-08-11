@@ -1,0 +1,41 @@
+{
+  "schema_version": "distillschedule.iteration_preflight.v2",
+  "iteration": 281,
+  "status": "GO",
+  "recorded_at": "2026-08-10",
+  "gate": "one corrected real-world16 continuous Full5 Pipeline correctness run",
+  "authorized_hypothesis": "Validated DP8 ZeRO-3 Step10-A can update G2 to G3 and redistribute exact logical G3 into the four resident target Generator ranks before the unchanged DP12 Critic/EMA phase.",
+  "frozen_contracts": {
+    "resolution": "384x640",
+    "trace_bundle_hash": "9e282f4bc24eb589d259e5e5603cae02fa5cd0c6cdd0f06f7c5416461e4564d0",
+    "logical_step10_hash": "68eed293970be008764ee6acadb2aac6ce54de2ce1f55a17fca2246f0d04e4aa",
+    "step10a": "DP8 ZeRO-3 MB1 GAS2 global-batch-16 CPU optimizer no parameter offload",
+    "target": "per-node 2G+6C, DP12 ZeRO-1 MB1 GAS1 global-batch-12, five Critic and five EMA commits",
+    "schedule": "ACK-free queue-bounded Pipeline"
+  },
+  "matching_prior_evidence": {
+    "validated_zero3_step10a_seconds": 48.551619730424136,
+    "superseded_zero1_attempt005_seconds": 93.56308287102729,
+    "zero3_restore_gate": "artifacts/manifests/iteration281_zero3_logical_restore_gate_result.json"
+  },
+  "rejected_paths": [
+    "ZeRO-1 Step10-A performance result",
+    "ZeRO-2 double-reduction repair",
+    "in-place ZeRO-3 engine conversion",
+    "formal timing before corrected correctness"
+  ],
+  "live_substrate": {
+    "dmd_head_before_preflight_commit": "943d91074cc0ead927ac80fc978d4ce862a7725e",
+    "runtime_head": "6ef2966ee69fe750519f6d418ed4dc7e1000622a",
+    "tests": "205 passed, 1 skipped",
+    "node0_gpu_processes": 0,
+    "node1_gpu_processes": 0,
+    "node0_memory_current_bytes": 22848040960,
+    "node1_memory_current_bytes": 14647078912,
+    "node0_current_oom_delta": 0,
+    "node1_current_oom_delta": 0,
+    "assets": "present"
+  },
+  "falsifiable_question": "Will Step10-A return near the 48.551620-second ZeRO-3 anchor while all identity, version, transition, Critic, EMA, queue, and actual-OOM gates pass?",
+  "stop_rule": "If the corrected backend fails correctness/OOM or still measures near 93 seconds, stop before formal timing and attribute the discrepancy."
+}

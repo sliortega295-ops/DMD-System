@@ -1,0 +1,55 @@
+{
+  "schema_version": "distillschedule.iteration_result.v1",
+  "iteration": 304,
+  "attempt": 2,
+  "date": "2026-08-10",
+  "run_id": "rb16_f5_iter304_persistent_cache_post_full5_correctness_20260810_002",
+  "status": "PASS_PRELIMINARY_EXACT",
+  "dmd_head": "f95c630da68300e9398ebfe7fdfece7118b5dfa6",
+  "runtime_head": "ec1462bfb84ca444b3beae216c66632744e0d369",
+  "summary_sha256": "9c79353fec00519045c7fc70e4ea35b0b0233ba5896209adaeee3a667a0da366",
+  "correctness": {
+    "ranks_passed": 16,
+    "errors": [],
+    "generator_version": 3,
+    "critic_version": 15,
+    "ema_version": 15,
+    "step10a_samples": 16,
+    "critic_updates": 5,
+    "ema_updates": 5,
+    "payloads": "60/60",
+    "trace_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3"
+  },
+  "measured_seconds": {
+    "step10a_world_max": 124.81130330590531,
+    "transition_world_max": 22.142147351056337,
+    "critic_phase_world_max": 156.06276058079675,
+    "full5_world_max": 306.0150289158337,
+    "post_full5_cleanup_world_max": 12.605170749826357,
+    "full5_plus_serial_cleanup_upper_bound": 318.62019966566004,
+    "excluded_cold_preparation_world_max": 181.91202319017611
+  },
+  "resources": {
+    "node0_cgroup_peak_bytes": 716569948160,
+    "node1_cgroup_peak_bytes": 257567371264,
+    "node0_gpu_peak_mib": 39250,
+    "node1_gpu_peak_mib": 37002,
+    "oom_delta": 0,
+    "oom_kill_delta": 0
+  },
+  "comparison": {
+    "iter293_full5_baseline_seconds": 341.819356,
+    "full5_time_reduction_percent": 10.474641,
+    "full5_throughput_speedup": 1.117000,
+    "inclusive_serial_cleanup_time_reduction_percent": 6.786963,
+    "iter293_transition_seconds": 49.839245,
+    "transition_time_reduction_percent": 55.573,
+    "transition_speedup": 2.250858,
+    "step10_target_seconds": "85-105",
+    "step10_target_met": false,
+    "transition_target_seconds": "10-25",
+    "transition_target_met": true
+  },
+  "claim_boundary": "one exact correctness/profile run; formal repeated low-overhead timing Not Run. Full5 timer ends at the semantic Step15-A boundary; post-boundary allocator cleanup is separately reported.",
+  "artifact_root": "artifacts/runs/rb16_f5_iter304_persistent_cache_post_full5_correctness_20260810_002"
+}

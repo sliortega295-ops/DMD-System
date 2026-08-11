@@ -1,0 +1,41 @@
+{
+  "schema_version": "distillschedule.iteration_preflight.v1",
+  "iteration": 295,
+  "date": "2026-08-10",
+  "status": "PREREGISTERED_GO",
+  "current_gate": "strict-v4 transition optimization after Iteration 294 bounded negative",
+  "authorized_hypothesis": "restoring validated legacy per-tensor G3 broadcast removes the 128-MiB bucket regression while retaining exact bounded pinned H2D",
+  "head_before_run": "7b67932a48bb74ee84364d3949cdb27d249ec49c",
+  "candidate": {
+    "transition_h2d_policy": "bounded_pinned",
+    "chunk_mib": 64,
+    "slot_count": 2,
+    "g3_broadcast_bucket_mib": 0,
+    "step10a_param_persistence_threshold": 0
+  },
+  "frozen": {
+    "trace": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+    "step10a": "DP8 ZeRO-3 MB1 GAS2 global16 strict-v4",
+    "target": "global 4G+12C DP12 ZeRO-1",
+    "versions": "G2/C10/EMA10 -> G3/C15/EMA15",
+    "graph_loss_optimizer_ema_placement": "unchanged"
+  },
+  "matching_prior_evidence": [
+    "Iteration 293 legacy G3 broadcast exact PASS at 10.868068 s max",
+    "Iteration 294 bounded pinned materializer exact PASS",
+    "Iteration 294 bucket128 regressed G3 broadcast to 15.400286 s max"
+  ],
+  "rejected_paths": [
+    "128-MiB G3 buckets as final plan",
+    "communicator collapse for this gate",
+    "any graph/batch/placement change"
+  ],
+  "refutation": [
+    "any strict correctness or queue/version check fails",
+    "any new OOM or unbounded arena",
+    "transition >=44.855321 s",
+    "legacy broadcast does not remove the bucket regression"
+  ],
+  "claim_boundary": "one correctness/profile trial; formal repeated timing Not Run",
+  "decision": "GO"
+}

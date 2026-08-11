@@ -1,0 +1,40 @@
+{
+  "schema_version": "distillschedule.failure.v1",
+  "status": "FAIL",
+  "measurement_kind": "Measured",
+  "iteration": 279,
+  "candidate": "RB16-F5-PIPE-2G6C",
+  "run_id": "rb16_f5_pipe_2g6c_sequential_s1_20260809_002",
+  "schedule": "sequential",
+  "mode": "correctness",
+  "dmd_head": "8fcbf6599ba96d38b21f41d34a3c8e0c806bf06e",
+  "runtime_head": "32f621ae8637c546f766bc52544b2bf8f7d394d2",
+  "failure_stage": "cold_initialization_process_group_creation_before_model_construction",
+  "failure_signature": "world16 workers remained in Candidate-B subgroup creation for 1636 seconds; no rank result, model construction, training, or timing window began",
+  "observations": {
+    "rank_result_count": 0,
+    "elapsed_before_bounded_operator_stop_seconds": 1636,
+    "console_last_progress": "two-rank Gloo subgroup creation messages",
+    "gpu_memory_range_mib": [966, 1382],
+    "gpu_utilization_percent": 0,
+    "cgroup_oom_increment": 0,
+    "node0_wrapper_rc_after_operator_interrupt": 130,
+    "node1_wrapper_rc_after_operator_interrupt": null
+  },
+  "semantic_result": "Not Run",
+  "performance_result": "Not Run",
+  "root_cause_status": "suspected subgroup-creation ordering/lack-of-global-serialization; not yet proven",
+  "matching_prior_evidence": "Candidate A completed with interleaved NCCL pair and Gloo ACK group creation; no prior Candidate-B 12-edge group creation run exists",
+  "bounded_recovery": "one initialization-only retry using globally serialized, interleaved pair/ACK group creation; no workload, trace, batch, model, optimizer, EMA, or schedule change",
+  "rejected_paths": [
+    "waiting for the 8-hour launcher timeout",
+    "changing ZeRO stage",
+    "changing Candidate-B topology or batch contract",
+    "counting this failed cold initialization as timing evidence"
+  ],
+  "artifacts": [
+    "artifacts/runs/rb16_f5_pipe_2g6c_sequential_s1_20260809_002/launcher/node_0/console.log",
+    "artifacts/runs/rb16_f5_pipe_2g6c_sequential_s1_20260809_002/launcher/node_1/console.log",
+    "artifacts/runs/rb16_f5_pipe_2g6c_sequential_s1_20260809_002/preflight/topology.json"
+  ]
+}

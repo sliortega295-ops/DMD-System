@@ -1,0 +1,38 @@
+{
+  "schema_version": "distillschedule.iteration_result.v1",
+  "iteration": 286,
+  "status": "FAIL_CLOSED",
+  "classification": "phase_transition_deepspeed_source_liveness",
+  "run_id": "rb16_f5_stricttrace_v4_z3resume_correctness_20260810_002",
+  "source_head": "e473991fbb8a185a836231412f6c536dcc94da36",
+  "runtime_head": "ec1462bfb84ca444b3beae216c66632744e0d369",
+  "trace_bundle_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+  "verified_progress": {
+    "step10a_strict_gas2": "PASS",
+    "generator_update": "PASS_G2_TO_G3",
+    "g3_materialization": "PASS",
+    "phase_b": "Not Run",
+    "ema": "Not Run",
+    "performance": "Not Run"
+  },
+  "failure": {
+    "signature": "obsolete ZeRO-3 source storage did not decrease",
+    "mechanism": "Dropping the explicit caller alias was insufficient because DeepSpeed forward-hook closures retained the Engine and _set_client_model retained the client module in both _modules and __dict__; ZeRO Init/backward closure cycles retained parameter objects and their ds_tensor CUDA shards.",
+    "affected_ranks": [0, 1, 2, 3, 4, 5, 6, 7],
+    "new_oom": false,
+    "new_oom_kill": false
+  },
+  "diagnostic_resources": {
+    "node0_cgroup_peak_gib": 356.35313415527344,
+    "node1_cgroup_peak_gib": 74.11268997192383,
+    "node0_gpu_peak_mib_per_device": [31986, 31986, 31986, 31986, 31986, 31986, 31986, 31986],
+    "node1_gpu_peak_mib_per_device": [36754, 36754, 36754, 36754, 35786, 35786, 35786, 35786]
+  },
+  "coordinator": {
+    "fail_closed_peer_cancellation": true,
+    "node0_return_code": 1,
+    "node1_return_code": 143
+  },
+  "evidence_root": "artifacts/runs/rb16_f5_stricttrace_v4_z3resume_correctness_20260810_002",
+  "claim_boundary": "No Full5 correctness or performance claim is made."
+}

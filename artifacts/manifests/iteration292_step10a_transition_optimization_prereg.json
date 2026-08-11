@@ -1,0 +1,65 @@
+{
+  "allowed_changes": [
+    "low-overhead transition subphase timing",
+    "small distributed communicator-collapse gate",
+    "replace per-edge P2P groups by validated global-world P2P",
+    "remove singleton model-parallel groups only if a ZeRO-1 subgroup gate passes",
+    "bucket G3 broadcast with exact per-tensor inventory/order",
+    "bounded Step10-A ZeRO-3 2M parameter-persistence candidate",
+    "tests, launcher plumbing, manifests, docs, append-only research log"
+  ],
+  "authorized_hypothesis": "Reduce Step10-A 123.115506 s toward 85-105 s and live transition 50.655504 s toward 10-25 s using lifecycle/communication scheduling only.",
+  "branch": "distillschedule/rb16-full5-2g6c-continuous",
+  "date": "2026-08-10",
+  "decision": "GO",
+  "falsifiable_questions": [
+    "How much transition time belongs to world init, group creation, target H2D, DS init, logical optimizer restore, and final barrier?",
+    "Can global-world P2P and MP-size-1-without-singletons pass a bounded distributed gate?",
+    "Can 2M ZeRO-3 persistence reduce strict-v4 Step10-A without OOM or output drift?"
+  ],
+  "forbidden_changes": [
+    "trace, input, rank calls, selected stages, batch/GAS/global batch",
+    "loss, optimizer math, clipping, versions, EMA recurrence",
+    "placement, precision, distributed stage, output/correctness contract",
+    "full5 performance claim before exact correctness and repeated timing"
+  ],
+  "frozen_contract": {
+    "correctness_reference": "artifacts/manifests/iteration286_real14b_attempt003_full5_correctness_pass.json",
+    "phase_b": "global 4G+12C DP12 ZeRO-1 CPU optimizer; C10->C15; EMA10->EMA15",
+    "resolution": "384x640",
+    "step10a": "DP8 ZeRO-3 MB1 GAS2 global_batch16; two strict-v4 selected graphs and two backwards; G2->G3 once",
+    "trace_sha256": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+    "versions": "G2/C10/EMA10 -> G3/C15/EMA15"
+  },
+  "gate": "strict-v4 continuous Full5 optimization after functional PASS; formal timing closed",
+  "head": "8f62e6deca7706cd5b4213d12e2678e561819ad6",
+  "iteration": 292,
+  "live_preflight": {
+    "assets_valid": true,
+    "cgroup_current_oom": 0,
+    "cgroup_historical_oom_kill": 1,
+    "gpu_processes": 0,
+    "nodes_reachable": true,
+    "note": "The bare pytest invocation lacked PYTHONPATH=src and failed collection; the source-layout invocation passed.",
+    "python_valid": true,
+    "repo_clean": true,
+    "test_command": "PYTHONPATH=src:. /tmp/distillschedule-helios-official-torch210/bin/python -m pytest -q",
+    "tests": "222 passed, 1 skipped"
+  },
+  "matching_prior_evidence": [
+    "docs/experiments/rb16_step10a_transition_optimization_audit_20260810.md",
+    "artifacts/manifests/iteration287_step10a_low_overhead_attempt001_result.json",
+    "artifacts/runs/rb16_step10a_strictv4_nsys_20260810_001/summary/step10a_nsys_phase_summary.json",
+    "artifacts/manifests/iteration286_real14b_attempt003_full5_correctness_pass.json"
+  ],
+  "rejected_or_superseded_paths": [
+    "ZeRO-2 double-reduction repair escalation",
+    "in-place ZeRO shard reinterpretation",
+    "meta/swap transition repair",
+    "default-world16 ZeRO-3 subgroup initialization",
+    "old 48.55 s reduced-backward anchor as denominator",
+    "removing strict-v4 selected calls or backwards"
+  ],
+  "schema_version": "distillschedule.iteration_preflight.v1",
+  "status": "PREREGISTERED_GO"
+}

@@ -1,0 +1,63 @@
+{
+  "schema_version": "distillschedule.step10a_official_backward_semantics_audit.v1",
+  "iteration": 287,
+  "status": "PASS",
+  "classification": "Source-verified semantics plus preserved measured-artifact comparison; no new performance run",
+  "question": "For the frozen official-normal-path Step10-A trace, how many selected Generator calls must each DP8/GAS2 microbatch backpropagate through?",
+  "frozen_contract": {
+    "shape": "384x640",
+    "source_world": "world16, local batch 1, upstream GAS1",
+    "candidate_world": "DP8, micro batch 1, GAS2, global batch 16",
+    "trace_bundle": "syn_feature_trace_rank16_v4_strict_sync_steps20",
+    "trace_bundle_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+    "step10_generator_exit": [1, 0, 0],
+    "normal_path_scope": "The previously excluded GT-zero-history local-resampling exception is not part of this measured baseline."
+  },
+  "official_source_evidence": [
+    {
+      "path": "/home/shuchenweng/xty/Helios-main/scripts/training/configs/stage_3_post.yaml",
+      "lines": "90-93,107-108,237-251",
+      "fact": "three [2,2,2] pyramid stages, upstream local batch 1/GAS1, one 9-frame section, last-section-only false"
+    },
+    {
+      "path": "/home/shuchenweng/xty/Helios-main/helios/utils/utils_helios_post.py",
+      "lines": "575-587",
+      "fact": "rank 0 samples each exit and broadcasts it to all ranks"
+    },
+    {
+      "path": "/home/shuchenweng/xty/Helios-main/helios/utils/utils_helios_post.py",
+      "lines": "991-995,1038-1045,1158-1161,1259-1324",
+      "fact": "one selected exit call per stage; prefix calls are no-grad; with one section every selected exit call is grad-enabled"
+    },
+    {
+      "path": "/home/shuchenweng/xty/Helios-main/train_helios.py",
+      "lines": "1528-1625",
+      "fact": "the final Generator loss executes one backward for the logical update"
+    }
+  ],
+  "trace_mapping": {
+    "official_world16": "one logical Step10 Generator operation; all 16 ranks consume the same rank0-broadcast exit [1,0,0]",
+    "candidate_dp8_gas2": "round 0 maps source ranks 0-7 and round 1 maps source ranks 8-15; both rounds must replay the same logical-operation exit [1,0,0]",
+    "per_round_physical_calls": 4,
+    "per_round_selected_grad_calls": [1, 2, 3],
+    "per_round_backward_connected_selected_calls": [1, 2, 3],
+    "per_generator_rank_across_gas2": {
+      "backward_invocations": 2,
+      "backward_connected_selected_call_count": 6
+    }
+  },
+  "preserved_old_anchor": {
+    "manifest": "/home/lyy/runtime_score4_work_20260809_001/artifacts/manifests/step15a_zero3_pipeline_precast_wave8_nsys_result_001.json",
+    "timing_seconds": 48.551619730424136,
+    "wave0_connected_selected_calls": [1, 2, 3],
+    "wave1_connected_selected_calls": [3],
+    "classification": "historical different-control-trace anchor, not an exact official-baseline denominator"
+  },
+  "conclusion": {
+    "official_normal_path_for_frozen_trace": "Both DP8/GAS2 rounds must backpropagate through selected calls [1,2,3].",
+    "current_strict_v4": "Semantically aligned on this dimension.",
+    "old_48_55_second_round": "Under-computes relative to the frozen [1,0,0] world16 logical operation and cannot be used as a direct speed denominator.",
+    "performance_claim": "Not Run; no speedup or regression is attributed in this audit."
+  },
+  "gate": "GO to continue causal profiling only on strict-v4 or another source-equivalent trace; NO-GO for using 48.55 s as the matched baseline."
+}

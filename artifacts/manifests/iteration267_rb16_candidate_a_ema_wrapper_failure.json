@@ -1,0 +1,49 @@
+{
+  "decision": "GO",
+  "evidence": {
+    "candidate_b": "Not Run",
+    "cgroup_oom_increment_node0": 0,
+    "cgroup_oom_increment_node1": 0,
+    "node0_sampled_cgroup_peak_bytes": 481281916928,
+    "node1_sampled_cgroup_peak_bytes": 236417093632,
+    "rank0_result": "artifacts/runs/rb16_f5_pipe_match16_transition_20260809_001/execution/ranks/rank_00.json",
+    "step10a": "Not Run",
+    "strict_summary": "artifacts/manifests/rb16_f5_pipe_match16_transition_20260809_001_result.json",
+    "transition": "Not Run"
+  },
+  "experiment_id": "RB16-F5-PIPE-MATCH16",
+  "failure_rank": 0,
+  "failure_signature": "ValueError: sparse EMA tracked-parameter identity changed",
+  "failure_stage": "post Generator ZeRO-1 restore, pre Step10-A ready barrier",
+  "iteration": 267,
+  "measurement_status": "Diagnostic",
+  "mode": "transition",
+  "next_gate": "one bounded Candidate-A transition-only rerun",
+  "rejected_paths": [
+    "ignore EMA identity",
+    "rename arbitrary tensors",
+    "skip EMA",
+    "continue timing",
+    "start Candidate B"
+  ],
+  "root_cause": {
+    "exact_one_module_prefix_projection": true,
+    "mechanism": "The immutable EMA manifest was serialized from a DeepSpeedEngine and names every tracked tensor with exactly one module. wrapper prefix; Route-B loads the underlying engine.module whose logical names omit that wrapper prefix.",
+    "model_math_changed": false,
+    "runtime_logical_name_count": 818,
+    "stored_tracked_name_count": 818,
+    "tensor_values_changed": false
+  },
+  "run_id": "rb16_f5_pipe_match16_transition_20260809_001",
+  "schedule": "sequential",
+  "schema_version": "distillschedule.iteration_result.v1",
+  "status": "FAIL",
+  "validated_recovery": {
+    "change": "Accept only an exact single module. wrapper-name projection while retaining exact tracked indices, tensor order, shape, dtype and SHA checks.",
+    "files": [
+      "runtime/sparse_ema.py",
+      "tests/test_sparse_ema.py"
+    ],
+    "focused_tests": "12 passed"
+  }
+}

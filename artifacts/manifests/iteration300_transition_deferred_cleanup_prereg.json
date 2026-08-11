@@ -1,0 +1,45 @@
+{
+  "schema_version": "distillschedule.iteration_preflight.v1",
+  "iteration": 300,
+  "date": "2026-08-10",
+  "status": "PREREGISTERED_GO",
+  "current_gate": "strict-v4 transition safe release scheduling",
+  "authorized_hypothesis": "pinned allocator cleanup has no target-readiness dependency and its measured 6.13-11.28 seconds can be overlapped with the 160.71-second Critic phase",
+  "candidate": {
+    "transition_h2d_policy": "persistent_pinned",
+    "pinned_cleanup_policy": "deferred_overlap_then_join_before_full5_completion",
+    "step10a_param_persistence_threshold": 0,
+    "g3_broadcast_bucket_mib": 0
+  },
+  "matching_prior_evidence": [
+    "Iteration 299 exact Full5 PASS with transition 30.887268 seconds",
+    "direct H2D CUDA interval max 2.769706 seconds",
+    "synchronous allocator trim max 11.277463 seconds",
+    "Critic phase 160.708690 seconds provides a legal lead window"
+  ],
+  "frozen": {
+    "trace": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+    "workload_versions": "G2/C10/EMA10 -> G3/C15/EMA15",
+    "graph_batch_loss_optimizer_ema_placement_backend": "unchanged",
+    "host_ownership": "same persistent private pinned preparation as Iteration 299"
+  },
+  "safety": {
+    "cleanup_started_only_after_h2d_completion": true,
+    "cleanup_joined_before_full5_success": true,
+    "exception_cleanup_required": true,
+    "actual_oom_authority": true,
+    "host_and_cgroup_peaks_reported": true
+  },
+  "refutation": [
+    "any exact correctness/version/queue failure",
+    "actual OOM or cleanup handle leak",
+    "transition greater than or equal to 27.798541 seconds",
+    "cleanup remains exposed at Full5 completion"
+  ],
+  "decision_rules": {
+    "positive_target": "transition <=25 seconds",
+    "bounded_negative": "transition >=27.798541 seconds or admission/correctness failure"
+  },
+  "claim_boundary": "one exact correctness/profile run; formal repeated timing Not Run",
+  "decision": "GO"
+}

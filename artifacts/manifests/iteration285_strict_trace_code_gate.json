@@ -1,0 +1,67 @@
+{
+  "active_binding": {
+    "input_gate": "artifacts/traces/iteration285_routeb_v4_input_gate.json",
+    "input_gate_payloads_loaded": 0,
+    "input_gate_status": "PASS",
+    "launcher": "scripts/distillschedule/launch_routeb_full5_2g6c_continuous_node.sh",
+    "old_v3_rejection_log": "artifacts/traces/iteration285_routeb_v3_rejection.log",
+    "old_v3_rejection_rc": 1,
+    "v3_default_present": false,
+    "v4_default": true
+  },
+  "claim_boundary": {
+    "formal_timing": "Not Run",
+    "historical_v3_artifacts_deleted": false,
+    "real14b_correctness": "Not Run",
+    "trace_repair_is_speedup": false
+  },
+  "classification": "Measured control/manifest and CPU test gate; real-14B Not Run",
+  "gate": "strict rank-synchronized normal-path trace before real-14B construction",
+  "iteration": 285,
+  "removed": {
+    "active_collective_padding_executor": true,
+    "dmd_wrapper_collective_padding_seam": true,
+    "historical_construction_wave_control": true,
+    "maintained_helios_collective_padding_seam": true
+  },
+  "runtime_commit": "ec1462bfb84ca444b3beae216c66632744e0d369",
+  "schema_version": "distillschedule.iteration_code_gate.v1",
+  "source_heads_before_commit": {
+    "dmd": "43b2a575dfab828237eeba5054b839030459fe46",
+    "runtime": "fad336ae874dcf52451e0fbfa0e8e82a47b888e5"
+  },
+  "status": "PASS",
+  "tests": {
+    "diff_check": "PASS",
+    "dmd_focused": "29 passed",
+    "dmd_full": "217 passed, 1 skipped",
+    "runtime_focused": "9 passed",
+    "runtime_full": "320 passed"
+  },
+  "trace": {
+    "bundle_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+    "bundle_json_sha256": "686abaaf0d69e4ed9b3ba820e54995bee7e4b0bd3a1769c916c9be15efb2bbf8",
+    "cross_rank_call_count_parity": true,
+    "dummy_calls": 0,
+    "local_exception_entries": 0,
+    "path": "/share/project/shuchenweng/DistillSchedule_assets/m0/traces/syn_feature_trace_rank16_v4_strict_sync_steps20",
+    "rank_count": 16,
+    "step10_calls_across_gas2_per_rank": 8,
+    "step10_calls_per_wave_per_rank": 4,
+    "step10_stage_exits": [
+      1,
+      0,
+      0
+    ],
+    "tensor_payload_hashes_equal_v3": true
+  },
+  "unchanged": [
+    "384x640 shapes",
+    "tensor payloads",
+    "model and checkpoint",
+    "batch and GAS",
+    "loss and optimizer",
+    "EMA and version order",
+    "placement and transport"
+  ]
+}

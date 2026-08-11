@@ -1,0 +1,34 @@
+{
+  "allowed_changes": [
+    "NVTX annotations around Step10-A rollout/backward/engine_step",
+    "cudaProfilerApi start/stop around Step10-A only",
+    "one node0 nsys cuda,nvtx,osrt capture; node1 remains unprofiled"
+  ],
+  "analysis_plan": [
+    "export nsys-rep to sqlite",
+    "compute per-rank and per-phase interval unions for non-NCCL kernels, NCCL kernels, memcpy engines, and no-activity residual",
+    "compare only structurally matched wave0 to historical iteration238; retain trace/optimizer mismatch caveat"
+  ],
+  "authorized_question": "Within the exact passed strict-v4 Step10-A, how much of the slow rollout/backward wall is CUDA compute, NCCL ZeRO-3 collective activity, copy-engine activity, or host/no-GPU interval?",
+  "correctness_binding": "4b698e7cd959baf39d41dabbe9f40abfd4a085b46563007f70d34b1448c03eae",
+  "forbidden": [
+    "Full5 transition/Critic/EMA execution",
+    "model/loss/optimizer/trace/batch/ZeRO/precision changes",
+    "using profiled wall as formal timing"
+  ],
+  "frozen_contract": {
+    "DP": 8,
+    "GAS": 2,
+    "MB": 1,
+    "backend": "ZeRO-3",
+    "global_batch": 16,
+    "logical_manifest_hash": "68eed293970be008764ee6acadb2aac6ce54de2ce1f55a17fca2246f0d04e4aa",
+    "resolution": "384x640",
+    "trace_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3"
+  },
+  "iteration": 288,
+  "schema_version": "distillschedule.step10a_nsys_prereg.v1",
+  "status": "PREREGISTERED_NOT_RUN",
+  "stop_after": "one capture and bounded analysis",
+  "trigger": "Iteration287 timing wall exceeded the preregistered 90 second threshold."
+}

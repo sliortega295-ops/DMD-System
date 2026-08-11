@@ -1,0 +1,323 @@
+{
+  "candidate_run": "rb16_f5_pipe_match16_common_transition_pipeline_p1_20260809_001",
+  "exact_contract_errors": [],
+  "numerical_diagnostics": [
+    {
+      "final_optimizer_summary_exact": false,
+      "final_trainable_summary_exact": false,
+      "loss_exact": false,
+      "max_loss_abs": 3.62396240234375e-05,
+      "prediction_exact": false,
+      "rank": 8
+    },
+    {
+      "final_optimizer_summary_exact": false,
+      "final_trainable_summary_exact": false,
+      "loss_exact": false,
+      "max_loss_abs": 4.124641418457031e-05,
+      "prediction_exact": false,
+      "rank": 9
+    },
+    {
+      "final_optimizer_summary_exact": false,
+      "final_trainable_summary_exact": false,
+      "loss_exact": false,
+      "max_loss_abs": 4.875659942626953e-05,
+      "prediction_exact": false,
+      "rank": 10
+    },
+    {
+      "final_optimizer_summary_exact": false,
+      "final_trainable_summary_exact": false,
+      "loss_exact": false,
+      "max_loss_abs": 2.3484230041503906e-05,
+      "prediction_exact": false,
+      "rank": 11
+    },
+    {
+      "final_optimizer_summary_exact": false,
+      "final_trainable_summary_exact": false,
+      "loss_exact": false,
+      "max_loss_abs": 1.7881393432617188e-05,
+      "prediction_exact": false,
+      "rank": 12
+    },
+    {
+      "final_optimizer_summary_exact": false,
+      "final_trainable_summary_exact": false,
+      "loss_exact": false,
+      "max_loss_abs": 2.09808349609375e-05,
+      "prediction_exact": false,
+      "rank": 13
+    },
+    {
+      "final_optimizer_summary_exact": false,
+      "final_trainable_summary_exact": false,
+      "loss_exact": false,
+      "max_loss_abs": 2.5987625122070312e-05,
+      "prediction_exact": false,
+      "rank": 14
+    },
+    {
+      "final_optimizer_summary_exact": false,
+      "final_trainable_summary_exact": false,
+      "loss_exact": false,
+      "max_loss_abs": 5.805492401123047e-05,
+      "prediction_exact": false,
+      "rank": 15
+    }
+  ],
+  "ranks": [
+    {
+      "exact": {
+        "contract": true,
+        "ema": true,
+        "execution_scope": true,
+        "generator_gradients": true,
+        "generator_trainable": true,
+        "identities": true,
+        "queue": true,
+        "status": true,
+        "transition_resume": true,
+        "waves": true
+      },
+      "rank": 0,
+      "role": "generator"
+    },
+    {
+      "exact": {
+        "contract": true,
+        "ema": true,
+        "execution_scope": true,
+        "generator_gradients": true,
+        "generator_trainable": true,
+        "identities": true,
+        "queue": true,
+        "status": true,
+        "transition_resume": true,
+        "waves": true
+      },
+      "rank": 1,
+      "role": "generator"
+    },
+    {
+      "exact": {
+        "contract": true,
+        "ema": true,
+        "execution_scope": true,
+        "generator_gradients": true,
+        "generator_trainable": true,
+        "identities": true,
+        "queue": true,
+        "status": true,
+        "transition_resume": true,
+        "waves": true
+      },
+      "rank": 2,
+      "role": "generator"
+    },
+    {
+      "exact": {
+        "contract": true,
+        "ema": true,
+        "execution_scope": true,
+        "generator_gradients": true,
+        "generator_trainable": true,
+        "identities": true,
+        "queue": true,
+        "status": true,
+        "transition_resume": true,
+        "waves": true
+      },
+      "rank": 3,
+      "role": "generator"
+    },
+    {
+      "exact": {
+        "contract": true,
+        "ema": true,
+        "execution_scope": true,
+        "generator_gradients": true,
+        "generator_trainable": true,
+        "identities": true,
+        "queue": true,
+        "status": true,
+        "transition_resume": true,
+        "waves": true
+      },
+      "rank": 4,
+      "role": "generator"
+    },
+    {
+      "exact": {
+        "contract": true,
+        "ema": true,
+        "execution_scope": true,
+        "generator_gradients": true,
+        "generator_trainable": true,
+        "identities": true,
+        "queue": true,
+        "status": true,
+        "transition_resume": true,
+        "waves": true
+      },
+      "rank": 5,
+      "role": "generator"
+    },
+    {
+      "exact": {
+        "contract": true,
+        "ema": true,
+        "execution_scope": true,
+        "generator_gradients": true,
+        "generator_trainable": true,
+        "identities": true,
+        "queue": true,
+        "status": true,
+        "transition_resume": true,
+        "waves": true
+      },
+      "rank": 6,
+      "role": "generator"
+    },
+    {
+      "exact": {
+        "contract": true,
+        "ema": true,
+        "execution_scope": true,
+        "generator_gradients": true,
+        "generator_trainable": true,
+        "identities": true,
+        "queue": true,
+        "status": true,
+        "transition_resume": true,
+        "waves": true
+      },
+      "rank": 7,
+      "role": "generator"
+    },
+    {
+      "exact": {
+        "contract": true,
+        "execution_scope": true,
+        "identities": true,
+        "initial_optimizer": true,
+        "initial_trainable": true,
+        "queue": true,
+        "status": true,
+        "transition_resume": true,
+        "waves": true
+      },
+      "rank": 8,
+      "role": "score"
+    },
+    {
+      "exact": {
+        "contract": true,
+        "execution_scope": true,
+        "identities": true,
+        "initial_optimizer": true,
+        "initial_trainable": true,
+        "queue": true,
+        "status": true,
+        "transition_resume": true,
+        "waves": true
+      },
+      "rank": 9,
+      "role": "score"
+    },
+    {
+      "exact": {
+        "contract": true,
+        "execution_scope": true,
+        "identities": true,
+        "initial_optimizer": true,
+        "initial_trainable": true,
+        "queue": true,
+        "status": true,
+        "transition_resume": true,
+        "waves": true
+      },
+      "rank": 10,
+      "role": "score"
+    },
+    {
+      "exact": {
+        "contract": true,
+        "execution_scope": true,
+        "identities": true,
+        "initial_optimizer": true,
+        "initial_trainable": true,
+        "queue": true,
+        "status": true,
+        "transition_resume": true,
+        "waves": true
+      },
+      "rank": 11,
+      "role": "score"
+    },
+    {
+      "exact": {
+        "contract": true,
+        "execution_scope": true,
+        "identities": true,
+        "initial_optimizer": true,
+        "initial_trainable": true,
+        "queue": true,
+        "status": true,
+        "transition_resume": true,
+        "waves": true
+      },
+      "rank": 12,
+      "role": "score"
+    },
+    {
+      "exact": {
+        "contract": true,
+        "execution_scope": true,
+        "identities": true,
+        "initial_optimizer": true,
+        "initial_trainable": true,
+        "queue": true,
+        "status": true,
+        "transition_resume": true,
+        "waves": true
+      },
+      "rank": 13,
+      "role": "score"
+    },
+    {
+      "exact": {
+        "contract": true,
+        "execution_scope": true,
+        "identities": true,
+        "initial_optimizer": true,
+        "initial_trainable": true,
+        "queue": true,
+        "status": true,
+        "transition_resume": true,
+        "waves": true
+      },
+      "rank": 14,
+      "role": "score"
+    },
+    {
+      "exact": {
+        "contract": true,
+        "execution_scope": true,
+        "identities": true,
+        "initial_optimizer": true,
+        "initial_trainable": true,
+        "queue": true,
+        "status": true,
+        "transition_resume": true,
+        "waves": true
+      },
+      "rank": 15,
+      "role": "score"
+    }
+  ],
+  "reference_run": "rb16_f5_pipe_match16_common_transition_sequential_s1_20260809_001",
+  "schema_version": "distillschedule.routeb_candidate_a_common_transition_pair.v1",
+  "status": "PASS"
+}

@@ -1,0 +1,122 @@
+{
+  "capacity": {
+    "exact_reduction_bytes_per_rank": 2811154432,
+    "generator_lp_offload_count_per_rank": 5,
+    "generator_lp_state_bytes_per_rank": 2502885376,
+    "gpu_max_allocated_bytes": 38775584256,
+    "gpu_max_reserved_bytes": 39652950016,
+    "new_oom_delta": [
+      0,
+      0
+    ],
+    "new_oom_kill_delta": [
+      0,
+      0
+    ],
+    "node_cgroup_peak_bytes": [
+      737171681280,
+      766650753024
+    ],
+    "parent_critic_pre_backward_allocated_bytes_per_rank": 33723116544,
+    "score4_critic_pre_backward_allocated_bytes_per_rank": 30911962112,
+    "score_captured_bytes_per_rank": 2811154432,
+    "score_h2d_wall_seconds_range": [
+      8.08347780117765,
+      13.676842039916664
+    ],
+    "score_materialize_count_per_rank": 52,
+    "score_materialized_bytes_per_rank": 36545007616,
+    "score_peak_resident_bytes_per_rank": 702788608
+  },
+  "correctness": {
+    "activation_scopes_final_live_bytes": {
+      "critic_train": 0,
+      "generator_selected": 0
+    },
+    "checkpoint_15": {
+      "file_count": 97,
+      "status": "PASS",
+      "structural_digest": "7ac25628909407517edd4e7c2178c0e69c9b8d2d2eafb2d1840e5fdd07e88d19",
+      "total_bytes": 99826069878
+    },
+    "critic_updates": 5,
+    "critic_versions": [
+      10,
+      15
+    ],
+    "ema_updates": 5,
+    "ema_versions": [
+      10,
+      15
+    ],
+    "generator_updates": 1,
+    "generator_versions": [
+      2,
+      3
+    ],
+    "steps": [
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "streamer_final_resident_bytes": {
+      "generator": 0,
+      "score": 0
+    },
+    "trace": "OBSERVED_EXACT",
+    "world_size": 16
+  },
+  "diagnostic_timing": {
+    "diagnostic_time_reduction": 0.4133491111320923,
+    "formal_speedup_claim": false,
+    "full5_window_seconds": 404.0415346622467,
+    "historical_all40_window_seconds": 688.725683927536,
+    "samples_per_second": 0.19799944594031643,
+    "status": "MEASURED_DIAGNOSTIC",
+    "step_wall_seconds": {
+      "10": 161.52450108528137,
+      "11": 66.58090996742249,
+      "12": 62.64646625518799,
+      "13": 62.034698486328125,
+      "14": 65.4872682094574
+    },
+    "weighted_step_seconds": 80.80830693244934
+  },
+  "experiment_id": "RA16-F5-GLP-SCORE4",
+  "formal_timing": "NOT_RUN",
+  "iteration": 264,
+  "limitations": [
+    "one diagnostic-instrumented run only",
+    "four blocks are sufficient but not proven minimal",
+    "historical all-40 comparison is diagnostic, not a formal paired speedup",
+    "raw 94-GiB run directory remains external to Git"
+  ],
+  "only_policy_change": {
+    "score_streamed_blocks": [
+      36,
+      37,
+      38,
+      39
+    ],
+    "window": 1
+  },
+  "parent": "RA16-F5-GLP-OFFLOAD",
+  "plan_sha256": "1087443e7b9379647e5e3b8e6e2f858b27ecc67f22662b2a001934ee3187c0f3",
+  "run_id": "ra16_f5_glp_score4_20260809_001",
+  "runtime_identity": {
+    "dmd_summarizer_head": "e272541ef33d7999ac95917b609a25ca992c0501",
+    "dmd_training_head": "6a4d42fe1cc7b2a4927f8bd77000f8010332fe03",
+    "runtime_head": "947b28e073dae1a88c82bb55d9b00dfffcfba43b"
+  },
+  "schema_version": "distillschedule.iteration_result.v1",
+  "status": "FUNCTIONAL_PASS",
+  "summarizer_correction": {
+    "reason": "two installed activation offload scopes produced two zero-live final records; v1 hard-coded one final record",
+    "v1_sha256": "51af2297ff28d708bf959e0d2a5797e4cfe1517007ab2318a20375b4c3363300",
+    "v1_status": "FAIL_FALSE_VALIDATOR_CARDINALITY",
+    "v2_sha256": "701df6a1fe6002d817bf84b4a8dba3e6604d2b1b1b7c30933f2ba167a7025c76",
+    "v2_status": "PASS"
+  }
+}

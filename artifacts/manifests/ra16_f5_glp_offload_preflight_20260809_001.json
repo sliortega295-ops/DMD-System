@@ -1,0 +1,118 @@
+{
+  "authorized_hypothesis": "The inactive Generator ZeRO-1 replicated BF16 low-precision optimizer flat state accounts for about 2.33 GiB/rank of the extra Full5 Critic-phase GPU floor. Offloading only that typed state after the Critic no-grad Generator rollout and reloading it before EMA can admit unchanged A32 Critic backward without changing model, trace, loss, optimizer, update order, or Score residency.",
+  "bounded_budget": {
+    "formal_timing": "NOT_RUN",
+    "small_cuda_gate": 1,
+    "unit_tests": true,
+    "world16_functional_attempts": 1
+  },
+  "date": "2026-08-09",
+  "decision": "GO",
+  "experiment_id": "RA16-F5-GLP-OFFLOAD",
+  "fail_closed_assertions": [
+    "ZeRO stage is exactly 1 and optimizer offload is CPU",
+    "all Generator parameter gradients are absent at offload boundary",
+    "LP-state inventory is typed, device-qualified, and version-tagged",
+    "offload/reload preserve tensor values and optimizer/model identity",
+    "Generator is reloaded before EMA or any later Generator read",
+    "lifecycle handles are balanced at exit"
+  ],
+  "falsifiable_question": "Does typed phase-scoped Generator LP-state offload reduce semantic_critic_pre_backward allocation by at least 2.0 GiB/rank and allow every rank to cross Step10 Critic backward?",
+  "frozen_contract": {
+    "activation_offload_components": [
+      "generator_selected",
+      "critic_train"
+    ],
+    "activation_offload_threshold_mib": 32,
+    "checkpoint": "checkpoint-10",
+    "ema_updates": 5,
+    "generator_streamed_blocks": [
+      0,
+      24,
+      1,
+      5,
+      8,
+      25,
+      10,
+      32,
+      36,
+      15,
+      16,
+      26
+    ],
+    "generator_streaming_window": 1,
+    "global_batch": 16,
+    "gradient_accumulation_steps": 1,
+    "host_admission_policy": "actual_oom_only",
+    "latent": [
+      1,
+      16,
+      9,
+      48,
+      80
+    ],
+    "micro_batch_per_gpu": 1,
+    "nodes": 2,
+    "optimizer_offload": "cpu",
+    "parent": "RA16-F5-PR12",
+    "resolution": [
+      384,
+      640
+    ],
+    "score_block_streaming": false,
+    "steps": [
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "trace": "rank16 operation trace v3",
+    "version_transition": "G2/C10/EMA10 -> G3/C15/EMA15",
+    "world_size": 16,
+    "zero_stage": 1
+  },
+  "gate": "one_variable_functional_recovery_after_RA16_F5_PR12",
+  "known_difference": "The passing Iteration-242 and resident-Pipeline Critic paths do not instantiate a Generator DeepSpeed optimizer engine, while continuous Full5 does. This is new phase-owned state evidence, not a retry of g12/g16 block streaming.",
+  "matching_prior_evidence": [
+    "artifacts/manifests/ra16_f5_pr12_20260809_002_failure.json",
+    "artifacts/manifests/ra16_f5_pr12_20260809_002_rank_memory.json",
+    "DistillSchedule artifacts/manifests/iteration_242_b1_ao32_world16_nsys_gate_result.json",
+    "DistillSchedule docs/22_critic_pool_resident_student_gate.md"
+  ],
+  "only_new_policy": {
+    "forbidden": [
+      "gradient offload",
+      "optimizer-state mutation",
+      "Score streaming",
+      "activation-policy change",
+      "shape/trace/batch/loss/update-order change"
+    ],
+    "offload_boundary": "after Critic-only Generator rollout is complete and before Score/Critic becomes active",
+    "pin_memory": false,
+    "reload_boundary": "after Critic optimizer and before Generator EMA/read/reuse",
+    "state": "Generator DeepSpeed ZeRO-1 low-precision flat parameter state only",
+    "target": "CPU pageable first implementation"
+  },
+  "refutation_conditions": [
+    "typed LP inventory is not approximately 2.33 GiB/rank",
+    "state cannot be detached without invalidating model/optimizer mapping",
+    "any parameter/optimizer/version/checksum changes across offload/reload",
+    "semantic Critic entry drops by less than 2.0 GiB/rank",
+    "the same Critic backward OOM persists after the single new mechanism"
+  ],
+  "rejected_or_superseded_paths": [
+    "retry RA16-F5-PR12 unchanged",
+    "automatic g16 Generator streaming",
+    "ZeRO-2",
+    "Score block streaming before testing the newly typed floor",
+    "empty_cache escalation",
+    "lowered resolution or trace/batch/EMA changes",
+    "threshold relaxation"
+  ],
+  "schema_version": "distillschedule.ra16_f5_glp_offload_preflight.v1",
+  "source": {
+    "dmd_parent_head": "18f703cef6dcd25ab1f1f6483111f6316926cd4a",
+    "runtime_parent_head": "0278135169eb3de1d165dbcc925a219e91db48a3"
+  }
+}

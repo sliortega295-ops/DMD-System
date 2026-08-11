@@ -1,0 +1,50 @@
+{
+  "bounded_fix": {
+    "focused_tests": "42 passed",
+    "full_tests": "219 passed, 1 skipped",
+    "model_loss_batch_optimizer_ema_changed": false,
+    "policy": "validate engine and optimizer process-group rank membership [0..7], not Python object identity",
+    "recorded_fields": [
+      "engine_dp_ranks",
+      "optimizer_dp_ranks",
+      "process_group_validation"
+    ],
+    "semantic_contract_changed": false,
+    "trace_changed": false
+  },
+  "claim_scope": "initialization_only_no_correctness_or_performance_claim",
+  "dmd_head": "543d5f8b06d391afbc0a247a0029e02134e13db1",
+  "failure_signature": {
+    "actual_execution_mismatch_observed": false,
+    "boundary": "Step10-A ZeRO-3 initialization after model construction",
+    "deepspeed_source_semantics": "groups._get_data_parallel_group returns _clone_world_group when mpu is absent",
+    "error": "AssertionError: Step10-A optimizer escaped the DP8 group",
+    "failed_global_ranks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "mechanism": "invalid Python object-identity assertion for DeepSpeed clone of default world group",
+    "new_oom": false,
+    "new_oom_kill": false
+  },
+  "iteration": 285,
+  "measured_resource_peaks": {
+    "node0_cgroup_gib": 78.49014282226562,
+    "node0_max_per_gpu_mib": 31762.0,
+    "node1_cgroup_gib": 73.40224838256836,
+    "node1_max_per_gpu_mib": 33334.0
+  },
+  "next_action": "one same-contract retry; stop patch escalation on another nontrivial failure",
+  "preserved_run_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/runs/rb16_f5_stricttrace_v4_pipeline_correctness_20260810_002",
+  "run_id": "rb16_f5_stricttrace_v4_pipeline_correctness_20260810_002",
+  "runtime_head": "ec1462bfb84ca444b3beae216c66632744e0d369",
+  "schema_version": "distillschedule.iteration285.real14b_attempt002_group_identity_failure.v1",
+  "status": "BOUNDED_FAIL_CLOSED_ASSERTION_FAILURE",
+  "trace_bundle_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3"
+}

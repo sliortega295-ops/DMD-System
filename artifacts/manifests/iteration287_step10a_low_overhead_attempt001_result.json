@@ -1,0 +1,71 @@
+{
+  "attempt": 1,
+  "causal_conclusion": "The dominant time is inside real ZeRO-3 Generator rollout and checkpoint backward. Score-gradient wait, SHA/census, CPU optimizer step, transition, Critic, and EMA do not explain the slow Step10-A.",
+  "comparison_to_correctness_run": {
+    "correctness_generator_wall_median_s": 118.8965576,
+    "interpretation": "No speed recovery. Correctness-only per-call sync/census is not the cause.",
+    "low_overhead_generator_wall_median_s": 123.11550586891826,
+    "relative_change_percent": 3.5484191923469632
+  },
+  "contract": {
+    "DP": 8,
+    "GAS": 2,
+    "MB": 1,
+    "backend": "ZeRO-3",
+    "global_batch": 16,
+    "logical_manifest_hash": "68eed293970be008764ee6acadb2aac6ce54de2ce1f55a17fca2246f0d04e4aa",
+    "resolution": "384x640",
+    "trace_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3"
+  },
+  "correctness": {
+    "gradient_sha_exact_vs_correctness_run": true,
+    "rank_pass": "16/16",
+    "unexecuted": "transition, Critic, EMA, Full5",
+    "versions": "G2->G3, C10 unchanged, EMA10 unchanged",
+    "x0_sha_exact_vs_correctness_run": true
+  },
+  "iteration": 287,
+  "measured": {
+    "generator_step10a_wall_median_s": 123.11550586891826,
+    "gradient_wait_total_median_s": 0.009794143843464553,
+    "node0_cgroup_peak_gib": 334.15541076660156,
+    "node0_gpu_peak_mib_each": [
+      31986,
+      31986,
+      31986,
+      31986,
+      31986,
+      31986,
+      31986,
+      31986
+    ],
+    "node1_cgroup_peak_gib": 74.66778945922852,
+    "node1_gpu_peak_mib": [
+      36754,
+      36754,
+      36754,
+      36754,
+      35786,
+      35786,
+      35786,
+      35786
+    ],
+    "node_step10a_wall_max_s": 129.00362182967365,
+    "oom_delta": {
+      "node0": 0,
+      "node1": 0
+    },
+    "wave0_backward_median_s": 38.36899699049536,
+    "wave0_engine_step_median_s": 8.039758540689945e-05,
+    "wave0_rollout_median_s": 20.67532321845647,
+    "wave1_backward_median_s": 39.90905322635081,
+    "wave1_engine_step_median_s": 1.1508792834356427,
+    "wave1_rollout_median_s": 21.036667152424343
+  },
+  "next": "One preregistered Step10-A-only Nsight capture on node0 G8.",
+  "run_id": "rb16_step10a_strictv4_timingdiag_20260810_001",
+  "runtime_head": "ec1462bfb84ca444b3beae216c66632744e0d369",
+  "schema_version": "distillschedule.step10a_low_overhead_result.v1",
+  "source_head": "9a0e8b99e8a1ecfdd5ecd58655086a2351f904be",
+  "status": "PASS_DIAGNOSTIC_HYPOTHESIS_REFUTED"
+}

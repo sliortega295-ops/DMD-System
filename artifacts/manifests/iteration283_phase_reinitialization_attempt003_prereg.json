@@ -1,0 +1,24 @@
+{
+  "created_at": "2026-08-10T08:06:02.922745+00:00",
+  "frozen_from_attempt002": [
+    "model",
+    "state",
+    "rank mapping",
+    "groups",
+    "ZeRO3 Phase-A",
+    "ZeRO1 Phase-B",
+    "versions",
+    "acceptance",
+    "timeout"
+  ],
+  "only_change": "call deepspeed.init_distributed(dist_backend=nccl, dist_init_required=False) after native Phase-B world4 creation and before cdb assertion",
+  "real14b": "Not Run",
+  "schema_version": "distillschedule.iteration283.phase_reinitialization_attempt003_prereg.v1",
+  "status": "ACTIVE",
+  "stop_conditions": [
+    "any further process-world/lifecycle failure",
+    "state/version mismatch",
+    "OOM"
+  ],
+  "timing": "Not Run"
+}

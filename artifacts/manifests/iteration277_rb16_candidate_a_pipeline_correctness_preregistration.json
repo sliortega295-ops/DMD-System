@@ -1,0 +1,12 @@
+{
+  "schema_version": "distillschedule.iteration_preregistration.v1",
+  "iteration": 277,
+  "experiment_id": "RB16-F5-PIPE-MATCH16",
+  "title": "Common-transition Pipeline numerical equivalence",
+  "status": "PREREGISTERED",
+  "reference_run": "rb16_f5_pipe_match16_common_transition_sequential_s1_20260809_001",
+  "numerical_contract": "candidate_a_common_transition_numerical_contract_v1.json",
+  "allowed_run": "one pipeline critic-correctness launch",
+  "formal_timing": "Not Run",
+  "candidate_b": "Not Run"
+}

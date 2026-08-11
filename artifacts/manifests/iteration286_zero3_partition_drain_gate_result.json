@@ -1,0 +1,53 @@
+{
+  "schema_version": "distillschedule.gate_result.v1",
+  "iteration": 286,
+  "gate": "obsolete_zero3_cuda_partition_drain",
+  "status": "PASS",
+  "environment": {
+    "torch": "2.10.0+cu128",
+    "deepspeed": "0.18.4",
+    "world_size": 2,
+    "zero_stage": 3,
+    "optimizer_offload": "cpu"
+  },
+  "root_cause_evidence": {
+    "engine_referrers": [
+      "DeepSpeedEngine._create_module_forward_pre_hook closure",
+      "DeepSpeedEngine._create_module_forward_post_hook closure"
+    ],
+    "duplicate_module_owners": [
+      "DeepSpeedEngine._modules[module]",
+      "DeepSpeedEngine.__dict__[module]"
+    ],
+    "parameter_cycle_sources": [
+      "DeepSpeedZeRoOffload PreBackwardFunctionForModule",
+      "DeepSpeedZeRoOffload PostBackwardFunctionModule",
+      "ZeRO Init parameter callable closures"
+    ]
+  },
+  "repair": {
+    "remove_engine_forward_hooks": true,
+    "clear_both_engine_module_owners": true,
+    "clear_parameter_offload_and_compression_module_owners": true,
+    "replace_obsolete_ds_tensor_cuda_shards_with_empty_cpu_tensors": true,
+    "legal_point": "after exact G3 collective extraction and before any target materialization"
+  },
+  "dp2_attempt008": {
+    "status": "PASS",
+    "rank_results": [
+      "artifacts/traces/iteration286_zero3_partition_drain_dp2_attempt008/rank_00.json",
+      "artifacts/traces/iteration286_zero3_partition_drain_dp2_attempt008/rank_01.json"
+    ],
+    "drained_partition_tensors_per_rank": [2, 2],
+    "drained_partition_bytes_per_rank": [10, 10],
+    "allocated_storage_decreased_on_all_ranks": true,
+    "engine_collected_on_all_ranks": true,
+    "optimizer_collected_on_all_ranks": true,
+    "module_objects_remain_metadata_only": true,
+    "logical_restore_and_step_still_pass": true,
+    "new_oom": false,
+    "new_oom_kill": false
+  },
+  "scope": "destruction of an obsolete physical representation only; no future legal read and no training semantic change",
+  "decision": "GO for one final same-contract real-14B correctness retry"
+}

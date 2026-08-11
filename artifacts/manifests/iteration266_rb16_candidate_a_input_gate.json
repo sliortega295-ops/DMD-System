@@ -1,0 +1,616 @@
+{
+  "asset_paths": {
+    "generator": "/share/project/shuchenweng/DistillSchedule_assets/Helios-Distilled",
+    "negative_prompt": "/share/project/shuchenweng/DistillSchedule_assets/m1/negative_prompt_official_v1",
+    "precast_generator": "/share/project/shuchenweng/DistillSchedule_assets/precast/helios-distilled-transformer-ode-mixed-bf16-v1",
+    "precast_score": "/share/project/shuchenweng/DistillSchedule_assets/precast/helios-score-transformer-mixed-bf16-v1",
+    "score": "/home/shuchenweng/xty/Helios-main/weights"
+  },
+  "candidate": {
+    "critic_ranks": [
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "final_critic_version": 15,
+    "final_ema_step": 15,
+    "final_generator_version": 3,
+    "generator_ranks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "gradient_accumulation_steps": 2,
+    "gradient_clipping": 1.0,
+    "initial_critic_version": 10,
+    "initial_ema_step": 10,
+    "initial_generator_version": 2,
+    "logical_critic_updates": 5,
+    "micro_batch_per_critic_rank": 1,
+    "name": "RB16-F5-PIPE-MATCH16"
+  },
+  "execution_trace_bundle_hash": "9e282f4bc24eb589d259e5e5603cae02fa5cd0c6cdd0f06f7c5416461e4564d0",
+  "logical_manifest_hash": "68eed293970be008764ee6acadb2aac6ce54de2ce1f55a17fca2246f0d04e4aa",
+  "native_import": {
+    "ema_payloads_exact": true,
+    "logical_payloads_exact": true,
+    "record": "/share/project/shuchenweng/DistillSchedule_assets/m1/checkpoints/import_world8_step10_v1/distillschedule_logical_import.json",
+    "source_manifest_hash": "d6f5cdb3eaf18652332ccc4141a43fa8961e97eb668f4bb65ceeda49fc5fe3b3",
+    "source_package": "/share/project/shuchenweng/DistillSchedule_assets/m1/checkpoints/logical_world16_step10_cal_a_v3"
+  },
+  "native_inventory": [
+    {
+      "checkpoint": "/share/project/shuchenweng/DistillSchedule_assets/m1/checkpoints/import_world8_step10_v1/pytorch_model",
+      "component": "generator",
+      "model_state_bytes": 31128583541,
+      "optimizer_bytes": 15017413400,
+      "optimizer_shards": 8
+    },
+    {
+      "checkpoint": "/share/project/shuchenweng/DistillSchedule_assets/m1/checkpoints/import_world8_step10_v1/critic/pytorch_model",
+      "component": "critic",
+      "model_state_bytes": 31118324405,
+      "optimizer_bytes": 14955874584,
+      "optimizer_shards": 8
+    }
+  ],
+  "rank_control_validation": {
+    "global_entry_count": 116,
+    "local_exception_entry_count": 268,
+    "operation_count": 24,
+    "operations": [
+      {
+        "global_rank_count": 6,
+        "local_exception_ranks": [
+          1,
+          2,
+          5,
+          6,
+          7,
+          10,
+          11,
+          12,
+          14,
+          15
+        ],
+        "operation": "step/0/critic/rollout",
+        "synchronized_initial_exit": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "global_rank_count": 6,
+        "local_exception_ranks": [
+          0,
+          2,
+          3,
+          4,
+          6,
+          7,
+          8,
+          9,
+          13,
+          14
+        ],
+        "operation": "step/0/generator/rollout",
+        "synchronized_initial_exit": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "global_rank_count": 5,
+        "local_exception_ranks": [
+          0,
+          1,
+          2,
+          6,
+          7,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "operation": "step/1/critic/rollout",
+        "synchronized_initial_exit": [
+          1,
+          1,
+          0
+        ]
+      },
+      {
+        "global_rank_count": 5,
+        "local_exception_ranks": [
+          1,
+          2,
+          3,
+          5,
+          6,
+          7,
+          8,
+          10,
+          12,
+          14,
+          15
+        ],
+        "operation": "step/10/critic/rollout",
+        "synchronized_initial_exit": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "global_rank_count": 6,
+        "local_exception_ranks": [
+          0,
+          3,
+          6,
+          7,
+          9,
+          10,
+          11,
+          13,
+          14,
+          15
+        ],
+        "operation": "step/10/generator/rollout",
+        "synchronized_initial_exit": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "global_rank_count": 6,
+        "local_exception_ranks": [
+          1,
+          2,
+          3,
+          5,
+          6,
+          7,
+          8,
+          10,
+          12,
+          15
+        ],
+        "operation": "step/11/critic/rollout",
+        "synchronized_initial_exit": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "global_rank_count": 5,
+        "local_exception_ranks": [
+          1,
+          2,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          12,
+          13,
+          15
+        ],
+        "operation": "step/12/critic/rollout",
+        "synchronized_initial_exit": [
+          1,
+          1,
+          0
+        ]
+      },
+      {
+        "global_rank_count": 5,
+        "local_exception_ranks": [
+          0,
+          1,
+          2,
+          3,
+          6,
+          7,
+          8,
+          10,
+          12,
+          14,
+          15
+        ],
+        "operation": "step/13/critic/rollout",
+        "synchronized_initial_exit": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "global_rank_count": 5,
+        "local_exception_ranks": [
+          0,
+          1,
+          2,
+          3,
+          6,
+          7,
+          8,
+          10,
+          12,
+          14,
+          15
+        ],
+        "operation": "step/14/critic/rollout",
+        "synchronized_initial_exit": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "global_rank_count": 1,
+        "local_exception_ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          14,
+          15
+        ],
+        "operation": "step/15/critic/rollout",
+        "synchronized_initial_exit": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "global_rank_count": 4,
+        "local_exception_ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          6,
+          7,
+          9,
+          10,
+          11,
+          13,
+          14
+        ],
+        "operation": "step/15/generator/rollout",
+        "synchronized_initial_exit": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "global_rank_count": 6,
+        "local_exception_ranks": [
+          1,
+          2,
+          3,
+          6,
+          7,
+          10,
+          11,
+          12,
+          13,
+          15
+        ],
+        "operation": "step/16/critic/rollout",
+        "synchronized_initial_exit": [
+          1,
+          1,
+          0
+        ]
+      },
+      {
+        "global_rank_count": 4,
+        "local_exception_ranks": [
+          1,
+          2,
+          3,
+          6,
+          7,
+          8,
+          9,
+          10,
+          12,
+          13,
+          14,
+          15
+        ],
+        "operation": "step/17/critic/rollout",
+        "synchronized_initial_exit": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "global_rank_count": 7,
+        "local_exception_ranks": [
+          1,
+          2,
+          4,
+          6,
+          7,
+          10,
+          11,
+          12,
+          15
+        ],
+        "operation": "step/18/critic/rollout",
+        "synchronized_initial_exit": [
+          0,
+          1,
+          0
+        ]
+      },
+      {
+        "global_rank_count": 5,
+        "local_exception_ranks": [
+          0,
+          1,
+          2,
+          4,
+          6,
+          7,
+          9,
+          10,
+          12,
+          13,
+          15
+        ],
+        "operation": "step/19/critic/rollout",
+        "synchronized_initial_exit": [
+          1,
+          0,
+          1
+        ]
+      },
+      {
+        "global_rank_count": 3,
+        "local_exception_ranks": [
+          0,
+          1,
+          2,
+          3,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          15
+        ],
+        "operation": "step/2/critic/rollout",
+        "synchronized_initial_exit": [
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "global_rank_count": 5,
+        "local_exception_ranks": [
+          1,
+          2,
+          6,
+          7,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "operation": "step/3/critic/rollout",
+        "synchronized_initial_exit": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "global_rank_count": 2,
+        "local_exception_ranks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "operation": "step/4/critic/rollout",
+        "synchronized_initial_exit": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "global_rank_count": 3,
+        "local_exception_ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          6,
+          7,
+          9,
+          10,
+          11,
+          12,
+          13,
+          15
+        ],
+        "operation": "step/5/critic/rollout",
+        "synchronized_initial_exit": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "global_rank_count": 5,
+        "local_exception_ranks": [
+          0,
+          1,
+          3,
+          4,
+          5,
+          7,
+          9,
+          10,
+          12,
+          13,
+          14
+        ],
+        "operation": "step/5/generator/rollout",
+        "synchronized_initial_exit": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "global_rank_count": 7,
+        "local_exception_ranks": [
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          10,
+          12,
+          15
+        ],
+        "operation": "step/6/critic/rollout",
+        "synchronized_initial_exit": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "global_rank_count": 5,
+        "local_exception_ranks": [
+          0,
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          10,
+          12,
+          14,
+          15
+        ],
+        "operation": "step/7/critic/rollout",
+        "synchronized_initial_exit": [
+          1,
+          1,
+          0
+        ]
+      },
+      {
+        "global_rank_count": 5,
+        "local_exception_ranks": [
+          1,
+          2,
+          4,
+          6,
+          7,
+          8,
+          9,
+          10,
+          12,
+          13,
+          15
+        ],
+        "operation": "step/8/critic/rollout",
+        "synchronized_initial_exit": [
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "global_rank_count": 5,
+        "local_exception_ranks": [
+          0,
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          10,
+          11,
+          12,
+          15
+        ],
+        "operation": "step/9/critic/rollout",
+        "synchronized_initial_exit": [
+          0,
+          1,
+          0
+        ]
+      }
+    ],
+    "rank_count": 16,
+    "semantics": "official_helios_rank0_broadcast_with_gt_zero_history_exception",
+    "status": "PASS"
+  },
+  "routeb_trace_binding_hash": "e6a5ef2f60b00ef79dfd5b8e94ce5d9c7446da39453fb9c9fcb0f0e5039fc15b",
+  "schema_version": "distillschedule.routeb_full5_input_gate.v1",
+  "state_provenance_trace_hash": "bd97ddc9cf0e51e791a50ce13586126599d3667fd4684505c142ed177096f12f",
+  "status": "PASS",
+  "trace_entry_count": 80,
+  "trace_payloads_loaded_during_preflight": 0,
+  "trace_rank_count": 16
+}

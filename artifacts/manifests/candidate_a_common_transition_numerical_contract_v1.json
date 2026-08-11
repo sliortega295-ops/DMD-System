@@ -1,0 +1,40 @@
+{
+  "schema_version": "distillschedule.routeb_candidate_a_numerical_contract.v1",
+  "status": "ACTIVE",
+  "frozen_before_pipeline": true,
+  "experiment_id": "RB16-F5-PIPE-MATCH16",
+  "reference_run": "rb16_f5_pipe_match16_common_transition_sequential_s1_20260809_001",
+  "floor_run": "rb16_f5_pipe_match16_common_transition_sequential_s2_20260809_001",
+  "transition_manifest_sha256": "444a6740debbe37d7014ebaa45da23398f162652f6179d09537e60e3c304dee0",
+  "multiplier": 1.5,
+  "exact_contract": [
+    "transition restore state summaries",
+    "trace and x0 identity",
+    "noise and timestep identity",
+    "G3 parameters and gradients unchanged",
+    "C10 to C15 version and optimizer commit trajectory",
+    "EMA10 to EMA15 recurrence and checksum",
+    "queue and transport flush"
+  ],
+  "measured_sequential_floor": {
+    "loss_max_abs": 0.00011169910430908203,
+    "critic": {
+      "master": {"relative_l2": 1.961303156218089e-05, "max_abs": 4.184281692687364e-06},
+      "exp_avg": {"relative_l2": 0.005082479042794339, "max_abs": 6.103515625e-05},
+      "exp_avg_sq": {"relative_l2": 0.000276745388161839, "max_abs": 1.158582563220989e-09}
+    },
+    "generator_all_state_exact": true
+  },
+  "frozen_limits": {
+    "loss_max_abs": 0.00016754865646362305,
+    "critic": {
+      "master": {"relative_l2": 2.9419547343271335e-05, "max_abs": 6.276422539031046e-06},
+      "exp_avg": {"relative_l2": 0.007623718564191509, "max_abs": 9.1552734375e-05},
+      "exp_avg_sq": {"relative_l2": 0.0004151180822427585, "max_abs": 1.7378738448314835e-09}
+    },
+    "generator_all_state_exact": true
+  },
+  "prediction_sha_policy": "diagnostic_only_because_identical_sequential_repeats_are_not_exact",
+  "ill_conditioned_update_delta_policy": "secondary_diagnostic_only",
+  "forbidden_changes": ["threshold relaxation", "workload change", "ZeRO change", "Candidate B before PASS"]
+}

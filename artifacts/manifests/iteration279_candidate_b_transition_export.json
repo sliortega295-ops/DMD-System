@@ -1,0 +1,10 @@
+{
+  "ema_file_count": 4,
+  "generator_payload_bytes": 2502885376,
+  "generator_payload_sha256": "5ba711343262ee1774b5de4a5556bc6f397eb6563f58e0983880f44725d33dc5",
+  "manifest_hash": "3d6a7d58dc56bfba226baf8ca13b50363f15b3843fdc80469e867c03e7ae41da",
+  "output": "/share/project/shuchenweng/DistillSchedule_assets/m1/checkpoints/routeb_candidate_b_g3_c10_ema10_v1",
+  "rng_file_count": 16,
+  "schema_version": "distillschedule.routeb_candidate_b_transition_export.v1",
+  "status": "PASS"
+}

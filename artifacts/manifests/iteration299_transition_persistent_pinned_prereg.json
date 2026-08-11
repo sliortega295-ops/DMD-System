@@ -1,0 +1,57 @@
+{
+  "schema_version": "distillschedule.iteration_preflight.v1",
+  "iteration": 299,
+  "date": "2026-08-10",
+  "status": "PREREGISTERED_GO",
+  "current_gate": "strict-v4 live representation transition host ownership",
+  "authorized_hypothesis": "persistent private pinned backing for only the preconstructed switch targets removes pageable staging and reduces the 49.839-second transition into the 10-25-second target",
+  "candidate": {
+    "transition_h2d_policy": "persistent_pinned",
+    "pin_timing_scope": "excluded cold preconstruction",
+    "direct_h2d": "nonblocking registered-state module transfer on a dedicated stream",
+    "step10a_param_persistence_threshold": 0,
+    "g3_broadcast_bucket_mib": 0,
+    "process_wide_numa_binding": false
+  },
+  "host_admission": {
+    "preconstructed_switch_ranks": 10,
+    "node0_switch_ranks": 8,
+    "node1_switch_ranks": 2,
+    "per_rank_registered_state_bytes_observed": 31186108800,
+    "estimated_node0_runtime_owned_pinned_bytes": 249488870400,
+    "reserve_gate": "disabled by user; actual OOM only",
+    "must_report_cgroup_and_oom": true
+  },
+  "matching_prior_evidence": [
+    "Iteration 151 unbound persistent pinning: Generator+Score 28.85 percent faster than pageable world1 and completed official steps",
+    "Iteration 135 OOM root cause was invalid whole-process NUMA membind; that path remains forbidden",
+    "Iterations 294-295 bounded 256-MiB staging was exact but transition improved less than 10 percent",
+    "single-transfer audit measured approximately 24 GiB/s persistent pinned ceiling"
+  ],
+  "rejected_paths": [
+    "whole-process NUMA binding",
+    "more G3 bucket tuning",
+    "unbounded queue or hidden GPU pre-residency",
+    "trace/batch/placement/backend change"
+  ],
+  "frozen": {
+    "trace": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+    "step10a": "strict-v4 DP8 ZeRO-3 MB1 GAS2 global16 baseline policy",
+    "target": "global 4G+12C DP12 ZeRO-1",
+    "versions": "G2/C10/EMA10 -> G3/C15/EMA15",
+    "graph_loss_optimizer_ema_placement": "unchanged"
+  },
+  "refutation": [
+    "pinned allocation or actual cgroup OOM",
+    "any exact correctness/version/queue failure",
+    "transition >=44.855321 s",
+    "runtime-owned pinned ownership is unbounded or not released"
+  ],
+  "decision_rules": {
+    "positive_target": "transition <=25 s",
+    "partial": "25 s < transition <44.855321 s",
+    "negative": "transition >=44.855321 s or admission/correctness failure"
+  },
+  "claim_boundary": "one exact correctness/profile run; cold pin preparation excluded from transition but host peak fully reported; formal timing Not Run",
+  "decision": "GO"
+}

@@ -1,0 +1,213 @@
+{
+  "bounded_conclusion": "g12 admits the exact Step10 Generator backward and optimizer update, but the unchanged Full5 plan does not fit because the unstreamed resident Score/Critic backward OOMs on all 16 ranks. g16 is not a causal recovery at this downstream boundary.",
+  "claimable": false,
+  "closed_paths": [
+    "PR12 retry",
+    "automatic g16",
+    "ZeRO-2",
+    "empty-cache escalation",
+    "performance timing on failed run"
+  ],
+  "contract": {
+    "activation_offload_components": [
+      "generator_selected",
+      "critic_train"
+    ],
+    "activation_offload_threshold_mib": 32,
+    "expected_final_versions": {
+      "critic": 15,
+      "ema": 15,
+      "generator": 3
+    },
+    "generator_streamed_blocks": [
+      0,
+      24,
+      1,
+      5,
+      8,
+      25,
+      10,
+      32,
+      36,
+      15,
+      16,
+      26
+    ],
+    "generator_streaming_window": 1,
+    "global_batch": 16,
+    "gradient_accumulation_steps": 1,
+    "host_admission_policy": "actual_oom_only",
+    "initial_versions": {
+      "critic": 10,
+      "ema": 10,
+      "generator": 2
+    },
+    "latent": [
+      1,
+      16,
+      9,
+      48,
+      80
+    ],
+    "micro_batch_per_gpu": 1,
+    "optimizer_offload": "cpu",
+    "phase_resident_critic_generator": true,
+    "resolution": [
+      384,
+      640
+    ],
+    "score_block_streaming": false,
+    "steps": [
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "world_size": 16,
+    "zero_stage": 1
+  },
+  "evidence": {
+    "controller_manifest": "artifacts/runs/ra16_f5_pr12_20260809_002/controller/controller_manifest.json",
+    "node0_console_sha256": "3d8926071d023d9e70feb5a6573d96cd8c4248c871622ef030f720c25dcc6cfc",
+    "node1_console_sha256": "72eb20a479926b189776290626b451cd2139b9354c66a83297b6655164d880a5",
+    "rank_memory": {
+      "artifact": "artifacts/manifests/ra16_f5_pr12_20260809_002_rank_memory.json",
+      "sha256": "2b8adfe84b469c6040b1960aafff8facecb443f7d42ba8161a26781fc97374c3"
+    },
+    "raw_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_ra16_f5_pr4_20260808/artifacts/runs/ra16_f5_pr12_20260809_002",
+    "strict_summary": {
+      "artifact": "artifacts/manifests/ra16_f5_pr12_20260809_002_result.json",
+      "error_count": 145,
+      "rank_count": 16,
+      "sha256": "bfd8a92ffcf159257a557fecb0c62e971fa39619349fcef61af6b32b4c3418a0",
+      "status": "OOM"
+    }
+  },
+  "experiment_id": "RA16-F5-PR12",
+  "failure": {
+    "allocation_distribution_mib": {
+      "108": 3,
+      "216": 7,
+      "292": 6
+    },
+    "allocation_mib_by_rank": {
+      "0": 216.0,
+      "1": 216.0,
+      "10": 216.0,
+      "11": 292.0,
+      "12": 292.0,
+      "13": 292.0,
+      "14": 216.0,
+      "15": 216.0,
+      "2": 108.0,
+      "3": 292.0,
+      "4": 292.0,
+      "5": 292.0,
+      "6": 108.0,
+      "7": 108.0,
+      "8": 216.0,
+      "9": 216.0
+    },
+    "cgroup_oom_increment": 0,
+    "cgroup_oom_kill_increment": 0,
+    "direct_cuda_oom_ranks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "driver_free_mib_range": [
+      96.38,
+      272.38
+    ],
+    "operation": "Step10 Critic checkpoint recomputation/backward with full unstreamed Score resident",
+    "pytorch_allocated_gib_range": [
+      38.04,
+      38.25
+    ],
+    "reserved_unallocated_mib_range": [
+      83.85,
+      124.87
+    ],
+    "source_sites": [
+      "helios/modules/transformer_helios.py:767 modulation materialization",
+      "peft/tuners/lora/layer.py:807 LoRA forward during checkpoint recomputation"
+    ]
+  },
+  "formal_timing": "NOT_RUN",
+  "gates": {
+    "checkpoint10_resume": "PASS",
+    "checkpoint15": "NOT_RUN",
+    "critic_updates_completed": 0,
+    "dual_host_smoke": "PASS_65_DMD_AND_35_RUNTIME_TESTS_PER_HOST",
+    "ema_updates_completed": 0,
+    "model_construction": "PASS",
+    "phase_resident_trace_fix": "PASS",
+    "step10_critic_backward": "FAIL_CUDA_OOM",
+    "step10_critic_forward_loss": "PASS",
+    "step10_critic_rollout": "PASS",
+    "step10_generator_backward": "PASS",
+    "step10_generator_forward_loss": "PASS",
+    "step10_generator_update": "PASS",
+    "steps11_14": "NOT_RUN",
+    "world16_topology": "PASS"
+  },
+  "next_candidates_not_run": [
+    "Score frozen-block streaming under the same Full5 contract",
+    "Critic saved-activation threshold/policy change under a separate preregistration"
+  ],
+  "node_resources": {
+    "node0_memory_events_after": {
+      "high": 0,
+      "low": 0,
+      "max": 220,
+      "oom": 0,
+      "oom_kill": 1
+    },
+    "node0_sampled_cgroup_peak_bytes": 766831501312,
+    "node0_sampled_cgroup_peak_gib": 714.1674880981445,
+    "node1_memory_events_after": {
+      "high": 0,
+      "low": 0,
+      "max": 595,
+      "oom": 0,
+      "oom_kill": 1
+    },
+    "node1_sampled_cgroup_peak_bytes": 766018150400,
+    "node1_sampled_cgroup_peak_gib": 713.4099960327148
+  },
+  "phase_causality": {
+    "generator_moved_off_gpu_before_critic_forward": true,
+    "generator_phase_resident_bytes_after_rollout": 0,
+    "generator_streamed_capacity_bytes": 8433463296,
+    "interpretation": "The downstream peak belongs to Score/Critic training after Generator is off GPU. Additional Generator streaming does not release it; Score streaming or a changed Critic activation policy would be a distinct mechanism.",
+    "median_critic_pre_backward_allocated_bytes": 36226001920,
+    "median_critic_pre_backward_allocated_gib": 33.73809337615967,
+    "median_critic_pre_backward_driver_free_bytes": 2925920256,
+    "median_critic_pre_backward_driver_free_gib": 2.7249755859375,
+    "median_critic_pre_backward_reserved_bytes": 38375784448,
+    "score_moved_to_gpu_before_critic_forward": true
+  },
+  "run_id": "ra16_f5_pr12_20260809_002",
+  "schema_version": "distillschedule.ra16_f5_pr12_failure.v2",
+  "source": {
+    "dmd_execution_head": "dbf31a313a6e15dc7536d1991919446f61ea183b",
+    "plan_sha256": "7a22646c2b1741351a680487a337cdbd9729c936d60ee04134c35fee11026dcb",
+    "runtime_head": "0d66b4237ec68e8e4bc9991e543cf40a833f4e23"
+  },
+  "status": "FAIL_CRITIC_BACKWARD_CUDA_OOM",
+  "warning_about_prior_evidence": "Resident Student/Score evidence from a split-role or different-layout experiment does not prove admission for this replicated Route-A DP16 Critic backward path."
+}

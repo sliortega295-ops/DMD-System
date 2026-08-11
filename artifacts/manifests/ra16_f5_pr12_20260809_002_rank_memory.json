@@ -1,0 +1,2823 @@
+{
+  "aggregate": {
+    "interpretation": "Unique saved-activation storages retained only because each storage is below the 32-MiB coarse threshold are a lower-reuse candidate than repeatedly materialized frozen blocks. The separate pack-byte counter includes aliases and must not be treated as physical GPU capacity. Even the deduplicated volume is not proof that all bytes are simultaneously releasable at the OOM peak.",
+    "median_dynamic_minus_known_model_bytes": 6888661376.0,
+    "median_forward_incremental_to_pre_backward_bytes": 1836546048.0,
+    "median_forward_unclassified_after_unique_kept_activation_bytes": 0.0,
+    "median_kept_saved_activation_pack_bytes": 5491040448.0,
+    "median_offloaded_saved_activation_bytes": 13868236800.0,
+    "median_persistent_runtime_floor_bytes": 5039686144.0,
+    "median_pre_backward_allocated_bytes": 29582938624.0,
+    "median_pre_backward_driver_free_bytes": 11746541568.0,
+    "median_pre_backward_reserved_bytes": 29628563456.0,
+    "median_streamed_block_capacity_bytes": 8433463296.0,
+    "median_unclassified_after_unique_kept_activation_bytes": 4156405696.0,
+    "median_unique_kept_saved_activation_bytes": 2718384064.0
+  },
+  "evidence_scope": "existing_low_overhead_events_offline_analysis",
+  "per_rank": [
+    {
+      "generator_frozen_blocks": {
+        "issued_materialization_bytes": 67467706368,
+        "last_materialization_generation": "PHASE_RESIDENT_NO_GRAD",
+        "last_materialized_block": 36,
+        "materialization_count": 96,
+        "materialization_wall_sum_seconds": 18.84640524117276,
+        "median_block_bytes": 702788608,
+        "streamed_block_count": 12,
+        "streamed_block_indices": [
+          0,
+          1,
+          5,
+          8,
+          10,
+          15,
+          16,
+          24,
+          25,
+          26,
+          32,
+          36
+        ],
+        "unique_streamed_capacity_bytes": 8433463296
+      },
+      "generator_model_residency": {
+        "allocated_minus_known_model_bytes": 6888661376,
+        "externally_managed_parameter_bytes": 8433463296,
+        "known_model_resident_at_pre_backward_bytes": 22694277248,
+        "private_parameter_bytes": 2502885376,
+        "shared_immutable_bytes": 20191391872,
+        "streamed_resident_at_pre_backward_bytes": 0,
+        "unclassified_after_unique_kept_activation_bytes": 4172114112
+      },
+      "generator_saved_activation": {
+        "alias_pack_amplification": 2.021330724028956,
+        "kept_below_threshold_count": 1484,
+        "kept_below_threshold_pack_storage_bytes": 5491040448,
+        "offloaded_storage_bytes": 13858406400,
+        "pack_count": 1782,
+        "parameter_or_buffer_exclusions": 126,
+        "peak_live_cpu_bytes": 7009075200,
+        "scope_count": 6,
+        "top_unique_kept_groups": [
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2940,
+              5120
+            ],
+            "unique_storage_bytes": 2408448000,
+            "unique_storage_count": 80
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 52428800,
+            "unique_storage_count": 10
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 4
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 26214400,
+            "unique_storage_count": 5
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              11040,
+              256
+            ],
+            "unique_storage_bytes": 22609920,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              16,
+              16,
+              48,
+              80
+            ],
+            "unique_storage_bytes": 11796480,
+            "unique_storage_count": 6
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          }
+        ],
+        "unique_kept_below_threshold_storage_bytes": 2716547264,
+        "unique_kept_below_threshold_storage_count": 250
+      },
+      "phase_delta_attribution": {
+        "forward_incremental_to_pre_backward_bytes": 1836546048,
+        "forward_unclassified_after_unique_kept_activation_bytes": 0,
+        "initial_generator_loaded_allocated_bytes": 27746392576,
+        "note": "Phase deltas are simultaneous allocator observations and avoid adding peaks. The persistent floor is not classified as redundant.",
+        "persistent_runtime_floor_before_step_bytes": 5039686144
+      },
+      "pre_backward": {
+        "active_bytes": 29582938624,
+        "allocated_bytes": 29582938624,
+        "allocator_reserved_unallocated_bytes": 45624832,
+        "driver_free_bytes": 11733958656,
+        "inactive_split_bytes": 0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0,
+        "reserved_bytes": 29628563456
+      },
+      "rank": 0,
+      "unclassified": {
+        "note": "Model residency and unique kept saved-activation storage are subtracted only at the pre-backward boundary. Remaining bytes can include buffers, checkpoint boundaries, outputs, temporaries, workspaces, continuous state, or accounting uncertainty. No residual is labelled redundant."
+      },
+      "value_comparison": {
+        "allocator_slack_equivalent_blocks": 0.06491970911401,
+        "classification": "candidate_only_not_proven_releasable_at_peak",
+        "lower_reuse_candidate": "kept_saved_activation_below_32_mib",
+        "unique_kept_activation_equivalent_blocks": 3.865383179347153
+      }
+    },
+    {
+      "generator_frozen_blocks": {
+        "issued_materialization_bytes": 67467706368,
+        "last_materialization_generation": "PHASE_RESIDENT_NO_GRAD",
+        "last_materialized_block": 36,
+        "materialization_count": 96,
+        "materialization_wall_sum_seconds": 19.42285681888461,
+        "median_block_bytes": 702788608,
+        "streamed_block_count": 12,
+        "streamed_block_indices": [
+          0,
+          1,
+          5,
+          8,
+          10,
+          15,
+          16,
+          24,
+          25,
+          26,
+          32,
+          36
+        ],
+        "unique_streamed_capacity_bytes": 8433463296
+      },
+      "generator_model_residency": {
+        "allocated_minus_known_model_bytes": 6888661376,
+        "externally_managed_parameter_bytes": 8433463296,
+        "known_model_resident_at_pre_backward_bytes": 22694277248,
+        "private_parameter_bytes": 2502885376,
+        "shared_immutable_bytes": 20191391872,
+        "streamed_resident_at_pre_backward_bytes": 0,
+        "unclassified_after_unique_kept_activation_bytes": 4162265792
+      },
+      "generator_saved_activation": {
+        "alias_pack_amplification": 2.0140292480755426,
+        "kept_below_threshold_count": 1484,
+        "kept_below_threshold_pack_storage_bytes": 5491040448,
+        "offloaded_storage_bytes": 13651968000,
+        "pack_count": 1782,
+        "parameter_or_buffer_exclusions": 126,
+        "peak_live_cpu_bytes": 6962380800,
+        "scope_count": 6,
+        "top_unique_kept_groups": [
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2940,
+              5120
+            ],
+            "unique_storage_bytes": 2408448000,
+            "unique_storage_count": 80
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 57671680,
+            "unique_storage_count": 11
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 4
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 31457280,
+            "unique_storage_count": 6
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              11040,
+              256
+            ],
+            "unique_storage_bytes": 22609920,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              16,
+              16,
+              48,
+              80
+            ],
+            "unique_storage_bytes": 11796480,
+            "unique_storage_count": 6
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          }
+        ],
+        "unique_kept_below_threshold_storage_bytes": 2726395584,
+        "unique_kept_below_threshold_storage_count": 243
+      },
+      "phase_delta_attribution": {
+        "forward_incremental_to_pre_backward_bytes": 1836546048,
+        "forward_unclassified_after_unique_kept_activation_bytes": 0,
+        "initial_generator_loaded_allocated_bytes": 27746392576,
+        "note": "Phase deltas are simultaneous allocator observations and avoid adding peaks. The persistent floor is not classified as redundant.",
+        "persistent_runtime_floor_before_step_bytes": 5039686144
+      },
+      "pre_backward": {
+        "active_bytes": 29582938624,
+        "allocated_bytes": 29582938624,
+        "allocator_reserved_unallocated_bytes": 45624832,
+        "driver_free_bytes": 11746541568,
+        "inactive_split_bytes": 0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0,
+        "reserved_bytes": 29628563456
+      },
+      "rank": 1,
+      "unclassified": {
+        "note": "Model residency and unique kept saved-activation storage are subtracted only at the pre-backward boundary. Remaining bytes can include buffers, checkpoint boundaries, outputs, temporaries, workspaces, continuous state, or accounting uncertainty. No residual is labelled redundant."
+      },
+      "value_comparison": {
+        "allocator_slack_equivalent_blocks": 0.06491970911401,
+        "classification": "candidate_only_not_proven_releasable_at_peak",
+        "lower_reuse_candidate": "kept_saved_activation_below_32_mib",
+        "unique_kept_activation_equivalent_blocks": 3.87939638315822
+      }
+    },
+    {
+      "generator_frozen_blocks": {
+        "issued_materialization_bytes": 67467706368,
+        "last_materialization_generation": "PHASE_RESIDENT_NO_GRAD",
+        "last_materialized_block": 36,
+        "materialization_count": 96,
+        "materialization_wall_sum_seconds": 20.346519106067717,
+        "median_block_bytes": 702788608,
+        "streamed_block_count": 12,
+        "streamed_block_indices": [
+          0,
+          1,
+          5,
+          8,
+          10,
+          15,
+          16,
+          24,
+          25,
+          26,
+          32,
+          36
+        ],
+        "unique_streamed_capacity_bytes": 8433463296
+      },
+      "generator_model_residency": {
+        "allocated_minus_known_model_bytes": 6888661376,
+        "externally_managed_parameter_bytes": 8433463296,
+        "known_model_resident_at_pre_backward_bytes": 22694277248,
+        "private_parameter_bytes": 2502885376,
+        "shared_immutable_bytes": 20191391872,
+        "streamed_resident_at_pre_backward_bytes": 0,
+        "unclassified_after_unique_kept_activation_bytes": 4168766656
+      },
+      "generator_saved_activation": {
+        "alias_pack_amplification": 2.0188430116883347,
+        "kept_below_threshold_count": 1484,
+        "kept_below_threshold_pack_storage_bytes": 5491040448,
+        "offloaded_storage_bytes": 13924761600,
+        "pack_count": 1782,
+        "parameter_or_buffer_exclusions": 126,
+        "peak_live_cpu_bytes": 6962380800,
+        "scope_count": 6,
+        "top_unique_kept_groups": [
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2940,
+              5120
+            ],
+            "unique_storage_bytes": 2408448000,
+            "unique_storage_count": 80
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 52428800,
+            "unique_storage_count": 10
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 4
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 31457280,
+            "unique_storage_count": 6
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              11040,
+              256
+            ],
+            "unique_storage_bytes": 22609920,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              16,
+              16,
+              48,
+              80
+            ],
+            "unique_storage_bytes": 9830400,
+            "unique_storage_count": 5
+          }
+        ],
+        "unique_kept_below_threshold_storage_bytes": 2719894720,
+        "unique_kept_below_threshold_storage_count": 250
+      },
+      "phase_delta_attribution": {
+        "forward_incremental_to_pre_backward_bytes": 1836546048,
+        "forward_unclassified_after_unique_kept_activation_bytes": 0,
+        "initial_generator_loaded_allocated_bytes": 27746392576,
+        "note": "Phase deltas are simultaneous allocator observations and avoid adding peaks. The persistent floor is not classified as redundant.",
+        "persistent_runtime_floor_before_step_bytes": 5039686144
+      },
+      "pre_backward": {
+        "active_bytes": 29582938624,
+        "allocated_bytes": 29582938624,
+        "allocator_reserved_unallocated_bytes": 45624832,
+        "driver_free_bytes": 11717181440,
+        "inactive_split_bytes": 0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0,
+        "reserved_bytes": 29628563456
+      },
+      "rank": 2,
+      "unclassified": {
+        "note": "Model residency and unique kept saved-activation storage are subtracted only at the pre-backward boundary. Remaining bytes can include buffers, checkpoint boundaries, outputs, temporaries, workspaces, continuous state, or accounting uncertainty. No residual is labelled redundant."
+      },
+      "value_comparison": {
+        "allocator_slack_equivalent_blocks": 0.06491970911401,
+        "classification": "candidate_only_not_proven_releasable_at_peak",
+        "lower_reuse_candidate": "kept_saved_activation_below_32_mib",
+        "unique_kept_activation_equivalent_blocks": 3.870146284442903
+      }
+    },
+    {
+      "generator_frozen_blocks": {
+        "issued_materialization_bytes": 84334632960,
+        "last_materialization_generation": "PHASE_RESIDENT_NO_GRAD",
+        "last_materialized_block": 36,
+        "materialization_count": 120,
+        "materialization_wall_sum_seconds": 32.92004416696727,
+        "median_block_bytes": 702788608,
+        "streamed_block_count": 12,
+        "streamed_block_indices": [
+          0,
+          1,
+          5,
+          8,
+          10,
+          15,
+          16,
+          24,
+          25,
+          26,
+          32,
+          36
+        ],
+        "unique_streamed_capacity_bytes": 8433463296
+      },
+      "generator_model_residency": {
+        "allocated_minus_known_model_bytes": 5559207296,
+        "externally_managed_parameter_bytes": 8433463296,
+        "known_model_resident_at_pre_backward_bytes": 22694277248,
+        "private_parameter_bytes": 2502885376,
+        "shared_immutable_bytes": 20191391872,
+        "streamed_resident_at_pre_backward_bytes": 0,
+        "unclassified_after_unique_kept_activation_bytes": 2848512192
+      },
+      "generator_saved_activation": {
+        "alias_pack_amplification": 2.025694605010066,
+        "kept_below_threshold_count": 1484,
+        "kept_below_threshold_pack_storage_bytes": 5491040448,
+        "offloaded_storage_bytes": 13831372800,
+        "pack_count": 1782,
+        "parameter_or_buffer_exclusions": 126,
+        "peak_live_cpu_bytes": 7009075200,
+        "scope_count": 6,
+        "top_unique_kept_groups": [
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2940,
+              5120
+            ],
+            "unique_storage_bytes": 2408448000,
+            "unique_storage_count": 80
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 52428800,
+            "unique_storage_count": 10
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 4
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              11040,
+              256
+            ],
+            "unique_storage_bytes": 22609920,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 20971520,
+            "unique_storage_count": 4
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              16,
+              16,
+              48,
+              80
+            ],
+            "unique_storage_bytes": 11796480,
+            "unique_storage_count": 6
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          }
+        ],
+        "unique_kept_below_threshold_storage_bytes": 2710695104,
+        "unique_kept_below_threshold_storage_count": 238
+      },
+      "phase_delta_attribution": {
+        "forward_incremental_to_pre_backward_bytes": 507091968,
+        "forward_unclassified_after_unique_kept_activation_bytes": 0,
+        "initial_generator_loaded_allocated_bytes": 27746392576,
+        "note": "Phase deltas are simultaneous allocator observations and avoid adding peaks. The persistent floor is not classified as redundant.",
+        "persistent_runtime_floor_before_step_bytes": 5039686144
+      },
+      "pre_backward": {
+        "active_bytes": 28253484544,
+        "allocated_bytes": 28253484544,
+        "allocator_reserved_unallocated_bytes": 51776000,
+        "driver_free_bytes": 12998541312,
+        "inactive_split_bytes": 0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0,
+        "reserved_bytes": 28305260544
+      },
+      "rank": 3,
+      "unclassified": {
+        "note": "Model residency and unique kept saved-activation storage are subtracted only at the pre-backward boundary. Remaining bytes can include buffers, checkpoint boundaries, outputs, temporaries, workspaces, continuous state, or accounting uncertainty. No residual is labelled redundant."
+      },
+      "value_comparison": {
+        "allocator_slack_equivalent_blocks": 0.07367222435113803,
+        "classification": "candidate_only_not_proven_releasable_at_peak",
+        "lower_reuse_candidate": "kept_saved_activation_below_32_mib",
+        "unique_kept_activation_equivalent_blocks": 3.8570561234822978
+      }
+    },
+    {
+      "generator_frozen_blocks": {
+        "issued_materialization_bytes": 67467706368,
+        "last_materialization_generation": "PHASE_RESIDENT_NO_GRAD",
+        "last_materialized_block": 36,
+        "materialization_count": 96,
+        "materialization_wall_sum_seconds": 17.85398810612969,
+        "median_block_bytes": 702788608,
+        "streamed_block_count": 12,
+        "streamed_block_indices": [
+          0,
+          1,
+          5,
+          8,
+          10,
+          15,
+          16,
+          24,
+          25,
+          26,
+          32,
+          36
+        ],
+        "unique_streamed_capacity_bytes": 8433463296
+      },
+      "generator_model_residency": {
+        "allocated_minus_known_model_bytes": 6888661376,
+        "externally_managed_parameter_bytes": 8433463296,
+        "known_model_resident_at_pre_backward_bytes": 22694277248,
+        "private_parameter_bytes": 2502885376,
+        "shared_immutable_bytes": 20191391872,
+        "streamed_resident_at_pre_backward_bytes": 0,
+        "unclassified_after_unique_kept_activation_bytes": 4172114112
+      },
+      "generator_saved_activation": {
+        "alias_pack_amplification": 2.021330724028956,
+        "kept_below_threshold_count": 1484,
+        "kept_below_threshold_pack_storage_bytes": 5491040448,
+        "offloaded_storage_bytes": 13811712000,
+        "pack_count": 1782,
+        "parameter_or_buffer_exclusions": 126,
+        "peak_live_cpu_bytes": 6962380800,
+        "scope_count": 6,
+        "top_unique_kept_groups": [
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2940,
+              5120
+            ],
+            "unique_storage_bytes": 2408448000,
+            "unique_storage_count": 80
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 52428800,
+            "unique_storage_count": 10
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 4
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 26214400,
+            "unique_storage_count": 5
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              11040,
+              256
+            ],
+            "unique_storage_bytes": 22609920,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              16,
+              16,
+              48,
+              80
+            ],
+            "unique_storage_bytes": 11796480,
+            "unique_storage_count": 6
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          }
+        ],
+        "unique_kept_below_threshold_storage_bytes": 2716547264,
+        "unique_kept_below_threshold_storage_count": 250
+      },
+      "phase_delta_attribution": {
+        "forward_incremental_to_pre_backward_bytes": 1836546048,
+        "forward_unclassified_after_unique_kept_activation_bytes": 0,
+        "initial_generator_loaded_allocated_bytes": 27746392576,
+        "note": "Phase deltas are simultaneous allocator observations and avoid adding peaks. The persistent floor is not classified as redundant.",
+        "persistent_runtime_floor_before_step_bytes": 5039686144
+      },
+      "pre_backward": {
+        "active_bytes": 29582938624,
+        "allocated_bytes": 29582938624,
+        "allocator_reserved_unallocated_bytes": 45624832,
+        "driver_free_bytes": 11675238400,
+        "inactive_split_bytes": 0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0,
+        "reserved_bytes": 29628563456
+      },
+      "rank": 4,
+      "unclassified": {
+        "note": "Model residency and unique kept saved-activation storage are subtracted only at the pre-backward boundary. Remaining bytes can include buffers, checkpoint boundaries, outputs, temporaries, workspaces, continuous state, or accounting uncertainty. No residual is labelled redundant."
+      },
+      "value_comparison": {
+        "allocator_slack_equivalent_blocks": 0.06491970911401,
+        "classification": "candidate_only_not_proven_releasable_at_peak",
+        "lower_reuse_candidate": "kept_saved_activation_below_32_mib",
+        "unique_kept_activation_equivalent_blocks": 3.865383179347153
+      }
+    },
+    {
+      "generator_frozen_blocks": {
+        "issued_materialization_bytes": 67467706368,
+        "last_materialization_generation": "PHASE_RESIDENT_NO_GRAD",
+        "last_materialized_block": 36,
+        "materialization_count": 96,
+        "materialization_wall_sum_seconds": 18.301011016126722,
+        "median_block_bytes": 702788608,
+        "streamed_block_count": 12,
+        "streamed_block_indices": [
+          0,
+          1,
+          5,
+          8,
+          10,
+          15,
+          16,
+          24,
+          25,
+          26,
+          32,
+          36
+        ],
+        "unique_streamed_capacity_bytes": 8433463296
+      },
+      "generator_model_residency": {
+        "allocated_minus_known_model_bytes": 6888661376,
+        "externally_managed_parameter_bytes": 8433463296,
+        "known_model_resident_at_pre_backward_bytes": 22694277248,
+        "private_parameter_bytes": 2502885376,
+        "shared_immutable_bytes": 20191391872,
+        "streamed_resident_at_pre_backward_bytes": 0,
+        "unclassified_after_unique_kept_activation_bytes": 4162152128
+      },
+      "generator_saved_activation": {
+        "alias_pack_amplification": 2.013945286276909,
+        "kept_below_threshold_count": 1484,
+        "kept_below_threshold_pack_storage_bytes": 5491040448,
+        "offloaded_storage_bytes": 13878067200,
+        "pack_count": 1782,
+        "parameter_or_buffer_exclusions": 126,
+        "peak_live_cpu_bytes": 6962380800,
+        "scope_count": 6,
+        "top_unique_kept_groups": [
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2940,
+              5120
+            ],
+            "unique_storage_bytes": 2408448000,
+            "unique_storage_count": 80
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 57671680,
+            "unique_storage_count": 11
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 4
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 31457280,
+            "unique_storage_count": 6
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              11040,
+              256
+            ],
+            "unique_storage_bytes": 22609920,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              16,
+              16,
+              48,
+              80
+            ],
+            "unique_storage_bytes": 11796480,
+            "unique_storage_count": 6
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          }
+        ],
+        "unique_kept_below_threshold_storage_bytes": 2726509248,
+        "unique_kept_below_threshold_storage_count": 256
+      },
+      "phase_delta_attribution": {
+        "forward_incremental_to_pre_backward_bytes": 1836546048,
+        "forward_unclassified_after_unique_kept_activation_bytes": 0,
+        "initial_generator_loaded_allocated_bytes": 27746392576,
+        "note": "Phase deltas are simultaneous allocator observations and avoid adding peaks. The persistent floor is not classified as redundant.",
+        "persistent_runtime_floor_before_step_bytes": 5039686144
+      },
+      "pre_backward": {
+        "active_bytes": 29582938624,
+        "allocated_bytes": 29582938624,
+        "allocator_reserved_unallocated_bytes": 45624832,
+        "driver_free_bytes": 11704598528,
+        "inactive_split_bytes": 0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0,
+        "reserved_bytes": 29628563456
+      },
+      "rank": 5,
+      "unclassified": {
+        "note": "Model residency and unique kept saved-activation storage are subtracted only at the pre-backward boundary. Remaining bytes can include buffers, checkpoint boundaries, outputs, temporaries, workspaces, continuous state, or accounting uncertainty. No residual is labelled redundant."
+      },
+      "value_comparison": {
+        "allocator_slack_equivalent_blocks": 0.06491970911401,
+        "classification": "candidate_only_not_proven_releasable_at_peak",
+        "lower_reuse_candidate": "kept_saved_activation_below_32_mib",
+        "unique_kept_activation_equivalent_blocks": 3.8795581160017893
+      }
+    },
+    {
+      "generator_frozen_blocks": {
+        "issued_materialization_bytes": 75901169664,
+        "last_materialization_generation": "PHASE_RESIDENT_NO_GRAD",
+        "last_materialized_block": 36,
+        "materialization_count": 108,
+        "materialization_wall_sum_seconds": 19.43591510807164,
+        "median_block_bytes": 702788608,
+        "streamed_block_count": 12,
+        "streamed_block_indices": [
+          0,
+          1,
+          5,
+          8,
+          10,
+          15,
+          16,
+          24,
+          25,
+          26,
+          32,
+          36
+        ],
+        "unique_streamed_capacity_bytes": 8433463296
+      },
+      "generator_model_residency": {
+        "allocated_minus_known_model_bytes": 5629016960,
+        "externally_managed_parameter_bytes": 8433463296,
+        "known_model_resident_at_pre_backward_bytes": 22694277248,
+        "private_parameter_bytes": 2502885376,
+        "shared_immutable_bytes": 20191391872,
+        "streamed_resident_at_pre_backward_bytes": 0,
+        "unclassified_after_unique_kept_activation_bytes": 2898687168
+      },
+      "generator_saved_activation": {
+        "alias_pack_amplification": 2.011127177416083,
+        "kept_below_threshold_count": 1484,
+        "kept_below_threshold_pack_storage_bytes": 5491040448,
+        "offloaded_storage_bytes": 13811712000,
+        "pack_count": 1782,
+        "parameter_or_buffer_exclusions": 126,
+        "peak_live_cpu_bytes": 7009075200,
+        "scope_count": 6,
+        "top_unique_kept_groups": [
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2940,
+              5120
+            ],
+            "unique_storage_bytes": 2408448000,
+            "unique_storage_count": 80
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 62914560,
+            "unique_storage_count": 12
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 4
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 31457280,
+            "unique_storage_count": 6
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              11040,
+              256
+            ],
+            "unique_storage_bytes": 22609920,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              16,
+              16,
+              48,
+              80
+            ],
+            "unique_storage_bytes": 9830400,
+            "unique_storage_count": 5
+          }
+        ],
+        "unique_kept_below_threshold_storage_bytes": 2730329792,
+        "unique_kept_below_threshold_storage_count": 253
+      },
+      "phase_delta_attribution": {
+        "forward_incremental_to_pre_backward_bytes": 576901632,
+        "forward_unclassified_after_unique_kept_activation_bytes": 0,
+        "initial_generator_loaded_allocated_bytes": 27746392576,
+        "note": "Phase deltas are simultaneous allocator observations and avoid adding peaks. The persistent floor is not classified as redundant.",
+        "persistent_runtime_floor_before_step_bytes": 5039686144
+      },
+      "pre_backward": {
+        "active_bytes": 28323294208,
+        "allocated_bytes": 28323294208,
+        "allocator_reserved_unallocated_bytes": 44880896,
+        "driver_free_bytes": 12994347008,
+        "inactive_split_bytes": 0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0,
+        "reserved_bytes": 28368175104
+      },
+      "rank": 6,
+      "unclassified": {
+        "note": "Model residency and unique kept saved-activation storage are subtracted only at the pre-backward boundary. Remaining bytes can include buffers, checkpoint boundaries, outputs, temporaries, workspaces, continuous state, or accounting uncertainty. No residual is labelled redundant."
+      },
+      "value_comparison": {
+        "allocator_slack_equivalent_blocks": 0.06386116036758524,
+        "classification": "candidate_only_not_proven_releasable_at_peak",
+        "lower_reuse_candidate": "kept_saved_activation_below_32_mib",
+        "unique_kept_activation_equivalent_blocks": 3.884994379419423
+      }
+    },
+    {
+      "generator_frozen_blocks": {
+        "issued_materialization_bytes": 84334632960,
+        "last_materialization_generation": "PHASE_RESIDENT_NO_GRAD",
+        "last_materialized_block": 36,
+        "materialization_count": 120,
+        "materialization_wall_sum_seconds": 23.246816920116544,
+        "median_block_bytes": 702788608,
+        "streamed_block_count": 12,
+        "streamed_block_indices": [
+          0,
+          1,
+          5,
+          8,
+          10,
+          15,
+          16,
+          24,
+          25,
+          26,
+          32,
+          36
+        ],
+        "unique_streamed_capacity_bytes": 8433463296
+      },
+      "generator_model_residency": {
+        "allocated_minus_known_model_bytes": 5629016960,
+        "externally_managed_parameter_bytes": 8433463296,
+        "known_model_resident_at_pre_backward_bytes": 22694277248,
+        "private_parameter_bytes": 2502885376,
+        "shared_immutable_bytes": 20191391872,
+        "streamed_resident_at_pre_backward_bytes": 0,
+        "unclassified_after_unique_kept_activation_bytes": 2898697920
+      },
+      "generator_saved_activation": {
+        "alias_pack_amplification": 2.0111350972375743,
+        "kept_below_threshold_count": 1484,
+        "kept_below_threshold_pack_storage_bytes": 5491040448,
+        "offloaded_storage_bytes": 13765017600,
+        "pack_count": 1782,
+        "parameter_or_buffer_exclusions": 126,
+        "peak_live_cpu_bytes": 6802636800,
+        "scope_count": 6,
+        "top_unique_kept_groups": [
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2940,
+              5120
+            ],
+            "unique_storage_bytes": 2408448000,
+            "unique_storage_count": 80
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 62914560,
+            "unique_storage_count": 12
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 4
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 31457280,
+            "unique_storage_count": 6
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              11040,
+              256
+            ],
+            "unique_storage_bytes": 22609920,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              16,
+              16,
+              48,
+              80
+            ],
+            "unique_storage_bytes": 9830400,
+            "unique_storage_count": 5
+          }
+        ],
+        "unique_kept_below_threshold_storage_bytes": 2730319040,
+        "unique_kept_below_threshold_storage_count": 246
+      },
+      "phase_delta_attribution": {
+        "forward_incremental_to_pre_backward_bytes": 576901632,
+        "forward_unclassified_after_unique_kept_activation_bytes": 0,
+        "initial_generator_loaded_allocated_bytes": 27746392576,
+        "note": "Phase deltas are simultaneous allocator observations and avoid adding peaks. The persistent floor is not classified as redundant.",
+        "persistent_runtime_floor_before_step_bytes": 5039686144
+      },
+      "pre_backward": {
+        "active_bytes": 28323294208,
+        "allocated_bytes": 28323294208,
+        "allocator_reserved_unallocated_bytes": 44880896,
+        "driver_free_bytes": 12994347008,
+        "inactive_split_bytes": 0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0,
+        "reserved_bytes": 28368175104
+      },
+      "rank": 7,
+      "unclassified": {
+        "note": "Model residency and unique kept saved-activation storage are subtracted only at the pre-backward boundary. Remaining bytes can include buffers, checkpoint boundaries, outputs, temporaries, workspaces, continuous state, or accounting uncertainty. No residual is labelled redundant."
+      },
+      "value_comparison": {
+        "allocator_slack_equivalent_blocks": 0.06386116036758524,
+        "classification": "candidate_only_not_proven_releasable_at_peak",
+        "lower_reuse_candidate": "kept_saved_activation_below_32_mib",
+        "unique_kept_activation_equivalent_blocks": 3.884979080366653
+      }
+    },
+    {
+      "generator_frozen_blocks": {
+        "issued_materialization_bytes": 67467706368,
+        "last_materialization_generation": "PHASE_RESIDENT_NO_GRAD",
+        "last_materialized_block": 36,
+        "materialization_count": 96,
+        "materialization_wall_sum_seconds": 15.512130002956837,
+        "median_block_bytes": 702788608,
+        "streamed_block_count": 12,
+        "streamed_block_indices": [
+          0,
+          1,
+          5,
+          8,
+          10,
+          15,
+          16,
+          24,
+          25,
+          26,
+          32,
+          36
+        ],
+        "unique_streamed_capacity_bytes": 8433463296
+      },
+      "generator_model_residency": {
+        "allocated_minus_known_model_bytes": 6888661376,
+        "externally_managed_parameter_bytes": 8433463296,
+        "known_model_resident_at_pre_backward_bytes": 22694277248,
+        "private_parameter_bytes": 2502885376,
+        "shared_immutable_bytes": 20191391872,
+        "streamed_resident_at_pre_backward_bytes": 0,
+        "unclassified_after_unique_kept_activation_bytes": 4156498624
+      },
+      "generator_saved_activation": {
+        "alias_pack_amplification": 2.0097779475181135,
+        "kept_below_threshold_count": 1484,
+        "kept_below_threshold_pack_storage_bytes": 5491040448,
+        "offloaded_storage_bytes": 13971456000,
+        "pack_count": 1782,
+        "parameter_or_buffer_exclusions": 126,
+        "peak_live_cpu_bytes": 7009075200,
+        "scope_count": 6,
+        "top_unique_kept_groups": [
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2940,
+              5120
+            ],
+            "unique_storage_bytes": 2408448000,
+            "unique_storage_count": 80
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 62914560,
+            "unique_storage_count": 12
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 4
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 31457280,
+            "unique_storage_count": 6
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              11040,
+              256
+            ],
+            "unique_storage_bytes": 22609920,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              16,
+              16,
+              48,
+              80
+            ],
+            "unique_storage_bytes": 11796480,
+            "unique_storage_count": 6
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          }
+        ],
+        "unique_kept_below_threshold_storage_bytes": 2732162752,
+        "unique_kept_below_threshold_storage_count": 246
+      },
+      "phase_delta_attribution": {
+        "forward_incremental_to_pre_backward_bytes": 1836546048,
+        "forward_unclassified_after_unique_kept_activation_bytes": 0,
+        "initial_generator_loaded_allocated_bytes": 27746392576,
+        "note": "Phase deltas are simultaneous allocator observations and avoid adding peaks. The persistent floor is not classified as redundant.",
+        "persistent_runtime_floor_before_step_bytes": 5039686144
+      },
+      "pre_backward": {
+        "active_bytes": 29582938624,
+        "allocated_bytes": 29582938624,
+        "allocator_reserved_unallocated_bytes": 45624832,
+        "driver_free_bytes": 11733958656,
+        "inactive_split_bytes": 0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0,
+        "reserved_bytes": 29628563456
+      },
+      "rank": 8,
+      "unclassified": {
+        "note": "Model residency and unique kept saved-activation storage are subtracted only at the pre-backward boundary. Remaining bytes can include buffers, checkpoint boundaries, outputs, temporaries, workspaces, continuous state, or accounting uncertainty. No residual is labelled redundant."
+      },
+      "value_comparison": {
+        "allocator_slack_equivalent_blocks": 0.06491970911401,
+        "classification": "candidate_only_not_proven_releasable_at_peak",
+        "lower_reuse_candidate": "kept_saved_activation_below_32_mib",
+        "unique_kept_activation_equivalent_blocks": 3.8876025036535595
+      }
+    },
+    {
+      "generator_frozen_blocks": {
+        "issued_materialization_bytes": 59034243072,
+        "last_materialization_generation": "PHASE_RESIDENT_NO_GRAD",
+        "last_materialized_block": 36,
+        "materialization_count": 84,
+        "materialization_wall_sum_seconds": 12.330561017617583,
+        "median_block_bytes": 702788608,
+        "streamed_block_count": 12,
+        "streamed_block_indices": [
+          0,
+          1,
+          5,
+          8,
+          10,
+          15,
+          16,
+          24,
+          25,
+          26,
+          32,
+          36
+        ],
+        "unique_streamed_capacity_bytes": 8433463296
+      },
+      "generator_model_residency": {
+        "allocated_minus_known_model_bytes": 6888661376,
+        "externally_managed_parameter_bytes": 8433463296,
+        "known_model_resident_at_pre_backward_bytes": 22694277248,
+        "private_parameter_bytes": 2502885376,
+        "shared_immutable_bytes": 20191391872,
+        "streamed_resident_at_pre_backward_bytes": 0,
+        "unclassified_after_unique_kept_activation_bytes": 4172363968
+      },
+      "generator_saved_activation": {
+        "alias_pack_amplification": 2.0215166541881118,
+        "kept_below_threshold_count": 1484,
+        "kept_below_threshold_pack_storage_bytes": 5491040448,
+        "offloaded_storage_bytes": 13878067200,
+        "pack_count": 1782,
+        "parameter_or_buffer_exclusions": 126,
+        "peak_live_cpu_bytes": 7009075200,
+        "scope_count": 6,
+        "top_unique_kept_groups": [
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2940,
+              5120
+            ],
+            "unique_storage_bytes": 2408448000,
+            "unique_storage_count": 80
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 52428800,
+            "unique_storage_count": 10
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 4
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 26214400,
+            "unique_storage_count": 5
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              11040,
+              256
+            ],
+            "unique_storage_bytes": 22609920,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              16,
+              16,
+              48,
+              80
+            ],
+            "unique_storage_bytes": 11796480,
+            "unique_storage_count": 6
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          }
+        ],
+        "unique_kept_below_threshold_storage_bytes": 2716297408,
+        "unique_kept_below_threshold_storage_count": 248
+      },
+      "phase_delta_attribution": {
+        "forward_incremental_to_pre_backward_bytes": 1836546048,
+        "forward_unclassified_after_unique_kept_activation_bytes": 0,
+        "initial_generator_loaded_allocated_bytes": 27746392576,
+        "note": "Phase deltas are simultaneous allocator observations and avoid adding peaks. The persistent floor is not classified as redundant.",
+        "persistent_runtime_floor_before_step_bytes": 5039686144
+      },
+      "pre_backward": {
+        "active_bytes": 29582938624,
+        "allocated_bytes": 29582938624,
+        "allocator_reserved_unallocated_bytes": 45624832,
+        "driver_free_bytes": 11746541568,
+        "inactive_split_bytes": 0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0,
+        "reserved_bytes": 29628563456
+      },
+      "rank": 9,
+      "unclassified": {
+        "note": "Model residency and unique kept saved-activation storage are subtracted only at the pre-backward boundary. Remaining bytes can include buffers, checkpoint boundaries, outputs, temporaries, workspaces, continuous state, or accounting uncertainty. No residual is labelled redundant."
+      },
+      "value_comparison": {
+        "allocator_slack_equivalent_blocks": 0.06491970911401,
+        "classification": "candidate_only_not_proven_releasable_at_peak",
+        "lower_reuse_candidate": "kept_saved_activation_below_32_mib",
+        "unique_kept_activation_equivalent_blocks": 3.8650276585018295
+      }
+    },
+    {
+      "generator_frozen_blocks": {
+        "issued_materialization_bytes": 75901169664,
+        "last_materialization_generation": "PHASE_RESIDENT_NO_GRAD",
+        "last_materialized_block": 36,
+        "materialization_count": 108,
+        "materialization_wall_sum_seconds": 20.18453702889383,
+        "median_block_bytes": 702788608,
+        "streamed_block_count": 12,
+        "streamed_block_indices": [
+          0,
+          1,
+          5,
+          8,
+          10,
+          15,
+          16,
+          24,
+          25,
+          26,
+          32,
+          36
+        ],
+        "unique_streamed_capacity_bytes": 8433463296
+      },
+      "generator_model_residency": {
+        "allocated_minus_known_model_bytes": 5559207296,
+        "externally_managed_parameter_bytes": 8433463296,
+        "known_model_resident_at_pre_backward_bytes": 22694277248,
+        "private_parameter_bytes": 2502885376,
+        "shared_immutable_bytes": 20191391872,
+        "streamed_resident_at_pre_backward_bytes": 0,
+        "unclassified_after_unique_kept_activation_bytes": 2847639232
+      },
+      "generator_saved_activation": {
+        "alias_pack_amplification": 2.0250424545492804,
+        "kept_below_threshold_count": 1484,
+        "kept_below_threshold_pack_storage_bytes": 5491040448,
+        "offloaded_storage_bytes": 13924761600,
+        "pack_count": 1782,
+        "parameter_or_buffer_exclusions": 126,
+        "peak_live_cpu_bytes": 6962380800,
+        "scope_count": 6,
+        "top_unique_kept_groups": [
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2940,
+              5120
+            ],
+            "unique_storage_bytes": 2408448000,
+            "unique_storage_count": 80
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 52428800,
+            "unique_storage_count": 10
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 4
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              11040,
+              256
+            ],
+            "unique_storage_bytes": 22609920,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 20971520,
+            "unique_storage_count": 4
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              16,
+              16,
+              48,
+              80
+            ],
+            "unique_storage_bytes": 11796480,
+            "unique_storage_count": 6
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          }
+        ],
+        "unique_kept_below_threshold_storage_bytes": 2711568064,
+        "unique_kept_below_threshold_storage_count": 242
+      },
+      "phase_delta_attribution": {
+        "forward_incremental_to_pre_backward_bytes": 507091968,
+        "forward_unclassified_after_unique_kept_activation_bytes": 0,
+        "initial_generator_loaded_allocated_bytes": 27746392576,
+        "note": "Phase deltas are simultaneous allocator observations and avoid adding peaks. The persistent floor is not classified as redundant.",
+        "persistent_runtime_floor_before_step_bytes": 5039686144
+      },
+      "pre_backward": {
+        "active_bytes": 28253484544,
+        "allocated_bytes": 28253484544,
+        "allocator_reserved_unallocated_bytes": 51776000,
+        "driver_free_bytes": 13040484352,
+        "inactive_split_bytes": 0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0,
+        "reserved_bytes": 28305260544
+      },
+      "rank": 10,
+      "unclassified": {
+        "note": "Model residency and unique kept saved-activation storage are subtracted only at the pre-backward boundary. Remaining bytes can include buffers, checkpoint boundaries, outputs, temporaries, workspaces, continuous state, or accounting uncertainty. No residual is labelled redundant."
+      },
+      "value_comparison": {
+        "allocator_slack_equivalent_blocks": 0.07367222435113803,
+        "classification": "candidate_only_not_proven_releasable_at_peak",
+        "lower_reuse_candidate": "kept_saved_activation_below_32_mib",
+        "unique_kept_activation_equivalent_blocks": 3.858298260861963
+      }
+    },
+    {
+      "generator_frozen_blocks": {
+        "issued_materialization_bytes": 84334632960,
+        "last_materialization_generation": "PHASE_RESIDENT_NO_GRAD",
+        "last_materialized_block": 36,
+        "materialization_count": 120,
+        "materialization_wall_sum_seconds": 19.413357106037438,
+        "median_block_bytes": 702788608,
+        "streamed_block_count": 12,
+        "streamed_block_indices": [
+          0,
+          1,
+          5,
+          8,
+          10,
+          15,
+          16,
+          24,
+          25,
+          26,
+          32,
+          36
+        ],
+        "unique_streamed_capacity_bytes": 8433463296
+      },
+      "generator_model_residency": {
+        "allocated_minus_known_model_bytes": 5629016960,
+        "externally_managed_parameter_bytes": 8433463296,
+        "known_model_resident_at_pre_backward_bytes": 22694277248,
+        "private_parameter_bytes": 2502885376,
+        "shared_immutable_bytes": 20191391872,
+        "streamed_resident_at_pre_backward_bytes": 0,
+        "unclassified_after_unique_kept_activation_bytes": 2898708160
+      },
+      "generator_saved_activation": {
+        "alias_pack_amplification": 2.011142639982701,
+        "kept_below_threshold_count": 1484,
+        "kept_below_threshold_pack_storage_bytes": 5491040448,
+        "offloaded_storage_bytes": 13971456000,
+        "pack_count": 1782,
+        "parameter_or_buffer_exclusions": 126,
+        "peak_live_cpu_bytes": 7009075200,
+        "scope_count": 6,
+        "top_unique_kept_groups": [
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2940,
+              5120
+            ],
+            "unique_storage_bytes": 2408448000,
+            "unique_storage_count": 80
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 62914560,
+            "unique_storage_count": 12
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 4
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 31457280,
+            "unique_storage_count": 6
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              11040,
+              256
+            ],
+            "unique_storage_bytes": 22609920,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              16,
+              16,
+              48,
+              80
+            ],
+            "unique_storage_bytes": 9830400,
+            "unique_storage_count": 5
+          }
+        ],
+        "unique_kept_below_threshold_storage_bytes": 2730308800,
+        "unique_kept_below_threshold_storage_count": 253
+      },
+      "phase_delta_attribution": {
+        "forward_incremental_to_pre_backward_bytes": 576901632,
+        "forward_unclassified_after_unique_kept_activation_bytes": 0,
+        "initial_generator_loaded_allocated_bytes": 27746392576,
+        "note": "Phase deltas are simultaneous allocator observations and avoid adding peaks. The persistent floor is not classified as redundant.",
+        "persistent_runtime_floor_before_step_bytes": 5039686144
+      },
+      "pre_backward": {
+        "active_bytes": 28323294208,
+        "allocated_bytes": 28323294208,
+        "allocator_reserved_unallocated_bytes": 44880896,
+        "driver_free_bytes": 12935626752,
+        "inactive_split_bytes": 0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0,
+        "reserved_bytes": 28368175104
+      },
+      "rank": 11,
+      "unclassified": {
+        "note": "Model residency and unique kept saved-activation storage are subtracted only at the pre-backward boundary. Remaining bytes can include buffers, checkpoint boundaries, outputs, temporaries, workspaces, continuous state, or accounting uncertainty. No residual is labelled redundant."
+      },
+      "value_comparison": {
+        "allocator_slack_equivalent_blocks": 0.06386116036758524,
+        "classification": "candidate_only_not_proven_releasable_at_peak",
+        "lower_reuse_candidate": "kept_saved_activation_below_32_mib",
+        "unique_kept_activation_equivalent_blocks": 3.8849645098402052
+      }
+    },
+    {
+      "generator_frozen_blocks": {
+        "issued_materialization_bytes": 67467706368,
+        "last_materialization_generation": "PHASE_RESIDENT_NO_GRAD",
+        "last_materialized_block": 36,
+        "materialization_count": 96,
+        "materialization_wall_sum_seconds": 10.977150278165936,
+        "median_block_bytes": 702788608,
+        "streamed_block_count": 12,
+        "streamed_block_indices": [
+          0,
+          1,
+          5,
+          8,
+          10,
+          15,
+          16,
+          24,
+          25,
+          26,
+          32,
+          36
+        ],
+        "unique_streamed_capacity_bytes": 8433463296
+      },
+      "generator_model_residency": {
+        "allocated_minus_known_model_bytes": 6888661376,
+        "externally_managed_parameter_bytes": 8433463296,
+        "known_model_resident_at_pre_backward_bytes": 22694277248,
+        "private_parameter_bytes": 2502885376,
+        "shared_immutable_bytes": 20191391872,
+        "streamed_resident_at_pre_backward_bytes": 0,
+        "unclassified_after_unique_kept_activation_bytes": 4156312768
+      },
+      "generator_saved_activation": {
+        "alias_pack_amplification": 2.00964124121017,
+        "kept_below_threshold_count": 1484,
+        "kept_below_threshold_pack_storage_bytes": 5491040448,
+        "offloaded_storage_bytes": 13905100800,
+        "pack_count": 1782,
+        "parameter_or_buffer_exclusions": 126,
+        "peak_live_cpu_bytes": 7009075200,
+        "scope_count": 6,
+        "top_unique_kept_groups": [
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2940,
+              5120
+            ],
+            "unique_storage_bytes": 2408448000,
+            "unique_storage_count": 80
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 62914560,
+            "unique_storage_count": 12
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 4
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 31457280,
+            "unique_storage_count": 6
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              11040,
+              256
+            ],
+            "unique_storage_bytes": 22609920,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              16,
+              16,
+              48,
+              80
+            ],
+            "unique_storage_bytes": 11796480,
+            "unique_storage_count": 6
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          }
+        ],
+        "unique_kept_below_threshold_storage_bytes": 2732348608,
+        "unique_kept_below_threshold_storage_count": 257
+      },
+      "phase_delta_attribution": {
+        "forward_incremental_to_pre_backward_bytes": 1836546048,
+        "forward_unclassified_after_unique_kept_activation_bytes": 0,
+        "initial_generator_loaded_allocated_bytes": 27746392576,
+        "note": "Phase deltas are simultaneous allocator observations and avoid adding peaks. The persistent floor is not classified as redundant.",
+        "persistent_runtime_floor_before_step_bytes": 5039686144
+      },
+      "pre_backward": {
+        "active_bytes": 29582938624,
+        "allocated_bytes": 29582938624,
+        "allocator_reserved_unallocated_bytes": 45624832,
+        "driver_free_bytes": 11675238400,
+        "inactive_split_bytes": 0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0,
+        "reserved_bytes": 29628563456
+      },
+      "rank": 12,
+      "unclassified": {
+        "note": "Model residency and unique kept saved-activation storage are subtracted only at the pre-backward boundary. Remaining bytes can include buffers, checkpoint boundaries, outputs, temporaries, workspaces, continuous state, or accounting uncertainty. No residual is labelled redundant."
+      },
+      "value_comparison": {
+        "allocator_slack_equivalent_blocks": 0.06491970911401,
+        "classification": "candidate_only_not_proven_releasable_at_peak",
+        "lower_reuse_candidate": "kept_saved_activation_below_32_mib",
+        "unique_kept_activation_equivalent_blocks": 3.8878669587085852
+      }
+    },
+    {
+      "generator_frozen_blocks": {
+        "issued_materialization_bytes": 84334632960,
+        "last_materialization_generation": "PHASE_RESIDENT_NO_GRAD",
+        "last_materialized_block": 36,
+        "materialization_count": 120,
+        "materialization_wall_sum_seconds": 12.890864529646933,
+        "median_block_bytes": 702788608,
+        "streamed_block_count": 12,
+        "streamed_block_indices": [
+          0,
+          1,
+          5,
+          8,
+          10,
+          15,
+          16,
+          24,
+          25,
+          26,
+          32,
+          36
+        ],
+        "unique_streamed_capacity_bytes": 8433463296
+      },
+      "generator_model_residency": {
+        "allocated_minus_known_model_bytes": 6888661376,
+        "externally_managed_parameter_bytes": 8433463296,
+        "known_model_resident_at_pre_backward_bytes": 22694277248,
+        "private_parameter_bytes": 2502885376,
+        "shared_immutable_bytes": 20191391872,
+        "streamed_resident_at_pre_backward_bytes": 0,
+        "unclassified_after_unique_kept_activation_bytes": 4171809472
+      },
+      "generator_saved_activation": {
+        "alias_pack_amplification": 2.021104072664242,
+        "kept_below_threshold_count": 1484,
+        "kept_below_threshold_pack_storage_bytes": 5491040448,
+        "offloaded_storage_bytes": 13971456000,
+        "pack_count": 1782,
+        "parameter_or_buffer_exclusions": 126,
+        "peak_live_cpu_bytes": 7009075200,
+        "scope_count": 6,
+        "top_unique_kept_groups": [
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2940,
+              5120
+            ],
+            "unique_storage_bytes": 2408448000,
+            "unique_storage_count": 80
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 52428800,
+            "unique_storage_count": 10
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 4
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 26214400,
+            "unique_storage_count": 5
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              11040,
+              256
+            ],
+            "unique_storage_bytes": 22609920,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              16,
+              16,
+              48,
+              80
+            ],
+            "unique_storage_bytes": 11796480,
+            "unique_storage_count": 6
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          }
+        ],
+        "unique_kept_below_threshold_storage_bytes": 2716851904,
+        "unique_kept_below_threshold_storage_count": 247
+      },
+      "phase_delta_attribution": {
+        "forward_incremental_to_pre_backward_bytes": 1836546048,
+        "forward_unclassified_after_unique_kept_activation_bytes": 0,
+        "initial_generator_loaded_allocated_bytes": 27746392576,
+        "note": "Phase deltas are simultaneous allocator observations and avoid adding peaks. The persistent floor is not classified as redundant.",
+        "persistent_runtime_floor_before_step_bytes": 5039686144
+      },
+      "pre_backward": {
+        "active_bytes": 29582938624,
+        "allocated_bytes": 29582938624,
+        "allocator_reserved_unallocated_bytes": 45624832,
+        "driver_free_bytes": 11704598528,
+        "inactive_split_bytes": 0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0,
+        "reserved_bytes": 29628563456
+      },
+      "rank": 13,
+      "unclassified": {
+        "note": "Model residency and unique kept saved-activation storage are subtracted only at the pre-backward boundary. Remaining bytes can include buffers, checkpoint boundaries, outputs, temporaries, workspaces, continuous state, or accounting uncertainty. No residual is labelled redundant."
+      },
+      "value_comparison": {
+        "allocator_slack_equivalent_blocks": 0.06491970911401,
+        "classification": "candidate_only_not_proven_releasable_at_peak",
+        "lower_reuse_candidate": "kept_saved_activation_below_32_mib",
+        "unique_kept_activation_equivalent_blocks": 3.865816652508972
+      }
+    },
+    {
+      "generator_frozen_blocks": {
+        "issued_materialization_bytes": 92768096256,
+        "last_materialization_generation": "PHASE_RESIDENT_NO_GRAD",
+        "last_materialized_block": 36,
+        "materialization_count": 132,
+        "materialization_wall_sum_seconds": 24.940126664936543,
+        "median_block_bytes": 702788608,
+        "streamed_block_count": 12,
+        "streamed_block_indices": [
+          0,
+          1,
+          5,
+          8,
+          10,
+          15,
+          16,
+          24,
+          25,
+          26,
+          32,
+          36
+        ],
+        "unique_streamed_capacity_bytes": 8433463296
+      },
+      "generator_model_residency": {
+        "allocated_minus_known_model_bytes": 5559207296,
+        "externally_managed_parameter_bytes": 8433463296,
+        "known_model_resident_at_pre_backward_bytes": 22694277248,
+        "private_parameter_bytes": 2502885376,
+        "shared_immutable_bytes": 20191391872,
+        "streamed_resident_at_pre_backward_bytes": 0,
+        "unclassified_after_unique_kept_activation_bytes": 2842333888
+      },
+      "generator_saved_activation": {
+        "alias_pack_amplification": 2.021088075664952,
+        "kept_below_threshold_count": 1484,
+        "kept_below_threshold_pack_storage_bytes": 5491040448,
+        "offloaded_storage_bytes": 13698662400,
+        "pack_count": 1782,
+        "parameter_or_buffer_exclusions": 126,
+        "peak_live_cpu_bytes": 6896025600,
+        "scope_count": 6,
+        "top_unique_kept_groups": [
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2940,
+              5120
+            ],
+            "unique_storage_bytes": 2408448000,
+            "unique_storage_count": 80
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 57671680,
+            "unique_storage_count": 11
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 4
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              11040,
+              256
+            ],
+            "unique_storage_bytes": 22609920,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 20971520,
+            "unique_storage_count": 4
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              16,
+              16,
+              48,
+              80
+            ],
+            "unique_storage_bytes": 11796480,
+            "unique_storage_count": 6
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          }
+        ],
+        "unique_kept_below_threshold_storage_bytes": 2716873408,
+        "unique_kept_below_threshold_storage_count": 251
+      },
+      "phase_delta_attribution": {
+        "forward_incremental_to_pre_backward_bytes": 507091968,
+        "forward_unclassified_after_unique_kept_activation_bytes": 0,
+        "initial_generator_loaded_allocated_bytes": 27746392576,
+        "note": "Phase deltas are simultaneous allocator observations and avoid adding peaks. The persistent floor is not classified as redundant.",
+        "persistent_runtime_floor_before_step_bytes": 5039686144
+      },
+      "pre_backward": {
+        "active_bytes": 28253484544,
+        "allocated_bytes": 28253484544,
+        "allocator_reserved_unallocated_bytes": 51776000,
+        "driver_free_bytes": 13057261568,
+        "inactive_split_bytes": 0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0,
+        "reserved_bytes": 28305260544
+      },
+      "rank": 14,
+      "unclassified": {
+        "note": "Model residency and unique kept saved-activation storage are subtracted only at the pre-backward boundary. Remaining bytes can include buffers, checkpoint boundaries, outputs, temporaries, workspaces, continuous state, or accounting uncertainty. No residual is labelled redundant."
+      },
+      "value_comparison": {
+        "allocator_slack_equivalent_blocks": 0.07367222435113803,
+        "classification": "candidate_only_not_proven_releasable_at_peak",
+        "lower_reuse_candidate": "kept_saved_activation_below_32_mib",
+        "unique_kept_activation_equivalent_blocks": 3.865847250614512
+      }
+    },
+    {
+      "generator_frozen_blocks": {
+        "issued_materialization_bytes": 84334632960,
+        "last_materialization_generation": "PHASE_RESIDENT_NO_GRAD",
+        "last_materialized_block": 36,
+        "materialization_count": 120,
+        "materialization_wall_sum_seconds": 17.752928336616606,
+        "median_block_bytes": 702788608,
+        "streamed_block_count": 12,
+        "streamed_block_indices": [
+          0,
+          1,
+          5,
+          8,
+          10,
+          15,
+          16,
+          24,
+          25,
+          26,
+          32,
+          36
+        ],
+        "unique_streamed_capacity_bytes": 8433463296
+      },
+      "generator_model_residency": {
+        "allocated_minus_known_model_bytes": 5559207296,
+        "externally_managed_parameter_bytes": 8433463296,
+        "known_model_resident_at_pre_backward_bytes": 22694277248,
+        "private_parameter_bytes": 2502885376,
+        "shared_immutable_bytes": 20191391872,
+        "streamed_resident_at_pre_backward_bytes": 0,
+        "unclassified_after_unique_kept_activation_bytes": 2844277440
+      },
+      "generator_saved_activation": {
+        "alias_pack_amplification": 2.0225349232742755,
+        "kept_below_threshold_count": 1484,
+        "kept_below_threshold_pack_storage_bytes": 5491040448,
+        "offloaded_storage_bytes": 13578240000,
+        "pack_count": 1782,
+        "parameter_or_buffer_exclusions": 126,
+        "peak_live_cpu_bytes": 7009075200,
+        "scope_count": 6,
+        "top_unique_kept_groups": [
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2940,
+              5120
+            ],
+            "unique_storage_bytes": 2408448000,
+            "unique_storage_count": 80
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 52428800,
+            "unique_storage_count": 10
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 4
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2160,
+              5120
+            ],
+            "unique_storage_bytes": 44236800,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              512,
+              5120
+            ],
+            "unique_storage_bytes": 26214400,
+            "unique_storage_count": 5
+          },
+          {
+            "dtype": "torch.float32",
+            "shape": [
+              1,
+              11040,
+              256
+            ],
+            "unique_storage_bytes": 22609920,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              540,
+              5120
+            ],
+            "unique_storage_bytes": 11059200,
+            "unique_storage_count": 2
+          },
+          {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              1,
+              16,
+              16,
+              48,
+              80
+            ],
+            "unique_storage_bytes": 9830400,
+            "unique_storage_count": 5
+          }
+        ],
+        "unique_kept_below_threshold_storage_bytes": 2714929856,
+        "unique_kept_below_threshold_storage_count": 256
+      },
+      "phase_delta_attribution": {
+        "forward_incremental_to_pre_backward_bytes": 507091968,
+        "forward_unclassified_after_unique_kept_activation_bytes": 0,
+        "initial_generator_loaded_allocated_bytes": 27746392576,
+        "note": "Phase deltas are simultaneous allocator observations and avoid adding peaks. The persistent floor is not classified as redundant.",
+        "persistent_runtime_floor_before_step_bytes": 5039686144
+      },
+      "pre_backward": {
+        "active_bytes": 28253484544,
+        "allocated_bytes": 28253484544,
+        "allocator_reserved_unallocated_bytes": 51776000,
+        "driver_free_bytes": 13057261568,
+        "inactive_split_bytes": 0,
+        "num_alloc_retries": 0,
+        "num_ooms": 0,
+        "reserved_bytes": 28305260544
+      },
+      "rank": 15,
+      "unclassified": {
+        "note": "Model residency and unique kept saved-activation storage are subtracted only at the pre-backward boundary. Remaining bytes can include buffers, checkpoint boundaries, outputs, temporaries, workspaces, continuous state, or accounting uncertainty. No residual is labelled redundant."
+      },
+      "value_comparison": {
+        "allocator_slack_equivalent_blocks": 0.07367222435113803,
+        "classification": "candidate_only_not_proven_releasable_at_peak",
+        "lower_reuse_candidate": "kept_saved_activation_below_32_mib",
+        "unique_kept_activation_equivalent_blocks": 3.86308176469474
+      }
+    }
+  ],
+  "run_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_ra16_f5_pr4_20260808/artifacts/runs/ra16_f5_pr12_20260809_002",
+  "schema_version": "distillschedule.routea_rank_memory.v1",
+  "world_size": 16
+}
