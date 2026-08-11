@@ -59,6 +59,34 @@ def test_pipeline_worker_freezes_exact_formal_and_gas2_contract(tmp_path: Path) 
     assert "distillschedule_gpu_node.lock" in script
 
 
+def test_pipeline_worker_profiles_same_command_but_disables_formal_timing(
+    tmp_path: Path,
+) -> None:
+    args = SimpleNamespace(
+        master_addr="10.0.0.1",
+        master_port=30001,
+        timeout_seconds=20000,
+        run_nonce=123,
+        profile_nsys=True,
+        pipeline_remote_root=Path("/remote/dmd"),
+        pipeline_runtime_root=Path("/remote/runtime"),
+        config=Path("/assets/config.yaml"),
+        target_package=Path("/assets/target"),
+        trace_bundle=Path("/assets/trace"),
+        generator_root=Path("/assets/generator"),
+        score_root=Path("/assets/score"),
+        negative_prompt=Path("/assets/negative.pt"),
+        pipeline_mmap=Path("/assets/mmap"),
+    )
+    script = MODULE._pipeline_worker_script(args, 0, tmp_path / "run")
+    assert "/remote/dmd/scripts/distillschedule/gan_launch_shim.sh" in script
+    assert "DISTILLSCHEDULE_GAN_NSYS_PROFILE=1" in script
+    assert "DISTILLSCHEDULE_GAN_EXACT_TIMING=0" in script
+    assert "DISTILLSCHEDULE_NODE_RANK=0" in script
+    assert "DISTILLSCHEDULE_OUTPUT_DIR=" in script
+    assert "DISTILLSCHEDULE_PYTHON=" in script
+
+
 def test_formal_run_id_contract_accepts_artifact_convention() -> None:
     pattern = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
     assert pattern.fullmatch("gan_pipeline_formal_gate_20260811_001")

@@ -217,7 +217,15 @@ def _pipeline_worker_script(args: argparse.Namespace, node_rank: int, run_root: 
         str(args.run_nonce),
         "--detailed-events",
     ]
+    profile_nsys = bool(getattr(args, "profile_nsys", False))
+    if profile_nsys:
+        command = [
+            str(args.pipeline_remote_root / "scripts/distillschedule/gan_launch_shim.sh"),
+            *command,
+        ]
     command_text = shlex.join(command)
+    exact_timing = "0" if profile_nsys else "1"
+    nsys_profile = "1" if profile_nsys else "0"
     return f'''set -Eeuo pipefail
 exec 9>/tmp/distillschedule_gpu_node.lock
 flock -n 9 || {{ echo gpu_lock_busy >&2; exit 73; }}
@@ -228,6 +236,10 @@ cat /sys/fs/cgroup/memory.events > {shlex.quote(str(memory_before))} 2>/dev/null
 before_events="$(cat {shlex.quote(str(memory_before))} 2>/dev/null || true)"
 {{ echo start=$(date -Is); printf 'memory_events_before=%q\n' "$before_events"; }} > {shlex.quote(str(state))}
 export PYTHONPATH={shlex.quote(str(args.pipeline_remote_root / 'src'))}:{shlex.quote(str(args.pipeline_runtime_root))}:{shlex.quote(str(args.pipeline_remote_root))}
+export DMD_SYSTEM_ROOT={shlex.quote(str(args.pipeline_remote_root))}
+export DISTILLSCHEDULE_OUTPUT_DIR={shlex.quote(str(run_root))}
+export DISTILLSCHEDULE_NODE_RANK={node_rank}
+export DISTILLSCHEDULE_PYTHON={shlex.quote(str(PYTHON_REMOTE))}
 export HF_HOME=/share/project/shuchenweng/DistillSchedule_assets/hf_home_official_torch210
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TOKENIZERS_PARALLELISM=false
 export LOCAL_KERNELS=kernels-community/flash-attn2=/share/project/shuchenweng/DistillSchedule_assets/hf_home_official_torch210/hub/models--kernels-community--flash-attn2/snapshots/6a810a7a010ba2aad6613f1f0f7b226fb8bdee3c/build/torch210-cxx11-cu128-x86_64-linux
@@ -236,7 +248,7 @@ export TORCH_NCCL_ASYNC_ERROR_HANDLING=1 TORCH_NCCL_ENABLE_MONITORING=1
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True,garbage_collection_threshold:0.9
 export DISTILLSCHEDULE_OPERATION_TRACE_ACCESS_DIR={shlex.quote(str(run_root / 'trace_access'))}
 export DISTILLSCHEDULE_STABLE_BLOCK_NOISE=1 DISTILLSCHEDULE_NSYS_ANNOTATE=1
-export DISTILLSCHEDULE_GAN_NSYS_PROFILE=0 DISTILLSCHEDULE_GAN_EXACT_TIMING=1
+export DISTILLSCHEDULE_GAN_NSYS_PROFILE={nsys_profile} DISTILLSCHEDULE_GAN_EXACT_TIMING={exact_timing}
 export DISTILLSCHEDULE_GAN_TIMING_RECEIPT_DIR={shlex.quote(str(timing_root))}
 set +e
 timeout --signal=TERM --kill-after=180s {args.timeout_seconds}s {command_text} > {shlex.quote(str(rank_log))} 2>&1
@@ -319,6 +331,21 @@ def _remote_finalize(args: argparse.Namespace, family: str, run_root: Path) -> d
         else args.pipeline_runtime_root
     )
     run_evidence_root = run_root if family == "baseline" else run_root
+    profile_nsys = bool(getattr(args, "profile_nsys", False))
+    timing_validation = "" if profile_nsys else f'''\
+{shlex.quote(str(PYTHON_REMOTE))} {shlex.quote(str(dmd_root / 'scripts/distillschedule/validate_gan_timing_receipts.py'))} \\
+  --receipt-dir {shlex.quote(str(run_root / 'timing_receipts'))} --world-size 16 \\
+  --output {shlex.quote(str(receipt_root / 'timing_validation.json'))}
+'''
+    profile_validation = "" if not profile_nsys else f'''\
+test -s {shlex.quote(str(run_root / 'nsight/node_0/gan_full5_node0.nsys-rep'))}
+test -s {shlex.quote(str(run_root / 'nsight/node_1/gan_full5_node1.nsys-rep'))}
+test -s {shlex.quote(str(run_root / 'nsight/node_0/profile_manifest.txt'))}
+test -s {shlex.quote(str(run_root / 'nsight/node_1/profile_manifest.txt'))}
+{shlex.quote(str(PYTHON_REMOTE))} {shlex.quote(str(dmd_root / 'scripts/distillschedule/validate_gan_nsys_receipts.py'))} \\
+  --receipt-dir {shlex.quote(str(run_root / 'nsight/range_receipts'))} --world-size 16 \\
+  --local-world-size 8 --output {shlex.quote(str(run_root / 'nsight/range_receipts_validation.json'))}
+'''
     build = f'''set -Eeuo pipefail
 export PYTHONPATH={shlex.quote(str(dmd_root / 'src'))}:{shlex.quote(str(dmd_root))}:{shlex.quote(str(runtime_root))}
 test ! -e {shlex.quote(str(receipt_root))} || {{ echo receipt_root_exists >&2; exit 82; }}
@@ -326,9 +353,7 @@ test ! -e {shlex.quote(str(receipt_root))} || {{ echo receipt_root_exists >&2; e
   --family {family} --run-root {shlex.quote(str(run_evidence_root))} \
   --trace-bundle {shlex.quote(str(args.trace_bundle))} \
   --output-dir {shlex.quote(str(receipt_root))} --expected-streamed-block-count 40
-{shlex.quote(str(PYTHON_REMOTE))} {shlex.quote(str(dmd_root / 'scripts/distillschedule/validate_gan_timing_receipts.py'))} \
-  --receipt-dir {shlex.quote(str(run_root / 'timing_receipts'))} --world-size 16 \
-  --output {shlex.quote(str(receipt_root / 'timing_validation.json'))}
+{timing_validation}{profile_validation}
 '''
     _ssh_checked(args.hosts[0], build)
     summary_script = f'''set -Eeuo pipefail
@@ -405,6 +430,25 @@ PY
     value = json.loads(_ssh_checked(args.hosts[0], summary_script).strip().splitlines()[-1])
     if value.get("status") != "PASS":
         raise RuntimeError(f"{family} strict result summary failed: {value}")
+    if profile_nsys:
+        manifests: list[dict[str, Any]] = []
+        for node_rank in (0, 1):
+            manifest_path = run_root / "nsight" / f"node_{node_rank}" / "profile_manifest.txt"
+            raw = _ssh_checked(
+                args.hosts[0],
+                f"cat {shlex.quote(str(manifest_path))}",
+            )
+            fields = dict(
+                line.split("=", 1) for line in raw.splitlines() if "=" in line
+            )
+            if fields.get("status") != "PASS":
+                raise RuntimeError(f"node {node_rank} Nsight manifest failed: {fields}")
+            if fields.get("diagnostic_only") != "true" or fields.get(
+                "formal_speedup_eligible"
+            ) != "false":
+                raise RuntimeError(f"node {node_rank} Nsight claim boundary drift")
+            manifests.append({"node_rank": node_rank, **fields})
+        value["nsight_node_manifests"] = manifests
     return value
 
 
@@ -423,11 +467,29 @@ def _fetch_and_write_result(
         f"{run_root}/execution_receipts/",
         evidence / "execution_receipts",
     )
-    _rsync_from(
-        args.hosts[0],
-        f"{run_root}/timing_receipts/",
-        evidence / "timing_receipts",
-    )
+    profile_nsys = bool(getattr(args, "profile_nsys", False))
+    if profile_nsys:
+        profile_evidence = evidence / "nsight"
+        profile_evidence.mkdir(parents=True, exist_ok=False)
+        for relative in (
+            "range_receipts",
+            "range_receipts_validation.json",
+            "node_0/profile_manifest.txt",
+            "node_0/nsys_stats_validation.log",
+            "node_1/profile_manifest.txt",
+            "node_1/nsys_stats_validation.log",
+        ):
+            _rsync_from(
+                args.hosts[0],
+                f"{run_root}/nsight/{relative}",
+                profile_evidence / relative,
+            )
+    else:
+        _rsync_from(
+            args.hosts[0],
+            f"{run_root}/timing_receipts/",
+            evidence / "timing_receipts",
+        )
     receipt_root = evidence / "execution_receipts"
     timing_root = evidence / "timing_receipts"
     result = {
@@ -435,13 +497,15 @@ def _fetch_and_write_result(
         "status": "PASS",
         "family": family,
         "run_id": args.run_id,
-        "profiled": False,
-        "diagnostic_only": False,
+        "profiled": profile_nsys,
+        "diagnostic_only": profile_nsys,
+        "formal_speedup_eligible": not profile_nsys,
         "logical_steps": [1000, 1001, 1002, 1003, 1004],
         "workload_contract_digest": workload_digest,
         "gan_fairness_receipt": str(receipt_root / "gan_fairness_receipt.json"),
         "gan_compute_receipt": str(receipt_root / "gan_compute_receipt.json"),
-        "gan_timing_receipt_dir": str(timing_root),
+        "gan_timing_receipt_dir": None if profile_nsys else str(timing_root),
+        "nsight_evidence_dir": str(evidence / "nsight") if profile_nsys else None,
         "remote_run_root": str(run_root),
         "remote_summary": dict(remote_summary),
         "fixed_memory_policy": {
@@ -479,6 +543,11 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--negative-prompt", type=Path, default=DEFAULT_NEGATIVE)
     p.add_argument("--pipeline-mmap", type=Path, default=DEFAULT_PIPELINE_MMAP)
     p.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    p.add_argument(
+        "--profile-nsys",
+        action="store_true",
+        help="diagnostic exact-range Nsight run; never formal-speedup eligible",
+    )
     return p
 
 
@@ -497,6 +566,8 @@ def main() -> int:
     )
     args.run_nonce = int(hashlib.sha256(args.run_id.encode()).hexdigest()[:12], 16)
     workload_digest = _workload_digest(args.workload_contract)
+    if args.profile_nsys and args.family != "pipeline":
+        raise SystemExit("--profile-nsys is implemented only for the pipeline worker")
     run_log = args.result_path.parent / f"{args.family}_controller.log"
     try:
         _assert_remote_idle(args.hosts)
