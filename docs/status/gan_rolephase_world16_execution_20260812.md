@@ -154,3 +154,27 @@ or quality evidence. Failed or unexecuted gates remain `NOT_RUN`.
   reverse G201 target, then complete the existing B->A redistribution.  This
   preserves all model math and versions; its construction and pinning time is
   deliberately included in the formal handoff-to-A timing window.
+
+## Real-14B correctness attempt 03
+
+- **Run:** `gan-rp16-correctness-resident-20260812-03`
+- **Result:** **the first lifetime fix materially lowered the Phase-A boundary
+  but did not yet cross host admission.**
+- **Measured change:** `models_and_targets_ready` fell from about 633.18 GB to
+  431.64 GB.  The selected Generator activation-offload interval then added
+  about 384 GB and reached a sampled 816,039,571,456 bytes; node0 `oom_kill`
+  increased from 1 to 2.  All failures remained before Phase B, with no CUDA
+  OOM; resident Score capacity therefore remains undecided.
+- **New evidence:** after removing the four reverse targets, the remaining
+  overlap is now the seven non-owner forward targets plus Phase-A saved
+  tensors.  Only rank0's future Generator is needed before Phase A, because it
+  is the destination for G201 extraction and the EMA owner.  Ranks1--3 do not
+  need their Generator until G201 broadcast; ranks4--7 do not need their
+  Critic until the A->B handoff.
+- **Final bounded host-lifetime recovery:** preconstruct only rank0's G201
+  destination.  Concurrently construct and pin the other seven forward targets
+  after Phase-A activation handles are drained and the obsolete ZeRO-3 source
+  is released.  Include this work in `handoff_to_b`; keep reverse Generators
+  lazy after C1005 release.  This is not a construction wave and does not alter
+  the workload.  If the same host-capacity failure persists after this layout,
+  stop this recovery path rather than escalating further.

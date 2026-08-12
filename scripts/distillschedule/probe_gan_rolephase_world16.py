@@ -425,8 +425,17 @@ def _preconstruct_targets(
         "reverse_restore": None,
         "reverse_pin": None,
         "reverse_policy": "LAZY_AFTER_PHASE_B_CRITIC_RELEASE",
+        "forward_policy": (
+            "COLD_PRECONSTRUCT_G201_EXTRACTION_OWNER"
+            if global_rank == PHASE_B_G_RANKS[0]
+            else (
+                "LAZY_AFTER_PHASE_A_SOURCE_RELEASE"
+                if global_rank in PHASE_B_G_RANKS or global_rank in FLEX_RANKS
+                else "REUSE_PHASE_A_SCORE"
+            )
+        ),
     }
-    if global_rank in PHASE_B_G_RANKS:
+    if global_rank == PHASE_B_G_RANKS[0]:
         model, metadata, restore = _build_cpu_model(
             args=args, role="generator", logical=logical
         )
@@ -436,18 +445,52 @@ def _preconstruct_targets(
             forward_restore=restore,
             forward_pin=pr6.pin_module_cpu_registered_state(model),
         )
-    elif global_rank in FLEX_RANKS:
-        model, metadata, restore = _build_cpu_model(
-            args=args, role="critic", logical=logical
-        )
-        value.update(
-            forward_model=model,
-            forward_metadata=metadata,
-            forward_restore=restore,
-            forward_pin=pr6.pin_module_cpu_registered_state(model),
-        )
     pr6._control_barrier(control_group)
     return value
+
+
+def _construct_forward_target_after_phase_a(
+    *,
+    args: argparse.Namespace,
+    global_rank: int,
+    logical: LogicalCheckpointPackage,
+    targets: dict[str, Any],
+) -> dict[str, Any]:
+    """Materialize only targets whose first use follows Phase-A release."""
+
+    if targets["forward_model"] is not None:
+        return {
+            "policy": targets["forward_policy"],
+            "constructed_in_handoff": False,
+        }
+    if global_rank in PHASE_B_G_RANKS:
+        role = "generator"
+    elif global_rank in FLEX_RANKS:
+        role = "critic"
+    else:
+        return {
+            "policy": targets["forward_policy"],
+            "constructed_in_handoff": False,
+        }
+    model, metadata, restore = _build_cpu_model(
+        args=args, role=role, logical=logical
+    )
+    host_preparation = pr6.pin_module_cpu_registered_state(model)
+    host_preparation["timing_scope"] = "included_handoff_to_b"
+    targets.update(
+        forward_model=model,
+        forward_metadata=metadata,
+        forward_restore=restore,
+        forward_pin=host_preparation,
+    )
+    return {
+        "policy": targets["forward_policy"],
+        "constructed_in_handoff": True,
+        "role": role,
+        "metadata": metadata,
+        "logical_restore": restore,
+        "host_preparation": host_preparation,
+    }
 
 
 def _phase_a_payload(
@@ -1744,6 +1787,19 @@ def main() -> int:
         pr6._phase_a_file_barrier(
             exchange=exchange,
             name="phase_a_source_release",
+            node_rank=args.node_rank,
+            control_group=phase_a_group,
+            timeout_seconds=args.timeout_seconds,
+        )
+        result["lazy_forward_target"] = _construct_forward_target_after_phase_a(
+            args=args,
+            global_rank=global_rank,
+            logical=logical,
+            targets=targets,
+        )
+        pr6._phase_a_file_barrier(
+            exchange=exchange,
+            name="phase_b_targets_ready",
             node_rank=args.node_rank,
             control_group=phase_a_group,
             timeout_seconds=args.timeout_seconds,

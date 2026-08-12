@@ -100,7 +100,7 @@ def test_worker_defaults_to_resident_phase_b_and_has_no_implicit_tail4() -> None
     assert option.choices == (0, 4)
 
 
-def test_flex_reverse_generator_is_not_cold_preconstructed(monkeypatch) -> None:
+def test_only_g201_extraction_owner_is_cold_preconstructed(monkeypatch) -> None:
     roles: list[str] = []
 
     def build(*, args, role, logical):
@@ -120,10 +120,53 @@ def test_flex_reverse_generator_is_not_cold_preconstructed(monkeypatch) -> None:
         logical=object(),
         control_group=object(),
     )
-    assert roles == ["critic"]
-    assert targets["forward_model"] is not None
+    assert roles == []
+    assert targets["forward_model"] is None
     assert targets["reverse_model"] is None
+    assert targets["forward_policy"] == "LAZY_AFTER_PHASE_A_SOURCE_RELEASE"
     assert targets["reverse_policy"] == "LAZY_AFTER_PHASE_B_CRITIC_RELEASE"
+
+    owner = worker._preconstruct_targets(
+        args=SimpleNamespace(),
+        global_rank=worker.PHASE_B_G_RANKS[0],
+        logical=object(),
+        control_group=object(),
+    )
+    assert roles == ["generator"]
+    assert owner["forward_model"] is not None
+    assert owner["forward_policy"] == "COLD_PRECONSTRUCT_G201_EXTRACTION_OWNER"
+
+
+def test_flex_forward_target_is_built_after_phase_a_release(monkeypatch) -> None:
+    roles: list[str] = []
+
+    def build(*, args, role, logical):
+        roles.append(role)
+        return object(), {"role": role}, {"component": role}
+
+    monkeypatch.setattr(worker, "_build_cpu_model", build)
+    monkeypatch.setattr(
+        worker.pr6,
+        "pin_module_cpu_registered_state",
+        lambda _model: {"timing_scope": "excluded_cold_preparation"},
+    )
+    targets = {
+        "forward_model": None,
+        "forward_metadata": None,
+        "forward_restore": None,
+        "forward_pin": None,
+        "forward_policy": "LAZY_AFTER_PHASE_A_SOURCE_RELEASE",
+    }
+    observed = worker._construct_forward_target_after_phase_a(
+        args=SimpleNamespace(),
+        global_rank=worker.FLEX_RANKS[0],
+        logical=object(),
+        targets=targets,
+    )
+    assert roles == ["critic"]
+    assert observed["constructed_in_handoff"] is True
+    assert observed["host_preparation"]["timing_scope"] == "included_handoff_to_b"
+    assert targets["forward_model"] is not None
 
 
 def test_input_gate_reads_resolution_from_helios_data_config() -> None:
