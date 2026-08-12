@@ -7,7 +7,7 @@ from distillschedule.runtime.gan_rolephase import (
     GanFull5RolePhaseState,
     GanRolePhase,
     GanRolePhaseTopology,
-    GpuShardedResidencyContract,
+    PhaseResidencyContract,
     ProducerPayloadCredits,
     balanced_shards,
     plan_contiguous_reshard,
@@ -22,6 +22,8 @@ def test_rolephase_topology_preserves_phase_a_and_switches_only_flex() -> None:
     assert topology.phase_b_generator_ranks == (0, 1, 2, 3)
     assert topology.phase_b_critic_ranks == tuple(range(4, 16))
     assert topology.flex_ranks == (4, 5, 6, 7)
+    assert topology.phase_a_global_batch == 16
+    assert topology.phase_b_global_batch == 12
 
 
 def test_phase_a_keeps_exact_two_wave_batch16_mapping() -> None:
@@ -34,37 +36,34 @@ def test_phase_a_keeps_exact_two_wave_batch16_mapping() -> None:
     assert [item.score_rank for item in slots[8:]] == list(range(8, 16))
 
 
-def test_phase_b_maps_batch16_to_4g12c_without_sample_loss() -> None:
+def test_phase_b_is_exact_4g12c_batch12_b1() -> None:
     topology = GanRolePhaseTopology()
-    slots = [topology.phase_b_slot(slot) for slot in range(16)]
-    assert sorted(item.logical_slot for item in slots) == list(range(16))
+    slots = [topology.phase_b_slot(slot) for slot in range(12)]
+    assert sorted(item.logical_slot for item in slots) == list(range(12))
+    assert all(item.critic_micro_wave == 0 for item in slots)
     assert sum(item.loss_weight for item in slots) == pytest.approx(1.0)
 
     for rank in topology.fixed_generator_ranks:
         owned = topology.phase_b_slots_for_generator(rank)
-        assert len(owned) == 4
-        assert [item.logical_slot for item in owned] == [rank, rank + 4, rank + 8, rank + 12]
+        assert len(owned) == 3
+        assert [item.logical_slot for item in owned] == [rank, rank + 4, rank + 8]
 
-    for rank in topology.flex_ranks:
-        assert len(topology.phase_b_slots_for_critic(rank)) == 2
-    for rank in topology.fixed_critic_ranks:
-        assert len(topology.phase_b_slots_for_critic(rank)) == 1
+    for rank in topology.phase_b_critic_ranks:
+        owned = topology.phase_b_slots_for_critic(rank)
+        assert len(owned) == 1
 
 
-def test_phase_b_critic_waves_are_12_plus_4() -> None:
+def test_phase_b_rejects_old_batch16_slots() -> None:
     topology = GanRolePhaseTopology()
-    slots = [topology.phase_b_slot(slot) for slot in range(16)]
-    assert sum(item.critic_micro_wave == 0 for item in slots) == 12
-    assert sum(item.critic_micro_wave == 1 for item in slots) == 4
-    assert {item.critic_rank for item in slots if item.critic_micro_wave == 1} == set(
-        topology.flex_ranks
-    )
+    for slot in range(12, 16):
+        with pytest.raises(ValueError, match="\[0,12\)"):
+            topology.phase_b_slot(slot)
 
 
-def test_gpu_residency_contract_rejects_repeated_cpu_frozen_streaming() -> None:
-    GpuShardedResidencyContract()
+def test_phase_residency_contract_rejects_repeated_cpu_frozen_streaming() -> None:
+    PhaseResidencyContract()
     with pytest.raises(ValueError, match="repeated CPU"):
-        GpuShardedResidencyContract(repeated_cpu_frozen_streaming=True)
+        PhaseResidencyContract(repeated_cpu_frozen_streaming=True)
 
 
 def _apply_reshard(total: int, src_ranks: tuple[int, ...], dst_ranks: tuple[int, ...]):
@@ -91,26 +90,11 @@ def _apply_reshard(total: int, src_ranks: tuple[int, ...], dst_ranks: tuple[int,
     return rebuilt, plan
 
 
-def test_gpu_reshard_plan_exactly_supports_g8_to_g4_and_back() -> None:
-    total = 257
-    rebuilt, forward = _apply_reshard(total, tuple(range(8)), tuple(range(4)))
-    assert rebuilt == list(range(total))
-    assert sum(item.numel for item in forward) == total
-    rebuilt_back, reverse = _apply_reshard(total, tuple(range(4)), tuple(range(8)))
-    assert rebuilt_back == list(range(total))
-    assert sum(item.numel for item in reverse) == total
-
-
-def test_gpu_reshard_plan_exactly_supports_score8_to_critic12_and_back() -> None:
-    total = 509
-    c8 = tuple(range(8, 16))
-    c12 = tuple(range(4, 16))
-    rebuilt, forward = _apply_reshard(total, c8, c12)
-    assert rebuilt == list(range(total))
-    assert sum(item.numel for item in forward) == total
-    rebuilt_back, reverse = _apply_reshard(total, c12, c8)
-    assert rebuilt_back == list(range(total))
-    assert sum(item.numel for item in reverse) == total
+def test_gpu_reshard_diagnostic_still_exact_for_layout_changes() -> None:
+    rebuilt, _ = _apply_reshard(257, tuple(range(8)), tuple(range(4)))
+    assert rebuilt == list(range(257))
+    rebuilt, _ = _apply_reshard(509, tuple(range(8, 16)), tuple(range(4, 16)))
+    assert rebuilt == list(range(509))
 
 
 def test_producer_payload_credit_returns_on_send_completion_not_critic_commit() -> None:
@@ -122,9 +106,6 @@ def test_producer_payload_credit_returns_on_send_completion_not_critic_commit() 
     assert credits.available == 0
     with pytest.raises(RuntimeError, match="credits exhausted"):
         credits.reserve(1002)
-
-    # No Critic ACK/commit is involved: NCCL send completion is sufficient to
-    # reuse the producer payload buffer.
     credits.mark_send_complete(slot0, 1000)
     assert credits.available == 1
     assert credits.reserve(1002) == slot0
@@ -164,9 +145,11 @@ def test_full5_rolephase_state_preserves_official_g_c_ema_versions() -> None:
     state.assert_complete()
 
 
-def test_contract_summary_exposes_no_cpu_streaming_and_q2() -> None:
+def test_contract_summary_exposes_phase_local_batches() -> None:
     summary = rolephase_contract_summary()
-    assert summary["phase_a"]["generator_ranks"] == list(range(8))
-    assert summary["phase_b"]["critic_ranks"] == list(range(4, 16))
+    assert summary["phase_a"]["global_batch"] == 16
+    assert summary["phase_b"]["global_batch"] == 12
+    assert summary["phase_b"]["generator_sample_counts"] == {0: 3, 1: 3, 2: 3, 3: 3}
+    assert set(summary["phase_b"]["critic_sample_counts"].values()) == {1}
     assert summary["phase_b"]["queue_depth"] == 2
     assert summary["residency"]["repeated_cpu_frozen_streaming"] is False
