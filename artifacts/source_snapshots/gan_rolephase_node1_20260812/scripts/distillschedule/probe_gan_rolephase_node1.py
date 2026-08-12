@@ -7,7 +7,8 @@ ranks keep one physical Score/Critic backbone resident across both phases:
 * Phase A: eight read-only Score gradient-service lanes, two B1 waves each;
 * transition: bind the same resident module to the Phase-B DP12 ZeRO-1 engine;
 * Phase B: eight of the twelve B1 Critic lanes (logical slots 4..11), one
-  physical ``_critic_loss`` call and one optimizer commit per logical step.
+  ``_critic_loss`` invocation (containing the official two Score forwards) and
+  one optimizer commit per logical step.
 
 It is not a standalone world8 launcher.  Actual model execution requires the
 future node-0 companion so that all sixteen ranks create the same groups and

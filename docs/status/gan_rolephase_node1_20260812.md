@@ -58,7 +58,7 @@ two import roots and passed without changing source.
 - PR8 base: `c221bc9f673f17dc26e4a07cd39b908c6b2b8bd1`;
 - node1 implementation commit: `0b2caa6990afedca0d11065e8ab569446e27febc`;
 - no-Torch CI compatibility guard: `7ff9b8309dcb1dd86ee155d107562eaf390ab478`;
-- external runtime: `9ca730dfd40370b3a859c0fa5f3e554b6bd39223`;
+- external runtime: `cf48efc5b8f5ad62bb8f6ac194f3702e05ff6741`;
 - node1 DMD staging:
   `/share/project/shuchenweng/yongyan_liu/DMD-System_gan_rolephase_pr8_exec_20260812`;
 - node1 runtime staging:
