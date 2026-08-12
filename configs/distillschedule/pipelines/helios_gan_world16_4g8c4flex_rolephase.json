@@ -1,0 +1,68 @@
+{
+  "schema_version": "distillschedule.gan_rolephase_pipeline.v1",
+  "name": "helios_gan_world16_4g8c4flex_rolephase",
+  "claim_status": "IMPLEMENTATION_PROTOTYPE_NOT_GPU_VALIDATED",
+  "world_size": 16,
+  "global_batch": 16,
+  "logical_steps": [1000, 1001, 1002, 1003, 1004],
+  "fixed_generator_ranks": [0, 1, 2, 3],
+  "flex_ranks": [4, 5, 6, 7],
+  "fixed_critic_ranks": [8, 9, 10, 11, 12, 13, 14, 15],
+  "phase_a": {
+    "name": "generator_update",
+    "generator_ranks": [0, 1, 2, 3, 4, 5, 6, 7],
+    "score_ranks": [8, 9, 10, 11, 12, 13, 14, 15],
+    "global_batch": 16,
+    "micro_batch": 1,
+    "waves": 2,
+    "generator_commits": 1,
+    "score_gradient_service_read_only": true
+  },
+  "handoff_to_b": {
+    "flex_transition": "generator_to_critic",
+    "generator_reshard": "8_to_4",
+    "score_critic_reshard": "8_to_12",
+    "frozen_parameter_transport": "nccl_p2p_chunked_reshard",
+    "full_parameter_allgather_forbidden": true,
+    "cpu_frozen_backbone_reload_forbidden": true,
+    "optimizer_state_may_remain_cpu": true,
+    "timed_and_reported": true
+  },
+  "phase_b": {
+    "name": "critic_only_wavefront",
+    "generator_ranks": [0, 1, 2, 3],
+    "critic_ranks": [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    "global_batch": 16,
+    "loss_reduction": "SUM(samples * 1/16)",
+    "critic_wave0_samples": 12,
+    "critic_wave1_samples": 4,
+    "flex_critic_samples_per_step": 2,
+    "fixed_critic_samples_per_step": 1,
+    "producer_payload_buffers": 2,
+    "consumer_uncommitted_window": 2,
+    "payload_credit_return": "nccl_send_completion",
+    "optimizer_ack_required_for_payload_credit": false,
+    "one_batch_ahead": true,
+    "repeated_cpu_frozen_streaming": false
+  },
+  "reverse_handoff": {
+    "generator_reshard": "4_to_8",
+    "critic_score_reshard": "12_to_8",
+    "required_for_steady_state_timing": true
+  },
+  "correctness_reuse": {
+    "trace": "PR7 operation-keyed systems-only GAN trace",
+    "fairness": "PR7 actual-consumption fairness receipt",
+    "compute_inventory": "PR7 compute receipt semantics",
+    "versions": "G200/C1000/EMA800 -> G201/C1005/EMA801",
+    "wire_headers": "PR7 GanGradient/GanCritic header identities"
+  },
+  "forbidden_shortcuts": [
+    "change global batch16",
+    "drop official Score forwards",
+    "change noise/timestep/crop trace",
+    "use repeated CPU frozen-block streaming as steady-state policy",
+    "return producer credit only after Critic optimizer ACK",
+    "hide reverse handoff from steady-state timing"
+  ]
+}
