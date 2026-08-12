@@ -178,3 +178,93 @@ or quality evidence. Failed or unexecuted gates remain `NOT_RUN`.
   lazy after C1005 release.  This is not a construction wave and does not alter
   the workload.  If the same host-capacity failure persists after this layout,
   stop this recovery path rather than escalating further.
+
+## Real-14B correctness attempt 04
+
+- **Run:** `gan-rp16-correctness-resident-20260812-04`
+- **Source:** immutable staged v7, HEAD
+  `1ab00f986ce505dd996721fad61b090ba317bb1c`, source identity
+  `d07ccf7d88274a81db71dd50fb78d877c3e17fcc2e5c06ecd69edd0956559fb0`.
+- **Result:** **the bounded host-lifetime recovery passed, but resident Phase-B
+  Critic failed actual CUDA admission.**
+- **Progress before failure:** Phase A completed on all ranks, including the
+  two-wave batch-16 Generator workload, one accumulation boundary and
+  G200 -> G201. The cross-rank official-control receipt passed with zero local
+  exceptions. All ranks entered the DP12/MB1/GAS1 Phase-B handoff.
+- **Measured failure:** nine Critic ranks emitted explicit CUDA OOM in the first
+  `_critic_loss` backward before any Critic commit. A representative request
+  was 292 MiB. Ranks 4--7 had only 64--98 MiB driver free with about
+  35.23--35.55 GiB PyTorch allocated; observed node1 ranks had about 266--274
+  MiB free with 36.47 GiB allocated. No cgroup OOM occurred.
+- **Resource evidence:** sampled cgroup peaks were 558,179,131,392 bytes on
+  node0 and 124,305,186,816 bytes on node1. The prior empty
+  `host_used_bytes` field prevents a claim about physical-host peak for this
+  run.
+- **Decision:** resident Score is a measured capacity failure. This is the
+  preregistered trigger for exactly one tail-4 fallback; it is not formal
+  timing evidence.
+- **Evidence inventory:**
+  `fad40d25c32391520048a8197cb40b5d795c42e4fc6585997dc16c98cd64ddbb`.
+
+## Real-14B correctness attempt 05
+
+- **Run:** `gan-rp16-correctness-tail4-20260812-05`
+- **Result:** **non-capacity interface failure; no tail-4 conclusion.**
+- **Failure signature:** eleven Critic ranks raised
+  `ImmutableFrozenBlockStreamer.__init__() missing ... logical_component`
+  before executing the streaming policy. Peer Gloo disconnects were
+  downstream cancellation, not a second mechanism. No cgroup OOM occurred.
+- **Bounded fix:** bind the existing streamer to
+  `gan_rolephase_phase_b_critic`. Separately, make the low-overhead resource
+  monitor emit a non-empty physical-host-memory value. Neither change affects
+  model math, trace, batch, topology, update count or memory-policy choice.
+- **Verification:** 47 focused role-phase tests pass on the staged server
+  environment; shell syntax and Python compile checks pass.
+- **Evidence inventory:**
+  `157ba7344fc8b370bead0f92264437b3210ed66cebbb6f43a3d7502ff2519d7c`.
+
+## Real-14B correctness attempt 06
+
+- **Run:** `gan-rp16-correctness-tail4-20260812-06`
+- **Source:** immutable staged v8, HEAD
+  `a43b47b71a65bb2686e6178961b4a686541efe43`, source identity
+  `5743bb3b5fe0d49dc331e43201ca75958b85a878031a27e1c36c9fb8aece2c44`.
+- **Result:** **measured tail-4 CUDA-capacity failure; the current bounded
+  action set is exhausted.**
+- **Passed gates before failure:** all rank-qualified control receipts use the
+  frozen trace and report cross-rank physical/logical call-count parity. Phase
+  A again completed two samples per Generator/Score rank, eight official Score
+  forwards per Score rank, one Generator accumulation boundary and
+  G200 -> G201. All 16 ranks entered the DP12/MB1/GAS1 Phase-B topology. The
+  tail-4 streamer was genuinely installed; surviving Score ranks recorded
+  block 36--39 materialize/release events during checkpoint backward.
+- **Causal failure:** before any C1000 -> C1001 commit, ranks 4--7 failed a
+  292-MiB allocation in the first Critic `second_loss` backward. Driver-free
+  memory was 124--268 MiB, PyTorch allocated 34.22--34.82 GiB, and
+  3.20--3.45 GiB was reserved but unallocated. Rank10 later reached a
+  362-MiB allocation with 352 MiB driver free; this and NCCL timeouts on peers
+  are downstream of the first rank failures, not independent evidence.
+- **Resource evidence:** node0 sampled cgroup/physical-host peaks were
+  568,033,857,536 / 590,454,000,000 bytes; node1 peaks were
+  189,531,119,616 / 212,715,000,000 bytes. Per-GPU sampled peaks were
+  `[37458,37256,37530,37136,40152,40058,40030,40186]` MiB on node0 and
+  `[40132,40140,40132,40132,40124,36622,36622,36620]` MiB on node1. Neither
+  node changed its cgroup OOM counters.
+- **Repeated-failure audit:** the 292-MiB first Critic checkpoint-recompute
+  failure matches Iteration 277's bounded S4 negative result in mechanism and
+  magnitude. Prior bounded work also established that static S5/S6/S8/S10
+  escalation merely moved the failure deeper, and that this platform warns
+  `expandable_segments` is unsupported. Therefore no allocator-flag retry or
+  unregistered S5/S10 escalation is launched here.
+- **Correctness:** **NOT REACHED.** No Critic commit, EMA update, reverse B -> A
+  handoff or final summary can be claimed.
+- **Performance:** **NOT RUN.** The requested three formal trials and the
+  300--400-second target remain unmeasured; failed capacity runs are not timing
+  denominators.
+- **Gate:** **NO-GO for formal timing under the frozen Phase-B candidates
+  `{resident, tail-4}`.** Expanding the action library (for example, explicitly
+  preregistering a previously validated joint Score-streaming plus selective
+  Critic-activation policy for the new DP12 topology) requires a new authorized
+  iteration rather than silent patch escalation.
+- **Evidence inventory:**
+  `5808e07b650e271d1c53c69c1d5a1ef8dc8f2916e8daceb1731c8bc2acfac666`.

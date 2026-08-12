@@ -1,0 +1,118 @@
+{
+  "schema_version": "distillschedule.iteration_manifest.v1",
+  "iteration": 288,
+  "date": "2026-08-12",
+  "gate": "GAN_ROLEPHASE_WORLD16_REAL14B_CORRECTNESS_BEFORE_FORMAL_TIMING",
+  "status": "BOUNDED_NEGATIVE_PHASE_B_CUDA_CAPACITY",
+  "decision": "NO_GO_FORMAL_TIMING_UNDER_FROZEN_RESIDENT_OR_TAIL4_ACTION_SET",
+  "authorized_hypothesis": "The fixed 8G+8Score B16 to 4G+12Critic B12 role-phase schedule can complete one exact Full5 in 300-400 seconds after a bounded resident or tail-4 Phase-B policy.",
+  "frozen_contract": {
+    "world_size": 16,
+    "nodes": 2,
+    "gpus_per_node": 8,
+    "resolution": [384, 640],
+    "precision": "BF16",
+    "logical_steps": [1000, 1001, 1002, 1003, 1004],
+    "phase_a": "DP8_MB1_GAS2_B16_NODE_LOCAL_ZERO3_ONE_GENERATOR_COMMIT",
+    "phase_b": "DP12_MB1_GAS1_B12_GLOBAL_ZERO1_CPU_OPTIMIZER_FIVE_CRITIC_COMMITS",
+    "logical_versions": "G200_C1000_EMA800_TO_G201_C1005_EMA801",
+    "physical_optimizer_versions": "G2_C10_TO_G3_C15",
+    "trace_bundle_hash": "d31d4d473a3574b5b39e50ad2b5e72e17aee7baf707130ea0513092553f7cd15",
+    "logical_package_hash": "c66ff180fa4d00c78ba05ffd1826b7e358e0ab38d2f3f68f5f92dad5fe42dd44",
+    "phase_b_candidates": [0, 4]
+  },
+  "source": {
+    "executed_source_head": "a43b47b71a65bb2686e6178961b4a686541efe43",
+    "remote_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_rolephase_world16_exec_v8_20260812",
+    "source_identity_hash": "5743bb3b5fe0d49dc331e43201ca75958b85a878031a27e1c36c9fb8aece2c44",
+    "helios_runtime_root": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_gan_rolephase_exec_20260812"
+  },
+  "verification": {
+    "focused_tests_passed": 47,
+    "focused_tests_warning_count": 1,
+    "shell_syntax": "PASS",
+    "python_compile": "PASS",
+    "gpu_processes_after": 0,
+    "node0_cgroup_oom_kill_before_after": [2, 2],
+    "node1_cgroup_oom_kill_before_after": [0, 0]
+  },
+  "attempts": [
+    {
+      "run_id": "gan-rp16-correctness-resident-20260812-04",
+      "classification": "MEASURED_CUDA_CAPACITY_FAILURE",
+      "phase_b_streamed_blocks": 0,
+      "progress": "PHASE_A_AND_HANDOFF_TO_B_PASS_FIRST_CRITIC_BACKWARD_OOM",
+      "oom_rank_count": 9,
+      "representative_failed_allocation_mib": 292,
+      "critic_commits": 0,
+      "evidence_inventory_sha256": "fad40d25c32391520048a8197cb40b5d795c42e4fc6585997dc16c98cd64ddbb"
+    },
+    {
+      "run_id": "gan-rp16-correctness-tail4-20260812-05",
+      "classification": "NON_CAPACITY_INTERFACE_FAILURE",
+      "phase_b_streamed_blocks": 4,
+      "failure": "ImmutableFrozenBlockStreamer missing logical_component",
+      "capacity_conclusion": "NOT_RUN",
+      "evidence_inventory_sha256": "157ba7344fc8b370bead0f92264437b3210ed66cebbb6f43a3d7502ff2519d7c"
+    },
+    {
+      "run_id": "gan-rp16-correctness-tail4-20260812-06",
+      "classification": "MEASURED_CUDA_CAPACITY_FAILURE",
+      "phase_b_streamed_blocks": 4,
+      "progress": "PHASE_A_AND_HANDOFF_TO_B_PASS_TAIL4_EXECUTED_FIRST_CRITIC_BACKWARD_OOM",
+      "phase_a_generator_version": [200, 201],
+      "phase_a_generator_accumulation_boundaries": 1,
+      "phase_a_score_forwards_per_rank": 8,
+      "critic_commits": 0,
+      "ema_updates": 0,
+      "reverse_handoff": "NOT_RUN",
+      "primary_oom": {
+        "ranks": [4, 5, 6, 7],
+        "failed_allocation_mib": 292,
+        "driver_free_mib_range": [124, 268],
+        "pytorch_allocated_gib_range": [34.22, 34.82],
+        "reserved_unallocated_gib_range": [3.20, 3.45],
+        "site": "first Critic second_loss checkpoint-recompute backward"
+      },
+      "downstream_oom": {
+        "rank": 10,
+        "failed_allocation_mib": 362,
+        "driver_free_mib": 352
+      },
+      "resource_peaks": {
+        "node0_cgroup_bytes": 568033857536,
+        "node0_host_used_bytes": 590454000000,
+        "node0_per_gpu_mib": [37458, 37256, 37530, 37136, 40152, 40058, 40030, 40186],
+        "node1_cgroup_bytes": 189531119616,
+        "node1_host_used_bytes": 212715000000,
+        "node1_per_gpu_mib": [40132, 40140, 40132, 40132, 40124, 36622, 36622, 36620]
+      },
+      "evidence_inventory_sha256": "5808e07b650e271d1c53c69c1d5a1ef8dc8f2916e8daceb1731c8bc2acfac666"
+    }
+  ],
+  "repeated_failure_match": {
+    "prior_iteration": 277,
+    "prior_policy": "G40_S4",
+    "mechanism": "first Critic denoising second_loss checkpoint-recompute backward",
+    "magnitude": "292 MiB allocation with insufficient driver-free memory",
+    "validated_recovery_history": "Static S5/S6/S8/S10 escalation was closed; joint selective activation was the later causal path.",
+    "rejected_paths": [
+      "repeat tail4",
+      "allocator-flag retry on a platform that reports expandable_segments unsupported",
+      "silent S5 or S10 action-library expansion",
+      "formal timing after failed correctness"
+    ]
+  },
+  "correctness_status": "NOT_REACHED_PHASE_B_NO_CRITIC_COMMIT",
+  "formal_timing_status": "NOT_RUN",
+  "target_300_400_seconds_status": "NOT_MEASURED",
+  "not_run": [
+    "C1000 to C1005",
+    "EMA800 to EMA801",
+    "reverse B-to-A redistribution",
+    "final queue and lifecycle summary",
+    "three formal timing trials",
+    "Nsight"
+  ],
+  "next_authorization_required": "Explicitly preregister a Phase-B policy outside {resident, tail-4}, preferably reusing the already-audited joint Score streaming plus selective Critic activation primitive under the new DP12 topology."
+}
