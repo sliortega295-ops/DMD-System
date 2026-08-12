@@ -117,3 +117,22 @@ def test_input_gate_reads_resolution_from_helios_data_config() -> None:
     assert observed["single_height"] == 384
     assert observed["single_width"] == 640
     assert observed["gan_start_step"] == 1000
+
+
+def test_nonmember_group_validation_never_introspects_sentinel(monkeypatch) -> None:
+    sentinel = object()
+    monkeypatch.setattr(
+        worker.dist,
+        "GroupMember",
+        SimpleNamespace(NON_GROUP_MEMBER=sentinel),
+    )
+
+    def forbidden(_group):
+        raise AssertionError("NON_GROUP_MEMBER must not be introspected")
+
+    monkeypatch.setattr(worker.dist, "get_process_group_ranks", forbidden)
+    assert worker._validated_group_ranks(
+        sentinel,
+        expected=(4, 5, 6),
+        global_rank=0,
+    ) == (4, 5, 6)

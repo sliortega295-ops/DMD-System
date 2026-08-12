@@ -209,6 +209,33 @@ def _restore_local_phase_a_rendezvous(value: dict[str, str]) -> None:
     os.environ.update(value)
 
 
+def _validated_group_ranks(
+    group: Any,
+    *,
+    expected: tuple[int, ...],
+    global_rank: int,
+) -> tuple[int, ...]:
+    """Validate one subgroup without introspecting NON_GROUP_MEMBER.
+
+    PyTorch represents every non-member subgroup handle with the same sentinel.
+    Passing that sentinel to ``get_process_group_ranks`` can therefore report
+    the ranks of an unrelated, most recently created group.  Only members may
+    introspect the handle; non-members instead prove they received the sentinel
+    while the world-ordered construction contract supplies the expected ranks.
+    """
+
+    if global_rank in expected:
+        observed = tuple(dist.get_process_group_ranks(group))
+        if observed != expected:
+            raise AssertionError(
+                f"member subgroup mismatch: {observed} != {expected}"
+            )
+        return observed
+    if group != dist.GroupMember.NON_GROUP_MEMBER:
+        raise AssertionError("non-member rank unexpectedly owns subgroup handle")
+    return expected
+
+
 def _construct_phase_a_source(
     *,
     args: argparse.Namespace,
@@ -1466,8 +1493,16 @@ def main() -> int:
             critic_group = groups.critic
             topology = {
                 "world": tuple(dist.get_process_group_ranks(dist.group.WORLD)),
-                "generator": tuple(dist.get_process_group_ranks(generator_group)),
-                "critic": tuple(dist.get_process_group_ranks(critic_group)),
+                "generator": _validated_group_ranks(
+                    generator_group,
+                    expected=PHASE_B_G_RANKS,
+                    global_rank=global_rank,
+                ),
+                "critic": _validated_group_ranks(
+                    critic_group,
+                    expected=PHASE_B_C_RANKS,
+                    global_rank=global_rank,
+                ),
                 "singleton": tuple(dist.get_process_group_ranks(
                     groups.singleton_for_rank(global_rank)
                 )),

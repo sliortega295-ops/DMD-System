@@ -59,3 +59,20 @@ This experiment is a systems-only phase-local B16/B12 resource/performance
 Pareto point. It is not an official checkpoint-1000 continuation, not a
 same-global-batch Sequential-vs-Pipeline speedup, and not training convergence
 or quality evidence. Failed or unexecuted gates remain `NOT_RUN`.
+
+## Validation attempt 01
+
+- **Run:** `gan-rp16-validate-20260812-01`
+- **Result:** **FAIL before model construction; preserved as non-capacity
+  evidence.**
+- **Observed:** both node launchers returned 1, all GPUs were released, and
+  cgroup `oom`/`oom_kill` remained zero.
+- **Failure signature:** validation called
+  `get_process_group_ranks(GroupMember.NON_GROUP_MEMBER)` for the inactive
+  Phase-B role.  PyTorch's shared non-member sentinel was then misreported as
+  an unrelated singleton subgroup such as `(15,)`.
+- **Root cause:** validation-only introspection bug; process-group creation and
+  the frozen role topology were not changed.
+- **Bounded recovery:** subgroup members inspect the real handle; non-members
+  must prove they hold `NON_GROUP_MEMBER` and use the world-ordered static rank
+  contract.  No model math, batch, optimizer, trace, or schedule changes.
