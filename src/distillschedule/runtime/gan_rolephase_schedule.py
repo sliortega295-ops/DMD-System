@@ -1,13 +1,9 @@
 """Dependency DAG for the phase-aware GAN Full5 wavefront.
 
-The graph encodes the legal overlap instead of relying on loop order:
-
-* Critic compute/commit remains strictly version-serial.
-* Generator production for the next logical batch does not wait for the
-  previous Critic optimizer commit.
-* producer buffer reuse depends on NCCL send completion;
-* the consumer Q2 receive window provides backpressure at depth two; and
-* the reverse handoff is part of the steady-state cycle boundary.
+The graph encodes the legal overlap instead of relying on loop order.
+Phase A now contains the two real Generator/Score boundary waves rather than a
+placeholder flush->commit edge. Phase B keeps Critic versions strictly serial
+while allowing the no-grad Generator producer to stay one batch ahead.
 """
 from __future__ import annotations
 
@@ -18,6 +14,10 @@ from typing import Mapping
 
 class RolePhaseTaskKind(str, enum.Enum):
     PHASE_A_SCORE_FLUSH = "phase_a_score_flush"
+    PHASE_A_G_FORWARD = "phase_a_generator_forward"
+    PHASE_A_LATENT_SEND_COMPLETE = "phase_a_latent_send_complete"
+    PHASE_A_SCORE_BOUNDARY = "phase_a_score_boundary"
+    PHASE_A_G_BACKWARD = "phase_a_generator_backward"
     PHASE_A_GENERATOR_COMMIT = "phase_a_generator_commit"
     HANDOFF_TO_B = "handoff_to_b"
     PRODUCE = "produce"
@@ -36,6 +36,7 @@ class RolePhaseTask:
     logical_step: int | None
     dependencies: tuple[str, ...]
     resource: str
+    micro_wave: int | None = None
 
 
 class GanRolePhasePlanner:
@@ -45,41 +46,127 @@ class GanRolePhasePlanner:
     def _key(step: int, suffix: str) -> str:
         return f"b:{step}:{suffix}"
 
-    def compile_full5(self) -> tuple[RolePhaseTask, ...]:
-        tasks: list[RolePhaseTask] = [
+    @staticmethod
+    def _a(suffix: str, wave: int | None = None) -> str:
+        return f"a:{suffix}" if wave is None else f"a:{suffix}:w{wave}"
+
+    def _phase_a(self) -> list[RolePhaseTask]:
+        return [
             RolePhaseTask(
-                key="a:score_flush",
+                key=self._a("score_flush"),
                 kind=RolePhaseTaskKind.PHASE_A_SCORE_FLUSH,
                 logical_step=1000,
                 dependencies=(),
                 resource="score8",
             ),
             RolePhaseTask(
-                key="a:g_commit",
+                key=self._a("g_forward", 0),
+                kind=RolePhaseTaskKind.PHASE_A_G_FORWARD,
+                logical_step=1000,
+                dependencies=(),
+                resource="generator8",
+                micro_wave=0,
+            ),
+            RolePhaseTask(
+                key=self._a("latent_send_complete", 0),
+                kind=RolePhaseTaskKind.PHASE_A_LATENT_SEND_COMPLETE,
+                logical_step=1000,
+                dependencies=(self._a("g_forward", 0),),
+                resource="phase_a_p2p",
+                micro_wave=0,
+            ),
+            RolePhaseTask(
+                key=self._a("score_boundary", 0),
+                kind=RolePhaseTaskKind.PHASE_A_SCORE_BOUNDARY,
+                logical_step=1000,
+                dependencies=(
+                    self._a("score_flush"),
+                    self._a("latent_send_complete", 0),
+                ),
+                resource="score8",
+                micro_wave=0,
+            ),
+            # Generator wave1 is released by wave0 send completion, not by the
+            # wave0 Score reply. This is the intended Phase-A overlap.
+            RolePhaseTask(
+                key=self._a("g_forward", 1),
+                kind=RolePhaseTaskKind.PHASE_A_G_FORWARD,
+                logical_step=1000,
+                dependencies=(self._a("latent_send_complete", 0),),
+                resource="generator8",
+                micro_wave=1,
+            ),
+            RolePhaseTask(
+                key=self._a("latent_send_complete", 1),
+                kind=RolePhaseTaskKind.PHASE_A_LATENT_SEND_COMPLETE,
+                logical_step=1000,
+                dependencies=(self._a("g_forward", 1),),
+                resource="phase_a_p2p",
+                micro_wave=1,
+            ),
+            RolePhaseTask(
+                key=self._a("score_boundary", 1),
+                kind=RolePhaseTaskKind.PHASE_A_SCORE_BOUNDARY,
+                logical_step=1000,
+                dependencies=(
+                    self._a("score_boundary", 0),
+                    self._a("latent_send_complete", 1),
+                ),
+                resource="score8",
+                micro_wave=1,
+            ),
+            # The single Generator engine finishes forward1 before it consumes
+            # the wave0 returned latent gradient.
+            RolePhaseTask(
+                key=self._a("g_backward", 0),
+                kind=RolePhaseTaskKind.PHASE_A_G_BACKWARD,
+                logical_step=1000,
+                dependencies=(
+                    self._a("score_boundary", 0),
+                    self._a("g_forward", 1),
+                ),
+                resource="generator8",
+                micro_wave=0,
+            ),
+            RolePhaseTask(
+                key=self._a("g_backward", 1),
+                kind=RolePhaseTaskKind.PHASE_A_G_BACKWARD,
+                logical_step=1000,
+                dependencies=(
+                    self._a("score_boundary", 1),
+                    self._a("g_backward", 0),
+                ),
+                resource="generator8",
+                micro_wave=1,
+            ),
+            RolePhaseTask(
+                key=self._a("g_commit"),
                 kind=RolePhaseTaskKind.PHASE_A_GENERATOR_COMMIT,
                 logical_step=1000,
-                dependencies=("a:score_flush",),
-                resource="generator8",
+                dependencies=(self._a("g_backward", 1),),
+                resource="generator8_optimizer",
             ),
             RolePhaseTask(
                 key="handoff:to_b",
                 kind=RolePhaseTaskKind.HANDOFF_TO_B,
                 logical_step=1000,
-                dependencies=("a:g_commit",),
-                resource="world16_reshard",
+                dependencies=(
+                    self._a("g_commit"),
+                    self._a("score_boundary", 1),
+                ),
+                resource="world16_transition",
             ),
         ]
 
+    def compile_full5(self) -> tuple[RolePhaseTask, ...]:
+        tasks: list[RolePhaseTask] = self._phase_a()
+
         for step in range(1000, 1005):
             produce_deps = ["handoff:to_b"]
-            # Two producer payload buffers. Reusing buffer i%2 only requires the
-            # corresponding send from i-2 to have completed; no optimizer ACK.
             if step >= 1002:
                 produce_deps.append(self._key(step - 2, "send_complete"))
 
             receive_deps = ["handoff:to_b"]
-            # Consumer Q2 holds at most current + one-batch-ahead. The receive
-            # for i+2 is posted only after i commits and frees one consumer slot.
             if step >= 1002:
                 receive_deps.append(self._key(step - 2, "commit"))
 
@@ -114,7 +201,6 @@ class GanRolePhasePlanner:
 
             consume_deps = [self._key(step, "send_complete")]
             if step > 1000:
-                # Critic step i must observe C_i committed by step i-1.
                 consume_deps.append(self._key(step - 1, "commit"))
             tasks.append(
                 RolePhaseTask(
@@ -122,7 +208,7 @@ class GanRolePhasePlanner:
                     kind=RolePhaseTaskKind.CRITIC_CONSUME,
                     logical_step=step,
                     dependencies=tuple(consume_deps),
-                    resource="critic12",
+                    resource="critic12_single_physical_call",
                 )
             )
             tasks.append(
@@ -151,7 +237,7 @@ class GanRolePhasePlanner:
                 kind=RolePhaseTaskKind.HANDOFF_TO_A,
                 logical_step=1005,
                 dependencies=(self._key(1004, "commit"), "b:1000:ema"),
-                resource="world16_reshard",
+                resource="world16_transition",
             )
         )
         self.validate(tasks)
@@ -169,8 +255,12 @@ class GanRolePhasePlanner:
                     )
         self.topological_order(tuple(tasks))
 
-        # Version legality: each Critic consume after 1000 must depend on the
-        # immediately preceding commit, but producer work must not.
+        g1 = by_key[self._a("g_forward", 1)]
+        if self._a("latent_send_complete", 0) not in g1.dependencies:
+            raise AssertionError("Generator wave1 lacks wave0 send-complete credit")
+        if self._a("score_boundary", 0) in g1.dependencies:
+            raise AssertionError("Phase-A regressed to send/wait/reply serialization")
+
         for step in range(1001, 1005):
             previous_commit = self._key(step - 1, "commit")
             consume = by_key[self._key(step, "consume")]
@@ -178,9 +268,7 @@ class GanRolePhasePlanner:
             if previous_commit not in consume.dependencies:
                 raise AssertionError("Critic version dependency was dropped")
             if previous_commit in produce.dependencies:
-                raise AssertionError(
-                    "producer regressed to commit-ACK serialization"
-                )
+                raise AssertionError("producer regressed to commit-ACK serialization")
 
         for step in range(1002, 1005):
             receive = by_key[self._key(step, "recv_post")]
