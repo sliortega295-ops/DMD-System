@@ -10,10 +10,10 @@ ranks keep one physical Score/Critic backbone resident across both phases:
   ``_critic_loss`` invocation (containing the official two Score forwards) and
   one optimizer commit per logical step.
 
-It is not a standalone world8 launcher.  Actual model execution requires the
-future node-0 companion so that all sixteen ranks create the same groups and
-the flex ranks 4..7 join the DP12 Critic collective.  ``--contract-only`` is
-the low-cost node-1 validation path and never initializes CUDA/distributed.
+It is not a standalone world8 launcher.  Actual model execution must launch
+with the existing node-0 path so that all sixteen ranks create the same groups
+and the flex ranks 4..7 join the DP12 Critic collective.  ``--contract-only``
+is the low-cost node-1 validation path and never initializes CUDA/distributed.
 """
 from __future__ import annotations
 

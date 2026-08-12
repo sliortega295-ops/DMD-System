@@ -18696,3 +18696,14 @@ forwards. Each Phase-B rank makes one `_critic_loss` call per step, containing
 one denoising Score forward and one packed GAN-D/real/R1 Score forward, so the
 receipt records one loss call and two expected Score forwards. No model math,
 schedule, batch, or measured result changed; real 14B remains `NOT_RUN`.
+
+### Iteration 287 Addendum: node0 implementation status corrected by user
+
+The node1-only scope of this iteration reflected GPU availability, not a
+missing node0 implementation. The node0 execution path already exists and must
+be reused; no new node0 companion should be implemented. The next execution
+gate is a single world16 integration run that launches the existing node0 path
+with this node1 adaptation, first validating group/transport/phase contracts
+and then, if admitted, the real 14B correctness path. What remains `NOT_RUN` is
+that world16 integration and its flex transition evidence, not node0 code
+construction.

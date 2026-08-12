@@ -9,7 +9,7 @@ It is review evidence, not an alternate launcher entry point.
 - DMD-System PR8 source before this adaptation:
   `c221bc9f673f17dc26e4a07cd39b908c6b2b8bd1`
 - External DistillSchedule runtime commit:
-  `cf48efc5b8f5ad62bb8f6ac194f3702e05ff6741`
+  `4cfd762337bae484e43857db87e705793a616917`
 - Node1 DMD staging root:
   `/share/project/shuchenweng/yongyan_liu/DMD-System_gan_rolephase_pr8_exec_20260812`
 - Node1 runtime staging root:

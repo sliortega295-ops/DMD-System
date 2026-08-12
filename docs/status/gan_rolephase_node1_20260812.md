@@ -58,7 +58,7 @@ two import roots and passed without changing source.
 - PR8 base: `c221bc9f673f17dc26e4a07cd39b908c6b2b8bd1`;
 - node1 implementation commit: `0b2caa6990afedca0d11065e8ab569446e27febc`;
 - no-Torch CI compatibility guard: `7ff9b8309dcb1dd86ee155d107562eaf390ab478`;
-- external runtime: `cf48efc5b8f5ad62bb8f6ac194f3702e05ff6741`;
+- external runtime: `4cfd762337bae484e43857db87e705793a616917`;
 - node1 DMD staging:
   `/share/project/shuchenweng/yongyan_liu/DMD-System_gan_rolephase_pr8_exec_20260812`;
 - node1 runtime staging:
@@ -67,11 +67,12 @@ two import roots and passed without changing source.
 ## Explicit Not Run boundary
 
 No 14B model was constructed. Phase-A gradients, DP12 collectives,
-C1000-to-C1005, node0 companion, flex transition, EMA ordering, reverse
-handoff, full receipts, capacity, and timing remain `NOT_RUN`.
+C1000-to-C1005, world16 integration with the existing node0 path, flex
+transition evidence, EMA ordering, reverse handoff, full receipts, capacity,
+and timing remain `NOT_RUN`.
 
 ## Next gate
 
-Implement node0 against the same pre-created group inventory, using PR6's
-validated bounded transition only for flex ranks 4--7. Then run a no-model
-world16 topology/transport gate before any 14B construction.
+Do not implement another node0 worker. Launch the existing node0 path together
+with this node1 adaptation and run the world16 topology/transport and phase
+contract gate before real 14B execution.
