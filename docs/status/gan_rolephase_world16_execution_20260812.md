@@ -104,3 +104,26 @@ or quality evidence. Failed or unexecuted gates remain `NOT_RUN`.
 - **Bounded recovery:** accept valid numeric scientific notation for preserved
   monitor rows and emit integer-formatted host bytes in future runs.  Re-run
   only the offline summarizer; do not repeat the passing GPU lifecycle gate.
+
+## Real-14B correctness attempt 01
+
+- **Run:** `gan-rp16-correctness-resident-20260812-01`
+- **Result:** **FAIL during Score construction; preserved as a non-capacity,
+  non-mathematical launcher-asset bug.**
+- **Observed:** all eight node1 Score ranks rejected the pre-cast state because
+  130 official GAN-head tensors were missing.  The controller then cancelled
+  node0.  No rank entered model compute, all GPUs were released, and both
+  cgroups retained `oom=0`, `oom_kill=0`.
+- **Failure signature:** the new launcher defaulted to the ordinary Score
+  pre-cast `helios-score-transformer-mixed-bf16-v1`, while GAN-enabled model
+  construction requires the already-built supplement
+  `helios-score-transformer-mixed-bf16-gan-systems-v2` bound to bootstrap
+  artifact `c528dd62...`.
+- **Prior evidence/recovery:** the formal systems-only GAN path already pins
+  the v2 GAN Score pre-cast.  Reuse that validated asset; do not weaken strict
+  state-dict loading or synthesize heads independently per rank.
+- **Bounded fix:** select the v2 GAN pre-cast by default and fail closed in the
+  cheap input validator unless its marker is `PASS`, classified
+  `systems_only_gan_precast`, and names the exact logical bootstrap artifact.
+  This changes only initialization asset selection, not model math, batch,
+  optimizer, trace, phase topology, or timed workload.

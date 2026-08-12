@@ -20,6 +20,9 @@ from runtime.gan_rolephase_official import load_official_config
 from runtime.gst_pool_contract import NegativePromptAsset
 
 
+GAN_PRECAST_MARKER = "systems_only_gan_precast.json"
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -33,6 +36,42 @@ def _atomic_json(path: Path, value: dict[str, Any]) -> None:
     temporary = path.with_suffix(path.suffix + f".tmp-{os.getpid()}")
     temporary.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
     os.replace(temporary, path)
+
+
+def gan_precast_contract(
+    precast_root: Path, *, expected_bootstrap_artifact_hash: str
+) -> dict[str, Any]:
+    """Bind the Score pre-cast to the exact systems-only GAN bootstrap.
+
+    The ordinary Score pre-cast intentionally has no GAN heads.  Selecting it
+    for a GAN-enabled model fails only after all ranks start constructing the
+    14B backbone.  Reject that configuration during the cheap input gate and
+    also reject a GAN supplement built from a different bootstrap artifact.
+    """
+
+    marker_path = precast_root / GAN_PRECAST_MARKER
+    if not marker_path.is_file():
+        raise ValueError(
+            f"GAN Score pre-cast marker is missing: {marker_path}"
+        )
+    marker = json.loads(marker_path.read_text())
+    if marker.get("status") != "PASS":
+        raise ValueError("GAN Score pre-cast marker is not PASS")
+    if marker.get("classification") != "systems_only_gan_precast":
+        raise ValueError("Score pre-cast is not classified systems_only_gan_precast")
+    observed = marker.get("bootstrap_artifact_hash")
+    if observed != expected_bootstrap_artifact_hash:
+        raise ValueError(
+            "GAN Score pre-cast/bootstrap mismatch: "
+            f"{observed} != {expected_bootstrap_artifact_hash}"
+        )
+    return {
+        "marker_sha256": _sha256(marker_path),
+        "artifact_hash": marker.get("artifact_hash"),
+        "bootstrap_artifact_hash": observed,
+        "head_fp32_sha256": marker.get("head_fp32_sha256"),
+        "head_parameter_count": marker.get("head_parameter_count"),
+    }
 
 
 def official_config_contract(cfg: Any) -> dict[str, Any]:
@@ -103,6 +142,19 @@ def main() -> int:
         raise ValueError("GAN operation-trace bundle hash changed")
     if logical.manifest.get("input_trace_hash") != trace.bundle_hash:
         raise ValueError("checkpoint and GAN trace output bundle disagree")
+    systems_control = logical.manifest.get("systems_only_control")
+    if not isinstance(systems_control, dict):
+        raise ValueError("systems-only logical control is missing")
+    bootstrap_artifact_hash = systems_control.get("artifact_hash")
+    if (
+        not isinstance(bootstrap_artifact_hash, str)
+        or len(bootstrap_artifact_hash) != 64
+    ):
+        raise ValueError("systems-only bootstrap artifact hash is missing")
+    score_precast = gan_precast_contract(
+        args.precast_score_root,
+        expected_bootstrap_artifact_hash=bootstrap_artifact_hash,
+    )
     negative = NegativePromptAsset.load(args.negative_prompt)
     source_identity = json.loads(args.source_identity.read_text())
     if source_identity.get("schema_version") != "distillschedule.source_identity.v1":
@@ -156,6 +208,7 @@ def main() -> int:
             "score": str(args.score_root.resolve()),
             "precast_score": str(args.precast_score_root.resolve()),
         },
+        "score_gan_precast": score_precast,
         "claim_boundary": (
             "systems_only_gan_bootstrap_phase_local_B16_B12_pareto;"
             "not_official_checkpoint1000;not_matched_batch_speedup"

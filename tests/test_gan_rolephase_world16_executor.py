@@ -121,6 +121,42 @@ def test_input_gate_reads_resolution_from_helios_data_config() -> None:
     assert observed["gan_start_step"] == 1000
 
 
+def test_input_gate_binds_gan_precast_to_logical_bootstrap(tmp_path: Path) -> None:
+    marker = {
+        "status": "PASS",
+        "classification": "systems_only_gan_precast",
+        "artifact_hash": "a" * 64,
+        "bootstrap_artifact_hash": "b" * 64,
+        "head_fp32_sha256": "c" * 64,
+        "head_parameter_count": 130,
+    }
+    (tmp_path / input_gate.GAN_PRECAST_MARKER).write_text(json.dumps(marker))
+    observed = input_gate.gan_precast_contract(
+        tmp_path, expected_bootstrap_artifact_hash="b" * 64
+    )
+    assert observed["bootstrap_artifact_hash"] == "b" * 64
+    assert observed["head_parameter_count"] == 130
+
+
+def test_input_gate_rejects_plain_or_wrong_bootstrap_score_precast(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(ValueError, match="marker is missing"):
+        input_gate.gan_precast_contract(
+            tmp_path, expected_bootstrap_artifact_hash="b" * 64
+        )
+    marker = {
+        "status": "PASS",
+        "classification": "systems_only_gan_precast",
+        "bootstrap_artifact_hash": "c" * 64,
+    }
+    (tmp_path / input_gate.GAN_PRECAST_MARKER).write_text(json.dumps(marker))
+    with pytest.raises(ValueError, match="pre-cast/bootstrap mismatch"):
+        input_gate.gan_precast_contract(
+            tmp_path, expected_bootstrap_artifact_hash="b" * 64
+        )
+
+
 def test_nonmember_group_validation_never_introspects_sentinel(monkeypatch) -> None:
     sentinel = object()
     monkeypatch.setattr(
