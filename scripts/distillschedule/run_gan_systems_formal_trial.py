@@ -24,7 +24,7 @@ from typing import Any, Mapping, Sequence
 
 DEFAULT_HOSTS = ("baai-helios-node0", "baai-helios-node1")
 DEFAULT_MASTER_ADDR = "172.24.129.137"
-DEFAULT_BASELINE_LOCAL_ROOT = Path("/home/lyy/DMD-System_gan_baseline_pr4")
+DEFAULT_BASELINE_LOCAL_ROOT = Path(__file__).resolve().parents[3] / "gan-baseline-pr4"
 DEFAULT_BASELINE_REMOTE_ROOT = Path(
     "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pr4_exec_20260810"
 )
