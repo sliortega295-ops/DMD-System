@@ -1,4 +1,4 @@
-# GAN role-phase v1: 4 fixed G + 8 fixed C + 4 Flex
+# GAN role-phase v2: 4 fixed G + 8 fixed C + 4 Flex
 
 ## Scope
 
@@ -12,11 +12,10 @@ Reused unchanged:
 - GAN latent / latent-gradient / Critic request header identities;
 - official global batch16 and logical steps1000--1004.
 
-Not claimed yet:
+Still not claimed:
 
-- real 14B GPU execution;
-- numerical parity of a 12-rank Critic backend;
-- FSDP/ZeRO-3 integration;
+- real 14B end-to-end execution from this branch;
+- numerical parity of the final DeepSpeed/FSDP C12 reduction backend;
 - any speedup.
 
 ## Physical topology
@@ -31,47 +30,76 @@ Startup creates all groups once:
 - Phase-B G4: ranks 0--3;
 - Phase-B Critic12: ranks 4--15.
 
-No NCCL group creation belongs in the formal timing window.
+No process-group creation belongs in the formal timing window.
 
-## Phase A: 8G + 8Score
+## Phase A: real two-wave overlap contract
 
-The logical batch16 remains two waves of eight. This preserves the already validated PR #7 Generator-update semantics and one G commit.
+Phase A remains the already validated batch16 topology, but the DAG no longer collapses the whole Generator update into `score_flush -> G commit`.
 
-The next executor must remove the current callback-level `send -> wait -> reply -> next wave` serialization. Wave1 Generator forward is allowed to proceed after the wave0 latent send is safe while Score computes the wave0 DMD/GAN-G boundary.
+The explicit dependency is:
 
-## Bounded handoff
+```text
+G forward wave0 -> latent send0 -----------------> Score boundary0
+                         |
+                         +------> G forward wave1 -> latent send1
+                                      |                  |
+                                      |                  +--> Score boundary1
+                                      +----------------------> G backward0
+Score boundary1 + G backward0 ---------------------------> G backward1
+G backward1 ---------------------------------------------> one G commit
+```
 
-After the G201 commit and Score-gradient-service drain:
+The critical invariant is that `G forward wave1` depends on **wave0 send completion**, not the wave0 Score gradient reply. This removes the old callback-level `send -> wait -> reply -> next wave` serialization while keeping one local Generator engine call at a time.
 
-- Generator forward state is resharded 8 -> 4;
-- Score/Critic forward state is resharded 8 -> 12;
-- Flex ranks switch G -> Critic;
-- frozen-backbone movement is GPU-side NCCL chunked reshard, not repeated CPU block streaming;
-- CPU optimizer state may remain on CPU.
+## Bounded handoff: use the proven PR #6 substrate first
 
-`plan_contiguous_reshard()` defines an exact canonical flat-shard intersection plan, so a runtime never needs to materialize the full 14B payload on one GPU.
+GPU live-reshard is no longer the required first backend. The first real role-phase executor should reuse the no-GAN PR #6 transition family:
 
-The reverse 4 -> 8 and 12 -> 8 handoff is part of a steady-state cycle and must be timed/reported.
+- future target model is constructed on CPU before formal timing;
+- target host state may be registered/pinned before timing;
+- after G201 and Score-gradient-service drain, Flex ranks perform one bounded role transition;
+- stable Phase B does **not** repeatedly CPU-stream frozen Transformer blocks;
+- CPU optimizer state may remain on CPU;
+- forward and reverse transitions are both part of steady-state timing.
 
-## Phase B: 4G + 12Critic
+The old canonical `plan_contiguous_reshard()` remains a diagnostic/future optimization only. Its locality problem is therefore not a blocker for the first GPU role-phase run.
 
-Global batch16 is preserved exactly:
+## Phase B: one collective-safe model call per C12 rank
 
-- Critic wave0: 12 samples, one per rank4--15;
-- Critic wave1: 4 samples, one extra on Flex ranks4--7;
-- every sample contributes weight `1/16`;
-- the final reduction is a SUM of weighted per-sample gradients, not a mean over 12 ranks.
+The old `12 samples + 4 samples` description was only logical accounting. It is replaced by one physical model call on every Critic rank per logical step:
 
-Each fixed G rank produces four logical samples:
+- Flex C ranks 4--7: local batch **2**;
+- fixed C ranks 8--15: local batch **1**;
+- all twelve ranks enter the same number of parameter collectives and backward boundaries;
+- exactly one logical Critic optimizer commit occurs per step.
 
-- G0: 0,4,8,12;
-- G1: 1,5,9,13;
-- G2: 2,6,10,14;
-- G3: 3,7,11,15.
+Logical slot ownership is unchanged:
 
-## Q2 wavefront
+- C4: slots 0,12
+- C5: slots 1,13
+- C6: slots 2,14
+- C7: slots 3,15
+- C8..C15: slots 4..11, one each.
 
-The new state machine intentionally separates two resource constraints.
+Every logical sample retains weight `1/16`. Backend gradient reduction semantics must be explicitly bound:
+
+- if the backend performs DP **SUM**, each local per-sample loss sum is scaled by `1/16`;
+- if the backend performs DP **MEAN over 12 ranks**, each local per-sample loss sum is scaled by `12/16` before the backend mean.
+
+No code may infer this from the configured rank count.
+
+### Batch-aware operation trace
+
+Flex B2 requires more than concatenating generated `x0`. The two logical samples also carry distinct operation-keyed:
+
+- timestep/noise;
+- GAN fake/real/R1 crops;
+- R1 epsilon;
+- history/source tensors.
+
+`runtime/gan_rolephase_helios.py` batches these tensors along their explicit B1 dimension. Operation controls, including the DiT stage schedule, must be identical across the two traces; otherwise the batch adapter fails closed.
+
+## Q2 wavefront and ordered transport
 
 Producer side:
 
@@ -83,24 +111,48 @@ Consumer side:
 
 - at most two received logical batches may remain uncommitted;
 - receiving batch `i+2` waits for Critic commit `i`;
-- Critic compute for step `i+1` still waits for commit `i`, preserving C-version semantics.
+- Critic compute for step `i+1` still waits for commit `i`.
 
-Therefore G production can be one batch ahead while Critic updates remain strictly ordered.
+P2P ordering is explicit. Every pending receive is bound to:
 
-## First implementation files
+`(step, logical_slot, wave, src, dst, trace, G version, C before/after)`.
 
-- `src/distillschedule/runtime/gan_rolephase.py`: topology, uneven batch mapping, G/C/EMA state, Q2 credits, GPU reshard plan.
-- `src/distillschedule/runtime/gan_rolephase_schedule.py`: explicit dependency DAG for legal overlap.
-- `src/distillschedule/runtime/gan_rolephase_transport.py`: pre-posted Critic receives and send-completion credit primitive reusing PR #7 headers.
-- `src/distillschedule/runtime/gan_rolephase_groups.py`: pre-created Phase-A/Phase-B/Flex process groups.
-- `configs/distillschedule/pipelines/helios_gan_world16_4g8c4flex_rolephase.json`: frozen prototype configuration.
-- `scripts/distillschedule/inspect_gan_rolephase.py`: CPU-only contract/reshard inspector.
+Each `(src,dst)` edge owns a FIFO. Multiple receives may be pre-posted, but consuming a later receive before the FIFO head fails. Pending objects are removed by object identity rather than Tensor dataclass equality.
 
-## Next implementation gate before GPU launch
+## Implementation files
 
-The real executor still needs two concrete backends:
+- `src/distillschedule/runtime/gan_rolephase.py`: topology, sample routing, Q2 and version state.
+- `src/distillschedule/runtime/gan_rolephase_critic.py`: collective-safe B2/B1 batch16 and reduction contract.
+- `src/distillschedule/runtime/gan_rolephase_transition.py`: PR #6 persistent-pinned transition contract.
+- `src/distillschedule/runtime/gan_rolephase_schedule.py`: explicit Phase-A and Phase-B dependency DAG.
+- `src/distillschedule/runtime/gan_rolephase_transport.py`: identity-bound per-edge FIFO P2P.
+- `src/distillschedule/runtime/gan_rolephase_groups.py`: pre-created process groups.
+- `runtime/gan_rolephase_helios.py`: batch-aware Helios operation-trace/source adapter and backward scaling wrapper.
+- `configs/distillschedule/pipelines/helios_gan_world16_4g8c4flex_rolephase.json`: v2 prototype configuration.
+- `scripts/distillschedule/inspect_gan_rolephase.py`: contract inspector; GPU reshard is diagnostic-only.
 
-1. canonical model-forward-state pack/unpack + GPU chunked 8->4 / 8->12 reshard;
-2. batch16-equivalent 12-rank Critic gradient SUM/reduction and optimizer-step boundary.
+## Validation added in this round
 
-Those must pass CPU/unit tests plus a distributed toy-tensor test before reconnecting the 14B Helios workers. No GPU performance run should be launched from this v1 contract alone.
+Dependency-light CI validates:
+
+- Phase-A wave1 no longer waits for Score wave0 reply;
+- C12 local batches are exactly B2/B2/B2/B2 + eight B1 ranks;
+- every C12 rank has one physical model-call contract;
+- global-batch16 reduction scaling is explicit;
+- pinned transition hides neither direction and forbids stable repeated CPU streaming.
+
+Torch-enabled environments additionally run:
+
+- a 2-rank Gloo FIFO/identity P2P test;
+- B2 operation-trace/source/x0 batching tests.
+
+## Remaining gate before a real 14B GPU launch
+
+The next patch must bind these runtime primitives into a real Helios worker:
+
+1. instantiate the Phase-A Generator/Score engines with the existing official DMD/GAN math;
+2. create/restore the Phase-B C12 trainable engine using the PR #6 transition/checkpoint substrate;
+3. bind the actual DeepSpeed/FSDP gradient reduction semantics to `SUM` or `DP_MEAN` and validate one toy distributed optimizer step against a world16 reference;
+4. run one real world16 correctness/capacity gate before any timing trial.
+
+PR remains Draft until those model bindings pass. No GPU performance run should start from the contract alone.
