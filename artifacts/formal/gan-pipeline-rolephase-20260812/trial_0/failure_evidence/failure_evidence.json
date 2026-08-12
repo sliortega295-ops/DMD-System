@@ -1,0 +1,62 @@
+{
+  "classification": {
+    "actual_capacity_failure": false,
+    "cgroup": [
+      {
+        "after": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0
+        },
+        "before": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0
+        },
+        "node_rank": 0,
+        "oom_delta": 0,
+        "oom_kill_delta": 0
+      },
+      {
+        "after": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0
+        },
+        "before": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0
+        },
+        "node_rank": 1,
+        "oom_delta": 0,
+        "oom_kill_delta": 0
+      }
+    ],
+    "classification_rule": "capacity only if an explicit CUDA OutOfMemory signature or positive cgroup oom/oom_kill delta is observed; return code, NCCL, timeout, and missing artifacts are not capacity evidence",
+    "cuda_signatures": {
+      "cuda_out_of_memory": false,
+      "torch_out_of_memory": false
+    },
+    "schema_version": "distillschedule.gan_pipeline_failure_classification.v1"
+  },
+  "collection_errors": {
+    "activation_offload": "RuntimeError('command failed rc=23: rsync -a --checksum baai-helios-node0:/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_rolephase_g40_s10_act128_formal_20260812_001/activation_offload/ /home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan-pipeline-rolephase-20260812/trial_0/failure_evidence/activation_offload; log=/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan-pipeline-rolephase-20260812/trial_0/failure_evidence/rsync_activation_offload.log')",
+    "block_streaming": "RuntimeError('command failed rc=23: rsync -a --checksum baai-helios-node0:/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_rolephase_g40_s10_act128_formal_20260812_001/block_streaming/ /home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan-pipeline-rolephase-20260812/trial_0/failure_evidence/block_streaming; log=/home/lyy/DMD-System_gan_pipeline_pr5/artifacts/formal/gan-pipeline-rolephase-20260812/trial_0/failure_evidence/rsync_block_streaming.log')"
+  },
+  "fetched": [
+    "launcher",
+    "results"
+  ],
+  "remote_run_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_rolephase_g40_s10_act128_formal_20260812_001",
+  "schema_version": "distillschedule.gan_pipeline_failure_evidence.v1",
+  "status": "COLLECTED"
+}

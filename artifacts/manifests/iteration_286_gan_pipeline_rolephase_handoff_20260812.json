@@ -1,0 +1,58 @@
+{
+  "authorized_action": "Preserve current code and measured results for user correction; do not launch more GPU work.",
+  "capacity_gate": {
+    "formal_speedup_eligible": false,
+    "global_full5_seconds_diagnostic": 868.488686064,
+    "path": "artifacts/formal/gan-pipeline-rolephase-20260812/capacity_gate/result.json",
+    "sha256": "791ec875a0f5cc798a4f26d4269366b50cca0b8eeeedd9a473c616e776af9b1c",
+    "status": "PASS"
+  },
+  "created_at": "2026-08-12T07:36:24.058551+00:00",
+  "decision": "STOP_AND_PUBLISH_DRAFT_PR",
+  "frozen_contract": {
+    "gas": 2,
+    "global_batch": 16,
+    "logical_steps": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004
+    ],
+    "precision": "BF16",
+    "resolution": [
+      384,
+      640
+    ],
+    "topology": "persistent 8G+8Score",
+    "updates": {
+      "critic": 5,
+      "ema": 1,
+      "generator": 1
+    },
+    "world_size": 16
+  },
+  "gate": "GAN_PIPELINE_IMPLEMENTATION_HANDOFF",
+  "iteration": 286,
+  "limitations": [
+    "The 824.685006 s value is one unprofiled exact window, not a completed paired formal result.",
+    "Receipt aggregation failed because the validator expected detailed events that formal mode intentionally omitted.",
+    "The 300-400 s user target was not reached.",
+    "No additional run was launched after the stop request."
+  ],
+  "low_overhead_attempt": {
+    "claimable": false,
+    "global_full5_seconds": 824.685005847,
+    "status": "MODEL_WORKLOAD_PASS_POSTPROCESS_FAIL",
+    "summary_path": "artifacts/formal/gan-pipeline-rolephase-20260812/trial_0/preliminary_timing_summary.json",
+    "summary_sha256": "1dd420e24f84bb2123a366502081d44da2287722b77df62a7e04ffd338dda11b",
+    "three_trial_formal": "NOT_RUN"
+  },
+  "schema_version": "distillschedule.iteration_manifest.v1",
+  "source_snapshot": {
+    "executed_remote_sha_exact_match": true,
+    "path": "artifacts/source_snapshots/gan_pipeline_rolephase_20260812",
+    "runtime_head": "171e3bf38605b790b26341496d714cbf3766fb03"
+  },
+  "status": "MEASURED_PRELIMINARY_NOT_CLAIMABLE"
+}

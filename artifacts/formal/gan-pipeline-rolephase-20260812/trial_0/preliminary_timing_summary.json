@@ -1,0 +1,367 @@
+{
+  "claimable": false,
+  "comparison_context_not_formal_speedup": {
+    "candidate_time_increase_vs_sequential": 0.25690204613260326,
+    "candidate_time_reduction_vs_old_pipeline": 0.27608028190832956,
+    "old_fixed_pipeline_median_seconds": 1139.194009,
+    "old_fixed_pipeline_seconds": [
+      1139.194009,
+      1043.215013,
+      1170.196848
+    ],
+    "old_pipeline_over_candidate_throughput_ratio": 1.381368644904585,
+    "sequential_median_seconds": 656.12512,
+    "sequential_over_candidate_speedup": 0.7956069473169589,
+    "sequential_seconds": [
+      656.12512,
+      596.234347,
+      658.338259
+    ]
+  },
+  "created_at": "2026-08-12T07:36:24.056869+00:00",
+  "policy": {
+    "generator_critic_phase_resident": true,
+    "generator_streamed_block_count": 40,
+    "host_policy": "HOST_SHARED_IMMUTABLE",
+    "prefetch": false,
+    "score_critic_activation_offload_min_mib": 128,
+    "score_streamed_block_count": 10,
+    "streaming_window": 1
+  },
+  "rank_results": [
+    {
+      "max_allocated_bytes": 32794106880,
+      "max_reserved_bytes": 33952890880,
+      "rank": 0,
+      "role": "generator",
+      "sha256": "2504127fd783207efde6a1795bcaba98821cc093fd578b70d0b8f9acbfd17752",
+      "status": "PASS",
+      "updates": {
+        "critic": 0,
+        "ema": 1,
+        "generator": 1
+      }
+    },
+    {
+      "max_allocated_bytes": 32794106880,
+      "max_reserved_bytes": 33952890880,
+      "rank": 1,
+      "role": "generator",
+      "sha256": "37161a515ff4a12a1a14ca75de054b9a77cec0ab1d750a34e4c2a1822521f4e0",
+      "status": "PASS",
+      "updates": {
+        "critic": 0,
+        "ema": 1,
+        "generator": 1
+      }
+    },
+    {
+      "max_allocated_bytes": 32794106880,
+      "max_reserved_bytes": 33952890880,
+      "rank": 2,
+      "role": "generator",
+      "sha256": "806bfff8cb572646a16b23f2abff5861cb98d58b455cbc18086b9c12e8f8abce",
+      "status": "PASS",
+      "updates": {
+        "critic": 0,
+        "ema": 1,
+        "generator": 1
+      }
+    },
+    {
+      "max_allocated_bytes": 32794106880,
+      "max_reserved_bytes": 33952890880,
+      "rank": 3,
+      "role": "generator",
+      "sha256": "2a68f1b6ae66fbdfd71236b090f32d4c36560ad486df4d87ccc3e70f0de537c1",
+      "status": "PASS",
+      "updates": {
+        "critic": 0,
+        "ema": 1,
+        "generator": 1
+      }
+    },
+    {
+      "max_allocated_bytes": 32794106880,
+      "max_reserved_bytes": 33952890880,
+      "rank": 4,
+      "role": "generator",
+      "sha256": "e20fd3fb28be9b3b2df49b6731dbc5be4b83c1a2be6ca3417ceaa73b0b4acc90",
+      "status": "PASS",
+      "updates": {
+        "critic": 0,
+        "ema": 1,
+        "generator": 1
+      }
+    },
+    {
+      "max_allocated_bytes": 32794106880,
+      "max_reserved_bytes": 33952890880,
+      "rank": 5,
+      "role": "generator",
+      "sha256": "8b76e711d5b805793de31e78a60ea73bdf1658414446e9d9b925f0836b86e267",
+      "status": "PASS",
+      "updates": {
+        "critic": 0,
+        "ema": 1,
+        "generator": 1
+      }
+    },
+    {
+      "max_allocated_bytes": 32794106880,
+      "max_reserved_bytes": 33952890880,
+      "rank": 6,
+      "role": "generator",
+      "sha256": "9494474d337277be749e3348f8af1b0778bbc0078cc468834f027205532f8c80",
+      "status": "PASS",
+      "updates": {
+        "critic": 0,
+        "ema": 1,
+        "generator": 1
+      }
+    },
+    {
+      "max_allocated_bytes": 32794106880,
+      "max_reserved_bytes": 33952890880,
+      "rank": 7,
+      "role": "generator",
+      "sha256": "56d407ab622c280f084cb8cc9468b9b5412ab0c2d98d5dc6ecef18cdb4a85a78",
+      "status": "PASS",
+      "updates": {
+        "critic": 0,
+        "ema": 1,
+        "generator": 1
+      }
+    },
+    {
+      "max_allocated_bytes": 39111174144,
+      "max_reserved_bytes": 40143683584,
+      "rank": 8,
+      "role": "score",
+      "sha256": "20dd195d606ed1a846c00cec9cdb493f679c079fca8875c5453cc958953d2205",
+      "status": "PASS",
+      "updates": {
+        "critic": 5,
+        "ema": 0,
+        "generator": 0
+      }
+    },
+    {
+      "max_allocated_bytes": 39111174144,
+      "max_reserved_bytes": 40208695296,
+      "rank": 9,
+      "role": "score",
+      "sha256": "2465cf1a0ff5ba83b274e635b98557927beab221aeab9b472820a30524299b31",
+      "status": "PASS",
+      "updates": {
+        "critic": 5,
+        "ema": 0,
+        "generator": 0
+      }
+    },
+    {
+      "max_allocated_bytes": 39111174144,
+      "max_reserved_bytes": 40059797504,
+      "rank": 10,
+      "role": "score",
+      "sha256": "3cbed4882c154605082912a7d7684952476ee0f1e7cf442d9dde17d6c7fad6fb",
+      "status": "PASS",
+      "updates": {
+        "critic": 5,
+        "ema": 0,
+        "generator": 0
+      }
+    },
+    {
+      "max_allocated_bytes": 39111174144,
+      "max_reserved_bytes": 40353398784,
+      "rank": 11,
+      "role": "score",
+      "sha256": "180b5ea99fbb820df65eea1e73f1f1d740cee0f3da3c24f5991190810c2556d7",
+      "status": "PASS",
+      "updates": {
+        "critic": 5,
+        "ema": 0,
+        "generator": 0
+      }
+    },
+    {
+      "max_allocated_bytes": 39111174144,
+      "max_reserved_bytes": 40290484224,
+      "rank": 12,
+      "role": "score",
+      "sha256": "99d80a74a8c0408609b1a2679544db618d8514d1491cffa76720050fba36a77b",
+      "status": "PASS",
+      "updates": {
+        "critic": 5,
+        "ema": 0,
+        "generator": 0
+      }
+    },
+    {
+      "max_allocated_bytes": 39111174144,
+      "max_reserved_bytes": 40206598144,
+      "rank": 13,
+      "role": "score",
+      "sha256": "b462f5154bcd3dcc18e433e607082f5ffe97aa6cc3ede780cc0b36b8949305d0",
+      "status": "PASS",
+      "updates": {
+        "critic": 5,
+        "ema": 0,
+        "generator": 0
+      }
+    },
+    {
+      "max_allocated_bytes": 39111174144,
+      "max_reserved_bytes": 40292581376,
+      "rank": 14,
+      "role": "score",
+      "sha256": "b3b7e5b0a6a412263627c1b576cc27ee50c7c22b758c002e7a1df71cd2719e83",
+      "status": "PASS",
+      "updates": {
+        "critic": 5,
+        "ema": 0,
+        "generator": 0
+      }
+    },
+    {
+      "max_allocated_bytes": 39111174144,
+      "max_reserved_bytes": 40208695296,
+      "rank": 15,
+      "role": "score",
+      "sha256": "e36978d285b88fe0cfa0b9e4288828aa4c6a199b62a969c84bad16d027933695",
+      "status": "PASS",
+      "updates": {
+        "critic": 5,
+        "ema": 0,
+        "generator": 0
+      }
+    }
+  ],
+  "raw_exact_timing": {
+    "global_full5_seconds": 824.685005847,
+    "logical_samples": 80,
+    "max_stop_unix_ns": 1786519490122218970,
+    "min_start_unix_ns": 1786518665437213123,
+    "rank_local_elapsed_seconds": {
+      "0": 824.024318977,
+      "1": 824.024424366,
+      "10": 763.456153157,
+      "11": 759.214021347,
+      "12": 757.020969967,
+      "13": 760.959626896,
+      "14": 761.032131369,
+      "15": 756.98162542,
+      "2": 824.024418916,
+      "3": 824.024438253,
+      "4": 824.024287536,
+      "5": 824.024312334,
+      "6": 824.024385352,
+      "7": 824.02422119,
+      "8": 757.169484702,
+      "9": 756.078917525
+    },
+    "rank_receipt_count": 16,
+    "receipt_sha256": {
+      "0": "a19448af4f7467cf9b7bf526712cde87dc39ab81e39caa53e7f41d66a72055ad",
+      "1": "a63ca76bb307ccf3355efe954a078874f8cec2e5e999e1f0b5dc345a0ab7c328",
+      "10": "3cb24eca80231d2e1a2971dd9e1c67c1f083a0d374976385622c7363d870cff1",
+      "11": "ab6965cab32d74656cd2922dd6bfa3a457fa9b10ba2f3187d7c333520cb866d2",
+      "12": "daa1054a0410a668032caf6e74b554df4deed64124a9a5aa61f008ebb6a658f4",
+      "13": "fb77c82ff001979dd4d8d7de2f9bacda0fb28e6d23bdbb33e18478a011c34828",
+      "14": "cbbf116feab60b8d8a72102f6cd55133bcf4aa826a247d25e2c40cbbdecfc457",
+      "15": "b333e148f4e12c741cd31a07f4b1df211d5d47fe15a16abe7864d51fa3a8b814",
+      "2": "bfdb2b011011cd92012b08a213085a3e14b88d4d7bdf257f907859f08fa979cb",
+      "3": "14bbfb4b4ff31d1e757183854f37e9ca5b499b20a2fa139a7daf98ae50a7a7a4",
+      "4": "ee0d96ded4175f3deef142760b9ac3726fa8562da75e51771b0b8b9f681e35ed",
+      "5": "5f65b3421f65647efa2317c8224d597cc4a0fe88b99cf78f1349c39496208eaa",
+      "6": "b0317a3d8afbc2a949ca54756ab5822a1e63528113bcfbfe30f798a0454905c5",
+      "7": "5a83a24cd07bc2f55f5e43a1916b08e17eea51bd5c5902f5159d3486a43c5480",
+      "8": "822d5ecedd8853cf5ff65835b567dc646e413f58d447ae3dee3a3a77564ecdcd",
+      "9": "1448f152ea9b13ba801114353e1935881b3fd043736117f766e0a5b3c2d0ecb7"
+    },
+    "samples_per_second": 0.09700673521744863,
+    "samples_per_second_per_gpu": 0.006062920951090539
+  },
+  "reason_not_claimable": [
+    "Only one low-overhead launch was executed; the preregistered three paired trials were not run.",
+    "The execution-receipt postprocessor incorrectly required detailed per-block events after formal low-overhead mode intentionally disabled them.",
+    "The wrapper therefore emitted status=FAIL even though all 16 model ranks and all 16 exact timing receipts completed PASS."
+  ],
+  "remote_run_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_rolephase_g40_s10_act128_formal_20260812_001",
+  "required_next_state": "STOPPED_FOR_PIPELINE_IMPLEMENTATION_CORRECTION; no additional GPU launch authorized by this PR.",
+  "run_id": "gan_pipeline_rolephase_g40_s10_act128_formal_20260812_001",
+  "schema_version": "distillschedule.gan_pipeline_preliminary_timing.v1",
+  "status": "MODEL_WORKLOAD_PASS_POSTPROCESS_FAIL",
+  "workload": {
+    "gas": 2,
+    "global_batch": 16,
+    "logical_steps": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004
+    ],
+    "precision": "BF16",
+    "resolution": [
+      384,
+      640
+    ],
+    "topology": "persistent 8G+8Score",
+    "trace_bundle_hash": "d31d4d473a3574b5b39e50ad2b5e72e17aee7baf707130ea0513092553f7cd15",
+    "updates": {
+      "critic": 5,
+      "ema": 1,
+      "generator": 1
+    },
+    "waves": 2,
+    "workload_contract_digest": "e7bb6638e2d2d7356b93c90c0ac73a577f59cdeacf4f70a0c45b2cd29fac95a0",
+    "world_size": 16
+  },
+  "wrapper_failure": {
+    "actual_capacity_failure": false,
+    "cgroup": [
+      {
+        "after": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0
+        },
+        "before": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0
+        },
+        "node_rank": 0,
+        "oom_delta": 0,
+        "oom_kill_delta": 0
+      },
+      {
+        "after": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0
+        },
+        "before": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0
+        },
+        "node_rank": 1,
+        "oom_delta": 0,
+        "oom_kill_delta": 0
+      }
+    ],
+    "error": "RuntimeError('remote command failed on baai-helios-node0 rc=2: {\"error\": \"eager block evidence inventory drift: /share/project/shuchenweng/yongyan_liu/DMD-System_gan_pipeline_exec_20260811/artifacts/runs/gan_pipeline_rolephase_g40_s10_act128_formal_20260812_001/results/block_streaming/rank_000_generator.jsonl\", \"status\": \"FAIL\"}')",
+    "status": "FAIL"
+  }
+}

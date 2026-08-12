@@ -1,0 +1,13 @@
+schema_version=distillschedule.remote_stage_worker.v1
+host=job-ae0cd37b-2a89-489c-9a15-09932329c44a-master-0
+wrapper_pid=18798
+child_pid=18822
+child_pgid=18822
+child_start_time=250251424
+started_at=2026-08-12T07:09:31+00:00
+command_sha256=7c569c88fccfcdd05a6376f37cf3dc52aa914dd97216ebad3b5ddccf2dfdc944
+child_return_code=0
+child_finished_at=2026-08-12T07:25:03+00:00
+wrapper_finished_at=2026-08-12T07:25:03+00:00
+wrapper_cleanup_signal=EXIT
+wrapper_finished=1

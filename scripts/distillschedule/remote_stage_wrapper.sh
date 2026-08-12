@@ -2,6 +2,10 @@
 # Own one remote stage process group and publish a cancel-safe PID record.
 set -Eeuo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=process_tree.sh
+source "${SCRIPT_DIR}/process_tree.sh"
+
 PID_FILE="${1:?pid file is required}"
 shift
 (( $# > 0 )) || { echo "remote_stage_wrapper: command is required" >&2; exit 2; }
@@ -11,6 +15,7 @@ mkdir -p "$(dirname "${PID_FILE}")"
 
 CHILD_PID=""
 CHILD_PGID=""
+CHILD_START_TIME=""
 finished=0
 write_record() {
   local destination="${PID_FILE}"
@@ -21,6 +26,7 @@ write_record() {
     echo "wrapper_pid=$$"
     echo "child_pid=${CHILD_PID}"
     echo "child_pgid=${CHILD_PGID}"
+    echo "child_start_time=${CHILD_START_TIME}"
     echo "started_at=$(date -Is)"
     printf 'command_sha256='
     printf '%q\0' "$@" | sha256sum | awk '{print $1}'
@@ -31,12 +37,7 @@ write_record() {
 cleanup() {
   local signal="${1:-EXIT}"
   if [[ -n "${CHILD_PGID}" ]] && kill -0 "${CHILD_PID}" 2>/dev/null; then
-    kill -TERM -- "-${CHILD_PGID}" 2>/dev/null || true
-    for _ in $(seq 1 30); do
-      kill -0 "${CHILD_PID}" 2>/dev/null || break
-      sleep 1
-    done
-    kill -KILL -- "-${CHILD_PGID}" 2>/dev/null || true
+    distillschedule_terminate_process_tree "${CHILD_PID}" "${CHILD_PGID}" 30 || true
   fi
   if [[ -e "${PID_FILE}" ]]; then
     {
@@ -54,7 +55,9 @@ trap 'cleanup EXIT' EXIT
 setsid "$@" &
 CHILD_PID=$!
 CHILD_PGID="$(ps -o pgid= -p "${CHILD_PID}" | tr -d '[:space:]')"
+CHILD_START_TIME="$(distillschedule_proc_start_time "${CHILD_PID}" 2>/dev/null || true)"
 [[ -n "${CHILD_PGID}" ]] || { echo "remote_stage_wrapper: failed to resolve child PGID" >&2; exit 83; }
+[[ "${CHILD_START_TIME}" =~ ^[0-9]+$ ]] || { echo "remote_stage_wrapper: failed to resolve child start time" >&2; exit 84; }
 write_record "$@"
 
 set +e

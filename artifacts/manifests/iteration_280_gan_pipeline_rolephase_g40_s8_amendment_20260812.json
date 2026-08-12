@@ -1,0 +1,77 @@
+{
+  "capacity_model": {
+    "additional_nonresident_score_bytes_per_rank": 1405577216,
+    "note": "Prediction only; actual receipts decide.",
+    "predicted_score_materializations": 400,
+    "predicted_score_materialized_bytes": 281115443200,
+    "reduction_vs_all40_materializations_percent": 80.0
+  },
+  "created_at": "2026-08-12T05:55:55.889333+00:00",
+  "decision": "GO_ONE_BOUNDED_ROBUST_CAPACITY_RETRY_SKIP_S7",
+  "diagnosis": "S6 reaches a later second_loss checkpoint-recompute backward and fails while materializing a streamed block tensor of 134-136 MiB; worst ranks have only 2.38-4.38 MiB driver free. Use S8 rather than serial S7/S8 probing to add about 1.31 GiB resident headroom and retain 80% fewer Score materializations than all40.",
+  "failure": "Any CUDA/cgroup OOM, exact receipt failure, deadlock, or contract drift",
+  "frozen_contract": {
+    "gas": 2,
+    "logical_global_batch": 16,
+    "precision": "BF16",
+    "resolution": [
+      384,
+      640
+    ],
+    "steps": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004
+    ],
+    "topology": "persistent 8G+8Score",
+    "trace_bundle_hash": "d31d4d473a3574b5b39e50ad2b5e72e17aee7baf707130ea0513092553f7cd15",
+    "updates": {
+      "critic": 5,
+      "ema": 1,
+      "generator": 1
+    },
+    "waves": 2,
+    "world_size": 16
+  },
+  "iteration": 280,
+  "next_command": "python3 scripts/distillschedule/run_gan_systems_formal_trial.py --family pipeline --capacity-search --generator-streamed-block-count 40 --score-streamed-block-count 8 --generator-critic-phase-resident --run-id gan_pipeline_rolephase_g40_s8_20260812_001 --hosts baai-helios-node0 baai-helios-node1 --master-addr 172.24.211.148 --timeout-seconds 7200 --workload-contract artifacts/manifests/gan_systems_formal_workload_contract_20260811.json --result-path artifacts/g_offload_search/gan-rolephase-20260812/candidate_S8/result.json",
+  "prior_failure": {
+    "cgroup_oom_delta": 0,
+    "cgroup_oom_kill_delta": 0,
+    "classification": "ACTUAL_CUDA_CAPACITY_FAILURE",
+    "driver_free_mib_range": [
+      2.38,
+      124.38
+    ],
+    "failed_allocation_mib_range": [
+      134,
+      136
+    ],
+    "phase": "Critic second_loss checkpoint-recompute backward block materialization",
+    "result": "artifacts/g_offload_search/gan-rolephase-20260812/candidate_S6/result.json",
+    "result_sha256": "f0f5ee24fb095ddd592a337b2b2524e697940619767ca496a361982041c4aaec",
+    "role": "Score",
+    "run_id": "gan_pipeline_rolephase_g40_s6_20260812_001"
+  },
+  "schema_version": "distillschedule.gan_pipeline_optimization_amendment.v1",
+  "single_variable_change": {
+    "empty_cache_before_persistent_rollout": false,
+    "generator_critic_phase_resident": true,
+    "generator_streamed_block_count": 40,
+    "score_streamed_block_count_after": 8,
+    "score_streamed_block_count_before": 6,
+    "score_tail_indices_after": [
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39
+    ]
+  },
+  "success": "16-rank PASS plus fairness/compute/update/lifecycle/queue/OOM receipts PASS"
+}

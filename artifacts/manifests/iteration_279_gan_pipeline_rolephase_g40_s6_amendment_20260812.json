@@ -1,0 +1,72 @@
+{
+  "capacity_model": {
+    "bytes_freed_by_one_more_nonresident_score_block_per_rank": 702788608,
+    "note": "Prediction only; actual receipts decide.",
+    "predicted_score_materializations": 300,
+    "predicted_score_materialized_bytes": 210836582400
+  },
+  "created_at": "2026-08-12T05:47:03.585972+00:00",
+  "decision": "GO_ONE_BOUNDED_SINGLE_VARIABLE_CAPACITY_RETRY",
+  "diagnosis": "S5 crosses the earlier S4 292-MiB allocation and reaches a later Critic checkpoint-recompute LoRA-FFN allocation of 362 MiB. Driver-free headroom is 250.38-326.38 MiB, so the measured shortfall is 35.62-111.62 MiB. One additional nonresident Score block provides a conservative 702,788,608-byte capacity increment.",
+  "failure": "Any CUDA/cgroup OOM, exact receipt failure, deadlock, or contract drift",
+  "frozen_contract": {
+    "gas": 2,
+    "logical_global_batch": 16,
+    "precision": "BF16",
+    "resolution": [
+      384,
+      640
+    ],
+    "steps": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004
+    ],
+    "topology": "persistent 8G+8Score",
+    "trace_bundle_hash": "d31d4d473a3574b5b39e50ad2b5e72e17aee7baf707130ea0513092553f7cd15",
+    "updates": {
+      "critic": 5,
+      "ema": 1,
+      "generator": 1
+    },
+    "waves": 2,
+    "world_size": 16
+  },
+  "iteration": 279,
+  "next_command": "python3 scripts/distillschedule/run_gan_systems_formal_trial.py --family pipeline --capacity-search --generator-streamed-block-count 40 --score-streamed-block-count 6 --generator-critic-phase-resident --run-id gan_pipeline_rolephase_g40_s6_20260812_001 --hosts baai-helios-node0 baai-helios-node1 --master-addr 172.24.211.148 --timeout-seconds 7200 --workload-contract artifacts/manifests/gan_systems_formal_workload_contract_20260811.json --result-path artifacts/g_offload_search/gan-rolephase-20260812/candidate_S6/result.json",
+  "prior_failure": {
+    "cgroup_oom_delta": 0,
+    "cgroup_oom_kill_delta": 0,
+    "classification": "ACTUAL_CUDA_CAPACITY_FAILURE",
+    "driver_free_mib_range": [
+      250.38,
+      326.38
+    ],
+    "failed_allocation_mib": 362,
+    "phase": "Critic denoising checkpoint-recompute backward LoRA FFN",
+    "progress_relative_to_s4": "S4 failed on 108/292 MiB allocations; S5 passed those earlier pressure points and failed later on 362 MiB.",
+    "result": "artifacts/g_offload_search/gan-rolephase-20260812/candidate_S5/result.json",
+    "result_sha256": "ee0b3c9e677c66c22d6224694f3fcf8874639066a79520923b1738732cf583bf",
+    "role": "Score",
+    "run_id": "gan_pipeline_rolephase_g40_s5_20260812_001"
+  },
+  "schema_version": "distillschedule.gan_pipeline_optimization_amendment.v1",
+  "single_variable_change": {
+    "empty_cache_before_persistent_rollout": false,
+    "generator_critic_phase_resident": true,
+    "generator_streamed_block_count": 40,
+    "score_streamed_block_count_after": 6,
+    "score_streamed_block_count_before": 5,
+    "score_tail_indices_after": [
+      34,
+      35,
+      36,
+      37,
+      38,
+      39
+    ]
+  },
+  "success": "16-rank PASS plus fairness/compute/update/lifecycle/queue/OOM receipts PASS"
+}

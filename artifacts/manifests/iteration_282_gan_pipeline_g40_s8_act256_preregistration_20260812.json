@@ -1,0 +1,77 @@
+{
+  "candidate_id": "GAN-P-ROLEPHASE-G40-S8-ACT256",
+  "created_at": "2026-08-12T06:19:37.876134+00:00",
+  "decision": "PIVOT_FROM_WEIGHT_COUNT_ESCALATION_TO_EXISTING_SELECTIVE_ACTIVATION_PRIMITIVE",
+  "exact_additional_gates": {
+    "all_existing_fairness_compute_update_lifecycle_queue_gates": "PASS",
+    "score_activation_cpu_copy_count": "greater_than_zero",
+    "score_activation_live_cpu_bytes_at_end": 0,
+    "score_activation_scope_count_per_rank": 20
+  },
+  "failure": "Any CUDA/cgroup OOM, host allocation failure, exact receipt failure, activation handle leak, deadlock, or contract drift",
+  "frozen_contract": {
+    "gas": 2,
+    "logical_global_batch": 16,
+    "precision": "BF16",
+    "resolution": [
+      384,
+      640
+    ],
+    "steps": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004
+    ],
+    "topology": "persistent 8G+8Score",
+    "trace_bundle_hash": "d31d4d473a3574b5b39e50ad2b5e72e17aee7baf707130ea0513092553f7cd15",
+    "updates": {
+      "critic": 5,
+      "ema": 1,
+      "generator": 1
+    },
+    "waves": 2,
+    "world_size": 16
+  },
+  "hypothesis": "The packed fake/real/R1 Critic forward saves large checkpoint-boundary activations that collide with resident Score weights during second_loss backward. Applying the already-validated audited saved-tensor offload primitive only after Score gradient service and only for tensors at least 256 MiB will admit S8 without changing GAN/DMD math or the trace.",
+  "iteration": 282,
+  "next_command": "python3 scripts/distillschedule/run_gan_systems_formal_trial.py --family pipeline --capacity-search --generator-streamed-block-count 40 --score-streamed-block-count 8 --generator-critic-phase-resident --score-critic-activation-offload-min-mib 256 --run-id gan_pipeline_rolephase_g40_s8_act256_20260812_001 --hosts baai-helios-node0 baai-helios-node1 --master-addr 172.24.211.148 --timeout-seconds 7200 --workload-contract artifacts/manifests/gan_systems_formal_workload_contract_20260811.json --result-path artifacts/g_offload_search/gan-rolephase-20260812/candidate_S8_A256/result.json",
+  "policy": {
+    "generator_critic_phase_resident": true,
+    "generator_streamed_block_count": 40,
+    "pin_memory": true,
+    "prefetch": false,
+    "score_critic_activation_offload_min_bytes": 268435456,
+    "score_critic_activation_scope": "installed after both step1000 Score gradient-service waves and removed after steps1000-1004 Critic phase",
+    "score_streamed_block_count": 8,
+    "score_tail_indices": [
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39
+    ],
+    "synchronous_unpack": true
+  },
+  "prior_failure": {
+    "cgroup_oom_delta": 0,
+    "cgroup_oom_kill_delta": 0,
+    "classification": "ACTUAL_CUDA_CAPACITY_FAILURE",
+    "driver_free_mib_range": [
+      190.38,
+      266.38
+    ],
+    "failed_allocation_mib": 362,
+    "phase": "Critic second_loss checkpoint-recompute FFN",
+    "result": "artifacts/g_offload_search/gan-rolephase-20260812/candidate_S10/result.json",
+    "result_sha256": "df25929a4ef3556dd63c3b0f315eee2ecab5a9511fc6cd1ca8a1a88d6c34e8ee",
+    "role": "Score",
+    "run_id": "gan_pipeline_rolephase_g40_s10_20260812_001"
+  },
+  "schema_version": "distillschedule.gan_pipeline_lifecycle_candidate.v1",
+  "success": "16-rank PASS plus exact receipts, no CUDA/cgroup OOM, and bounded host/pinned state"
+}

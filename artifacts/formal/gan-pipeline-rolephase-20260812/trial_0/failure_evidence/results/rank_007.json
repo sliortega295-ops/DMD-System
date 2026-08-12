@@ -1,0 +1,234 @@
+{
+  "activation_offload_stats": {
+    "cpu_copy_count": 171,
+    "duplicate_pack_count": 1,
+    "kept_below_threshold_count": 1484,
+    "kept_below_threshold_storage_bytes": 5491040448,
+    "kept_non_strided_count": 0,
+    "kept_parameter_or_buffer_count": 126,
+    "kept_zero_stride_count": 0,
+    "live_cpu_bytes": 0,
+    "offloaded_logical_bytes": 13905100800,
+    "offloaded_storage_bytes": 13905100800,
+    "pack_count": 1782,
+    "peak_live_cpu_bytes": 7009075200,
+    "scope_count": 6,
+    "unpack_count": 1778
+  },
+  "ema_optimization_step": 801,
+  "initialization": {
+    "logical_step": 2,
+    "model": {
+      "backbone_root": "/share/project/shuchenweng/DistillSchedule_assets/precast/helios-distilled-transformer-ode-mixed-bf16-v1",
+      "block_count": 40,
+      "exclude_modules": [
+        "down",
+        "up"
+      ],
+      "gan_enabled": false,
+      "gan_trainable_numel": 0,
+      "gradient_checkpointing": true,
+      "lora_rank": 256,
+      "mode": "train",
+      "post_restore_trainable_dtype_inventory": [
+        "torch.bfloat16"
+      ],
+      "role": "generator",
+      "split_modulation": true,
+      "subfolder": "",
+      "target_count": 409,
+      "trainable_dtype_inventory": [
+        "torch.float32"
+      ],
+      "trainable_numel": 1251442688,
+      "trainable_tensor_count": 818
+    },
+    "optimizer_restore": {
+      "flat_numel": 1251442688,
+      "logical_numel": 1251442688,
+      "optimizer_step": 2,
+      "padding_numel": 0,
+      "partition_numel": 156430336,
+      "role_rank": 7,
+      "role_world_size": 8,
+      "source": "logical_package_repartition",
+      "valid_numel": 156430336
+    },
+    "resolved": {
+      "dp_world_size": 8,
+      "gradient_accumulation_steps": 2,
+      "train_batch_size": 16,
+      "train_micro_batch_size_per_gpu": 1
+    }
+  },
+  "max_allocated_bytes": 32794106880,
+  "max_reserved_bytes": 33952890880,
+  "rank": 7,
+  "records": [
+    {
+      "loss": -0.04490840062499046,
+      "phase": "generator",
+      "step": 1000,
+      "trace_hash": "8d7f00cbdae84e74c7c58009a81a0109c1387f39f6535368f48091e0c002ee4c",
+      "wave": 0
+    },
+    {
+      "loss": -0.03638625144958496,
+      "phase": "generator",
+      "step": 1000,
+      "trace_hash": "72fcebc8027cce26fe0aeca35ff7bfe40ed67de349d7d63a83e53994233807a6",
+      "wave": 1
+    },
+    {
+      "call_count": 6,
+      "phase": "critic_rollout",
+      "step": 1000,
+      "trace_hash": "8d7f00cbdae84e74c7c58009a81a0109c1387f39f6535368f48091e0c002ee4c",
+      "wave": 0
+    },
+    {
+      "call_count": 6,
+      "phase": "critic_rollout",
+      "step": 1000,
+      "trace_hash": "72fcebc8027cce26fe0aeca35ff7bfe40ed67de349d7d63a83e53994233807a6",
+      "wave": 1
+    },
+    {
+      "call_count": 6,
+      "phase": "critic_rollout",
+      "step": 1001,
+      "trace_hash": "8d7f00cbdae84e74c7c58009a81a0109c1387f39f6535368f48091e0c002ee4c",
+      "wave": 0
+    },
+    {
+      "call_count": 6,
+      "phase": "critic_rollout",
+      "step": 1001,
+      "trace_hash": "72fcebc8027cce26fe0aeca35ff7bfe40ed67de349d7d63a83e53994233807a6",
+      "wave": 1
+    },
+    {
+      "call_count": 5,
+      "phase": "critic_rollout",
+      "step": 1002,
+      "trace_hash": "8d7f00cbdae84e74c7c58009a81a0109c1387f39f6535368f48091e0c002ee4c",
+      "wave": 0
+    },
+    {
+      "call_count": 5,
+      "phase": "critic_rollout",
+      "step": 1002,
+      "trace_hash": "72fcebc8027cce26fe0aeca35ff7bfe40ed67de349d7d63a83e53994233807a6",
+      "wave": 1
+    },
+    {
+      "call_count": 4,
+      "phase": "critic_rollout",
+      "step": 1003,
+      "trace_hash": "8d7f00cbdae84e74c7c58009a81a0109c1387f39f6535368f48091e0c002ee4c",
+      "wave": 0
+    },
+    {
+      "call_count": 4,
+      "phase": "critic_rollout",
+      "step": 1003,
+      "trace_hash": "72fcebc8027cce26fe0aeca35ff7bfe40ed67de349d7d63a83e53994233807a6",
+      "wave": 1
+    },
+    {
+      "call_count": 6,
+      "phase": "critic_rollout",
+      "step": 1004,
+      "trace_hash": "8d7f00cbdae84e74c7c58009a81a0109c1387f39f6535368f48091e0c002ee4c",
+      "wave": 0
+    },
+    {
+      "call_count": 6,
+      "phase": "critic_rollout",
+      "step": 1004,
+      "trace_hash": "72fcebc8027cce26fe0aeca35ff7bfe40ed67de349d7d63a83e53994233807a6",
+      "wave": 1
+    }
+  ],
+  "role": "generator",
+  "status": "PASS",
+  "streamer_stats": {
+    "backing_only_bytes": 0,
+    "captured_bytes": 28111544320,
+    "captured_parameter_count": 1080,
+    "checkpoint_boundary_d2h_bytes": 0,
+    "checkpoint_boundary_d2h_count": 0,
+    "checkpoint_boundary_d2h_wall_seconds": 0.0,
+    "checkpoint_boundary_h2d_bytes": 0,
+    "checkpoint_boundary_h2d_count": 0,
+    "checkpoint_boundary_h2d_wall_seconds": 0.0,
+    "h2d_wall_seconds": 103.3863684204407,
+    "materialize_count": 600,
+    "materialized_bytes": 421673164800,
+    "peak_resident_bytes": 28111544320,
+    "phase_resident_enter_count": 1,
+    "phase_resident_exit_count": 1,
+    "pinned_host_bytes": 0,
+    "private_host_bytes": 0,
+    "release_count": 600,
+    "released_bytes": 421673164800,
+    "resident_bytes": 0,
+    "shared_immutable_block_count": 0,
+    "shared_immutable_host_bytes": 28111544320,
+    "streamed_block_count": 40
+  },
+  "streaming_policy": {
+    "generator_critic_phase_resident": true,
+    "score_critic_activation_offload_min_bytes": 134217728,
+    "streamed_block_count": 40,
+    "streamed_block_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39
+    ]
+  },
+  "timing_start_unix_ns": 1786518665437291091,
+  "timing_stop_unix_ns": 1786519489500163793,
+  "updates": {
+    "critic": 0,
+    "ema": 1,
+    "generator": 1
+  }
+}

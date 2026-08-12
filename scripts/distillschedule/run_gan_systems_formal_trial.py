@@ -90,6 +90,91 @@ def _workload_digest(path: Path) -> str:
     return digest
 
 
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _validate_optimized_policy_manifest(
+    path: Path,
+    *,
+    workload_digest: str,
+    generator_streamed_count: int,
+    score_streamed_count: int,
+    generator_critic_phase_resident: bool,
+    score_critic_activation_offload_min_mib: int,
+) -> str:
+    """Validate the immutable real-14B capacity gate before formal timing.
+
+    The worker receives only this manifest's digest.  This local gate binds the
+    digest to the exact admitted policy and to the immutable capacity result;
+    it prevents a non-default policy from becoming formal merely by omitting
+    ``--capacity-search``.
+    """
+
+    path = path.expanduser().resolve()
+    value = _load(path)
+    if value.get("schema_version") != "distillschedule.gan_validated_policy.v1":
+        raise RuntimeError("unsupported validated-policy manifest schema")
+    if value.get("status") != "PASS":
+        raise RuntimeError("validated-policy manifest is not PASS")
+    if value.get("workload_contract_digest") != workload_digest:
+        raise RuntimeError("validated-policy workload digest mismatch")
+    expected = {
+        "generator_streamed_block_count": int(generator_streamed_count),
+        "score_streamed_block_count": int(score_streamed_count),
+        "generator_critic_phase_resident": bool(
+            generator_critic_phase_resident
+        ),
+        "score_critic_activation_offload_min_mib": int(
+            score_critic_activation_offload_min_mib
+        ),
+        "streaming_window": 1,
+        "host_policy": "HOST_SHARED_IMMUTABLE",
+        "prefetch": False,
+    }
+    if value.get("validated_policy") != expected:
+        raise RuntimeError(
+            "validated-policy settings do not match requested formal policy"
+        )
+    capacity_result = Path(str(value.get("capacity_result", ""))).expanduser()
+    if not capacity_result.is_absolute():
+        capacity_result = (path.parent / capacity_result).resolve()
+    if not capacity_result.is_file():
+        raise RuntimeError("validated-policy capacity result is missing")
+    expected_result_sha = value.get("capacity_result_sha256")
+    if not isinstance(expected_result_sha, str) or _sha256(
+        capacity_result
+    ) != expected_result_sha:
+        raise RuntimeError("validated-policy capacity result hash mismatch")
+    result = _load(capacity_result)
+    if result.get("status") != "PASS" or not result.get("capacity_search"):
+        raise RuntimeError("validated-policy evidence is not a PASS capacity gate")
+    if result.get("workload_contract_digest") != workload_digest:
+        raise RuntimeError("capacity-result workload digest mismatch")
+    fixed = result.get("fixed_memory_policy", {})
+    if not isinstance(fixed, dict):
+        raise RuntimeError("capacity result lacks fixed memory policy")
+    observed = {
+        "generator_streamed_block_count": len(
+            fixed.get("generator_streamed_blocks", [])
+        ),
+        "score_streamed_block_count": len(fixed.get("score_streamed_blocks", [])),
+        "generator_critic_phase_resident": fixed.get(
+            "generator_critic_phase_resident"
+        ),
+        "score_critic_activation_offload_min_mib": int(
+            fixed.get("score_critic_activation_offload_min_bytes", -1)
+        )
+        // (1024 * 1024),
+        "streaming_window": fixed.get("streaming_window"),
+        "host_policy": fixed.get("host_policy"),
+        "prefetch": fixed.get("prefetch"),
+    }
+    if observed != expected:
+        raise RuntimeError("capacity-result policy does not match manifest")
+    return _sha256(path)
+
+
 def _role_streaming_policy(args: argparse.Namespace) -> tuple[int, int, bool]:
     legacy = int(getattr(args, "streamed_block_count", 40))
     generator = getattr(args, "generator_streamed_block_count", None)
@@ -340,9 +425,11 @@ def _pipeline_worker_script(args: argparse.Namespace, node_rank: int, run_root: 
         str(result_root),
         "--run-nonce",
         str(args.run_nonce),
-        "--detailed-events",
     ]
     profile_nsys = bool(getattr(args, "profile_nsys", False))
+    detailed_events = bool(getattr(args, "capacity_search", False)) or profile_nsys
+    if detailed_events:
+        command.append("--detailed-events")
     if profile_nsys:
         command = [
             str(args.pipeline_remote_root / "scripts/distillschedule/gan_launch_shim.sh"),
@@ -354,6 +441,12 @@ def _pipeline_worker_script(args: argparse.Namespace, node_rank: int, run_root: 
     generator_streamed_count, score_streamed_count, phase_resident = (
         _role_streaming_policy(args)
     )
+    score_critic_activation_min_mib = int(
+        getattr(args, "score_critic_activation_offload_min_mib", 0)
+    )
+    if score_critic_activation_min_mib < 0:
+        raise ValueError("Score Critic activation-offload threshold must be non-negative")
+    score_critic_activation_min_bytes = score_critic_activation_min_mib * 1024 * 1024
     generator_streamed_indices = ",".join(
         str(index) for index in _tail_indices(generator_streamed_count)
     )
@@ -361,6 +454,9 @@ def _pipeline_worker_script(args: argparse.Namespace, node_rank: int, run_root: 
         str(index) for index in _tail_indices(score_streamed_count)
     )
     capacity_search = "1" if bool(getattr(args, "capacity_search", False)) else "0"
+    validated_policy_digest = str(
+        getattr(args, "validated_policy_digest", "") or ""
+    )
     return f'''set -Eeuo pipefail
 exec 9>/tmp/distillschedule_gpu_node.lock
 flock -n 9 || {{ echo gpu_lock_busy >&2; exit 73; }}
@@ -385,12 +481,14 @@ export DISTILLSCHEDULE_OPERATION_TRACE_ACCESS_DIR={shlex.quote(str(run_root / 't
 export DISTILLSCHEDULE_STABLE_BLOCK_NOISE=1 DISTILLSCHEDULE_NSYS_ANNOTATE=1
 export DISTILLSCHEDULE_GAN_NSYS_PROFILE={nsys_profile} DISTILLSCHEDULE_GAN_EXACT_TIMING={exact_timing}
 export DISTILLSCHEDULE_GAN_CAPACITY_SEARCH={capacity_search}
+export DISTILLSCHEDULE_GAN_VALIDATED_POLICY_DIGEST={shlex.quote(validated_policy_digest)}
 unset DISTILLSCHEDULE_GAN_STREAMED_BLOCK_COUNT DISTILLSCHEDULE_GAN_STREAMED_BLOCK_INDICES
 export DISTILLSCHEDULE_GAN_GENERATOR_STREAMED_BLOCK_COUNT={generator_streamed_count}
 export DISTILLSCHEDULE_GAN_GENERATOR_STREAMED_BLOCK_INDICES={shlex.quote(generator_streamed_indices)}
 export DISTILLSCHEDULE_GAN_SCORE_STREAMED_BLOCK_COUNT={score_streamed_count}
 export DISTILLSCHEDULE_GAN_SCORE_STREAMED_BLOCK_INDICES={shlex.quote(score_streamed_indices)}
 export DISTILLSCHEDULE_GAN_GENERATOR_CRITIC_PHASE_RESIDENT={1 if phase_resident else 0}
+export DISTILLSCHEDULE_GAN_SCORE_CRITIC_ACTIVATION_OFFLOAD_MIN_BYTES={score_critic_activation_min_bytes}
 export DISTILLSCHEDULE_GAN_TIMING_RECEIPT_DIR={shlex.quote(str(timing_root))}
 set +e
 timeout --signal=TERM --kill-after=180s {args.timeout_seconds}s {command_text} > {shlex.quote(str(rank_log))} 2>&1
@@ -477,6 +575,9 @@ def _remote_finalize(args: argparse.Namespace, family: str, run_root: Path) -> d
     generator_streamed_count, score_streamed_count, phase_resident = (
         _role_streaming_policy(args)
     )
+    score_critic_activation_min_bytes = int(
+        getattr(args, "score_critic_activation_offload_min_mib", 0)
+    ) * 1024 * 1024
     role_receipt_args = ""
     if family == "pipeline":
         role_receipt_args = (
@@ -545,6 +646,17 @@ if {family!r}=='pipeline':
       and int(v.get('streamer_stats',{{}}).get('materialize_count',-1))
           ==int(v.get('streamer_stats',{{}}).get('release_count',-2))
       for v in values)
+  activation_threshold={score_critic_activation_min_bytes}
+  activation_ok=True
+  for v in values:
+    rank=int(v.get('rank',-1)); stats=v.get('activation_offload_stats')
+    if rank >= 8 and activation_threshold:
+      activation_ok &= (
+          isinstance(stats,dict)
+          and int(stats.get('scope_count',-1))==20
+          and int(stats.get('cpu_copy_count',0))>0
+          and int(stats.get('live_cpu_bytes',-1))==0)
+  out['activation_ok']=activation_ok
   batch_ok=all(v.get('initialization',{{}}).get('resolved')==expected_resolved for v in values)
   ema_ok=all((v.get('ema_optimization_step')==801 if int(v.get('rank',-1))<8
               else v.get('ema_optimization_step') is None) for v in values)
@@ -576,7 +688,7 @@ if {family!r}=='pipeline':
   out['ema_ok']=ema_ok; out['records_ok']=records_ok
   ok=(len(values)==16 and all(v.get('status')=='PASS' for v in values)
       and [v.get('updates') for v in values]==expected and lifecycle_ok
-      and batch_ok and ema_ok and records_ok
+      and activation_ok and batch_ok and ema_ok and records_ok
       and all(x['oom_delta']==0 and x['oom_kill_delta']==0 for x in oom))
   out['status']='PASS' if ok else 'FAIL'
 else:
@@ -667,6 +779,14 @@ def _fetch_and_write_result(
         "diagnostic_only": profile_nsys or bool(getattr(args, "capacity_search", False)),
         "formal_speedup_eligible": not profile_nsys and not bool(getattr(args, "capacity_search", False)),
         "capacity_search": bool(getattr(args, "capacity_search", False)),
+        "detailed_events": bool(getattr(args, "capacity_search", False))
+        or profile_nsys,
+        "validated_policy_manifest": (
+            None
+            if getattr(args, "validated_policy_manifest", None) is None
+            else str(Path(args.validated_policy_manifest).expanduser().resolve())
+        ),
+        "validated_policy_digest": getattr(args, "validated_policy_digest", None),
         "logical_steps": [1000, 1001, 1002, 1003, 1004],
         "workload_contract_digest": workload_digest,
         "gan_fairness_receipt": str(receipt_root / "gan_fairness_receipt.json"),
@@ -681,6 +801,11 @@ def _fetch_and_write_result(
             ),
             "score_streamed_blocks": list(_tail_indices(score_streamed_count)),
             "generator_critic_phase_resident": phase_resident,
+            "score_critic_activation_offload_min_bytes": int(
+                getattr(args, "score_critic_activation_offload_min_mib", 0)
+            )
+            * 1024
+            * 1024,
             "streaming_window": 1,
             "host_policy": "HOST_SHARED_IMMUTABLE",
             "prefetch": False,
@@ -723,10 +848,24 @@ def parser() -> argparse.ArgumentParser:
         action="store_true",
         help="capacity/correctness candidate; never formal-speedup eligible",
     )
+    p.add_argument(
+        "--validated-policy-manifest",
+        type=Path,
+        help=(
+            "immutable PASS capacity-gate manifest required to promote a "
+            "non-default lifecycle policy into unprofiled formal timing"
+        ),
+    )
     p.add_argument("--streamed-block-count", type=int, default=40)
     p.add_argument("--generator-streamed-block-count", type=int)
     p.add_argument("--score-streamed-block-count", type=int)
     p.add_argument("--generator-critic-phase-resident", action="store_true")
+    p.add_argument(
+        "--score-critic-activation-offload-min-mib",
+        type=int,
+        default=0,
+        help="capacity-gated Score Critic saved-activation offload threshold",
+    )
     return p
 
 
@@ -761,13 +900,41 @@ def main() -> int:
         or phase_resident
     ):
         raise SystemExit("role-aware streaming is implemented only for pipeline")
-    if (
+    optimized_policy = (
         generator_count != 40
         or score_count != 40
         or phase_resident
-    ) and not args.capacity_search:
+        or args.score_critic_activation_offload_min_mib != 0
+    )
+    if args.capacity_search and args.validated_policy_manifest is not None:
         raise SystemExit(
-            "optimized role/phase residency requires --capacity-search until its gate passes"
+            "capacity search and validated formal policy are mutually exclusive"
+        )
+    args.validated_policy_digest = None
+    if args.validated_policy_manifest is not None:
+        if args.family != "pipeline" or not optimized_policy:
+            raise SystemExit(
+                "validated policy manifest is only valid for optimized pipeline"
+            )
+        try:
+            args.validated_policy_digest = _validate_optimized_policy_manifest(
+                args.validated_policy_manifest,
+                workload_digest=workload_digest,
+                generator_streamed_count=generator_count,
+                score_streamed_count=score_count,
+                generator_critic_phase_resident=phase_resident,
+                score_critic_activation_offload_min_mib=(
+                    args.score_critic_activation_offload_min_mib
+                ),
+            )
+        except RuntimeError as exc:
+            raise SystemExit(str(exc)) from exc
+    if optimized_policy and not (
+        args.capacity_search or args.validated_policy_digest
+    ):
+        raise SystemExit(
+            "optimized role/phase residency requires --capacity-search or a "
+            "hash-bound validated policy manifest"
         )
     run_log = args.result_path.parent / f"{args.family}_controller.log"
     pipeline_launch_attempted = False

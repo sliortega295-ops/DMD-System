@@ -147,3 +147,15 @@ Recovery is limited and explicit: restart/recreate both GPU jobs, update SSH
 aliases if IDs change, revalidate source/assets/GPU ownership/cgroup state, and
 run only the already prepared Sequential and Pipeline actual-OOM-only capacity
 searches. The failed Pipeline profiler mechanism must not be retried.
+
+## 2026-08-12 role/lifecycle follow-up
+
+The jobs were later recreated and the bounded Pipeline lifecycle sequence was
+continued.  `G40/S10/A128` passed the full real world16 capacity/correctness
+gate.  A subsequent low-overhead launch completed all 16 model workers and
+produced a measured 824.685006 s exact Full5 window, but its aggregate receipt
+postprocessor failed and only one launch was run.  The value is therefore
+preliminary and not formal-speedup eligible.  GPU work is now stopped for an
+implementation correction.  See
+[`gan_pipeline_rolephase_20260812.md`](gan_pipeline_rolephase_20260812.md) for
+the complete handoff and claim boundary.

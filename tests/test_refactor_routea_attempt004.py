@@ -3,7 +3,10 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
+import shlex
+import subprocess
 import sys
+import time
 
 import pytest
 from omegaconf import OmegaConf
@@ -474,11 +477,55 @@ def test_routea_plan_explicitly_freezes_accumulation() -> None:
 
 def test_routea_controller_helpers_are_executable() -> None:
     for relative in (
+        "scripts/distillschedule/process_tree.sh",
         "scripts/distillschedule/remote_stage_wrapper.sh",
         "scripts/distillschedule/cancel_remote_stage.sh",
         "scripts/distillschedule/launch_routea_world16_typed_node.sh",
     ):
         assert (ROOT / relative).stat().st_mode & 0o111, relative
+
+
+def test_remote_stage_cancel_terminates_nested_process_groups(tmp_path: Path) -> None:
+    """Cancellation must reach timeout/torchrun-like descendants after setsid."""
+    wrapper = ROOT / "scripts/distillschedule/remote_stage_wrapper.sh"
+    cancel = ROOT / "scripts/distillschedule/cancel_remote_stage.sh"
+    pid_file = tmp_path / "nested.pid"
+    command = (
+        "setsid bash -lc 'setsid sleep 300 & wait' & "
+        "nested=$!; printf '%s\\n' \"$nested\" > "
+        f"{shlex.quote(str(tmp_path / 'nested_root.pid'))}; wait"
+    )
+    process = subprocess.Popen(
+        [str(wrapper), str(pid_file), "bash", "-lc", command],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline and not pid_file.exists():
+            time.sleep(0.05)
+        assert pid_file.exists()
+        fields = dict(
+            line.split("=", 1)
+            for line in pid_file.read_text().splitlines()
+            if "=" in line
+        )
+        root_pid = int(fields["child_pid"])
+        nested_pid_file = tmp_path / "nested_root.pid"
+        while time.monotonic() < deadline and not nested_pid_file.exists():
+            time.sleep(0.05)
+        assert nested_pid_file.exists()
+        nested_pid = int(nested_pid_file.read_text().strip())
+        assert Path(f"/proc/{root_pid}").exists()
+        assert Path(f"/proc/{nested_pid}").exists()
+        subprocess.run([str(cancel), str(pid_file)], check=True, timeout=40)
+        process.wait(timeout=10)
+        assert not Path(f"/proc/{nested_pid}").exists()
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
 
 
 def test_routea_worker_uses_package_metadata_for_runtime_versions() -> None:

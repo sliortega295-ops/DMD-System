@@ -1,0 +1,224 @@
+{
+  "activation_offload_stats": {
+    "cpu_copy_count": 419,
+    "duplicate_pack_count": 1,
+    "kept_below_threshold_count": 4800,
+    "kept_below_threshold_storage_bytes": 73076962560,
+    "kept_non_strided_count": 0,
+    "kept_parameter_or_buffer_count": 420,
+    "kept_zero_stride_count": 400,
+    "live_cpu_bytes": 0,
+    "offloaded_logical_bytes": 59432140800,
+    "offloaded_storage_bytes": 59432140800,
+    "pack_count": 6040,
+    "peak_live_cpu_bytes": 5603328000,
+    "scope_count": 20,
+    "unpack_count": 5880
+  },
+  "ema_optimization_step": null,
+  "initialization": {
+    "logical_step": 10,
+    "model": {
+      "backbone_root": "/share/project/shuchenweng/DistillSchedule_assets/precast/helios-score-transformer-mixed-bf16-gan-systems-v2",
+      "block_count": 40,
+      "exclude_modules": [
+        "down",
+        "up",
+        "patch_embedding",
+        "patch_long",
+        "patch_mid",
+        "patch_short",
+        "gan_heads",
+        "gan_final_head"
+      ],
+      "gan_enabled": true,
+      "gan_trainable_numel": 988359941,
+      "gradient_checkpointing": true,
+      "lora_rank": 256,
+      "mode": "train",
+      "post_restore_trainable_dtype_inventory": [
+        "torch.bfloat16"
+      ],
+      "role": "critic",
+      "split_modulation": true,
+      "subfolder": "",
+      "target_count": 406,
+      "trainable_dtype_inventory": [
+        "torch.float32"
+      ],
+      "trainable_numel": 2234674437,
+      "trainable_tensor_count": 942
+    },
+    "optimizer_restore": {
+      "flat_numel": 2234674448,
+      "logical_numel": 2234674437,
+      "optimizer_step": 10,
+      "padding_numel": 11,
+      "partition_numel": 279334306,
+      "role_rank": 3,
+      "role_world_size": 8,
+      "source": "logical_package_repartition",
+      "valid_numel": 279334306
+    },
+    "resolved": {
+      "dp_world_size": 8,
+      "gradient_accumulation_steps": 2,
+      "train_batch_size": 16,
+      "train_micro_batch_size_per_gpu": 1
+    }
+  },
+  "max_allocated_bytes": 39111174144,
+  "max_reserved_bytes": 40353398784,
+  "rank": 11,
+  "records": [
+    {
+      "dmd_loss": 0.4372892379760742,
+      "gan_g_loss": 0.746874988079071,
+      "phase": "score_gradient",
+      "step": 1000,
+      "total_loss": 0.47463300824165344,
+      "trace_hash": "056c8a672a4dc9b58dfbe75de9d98f82bbd7afa4dad7b1a9c0c704acf8141c22",
+      "wave": 0
+    },
+    {
+      "dmd_loss": 0.46172115206718445,
+      "gan_g_loss": 0.7445312738418579,
+      "phase": "score_gradient",
+      "step": 1000,
+      "total_loss": 0.49894770979881287,
+      "trace_hash": "a06b1117a55d08397a5d6a8ac95932f58967ae33996395290272acac2c9be9ea",
+      "wave": 1
+    },
+    {
+      "committed": false,
+      "loss": 1.63370680809021,
+      "phase": "critic_train",
+      "step": 1000,
+      "trace_hash": "056c8a672a4dc9b58dfbe75de9d98f82bbd7afa4dad7b1a9c0c704acf8141c22",
+      "wave": 0
+    },
+    {
+      "committed": true,
+      "loss": 1.502846598625183,
+      "phase": "critic_train",
+      "step": 1000,
+      "trace_hash": "a06b1117a55d08397a5d6a8ac95932f58967ae33996395290272acac2c9be9ea",
+      "wave": 1
+    },
+    {
+      "committed": false,
+      "loss": 1.526871919631958,
+      "phase": "critic_train",
+      "step": 1001,
+      "trace_hash": "056c8a672a4dc9b58dfbe75de9d98f82bbd7afa4dad7b1a9c0c704acf8141c22",
+      "wave": 0
+    },
+    {
+      "committed": true,
+      "loss": 1.4943820238113403,
+      "phase": "critic_train",
+      "step": 1001,
+      "trace_hash": "a06b1117a55d08397a5d6a8ac95932f58967ae33996395290272acac2c9be9ea",
+      "wave": 1
+    },
+    {
+      "committed": false,
+      "loss": 1.6337831020355225,
+      "phase": "critic_train",
+      "step": 1002,
+      "trace_hash": "056c8a672a4dc9b58dfbe75de9d98f82bbd7afa4dad7b1a9c0c704acf8141c22",
+      "wave": 0
+    },
+    {
+      "committed": true,
+      "loss": 1.5167266130447388,
+      "phase": "critic_train",
+      "step": 1002,
+      "trace_hash": "a06b1117a55d08397a5d6a8ac95932f58967ae33996395290272acac2c9be9ea",
+      "wave": 1
+    },
+    {
+      "committed": false,
+      "loss": 1.489898681640625,
+      "phase": "critic_train",
+      "step": 1003,
+      "trace_hash": "056c8a672a4dc9b58dfbe75de9d98f82bbd7afa4dad7b1a9c0c704acf8141c22",
+      "wave": 0
+    },
+    {
+      "committed": true,
+      "loss": 1.5091853141784668,
+      "phase": "critic_train",
+      "step": 1003,
+      "trace_hash": "a06b1117a55d08397a5d6a8ac95932f58967ae33996395290272acac2c9be9ea",
+      "wave": 1
+    },
+    {
+      "committed": false,
+      "loss": 1.5177881717681885,
+      "phase": "critic_train",
+      "step": 1004,
+      "trace_hash": "056c8a672a4dc9b58dfbe75de9d98f82bbd7afa4dad7b1a9c0c704acf8141c22",
+      "wave": 0
+    },
+    {
+      "committed": true,
+      "loss": 1.5715196132659912,
+      "phase": "critic_train",
+      "step": 1004,
+      "trace_hash": "a06b1117a55d08397a5d6a8ac95932f58967ae33996395290272acac2c9be9ea",
+      "wave": 1
+    }
+  ],
+  "role": "score",
+  "status": "PASS",
+  "streamer_stats": {
+    "backing_only_bytes": 0,
+    "captured_bytes": 7027886080,
+    "captured_parameter_count": 270,
+    "checkpoint_boundary_d2h_bytes": 0,
+    "checkpoint_boundary_d2h_count": 0,
+    "checkpoint_boundary_d2h_wall_seconds": 0.0,
+    "checkpoint_boundary_h2d_bytes": 0,
+    "checkpoint_boundary_h2d_count": 0,
+    "checkpoint_boundary_h2d_wall_seconds": 0.0,
+    "h2d_wall_seconds": 65.66853614314459,
+    "materialize_count": 500,
+    "materialized_bytes": 351394304000,
+    "peak_resident_bytes": 702788608,
+    "phase_resident_enter_count": 0,
+    "phase_resident_exit_count": 0,
+    "pinned_host_bytes": 0,
+    "private_host_bytes": 0,
+    "release_count": 500,
+    "released_bytes": 351394304000,
+    "resident_bytes": 0,
+    "shared_immutable_block_count": 0,
+    "shared_immutable_host_bytes": 7027886080,
+    "streamed_block_count": 10
+  },
+  "streaming_policy": {
+    "generator_critic_phase_resident": false,
+    "score_critic_activation_offload_min_bytes": 134217728,
+    "streamed_block_count": 10,
+    "streamed_block_indices": [
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39
+    ]
+  },
+  "timing_start_unix_ns": 1786518666091820559,
+  "timing_stop_unix_ns": 1786519490194095766,
+  "updates": {
+    "critic": 5,
+    "ema": 0,
+    "generator": 0
+  }
+}

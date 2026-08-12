@@ -1,0 +1,97 @@
+{
+  "authorized_hypothesis": "Candidate A G40/S4 plus one Generator Critic-only phase-resident scope removes repeated immutable-block materialization while preserving the frozen GAN Full5 workload.",
+  "created_at": "2026-08-12T05:06:54.124115+00:00",
+  "decision": "GO",
+  "environment": {
+    "base_python": "3.10.20",
+    "base_torch": "2.10.0+cu128",
+    "current_status": "MISSING_ON_BOTH_NEW_NODES",
+    "required_prefix": "/tmp/distillschedule-helios-official-torch210",
+    "restore_action": "clone base node-locally then install exact 21-package delta from frozen 161-package inventory",
+    "validated_base": "/share/project/shuchenweng/DistillSchedule_envs/helios-official-torch210"
+  },
+  "falsifiable_question": "Does GAN-P-ROLEPHASE-G40-S4-R1 pass real world16 capacity/correctness and reduce unprofiled Full5 wall time from 1139.194 s median toward 300-400 s?",
+  "frozen_contract": {
+    "gas": 2,
+    "logical_global_batch": 16,
+    "precision": "BF16",
+    "resolution": [
+      384,
+      640
+    ],
+    "steps": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004
+    ],
+    "topology": "persistent 8G+8Score",
+    "trace_bundle_hash": "d31d4d473a3574b5b39e50ad2b5e72e17aee7baf707130ea0513092553f7cd15",
+    "updates": {
+      "critic": 5,
+      "ema": 1,
+      "generator": 1
+    },
+    "waves": 2,
+    "world_size": 16
+  },
+  "gate": "GAN_PIPELINE_LEVEL_C_ROLE_PHASE_LIFECYCLE",
+  "iteration": 277,
+  "live_nodes": {
+    "node0": {
+      "cgroup_oom": 0,
+      "cgroup_oom_kill": 0,
+      "gpus_idle": true,
+      "internal_ip": "172.24.211.148",
+      "job": "ae0cd37b-2a89-489c-9a15-09932329c44a",
+      "ssh_alias": "baai-helios-node0"
+    },
+    "node1": {
+      "cgroup_oom": 0,
+      "cgroup_oom_kill": 0,
+      "gpus_idle": true,
+      "internal_ip": "172.24.100.94",
+      "job": "a248b179-3c88-49c3-ad58-74597d6f9133",
+      "ssh_alias": "baai-helios-node1"
+    }
+  },
+  "live_source": {
+    "dmd_branch": "codex/systems-gan-pipeline-exec-20260811",
+    "dmd_head": "2862e424c8e64efa86043d147939492748ab9d0e",
+    "dmd_status_before_preflight_artifact": "",
+    "runtime_branch": "codex/systems-gan-runtime-20260810",
+    "runtime_head": "171e3bf38605b790b26341496d714cbf3766fb03",
+    "runtime_preexisting_dirty": [
+      "scripts/distillschedule/summarize_iteration131.py",
+      "tests/test_lifecycle_profile.py"
+    ]
+  },
+  "matching_prior_evidence": {
+    "candidate_preregistration": "artifacts/manifests/iteration_276_gan_pipeline_role_phase_optimization_preregistration.json",
+    "candidate_preregistration_sha256": "13cda6516628449b9e5adeb3c4e1d45e141724d1dad311e4dc59667f0638b7ff",
+    "dominant_signature": "G 2720 materializations/1.9116 TB/520.390 s; Score 2000/1.4056 TB/311.933 s",
+    "fixed_policy_formal_manifest": "artifacts/formal/gan_systems_paired_formal_20260811_002/result.json",
+    "fixed_policy_pipeline_median_seconds": 1139.194008663,
+    "fixed_policy_sequential_median_seconds": 656.12522119
+  },
+  "permitted_changes": [
+    "restore frozen environment",
+    "sync already-committed role/phase lifecycle implementation",
+    "run preregistered Candidate A capacity/correctness gate"
+  ],
+  "rejected_or_superseded_paths": [
+    "repeat Pipeline Nsight cudaProfilerStop teardown",
+    "ZeRO-2 double-reduction repairs",
+    "batch/trace/loss/update-count changes",
+    "system Torch 2.1 substitution"
+  ],
+  "schema_version": "distillschedule.iteration_preflight.v2",
+  "stop_conditions": [
+    "source/config/trace hash drift",
+    "non-idle GPU ownership",
+    "cgroup OOM before launch",
+    "environment identity mismatch",
+    "exact receipt/update/queue/lifecycle failure"
+  ]
+}

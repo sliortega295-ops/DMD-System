@@ -1,0 +1,98 @@
+{
+  "candidate_id": "GAN-P-ROLEPHASE-G40-S10-ACT128",
+  "capacity_model": {
+    "additional_nonresident_score_bytes_per_rank": 1405577216,
+    "additional_nonresident_score_gib_per_rank": 1.3090457916259766,
+    "measured_prior_immediate_shortfall_mib_range": [
+      21.62,
+      141.62
+    ],
+    "note": "Prediction only; actual allocator admission and exact receipts decide.",
+    "predicted_score_materializations_full5": 500,
+    "reduction_vs_all40_materializations_percent": 75.0
+  },
+  "created_at": "2026-08-12T02:41:28-04:00",
+  "decision": "GO_ONE_JOINT_PARAMETER_ACTIVATION_GATE",
+  "diagnosis": "A128 selected the intended Critic saved tensors and crossed the former S8 first-wave packed-GAN backward boundary. The run failed in second-wave denoising backward after GAS1 gradients were resident, on a 292 MiB allocation with a worst measured immediate shortfall of 141.62 MiB. Keep A128 fixed and stream two additional Score blocks, releasing about 1.31 GiB per Score rank. This is a joint-lifecycle test, not a reopening of linear weight-only search.",
+  "failure": "Any CUDA/cgroup capacity failure, exact receipt failure, activation leak, deadlock, or frozen-contract drift",
+  "frozen_contract": {
+    "gas": 2,
+    "logical_global_batch": 16,
+    "precision": "BF16",
+    "resolution": [
+      384,
+      640
+    ],
+    "steps": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004
+    ],
+    "topology": "persistent 8G+8Score",
+    "trace_bundle_hash": "d31d4d473a3574b5b39e50ad2b5e72e17aee7baf707130ea0513092553f7cd15",
+    "updates": {
+      "critic": 5,
+      "ema": 1,
+      "generator": 1
+    },
+    "waves": 2,
+    "world_size": 16
+  },
+  "frozen_policy": {
+    "generator_critic_phase_resident": true,
+    "generator_streamed_block_count": 40,
+    "pin_memory": true,
+    "prefetch": false,
+    "score_critic_activation_offload_min_mib": 128,
+    "score_critic_activation_scope": "Critic only after Score gradient service",
+    "score_streamed_block_count": 10,
+    "score_tail_indices": [
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39
+    ],
+    "synchronous_unpack": true
+  },
+  "iteration": 284,
+  "next_command": "python3 scripts/distillschedule/run_gan_systems_formal_trial.py --family pipeline --capacity-search --generator-streamed-block-count 40 --score-streamed-block-count 10 --generator-critic-phase-resident --score-critic-activation-offload-min-mib 128 --run-id gan_pipeline_rolephase_g40_s10_act128_20260812_001 --hosts baai-helios-node0 baai-helios-node1 --master-addr 172.24.211.148 --timeout-seconds 7200 --workload-contract artifacts/manifests/gan_systems_formal_workload_contract_20260811.json --result-path artifacts/g_offload_search/gan-rolephase-20260812/candidate_S10_A128/result.json",
+  "prior_failure": {
+    "activation_cpu_copy_count_representative_rank": 44,
+    "activation_offloaded_logical_bytes_representative_rank": 6311116800,
+    "activation_peak_live_cpu_bytes_representative_rank": 5603328000,
+    "activation_scope_count_before_failure": 3,
+    "cgroup_oom_delta": 0,
+    "cgroup_oom_kill_delta": 0,
+    "classification": "ACTUAL_CUDA_CAPACITY_FAILURE_AFTER_CAUSAL_PROGRESS",
+    "driver_free_mib_range": [
+      150.38,
+      270.38
+    ],
+    "failed_allocation_mib": 292,
+    "phase": "second GAS wave Critic denoising backward after first-wave denoise and packed GAN-D/R1 backward",
+    "result": "artifacts/g_offload_search/gan-rolephase-20260812/candidate_S8_A128/result.json",
+    "result_sha256": "a2a7bcf9bd67c83de4d5f62e1a68a58f9c6f74b0c8339c86fd6ba240b52e1650",
+    "role": "Score",
+    "run_id": "gan_pipeline_rolephase_g40_s8_act128_20260812_001"
+  },
+  "rejected_paths": [
+    "lower activation threshold to 126 MiB without a robust reserve",
+    "resume weight-only S11/S12/S16 linear probing",
+    "change GAS, batch, trace, losses, update counts, topology, or precision",
+    "disable Generator phase residency as a Score-GPU OOM response"
+  ],
+  "single_variable_change_from_prior_candidate": {
+    "score_critic_activation_offload_min_mib": 128,
+    "score_streamed_block_count_after": 10,
+    "score_streamed_block_count_before": 8
+  },
+  "success": "16-rank PASS; Score activation scope_count=20, cpu_copy_count>0, live_cpu_bytes=0; all existing fairness/compute/update/queue/lifecycle gates PASS; no CUDA/cgroup OOM"
+}

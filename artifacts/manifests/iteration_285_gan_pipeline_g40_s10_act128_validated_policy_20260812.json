@@ -1,0 +1,39 @@
+{
+  "capacity_result": "../g_offload_search/gan-rolephase-20260812/candidate_S10_A128/result.json",
+  "capacity_result_sha256": "791ec875a0f5cc798a4f26d4269366b50cca0b8eeeedd9a473c616e776af9b1c",
+  "capacity_run_id": "gan_pipeline_rolephase_g40_s10_act128_20260812_001",
+  "correctness_evidence": {
+    "compute_receipt_sha256": "52746478d75d7112955db0413f001df258c76a6058725fd0f233ebc527659a42",
+    "fairness_receipt_sha256": "069069ba2ba5f15bc75ed532c25c5ed3d456dc681f44786d8f0f35c269dc3b96",
+    "rank_count": 16,
+    "status": "PASS",
+    "updates": {
+      "critic_per_score_rank": 5,
+      "ema_per_generator_rank": 1,
+      "generator_per_generator_rank": 1
+    }
+  },
+  "created_at": "2026-08-12T03:07:00-04:00",
+  "diagnostic_capacity_window_seconds": 868.488686064,
+  "diagnostic_timing_claim_boundary": "NOT_FORMAL_DETAILED_EVENTS_ENABLED",
+  "formal_change_boundary": {
+    "detailed_pack_unpack_and_materialization_events": false,
+    "exact_timing_receipts": true,
+    "scope_and_final_counter_summaries": true,
+    "training_or_memory_policy_change": false
+  },
+  "iteration": 285,
+  "next_command": "python3 scripts/distillschedule/run_gan_systems_formal_trial.py --family pipeline --generator-streamed-block-count 40 --score-streamed-block-count 10 --generator-critic-phase-resident --score-critic-activation-offload-min-mib 128 --validated-policy-manifest artifacts/manifests/iteration_285_gan_pipeline_g40_s10_act128_validated_policy_20260812.json --run-id gan_pipeline_rolephase_g40_s10_act128_formal_20260812_001 --hosts baai-helios-node0 baai-helios-node1 --master-addr 172.24.211.148 --timeout-seconds 7200 --workload-contract artifacts/manifests/gan_systems_formal_workload_contract_20260811.json --result-path artifacts/formal/gan-pipeline-rolephase-20260812/trial_0/result.json",
+  "schema_version": "distillschedule.gan_validated_policy.v1",
+  "status": "PASS",
+  "validated_policy": {
+    "generator_critic_phase_resident": true,
+    "generator_streamed_block_count": 40,
+    "host_policy": "HOST_SHARED_IMMUTABLE",
+    "prefetch": false,
+    "score_critic_activation_offload_min_mib": 128,
+    "score_streamed_block_count": 10,
+    "streaming_window": 1
+  },
+  "workload_contract_digest": "e7bb6638e2d2d7356b93c90c0ac73a577f59cdeacf4f70a0c45b2cd29fac95a0"
+}

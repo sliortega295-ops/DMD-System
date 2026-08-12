@@ -55,7 +55,8 @@ def test_pipeline_worker_freezes_exact_formal_and_gas2_contract(tmp_path: Path) 
     assert "--node-rank=1" in script
     assert "DISTILLSCHEDULE_GAN_EXACT_TIMING=1" in script
     assert "DISTILLSCHEDULE_GAN_NSYS_PROFILE=0" in script
-    assert "--detailed-events" in script
+    assert "--detailed-events" not in script
+    assert "DISTILLSCHEDULE_GAN_VALIDATED_POLICY_DIGEST=''" in script
     assert "distillschedule_gpu_node.lock" in script
 
 
@@ -115,6 +116,7 @@ def test_pipeline_capacity_candidate_changes_only_streamed_tail_contract(
     assert "DISTILLSCHEDULE_GAN_SCORE_STREAMED_BLOCK_COUNT=4" in script
     assert "DISTILLSCHEDULE_GAN_SCORE_STREAMED_BLOCK_INDICES=36,37,38,39" in script
     assert "DISTILLSCHEDULE_GAN_NSYS_PROFILE=0" in script
+    assert "--detailed-events" in script
 
 
 def test_pipeline_role_aware_phase_resident_candidate_is_fail_closed(
@@ -148,6 +150,39 @@ def test_pipeline_role_aware_phase_resident_candidate_is_fail_closed(
     assert "DISTILLSCHEDULE_GAN_GENERATOR_CRITIC_PHASE_RESIDENT=1" in script
 
 
+def test_pipeline_score_critic_activation_offload_is_phase_scoped_and_fail_closed(
+    tmp_path: Path,
+) -> None:
+    args = SimpleNamespace(
+        master_addr="10.0.0.1",
+        master_port=30001,
+        timeout_seconds=20000,
+        run_nonce=123,
+        profile_nsys=False,
+        capacity_search=True,
+        streamed_block_count=40,
+        generator_streamed_block_count=40,
+        score_streamed_block_count=8,
+        generator_critic_phase_resident=True,
+        score_critic_activation_offload_min_mib=256,
+        pipeline_remote_root=Path("/remote/dmd"),
+        pipeline_runtime_root=Path("/remote/runtime"),
+        config=Path("/assets/config.yaml"),
+        target_package=Path("/assets/target"),
+        trace_bundle=Path("/assets/trace"),
+        generator_root=Path("/assets/generator"),
+        score_root=Path("/assets/score"),
+        negative_prompt=Path("/assets/negative.pt"),
+        pipeline_mmap=Path("/assets/mmap"),
+    )
+    script = MODULE._pipeline_worker_script(args, 1, tmp_path / "run")
+    assert "DISTILLSCHEDULE_GAN_SCORE_STREAMED_BLOCK_COUNT=8" in script
+    assert (
+        "DISTILLSCHEDULE_GAN_SCORE_CRITIC_ACTIVATION_OFFLOAD_MIN_BYTES=268435456"
+        in script
+    )
+
+
 def test_formal_run_id_contract_accepts_artifact_convention() -> None:
     pattern = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
     assert pattern.fullmatch("gan_pipeline_formal_gate_20260811_001")
@@ -168,6 +203,80 @@ def test_prepare_result_path_creates_parent_but_preserves_immutability(
         assert "immutable result already exists" in str(exc)
     else:
         raise AssertionError("existing formal result was accepted")
+
+
+def test_validated_policy_manifest_binds_capacity_result_and_exact_policy(
+    tmp_path: Path,
+) -> None:
+    contract_digest = "c" * 64
+    capacity = tmp_path / "capacity.json"
+    capacity.write_text(
+        json.dumps(
+            {
+                "status": "PASS",
+                "capacity_search": True,
+                "workload_contract_digest": contract_digest,
+                "fixed_memory_policy": {
+                    "generator_streamed_blocks": list(range(40)),
+                    "score_streamed_blocks": list(range(30, 40)),
+                    "generator_critic_phase_resident": True,
+                    "score_critic_activation_offload_min_bytes": 128
+                    * 1024
+                    * 1024,
+                    "streaming_window": 1,
+                    "host_policy": "HOST_SHARED_IMMUTABLE",
+                    "prefetch": False,
+                },
+            }
+        )
+    )
+    manifest = tmp_path / "validated.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": "distillschedule.gan_validated_policy.v1",
+                "status": "PASS",
+                "workload_contract_digest": contract_digest,
+                "capacity_result": str(capacity),
+                "capacity_result_sha256": MODULE._sha256(capacity),
+                "validated_policy": {
+                    "generator_streamed_block_count": 40,
+                    "score_streamed_block_count": 10,
+                    "generator_critic_phase_resident": True,
+                    "score_critic_activation_offload_min_mib": 128,
+                    "streaming_window": 1,
+                    "host_policy": "HOST_SHARED_IMMUTABLE",
+                    "prefetch": False,
+                },
+            }
+        )
+    )
+    digest = MODULE._validate_optimized_policy_manifest(
+        manifest,
+        workload_digest=contract_digest,
+        generator_streamed_count=40,
+        score_streamed_count=10,
+        generator_critic_phase_resident=True,
+        score_critic_activation_offload_min_mib=128,
+    )
+    assert digest == MODULE._sha256(manifest)
+
+    value = json.loads(manifest.read_text())
+    value["validated_policy"]["score_streamed_block_count"] = 8
+    manifest.write_text(json.dumps(value))
+    try:
+        MODULE._validate_optimized_policy_manifest(
+            manifest,
+            workload_digest=contract_digest,
+            generator_streamed_count=40,
+            score_streamed_count=10,
+            generator_critic_phase_resident=True,
+            score_critic_activation_offload_min_mib=128,
+        )
+    except RuntimeError as exc:
+        assert "settings do not match" in str(exc)
+    else:
+        raise AssertionError("policy-drifted validated manifest was accepted")
 
 
 def test_pipeline_failure_classifier_requires_explicit_capacity_evidence(

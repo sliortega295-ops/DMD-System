@@ -1,0 +1,75 @@
+{
+  "candidate_id": "GAN-P-ROLEPHASE-G40-S8-ACT128",
+  "created_at": "2026-08-12T06:28:24.852495+00:00",
+  "decision": "GO_ONE_CENSUS_DRIVEN_THRESHOLD_CORRECTION",
+  "diagnosis": "The A256 hook was correctly phase-scoped but selected zero tensors. Census shows 40 packed-GAN checkpoint boundaries at 133.59375 MiB plus two 168.75-MiB tensors per observed packed forward. Lowering only the threshold to 128 MiB selects the intended state class.",
+  "failure": "Any allocation/cgroup failure, exact receipt failure, activation leak, deadlock, or contract drift",
+  "frozen_contract": {
+    "gas": 2,
+    "logical_global_batch": 16,
+    "precision": "BF16",
+    "resolution": [
+      384,
+      640
+    ],
+    "steps": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004
+    ],
+    "topology": "persistent 8G+8Score",
+    "trace_bundle_hash": "d31d4d473a3574b5b39e50ad2b5e72e17aee7baf707130ea0513092553f7cd15",
+    "updates": {
+      "critic": 5,
+      "ema": 1,
+      "generator": 1
+    },
+    "waves": 2,
+    "world_size": 16
+  },
+  "frozen_policy": {
+    "generator_critic_phase_resident": true,
+    "generator_streamed_block_count": 40,
+    "pin_memory": true,
+    "prefetch": false,
+    "score_critic_activation_scope": "Critic only after Score gradient service",
+    "score_streamed_block_count": 8,
+    "score_tail_indices": [
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39
+    ],
+    "synchronous_unpack": true
+  },
+  "iteration": 283,
+  "next_command": "python3 scripts/distillschedule/run_gan_systems_formal_trial.py --family pipeline --capacity-search --generator-streamed-block-count 40 --score-streamed-block-count 8 --generator-critic-phase-resident --score-critic-activation-offload-min-mib 128 --run-id gan_pipeline_rolephase_g40_s8_act128_20260812_001 --hosts baai-helios-node0 baai-helios-node1 --master-addr 172.24.211.148 --timeout-seconds 7200 --workload-contract artifacts/manifests/gan_systems_formal_workload_contract_20260811.json --result-path artifacts/g_offload_search/gan-rolephase-20260812/candidate_S8_A128/result.json",
+  "prior_failure": {
+    "activation_cpu_copy_count": 0,
+    "activation_scope_count_before_failure": 2,
+    "cgroup_oom_delta": 0,
+    "cgroup_oom_kill_delta": 0,
+    "classification": "ACTUAL_CUDA_CAPACITY_FAILURE",
+    "failed_allocation_mib": 134,
+    "key_saved_boundary_count": 40,
+    "key_saved_boundary_mib": 133.59375,
+    "largest_nonparameter_saved_tensor_mib": 168.75,
+    "phase": "Critic second_loss checkpoint-recompute attention/LoRA",
+    "result": "artifacts/g_offload_search/gan-rolephase-20260812/candidate_S8_A256/result.json",
+    "result_sha256": "85dd7b6c18011fa616ae8bcba8250c2eadf48573bcdecea8b1c88e85066bc968",
+    "role": "Score",
+    "run_id": "gan_pipeline_rolephase_g40_s8_act256_20260812_001"
+  },
+  "schema_version": "distillschedule.gan_pipeline_lifecycle_candidate.v1",
+  "single_variable_change": {
+    "score_critic_activation_offload_min_mib_after": 128,
+    "score_critic_activation_offload_min_mib_before": 256
+  },
+  "success": "16-rank PASS; Score activation scope_count=20, cpu_copy_count>0, live_cpu_bytes=0; all existing exact gates PASS; no CUDA/cgroup OOM"
+}
