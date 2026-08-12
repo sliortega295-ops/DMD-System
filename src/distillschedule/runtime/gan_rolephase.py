@@ -1,9 +1,9 @@
 """Phase-aware GAN scheduling contracts for the 4G + 8C + 4Flex prototype.
 
-This module owns only systems semantics: topology, batch16 mapping, phase
-versioning, Q2 credits, and bounded GPU-shard redistribution. It deliberately
-does not reimplement Helios DMD/GAN math; PR #7 trace/fairness/compute/version
-and wire-header contracts remain authoritative.
+Phase A and Phase B update different trainable models, so their global batches
+are independent.  The contract therefore keeps the already validated
+Generator-update batch16 in Phase A and reuses the no-GAN 4G+12C batch12 shape
+in Phase B.  PR #7 trace/fairness/version/wire identities remain authoritative.
 """
 from __future__ import annotations
 
@@ -13,9 +13,9 @@ from typing import Iterable, Mapping, Sequence
 
 
 class GanRolePhase(str, enum.Enum):
-    PHASE_A = "phase_a_8g8score"
+    PHASE_A = "phase_a_8g8score_b16"
     HANDOFF_TO_B = "handoff_to_b"
-    PHASE_B = "phase_b_4g12critic"
+    PHASE_B = "phase_b_4g12critic_b12"
     HANDOFF_TO_A = "handoff_to_a"
     COMPLETE = "complete"
 
@@ -39,23 +39,31 @@ class PhaseBSlot:
 
 @dataclass(frozen=True)
 class GanRolePhaseTopology:
-    """World16 topology preserving PR #7 Phase-A rank placement.
+    """World16 topology with phase-local batch contracts.
 
-    Phase A: ranks 0..7 = Generator, ranks 8..15 = Score.
-    Phase B: ranks 0..3 = resident no-grad Generator producer,
-             ranks 4..7 = Flex G->Critic,
-             ranks 8..15 = resident Critic.
+    Phase A:
+      ranks 0..7  = Generator
+      ranks 8..15 = Score
+      global batch = 16 = two waves x eight lanes
+
+    Phase B:
+      ranks 0..3  = no-grad Generator producers
+      ranks 4..15 = Critic
+      global batch = 12 = one B1 sample per Critic rank
     """
 
     world_size: int = 16
     fixed_generator_ranks: tuple[int, ...] = (0, 1, 2, 3)
     flex_ranks: tuple[int, ...] = (4, 5, 6, 7)
     fixed_critic_ranks: tuple[int, ...] = tuple(range(8, 16))
-    global_batch: int = 16
+    phase_a_global_batch: int = 16
+    phase_b_global_batch: int = 12
 
     def __post_init__(self) -> None:
-        if self.world_size != 16 or self.global_batch != 16:
-            raise ValueError("GAN role-phase v1 is frozen to world16/batch16")
+        if self.world_size != 16:
+            raise ValueError("GAN role-phase v2 is frozen to world16")
+        if (self.phase_a_global_batch, self.phase_b_global_batch) != (16, 12):
+            raise ValueError("role-phase v2 requires Phase-A B16 and Phase-B B12")
         groups = (self.fixed_generator_ranks, self.flex_ranks, self.fixed_critic_ranks)
         if tuple(map(len, groups)) != (4, 4, 8):
             raise ValueError("expected exactly 4 fixed G, 4 Flex and 8 fixed C")
@@ -80,8 +88,8 @@ class GanRolePhaseTopology:
         return self.flex_ranks + self.fixed_critic_ranks
 
     def phase_a_slot(self, logical_slot: int) -> PhaseASlot:
-        if not 0 <= logical_slot < 16:
-            raise ValueError("logical slot must be in [0,16)")
+        if not 0 <= logical_slot < self.phase_a_global_batch:
+            raise ValueError("Phase-A logical slot must be in [0,16)")
         wave, lane = divmod(logical_slot, 8)
         return PhaseASlot(
             logical_slot=logical_slot,
@@ -91,34 +99,33 @@ class GanRolePhaseTopology:
         )
 
     def phase_b_slot(self, logical_slot: int) -> PhaseBSlot:
-        """Map batch16 to 4 producers and 12 Critic consumers exactly once.
+        """Map batch12 one-to-one onto 12 Critic ranks.
 
-        Critic wave0: slots 0..11, one per C rank.
-        Critic wave1: slots 12..15, one extra sample per Flex C rank.
-        Each G rank produces four samples: lane, lane+4, lane+8, lane+12.
+        Each fixed G rank produces exactly three samples:
+          G0 -> slots 0,4,8
+          G1 -> slots 1,5,9
+          G2 -> slots 2,6,10
+          G3 -> slots 3,7,11
+
+        Each Critic rank receives exactly one B1 sample and enters exactly one
+        physical Critic model call per logical step.
         """
-        if not 0 <= logical_slot < 16:
-            raise ValueError("logical slot must be in [0,16)")
-        generator_rank = self.fixed_generator_ranks[logical_slot % 4]
-        if logical_slot < 12:
-            critic_wave = 0
-            critic_rank = self.phase_b_critic_ranks[logical_slot]
-        else:
-            critic_wave = 1
-            critic_rank = self.flex_ranks[logical_slot - 12]
+        if not 0 <= logical_slot < self.phase_b_global_batch:
+            raise ValueError("Phase-B logical slot must be in [0,12)")
         return PhaseBSlot(
             logical_slot=logical_slot,
-            critic_micro_wave=critic_wave,
-            generator_rank=generator_rank,
-            critic_rank=critic_rank,
-            loss_weight=1.0 / 16.0,
+            critic_micro_wave=0,
+            generator_rank=self.fixed_generator_ranks[logical_slot % 4],
+            critic_rank=self.phase_b_critic_ranks[logical_slot],
+            loss_weight=1.0 / float(self.phase_b_global_batch),
         )
 
     def phase_b_slots_for_generator(self, rank: int) -> tuple[PhaseBSlot, ...]:
         if rank not in self.fixed_generator_ranks:
             raise ValueError("rank is not a Phase-B Generator")
         return tuple(
-            item for item in map(self.phase_b_slot, range(16))
+            item
+            for item in map(self.phase_b_slot, range(self.phase_b_global_batch))
             if item.generator_rank == rank
         )
 
@@ -126,12 +133,13 @@ class GanRolePhaseTopology:
         if rank not in self.phase_b_critic_ranks:
             raise ValueError("rank is not a Phase-B Critic")
         return tuple(
-            item for item in map(self.phase_b_slot, range(16))
+            item
+            for item in map(self.phase_b_slot, range(self.phase_b_global_batch))
             if item.critic_rank == rank
         )
 
     def phase_groups(self) -> Mapping[str, tuple[int, ...]]:
-        """All NCCL groups should be created once before the formal window."""
+        """All process groups are created outside the formal timing window."""
         return {
             "phase_a_generator": self.phase_a_generator_ranks,
             "phase_a_score": self.phase_a_score_ranks,
@@ -143,14 +151,18 @@ class GanRolePhaseTopology:
 
 
 @dataclass(frozen=True)
-class GpuShardedResidencyContract:
-    """Forbid repeated CPU frozen-backbone streaming in steady-state phases."""
+class PhaseResidencyContract:
+    """Stable phases forbid repeated CPU frozen-block streaming.
+
+    The first real implementation reuses the PR #6 persistent-pinned bounded
+    transition substrate.  GPU live-reshard helpers below remain diagnostic.
+    """
 
     phase_a_generator_shards: int = 8
     phase_a_score_shards: int = 8
     phase_b_generator_shards: int = 4
     phase_b_critic_shards: int = 12
-    frozen_parameter_transport: str = "nccl_p2p_chunked_reshard"
+    frozen_parameter_transport: str = "persistent_pinned_target_materialization"
     repeated_cpu_frozen_streaming: bool = False
     cpu_optimizer_offload_allowed: bool = True
     handoff_is_bounded_once_per_direction: bool = True
@@ -167,12 +179,17 @@ class GpuShardedResidencyContract:
         if self.repeated_cpu_frozen_streaming:
             raise ValueError("repeated CPU frozen-backbone streaming is forbidden")
         if self.frozen_parameter_transport not in {
+            "persistent_pinned_target_materialization",
             "nccl_p2p_chunked_reshard",
             "nccl_all_to_all_chunked_reshard",
         }:
-            raise ValueError("frozen parameter handoff must stay GPU-side")
+            raise ValueError("unsupported bounded phase-transition backend")
         if not self.handoff_is_bounded_once_per_direction:
             raise ValueError("parameter handoff must be phase-bounded")
+
+
+# Compatibility alias for the initial PR #8 prototype name.
+GpuShardedResidencyContract = PhaseResidencyContract
 
 
 @dataclass(frozen=True)
@@ -252,7 +269,7 @@ def plan_contiguous_reshard(
     *,
     max_chunk_numel: int | None = None,
 ) -> tuple[ReshardTransfer, ...]:
-    """Exact canonical flat-shard redistribution without full all-gather."""
+    """Diagnostic canonical flat-shard redistribution without full all-gather."""
     sources = balanced_shards(total_numel, src_ranks)
     destinations = balanced_shards(total_numel, dst_ranks)
     result: list[ReshardTransfer] = []
@@ -320,14 +337,14 @@ class BufferState(str, enum.Enum):
 
 @dataclass
 class ProducerPayloadCredits:
-    """Two producer buffers; NCCL send completion, not Critic ACK, returns credit."""
+    """Two producer buffers; send completion, not Critic ACK, returns credit."""
 
     capacity: int = 2
     _slots: list[tuple[BufferState, int | None]] = field(init=False)
 
     def __post_init__(self) -> None:
         if self.capacity != 2:
-            raise ValueError("role-phase v1 fixes producer payload credits to Q2")
+            raise ValueError("role-phase v2 fixes producer payload credits to Q2")
         self._slots = [(BufferState.FREE, None) for _ in range(2)]
 
     @property
@@ -337,7 +354,8 @@ class ProducerPayloadCredits:
     @property
     def active_sequences(self) -> tuple[int, ...]:
         return tuple(
-            sequence for state, sequence in self._slots
+            sequence
+            for state, sequence in self._slots
             if state is not BufferState.FREE and sequence is not None
         )
 
@@ -377,7 +395,7 @@ class ConsumerQ2Window:
 
     def __post_init__(self) -> None:
         if self.capacity != 2:
-            raise ValueError("role-phase v1 fixes consumer queue depth to Q2")
+            raise ValueError("role-phase v2 fixes consumer queue depth to Q2")
 
     @property
     def active_sequences(self) -> tuple[int, ...]:
@@ -514,28 +532,33 @@ class GanFull5RolePhaseState:
 
 def rolephase_contract_summary(
     topology: GanRolePhaseTopology = GanRolePhaseTopology(),
-    residency: GpuShardedResidencyContract = GpuShardedResidencyContract(),
+    residency: PhaseResidencyContract = PhaseResidencyContract(),
 ) -> dict[str, object]:
     return {
-        "schema_version": "distillschedule.gan_rolephase.v1",
-        "world_size": 16,
-        "global_batch": 16,
+        "schema_version": "distillschedule.gan_rolephase.v2",
+        "world_size": topology.world_size,
         "fixed_generator_ranks": list(topology.fixed_generator_ranks),
         "flex_ranks": list(topology.flex_ranks),
         "fixed_critic_ranks": list(topology.fixed_critic_ranks),
         "phase_a": {
+            "global_batch": topology.phase_a_global_batch,
             "generator_ranks": list(topology.phase_a_generator_ranks),
             "score_ranks": list(topology.phase_a_score_ranks),
             "logical_waves": 2,
         },
         "phase_b": {
+            "global_batch": topology.phase_b_global_batch,
             "generator_ranks": list(topology.phase_b_generator_ranks),
             "critic_ranks": list(topology.phase_b_critic_ranks),
+            "generator_sample_counts": {
+                rank: len(topology.phase_b_slots_for_generator(rank))
+                for rank in topology.phase_b_generator_ranks
+            },
             "critic_sample_counts": {
                 rank: len(topology.phase_b_slots_for_critic(rank))
                 for rank in topology.phase_b_critic_ranks
             },
-            "loss_reduction": "SUM(samples * 1/16)",
+            "loss_reduction": "batch12_mean",
             "queue_depth": 2,
         },
         "residency": {
@@ -549,8 +572,6 @@ def rolephase_contract_summary(
         },
         "correctness_reuse": [
             "operation-keyed trace",
-            "fairness receipt",
-            "compute inventory",
             "G/C/EMA version contract",
             "existing GAN request/reply header identities",
         ],
@@ -565,6 +586,7 @@ __all__ = [
     "GpuShardedResidencyContract",
     "PhaseASlot",
     "PhaseBSlot",
+    "PhaseResidencyContract",
     "ProducerPayloadCredits",
     "ReshardTransfer",
     "ShardRange",
