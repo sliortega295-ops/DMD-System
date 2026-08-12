@@ -932,6 +932,7 @@ def _initialize_phase_b_critic(
             raise ValueError("only preregistered Phase-B candidates k=0 or tail-4 are legal")
         residency = install_frozen_block_streamer(
             engine.module,
+            logical_component="gan_rolephase_phase_b_critic",
             device=device,
             window_size=1,
             streamed_block_count=4,

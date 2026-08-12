@@ -100,6 +100,23 @@ def test_worker_defaults_to_resident_phase_b_and_has_no_implicit_tail4() -> None
     assert option.choices == (0, 4)
 
 
+def test_tail4_streamer_is_bound_to_the_phase_b_critic_component() -> None:
+    source = Path(worker.__file__).read_text()
+    call = source[source.index("residency = install_frozen_block_streamer(") :]
+    call = call[: call.index(")\n        policy =")]
+    assert 'logical_component="gan_rolephase_phase_b_critic"' in call
+
+
+def test_resource_monitor_emits_a_host_memory_value() -> None:
+    launcher = Path(worker.__file__).with_name(
+        "launch_gan_rolephase_world16_node.sh"
+    )
+    source = launcher.read_text()
+    assert 'host_used="$(awk ' in source
+    assert '${host_used}' in source
+    assert 'printf \\"%.0f\\"' not in source
+
+
 def test_only_g201_extraction_owner_is_cold_preconstructed(monkeypatch) -> None:
     roles: list[str] = []
 

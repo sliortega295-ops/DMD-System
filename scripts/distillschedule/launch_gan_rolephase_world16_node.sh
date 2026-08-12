@@ -159,7 +159,8 @@ MONITOR="${NODE_LOG}/resource.csv"
 monitor() {
   echo 'unix_time,cgroup_bytes,host_used_bytes,gpu_used_mib,gpu_util_percent' >"${MONITOR}"
   while true; do
-    echo "$(date +%s.%N),$(cat /sys/fs/cgroup/memory.current 2>/dev/null || echo -1),$(awk '/^MemTotal:/{t=$2}/^MemAvailable:/{a=$2}END{printf \"%.0f\", (t-a)*1024}' /proc/meminfo),$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | paste -sd: -),$(nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits | paste -sd: -)" >>"${MONITOR}"
+    host_used="$(awk '/^MemTotal:/{t=$2}/^MemAvailable:/{a=$2}END{print (t-a)*1024}' /proc/meminfo)"
+    echo "$(date +%s.%N),$(cat /sys/fs/cgroup/memory.current 2>/dev/null || echo -1),${host_used},$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | paste -sd: -),$(nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits | paste -sd: -)" >>"${MONITOR}"
     sleep 1
   done
 }
