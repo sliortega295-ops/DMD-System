@@ -8,16 +8,14 @@ torch = pytest.importorskip("torch")
 
 from runtime.operation_trace import OperationTrace
 from runtime.gan_rolephase_helios import (
-    BatchedOperationTrace,
+    ScaledBackwardAccelerator,
     build_critic_local_batch_bundle,
 )
 
 
-def _trace(seed: int, *, control_exit: int = 2) -> OperationTrace:
+def _trace(seed: int) -> OperationTrace:
     tensors = {
         "step/1000/critic/noise": torch.full((1, 2, 3), float(seed)),
-        "step/1000/critic/crop": torch.tensor([[seed, seed + 1]], dtype=torch.int64),
-        "shared/scalar": torch.tensor(7, dtype=torch.int64),
     }
     manifest = {
         "trace_hash": f"{seed:064x}"[-64:],
@@ -28,47 +26,60 @@ def _trace(seed: int, *, control_exit: int = 2) -> OperationTrace:
                 "component": "generator",
                 "operation": "rollout",
                 "tensor_keys": ["step/1000/critic/noise"],
-                "control": {"pyramid_stage_call_sequence": [{"denoising_exit": control_exit}]},
+                "control": {"pyramid_stage_call_sequence": [{"denoising_exit": 2}]},
             }
         ],
     }
     return OperationTrace(Path(f"/tmp/trace-{seed}"), manifest, tensors)
 
 
-def test_batched_operation_trace_concatenates_sample_tensors() -> None:
-    left, right = _trace(1), _trace(2)
-    batched = BatchedOperationTrace((left, right))
-    assert batched.local_batch == 2
-    noise = batched.tensor("step/1000/critic/noise")
-    crop = batched.tensor("step/1000/critic/crop")
-    assert tuple(noise.shape) == (2, 2, 3)
-    assert tuple(crop.shape) == (2, 2)
-    assert batched.tensor("shared/scalar").item() == 7
-    assert batched.operation("step/1000/critic/rollout")["control"] == left.operation(
-        "step/1000/critic/rollout"
-    )["control"]
-
-
-def test_batched_operation_trace_rejects_control_drift() -> None:
-    batched = BatchedOperationTrace((_trace(1, control_exit=2), _trace(2, control_exit=3)))
-    with pytest.raises(ValueError, match="identical control"):
-        batched.operation("step/1000/critic/rollout")
-
-
-def test_local_batch_bundle_batches_x0_sources_and_trace_together() -> None:
-    traces = [_trace(1), _trace(2)]
-    x0 = [torch.ones((1, 2, 3)), torch.full((1, 2, 3), 2.0)]
-    sources = [
-        {"text": torch.ones((1, 4)), "history": torch.ones((1, 2, 3))},
-        {"text": torch.full((1, 4), 2.0), "history": torch.full((1, 2, 3), 2.0)},
-    ]
+def test_local_batch_bundle_preserves_one_sample_and_one_trace() -> None:
+    trace = _trace(1)
+    x0 = torch.ones((1, 2, 3))
+    source = {"text": torch.ones((1, 4)), "history": torch.ones((1, 2, 3))}
     bundle = build_critic_local_batch_bundle(
-        logical_slots=(0, 12),
+        logical_slot=0,
         generated_x0=x0,
-        sources=sources,
-        traces=traces,
+        source=source,
+        trace=trace,
     )
-    assert bundle.local_batch == 2
-    assert tuple(bundle.generated_x0.shape) == (2, 2, 3)
-    assert tuple(bundle.source["text"].shape) == (2, 4)
-    assert getattr(bundle.operation_trace, "local_batch") == 2
+    assert bundle.local_batch == 1
+    assert bundle.logical_slot == 0
+    assert bundle.operation_trace is trace
+    assert tuple(bundle.generated_x0.shape) == (1, 2, 3)
+
+
+def test_local_batch_bundle_rejects_old_b2_shape() -> None:
+    trace = _trace(1)
+    with pytest.raises(ValueError, match="B1"):
+        build_critic_local_batch_bundle(
+            logical_slot=0,
+            generated_x0=torch.ones((2, 2, 3)),
+            source={"text": torch.ones((2, 4))},
+            trace=trace,
+        )
+
+
+class _Base:
+    def __init__(self) -> None:
+        self.seen = None
+
+    def backward(self, loss):
+        self.seen = loss
+
+
+def test_scaled_backward_is_identity_for_dp_mean_batch12() -> None:
+    base = _Base()
+    adapter = ScaledBackwardAccelerator(base, backend_dp_reduction="DP_MEAN")
+    loss = torch.tensor(3.0)
+    adapter.backward(loss)
+    assert adapter.scale == pytest.approx(1.0)
+    assert float(base.seen) == pytest.approx(3.0)
+
+
+def test_scaled_backward_uses_one_over_12_for_sum_backend() -> None:
+    base = _Base()
+    adapter = ScaledBackwardAccelerator(base, backend_dp_reduction="SUM")
+    adapter.backward(torch.tensor(12.0))
+    assert adapter.scale == pytest.approx(1.0 / 12.0)
+    assert float(base.seen) == pytest.approx(1.0)
