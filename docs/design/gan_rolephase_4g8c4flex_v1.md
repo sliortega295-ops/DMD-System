@@ -90,14 +90,11 @@ No code may infer this from the configured rank count.
 
 ### Batch-aware operation trace
 
-Flex B2 requires more than concatenating generated `x0`. The two logical samples also carry distinct operation-keyed:
+Flex B2 requires more than concatenating generated `x0`. The two logical samples also carry distinct operation-keyed timestep/noise/crop/R1/history inputs.
 
-- timestep/noise;
-- GAN fake/real/R1 crops;
-- R1 epsilon;
-- history/source tensors.
+`runtime/gan_rolephase_helios.py` batches these tensors along their explicit B1 dimension. Operation controls, including the DiT stage schedule, must be identical across the two traces; otherwise the batch adapter fails closed. The same module provides a backward-scaling wrapper so every low-VRAM backward performed inside official `_critic_loss` receives the same global-batch16 normalization.
 
-`runtime/gan_rolephase_helios.py` batches these tensors along their explicit B1 dimension. Operation controls, including the DiT stage schedule, must be identical across the two traces; otherwise the batch adapter fails closed.
+This is a direct Helios-facing binding layer, but the full 14B engine lifecycle and launcher are **not yet connected**. The branch therefore no longer claims that a real executor is already implemented.
 
 ## Q2 wavefront and ordered transport
 
@@ -148,11 +145,12 @@ Torch-enabled environments additionally run:
 
 ## Remaining gate before a real 14B GPU launch
 
-The next patch must bind these runtime primitives into a real Helios worker:
+The next patch must bind these runtime primitives into the real Helios worker:
 
 1. instantiate the Phase-A Generator/Score engines with the existing official DMD/GAN math;
 2. create/restore the Phase-B C12 trainable engine using the PR #6 transition/checkpoint substrate;
 3. bind the actual DeepSpeed/FSDP gradient reduction semantics to `SUM` or `DP_MEAN` and validate one toy distributed optimizer step against a world16 reference;
-4. run one real world16 correctness/capacity gate before any timing trial.
+4. make the two-node launcher call that worker and emit PR #7 fairness/compute/version/timing receipts;
+5. run one real world16 correctness/capacity gate before any timing trial.
 
 PR remains Draft until those model bindings pass. No GPU performance run should start from the contract alone.
