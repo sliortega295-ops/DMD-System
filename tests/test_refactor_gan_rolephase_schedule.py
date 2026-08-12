@@ -17,6 +17,26 @@ def test_rolephase_full5_graph_is_acyclic_and_contains_reverse_handoff() -> None
     assert order.index("b:1004:commit") < order.index("handoff:to_a")
 
 
+def test_phase_a_contains_two_real_forward_score_backward_waves() -> None:
+    tasks = {task.key: task for task in GanRolePhasePlanner().compile_full5()}
+    for wave in (0, 1):
+        assert tasks[f"a:g_forward:w{wave}"].kind is RolePhaseTaskKind.PHASE_A_G_FORWARD
+        assert (
+            tasks[f"a:score_boundary:w{wave}"].kind
+            is RolePhaseTaskKind.PHASE_A_SCORE_BOUNDARY
+        )
+        assert tasks[f"a:g_backward:w{wave}"].kind is RolePhaseTaskKind.PHASE_A_G_BACKWARD
+
+    # The performance-critical invariant: wave1 G forward is released by
+    # wave0 latent-send completion, not by the wave0 Score reply.
+    g1 = tasks["a:g_forward:w1"]
+    assert "a:latent_send_complete:w0" in g1.dependencies
+    assert "a:score_boundary:w0" not in g1.dependencies
+    assert "a:score_boundary:w0" in tasks["a:g_backward:w0"].dependencies
+    assert "a:g_forward:w1" in tasks["a:g_backward:w0"].dependencies
+    assert tasks["a:g_commit"].dependencies == ("a:g_backward:w1",)
+
+
 def test_next_generator_batch_does_not_wait_for_previous_critic_commit() -> None:
     tasks = {task.key: task for task in GanRolePhasePlanner().compile_full5()}
     for step in range(1001, 1005):
@@ -29,6 +49,7 @@ def test_critic_compute_remains_version_serial() -> None:
     for step in range(1001, 1005):
         consume = tasks[f"b:{step}:consume"]
         assert f"b:{step - 1}:commit" in consume.dependencies
+        assert consume.resource == "critic12_single_physical_call"
 
 
 def test_q2_backpressure_is_two_batches_not_per_route_ack() -> None:
