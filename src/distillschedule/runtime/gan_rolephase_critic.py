@@ -1,18 +1,14 @@
-"""Batch16-equivalent Phase-B Critic execution contract.
+"""Phase-B Critic batch12 execution contract.
 
-The old 12+4 sketch described sixteen logical samples but did not describe a
-collective-safe physical execution.  This module freezes the first admissible
-shape for a ZeRO-3/FSDP-style 12-rank Critic backend:
+Phase B updates only the Critic/Score model, so it does not need to preserve the
+Generator-update batch16 used in Phase A.  The first real implementation reuses
+the already validated no-GAN 4G+12C shape:
 
-* every Critic rank enters exactly one model forward/backward per logical step;
-* Flex ranks 4..7 pack two logical samples into local batch=2;
-* fixed Critic ranks 8..15 pack one logical sample into local batch=1;
-* the sixteen samples are reduced as one logical global batch; and
-* loss/reduction normalization is explicit rather than inferred from rank count.
-
-The model-specific packer and DeepSpeed/FSDP reduction hook live in the real
-executor.  This module is dependency-light so CI can fail closed on the batch
-math before any 14B process is constructed.
+* four no-grad Generator producers emit three samples each;
+* twelve Critic ranks each consume exactly one B1 sample;
+* every Critic rank enters exactly one physical model call per logical step;
+* the global Critic batch is 12; and
+* reduction semantics are explicit, but no uneven-rank batching is required.
 """
 from __future__ import annotations
 
@@ -26,58 +22,57 @@ from .gan_rolephase import GanRolePhaseTopology
 class CriticLocalBatch:
     global_rank: int
     logical_slots: tuple[int, ...]
-    local_batch: int
-    global_batch: int = 16
+    local_batch: int = 1
+    global_batch: int = 12
 
     def __post_init__(self) -> None:
-        if self.global_batch != 16:
-            raise ValueError("role-phase Critic is frozen to global batch16")
-        if self.local_batch != len(self.logical_slots):
-            raise ValueError("local batch must equal the number of logical slots")
-        if self.local_batch not in (1, 2):
-            raise ValueError("C12 v1 allows only local batch1 or batch2")
-        if len(set(self.logical_slots)) != len(self.logical_slots):
-            raise ValueError("logical slot was duplicated within one Critic rank")
+        if self.global_batch != 12:
+            raise ValueError("role-phase Phase-B Critic is frozen to global batch12")
+        if self.local_batch != 1 or len(self.logical_slots) != 1:
+            raise ValueError("every Phase-B Critic rank must consume exactly one B1 sample")
+        if len(set(self.logical_slots)) != 1:
+            raise ValueError("Critic local batch must contain one unique logical slot")
 
 
 @dataclass(frozen=True)
 class CriticReductionContract:
-    """Explicit reduction semantics for an uneven 12-rank physical batch.
+    """Explicit batch12 gradient semantics for DP12/B1.
 
-    ``backend_dp_reduction`` is deliberately not guessed.  A real backend must
-    bind whether its gradient collective returns SUM or DP_MEAN and use the
-    corresponding local loss scale.  Either path yields the same desired
-    gradient: (1/16) * sum(sample_grad_i).
+    The desired gradient is (1/12) * sum(sample_grad_i).
+
+    * If the backend performs DP_MEAN over 12 ranks, the ordinary per-rank B1
+      mean loss needs no extra scaling.
+    * If the backend performs an explicit SUM, each local B1 loss is scaled by
+      1/12 before backward.
     """
 
     dp_world_size: int = 12
-    global_batch: int = 16
+    global_batch: int = 12
+    local_batch: int = 1
     physical_model_calls_per_rank: int = 1
     logical_optimizer_commits: int = 1
 
     def __post_init__(self) -> None:
-        if (self.dp_world_size, self.global_batch) != (12, 16):
-            raise ValueError("C12 v1 requires DP12/global-batch16")
+        if (self.dp_world_size, self.global_batch, self.local_batch) != (12, 12, 1):
+            raise ValueError("Phase-B Critic requires DP12/B1/global-batch12")
         if self.physical_model_calls_per_rank != 1:
             raise ValueError("all C12 ranks must enter one model call per step")
         if self.logical_optimizer_commits != 1:
             raise ValueError("one logical Critic step must commit exactly once")
 
-    def local_sum_scale(self, backend_dp_reduction: str) -> float:
-        """Scale a local *sum of per-sample losses* before backward.
-
-        For an explicit DP SUM, each rank contributes local_sum/16.
-        For a backend DP MEAN over 12 ranks, each rank contributes
-        local_sum*(12/16), because the backend later divides by 12.
-        """
+    def local_loss_scale(self, backend_dp_reduction: str) -> float:
         mode = str(backend_dp_reduction).upper()
         if mode == "SUM":
             return 1.0 / float(self.global_batch)
         if mode in {"MEAN", "DP_MEAN"}:
-            return float(self.dp_world_size) / float(self.global_batch)
+            return 1.0
         raise ValueError(
             "backend_dp_reduction must be explicitly bound to SUM or DP_MEAN"
         )
+
+    # Compatibility name used by the inspector/tests from the first prototype.
+    def local_sum_scale(self, backend_dp_reduction: str) -> float:
+        return self.local_loss_scale(backend_dp_reduction)
 
 
 def build_critic_local_batches(
@@ -89,15 +84,13 @@ def build_critic_local_batches(
         slots = tuple(
             item.logical_slot for item in topology.phase_b_slots_for_critic(rank)
         )
-        batch = CriticLocalBatch(rank, slots, len(slots))
+        batch = CriticLocalBatch(rank, slots)
         result.append(batch)
         covered.extend(slots)
-    if sorted(covered) != list(range(16)):
-        raise AssertionError("C12 local batches do not cover logical batch16 exactly")
-    if tuple(item.local_batch for item in result[:4]) != (2, 2, 2, 2):
-        raise AssertionError("Flex Critic ranks must each pack two samples")
-    if any(item.local_batch != 1 for item in result[4:]):
-        raise AssertionError("fixed Critic ranks must each pack one sample")
+    if sorted(covered) != list(range(topology.phase_b_global_batch)):
+        raise AssertionError("C12 ranks do not cover logical batch12 exactly")
+    if any(item.local_batch != 1 for item in result):
+        raise AssertionError("every Phase-B Critic rank must remain B1")
     return tuple(result)
 
 
@@ -120,19 +113,18 @@ def expected_slot_order_for_rank(
     rank: int,
     topology: GanRolePhaseTopology = GanRolePhaseTopology(),
 ) -> tuple[int, ...]:
-    """Canonical FIFO order used by the receiver and local batch packer."""
     return tuple(
         item.logical_slot for item in topology.phase_b_slots_for_critic(rank)
     )
 
 
 def validate_per_sample_weights(weights: Sequence[float]) -> None:
-    if len(weights) != 16:
-        raise AssertionError("exactly sixteen per-sample weights are required")
-    if any(abs(float(value) - 1.0 / 16.0) > 1e-12 for value in weights):
-        raise AssertionError("every logical sample must retain weight 1/16")
+    if len(weights) != 12:
+        raise AssertionError("exactly twelve per-sample weights are required")
+    if any(abs(float(value) - 1.0 / 12.0) > 1e-12 for value in weights):
+        raise AssertionError("every Phase-B logical sample must retain weight 1/12")
     if abs(sum(float(value) for value in weights) - 1.0) > 1e-12:
-        raise AssertionError("logical batch weights do not sum to one")
+        raise AssertionError("Phase-B batch12 weights do not sum to one")
 
 
 __all__ = [
