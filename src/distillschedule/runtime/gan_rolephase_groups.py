@@ -24,6 +24,42 @@ class GanRolePhaseGroups:
     flex: Any
 
 
+@dataclass(frozen=True)
+class GanRolePhaseExecutionGroups:
+    """Complete process-group inventory needed by the real worker.
+
+    ``GanRolePhaseGroups`` remains the small phase-topology contract.  The
+    execution worker additionally needs eight Phase-A G/Score point-to-point
+    groups and one singleton model-parallel group per global rank.  They are
+    all created before model construction and in an identical order on every
+    WORLD rank; no process group is created at the timed phase boundary.
+    """
+
+    core: GanRolePhaseGroups
+    phase_a_pairs: tuple[Any, ...]
+    singletons: tuple[Any, ...]
+
+    def phase_a_pair_for_rank(
+        self,
+        rank: int,
+        topology: GanRolePhaseTopology = GanRolePhaseTopology(),
+    ) -> Any:
+        rank = int(rank)
+        if rank in topology.phase_a_generator_ranks:
+            lane = topology.phase_a_generator_ranks.index(rank)
+        elif rank in topology.phase_a_score_ranks:
+            lane = topology.phase_a_score_ranks.index(rank)
+        else:  # pragma: no cover - topology covers world16, kept fail-closed.
+            raise ValueError(f"rank {rank} is outside Phase A")
+        return self.phase_a_pairs[lane]
+
+    def singleton_for_rank(self, rank: int) -> Any:
+        rank = int(rank)
+        if not 0 <= rank < len(self.singletons):
+            raise ValueError(f"rank {rank} is outside singleton inventory")
+        return self.singletons[rank]
+
+
 def create_rolephase_groups(
     topology: GanRolePhaseTopology = GanRolePhaseTopology(),
     *,
@@ -54,4 +90,41 @@ def create_rolephase_groups(
     )
 
 
-__all__ = ["GanRolePhaseGroups", "create_rolephase_groups"]
+def create_rolephase_execution_groups(
+    topology: GanRolePhaseTopology = GanRolePhaseTopology(),
+    *,
+    backend: str = "nccl",
+) -> GanRolePhaseExecutionGroups:
+    """Pre-create phase, Phase-A pair, and singleton groups deterministically."""
+
+    core = create_rolephase_groups(topology, backend=backend)
+    pairs = tuple(
+        dist.new_group(
+            [generator_rank, score_rank],
+            backend=backend,
+        )
+        for generator_rank, score_rank in zip(
+            topology.phase_a_generator_ranks,
+            topology.phase_a_score_ranks,
+            strict=True,
+        )
+    )
+    singletons = tuple(
+        dist.new_group([rank], backend=backend)
+        for rank in range(topology.world_size)
+    )
+    if len(pairs) != 8 or len(singletons) != topology.world_size:
+        raise AssertionError("role-phase execution-group inventory drift")
+    return GanRolePhaseExecutionGroups(
+        core=core,
+        phase_a_pairs=pairs,
+        singletons=singletons,
+    )
+
+
+__all__ = [
+    "GanRolePhaseExecutionGroups",
+    "GanRolePhaseGroups",
+    "create_rolephase_execution_groups",
+    "create_rolephase_groups",
+]

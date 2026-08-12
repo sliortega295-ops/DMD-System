@@ -1,0 +1,73 @@
+{
+  "schema_version": "distillschedule.gan_rolephase_node1_adaptation.v1",
+  "iteration": 287,
+  "date": "2026-08-12",
+  "status": "PASS_CONTRACT_STATIC",
+  "real14b_status": "NOT_RUN",
+  "formal_timing_status": "NOT_RUN",
+  "dmd_pr8_base_head": "c221bc9f673f17dc26e4a07cd39b908c6b2b8bd1",
+  "runtime_head": "952ad750f92aa874f7974df32ed5b86560a51fe7",
+  "authorized_scope": "node1 global ranks 8-15 only",
+  "node1": {
+    "ssh_alias": "baai-helios-node1",
+    "hostname": "job-a248b179-3c88-49c3-ad58-74597d6f9133-master-0",
+    "gpu_count": 8,
+    "gpu_type": "NVIDIA A100-SXM4-40GB",
+    "gpu_memory_used_after_validation_mib": [0, 0, 0, 0, 0, 0, 0, 0],
+    "cgroup_oom": 0,
+    "cgroup_oom_kill": 0
+  },
+  "phase_a": {
+    "score_ranks": [8, 9, 10, 11, 12, 13, 14, 15],
+    "global_batch": 16,
+    "waves": 2,
+    "slots_per_rank": [[0, 8], [1, 9], [2, 10], [3, 11], [4, 12], [5, 13], [6, 14], [7, 15]],
+    "optimizer_commits": 0,
+    "physical_backbone_policy": "resident_read_only"
+  },
+  "phase_b": {
+    "critic_ranks": [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    "node1_slots": [4, 5, 6, 7, 8, 9, 10, 11],
+    "node1_source_generator_ranks": [0, 1, 2, 3, 0, 1, 2, 3],
+    "global_batch": 12,
+    "micro_batch": 1,
+    "gradient_accumulation_steps": 1,
+    "deepspeed_stage": 1,
+    "cpu_optimizer_offload": true,
+    "gradient_clipping": 1.0,
+    "physical_model_calls_per_rank_per_step": 1,
+    "optimizer_commits_per_rank_per_step": 1
+  },
+  "transition": {
+    "fixed_node1_backbone_redistribution": "NONE",
+    "physical_model_reused": true,
+    "logical_optimizer_repartition": "world8 logical state to DP12 CPU ZeRO-1 partition",
+    "repeated_frozen_block_streaming": false
+  },
+  "tests": {
+    "dmd_refactor_passed": 159,
+    "runtime_contract_passed": 4,
+    "rank_contract_receipts_passed": 8
+  },
+  "preserved_failure": {
+    "classification": "PYTHONPATH_TOP_LEVEL_RUNTIME_PACKAGE_COLLISION",
+    "semantic_or_gpu_failure": false,
+    "first_attempt_log_sha256": "06125dffc78489dcd8a5f6879c37ab6b3a5565f9653df2d066117a92c0df4687",
+    "recovery": "separate DMD-root and external-runtime test PYTHONPATH ordering"
+  },
+  "logs": {
+    "focused_pass_sha256": "27cda3d08a22a417a42d1b8166d3229f60a9964f8ee27c9ca30c34fd07292d89",
+    "broad_pass_sha256": "afd74ed34e5a225a65f0248bea49e66cb16ca5fff2285d13dfc2f633781dd9e8"
+  },
+  "not_run": [
+    "14B model construction",
+    "Phase-A real gradient service",
+    "DP12 real collective",
+    "C1000-to-C1005 update",
+    "node0 companion",
+    "flex G-to-C materialization",
+    "reverse handoff",
+    "world16 correctness",
+    "formal timing"
+  ]
+}
