@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Inspect the static 4G+8C+4Flex GAN role-phase schedule.
 
-The default v2 contract uses the PR6 persistent-pinned phase transition.  The
-old canonical GPU-reshard planner remains available only as a diagnostic via
-``--show-gpu-reshard``; it is not the first real-execution backend.
+The default v2 contract uses Phase-A batch16, Phase-B batch12 and the PR6
+persistent-pinned phase transition.  GPU reshard remains diagnostic only.
 """
 from __future__ import annotations
 
@@ -19,9 +18,7 @@ from distillschedule.runtime.gan_rolephase_critic import (
     CriticReductionContract,
     build_critic_local_batches,
 )
-from distillschedule.runtime.gan_rolephase_transition import (
-    transition_contract_summary,
-)
+from distillschedule.runtime.gan_rolephase_transition import transition_contract_summary
 
 
 def parser() -> argparse.ArgumentParser:
@@ -72,22 +69,21 @@ def main() -> int:
     result["phase_b_reduction"] = {
         "dp_world_size": reduction.dp_world_size,
         "global_batch": reduction.global_batch,
+        "local_batch": reduction.local_batch,
         "physical_model_calls_per_rank": reduction.physical_model_calls_per_rank,
-        "sum_backend_local_sum_scale": reduction.local_sum_scale("SUM"),
-        "dp_mean_backend_local_sum_scale": reduction.local_sum_scale("DP_MEAN"),
+        "sum_backend_local_loss_scale": reduction.local_loss_scale("SUM"),
+        "dp_mean_backend_local_loss_scale": reduction.local_loss_scale("DP_MEAN"),
         "backend_semantics_must_be_explicit": True,
     }
     result["phase_a_slot_mapping"] = [
-        vars(topology.phase_a_slot(slot)) for slot in range(16)
+        vars(topology.phase_a_slot(slot)) for slot in range(topology.phase_a_global_batch)
     ]
     result["phase_b_slot_mapping"] = [
-        vars(topology.phase_b_slot(slot)) for slot in range(16)
+        vars(topology.phase_b_slot(slot)) for slot in range(topology.phase_b_global_batch)
     ]
 
     if args.show_gpu_reshard:
-        result["gpu_reshard"] = {
-            "status": "DIAGNOSTIC_ONLY_NOT_DEFAULT_V2_HANDOFF",
-        }
+        result["gpu_reshard"] = {"status": "DIAGNOSTIC_ONLY_NOT_DEFAULT_HANDOFF"}
         if args.generator_numel:
             result["gpu_reshard"]["generator"] = _plan_summary(
                 args.generator_numel,
