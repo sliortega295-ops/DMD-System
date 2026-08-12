@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
+pytest.importorskip("torch")
+
 from distillschedule.runtime import gan_rolephase_groups as groups_module
 
 
