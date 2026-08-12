@@ -14,6 +14,7 @@ from runtime.critic_pool_checkpoint import (
     LogicalCheckpointPackage,
 )
 from scripts.distillschedule import probe_gan_rolephase_world16 as worker
+from scripts.distillschedule import summarize_gan_rolephase_world16 as summarizer
 from scripts.distillschedule import validate_gan_rolephase_world16_inputs as input_gate
 
 
@@ -137,3 +138,16 @@ def test_nonmember_group_validation_never_introspects_sentinel(monkeypatch) -> N
         expected=(4, 5, 6),
         global_rank=0,
     ) == (4, 5, 6)
+
+
+def test_resource_parser_accepts_preserved_scientific_host_bytes(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "resource.csv"
+    path.write_text(
+        "unix_time,cgroup_bytes,host_used_bytes,gpu_used_mib,gpu_util_percent\n"
+        "1.0,123,3.28281e+10,1:2:3:4:5:6:7:8,0:0:0:0:0:0:0:0\n"
+    )
+    value = summarizer.resource_peak(path)
+    assert value["host_used_peak_bytes"] == 32_828_100_000
+    assert value["per_gpu_peak_mib"] == list(range(1, 9))

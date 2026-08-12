@@ -69,7 +69,11 @@ def resource_peak(path: Path) -> dict[str, Any]:
                 rows.append(
                     {
                         "cgroup_bytes": int(row["cgroup_bytes"]),
-                        "host_used_bytes": int(row["host_used_bytes"]),
+                        # awk may render large byte counts in scientific
+                        # notation unless given an explicit printf format.
+                        # Accept that valid numeric spelling for preserved
+                        # runs; future launchers emit integral text.
+                        "host_used_bytes": int(float(row["host_used_bytes"])),
                         "gpu_used_mib": gpu,
                     }
                 )

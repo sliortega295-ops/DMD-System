@@ -91,3 +91,16 @@ or quality evidence. Failed or unexecuted gates remain `NOT_RUN`.
 - **Bounded recovery:** assign a distinct, explicit node-local reverse port to
   each node.  This is rendezvous plumbing only and does not change model math,
   phase topology, batch, trace, or timed-workload semantics.
+
+## Validation attempt 03
+
+- **Run:** `gan-rp16-validate-20260812-03`
+- **Worker result:** **PASS on all 16 ranks.** The lifecycle completed local
+  world8 -> global world16 4G/12C -> local world8, all launchers returned zero,
+  and cgroup `oom`/`oom_kill` remained zero.
+- **Initial summarizer result:** FAIL because `/proc/meminfo` byte arithmetic
+  was emitted by awk in scientific notation and the offline parser required an
+  integer literal.  This did not affect the worker or GPU schedule.
+- **Bounded recovery:** accept valid numeric scientific notation for preserved
+  monitor rows and emit integer-formatted host bytes in future runs.  Re-run
+  only the offline summarizer; do not repeat the passing GPU lifecycle gate.
