@@ -1,5 +1,5 @@
 {
-  "schema_version": "distillschedule.gan_rolephase_pipeline.v1",
+  "schema_version": "distillschedule.gan_rolephase_pipeline.v2",
   "name": "helios_gan_world16_4g8c4flex_rolephase",
   "claim_status": "IMPLEMENTATION_PROTOTYPE_NOT_GPU_VALIDATED",
   "world_size": 16,
@@ -16,38 +16,43 @@
     "micro_batch": 1,
     "waves": 2,
     "generator_commits": 1,
-    "score_gradient_service_read_only": true
+    "score_gradient_service_read_only": true,
+    "wave_overlap": "g_forward_wave1_overlaps_score_boundary_wave0",
+    "callback_level_send_wait_reply_serialization_forbidden": true
   },
   "handoff_to_b": {
     "flex_transition": "generator_to_critic",
-    "generator_reshard": "8_to_4",
-    "score_critic_reshard": "8_to_12",
-    "frozen_parameter_transport": "nccl_p2p_chunked_reshard",
-    "full_parameter_allgather_forbidden": true,
-    "cpu_frozen_backbone_reload_forbidden": true,
+    "backend": "pr6_persistent_pinned_target_materialization",
+    "target_preconstructed_before_timing": true,
+    "target_host_state_pinned_before_timing": true,
+    "steady_state_cpu_frozen_streaming_forbidden": true,
     "optimizer_state_may_remain_cpu": true,
-    "timed_and_reported": true
+    "timed_and_reported": true,
+    "gpu_live_reshard_required": false
   },
   "phase_b": {
     "name": "critic_only_wavefront",
     "generator_ranks": [0, 1, 2, 3],
     "critic_ranks": [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
     "global_batch": 16,
-    "loss_reduction": "SUM(samples * 1/16)",
-    "critic_wave0_samples": 12,
-    "critic_wave1_samples": 4,
-    "flex_critic_samples_per_step": 2,
-    "fixed_critic_samples_per_step": 1,
+    "dp_world_size": 12,
+    "physical_model_calls_per_rank_per_step": 1,
+    "logical_optimizer_commits_per_step": 1,
+    "flex_critic_local_batch": 2,
+    "fixed_critic_local_batch": 1,
+    "logical_sample_weights": "1/16_each",
+    "backend_gradient_reduction_must_be_bound": ["SUM", "DP_MEAN"],
+    "backend_gradient_reduction_may_not_be_inferred": true,
     "producer_payload_buffers": 2,
     "consumer_uncommitted_window": 2,
     "payload_credit_return": "nccl_send_completion",
     "optimizer_ack_required_for_payload_credit": false,
     "one_batch_ahead": true,
+    "per_edge_fifo_identity": "step_slot_wave_src_dst_trace_version",
     "repeated_cpu_frozen_streaming": false
   },
   "reverse_handoff": {
-    "generator_reshard": "4_to_8",
-    "critic_score_reshard": "12_to_8",
+    "backend": "pr6_persistent_pinned_target_materialization",
     "required_for_steady_state_timing": true
   },
   "correctness_reuse": {
@@ -62,6 +67,8 @@
     "drop official Score forwards",
     "change noise/timestep/crop trace",
     "use repeated CPU frozen-block streaming as steady-state policy",
+    "let only four C12 ranks enter a second model collective",
+    "infer uneven-batch gradient scaling from rank count",
     "return producer credit only after Critic optimizer ACK",
     "hide reverse handoff from steady-state timing"
   ]
