@@ -1,12 +1,8 @@
 """Ordered non-blocking P2P primitives for the phase-aware GAN wavefront.
 
-PR #7 GAN headers/checksums remain authoritative.  This layer adds the missing
-lifetime and ordering guarantees required by multiple pre-posted receives:
-
-* every route is bound to step/slot/wave/src/dst/trace/version identity;
-* each (src,dst) edge has an explicit FIFO posting/consumption order;
-* a pending receive validates its header against the expected route; and
-* pending objects are tracked by Python identity, never Tensor dataclass equality.
+PR #7 GAN headers/checksums remain authoritative.  Phase B now carries exactly
+12 logical samples: one B1 sample for each Critic rank.  This layer keeps the
+explicit lifetime and ordering guarantees needed by Q2 pre-posted receives.
 """
 from __future__ import annotations
 
@@ -39,11 +35,10 @@ class CriticRouteIdentity:
     trace_sha256: bytes
 
     def __post_init__(self) -> None:
-        if self.logical_step < 0 or not 0 <= self.logical_slot < 16:
-            raise ValueError("invalid role-phase logical step/slot")
-        expected_wave = 0 if self.logical_slot < 12 else 1
-        if self.micro_wave != expected_wave:
-            raise ValueError("role-phase wave does not match logical slot")
+        if self.logical_step < 0 or not 0 <= self.logical_slot < 12:
+            raise ValueError("Phase-B logical step/slot is outside batch12")
+        if self.micro_wave != 0:
+            raise ValueError("Phase-B batch12 uses one Critic wave only")
         if self.critic_after != self.critic_before + 1:
             raise ValueError("one logical Critic step must advance C exactly once")
         if len(self.trace_sha256) != 32:
@@ -108,7 +103,7 @@ class PendingCriticReceive:
 
 
 class RolePhaseCriticP2PTransport:
-    """WORLD-group P2P transport for 4G -> 12C uneven routing."""
+    """WORLD-group P2P transport for 4G -> 12C batch12 routing."""
 
     def __init__(
         self,
@@ -183,7 +178,6 @@ class RolePhaseCriticP2PTransport:
         return pending
 
     def post_receive(self, *, route: CriticRouteIdentity) -> PendingCriticReceive:
-        """Pre-post one identity-bound receive in strict per-edge FIFO order."""
         if route.destination_global_rank != self.global_rank:
             raise ValueError("receive route destination is not the local rank")
         self._assert_monotonic(self._last_recv_key, route, label="receive-post")
@@ -235,7 +229,6 @@ class RolePhaseCriticP2PTransport:
         return header, payload
 
     def reap_send_completion(self, pending: PendingP2PSend) -> None:
-        """Safe point for returning one producer payload-buffer credit."""
         token = id(pending)
         if self._pending_sends.get(token) is not pending:
             raise RuntimeError("role-phase Critic send is unknown or already reaped")
@@ -278,7 +271,7 @@ def make_phase_b_route(
     return CriticRouteIdentity(
         logical_step=logical_step,
         logical_slot=logical_slot,
-        micro_wave=0 if logical_slot < 12 else 1,
+        micro_wave=0,
         source_global_rank=generator_rank,
         destination_global_rank=critic_rank,
         generator_version=generator_version,
@@ -295,7 +288,6 @@ def make_phase_b_header(
     payload_checksum: bytes,
     checksum_kind: ChecksumKind = ChecksumKind.GPU_FINGERPRINT_V1,
 ) -> GanCriticRequestHeader:
-    """Reuse the PR #7 wire header for one identity-bound Phase-B sample."""
     return GanCriticRequestHeader(
         run_nonce=run_nonce,
         logical_step=route.logical_step,
