@@ -21,6 +21,11 @@ def test_node1_mapping_preserves_phase_local_batches() -> None:
     ]
     assert [item.phase_b_logical_slot for item in bindings] == list(range(4, 12))
     assert [item.phase_b_generator_rank for item in bindings] == [0, 1, 2, 3] * 2
+    record = bindings[0].as_dict()
+    assert record["phase_a"]["gradient_service_calls"] == 2
+    assert record["phase_a"]["expected_score_forwards"] == 8
+    assert record["phase_b"]["critic_loss_calls_per_step"] == 1
+    assert record["phase_b"]["expected_score_forwards_per_step"] == 2
 
 
 def test_node1_mapping_fails_closed_on_rank_drift() -> None:

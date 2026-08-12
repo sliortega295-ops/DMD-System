@@ -18685,3 +18685,14 @@ Can the node0 companion reuse PR6's validated flex target materialization while 
 
 ### Next Command
 Implement the node0 companion against the same pre-created group inventory, then run no-model world16 topology/transport tests before any 14B construction.
+
+### Iteration 287 Addendum: call inventory terminology corrected before GPU work
+
+The contract receipt now distinguishes Python-level service/loss invocations
+from actual Score-backbone forwards. Each node1 rank serves two Phase-A logical
+samples; the frozen official inventory is four Score forwards per sample, so
+the receipt records two gradient-service calls and eight expected Score
+forwards. Each Phase-B rank makes one `_critic_loss` call per step, containing
+one denoising Score forward and one packed GAN-D/real/R1 Score forward, so the
+receipt records one loss call and two expected Score forwards. No model math,
+schedule, batch, or measured result changed; real 14B remains `NOT_RUN`.

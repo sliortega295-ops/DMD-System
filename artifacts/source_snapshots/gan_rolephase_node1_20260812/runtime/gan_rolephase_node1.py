@@ -57,7 +57,9 @@ class Node1RolePhaseBinding:
                 "role": "score_gradient_service",
                 "lane": self.phase_a_lane,
                 "logical_slots": list(self.phase_a_logical_slots),
-                "physical_model_calls": 2,
+                "gradient_service_calls": 2,
+                "expected_score_forwards_per_sample": 4,
+                "expected_score_forwards": 8,
                 "optimizer_commits": 0,
             },
             "phase_b": {
@@ -66,7 +68,8 @@ class Node1RolePhaseBinding:
                 "generator_rank": self.phase_b_generator_rank,
                 "critic_rank": self.phase_b_critic_rank,
                 "local_batch": 1,
-                "physical_model_calls_per_step": 1,
+                "critic_loss_calls_per_step": 1,
+                "expected_score_forwards_per_step": 2,
                 "optimizer_commits_per_step": 1,
             },
         }

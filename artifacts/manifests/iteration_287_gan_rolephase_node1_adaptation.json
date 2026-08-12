@@ -6,7 +6,7 @@
   "real14b_status": "NOT_RUN",
   "formal_timing_status": "NOT_RUN",
   "dmd_pr8_base_head": "c221bc9f673f17dc26e4a07cd39b908c6b2b8bd1",
-  "runtime_head": "952ad750f92aa874f7974df32ed5b86560a51fe7",
+  "runtime_head": "9ca730dfd40370b3a859c0fa5f3e554b6bd39223",
   "authorized_scope": "node1 global ranks 8-15 only",
   "node1": {
     "ssh_alias": "baai-helios-node1",
@@ -22,6 +22,9 @@
     "global_batch": 16,
     "waves": 2,
     "slots_per_rank": [[0, 8], [1, 9], [2, 10], [3, 11], [4, 12], [5, 13], [6, 14], [7, 15]],
+    "gradient_service_calls_per_rank": 2,
+    "expected_score_forwards_per_sample": 4,
+    "expected_score_forwards_per_rank": 8,
     "optimizer_commits": 0,
     "physical_backbone_policy": "resident_read_only"
   },
@@ -35,7 +38,8 @@
     "deepspeed_stage": 1,
     "cpu_optimizer_offload": true,
     "gradient_clipping": 1.0,
-    "physical_model_calls_per_rank_per_step": 1,
+    "critic_loss_calls_per_rank_per_step": 1,
+    "expected_score_forwards_per_rank_per_step": 2,
     "optimizer_commits_per_rank_per_step": 1
   },
   "transition": {

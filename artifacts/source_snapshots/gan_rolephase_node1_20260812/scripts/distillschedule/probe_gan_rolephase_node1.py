@@ -377,7 +377,8 @@ def _phase_b_critic(
                 "loss": float(loss.detach()),
                 "optimizer_committed": True,
                 "critic_engine_global_steps": int(engine.global_steps),
-                "physical_model_calls": 1,
+                "critic_loss_calls": 1,
+                "expected_score_forwards": 2,
                 "transport_micro_wave": 0,
                 "helios_pipeline_micro_wave": None,
             }

@@ -17,9 +17,12 @@ The PR8 topology is now bound to the eight fixed Score/Critic GPUs on node1:
 | 14 | 6 / 6,14 | 10 | G2 |
 | 15 | 7 / 7,15 | 11 | G3 |
 
-Phase A remains B16/two waves/read-only Score. Phase B is B12, DP12,
+Phase A remains B16/two waves/read-only Score: each node1 rank serves two
+logical samples, with four official Score forwards per sample. Phase B is B12, DP12,
 MB1, GAS1, ZeRO-1, CPU optimizer offload, and gradient clipping 1.0. Every
-Critic rank receives one sample and enters one physical `_critic_loss` call.
+Critic rank receives one sample and enters one `_critic_loss` invocation. That
+invocation still contains the official two Score forwards: denoising and the
+packed GAN-D/real/R1 forward.
 
 ## Fixed-node transition
 
@@ -55,7 +58,7 @@ two import roots and passed without changing source.
 - PR8 base: `c221bc9f673f17dc26e4a07cd39b908c6b2b8bd1`;
 - node1 implementation commit: `0b2caa6990afedca0d11065e8ab569446e27febc`;
 - no-Torch CI compatibility guard: `7ff9b8309dcb1dd86ee155d107562eaf390ab478`;
-- external runtime: `952ad750f92aa874f7974df32ed5b86560a51fe7`;
+- external runtime: `9ca730dfd40370b3a859c0fa5f3e554b6bd39223`;
 - node1 DMD staging:
   `/share/project/shuchenweng/yongyan_liu/DMD-System_gan_rolephase_pr8_exec_20260812`;
 - node1 runtime staging:
