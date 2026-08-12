@@ -256,6 +256,8 @@ class ImmutableFrozenBlockStreamer:
         self._pending_recompute_backward_releases: dict[int, int] = {}
         self._release_on_recompute_exit: set[int] = set()
         self._event_order = 0
+        self._promoted_to_resident = False
+        self._removed = False
         self._original_checkpoint_function = getattr(model, "_gradient_checkpointing_func", None)
         self.stats: dict[str, int | float] = {
             "captured_parameter_count": 0,
@@ -271,6 +273,7 @@ class ImmutableFrozenBlockStreamer:
             "released_bytes": 0,
             "peak_resident_bytes": 0,
             "resident_bytes": 0,
+            "promoted_resident_bytes": 0,
             "pinned_host_bytes": 0,
             "h2d_wall_seconds": 0.0,
             "checkpoint_boundary_d2h_count": 0,
@@ -962,6 +965,11 @@ class ImmutableFrozenBlockStreamer:
         self.model._gradient_checkpointing_func = checkpoint_with_streaming
 
     def release_all(self, *, reason: str = "explicit_release") -> None:
+        if self._promoted_to_resident:
+            # Ownership has been deliberately transferred back to the module;
+            # a later finally/remove must not undo the live Step10-A -> Critic
+            # transition.
+            return
         for block_index in range(len(self.blocks)):
             self._release_block(block_index, self._generation.get(), reason)
         self._pending_recompute_backward_releases.clear()
@@ -995,6 +1003,8 @@ class ImmutableFrozenBlockStreamer:
         )
 
     def assert_idle(self) -> None:
+        if self._promoted_to_resident:
+            raise RuntimeError("promoted streamer no longer owns module storage")
         if int(self.stats["resident_bytes"]) != 0 or self._resident_storage_owners:
             raise RuntimeError("streamer is not idle")
         if self._pending_recompute_backward_releases:
@@ -1010,7 +1020,67 @@ class ImmutableFrozenBlockStreamer:
             if id(record.parameter) in self.optimizer_owned_parameter_ids:
                 raise RuntimeError(f"streamed parameter became optimizer-owned: {record.name}")
 
+    def promote_to_resident(self) -> dict[str, int]:
+        """Materialize every managed block and relinquish streaming ownership.
+
+        Route-B uses four streamed Generator blocks only for the selected
+        Step10-A backward.  Once gradients and optimizer state are complete,
+        the following Critic-only rollouts fit with a fully resident Generator.
+        This transition removes all streaming/checkpoint hooks while preserving
+        the materialized CUDA storages.  It is fail-closed if any recompute
+        release remains pending.
+        """
+
+        if self._removed:
+            raise RuntimeError("cannot promote a removed streamer")
+        if self._promoted_to_resident:
+            raise RuntimeError("streamer is already promoted")
+        self.assert_idle()
+        for block_index in sorted(self.streamed_block_indices):
+            self._materialize_block(block_index, "PROMOTE_TO_RESIDENT")
+        expected = int(self.stats["captured_bytes"])
+        observed = int(self.stats["resident_bytes"])
+        if observed != expected:
+            raise RuntimeError(
+                f"promotion materialized {observed} bytes, expected {expected}"
+            )
+        for handle in self._hook_handles:
+            handle.remove()
+        self._hook_handles.clear()
+        if self._original_checkpoint_function is not None:
+            self.model._gradient_checkpointing_func = self._original_checkpoint_function
+
+        # The module parameters now own the CUDA tensors.  Drop mmap/private
+        # host owners and the dynamic storage registry so activation hooks can
+        # no longer misclassify these resident parameters as streamed state.
+        for record in self._record_by_parameter_id.values():
+            if not record.resident:
+                raise RuntimeError(f"promotion left {record.name} non-resident")
+            record.resident_storage_id = None
+            record.host_tensor = None
+        self._resident_storage_owners.clear()
+        self.stats["promoted_resident_bytes"] = observed
+        self.stats["resident_bytes"] = 0
+        self._records_by_block = [[] for _ in range(len(self.blocks))]
+        self._record_by_parameter_id.clear()
+        self._promoted_to_resident = True
+        self._write_event(
+            "streamer_promoted_to_resident",
+            promoted_bytes=observed,
+            streamed_block_indices=sorted(self.streamed_block_indices),
+        )
+        return {
+            "promoted_bytes": observed,
+            "streamed_block_count": len(self.streamed_block_indices),
+        }
+
     def remove(self) -> None:
+        if self._removed:
+            return
+        if self._promoted_to_resident:
+            self._removed = True
+            self._write_event("streamer_removed", stats=self.stats)
+            return
         self.release_all(reason="remove")
         for handle in self._hook_handles:
             handle.remove()
@@ -1018,6 +1088,7 @@ class ImmutableFrozenBlockStreamer:
         if self._original_checkpoint_function is not None:
             self.model._gradient_checkpointing_func = self._original_checkpoint_function
         self.assert_idle()
+        self._removed = True
         self._write_event("streamer_removed", stats=self.stats)
 
 

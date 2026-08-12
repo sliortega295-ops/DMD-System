@@ -23,6 +23,9 @@ CHECKPOINT_RECOMPUTE = "CHECKPOINT_RECOMPUTE"
 REPLAY_FORWARD = "REPLAY_FORWARD"
 
 
+SavedTensorSignature = tuple[tuple[int, ...], str, int]
+
+
 def _storage_id(tensor: torch.Tensor) -> tuple[str, int, int]:
     storage = tensor.untyped_storage()
     return (str(tensor.device), int(storage.data_ptr()), int(storage.nbytes()))
@@ -67,6 +70,7 @@ class AuditedSavedTensorOffloader:
         pin_memory: bool = True,
         min_offload_bytes: int = 0,
         detailed_events: bool = True,
+        allowed_offload_signatures: frozenset[SavedTensorSignature] | None = None,
         dynamic_excluded_storage_providers: tuple[
             Callable[[tuple[str, int, int]], Mapping[str, str] | None], ...
         ] = (),
@@ -82,6 +86,7 @@ class AuditedSavedTensorOffloader:
         if self.min_offload_bytes < 0:
             raise ValueError("min_offload_bytes must be non-negative")
         self.detailed_events = bool(detailed_events)
+        self.allowed_offload_signatures = allowed_offload_signatures
         self.dynamic_excluded_storage_providers = tuple(dynamic_excluded_storage_providers)
         self._excluded: dict[tuple[str, int, int], dict[str, str]] = {}
         self._packed_by_alias: dict[
@@ -102,6 +107,8 @@ class AuditedSavedTensorOffloader:
             "kept_non_strided_count": 0,
             "kept_below_threshold_count": 0,
             "kept_below_threshold_storage_bytes": 0,
+            "kept_policy_filter_count": 0,
+            "kept_policy_filter_storage_bytes": 0,
             "offloaded_logical_bytes": 0,
             "offloaded_storage_bytes": 0,
             "peak_live_cpu_bytes": 0,
@@ -193,6 +200,32 @@ class AuditedSavedTensorOffloader:
         if base_event["zero_stride"]:
             self.stats["kept_zero_stride_count"] += 1
             self._write_event({**base_event, "policy": "KEEP_ZERO_STRIDE_VIEW"})
+            return _KeepOnDevice(tensor)
+
+        signature: SavedTensorSignature = (
+            tuple(int(value) for value in tensor.shape),
+            str(tensor.dtype),
+            int(base_event["logical_bytes"]),
+        )
+        if (
+            self.allowed_offload_signatures is not None
+            and signature not in self.allowed_offload_signatures
+        ):
+            self.stats["kept_policy_filter_count"] += 1
+            self.stats["kept_policy_filter_storage_bytes"] += base_event[
+                "storage_bytes"
+            ]
+            self._write_event(
+                {
+                    **base_event,
+                    "policy": "KEEP_POLICY_FILTER",
+                    "signature": [
+                        list(signature[0]),
+                        signature[1],
+                        signature[2],
+                    ],
+                }
+            )
             return _KeepOnDevice(tensor)
 
         if base_event["storage_bytes"] < self.min_offload_bytes:
@@ -334,6 +367,7 @@ def install_activation_offload_hooks(
     pin_memory: bool = True,
     min_offload_bytes: int = 0,
     detailed_events: bool = True,
+    allowed_offload_signatures: frozenset[SavedTensorSignature] | None = None,
     dynamic_excluded_storage_providers: tuple[
         Callable[[tuple[str, int, int]], Mapping[str, str] | None], ...
     ] = (),
@@ -347,6 +381,7 @@ def install_activation_offload_hooks(
         pin_memory=pin_memory,
         min_offload_bytes=min_offload_bytes,
         detailed_events=detailed_events,
+        allowed_offload_signatures=allowed_offload_signatures,
         dynamic_excluded_storage_providers=dynamic_excluded_storage_providers,
     )
     context_stack: list[Any] = []

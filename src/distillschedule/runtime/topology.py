@@ -187,3 +187,50 @@ def validate_topology_records(
         hosts_by_node=hosts_by_node,
         ranks_by_node=ranks_by_node,
     )
+
+
+def validate_topology_probe_payload(
+    value: Mapping[str, Any],
+    *,
+    expected_nodes: int,
+    expected_local_world_size: int,
+    expected_world_size: int,
+    require_cuda: bool = True,
+) -> TopologySummary:
+    """Validate the serialized payload emitted by ``probe_world16_topology.py``.
+
+    Keeping this check beside the record validator prevents the launcher from
+    inventing a second, incompatible interpretation of the probe schema.
+    """
+
+    if value.get("schema_version") != "distillschedule.topology_probe.v1":
+        raise ContractViolation(
+            "unexpected topology probe schema", path="runtime.topology.schema_version"
+        )
+    if value.get("status") != "PASS":
+        raise ContractViolation(
+            "topology probe status is not PASS", path="runtime.topology.status"
+        )
+    records = value.get("records")
+    if not isinstance(records, list):
+        raise ContractViolation(
+            "topology probe records must be a list", path="runtime.topology.records"
+        )
+    summary = validate_topology_records(
+        records,
+        expected_nodes=expected_nodes,
+        expected_local_world_size=expected_local_world_size,
+        expected_world_size=expected_world_size,
+        require_cuda=require_cuda,
+    )
+    serialized_summary = value.get("summary")
+    if not isinstance(serialized_summary, Mapping):
+        raise ContractViolation(
+            "topology probe summary must be an object", path="runtime.topology.summary"
+        )
+    if dict(serialized_summary) != summary.to_dict():
+        raise ContractViolation(
+            "topology probe summary does not match its records",
+            path="runtime.topology.summary",
+        )
+    return summary

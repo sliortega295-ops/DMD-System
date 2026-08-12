@@ -76,9 +76,6 @@ def _manifest_hash(manifest: Mapping[str, Any]) -> str:
 BUNDLE_SCHEMA_VERSION = "distillschedule.operation_trace_bundle.v1"
 
 GLOBAL_STAGE_SCHEDULE_SCOPE = "global_rank0_broadcast_equivalent"
-LOCAL_ZERO_HISTORY_STAGE_SCHEDULE_SCOPE = (
-    "rank_local_amplified_gt_zero_history_exception"
-)
 
 
 def _bundle_manifest_hash(manifest: Mapping[str, Any]) -> str:
@@ -153,11 +150,14 @@ def write_operation_trace_bundle_manifest(
 def validate_official_rank_stage_schedule_semantics(
     rank_traces: Mapping[int, "OperationTrace"],
 ) -> dict[str, Any]:
-    """Fail closed unless frozen rollout controls match official Helios.
+    """Fail closed on any cross-rank DiT call-count divergence.
 
-    Ordinary stage exits are sampled once by global rank zero and broadcast.
-    Rank-local variation is legal only in the exact amplified, GT-history,
-    all-zero-history branch where the official code passes ``is_sync=False``.
+    This experiment models the ordinary Helios control path: global rank zero
+    samples each pyramid-stage exit and broadcasts it.  The upstream amplified
+    GT/all-zero-history is_sync=False branch is intentionally outside the
+    measured contract.  Rank-qualified data and RNG streams may differ, but
+    initial exits, executed exits, per-stage calls, and total calls must match
+    for every rank at the same logical operation/step.
     """
 
     if not rank_traces:
@@ -170,7 +170,10 @@ def validate_official_rank_stage_schedule_semantics(
         return {
             str(operation["key"]): operation
             for operation in trace.manifest.get("operations", [])
-            if isinstance(operation.get("control", {}).get("pyramid_stage_call_sequence"), list)
+            if isinstance(
+                operation.get("control", {}).get("pyramid_stage_call_sequence"),
+                list,
+            )
         }
 
     per_rank = {rank: schedule_operations(trace) for rank, trace in rank_traces.items()}
@@ -183,8 +186,6 @@ def validate_official_rank_stage_schedule_semantics(
                 f"rank {rank} frozen rollout operation keys differ from rank 0"
             )
 
-    local_exception_entries = 0
-    global_entries = 0
     operations: list[dict[str, Any]] = []
     for operation_key in sorted(reference_keys):
         controls = {
@@ -193,6 +194,8 @@ def validate_official_rank_stage_schedule_semantics(
         }
         initial_by_rank: dict[int, tuple[int, ...]] = {}
         executed_by_rank: dict[int, tuple[int, ...]] = {}
+        stage_calls_by_rank: dict[int, tuple[int, ...]] = {}
+        total_calls_by_rank: dict[int, int] = {}
         for rank, control in controls.items():
             initial = control.get("initial_synchronized_pyramid_stage_exit")
             schedule = control.get("pyramid_stage_call_sequence")
@@ -204,71 +207,94 @@ def validate_official_rank_stage_schedule_semantics(
                 raise ValueError(
                     f"{operation_key} rank {rank} has malformed stage schedule"
                 )
-            initial_by_rank[rank] = tuple(int(value) for value in initial)
-            executed_by_rank[rank] = tuple(
-                int(item["denoising_exit"]) for item in schedule
-            )
-
-        if len(set(initial_by_rank.values())) != 1:
-            raise ValueError(
-                f"{operation_key} violates rank-zero broadcast semantics: "
-                f"initial exits differ across ranks"
-            )
-        synchronized_initial = initial_by_rank[0]
-        normal_exits: set[tuple[int, ...]] = set()
-        local_ranks: list[int] = []
-        for rank, control in controls.items():
-            scope = control.get("stage_schedule_scope")
-            predicate = control.get("official_local_exception_predicate")
-            if scope == GLOBAL_STAGE_SCHEDULE_SCOPE:
-                global_entries += 1
-                if executed_by_rank[rank] != synchronized_initial:
-                    raise ValueError(
-                        f"{operation_key} rank {rank} marks a broadcast schedule "
-                        "but executes different exits"
-                    )
-                normal_exits.add(executed_by_rank[rank])
-            elif scope == LOCAL_ZERO_HISTORY_STAGE_SCHEDULE_SCOPE:
-                local_exception_entries += 1
-                local_ranks.append(rank)
-                if not isinstance(predicate, dict) or not (
-                    predicate.get("is_use_gt_history") is True
-                    and predicate.get("is_amplify_first_chunk") is True
-                    and predicate.get("all_history_zero") is True
-                ):
-                    raise ValueError(
-                        f"{operation_key} rank {rank} claims an illegal local "
-                        "stage-schedule exception"
-                    )
-                if control.get("local_exception_seed") is None:
-                    raise ValueError(
-                        f"{operation_key} rank {rank} local exception seed is missing"
-                    )
-            else:
+            if control.get("stage_schedule_scope") != GLOBAL_STAGE_SCHEDULE_SCOPE:
                 raise ValueError(
-                    f"{operation_key} rank {rank} has unsupported stage schedule "
-                    f"scope {scope!r}"
+                    f"{operation_key} rank {rank} uses a rank-local stage schedule; "
+                    "the measured normal-path contract forbids this exception"
                 )
-        if len(normal_exits) > 1:
-            raise ValueError(
-                f"{operation_key} non-exception ranks execute different exits"
-            )
+            forbidden = {
+                key
+                for key in (
+                    "local_exception_seed",
+                    "official_local_exception_predicate",
+                )
+                if key in control
+            }
+            if forbidden:
+                raise ValueError(
+                    f"{operation_key} rank {rank} retains forbidden local-exception "
+                    f"fields: {sorted(forbidden)}"
+                )
+
+            initial_tuple = tuple(int(value) for value in initial)
+            executed: list[int] = []
+            stage_calls: list[int] = []
+            for stage_index, item in enumerate(schedule):
+                if not isinstance(item, Mapping):
+                    raise ValueError(
+                        f"{operation_key} rank {rank} stage {stage_index} is malformed"
+                    )
+                exit_index = int(item["denoising_exit"])
+                call_count = int(item["call_count"])
+                if call_count != exit_index + 1:
+                    raise ValueError(
+                        f"{operation_key} rank {rank} stage {stage_index} call_count "
+                        "does not equal denoising_exit + 1"
+                    )
+                executed.append(exit_index)
+                stage_calls.append(call_count)
+
+            executed_tuple = tuple(executed)
+            stage_calls_tuple = tuple(stage_calls)
+            total_calls = int(control.get("call_count", -1))
+            if total_calls != sum(stage_calls_tuple):
+                raise ValueError(
+                    f"{operation_key} rank {rank} total call_count is inconsistent"
+                )
+            if executed_tuple != initial_tuple:
+                raise ValueError(
+                    f"{operation_key} rank {rank} executes exits different from the "
+                    "rank-zero synchronized schedule"
+                )
+            initial_by_rank[rank] = initial_tuple
+            executed_by_rank[rank] = executed_tuple
+            stage_calls_by_rank[rank] = stage_calls_tuple
+            total_calls_by_rank[rank] = total_calls
+
+        checks = {
+            "initial exits": initial_by_rank,
+            "executed exits": executed_by_rank,
+            "per-stage call counts": stage_calls_by_rank,
+            "total call counts": total_calls_by_rank,
+        }
+        for label, values in checks.items():
+            if len(set(values.values())) != 1:
+                raise ValueError(
+                    f"{operation_key} violates strict cross-rank {label} parity"
+                )
+
+        synchronized_exit = executed_by_rank[0]
+        stage_calls = stage_calls_by_rank[0]
+        total_calls = total_calls_by_rank[0]
         operations.append(
             {
                 "operation": operation_key,
-                "synchronized_initial_exit": list(synchronized_initial),
-                "global_rank_count": len(ranks) - len(local_ranks),
-                "local_exception_ranks": local_ranks,
+                "synchronized_exit": list(synchronized_exit),
+                "per_stage_call_counts": list(stage_calls),
+                "logical_call_count": total_calls,
+                "physical_call_count": total_calls,
+                "rank_count": len(ranks),
             }
         )
 
     return {
         "status": "PASS",
-        "semantics": "official_helios_rank0_broadcast_with_gt_zero_history_exception",
+        "semantics": "official_helios_normal_rank0_broadcast_strict",
         "rank_count": len(ranks),
         "operation_count": len(operations),
-        "global_entry_count": global_entries,
-        "local_exception_entry_count": local_exception_entries,
+        "global_entry_count": len(ranks) * len(operations),
+        "local_exception_entry_count": 0,
+        "cross_rank_call_count_parity": True,
         "operations": operations,
     }
 

@@ -2,7 +2,7 @@
 
 **DMD-System** is a research runtime for scheduling and executing compound diffusion-distillation workloads. It grew out of Helios Stage-3 DMD training, but its public boundary is model-agnostic: workload semantics, model roles, shapes, update frequencies, rank topology, training backend, rollout provider and memory lifecycle are represented explicitly rather than hidden inside one training script.
 
-> **Current status — research prototype / refactor v0.2.** The typed runtime is the target architecture. Real Helios model math still runs through a pinned compatibility checkout until operation, tensor, loss, optimizer, version and EMA parity are established. The typed Route-A world16 path has **not** yet produced an accepted end-to-end result; live integration work is tracked in [Issue #2](https://github.com/sliortega295-ops/DMD-System/issues/2).
+> **Current status — research prototype / refactor v0.2.** The typed runtime is the target architecture. Real Helios model math still runs through a pinned compatibility checkout. Route-A Attempt 005-002 has now passed the world16 functional/evidence contract, but its one-run diagnostic window was 11.389% slower than the frozen reference and is not a formal timing or speedup result. Route-B target-graph execution remains `Not Run`; live integration work is tracked in [Issue #2](https://github.com/sliortega295-ops/DMD-System/issues/2).
 
 ## Start here
 
@@ -55,7 +55,7 @@ The repository now contains fail-closed building blocks for that path:
 - a central two-host coordinator with peer-failure cancellation; and
 - a summarizer that rejects actual CUDA/cgroup OOM while retaining host pressure as diagnostic evidence.
 
-The coordinator and evidence path are source-complete but still require a new real Attempt 004 cluster acceptance. The No-GAN suite additionally contains a resumable DAG and bounded search/timing drivers; its target G/S/T candidate, live redistribution and continuous Route-B executors remain explicit external command seams and are therefore `Not Run`, not implemented results.
+The coordinator and evidence path have passed one real 2×8 cluster acceptance. The No-GAN suite additionally contains a resumable DAG and bounded search/timing drivers; its target G/S/T candidate, live redistribution and continuous Route-B executors remain explicit external command seams and are therefore `Not Run`, not implemented results.
 
 ## Quick start
 

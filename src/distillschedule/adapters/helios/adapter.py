@@ -164,6 +164,43 @@ class HeliosDMDAdapter(DMDModelAdapter):
                 "allow_logical_offset_without_checkpoint contract",
                 path="evidence.checkpoint",
             )
+        lifecycle = plan.lifecycle
+        if lifecycle.phase_resident_critic_generator:
+            streaming = lifecycle.frozen_block_streaming
+            if not streaming.enabled or "generator" not in streaming.components:
+                raise ContractViolation(
+                    "phase-resident Critic Generator requires Generator block streaming",
+                    path="lifecycle.phase_resident_critic_generator",
+                )
+
+        streaming = lifecycle.frozen_block_streaming
+        if streaming.score_block_indices and (
+            not streaming.enabled or "score" not in streaming.components
+        ):
+            raise ContractViolation(
+                "Score-specific block indices require enabled Score streaming",
+                path="lifecycle.frozen_block_streaming.score_block_indices",
+            )
+
+        if lifecycle.critic_phase_offload_generator_lp_state:
+            generator_backend = plan.training_backends.get("generator")
+            if (
+                generator_backend is None
+                or generator_backend.kind != TrainingBackendKind.DEEPSPEED
+                or generator_backend.zero_stage != 1
+                or generator_backend.optimizer_offload != "cpu"
+                or generator_backend.parameter_offload != "none"
+            ):
+                raise ContractViolation(
+                    "Critic-phase Generator LP-state offload requires Generator "
+                    "ZeRO-1 with CPU optimizer offload and no parameter offload",
+                    path="lifecycle.critic_phase_offload_generator_lp_state",
+                )
+            if not plan.evidence.semantic_assertions:
+                raise ContractViolation(
+                    "Critic-phase Generator LP-state offload requires semantic assertions",
+                    path="evidence.semantic_assertions",
+                )
 
     def _validate_backend_config(
         self,
@@ -254,6 +291,14 @@ class HeliosDMDAdapter(DMDModelAdapter):
                 _TRUE if evidence.semantic_assertions else "0"
             ),
             "DISTILLSCHEDULE_LOGICAL_START_STEP": str(logical_start_step),
+            "DISTILLSCHEDULE_PHASE_RESIDENT_CRITIC_GENERATOR": (
+                _TRUE if lifecycle.phase_resident_critic_generator else "0"
+            ),
+            "DISTILLSCHEDULE_CRITIC_PHASE_OFFLOAD_GENERATOR_LP_STATE": (
+                _TRUE
+                if lifecycle.critic_phase_offload_generator_lp_state
+                else "0"
+            ),
         }
         if evidence.instrumentation == InstrumentationMode.TIMING:
             environment["DISTILLSCHEDULE_TIMING_ONLY_TRACE"] = _TRUE
@@ -297,6 +342,12 @@ class HeliosDMDAdapter(DMDModelAdapter):
                 environment[
                     "DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_INDICES"
                 ] = ",".join(str(index) for index in streaming.block_indices)
+            if streaming.score_block_indices:
+                environment[
+                    "DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_SCORE_INDICES"
+                ] = ",".join(
+                    str(index) for index in streaming.score_block_indices
+                )
             environment["DISTILLSCHEDULE_FROZEN_BLOCK_HOST_POLICY"] = (
                 "HOST_SHARED_IMMUTABLE"
                 if streaming.host_policy == HostStatePolicy.SHARED_IMMUTABLE
