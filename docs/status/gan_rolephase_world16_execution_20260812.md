@@ -127,3 +127,30 @@ or quality evidence. Failed or unexecuted gates remain `NOT_RUN`.
   `systems_only_gan_precast`, and names the exact logical bootstrap artifact.
   This changes only initialization asset selection, not model math, batch,
   optimizer, trace, phase topology, or timed workload.
+
+## Real-14B correctness attempt 02
+
+- **Run:** `gan-rp16-correctness-resident-20260812-02`
+- **Result:** **measured node0 cgroup-capacity failure during Phase-A selected
+  execution; resident Phase-B GPU capacity remains undecided.**
+- **Observed:** all 16 ranks constructed the corrected GAN models and wrote the
+  `models_and_targets_ready` receipt.  Node0 then rose from about 633.18 GB at
+  that boundary to a sampled 816,039,264,256 bytes, and `oom_kill` increased
+  from 0 to 1.  Local rank6 was killed by SIGKILL; the controller cancelled
+  node1.  There was no CUDA OOM.
+- **Causal lifetime:** flex ranks 4--7 each retained both a pinned forward
+  Critic target and a pinned reverse Generator target throughout Phase A.  The
+  reverse target has no first use until after all five Phase-B Critic commits
+  and after that rank's obsolete Critic can be released.  Four premature
+  full-Generator backings consumed roughly another four model copies while
+  Phase-A saved tensors were being offloaded.
+- **Rejected recovery:** tail-4 Score block streaming changes Phase-B GPU
+  residency and cannot resolve this pre-Phase-B host-lifetime failure.  A
+  construction wave would only serialize creation while leaving the same
+  long-lived backings resident.
+- **Bounded recovery:** keep concurrent pre-cast construction, but do not
+  construct the reverse Generator on flex ranks before Phase A.  After each
+  flex rank releases its C1005 ZeRO-1 Critic, lazily construct and pin the
+  reverse G201 target, then complete the existing B->A redistribution.  This
+  preserves all model math and versions; its construction and pinning time is
+  deliberately included in the formal handoff-to-A timing window.

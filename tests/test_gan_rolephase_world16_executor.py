@@ -100,6 +100,32 @@ def test_worker_defaults_to_resident_phase_b_and_has_no_implicit_tail4() -> None
     assert option.choices == (0, 4)
 
 
+def test_flex_reverse_generator_is_not_cold_preconstructed(monkeypatch) -> None:
+    roles: list[str] = []
+
+    def build(*, args, role, logical):
+        roles.append(role)
+        return object(), {"role": role}, {"component": role}
+
+    monkeypatch.setattr(worker, "_build_cpu_model", build)
+    monkeypatch.setattr(
+        worker.pr6,
+        "pin_module_cpu_registered_state",
+        lambda _model: {"all_registered_state_pinned": True},
+    )
+    monkeypatch.setattr(worker.pr6, "_control_barrier", lambda _group: None)
+    targets = worker._preconstruct_targets(
+        args=SimpleNamespace(),
+        global_rank=worker.FLEX_RANKS[0],
+        logical=object(),
+        control_group=object(),
+    )
+    assert roles == ["critic"]
+    assert targets["forward_model"] is not None
+    assert targets["reverse_model"] is None
+    assert targets["reverse_policy"] == "LAZY_AFTER_PHASE_B_CRITIC_RELEASE"
+
+
 def test_input_gate_reads_resolution_from_helios_data_config() -> None:
     cfg = SimpleNamespace(
         data_config=SimpleNamespace(single_height=384, single_width=640),

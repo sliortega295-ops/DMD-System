@@ -424,6 +424,7 @@ def _preconstruct_targets(
         "reverse_metadata": None,
         "reverse_restore": None,
         "reverse_pin": None,
+        "reverse_policy": "LAZY_AFTER_PHASE_B_CRITIC_RELEASE",
     }
     if global_rank in PHASE_B_G_RANKS:
         model, metadata, restore = _build_cpu_model(
@@ -439,18 +440,11 @@ def _preconstruct_targets(
         model, metadata, restore = _build_cpu_model(
             args=args, role="critic", logical=logical
         )
-        reverse, reverse_metadata, reverse_restore = _build_cpu_model(
-            args=args, role="generator", logical=logical
-        )
         value.update(
             forward_model=model,
             forward_metadata=metadata,
             forward_restore=restore,
             forward_pin=pr6.pin_module_cpu_registered_state(model),
-            reverse_model=reverse,
-            reverse_metadata=reverse_metadata,
-            reverse_restore=reverse_restore,
-            reverse_pin=pr6.pin_module_cpu_registered_state(reverse),
         )
     pr6._control_barrier(control_group)
     return value
@@ -1285,6 +1279,23 @@ def _reverse_to_phase_a(
             critic_engine, device=device
         )
         critic_engine = None
+        if reverse_model is not None:
+            raise AssertionError(
+                "flex reverse Generator must not outlive Phase-B Critic"
+            )
+        reverse_model, reverse_metadata, reverse_restore = _build_cpu_model(
+            args=args, role="generator", logical=logical
+        )
+        reverse_host_preparation = pr6.pin_module_cpu_registered_state(
+            reverse_model
+        )
+        reverse_host_preparation["timing_scope"] = "included_reverse_handoff"
+        record["reverse_target_construction"] = {
+            "policy": "LAZY_AFTER_PHASE_B_CRITIC_RELEASE",
+            "metadata": reverse_metadata,
+            "logical_restore": reverse_restore,
+            "host_preparation": reverse_host_preparation,
+        }
     pr6._control_barrier(control_group)
     dist.destroy_process_group()
     if dist.is_initialized():
