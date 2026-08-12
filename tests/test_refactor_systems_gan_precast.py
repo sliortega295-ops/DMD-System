@@ -4,7 +4,12 @@ import hashlib
 import json
 from pathlib import Path
 
-import torch
+import pytest
+
+# See test_refactor_systems_gan_bootstrap.py: these are tensor/safetensors
+# integration checks, not dependency-free typed-runtime tests.
+torch = pytest.importorskip("torch")
+pytest.importorskip("safetensors")
 from safetensors.torch import load_file, save_file
 
 from scripts.distillschedule.build_systems_gan_precast import (

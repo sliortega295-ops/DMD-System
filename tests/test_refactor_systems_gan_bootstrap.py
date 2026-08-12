@@ -4,7 +4,13 @@ import json
 from pathlib import Path
 
 import pytest
-import torch
+
+# The repository's lightweight refactor CI intentionally does not install the
+# multi-gigabyte PyTorch dependency.  This module validates real tensor
+# serialization/partition behavior, so skip it explicitly in that environment
+# instead of failing during collection.  The pinned Helios server environment
+# still executes the complete module.
+torch = pytest.importorskip("torch")
 
 from distillschedule.core.contracts import ContractViolation
 from distillschedule.runtime.gan_baseline import validate_systems_gan_bootstrap
