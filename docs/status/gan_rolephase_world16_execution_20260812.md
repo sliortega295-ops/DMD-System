@@ -76,3 +76,18 @@ or quality evidence. Failed or unexecuted gates remain `NOT_RUN`.
 - **Bounded recovery:** subgroup members inspect the real handle; non-members
   must prove they hold `NON_GROUP_MEMBER` and use the world-ordered static rank
   contract.  No model math, batch, optimizer, trace, or schedule changes.
+
+## Validation attempt 02
+
+- **Run:** `gan-rp16-validate-20260812-02`
+- **Result:** **FAIL at the reverse local-world rendezvous; preserved as
+  non-capacity evidence.**
+- **Observed:** the global Phase-B topology passed the corrected check, but
+  local rank 0 on each node failed recreating world8 with `EADDRINUSE`; GPUs
+  were released and cgroup `oom`/`oom_kill` stayed zero.
+- **Root cause:** the worker reused torchrun `--standalone`'s original
+  `MASTER_PORT`, whose elastic-agent TCPStore remains alive after the first
+  process group is destroyed.
+- **Bounded recovery:** assign a distinct, explicit node-local reverse port to
+  each node.  This is rendezvous plumbing only and does not change model math,
+  phase topology, batch, trace, or timed-workload semantics.

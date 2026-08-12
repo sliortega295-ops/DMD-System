@@ -109,6 +109,10 @@ def validate_only(ranks: dict[int, dict[str, Any]]) -> dict[str, Any]:
             == (8, rank % 8, rank % 8),
             f"rank{rank}: reverse Phase-A world drift",
         )
+        _require(
+            isinstance(reverse.get("master_port"), int),
+            f"rank{rank}: reverse Phase-A rendezvous was not recorded",
+        )
     return {"topology_lifecycle": "PASS"}
 
 

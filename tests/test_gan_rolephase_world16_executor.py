@@ -46,8 +46,9 @@ def test_phase_a_rendezvous_is_restored_after_global_world(monkeypatch) -> None:
         "MASTER_PORT": "42345",
     }.items():
         monkeypatch.setenv(key, value)
-    worker._restore_local_phase_a_rendezvous(saved)
-    assert {key: worker.os.environ[key] for key in values} == values
+    worker._restore_local_phase_a_rendezvous(saved, master_port=41244)
+    expected = dict(values, MASTER_PORT="41244")
+    assert {key: worker.os.environ[key] for key in values} == expected
 
 
 def test_systems_only_loader_keeps_physical_and_logical_versions_distinct(

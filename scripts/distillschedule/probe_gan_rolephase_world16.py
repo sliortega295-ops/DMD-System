@@ -202,11 +202,23 @@ def _capture_local_phase_a_rendezvous(*, local_rank: int) -> dict[str, str]:
     return value
 
 
-def _restore_local_phase_a_rendezvous(value: dict[str, str]) -> None:
+def _restore_local_phase_a_rendezvous(
+    value: dict[str, str],
+    *,
+    master_port: int,
+) -> None:
     expected = {"RANK", "WORLD_SIZE", "MASTER_ADDR", "MASTER_PORT"}
     if set(value) != expected or int(value["WORLD_SIZE"]) != 8:
         raise ValueError("invalid saved Phase-A rendezvous environment")
-    os.environ.update(value)
+    if not 1 <= int(master_port) <= 65535:
+        raise ValueError("invalid reverse Phase-A rendezvous port")
+    restored = dict(value)
+    # torchrun --standalone keeps its elastic-agent TCPStore listener alive
+    # even after the worker destroys the first local process group. Reusing
+    # that port deterministically fails rank 0 with EADDRINUSE, so the reverse
+    # world uses a preregistered node-local port.
+    restored["MASTER_PORT"] = str(master_port)
+    os.environ.update(restored)
 
 
 def _validated_group_ranks(
@@ -1277,7 +1289,10 @@ def _reverse_to_phase_a(
     dist.destroy_process_group()
     if dist.is_initialized():
         raise AssertionError("global Phase-B world survived reverse handoff")
-    _restore_local_phase_a_rendezvous(local_rendezvous)
+    _restore_local_phase_a_rendezvous(
+        local_rendezvous,
+        master_port=args.phase_a_reverse_master_port,
+    )
     pr6._initialize_phase_a_distributed()
     import deepspeed
 
@@ -1364,6 +1379,7 @@ def _parser() -> argparse.ArgumentParser:
     value.add_argument("--node-rank", type=int, choices=(0, 1), required=True)
     value.add_argument("--phase-b-master-addr", required=True)
     value.add_argument("--phase-b-master-port", type=int, required=True)
+    value.add_argument("--phase-a-reverse-master-port", type=int, required=True)
     value.add_argument("--run-id", required=True)
     value.add_argument("--run-nonce", type=int, required=True)
     value.add_argument("--output-dir", type=Path, required=True)
@@ -1519,7 +1535,10 @@ def main() -> int:
                 )
             pr6._control_barrier(control_group)
             dist.destroy_process_group()
-            _restore_local_phase_a_rendezvous(local_rendezvous)
+            _restore_local_phase_a_rendezvous(
+                local_rendezvous,
+                master_port=args.phase_a_reverse_master_port,
+            )
             pr6._initialize_phase_a_distributed()
             deepspeed.init_distributed(
                 dist_backend="nccl", dist_init_required=False
@@ -1543,6 +1562,7 @@ def main() -> int:
                     "world_size": dist.get_world_size(),
                     "rank": dist.get_rank(),
                     "expected_local_rank": local_rank,
+                    "master_port": args.phase_a_reverse_master_port,
                 },
                 duration_seconds=time.perf_counter() - started,
             )
