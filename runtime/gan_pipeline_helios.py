@@ -24,10 +24,10 @@ from typing import Any, Callable, Mapping, Sequence
 @dataclass(frozen=True)
 class ScoreBoundaryResult:
     gradient: Any
-    total_loss: float
-    dmd_loss: float
-    gan_g_loss_raw: float
-    gan_g_loss_weighted: float
+    total_loss: float | None
+    dmd_loss: float | None
+    gan_g_loss_raw: float | None
+    gan_g_loss_weighted: float | None
     logs: Mapping[str, Any]
 
 
@@ -79,6 +79,7 @@ def compute_official_score_boundary_grad(
     gan_g_weight: float,
     official_kwargs: Mapping[str, Any],
     compute_distribution_matching_loss: Callable[..., Sequence[Any]] | None = None,
+    collect_diagnostics: bool = True,
 ) -> ScoreBoundaryResult:
     """Return the exact Score-side latent gradient for one Generator micro-wave.
 
@@ -139,11 +140,13 @@ def compute_official_score_boundary_grad(
         gradient = gradient.to(dtype=generated_latent.dtype)
     return ScoreBoundaryResult(
         gradient=gradient,
-        total_loss=_scalar(total),
-        dmd_loss=_scalar(dmd_loss),
-        gan_g_loss_raw=_scalar(gan_g_loss),
-        gan_g_loss_weighted=_scalar(weighted_gan),
-        logs=dict(logs) if isinstance(logs, Mapping) else {},
+        total_loss=_scalar(total) if collect_diagnostics else None,
+        dmd_loss=_scalar(dmd_loss) if collect_diagnostics else None,
+        gan_g_loss_raw=_scalar(gan_g_loss) if collect_diagnostics else None,
+        gan_g_loss_weighted=(
+            _scalar(weighted_gan) if collect_diagnostics else None
+        ),
+        logs=(dict(logs) if collect_diagnostics and isinstance(logs, Mapping) else {}),
     )
 
 

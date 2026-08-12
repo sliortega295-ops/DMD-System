@@ -86,6 +86,65 @@ class LogicalCheckpointPackage:
                 )
         return cls(root=root, manifest=manifest)
 
+    @classmethod
+    def load_systems_only_gan(
+        cls,
+        root: str | Path,
+    ) -> "LogicalCheckpointPackage":
+        """Load the immutable GAN systems bootstrap without relabelling state.
+
+        The physical optimizer/scheduler state is the source checkpoint's
+        G2/C10 state.  The systems experiment separately maps it to logical
+        schedule versions G200/C1000/EMA800 for the 1000--1004 control window.
+        Keeping both namespaces explicit prevents a logical version label from
+        being written into Adam's physical step counter.
+        """
+
+        root = Path(root)
+        manifest = json.loads((root / "manifest.json").read_text())
+        if manifest.get("schema_version") != LOGICAL_CHECKPOINT_SCHEMA:
+            raise ValueError("unsupported GAN logical-checkpoint schema")
+        unsigned = dict(manifest)
+        expected_hash = str(unsigned.pop("manifest_hash", ""))
+        actual_hash = hashlib.sha256(_canonical_json(unsigned)).hexdigest()
+        if actual_hash != expected_hash:
+            raise ValueError("GAN logical-checkpoint manifest hash mismatch")
+        if int(manifest.get("global_step", -1)) != 10:
+            raise ValueError("GAN systems bootstrap source is not step 10")
+        components = manifest.get("components", {})
+        physical_versions = {
+            name: int(components.get(name, {}).get("parameter_version", -1))
+            for name in ("generator", "critic")
+        }
+        if physical_versions != {"generator": 2, "critic": 10}:
+            raise ValueError(
+                "GAN systems bootstrap physical versions changed: "
+                f"{physical_versions}"
+            )
+        for name, expected in physical_versions.items():
+            component = components[name]
+            if int(component.get("optimizer_step", -1)) != expected:
+                raise ValueError(f"GAN {name} optimizer step changed")
+            if int(component.get("scheduler_state", {}).get("last_epoch", -1)) != expected:
+                raise ValueError(f"GAN {name} scheduler step changed")
+        if int(manifest.get("ema", {}).get("optimization_step", -1)) != 800:
+            raise ValueError("GAN systems bootstrap is not EMA800")
+        control = manifest.get("systems_only_control", {})
+        expected_control = {
+            "generator": 200,
+            "critic": 1000,
+            "ema": 800,
+        }
+        if control.get("classification") != "systems_only_gan_bootstrap":
+            raise ValueError("checkpoint is not marked systems_only_gan_bootstrap")
+        if control.get("logical_schedule_versions") != expected_control:
+            raise ValueError("GAN logical schedule version mapping changed")
+        if control.get("logical_control_window") != list(range(1000, 1005)):
+            raise ValueError("GAN logical control window changed")
+        if bool(control.get("official_checkpoint_1000", True)):
+            raise ValueError("systems bootstrap was mislabeled as official checkpoint1000")
+        return cls(root=root, manifest=manifest)
+
     @property
     def manifest_hash(self) -> str:
         return str(self.manifest["manifest_hash"])

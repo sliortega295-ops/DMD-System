@@ -1,11 +1,15 @@
-"""Pre-create all world16 process groups used by the GAN role-phase runtime.
+"""Process groups for the GAN role-phase runtimes.
 
-Group creation is intentionally outside the formal Full5 timing window. The
-runtime switches active groups at the phase boundary but never creates or
-tears down NCCL groups during the timed handoff.
+The original PR8 prototype pre-created all groups in one world16.  The real
+14B recovery cannot do that: Phase A's validated ZeRO-3 substrate must own a
+node-local *default* world8.  Production therefore destroys those two worlds,
+forms one global world16, and creates only the Phase-B 4G/12C groups below.
+The old helpers remain for prototype inspection and are explicitly not used by
+the real worker.
 """
 from __future__ import annotations
 
+import datetime
 from dataclasses import dataclass
 from typing import Any
 
@@ -60,6 +64,22 @@ class GanRolePhaseExecutionGroups:
         return self.singletons[rank]
 
 
+@dataclass(frozen=True)
+class GanRolePhaseBGroups:
+    """Global-world16 groups created during the bounded A->B handoff."""
+
+    control: Any
+    generator: Any
+    critic: Any
+    singletons: tuple[Any, ...]
+
+    def singleton_for_rank(self, rank: int) -> Any:
+        rank = int(rank)
+        if not 0 <= rank < len(self.singletons):
+            raise ValueError(f"rank {rank} is outside singleton inventory")
+        return self.singletons[rank]
+
+
 def create_rolephase_groups(
     topology: GanRolePhaseTopology = GanRolePhaseTopology(),
     *,
@@ -87,6 +107,42 @@ def create_rolephase_groups(
         phase_b_generator=b_g,
         phase_b_critic=b_c,
         flex=flex,
+    )
+
+
+def create_phase_b_execution_groups(
+    topology: GanRolePhaseTopology = GanRolePhaseTopology(),
+) -> GanRolePhaseBGroups:
+    """Create exact 4G/12C groups after global world16 initialization.
+
+    Every WORLD rank calls every ``new_group`` in identical order.  Gloo owns
+    role-asymmetric lifecycle barriers; NCCL owns model and P2P domains.  A
+    barrier after each creation makes ordering failures fail at their source
+    instead of surfacing later as an unrelated collective timeout.
+    """
+
+    if not dist.is_initialized() or dist.get_world_size() != topology.world_size:
+        raise RuntimeError("Phase-B groups require an initialized global world16")
+    control = dist.new_group(
+        ranks=list(range(topology.world_size)),
+        backend="gloo",
+        timeout=datetime.timedelta(hours=2),
+    )
+    dist.barrier(group=control)
+
+    def ordered(ranks: tuple[int, ...]) -> Any:
+        group = dist.new_group(ranks=list(ranks), backend="nccl")
+        dist.barrier(group=control)
+        return group
+
+    generator = ordered(topology.phase_b_generator_ranks)
+    critic = ordered(topology.phase_b_critic_ranks)
+    singletons = tuple(ordered((rank,)) for rank in range(topology.world_size))
+    return GanRolePhaseBGroups(
+        control=control,
+        generator=generator,
+        critic=critic,
+        singletons=singletons,
     )
 
 
@@ -123,8 +179,10 @@ def create_rolephase_execution_groups(
 
 
 __all__ = [
+    "GanRolePhaseBGroups",
     "GanRolePhaseExecutionGroups",
     "GanRolePhaseGroups",
+    "create_phase_b_execution_groups",
     "create_rolephase_execution_groups",
     "create_rolephase_groups",
 ]
