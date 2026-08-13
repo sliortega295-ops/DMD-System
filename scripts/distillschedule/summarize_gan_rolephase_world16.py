@@ -39,7 +39,22 @@ def load_json(path: Path) -> dict[str, Any]:
 
 def strict_kv(path: Path) -> dict[str, str]:
     value: dict[str, str] = {}
-    for line_no, raw in enumerate(path.read_text(errors="replace").splitlines(), 1):
+    text = path.read_text(errors="replace")
+    # Both node launchers append their final return code and cleanup receipts
+    # to launch manifests stored on the shared filesystem.  O_APPEND makes each
+    # write atomic, but not an entire multi-line shell redirection; two writers
+    # can therefore concatenate adjacent key=value records.  Recover only that
+    # known boundary.  Every other malformed line remains fail-closed.
+    for key in (
+        "command_return_code",
+        "final_return_code",
+        "finished_at",
+        "cgroup_memory_current_after",
+        "cgroup_memory_peak_after",
+        "memory_events_after",
+    ):
+        text = text.replace(f"{key}=", f"\n{key}=")
+    for line_no, raw in enumerate(text.splitlines(), 1):
         if not raw.strip():
             continue
         if "=" not in raw:

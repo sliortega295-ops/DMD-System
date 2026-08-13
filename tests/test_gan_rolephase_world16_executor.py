@@ -162,6 +162,23 @@ def test_validate_receipt_serializes_collapsed_topology_without_iterating_none()
     assert 'f"rank{rank}: communicator inventory drift"' in summarizer_source
 
 
+def test_shared_launcher_manifest_recovers_only_known_append_boundaries(tmp_path) -> None:
+    path = tmp_path / "launch_manifest.txt"
+    path.write_text(
+        "run_id=x\ncommand_return_code=0final_return_code=0\n"
+        "finished_at=nowcgroup_memory_current_after=12\n"
+        "memory_events_after=oom 0;oom_kill 0;\n"
+    )
+    assert summarizer.strict_kv(path) == {
+        "run_id": "x",
+        "command_return_code": "0",
+        "final_return_code": "0",
+        "finished_at": "now",
+        "cgroup_memory_current_after": "12",
+        "memory_events_after": "oom 0;oom_kill 0;",
+    }
+
+
 def test_tail10_lifecycle_gate_requires_a128_and_idle_streamer() -> None:
     value = {
         "phase_b_activation_offload": {
