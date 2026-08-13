@@ -18707,3 +18707,57 @@ with this node1 adaptation, first validating group/transport/phase contracts
 and then, if admitted, the real 14B correctness path. What remains `NOT_RUN` is
 that world16 integration and its flex transition evidence, not node0 code
 construction.
+
+
+## Iteration 289: DP12 tail10+A128 bounded capacity gate
+
+### Milestone / Gate
+GAN role-phase world16 / Phase-B capacity and correctness before timing.
+
+### Question
+Can the unchanged DP12/MB1/GAS1/B12 Phase-B Critic finish C1000→C1005 when the already-active A128 pinned activation offload is paired with the previously audited Score tail10 block policy?
+
+### Hypothesis
+Changing only the streamed immutable Score tail from blocks 36–39 to blocks 30–39 frees about 3.927 GiB of additional static GPU storage per Critic rank, enough to cover the measured 292/362-MiB first-backward requests. The existing A128 policy remains unchanged.
+
+### Importance
+The new role-phase topology has not completed a single Critic commit. Capacity correctness is a hard prerequisite for transition optimization or formal timing; repeating resident/tail4 or pretending A128 was absent would repeat a documented failure.
+
+### Evidence Needed
+Sixteen PASS rank receipts; twelve DP12 Critic ranks; five commits; G201/C1005/EMA801; exact trace/call/queue/reverse contracts; exactly ten A128 scopes and nonzero saved-tensor copies per Critic rank; tail10 blocks 30–39 with window1 and HOST_SHARED_IMMUTABLE; exact materialize/release reconciliation; zero live activation/parameter handles; no CUDA or cgroup OOM.
+
+### Refutation Condition
+After receipts confirm both tail10 and A128 actually executed, the same first Critic checkpoint-recompute backward still OOMs, or any correctness/version/queue/lifecycle gate fails.
+
+### Allowed Changes
+Only register Phase-B tail10, preserve the existing synchronous A128 primitive, and add fail-closed policy/lifecycle receipts, tests, launcher/controller validation, manifest, status, and append-only log. No model math, trace, batch, loss, optimizer, EMA, placement, prefetch, async copy, or timing-policy change.
+
+### Commands
+Rechecked local HEAD/status and the Iteration 288/284 evidence; inspected the active worker and confirmed A128 is installed after both resident and streaming branches. Added tail10 dry-run and lifecycle validation. Local Python compile, shell syntax, git diff check, controller dry-run, 31 focused role-phase tests, and 184 CI refactor tests pass in a disposable CPU Torch environment. The full maintained tests report 367 passed, 10 skipped, and two pre-existing failures because this worktree lacks archived Iteration-281 manifest files; neither failure touches the P0 code path. Both SSH endpoints authenticate but remote commands time out, so GPU/process/cgroup/assets and remote tests remain Not Run.
+
+### Measured Results
+Not Run. No GPU experiment has been launched. Static policy delta is six additional streamed blocks, 4,216,731,648 bytes (3.927 GiB) per Critic rank based on the prior audited block inventory; this is evidence-derived, not a new measurement.
+
+### Correctness
+Not Run. New fail-closed summary requirements are implemented but await the single real world16 gate.
+
+### Performance
+Not Run. This iteration is not a timing claim.
+
+### Interpretation
+GO for exactly one tail10+A128 capacity/correctness attempt once live substrate checks pass. If the confirmed policy reproduces the same first-backward capacity failure, stop; do not try S11/S12. If it passes, the next iteration may transplant the validated host-safe transition substrate and acquire stage timing.
+
+### Files Changed
+Worker, launcher, controller, summarizer, focused tests, this preregistration manifest, status report, and append-only research snapshot.
+
+### Failure or Limitation
+The current BAAI SSH command channels time out on both nodes after authentication, so live GPUs, cgroup OOM counters, assets, remote tests, staging, and the real world16 run cannot yet be verified. Local CPU tests pass, but they do not substitute for the remote CUDA/DeepSpeed gate.
+
+### Gate Status
+PREREGISTERED; REAL14B NOT RUN; FORMAL TIMING NOT RUN.
+
+### Next Highest-Value Question
+Does exact DP12 tail10+A128 pass the first Critic backward and close the full correctness/lifecycle gate?
+
+### Next Command
+After SSH recovery: revalidate HEAD/status, GPU ownership, cgroup OOM counters, assets and remote tests; stage an immutable source identity; then launch one correctness run with `--phase-b-streamed-blocks 10`.

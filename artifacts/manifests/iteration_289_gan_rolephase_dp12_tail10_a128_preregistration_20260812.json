@@ -1,0 +1,116 @@
+{
+  "schema_version": "distillschedule.iteration_manifest.v1",
+  "iteration": 289,
+  "date": "2026-08-12",
+  "gate": "GAN_ROLEPHASE_DP12_TAIL10_A128_CAPACITY_AND_CORRECTNESS",
+  "status": "PREREGISTERED_NOT_RUN_REMOTE_SSH_BLOCKED",
+  "decision": "GO_ONE_BOUNDED_CAPACITY_CORRECTNESS_ATTEMPT_WHEN_REMOTE_RECOVERS",
+  "authorized_hypothesis": "Under the unchanged role-phase workload, DP12/MB1/GAS1/B12 with Score tail10 synchronous streaming and the already-installed A128 pinned activation offload provides enough Phase-B headroom to complete C1000-to-C1005 without changing Helios math.",
+  "falsifiable_question": "Does the exact tail10+A128 policy complete all five Critic commits, EMA801, reverse handoff, and lifecycle cleanup; or reproduce the first-backward CUDA OOM after both policies are proven selected?",
+  "frozen_contract": {
+    "world_size": 16,
+    "nodes": 2,
+    "gpus_per_node": 8,
+    "resolution": [
+      384,
+      640
+    ],
+    "precision": "BF16",
+    "logical_steps": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004
+    ],
+    "phase_a": "DP8_MB1_GAS2_B16_NODE_LOCAL_ZERO3_ONE_GENERATOR_COMMIT",
+    "phase_b": "DP12_MB1_GAS1_B12_GLOBAL_ZERO1_CPU_OPTIMIZER_FIVE_CRITIC_COMMITS",
+    "logical_versions": "G200_C1000_EMA800_TO_G201_C1005_EMA801",
+    "physical_optimizer_versions": "G2_C10_TO_G3_C15",
+    "trace_bundle_hash": "d31d4d473a3574b5b39e50ad2b5e72e17aee7baf707130ea0513092553f7cd15",
+    "logical_package_hash": "c66ff180fa4d00c78ba05ffd1826b7e358e0ab38d2f3f68f5f92dad5fe42dd44",
+    "allowed_change": "Phase-B immutable Score streamed tail changes from blocks 36-39 to blocks 30-39; A128 remains unchanged",
+    "phase_b_memory_policy": {
+      "streamed_blocks": 10,
+      "streamed_block_indices": [
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ],
+      "streaming_window": 1,
+      "host_policy": "HOST_SHARED_IMMUTABLE",
+      "parameter_copy": "SYNCHRONOUS_NO_PREFETCH",
+      "activation_policy": "PINNED_SAVED_TENSOR_OFFLOAD_A128_SYNCHRONOUS"
+    }
+  },
+  "prior_evidence": {
+    "iteration_288_tail4_a128": {
+      "artifact": "artifacts/manifests/iteration_288_gan_rolephase_world16_execution_20260812.json",
+      "result": "first Phase-B Critic second_loss checkpoint-recompute backward CUDA OOM",
+      "failed_allocation_mib": 292,
+      "correction": "A128 was already installed unconditionally; attempt06 was tail4+A128, not weight-only tail4"
+    },
+    "iteration_284_tail10_a128": {
+      "artifact": "artifacts/manifests/iteration_284_gan_pipeline_g40_s10_act128_preregistration_20260812.json",
+      "result": "real14B capacity/correctness PASS under older DP8/MB1/GAS2/B16 topology",
+      "use": "validated same primitives, not a performance or topology-equivalence claim"
+    }
+  },
+  "rejected_paths": [
+    "re-add A128 as if it were absent",
+    "retry resident or tail4",
+    "linear S5/S6/S8 escalation",
+    "S11/S12 after a confirmed tail10+A128 first-backward OOM",
+    "allocator flag retry",
+    "prefetch or async copy before P0 correctness",
+    "formal timing before the capacity/correctness summary passes"
+  ],
+  "exit_gate": {
+    "rank_receipts": "16/16 PASS",
+    "critic_ranks": 12,
+    "critic_commits": 5,
+    "activation_scope_count_per_critic_rank": 10,
+    "activation_cpu_copy_count_per_critic_rank": ">0",
+    "activation_live_cpu_bytes_per_critic_rank": 0,
+    "streamer_block_count_per_critic_rank": 10,
+    "streamer_materialize_release_reconciliation": "exact",
+    "streamer_resident_bytes_at_boundary": 0,
+    "streamer_idle": true,
+    "versions": "G201_C1005_EMA801",
+    "queue_and_transport": "empty",
+    "reverse_phase_a_ready": true,
+    "cuda_oom": 0,
+    "cgroup_oom_or_kill_delta": 0
+  },
+  "stop_rule": "If confirmed tail10+A128 reproduces the same first-backward CUDA capacity failure, close this candidate immediately; do not try S11/S12 or allocator repair.",
+  "performance_boundary": "This is a capacity/correctness gate. Failed or diagnostic wall time is not a formal performance result.",
+  "preflight": {
+    "local_head_before_changes": "1f0a4407918ebda025bf6760cf5b520267288e45",
+    "local_git_status_before_changes": "clean",
+    "local_compile": "PASS",
+    "shell_syntax": "PASS",
+    "controller_dry_run_tail10": "PASS",
+    "focused_pytest": "31_PASS_CPU_TORCH_2_6",
+    "remote_live_state": "NOT_OBSERVABLE_SSH_AUTHENTICATES_BUT_COMMAND_CHANNEL_TIMES_OUT_ON_BOTH_NODES",
+    "gpu_processes": "NOT_OBSERVABLE",
+    "cgroup_oom": "NOT_OBSERVABLE",
+    "assets": "NOT_OBSERVABLE",
+    "ci_refactor_tests": "184_PASS",
+    "full_maintained_tests": "367_PASS_10_SKIP_2_PREEXISTING_MISSING_ARCHIVED_ITER281_MANIFEST_FAILURES"
+  },
+  "not_run": [
+    "remote focused tests",
+    "remote source staging/identity build",
+    "world16 capacity/correctness",
+    "formal timing",
+    "Nsight",
+    "transition optimization"
+  ]
+}

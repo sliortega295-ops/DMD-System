@@ -15,6 +15,8 @@ G_A = tuple(range(8))
 S_A = tuple(range(8, 16))
 G_B = tuple(range(4))
 C_B = tuple(range(4, 16))
+PHASE_B_MEMORY_POLICIES = (0, 4, 10)
+TAIL10_BLOCK_INDICES = list(range(30, 40))
 
 
 class EvidenceError(RuntimeError):
@@ -97,6 +99,69 @@ def _require(condition: bool, message: str) -> None:
         raise EvidenceError(message)
 
 
+def validate_phase_b_lifecycle(
+    *, rank: int, value: dict[str, Any], streamed_blocks: int
+) -> None:
+    """Fail closed on the preregistered DP12 tail10+A128 lifecycle receipt."""
+
+    activation = value.get("phase_b_activation_offload", {})
+    _require(
+        int(activation.get("live_cpu_bytes", -1)) == 0,
+        f"rank{rank}: Phase-B activation leak",
+    )
+    if streamed_blocks != 10:
+        return
+
+    _require(
+        int(activation.get("scope_count", -1)) == 10,
+        f"rank{rank}: tail10+A128 must cover exactly ten Score forwards",
+    )
+    _require(
+        int(activation.get("cpu_copy_count", 0)) > 0,
+        f"rank{rank}: tail10+A128 selected no saved tensors",
+    )
+    residency = value.get("phase_b_parameter_residency", {})
+    _require(
+        residency.get("parameter_policy")
+        == "SYNCHRONOUS_FROZEN_BLOCK_STREAMING",
+        f"rank{rank}: tail10 streamer receipt missing",
+    )
+    _require(
+        residency.get("host_policy") == "HOST_SHARED_IMMUTABLE",
+        f"rank{rank}: tail10 host ownership drift",
+    )
+    _require(
+        residency.get("window_size") == 1,
+        f"rank{rank}: tail10 streaming window drift",
+    )
+    _require(
+        residency.get("streamed_block_indices") == TAIL10_BLOCK_INDICES,
+        f"rank{rank}: tail10 block set drift",
+    )
+    _require(
+        residency.get("idle_at_phase_b_boundary") is True,
+        f"rank{rank}: tail10 streamer not idle at Phase-B boundary",
+    )
+    stats = residency.get("stats", {})
+    materialize_count = int(stats.get("materialize_count", 0))
+    release_count = int(stats.get("release_count", -1))
+    materialized_bytes = int(stats.get("materialized_bytes", 0))
+    released_bytes = int(stats.get("released_bytes", -1))
+    _require(
+        int(stats.get("streamed_block_count", -1)) == 10,
+        f"rank{rank}: tail10 streamer count drift",
+    )
+    _require(materialize_count > 0, f"rank{rank}: tail10 never materialized")
+    _require(
+        (release_count, released_bytes) == (materialize_count, materialized_bytes),
+        f"rank{rank}: tail10 materialize/release reconciliation failed",
+    )
+    _require(
+        int(stats.get("resident_bytes", -1)) == 0,
+        f"rank{rank}: tail10 resident bytes leaked",
+    )
+
+
 def validate_only(ranks: dict[int, dict[str, Any]]) -> dict[str, Any]:
     for rank, value in ranks.items():
         _require(value.get("validation_only") is True, f"rank{rank}: not validation-only")
@@ -140,7 +205,11 @@ def validate_full(ranks: dict[int, dict[str, Any]], *, timing: bool) -> dict[str
             "ema": 1 if rank == 0 else 0,
         }
         _require(updates == expected_updates, f"rank{rank}: update count drift {updates}")
-        _require(value.get("phase_b_streamed_blocks") in (0, 4), f"rank{rank}: invalid memory policy")
+        streamed_blocks = value.get("phase_b_streamed_blocks")
+        _require(
+            streamed_blocks in PHASE_B_MEMORY_POLICIES,
+            f"rank{rank}: invalid memory policy",
+        )
 
         phase_a = value.get("phase_a", {})
         samples_a = phase_a.get("samples", [])
@@ -232,9 +301,11 @@ def validate_full(ranks: dict[int, dict[str, Any]], *, timing: bool) -> dict[str
         _require(int(activation_a.get("live_cpu_bytes", 0)) == 0,
                  f"rank{rank}: Phase-A activation leak")
         if rank in C_B:
-            activation_b = value.get("phase_b_activation_offload", {})
-            _require(int(activation_b.get("live_cpu_bytes", 0)) == 0,
-                     f"rank{rank}: Phase-B activation leak")
+            validate_phase_b_lifecycle(
+                rank=rank,
+                value=value,
+                streamed_blocks=int(streamed_blocks),
+            )
 
     _require(set(phase_a_x0) == set(range(16)), "Phase-A x0 coverage")
     _require(set(phase_a_grad) == set(range(16)), "Phase-A gradient coverage")

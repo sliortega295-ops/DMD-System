@@ -14,6 +14,7 @@ from runtime.critic_pool_checkpoint import (
     LogicalCheckpointPackage,
 )
 from scripts.distillschedule import probe_gan_rolephase_world16 as worker
+from scripts.distillschedule import run_gan_rolephase_world16 as controller
 from scripts.distillschedule import summarize_gan_rolephase_world16 as summarizer
 from scripts.distillschedule import validate_gan_rolephase_world16_inputs as input_gate
 
@@ -91,13 +92,13 @@ def test_systems_only_loader_keeps_physical_and_logical_versions_distinct(
     ] == 200
 
 
-def test_worker_defaults_to_resident_phase_b_and_has_no_implicit_tail4() -> None:
+def test_worker_defaults_to_resident_phase_b_and_only_allows_registered_policies() -> None:
     actions = worker._parser()._actions
     option = next(
         action for action in actions if "--phase-b-streamed-blocks" in action.option_strings
     )
     assert option.default == 0
-    assert option.choices == (0, 4)
+    assert option.choices == (0, 4, 10)
 
 
 def test_tail4_streamer_is_bound_to_the_phase_b_critic_component() -> None:
@@ -105,6 +106,88 @@ def test_tail4_streamer_is_bound_to_the_phase_b_critic_component() -> None:
     call = source[source.index("residency = install_frozen_block_streamer(") :]
     call = call[: call.index(")\n        policy =")]
     assert 'logical_component="gan_rolephase_phase_b_critic"' in call
+
+
+def test_tail10_is_the_exact_preregistered_score_tail() -> None:
+    assert worker._phase_b_streamed_block_indices(10) == tuple(range(30, 40))
+    assert worker._phase_b_streamed_block_indices(4) == tuple(range(36, 40))
+    with pytest.raises(ValueError, match="preregistered"):
+        worker._phase_b_streamed_block_indices(8)
+
+
+def test_tail10_is_fail_closed_across_controller_and_node_launcher() -> None:
+    actions = controller.parser()._actions
+    option = next(
+        action for action in actions if "--phase-b-streamed-blocks" in action.option_strings
+    )
+    assert option.choices == (0, 4, 10)
+    launcher = Path(worker.__file__).with_name(
+        "launch_gan_rolephase_world16_node.sh"
+    ).read_text()
+    assert '"${PHASE_B_STREAMED_BLOCKS}" == 10' in launcher
+    assert 'f"DISTILLSCHEDULE_PHASE_B_STREAMED_BLOCKS={args.phase_b_streamed_blocks}"' in Path(
+        controller.__file__
+    ).read_text()
+
+
+def test_tail10_lifecycle_gate_requires_a128_and_idle_streamer() -> None:
+    value = {
+        "phase_b_activation_offload": {
+            "scope_count": 10,
+            "cpu_copy_count": 1,
+            "live_cpu_bytes": 0,
+        },
+        "phase_b_parameter_residency": {
+            "parameter_policy": "SYNCHRONOUS_FROZEN_BLOCK_STREAMING",
+            "host_policy": "HOST_SHARED_IMMUTABLE",
+            "window_size": 1,
+            "streamed_block_indices": list(range(30, 40)),
+            "idle_at_phase_b_boundary": True,
+            "stats": {
+                "streamed_block_count": 10,
+                "materialize_count": 25,
+                "release_count": 25,
+                "materialized_bytes": 100,
+                "released_bytes": 100,
+                "resident_bytes": 0,
+            },
+        },
+    }
+    summarizer.validate_phase_b_lifecycle(
+        rank=4, value=value, streamed_blocks=10
+    )
+    value["phase_b_activation_offload"]["scope_count"] = 9
+    with pytest.raises(summarizer.EvidenceError, match="exactly ten"):
+        summarizer.validate_phase_b_lifecycle(
+            rank=4, value=value, streamed_blocks=10
+        )
+
+
+def test_phase_b_residency_receipt_closes_streamer_lifetime() -> None:
+    class Streamer:
+        host_policy = SimpleNamespace(value="HOST_SHARED_IMMUTABLE")
+        window_size = 1
+        streamed_block_indices = frozenset(range(30, 40))
+        stats = {
+            "streamed_block_count": 10,
+            "materialize_count": 25,
+            "release_count": 25,
+            "materialized_bytes": 100,
+            "released_bytes": 100,
+            "resident_bytes": 0,
+        }
+
+        def __init__(self) -> None:
+            self.idle_checked = False
+
+        def assert_idle(self) -> None:
+            self.idle_checked = True
+
+    residency = Streamer()
+    receipt = worker._phase_b_residency_receipt(residency, object())
+    assert residency.idle_checked
+    assert receipt["streamed_block_indices"] == list(range(30, 40))
+    assert receipt["idle_at_phase_b_boundary"] is True
 
 
 def test_resource_monitor_emits_a_host_memory_value() -> None:

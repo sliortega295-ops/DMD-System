@@ -102,6 +102,10 @@ SOURCE_GENERATOR_OPTIMIZER_STEP = 2
 SOURCE_CRITIC_OPTIMIZER_STEP = 10
 TARGET_GENERATOR_OPTIMIZER_STEP = 3
 TARGET_CRITIC_OPTIMIZER_STEP = 15
+PHASE_B_STREAMED_BLOCK_INDICES = {
+    4: tuple(range(36, 40)),
+    10: tuple(range(30, 40)),
+}
 
 
 def _atomic_json(path: Path, value: dict[str, Any]) -> None:
@@ -118,6 +122,40 @@ def _atomic_torch(path: Path, value: dict[str, Any]) -> None:
     temporary = path.with_suffix(path.suffix + f".tmp-{os.getpid()}")
     torch.save(value, temporary)
     os.replace(temporary, path)
+
+
+def _phase_b_streamed_block_indices(count: int) -> tuple[int, ...]:
+    """Resolve only the explicitly preregistered Phase-B memory policies."""
+
+    count = int(count)
+    if count == 0:
+        return ()
+    try:
+        return PHASE_B_STREAMED_BLOCK_INDICES[count]
+    except KeyError as error:
+        raise ValueError(
+            "only preregistered Phase-B candidates k=0, tail-4, or tail-10 are legal"
+        ) from error
+
+
+def _phase_b_residency_receipt(residency: Any, model: torch.nn.Module) -> dict[str, Any]:
+    """Close the Phase-B parameter-lifecycle gate before role reversal."""
+
+    if hasattr(residency, "stats"):
+        residency.assert_idle()
+        return {
+            "parameter_policy": "SYNCHRONOUS_FROZEN_BLOCK_STREAMING",
+            "host_policy": residency.host_policy.value,
+            "window_size": int(residency.window_size),
+            "streamed_block_indices": sorted(residency.streamed_block_indices),
+            "idle_at_phase_b_boundary": True,
+            "stats": dict(residency.stats),
+        }
+    residency.assert_unchanged(model)
+    return {
+        **residency.record(),
+        "idle_at_phase_b_boundary": True,
+    }
 
 
 def _wait(path: Path, timeout_seconds: float) -> float:
@@ -928,15 +966,16 @@ def _initialize_phase_b_critic(
         residency = pr6._ResidentStudentParameterGuard(engine.module, device)
         policy = "FULL_RESIDENT_SCORE"
     else:
-        if args.phase_b_streamed_blocks != 4:
-            raise ValueError("only preregistered Phase-B candidates k=0 or tail-4 are legal")
+        streamed_block_indices = _phase_b_streamed_block_indices(
+            args.phase_b_streamed_blocks
+        )
         residency = install_frozen_block_streamer(
             engine.module,
             logical_component="gan_rolephase_phase_b_critic",
             device=device,
             window_size=1,
-            streamed_block_count=4,
-            streamed_block_indices=(36, 37, 38, 39),
+            streamed_block_count=len(streamed_block_indices),
+            streamed_block_indices=streamed_block_indices,
             host_policy=HostStatePolicy.HOST_SHARED_IMMUTABLE,
             optimizer_owned_parameter_ids={
                 id(parameter)
@@ -948,7 +987,10 @@ def _initialize_phase_b_critic(
             mmap_cache_root=args.mmap_cache_root / "score",
             detailed_events=not args.timing_mode,
         )
-        policy = "TAIL4_FROZEN_BLOCK_STREAMING_CAPACITY_FALLBACK"
+        policy = (
+            f"TAIL{len(streamed_block_indices)}_FROZEN_BLOCK_STREAMING_"
+            "CAPACITY_FALLBACK"
+        )
     activation = install_activation_offload_hooks(
         engine.module,
         logical_component="gan_rolephase_phase_b_critic",
@@ -1450,7 +1492,9 @@ def _parser() -> argparse.ArgumentParser:
     value.add_argument("--mmap-cache-root", type=Path, required=True)
     value.add_argument("--timeout-seconds", type=float, default=7200.0)
     value.add_argument("--timing-mode", action="store_true")
-    value.add_argument("--phase-b-streamed-blocks", type=int, choices=(0, 4), default=0)
+    value.add_argument(
+        "--phase-b-streamed-blocks", type=int, choices=(0, 4, 10), default=0
+    )
     value.add_argument("--phase-a-param-persistence-threshold", type=int, default=2_000_000)
     value.add_argument("--phase-a-prefetch-bucket-elements", type=int, default=402_653_184)
     value.add_argument("--phase-a-max-live-parameters", type=int, default=805_306_368)
@@ -1931,6 +1975,12 @@ def main() -> int:
             if int(stats.get("live_cpu_bytes", 0)) != 0:
                 raise AssertionError("Phase-B activation handles leaked")
             result["phase_b_activation_offload"] = stats
+        if phase_b_residency is not None:
+            if critic_engine is None:
+                raise AssertionError("Phase-B residency owner lost its Critic engine")
+            result["phase_b_parameter_residency"] = _phase_b_residency_receipt(
+                phase_b_residency, critic_engine.module
+            )
 
         reverse_started = time.perf_counter()
         reverse, reverse_engine, ready_model = _reverse_to_phase_a(
@@ -1983,6 +2033,26 @@ def main() -> int:
             result["memory"] = pr6._snapshot(device, "failure")
         except BaseException:
             pass
+        if phase_b_activation is not None:
+            try:
+                result["phase_b_activation_offload_failure"] = dict(
+                    phase_b_activation.offloader.stats
+                )
+            except BaseException:
+                pass
+        if phase_b_residency is not None and hasattr(phase_b_residency, "stats"):
+            try:
+                result["phase_b_parameter_residency_failure"] = {
+                    "parameter_policy": "SYNCHRONOUS_FROZEN_BLOCK_STREAMING",
+                    "host_policy": phase_b_residency.host_policy.value,
+                    "window_size": int(phase_b_residency.window_size),
+                    "streamed_block_indices": sorted(
+                        phase_b_residency.streamed_block_indices
+                    ),
+                    "stats": dict(phase_b_residency.stats),
+                }
+            except BaseException:
+                pass
         _atomic_json(output, result)
         raise
     finally:

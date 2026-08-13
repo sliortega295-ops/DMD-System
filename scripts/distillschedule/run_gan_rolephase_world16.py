@@ -93,7 +93,9 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--source-identity-hash", required=True)
     value.add_argument("--master-addr")
     value.add_argument("--master-port", type=int, default=29880)
-    value.add_argument("--phase-b-streamed-blocks", type=int, choices=(0, 4), default=0)
+    value.add_argument(
+        "--phase-b-streamed-blocks", type=int, choices=(0, 4, 10), default=0
+    )
     value.add_argument("--correctness-summary", type=Path)
     value.add_argument("--correctness-sha256")
     value.add_argument("--timeout-seconds", type=int, default=30000)

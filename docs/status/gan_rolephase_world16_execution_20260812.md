@@ -268,3 +268,33 @@ or quality evidence. Failed or unexecuted gates remain `NOT_RUN`.
   iteration rather than silent patch escalation.
 - **Evidence inventory:**
   `5808e07b650e271d1c53c69c1d5a1ef8dc8f2916e8daceb1731c8bc2acfac666`.
+
+
+## Iteration 289 preregistration: DP12 tail10 + existing A128
+
+- **Correction to Attempt 06:** Phase-B A128 pinned saved-tensor offload is
+  installed unconditionally after the resident/streaming branch. Attempt 06
+  therefore tested **tail4+A128**, not weight-only tail4.
+- **Only authorized candidate:** DP12/MB1/GAS1/B12, frozen Score blocks 30--39
+  streamed synchronously with window 1 and `HOST_SHARED_IMMUTABLE`, while the
+  existing synchronous A128 activation policy remains unchanged. This adds six
+  streamed blocks and removes 4,216,731,648 bytes (3.927 GiB) of static GPU
+  storage per Critic rank relative to tail4 according to the audited block
+  inventory.
+- **Fail-closed receipts:** each Critic rank must report ten activation scopes,
+  nonzero CPU copies, zero activation live bytes, the exact tail10 index set,
+  exact streamer materialize/release reconciliation, zero resident bytes, and
+  an idle streamer at the Phase-B boundary. The existing trace, updates,
+  versions, queues, EMA and reverse-handoff gates remain unchanged.
+- **Bounded stop rule:** one capacity/correctness run only. If confirmed
+  tail10+A128 reproduces the first-backward CUDA OOM, do not try S11/S12 or an
+  allocator workaround.
+- **Current execution status:** **NOT RUN.** Local compile/shell/dry-run, 31
+  focused role-phase tests and 184 CI refactor tests pass. The full maintained
+  suite has 367 passed, 10 skipped and two pre-existing failures caused by
+  archived Iteration-281 manifests absent from this worktree. Both BAAI SSH
+  endpoints authenticate and then time out before any
+  command output. Live GPUs, cgroup OOM counters, assets, remote tests, source
+  staging and the real world16 run therefore remain unverified.
+- **Performance status:** **NOT RUN.** No diagnostic or failed-capacity time may
+  be used as a formal result.

@@ -46,7 +46,7 @@ PHASE_B_STREAMED_BLOCKS="${DISTILLSCHEDULE_PHASE_B_STREAMED_BLOCKS:-0}"
 CORRECTNESS_SUMMARY="${DISTILLSCHEDULE_CORRECTNESS_SUMMARY:-}"
 CORRECTNESS_SHA256="${DISTILLSCHEDULE_CORRECTNESS_SHA256:-}"
 
-[[ "${PHASE_B_STREAMED_BLOCKS}" == 0 || "${PHASE_B_STREAMED_BLOCKS}" == 4 ]] || exit 2
+[[ "${PHASE_B_STREAMED_BLOCKS}" == 0 || "${PHASE_B_STREAMED_BLOCKS}" == 4 || "${PHASE_B_STREAMED_BLOCKS}" == 10 ]] || exit 2
 for executable in "${PYTHON}" "${TORCHRUN}"; do
   [[ -x "${executable}" ]] || { echo missing_executable="${executable}" >&2; exit 3; }
 done
