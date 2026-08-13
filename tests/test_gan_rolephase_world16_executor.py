@@ -138,6 +138,22 @@ def test_controller_ssh_is_ipv4_and_batch_fail_closed() -> None:
     assert command[6:] == ["node", "bash", "-lc", "'echo ok'"]
 
 
+def test_phase_b_reuses_the_validated_collapsed_communicator_substrate() -> None:
+    groups_source = (
+        Path(worker.__file__).parents[2]
+        / "src"
+        / "distillschedule"
+        / "runtime"
+        / "gan_rolephase_groups.py"
+    ).read_text()
+    assert "dist.barrier(group=dist.group.WORLD)" in groups_source
+    assert "singletons: tuple[Any | None, ...] = (None,) * topology.world_size" in groups_source
+    worker_source = Path(worker.__file__).read_text()
+    assert '"pair_groups_created": 0' in worker_source
+    assert '"singleton_groups_created": 0' in worker_source
+    assert '"p2p": "COLLECTIVELY_INITIALIZED_DEFAULT_WORLD16_NCCL"' in worker_source
+
+
 def test_tail10_lifecycle_gate_requires_a128_and_idle_streamer() -> None:
     value = {
         "phase_b_activation_offload": {

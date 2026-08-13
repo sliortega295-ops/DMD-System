@@ -71,9 +71,9 @@ class GanRolePhaseBGroups:
     control: Any
     generator: Any
     critic: Any
-    singletons: tuple[Any, ...]
+    singletons: tuple[Any | None, ...]
 
-    def singleton_for_rank(self, rank: int) -> Any:
+    def singleton_for_rank(self, rank: int) -> Any | None:
         rank = int(rank)
         if not 0 <= rank < len(self.singletons):
             raise ValueError(f"rank {rank} is outside singleton inventory")
@@ -115,10 +115,14 @@ def create_phase_b_execution_groups(
 ) -> GanRolePhaseBGroups:
     """Create exact 4G/12C groups after global world16 initialization.
 
-    Every WORLD rank calls every ``new_group`` in identical order.  Gloo owns
-    role-asymmetric lifecycle barriers; NCCL owns model and P2P domains.  A
-    barrier after each creation makes ordering failures fail at their source
-    instead of surfacing later as an unrelated collective timeout.
+    Every WORLD rank calls every ``new_group`` in identical order. Gloo owns
+    role-asymmetric lifecycle barriers; NCCL owns the Generator and Critic
+    model domains. The default WORLD communicator is initialized collectively
+    before any role-asymmetric P2P. This is the communicator-collapse substrate
+    already validated by ``probe_phaseb_communicator_collapse.py``: P2P does
+    not lazily create per-edge two-rank communicators, and ZeRO-1 receives
+    ``None`` for its size-one model-parallel group instead of creating sixteen
+    singleton NCCL process groups.
     """
 
     if not dist.is_initialized() or dist.get_world_size() != topology.world_size:
@@ -137,7 +141,13 @@ def create_phase_b_execution_groups(
 
     generator = ordered(topology.phase_b_generator_ranks)
     critic = ordered(topology.phase_b_critic_ranks)
-    singletons = tuple(ordered((rank,)) for rank in range(topology.world_size))
+    # Initialize WORLD as one collective communicator before isend/irecv.
+    # Without this fence, an unbatched first P2P can create a private two-rank
+    # communicator only on its peers and later contend with the DP12 gradient
+    # collective. The tiny real-NCCL gate proves the collapsed representation.
+    dist.barrier(group=dist.group.WORLD)
+    dist.barrier(group=control)
+    singletons: tuple[Any | None, ...] = (None,) * topology.world_size
     return GanRolePhaseBGroups(
         control=control,
         generator=generator,

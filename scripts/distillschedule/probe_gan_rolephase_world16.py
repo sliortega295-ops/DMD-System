@@ -1618,15 +1618,13 @@ def main() -> int:
                     expected=PHASE_B_C_RANKS,
                     global_rank=global_rank,
                 ),
-                "singleton": tuple(dist.get_process_group_ranks(
-                    groups.singleton_for_rank(global_rank)
-                )),
+                "singleton": groups.singleton_for_rank(global_rank),
             }
             expected_topology = {
                 "world": tuple(range(16)),
                 "generator": PHASE_B_G_RANKS,
                 "critic": PHASE_B_C_RANKS,
-                "singleton": (global_rank,),
+                "singleton": None,
             }
             if topology != expected_topology:
                 raise AssertionError(
@@ -1861,6 +1859,15 @@ def main() -> int:
         control_group = groups.control
         generator_group = groups.generator
         critic_group = groups.critic
+        result["phase_b_communicators"] = {
+            "control": "GLOBAL_WORLD16_GLOO",
+            "generator": list(PHASE_B_G_RANKS),
+            "critic": list(PHASE_B_C_RANKS),
+            "p2p": "COLLECTIVELY_INITIALIZED_DEFAULT_WORLD16_NCCL",
+            "pair_groups_created": 0,
+            "singleton_groups_created": 0,
+            "model_parallel_group": None,
+        }
 
         if global_rank in PHASE_B_G_RANKS:
             model = targets["forward_model"]

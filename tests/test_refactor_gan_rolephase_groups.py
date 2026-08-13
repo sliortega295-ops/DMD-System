@@ -50,6 +50,7 @@ def test_real_worker_creates_only_exact_phase_b_groups(monkeypatch) -> None:
     fake_dist = SimpleNamespace(
         is_initialized=lambda: True,
         get_world_size=lambda: 16,
+        group=SimpleNamespace(WORLD="WORLD"),
         new_group=new_group,
         barrier=lambda group: barriers.append(group),
     )
@@ -59,8 +60,8 @@ def test_real_worker_creates_only_exact_phase_b_groups(monkeypatch) -> None:
     assert calls[0] == ("gloo", tuple(range(16)))
     assert calls[1] == ("nccl", tuple(range(4)))
     assert calls[2] == ("nccl", tuple(range(4, 16)))
-    assert calls[3:] == [("nccl", (rank,)) for rank in range(16)]
-    assert len(barriers) == len(calls)
+    assert len(calls) == 3
+    assert barriers[-2:] == ["WORLD", calls[0]]
     assert groups.generator == ("nccl", tuple(range(4)))
     assert groups.critic == ("nccl", tuple(range(4, 16)))
-    assert groups.singleton_for_rank(12) == ("nccl", (12,))
+    assert groups.singleton_for_rank(12) is None
