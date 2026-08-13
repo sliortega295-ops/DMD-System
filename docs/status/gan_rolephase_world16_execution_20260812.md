@@ -298,3 +298,35 @@ or quality evidence. Failed or unexecuted gates remain `NOT_RUN`.
   staging and the real world16 run therefore remain unverified.
 - **Performance status:** **NOT RUN.** No diagnostic or failed-capacity time may
   be used as a formal result.
+
+## Iteration 289 execution: tail10+A128 remains blocked by DP12 collective order
+
+- **Cheap topology gate:** `gan-rp16-commcollapse-validate-20260813-03`
+  completed with 16/16 PASS receipts. It verified the world16 control topology,
+  no pair/singleton groups, default-WORLD NCCL initialization, reverse Phase-A
+  rendezvous, strict rank-synchronized official trace, and zero new cgroup OOM.
+- **Real-14B run:** `gan-rp16-tail10-a128-correctness-20260813-02` completed
+  Phase A and entered Phase B. Maximum observed Phase-A and A->B walls were
+  112.823 s and 94.478 s. These are diagnostic partial intervals, not Full5
+  timing.
+- **Policy execution:** all twelve Critic ranks installed exact tail10
+  (blocks 30--39, window1, `HOST_SHARED_IMMUTABLE`). Ranks 4--12 completed the
+  first call's 40 materialize/40 release events and two A128 scopes before the
+  failure; ranks 13--15 remained before their first model call. Thus this is
+  not evidence that tail10 or A128 was absent.
+- **Failure:** node0 Critic ranks 4--7 timed out after 600 s on DP12 NCCL
+  `ALLREDUCE`, sequence 2044, 65,863,680 elements, with last completed sequence
+  2043. No Critic commit, EMA, reverse handoff, CUDA OOM, or cgroup OOM occurred.
+  Generator rank3's Gloo peer-closed exception is downstream cancellation.
+- **Repeated-failure result:** this exactly reproduces the collective signature
+  from the preceding real attempt despite the bounded communicator-collapse
+  recovery. Per the iteration preflight rule, no further local communicator
+  patch escalation, S11/S12 search, allocator retry, formal timing, or Nsight is
+  launched. Tail10 capacity remains **undecided**, not PASS or OOM-negative.
+- **Gate:** `BLOCKED_BY_REPEATED_DP12_COLLECTIVE_DIVERGENCE`. A new iteration
+  must explicitly preregister a DP12 per-rank collective-order audit and explain
+  why ranks 13--15 never enter the first Critic call while ranks 4--12 reach
+  gradient all-reduce. Only after that is fixed may the same tail10+A128
+  capacity gate be rerun.
+- **Result manifest:**
+  `artifacts/manifests/iteration_289_gan_rolephase_dp12_tail10_a128_result_20260813.json`.

@@ -1,0 +1,93 @@
+{
+  "schema_version": "distillschedule.iteration_result.v1",
+  "iteration": 289,
+  "date": "2026-08-13",
+  "gate": "GAN_ROLEPHASE_DP12_TAIL10_A128_CAPACITY_AND_CORRECTNESS",
+  "status": "BLOCKED_BY_REPEATED_DP12_COLLECTIVE_DIVERGENCE",
+  "decision": "STOP_CURRENT_REPAIR_PATH_NO_FORMAL_TIMING",
+  "source": {
+    "branch": "codex/gan-rolephase-world16-exec-20260812",
+    "head": "f7cc237a59498186dfec9a5d08ce761485787932",
+    "remote_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_gan_rolephase_world16_exec_v12_20260813",
+    "source_identity_hash": "bb3cd0552725105901179aca7f54a044dc0a4be8065fea511b491070333ef8c7"
+  },
+  "frozen_contract": {
+    "world_size": 16,
+    "resolution": [384, 640],
+    "phase_a": "DP8_MB1_GAS2_B16_NODE_LOCAL_ZERO3",
+    "phase_b": "DP12_MB1_GAS1_B12_GLOBAL_ZERO1_CPU_OPTIMIZER",
+    "phase_b_parameter_policy": "TAIL10_BLOCKS_30_39_WINDOW1_HOST_SHARED_IMMUTABLE_SYNC",
+    "phase_b_activation_policy": "A128_PINNED_SYNCHRONOUS",
+    "trace_bundle_hash": "d31d4d473a3574b5b39e50ad2b5e72e17aee7baf707130ea0513092553f7cd15"
+  },
+  "validation": {
+    "run_id": "gan-rp16-commcollapse-validate-20260813-03",
+    "status": "PASS",
+    "rank_receipts": "16/16 PASS",
+    "topology_lifecycle": "PASS",
+    "cross_rank_call_count_parity": true,
+    "pair_groups_created": 0,
+    "singleton_groups_created": 0,
+    "cgroup_oom_delta": 0,
+    "cgroup_oom_kill_delta": 0
+  },
+  "real14b_attempt": {
+    "run_id": "gan-rp16-tail10-a128-correctness-20260813-02",
+    "status": "FAIL",
+    "phase_a_completed": true,
+    "generator_updates_observed": 1,
+    "phase_a_max_seconds": 112.82277754810639,
+    "handoff_to_b_max_seconds": 94.47766584111378,
+    "phase_b_critic_commits": 0,
+    "ema_updates_completed": 0,
+    "reverse_handoff_completed": false,
+    "failure": {
+      "kind": "NCCL_COLLECTIVE_TIMEOUT",
+      "collective": "ALLREDUCE",
+      "sequence_number": 2044,
+      "numel": 65863680,
+      "timeout_milliseconds": 600000,
+      "last_completed_sequence": 2043,
+      "affected_local_critic_ranks": [4, 5, 6, 7],
+      "downstream_rank_receipt": "rank3 Gloo peer closed"
+    },
+    "policy_selection_evidence": {
+      "tail10_indices": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39],
+      "critic_ranks_with_two_a128_scopes_before_timeout": [4, 5, 6, 7, 8, 9, 10, 11, 12],
+      "activation_copy_count_range": [41, 42],
+      "activation_peak_live_bytes_range": [5463244800, 5603328000],
+      "critic_ranks_with_streamer_materialize_release_40_40": [4, 5, 6, 7, 8, 9, 10, 11, 12],
+      "critic_ranks_waiting_before_first_model_call": [13, 14, 15]
+    },
+    "capacity_classification": "UNDECIDED_NO_CUDA_OOM",
+    "cgroup_oom_delta": 0,
+    "cgroup_oom_kill_delta": 0,
+    "sampled_resources": {
+      "node0_cgroup_peak_bytes": 563907989504,
+      "node0_host_used_peak_bytes": 586861000000,
+      "node0_per_gpu_peak_mib": [37452, 37808, 37332, 37568, 40280, 39984, 39912, 39912],
+      "node1_cgroup_peak_bytes": 192493305856,
+      "node1_host_used_peak_bytes": 211166000000,
+      "node1_per_gpu_peak_mib": [39718, 39888, 39694, 39928, 39920, 36624, 36624, 36622]
+    }
+  },
+  "repeated_failure_audit": {
+    "matching_prior_run": "gan-rp16-tail10-a128-correctness-20260813-01",
+    "matching_signature": "DP12 first Critic backward ALLREDUCE sequence 2044 numel 65863680 timeout after last-completed 2043",
+    "bounded_recovery_used": "collapsed communicator topology, default-WORLD collective initialization, no singleton groups",
+    "outcome": "same collective signature reproduced",
+    "stop_rule": "No further local communicator patch escalation without a separately preregistered DP12 collective-order audit"
+  },
+  "formal_timing": "NOT_RUN",
+  "nsight": "NOT_RUN",
+  "performance_claim": "NONE",
+  "evidence": {
+    "local_root": "/home/lyy/Helios/research_artifacts/DistillSchedule/gan_rolephase_world16",
+    "attempt1": "gan-rp16-tail10-a128-correctness-20260813-01",
+    "validate_pass": "gan-rp16-commcollapse-validate-20260813-03",
+    "attempt2": "gan-rp16-tail10-a128-correctness-20260813-02",
+    "attempt2_node0_console_sha256": "9d767d32334717401162e5234b89b0026fb0aa90f78c821aad72dab727b09057",
+    "attempt2_controller_sha256": "5de97cfb82186bc3f8b45ea430ebf3f6b99201525907085cd255c819cd7e2add"
+  },
+  "next_gate": "A separate, explicitly authorized DP12 collective-order audit must explain why ranks 13-15 never enter first Critic compute while ranks 4-12 diverge at gradient all-reduce. Tail10 capacity cannot be judged until that gate passes."
+}

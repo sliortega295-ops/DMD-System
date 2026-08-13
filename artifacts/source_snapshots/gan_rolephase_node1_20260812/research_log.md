@@ -18761,3 +18761,56 @@ Does exact DP12 tail10+A128 pass the first Critic backward and close the full co
 
 ### Next Command
 After SSH recovery: revalidate HEAD/status, GPU ownership, cgroup OOM counters, assets and remote tests; stage an immutable source identity; then launch one correctness run with `--phase-b-streamed-blocks 10`.
+
+## Iteration 289 Result: tail10+A128 blocked by repeated DP12 collective divergence
+
+### Milestone / Gate
+GAN role-phase world16 / Phase-B capacity and correctness before timing.
+
+### Question
+Does the exact DP12 tail10+A128 policy complete the first Critic backward and Full5 correctness gate after collapsing the communicator topology?
+
+### Hypothesis
+Tail10 frees sufficient GPU storage, while the previously validated collapsed communicator substrate removes the non-capacity DP12 collective timeout seen in the first attempt.
+
+### Importance
+Capacity must be established before transition optimization or timing, and the previous run was not a valid capacity result because it failed in communication rather than allocation.
+
+### Evidence Needed
+Cheap 16-rank topology PASS followed by one real-14B run with exact tail10/A128 receipts, five Critic commits, G201/C1005/EMA801, empty queues, reverse readiness, and no CUDA/cgroup OOM.
+
+### Refutation Condition
+The same DP12 collective signature recurs after the bounded communicator recovery, or any frozen workload/lifecycle contract drifts.
+
+### Allowed Changes
+One non-semantic bounded recovery only: reuse the existing communicator-collapse substrate, fix its fail-closed validation receipt, and preserve all model math, trace, batch, optimizer, memory policy, and versions. No further repair escalation after a repeated signature.
+
+### Commands
+Revalidated both nodes, GPUs, cgroup counters, assets, immutable staged source, and focused tests. Preserved failed validate run `...-01`, fixed `None` topology serialization and concurrent shared-manifest parsing, passed 25 focused remote tests, then passed validation run `gan-rp16-commcollapse-validate-20260813-03`. Launched the sole real run `gan-rp16-tail10-a128-correctness-20260813-02` and archived all remote artifacts locally.
+
+### Measured Results
+Validation: 16/16 PASS; cross-rank official call parity PASS; no pair/singleton groups; zero cgroup OOM delta. Real14B: Phase-A max 112.8228 s; A->B max 94.4777 s. All Critic ranks selected tail10. Ranks 4--12 emitted 40 materialize/40 release events and two A128 scopes with 41--42 CPU copies before failure; ranks 13--15 never began their first Score call. Node0 ranks 4--7 timed out on DP12 NCCL ALLREDUCE sequence 2044, 65,863,680 elements, last completed 2043, after 600 s. Critic commits=0; cgroup OOM/kill delta=0.
+
+### Correctness
+NOT REACHED. Phase A produced one Generator update, but Phase B produced no Critic commit, no EMA801, no reverse handoff, and no final queue/lifecycle receipt.
+
+### Performance
+NOT RUN. Partial Phase-A/handoff intervals are diagnostic only; no Full5 or speedup claim is permitted.
+
+### Interpretation
+The communicator-collapse validate gate is correct at small scale, but it does not make the real 14B DP12 execution collectively safe. The exact sequence/magnitude repeated from the previous attempt after the one authorized recovery. This is not a tail10 capacity conclusion: there was no CUDA OOM, and several ranks had not entered the same logical Critic call. The next issue is collective-order/control divergence, not another memory-policy search.
+
+### Files Changed
+Collapsed topology group implementation and receipts; strict summarizer; focused tests; Iteration-289 result manifest; status report; append-only research log. Raw evidence is under `/home/lyy/Helios/research_artifacts/DistillSchedule/gan_rolephase_world16/`.
+
+### Failure or Limitation
+The current receipt is written only at coarse phase boundaries, so it identifies the first mismatched DP12 all-reduce but not the exact per-rank autograd bucket ordering that caused ranks 13--15 to lag. It is insufficient to infer capacity or performance.
+
+### Gate Status
+BLOCKED_BY_REPEATED_DP12_COLLECTIVE_DIVERGENCE; TAIL10_CAPACITY_UNDECIDED; FORMAL_TIMING_NOT_RUN.
+
+### Next Highest-Value Question
+Why do real DP12 ranks 4--12 enter gradient all-reduce while ranks 13--15 have not entered the first Critic model call, despite the exact shared trace and one-call-per-rank contract?
+
+### Next Command
+None under Iteration 289. A subsequent iteration must separately preregister a low-overhead DP12 collective-order audit before any new GPU run.
