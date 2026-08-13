@@ -1653,7 +1653,17 @@ def main() -> int:
                 validation_only=True,
                 phase_b_world=world,
                 phase_b_topology={
-                    key: list(value) for key, value in topology.items()
+                    key: (None if value is None else list(value))
+                    for key, value in topology.items()
+                },
+                phase_b_communicators={
+                    "control": "GLOBAL_WORLD16_GLOO",
+                    "generator": list(PHASE_B_G_RANKS),
+                    "critic": list(PHASE_B_C_RANKS),
+                    "p2p": "COLLECTIVELY_INITIALIZED_DEFAULT_WORLD16_NCCL",
+                    "pair_groups_created": 0,
+                    "singleton_groups_created": 0,
+                    "model_parallel_group": None,
                 },
                 reverse_phase_a={
                     "world_size": dist.get_world_size(),

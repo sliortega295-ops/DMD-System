@@ -169,9 +169,21 @@ def validate_only(ranks: dict[int, dict[str, Any]]) -> dict[str, Any]:
             "world": list(range(16)),
             "generator": list(range(4)),
             "critic": list(range(4, 16)),
-            "singleton": [rank],
+            "singleton": None,
         }
         _require(value.get("phase_b_topology") == expected, f"rank{rank}: topology drift")
+        _require(
+            value.get("phase_b_communicators") == {
+                "control": "GLOBAL_WORLD16_GLOO",
+                "generator": list(range(4)),
+                "critic": list(range(4, 16)),
+                "p2p": "COLLECTIVELY_INITIALIZED_DEFAULT_WORLD16_NCCL",
+                "pair_groups_created": 0,
+                "singleton_groups_created": 0,
+                "model_parallel_group": None,
+            },
+            f"rank{rank}: communicator inventory drift",
+        )
         reverse = value.get("reverse_phase_a", {})
         _require(
             (reverse.get("world_size"), reverse.get("rank"), reverse.get("expected_local_rank"))

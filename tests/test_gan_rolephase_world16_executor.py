@@ -154,6 +154,14 @@ def test_phase_b_reuses_the_validated_collapsed_communicator_substrate() -> None
     assert '"p2p": "COLLECTIVELY_INITIALIZED_DEFAULT_WORLD16_NCCL"' in worker_source
 
 
+def test_validate_receipt_serializes_collapsed_topology_without_iterating_none() -> None:
+    worker_source = Path(worker.__file__).read_text()
+    assert "None if value is None else list(value)" in worker_source
+    summarizer_source = Path(summarizer.__file__).read_text()
+    assert '"singleton": None' in summarizer_source
+    assert 'f"rank{rank}: communicator inventory drift"' in summarizer_source
+
+
 def test_tail10_lifecycle_gate_requires_a128_and_idle_streamer() -> None:
     value = {
         "phase_b_activation_offload": {
