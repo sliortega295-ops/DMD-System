@@ -26,7 +26,22 @@ def shell_join(command: Sequence[str]) -> str:
 
 
 def ssh_command(host: str, command: str) -> list[str]:
-    return ["ssh", host, "bash", "-lc", shlex.quote(command)]
+    # The BAAI gateway currently advertises both address families but its IPv6
+    # session channel can stall after authentication.  Pinning the controller
+    # transport to IPv4 changes no workload or distributed-training semantics;
+    # it only makes the already-configured SSH endpoints usable fail-closed.
+    return [
+        "ssh",
+        "-4",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "UpdateHostKeys=no",
+        host,
+        "bash",
+        "-lc",
+        shlex.quote(command),
+    ]
 
 
 @dataclass
@@ -111,7 +126,7 @@ def parser() -> argparse.ArgumentParser:
 
 def resolve_master(host: str) -> str:
     text = subprocess.check_output(
-        ["ssh", host, "hostname -I"], text=True, timeout=30
+        ssh_command(host, "hostname -I"), text=True, timeout=30
     ).strip()
     addresses = [item for item in text.split() if ":" not in item]
     if not addresses:
@@ -174,7 +189,8 @@ def summarize(args: argparse.Namespace, local_dir: Path) -> dict[str, Any]:
         ssh_command(args.hosts[0], command), check=False, timeout=300
     )
     raw = subprocess.check_output(
-        ["ssh", args.hosts[0], "cat", str(remote_output)], timeout=60
+        ssh_command(args.hosts[0], f"cat {shlex.quote(str(remote_output))}"),
+        timeout=60,
     )
     local_dir.mkdir(parents=True, exist_ok=True)
     (local_dir / "summary.json").write_bytes(raw)

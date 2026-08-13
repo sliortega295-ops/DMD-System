@@ -130,6 +130,14 @@ def test_tail10_is_fail_closed_across_controller_and_node_launcher() -> None:
     ).read_text()
 
 
+def test_controller_ssh_is_ipv4_and_batch_fail_closed() -> None:
+    command = controller.ssh_command("node", "echo ok")
+    assert command[:6] == [
+        "ssh", "-4", "-o", "BatchMode=yes", "-o", "UpdateHostKeys=no"
+    ]
+    assert command[6:] == ["node", "bash", "-lc", "'echo ok'"]
+
+
 def test_tail10_lifecycle_gate_requires_a128_and_idle_streamer() -> None:
     value = {
         "phase_b_activation_offload": {
