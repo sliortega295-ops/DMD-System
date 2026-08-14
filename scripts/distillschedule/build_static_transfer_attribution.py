@@ -44,7 +44,7 @@ def _bucket_for(direction: str, key: str) -> str:
     are not part of the registered contract.
     """
     token = f"{direction}/{key}"
-    if direction == "H2D" and key in {"generator_entry", "critic_entry/step10", "critic_entry/step11", "critic_entry/step12", "critic_entry/step13", "critic_entry/step14"}:
+    if direction == "H2D" and (key.startswith("generator_") or key.startswith("critic_")):
         return "INPUT"
     if key == "ema_shadow":
         return "EMA"
@@ -73,7 +73,9 @@ def _diagnostic_rows(run_root: Path) -> list[dict[str, Any]]:
         for (direction, bucket), counters in buckets.items():
             rows.append(
                 {
+                    "scope": "rank",
                     "rank": rank,
+                    "rank_mapping": "application_receipt",
                     "direction": direction,
                     "category": bucket,
                     "logical_bytes": counters["bytes"],
@@ -89,15 +91,68 @@ def _diagnostic_rows(run_root: Path) -> list[dict[str, Any]]:
     return rows
 
 
-def build(run_root: Path) -> dict[str, Any]:
+def _observed_rows(bundle: dict[str, Any]) -> list[dict[str, Any]]:
+    """Expose observed activity without assigning it to an app boundary.
+
+    The current node export has no reliable correlationId -> application NVTX
+    join.  We therefore retain per-process and node observed H2D/D2H/D2D
+    metrics under ``UNATTRIBUTED`` instead of guessing by wall-clock overlap.
+    ``rank`` is explicitly marked as inferred by the bounded analyzer.
+    """
+    rows: list[dict[str, Any]] = []
+    metric_directions = {"h2d": "H2D", "d2h": "D2H", "d2d": "D2D", "other_copy": "OTHER"}
+    for result in bundle.get("results", []):
+        for process in result.get("per_process", []):
+            metrics = process.get("metrics", {})
+            for metric, direction in metric_directions.items():
+                value = metrics.get(metric, {})
+                rows.append({
+                    "scope": "rank",
+                    "rank": process.get("rank"),
+                    "rank_mapping": process.get("rank_mapping"),
+                    "direction": direction,
+                    "category": "UNATTRIBUTED",
+                    "logical_bytes": 0,
+                    "logical_events": 0,
+                    "observed_bytes": value.get("bytes", 0),
+                    "observed_events": value.get("events", 0),
+                    "observed_sum_duration_ns": value.get("sum_duration_ns", 0),
+                    "observed_union_ns": value.get("union_ns", 0),
+                    "attribution_method": "bounded_nsys_activity_without_correlation_join",
+                    "claim": "observed_copy_unattributed_no_wall_overlap_guess",
+                })
+        node = result.get("node_metrics", {})
+        for metric, direction in metric_directions.items():
+            value = node.get(metric, {})
+            rows.append({
+                "scope": "node",
+                "rank": -1,
+                "rank_mapping": "node_aggregate",
+                "direction": direction,
+                "category": "UNATTRIBUTED",
+                "logical_bytes": 0,
+                "logical_events": 0,
+                "observed_bytes": value.get("bytes", 0),
+                "observed_events": value.get("events", 0),
+                "observed_sum_duration_ns": value.get("sum_duration_ns", 0),
+                "observed_union_ns": value.get("union_ns", 0),
+                "attribution_method": "bounded_nsys_activity_without_correlation_join",
+                "claim": "observed_copy_unattributed_no_wall_overlap_guess",
+            })
+    return rows
+
+
+def build(run_root: Path, nsys_bundle: Path | None = None) -> dict[str, Any]:
     rows = _diagnostic_rows(run_root)
+    if nsys_bundle is not None:
+        rows.extend(_observed_rows(json.loads(nsys_bundle.read_text())))
     return {
-        "schema_version": "distillschedule.static_transfer_attribution.v1",
+        "schema_version": "distillschedule.static_transfer_attribution.v2",
         "run_root": str(run_root),
         "rows": rows,
-        "observed_copy_assignment": "NOT_RUN",
+        "observed_copy_assignment": "UNATTRIBUTED_NO_CORRELATION_JOIN" if nsys_bundle else "NOT_RUN",
         "method": {
-            "runtime_activity_join": "required_correlationId_pid_thread_rank_join",
+            "runtime_activity_join": "required_correlationId_pid_thread_rank_join; not available in current export",
             "wall_clock_overlap_guessing": False,
             "unmatched_observed_bytes": "UNATTRIBUTED",
         },
@@ -113,8 +168,9 @@ def main() -> int:
     parser.add_argument("--run-root", type=Path, required=True)
     parser.add_argument("--output-json", type=Path, required=True)
     parser.add_argument("--output-csv", type=Path, required=True)
+    parser.add_argument("--nsys-bundle", type=Path)
     args = parser.parse_args()
-    result = build(args.run_root)
+    result = build(args.run_root, args.nsys_bundle)
     args.output_json.parent.mkdir(parents=True, exist_ok=True)
     args.output_csv.parent.mkdir(parents=True, exist_ok=True)
     args.output_json.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
@@ -122,7 +178,7 @@ def main() -> int:
         writer = csv.DictWriter(handle, fieldnames=list(result["rows"][0]) if result["rows"] else ["rank", "category"])
         writer.writeheader()
         writer.writerows(result["rows"])
-    print(json.dumps({"rows": len(result["rows"]), "observed_copy_assignment": "NOT_RUN"}, sort_keys=True))
+    print(json.dumps({"rows": len(result["rows"]), "observed_copy_assignment": result["observed_copy_assignment"]}, sort_keys=True))
     return 0
 
 
