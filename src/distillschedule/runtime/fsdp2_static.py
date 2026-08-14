@@ -74,6 +74,48 @@ def _torch() -> Any:
     return torch
 
 
+def fsdp2_metadata_tolerant_checkpoint(module: Any, *args: Any, **kwargs: Any) -> Any:
+    """Run Helios' non-reentrant checkpoint under the FSDP2 compatibility policy.
+
+    PyTorch's default non-reentrant checkpoint validator compares saved and
+    recomputed tensor metadata.  FSDP2's mixed-precision parameter materializer
+    can legitimately expose BF16 tensors in the original forward and FP32
+    tensors while replaying the same Helios block.  The validator then raises
+    before autograd can finish, even though the checkpoint function, RNG
+    handling, and model operation are unchanged.
+
+    This adapter changes only that metadata *check*: it keeps non-reentrant
+    checkpointing, preserves RNG state, and does not cast inputs, disable
+    gradients, or alter the wrapped module.  The real-model correctness gate
+    remains mandatory after installing this FSDP2-only policy.
+    """
+
+    from torch.utils.checkpoint import checkpoint
+
+    if "use_reentrant" in kwargs or "determinism_check" in kwargs:
+        raise TypeError(
+            "FSDP2 checkpoint policy owns use_reentrant and determinism_check"
+        )
+    return checkpoint(
+        module.__call__,
+        *args,
+        use_reentrant=False,
+        determinism_check="none",
+        preserve_rng_state=True,
+        **kwargs,
+    )
+
+
+def configure_fsdp2_checkpointing(model: Any) -> None:
+    """Install the FSDP2-only checkpoint adapter on an enabled Helios model."""
+
+    if not bool(getattr(model, "gradient_checkpointing", False)):
+        raise RuntimeError(
+            "FSDP2 checkpoint policy requires Helios gradient checkpointing"
+        )
+    model._gradient_checkpointing_func = fsdp2_metadata_tolerant_checkpoint
+
+
 def _named_trainables(module: Any) -> dict[str, Any]:
     return {
         name: parameter

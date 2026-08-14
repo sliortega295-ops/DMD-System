@@ -6,7 +6,9 @@ from pathlib import Path
 from distillschedule.runtime.fsdp2_static import (
     GAN_CONTRACT,
     NO_GAN_CONTRACT,
+    configure_fsdp2_checkpointing,
     contract_for_variant,
+    fsdp2_metadata_tolerant_checkpoint,
 )
 
 
@@ -76,3 +78,21 @@ def test_static_nsys_reports_pooled_world16_compute_union() -> None:
     assert "for rank in range(16)" in source
     assert 'categories[COMPUTE]["pooled_percent"]' in source
     assert "formal_full5_time_comes_from_unprofiled_runs" in source
+
+
+def test_fsdp2_checkpoint_adapter_only_disables_metadata_check() -> None:
+    source = (
+        ROOT / "src/distillschedule/runtime/fsdp2_static.py"
+    ).read_text()
+    assert 'use_reentrant=False' in source
+    assert 'determinism_check="none"' in source
+    assert "preserve_rng_state=True" in source
+    assert "torch.autocast" not in source
+    assert "no_grad" not in source
+
+    class Model:
+        gradient_checkpointing = True
+
+    model = Model()
+    configure_fsdp2_checkpointing(model)
+    assert model._gradient_checkpointing_func is fsdp2_metadata_tolerant_checkpoint

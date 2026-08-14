@@ -31,6 +31,7 @@ from distillschedule.runtime.fsdp2_static import (
     FSDP2ShardEMA,
     apply_blockwise_fsdp2,
     build_fsdp2_engine,
+    configure_fsdp2_checkpointing,
     contract_for_variant,
 )
 from runtime.critic_pool_checkpoint import (
@@ -130,6 +131,11 @@ def _build_static_model(
             component=role,
             verify_payload_sha256=(dist.get_rank() == 0),
         )
+    # FSDP2's mixed-precision materializer can expose different metadata for
+    # the original and replayed checkpoint tensors.  Keep Helios' enabled
+    # non-reentrant checkpointing and RNG semantics; disable only PyTorch's
+    # metadata validator through the FSDP2-specific compatibility adapter.
+    configure_fsdp2_checkpointing(model)
     # Only one full 14B model is materialized on a GPU at a time.  It is
     # immediately FSDP2-sharded before construction of the second backbone.
     model.to(device)
