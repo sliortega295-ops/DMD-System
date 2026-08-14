@@ -71,6 +71,13 @@ def test_static_worker_uses_separate_unprofiled_and_profile_modes() -> None:
     assert "global_batch=16" not in source  # batch comes from the frozen contract, not an ad-hoc CLI override
 
 
+def test_static_launcher_disables_shared_filesystem_bytecode_writes() -> None:
+    source = (
+        ROOT / "scripts/distillschedule/launch_static_fsdp2_full5_world16_node.sh"
+    ).read_text()
+    assert "export PYTHONDONTWRITEBYTECODE=1" in source
+
+
 def test_static_nsys_reports_pooled_world16_compute_union() -> None:
     source = (
         ROOT / "scripts/distillschedule/analyze_static_fsdp2_nsys.py"
