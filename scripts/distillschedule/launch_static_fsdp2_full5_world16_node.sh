@@ -151,7 +151,7 @@ if [[ "${MODE}" == profile ]]; then
     --cpuctxsw=none \
     --force-overwrite=true \
     --output="${REPORT_BASE}" \
-    "${TORCHRUN}" --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}" \
+    "${TORCHRUN}" --no-python --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}" \
       --master-addr="${MASTER_ADDR}" --master-port="${MASTER_PORT}" \
       "${PYTHON}" "${WORKER[@]}" >"${NODE_LOG}/console.log" 2>&1
   [[ -s "${REPORT_BASE}.nsys-rep" ]] || { echo missing_nsys_report="${REPORT_BASE}.nsys-rep" >&2; exit 87; }

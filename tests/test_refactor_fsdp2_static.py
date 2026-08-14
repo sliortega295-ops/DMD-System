@@ -84,6 +84,7 @@ def test_static_profile_uses_one_outer_node_nsight_session() -> None:
     ).read_text()
     assert "--capture-range=cudaProfilerApi" in source
     assert "--trace-fork-before-exec=true" in source
+    assert "--no-python --nnodes=2" in source
     assert "DISTILLSCHEDULE_STATIC_FSDP2_NSYS_EXACT_RANGE=1" in source
     assert "nsys_rank_exec.py" not in source
     assert "static_fsdp2_full5_node${NODE_RANK}" in source
