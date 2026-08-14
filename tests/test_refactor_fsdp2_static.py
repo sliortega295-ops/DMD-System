@@ -90,6 +90,12 @@ def test_static_profile_uses_one_outer_node_nsight_session() -> None:
     assert "static_fsdp2_full5_node${NODE_RANK}" in source
 
 
+def test_static_controller_summarizer_propagates_remote_pythonpath() -> None:
+    source = (ROOT / "scripts/distillschedule/run_static_fsdp2_full5_world16.py").read_text()
+    assert "export PYTHONPATH=" in source
+    assert "args.remote_root}/src:{args.remote_root}" in source
+
+
 def test_static_nsys_reports_pooled_world16_compute_union() -> None:
     source = (
         ROOT / "scripts/distillschedule/analyze_static_fsdp2_nsys.py"

@@ -130,7 +130,9 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
     root = args.remote_root / "artifacts" / "runs" / args.run_id
     output = root / "summary.json"
     script = args.remote_root / "scripts/distillschedule/summarize_static_fsdp2_full5_world16.py"
+    pythonpath = f"{args.remote_root}/src:{args.remote_root}"
     command = (
+        f"export PYTHONPATH={shlex.quote(pythonpath)}; "
         f"/tmp/distillschedule-helios-official-torch210/bin/python {shlex.quote(str(script))} "
         f"--run-root {shlex.quote(str(root))} --variant {shlex.quote(args.variant)} "
         f"--output {shlex.quote(str(output))}"
