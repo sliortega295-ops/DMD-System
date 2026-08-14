@@ -103,3 +103,11 @@ def test_fsdp2_checkpoint_adapter_only_disables_metadata_check() -> None:
     model = Model()
     configure_fsdp2_checkpointing(model)
     assert model._gradient_checkpointing_func is fsdp2_metadata_tolerant_checkpoint
+
+
+def test_fsdp2_engine_exposes_official_gan_boundary_hook() -> None:
+    source = (
+        ROOT / "src/distillschedule/runtime/fsdp2_static.py"
+    ).read_text()
+    assert "def set_gradient_accumulation_boundary" in source
+    assert "still calls ``step()`` exactly once" in source

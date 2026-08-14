@@ -303,6 +303,7 @@ class FSDP2EngineAdapter:
         self._global_batch = int(global_batch)
         self._gradient_clip = float(gradient_clip)
         self._step_calls = 0
+        self._gradient_accumulation_boundary = True
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         return self.module(*args, **kwargs)
@@ -327,6 +328,17 @@ class FSDP2EngineAdapter:
 
     def zero_grad(self) -> None:
         self.optimizer.zero_grad(set_to_none=True)
+
+    def set_gradient_accumulation_boundary(self, *, is_boundary: bool) -> None:
+        """Expose the DeepSpeed-shaped boundary hook used by official GAN loss.
+
+        FSDP2 static Full5 is GAS=1, so the hook only records the boundary;
+        ``_critic_loss`` still calls ``step()`` exactly once on its final
+        micro-wave.  Keeping this API lets the official loss path run without
+        changing its two-backward/one-optimizer-commit semantics.
+        """
+
+        self._gradient_accumulation_boundary = bool(is_boundary)
 
     @staticmethod
     def is_gradient_accumulation_boundary() -> bool:
