@@ -202,12 +202,16 @@ def _worker_pids(connection: sqlite3.Connection, global_pids: set[int]) -> list[
     """
     if not _table_exists(connection, "PROCESSES"):
         return []
+    # CUPTI activity tables expose ``globalPid`` as the host PID, while the
+    # PROCESSES table stores an encoded process identity in its globalPid
+    # column.  Join on the plain ``pid`` field; comparing the two globalPid
+    # representations silently produced rank=None for every process.
     rows = connection.execute(
-        "SELECT pid,globalPid FROM PROCESSES WHERE name='python' ORDER BY pid"
+        "SELECT pid FROM PROCESSES WHERE name='python' ORDER BY pid"
     ).fetchall()
     result = []
-    for pid, global_pid in rows:
-        if global_pid in global_pids:
+    for (pid,) in rows:
+        if int(pid) in global_pids:
             result.append(int(pid))
     return result
 
