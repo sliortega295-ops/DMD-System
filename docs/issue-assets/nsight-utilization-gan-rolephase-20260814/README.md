@@ -29,13 +29,41 @@ curated machine-readable snapshot of the current GAN-on measurements.
      receipt-reconstructed and are visually distinguished in the figure.
 
 The SHA-256 digest, dimensions, evidence coverage, and run identity for every
-figure are recorded in `gan_on_pipeline_metrics.json`.
+figure are recorded in `gan_on_pipeline_metrics.json`. Exact read-only
+reanalysis of the existing No-GAN Nsight SQLite reports is recorded in
+`no_gan_utilization_supplement.json`; no new GPU run was launched for that
+supplement.
 
-## Key utilization result
+## Utilization results and denominator
 
 The semantic bars should **not** be interpreted as GPU-compute utilization.
 They include compute, NCCL, copies, synchronization, commit/receive waits,
 transition work, and unclassified host/control time.
+
+For both No-GAN captures below, each rank uses its node's closed profiler range
+as denominator. The table reports the arithmetic mean over ranks. `Active` is
+the interval union of compute, NCCL, and all CUDA memcpy directions;
+`No traced GPU activity` is its complement, not proof of scheduler or CPU idle.
+
+| Existing capture | Exact ranks | Compute | NCCL | All copy | Active | No traced GPU activity |
+|---|---:|---:|---:|---:|---:|---:|
+| No-GAN all-40, wave8 | 16 | **14.03%** | 25.69% | 47.21% | 86.93% | 13.07% |
+| No-GAN Iteration 309, all roles | 16 | **26.24%** | 20.79% | 18.58% | 64.73% | 35.27% |
+
+The all-40 trace therefore looks full for a real reason--traced GPU activity is
+high--but only about `14%` of the capture wall is model-compute kernel union.
+H2D alone averages `45.66%` of the per-node profiler range. In Iteration 309,
+less streaming raises compute occupancy while exposing role imbalance:
+
+| Iteration 309 target role | Ranks | Compute | NCCL | All copy | Active | No traced GPU activity |
+|---|---:|---:|---:|---:|---:|---:|
+| Generator | 0, 1, 8, 9 | **38.40%** | 8.43% | 8.31% | 54.64% | 45.36% |
+| Critic | 2-7, 10-15 | **22.19%** | 24.91% | 22.00% | 68.10% | 31.90% |
+
+Global rank 8 is the strongest outlier: `37.14%` active union and `62.86%`
+no-traced-GPU-activity residual. This is consistent with the visible
+role-allocation/scheduling bubble, but the residual still must not be labeled
+physical GPU idle without a narrower causal trace.
 
 For the GAN-on Role-Phase trace, exact compute-kernel interval union over each
 representative rank's 0.5-second binned semantic span is:
@@ -47,7 +75,10 @@ representative rank's 0.5-second binned semantic span is:
 
 These are independent interval unions and may overlap, so the columns are not
 additive. The earlier rough statement of “about 25% compute” should therefore
-be narrowed to approximately `19-21%` for the two exactly captured ranks.
+be narrowed to approximately `19-21%` for the two exactly captured GAN-on
+ranks. It must not be generalized to every figure: the exact No-GAN results
+above range from `14.03%` overall for all-40 to `38.40%` for Iteration 309's
+Generator role.
 
 ## Current GAN-on scheduling evidence
 

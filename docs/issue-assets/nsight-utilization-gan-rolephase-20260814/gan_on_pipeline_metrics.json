@@ -1,6 +1,9 @@
 {
   "schema_version": "dmd_system.issue_evidence.nsight_utilization_gan_rolephase.v1",
   "created_on": "2026-08-14",
+  "related_metric_files": [
+    "no_gan_utilization_supplement.json"
+  ],
   "claim_boundary": {
     "all_timelines_are_diagnostic": true,
     "semantic_NVTX_or_PhaseTracer_coverage_is_not_GPU_compute_utilization": true,
