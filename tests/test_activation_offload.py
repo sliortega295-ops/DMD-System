@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 import torch
 from torch import nn
 from torch.utils.checkpoint import checkpoint
@@ -31,6 +32,18 @@ class _SaveButDoNotUnpack(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         return grad_output * 3
+
+
+class _SaveTwoShapes(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, first, second):
+        ctx.save_for_backward(first, second)
+        return first.sum() + second.sum()
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        first, second = ctx.saved_tensors
+        return torch.ones_like(first) * grad_output, torch.ones_like(second) * grad_output
 
 
 class _ToyModule(nn.Module):
@@ -122,6 +135,72 @@ def test_offload_threshold_keeps_small_saved_storage(tmp_path: Path) -> None:
     assert registration.offloader.stats["cpu_copy_count"] == 0
     assert registration.offloader.stats["kept_below_threshold_count"] > 0
     registration.remove()
+
+
+def test_offload_signature_allowlist_is_exact(tmp_path: Path) -> None:
+    class _TwoShapeModule(nn.Module):
+        def forward(self, first, second):
+            return _SaveTwoShapes.apply(first, second)
+
+    module = _TwoShapeModule()
+    event_path = tmp_path / "events.jsonl"
+    registration = install_activation_offload_hooks(
+        module,
+        logical_component="generator_selected",
+        event_path=event_path,
+        pin_memory=False,
+        allowed_offload_signatures=frozenset(
+            {((2, 4), "torch.float32", 2 * 4 * 4)}
+        ),
+    )
+    first = torch.randn(2, 4, requires_grad=True)
+    second = torch.randn(2, 3, requires_grad=True)
+    module(first, second).backward()
+    registration.remove()
+
+    assert registration.offloader.stats["cpu_copy_count"] == 1
+    assert registration.offloader.stats["kept_policy_filter_count"] == 1
+    assert first.grad is not None
+    assert second.grad is not None
+    packs = [event for event in _events(event_path) if event["event"] == "pack"]
+    assert [event["policy"] for event in packs].count("OFFLOAD_CPU") == 1
+    assert [event["policy"] for event in packs].count("KEEP_POLICY_FILTER") == 1
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA required")
+def test_pinned_signature_allowlist_cuda_parity(tmp_path: Path) -> None:
+    class _TwoShapeModule(nn.Module):
+        def forward(self, first, second):
+            return _SaveTwoShapes.apply(first, second)
+
+    torch.manual_seed(91)
+    reference_first = torch.randn(64, 64, device="cuda", requires_grad=True)
+    reference_second = torch.randn(32, 64, device="cuda", requires_grad=True)
+    candidate_first = reference_first.detach().clone().requires_grad_(True)
+    candidate_second = reference_second.detach().clone().requires_grad_(True)
+    module = _TwoShapeModule().cuda()
+    registration = install_activation_offload_hooks(
+        module,
+        logical_component="generator_selected",
+        event_path=tmp_path / "cuda_events.jsonl",
+        pin_memory=True,
+        allowed_offload_signatures=frozenset(
+            {((64, 64), "torch.float32", 64 * 64 * 4)}
+        ),
+    )
+
+    reference = _SaveTwoShapes.apply(reference_first, reference_second)
+    candidate = module(candidate_first, candidate_second)
+    reference.backward()
+    candidate.backward()
+    torch.cuda.synchronize()
+    registration.remove()
+
+    assert torch.equal(candidate.detach(), reference.detach())
+    assert torch.equal(candidate_first.grad, reference_first.grad)
+    assert torch.equal(candidate_second.grad, reference_second.grad)
+    assert registration.offloader.stats["cpu_copy_count"] == 1
+    assert registration.offloader.stats["live_cpu_bytes"] == 0
 
 
 def test_aggregate_mode_omits_per_tensor_events(tmp_path: Path) -> None:

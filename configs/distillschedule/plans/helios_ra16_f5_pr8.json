@@ -1,0 +1,196 @@
+{
+  "include": [
+    "../fragments/helios_14b_models.json",
+    "../fragments/video_384x640_f81.json",
+    "../fragments/dmd_full5.json",
+    "../fragments/helios_ra16_f5_pr8_lifecycle.json"
+  ],
+  "schema_version": "1",
+  "id": "helios-ra16-f5-pr8-v1",
+  "workload": {
+    "name": "helios-stage3-dmd-full5-ra16-f5-pr8",
+    "generator": {
+      "checkpoint": "${ENV:HELIOS_DISTILLED_ROOT:-/share/project/shuchenweng/DistillSchedule_assets/Helios-Distilled}"
+    },
+    "score": {
+      "checkpoint": "${ENV:HELIOS_BASE_ROOT:-/home/shuchenweng/xty/Helios-main/weights}"
+    },
+    "metadata": {
+      "execution_scope": "continuous_full5_steps_10_14",
+      "external_rollout_compatible": false,
+      "data_roots": [
+        "${ENV:HELIOS_DATA_ROOT:-/share/project/shuchenweng/DistillSchedule_assets/m0/datasets/syn_feature_rank16}"
+      ],
+      "experiment_id": "RA16-F5-PR8"
+    },
+    "schedule": {
+      "generator_update_every": 5,
+      "critic_update_every": 1,
+      "ema_update_every": 1,
+      "ema_start_step": 750,
+      "ema_after_critic": true,
+      "ema_bootstrap_before_start": true
+    }
+  },
+  "hardware": {
+    "nodes": 2,
+    "local_world_size": 8,
+    "world_size": 16,
+    "gpu_memory_gib": 40,
+    "node_memory_gib": 760,
+    "reserve_gib": 0,
+    "device_type": "cuda"
+  },
+  "rank_groups": [
+    {
+      "name": "combined",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "components": [
+        "generator",
+        "score",
+        "critic",
+        "ema"
+      ]
+    }
+  ],
+  "training_backends": {
+    "generator": {
+      "kind": "deepspeed",
+      "zero_stage": 1,
+      "parameter_offload": "none",
+      "optimizer_offload": "cpu",
+      "gradient_checkpointing": true,
+      "config_path": "../../../scripts/accelerate_configs/zero1_cpu_optimizer_offload.json"
+    },
+    "score": {
+      "kind": "deepspeed",
+      "zero_stage": 1,
+      "parameter_offload": "none",
+      "optimizer_offload": "cpu",
+      "gradient_checkpointing": true,
+      "config_path": "../../../scripts/accelerate_configs/zero1_cpu_optimizer_offload.json"
+    }
+  },
+  "rollout": {
+    "engine": "native",
+    "protocol": "in_process",
+    "exact_version": true,
+    "max_version_staleness": 0
+  },
+  "evidence": {
+    "run_id": "${ENV:DISTILLSCHEDULE_RUN_ID:-ra16_f5_pr8}",
+    "output_dir": "${ENV:DISTILLSCHEDULE_OUTPUT_DIR}",
+    "start_step": 10,
+    "steps": 5,
+    "instrumentation": "memory",
+    "semantic_assertions": true,
+    "operation_trace": "${ENV:DISTILLSCHEDULE_TRACE_BUNDLE:-/share/project/shuchenweng/DistillSchedule_assets/m0/traces/syn_feature_trace_rank16_v3_sync_steps20}",
+    "checkpoint": "${ENV:DISTILLSCHEDULE_CHECKPOINT:-/share/project/shuchenweng/yongyan_liu/DistillSchedule/artifacts/runs/iteration124_m0_b4fast_zero1_shared_cw4_x16_checkpoint10/checkpoint-10}",
+    "metadata": {
+      "initial_versions": {
+        "generator": 2,
+        "critic": 10,
+        "ema": 10
+      },
+      "checkpointing_steps": 15,
+      "comparison_baseline_run_id": "task7_full5_routea_exact_b0_gs_fullstream_wave8_gate_20260806_001",
+      "diagnostic_consistency_relative_band": 0.1,
+      "experiment_id": "RA16-F5-PR8",
+      "comparison_baseline_experiment_id": "RA16-F5-FS40",
+      "host_admission_policy": "actual_oom_only",
+      "parent_experiment_id": "RA16-F5-PR4",
+      "superseded_recovery_experiment_id": "RA16-F5-PR4-EC",
+      "only_policy_change": "step10a_generator_streamed_set_g4_to_g8",
+      "functional_attempt_budget": 1,
+      "rank_memory_diagnostic": "existing_low_overhead_phase_block_and_activation_events"
+    }
+  },
+  "legacy": {
+    "config_path": "../templates/helios_stage3_384x640.yaml",
+    "entrypoint": "${ENV:HELIOS_RUNTIME_ROOT}/train_helios.py",
+    "python_executable": "${ENV:DISTILLSCHEDULE_PYTHON}",
+    "cwd": "${ENV:HELIOS_RUNTIME_ROOT}",
+    "extra_env": {
+      "PYTHONPATH": "${ENV:HELIOS_RUNTIME_ROOT}",
+      "TOKENIZERS_PARALLELISM": "false",
+      "HF_HOME": "${ENV:DISTILLSCHEDULE_HF_HOME:-/share/project/shuchenweng/DistillSchedule_assets/hf_home_official_torch210}",
+      "HF_HUB_OFFLINE": "1",
+      "TRANSFORMERS_OFFLINE": "1",
+      "LOCAL_KERNELS": "kernels-community/flash-attn2=${ENV:DISTILLSCHEDULE_FLASH_ATTN_KERNEL:-/share/project/shuchenweng/DistillSchedule_assets/hf_home_official_torch210/hub/models--kernels-community--flash-attn2/snapshots/6a810a7a010ba2aad6613f1f0f7b226fb8bdee3c/build/torch210-cxx11-cu128-x86_64-linux}",
+      "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True,garbage_collection_threshold:0.9",
+      "TORCH_NCCL_ENABLE_MONITORING": "1",
+      "TORCH_NCCL_ASYNC_ERROR_HANDLING": "1",
+      "NCCL_DEBUG": "WARN",
+      "NCCL_P2P_DISABLE": "0",
+      "NCCL_SHM_DISABLE": "0",
+      "NCCL_P2P_LEVEL": "NVL",
+      "WANDB_MODE": "offline",
+      "WANDB_API_KEY": "",
+      "MALLOC_ARENA_MAX": "2",
+      "OMP_NUM_THREADS": "1",
+      "DISTILLSCHEDULE_VALIDATE_TRACE_INPUT": "1",
+      "DISTILLSCHEDULE_DIRECT_BF16_LOAD": "1",
+      "DISTILLSCHEDULE_PRECAST_GENERATOR_PATH": "${ENV:DISTILLSCHEDULE_PRECAST_GENERATOR_PATH:-/share/project/shuchenweng/DistillSchedule_assets/precast/helios-distilled-transformer-ode-mixed-bf16-v1}",
+      "DISTILLSCHEDULE_PRECAST_SCORE_PATH": "${ENV:DISTILLSCHEDULE_PRECAST_SCORE_PATH:-/share/project/shuchenweng/DistillSchedule_assets/precast/helios-score-transformer-mixed-bf16-v1}",
+      "DISTILLSCHEDULE_STAGED_ZERO3_PREPARE": "1",
+      "DISTILLSCHEDULE_RELEASE_PREPROCESSORS": "1",
+      "DISTILLSCHEDULE_SPARSE_EMA": "1",
+      "DISTILLSCHEDULE_SKIP_FINAL_SAVE": "1",
+      "DISTILLSCHEDULE_SKIP_VALIDATION": "1",
+      "DISTILLSCHEDULE_SKIP_REPORTING": "1",
+      "DISTILLSCHEDULE_STABLE_BLOCK_NOISE": "1",
+      "DISTILLSCHEDULE_SWAP_GENERATOR_BEFORE_SCORE_PREPARE": "1",
+      "DISTILLSCHEDULE_B0_COMPUTE_PATH": "1",
+      "DISTILLSCHEDULE_IMMUTABLE_MODEL_MMAP_CACHE": "${ENV:DISTILLSCHEDULE_IMMUTABLE_MODEL_MMAP_CACHE}",
+      "DISTILLSCHEDULE_HYBRID_RESIDENCY": "1",
+      "DISTILLSCHEDULE_BLOCK_STREAM_MEMORY_SNAPSHOT": "1",
+      "DISTILLSCHEDULE_NSYS_ANNOTATE": "1"
+    },
+    "command": [
+      "${ENV:DISTILLSCHEDULE_ACCELERATE}",
+      "launch",
+      "--num_machines",
+      "{nodes}",
+      "--num_processes",
+      "{world_size}",
+      "--machine_rank",
+      "{node_rank}",
+      "--main_process_ip",
+      "{master_addr}",
+      "--main_process_port",
+      "{master_port}",
+      "--mixed_precision",
+      "bf16",
+      "--gradient_accumulation_steps",
+      "1",
+      "--config_file",
+      "${ENV:DISTILLSCHEDULE_ACCELERATE_CONFIG}",
+      "--debug",
+      "{entrypoint}",
+      "--config",
+      "{config}"
+    ]
+  },
+  "metadata": {
+    "migration_stage": "ra16_f5_pr8_functional_execution",
+    "contract_document": "docs/contracts/ra16_f5_pr8.md",
+    "claim_boundary": "one continuous Full5 functional/admission attempt for RA16-F5-PR8 plus low-overhead per-rank memory attribution; no speedup claim"
+  }
+}

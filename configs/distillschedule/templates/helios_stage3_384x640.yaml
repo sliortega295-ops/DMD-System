@@ -1,0 +1,242 @@
+# M0 B0a: common A100 feasibility substrate; not a DistillSchedule optimization.
+output_dir: artifacts/runs/iteration45_m0_b0a
+logging_dir: logs
+seed: 49
+report_to:
+  tracker_name: Helios-Train
+  wandb_name: ablation_stage_3_post
+  report_to: wandb
+data_config:
+  use_shuffle: false
+  pin_memory: true
+  persistent_workers: false
+  force_rebuild: true
+  single_res: true
+  single_height: 384
+  single_width: 640
+  dataloader_num_workers: 0
+  prefetch_factor: 0
+  caption_dropout_p: 0
+  id_token: ''
+  use_stage1_dataset: false
+  use_stage3_dataset: true
+  gan_data_root:
+  - /share/project/shuchenweng/DistillSchedule_assets/m0/datasets/syn_feature_single
+model_config:
+  pretrained_model_name_or_path: /home/shuchenweng/xty/Helios-main/weights
+  transformer_model_name_or_path: /share/project/shuchenweng/DistillSchedule_assets/Helios-Distilled
+  subfolder: transformer_ode
+  real_score_model_name_or_path: /home/shuchenweng/xty/Helios-main/weights
+  load_checkpoints_custom: false
+  load_dcp: false
+  upcast_vae: true
+  enable_slicing: false
+  enable_tiling: false
+  lora_rank: 256
+  lora_alpha: 256.0
+  lora_dropout: 0.0
+  lora_layers: all-linear
+  lora_exclude_modules:
+  - down
+  - up
+  train_norm_layers: false
+  critic_lora_rank: 256
+  critic_lora_alpha: 256.0
+  critic_lora_dropout: 0.0
+  reward_model_name_or_path: /mnt/bn/yufan-dev-my/ysh_new/Ckpts/Videoreward
+validation_config:
+  validation_steps: 1000000
+  validation_height: 384
+  validation_width: 640
+  validation_max_num_frames: 99
+  validation_prompts:
+  - A stylish woman walks down a Tokyo street filled with warm glowing neon and animated
+    city signage. She wears a black leather jacket, a long red dress, and black boots,
+    and carries a black purse. She wears sunglasses and red lipstick. She walks confidently
+    and casually. The street is damp and reflective, creating a mirror effect of the
+    colorful lights. Many pedestrians walk about.
+  validation_guidance_scale: 1.0
+  validation_latent_window_size:
+  - 9
+  num_validation_videos: 1
+  num_inference_steps: 6
+  use_dynamic_shifting: true
+  time_shift_type: linear
+  stage2_simulated_inference_steps:
+  - 2
+  - 2
+  - 2
+training_config:
+  allow_tf32: false
+  gradient_checkpointing: true
+  enable_xformers_memory_efficient_attention: false
+  enable_npu_flash_attention: false
+  upcast_before_saving: false
+  offload: false
+  mixed_precision: bf16
+  max_train_steps: 10
+  train_batch_size: 1
+  gradient_accumulation_steps: 1
+  checkpointing_steps: 1000000
+  resume_from_checkpoint: null
+  save_checkpoints_custom: false
+  learning_rate: 2.0e-06
+  lr_scheduler: constant
+  lr_warmup_steps: 500
+  optimizer: adamw
+  adam_beta1: 0.0
+  adam_beta2: 0.999
+  adam_weight_decay: 1e-03
+  adam_epsilon: 1e-08
+  max_grad_norm: 10.0
+  weighting_scheme: none
+  logit_mean: 0.0
+  logit_std: 1.0
+  mode_scale: 1.29
+  use_dynamic_shifting: true
+  time_shift_type: linear
+  base_seq_len: 256
+  max_seq_len: 4096
+  base_shift: 0.5
+  max_shift: 1.15
+  vae_decode_type: default
+  use_ema: true
+  use_ema_validation: false
+  ema_decay: 0.99
+  ema_start_step: 750
+  ema_zero3_port: 10543
+  ema_deepspeed_config_file: scripts/accelerate_configs/zero3.json
+  is_enable_stage1: true
+  history_sizes:
+  - 16
+  - 2
+  - 1
+  latent_window_size:
+  - 9
+  is_random_drop: true
+  random_drop_v2v_ratio: 0.5
+  random_drop_t2v_ratio: 0.4
+  corrupt_model_input: false
+  corrupt_mode_model_input: noise
+  corrupt_mode_prob_model_input: 0.9
+  is_frame_independent_corrupt_model_input: true
+  is_chunk_independent_corrupt_model_input: false
+  noise_corrupt_ratio_model_input: 0.33333333333333
+  noise_corrupt_clean_prob_model_input: 0.1
+  downsample_min_corrupt_ratio_model_input: 0.9
+  downsample_max_corrupt_ratio_model_input: 1.0
+  corrupt_history: true
+  corrupt_mode_history: noise
+  corrupt_mode_prob_history: 0.9
+  is_frame_independent_corrupt_history: true
+  is_chunk_independent_corrupt_history: false
+  noise_corrupt_ratio_history_short: 0.33333333333333
+  noise_corrupt_ratio_history_mid: 0.33333333333333
+  noise_corrupt_ratio_history_long: 0.33333333333333
+  noise_corrupt_clean_prob_history: 0.1
+  downsample_min_corrupt_ratio_history: 0.9
+  downsample_max_corrupt_ratio_history: 1.0
+  is_add_saturation: true
+  saturation_ratio_clean_prob: 0.1
+  saturation_ratio_min: 0.3
+  saturation_ratio_max: 1.7
+  is_amplify_history: false
+  history_scale_mode: per_head
+  is_train_full_patch_embedding: false
+  is_train_lora_patch_embedding: false
+  has_multi_term_memory_patch: true
+  is_train_full_multi_term_memory_patchg: false
+  is_train_lora_multi_term_memory_patchg: true
+  zero_history_timestep: true
+  guidance_cross_attn: true
+  restrict_self_attn: false
+  is_train_restrict_lora: false
+  restrict_lora: false
+  restrict_lora_rank: 128
+  is_enable_stage2: true
+  is_navit_pyramid: false
+  stage2_num_stages: 3
+  stage2_timestep_shift: 1.0
+  stage2_scheduler_gamma: 0.3333333333333333
+  stage2_stage_range:
+  - 0
+  - 0.3333333333333333
+  - 0.6666666666666666
+  - 1
+  stage2_sample_ratios:
+  - 1
+  - 1
+  - 1
+  efficient_sample: false
+  dmd_is_low_vram_mode: true
+  is_gan_low_vram_mode: true
+  dmd_is_offload_grad: false
+  log_iters: 125
+  no_visualize: true
+  is_train_dmd: true
+  max_grad_norm_critic: 10.0
+  dmd_generator_deepspeed_config: scripts/accelerate_configs/zero2_cpu_optimizer_offload.json
+  dmd_critic_deepspeed_config: scripts/accelerate_configs/zero2_cpu_optimizer_offload.json
+  critic_learning_rate: 4.0e-07
+  dfake_gen_update_ratio: 5
+  dmd_denoising_step_list:
+  - 1000
+  - 750
+  - 500
+  - 250
+  num_critic_input_frames: 9
+  dmd_timestep_shift: 5.0
+  dmd_last_step_only: false
+  dmd_last_section_grad_only: false
+  dmd_teacher_forcing: false
+  dmd_teacher_forcing_ratio: 0.2
+  fake_guidance_scale: 0.0
+  real_guidance_scale: 3.0
+  is_use_gt_history: true
+  use_gt_history_ratio: 1.0
+  is_dmd_vae_decode: false
+  is_multi_pyramid_stage_backward_simulated: false
+  is_amplify_first_chunk: true
+  is_use_gan: false
+  gan_start_step: 1000
+  is_separate_gan_grad: false
+  is_use_gan_hooks: true
+  is_use_gan_final: true
+  gan_cond_map_dim: 768
+  gan_hooks:
+  - 5
+  - 15
+  - 25
+  - 35
+  gan_g_weight: 5e-2
+  gan_d_weight: 1e-2
+  aprox_r1: true
+  aprox_r2: true
+  r1_weight: 100.0
+  r2_weight: 0.0
+  r1_sigma: 0.1
+  r2_sigma: 0.1
+  is_enable_cold_start: false
+  cold_start_step: 2000
+  stage_cold_start_step: 2000
+  generator_is_forcing_low_renoise: false
+  generator_dynamic_alpha: 4.0
+  generator_dynamic_beta: 1.5
+  generator_dynamic_sample_type: beta
+  generator_dynamic_step: 500
+  critic_dynamic_alpha: 4.0
+  critic_dynamic_beta: 1.5
+  critic_dynamic_sample_type: uniform
+  critic_dynamic_step: 500
+  dmd_num_latent_sections_min: 1
+  dmd_num_latent_sections_max: 1
+  dmd_dynamic_alpha: 1.5
+  dmd_dynamic_beta: 4.0
+  dmd_dynamic_sample_type: uniform
+  dmd_dynamic_step: 500
+  ode_num_latent_sections_min: 3
+  ode_num_latent_sections_max: 3
+  ode_dynamic_alpha: 1.5
+  ode_dynamic_beta: 4.0
+  ode_dynamic_sample_type: uniform
+  ode_dynamic_step: 500

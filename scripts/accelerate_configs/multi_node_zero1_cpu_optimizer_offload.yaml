@@ -1,0 +1,18 @@
+# Render with render_accelerate_config.py and zero1_cpu_optimizer_offload.json.
+compute_environment: LOCAL_MACHINE
+distributed_type: DEEPSPEED
+mixed_precision: bf16
+num_machines: __DISTILLSCHEDULE_NUM_MACHINES__
+num_processes: __DISTILLSCHEDULE_NUM_PROCESSES__
+machine_rank: __DISTILLSCHEDULE_MACHINE_RANK__
+main_training_function: main
+rdzv_backend: static
+same_network: true
+use_cpu: false
+deepspeed_config:
+  deepspeed_config_file: __DISTILLSCHEDULE_DEEPSPEED_CONFIG__
+  deepspeed_multinode_launcher: standard
+fsdp_config: {}
+tpu_env: []
+tpu_use_cluster: false
+tpu_use_sudo: false

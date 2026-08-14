@@ -1,0 +1,86 @@
+{
+  "lifecycle": {
+    "split_modulation": true,
+    "activation_offload": {
+      "enabled": true,
+      "threshold_mib": 32,
+      "components": [
+        "generator_selected",
+        "critic_train"
+      ]
+    },
+    "frozen_block_streaming": {
+      "enabled": true,
+      "components": [
+        "generator",
+        "score"
+      ],
+      "block_indices": [
+        0,
+        24,
+        1,
+        5,
+        8,
+        25,
+        10,
+        32,
+        36,
+        15,
+        16,
+        26
+      ],
+      "block_count": 12,
+      "window": 1,
+      "host_policy": "shared_immutable",
+      "mmap_cache": "${ENV:DISTILLSCHEDULE_FROZEN_BLOCK_MMAP_CACHE}",
+      "pin_host_state": false,
+      "score_block_indices": [
+        36,
+        37,
+        38,
+        39
+      ]
+    },
+    "construction_wave_size": 0,
+    "swap_wave_size": 8,
+    "prefetch_distance": 0,
+    "trim_host_after_move": false,
+    "immutable_model_backing_components": [
+      "generator",
+      "score"
+    ],
+    "phase_resident_critic_generator": true,
+    "metadata": {
+      "experiment_id": "RA16-F5-GLP-SCORE4",
+      "hybrid_residency": true,
+      "step10a_generator_streamed_blocks": [
+        0,
+        24,
+        1,
+        5,
+        8,
+        25,
+        10,
+        32,
+        36,
+        15,
+        16,
+        26
+      ],
+      "score_block_streaming": true,
+      "critic_generator_policy": "phase_resident_selected_blocks",
+      "compute_path": "b0_vectorized_split_modulation",
+      "generator_engine_state_policy": "phase_scoped_zero1_lp_flat_offload",
+      "score_streamed_blocks": [
+        36,
+        37,
+        38,
+        39
+      ],
+      "score_streaming_scope": "forward_and_checkpoint_recompute_backward",
+      "score_streaming_window": 1,
+      "only_policy_change_from_parent": "add_score_tail4_streamer"
+    },
+    "critic_phase_offload_generator_lp_state": true
+  }
+}
