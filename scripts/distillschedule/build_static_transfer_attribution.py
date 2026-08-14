@@ -33,9 +33,23 @@ APPLICATION_KEYS = {
 }
 
 
-def _bucket_for(key: str) -> str:
+def _bucket_for(direction: str, key: str) -> str:
+    """Classify an application counter without pretending it is CUDA activity.
+
+    The profile-side counter schema stores direction and logical key as
+    separate fields (for example ``H2D/generator_entry`` and
+    ``D2H/ema_shadow``).  Earlier code matched the bucket prefixes against only
+    the logical key, which silently put every normal input/EMA counter in
+    ``UNATTRIBUTED``.  Keep this mapping explicit and fail closed for keys that
+    are not part of the registered contract.
+    """
+    token = f"{direction}/{key}"
+    if direction == "H2D" and key in {"generator_entry", "critic_entry/step10", "critic_entry/step11", "critic_entry/step12", "critic_entry/step13", "critic_entry/step14"}:
+        return "INPUT"
+    if direction == "D2H" and key == "ema_shadow":
+        return "EMA"
     for bucket, prefixes in APPLICATION_KEYS.items():
-        if key.startswith(prefixes):
+        if token.startswith(prefixes):
             return bucket
     return "UNATTRIBUTED"
 
@@ -45,20 +59,22 @@ def _diagnostic_rows(run_root: Path) -> list[dict[str, Any]]:
     for path in sorted(run_root.glob("execution/diagnostics/rank_*.json")):
         value = json.loads(path.read_text())
         rank = int(value["rank"])
-        buckets: dict[str, dict[str, int]] = {
-            name: {"bytes": 0, "events": 0} for name in (*APPLICATION_KEYS, "UNATTRIBUTED")
+        buckets: dict[tuple[str, str], dict[str, int]] = {
+            (direction, name): {"bytes": 0, "events": 0}
+            for direction in ("H2D", "D2H", "D2D", "OTHER")
+            for name in (*APPLICATION_KEYS, "UNATTRIBUTED")
         }
         for key, counter in value.get("counters", {}).items():
             direction, logical_key = key.split("/", 1)
-            bucket = _bucket_for(logical_key)
-            # Direction is retained in the row key; INPUT is H2D and EMA/
-            # diagnostics are normally D2H, but no direction is rewritten.
-            buckets[bucket]["bytes"] += int(counter.get("bytes", 0))
-            buckets[bucket]["events"] += int(counter.get("events", 0))
-        for bucket, counters in buckets.items():
+            direction = direction if direction in {"H2D", "D2H", "D2D"} else "OTHER"
+            bucket = _bucket_for(direction, logical_key)
+            buckets[(direction, bucket)]["bytes"] += int(counter.get("bytes", 0))
+            buckets[(direction, bucket)]["events"] += int(counter.get("events", 0))
+        for (direction, bucket), counters in buckets.items():
             rows.append(
                 {
                     "rank": rank,
+                    "direction": direction,
                     "category": bucket,
                     "logical_bytes": counters["bytes"],
                     "logical_events": counters["events"],

@@ -138,6 +138,48 @@ def _clip(start: int, end: int, window: tuple[int, int]) -> tuple[int, int] | No
     return (start, end) if end > start else None
 
 
+def _activity_rows(
+    connection: sqlite3.Connection,
+    table: str,
+    selected: str,
+    window: tuple[int, int],
+):
+    """Yield an Nsight activity table in its native append/rowid order.
+
+    CUPTI activity exports are appended chronologically.  Asking SQLite to
+    ``ORDER BY start,end`` on these multi-million-row tables forces a giant
+    temporary B-tree and was the source of the original node-level analyzer
+    stall.  We intentionally stream the native order and validate monotonicity
+    in ``_Union``; a non-zero out-of-order count is surfaced as non-exact rather
+    than silently guessed.
+    """
+    query = (
+        f"SELECT {selected} FROM {table} "
+        "WHERE end>? AND start<?"
+    )
+    yield from connection.execute(query, window)
+
+
+def _merge_activity_rows(*iterators):
+    """Merge chronologically appended activity streams with one-row lookahead."""
+    heads = []
+    for index, iterator in enumerate(iterators):
+        try:
+            row = next(iterator)
+        except StopIteration:
+            continue
+        heads.append([int(row[0]), int(row[1]), index, row, iterator])
+    while heads:
+        heads.sort(key=lambda value: (value[0], value[1]))
+        _, _, index, row, iterator = heads.pop(0)
+        yield row
+        try:
+            next_row = next(iterator)
+        except StopIteration:
+            continue
+        heads.append([int(next_row[0]), int(next_row[1]), index, next_row, iterator])
+
+
 def _kernel_name(row_value: Any, strings: Mapping[int, str]) -> str:
     if row_value is None:
         return ""
@@ -199,6 +241,15 @@ def analyze_bounded_sqlite(
         global_pids: set[int] = set()
         raw_memcpy = {"events": 0, "bytes": 0, "sum_duration_ns": 0}
         node = {name: _Metric() for name in (COMPUTE, NCCL, H2D, D2H, D2D, OTHER_COPY, ALL_COPY, ACTIVE)}
+        scanned_rows = {"kernel": 0, "memcpy": 0, "active": 0}
+
+        def check_budget(kind: str) -> None:
+            scanned_rows[kind] += 1
+            if scanned_rows[kind] % 100_000 == 0 and time.monotonic() - started > query_budget_seconds:
+                raise TimeoutError(
+                    f"bounded Nsight analysis exceeded {query_budget_seconds}s "
+                    f"while scanning {kind}: {path}"
+                )
 
         def add_kernel(start: int, end: int, global_pid: int, name: str) -> None:
             category = _kernel_category(name)
@@ -211,19 +262,17 @@ def analyze_bounded_sqlite(
             node[category].add(start, end, num_bytes)
             node[ALL_COPY].add(start, end, num_bytes)
 
-        # Restrict every query to the exact NVTX phase.  The ordered scans use
-        # SQLite's on-disk temporary sorter, never a Python list of all rows.
-        # Category unions are exact because each category is a subsequence of
-        # its timestamp-ordered source table.  ACTIVE is reconstructed in one
-        # additional bounded UNION scan below.
+        # Restrict every query to the exact NVTX phase.  Do not add SQL ORDER BY
+        # here: Nsight's CUPTI tables are append-ordered and can be streamed
+        # directly.  This avoids a multi-gigabyte temporary sort.  The union
+        # accumulator records any order violation so the report remains
+        # fail-closed if a future exporter changes that property.
         if _table_exists(connection, "CUPTI_ACTIVITY_KIND_KERNEL"):
             cols = _schema(connection, "CUPTI_ACTIVITY_KIND_KERNEL")
             name_col = "demangledName" if "demangledName" in cols else ("shortName" if "shortName" in cols else None)
             selected = "start,end,globalPid" + (f",{name_col}" if name_col else "")
-            for row in connection.execute(
-                f"SELECT {selected} FROM CUPTI_ACTIVITY_KIND_KERNEL WHERE end>? AND start<? ORDER BY start,end",
-                (window[0], window[1]),
-            ):
+            for row in _activity_rows(connection, "CUPTI_ACTIVITY_KIND_KERNEL", selected, window):
+                check_budget("kernel")
                 clipped = _clip(row[0], row[1], window)
                 if clipped is None:
                     continue
@@ -235,10 +284,8 @@ def analyze_bounded_sqlite(
         if _table_exists(connection, "CUPTI_ACTIVITY_KIND_MEMCPY"):
             cols = _schema(connection, "CUPTI_ACTIVITY_KIND_MEMCPY")
             selected = "start,end,globalPid,bytes,copyKind"
-            for row in connection.execute(
-                f"SELECT {selected} FROM CUPTI_ACTIVITY_KIND_MEMCPY WHERE end>? AND start<? ORDER BY start,end",
-                (window[0], window[1]),
-            ):
+            for row in _activity_rows(connection, "CUPTI_ACTIVITY_KIND_MEMCPY", selected, window):
+                check_budget("memcpy")
                 clipped = _clip(row[0], row[1], window)
                 if clipped is None:
                     continue
@@ -253,26 +300,21 @@ def analyze_bounded_sqlite(
                 by_pid[pid][ACTIVE].add(*clipped)
                 node[ACTIVE].add(*clipped)
 
-        # The per-table active intervals above are not globally ordered.  A
-        # single UNION sort restores exact cross-table active occupancy and
-        # replaces the previous four full table rescans.
-        active_tables: list[str] = []
+        # Merge the two append-ordered tables with one-row lookahead.  This is
+        # an exact cross-table union when both native streams are monotonic,
+        # without asking SQLite to materialize a UNION ORDER BY temporary tree.
+        active_iterators = []
         if _table_exists(connection, "CUPTI_ACTIVITY_KIND_KERNEL"):
-            active_tables.append(
-                "SELECT start,end,globalPid FROM CUPTI_ACTIVITY_KIND_KERNEL WHERE end>? AND start<?"
-            )
+            active_iterators.append(iter(_activity_rows(connection, "CUPTI_ACTIVITY_KIND_KERNEL", "start,end,globalPid", window)))
         if _table_exists(connection, "CUPTI_ACTIVITY_KIND_MEMCPY"):
-            active_tables.append(
-                "SELECT start,end,globalPid FROM CUPTI_ACTIVITY_KIND_MEMCPY WHERE end>? AND start<?"
-            )
+            active_iterators.append(iter(_activity_rows(connection, "CUPTI_ACTIVITY_KIND_MEMCPY", "start,end,globalPid", window)))
         active_union = _Union()
-        if active_tables:
-            query = " UNION ALL ".join(active_tables) + " ORDER BY start,end"
-            for row in connection.execute(query, (window[0], window[1]) * len(active_tables)):
-                clipped = _clip(row[0], row[1], window)
-                if clipped is None:
-                    continue
-                active_union.add(*clipped)
+        for row in _merge_activity_rows(*active_iterators):
+            check_budget("active")
+            clipped = _clip(row[0], row[1], window)
+            if clipped is None:
+                continue
+            active_union.add(*clipped)
         node[ACTIVE].union = active_union
         elapsed = time.monotonic() - started
         if elapsed > query_budget_seconds:
@@ -313,12 +355,14 @@ def analyze_bounded_sqlite(
             "node_rank_base": node_rank_base,
             "rank_mapping": "inferred_worker_pid_order" if node_rank_base is not None else "unavailable_in_v3_profile",
             "query_seconds": elapsed,
+            "scanned_rows": scanned_rows,
+            "query_strategy": "three_native_append_order_streams_with_python_two_way_merge_and_bounded_state",
             "global_pid_count": len(global_pids),
             "worker_pid_count": len(workers),
             "per_process": per_process,
             "node_metrics": node,
             "memcpy_totals_reconciliation": reconciliation,
-            "claim_boundary": {"diagnostic_only": True, "rank_mapping_in_v3_is_inferred": node_rank_base is not None, "formal_timing_unchanged": True, "sum_duration_is_not_union_occupancy": True},
+            "claim_boundary": {"diagnostic_only": True, "rank_mapping_in_v3_is_inferred": node_rank_base is not None, "formal_timing_unchanged": True, "sum_duration_is_not_union_occupancy": True, "native_activity_order_verified_by_out_of_order_counters": True},
         }
     finally:
         connection.close()
