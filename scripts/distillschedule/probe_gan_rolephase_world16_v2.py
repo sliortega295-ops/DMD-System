@@ -5,10 +5,17 @@ The audited model math and existing executor remain authoritative. This
 entrypoint preconstructs all forward Phase-B targets before formal timing,
 emits transition subphase receipts, records producer/Critic service spans and
 supports an opt-in reverse-target capacity canary.
+
+The forward targets remain complete persistent-pinned CPU modules.  To keep
+that semantic under a finite host cgroup, cold target construction is admitted
+one local rank at a time and the allocator is trimmed after each completed
+pageable->pinned replacement.  No batch, topology, ZeRO, loss, trace, EMA or
+steady-state offload policy changes here.
 """
 from __future__ import annotations
 
 import functools
+import gc
 import os
 from pathlib import Path
 from typing import Any, Callable
@@ -18,6 +25,10 @@ from distillschedule.runtime.gan_rolephase_optimization import (
     JsonlStageRecorder,
     PersistentTargetPolicy,
     TransitionSubphase,
+    assert_no_new_cgroup_oom,
+    assert_preconstruction_admitted,
+    build_preconstruction_waves,
+    read_cgroup_memory_snapshot,
 )
 
 _STATES: dict[int, dict[str, Any]] = {}
@@ -49,6 +60,93 @@ def _timed(name: str | TransitionSubphase, function: Callable[..., Any]) -> Call
             return function(*args, **kwargs)
 
     return wrapped
+
+
+def _host_admission_policy() -> tuple[float, int]:
+    max_used_fraction = float(
+        os.environ.get(
+            "DISTILLSCHEDULE_ROLEPHASE_HOST_ADMISSION_MAX_USED_FRACTION",
+            "0.90",
+        )
+    )
+    min_headroom_gib = float(
+        os.environ.get(
+            "DISTILLSCHEDULE_ROLEPHASE_HOST_ADMISSION_MIN_HEADROOM_GIB",
+            "64",
+        )
+    )
+    if min_headroom_gib < 0:
+        raise ValueError("Role-Phase host-admission headroom must be non-negative")
+    return max_used_fraction, int(min_headroom_gib * 2**30)
+
+
+def _prepare_persistent_target(
+    *,
+    args: Any,
+    global_rank: int,
+    logical: Any,
+    role: str,
+    direction: str,
+    timing_scope: str,
+    wave_index: int,
+    recorder: JsonlStageRecorder,
+) -> tuple[Any, dict[str, Any], dict[str, Any], dict[str, Any]]:
+    max_used_fraction, min_headroom_bytes = _host_admission_policy()
+    before = read_cgroup_memory_snapshot()
+    with recorder.stage(
+        TransitionSubphase.HOST_ADMISSION,
+        direction=direction,
+        role=role,
+        preconstruction_wave=wave_index,
+        max_concurrent_targets=1,
+        timing_scope=timing_scope,
+        cgroup_before=before.as_dict(),
+    ):
+        admission = assert_preconstruction_admitted(
+            before,
+            max_used_fraction=max_used_fraction,
+            min_headroom_bytes=min_headroom_bytes,
+        )
+
+    with recorder.stage(
+        TransitionSubphase.TARGET_PREPARE,
+        direction=direction,
+        role=role,
+        preconstruction_wave=wave_index,
+        max_concurrent_targets=1,
+        timing_scope=timing_scope,
+    ):
+        # PR6's validated cold-target path explicitly disables accidental
+        # Transformers/DeepSpeed ZeRO-3 init inheritance for the future CPU
+        # module.  The target becomes a normal full CPU module until the legal
+        # phase transition materializes it.
+        with legacy.suspend_transformers_zero3_init():
+            model, metadata, restore = legacy._build_cpu_model(
+                args=args, role=role, logical=logical
+            )
+        host_preparation = legacy.pr6.pin_module_cpu_registered_state(model)
+        host_preparation["timing_scope"] = timing_scope
+
+        # pin_module_cpu_registered_state preserves the final fully-pinned
+        # representation, but pageable source allocations may remain in the
+        # host allocator cache.  Reclaim them before admitting the next 14B
+        # target so cold-preparation transients cannot accumulate across ranks.
+        gc.collect()
+        allocator_trimmed = legacy.pr6.trim_host_allocator()
+        after = read_cgroup_memory_snapshot()
+        assert_no_new_cgroup_oom(before, after)
+        host_preparation.update(
+            {
+                "admission_policy": "SERIAL_LOCAL_RANK_CGROUP_V2_FAIL_CLOSED",
+                "preconstruction_wave": wave_index,
+                "max_concurrent_targets": 1,
+                "cgroup_before": before.as_dict(),
+                "cgroup_after": after.as_dict(),
+                "admission": admission,
+                "post_target_allocator_trimmed": allocator_trimmed,
+            }
+        )
+    return model, metadata, restore, host_preparation
 
 
 def _optimized_preconstruct_targets(
@@ -83,6 +181,11 @@ def _optimized_preconstruct_targets(
             if global_rank in (*legacy.PHASE_B_G_RANKS, *legacy.FLEX_RANKS)
             else "REUSE_PHASE_A_SCORE"
         ),
+        "host_admission_policy": (
+            "SERIAL_LOCAL_RANK_CGROUP_V2_FAIL_CLOSED"
+            if global_rank < legacy.PHASE_A_WORLD_SIZE
+            else "NO_FORWARD_TARGET_ON_NODE1"
+        ),
     }
     if global_rank in legacy.PHASE_B_G_RANKS:
         role = "generator"
@@ -90,42 +193,72 @@ def _optimized_preconstruct_targets(
         role = "critic"
     else:
         role = None
-    if role is not None:
-        with recorder.stage(
-            TransitionSubphase.TARGET_PREPARE,
-            direction="to_phase_b",
-            role=role,
-            timing_scope="outside_formal_timer",
-        ):
-            model, metadata, restore = legacy._build_cpu_model(
-                args=args, role=role, logical=logical
+
+    local_rank = int(global_rank) % legacy.PHASE_A_WORLD_SIZE
+    # All eight node0 ranks own a future Phase-B target.  They are deliberately
+    # prepared in singleton waves.  This is excluded cold preparation, so the
+    # longer startup does not contaminate Full5 timing, while the final target
+    # inventory remains exactly the same as PR10 before this fix.
+    forward_waves = build_preconstruction_waves(
+        range(legacy.PHASE_A_WORLD_SIZE),
+        local_world_size=legacy.PHASE_A_WORLD_SIZE,
+        max_concurrent=1,
+    )
+    value["forward_preconstruction_waves"] = [list(wave) for wave in forward_waves]
+    for wave_index, wave in enumerate(forward_waves):
+        legacy.pr6._control_barrier(control_group)
+        if role is not None and local_rank in wave:
+            model, metadata, restore, host_preparation = _prepare_persistent_target(
+                args=args,
+                global_rank=global_rank,
+                logical=logical,
+                role=role,
+                direction="to_phase_b",
+                timing_scope="outside_formal_timer",
+                wave_index=wave_index,
+                recorder=recorder,
             )
-            host_preparation = legacy.pr6.pin_module_cpu_registered_state(model)
-            host_preparation["timing_scope"] = "outside_formal_timer"
             value.update(
                 forward_model=model,
                 forward_metadata=metadata,
                 forward_restore=restore,
                 forward_pin=host_preparation,
             )
-    if reverse_canary and global_rank in legacy.FLEX_RANKS:
-        with recorder.stage(
-            TransitionSubphase.TARGET_PREPARE,
-            direction="to_phase_a",
-            role="generator",
-            timing_scope="outside_formal_timer_capacity_canary",
-        ):
-            model, metadata, restore = legacy._build_cpu_model(
-                args=args, role="generator", logical=logical
-            )
-            host_preparation = legacy.pr6.pin_module_cpu_registered_state(model)
-            host_preparation["timing_scope"] = "outside_formal_timer_capacity_canary"
-            value.update(
-                reverse_model=model,
-                reverse_metadata=metadata,
-                reverse_restore=restore,
-                reverse_pin=host_preparation,
-            )
+        legacy.pr6._control_barrier(control_group)
+
+    if reverse_canary:
+        reverse_local_ranks = tuple(
+            int(rank) % legacy.PHASE_A_WORLD_SIZE for rank in legacy.FLEX_RANKS
+        )
+        reverse_waves = build_preconstruction_waves(
+            reverse_local_ranks,
+            local_world_size=legacy.PHASE_A_WORLD_SIZE,
+            max_concurrent=1,
+        )
+        value["reverse_preconstruction_waves"] = [
+            list(wave) for wave in reverse_waves
+        ]
+        for wave_index, wave in enumerate(reverse_waves):
+            legacy.pr6._control_barrier(control_group)
+            if global_rank in legacy.FLEX_RANKS and local_rank in wave:
+                model, metadata, restore, host_preparation = _prepare_persistent_target(
+                    args=args,
+                    global_rank=global_rank,
+                    logical=logical,
+                    role="generator",
+                    direction="to_phase_a",
+                    timing_scope="outside_formal_timer_capacity_canary",
+                    wave_index=wave_index,
+                    recorder=recorder,
+                )
+                value.update(
+                    reverse_model=model,
+                    reverse_metadata=metadata,
+                    reverse_restore=restore,
+                    reverse_pin=host_preparation,
+                )
+            legacy.pr6._control_barrier(control_group)
+
     legacy.pr6._control_barrier(control_group)
     _STATES[int(global_rank)] = {
         "args": args,
@@ -148,6 +281,7 @@ def _require_preconstructed_forward_target(
         "policy": targets["forward_policy"],
         "constructed_in_handoff": False,
         "target_prepared_before_formal_timer": True,
+        "host_admission_policy": targets.get("host_admission_policy"),
     }
 
 
