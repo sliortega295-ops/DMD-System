@@ -1,0 +1,1085 @@
+{
+  "claim_boundary": {
+    "diagnostic_only": true,
+    "exact_source": "Existing Nsight SQLite reports only.",
+    "native_speedup_claimed": false,
+    "new_gpu_run_performed": false
+  },
+  "created_on": "2026-08-14",
+  "method": {
+    "active": "Interval union of compute, NCCL, and all-copy activity.",
+    "all_copy": "Interval union of all CUDA memcpy directions (H2D, D2H, and D2D).",
+    "compute": "Interval union of non-NCCL CUDA kernels.",
+    "denominator": "Each rank uses its node closed profiler range. Rank means are arithmetic means. Pooled percentages use summed GPU-seconds divided by summed rank capture wall.",
+    "nccl": "Interval union of NCCL CUDA kernels.",
+    "no_traced_gpu_activity": "Capture-wall complement of active union; not proof of scheduler idle or CPU idle.",
+    "non_additivity": "Compute, NCCL, and copy intervals may overlap and must not be added."
+  },
+  "no_gan_all40_wave8": {
+    "figure": "figures/01_nogan_all40_wave8_nsys_timeline.png",
+    "interpretation": [
+      "The semantic timeline looks dense and exact traced active union is also high (86.93% rank mean), but compute-kernel union is only 14.03%.",
+      "Most traced occupancy is copy and NCCL rather than model compute. H2D alone averages 45.66% of each node profile range.",
+      "The figure bottom H2D value uses a cross-rank PhaseTracer window; this supplement uses each node closed profiler range, so nearby values are not numerically identical denominators."
+    ],
+    "per_rank": [
+      {
+        "active_union_percent": 87.05174961562611,
+        "all_copy_percent": 61.36585561722636,
+        "capture_seconds": 735.673170639,
+        "compute_percent": 14.00368496740427,
+        "d2d_percent": 0.013894731122410332,
+        "d2h_percent": 1.9928779454150152,
+        "global_rank": 0,
+        "h2d_percent": 59.359082940688936,
+        "nccl_percent": 11.682209030995473,
+        "no_traced_gpu_activity_percent": 12.948250384373894,
+        "node": 0
+      },
+      {
+        "active_union_percent": 85.99991473951137,
+        "all_copy_percent": 52.9146407225746,
+        "capture_seconds": 735.673170639,
+        "compute_percent": 14.962158584278914,
+        "d2d_percent": 0.013870802969661864,
+        "d2h_percent": 1.726830854517306,
+        "global_rank": 1,
+        "h2d_percent": 51.17393906508762,
+        "nccl_percent": 18.123115432657862,
+        "no_traced_gpu_activity_percent": 14.000085260488627,
+        "node": 0
+      },
+      {
+        "active_union_percent": 86.8642327032176,
+        "all_copy_percent": 60.51021252961281,
+        "capture_seconds": 735.673170639,
+        "compute_percent": 14.173658683438234,
+        "d2d_percent": 0.013854753723242092,
+        "d2h_percent": 1.7060666838099092,
+        "global_rank": 2,
+        "h2d_percent": 58.79029109207966,
+        "nccl_percent": 12.18036149016655,
+        "no_traced_gpu_activity_percent": 13.135767296782408,
+        "node": 0
+      },
+      {
+        "active_union_percent": 88.47330361343144,
+        "all_copy_percent": 60.47580060579886,
+        "capture_seconds": 735.673170639,
+        "compute_percent": 15.122481589258902,
+        "d2d_percent": 0.012887518776530719,
+        "d2h_percent": 1.5527589460789866,
+        "global_rank": 3,
+        "h2d_percent": 58.91015414094334,
+        "nccl_percent": 12.87502141837368,
+        "no_traced_gpu_activity_percent": 11.526696386568558,
+        "node": 0
+      },
+      {
+        "active_union_percent": 88.26928258658111,
+        "all_copy_percent": 27.92004798483964,
+        "capture_seconds": 735.673170639,
+        "compute_percent": 12.518184944546611,
+        "d2d_percent": 0.013794000930040216,
+        "d2h_percent": 1.644000596147177,
+        "global_rank": 4,
+        "h2d_percent": 26.262253387762424,
+        "nccl_percent": 47.83104965719487,
+        "no_traced_gpu_activity_percent": 11.73071741341889,
+        "node": 0
+      },
+      {
+        "active_union_percent": 86.84520932373532,
+        "all_copy_percent": 38.78506515511004,
+        "capture_seconds": 735.673170639,
+        "compute_percent": 13.048643397124183,
+        "d2d_percent": 0.013835427342224758,
+        "d2h_percent": 1.995541512306136,
+        "global_rank": 5,
+        "h2d_percent": 36.77568821546168,
+        "nccl_percent": 35.01150077150108,
+        "no_traced_gpu_activity_percent": 13.154790676264682,
+        "node": 0
+      },
+      {
+        "active_union_percent": 84.49761901729543,
+        "all_copy_percent": 47.49623891537312,
+        "capture_seconds": 735.673170639,
+        "compute_percent": 15.006571712151473,
+        "d2d_percent": 0.013482153755022633,
+        "d2h_percent": 1.7894991523974022,
+        "global_rank": 6,
+        "h2d_percent": 45.69325760922069,
+        "nccl_percent": 21.99480838977085,
+        "no_traced_gpu_activity_percent": 15.502380982704567,
+        "node": 0
+      },
+      {
+        "active_union_percent": 86.2950436080977,
+        "all_copy_percent": 50.823540661301756,
+        "capture_seconds": 735.673170639,
+        "compute_percent": 14.280894460748799,
+        "d2d_percent": 0.01340415050264066,
+        "d2h_percent": 1.5982318978395391,
+        "global_rank": 7,
+        "h2d_percent": 49.21190461295957,
+        "nccl_percent": 21.190608486047143,
+        "no_traced_gpu_activity_percent": 13.7049563919023,
+        "node": 0
+      },
+      {
+        "active_union_percent": 86.59549083578504,
+        "all_copy_percent": 47.10838928745474,
+        "capture_seconds": 735.705697164,
+        "compute_percent": 13.781304331995498,
+        "d2d_percent": 0.013791204878678876,
+        "d2h_percent": 1.4138094273424326,
+        "global_rank": 8,
+        "h2d_percent": 45.680788655233634,
+        "nccl_percent": 25.705797216334798,
+        "no_traced_gpu_activity_percent": 13.40450916421496,
+        "node": 1
+      },
+      {
+        "active_union_percent": 86.49735548006018,
+        "all_copy_percent": 43.05207271330871,
+        "capture_seconds": 735.705697164,
+        "compute_percent": 13.397755284342686,
+        "d2d_percent": 0.01377891355072687,
+        "d2h_percent": 1.2635416923960276,
+        "global_rank": 9,
+        "h2d_percent": 41.77475210736195,
+        "nccl_percent": 30.047527482408775,
+        "no_traced_gpu_activity_percent": 13.502644519939821,
+        "node": 1
+      },
+      {
+        "active_union_percent": 88.3810757209693,
+        "all_copy_percent": 48.851277527878636,
+        "capture_seconds": 735.705697164,
+        "compute_percent": 14.980185166954405,
+        "d2d_percent": 0.012985107953935612,
+        "d2h_percent": 1.2653619052952374,
+        "global_rank": 10,
+        "h2d_percent": 47.57293051462946,
+        "nccl_percent": 24.54961302613627,
+        "no_traced_gpu_activity_percent": 11.618924279030695,
+        "node": 1
+      },
+      {
+        "active_union_percent": 89.79413564494087,
+        "all_copy_percent": 28.83079413040314,
+        "capture_seconds": 735.705697164,
+        "compute_percent": 12.614885576903667,
+        "d2d_percent": 0.013298264153334516,
+        "d2h_percent": 1.1174033119071334,
+        "global_rank": 11,
+        "h2d_percent": 27.70009255434267,
+        "nccl_percent": 48.348455937634064,
+        "no_traced_gpu_activity_percent": 10.205864355059136,
+        "node": 1
+      },
+      {
+        "active_union_percent": 86.64064468579335,
+        "all_copy_percent": 52.66548924856682,
+        "capture_seconds": 735.705697164,
+        "compute_percent": 14.868996508751358,
+        "d2d_percent": 0.013951048822328244,
+        "d2h_percent": 1.174327007566193,
+        "global_rank": 12,
+        "h2d_percent": 51.47721119217831,
+        "nccl_percent": 19.10615892847516,
+        "no_traced_gpu_activity_percent": 13.359355314206656,
+        "node": 1
+      },
+      {
+        "active_union_percent": 86.70893750531843,
+        "all_copy_percent": 47.808676537351026,
+        "capture_seconds": 735.705697164,
+        "compute_percent": 12.685099916685358,
+        "d2d_percent": 0.013761600921438966,
+        "d2h_percent": 1.7960285875092952,
+        "global_rank": 13,
+        "h2d_percent": 45.99888634892029,
+        "nccl_percent": 26.215161051282053,
+        "no_traced_gpu_activity_percent": 13.291062494681572,
+        "node": 1
+      },
+      {
+        "active_union_percent": 86.70440828186284,
+        "all_copy_percent": 39.002612134052264,
+        "capture_seconds": 735.705697164,
+        "compute_percent": 14.366442097217991,
+        "d2d_percent": 0.01282086524048947,
+        "d2h_percent": 0.997002314957596,
+        "global_rank": 14,
+        "h2d_percent": 37.992788953854166,
+        "nccl_percent": 33.3353540505926,
+        "no_traced_gpu_activity_percent": 13.295591718137157,
+        "node": 1
+      },
+      {
+        "active_union_percent": 85.21368574943217,
+        "all_copy_percent": 47.67388971324152,
+        "capture_seconds": 735.705697164,
+        "compute_percent": 14.739965170043595,
+        "d2d_percent": 0.012885833474641048,
+        "d2h_percent": 1.5441289916323198,
+        "global_rank": 15,
+        "h2d_percent": 46.11687488813456,
+        "nccl_percent": 22.79983086614705,
+        "no_traced_gpu_activity_percent": 14.786314250567834,
+        "node": 1
+      }
+    ],
+    "reference_timing": {
+      "cross_rank_profiled_phasetracer_window_seconds": 737.430331648,
+      "matched_unprofiled_native_full5_seconds": 688.725683927536
+    },
+    "reports": {
+      "node0": {
+        "capture_seconds": 735.673170639,
+        "profile_range": "distillschedule_task7_full5_routea_gs_fullstream",
+        "sqlite": "/share/project/shuchenweng/yongyan_liu/DistillSchedule/artifacts/nsight/task7_full5_routea_exact_b0_gs_fullstream_wave8/task7_full5_routea_exact_b0_gs_fullstream_wave8_profile_20260806_001_profile/node0/full5_routea_gs_fullstream_node0_compact.sqlite",
+        "sqlite_bytes": 271376384
+      },
+      "node1": {
+        "capture_seconds": 735.705697164,
+        "profile_range": "distillschedule_task7_full5_routea_gs_fullstream",
+        "sqlite": "/share/project/shuchenweng/yongyan_liu/DistillSchedule/artifacts/nsight/task7_full5_routea_exact_b0_gs_fullstream_wave8/task7_full5_routea_exact_b0_gs_fullstream_wave8_profile_20260806_001_profile/node1/full5_routea_gs_fullstream_node1_compact.sqlite",
+        "sqlite_bytes": 270376960
+      }
+    },
+    "run_id": "task7_full5_routea_exact_b0_gs_fullstream_wave8_profile_20260806_001",
+    "status": "PASS_EXISTING_CAPTURE_READ_ONLY_REANALYSIS",
+    "summary": {
+      "active": {
+        "pooled_gpu_seconds_fraction": 0.8692700866348151,
+        "pooled_gpu_seconds_percent": 86.9270086634815,
+        "rank_fraction": {
+          "max": 0.8979413564494086,
+          "mean": 0.8692700556947864,
+          "median": 0.8670667289359064,
+          "min": 0.8449761901729543
+        },
+        "rank_percent": {
+          "max": 89.79413564494087,
+          "mean": 86.92700556947864,
+          "median": 86.70667289359064,
+          "min": 84.49761901729543
+        }
+      },
+      "all_copy": {
+        "pooled_gpu_seconds_fraction": 0.4720522513219853,
+        "pooled_gpu_seconds_percent": 47.20522513219853,
+        "rank_fraction": {
+          "max": 0.6136585561722636,
+          "mean": 0.4720528771775588,
+          "median": 0.47741283125296274,
+          "min": 0.2792004798483964
+        },
+        "rank_percent": {
+          "max": 61.36585561722636,
+          "mean": 47.20528771775588,
+          "median": 47.74128312529628,
+          "min": 27.92004798483964
+        }
+      },
+      "compute": {
+        "pooled_gpu_seconds_fraction": 0.140344297010726,
+        "pooled_gpu_seconds_percent": 14.0344297010726,
+        "rank_fraction": {
+          "max": 0.15122481589258902,
+          "mean": 0.1403443202449037,
+          "median": 0.14227276572093517,
+          "min": 0.12518184944546612
+        },
+        "rank_percent": {
+          "max": 15.122481589258902,
+          "mean": 14.03443202449037,
+          "median": 14.227276572093517,
+          "min": 12.518184944546611
+        }
+      },
+      "copy_directions": {
+        "d2d": {
+          "mean_gib_per_rank": 43.478943064808846,
+          "pooled_gpu_seconds_fraction": 0.00013518521213506476,
+          "pooled_gpu_seconds_percent": 0.013518521213506477,
+          "rank_fraction": {
+            "max": 0.00013951048822328244,
+            "mean": 0.0001351852363233418,
+            "median": 0.0001377025723608292,
+            "min": 0.0001282086524048947
+          },
+          "rank_percent": {
+            "max": 0.013951048822328244,
+            "mean": 0.013518523632334179,
+            "median": 0.013770257236082918,
+            "min": 0.01282086524048947
+          },
+          "total_tib_across_16_ranks": 0.6793584853876382
+        },
+        "d2h": {
+          "mean_gib_per_rank": 103.20568611565977,
+          "pooled_gpu_seconds_fraction": 0.015360834318796323,
+          "pooled_gpu_seconds_percent": 1.5360834318796321,
+          "rank_fraction": {
+            "max": 0.01995541512306136,
+            "mean": 0.015360881766948567,
+            "median": 0.01575495421959263,
+            "min": 0.009970023149575959
+          },
+          "rank_percent": {
+            "max": 1.995541512306136,
+            "mean": 1.5360881766948566,
+            "median": 1.575495421959263,
+            "min": 0.997002314957596
+          },
+          "total_tib_across_16_ranks": 1.612588845557184
+        },
+        "h2d": {
+          "mean_gib_per_rank": 1516.189075090806,
+          "pooled_gpu_seconds_fraction": 0.4565562317910539,
+          "pooled_gpu_seconds_percent": 45.65562317910538,
+          "rank_fraction": {
+            "max": 0.5935908294068893,
+            "mean": 0.45655681017428684,
+            "median": 0.46057880618527425,
+            "min": 0.26262253387762424
+          },
+          "rank_percent": {
+            "max": 59.359082940688936,
+            "mean": 45.655681017428684,
+            "median": 46.05788061852743,
+            "min": 26.262253387762424
+          },
+          "total_tib_across_16_ranks": 23.690454298293844
+        }
+      },
+      "nccl": {
+        "pooled_gpu_seconds_fraction": 0.2568735383021038,
+        "pooled_gpu_seconds_percent": 25.68735383021038,
+        "rank_fraction": {
+          "max": 0.48348455937634066,
+          "mean": 0.2568728582723239,
+          "median": 0.2367472194614166,
+          "min": 0.11682209030995473
+        },
+        "rank_percent": {
+          "max": 48.348455937634064,
+          "mean": 25.687285827232394,
+          "median": 23.67472194614166,
+          "min": 11.682209030995473
+        }
+      },
+      "no_traced_gpu_activity": {
+        "pooled_gpu_seconds_fraction": 0.13072991336518483,
+        "pooled_gpu_seconds_percent": 13.072991336518484,
+        "rank_fraction": {
+          "max": 0.15502380982704567,
+          "mean": 0.1307299443052136,
+          "median": 0.13293327106409364,
+          "min": 0.10205864355059135
+        },
+        "rank_percent": {
+          "max": 15.502380982704567,
+          "mean": 13.072994430521359,
+          "median": 13.293327106409365,
+          "min": 10.205864355059136
+        }
+      }
+    }
+  },
+  "no_gan_iteration309_full5": {
+    "figure": "figures/03_nogan_full5_iteration309_nsys_timeline.png",
+    "formal_unprofiled_reference": {
+      "claim_boundary": "The 288.979 s profiled run is diagnostic; Iteration 308 three unprofiled rounds remain the formal result.",
+      "full5_median_seconds": 279.934,
+      "iteration": 308
+    },
+    "interpretation": [
+      "Across all 16 ranks, compute-kernel union is 26.24% and traced active union is 64.73% by rank arithmetic mean.",
+      "Target Generator ranks average 38.40% compute, while target Critic ranks average 22.19% compute.",
+      "Global rank 8 is an outlier with 37.14% active union and 62.86% no-traced-GPU-activity residual, consistent with a large role-allocation/scheduling bubble.",
+      "Compared with all-40, reduced streaming converts some copy-heavy occupancy into compute, but the role imbalance and residual gaps remain visible."
+    ],
+    "per_rank": [
+      {
+        "active_union_percent": 60.189520276926544,
+        "all_copy_percent": 15.329660248197307,
+        "capture_seconds": 286.571926238,
+        "compute_percent": 41.652983923437745,
+        "d2d_percent": 0.5182090885506567,
+        "d2h_percent": 9.22988910610625,
+        "global_rank": 0,
+        "h2d_percent": 5.581562053540402,
+        "nccl_percent": 4.276411688988034,
+        "no_traced_gpu_activity_percent": 39.810479723073456,
+        "node": 0
+      },
+      {
+        "active_union_percent": 60.74817899797321,
+        "all_copy_percent": 15.399787550141427,
+        "capture_seconds": 286.571926238,
+        "compute_percent": 41.72403807925581,
+        "d2d_percent": 0.5205542680273156,
+        "d2h_percent": 9.150937070933029,
+        "global_rank": 1,
+        "h2d_percent": 5.728296211181083,
+        "nccl_percent": 4.539817860314494,
+        "no_traced_gpu_activity_percent": 39.25182100202679,
+        "node": 0
+      },
+      {
+        "active_union_percent": 70.20052198480975,
+        "all_copy_percent": 26.557476227728326,
+        "capture_seconds": 286.571926238,
+        "compute_percent": 24.868088490222153,
+        "d2d_percent": 0.3250958568168579,
+        "d2h_percent": 20.559866721231973,
+        "global_rank": 2,
+        "h2d_percent": 5.672513649679494,
+        "nccl_percent": 20.345834534949148,
+        "no_traced_gpu_activity_percent": 29.79947801519024,
+        "node": 0
+      },
+      {
+        "active_union_percent": 67.38601181911353,
+        "all_copy_percent": 30.000364537313096,
+        "capture_seconds": 286.571926238,
+        "compute_percent": 24.73459878625084,
+        "d2d_percent": 0.3281762852160684,
+        "d2h_percent": 21.55402049421318,
+        "global_rank": 3,
+        "h2d_percent": 8.118167757883848,
+        "nccl_percent": 13.191724871753033,
+        "no_traced_gpu_activity_percent": 32.613988180886466,
+        "node": 0
+      },
+      {
+        "active_union_percent": 67.52607915727515,
+        "all_copy_percent": 30.126159441137908,
+        "capture_seconds": 286.571926238,
+        "compute_percent": 24.808766974946156,
+        "d2d_percent": 0.32646293350557243,
+        "d2h_percent": 21.142297975371577,
+        "global_rank": 4,
+        "h2d_percent": 8.65739853226076,
+        "nccl_percent": 14.020380994903,
+        "no_traced_gpu_activity_percent": 32.47392084272486,
+        "node": 0
+      },
+      {
+        "active_union_percent": 67.45981946621164,
+        "all_copy_percent": 29.062635005925504,
+        "capture_seconds": 286.571926238,
+        "compute_percent": 25.086938222724957,
+        "d2d_percent": 0.32063062179960333,
+        "d2h_percent": 19.947765297681087,
+        "global_rank": 5,
+        "h2d_percent": 8.794239086444815,
+        "nccl_percent": 17.034578989240455,
+        "no_traced_gpu_activity_percent": 32.54018053378835,
+        "node": 0
+      },
+      {
+        "active_union_percent": 67.44895939718515,
+        "all_copy_percent": 31.14921920051054,
+        "capture_seconds": 286.571926238,
+        "compute_percent": 24.780108040319114,
+        "d2d_percent": 0.325616226351856,
+        "d2h_percent": 21.596016768440006,
+        "global_rank": 6,
+        "h2d_percent": 9.227586205718682,
+        "nccl_percent": 12.499739108167427,
+        "no_traced_gpu_activity_percent": 32.55104060281485,
+        "node": 0
+      },
+      {
+        "active_union_percent": 68.51438437515884,
+        "all_copy_percent": 26.913746642420683,
+        "capture_seconds": 286.571926238,
+        "compute_percent": 25.0789015914672,
+        "d2d_percent": 0.3226777260212248,
+        "d2h_percent": 20.705935755800404,
+        "global_rank": 7,
+        "h2d_percent": 5.885133160599054,
+        "nccl_percent": 20.35252117109371,
+        "no_traced_gpu_activity_percent": 31.485615624841156,
+        "node": 0
+      },
+      {
+        "active_union_percent": 37.14114414030171,
+        "all_copy_percent": 1.253610503118565,
+        "capture_seconds": 288.992470228,
+        "compute_percent": 35.01208633781096,
+        "d2d_percent": 0.433631847920231,
+        "d2h_percent": 0.0002567693197731297,
+        "global_rank": 8,
+        "h2d_percent": 0.8197218858785608,
+        "nccl_percent": 0.8754472993721878,
+        "no_traced_gpu_activity_percent": 62.85885585969828,
+        "node": 1
+      },
+      {
+        "active_union_percent": 60.49747008289378,
+        "all_copy_percent": 1.2499835172695115,
+        "capture_seconds": 288.992470228,
+        "compute_percent": 35.21613832315673,
+        "d2d_percent": 0.4322155580782255,
+        "d2h_percent": 0.00023004301789437696,
+        "global_rank": 9,
+        "h2d_percent": 0.8175379161733914,
+        "nccl_percent": 24.031348242467537,
+        "no_traced_gpu_activity_percent": 39.50252991710622,
+        "node": 1
+      },
+      {
+        "active_union_percent": 68.30051745163976,
+        "all_copy_percent": 14.865962573386637,
+        "capture_seconds": 288.992470228,
+        "compute_percent": 18.244587605484096,
+        "d2d_percent": 0.23095112044733604,
+        "d2h_percent": 12.287786564467872,
+        "global_rank": 10,
+        "h2d_percent": 2.347224888471429,
+        "nccl_percent": 35.18996727276903,
+        "no_traced_gpu_activity_percent": 31.699482548360237,
+        "node": 1
+      },
+      {
+        "active_union_percent": 66.55584080313673,
+        "all_copy_percent": 16.583636499660116,
+        "capture_seconds": 288.992470228,
+        "compute_percent": 18.2647090757612,
+        "d2d_percent": 0.22844960025399103,
+        "d2h_percent": 12.781632123791281,
+        "global_rank": 11,
+        "h2d_percent": 3.573554775614844,
+        "nccl_percent": 31.707495227715416,
+        "no_traced_gpu_activity_percent": 33.44415919686327,
+        "node": 1
+      },
+      {
+        "active_union_percent": 67.37500439903677,
+        "all_copy_percent": 16.641634893828574,
+        "capture_seconds": 288.992470228,
+        "compute_percent": 20.06325246822375,
+        "d2d_percent": 0.2685946420637203,
+        "d2h_percent": 12.873481955999914,
+        "global_rank": 12,
+        "h2d_percent": 3.499558295764941,
+        "nccl_percent": 30.670117036984436,
+        "no_traced_gpu_activity_percent": 32.62499560096324,
+        "node": 1
+      },
+      {
+        "active_union_percent": 68.8493151441017,
+        "all_copy_percent": 14.006784699637514,
+        "capture_seconds": 288.992470228,
+        "compute_percent": 20.120920611227103,
+        "d2d_percent": 0.27102119109957146,
+        "d2h_percent": 11.238680368514727,
+        "global_rank": 13,
+        "h2d_percent": 2.497083140023216,
+        "nccl_percent": 34.72160983323708,
+        "no_traced_gpu_activity_percent": 31.1506848558983,
+        "node": 1
+      },
+      {
+        "active_union_percent": 68.69444785996558,
+        "all_copy_percent": 14.172040906701739,
+        "capture_seconds": 288.992470228,
+        "compute_percent": 20.0905373943458,
+        "d2d_percent": 0.26848392118585535,
+        "d2h_percent": 11.441122423333121,
+        "global_rank": 14,
+        "h2d_percent": 2.462434562182762,
+        "nccl_percent": 34.43186955891804,
+        "no_traced_gpu_activity_percent": 31.305552140034422,
+        "node": 1
+      },
+      {
+        "active_union_percent": 68.83936264361706,
+        "all_copy_percent": 13.978577172314852,
+        "capture_seconds": 288.992470228,
+        "compute_percent": 20.0961646814468,
+        "d2d_percent": 0.2680023595040226,
+        "d2h_percent": 11.511510324387952,
+        "global_rank": 15,
+        "h2d_percent": 2.199064488422876,
+        "nccl_percent": 34.764620789855414,
+        "no_traced_gpu_activity_percent": 31.160637356382935,
+        "node": 1
+      }
+    ],
+    "profiled_diagnostic_timing": {
+      "critic_phase_wall_seconds": 164.21576533210464,
+      "critic_samples_per_second": 0.20762726707754112,
+      "critic_samples_per_second_per_gpu": 0.01297670419234632,
+      "excluded_cold_preparation_seconds": 1373.5290136400145,
+      "full5_execution_seconds": 288.9793852441944,
+      "step10a_wall_seconds": 110.23505262099206,
+      "target_critic_gpu_max_allocated_gib": 36.2401385307312,
+      "target_critic_gpu_max_reserved_gib": 37.296875,
+      "target_generator_gpu_max_allocated_gib": 33.75759029388428,
+      "target_generator_gpu_max_reserved_gib": 35.07421875,
+      "transition_wall_seconds": 17.85135928215459
+    },
+    "rank_receipts": 16,
+    "reports": {
+      "node0": {
+        "capture_seconds": 286.571926238,
+        "sqlite": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/runs/rb16_f5_iter309_full5_nsys_20260813_001/launcher/node_0/full5_nsys.sqlite",
+        "sqlite_bytes": 9514364928
+      },
+      "node1": {
+        "capture_seconds": 288.992470228,
+        "sqlite": "/share/project/shuchenweng/yongyan_liu/DMD-System_rb16_f5_pipeline_20260809/artifacts/runs/rb16_f5_iter309_full5_nsys_20260813_001/launcher/node_1/full5_nsys.sqlite",
+        "sqlite_bytes": 6614921216
+      }
+    },
+    "run_id": "rb16_f5_iter309_full5_nsys_20260813_001",
+    "status": "PASS",
+    "summary_all_16_ranks": {
+      "active": {
+        "pooled_gpu_seconds_fraction": 0.6472680777508483,
+        "pooled_gpu_seconds_percent": 64.72680777508484,
+        "rank_fraction": {
+          "max": 0.7020052198480976,
+          "mean": 0.6473291112495918,
+          "median": 0.6745438943169839,
+          "min": 0.37141144140301713
+        },
+        "rank_percent": {
+          "max": 70.20052198480975,
+          "mean": 64.73291112495917,
+          "median": 67.45438943169839,
+          "min": 37.14114414030171
+        }
+      },
+      "all_copy": {
+        "pooled_gpu_seconds_fraction": 0.1855132241359155,
+        "pooled_gpu_seconds_percent": 18.551322413591553,
+        "rank_fraction": {
+          "max": 0.3114921920051054,
+          "mean": 0.1858070497620577,
+          "median": 0.15991712024900773,
+          "min": 0.012499835172695114
+        },
+        "rank_percent": {
+          "max": 31.14921920051054,
+          "mean": 18.58070497620577,
+          "median": 15.991712024900773,
+          "min": 1.2499835172695115
+        }
+      },
+      "compute": {
+        "pooled_gpu_seconds_fraction": 0.2622818373244228,
+        "pooled_gpu_seconds_percent": 26.22818373244228,
+        "rank_fraction": {
+          "max": 0.41724038079255815,
+          "mean": 0.26240176287880024,
+          "median": 0.24794437507632636,
+          "min": 0.18244587605484094
+        },
+        "rank_percent": {
+          "max": 41.72403807925581,
+          "mean": 26.240176287880026,
+          "median": 24.794437507632637,
+          "min": 18.244587605484096
+        }
+      },
+      "copy_directions": {
+        "d2d": {
+          "mean_gib_per_rank": 632.4021489443257,
+          "pooled_gpu_seconds_fraction": 0.0033664428186003315,
+          "pooled_gpu_seconds_percent": 0.33664428186003315,
+          "rank_fraction": {
+            "max": 0.005205542680273157,
+            "mean": 0.003367983279276318,
+            "median": 0.003238867914190413,
+            "min": 0.00228449600253991
+          },
+          "rank_percent": {
+            "max": 0.5205542680273156,
+            "mean": 0.3367983279276318,
+            "median": 0.3238867914190413,
+            "min": 0.22844960025399103
+          },
+          "total_tib_across_16_ranks": 9.88128357725509
+        },
+        "d2h": {
+          "mean_gib_per_rank": 114.96955714933574,
+          "pooled_gpu_seconds_fraction": 0.13482479726177612,
+          "pooled_gpu_seconds_percent": 13.482479726177614,
+          "rank_fraction": {
+            "max": 0.21596016768440005,
+            "mean": 0.13501339360163128,
+            "median": 0.12534709344129577,
+            "min": 2.3004301789437696e-06
+          },
+          "rank_percent": {
+            "max": 21.596016768440006,
+            "mean": 13.501339360163128,
+            "median": 12.534709344129578,
+            "min": 0.00023004301789437696
+          },
+          "total_tib_across_16_ranks": 1.796399330458371
+        },
+        "h2d": {
+          "mean_gib_per_rank": 86.31776359118521,
+          "pooled_gpu_seconds_fraction": 0.04732198405553903,
+          "pooled_gpu_seconds_percent": 4.732198405553903,
+          "rank_fraction": {
+            "max": 0.09227586205718681,
+            "mean": 0.0474256728811501,
+            "median": 0.04577558414577623,
+            "min": 0.008175379161733914
+          },
+          "rank_percent": {
+            "max": 9.227586205718682,
+            "mean": 4.74256728811501,
+            "median": 4.577558414577624,
+            "min": 0.8175379161733914
+          },
+          "total_tib_across_16_ranks": 1.348715056112269
+        }
+      },
+      "nccl": {
+        "pooled_gpu_seconds_fraction": 0.20822418688397729,
+        "pooled_gpu_seconds_percent": 20.82241868839773,
+        "rank_fraction": {
+          "max": 0.35189967272769035,
+          "mean": 0.20790842780045526,
+          "median": 0.20349177853021427,
+          "min": 0.008754472993721878
+        },
+        "rank_percent": {
+          "max": 35.18996727276903,
+          "mean": 20.790842780045526,
+          "median": 20.349177853021427,
+          "min": 0.8754472993721878
+        }
+      },
+      "no_traced_gpu_activity": {
+        "pooled_gpu_seconds_fraction": 0.3527319222491516,
+        "pooled_gpu_seconds_percent": 35.27319222491516,
+        "rank_fraction": {
+          "max": 0.6285885585969828,
+          "mean": 0.3526708887504082,
+          "median": 0.32545610568301603,
+          "min": 0.2979947801519024
+        },
+        "rank_percent": {
+          "max": 62.85885585969828,
+          "mean": 35.26708887504082,
+          "median": 32.545610568301605,
+          "min": 29.79947801519024
+        }
+      }
+    },
+    "summary_by_target_role": {
+      "target_critic": {
+        "active": {
+          "pooled_gpu_seconds_fraction": 0.6809588296050657,
+          "pooled_gpu_seconds_percent": 68.09588296050656,
+          "rank_fraction": {
+            "max": 0.7020052198480976,
+            "mean": 0.6809585537510431,
+            "median": 0.6791329830445745,
+            "min": 0.6655584080313673
+          },
+          "rank_percent": {
+            "max": 70.20052198480975,
+            "mean": 68.0958553751043,
+            "median": 67.91329830445744,
+            "min": 66.55584080313673
+          }
+        },
+        "all_copy": {
+          "pooled_gpu_seconds_fraction": 0.21975568417936076,
+          "pooled_gpu_seconds_percent": 21.975568417936074,
+          "rank_fraction": {
+            "max": 0.3114921920051054,
+            "mean": 0.22004853150047124,
+            "median": 0.2159955556077845,
+            "min": 0.13978577172314852
+          },
+          "rank_percent": {
+            "max": 31.14921920051054,
+            "mean": 22.004853150047126,
+            "median": 21.599555560778448,
+            "min": 13.978577172314852
+          }
+        },
+        "compute": {
+          "pooled_gpu_seconds_fraction": 0.22175082541965316,
+          "pooled_gpu_seconds_percent": 22.175082541965317,
+          "rank_fraction": {
+            "max": 0.2508693822272496,
+            "mean": 0.221864644952016,
+            "median": 0.2242775969873897,
+            "min": 0.18244587605484094
+          },
+          "rank_percent": {
+            "max": 25.086938222724957,
+            "mean": 22.186464495201598,
+            "median": 22.42775969873897,
+            "min": 18.244587605484096
+          }
+        },
+        "copy_directions": {
+          "d2d": {
+            "mean_gib_per_rank": 513.3375371483465,
+            "pooled_gpu_seconds_fraction": 0.0029020207896615475,
+            "pooled_gpu_seconds_percent": 0.29020207896615474,
+            "rank_fraction": {
+              "max": 0.0032817628521606837,
+              "mean": 0.0029034687368880664,
+              "median": 0.002958259064495874,
+              "min": 0.00228449600253991
+            },
+            "rank_percent": {
+              "max": 0.3281762852160684,
+              "mean": 0.29034687368880663,
+              "median": 0.2958259064495874,
+              "min": 0.22844960025399103
+            },
+            "total_tib_across_16_ranks": 6.015674263457186
+          },
+          "d2h": {
+            "mean_gib_per_rank": 141.92692071789256,
+            "pooled_gpu_seconds_fraction": 0.1645130511663377,
+            "pooled_gpu_seconds_percent": 16.45130511663377,
+            "rank_fraction": {
+              "max": 0.21596016768440005,
+              "mean": 0.16470009731102758,
+              "median": 0.16410623626840498,
+              "min": 0.11238680368514727
+            },
+            "rank_percent": {
+              "max": 21.596016768440006,
+              "mean": 16.47000973110276,
+              "median": 16.410623626840497,
+              "min": 11.238680368514727
+            },
+            "total_tib_across_16_ranks": 1.6632061021628033
+          },
+          "h2d": {
+            "mean_gib_per_rank": 100.16468570629756,
+            "pooled_gpu_seconds_fraction": 0.0523406122233615,
+            "pooled_gpu_seconds_percent": 5.23406122233615,
+            "rank_fraction": {
+              "max": 0.09227586205718681,
+              "mean": 0.0524449654525556,
+              "median": 0.04623034212647169,
+              "min": 0.02199064488422876
+            },
+            "rank_percent": {
+              "max": 9.227586205718682,
+              "mean": 5.24449654525556,
+              "median": 4.623034212647169,
+              "min": 2.199064488422876
+            },
+            "total_tib_across_16_ranks": 1.1738049106206745
+          }
+        },
+        "nccl": {
+          "pooled_gpu_seconds_fraction": 0.24947333735542385,
+          "pooled_gpu_seconds_percent": 24.947333735542383,
+          "rank_fraction": {
+            "max": 0.35189967272769035,
+            "mean": 0.2491087161579885,
+            "median": 0.2551131910403907,
+            "min": 0.12499739108167428
+          },
+          "rank_percent": {
+            "max": 35.18996727276903,
+            "mean": 24.91087161579885,
+            "median": 25.51131910403907,
+            "min": 12.499739108167427
+          }
+        },
+        "no_traced_gpu_activity": {
+          "pooled_gpu_seconds_fraction": 0.31904117039493435,
+          "pooled_gpu_seconds_percent": 31.904117039493432,
+          "rank_fraction": {
+            "max": 0.33444159196863266,
+            "mean": 0.3190414462489569,
+            "median": 0.32086701695542547,
+            "min": 0.2979947801519024
+          },
+          "rank_percent": {
+            "max": 33.44415919686327,
+            "mean": 31.904144624895693,
+            "median": 32.086701695542544,
+            "min": 29.79947801519024
+          }
+        }
+      },
+      "target_generator": {
+        "active": {
+          "pooled_gpu_seconds_fraction": 0.5461958221881965,
+          "pooled_gpu_seconds_percent": 54.61958221881965,
+          "rank_fraction": {
+            "max": 0.6074817899797321,
+            "mean": 0.5464407837452381,
+            "median": 0.6034349517991016,
+            "min": 0.37141144140301713
+          },
+          "rank_percent": {
+            "max": 60.74817899797321,
+            "mean": 54.64407837452381,
+            "median": 60.34349517991016,
+            "min": 37.14114414030171
+          }
+        },
+        "all_copy": {
+          "pooled_gpu_seconds_fraction": 0.08278584400557987,
+          "pooled_gpu_seconds_percent": 8.278584400557987,
+          "rank_fraction": {
+            "max": 0.15399787550141428,
+            "mean": 0.08308260454681703,
+            "median": 0.08291635375657937,
+            "min": 0.012499835172695114
+          },
+          "rank_percent": {
+            "max": 15.399787550141427,
+            "mean": 8.308260454681703,
+            "median": 8.291635375657936,
+            "min": 1.2499835172695115
+          }
+        },
+        "compute": {
+          "pooled_gpu_seconds_fraction": 0.38387487303873163,
+          "pooled_gpu_seconds_percent": 38.387487303873165,
+          "rank_fraction": {
+            "max": 0.41724038079255815,
+            "mean": 0.3840131166591531,
+            "median": 0.38434561123297234,
+            "min": 0.3501208633781096
+          },
+          "rank_percent": {
+            "max": 41.72403807925581,
+            "mean": 38.40131166591531,
+            "median": 38.434561123297236,
+            "min": 35.01208633781096
+          }
+        },
+        "copy_directions": {
+          "d2d": {
+            "mean_gib_per_rank": 989.5959843322635,
+            "pooled_gpu_seconds_fraction": 0.004759708905416685,
+            "pooled_gpu_seconds_percent": 0.4759708905416685,
+            "rank_fraction": {
+              "max": 0.005205542680273157,
+              "mean": 0.004761526906441072,
+              "median": 0.004759204682354438,
+              "min": 0.004322155580782255
+            },
+            "rank_percent": {
+              "max": 0.5205542680273156,
+              "mean": 0.4761526906441072,
+              "median": 0.4759204682354438,
+              "min": 0.4322155580782255
+            },
+            "total_tib_across_16_ranks": 3.865609313797904
+          },
+          "d2h": {
+            "mean_gib_per_rank": 34.097466443665326,
+            "pooled_gpu_seconds_fraction": 0.045760035548091514,
+            "pooled_gpu_seconds_percent": 4.5760035548091516,
+            "rank_fraction": {
+              "max": 0.0922988910610625,
+              "mean": 0.04595328247344237,
+              "median": 0.04575596920126401,
+              "min": 2.3004301789437696e-06
+            },
+            "rank_percent": {
+              "max": 9.22988910610625,
+              "mean": 4.595328247344237,
+              "median": 4.575596920126401,
+              "min": 0.00023004301789437696
+            },
+            "total_tib_across_16_ranks": 0.13319322829556768
+          },
+          "h2d": {
+            "mean_gib_per_rank": 44.77699724584818,
+            "pooled_gpu_seconds_fraction": 0.03226609955207166,
+            "pooled_gpu_seconds_percent": 3.226609955207166,
+            "rank_fraction": {
+              "max": 0.057282962111810824,
+              "mean": 0.03236779516693359,
+              "median": 0.032006419697094814,
+              "min": 0.008175379161733914
+            },
+            "rank_percent": {
+              "max": 5.728296211181083,
+              "mean": 3.236779516693359,
+              "median": 3.2006419697094812,
+              "min": 0.8175379161733914
+            },
+            "total_tib_across_16_ranks": 0.17491014549159445
+          }
+        },
+        "nccl": {
+          "pooled_gpu_seconds_fraction": 0.08447673546963776,
+          "pooled_gpu_seconds_percent": 8.447673546963777,
+          "rank_fraction": {
+            "max": 0.24031348242467537,
+            "mean": 0.08430756272785563,
+            "median": 0.04408114774651264,
+            "min": 0.008754472993721878
+          },
+          "rank_percent": {
+            "max": 24.031348242467537,
+            "mean": 8.430756272785562,
+            "median": 4.4081147746512634,
+            "min": 0.8754472993721878
+          }
+        },
+        "no_traced_gpu_activity": {
+          "pooled_gpu_seconds_fraction": 0.45380417781180343,
+          "pooled_gpu_seconds_percent": 45.38041778118034,
+          "rank_fraction": {
+            "max": 0.6285885585969828,
+            "mean": 0.45355921625476187,
+            "median": 0.3965650482008984,
+            "min": 0.3925182100202679
+          },
+          "rank_percent": {
+            "max": 62.85885585969828,
+            "mean": 45.355921625476185,
+            "median": 39.656504820089836,
+            "min": 39.25182100202679
+          }
+        }
+      }
+    },
+    "target_critic_ranks": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "target_generator_ranks": [
+      0,
+      1,
+      8,
+      9
+    ],
+    "trace_sha256": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3"
+  },
+  "schema_version": "dmd_system.issue_evidence.no_gan_cuda_utilization.v1",
+  "status": "PASS_EXISTING_CAPTURE_READ_ONLY_REANALYSIS"
+}
