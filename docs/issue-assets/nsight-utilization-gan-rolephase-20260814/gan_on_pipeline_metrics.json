@@ -1,0 +1,268 @@
+{
+  "schema_version": "dmd_system.issue_evidence.nsight_utilization_gan_rolephase.v1",
+  "created_on": "2026-08-14",
+  "claim_boundary": {
+    "all_timelines_are_diagnostic": true,
+    "semantic_NVTX_or_PhaseTracer_coverage_is_not_GPU_compute_utilization": true,
+    "overlapping_compute_NCCL_H2D_D2H_unions_are_not_additive": true,
+    "native_performance_claim_requires_matched_unprofiled_runs": true
+  },
+  "figures": [
+    {
+      "file": "figures/01_nogan_all40_wave8_nsys_timeline.png",
+      "title": "No-GAN all-40, swap-wave=8",
+      "run_id": "task7_full5_routea_exact_b0_gs_fullstream_wave8_profile_20260806_001",
+      "evidence_coverage": "Nsight/CUPTI plus PhaseTracer; semantic active-backbone spans partly inferred",
+      "bytes": 963935,
+      "dimensions_px": {
+        "width": 4320,
+        "height": 2880
+      },
+      "sha256": "04f032670ac0ae838bce007a785545b29b0e117c0d7795cae4b569124dd44b0e"
+    },
+    {
+      "file": "figures/02_nogan_routea_score4_404_diagnostic_timeline.png",
+      "title": "No-GAN Route-A Score4, 404.04 s",
+      "run_id": "ra16_f5_glp_score4_20260809_001",
+      "evidence_coverage": "Offline PhaseTracer/block-streamer diagnostic; not Nsight/CUPTI",
+      "bytes": 708002,
+      "dimensions_px": {
+        "width": 4320,
+        "height": 2880
+      },
+      "sha256": "253c0dcaca674ecca3f3902115edfea27294242f246f00c7820917229cc05f54"
+    },
+    {
+      "file": "figures/03_nogan_full5_iteration309_nsys_timeline.png",
+      "title": "No-GAN Full5 Iteration 309",
+      "run_id": "iteration309",
+      "evidence_coverage": "Measured NVTX semantics plus exact CUPTI H2D/D2H",
+      "bytes": 661722,
+      "dimensions_px": {
+        "width": 3840,
+        "height": 2840
+      },
+      "sha256": "288e40fb7cc67af286cb6eeb58483850400a2961ff062599654238e8e7ab047b"
+    },
+    {
+      "file": "figures/04_gan_on_sequential_fine_nsys_timeline.png",
+      "title": "GAN-on sequential baseline, fine-grained",
+      "run_id": "gan_baseline_fine_nvtx_20260813_001",
+      "evidence_coverage": "Diagnostic Nsight; exact fine physical ranges and copy activity",
+      "bytes": 526096,
+      "dimensions_px": {
+        "width": 4096,
+        "height": 3021
+      },
+      "sha256": "d70bfcb02989277d96fc66bdfbc63fc5fde5499d86eaa19f912b4afa0b34969f"
+    },
+    {
+      "file": "figures/05_gan_on_rolephase_reference_timeline.png",
+      "title": "GAN-on Role-Phase Full5",
+      "run_id": "gan-rp16-tail10-a128-selective-nsys-20260813-01",
+      "evidence_coverage": "16-rank receipts; exact CUDA/NVTX only on representative ranks 2 and 9; some role splits reconstructed",
+      "bytes": 578395,
+      "dimensions_px": {
+        "width": 4332,
+        "height": 2763
+      },
+      "sha256": "1afdc5d895e821b1b2db9ecf52443e210165b86feb10a3a944d2b0539379e242"
+    }
+  ],
+  "reference_timings": {
+    "no_gan_all40": {
+      "profiled_phase_window_seconds": 737.430331648,
+      "matched_unprofiled_native_full5_seconds": 688.7257
+    },
+    "no_gan_routea_score4": {
+      "diagnostic_window_seconds": 404.0415346622467,
+      "formal_paired_timing": "NOT_RUN"
+    },
+    "no_gan_iteration309": {
+      "profiled_step10a_seconds": 110.24,
+      "profiled_transition_seconds": 17.85,
+      "profiled_critic_phase_seconds": 164.22,
+      "profiled_full5_seconds": 288.98,
+      "matched_unprofiled_full5_median_seconds": 279.934
+    }
+  },
+  "gan_on_sequential_baseline": {
+    "run_id": "gan_baseline_fine_nvtx_20260813_001",
+    "status": "PASS",
+    "timing_status": "MEASURED_DIAGNOSTIC",
+    "coarse_medians_seconds": {
+      "generator/critic_rollout": 41.799791039,
+      "generator/train_backward": 32.7171396655,
+      "generator/train_rollout": 35.653764248,
+      "score/distribution_matching": 44.4234670085
+    },
+    "physical_medians_seconds": {
+      "critic/denoise_backward": 10.7787200695,
+      "critic/denoise_forward": 9.7064160075,
+      "critic/dmd_fake_score_cond": 9.399703710499999,
+      "critic/gan_d_r1_batched_forward": 8.895516627,
+      "critic/gan_d_r1_input_prepare": 0.005503868,
+      "critic/gan_d_r1_joint_backward": 18.065382145999997,
+      "critic/optimizer_step": 1.4560116765000002,
+      "gan_g/cached_grad_backward": 0.0002793645,
+      "gan_g/cached_grad_forward": 15.4916099625,
+      "runtime/critic_generator_prepare": 0.8868877865,
+      "runtime/critic_score_prepare": 8.395342813500001
+    },
+    "per_node_copy": [
+      {
+        "node": 0,
+        "event_span_seconds": 695.120525986,
+        "h2d_bytes": 13697912264288,
+        "d2h_bytes": 789690800286
+      },
+      {
+        "node": 1,
+        "event_span_seconds": 695.312506585,
+        "h2d_bytes": 13697911772592,
+        "d2h_bytes": 788892049086
+      }
+    ]
+  },
+  "gan_on_rolephase_full5": {
+    "run_id": "gan-rp16-tail10-a128-selective-nsys-20260813-01",
+    "status": "PASS",
+    "diagnostic_profile": true,
+    "claimable_correctness": false,
+    "claimable_timing": false,
+    "workload_rank_count": 16,
+    "exact_range_receipt_count": 16,
+    "representative_cuda_nvtx_ranks": [
+      2,
+      9
+    ],
+    "reported_full5_global_seconds_including_receipt_tails": 819.72306373,
+    "phase_max_seconds_not_additive_across_ranks": {
+      "handoff_to_a": 84.56129947886802,
+      "handoff_to_b": 90.17064252402633,
+      "phase_a": 106.41423152200878,
+      "phase_b": 298.87797099002637
+    },
+    "representative_rank_activity": {
+      "2": {
+        "semantic_span_seconds": 573.201717033,
+        "profiler_receipt_tail_seconds": 244.90945767800008,
+        "phase_ranges_seconds": {
+          "handoff_a_to_b": 90.170024362,
+          "handoff_b_to_a": 84.308731547,
+          "phase_a": 99.740894049,
+          "phase_b": 298.85732507
+        },
+        "activity_interval_unions": {
+          "compute": {
+            "union_seconds": 119.807292826,
+            "semantic_bin_wall_seconds": 573.5,
+            "union_fraction_of_binned_span": 0.20890548008020923,
+            "union_percent_of_binned_span": 20.89054800802092
+          },
+          "nccl": {
+            "union_seconds": 36.937390462,
+            "semantic_bin_wall_seconds": 573.5,
+            "union_fraction_of_binned_span": 0.06440695808544028,
+            "union_percent_of_binned_span": 6.440695808544028
+          },
+          "h2d": {
+            "union_seconds": 8.17213019,
+            "semantic_bin_wall_seconds": 573.5,
+            "union_fraction_of_binned_span": 0.0142495731299041,
+            "union_percent_of_binned_span": 1.4249573129904098,
+            "bytes": 82673897968
+          },
+          "d2h": {
+            "union_seconds": 21.263916015,
+            "semantic_bin_wall_seconds": 573.5,
+            "union_fraction_of_binned_span": 0.0370774472798605,
+            "union_percent_of_binned_span": 3.7077447279860505,
+            "bytes": 81820476305
+          }
+        },
+        "producer_commit_wait_ranges": {
+          "count": 10,
+          "sum_seconds": 202.883002674,
+          "median_seconds": 16.64080848,
+          "max_seconds": 55.411407952
+        }
+      },
+      "9": {
+        "semantic_span_seconds": 576.14216641,
+        "profiler_receipt_tail_seconds": 140.41134726400014,
+        "phase_ranges_seconds": {
+          "handoff_a_to_b": 86.298380877,
+          "handoff_b_to_a": 84.556345601,
+          "phase_a": 53.831661159,
+          "phase_b": 298.870919398
+        },
+        "activity_interval_unions": {
+          "compute": {
+            "union_seconds": 111.100246025,
+            "semantic_bin_wall_seconds": 576.5,
+            "union_fraction_of_binned_span": 0.19271508417172595,
+            "union_percent_of_binned_span": 19.271508417172594
+          },
+          "nccl": {
+            "union_seconds": 245.354472991,
+            "semantic_bin_wall_seconds": 576.5,
+            "union_fraction_of_binned_span": 0.425593188189072,
+            "union_percent_of_binned_span": 42.5593188189072
+          },
+          "h2d": {
+            "union_seconds": 28.856452604,
+            "semantic_bin_wall_seconds": 576.5,
+            "union_fraction_of_binned_span": 0.050054557856027755,
+            "union_percent_of_binned_span": 5.005455785602775,
+            "bytes": 285644830352
+          },
+          "d2h": {
+            "union_seconds": 78.433111378,
+            "semantic_bin_wall_seconds": 576.5,
+            "union_fraction_of_binned_span": 0.13605049675281874,
+            "union_percent_of_binned_span": 13.605049675281874,
+            "bytes": 262130503143
+          }
+        },
+        "transport_receive_wait_ranges": {
+          "count": 5,
+          "sum_seconds": 22.139524395,
+          "median_seconds": 0.001631009,
+          "max_seconds": 22.133052537
+        }
+      }
+    },
+    "phase_b_streamed_blocks": 10,
+    "interpretation": [
+      "The earlier rough ~25% compute statement should be narrowed: exact compute-kernel interval union is 20.89% on rank 2 and 19.27% on rank 9 over their binned semantic spans.",
+      "Dense semantic bars include waits, synchronization, NCCL, copies, transitions, and unclassified control time; they do not imply dense compute.",
+      "A-to-B plus B-to-A transitions consume about 29.7-30.4% of the representative semantic spans.",
+      "Producer rank 2 records 202.88 s summed critic-commit wait ranges inside the 298.86 s Phase-B envelope; this is a scheduling symptom, not a CUDA-idle proof by itself."
+    ]
+  },
+  "phase_b_zero3_one_update_canary": {
+    "iteration": 299,
+    "run_id": "gan-rp16-phaseb-zero3-oneupdate-20260813-01",
+    "source_git_head": "31a76583c149e1a133c4383be7219a0bb4a2ac98",
+    "result_commit": "102ebd00d519efb7d00b2cad8f7c105c173a1e85",
+    "status": "FAIL_PRE_UPDATE_CONTRACT_ASSERTION",
+    "attempt_count": 1,
+    "backend": "DP12_MB1_GAS1_B12_ZERO3_CPU_OPTIMIZER",
+    "activation_offload_mib": 32,
+    "streamed_blocks": 0,
+    "critic_ranks_reaching_failed_assertion": 12,
+    "cuda_oom_count": 0,
+    "critic_commits": 0,
+    "root_cause_category": "FAIL_CLOSED_ASSERTION_USED_A_ZERO12_ONLY_ATTRIBUTE_FOR_ZERO3",
+    "interpretation": "This run does not show a CUDA-capacity failure, collective-order failure, or model-semantic failure. It also does not establish one-update ZeRO-3 capacity or correctness because checkpoint restore and the official C1000 update were never executed.",
+    "claim_boundary": {
+      "one_update_capacity_and_correctness": "UNRESOLVED",
+      "full5": "NOT_RUN",
+      "reverse_handoff": "NOT_RUN",
+      "timing": "NOT_RUN",
+      "nsight": "NOT_RUN",
+      "performance_comparison": "NOT_RUN"
+    }
+  }
+}
