@@ -142,13 +142,15 @@ if [[ "${MODE}" == profile ]]; then
   # pattern.  The previous per-rank wrapper started eight concurrent Nsight
   # agents per node and could silently emit a metadata-only report (rank10).
   "${NSYS_BIN:-$(command -v nsys)}" profile \
-    --trace=cuda,nvtx,osrt \
+    --trace=cuda,nvtx \
     --capture-range=cudaProfilerApi \
     --capture-range-end=stop \
     --trace-fork-before-exec=true \
     --wait=all \
     --sample=none \
     --cpuctxsw=none \
+    --cuda-memory-usage=false \
+    --cuda-flush-interval=1000 \
     --force-overwrite=true \
     --output="${REPORT_BASE}" \
     "${TORCHRUN}" --no-python --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}" \
