@@ -1,8 +1,9 @@
 """Performance-control primitives for the GAN Role-Phase runtime.
 
 The module does not change Helios model math. It provides transition subphase
-receipts, a persistent-target policy, service-rate accounting, bounded layout
-estimates, and a DeepSpeed Stage-3-safe validation guard.
+receipts, a persistent-target policy, host-memory admission, service-rate
+accounting, bounded layout estimates, and a DeepSpeed Stage-3-safe validation
+guard.
 """
 from __future__ import annotations
 
@@ -15,13 +16,17 @@ import statistics
 import threading
 import time
 from pathlib import Path
-from typing import Any, Iterator, Mapping, Sequence
+from typing import Any, Iterable, Iterator, Mapping, Sequence
+
+
+CGROUP_MEMORY_ROOT = Path("/sys/fs/cgroup")
 
 
 class TransitionSubphase(str, enum.Enum):
     SOURCE_EXPORT = "source_export"
     SOURCE_RELEASE = "source_release"
     PROCESS_GROUP_LIFECYCLE = "process_group_lifecycle"
+    HOST_ADMISSION = "host_memory_admission"
     TARGET_PREPARE = "target_prepare"
     TARGET_MATERIALIZE = "target_materialize"
     OPTIMIZER_RESTORE = "optimizer_restore"
@@ -59,6 +64,154 @@ class PersistentTargetPolicy:
             raise ValueError("stable phases may not repeatedly stream frozen backbones")
         if not (self.forward_handoff_timed and self.reverse_handoff_timed):
             raise ValueError("both handoff directions belong to steady-state timing")
+
+
+@dataclasses.dataclass(frozen=True)
+class CgroupMemorySnapshot:
+    current_bytes: int
+    max_bytes: int | None
+    oom: int
+    oom_kill: int
+
+    def __post_init__(self) -> None:
+        if self.current_bytes < 0:
+            raise ValueError("cgroup memory.current must be non-negative")
+        if self.max_bytes is not None and self.max_bytes <= 0:
+            raise ValueError("finite cgroup memory.max must be positive")
+        if self.oom < 0 or self.oom_kill < 0:
+            raise ValueError("cgroup OOM counters must be non-negative")
+
+    @property
+    def headroom_bytes(self) -> int | None:
+        if self.max_bytes is None:
+            return None
+        return max(0, self.max_bytes - self.current_bytes)
+
+    @property
+    def used_fraction(self) -> float | None:
+        if self.max_bytes is None:
+            return None
+        return float(self.current_bytes) / float(self.max_bytes)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "current_bytes": self.current_bytes,
+            "max_bytes": self.max_bytes,
+            "headroom_bytes": self.headroom_bytes,
+            "used_fraction": self.used_fraction,
+            "oom": self.oom,
+            "oom_kill": self.oom_kill,
+        }
+
+
+def _read_cgroup_counter_file(path: Path) -> dict[str, int]:
+    result: dict[str, int] = {}
+    for line in path.read_text().splitlines():
+        fields = line.split()
+        if len(fields) != 2:
+            continue
+        key, raw = fields
+        try:
+            result[key] = int(raw)
+        except ValueError:
+            continue
+    return result
+
+
+def read_cgroup_memory_snapshot(
+    root: str | Path = CGROUP_MEMORY_ROOT,
+) -> CgroupMemorySnapshot:
+    """Read the cgroup-v2 memory state used by the cluster OOM killer."""
+
+    root = Path(root)
+    current = int((root / "memory.current").read_text().strip())
+    raw_max = (root / "memory.max").read_text().strip()
+    maximum = None if raw_max == "max" else int(raw_max)
+    events = _read_cgroup_counter_file(root / "memory.events")
+    return CgroupMemorySnapshot(
+        current_bytes=current,
+        max_bytes=maximum,
+        oom=int(events.get("oom", 0)),
+        oom_kill=int(events.get("oom_kill", 0)),
+    )
+
+
+def build_preconstruction_waves(
+    admitted_local_ranks: Iterable[int],
+    *,
+    local_world_size: int = 8,
+    max_concurrent: int = 1,
+) -> tuple[tuple[int, ...], ...]:
+    """Return a deterministic rank-ordered cold-preparation admission schedule."""
+
+    if local_world_size <= 0:
+        raise ValueError("local_world_size must be positive")
+    if not 1 <= max_concurrent <= local_world_size:
+        raise ValueError("max_concurrent must be in [1, local_world_size]")
+    ranks = tuple(sorted({int(rank) for rank in admitted_local_ranks}))
+    if any(rank < 0 or rank >= local_world_size for rank in ranks):
+        raise ValueError("preconstruction rank is outside the local world")
+    return tuple(
+        ranks[index : index + max_concurrent]
+        for index in range(0, len(ranks), max_concurrent)
+    )
+
+
+def assert_preconstruction_admitted(
+    snapshot: CgroupMemorySnapshot,
+    *,
+    max_used_fraction: float = 0.90,
+    min_headroom_bytes: int = 64 * 2**30,
+) -> dict[str, Any]:
+    """Fail before the next 14B target can trigger a real cgroup OOM kill.
+
+    A finite cgroup must keep both a fractional reserve and an absolute reserve.
+    The default 10% reserve is intentionally conservative for the 760-GiB BAAI
+    cgroup because one target build plus pageable->pinned replacement can have a
+    tens-of-GiB transient even when the final pinned representation fits.
+    """
+
+    if not 0.0 < float(max_used_fraction) < 1.0:
+        raise ValueError("max_used_fraction must be in (0, 1)")
+    if int(min_headroom_bytes) < 0:
+        raise ValueError("min_headroom_bytes must be non-negative")
+    receipt = {
+        "snapshot": snapshot.as_dict(),
+        "max_used_fraction": float(max_used_fraction),
+        "min_headroom_bytes": int(min_headroom_bytes),
+        "finite_limit": snapshot.max_bytes is not None,
+        "admitted": True,
+    }
+    if snapshot.max_bytes is None:
+        return receipt
+    fractional_reserve = int(
+        snapshot.max_bytes * (1.0 - float(max_used_fraction))
+    )
+    required_headroom = max(int(min_headroom_bytes), fractional_reserve)
+    receipt["required_headroom_bytes"] = required_headroom
+    headroom = snapshot.headroom_bytes
+    if headroom is None or headroom < required_headroom:
+        receipt["admitted"] = False
+        raise RuntimeError(
+            "Role-Phase target preconstruction rejected by host admission: "
+            f"current={snapshot.current_bytes} max={snapshot.max_bytes} "
+            f"headroom={headroom} required={required_headroom}"
+        )
+    return receipt
+
+
+def assert_no_new_cgroup_oom(
+    before: CgroupMemorySnapshot,
+    after: CgroupMemorySnapshot,
+) -> None:
+    """Reject a cold-preparation turn if the kernel observed a new OOM event."""
+
+    if after.oom > before.oom or after.oom_kill > before.oom_kill:
+        raise RuntimeError(
+            "cgroup OOM counters increased during Role-Phase target preparation: "
+            f"oom {before.oom}->{after.oom}, "
+            f"oom_kill {before.oom_kill}->{after.oom_kill}"
+        )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -338,6 +491,8 @@ def validate_zero_engine(engine: Any, *, expected_stage: int) -> dict[str, Any]:
 
 
 __all__ = [
+    "CGROUP_MEMORY_ROOT",
+    "CgroupMemorySnapshot",
     "DEFAULT_LAYOUT_CONTRACTS",
     "JsonlStageRecorder",
     "LayoutContract",
@@ -345,8 +500,12 @@ __all__ = [
     "PersistentTargetPolicy",
     "StageRecord",
     "TransitionSubphase",
+    "assert_no_new_cgroup_oom",
+    "assert_preconstruction_admitted",
+    "build_preconstruction_waves",
     "detect_zero_stage",
     "estimate_layouts",
+    "read_cgroup_memory_snapshot",
     "summarize_service_records",
     "validate_zero_engine",
 ]
