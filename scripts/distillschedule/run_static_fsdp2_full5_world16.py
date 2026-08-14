@@ -79,6 +79,18 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--master-port", type=int, default=29940)
     value.add_argument("--correctness-summary", type=Path)
     value.add_argument("--correctness-sha256")
+    value.add_argument(
+        "--profile-diagnostics",
+        choices=("on", "off"),
+        default="on",
+        help="profile-only scalar/SHA diagnostics; input staging counters remain enabled",
+    )
+    value.add_argument(
+        "--ema-device",
+        choices=("cpu", "cuda"),
+        default="cpu",
+        help="local FSDP2 EMA shadow device; default preserves the CPU baseline",
+    )
     value.add_argument("--local-evidence-root", type=Path, default=Path("/home/lyy/Helios/research_artifacts/DMD-System/fsdp2_static"))
     value.add_argument("--timeout-seconds", type=int, default=30000)
     value.add_argument("--dry-run", action="store_true")
@@ -92,7 +104,11 @@ def _pid_file(args: argparse.Namespace, node: int) -> Path:
 def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
     launcher = args.remote_root / "scripts/distillschedule/launch_static_fsdp2_full5_world16_node.sh"
     wrapper = args.remote_root / "scripts/distillschedule/remote_stage_wrapper.sh"
-    exports = [f"DMD_SYSTEM_ROOT={shlex.quote(str(args.remote_root))}"]
+    exports = [
+        f"DMD_SYSTEM_ROOT={shlex.quote(str(args.remote_root))}",
+        f"DISTILLSCHEDULE_PROFILE_DIAGNOSTICS={shlex.quote(args.profile_diagnostics)}",
+        f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
+    ]
     if args.mode == "timing":
         if args.correctness_summary is None or not args.correctness_sha256:
             raise ValueError("timing requires pinned correctness summary and SHA256")
