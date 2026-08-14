@@ -211,8 +211,11 @@ def _worker_pids(connection: sqlite3.Connection, global_pids: set[int]) -> list[
     ).fetchall()
     result = []
     for (pid,) in rows:
-        if int(pid) in global_pids:
-            result.append(int(pid))
+        # Synthetic unit fixtures and older exports may encode activity PIDs
+        # as ``pid << 24``; current Nsight exports use the plain host PID.
+        pid = int(pid)
+        if pid in global_pids or (pid << 24) in global_pids:
+            result.append(pid)
     return result
 
 

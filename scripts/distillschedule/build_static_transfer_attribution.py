@@ -46,7 +46,7 @@ def _bucket_for(direction: str, key: str) -> str:
     token = f"{direction}/{key}"
     if direction == "H2D" and key in {"generator_entry", "critic_entry/step10", "critic_entry/step11", "critic_entry/step12", "critic_entry/step13", "critic_entry/step14"}:
         return "INPUT"
-    if direction == "D2H" and key == "ema_shadow":
+    if key == "ema_shadow":
         return "EMA"
     for bucket, prefixes in APPLICATION_KEYS.items():
         if token.startswith(prefixes):
@@ -61,12 +61,12 @@ def _diagnostic_rows(run_root: Path) -> list[dict[str, Any]]:
         rank = int(value["rank"])
         buckets: dict[tuple[str, str], dict[str, int]] = {
             (direction, name): {"bytes": 0, "events": 0}
-            for direction in ("H2D", "D2H", "D2D", "OTHER")
+            for direction in ("H2D", "D2H", "D2D", "GPU", "OTHER")
             for name in (*APPLICATION_KEYS, "UNATTRIBUTED")
         }
         for key, counter in value.get("counters", {}).items():
             direction, logical_key = key.split("/", 1)
-            direction = direction if direction in {"H2D", "D2H", "D2D"} else "OTHER"
+            direction = direction if direction in {"H2D", "D2H", "D2D", "GPU"} else "OTHER"
             bucket = _bucket_for(direction, logical_key)
             buckets[(direction, bucket)]["bytes"] += int(counter.get("bytes", 0))
             buckets[(direction, bucket)]["events"] += int(counter.get("events", 0))
