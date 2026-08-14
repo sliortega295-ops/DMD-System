@@ -100,3 +100,17 @@ def test_gpu_seconds_aggregate_uses_summed_rank_wall(tmp_path) -> None:
     assert aggregate["capture"]["gpu_wall_seconds"] == pytest.approx(200 / 1e9)
     assert aggregate["capture"]["categories"][COMPUTE]["pooled_percent"] == pytest.approx(40.0)
     assert aggregate["capture"]["denominator"] == "sum(rank activity union) / sum(rank phase wall)"
+
+
+def test_nvtx_null_metadata_row_is_ignored(tmp_path) -> None:
+    path = tmp_path / "rank.sqlite"
+    _sqlite(path)
+    with sqlite3.connect(path) as connection:
+        connection.execute("INSERT INTO NVTX_EVENTS VALUES (?, ?, ?)", (None, None, None))
+    report = analyze_sqlite(
+        path,
+        rank=0,
+        phase_patterns={"phase_a": "phase_a"},
+        capture_window=Interval(0, 100),
+    )
+    assert report["phases"]["phase_a"]["wall_ns"] == 50

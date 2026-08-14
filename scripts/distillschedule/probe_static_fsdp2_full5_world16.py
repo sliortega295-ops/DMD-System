@@ -34,6 +34,7 @@ from distillschedule.runtime.fsdp2_static import (
     configure_fsdp2_checkpointing,
     contract_for_variant,
 )
+from distillschedule.runtime.nsys_range import StaticFSDP2Full5NsightRange
 from runtime.critic_pool_checkpoint import (
     LogicalCheckpointPackage,
     load_logical_master_into_trainables,
@@ -498,6 +499,11 @@ def main() -> int:
     }
     try:
         contract = contract_for_variant(args.variant)
+        nsys_range = StaticFSDP2Full5NsightRange.from_env(variant=args.variant)
+        if args.profile_mode and not nsys_range.enabled:
+            raise ValueError(
+                "static profile mode requires DISTILLSCHEDULE_STATIC_FSDP2_NSYS_EXACT_RANGE"
+            )
         logical = (
             LogicalCheckpointPackage.load_systems_only_gan(args.logical_package)
             if args.variant == "gan"
@@ -541,7 +547,16 @@ def main() -> int:
         torch.cuda.synchronize(device)
         started_perf = time.perf_counter()
         result["timing_start_unix_ns"] = time.time_ns()
-        _nvtx_push(args)
+        if args.profile_mode:
+            # The outer node-level Nsight session is controlled by local rank
+            # zero.  Barriers make the API range a common world16 boundary;
+            # they are profile-only and never enter formal timing.
+            dist.barrier()
+            nsys_range.before_model_compute(contract.logical_steps[0])
+            _nvtx_push(args)
+            dist.barrier()
+        else:
+            _nvtx_push(args)
         generator_record = None
         critic_records: list[dict[str, Any]] = []
         ema_records: list[dict[str, Any]] = []
@@ -601,7 +616,15 @@ def main() -> int:
                         "optimization_step": int(ema.optimization_step),
                     }
                 )
-        _nvtx_pop(args)
+        if args.profile_mode:
+            torch.cuda.synchronize(device)
+            dist.barrier()
+            _nvtx_pop(args)
+            nsys_range.after_critic_commit(contract.logical_steps[-1])
+            dist.barrier()
+            nsys_range.assert_complete()
+        else:
+            _nvtx_pop(args)
         torch.cuda.synchronize(device)
         result["timing_stop_unix_ns"] = time.time_ns()
         result["full5_seconds"] = time.perf_counter() - started_perf

@@ -47,6 +47,7 @@ RUN_ROOT="${DISTILLSCHEDULE_RUN_ROOT:-${ROOT}/artifacts/runs/${RUN_ID}}"
 EXECUTION="${RUN_ROOT}/execution"
 NODE_LOG="${RUN_ROOT}/launcher/node_${NODE_RANK}"
 PROFILE_DIR="${RUN_ROOT}/nsight"
+PROFILE_NODE_DIR="${PROFILE_DIR}/node_${NODE_RANK}"
 LOCK_FILE="${DISTILLSCHEDULE_NODE_LOCK:-/tmp/distillschedule_gpu_node.lock}"
 CORRECTNESS_SUMMARY="${DISTILLSCHEDULE_FSDP2_CORRECTNESS_SUMMARY:-}"
 CORRECTNESS_SHA256="${DISTILLSCHEDULE_FSDP2_CORRECTNESS_SHA256:-}"
@@ -131,19 +132,76 @@ WORKER=(
 
 if [[ "${MODE}" == profile ]]; then
   command -v nsys >/dev/null || { echo nsys_missing >&2; exit 3; }
-  mkdir -p "${PROFILE_DIR}"
-  "${TORCHRUN}" --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}" \
-    --master-addr="${MASTER_ADDR}" --master-port="${MASTER_PORT}" \
-    "${ROOT}/scripts/distillschedule/nsys_rank_exec.py" \
-    --profile-dir "${PROFILE_DIR}" \
-    "${PYTHON}" "${WORKER[@]}" >"${NODE_LOG}/console.log" 2>&1
-  for local_rank in $(seq 0 7); do
-    global_rank=$((NODE_RANK * 8 + local_rank))
-    report="${PROFILE_DIR}/rank_$(printf '%02d' "${global_rank}").nsys-rep"
-    sqlite="${PROFILE_DIR}/rank_$(printf '%02d' "${global_rank}").sqlite"
-    [[ -f "${report}" ]] || { echo missing_nsys_report="${report}" >&2; exit 87; }
-    nsys export --type sqlite --force-overwrite true --output "${sqlite}" "${report}" >/dev/null
+  mkdir -p "${PROFILE_NODE_DIR}" "${PROFILE_DIR}/range_receipts"
+  REPORT_BASE="${PROFILE_NODE_DIR}/static_fsdp2_full5_node${NODE_RANK}"
+  RECEIPT_DIR="${PROFILE_DIR}/range_receipts"
+  [[ ! -e "${REPORT_BASE}.nsys-rep" ]] || { echo refusing_to_overwrite="${REPORT_BASE}.nsys-rep" >&2; exit 82; }
+  export DISTILLSCHEDULE_STATIC_FSDP2_NSYS_EXACT_RANGE=1
+  export DISTILLSCHEDULE_STATIC_FSDP2_NSYS_RECEIPT_DIR="${RECEIPT_DIR}"
+  # One outer session per node follows the already validated GAN launcher
+  # pattern.  The previous per-rank wrapper started eight concurrent Nsight
+  # agents per node and could silently emit a metadata-only report (rank10).
+  "${NSYS_BIN:-$(command -v nsys)}" profile \
+    --trace=cuda,nvtx,osrt \
+    --capture-range=cudaProfilerApi \
+    --capture-range-end=stop \
+    --trace-fork-before-exec=true \
+    --wait=all \
+    --sample=none \
+    --cpuctxsw=none \
+    --force-overwrite=true \
+    --output="${REPORT_BASE}" \
+    "${TORCHRUN}" --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}" \
+      --master-addr="${MASTER_ADDR}" --master-port="${MASTER_PORT}" \
+      "${PYTHON}" "${WORKER[@]}" >"${NODE_LOG}/console.log" 2>&1
+  [[ -s "${REPORT_BASE}.nsys-rep" ]] || { echo missing_nsys_report="${REPORT_BASE}.nsys-rep" >&2; exit 87; }
+  SQLITE="${REPORT_BASE}.sqlite"
+  nsys export --type sqlite --force-overwrite true --output "${SQLITE}" "${REPORT_BASE}.nsys-rep" >/dev/null
+  [[ -s "${SQLITE}" ]] || { echo missing_nsys_sqlite="${SQLITE}" >&2; exit 88; }
+  nsys stats --report nvtx_sum,cuda_gpu_kern_sum,cuda_api_sum --format csv \
+    "${REPORT_BASE}.nsys-rep" >"${PROFILE_NODE_DIR}/nsys_stats_validation.log" 2>&1
+  if grep -Eq "does not contain (NV Tools Extension|CUDA kernel|CUDA API)" "${PROFILE_NODE_DIR}/nsys_stats_validation.log"; then
+    echo nsys_empty_capture >&2
+    exit 89
+  fi
+  for _ in $(seq 1 300); do
+    count="$(find "${RECEIPT_DIR}" -maxdepth 1 -type f -name 'rank_*.json' | wc -l)"
+    [[ "${count}" == 16 ]] && break
+    sleep 1
   done
+  count="$(find "${RECEIPT_DIR}" -maxdepth 1 -type f -name 'rank_*.json' | wc -l)"
+  [[ "${count}" == 16 ]] || { echo "nsys_range_receipts=${count},expected=16" >&2; exit 90; }
+  "${PYTHON}" - "${RECEIPT_DIR}" "${VARIANT}" <<'PY'
+import json
+import os
+import pathlib
+import sys
+
+from distillschedule.runtime.nsys_range import validate_static_nsys_receipts
+
+root = pathlib.Path(sys.argv[1])
+variant = sys.argv[2]
+result = validate_static_nsys_receipts(root, variant=variant)
+if os.environ.get("DISTILLSCHEDULE_NODE_RANK") == "0":
+    out = root.parent / "static_receipts_validation.json"
+    tmp = out.with_suffix(out.suffix + f".tmp-{os.getpid()}")
+    tmp.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
+    os.replace(tmp, out)
+print(json.dumps(result, sort_keys=True))
+PY
+  {
+    echo "schema_version=distillschedule.static_fsdp2_nsys_node_profile.v1"
+    echo "status=PASS"
+    echo "diagnostic_only=true"
+    echo "formal_speedup_eligible=false"
+    echo "node_rank=${NODE_RANK}"
+    echo "variant=${VARIANT}"
+    echo "logical_window=$( [[ "${VARIANT}" == no-gan ]] && echo 10-14 || echo 1000-1004 )"
+    echo "report=${REPORT_BASE}.nsys-rep"
+    echo "sqlite=${SQLITE}"
+    echo "report_sha256=$(sha256sum "${REPORT_BASE}.nsys-rep" | awk '{print $1}')"
+    echo "range_receipts_validation=${PROFILE_DIR}/static_receipts_validation.json"
+  } >"${PROFILE_NODE_DIR}/profile_manifest.txt"
 else
   "${TORCHRUN}" --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}" \
     --master-addr="${MASTER_ADDR}" --master-port="${MASTER_PORT}" \

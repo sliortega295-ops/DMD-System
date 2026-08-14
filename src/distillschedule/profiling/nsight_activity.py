@@ -313,6 +313,12 @@ def read_nvtx_phase_windows(
     query = f"SELECT {_quote(start)}, {_quote(end)}, {_quote(text)} FROM {_quote(table)}"
     result: list[PhaseWindow] = []
     for raw_start, raw_end, raw_text in connection.execute(query):
+        # Nsight can emit a metadata-only NVTX row with NULL boundaries when
+        # an outer process is traced together with forked torchrun children.
+        # It is not an interval and must not invalidate otherwise complete
+        # node-level activity exports.
+        if raw_start is None or raw_end is None or raw_text is None:
+            continue
         start_ns, end_ns = int(raw_start), int(raw_end)
         if end_ns <= start_ns:
             continue

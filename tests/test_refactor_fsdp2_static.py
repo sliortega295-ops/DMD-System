@@ -78,6 +78,17 @@ def test_static_launcher_disables_shared_filesystem_bytecode_writes() -> None:
     assert "export PYTHONDONTWRITEBYTECODE=1" in source
 
 
+def test_static_profile_uses_one_outer_node_nsight_session() -> None:
+    source = (
+        ROOT / "scripts/distillschedule/launch_static_fsdp2_full5_world16_node.sh"
+    ).read_text()
+    assert "--capture-range=cudaProfilerApi" in source
+    assert "--trace-fork-before-exec=true" in source
+    assert "DISTILLSCHEDULE_STATIC_FSDP2_NSYS_EXACT_RANGE=1" in source
+    assert "nsys_rank_exec.py" not in source
+    assert "static_fsdp2_full5_node${NODE_RANK}" in source
+
+
 def test_static_nsys_reports_pooled_world16_compute_union() -> None:
     source = (
         ROOT / "scripts/distillschedule/analyze_static_fsdp2_nsys.py"

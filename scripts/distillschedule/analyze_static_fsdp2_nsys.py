@@ -18,22 +18,34 @@ from distillschedule.profiling.nsight_activity import (
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--profile-dir", type=Path, required=True)
+    scope = parser.add_mutually_exclusive_group(required=True)
+    scope.add_argument("--profile-dir", type=Path)
+    scope.add_argument(
+        "--node-profile-dir",
+        type=Path,
+        help="node-level profile root emitted by the one-session-per-node launcher",
+    )
     parser.add_argument("--variant", choices=("no-gan", "gan"), required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    profile_root = args.node_profile_dir or args.profile_dir
     pattern = {"full5": rf"STATIC_FSDP2_FULL5/{args.variant}"}
     reports = []
-    for rank in range(16):
-        path = args.profile_dir / f"rank_{rank:02d}.sqlite"
+    if args.node_profile_dir is not None:
+        scopes = [(node, profile_root / f"node_{node}" / f"static_fsdp2_full5_node{node}.sqlite") for node in range(2)]
+        scope_name = "node"
+    else:
+        scopes = [(rank, profile_root / f"rank_{rank:02d}.sqlite") for rank in range(16)]
+        scope_name = "rank"
+    for scope, path in scopes:
         report = analyze_sqlite(
             path,
-            rank=rank,
+            rank=scope,
             phase_patterns=pattern,
             timeline_bin_ns=500_000_000,
         )
         if "full5" not in report["phases"]:
-            raise RuntimeError(f"rank {rank} has no exact static FSDP2 Full5 NVTX window")
+            raise RuntimeError(f"{scope_name} {scope} has no exact static FSDP2 Full5 NVTX window")
         reports.append(report)
     aggregate = aggregate_rank_reports(reports)
     metric = aggregate["phases"]["full5"]
@@ -41,8 +53,14 @@ def main() -> int:
     summary = {
         "schema_version": "distillschedule.static_fsdp2_nsys.v1",
         "variant": args.variant,
-        "rank_count": 16,
-        "denominator": "sum(rank category interval union) / sum(rank exact Full5 NVTX wall)",
+        "rank_count": 16 if args.node_profile_dir is None else None,
+        "scope_count": len(reports),
+        "scope": scope_name,
+        "denominator": (
+            "sum(rank category interval union) / sum(rank exact Full5 NVTX wall)"
+            if args.node_profile_dir is None
+            else "sum(node activity interval union) / sum(node exact Full5 NVTX wall)"
+        ),
         "gpu_wall_seconds": metric["gpu_wall_seconds"],
         "compute_kernel_gpu_seconds": categories[COMPUTE]["gpu_seconds"],
         "compute_kernel_percent": categories[COMPUTE]["pooled_percent"],
