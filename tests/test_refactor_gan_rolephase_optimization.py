@@ -5,10 +5,15 @@ import json
 import pytest
 
 from distillschedule.runtime.gan_rolephase_optimization import (
+    CgroupMemorySnapshot,
     JsonlStageRecorder,
     PersistentTargetPolicy,
     TransitionSubphase,
+    assert_no_new_cgroup_oom,
+    assert_preconstruction_admitted,
+    build_preconstruction_waves,
     estimate_layouts,
+    read_cgroup_memory_snapshot,
     summarize_service_records,
     validate_zero_engine,
 )
@@ -37,6 +42,54 @@ def test_transition_recorder_writes_append_only_receipts(tmp_path) -> None:
     summary = recorder.summary()
     assert summary["event_count"] == 2
     assert summary["stages"][TransitionSubphase.TARGET_PREPARE.value]["count"] == 1
+
+
+def test_preconstruction_waves_default_to_single_rank_admission() -> None:
+    assert build_preconstruction_waves(range(8)) == tuple((rank,) for rank in range(8))
+    assert build_preconstruction_waves((0, 2, 4, 6), max_concurrent=2) == (
+        (0, 2),
+        (4, 6),
+    )
+    with pytest.raises(ValueError, match="outside the local world"):
+        build_preconstruction_waves((8,))
+
+
+def test_cgroup_snapshot_and_admission_are_fail_closed(tmp_path) -> None:
+    (tmp_path / "memory.current").write_text(str(700 * 2**30) + "\n")
+    (tmp_path / "memory.max").write_text(str(800 * 2**30) + "\n")
+    (tmp_path / "memory.events").write_text(
+        "low 0\nhigh 0\nmax 1\noom 2\noom_kill 3\n"
+    )
+    snapshot = read_cgroup_memory_snapshot(tmp_path)
+    assert snapshot.oom == 2
+    assert snapshot.oom_kill == 3
+    assert snapshot.headroom_bytes == 100 * 2**30
+    receipt = assert_preconstruction_admitted(
+        snapshot,
+        max_used_fraction=0.90,
+        min_headroom_bytes=64 * 2**30,
+    )
+    assert receipt["admitted"] is True
+
+    blocked = CgroupMemorySnapshot(
+        current_bytes=745 * 2**30,
+        max_bytes=800 * 2**30,
+        oom=2,
+        oom_kill=3,
+    )
+    with pytest.raises(RuntimeError, match="rejected by host admission"):
+        assert_preconstruction_admitted(
+            blocked,
+            max_used_fraction=0.90,
+            min_headroom_bytes=64 * 2**30,
+        )
+
+
+def test_cgroup_oom_counter_must_not_increase() -> None:
+    before = CgroupMemorySnapshot(10, 100, 2, 3)
+    assert_no_new_cgroup_oom(before, CgroupMemorySnapshot(20, 100, 2, 3))
+    with pytest.raises(RuntimeError, match="OOM counters increased"):
+        assert_no_new_cgroup_oom(before, CgroupMemorySnapshot(20, 100, 3, 4))
 
 
 def test_layout_estimates_are_contract_explicit() -> None:
