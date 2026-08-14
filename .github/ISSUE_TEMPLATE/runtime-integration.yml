@@ -1,0 +1,57 @@
+name: Runtime integration failure
+description: Record a fail-closed DMD-System launcher, parity, topology, checkpoint or evidence issue.
+title: "[integration] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Keep workload semantics and integration failures separate. Do not propose a silent fallback to a different ZeRO stage, batch, trace, checkpoint or EMA policy.
+  - type: input
+    id: contract
+    attributes:
+      label: Frozen contract
+      description: Path or link to the contract document and plan ID.
+      placeholder: docs/contracts/...; plan id ...
+    validations:
+      required: true
+  - type: textarea
+    id: source_identity
+    attributes:
+      label: Source and runtime identity
+      description: DMD-System HEAD, Helios HEAD/dirty state/entrypoint SHA, Python/Accelerate/DeepSpeed paths and versions.
+    validations:
+      required: true
+  - type: textarea
+    id: topology
+    attributes:
+      label: Expected and observed topology
+      description: nodes, local world size, global world size, rank set and topology-probe result.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Attempt outcome
+      description: Use Failed, Partial, Running or Not Run until an immutable final result exists.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence paths and hashes
+      description: Launcher manifests, compiled plan, trace/checkpoint identity and result manifest. Do not paste secrets.
+  - type: textarea
+    id: invariant
+    attributes:
+      label: Semantics that must not change
+      description: Explicitly list workload, optimizer, EMA and branch constraints.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Fail-closed acceptance criteria
+      description: State the pre-model, functional, timing and evidence gates separately.
+    validations:
+      required: true

@@ -95,13 +95,13 @@ class DMDBranchesSpec:
 
 @dataclass(frozen=True)
 class DMDScheduleSpec:
-    generator_update_every:int=5; critic_update_every:int=1; ema_update_every:int=1; ema_start_step:int=0; ema_after_critic:bool=True
+    generator_update_every:int=5; critic_update_every:int=1; ema_update_every:int=1; ema_start_step:int=0; ema_bootstrap_before_start:bool=False; ema_generator_only_after_start:bool=False; ema_after_critic:bool=True
     @classmethod
     def from_mapping(cls,v:Any,*,path:str="workload.schedule")->"DMDScheduleSpec":
         if v is None:return cls()
-        m=_map(v,path); reject_unknown_keys(m,{"generator_update_every","critic_update_every","ema_update_every","ema_start_step","ema_after_critic"},path=path)
-        return cls(_i(m.get("generator_update_every",5),f"{path}.generator_update_every",minv=1),_i(m.get("critic_update_every",1),f"{path}.critic_update_every",minv=1),_i(m.get("ema_update_every",1),f"{path}.ema_update_every",minv=1),_i(m.get("ema_start_step",0),f"{path}.ema_start_step"),bool(m.get("ema_after_critic",True)))
-    def to_dict(self): return {"generator_update_every":self.generator_update_every,"critic_update_every":self.critic_update_every,"ema_update_every":self.ema_update_every,"ema_start_step":self.ema_start_step,"ema_after_critic":self.ema_after_critic}
+        m=_map(v,path); reject_unknown_keys(m,{"generator_update_every","critic_update_every","ema_update_every","ema_start_step","ema_bootstrap_before_start","ema_generator_only_after_start","ema_after_critic"},path=path)
+        return cls(_i(m.get("generator_update_every",5),f"{path}.generator_update_every",minv=1),_i(m.get("critic_update_every",1),f"{path}.critic_update_every",minv=1),_i(m.get("ema_update_every",1),f"{path}.ema_update_every",minv=1),_i(m.get("ema_start_step",0),f"{path}.ema_start_step"),bool(m.get("ema_bootstrap_before_start",False)),bool(m.get("ema_generator_only_after_start",False)),bool(m.get("ema_after_critic",True)))
+    def to_dict(self): return {"generator_update_every":self.generator_update_every,"critic_update_every":self.critic_update_every,"ema_update_every":self.ema_update_every,"ema_start_step":self.ema_start_step,"ema_bootstrap_before_start":self.ema_bootstrap_before_start,"ema_generator_only_after_start":self.ema_generator_only_after_start,"ema_after_critic":self.ema_after_critic}
 
 @dataclass(frozen=True)
 class WorkloadSpec:

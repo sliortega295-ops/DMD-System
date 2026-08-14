@@ -1,5 +1,10 @@
 {
   "workload": {
+    "metadata": {
+      "data_roots": [
+        "${ENV:HELIOS_DATA_ROOT:-/share/project/shuchenweng/DistillSchedule_assets/m0/datasets/syn_feature_single}"
+      ]
+    },
     "adapter": "helios",
     "generator": {
       "name": "helios-distilled-generator",
@@ -20,7 +25,7 @@
       "family": "helios",
       "size": "14b",
       "role": "score",
-      "checkpoint": "${ENV:HELIOS_BASE_ROOT:-/share/project/shuchenweng/Helios/weights/Helios-Base}",
+      "checkpoint": "${ENV:HELIOS_BASE_ROOT:-/home/shuchenweng/xty/Helios-main/weights}",
       "subfolder": "transformer",
       "precision": "bf16",
       "adapter": {

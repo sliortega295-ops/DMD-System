@@ -79,14 +79,40 @@
     "checkpoint": "${ENV:DISTILLSCHEDULE_CHECKPOINT:-/share/project/shuchenweng/yongyan_liu/DistillSchedule/artifacts/runs/iteration65_m0_b4fast_canonical_checkpoint10_001/checkpoint-10}"
   },
   "legacy": {
-    "config_path": "../../experiments/iteration45_m0_b0a_a100_substrate_384x640.yaml",
-    "entrypoint": "../../../train_helios.py",
-    "python_executable": "python",
-    "cwd": "../../../",
+    "config_path": "../templates/helios_stage3_384x640.yaml",
+    "entrypoint": "${ENV:HELIOS_RUNTIME_ROOT:-../../../}/train_helios.py",
+    "python_executable": "${ENV:DISTILLSCHEDULE_PYTHON:-python}",
+    "cwd": "${ENV:HELIOS_RUNTIME_ROOT:-../../../}",
     "extra_env": {
       "DISTILLSCHEDULE_SKIP_VALIDATION": "1",
-      "DISTILLSCHEDULE_SKIP_FINAL_SAVE": "1"
-    }
+      "DISTILLSCHEDULE_SKIP_FINAL_SAVE": "1",
+      "PYTHONPATH": "${ENV:HELIOS_RUNTIME_ROOT:-../../../}"
+    },
+    "command": [
+      "${ENV:DISTILLSCHEDULE_ACCELERATE:-accelerate}",
+      "launch",
+      "--num_machines",
+      "1",
+      "--num_processes",
+      "1",
+      "--mixed_precision",
+      "bf16",
+      "--use_deepspeed",
+      "--zero_stage",
+      "1",
+      "--offload_optimizer_device",
+      "cpu",
+      "--offload_param_device",
+      "none",
+      "--gradient_accumulation_steps",
+      "1",
+      "--gradient_clipping",
+      "1.0",
+      "--debug",
+      "{entrypoint}",
+      "--config",
+      "{config}"
+    ]
   },
   "metadata": {
     "migration_stage": "legacy_helios_entrypoint",

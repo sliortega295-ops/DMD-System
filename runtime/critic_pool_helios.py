@@ -24,6 +24,11 @@ import torch
 from .critic_pool_trace import CriticPoolTrace, CriticPoolTraceEntry
 from .dmd_boundary import add_noise, critic_denoising_loss
 from .operation_trace import OperationTrace, tensor_sha256
+from .precast_checkpoint import (
+    HELIOS_KEEP_IN_FP32_MODULES,
+    PRECAST_MANIFEST_NAME,
+    validate_precast_checkpoint,
+)
 from .rollout_trace import (
     ForceNoGradCalls,
     LightweightNestedCallAudit,
@@ -31,7 +36,7 @@ from .rollout_trace import (
 )
 
 
-PoolRole = Literal["generator", "critic"]
+PoolRole = Literal["generator", "critic", "teacher"]
 
 
 TRANSFORMER_ADDITIONAL_KWARGS = {
@@ -75,13 +80,17 @@ def build_helios_pool_model(
     role: PoolRole,
     model_root: str | Path,
     subfolder: str,
+    precast_model_root: str | Path | None = None,
     lora_rank: int = 256,
     max_workers: int = 4,
+    enable_gan: bool = False,
 ) -> tuple[torch.nn.Module, dict[str, Any]]:
     """Build the official BF16 backbone plus the Stage-3 FP32 LoRA inventory."""
 
-    if role not in ("generator", "critic"):
+    if role not in ("generator", "critic", "teacher"):
         raise ValueError(f"unsupported pool role: {role}")
+    if role != "critic" and enable_gan:
+        raise ValueError("GAN heads belong to the physical Score/Critic model")
     configure_offline_helios()
     from helios.modules.helios_kernels import (
         replace_all_norms_with_flash_norms,
@@ -92,63 +101,115 @@ def build_helios_pool_model(
     from peft import LoraConfig
 
     extra = dict(TRANSFORMER_ADDITIONAL_KWARGS)
-    if role == "critic":
+    if role in ("critic", "teacher"):
         extra.update(
             {
-                "is_use_gan": False,
-                "is_use_gan_hooks": False,
-                "is_use_gan_final": False,
+                "is_use_gan": bool(enable_gan),
+                "is_use_gan_hooks": bool(enable_gan),
+                "is_use_gan_final": bool(enable_gan),
                 "gan_cond_map_dim": 768,
                 "gan_hooks": [5, 15, 25, 35],
             }
         )
+    if precast_model_root is None:
+        precast_manifest_sha256: str | None = None
+        load_root = str(model_root)
+        load_subfolder: str | None = subfolder
+        load_kwargs: dict[str, Any] = {
+            "low_cpu_mem_usage": True,
+            "torch_dtype": torch.bfloat16,
+            "device_map": "cpu",
+            "max_workers": max_workers,
+        }
+    else:
+        precast_root = Path(precast_model_root).resolve()
+        validate_precast_checkpoint(
+            precast_root,
+            expected_target_dtype=torch.bfloat16,
+            expected_keep_in_fp32_modules=HELIOS_KEEP_IN_FP32_MODULES,
+            expected_source_dir=Path(model_root).resolve() / subfolder,
+            verify_shard_hashes=False,
+        )
+        precast_manifest_sha256 = hashlib.sha256(
+            (precast_root / PRECAST_MANIFEST_NAME).read_bytes()
+        ).hexdigest()
+        load_root = str(precast_root)
+        load_subfolder = None
+        load_kwargs = {
+            "torch_dtype": torch.bfloat16,
+            "device_map": "cpu",
+            "max_workers": max_workers,
+            "precast_direct_load": True,
+            "precast_expected_source_path": str(
+                (Path(model_root).resolve() / subfolder)
+            ),
+        }
     model = HeliosTransformer3DModel.from_pretrained(
-        str(model_root),
-        subfolder=subfolder,
+        load_root,
+        subfolder=load_subfolder,
         transformer_additional_kwargs=extra,
-        low_cpu_mem_usage=True,
-        torch_dtype=torch.bfloat16,
-        device_map="cpu",
-        max_workers=max_workers,
+        **load_kwargs,
     )
     model = replace_rmsnorm_with_fp32(model)
     model = replace_all_norms_with_flash_norms(model)
     replace_rope_with_flash_rope()
     model.requires_grad_(False)
 
-    targets = _all_linear_targets(model)
-    excludes = ["down", "up"]
-    if role == "generator":
-        for name in ("patch_short", "patch_mid", "patch_long"):
-            if hasattr(model, name):
-                targets.append(name)
-    else:
-        patch_modules = {
-            "patch_short",
-            "patch_mid",
-            "patch_long",
-            "patch_embedding",
-        }
-        targets = [name for name in targets if name not in patch_modules]
-        excludes += sorted(patch_modules) + ["gan_heads", "gan_final_head"]
+    targets: list[str] = []
+    excludes: list[str] = []
+    if role != "teacher":
+        targets = _all_linear_targets(model)
+        excludes = ["down", "up"]
+        if role == "generator":
+            for name in ("patch_short", "patch_mid", "patch_long"):
+                if hasattr(model, name):
+                    targets.append(name)
+        else:
+            patch_modules = {
+                "patch_short",
+                "patch_mid",
+                "patch_long",
+                "patch_embedding",
+            }
+            targets = [
+                name
+                for name in targets
+                if name not in patch_modules
+                and not name.startswith("gan_heads.")
+                and not name.startswith("gan_final_head.")
+            ]
+            excludes += sorted(patch_modules) + ["gan_heads", "gan_final_head"]
 
-    model.add_adapter(
-        LoraConfig(
-            r=lora_rank,
-            lora_alpha=float(lora_rank),
-            lora_dropout=0.0,
-            init_lora_weights="gaussian",
-            target_modules=sorted(set(targets)),
-            exclude_modules=excludes,
+        model.add_adapter(
+            LoraConfig(
+                r=lora_rank,
+                lora_alpha=float(lora_rank),
+                lora_dropout=0.0,
+                init_lora_weights="gaussian",
+                target_modules=sorted(set(targets)),
+                exclude_modules=excludes,
+            )
         )
-    )
-    for parameter in model.parameters():
-        if parameter.requires_grad and parameter.dtype != torch.float32:
-            parameter.data = parameter.data.float()
+        if role == "critic" and enable_gan:
+            # Match upstream GAN ownership: the heads are ordinary trainable
+            # Critic parameters, not LoRA targets.  This is deliberately done
+            # after add_adapter(), which otherwise leaves only adapter tensors
+            # trainable.
+            for name, parameter in model.named_parameters():
+                if "gan_heads" in name or "gan_final_head" in name:
+                    parameter.requires_grad_(True)
+        for parameter in model.parameters():
+            if parameter.requires_grad and parameter.dtype != torch.float32:
+                parameter.data = parameter.data.float()
     model._distillschedule_split_modulation = True
+    model._distillschedule_has_adapter = role != "teacher"
     for block in model.blocks:
         block._distillschedule_split_modulation = True
-    model.enable_gradient_checkpointing()
+    if role != "teacher":
+        model.enable_gradient_checkpointing()
+    # Official Stage-3 keeps the shared Score backbone in train mode during
+    # no-grad Real/Fake DMD calls.  A physically split Teacher must preserve
+    # that module-mode semantic even though all of its parameters are frozen.
     model.train()
 
     trainable = {
@@ -160,6 +221,13 @@ def build_helios_pool_model(
         "role": role,
         "backbone_root": str(Path(model_root).resolve()),
         "subfolder": subfolder,
+        "loading_mode": (
+            "mixed_bf16_precast_direct"
+            if precast_model_root is not None
+            else "official_bf16_loader"
+        ),
+        "load_root": load_root,
+        "precast_manifest_sha256": precast_manifest_sha256,
         "lora_rank": lora_rank,
         "target_count": len(set(targets)),
         "exclude_modules": excludes,
@@ -169,9 +237,16 @@ def build_helios_pool_model(
             {str(value.dtype) for value in trainable.values()}
         ),
         "block_count": len(model.blocks),
+        "gan_enabled": bool(enable_gan),
+        "gan_trainable_numel": sum(
+            value.numel()
+            for name, value in trainable.items()
+            if "gan_heads" in name or "gan_final_head" in name
+        ),
         "split_modulation": True,
-        "gradient_checkpointing": True,
+        "gradient_checkpointing": role != "teacher",
         "mode": "train",
+        "has_adapter": role != "teacher",
     }
 
 
@@ -225,6 +300,7 @@ def run_generator_trace_rollout(
     device: torch.device,
     detailed_profile: bool = True,
     record_output_sha256: bool = True,
+    empty_cache_before_rollout: bool = True,
 ) -> tuple[torch.Tensor, dict[str, Any]]:
     """Run the exact one-section, three-stage trace with no physical autograd."""
 
@@ -292,7 +368,8 @@ def run_generator_trace_rollout(
     physical_call = ForceNoGradCalls(tracer)
     model.enable_adapters()
     model.train()
-    torch.cuda.empty_cache()
+    if empty_cache_before_rollout:
+        torch.cuda.empty_cache()
     torch.cuda.reset_peak_memory_stats(device)
     (
         generated_x0,

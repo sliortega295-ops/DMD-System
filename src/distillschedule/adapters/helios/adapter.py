@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from distillschedule.adapters.base import (
     CompiledAdapterPlan,
@@ -33,6 +34,32 @@ def _resolve(path: str | None, *, base_dir: Path) -> Path | None:
     if candidate.is_absolute():
         return candidate
     return (base_dir / candidate).resolve()
+
+
+def _multi_node_rank(plan: ExecutionPlan) -> int:
+    """Return this host's node rank and fail closed for multi-node plans."""
+
+    if plan.hardware.nodes == 1:
+        return 0
+    raw = os.environ.get("DISTILLSCHEDULE_NODE_RANK")
+    if raw is None:
+        raise ContractViolation(
+            "multi-node Helios compilation requires DISTILLSCHEDULE_NODE_RANK",
+            path="hardware.nodes",
+        )
+    try:
+        node_rank = int(raw)
+    except ValueError as exc:
+        raise ContractViolation(
+            "DISTILLSCHEDULE_NODE_RANK must be an integer",
+            path="hardware.nodes",
+        ) from exc
+    if not 0 <= node_rank < plan.hardware.nodes:
+        raise ContractViolation(
+            "DISTILLSCHEDULE_NODE_RANK is outside the plan node range",
+            path="hardware.nodes",
+        )
+    return node_rank
 
 
 class HeliosDMDAdapter(DMDModelAdapter):
@@ -137,6 +164,43 @@ class HeliosDMDAdapter(DMDModelAdapter):
                 "allow_logical_offset_without_checkpoint contract",
                 path="evidence.checkpoint",
             )
+        lifecycle = plan.lifecycle
+        if lifecycle.phase_resident_critic_generator:
+            streaming = lifecycle.frozen_block_streaming
+            if not streaming.enabled or "generator" not in streaming.components:
+                raise ContractViolation(
+                    "phase-resident Critic Generator requires Generator block streaming",
+                    path="lifecycle.phase_resident_critic_generator",
+                )
+
+        streaming = lifecycle.frozen_block_streaming
+        if streaming.score_block_indices and (
+            not streaming.enabled or "score" not in streaming.components
+        ):
+            raise ContractViolation(
+                "Score-specific block indices require enabled Score streaming",
+                path="lifecycle.frozen_block_streaming.score_block_indices",
+            )
+
+        if lifecycle.critic_phase_offload_generator_lp_state:
+            generator_backend = plan.training_backends.get("generator")
+            if (
+                generator_backend is None
+                or generator_backend.kind != TrainingBackendKind.DEEPSPEED
+                or generator_backend.zero_stage != 1
+                or generator_backend.optimizer_offload != "cpu"
+                or generator_backend.parameter_offload != "none"
+            ):
+                raise ContractViolation(
+                    "Critic-phase Generator LP-state offload requires Generator "
+                    "ZeRO-1 with CPU optimizer offload and no parameter offload",
+                    path="lifecycle.critic_phase_offload_generator_lp_state",
+                )
+            if not plan.evidence.semantic_assertions:
+                raise ContractViolation(
+                    "Critic-phase Generator LP-state offload requires semantic assertions",
+                    path="evidence.semantic_assertions",
+                )
 
     def _validate_backend_config(
         self,
@@ -227,6 +291,14 @@ class HeliosDMDAdapter(DMDModelAdapter):
                 _TRUE if evidence.semantic_assertions else "0"
             ),
             "DISTILLSCHEDULE_LOGICAL_START_STEP": str(logical_start_step),
+            "DISTILLSCHEDULE_PHASE_RESIDENT_CRITIC_GENERATOR": (
+                _TRUE if lifecycle.phase_resident_critic_generator else "0"
+            ),
+            "DISTILLSCHEDULE_CRITIC_PHASE_OFFLOAD_GENERATOR_LP_STATE": (
+                _TRUE
+                if lifecycle.critic_phase_offload_generator_lp_state
+                else "0"
+            ),
         }
         if evidence.instrumentation == InstrumentationMode.TIMING:
             environment["DISTILLSCHEDULE_TIMING_ONLY_TRACE"] = _TRUE
@@ -270,6 +342,12 @@ class HeliosDMDAdapter(DMDModelAdapter):
                 environment[
                     "DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_INDICES"
                 ] = ",".join(str(index) for index in streaming.block_indices)
+            if streaming.score_block_indices:
+                environment[
+                    "DISTILLSCHEDULE_FROZEN_BLOCK_STREAMING_SCORE_INDICES"
+                ] = ",".join(
+                    str(index) for index in streaming.score_block_indices
+                )
             environment["DISTILLSCHEDULE_FROZEN_BLOCK_HOST_POLICY"] = (
                 "HOST_SHARED_IMMUTABLE"
                 if streaming.host_policy == HostStatePolicy.SHARED_IMMUTABLE
@@ -329,6 +407,10 @@ class HeliosDMDAdapter(DMDModelAdapter):
         )
         if workload.generator.subfolder is not None:
             config.model_config.subfolder = workload.generator.subfolder
+        # Helios uses the Base checkpoint both as the common pretrained root and
+        # as the physical Real/Fake/Critic Score backbone.  Keeping both fields
+        # plan-derived avoids leaking a machine-specific path from the template.
+        config.model_config.pretrained_model_name_or_path = workload.score.checkpoint
         config.model_config.real_score_model_name_or_path = workload.score.checkpoint
         if workload.score.subfolder is not None:
             config.model_config.critic_subfolder = workload.score.subfolder
@@ -345,7 +427,28 @@ class HeliosDMDAdapter(DMDModelAdapter):
             )
 
         training = config.training_config
+        data_roots = workload.metadata.get("data_roots")
+        if data_roots is not None:
+            if not isinstance(data_roots, (list, tuple)) or not data_roots:
+                raise ContractViolation(
+                    "Helios workload.metadata.data_roots must be a non-empty list",
+                    path="workload.metadata.data_roots",
+                )
+            if any(not isinstance(item, str) or not item.strip() for item in data_roots):
+                raise ContractViolation(
+                    "Helios data roots must be non-empty strings",
+                    path="workload.metadata.data_roots",
+                )
+            config.data_config.gan_data_root = list(data_roots)
         training.max_train_steps = plan.evidence.start_step + plan.evidence.steps
+        checkpointing_steps = plan.evidence.metadata.get("checkpointing_steps")
+        if checkpointing_steps is not None:
+            if isinstance(checkpointing_steps, bool) or not isinstance(checkpointing_steps, int) or checkpointing_steps <= 0:
+                raise ContractViolation(
+                    "evidence.metadata.checkpointing_steps must be a positive integer",
+                    path="evidence.metadata.checkpointing_steps",
+                )
+            training.checkpointing_steps = checkpointing_steps
         training.train_batch_size = workload.shape.batch_size
         training.latent_window_size = [workload.shape.latent.frames]
         if workload.shape.pyramid:
@@ -393,19 +496,29 @@ class HeliosDMDAdapter(DMDModelAdapter):
         if template is None or entrypoint is None or cwd is None or output_dir is None:
             raise ContractViolation("failed to resolve a legacy path", path="legacy")
 
-        rendered_config = output_dir / "resolved_helios_config.yaml"
+        node_rank = _multi_node_rank(plan)
+        config_suffix = f".node{node_rank}" if plan.hardware.nodes > 1 else ""
+        rendered_config = output_dir / f"resolved_helios_config{config_suffix}.yaml"
         rendered_text = self._render_config(
             plan,
             template_path=template,
             output_dir=output_dir,
             source_dir=source_dir,
         )
+        master_addr = os.environ.get("DISTILLSCHEDULE_MASTER_ADDR", "127.0.0.1")
+        master_port = os.environ.get("DISTILLSCHEDULE_MASTER_PORT", "29500")
         placeholders = {
             "python": legacy.python_executable,
             "entrypoint": str(entrypoint),
             "config": str(rendered_config),
             "repo_root": str(repo_root),
             "plan_id": plan.plan_id,
+            "nodes": str(plan.hardware.nodes),
+            "local_world_size": str(plan.hardware.local_world_size),
+            "world_size": str(plan.hardware.world_size),
+            "node_rank": str(node_rank),
+            "master_addr": master_addr,
+            "master_port": master_port,
         }
         if legacy.command:
             command = tuple(token.format(**placeholders) for token in legacy.command)

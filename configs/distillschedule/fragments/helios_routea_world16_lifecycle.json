@@ -1,0 +1,80 @@
+{
+  "lifecycle": {
+    "split_modulation": true,
+    "activation_offload": {
+      "enabled": true,
+      "threshold_mib": 32,
+      "components": [
+        "generator_selected"
+      ]
+    },
+    "frozen_block_streaming": {
+      "enabled": true,
+      "components": [
+        "generator",
+        "score"
+      ],
+      "block_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ],
+      "block_count": 40,
+      "window": 1,
+      "host_policy": "shared_immutable",
+      "mmap_cache": "${ENV:DISTILLSCHEDULE_FROZEN_BLOCK_MMAP_CACHE}",
+      "pin_host_state": false
+    },
+    "construction_wave_size": 0,
+    "swap_wave_size": 8,
+    "prefetch_distance": 0,
+    "trim_host_after_move": false,
+    "immutable_model_backing_components": [
+      "generator",
+      "score"
+    ],
+    "metadata": {
+      "baseline": "Route-A Full5 Exact-B0 CPU-Offload/Full-Streaming",
+      "hybrid_residency": true,
+      "compute_path": "b0_vectorized_split_modulation",
+      "memory_bounded_compute_tiling": false
+    }
+  }
+}

@@ -27,9 +27,17 @@ class DMDUpdateSchedule:
             raise ValueError("logical_step must be non-negative")
         generator_update = logical_step % self.schedule.generator_update_every == 0
         critic_update = logical_step % self.schedule.critic_update_every == 0
+        if logical_step < self.schedule.ema_start_step:
+            ema_regime_enabled = self.schedule.ema_bootstrap_before_start
+        else:
+            ema_regime_enabled = (
+                generator_update
+                if self.schedule.ema_generator_only_after_start
+                else True
+            )
         ema_update = (
             self.branches.ema
-            and logical_step >= self.schedule.ema_start_step
+            and ema_regime_enabled
             and logical_step % self.schedule.ema_update_every == 0
         )
         if generator_update and critic_update:
