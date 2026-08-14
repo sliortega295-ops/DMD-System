@@ -11,9 +11,66 @@ from distillschedule.profiling.nsight_activity import (
     NCCL,
     ALL_COPY,
     NO_TRACED_ACTIVITY,
+    OTHER_COPY,
     aggregate_rank_reports,
     analyze_sqlite,
 )
+from distillschedule.profiling.static_nsys_bounded import analyze_bounded_sqlite
+
+
+def _aggregate_bounded_nodes(reports: list[dict], *, variant: str) -> dict:
+    """Aggregate node reports while preserving per-process/rank detail."""
+    if len(reports) != 2:
+        raise ValueError(f"static world16 node analysis requires two nodes, got {len(reports)}")
+    phase_wall_ns = sum(int(report["phase_window"]["wall_ns"]) for report in reports)
+    categories = (COMPUTE, NCCL, H2D, D2H, D2D, OTHER_COPY, ALL_COPY, ACTIVE, NO_TRACED_ACTIVITY)
+    metrics: dict[str, dict] = {}
+    for category in categories:
+        values = [report["node_metrics"][category] for report in reports]
+        union_ns = sum(int(value["union_ns"]) for value in values)
+        metrics[category] = {
+            "union_ns": union_ns,
+            "union_seconds": union_ns / 1e9,
+            "percent_of_sum_node_phase_wall": 100.0 * union_ns / phase_wall_ns if phase_wall_ns else 0.0,
+            "events": sum(int(value.get("events", 0)) for value in values),
+            "bytes": sum(int(value.get("bytes", 0)) for value in values),
+            "sum_duration_ns": sum(int(value.get("sum_duration_ns", 0)) for value in values),
+            "sum_duration_seconds": sum(int(value.get("sum_duration_ns", 0)) for value in values) / 1e9,
+            "sum_duration_percent_of_sum_node_phase_wall": 100.0 * sum(int(value.get("sum_duration_ns", 0)) for value in values) / phase_wall_ns if phase_wall_ns else 0.0,
+        }
+    per_rank = [item for report in reports for item in report["per_process"]]
+    per_rank.sort(key=lambda item: (item["rank"] is None, item["rank"] if item["rank"] is not None else item["pid"]))
+    reconciliation = {
+        "raw_memcpy_rows_in_window": {key: sum(int(report["memcpy_totals_reconciliation"]["raw_memcpy_rows_in_window"][key]) for report in reports) for key in ("events", "bytes", "sum_duration_ns")},
+        "classified_memcpy_rows_in_window": {key: sum(int(report["memcpy_totals_reconciliation"]["classified_memcpy_rows_in_window"][key]) for report in reports) for key in ("events", "bytes", "sum_duration_ns")},
+    }
+    reconciliation["residual"] = {key: reconciliation["raw_memcpy_rows_in_window"][key] - reconciliation["classified_memcpy_rows_in_window"][key] for key in reconciliation["raw_memcpy_rows_in_window"]}
+    reconciliation["status"] = "PASS" if all(value == 0 for value in reconciliation["residual"].values()) else "FAIL"
+    return {
+        "schema_version": "distillschedule.static_nsys_bounded.aggregate.v1",
+        "variant": variant,
+        "scope": "node",
+        "scope_count": 2,
+        "rank_count": len(per_rank),
+        "ranks": [item["rank"] for item in per_rank],
+        "phase_wall_seconds_sum_nodes": phase_wall_ns / 1e9,
+        "metrics": metrics,
+        "per_rank": per_rank,
+        "memcpy_totals_reconciliation": reconciliation,
+        "metric_definitions": {
+            "copy_engine_union_percent": "union of CUDA memcpy intervals across both node reports divided by the sum of the two exact NVTX phase walls; overlaps counted once",
+            "copy_sum_duration_percent": "sum of memcpy event durations across both node reports divided by the same phase-wall denominator; overlaps counted repeatedly",
+            "d2h_percent": "D2H interval union percent, not all-copy and not PCIe wall time",
+            "formal_timing": "not used; profiled phase is diagnostic-only",
+            "old_20_09_percent": "the preserved 15-rank report's 20.090% was D2H interval-union percent over the 15 valid-rank exact phase-wall denominator, not a 16-rank copy-engine union or formal Full5 percentage",
+        },
+        "claim_boundary": {
+            "diagnostic_only": True,
+            "rank_mapping_in_v3_is_inferred_from_worker_pid_order": True,
+            "formal_timing_unchanged": True,
+            "categories_overlap_and_are_not_additive": True,
+        },
+    }
 
 
 def main() -> int:
@@ -34,6 +91,30 @@ def main() -> int:
     if args.node_profile_dir is not None:
         scopes = [(node, profile_root / f"node_{node}" / f"static_fsdp2_full5_node{node}.sqlite") for node in range(2)]
         scope_name = "node"
+        phase_label = f"STATIC_FSDP2_FULL5/{args.variant}"
+        for node, path in scopes:
+            reports.append(
+                analyze_bounded_sqlite(
+                    path,
+                    phase_label=phase_label,
+                    node_rank_base=node * 8,
+                )
+            )
+        summary = _aggregate_bounded_nodes(reports, variant=args.variant)
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
+        print(json.dumps({
+            "variant": args.variant,
+            "scope": "node",
+            "rank_count": summary["rank_count"],
+            "compute_union_percent": summary["metrics"][COMPUTE]["percent_of_sum_node_phase_wall"],
+            "nccl_union_percent": summary["metrics"][NCCL]["percent_of_sum_node_phase_wall"],
+            "all_copy_union_percent": summary["metrics"][ALL_COPY]["percent_of_sum_node_phase_wall"],
+            "d2h_union_percent": summary["metrics"][D2H]["percent_of_sum_node_phase_wall"],
+            "copy_sum_duration_percent": summary["metrics"][ALL_COPY]["sum_duration_percent_of_sum_node_phase_wall"],
+            "memcpy_reconciliation": summary["memcpy_totals_reconciliation"],
+        }, indent=2, sort_keys=True))
+        return 0
     else:
         scopes = [(rank, profile_root / f"rank_{rank:02d}.sqlite") for rank in range(16)]
         scope_name = "rank"

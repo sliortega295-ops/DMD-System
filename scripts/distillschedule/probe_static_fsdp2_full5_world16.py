@@ -35,6 +35,7 @@ from distillschedule.runtime.fsdp2_static import (
     contract_for_variant,
 )
 from distillschedule.runtime.nsys_range import StaticFSDP2Full5NsightRange
+from distillschedule.profiling.static_profile_diagnostics import StaticProfileDiagnostics
 from runtime.critic_pool_checkpoint import (
     LogicalCheckpointPackage,
     load_logical_master_into_trainables,
@@ -104,6 +105,17 @@ def _local_trainable_fingerprint(module: torch.nn.Module) -> str:
         digest.update(name.encode())
         digest.update(stats)
     return digest.hexdigest()
+
+
+def _profile_fingerprint(
+    module: torch.nn.Module,
+    diagnostics: StaticProfileDiagnostics,
+    key: str,
+) -> str:
+    """Fingerprint trainables with an explicit, profile-only D2H envelope."""
+
+    with diagnostics.scope(f"DIAG_FINGERPRINT_D2H/{key}"):
+        return _local_trainable_fingerprint(module)
 
 
 def _build_static_model(
@@ -207,16 +219,27 @@ def _run_nogan_generator_update(
     critic_engine: Any,
     trace: StaticWorld16Trace,
     negative: torch.Tensor,
-    timing_mode: bool,
+    collect_diagnostics: bool,
+    diagnostics: StaticProfileDiagnostics,
 ) -> dict[str, Any]:
-    entry = trace.load_generator_entry(rank=rank, device=device)
-    before = TIMING_OMITTED if timing_mode else _local_trainable_fingerprint(generator_engine.module)
-    x0, gradient_mask, rollout = run_generator_update_trace_rollout(
-        engine=generator_engine,
-        entry=entry,
-        device=device,
-        detailed_profile=False,
+    with diagnostics.scope("INPUT_H2D/generator_entry"):
+        entry = trace.load_generator_entry(rank=rank, device=device)
+    diagnostics.add_tensor_tree("generator_entry", entry, direction="H2D")
+    before = (
+        TIMING_OMITTED
+        if not collect_diagnostics
+        else _profile_fingerprint(generator_engine.module, diagnostics, "generator_before")
     )
+    with diagnostics.scope("FSDP_PRE_FORWARD_ALL_GATHER/generator"):
+        x0, gradient_mask, rollout = run_generator_update_trace_rollout(
+            engine=generator_engine,
+            entry=entry,
+            device=device,
+            detailed_profile=False,
+            collect_diagnostics=collect_diagnostics,
+        )
+    with diagnostics.scope("FSDP_POST_FORWARD_RESHARD/generator"):
+        pass
     batch = prepare_dmd_score_batch(generated_x0=x0, entry=entry, device=device)
     fake = score_forward(
         critic_engine.module,
@@ -243,10 +266,18 @@ def _run_nogan_generator_update(
         real_flow_uncond=real_uncond,
     )
     loss = detached_dmd_surrogate_loss(x0, gradient, gradient_mask)
-    generator_engine.backward(loss)
-    generator_engine.step()
-    after = TIMING_OMITTED if timing_mode else _local_trainable_fingerprint(generator_engine.module)
-    if not timing_mode and before == after:
+    with diagnostics.scope("FSDP_PRE_BACKWARD_ALL_GATHER/generator"):
+        generator_engine.backward(loss)
+    with diagnostics.scope("FSDP_REDUCE_SCATTER/generator"):
+        pass
+    with diagnostics.scope("OPTIMIZER_STEP/generator"):
+        generator_engine.step()
+    after = (
+        TIMING_OMITTED
+        if not collect_diagnostics
+        else _profile_fingerprint(generator_engine.module, diagnostics, "generator_after")
+    )
+    if collect_diagnostics and before == after:
         raise AssertionError("No-GAN FSDP2 Generator trainables did not update")
     del entry, x0, gradient_mask, batch, fake, real_cond, real_uncond, gradient, auxiliary
     return {
@@ -256,7 +287,7 @@ def _run_nogan_generator_update(
         "local_trainable_before": before,
         "local_trainable_after": after,
         "rollout": rollout,
-        "surrogate_loss": TIMING_OMITTED if timing_mode else float(loss.detach().cpu()),
+        "surrogate_loss": diagnostics.diagnostic_scalar("generator_surrogate", loss) if collect_diagnostics else TIMING_OMITTED,
         "score_forwards": 3,
     }
 
@@ -267,7 +298,9 @@ def _gan_score_boundary_gradient(
     generated_latent: torch.Tensor,
     gan_g_weight: float,
     official_kwargs: dict[str, Any],
-) -> tuple[torch.Tensor, dict[str, float]]:
+    collect_diagnostics: bool,
+    diagnostics: StaticProfileDiagnostics,
+) -> tuple[torch.Tensor, dict[str, Any]]:
     """Compute d(DMD + w*GAN-G)/dx without mutating FSDP2 requires_grad state."""
 
     from helios.utils.utils_helios_post import compute_distribution_matching_loss
@@ -300,9 +333,9 @@ def _gan_score_boundary_gradient(
         if name not in preexisting or id(parameter.grad) != preexisting[name]:
             raise AssertionError("GAN-G/DMD read-only FSDP2 Score produced parameter gradients")
     return gradient.to(dtype=generated_latent.dtype), {
-        "total": float(total.detach().float().cpu()),
-        "dmd": float(dmd_loss.detach().float().cpu()),
-        "gan_g_raw": float(gan_g_loss.detach().float().cpu()),
+        "total": diagnostics.diagnostic_scalar("gan_total", total) if collect_diagnostics else TIMING_OMITTED,
+        "dmd": diagnostics.diagnostic_scalar("gan_dmd", dmd_loss) if collect_diagnostics else TIMING_OMITTED,
+        "gan_g_raw": diagnostics.diagnostic_scalar("gan_g_raw", gan_g_loss) if collect_diagnostics else TIMING_OMITTED,
     }
 
 
@@ -316,17 +349,29 @@ def _run_gan_generator_update(
     trace: StaticWorld16Trace,
     cfg: Any,
     negative: torch.Tensor,
-    timing_mode: bool,
+    collect_diagnostics: bool,
+    diagnostics: StaticProfileDiagnostics,
 ) -> dict[str, Any]:
-    entry = trace.load_generator_entry(rank=rank, device=device)
+    with diagnostics.scope("INPUT_H2D/generator_entry"):
+        entry = trace.load_generator_entry(rank=rank, device=device)
+    diagnostics.add_tensor_tree("generator_entry", entry, direction="H2D")
     source = trace.source(rank=rank, device=device)
-    before = TIMING_OMITTED if timing_mode else _local_trainable_fingerprint(generator_engine.module)
-    x0, gradient_mask, rollout = run_generator_update_trace_rollout(
-        engine=generator_engine,
-        entry=entry,
-        device=device,
-        detailed_profile=False,
+    diagnostics.add_tensor_tree("generator_source", source, direction="H2D")
+    before = (
+        TIMING_OMITTED
+        if not collect_diagnostics
+        else _profile_fingerprint(generator_engine.module, diagnostics, "gan_generator_before")
     )
+    with diagnostics.scope("FSDP_PRE_FORWARD_ALL_GATHER/generator"):
+        x0, gradient_mask, rollout = run_generator_update_trace_rollout(
+            engine=generator_engine,
+            entry=entry,
+            device=device,
+            detailed_profile=False,
+            collect_diagnostics=collect_diagnostics,
+        )
+    with diagnostics.scope("FSDP_POST_FORWARD_RESHARD/generator"):
+        pass
     gradient, losses = _gan_score_boundary_gradient(
         score_model=critic_engine.module,
         generated_latent=x0,
@@ -339,14 +384,24 @@ def _run_gan_generator_update(
             negative,
             device,
         ),
+        collect_diagnostics=collect_diagnostics,
+        diagnostics=diagnostics,
     )
     # The Score helper already returned the normalized latent derivative.  Use
     # a SUM chain-rule surrogate, matching the validated GAN pipeline seam.
     surrogate = (x0.float() * gradient.float()).sum()
-    generator_engine.backward(surrogate)
-    generator_engine.step()
-    after = TIMING_OMITTED if timing_mode else _local_trainable_fingerprint(generator_engine.module)
-    if not timing_mode and before == after:
+    with diagnostics.scope("FSDP_PRE_BACKWARD_ALL_GATHER/generator"):
+        generator_engine.backward(surrogate)
+    with diagnostics.scope("FSDP_REDUCE_SCATTER/generator"):
+        pass
+    with diagnostics.scope("OPTIMIZER_STEP/generator"):
+        generator_engine.step()
+    after = (
+        TIMING_OMITTED
+        if not collect_diagnostics
+        else _profile_fingerprint(generator_engine.module, diagnostics, "gan_generator_after")
+    )
+    if collect_diagnostics and before == after:
         raise AssertionError("GAN FSDP2 Generator trainables did not update")
     return {
         "logical_step": 1000,
@@ -356,7 +411,7 @@ def _run_gan_generator_update(
         "local_trainable_after": after,
         "rollout": rollout,
         "score_forwards": 4,
-        "losses": TIMING_OMITTED if timing_mode else losses,
+        "losses": losses if collect_diagnostics else TIMING_OMITTED,
     }
 
 
@@ -368,26 +423,39 @@ def _run_nogan_critic(
     generator_engine: Any,
     critic_engine: Any,
     trace: StaticWorld16Trace,
-    timing_mode: bool,
+    collect_diagnostics: bool,
+    diagnostics: StaticProfileDiagnostics,
 ) -> dict[str, Any]:
-    entry = trace.load_critic_entry(rank=rank, step=step, device=device)
-    x0, rollout = run_generator_trace_rollout(
-        model=generator_engine.module,
-        loaded=entry,
-        device=device,
-        detailed_profile=False,
-        record_output_sha256=not timing_mode,
-        empty_cache_before_rollout=False,
-    )
+    with diagnostics.scope(f"INPUT_H2D/critic_entry/step{step}"):
+        entry = trace.load_critic_entry(rank=rank, step=step, device=device)
+    diagnostics.add_tensor_tree(f"critic_entry/step{step}", entry, direction="H2D")
+    with diagnostics.scope("FSDP_PRE_FORWARD_ALL_GATHER/generator_critic_rollout"):
+        x0, rollout = run_generator_trace_rollout(
+            model=generator_engine.module,
+            loaded=entry,
+            device=device,
+            detailed_profile=False,
+            record_output_sha256=collect_diagnostics,
+            empty_cache_before_rollout=False,
+            collect_diagnostics=collect_diagnostics,
+            diagnostics_scope=diagnostics.scope,
+        )
+    with diagnostics.scope("FSDP_POST_FORWARD_RESHARD/generator_critic_rollout"):
+        pass
     batch = prepare_student_batch(generated_x0=x0, loaded=entry, device=device)
-    _prediction, loss = student_forward_loss(critic_engine, batch)
-    critic_engine.backward(loss)
-    critic_engine.step()
+    with diagnostics.scope("FSDP_PRE_FORWARD_ALL_GATHER/critic"):
+        _prediction, loss = student_forward_loss(critic_engine, batch)
+    with diagnostics.scope("FSDP_PRE_BACKWARD_ALL_GATHER/critic"):
+        critic_engine.backward(loss)
+    with diagnostics.scope("FSDP_REDUCE_SCATTER/critic"):
+        pass
+    with diagnostics.scope("OPTIMIZER_STEP/critic"):
+        critic_engine.step()
     return {
         "logical_step": step,
         "source_rank": rank,
         "physical_critic_step_after": int(critic_engine.global_steps),
-        "loss": TIMING_OMITTED if timing_mode else float(loss.detach().cpu()),
+        "loss": diagnostics.diagnostic_scalar(f"critic_step{step}", loss) if collect_diagnostics else TIMING_OMITTED,
         "rollout": rollout,
         "score_forwards": 1,
     }
@@ -402,20 +470,29 @@ def _run_gan_critic(
     critic_engine: Any,
     trace: StaticWorld16Trace,
     cfg: Any,
-    timing_mode: bool,
+    collect_diagnostics: bool,
+    diagnostics: StaticProfileDiagnostics,
 ) -> dict[str, Any]:
     from helios.utils.utils_helios_post import _critic_loss
 
-    entry = trace.load_critic_entry(rank=rank, step=step, device=device)
-    x0, rollout = run_generator_trace_rollout(
-        model=generator_engine.module,
-        loaded=entry,
-        device=device,
-        detailed_profile=False,
-        record_output_sha256=not timing_mode,
-        empty_cache_before_rollout=False,
-    )
+    with diagnostics.scope(f"INPUT_H2D/critic_entry/step{step}"):
+        entry = trace.load_critic_entry(rank=rank, step=step, device=device)
+    diagnostics.add_tensor_tree(f"critic_entry/step{step}", entry, direction="H2D")
+    with diagnostics.scope("FSDP_PRE_FORWARD_ALL_GATHER/generator_critic_rollout"):
+        x0, rollout = run_generator_trace_rollout(
+            model=generator_engine.module,
+            loaded=entry,
+            device=device,
+            detailed_profile=False,
+            record_output_sha256=collect_diagnostics,
+            empty_cache_before_rollout=False,
+            collect_diagnostics=collect_diagnostics,
+            diagnostics_scope=diagnostics.scope,
+        )
+    with diagnostics.scope("FSDP_POST_FORWARD_RESHARD/generator_critic_rollout"):
+        pass
     source = trace.source(rank=rank, device=device)
+    diagnostics.add_tensor_tree(f"critic_source/step{step}", source, direction="H2D")
     kwargs = critic_official_kwargs(
         cfg,
         entry.operation_trace,
@@ -425,7 +502,8 @@ def _run_gan_critic(
         critic_engine,
     )
     before = int(critic_engine.global_steps)
-    loss, logs = _critic_loss(fake_score_model=critic_engine.module, **kwargs)
+    with diagnostics.scope("FSDP_PRE_FORWARD_ALL_GATHER/critic"):
+        loss, logs = _critic_loss(fake_score_model=critic_engine.module, **kwargs)
     if not bool(logs.get("critic_optimizer_committed")):
         raise AssertionError("GAN static FSDP2 Critic did not commit")
     if int(critic_engine.global_steps) != before + 1:
@@ -434,7 +512,7 @@ def _run_gan_critic(
         "logical_step": step,
         "source_rank": rank,
         "physical_critic_step_after": int(critic_engine.global_steps),
-        "loss": TIMING_OMITTED if timing_mode else float(loss.detach().cpu()),
+        "loss": diagnostics.diagnostic_scalar(f"gan_critic_step{step}", loss) if collect_diagnostics else TIMING_OMITTED,
         "rollout": rollout,
         "score_forwards": 2,
         "critic_optimizer_committed": True,
@@ -468,6 +546,13 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--gan-config", type=Path)
     value.add_argument("--timing-mode", action="store_true")
     value.add_argument("--profile-mode", action="store_true")
+    value.add_argument(
+        "--profile-diagnostics",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="collect legacy CPU diagnostics inside a profile (default: on)",
+    )
+    value.add_argument("--ema-device", choices=("cpu", "cuda"), default="cpu")
     value.add_argument("--validate-only", action="store_true")
     return value
 
@@ -535,8 +620,26 @@ def main() -> int:
         generator_engine, critic_engine, build = _build_engines(
             args=args, package=logical, device=device
         )
-        ema = FSDP2ShardEMA.load_from_logical(generator_engine.module, logical.root)
+        ema = FSDP2ShardEMA.load_from_logical(
+            generator_engine.module,
+            logical.root,
+            device=args.ema_device,
+            nvtx_enabled=args.profile_mode,
+        )
+        diagnostics = StaticProfileDiagnostics(
+            enabled=args.profile_mode,
+            rank=rank,
+            output_path=(
+                args.output_dir / "diagnostics" / f"rank_{rank:02d}.json"
+                if args.profile_mode
+                else None
+            ),
+            collect_cpu_diagnostics=(not args.profile_mode) or args.profile_diagnostics,
+        )
+        collect_diagnostics = (not args.timing_mode) and args.profile_diagnostics
         result["build"] = build
+        result["profile_diagnostics"] = bool(args.profile_diagnostics)
+        result["ema_device"] = args.ema_device
         result["initial"] = {
             "generator_physical_step": int(generator_engine.global_steps),
             "critic_physical_step": int(critic_engine.global_steps),
@@ -572,7 +675,8 @@ def main() -> int:
                         trace=trace,
                         cfg=cfg,
                         negative=negative,
-                        timing_mode=args.timing_mode,
+                        collect_diagnostics=collect_diagnostics,
+                        diagnostics=diagnostics,
                     )
                     if args.variant == "gan"
                     else _run_nogan_generator_update(
@@ -582,7 +686,8 @@ def main() -> int:
                         critic_engine=critic_engine,
                         trace=trace,
                         negative=negative,
-                        timing_mode=args.timing_mode,
+                        collect_diagnostics=collect_diagnostics,
+                        diagnostics=diagnostics,
                     )
                 )
             critic_record = (
@@ -594,7 +699,8 @@ def main() -> int:
                     critic_engine=critic_engine,
                     trace=trace,
                     cfg=cfg,
-                    timing_mode=args.timing_mode,
+                    collect_diagnostics=collect_diagnostics,
+                    diagnostics=diagnostics,
                 )
                 if args.variant == "gan"
                 else _run_nogan_critic(
@@ -604,15 +710,23 @@ def main() -> int:
                     generator_engine=generator_engine,
                     critic_engine=critic_engine,
                     trace=trace,
-                    timing_mode=args.timing_mode,
+                    collect_diagnostics=collect_diagnostics,
+                    diagnostics=diagnostics,
                 )
             )
             critic_records.append(critic_record)
             if step in contract.ema_update_steps:
+                ema_decay = ema.step()
+                diagnostics.add_bytes(
+                    "ema_shadow",
+                    int(getattr(ema, "last_transfer_bytes", 0)),
+                    direction="D2H" if args.ema_device == "cpu" else "GPU",
+                    source="fsdp2_ema_local_shard",
+                )
                 ema_records.append(
                     {
                         "logical_step": step,
-                        "decay": ema.step(),
+                        "decay": ema_decay,
                         "optimization_step": int(ema.optimization_step),
                     }
                 )
@@ -623,6 +737,7 @@ def main() -> int:
             nsys_range.after_critic_commit(contract.logical_steps[-1])
             dist.barrier()
             nsys_range.assert_complete()
+            diagnostics.dump_after_capture()
         else:
             _nvtx_pop(args)
         torch.cuda.synchronize(device)

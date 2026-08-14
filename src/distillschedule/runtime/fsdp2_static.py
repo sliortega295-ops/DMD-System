@@ -400,15 +400,30 @@ def build_fsdp2_engine(
 
 
 class FSDP2ShardEMA:
-    """CPU EMA over fixed local FSDP2 shards; no per-step communication."""
+    """EMA over fixed local FSDP2 shards; no per-step communication.
+
+    ``device='cpu'`` is the frozen baseline.  ``device='cuda'`` is a
+    diagnostic-only variant that keeps each local shadow on its owning GPU and
+    therefore removes the per-update local-shard D2H copy.  Both paths use the
+    same FP32/decay recurrence and never introduce a collective.
+    """
 
     def __init__(
         self,
         *,
         module: Any,
         checkpoint_root: Path,
+        device: str = "cpu",
+        nvtx_enabled: bool = False,
     ) -> None:
         torch = _torch()
+        if device not in {"cpu", "cuda"}:
+            raise ValueError(f"unsupported FSDP2 EMA device: {device}")
+        if device == "cuda" and not torch.cuda.is_available():
+            raise RuntimeError("cuda EMA requested but CUDA is unavailable")
+        self.device = device
+        self.nvtx_enabled = bool(nvtx_enabled)
+        self.last_transfer_bytes = 0
         metadata = json.loads((checkpoint_root / "sparse_ema_manifest.json").read_text())
         if metadata.get("schema_version") != "distillschedule.sparse_ema.v1":
             raise ValueError("unsupported sparse EMA checkpoint")
@@ -446,7 +461,9 @@ class FSDP2ShardEMA:
                 placements=parameter.placements,
             )
             local = distributed.to_local().detach().to(
-                device="cpu", dtype=full.dtype, copy=True
+                device=(torch.cuda.current_device() if device == "cuda" else "cpu"),
+                dtype=full.dtype,
+                copy=True,
             ).contiguous()
             self._parameters.append(parameter)
             self._names.append(name)
@@ -459,11 +476,23 @@ class FSDP2ShardEMA:
         self.cur_decay_value = metadata.get("cur_decay_value")
 
     @classmethod
-    def load_from_logical(cls, module: Any, logical_root: Path) -> "FSDP2ShardEMA":
+    def load_from_logical(
+        cls,
+        module: Any,
+        logical_root: Path,
+        *,
+        device: str = "cpu",
+        nvtx_enabled: bool = False,
+    ) -> "FSDP2ShardEMA":
         candidates = (logical_root / "ema", logical_root / "model_ema")
         for candidate in candidates:
             if (candidate / "sparse_ema_manifest.json").is_file():
-                return cls(module=module, checkpoint_root=candidate)
+                return cls(
+                    module=module,
+                    checkpoint_root=candidate,
+                    device=device,
+                    nvtx_enabled=nvtx_enabled,
+                )
         raise FileNotFoundError("logical package contains no sparse EMA checkpoint")
 
     def get_decay(self, optimization_step: int) -> float:
@@ -477,17 +506,29 @@ class FSDP2ShardEMA:
         self.optimization_step += 1
         decay = self.get_decay(self.optimization_step)
         self.cur_decay_value = decay
-        one_minus_decay = 1.0 - decay
+        self.last_transfer_bytes = 0
+        torch = _torch()
         for shadow, parameter in zip(self._shadows, self._parameters, strict=True):
-            source = parameter.detach().to_local().to(
-                device="cpu", dtype=shadow.dtype
-            )
+            source_local = parameter.detach().to_local()
+            if self.device == "cpu" and self.nvtx_enabled:
+                torch.cuda.nvtx.range_push("EMA_CPU_D2H")
+            try:
+                source = source_local.to(device=shadow.device, dtype=shadow.dtype)
+            finally:
+                if self.device == "cpu" and self.nvtx_enabled:
+                    torch.cuda.nvtx.range_pop()
+            self.last_transfer_bytes += int(source.numel() * source.element_size())
             if source.shape != shadow.shape:
                 raise ValueError("FSDP2 EMA local shard shape changed")
-            if decay == 0.0:
-                shadow.copy_(source)
-            else:
-                shadow.sub_(one_minus_decay * (shadow - source))
+            if self.nvtx_enabled:
+                torch.cuda.nvtx.range_push(
+                    "EMA_GPU_UPDATE" if self.device == "cuda" else "EMA_CPU_UPDATE"
+                )
+            try:
+                ema_update_reference(shadow, source, decay)
+            finally:
+                if self.nvtx_enabled:
+                    torch.cuda.nvtx.range_pop()
         return decay
 
     def checksum(self) -> dict[str, Any]:
@@ -507,12 +548,25 @@ class FSDP2ShardEMA:
             "optimization_step": self.optimization_step,
             "decay": self.cur_decay_value,
             "communication_per_update": False,
+            "device": self.device,
         }
+
+
+def ema_update_reference(shadow: Any, source: Any, decay: float) -> Any:
+    """Apply the EMA recurrence in-place; shared by CPU/GPU and parity tests."""
+
+    one_minus_decay = 1.0 - float(decay)
+    if float(decay) == 0.0:
+        shadow.copy_(source)
+    else:
+        shadow.sub_(one_minus_decay * (shadow - source))
+    return shadow
 
 
 __all__ = [
     "FSDP2EngineAdapter",
     "FSDP2ShardEMA",
+    "ema_update_reference",
     "GAN_CONTRACT",
     "NO_GAN_CONTRACT",
     "StaticFSDP2Full5Contract",

@@ -92,6 +92,10 @@ export HF_HOME="${ASSETS}/hf_home_official_torch210"
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TOKENIZERS_PARALLELISM=false
 export OMP_NUM_THREADS=8 NCCL_ASYNC_ERROR_HANDLING=1
 export DISTILLSCHEDULE_NODE_RANK="${NODE_RANK}"
+PROFILE_DIAGNOSTICS="${DISTILLSCHEDULE_PROFILE_DIAGNOSTICS:-on}"
+EMA_DEVICE="${DISTILLSCHEDULE_EMA_DEVICE:-cpu}"
+[[ "${PROFILE_DIAGNOSTICS}" == on || "${PROFILE_DIAGNOSTICS}" == off ]] || { echo "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS must be on/off" >&2; exit 2; }
+[[ "${EMA_DEVICE}" == cpu || "${EMA_DEVICE}" == cuda ]] || { echo "DISTILLSCHEDULE_EMA_DEVICE must be cpu/cuda" >&2; exit 2; }
 
 {
   echo schema_version=distillschedule.static_fsdp2_world16_launch.v1
@@ -108,6 +112,8 @@ export DISTILLSCHEDULE_NODE_RANK="${NODE_RANK}"
   echo parameter_offload=false
   echo frozen_parameter_streaming=false
   echo formal_timing_profiled=false
+  echo profile_diagnostics="${PROFILE_DIAGNOSTICS}"
+  echo ema_device="${EMA_DEVICE}"
 } >"${NODE_LOG}/launch_manifest.txt"
 
 WORKER=(
@@ -129,6 +135,8 @@ WORKER=(
 [[ "${MODE}" == validate ]] && WORKER+=(--validate-only)
 [[ "${MODE}" == timing ]] && WORKER+=(--timing-mode)
 [[ "${MODE}" == profile ]] && WORKER+=(--profile-mode)
+[[ "${PROFILE_DIAGNOSTICS}" == off ]] && WORKER+=(--no-profile-diagnostics)
+WORKER+=(--ema-device "${EMA_DEVICE}")
 
 if [[ "${MODE}" == profile ]]; then
   command -v nsys >/dev/null || { echo nsys_missing >&2; exit 3; }

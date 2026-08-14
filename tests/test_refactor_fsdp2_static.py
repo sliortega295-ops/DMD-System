@@ -9,6 +9,7 @@ from distillschedule.runtime.fsdp2_static import (
     configure_fsdp2_checkpointing,
     contract_for_variant,
     fsdp2_metadata_tolerant_checkpoint,
+    ema_update_reference,
 )
 
 
@@ -78,6 +79,18 @@ def test_static_launcher_disables_shared_filesystem_bytecode_writes() -> None:
     assert "export PYTHONDONTWRITEBYTECODE=1" in source
 
 
+def test_static_profile_switches_are_fail_closed_and_default_legacy_safe() -> None:
+    source = (
+        ROOT / "scripts/distillschedule/launch_static_fsdp2_full5_world16_node.sh"
+    ).read_text()
+    assert 'PROFILE_DIAGNOSTICS="${DISTILLSCHEDULE_PROFILE_DIAGNOSTICS:-on}"' in source
+    assert 'EMA_DEVICE="${DISTILLSCHEDULE_EMA_DEVICE:-cpu}"' in source
+    assert '[[ "${PROFILE_DIAGNOSTICS}" == on || "${PROFILE_DIAGNOSTICS}" == off ]]' in source
+    assert '[[ "${EMA_DEVICE}" == cpu || "${EMA_DEVICE}" == cuda ]]' in source
+    assert 'WORKER+=(--ema-device "${EMA_DEVICE}")' in source
+    assert '--no-profile-diagnostics' in source
+
+
 def test_static_profile_uses_one_outer_node_nsight_session() -> None:
     source = (
         ROOT / "scripts/distillschedule/launch_static_fsdp2_full5_world16_node.sh"
@@ -129,3 +142,60 @@ def test_fsdp2_engine_exposes_official_gan_boundary_hook() -> None:
     ).read_text()
     assert "def set_gradient_accumulation_boundary" in source
     assert "still calls ``step()`` exactly once" in source
+
+
+def test_ema_reference_recurrence_is_stable_for_multiple_updates() -> None:
+    import torch
+
+    cpu_shadow = torch.tensor([1.0, -2.0, 3.5], dtype=torch.float32)
+    gpu_shadow = cpu_shadow.clone()
+    sources = [
+        torch.tensor([1.25, -1.5, 3.0], dtype=torch.float32),
+        torch.tensor([0.5, -1.0, 2.5], dtype=torch.float32),
+        torch.tensor([0.25, -0.25, 2.0], dtype=torch.float32),
+        torch.tensor([0.0, 0.0, 1.0], dtype=torch.float32),
+    ]
+    for source in sources:
+        ema_update_reference(cpu_shadow, source, 0.8)
+        ema_update_reference(gpu_shadow, source, 0.8)
+    assert torch.equal(cpu_shadow, gpu_shadow)
+    assert float((cpu_shadow - gpu_shadow).abs().max()) == 0.0
+
+
+def test_ema_cpu_reference_matches_cuda_shadow_when_available() -> None:
+    import pytest
+    import torch
+
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA unavailable")
+    cpu_shadow = torch.tensor([1.0, -2.0, 3.5], dtype=torch.float32)
+    cuda_shadow = cpu_shadow.cuda()
+    sources = [
+        torch.tensor([1.25, -1.5, 3.0], dtype=torch.float32),
+        torch.tensor([0.5, -1.0, 2.5], dtype=torch.float32),
+        torch.tensor([0.25, -0.25, 2.0], dtype=torch.float32),
+        torch.tensor([0.0, 0.0, 1.0], dtype=torch.float32),
+    ]
+    for source in sources:
+        ema_update_reference(cpu_shadow, source, 0.8)
+        ema_update_reference(cuda_shadow, source.cuda(), 0.8)
+    diff = (cpu_shadow - cuda_shadow.cpu()).abs()
+    rel = diff / cpu_shadow.abs().clamp_min(1e-12)
+    assert float(diff.max()) <= 1e-6
+    assert float(rel.max()) <= 1e-6
+
+
+def test_ema_device_switch_is_explicit_and_default_is_cpu() -> None:
+    source = (
+        ROOT / "src/distillschedule/runtime/fsdp2_static.py"
+    ).read_text()
+    assert 'device: str = "cpu"' in source
+    assert 'device not in {"cpu", "cuda"}' in source
+    assert '"device": self.device' in source
+
+
+def test_ema_profile_has_separate_transfer_and_update_ranges() -> None:
+    source = (ROOT / "src/distillschedule/runtime/fsdp2_static.py").read_text()
+    assert '"EMA_CPU_D2H"' in source
+    assert '"EMA_GPU_UPDATE"' in source
+    assert '"EMA_CPU_UPDATE"' in source
