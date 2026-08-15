@@ -250,6 +250,12 @@ class _VLLMTransformerFacade:
         return self
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        # Helios native uses this flag to control its optional KV-cache path.
+        # vLLM-Omni 0.19's patched transformer has no cache state and therefore
+        # does not expose the keyword; drop only that unsupported, no-op flag
+        # rather than silently changing any tensor or schedule input.
+        if "is_first_denoising_step" not in self.transformer.forward.__code__.co_varnames:
+            kwargs.pop("is_first_denoising_step", None)
         return self.transformer(*args, **kwargs)
 
 
