@@ -452,13 +452,22 @@ class HeliosRolloutService:
         self._rollout_calls += 1
         return {
             "status": "PASS",
+            "backend": "vllm-omni-latent",
+            "engine": "vllm-omni",
             "logical_step": int(step),
             "rank": int(rank),
             "generator_version": int(generator_version),
+            "upstream_revision": BASE_COMMIT,
+            "compatibility_patch_sha256": PATCH_SHA256,
             "output_type": "latent",
             "output_shape": list(value.shape),
             "output_dtype": str(value.dtype),
             "vae_decode_calls": 0,
+            "exact_operation_trace_replay": True,
+            "trace_hash": str(entry.operation_trace.trace_hash),
+            "trace_key": str(entry.trace_key),
+            "source_trace_rank": int(entry.source_trace_rank),
+            "logical_sample_slot": int(entry.logical_sample_slot),
             "latent_sha256": _tensor_sha256(value),
             "call_count": int(record.get("call_count", 0)),
             "stage_call_count": record.get("stage_call_count", {}),
@@ -475,7 +484,8 @@ def _tensor_sha256(value: Any) -> str:
     import torch
 
     cpu = value.detach().to("cpu").contiguous()
-    return hashlib.sha256(cpu.numpy().tobytes()).hexdigest()
+    raw = cpu.view(torch.uint16) if cpu.dtype == torch.bfloat16 else cpu
+    return hashlib.sha256(raw.numpy().tobytes()).hexdigest()
 
 
 class _Handler(BaseHTTPRequestHandler):
