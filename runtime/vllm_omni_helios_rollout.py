@@ -326,17 +326,35 @@ class InProcessVLLMOmniHeliosTraceExecutor:
         )
         if len(entries) > self.max_batch_size:
             raise ValueError("request exceeds vLLM-Omni trace executor max batch")
-        from runtime.static_fsdp2_p0_helios import run_generator_trace_rollout_batch
+        if len(entries) == 1:
+            # B1 is a single logical rollout.  The batched helper intentionally
+            # requires a synthetic global_step field that is only present for
+            # B2/B5 grouped traces; use the authoritative single-entry helper
+            # here so the service does not invent metadata or alter the trace.
+            from runtime.critic_pool_helios import run_generator_trace_rollout
 
-        outputs, native_record = run_generator_trace_rollout_batch(
-            model=self.facade,
-            loaded_entries=entries,
-            device=self.device,
-            detailed_profile=False,
-            record_output_sha256=False,
-            collect_diagnostics=False,
-            diagnostics_scope=None,
-        )
+            output, native_record = run_generator_trace_rollout(
+                model=self.facade,
+                loaded=entries[0],
+                device=self.device,
+                detailed_profile=False,
+                record_output_sha256=False,
+                empty_cache_before_rollout=False,
+                collect_diagnostics=False,
+            )
+            outputs = [output]
+        else:
+            from runtime.static_fsdp2_p0_helios import run_generator_trace_rollout_batch
+
+            outputs, native_record = run_generator_trace_rollout_batch(
+                model=self.facade,
+                loaded_entries=entries,
+                device=self.device,
+                detailed_profile=False,
+                record_output_sha256=False,
+                collect_diagnostics=False,
+                diagnostics_scope=None,
+            )
         receipt = {
             "status": "PASS",
             "backend": VLLM_OMNI_BACKEND,
