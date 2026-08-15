@@ -127,9 +127,30 @@ python scripts/distillschedule/analyze_static_fsdp2_nsys.py \
   --output <run_root>/nsight_summary.json
 ```
 
+## Measured world16 evidence (2026-08-14)
+
+Both variants subsequently passed 16/16-rank correctness and three formal
+unprofiled Full5 trials:
+
+| Variant | Formal Full5 trials | Median |
+|---|---:|---:|
+| No-GAN | 214.066 / 219.849 / 210.786 s | **214.066 s** |
+| GAN-on | 348.074 / 347.244 / 368.709 s | **348.074 s** |
+
+The corresponding clean diagnostic profiles, source-attributed Nsight
+timelines, D2H analysis, and exact SQLite reconciliation are published in
+[`docs/issue-assets/fsdp2-static-full5-20260814/`](../issue-assets/fsdp2-static-full5-20260814/README.md).
+
+The dominant D2H activity is issued from named FSDP phases and
+`pt_autograd_*` threads. It is not produced by configured parameter or
+activation offload, but the trace does not resolve the internal operation
+subsource. Profile copy sums overlap compute/NCCL and are not added to formal
+wall time.
+
 ## Claim boundary
 
-Source implementation alone does not establish fit, correctness, speed, or
-kernel occupancy. Before using this baseline in a paper, each variant needs a
-real world16 correctness/capacity pass, at least three unprofiled Full5 timing
-trials, and one separate representative Nsight run.
+The completed correctness, formal timing, and diagnostic-profile runs establish
+the measurements above for the frozen contracts. They do not establish a
+speedup over a role-transition pipeline with a different placement/backend
+contract. Profiled latency is diagnostic, compute/NCCL/copy intervals overlap,
+and the remaining autograd-owned transfer operation is explicitly unresolved.
