@@ -19,7 +19,7 @@
     "vllm_omni_version_family": "0.19",
     "vllm_version_family": "0.19",
     "reference_upstream_tag": "v0.19.0rc1",
-    "reference_upstream_revision": "191b9a8dc9ebd4b0464b9b68ec7b40e17d08d288",
+    "reference_upstream_revision": "191b9a8dbf22fc494b7db34ea5ae04153f44f94d",
     "compatibility_patch": {
       "path": "third_party/patches/vllm_omni_v0_19_helios_latent_no_vae.patch",
       "sha256": "84c9a914184373a771a5839bd6198d05ba8f981154732fc6f7bfbf5feafb3d99"

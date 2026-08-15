@@ -9,7 +9,7 @@ ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 PATCH="${ROOT}/third_party/patches/vllm_omni_v0_19_helios_latent_no_vae.patch"
 PIPELINE="vllm_omni/diffusion/models/helios/pipeline_helios.py"
 EXPECTED_TAG="v0.19.0rc1"
-EXPECTED_BASE="191b9a8dc9ebd4b0464b9b68ec7b40e17d08d288"
+EXPECTED_BASE="191b9a8dbf22fc494b7db34ea5ae04153f44f94d"
 EXPECTED_PATCH_SHA256="84c9a914184373a771a5839bd6198d05ba8f981154732fc6f7bfbf5feafb3d99"
 
 [[ -d "${VLLM_OMNI_ROOT}/.git" ]] || { echo "not_a_git_checkout=${VLLM_OMNI_ROOT}" >&2; exit 2; }

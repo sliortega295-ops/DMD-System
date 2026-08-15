@@ -58,3 +58,32 @@ jobs:
               )
           print('vLLM-Omni 0.19 rollout contract PASS: 8 executed, 0 skipped')
           PY
+      - name: Verify upstream vLLM-Omni 0.19 source identity and backport
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          upstream='https://github.com/vllm-project/vllm-omni.git'
+          tag='v0.19.0rc1'
+          expected='191b9a8dbf22fc494b7db34ea5ae04153f44f94d'
+          observed="$(git ls-remote "$upstream" "refs/tags/$tag" | awk 'NR==1 {print $1}')"
+          test -n "$observed"
+          test "$observed" = "$expected"
+          checkout="$(mktemp -d)"
+          trap 'rm -rf "$checkout"' EXIT
+          git clone --quiet --branch "$tag" --depth 1 "$upstream" "$checkout"
+          test "$(git -C "$checkout" rev-parse HEAD)" = "$expected"
+          PYTHONPATH="$PWD/src:$PWD${PYTHONPATH:+:$PYTHONPATH}" \
+            bash scripts/distillschedule/prepare_vllm_omni_019_helios.sh \
+              "$checkout" "$checkout/source_receipt.json"
+          python - "$checkout/source_receipt.json" <<'PY'
+          import json
+          import sys
+
+          receipt = json.load(open(sys.argv[1]))
+          assert receipt["status"] == "PASS"
+          assert receipt["base_commit"] == "191b9a8dbf22fc494b7db34ea5ae04153f44f94d"
+          assert receipt["compatibility_patch_sha256"] == "84c9a914184373a771a5839bd6198d05ba8f981154732fc6f7bfbf5feafb3d99"
+          assert receipt["output_type"] == "latent"
+          assert receipt["vae_decode_calls_for_latent"] == 0
+          print("vLLM-Omni 0.19 source identity/backport PASS")
+          PY

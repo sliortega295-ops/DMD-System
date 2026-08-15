@@ -19,7 +19,7 @@ NATIVE_ROLLOUT_BACKEND = "native-fsdp2-batch"
 VLLM_OMNI_VERSION_FAMILY = "0.19"
 VLLM_VERSION_FAMILY = "0.19"
 VLLM_OMNI_HELIOS_BASE_TAG = "v0.19.0rc1"
-VLLM_OMNI_HELIOS_BASE_COMMIT = "191b9a8dc9ebd4b0464b9b68ec7b40e17d08d288"
+VLLM_OMNI_HELIOS_BASE_COMMIT = "191b9a8dbf22fc494b7db34ea5ae04153f44f94d"
 VLLM_OMNI_HELIOS_LATENT_PATCH_PATH = (
     "third_party/patches/vllm_omni_v0_19_helios_latent_no_vae.patch"
 )
@@ -218,7 +218,10 @@ def source_has_latent_no_vae_guard(source: str) -> bool:
     compact = " ".join(source.replace("'", '"').split())
     guard = compact.find('if output_type != "latent":')
     decode = compact.find(".vae.decode(")
-    latent_return = compact.find('if output_type == "latent"')
+    # The vLLM-Omni module also contains a small post-processing helper with
+    # an earlier ``output_type == "latent"`` branch.  Use the final occurrence
+    # so the guard is proven to dominate the pipeline's actual latent return.
+    latent_return = compact.rfind('if output_type == "latent"')
     if min(guard, decode, latent_return) < 0:
         return False
     return guard < decode < latent_return and (decode - guard) < 1200

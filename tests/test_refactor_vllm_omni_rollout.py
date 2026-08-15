@@ -96,6 +96,9 @@ def test_source_probe_distinguishes_stock_019_from_no_vae_backport() -> None:
         output = real_history_latents
     """
     patched = """
+    def helper(output_type):
+        if output_type == 'latent':
+            return video
     if output_type != 'latent':
         current_latents = real_history_latents[index_slice]
         current_video = self.vae.decode(current_latents)[0]
