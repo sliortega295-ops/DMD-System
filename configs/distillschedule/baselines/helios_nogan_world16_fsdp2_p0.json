@@ -1,0 +1,61 @@
+{
+  "schema_version": "distillschedule.static_fsdp2_p0_plan.v1",
+  "name": "helios_nogan_world16_fsdp2_p0",
+  "variant": "no-gan",
+  "parent_baseline": "helios_nogan_world16_fsdp2_static",
+  "topology": {
+    "nodes": 2,
+    "gpus_per_node": 8,
+    "world_size": 16,
+    "global_batch": 16,
+    "local_batch": 1
+  },
+  "logical_contract": {
+    "steps": [10, 11, 12, 13, 14],
+    "generator_updates": 1,
+    "critic_updates": 5,
+    "ema_updates": 5,
+    "initial_versions": {"generator": 2, "critic": 10, "ema": 10},
+    "final_versions": {"generator": 3, "critic": 15, "ema": 15}
+  },
+  "p0_search_space": {
+    "mesh_policy": ["world16-fsdp", "node-hsdp"],
+    "rollout_batch_size": [1, 2, 5],
+    "pack_real_score_pair": [false, true],
+    "rollout_backend": ["native-fsdp2-batch"]
+  },
+  "default_candidate": {
+    "mesh_policy": "world16-fsdp",
+    "rollout_batch_size": 1,
+    "pack_real_score_pair": false,
+    "rollout_backend": "native-fsdp2-batch"
+  },
+  "experiment_order": [
+    "world16-fsdp/B1/packing-off correctness control",
+    "world16-fsdp/B1/packing-on",
+    "world16-fsdp/B2/packing-on",
+    "world16-fsdp/B5/packing-on only after B2 fit/parity",
+    "node-hsdp/B1 capacity and correctness canary",
+    "node-hsdp with best validated rollout batch"
+  ],
+  "physical_schedule": [
+    "one differentiable Generator update",
+    "precompute five G3 no-grad Critic inputs in trace-equivalent batches",
+    "five ordered Critic commits C10->C15",
+    "five EMA updates in their original logical-step order"
+  ],
+  "prohibited_changes": [
+    "loss math",
+    "trace or random inputs",
+    "logical batch",
+    "update counts or order",
+    "parameter or activation offload",
+    "model swap or role transition"
+  ],
+  "claim_boundary": {
+    "source_implementation_only": true,
+    "gpu_correctness": "NOT_RUN",
+    "speedup": "NOT_CLAIMED",
+    "external_rollout_engine": "NOT_INTEGRATED"
+  }
+}
