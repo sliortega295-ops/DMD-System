@@ -276,9 +276,26 @@ def validate_rollout_entries(entries: Sequence[Any]) -> dict[str, Any]:
     for loaded in entries:
         operation = loaded.operation_trace.operation(loaded.pool_entry.rollout_operation)
         raw_control = dict(operation["control"])
-        if not isinstance(raw_control.get("global_step"), int):
-            raise ValueError("critic rollout control lacks integer global_step metadata")
-        global_steps.append(int(raw_control["global_step"]))
+        # The official rank16 trace stores logical global_step on the sibling
+        # ``step/<step>/branch`` operation, not on the no-grad rollout row.
+        # Accept either representation, but fail closed if the two disagree.
+        rollout_step = raw_control.get("global_step")
+        if not isinstance(rollout_step, int):
+            logical_step = int(loaded.pool_entry.logical_step)
+            branch = loaded.operation_trace.operation(
+                f"step/{logical_step}/branch"
+            )
+            branch_step = branch.get("control", {}).get("global_step")
+            if not isinstance(branch_step, int):
+                raise ValueError("critic rollout lacks integer global_step metadata")
+            rollout_step = branch_step
+        logical_step = int(loaded.pool_entry.logical_step)
+        if int(rollout_step) != logical_step:
+            raise ValueError(
+                "critic rollout global_step disagrees with logical-step binding: "
+                f"{rollout_step} != {logical_step}"
+            )
+        global_steps.append(int(rollout_step))
         control = _normalized_rollout_control(raw_control)
         schedule = control.get("pyramid_stage_call_sequence")
         if not isinstance(schedule, list) or not schedule:

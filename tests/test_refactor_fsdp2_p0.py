@@ -28,6 +28,8 @@ class FakeTrace:
         self._marker = marker
 
     def operation(self, key: str):
+        if key == f"step/{self.step}/branch":
+            return {"key": key, "operation": "stage3_branch", "control": {"global_step": self.step}}
         assert key == f"step/{self.step}/critic/rollout"
         return {
             "key": key,
@@ -136,6 +138,29 @@ def test_batched_trace_stacks_values_and_rewrites_step_prefixes() -> None:
     assert operation["control"]["global_step"] == 10
     tensor = trace.tensor("batched/critic/rollout_noise")
     assert tensor.tolist() == [[1.0, 1.0], [2.0, 2.0]]
+
+
+def test_rollout_global_step_may_live_on_branch_metadata() -> None:
+    entries = (fake_entry(10, 1.0), fake_entry(11, 2.0))
+    originals = [entry.operation_trace.operation for entry in entries]
+
+    def rollout_without_step(index: int):
+        original = originals[index]
+
+        def operation(key: str):
+            value = original(key)
+            value["control"].pop("global_step", None)
+            if key == f"step/{entries[index].pool_entry.logical_step}/branch":
+                return {"control": {"global_step": entries[index].pool_entry.logical_step}}
+            return value
+
+        return operation
+
+    for index, entry in enumerate(entries):
+        entry.operation_trace.operation = rollout_without_step(index)
+
+    validation = validate_rollout_entries(entries)
+    assert validation["global_steps"] == [10, 11]
 
 
 def test_rollout_batchability_fails_closed_on_schedule_drift() -> None:
