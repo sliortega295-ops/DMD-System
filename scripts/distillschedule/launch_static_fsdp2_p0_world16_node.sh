@@ -134,7 +134,15 @@ WORKER=(
   --ema-device "${EMA_DEVICE}"
 )
 [[ "${VARIANT}" == gan ]] && WORKER+=(--gan-config "${GAN_CONFIG}")
-[[ "${PACK_REAL_SCORE_PAIR}" == off ]] && WORKER+=(--no-pack-real-score-pair)
+if [[ "${PACK_REAL_SCORE_PAIR}" == on ]]; then
+  # Pass the positive flag explicitly.  The hardened worker's direct-invocation
+  # fallback is intentionally conservative and appends --no-pack when neither
+  # spelling is present; relying on its argparse default would therefore turn
+  # an explicit launcher request for packing back off.
+  WORKER+=(--pack-real-score-pair)
+else
+  WORKER+=(--no-pack-real-score-pair)
+fi
 [[ "${MODE}" == validate ]] && WORKER+=(--validate-only)
 [[ "${MODE}" == timing ]] && WORKER+=(--timing-mode)
 [[ "${MODE}" == profile ]] && WORKER+=(--profile-mode)
