@@ -1,0 +1,89 @@
+name: p0-unit
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  p0-unit:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: .:src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install CPU PyTorch and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.10.0
+          python -m pip install numpy
+          python -m pip install -e .[test]
+      - name: Run P0 tensor tests without skips
+        run: |
+          pytest -q tests/test_refactor_fsdp2_p0.py --junitxml=/tmp/p0-unit.xml
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+
+          root = ET.parse('/tmp/p0-unit.xml').getroot()
+          cases = list(root.iter('testcase'))
+          tests = len(cases)
+          skipped = sum(1 for case in cases if case.find('skipped') is not None)
+          failures = sum(1 for case in cases if case.find('failure') is not None)
+          errors = sum(1 for case in cases if case.find('error') is not None)
+          if tests != 8 or skipped != 0 or failures != 0 or errors != 0:
+              raise SystemExit(
+                  f'P0 unit contract failed: tests={tests} skipped={skipped} '
+                  f'failures={failures} errors={errors}; expected 8/0/0/0'
+              )
+          print('P0 unit contract PASS: 8 executed, 0 skipped')
+          PY
+      - name: Run vLLM-Omni 0.19 rollout contract tests without skips
+        run: |
+          pytest -q tests/test_refactor_vllm_omni_rollout.py --junitxml=/tmp/vllm-omni-unit.xml
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+
+          root = ET.parse('/tmp/vllm-omni-unit.xml').getroot()
+          cases = list(root.iter('testcase'))
+          tests = len(cases)
+          skipped = sum(1 for case in cases if case.find('skipped') is not None)
+          failures = sum(1 for case in cases if case.find('failure') is not None)
+          errors = sum(1 for case in cases if case.find('error') is not None)
+          if tests != 8 or skipped != 0 or failures != 0 or errors != 0:
+              raise SystemExit(
+                  f'vLLM-Omni 0.19 unit contract failed: tests={tests} skipped={skipped} '
+                  f'failures={failures} errors={errors}; expected 8/0/0/0'
+              )
+          print('vLLM-Omni 0.19 rollout contract PASS: 8 executed, 0 skipped')
+          PY
+      - name: Verify upstream vLLM-Omni 0.19 source identity and backport
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          upstream='https://github.com/vllm-project/vllm-omni.git'
+          tag='v0.19.0rc1'
+          expected='191b9a8dbf22fc494b7db34ea5ae04153f44f94d'
+          observed="$(git ls-remote "$upstream" "refs/tags/$tag" | awk 'NR==1 {print $1}')"
+          test -n "$observed"
+          test "$observed" = "$expected"
+          checkout="$(mktemp -d)"
+          trap 'rm -rf "$checkout"' EXIT
+          git clone --quiet --branch "$tag" --depth 1 "$upstream" "$checkout"
+          test "$(git -C "$checkout" rev-parse HEAD)" = "$expected"
+          PYTHONPATH="$PWD/src:$PWD${PYTHONPATH:+:$PYTHONPATH}" \
+            bash scripts/distillschedule/prepare_vllm_omni_019_helios.sh \
+              "$checkout" "$checkout/source_receipt.json"
+          python - "$checkout/source_receipt.json" <<'PY'
+          import json
+          import sys
+
+          receipt = json.load(open(sys.argv[1]))
+          assert receipt["status"] == "PASS"
+          assert receipt["base_commit"] == "191b9a8dbf22fc494b7db34ea5ae04153f44f94d"
+          assert receipt["compatibility_patch_sha256"] == "84c9a914184373a771a5839bd6198d05ba8f981154732fc6f7bfbf5feafb3d99"
+          assert receipt["output_type"] == "latent"
+          assert receipt["vae_decode_calls_for_latent"] == 0
+          print("vLLM-Omni 0.19 source identity/backport PASS")
+          PY
