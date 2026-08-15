@@ -37,6 +37,7 @@ from distillschedule.runtime.p0_parity import (
     require_recorded_parity,
     tensor_parity_metrics,
 )
+from distillschedule.profiling.fsdp2_operation_markers import install_fsdp2_operation_markers
 import runtime.gan_score_packing as _gan_score_packing
 import runtime.gst_pool_helios as _gst_pool_helios
 from runtime.static_world16_trace import StaticWorld16Trace as _StaticWorld16Trace
@@ -45,6 +46,8 @@ from runtime.static_world16_trace import StaticWorld16Trace as _StaticWorld16Tra
 _LAST_TRACE: Any | None = None
 _ENGINES: dict[str, Any] = {}
 _GRADIENT_AUDITS: dict[str, list[dict[str, Any]]] = {}
+_OPERATION_MARKERS: Any | None = None
+_BLOCK_MARKER_METADATA: dict[str, Any] = {}
 
 
 class RetainedP0StaticWorld16Trace:
@@ -321,6 +324,7 @@ _original_build_engine = impl.build_fsdp2_engine
 
 
 def _capture_engine(*args: Any, **kwargs: Any):
+    global _BLOCK_MARKER_METADATA
     engine, metadata = _original_build_engine(*args, **kwargs)
     component = str(kwargs.get("component", "unknown"))
     _ENGINES[component] = engine
@@ -333,6 +337,10 @@ def _capture_engine(*args: Any, **kwargs: Any):
         return original_step()
 
     engine.step = audited_step
+    if _OPERATION_MARKERS is not None and _OPERATION_MARKERS.enabled:
+        _BLOCK_MARKER_METADATA[component] = _OPERATION_MARKERS.install_module_markers(
+            engine.module, role=component
+        )
     return engine, metadata
 
 
@@ -350,6 +358,12 @@ def _audited_atomic_json(path: Path, value: dict[str, Any]) -> None:
         "profile-only: No-GAN Score and GAN DMD fake/real Score calls are labelled; GAN-G remains outer official boundary"
     )
     hardening["gradient_audit_scope"] = "correctness_only_before_each_optimizer_step"
+    hardening["operation_source_markers"] = (
+        _OPERATION_MARKERS.marker_status
+        if _OPERATION_MARKERS is not None
+        else {"status": "DISABLED"}
+    )
+    hardening["block_marker_metadata"] = _BLOCK_MARKER_METADATA
     if _LAST_TRACE is not None:
         hardening["input_reuse"] = _LAST_TRACE.receipt()
     if (
@@ -380,8 +394,12 @@ def _install_conservative_direct_defaults() -> None:
 
 
 def main() -> int:
+    global _OPERATION_MARKERS
     _install_conservative_direct_defaults()
-    return int(impl.main())
+    enabled = "--profile-mode" in sys.argv
+    with install_fsdp2_operation_markers(enabled=enabled) as session:
+        _OPERATION_MARKERS = session
+        return int(impl.main())
 
 
 if __name__ == "__main__":
