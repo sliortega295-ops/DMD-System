@@ -1,0 +1,83 @@
+{
+  "schema_version": "distillschedule.static_fsdp2_p0_vllm_omni_plan.v2",
+  "name": "helios_gan_world16_fsdp2_p0_vllm_omni_019",
+  "variant": "gan",
+  "parent_baseline": "helios_gan_world16_fsdp2_p0",
+  "training_topology": {
+    "nodes": 2,
+    "gpus_per_node": 8,
+    "world_size": 16,
+    "global_batch": 16
+  },
+  "rollout_topology": {
+    "backend": "vllm-omni-latent",
+    "dedicated_gpu_pool_required": true,
+    "co_resident_with_world16_training": false,
+    "initial_canary": {"tp": 1, "replicas": 1},
+    "output_type": "latent",
+    "vae_decode_calls": 0,
+    "vllm_omni_version_family": "0.19",
+    "vllm_version_family": "0.19",
+    "reference_upstream_tag": "v0.19.0rc1",
+    "reference_upstream_revision": "191b9a8dc9ebd4b0464b9b68ec7b40e17d08d288",
+    "compatibility_patch": {
+      "path": "third_party/patches/vllm_omni_v0_19_helios_latent_no_vae.patch",
+      "sha256": "84c9a914184373a771a5839bd6198d05ba8f981154732fc6f7bfbf5feafb3d99"
+    }
+  },
+  "logical_contract": {
+    "steps": [1000, 1001, 1002, 1003, 1004],
+    "initial_versions": {"generator": 200, "critic": 1000, "ema": 800},
+    "final_versions": {"generator": 201, "critic": 1005, "ema": 801},
+    "generator_updates": 1,
+    "critic_updates": 5,
+    "ema_updates": 1
+  },
+  "default_candidate": {
+    "mesh_policy": "world16-fsdp",
+    "rollout_batch_size": 1,
+    "pack_real_score_pair": false,
+    "rollout_backend": "vllm-omni-latent"
+  },
+  "allowed_phases": [
+    {
+      "name": "post_generator_critic_input_rollouts",
+      "steps": [1000, 1001, 1002, 1003, 1004],
+      "generator_version": 201,
+      "requires_hot_lora_sync": true
+    },
+    {
+      "name": "isolated_critic_only_frozen_generator_rollouts",
+      "steps": [1001, 1002, 1003, 1004],
+      "generator_version": 201,
+      "requires_hot_lora_sync": false
+    }
+  ],
+  "prohibited_phases": [
+    "step1000 differentiable DMD+GAN-G Generator update",
+    "Fake/Real Score forwards and GAN-G",
+    "GAN-D/R1 Critic forward/backward/update",
+    "EMA update",
+    "native B1 correctness reference"
+  ],
+  "required_capabilities": [
+    "vLLM-Omni 0.19 base revision identity",
+    "vLLM 0.19 runtime family",
+    "audited Helios latent/no-VAE compatibility patch identity",
+    "latent output with zero VAE decode",
+    "exact operation-trace/noise/history/index replay",
+    "service call_count and stage_call_count match immutable trace",
+    "source and loaded trainable SHA256 equality",
+    "G201 LoRA hot synchronization before Full5 rollouts",
+    "BF16 [B,16,9,48,80] latent return",
+    "dedicated rollout GPU pool",
+    "native B1 multi-metric correctness reference"
+  ],
+  "claim_boundary": {
+    "source_adapter_implemented": true,
+    "vllm_omni_019_backport_source_gate": true,
+    "real_vllm_omni_service_correctness": "NOT_RUN",
+    "hot_lora_sync": "NOT_RUN",
+    "speedup": "NOT_CLAIMED"
+  }
+}

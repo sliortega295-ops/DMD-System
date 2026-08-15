@@ -1,0 +1,28 @@
+diff --git a/vllm_omni/diffusion/models/helios/pipeline_helios.py b/vllm_omni/diffusion/models/helios/pipeline_helios.py
+--- a/vllm_omni/diffusion/models/helios/pipeline_helios.py
++++ b/vllm_omni/diffusion/models/helios/pipeline_helios.py
+@@ -645,12 +645,16 @@ def forward(
+                 slice(-num_latent_frames_per_chunk, None),
+             )
+ 
+-            current_latents = real_history_latents[index_slice].to(vae_dtype) / latents_std + latents_mean
+-            current_video = self.vae.decode(current_latents, return_dict=False)[0]
+-
+-            if history_video is None:
+-                history_video = current_video
+-            else:
+-                history_video = torch.cat([history_video, current_video], dim=2)
++            # DistillSchedule rollout-service backport: when the caller requests
++            # latent output, Critic consumes real_history_latents directly.
++            # Do not pay for an unused VAE decode on the training rollout path.
++            if output_type != "latent":
++                current_latents = real_history_latents[index_slice].to(vae_dtype) / latents_std + latents_mean
++                current_video = self.vae.decode(current_latents, return_dict=False)[0]
++
++                if history_video is None:
++                    history_video = current_video
++                else:
++                    history_video = torch.cat([history_video, current_video], dim=2)
+ 
+         if current_omni_platform.is_available():
+             current_omni_platform.empty_cache()
