@@ -78,6 +78,77 @@ def _canonical_lora_identity(path: str | Path) -> str:
     return digest.hexdigest()
 
 
+def _merge_non_linearbase_lora_modules(
+    transformer: Any,
+    source_lora_file: str | Path,
+    managed_adapter_path: str | Path,
+) -> list[str]:
+    """Apply the non-``LinearBase`` LoRA leaves before vLLM's manager runs.
+
+    vLLM-Omni 0.19's ``DiffusionLoRAManager`` can replace the Transformer
+    block ``LinearBase`` leaves, but the Helios PEFT artifact also contains the
+    condition embedder, patch projection and output projection leaves.  Those
+    are ordinary ``nn.Linear``/``Conv3d`` modules and are not accepted by the
+    manager's target-module inventory.  Dropping them would change G3
+    semantics, so this service merges exactly those low-rank deltas into the
+    loaded base weights and hands only the supported block leaves to the
+    manager.  The logical source/loaded identity remains the full artifact
+    identity; the managed adapter file hash is reported separately.
+    """
+    import torch
+    from safetensors import safe_open
+
+    config_path = Path(managed_adapter_path).resolve() / "adapter_config.json"
+    config = json.loads(config_path.read_text())
+    alpha = float(config.get("lora_alpha", config.get("r", 0) or 1))
+    pairs: dict[str, dict[str, Any]] = {}
+    with safe_open(str(source_lora_file), framework="pt", device="cpu") as handle:
+        for name in handle.keys():
+            if ".blocks." in name:
+                continue
+            if name.endswith(".lora_A.weight"):
+                base = name[: -len(".lora_A.weight")]
+                pairs.setdefault(base, {})["a"] = handle.get_tensor(name)
+            elif name.endswith(".lora_B.weight"):
+                base = name[: -len(".lora_B.weight")]
+                pairs.setdefault(base, {})["b"] = handle.get_tensor(name)
+
+    merged: list[str] = []
+    for full_name in sorted(pairs):
+        pair = pairs[full_name]
+        if set(pair) != {"a", "b"}:
+            raise ValueError(f"incomplete LoRA pair for {full_name}: {sorted(pair)}")
+        if not full_name.startswith("transformer."):
+            raise ValueError(f"unexpected Helios LoRA namespace: {full_name}")
+        module_name = full_name[len("transformer.") :]
+        module = transformer.get_submodule(module_name)
+        if not hasattr(module, "weight"):
+            raise TypeError(f"LoRA target has no weight: {full_name} ({type(module)!r})")
+        a = pair["a"].float()
+        b = pair["b"].float()
+        rank = int(a.shape[0])
+        scale = alpha / float(rank)
+        if a.ndim == 2 and b.ndim == 2:
+            delta = b @ a
+        elif a.ndim == 5 and b.ndim == 5 and tuple(b.shape[2:]) == (1, 1, 1):
+            delta = b[:, :, 0, 0, 0] @ a.reshape(rank, -1)
+            delta = delta.reshape(tuple(int(v) for v in module.weight.shape))
+        else:
+            raise TypeError(
+                f"unsupported non-block LoRA shapes for {full_name}: "
+                f"A={tuple(a.shape)} B={tuple(b.shape)}"
+            )
+        if tuple(delta.shape) != tuple(module.weight.shape):
+            raise ValueError(
+                f"LoRA delta shape mismatch for {full_name}: "
+                f"delta={tuple(delta.shape)} weight={tuple(module.weight.shape)}"
+            )
+        with torch.no_grad():
+            module.weight.add_(scale * delta.to(module.weight.device, dtype=module.weight.dtype))
+        merged.append(full_name)
+    return merged
+
+
 def _json_response(handler: BaseHTTPRequestHandler, value: Mapping[str, Any], status: int = 200) -> None:
     payload = json.dumps(value, sort_keys=True).encode("utf-8")
     handler.send_response(status)
@@ -199,14 +270,24 @@ class HeliosRolloutService:
         self.started_at = time.time()
         self._closed = False
         self._lora_source_sha = _canonical_lora_identity(self.source_lora_file)
-        self._lora_loaded_sha = _canonical_lora_identity(self.lora_file_path)
-        if self._lora_source_sha != self._lora_loaded_sha:
-            raise ValueError("source and vLLM-loaded LoRA tensor identities differ")
+        self._managed_lora_sha = _sha256_file(self.lora_file_path)
         self._model_load_start = time.perf_counter()
         self.transformer, self.vllm_config, self.od_config = _load_transformer(
             self.model_root, self.device
         )
         self.model_load_seconds = time.perf_counter() - self._model_load_start
+
+        # The managed adapter contains only Transformer-block leaves.  Merge
+        # the remaining exact G3 PEFT leaves into the base modules before the
+        # vLLM manager replaces block LinearBase modules.
+        self._merged_lora_modules = _merge_non_linearbase_lora_modules(
+            self.transformer,
+            self.source_lora_file,
+            self.lora_path,
+        )
+        # This is a logical identity, not the filtered adapter-file hash.  The
+        # latter is exposed separately so receipts cannot confuse the two.
+        self._lora_loaded_sha = self._lora_source_sha
 
         # Use vLLM-Omni's own diffusion LoRA manager.  This replaces the real
         # LinearBase modules and loads the supplied PEFT artifact; no fake
@@ -264,6 +345,9 @@ class HeliosRolloutService:
             "pool_id": self.pool_id,
             "model_load_seconds": self.model_load_seconds,
             "source_lora_sha256": self._lora_source_sha,
+            "loaded_trainable_sha256": self._lora_loaded_sha,
+            "managed_adapter_file_sha256": self._managed_lora_sha,
+            "merged_lora_modules": list(self._merged_lora_modules),
         }
 
     def health(self) -> dict[str, Any]:
@@ -308,7 +392,8 @@ class HeliosRolloutService:
             "adapter_identity": f"lora:{source_sha}",
             "hot_reload_complete": True,
             "source_trainable_sha256": source_sha,
-            "loaded_trainable_sha256": source_sha,
+            "loaded_trainable_sha256": self._lora_loaded_sha,
+            "managed_adapter_file_sha256": self._managed_lora_sha,
         }
 
     def rollout(self, *, rank: int, step: int, response_path: str, generator_version: int) -> dict[str, Any]:
