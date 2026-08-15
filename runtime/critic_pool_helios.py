@@ -301,6 +301,8 @@ def run_generator_trace_rollout(
     detailed_profile: bool = True,
     record_output_sha256: bool = True,
     empty_cache_before_rollout: bool = True,
+    collect_diagnostics: bool = True,
+    diagnostics_scope: Any | None = None,
 ) -> tuple[torch.Tensor, dict[str, Any]]:
     """Run the exact one-section, three-stage trace with no physical autograd."""
 
@@ -449,13 +451,29 @@ def run_generator_trace_rollout(
         "output_dtype": str(generated_x0.dtype),
         "output_requires_grad": False,
         "gradient_mask_is_none": gradient_mask is None,
-        "denoised_timestep_from": float(torch.as_tensor(denoised_from).flatten()[0]),
-        "denoised_timestep_to": float(torch.as_tensor(denoised_to).flatten()[0]),
-        "consistency_loss": float(torch.as_tensor(consistency_loss)),
+        "denoised_timestep_from": (
+            float(torch.as_tensor(denoised_from).flatten()[0])
+            if collect_diagnostics
+            else "omitted_in_clean_profile"
+        ),
+        "denoised_timestep_to": (
+            float(torch.as_tensor(denoised_to).flatten()[0])
+            if collect_diagnostics
+            else "omitted_in_clean_profile"
+        ),
+        "consistency_loss": (
+            float(torch.as_tensor(consistency_loss))
+            if collect_diagnostics
+            else "omitted_in_clean_profile"
+        ),
         "memory": _memory_snapshot(device),
     }
-    if record_output_sha256:
-        details["output_sha256"] = tensor_sha256(generated_x0)
+    if record_output_sha256 and collect_diagnostics:
+        if diagnostics_scope is None:
+            details["output_sha256"] = tensor_sha256(generated_x0)
+        else:
+            with diagnostics_scope("DIAG_OUTPUT_SHA_D2H/generator_x0"):
+                details["output_sha256"] = tensor_sha256(generated_x0)
     return generated_x0.detach(), details
 
 

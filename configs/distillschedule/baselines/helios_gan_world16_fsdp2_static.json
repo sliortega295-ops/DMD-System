@@ -1,0 +1,40 @@
+{
+  "schema_version": "distillschedule.static_fsdp2_baseline.v1",
+  "id": "helios-gan-world16-fsdp2-static-b16-full5",
+  "variant": "gan",
+  "hardware": "2x8_A100_40GB",
+  "world_size": 16,
+  "logical_steps": [1000, 1001, 1002, 1003, 1004],
+  "global_batch": 16,
+  "micro_batch_per_rank": 1,
+  "generator_updates": 1,
+  "critic_updates": 5,
+  "ema_update_steps": [1000],
+  "initial_versions": {"generator": 200, "critic": 1000, "ema": 800},
+  "final_versions": {"generator": 201, "critic": 1005, "ema": 801},
+  "physical_optimizer_source_steps": {"generator": 2, "critic": 10},
+  "placement": {
+    "generator": "FSDP2_FULL_SHARD_WORLD16_STATIC",
+    "score_critic": "FSDP2_FULL_SHARD_WORLD16_STATIC",
+    "blockwise_wrap": "40_BLOCKS_BOTTOM_UP_THEN_ROOT",
+    "reshard_after_forward": true,
+    "parameter_compute_dtype": "bfloat16",
+    "gradient_reduce_dtype": "float32",
+    "parameter_offload": false,
+    "frozen_parameter_streaming": false,
+    "model_swap": false,
+    "role_transition": false
+  },
+  "gan": {
+    "generator_objective": "official_DMD_plus_GAN_G",
+    "critic_objective": "official_denoise_plus_GAN_D_plus_R1",
+    "systems_only_bootstrap": true
+  },
+  "measurement": {
+    "formal_full5": "unprofiled_global_wall",
+    "formal_trials": 3,
+    "profile": "separate_rank_qualified_nsys_run",
+    "compute_kernel_percent": "sum_rank_compute_interval_union_over_sum_rank_exact_full5_nvtx_wall",
+    "profiled_latency_claimable": false
+  }
+}
