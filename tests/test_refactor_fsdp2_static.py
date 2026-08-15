@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from distillschedule.runtime.fsdp2_static import (
     GAN_CONTRACT,
     NO_GAN_CONTRACT,
@@ -153,7 +155,7 @@ def test_fsdp2_engine_exposes_official_gan_boundary_hook() -> None:
 
 
 def test_ema_reference_recurrence_is_stable_for_multiple_updates() -> None:
-    import torch
+    torch = pytest.importorskip("torch")
 
     cpu_shadow = torch.tensor([1.0, -2.0, 3.5], dtype=torch.float32)
     gpu_shadow = cpu_shadow.clone()
@@ -171,8 +173,7 @@ def test_ema_reference_recurrence_is_stable_for_multiple_updates() -> None:
 
 
 def test_ema_cpu_reference_matches_cuda_shadow_when_available() -> None:
-    import pytest
-    import torch
+    torch = pytest.importorskip("torch")
 
     if not torch.cuda.is_available():
         pytest.skip("CUDA unavailable")
