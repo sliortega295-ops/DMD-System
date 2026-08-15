@@ -35,6 +35,11 @@ def main() -> int:
     parser.add_argument("--mesh-policy", choices=("world16-fsdp", "node-hsdp"), required=True)
     parser.add_argument("--rollout-batch-size", type=int, choices=(1, 2, 5), required=True)
     parser.add_argument("--pack-real-score-pair", choices=("on", "off"), required=True)
+    parser.add_argument(
+        "--diagnostic-timing",
+        action="store_true",
+        help="Mark timing as diagnostic-only when numerical parity was explicitly waived.",
+    )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
 
@@ -176,7 +181,10 @@ def main() -> int:
         "rank_full5_min_seconds": min(rank_seconds) if rank_seconds else None,
         "rank_full5_max_seconds": max(rank_seconds) if rank_seconds else None,
         "claimable_correctness": not errors and args.mode == "correctness",
-        "claimable_timing": not errors and args.mode == "timing",
+        "claimable_timing": (
+            not errors and args.mode == "timing" and not args.diagnostic_timing
+        ),
+        "diagnostic_timing": bool(args.diagnostic_timing),
         "profiled_latency_diagnostic_only": args.mode == "profile",
         "rollout_collective_estimate": ranks[0].get("rollout_collective_estimate") if ranks else None,
         "gan_score_fusion": ranks[0].get("gan_score_fusion") if ranks else None,

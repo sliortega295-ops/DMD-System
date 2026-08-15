@@ -110,6 +110,14 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--master-port", type=int, default=29950)
     value.add_argument("--correctness-summary", type=Path)
     value.add_argument("--correctness-sha256")
+    value.add_argument(
+        "--allow-numerical-parity-failure",
+        action="store_true",
+        help=(
+            "Run an explicitly diagnostic timing pass after a failed numerical "
+            "parity gate; never marks timing claimable."
+        ),
+    )
     value.add_argument("--ema-device", choices=("cpu", "cuda"), default="cuda")
     value.add_argument("--profile-diagnostics", choices=("on", "off"), default="off")
     value.add_argument(
@@ -147,7 +155,7 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
     ]
-    if args.mode == "timing":
+    if args.mode == "timing" and not args.allow_numerical_parity_failure:
         if args.correctness_summary is None or not args.correctness_sha256:
             raise ValueError("timing requires a pinned correctness summary")
         exports.extend(
@@ -158,6 +166,10 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
                 + shlex.quote(args.correctness_sha256),
             )
         )
+    if args.allow_numerical_parity_failure:
+        if args.mode != "timing":
+            raise ValueError("--allow-numerical-parity-failure is timing-only")
+        exports.append("DISTILLSCHEDULE_DIAGNOSTIC_TIMING=1")
     launch = " ".join(
         shlex.quote(str(value))
         for value in (
@@ -212,14 +224,15 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
     pythonpath = f"{args.remote_root}/src:{args.remote_root}"
     command = (
         f"export PYTHONPATH={shlex.quote(pythonpath)}; "
-        "/tmp/distillschedule-helios-official-torch210/bin/python "
-        f"{shlex.quote(str(summarizer))} "
-        f"--run-root {shlex.quote(str(run_root))} "
-        f"--variant {shlex.quote(args.variant)} --mode {shlex.quote(args.mode)} "
-        f"--mesh-policy {shlex.quote(args.mesh_policy)} "
-        f"--rollout-batch-size {args.rollout_batch_size} "
-        f"--pack-real-score-pair {shlex.quote(args.pack_real_score_pair)} "
-        f"--output {shlex.quote(str(summary))}"
+        + "/tmp/distillschedule-helios-official-torch210/bin/python "
+        + f"{shlex.quote(str(summarizer))} "
+        + f"--run-root {shlex.quote(str(run_root))} "
+        + f"--variant {shlex.quote(args.variant)} --mode {shlex.quote(args.mode)} "
+        + f"--mesh-policy {shlex.quote(args.mesh_policy)} "
+        + f"--rollout-batch-size {args.rollout_batch_size} "
+        + f"--pack-real-score-pair {shlex.quote(args.pack_real_score_pair)} "
+        + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
+        + f"--output {shlex.quote(str(summary))}"
     )
     completed = subprocess.run(
         _ssh(args.hosts[0], command), check=False, timeout=300

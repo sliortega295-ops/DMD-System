@@ -58,6 +58,7 @@ CORRECTNESS_SUMMARY="${DISTILLSCHEDULE_FSDP2_CORRECTNESS_SUMMARY:-}"
 CORRECTNESS_SHA256="${DISTILLSCHEDULE_FSDP2_CORRECTNESS_SHA256:-}"
 PROFILE_DIAGNOSTICS="${DISTILLSCHEDULE_PROFILE_DIAGNOSTICS:-off}"
 EMA_DEVICE="${DISTILLSCHEDULE_EMA_DEVICE:-cuda}"
+DIAGNOSTIC_TIMING="${DISTILLSCHEDULE_DIAGNOSTIC_TIMING:-0}"
 
 for executable in "${PYTHON}" "${TORCHRUN}"; do
   [[ -x "${executable}" ]] || { echo missing_executable="${executable}" >&2; exit 3; }
@@ -69,7 +70,7 @@ done
 [[ "$(git -C "${ROOT}" rev-parse HEAD)" == "${EXPECTED_HEAD}" ]] || { echo source_head_mismatch >&2; exit 4; }
 git -C "${ROOT}" diff --quiet && git -C "${ROOT}" diff --cached --quiet || { echo source_worktree_dirty >&2; exit 4; }
 
-if [[ "${MODE}" == timing ]]; then
+if [[ "${MODE}" == timing && "${DIAGNOSTIC_TIMING}" != 1 ]]; then
   [[ -f "${CORRECTNESS_SUMMARY}" ]] || { echo correctness_summary_missing >&2; exit 3; }
   [[ "$(sha256sum "${CORRECTNESS_SUMMARY}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || { echo correctness_hash_changed >&2; exit 3; }
   "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" <<'PY'
@@ -120,6 +121,7 @@ ema_device=${EMA_DEVICE}
 hardened_worker=true
 critic_input_reuse=retain_until_one_consume
 parity_policy=multi_metric
+diagnostic_timing=${DIAGNOSTIC_TIMING}
 EOF
 
 WORKER=(
