@@ -35,6 +35,11 @@ def main() -> int:
     parser.add_argument("--mesh-policy", choices=("world16-fsdp", "node-hsdp"), required=True)
     parser.add_argument("--rollout-batch-size", type=int, choices=(1, 2, 5), required=True)
     parser.add_argument("--pack-real-score-pair", choices=("on", "off"), required=True)
+    parser.add_argument(
+        "--critic-residual-storage",
+        choices=("cpu_inplace", "cuda_out_of_place"),
+        required=True,
+    )
     parser.add_argument("--critic-only-step", type=int, choices=(10,))
     parser.add_argument(
         "--diagnostic-timing",
@@ -54,6 +59,7 @@ def main() -> int:
         "rollout_batch_size": args.rollout_batch_size,
         "pack_real_score_pair": args.pack_real_score_pair == "on",
         "rollout_backend": "native-fsdp2-batch",
+        "critic_residual_storage": args.critic_residual_storage,
     }
     if args.critic_only_step is not None:
         if args.variant != "no-gan" or args.mode != "profile":

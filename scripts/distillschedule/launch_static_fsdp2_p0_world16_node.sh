@@ -64,12 +64,16 @@ OPERATION_SOURCE="${DISTILLSCHEDULE_OPERATION_SOURCE:-off}"
 OPERATION_SOURCE_RANK="${DISTILLSCHEDULE_OPERATION_SOURCE_RANK:-0}"
 OPERATION_SOURCE_TARGET_BYTES="${DISTILLSCHEDULE_OPERATION_SOURCE_TARGET_BYTES:-113049600}"
 OPERATION_SOURCE_MAX_EVENTS="${DISTILLSCHEDULE_OPERATION_SOURCE_MAX_EVENTS:-256}"
+CRITIC_RESIDUAL_STORAGE="${DISTILLSCHEDULE_CRITIC_RESIDUAL_STORAGE:-cpu_inplace}"
+EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256:-776a26c3b2921d599821f0767910830471ff94a955f5013089f9f689ac20fee7}"
 
 [[ -z "${CRITIC_ONLY_STEP}" || "${CRITIC_ONLY_STEP}" == 10 ]] || exit 2
 [[ "${OPERATION_SOURCE}" == on || "${OPERATION_SOURCE}" == off ]] || exit 2
 [[ "${OPERATION_SOURCE_RANK}" =~ ^([0-9]|1[0-5])$ ]] || exit 2
 [[ "${OPERATION_SOURCE_TARGET_BYTES}" =~ ^[1-9][0-9]*$ ]] || exit 2
 [[ "${OPERATION_SOURCE_MAX_EVENTS}" =~ ^[1-9][0-9]*$ ]] || exit 2
+[[ "${CRITIC_RESIDUAL_STORAGE}" == cpu_inplace || "${CRITIC_RESIDUAL_STORAGE}" == cuda_out_of_place ]] || exit 2
+[[ "${EXPECTED_HELIOS_TRANSFORMER_SHA256}" =~ ^[0-9a-f]{64}$ ]] || exit 2
 if [[ -n "${CRITIC_ONLY_STEP}" ]]; then
   [[ "${VARIANT}" == no-gan && "${MODE}" == profile ]] || exit 2
 fi
@@ -86,14 +90,16 @@ for path in "${ROOT}" "${HELIOS}" "${TRACE}" "${LOGICAL}" "${GENERATOR}" \
 done
 [[ "$(git -C "${ROOT}" rev-parse HEAD)" == "${EXPECTED_HEAD}" ]] || { echo source_head_mismatch >&2; exit 4; }
 git -C "${ROOT}" diff --quiet && git -C "${ROOT}" diff --cached --quiet || { echo source_worktree_dirty >&2; exit 4; }
+HELIOS_TRANSFORMER="${HELIOS}/helios/modules/transformer_helios.py"
+[[ "$(sha256sum "${HELIOS_TRANSFORMER}" | awk '{print $1}')" == "${EXPECTED_HELIOS_TRANSFORMER_SHA256}" ]] || { echo helios_transformer_hash_mismatch >&2; exit 4; }
 
 if [[ "${MODE}" == timing && "${DIAGNOSTIC_TIMING}" != 1 ]]; then
   [[ -f "${CORRECTNESS_SUMMARY}" ]] || { echo correctness_summary_missing >&2; exit 3; }
   [[ "$(sha256sum "${CORRECTNESS_SUMMARY}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || { echo correctness_hash_changed >&2; exit 3; }
-  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" <<'PY'
+  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${CRITIC_RESIDUAL_STORAGE}" <<'PY'
 import json,pathlib,sys
 value=json.loads(pathlib.Path(sys.argv[1]).read_text())
-expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on"}
+expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","critic_residual_storage":sys.argv[6]}
 if value.get("status") != "PASS" or not value.get("claimable_correctness"):
     raise SystemExit("P0 correctness gate is not PASS")
 if value.get("variant") != sys.argv[2]:
@@ -125,6 +131,8 @@ variant=${VARIANT}
 mode=${MODE}
 node_rank=${NODE_RANK}
 dmd_system_head=${EXPECTED_HEAD}
+helios_runtime_root=${HELIOS}
+helios_transformer_sha256=${EXPECTED_HELIOS_TRANSFORMER_SHA256}
 mesh_policy=${MESH_POLICY}
 rollout_batch_size=${ROLLOUT_BATCH_SIZE}
 pack_real_score_pair=${PACK_REAL_SCORE_PAIR}
@@ -144,6 +152,7 @@ operation_source=${OPERATION_SOURCE}
 operation_source_rank=${OPERATION_SOURCE_RANK}
 operation_source_target_bytes=${OPERATION_SOURCE_TARGET_BYTES}
 operation_source_max_events=${OPERATION_SOURCE_MAX_EVENTS}
+critic_residual_storage=${CRITIC_RESIDUAL_STORAGE}
 EOF
 
 WORKER=(
@@ -156,6 +165,7 @@ WORKER=(
   --negative-prompt "${NEGATIVE}" --mesh-policy "${MESH_POLICY}"
   --rollout-batch-size "${ROLLOUT_BATCH_SIZE}" --rollout-backend native-fsdp2-batch
   --ema-device "${EMA_DEVICE}"
+  --critic-residual-storage "${CRITIC_RESIDUAL_STORAGE}"
 )
 [[ "${VARIANT}" == gan ]] && WORKER+=(--gan-config "${GAN_CONFIG}")
 if [[ "${PACK_REAL_SCORE_PAIR}" == on ]]; then

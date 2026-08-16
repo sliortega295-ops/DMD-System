@@ -63,4 +63,7 @@ def test_p0_worker_and_launcher_keep_canary_fail_closed() -> None:
     assert "saved_tensors_hooks_installed_by_tracer\": False" in worker
     assert "DISTILLSCHEDULE_CRITIC_ONLY_STEP" in launcher
     assert "DISTILLSCHEDULE_OPERATION_SOURCE" in launcher
+    assert "DISTILLSCHEDULE_CRITIC_RESIDUAL_STORAGE" in launcher
+    assert "helios_transformer_hash_mismatch" in launcher
+    assert 'choices=("cpu_inplace", "cuda_out_of_place")' in worker
     assert 'args.variant != "no-gan" or args.mode != "profile"' in controller

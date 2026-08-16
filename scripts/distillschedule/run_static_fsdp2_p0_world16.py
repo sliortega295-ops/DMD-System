@@ -99,12 +99,29 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--rollout-batch-size", type=int, choices=(1, 2, 5), required=True)
     value.add_argument("--pack-real-score-pair", choices=("on", "off"), default="on")
     value.add_argument(
+        "--critic-residual-storage",
+        choices=("cpu_inplace", "cuda_out_of_place"),
+        default="cpu_inplace",
+    )
+    value.add_argument(
         "--remote-root",
         type=Path,
         default=Path(
             "/share/project/shuchenweng/yongyan_liu/"
             "DMD-System_fsdp2_p0_20260815"
         ),
+    )
+    value.add_argument(
+        "--helios-runtime-root",
+        type=Path,
+        default=Path(
+            "/share/project/shuchenweng/yongyan_liu/"
+            "DistillSchedule_gan_rolephase_exec_20260812"
+        ),
+    )
+    value.add_argument(
+        "--expected-helios-transformer-sha256",
+        default="776a26c3b2921d599821f0767910830471ff94a955f5013089f9f689ac20fee7",
     )
     value.add_argument("--master-addr")
     value.add_argument("--master-port", type=int, default=29950)
@@ -156,6 +173,11 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
     wrapper = args.remote_root / "scripts/distillschedule/remote_stage_wrapper.sh"
     exports = [
         f"DMD_SYSTEM_ROOT={shlex.quote(str(args.remote_root))}",
+        f"HELIOS_RUNTIME_ROOT={shlex.quote(str(args.helios_runtime_root))}",
+        "DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256="
+        + shlex.quote(args.expected_helios_transformer_sha256),
+        "DISTILLSCHEDULE_CRITIC_RESIDUAL_STORAGE="
+        + shlex.quote(args.critic_residual_storage),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -249,6 +271,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"--mesh-policy {shlex.quote(args.mesh_policy)} "
         + f"--rollout-batch-size {args.rollout_batch_size} "
         + f"--pack-real-score-pair {shlex.quote(args.pack_real_score_pair)} "
+        + "--critic-residual-storage "
+        + f"{shlex.quote(args.critic_residual_storage)} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
         + (
             f"--critic-only-step {args.critic_only_step} "
@@ -277,6 +301,8 @@ def main() -> int:
         raise ValueError("unsafe run id")
     if len(args.expected_head) != 40:
         raise ValueError("--expected-head must be a full Git SHA")
+    if len(args.expected_helios_transformer_sha256) != 64:
+        raise ValueError("--expected-helios-transformer-sha256 must be SHA256")
     if args.critic_only_step is not None and (
         args.variant != "no-gan" or args.mode != "profile"
     ):
