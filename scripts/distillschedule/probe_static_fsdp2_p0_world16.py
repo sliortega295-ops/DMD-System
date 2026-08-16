@@ -38,6 +38,10 @@ sys.modules[_SPEC.name] = base
 _SPEC.loader.exec_module(base)
 
 from distillschedule.profiling.static_profile_diagnostics import StaticProfileDiagnostics
+from distillschedule.profiling.fsdp2_operation_source import (
+    DEFAULT_TARGET_BYTES,
+    OperationSourceCapture,
+)
 from distillschedule.runtime.fsdp2_p0 import (
     StaticFSDP2P0Policy,
     apply_blockwise_fsdp2_policy,
@@ -98,7 +102,10 @@ def _build_static_model(
             component=role,
             verify_payload_sha256=(dist.get_rank() == 0),
         )
-    configure_fsdp2_checkpointing(model)
+    configure_fsdp2_checkpointing(
+        model,
+        operation_source=bool(args.operation_source),
+    )
     model.to(device)
     torch.cuda.synchronize(device)
     sharding = apply_blockwise_fsdp2_policy(
@@ -536,6 +543,24 @@ def _parser() -> Any:
         choices=("native-fsdp2-batch",),
         default="native-fsdp2-batch",
     )
+    value.add_argument(
+        "--critic-only-step",
+        type=int,
+        choices=(10,),
+        help="diagnostic-only: capture one No-GAN Critic update after its native rollout",
+    )
+    value.add_argument(
+        "--operation-source",
+        action="store_true",
+        help="diagnostic-only: trace the known Critic D2H copy source on one rank",
+    )
+    value.add_argument("--operation-source-rank", type=int, default=0)
+    value.add_argument(
+        "--operation-source-target-bytes",
+        type=int,
+        default=DEFAULT_TARGET_BYTES,
+    )
+    value.add_argument("--operation-source-max-events", type=int, default=256)
     return value
 
 
@@ -543,6 +568,17 @@ def main() -> int:
     args = _parser().parse_args()
     if args.timing_mode and args.profile_mode:
         raise ValueError("profiled runs are diagnostic and cannot be formal timing runs")
+    diagnostic_single_critic = args.critic_only_step is not None
+    if diagnostic_single_critic and (
+        args.variant != "no-gan" or not args.profile_mode
+    ):
+        raise ValueError("--critic-only-step requires No-GAN --profile-mode")
+    if args.operation_source and not diagnostic_single_critic:
+        raise ValueError("--operation-source requires --critic-only-step")
+    if not 0 <= args.operation_source_rank < WORLD_SIZE:
+        raise ValueError("--operation-source-rank must be in [0, 15]")
+    if args.operation_source_target_bytes <= 0 or args.operation_source_max_events <= 0:
+        raise ValueError("operation-source byte/event limits must be positive")
     policy = StaticFSDP2P0Policy(
         mesh_policy=args.mesh_policy,
         rollout_batch_size=args.rollout_batch_size,
@@ -579,7 +615,22 @@ def main() -> int:
     }
     try:
         contract = contract_for_variant(args.variant)
-        nsys_range = StaticFSDP2Full5NsightRange.from_env(variant=args.variant)
+        nsys_range = StaticFSDP2Full5NsightRange.from_env(
+            variant=args.variant,
+            logical_window=(args.critic_only_step, args.critic_only_step)
+            if diagnostic_single_critic
+            else None,
+            start_point=(
+                f"before_step{args.critic_only_step}_critic_compute"
+                if diagnostic_single_critic
+                else "before_first_model_compute"
+            ),
+            stop_point=(
+                f"after_step{args.critic_only_step}_critic_commit"
+                if diagnostic_single_critic
+                else None
+            ),
+        )
         if args.profile_mode and not nsys_range.enabled:
             raise ValueError("profile mode requires the exact Nsight API range")
         logical = (
@@ -647,6 +698,14 @@ def main() -> int:
         result["build"] = build
         result["profile_diagnostics"] = bool(args.profile_diagnostics)
         result["ema_device"] = args.ema_device
+        result["diagnostic_single_critic"] = bool(diagnostic_single_critic)
+        result["operation_source"] = {
+            "enabled": bool(args.operation_source),
+            "record_rank": int(args.operation_source_rank),
+            "target_bytes": int(args.operation_source_target_bytes),
+            "max_events": int(args.operation_source_max_events),
+        }
+        initial_ema_step = int(ema.optimization_step)
         result["initial"] = {
             "generator_physical_step": int(generator_engine.global_steps),
             "critic_physical_step": int(critic_engine.global_steps),
@@ -657,7 +716,7 @@ def main() -> int:
         torch.cuda.synchronize(device)
         started_perf = time.perf_counter()
         result["timing_start_unix_ns"] = time.time_ns()
-        if args.profile_mode:
+        if args.profile_mode and not diagnostic_single_critic:
             dist.barrier()
             nsys_range.before_model_compute(contract.logical_steps[0])
             torch.cuda.nvtx.range_push(
@@ -727,9 +786,14 @@ def main() -> int:
                 score_pack_parity_check=score_pack_parity_check,
             )
 
+        execution_steps = (
+            (int(args.critic_only_step),)
+            if diagnostic_single_critic
+            else contract.logical_steps
+        )
         rollout_outputs, rollout_records = _precompute_critic_rollouts(
             rank=rank,
-            steps=contract.logical_steps,
+            steps=execution_steps,
             device=device,
             generator_engine=generator_engine,
             trace=trace,
@@ -740,35 +804,77 @@ def main() -> int:
                 (not args.timing_mode) and (not args.profile_mode)
             ),
         )
+        if args.profile_mode and diagnostic_single_critic:
+            torch.cuda.synchronize(device)
+            dist.barrier()
+            nsys_range.before_model_compute(execution_steps[0])
+            torch.cuda.nvtx.range_push(
+                f"STATIC_FSDP2_P0_CRITIC_CANARY/no-gan/step{execution_steps[0]}"
+            )
+            dist.barrier()
         critic_records: list[dict[str, Any]] = []
         ema_records: list[dict[str, Any]] = []
-        for step in contract.logical_steps:
-            critic_record = (
-                _run_gan_critic_precomputed(
-                    rank=rank,
-                    step=step,
-                    x0=rollout_outputs[step],
-                    device=device,
-                    critic_engine=critic_engine,
-                    trace=trace,
-                    cfg=cfg,
-                    collect_diagnostics=collect_diagnostics,
-                    diagnostics=diagnostics,
-                )
-                if args.variant == "gan"
-                else _run_nogan_critic_precomputed(
-                    rank=rank,
-                    step=step,
-                    x0=rollout_outputs[step],
-                    device=device,
-                    critic_engine=critic_engine,
-                    trace=trace,
-                    collect_diagnostics=collect_diagnostics,
-                    diagnostics=diagnostics,
-                )
+        operation_source_records: list[dict[str, Any]] = []
+        for step in execution_steps:
+            record_this_rank = bool(
+                args.operation_source and rank == args.operation_source_rank
             )
+            with OperationSourceCapture(
+                enabled=record_this_rank,
+                rank=rank,
+                target_bytes=args.operation_source_target_bytes,
+                max_events=args.operation_source_max_events,
+            ) as operation_source:
+                critic_record = (
+                    _run_gan_critic_precomputed(
+                        rank=rank,
+                        step=step,
+                        x0=rollout_outputs[step],
+                        device=device,
+                        critic_engine=critic_engine,
+                        trace=trace,
+                        cfg=cfg,
+                        collect_diagnostics=collect_diagnostics,
+                        diagnostics=diagnostics,
+                    )
+                    if args.variant == "gan"
+                    else _run_nogan_critic_precomputed(
+                        rank=rank,
+                        step=step,
+                        x0=rollout_outputs[step],
+                        device=device,
+                        critic_engine=critic_engine,
+                        trace=trace,
+                        collect_diagnostics=collect_diagnostics,
+                        diagnostics=diagnostics,
+                    )
+                )
+            if record_this_rank:
+                source_path = (
+                    args.output_dir
+                    / "operation_source"
+                    / f"rank_{rank:02d}_step_{int(step)}.json"
+                )
+                operation_source.trace.dump(
+                    source_path,
+                    metadata={
+                        "logical_step": int(step),
+                        "variant": args.variant,
+                        "critic_only": bool(diagnostic_single_critic),
+                        "saved_tensors_hooks_installed_by_tracer": False,
+                    },
+                )
+                operation_source_records.append(
+                    {
+                        "logical_step": int(step),
+                        "matched_events": operation_source.trace.matched_events,
+                        "recorded_events": len(operation_source.trace.events),
+                        "dropped_events": operation_source.trace.dropped_events,
+                        "path": str(source_path),
+                    }
+                )
             critic_records.append(critic_record)
-            if step in contract.ema_update_steps:
+            if not diagnostic_single_critic and step in contract.ema_update_steps:
                 decay = ema.step()
                 diagnostics.add_bytes(
                     "ema_shadow",
@@ -788,7 +894,7 @@ def main() -> int:
             torch.cuda.synchronize(device)
             dist.barrier()
             torch.cuda.nvtx.range_pop()
-            nsys_range.after_critic_commit(contract.logical_steps[-1])
+            nsys_range.after_critic_commit(execution_steps[-1])
             dist.barrier()
             nsys_range.assert_complete()
             diagnostics.dump_after_capture()
@@ -797,17 +903,24 @@ def main() -> int:
         result["full5_seconds"] = time.perf_counter() - started_perf
 
         expected_g = int(logical.component("generator")["optimizer_step"]) + 1
-        expected_c = int(logical.component("critic")["optimizer_step"]) + 5
+        expected_c = int(logical.component("critic")["optimizer_step"]) + len(
+            execution_steps
+        )
         if int(generator_engine.global_steps) != expected_g:
             raise AssertionError("P0 Generator update count changed")
         if int(critic_engine.global_steps) != expected_c:
             raise AssertionError("P0 Critic update count changed")
-        if int(ema.optimization_step) != int(contract.final_versions["ema"]):
+        expected_ema = (
+            initial_ema_step
+            if diagnostic_single_critic
+            else int(contract.final_versions["ema"])
+        )
+        if int(ema.optimization_step) != expected_ema:
             raise AssertionError("P0 EMA update count changed")
         physical_calls = int(rollout_records[0]["call_count"])
         rollout_estimate = estimate_rollout_collective_groups(
             physical_calls_per_rollout=physical_calls,
-            logical_rollouts=5,
+            logical_rollouts=len(execution_steps),
             batch_size=policy.rollout_batch_size,
         )
         result.update(
@@ -817,12 +930,21 @@ def main() -> int:
             rollout_collective_estimate=rollout_estimate,
             critic=critic_records,
             ema=ema_records,
-            updates={"generator": 1, "critic": 5, "ema": len(ema_records)},
+            updates={
+                "generator": 1,
+                "critic": len(execution_steps),
+                "ema": len(ema_records),
+            },
+            operation_source_records=operation_source_records,
             final={
                 "generator_physical_step": int(generator_engine.global_steps),
                 "critic_physical_step": int(critic_engine.global_steps),
                 "generator_logical_version": int(contract.final_versions["generator"]),
-                "critic_logical_version": int(contract.final_versions["critic"]),
+                "critic_logical_version": (
+                    int(contract.final_versions["critic"])
+                    if not diagnostic_single_critic
+                    else int(logical.component("critic")["optimizer_step"]) + 1
+                ),
                 "ema_step": int(ema.optimization_step),
                 "ema_local_checksum": (
                     TIMING_OMITTED if args.timing_mode else ema.checksum()
@@ -830,7 +952,9 @@ def main() -> int:
                 "memory": base._memory(device),
             },
             formal_timer_scope=(
-                "Generator update; all five batched G201 critic rollouts; "
+                "diagnostic prelude plus one profiled Critic commit; not comparable to Full5"
+                if diagnostic_single_critic
+                else "Generator update; all five batched G201 critic rollouts; "
                 "five ordered Critic commits and required EMA"
             ),
             transition_count=0,

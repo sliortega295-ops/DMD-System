@@ -140,6 +140,37 @@ def test_static_no_gan_range_uses_steps_10_to_14(tmp_path) -> None:
     assert json.loads(receipt.read_text())["logical_window"] == [10, 14]
 
 
+def test_static_range_supports_bounded_single_critic_diagnostic(tmp_path) -> None:
+    api = FakeProfiler()
+    receipt = tmp_path / "rank_000.json"
+    gate = StaticFSDP2Full5NsightRange(
+        variant="no-gan",
+        api=api,
+        receipt_path=receipt,
+        rank=0,
+        local_rank=0,
+        logical_window=(10, 10),
+        start_point="before_step10_critic_compute",
+        stop_point="after_step10_critic_commit",
+    )
+    gate.before_model_compute(10)
+    gate.after_critic_commit(10)
+    value = json.loads(receipt.read_text())
+    assert value["logical_window"] == [10, 10]
+    assert value["start_point"] == "before_step10_critic_compute"
+    assert value["stop_point"] == "after_step10_critic_commit"
+    result = validate_static_nsys_receipts(
+        tmp_path,
+        variant="no-gan",
+        expected_world_size=1,
+        expected_local_world_size=1,
+        expected_window=(10, 10),
+        expected_start_point="before_step10_critic_compute",
+        expected_stop_point="after_step10_critic_commit",
+    )
+    assert result["logical_window"] == [10, 10]
+
+
 def test_static_receipt_bundle_requires_world16_and_two_controllers(tmp_path) -> None:
     for rank in range(16):
         local_rank = rank % 8

@@ -120,6 +120,11 @@ def parser() -> argparse.ArgumentParser:
     )
     value.add_argument("--ema-device", choices=("cpu", "cuda"), default="cuda")
     value.add_argument("--profile-diagnostics", choices=("on", "off"), default="off")
+    value.add_argument("--critic-only-step", type=int, choices=(10,))
+    value.add_argument("--operation-source", action="store_true")
+    value.add_argument("--operation-source-rank", type=int, default=0)
+    value.add_argument("--operation-source-target-bytes", type=int, default=113049600)
+    value.add_argument("--operation-source-max-events", type=int, default=256)
     value.add_argument(
         "--local-evidence-root",
         type=Path,
@@ -155,6 +160,19 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
     ]
+    if args.critic_only_step is not None:
+        exports.append(f"DISTILLSCHEDULE_CRITIC_ONLY_STEP={args.critic_only_step}")
+    if args.operation_source:
+        exports.extend(
+            (
+                "DISTILLSCHEDULE_OPERATION_SOURCE=on",
+                f"DISTILLSCHEDULE_OPERATION_SOURCE_RANK={args.operation_source_rank}",
+                "DISTILLSCHEDULE_OPERATION_SOURCE_TARGET_BYTES="
+                f"{args.operation_source_target_bytes}",
+                "DISTILLSCHEDULE_OPERATION_SOURCE_MAX_EVENTS="
+                f"{args.operation_source_max_events}",
+            )
+        )
     if args.mode == "timing" and not args.allow_numerical_parity_failure:
         if args.correctness_summary is None or not args.correctness_sha256:
             raise ValueError("timing requires a pinned correctness summary")
@@ -232,6 +250,11 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"--rollout-batch-size {args.rollout_batch_size} "
         + f"--pack-real-score-pair {shlex.quote(args.pack_real_score_pair)} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
+        + (
+            f"--critic-only-step {args.critic_only_step} "
+            if args.critic_only_step is not None
+            else ""
+        )
         + f"--output {shlex.quote(str(summary))}"
     )
     completed = subprocess.run(
@@ -254,6 +277,16 @@ def main() -> int:
         raise ValueError("unsafe run id")
     if len(args.expected_head) != 40:
         raise ValueError("--expected-head must be a full Git SHA")
+    if args.critic_only_step is not None and (
+        args.variant != "no-gan" or args.mode != "profile"
+    ):
+        raise ValueError("--critic-only-step requires No-GAN profile mode")
+    if args.operation_source and args.critic_only_step is None:
+        raise ValueError("--operation-source requires --critic-only-step")
+    if not 0 <= args.operation_source_rank < 16:
+        raise ValueError("--operation-source-rank must be in [0, 15]")
+    if args.operation_source_target_bytes <= 0 or args.operation_source_max_events <= 0:
+        raise ValueError("operation-source byte/event limits must be positive")
     local = args.local_evidence_root / args.run_id
     if local.exists():
         raise FileExistsError(local)

@@ -59,6 +59,23 @@ CORRECTNESS_SHA256="${DISTILLSCHEDULE_FSDP2_CORRECTNESS_SHA256:-}"
 PROFILE_DIAGNOSTICS="${DISTILLSCHEDULE_PROFILE_DIAGNOSTICS:-off}"
 EMA_DEVICE="${DISTILLSCHEDULE_EMA_DEVICE:-cuda}"
 DIAGNOSTIC_TIMING="${DISTILLSCHEDULE_DIAGNOSTIC_TIMING:-0}"
+CRITIC_ONLY_STEP="${DISTILLSCHEDULE_CRITIC_ONLY_STEP:-}"
+OPERATION_SOURCE="${DISTILLSCHEDULE_OPERATION_SOURCE:-off}"
+OPERATION_SOURCE_RANK="${DISTILLSCHEDULE_OPERATION_SOURCE_RANK:-0}"
+OPERATION_SOURCE_TARGET_BYTES="${DISTILLSCHEDULE_OPERATION_SOURCE_TARGET_BYTES:-113049600}"
+OPERATION_SOURCE_MAX_EVENTS="${DISTILLSCHEDULE_OPERATION_SOURCE_MAX_EVENTS:-256}"
+
+[[ -z "${CRITIC_ONLY_STEP}" || "${CRITIC_ONLY_STEP}" == 10 ]] || exit 2
+[[ "${OPERATION_SOURCE}" == on || "${OPERATION_SOURCE}" == off ]] || exit 2
+[[ "${OPERATION_SOURCE_RANK}" =~ ^([0-9]|1[0-5])$ ]] || exit 2
+[[ "${OPERATION_SOURCE_TARGET_BYTES}" =~ ^[1-9][0-9]*$ ]] || exit 2
+[[ "${OPERATION_SOURCE_MAX_EVENTS}" =~ ^[1-9][0-9]*$ ]] || exit 2
+if [[ -n "${CRITIC_ONLY_STEP}" ]]; then
+  [[ "${VARIANT}" == no-gan && "${MODE}" == profile ]] || exit 2
+fi
+if [[ "${OPERATION_SOURCE}" == on ]]; then
+  [[ -n "${CRITIC_ONLY_STEP}" ]] || exit 2
+fi
 
 for executable in "${PYTHON}" "${TORCHRUN}"; do
   [[ -x "${executable}" ]] || { echo missing_executable="${executable}" >&2; exit 3; }
@@ -122,6 +139,11 @@ hardened_worker=true
 critic_input_reuse=retain_until_one_consume
 parity_policy=multi_metric
 diagnostic_timing=${DIAGNOSTIC_TIMING}
+critic_only_step=${CRITIC_ONLY_STEP:-none}
+operation_source=${OPERATION_SOURCE}
+operation_source_rank=${OPERATION_SOURCE_RANK}
+operation_source_target_bytes=${OPERATION_SOURCE_TARGET_BYTES}
+operation_source_max_events=${OPERATION_SOURCE_MAX_EVENTS}
 EOF
 
 WORKER=(
@@ -149,6 +171,17 @@ fi
 [[ "${MODE}" == timing ]] && WORKER+=(--timing-mode)
 [[ "${MODE}" == profile ]] && WORKER+=(--profile-mode)
 [[ "${PROFILE_DIAGNOSTICS}" == off ]] && WORKER+=(--no-profile-diagnostics)
+if [[ -n "${CRITIC_ONLY_STEP}" ]]; then
+  WORKER+=(--critic-only-step "${CRITIC_ONLY_STEP}")
+fi
+if [[ "${OPERATION_SOURCE}" == on ]]; then
+  WORKER+=(
+    --operation-source
+    --operation-source-rank "${OPERATION_SOURCE_RANK}"
+    --operation-source-target-bytes "${OPERATION_SOURCE_TARGET_BYTES}"
+    --operation-source-max-events "${OPERATION_SOURCE_MAX_EVENTS}"
+  )
+fi
 
 if [[ "${MODE}" == profile ]]; then
   command -v nsys >/dev/null || { echo nsys_missing >&2; exit 3; }
@@ -190,14 +223,22 @@ if [[ "${MODE}" == profile ]]; then
   done
   count="$(find "${RECEIPT_DIR}" -maxdepth 1 -type f -name 'rank_*.json' | wc -l)"
   [[ "${count}" == 16 ]] || { echo "nsys_range_receipts=${count},expected=16" >&2; exit 90; }
-  "${PYTHON}" - "${RECEIPT_DIR}" "${VARIANT}" <<'PY'
+  "${PYTHON}" - "${RECEIPT_DIR}" "${VARIANT}" "${CRITIC_ONLY_STEP}" <<'PY'
 import json
 import os
 import pathlib
 import sys
 from distillschedule.runtime.nsys_range import validate_static_nsys_receipts
-root = pathlib.Path(sys.argv[1]); variant = sys.argv[2]
-result = validate_static_nsys_receipts(root, variant=variant)
+root = pathlib.Path(sys.argv[1]); variant = sys.argv[2]; critic_step = sys.argv[3]
+kwargs = {}
+if critic_step:
+    step = int(critic_step)
+    kwargs = {
+        "expected_window": (step, step),
+        "expected_start_point": f"before_step{step}_critic_compute",
+        "expected_stop_point": f"after_step{step}_critic_commit",
+    }
+result = validate_static_nsys_receipts(root, variant=variant, **kwargs)
 if os.environ.get("DISTILLSCHEDULE_NODE_RANK") == "0":
     out = root.parent / "static_p0_receipts_validation.json"
     temporary = out.with_suffix(out.suffix + f".tmp-{os.getpid()}")
@@ -215,6 +256,8 @@ PY
     echo mesh_policy="${MESH_POLICY}"
     echo rollout_batch_size="${ROLLOUT_BATCH_SIZE}"
     echo pack_real_score_pair="${PACK_REAL_SCORE_PAIR}"
+    echo critic_only_step="${CRITIC_ONLY_STEP:-none}"
+    echo operation_source="${OPERATION_SOURCE}"
     echo report="${REPORT_BASE}.nsys-rep"
     echo sqlite="${SQLITE}"
     echo report_sha256="$(sha256sum "${REPORT_BASE}.nsys-rep" | awk '{print $1}')"

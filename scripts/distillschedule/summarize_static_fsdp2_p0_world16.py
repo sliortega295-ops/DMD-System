@@ -35,6 +35,7 @@ def main() -> int:
     parser.add_argument("--mesh-policy", choices=("world16-fsdp", "node-hsdp"), required=True)
     parser.add_argument("--rollout-batch-size", type=int, choices=(1, 2, 5), required=True)
     parser.add_argument("--pack-real-score-pair", choices=("on", "off"), required=True)
+    parser.add_argument("--critic-only-step", type=int, choices=(10,))
     parser.add_argument(
         "--diagnostic-timing",
         action="store_true",
@@ -54,13 +55,27 @@ def main() -> int:
         "pack_real_score_pair": args.pack_real_score_pair == "on",
         "rollout_backend": "native-fsdp2-batch",
     }
-    expected_final = (
-        {"generator_logical_version": 3, "critic_logical_version": 15, "ema_step": 15}
-        if args.variant == "no-gan"
-        else {"generator_logical_version": 201, "critic_logical_version": 1005, "ema_step": 801}
-    )
-    expected_ema = 5 if args.variant == "no-gan" else 1
-    expected_gradient_steps = {"generator": 1, "critic": 5}
+    if args.critic_only_step is not None:
+        if args.variant != "no-gan" or args.mode != "profile":
+            raise ValueError("--critic-only-step requires No-GAN profile mode")
+        expected_final = {
+            "generator_logical_version": 3,
+            "critic_logical_version": 11,
+            "ema_step": 10,
+        }
+        expected_ema = 0
+        expected_critic_updates = 1
+        expected_logical_rollouts = 1
+    else:
+        expected_final = (
+            {"generator_logical_version": 3, "critic_logical_version": 15, "ema_step": 15}
+            if args.variant == "no-gan"
+            else {"generator_logical_version": 201, "critic_logical_version": 1005, "ema_step": 801}
+        )
+        expected_ema = 5 if args.variant == "no-gan" else 1
+        expected_critic_updates = 5
+        expected_logical_rollouts = 5
+    expected_gradient_steps = {"generator": 1, "critic": expected_critic_updates}
     state_audits: list[dict[str, Any] | None] = []
     loss_audits: list[dict[str, Any] | None] = []
     input_reuse: list[dict[str, Any] | None] = []
@@ -87,7 +102,11 @@ def main() -> int:
 
         if args.mode != "validate":
             updates = value.get("updates", {})
-            if updates != {"generator": 1, "critic": 5, "ema": expected_ema}:
+            if updates != {
+                "generator": 1,
+                "critic": expected_critic_updates,
+                "ema": expected_ema,
+            }:
                 errors.append(f"rank{rank} update inventory changed: {updates}")
             final = value.get("final", {})
             for key, expected in expected_final.items():
@@ -112,7 +131,9 @@ def main() -> int:
                     if parity.get("status") != "PASS":
                         errors.append(f"rank{rank} Score packing parity={parity}")
             batches = value.get("rollout_batches", [])
-            expected_batches = (5 + args.rollout_batch_size - 1) // args.rollout_batch_size
+            expected_batches = (
+                expected_logical_rollouts + args.rollout_batch_size - 1
+            ) // args.rollout_batch_size
             if len(batches) != expected_batches:
                 errors.append(
                     f"rank{rank} rollout batch count={len(batches)}, expected={expected_batches}"
@@ -186,6 +207,7 @@ def main() -> int:
         ),
         "diagnostic_timing": bool(args.diagnostic_timing),
         "profiled_latency_diagnostic_only": args.mode == "profile",
+        "critic_only_step": args.critic_only_step,
         "rollout_collective_estimate": ranks[0].get("rollout_collective_estimate") if ranks else None,
         "gan_score_fusion": ranks[0].get("gan_score_fusion") if ranks else None,
         "generator_score_inventory": (

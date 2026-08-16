@@ -8,6 +8,7 @@ offload in the timed window.
 from __future__ import annotations
 
 import dataclasses
+import functools
 import json
 import math
 from pathlib import Path
@@ -74,7 +75,12 @@ def _torch() -> Any:
     return torch
 
 
-def fsdp2_metadata_tolerant_checkpoint(module: Any, *args: Any, **kwargs: Any) -> Any:
+def fsdp2_metadata_tolerant_checkpoint(
+    module: Any,
+    *args: Any,
+    operation_source: bool = False,
+    **kwargs: Any,
+) -> Any:
     """Run Helios' non-reentrant checkpoint under the FSDP2 compatibility policy.
 
     PyTorch's default non-reentrant checkpoint validator compares saved and
@@ -96,24 +102,39 @@ def fsdp2_metadata_tolerant_checkpoint(module: Any, *args: Any, **kwargs: Any) -
         raise TypeError(
             "FSDP2 checkpoint policy owns use_reentrant and determinism_check"
         )
+    checkpoint_kwargs = dict(kwargs)
+    if operation_source:
+        from distillschedule.profiling.fsdp2_operation_source import checkpoint_context_fn
+
+        checkpoint_kwargs["context_fn"] = checkpoint_context_fn
     return checkpoint(
         module.__call__,
         *args,
         use_reentrant=False,
         determinism_check="none",
         preserve_rng_state=True,
-        **kwargs,
+        **checkpoint_kwargs,
     )
 
 
-def configure_fsdp2_checkpointing(model: Any) -> None:
+def configure_fsdp2_checkpointing(
+    model: Any,
+    *,
+    operation_source: bool = False,
+) -> None:
     """Install the FSDP2-only checkpoint adapter on an enabled Helios model."""
 
     if not bool(getattr(model, "gradient_checkpointing", False)):
         raise RuntimeError(
             "FSDP2 checkpoint policy requires Helios gradient checkpointing"
         )
-    model._gradient_checkpointing_func = fsdp2_metadata_tolerant_checkpoint
+    if operation_source:
+        model._gradient_checkpointing_func = functools.partial(
+            fsdp2_metadata_tolerant_checkpoint,
+            operation_source=True,
+        )
+    else:
+        model._gradient_checkpointing_func = fsdp2_metadata_tolerant_checkpoint
 
 
 def _named_trainables(module: Any) -> dict[str, Any]:
