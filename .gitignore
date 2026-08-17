@@ -50,6 +50,7 @@ artifacts/environment/**
 artifacts/runs/**
 artifacts/suites/**
 artifacts/g_offload_search/**
+artifacts/source/**
 .env-distillschedule/
 *.nsys-rep
 *.sqlite
