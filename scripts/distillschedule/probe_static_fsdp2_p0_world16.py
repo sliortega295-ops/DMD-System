@@ -551,7 +551,7 @@ def _parser() -> Any:
     value.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
-        default="cpu_inplace",
+        default="cuda_out_of_place",
         help=(
             "Generator storage policy for the two frozen gated residuals per "
             "Helios block"
@@ -560,7 +560,7 @@ def _parser() -> Any:
     value.add_argument(
         "--critic-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
-        default="cpu_inplace",
+        default="cuda_out_of_place",
         help=(
             "Critic storage policy for the two frozen gated residuals per "
             "Helios block"

@@ -101,12 +101,12 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
-        default="cpu_inplace",
+        default="cuda_out_of_place",
     )
     value.add_argument(
         "--critic-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
-        default="cpu_inplace",
+        default="cuda_out_of_place",
     )
     value.add_argument(
         "--remote-root",

@@ -325,3 +325,5 @@ def test_p0_plan_contracts_are_valid_json() -> None:
         assert value["default_candidate"]["mesh_policy"] == "world16-fsdp"
         assert value["default_candidate"]["rollout_batch_size"] == 1
         assert value["default_candidate"]["pack_real_score_pair"] is False
+        assert value["default_candidate"]["generator_residual_storage"] == "cuda_out_of_place"
+        assert value["default_candidate"]["critic_residual_storage"] == "cuda_out_of_place"

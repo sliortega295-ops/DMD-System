@@ -22,13 +22,17 @@
     "mesh_policy": ["world16-fsdp", "node-hsdp"],
     "rollout_batch_size": [1, 2, 5],
     "pack_real_score_pair": [false, true],
-    "rollout_backend": ["native-fsdp2-batch"]
+    "rollout_backend": ["native-fsdp2-batch"],
+    "generator_residual_storage": ["cpu_inplace", "cuda_out_of_place"],
+    "critic_residual_storage": ["cpu_inplace", "cuda_out_of_place"]
   },
   "default_candidate": {
     "mesh_policy": "world16-fsdp",
     "rollout_batch_size": 1,
     "pack_real_score_pair": false,
-    "rollout_backend": "native-fsdp2-batch"
+    "rollout_backend": "native-fsdp2-batch",
+    "generator_residual_storage": "cuda_out_of_place",
+    "critic_residual_storage": "cuda_out_of_place"
   },
   "experiment_order": [
     "world16-fsdp/B1/packing-off correctness control",

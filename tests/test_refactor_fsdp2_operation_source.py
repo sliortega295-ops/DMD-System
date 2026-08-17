@@ -70,4 +70,10 @@ def test_p0_worker_and_launcher_keep_canary_fail_closed() -> None:
     assert "helios_transformer_hash_mismatch" in launcher
     assert 'choices=("cpu_inplace", "cuda_out_of_place")' in worker
     assert 'else args.generator_residual_storage' in worker
+    assert 'default="cuda_out_of_place"' in worker
+    assert 'DISTILLSCHEDULE_GENERATOR_RESIDUAL_STORAGE:-cuda_out_of_place' in launcher
+    assert 'DISTILLSCHEDULE_CRITIC_RESIDUAL_STORAGE:-cuda_out_of_place' in launcher
+    assert '"--generator-residual-storage"' in controller
+    assert '"--critic-residual-storage"' in controller
+    assert 'default="cuda_out_of_place"' in controller
     assert 'args.variant != "no-gan" or args.mode != "profile"' in controller
