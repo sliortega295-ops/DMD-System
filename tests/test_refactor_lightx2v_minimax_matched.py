@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from runtime.lightx2v_minimax_matched import (
     EXPECTED_BACKWARD_COUNTS,
@@ -11,7 +16,6 @@ from runtime.lightx2v_minimax_matched import (
     validate_matched_receipt,
 )
 
-ROOT = Path(__file__).resolve().parents[1]
 RUNTIME = ROOT / "runtime/lightx2v_minimax_matched.py"
 ENTRY = ROOT / "scripts/distillschedule/lightx2v_minimax_matched_entry.py"
 PAIR = ROOT / "scripts/distillschedule/run_lightx2v_minimax_matched_pair.py"
