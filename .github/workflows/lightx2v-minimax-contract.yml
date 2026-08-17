@@ -26,7 +26,7 @@ jobs:
       - name: Verify pinned upstream and benchmark patch
         run: |
           test "$(git -C third_party/lightx2v rev-parse HEAD)" = "d034a6b0ecaa31aa07c81aeb7bbe69b225f1d7be"
-          echo "38ec0ccac4794e613f5f2b8e2bba7a1298880372d5f8b60da33e21060cf560ce  third_party/lightx2v_benchmark/benchmark.patch" | sha256sum -c -
+          echo "e9fd51f8a1859392b334600a0c915fc04a609baf54eb152f85e2d0bdbf9587b9  third_party/lightx2v_benchmark/benchmark.patch" | sha256sum -c -
           git -C third_party/lightx2v apply --check "$GITHUB_WORKSPACE/third_party/lightx2v_benchmark/benchmark.patch"
       - name: Static launcher checks
         run: |
