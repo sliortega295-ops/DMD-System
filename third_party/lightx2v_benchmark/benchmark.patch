@@ -1,7 +1,7 @@
 diff --git a/lightx2v_train/train.py b/lightx2v_train/train.py
 --- a/lightx2v_train/train.py
 +++ b/lightx2v_train/train.py
-@@ -1,4 +1,7 @@
+@@ -1,5 +1,8 @@
  import argparse
 +import os
 +import random
@@ -10,7 +10,7 @@ diff --git a/lightx2v_train/train.py b/lightx2v_train/train.py
  import torch
  from loguru import logger
  
-@@ -20,6 +23,15 @@ def main():
+@@ -20,6 +23,16 @@ def main():
      torch.backends.cudnn.allow_tf32 = True
      init_distributed(config)
      setup_logger(config)
@@ -37,7 +37,7 @@ diff --git a/lightx2v_train/lightx2v_train/trainers/dmd/minimax_h3_trainer.py b/
  import torch
  from loguru import logger
  
-@@ -180,7 +181,15 @@ class MiniMaxH3T2AVDmdTrainer(VideoDmdTrainer):
+@@ -180,7 +181,16 @@ class MiniMaxH3T2AVDmdTrainer(VideoDmdTrainer):
      def forward_loss(self, latent_shape, conditions, stage, current_iter=None, initial_noise=None):
          del current_iter
          condition, _ = conditions
@@ -67,13 +67,13 @@ diff --git a/lightx2v_train/lightx2v_train/trainers/dmd/trainer.py b/lightx2v_tr
  
  import torch
  import torch.distributed as dist
-@@ -11,6 +14,7 @@ from lightx2v_train.runtime.distributed import (
+@@ -11,4 +14,5 @@ from lightx2v_train.runtime.distributed import (
      barrier,
 +    get_rank,
      get_world_size,
      is_distributed,
      is_main_process,
-@@ -482,7 +486,23 @@ class DmdTrainer(BaseTrainer):
+@@ -482,7 +486,18 @@ class DmdTrainer(BaseTrainer):
                  self.run_inference(current_iter)
  
          samples = self._iter_train_samples()
@@ -92,7 +92,7 @@ diff --git a/lightx2v_train/lightx2v_train/trainers/dmd/trainer.py b/lightx2v_tr
              self.optimizer.zero_grad(set_to_none=True)
              running_dmd = 0.0
              running_cdm = 0.0
-@@ -530,6 +550,43 @@ class DmdTrainer(BaseTrainer):
+@@ -530,6 +545,50 @@ class DmdTrainer(BaseTrainer):
                  self.fake_optimizer.zero_grad(set_to_none=True)
                  running_fake += fake_loss / fake_update_ratio
  
