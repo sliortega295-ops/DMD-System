@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 UPSTREAM_SHA="d034a6b0ecaa31aa07c81aeb7bbe69b225f1d7be"
-PATCH_SHA256="38ec0ccac4794e613f5f2b8e2bba7a1298880372d5f8b60da33e21060cf560ce"
+PATCH_SHA256="e9fd51f8a1859392b334600a0c915fc04a609baf54eb152f85e2d0bdbf9587b9"
 
 DMD_SYSTEM_ROOT="${DMD_SYSTEM_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 SUBMODULE_ROOT="$DMD_SYSTEM_ROOT/third_party/lightx2v"
