@@ -42,7 +42,7 @@ remains unchanged when the benchmark environment variable is absent.
 Benchmark patch SHA-256:
 
 ```text
-38ec0ccac4794e613f5f2b8e2bba7a1298880372d5f8b60da33e21060cf560ce
+e9fd51f8a1859392b334600a0c915fc04a609baf54eb152f85e2d0bdbf9587b9
 ```
 
 This source integration does **not** itself claim a speedup over Helios. Helios
