@@ -246,11 +246,17 @@ class StaticFSDP2Full5NsightRange:
         local_rank: int | None = None,
         enabled: bool = True,
         controls_profiler_api: bool | None = None,
+        logical_window: tuple[int, int] | None = None,
+        start_point: str = "before_first_model_compute",
+        stop_point: str | None = None,
     ) -> None:
         if variant not in self._WINDOWS:
             raise ValueError(f"unsupported static FSDP2 variant: {variant}")
         self.variant = variant
-        self.start_step, self.stop_step, self.stop_point = self._WINDOWS[variant]
+        default_start, default_stop, default_stop_point = self._WINDOWS[variant]
+        self.start_step, self.stop_step = logical_window or (default_start, default_stop)
+        self.start_point = str(start_point)
+        self.stop_point = str(stop_point or default_stop_point)
         self.api = api or TorchCudaProfilerApi()
         self.receipt_path = Path(receipt_path) if receipt_path is not None else None
         self.rank = int(os.environ.get("RANK", "-1")) if rank is None else int(rank)
@@ -271,7 +277,14 @@ class StaticFSDP2Full5NsightRange:
         self._start_perf_ns: int | None = None
 
     @classmethod
-    def from_env(cls, *, variant: str) -> "StaticFSDP2Full5NsightRange":
+    def from_env(
+        cls,
+        *,
+        variant: str,
+        logical_window: tuple[int, int] | None = None,
+        start_point: str = "before_first_model_compute",
+        stop_point: str | None = None,
+    ) -> "StaticFSDP2Full5NsightRange":
         raw = os.environ.get("DISTILLSCHEDULE_STATIC_FSDP2_NSYS_EXACT_RANGE", "0")
         enabled = raw.strip().lower() in {"1", "true", "yes", "on"}
         receipt_root = os.environ.get(
@@ -297,6 +310,9 @@ class StaticFSDP2Full5NsightRange:
             local_rank=local_rank,
             enabled=enabled,
             controls_profiler_api=(local_rank == 0),
+            logical_window=logical_window,
+            start_point=start_point,
+            stop_point=stop_point,
         )
 
     @property
@@ -333,7 +349,7 @@ class StaticFSDP2Full5NsightRange:
             controls_profiler_api=self.controls_profiler_api,
             start_step=self.start_step,
             stop_step=self.stop_step,
-            start_point="before_first_model_compute",
+            start_point=self.start_point,
             stop_point=self.stop_point,
             start_unix_ns=self._start_unix_ns,
             stop_unix_ns=stop_unix_ns,
@@ -368,6 +384,9 @@ def validate_static_nsys_receipts(
     variant: str,
     expected_world_size: int = 16,
     expected_local_world_size: int = 8,
+    expected_window: tuple[int, int] | None = None,
+    expected_start_point: str = "before_first_model_compute",
+    expected_stop_point: str | None = None,
 ) -> dict[str, Any]:
     """Require exact static Full5 receipts and one controller per node."""
 
@@ -383,7 +402,11 @@ def validate_static_nsys_receipts(
         raise ValueError(
             f"static Nsight receipt count={len(files)}, expected={expected_world_size}"
         )
-    start_step, stop_step, stop_point = StaticFSDP2Full5NsightRange._WINDOWS[variant]
+    default_start, default_stop, default_stop_point = (
+        StaticFSDP2Full5NsightRange._WINDOWS[variant]
+    )
+    start_step, stop_step = expected_window or (default_start, default_stop)
+    stop_point = expected_stop_point or default_stop_point
     controllers: list[int] = []
     for expected_rank, path in enumerate(files):
         value = json.loads(path.read_text())
@@ -402,7 +425,7 @@ def validate_static_nsys_receipts(
             controllers.append(rank)
         if value.get("logical_window") != [start_step, stop_step]:
             raise ValueError(f"static Nsight range window drift: {path}")
-        if value.get("start_point") != "before_first_model_compute":
+        if value.get("start_point") != expected_start_point:
             raise ValueError(f"static Nsight range start boundary drift: {path}")
         if value.get("stop_point") != stop_point:
             raise ValueError(f"static Nsight range stop boundary drift: {path}")

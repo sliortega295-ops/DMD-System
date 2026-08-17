@@ -141,6 +141,24 @@ The corresponding clean diagnostic profiles, source-attributed Nsight
 timelines, D2H analysis, and exact SQLite reconciliation are published in
 [`docs/issue-assets/fsdp2-static-full5-20260814/`](../issue-assets/fsdp2-static-full5-20260814/README.md).
 
+## Current residual policy
+
+The static P0 entry points now default both chunked residual policies to
+`cuda_out_of_place`. This is a GPU-resident activation/residual policy, not
+parameter offload or backbone model switching. The generic Helios model
+builder keeps its historical `cpu_inplace` default so unrelated workloads are
+not changed; callers that reproduce the historical control must pass the
+policy explicitly.
+
+Iteration 306 had already validated the Generator-only change on the same
+No-GAN world16 contract: changing Generator residual storage from
+`cpu_inplace` to `cuda_out_of_place` while keeping Critic residuals GPU-resident
+produced one native Full5 measurement of **118.5468 s**, versus the prior
+CPU-Generator/GPU-Critic three-run median of **141.5463 s**. This is preserved as
+an indicative single-run result (22.9995 s, 16.25% lower), not relabeled as a
+new repeated formal timing claim. See
+[`fsdp2-generator-residual-gpu-20260817/`](../issue-assets/fsdp2-generator-residual-gpu-20260817/README.md).
+
 The dominant D2H activity is issued from named FSDP phases and
 `pt_autograd_*` threads. It is not produced by configured parameter or
 activation offload, but the trace does not resolve the internal operation

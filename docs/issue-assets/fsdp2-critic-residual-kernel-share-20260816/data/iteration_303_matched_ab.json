@@ -1,0 +1,102 @@
+{
+  "aggregate": {
+    "control_median_seconds": 215.768595626,
+    "control_seconds": [
+      207.825495171,
+      227.197302697,
+      215.768595626
+    ],
+    "control_stdev_seconds": 9.738027837446833,
+    "experiment_median_seconds": 141.54629977,
+    "experiment_seconds": [
+      139.846688622,
+      142.677073989,
+      141.54629977
+    ],
+    "experiment_stdev_seconds": 1.4246876683732486,
+    "median_reduction_percent": 34.39902625340917,
+    "median_speedup_x": 1.5243676166498494,
+    "pairwise_reduction_percent_range": [
+      32.70956072692942,
+      37.20124653976186
+    ],
+    "saved_median_seconds": 74.22229585600002
+  },
+  "code": {
+    "dmd_head": "bd837c27e555c8868d3469e96a516e4f6c88a9bf",
+    "runtime_head": "8b15dede4449ea0363600ab82a0db719d054a732",
+    "transformer_sha256": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886"
+  },
+  "correctness_run_ids": [
+    "iter303_nogan_cpu_residual_correctness_20260816",
+    "iter303_nogan_gpu_residual_correctness_20260816"
+  ],
+  "gates": {
+    "correctness": "16/16 PASS for both policies",
+    "final_versions": "G3/C15/EMA15 for all six timing runs",
+    "focused_tests": "27 passed",
+    "new_cpu_oom": 0,
+    "new_cuda_oom": 0,
+    "profile_exact_target_d2h_events_both_nodes": 0,
+    "profile_exact_target_h2d_events_both_nodes": 0,
+    "profile_operation_source_matched_events": 0,
+    "updates": "G1/C5/EMA5 for all six timing runs"
+  },
+  "hbm": {
+    "both_max_reserved_gib": 25.349609375,
+    "control_max_allocated_gib": 14.38472604751587,
+    "delta_allocated_gib": 0.10528564453125,
+    "experiment_max_allocated_gib": 14.49001169204712,
+    "minimum_driver_free_gib": 13.1781005859375
+  },
+  "notes": [
+    "The prior 16.97 s figure was D2H-only activity, not an end-to-end critical-path bound.",
+    "The old synchronous pageable D2H path also induced backward H2D reloads and host/launch serialization.",
+    "Nsight latency is diagnostic only; the performance claim uses the six unprofiled timing runs."
+  ],
+  "paired_runs": [
+    {
+      "control_seconds": 207.825495171,
+      "experiment_seconds": 139.846688622,
+      "pair": 1,
+      "reduction_percent": 32.70956072692942,
+      "saved_seconds": 67.97880654900001,
+      "speedup_x": 1.4860952176904525
+    },
+    {
+      "control_seconds": 227.197302697,
+      "experiment_seconds": 142.677073989,
+      "pair": 2,
+      "reduction_percent": 37.20124653976186,
+      "saved_seconds": 84.52022870799999,
+      "speedup_x": 1.592388295785462
+    },
+    {
+      "control_seconds": 215.768595626,
+      "experiment_seconds": 141.54629977,
+      "pair": 3,
+      "reduction_percent": 34.39902625340917,
+      "saved_seconds": 74.22229585600002,
+      "speedup_x": 1.5243676166498494
+    }
+  ],
+  "profile_run_id": "iter303_nogan_gpu_residual_critic10_profile_20260816",
+  "root_cause": {
+    "control": "cpu_inplace",
+    "description": "custom autograd stored each chunked residual on pageable CPU memory and reloaded it for backward",
+    "experiment": "cuda_out_of_place",
+    "path": "helios/modules/transformer_helios.py::_TembAwareChunkedResidual",
+    "target_copy_bytes": 113049600
+  },
+  "run_ids": [
+    "iter303_pair1_cpu_timing_20260816",
+    "iter303_pair1_gpu_timing_20260816",
+    "iter303_pair2_cpu_timing_20260816",
+    "iter303_pair2_gpu_timing_20260816",
+    "iter303_pair3_cpu_timing_20260816",
+    "iter303_pair3_gpu_timing_20260816"
+  ],
+  "schema_version": "distillschedule.fsdp2_critic_residual_gpu_result.v1",
+  "scientific_scope": "matched unprofiled No-GAN Full5, world16 FSDP2, B1 rollout, Score packing off",
+  "status": "PASS"
+}
