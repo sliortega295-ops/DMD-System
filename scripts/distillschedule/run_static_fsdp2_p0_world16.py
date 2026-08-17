@@ -99,6 +99,11 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--rollout-batch-size", type=int, choices=(1, 2, 5), required=True)
     value.add_argument("--pack-real-score-pair", choices=("on", "off"), default="on")
     value.add_argument(
+        "--generator-residual-storage",
+        choices=("cpu_inplace", "cuda_out_of_place"),
+        default="cpu_inplace",
+    )
+    value.add_argument(
         "--critic-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         default="cpu_inplace",
@@ -176,6 +181,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         f"HELIOS_RUNTIME_ROOT={shlex.quote(str(args.helios_runtime_root))}",
         "DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256="
         + shlex.quote(args.expected_helios_transformer_sha256),
+        "DISTILLSCHEDULE_GENERATOR_RESIDUAL_STORAGE="
+        + shlex.quote(args.generator_residual_storage),
         "DISTILLSCHEDULE_CRITIC_RESIDUAL_STORAGE="
         + shlex.quote(args.critic_residual_storage),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
@@ -271,6 +278,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"--mesh-policy {shlex.quote(args.mesh_policy)} "
         + f"--rollout-batch-size {args.rollout_batch_size} "
         + f"--pack-real-score-pair {shlex.quote(args.pack_real_score_pair)} "
+        + "--generator-residual-storage "
+        + f"{shlex.quote(args.generator_residual_storage)} "
         + "--critic-residual-storage "
         + f"{shlex.quote(args.critic_residual_storage)} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")

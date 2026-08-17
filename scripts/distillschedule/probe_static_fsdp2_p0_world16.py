@@ -98,7 +98,7 @@ def _build_static_model(
             chunked_residual_storage=(
                 args.critic_residual_storage
                 if role == "critic"
-                else "cpu_inplace"
+                else args.generator_residual_storage
             ),
         )
         logical_restore = load_logical_master_into_trainables(
@@ -549,12 +549,21 @@ def _parser() -> Any:
         default="native-fsdp2-batch",
     )
     value.add_argument(
+        "--generator-residual-storage",
+        choices=("cpu_inplace", "cuda_out_of_place"),
+        default="cpu_inplace",
+        help=(
+            "Generator storage policy for the two frozen gated residuals per "
+            "Helios block"
+        ),
+    )
+    value.add_argument(
         "--critic-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         default="cpu_inplace",
         help=(
-            "Critic-only storage policy for the two frozen gated residuals per "
-            "Helios block; Generator remains cpu_inplace"
+            "Critic storage policy for the two frozen gated residuals per "
+            "Helios block"
         ),
     )
     value.add_argument(
@@ -625,6 +634,7 @@ def main() -> int:
             "rollout_batch_size": policy.rollout_batch_size,
             "pack_real_score_pair": policy.pack_real_score_pair,
             "rollout_backend": policy.rollout_backend,
+            "generator_residual_storage": args.generator_residual_storage,
             "critic_residual_storage": args.critic_residual_storage,
         },
     }

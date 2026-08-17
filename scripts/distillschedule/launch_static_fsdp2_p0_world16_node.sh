@@ -64,6 +64,7 @@ OPERATION_SOURCE="${DISTILLSCHEDULE_OPERATION_SOURCE:-off}"
 OPERATION_SOURCE_RANK="${DISTILLSCHEDULE_OPERATION_SOURCE_RANK:-0}"
 OPERATION_SOURCE_TARGET_BYTES="${DISTILLSCHEDULE_OPERATION_SOURCE_TARGET_BYTES:-113049600}"
 OPERATION_SOURCE_MAX_EVENTS="${DISTILLSCHEDULE_OPERATION_SOURCE_MAX_EVENTS:-256}"
+GENERATOR_RESIDUAL_STORAGE="${DISTILLSCHEDULE_GENERATOR_RESIDUAL_STORAGE:-cpu_inplace}"
 CRITIC_RESIDUAL_STORAGE="${DISTILLSCHEDULE_CRITIC_RESIDUAL_STORAGE:-cpu_inplace}"
 EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256:-776a26c3b2921d599821f0767910830471ff94a955f5013089f9f689ac20fee7}"
 
@@ -72,6 +73,7 @@ EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORME
 [[ "${OPERATION_SOURCE_RANK}" =~ ^([0-9]|1[0-5])$ ]] || exit 2
 [[ "${OPERATION_SOURCE_TARGET_BYTES}" =~ ^[1-9][0-9]*$ ]] || exit 2
 [[ "${OPERATION_SOURCE_MAX_EVENTS}" =~ ^[1-9][0-9]*$ ]] || exit 2
+[[ "${GENERATOR_RESIDUAL_STORAGE}" == cpu_inplace || "${GENERATOR_RESIDUAL_STORAGE}" == cuda_out_of_place ]] || exit 2
 [[ "${CRITIC_RESIDUAL_STORAGE}" == cpu_inplace || "${CRITIC_RESIDUAL_STORAGE}" == cuda_out_of_place ]] || exit 2
 [[ "${EXPECTED_HELIOS_TRANSFORMER_SHA256}" =~ ^[0-9a-f]{64}$ ]] || exit 2
 if [[ -n "${CRITIC_ONLY_STEP}" ]]; then
@@ -96,10 +98,10 @@ HELIOS_TRANSFORMER="${HELIOS}/helios/modules/transformer_helios.py"
 if [[ "${MODE}" == timing && "${DIAGNOSTIC_TIMING}" != 1 ]]; then
   [[ -f "${CORRECTNESS_SUMMARY}" ]] || { echo correctness_summary_missing >&2; exit 3; }
   [[ "$(sha256sum "${CORRECTNESS_SUMMARY}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || { echo correctness_hash_changed >&2; exit 3; }
-  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${CRITIC_RESIDUAL_STORAGE}" <<'PY'
+  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" <<'PY'
 import json,pathlib,sys
 value=json.loads(pathlib.Path(sys.argv[1]).read_text())
-expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","critic_residual_storage":sys.argv[6]}
+expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7]}
 if value.get("status") != "PASS" or not value.get("claimable_correctness"):
     raise SystemExit("P0 correctness gate is not PASS")
 if value.get("variant") != sys.argv[2]:
@@ -152,6 +154,7 @@ operation_source=${OPERATION_SOURCE}
 operation_source_rank=${OPERATION_SOURCE_RANK}
 operation_source_target_bytes=${OPERATION_SOURCE_TARGET_BYTES}
 operation_source_max_events=${OPERATION_SOURCE_MAX_EVENTS}
+generator_residual_storage=${GENERATOR_RESIDUAL_STORAGE}
 critic_residual_storage=${CRITIC_RESIDUAL_STORAGE}
 EOF
 
@@ -165,6 +168,7 @@ WORKER=(
   --negative-prompt "${NEGATIVE}" --mesh-policy "${MESH_POLICY}"
   --rollout-batch-size "${ROLLOUT_BATCH_SIZE}" --rollout-backend native-fsdp2-batch
   --ema-device "${EMA_DEVICE}"
+  --generator-residual-storage "${GENERATOR_RESIDUAL_STORAGE}"
   --critic-residual-storage "${CRITIC_RESIDUAL_STORAGE}"
 )
 [[ "${VARIANT}" == gan ]] && WORKER+=(--gan-config "${GAN_CONFIG}")
