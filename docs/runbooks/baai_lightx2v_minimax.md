@@ -38,9 +38,10 @@ PYTHONPATH="$DMD_SYSTEM_ROOT/third_party/lightx2v/lightx2v_train" \
 --dtype bf16
 ```
 
-At least 16 usable samples are needed for a world16 B1 update; use a larger
-cache for the six sequential update stages so each rank does not immediately
-recycle the same item.
+One benchmark cycle consumes six global batches: one Student batch followed by
+five Fake batches. With world16/B1, prepare **at least 96 usable cache samples**
+so the six stages can consume distinct samples without iterator exhaustion or
+same-cycle recycling. Keep the exact same prompt cache for every compared run.
 
 ## 3. Prepare the pinned benchmark source
 
@@ -104,9 +105,11 @@ python scripts/distillschedule/compare_lightx2v_minimax_helios.py \
   --output /path/minimax_vs_helios_context.json
 ```
 
-The comparison script reports MiniMax median/CV/MAD and the existing Helios
-PR16 wall as **cross-workload absolute context only**. It deliberately refuses
-to call the ratio a speedup.
+The comparison script reports MiniMax median/CV/MAD and the repeated Helios
+PR16 residual-fixed wall as **cross-workload absolute context only**. The newer
+~118.5 s Helios Generator+Critic residual result is currently a single-run
+indicative measurement and must not replace the repeated formal context until
+it is replicated. No MiniMax/Helios ratio is called a speedup.
 
 A claimable DistillSchedule speedup requires a second MiniMax implementation
 that preserves this exact MiniMax contract and changes only the systems
