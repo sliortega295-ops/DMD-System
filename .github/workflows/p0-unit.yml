@@ -32,10 +32,10 @@ jobs:
           skipped = sum(1 for case in cases if case.find('skipped') is not None)
           failures = sum(1 for case in cases if case.find('failure') is not None)
           errors = sum(1 for case in cases if case.find('error') is not None)
-          if tests != 8 or skipped != 0 or failures != 0 or errors != 0:
+          if tests != 9 or skipped != 0 or failures != 0 or errors != 0:
               raise SystemExit(
                   f'P0 unit contract failed: tests={tests} skipped={skipped} '
-                  f'failures={failures} errors={errors}; expected 8/0/0/0'
+                  f'failures={failures} errors={errors}; expected 9/0/0/0'
               )
-          print('P0 unit contract PASS: 8 executed, 0 skipped')
+          print('P0 unit contract PASS: 9 executed, 0 skipped')
           PY

@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+pytest.importorskip("torch")
+
 from distillschedule.profiling.fsdp2_operation_source import (
     DEFAULT_TARGET_BYTES,
     OperationSourceCapture,
