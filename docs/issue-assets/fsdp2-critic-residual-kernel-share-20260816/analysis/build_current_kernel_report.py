@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Combine the two node-level current-path kernel-union reports."""
+"""Combine the two node-level current-path kernel/GPU-metric reports."""
 from __future__ import annotations
 
 import json
 import statistics
 from collections import defaultdict
 from pathlib import Path
+from typing import Any
 
 
 BASE = Path(__file__).resolve().parents[1]
@@ -28,25 +29,67 @@ def stats(xs):
     }
 
 
+def _non_nccl_ns(row: dict[str, Any]) -> int:
+    categories = row.get("categories", {})
+    # Backward compatibility for the already committed Iteration-304 JSON. The
+    # old key was named "compute" but semantically meant "non-NCCL kernel".
+    return int(categories.get("non-NCCL-kernel", categories.get("compute", 0)))
+
+
+def _aggregate_gpu_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    totals: dict[str, dict[str, Any]] = defaultdict(
+        lambda: {"weighted": 0.0, "covered_ns": 0, "means": [], "source": None}
+    )
+    for row in rows:
+        for canonical, metric in (row.get("gpu_metrics") or {}).get("metrics", {}).items():
+            mean = metric.get("time_weighted_mean_pct")
+            covered = int(metric.get("covered_ns") or 0)
+            if mean is None or covered <= 0:
+                continue
+            totals[canonical]["weighted"] += float(mean) * covered
+            totals[canonical]["covered_ns"] += covered
+            totals[canonical]["means"].append(float(mean))
+            totals[canonical]["source"] = metric.get("source_metric_name")
+    metrics = {}
+    for canonical, value in sorted(totals.items()):
+        covered = int(value["covered_ns"])
+        means = list(value["means"])
+        metrics[canonical] = {
+            "source_metric_name": value["source"],
+            "time_weighted_mean_pct": value["weighted"] / covered,
+            "covered_gpu_seconds": covered / 1e9,
+            "window_mean_stats": stats(means),
+        }
+    return {"status": "PASS" if metrics else "NOT_CAPTURED", "metrics": metrics}
+
+
 def summarize(rows):
     wall = sum(row["wall_ns"] for row in rows)
-    compute = sum(row["categories"].get("compute", 0) for row in rows)
+    non_nccl = sum(_non_nccl_ns(row) for row in rows)
     nccl = sum(row["categories"].get("NCCL-total", 0) for row in rows)
     return {
         "rank_count": len(rows),
         "gpu_wall_seconds": wall / 1e9,
-        "compute_gpu_seconds": compute / 1e9,
+        "non_nccl_kernel_gpu_seconds": non_nccl / 1e9,
         "nccl_gpu_seconds": nccl / 1e9,
-        "compute_pooled_percent": 100 * compute / wall,
+        "non_nccl_kernel_pooled_percent": 100 * non_nccl / wall,
         "nccl_pooled_percent": 100 * nccl / wall,
         "wall_rank_seconds_stats": stats(row["wall_ns"] / 1e9 for row in rows),
-        "compute_rank_percent_stats": stats(
-            100 * row["categories"].get("compute", 0) / row["wall_ns"] for row in rows
+        "non_nccl_kernel_rank_percent_stats": stats(
+            100 * _non_nccl_ns(row) / row["wall_ns"] for row in rows
         ),
         "nccl_rank_percent_stats": stats(
             100 * row["categories"].get("NCCL-total", 0) / row["wall_ns"] for row in rows
         ),
+        "gpu_metrics": _aggregate_gpu_metrics(rows),
     }
+
+
+def _fmt_metric(summary: dict[str, Any], canonical: str) -> str:
+    metric = summary.get("gpu_metrics", {}).get("metrics", {}).get(canonical)
+    if not metric:
+        return "n/a"
+    return f"{metric['time_weighted_mean_pct']:.2f}%"
 
 
 def main() -> None:
@@ -57,32 +100,43 @@ def main() -> None:
     windows = [row for report in node_reports for row in report["windows"]]
     full_rows = [row for row in windows if row["phase"] == "FULL5"]
 
-    by_phase_rank = defaultdict(lambda: defaultdict(int))
+    by_phase_rank: dict[tuple[str, int], dict[str, Any]] = defaultdict(
+        lambda: {"wall_ns": 0, "categories": defaultdict(int), "gpu_metric_rows": []}
+    )
     for row in windows:
         if row["phase"] == "FULL5":
             continue
         key = (row["phase"], row["global_rank"])
         by_phase_rank[key]["wall_ns"] += row["wall_ns"]
         for category, value in row["categories"].items():
-            by_phase_rank[key][category] += value
+            by_phase_rank[key]["categories"][category] += value
+        by_phase_rank[key]["gpu_metric_rows"].append(row)
+
     phases = {}
     for phase in sorted({key[0] for key in by_phase_rank}):
         rows = []
         for (name, rank), value in sorted(by_phase_rank.items()):
             if name != phase:
                 continue
-            rows.append(
-                {
-                    "global_rank": rank,
-                    "wall_ns": value["wall_ns"],
-                    "categories": {k: v for k, v in value.items() if k != "wall_ns"},
+            hardware = _aggregate_gpu_metrics(value["gpu_metric_rows"])
+            row = {
+                "global_rank": rank,
+                "wall_ns": value["wall_ns"],
+                "categories": dict(value["categories"]),
+                "gpu_metrics": {"status": hardware["status"], "metrics": {}},
+            }
+            for canonical, metric in hardware["metrics"].items():
+                row["gpu_metrics"]["metrics"][canonical] = {
+                    "source_metric_name": metric.get("source_metric_name"),
+                    "covered_ns": int(metric["covered_gpu_seconds"] * 1e9),
+                    "time_weighted_mean_pct": metric["time_weighted_mean_pct"],
                 }
-            )
+            rows.append(row)
         phases[phase] = summarize(rows)
 
     telemetry = json.loads((DATA / "native_telemetry_summary.json").read_text())
     payload = {
-        "schema_version": "iter304.current_kernel_report.v1",
+        "schema_version": "iter304.current_kernel_report.v2",
         "status": "PASS_CURRENT_PATH_PROFILE_AND_NATIVE_TELEMETRY",
         "run_ids": {
             "native": "iter304_nogan_gpu_residual_full5_native_telemetry_r2_20260816",
@@ -109,50 +163,87 @@ def main() -> None:
             "full5": summarize(full_rows),
             "phases": phases,
             "semantics": {
-                "compute": "exact temporal union of non-NCCL CUDA kernels inside each per-rank NVTX window",
+                "non_nccl_kernel_coverage": (
+                    "exact temporal union of non-NCCL CUDA kernels; not SM occupancy, "
+                    "Tensor Core utilization, MFU, or achieved FLOP/s"
+                ),
                 "nccl": "exact temporal union of NCCL/NVLS/CollNet kernels",
-                "non_additive": "compute and NCCL may overlap across CUDA streams; neither NCCL-only exposure nor no-kernel complement is inferred by subtraction",
+                "gpu_metrics": (
+                    "time-weighted Nsight Systems periodic device counters when captured; "
+                    "device-level rather than process-level"
+                ),
+                "non_additive": (
+                    "kernel and NCCL temporal unions may overlap across CUDA streams; "
+                    "neither NCCL-only exposure nor GPU idle is inferred by subtraction"
+                ),
             },
         },
     }
+    OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
     OUT_JSON.write_text(json.dumps(payload, indent=2) + "\n")
 
     f = payload["nsight"]["full5"]
     md = [
-        "# Iteration 304 current FSDP2 path: kernel share",
+        "# Iteration 304 current FSDP2 path: kernel coverage and GPU hardware metrics",
         "",
         "## Matched runs",
         "",
         f"- Native Full5: **{NATIVE_SECONDS:.3f} s**, claimable timing.",
         f"- Nsight profile receipt timer: **{PROFILE_SECONDS:.3f} s**, diagnostic only; "
         f"{PROFILE_SECONDS / NATIVE_SECONDS:.2f}x the native timer. It includes profiler stop/finalization and is not a training-slowdown denominator.",
-        f"- Native NVML GPU utilization: **{telemetry['combined_pooled']['gpu_util_mean_pct']:.2f}% mean**. This is not a compute-kernel metric.",
+        f"- Native NVML GPU utilization: **{telemetry['combined_pooled']['gpu_util_mean_pct']:.2f}% mean**. This is a coarse device-busy sample, not SM Active.",
         "",
-        "## Exact Full5 CUDA-kernel union (16-rank pooled denominator)",
+        "## Exact Full5 CUDA-kernel coverage",
         "",
-        f"- Exact per-rank `STATIC_FSDP2_P0_FULL5` NVTX wall median: **{f['wall_rank_seconds_stats']['median']:.3f} s**; this, not the 339.152 s receipt timer, is the kernel-share denominator.",
-        f"- Compute-kernel union: **{f['compute_pooled_percent']:.2f}%** "
-        f"({f['compute_gpu_seconds']:.2f}/{f['gpu_wall_seconds']:.2f} GPU-s); "
-        f"rank median **{f['compute_rank_percent_stats']['median']:.2f}%**.",
-        f"- NCCL-kernel union: **{f['nccl_pooled_percent']:.2f}%**.",
-        "- Compute and NCCL unions can overlap across streams and must not be added. This narrow pass does not infer NCCL-only critical-path exposure or GPU idle.",
+        f"- Exact per-rank `STATIC_FSDP2_P0_FULL5` NVTX wall median: **{f['wall_rank_seconds_stats']['median']:.3f} s**.",
+        f"- Non-NCCL CUDA-kernel temporal coverage: **{f['non_nccl_kernel_pooled_percent']:.2f}%** "
+        f"({f['non_nccl_kernel_gpu_seconds']:.2f}/{f['gpu_wall_seconds']:.2f} GPU-s); "
+        f"rank median **{f['non_nccl_kernel_rank_percent_stats']['median']:.2f}%**.",
+        f"- NCCL-kernel temporal coverage: **{f['nccl_pooled_percent']:.2f}%**.",
+        "- The old label `compute union` referred to the first quantity above. It must not be read as GPU compute utilization.",
         "",
+        "## Nsight Systems hardware metrics",
+        "",
+    ]
+    if f["gpu_metrics"]["status"] == "NOT_CAPTURED":
+        md += [
+            "This historical Iteration-304 capture did **not** collect `GPU_METRICS`; therefore SM Active, SM Issue, Tensor Active, and VRAM/DRAM bandwidth cannot be reconstructed from it. Re-profile with GPU Metrics enabled and rerun the v2 analyzer.",
+            "",
+        ]
+    else:
+        md += [
+            f"- SM Active: **{_fmt_metric(f, 'sm_active_percent')}**",
+            f"- SM Issue: **{_fmt_metric(f, 'sm_issue_percent')}**",
+            f"- Tensor Active: **{_fmt_metric(f, 'tensor_active_percent')}**",
+            f"- VRAM bandwidth: **{_fmt_metric(f, 'vram_bandwidth_percent')}**",
+            f"- DRAM read: **{_fmt_metric(f, 'dram_read_percent')}**",
+            f"- DRAM write: **{_fmt_metric(f, 'dram_write_percent')}**",
+            "",
+        ]
+
+    md += [
         "## Phase view",
         "",
-        "|Phase|rank wall median s|compute union|NCCL union|",
-        "|---|---:|---:|---:|",
+        "|Phase|rank wall median s|non-NCCL kernel coverage|SM Active|SM Issue|Tensor Active|VRAM BW|NCCL coverage|",
+        "|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for phase, value in sorted(phases.items()):
         md.append(
             f"|{phase}|{value['wall_rank_seconds_stats']['median']:.3f}|"
-            f"{value['compute_pooled_percent']:.2f}%|{value['nccl_pooled_percent']:.2f}%|"
+            f"{value['non_nccl_kernel_pooled_percent']:.2f}%|"
+            f"{_fmt_metric(value, 'sm_active_percent')}|"
+            f"{_fmt_metric(value, 'sm_issue_percent')}|"
+            f"{_fmt_metric(value, 'tensor_active_percent')}|"
+            f"{_fmt_metric(value, 'vram_bandwidth_percent')}|"
+            f"{value['nccl_pooled_percent']:.2f}%|"
         )
     md += [
         "",
         "## Interpretation boundary",
         "",
-        "The current trace is sufficient to record exact compute- and NCCL-kernel temporal shares. It is not sufficient to turn the NCCL union into native wall-time savings: overlap and critical-path exposure need a dedicated interval-intersection pass, and any code change still needs a matched no-Nsight A/B.",
+        "Kernel coverage answers whether a CUDA kernel is present on the timeline. Hardware GPU Metrics answer how active the SM/Tensor/memory subsystems are while sampled. Neither turns NCCL activity directly into native wall-time savings; exposed critical-path communication still requires interval attribution and any optimization still requires a matched no-Nsight A/B.",
     ]
+    OUT_MD.parent.mkdir(parents=True, exist_ok=True)
     OUT_MD.write_text("\n".join(md) + "\n")
 
     try:
@@ -164,21 +255,21 @@ def main() -> None:
         labels = ["Full5"] + list(sorted(phases))
         values = [f] + [phases[p] for p in sorted(phases)]
         fields = [
-            ("compute_pooled_percent", "compute-kernel union", "#0f9d76"),
-            ("nccl_pooled_percent", "NCCL-kernel union", "#f59e0b"),
+            ("non_nccl_kernel_pooled_percent", "non-NCCL kernel coverage"),
+            ("nccl_pooled_percent", "NCCL kernel coverage"),
         ]
         fig, ax = plt.subplots(figsize=(14, max(6, 0.55 * len(labels))), constrained_layout=True)
         y = np.arange(len(labels))
         height = 0.36
-        for offset, (field, legend, color) in zip((-height / 2, height / 2), fields):
+        for offset, (field, legend) in zip((-height / 2, height / 2), fields):
             x = np.array([row[field] for row in values])
-            ax.barh(y + offset, x, height=height, label=legend, color=color)
+            ax.barh(y + offset, x, height=height, label=legend)
         ax.set_yticks(y)
         ax.set_yticklabels(labels)
         ax.invert_yaxis()
         ax.set_xlim(0, 100)
         ax.set_xlabel("Percent of exact per-rank NVTX window wall (16-rank pooled)")
-        ax.set_title("Current fixed Critic-residual FSDP2 path: CUDA kernel temporal unions")
+        ax.set_title("Current fixed Critic-residual FSDP2 path: CUDA kernel temporal coverage")
         ax.legend(ncol=2, loc="lower right")
         ax.grid(axis="x", alpha=0.2)
         fig.savefig(OUT_PNG, dpi=170)
