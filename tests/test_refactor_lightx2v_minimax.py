@@ -11,7 +11,7 @@ PATCH = ROOT / "third_party/lightx2v_benchmark/benchmark.patch"
 README = ROOT / "third_party/lightx2v_benchmark/README.md"
 
 EXPECTED_UPSTREAM = "d034a6b0ecaa31aa07c81aeb7bbe69b225f1d7be"
-EXPECTED_PATCH = "99a66efb5984eb46bd00ae2760b57088605b52f255449dad48a7c9fc47d0e4dc"
+EXPECTED_PATCH = "38ec0ccac4794e613f5f2b8e2bba7a1298880372d5f8b60da33e21060cf560ce"
 
 
 def test_lightx2v_minimax_contract_is_world16_g1f5() -> None:
@@ -26,6 +26,8 @@ def test_lightx2v_minimax_contract_is_world16_g1f5() -> None:
     assert value["cycle"]["benchmark_end_step_idx"] == 3
     assert value["cycle"]["model_evaluations_per_back_simulation"] == 4
     assert value["cycle"]["global_batch"] == 16
+    assert value["cycle"]["global_batches_consumed"] == 6
+    assert value["cycle"]["minimum_unique_cache_samples"] == 96
 
 
 def test_lightx2v_minimax_config_preserves_upstream_semantics() -> None:
@@ -60,4 +62,6 @@ def test_lightx2v_benchmark_patch_identity_and_scope() -> None:
 def test_cross_workload_speedup_is_explicitly_forbidden() -> None:
     contract = json.loads(CONTRACT.read_text())
     assert contract["comparison"]["helios_pr16_absolute_time_is_cross_workload_only"] is True
-    assert "speedup" in README.read_text().lower()
+    readme = README.read_text().lower()
+    assert "does **not** itself claim a speedup" in readme
+    assert "same minimax contract" in readme
