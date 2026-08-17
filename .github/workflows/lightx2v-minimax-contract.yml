@@ -1,0 +1,42 @@
+name: lightx2v-minimax-contract
+
+on:
+  pull_request:
+    paths:
+      - ".gitmodules"
+      - "third_party/lightx2v"
+      - "third_party/lightx2v_benchmark/**"
+      - "configs/distillschedule/baselines/lightx2v_minimax_h3_world16_dmd*"
+      - "scripts/distillschedule/*lightx2v_minimax*"
+      - "docs/design/lightx2v_minimax_dmd_world16_baseline.md"
+      - "docs/runbooks/baai_lightx2v_minimax.md"
+      - "tests/test_refactor_lightx2v_minimax.py"
+      - ".github/workflows/lightx2v-minimax-contract.yml"
+
+jobs:
+  source-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify pinned upstream and benchmark patch
+        run: |
+          test "$(git -C third_party/lightx2v rev-parse HEAD)" = "d034a6b0ecaa31aa07c81aeb7bbe69b225f1d7be"
+          echo "e9fd51f8a1859392b334600a0c915fc04a609baf54eb152f85e2d0bdbf9587b9  third_party/lightx2v_benchmark/benchmark.patch" | sha256sum -c -
+          git -C third_party/lightx2v apply --check "$GITHUB_WORKSPACE/third_party/lightx2v_benchmark/benchmark.patch"
+      - name: Static launcher checks
+        run: |
+          bash -n scripts/distillschedule/prepare_lightx2v_minimax.sh
+          bash -n scripts/distillschedule/launch_lightx2v_minimax_world16_node.sh
+          python -m py_compile \
+            scripts/distillschedule/run_lightx2v_minimax_world16.py \
+            scripts/distillschedule/summarize_lightx2v_minimax_world16.py \
+            scripts/distillschedule/compare_lightx2v_minimax_helios.py
+      - name: Contract tests
+        run: |
+          python -m pip install pytest
+          pytest -q tests/test_refactor_lightx2v_minimax.py
