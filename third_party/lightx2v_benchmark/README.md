@@ -42,8 +42,13 @@ remains unchanged when the benchmark environment variable is absent.
 Benchmark patch SHA-256:
 
 ```text
-99a66efb5984eb46bd00ae2760b57088605b52f255449dad48a7c9fc47d0e4dc
+38ec0ccac4794e613f5f2b8e2bba7a1298880372d5f8b60da33e21060cf560ce
 ```
+
+This source integration does **not** itself claim a speedup over Helios. Helios
+and MiniMax absolute walls may be reported as cross-workload context, while a
+claimable speedup requires a DistillSchedule MiniMax candidate under the exact
+same MiniMax contract.
 
 ## License / attribution
 
