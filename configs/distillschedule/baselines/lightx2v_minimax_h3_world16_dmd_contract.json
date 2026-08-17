@@ -38,7 +38,9 @@
     "benchmark_end_step_idx": 3,
     "model_evaluations_per_back_simulation": 4,
     "data_batch_per_rank": 1,
-    "global_batch": 16
+    "global_batch": 16,
+    "global_batches_consumed": 6,
+    "minimum_unique_cache_samples": 96
   },
   "timing": {
     "scope": "one outer DMD cycle after model/data/trainer setup",
