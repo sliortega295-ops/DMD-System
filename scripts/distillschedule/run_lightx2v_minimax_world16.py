@@ -121,7 +121,7 @@ def _prepare(args: argparse.Namespace) -> None:
 
 
 def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
-    launcher = args.remote_root / "scripts/distillschedule/launch_lightx2v_minimax_world16_node.sh"
+    launcher = args.remote_root / "scripts/distillschedule/launch_lightx2v_minimax_matched_world16_node.sh"
     wrapper = args.remote_root / "scripts/distillschedule/remote_stage_wrapper.sh"
     exports = {
         "DMD_SYSTEM_ROOT": str(args.remote_root),
