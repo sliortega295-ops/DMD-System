@@ -118,6 +118,7 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD": "0",
         "LIGHTX2V_MINIMAX_CHECKPOINT_SEGMENT": str(args.checkpoint_segment),
         "LIGHTX2V_MINIMAX_CANARY_STAGE": args.canary_stage,
+        "LIGHTX2V_MINIMAX_SEGMENT_DEBUG": os.environ.get("LIGHTX2V_MINIMAX_SEGMENT_DEBUG", "0"),
         "LIGHTX2V_MINIMAX_MEMORY_ATTRIBUTION": os.environ.get("LIGHTX2V_MINIMAX_MEMORY_ATTRIBUTION", "0"),
         "LIGHTX2V_MINIMAX_LOCK_PATH": f"/tmp/lyy-experiments/DMD-System/{args.run_id}/node_{node}.lock",
     }
