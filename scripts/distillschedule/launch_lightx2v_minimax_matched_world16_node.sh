@@ -40,7 +40,7 @@ else
   exit 2
 fi
 if [[ -n "$LIGHTX2V_BENCHMARK_SOURCE_ROOT" ]]; then
-  PATCH_SHA256="$(sha256sum "$WT"/third_party/lightx2v_benchmark/benchmark.patch | awk "{print $1}")"
+  PATCH_SHA256="$(sha256sum "$DMD_SYSTEM_ROOT/third_party/lightx2v_benchmark/benchmark.patch" | awk "{print $1}")"
   [[ -f "$LIGHTX2V_BENCHMARK_SOURCE_ROOT/.distillschedule_source_receipt" ]] || { echo "prepared LightX2V source receipt missing" >&2; exit 2; }
   grep -qx "upstream=$UPSTREAM_SHA" "$LIGHTX2V_BENCHMARK_SOURCE_ROOT/.distillschedule_source_receipt" || { echo "prepared LightX2V upstream mismatch" >&2; exit 2; }
   grep -qx "patch_sha256=$PATCH_SHA256" "$LIGHTX2V_BENCHMARK_SOURCE_ROOT/.distillschedule_source_receipt" || { echo "prepared LightX2V patch mismatch" >&2; exit 2; }
@@ -78,6 +78,14 @@ export LIGHTX2V_MINIMAX_MODEL_PATH LIGHTX2V_MINIMAX_PROMPT_CACHE LIGHTX2V_MINIMA
 export LIGHTX2V_MINIMAX_FSDP_FIRST_INIT="${LIGHTX2V_MINIMAX_FSDP_FIRST_INIT:-1}"
 export LIGHTX2V_BENCHMARK_SOURCE_ROOT
 export LIGHTX2V_MINIMAX_OUTPUT_DIR="$RUN_ROOT/train_output"
+# Match the verified preparation substrate: direct huggingface.co is
+# unroutable on the training nodes, while the mirror-backed shared cache holds
+# the pinned flash-attn3 kernel fetched during the FSDP-first gates.
+export HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
+export HF_HOME="${HF_HOME:-/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home}"
+export HF_HUB_DISABLE_TELEMETRY=1
+export USE_TORCH=1
+export USE_TF=0
 export PYTHONHASHSEED="$LIGHTX2V_BENCHMARK_SEED"
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-8}"
 export TORCH_NCCL_ASYNC_ERROR_HANDLING=1
