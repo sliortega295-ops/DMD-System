@@ -53,6 +53,13 @@ export LIGHTX2V_MINIMAX_ATTENTION_BACKEND="${LIGHTX2V_MINIMAX_ATTENTION_BACKEND:
 # inside the per-run evidence tree; the construction gate never writes model
 # checkpoints here, but fail-closed config resolution must still have a value.
 export LIGHTX2V_MINIMAX_OUTPUT_DIR="$NODE_DIR/output"
+# Direct huggingface.co is unroutable on the training nodes.  The preparation
+# gate fetched the pinned FlashAttention kernel through this mirror; retain a
+# named, shared cache so every rank sees the same immutable kernel artifact
+# without modifying the base environment.
+export HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
+export HF_HOME="${HF_HOME:-/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home}"
+export HF_HUB_DISABLE_TELEMETRY=1
 export LIGHTX2V_PROFILE_DIAGNOSTICS=off
 # The benchmark environment carries a partial TensorFlow namespace for other
 # jobs.  Transformers otherwise detects it and PEFT's PreTrainedModel import
