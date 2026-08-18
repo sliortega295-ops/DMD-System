@@ -28,8 +28,16 @@ CONFIG="$DMD_SYSTEM_ROOT/configs/distillschedule/baselines/lightx2v_minimax_h3_w
 RUN_ROOT="$DMD_SYSTEM_ROOT/artifacts/runs/$RUN_ID/lightx2v_minimax_matched/$MODE"
 RECEIPT_DIR="$RUN_ROOT/receipts"
 NODE_DIR="$RUN_ROOT/node_$NODE_RANK"
+ATTRIBUTION_DIR="$RUN_ROOT/memory_attribution"
 SUBMODULE="$DMD_SYSTEM_ROOT/third_party/lightx2v"
 ENTRY="$DMD_SYSTEM_ROOT/scripts/distillschedule/lightx2v_minimax_matched_entry.py"
+
+# Hold an atomic per-node experiment lock from preflight through teardown.  The
+# lock is intentionally outside the repository and is disposable run state.
+LOCK_PATH="${LIGHTX2V_MINIMAX_LOCK_PATH:-/tmp/lyy-experiments/DMD-System/lightx2v_minimax_fsdp_first_attribution_20260818/node_${NODE_RANK}.lock}"
+mkdir -p "$(dirname "$LOCK_PATH")"
+exec 9>"$LOCK_PATH"
+flock -n 9 || { echo "another MiniMax attribution run owns $LOCK_PATH" >&2; exit 73; }
 
 if git -C "$DMD_SYSTEM_ROOT" rev-parse HEAD >/dev/null 2>&1; then
   [[ "$(git -C "$DMD_SYSTEM_ROOT" rev-parse HEAD)" == "$EXPECTED_HEAD" ]] || { echo "DMD-System HEAD mismatch" >&2; exit 2; }
@@ -78,6 +86,8 @@ export LIGHTX2V_MINIMAX_MODEL_PATH LIGHTX2V_MINIMAX_PROMPT_CACHE LIGHTX2V_MINIMA
 export LIGHTX2V_MINIMAX_FSDP_FIRST_INIT="${LIGHTX2V_MINIMAX_FSDP_FIRST_INIT:-1}"
 export LIGHTX2V_BENCHMARK_SOURCE_ROOT
 export LIGHTX2V_MINIMAX_OUTPUT_DIR="$RUN_ROOT/train_output"
+export LIGHTX2V_MINIMAX_MEMORY_ATTRIBUTION=1
+export LIGHTX2V_MINIMAX_MEMORY_ATTRIBUTION_DIR="$ATTRIBUTION_DIR"
 # Match the verified preparation substrate: direct huggingface.co is
 # unroutable on the training nodes, while the mirror-backed shared cache holds
 # the pinned flash-attn3 kernel fetched during the FSDP-first gates.

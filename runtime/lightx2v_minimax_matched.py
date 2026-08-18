@@ -146,6 +146,33 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
             self._benchmark_rng_neutral_fake_updates: list[bool] = []
             self._benchmark_force_end_step = False
             self._benchmark_phase_order: list[str] = []
+            self._memory_attribution = None
+            self._memory_call_index = 0
+
+        def _memory_attribution_begin(self) -> None:
+            if self._memory_attribution is not None:
+                return
+            from runtime.lightx2v_memory_attribution import MemoryAttribution
+
+            self._memory_attribution = MemoryAttribution(
+                torch,
+                rank=get_rank(),
+                role_objects={
+                    "student": self.model,
+                    "fake": self.fake_model,
+                    "teacher": self.teacher_model,
+                },
+            )
+
+        def _memory_optimizers(self) -> dict[str, Any]:
+            return {
+                "student": getattr(self, "optimizer", None),
+                "fake": getattr(self, "fake_optimizer", None),
+            }
+
+        def close_memory_attribution(self) -> None:
+            if self._memory_attribution is not None:
+                self._memory_attribution.close()
 
         def _iter_train_samples(self):
             parent = super()._iter_train_samples()
@@ -167,7 +194,10 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
             previous = self._benchmark_force_end_step
             self._benchmark_force_end_step = True
             try:
-                return super().forward_loss(*args, **kwargs)
+                if self._memory_attribution is None:
+                    return super().forward_loss(*args, **kwargs)
+                with self._memory_attribution.saved_tensors():
+                    return super().forward_loss(*args, **kwargs)
             finally:
                 self._benchmark_force_end_step = previous
 
@@ -183,7 +213,34 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
             self._benchmark_forward_counts[role] += 1
             if torch.is_grad_enabled():
                 self._benchmark_grad_forward_counts[role] += 1
-            return super()._predict_velocity(model, *args, **kwargs)
+            self._memory_call_index += 1
+            call_index = self._memory_call_index
+            marker = f"MINIMAX_MEMORY_ATTRIBUTION/{role}/forward/{call_index}"
+            if self._memory_attribution is not None and self._memory_attribution.enabled:
+                self._memory_attribution.record(
+                    "forward_pre", phase="model_forward", role=role, call_index=call_index,
+                    optimizers=self._memory_optimizers(),
+                    extra={"grad_enabled": bool(torch.is_grad_enabled())},
+                )
+                torch.cuda.nvtx.range_push(marker)
+            try:
+                result = super()._predict_velocity(model, *args, **kwargs)
+            except torch.OutOfMemoryError as exc:
+                if self._memory_attribution is not None:
+                    self._memory_attribution.exception(
+                        exc, phase="model_forward", role=role, call_index=call_index,
+                        optimizers=self._memory_optimizers(),
+                    )
+                raise
+            finally:
+                if self._memory_attribution is not None and self._memory_attribution.enabled:
+                    torch.cuda.nvtx.range_pop()
+            if self._memory_attribution is not None and self._memory_attribution.enabled:
+                self._memory_attribution.record(
+                    "forward_post", phase="model_forward", role=role, call_index=call_index,
+                    optimizers=self._memory_optimizers(),
+                )
+            return result
 
         def _benchmark_begin(self) -> None:
             if self._benchmark_started is not None:
@@ -191,6 +248,11 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
             barrier()
             torch.cuda.synchronize(self.model.device)
             torch.cuda.reset_peak_memory_stats(self.model.device)
+            self._memory_attribution_begin()
+            if self._memory_attribution is not None:
+                self._memory_attribution.record(
+                    "cycle_begin", phase="cycle", optimizers=self._memory_optimizers(),
+                )
             torch.cuda.nvtx.range_push(f"MINIMAX_MATCHED_CYCLE/{self.benchmark_mode}")
             self._benchmark_started = time.perf_counter()
 
@@ -199,6 +261,12 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
                 raise ValueError(stage)
             self._benchmark_backward_counts[stage] += 1
             self._benchmark_stage_sequence.append(stage)
+            if self._memory_attribution is not None:
+                self._memory_attribution.record(
+                    "stage_end", phase=stage, role=stage,
+                    optimizers=self._memory_optimizers(),
+                    extra={"backward_count": self._benchmark_backward_counts[stage]},
+                )
             if stage == "fake" and self._benchmark_backward_counts["fake"] == EXPECTED_FAKE_UPDATES:
                 torch.cuda.synchronize(self.model.device)
                 torch.cuda.nvtx.range_pop()

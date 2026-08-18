@@ -73,6 +73,7 @@ def main() -> int:
         "attention_backend": os.environ.get("LIGHTX2V_MINIMAX_ATTENTION_BACKEND", "_flash_3_hub"),
     }
 
+    trainer = None
     try:
         prepare_data(config)
         model = build_model(config)
@@ -90,6 +91,9 @@ def main() -> int:
         trainer.write_benchmark_receipt()
         return 0
     finally:
+        close_attribution = getattr(trainer, "close_memory_attribution", None)
+        if close_attribution is not None:
+            close_attribution()
         cleanup_distributed()
 
 
