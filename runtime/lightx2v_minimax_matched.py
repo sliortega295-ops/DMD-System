@@ -699,9 +699,17 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
             return self._train_distillschedule()
 
         def canary_receipt(self) -> dict[str, Any]:
+            # A ``student_update`` is the complete DMD Student update, not
+            # merely the four Student rollout calls.  The reference trainer
+            # also evaluates one Fake Score and one Teacher Score while
+            # forming that loss.  Keep the forward contract aligned with the
+            # native trainer so a successful capacity canary is not rejected
+            # by a checker that only counted the rollout subgraph.
             expected_forward = {"student": 4, "fake": 0, "teacher": 0}
             expected_grad = {"student": 1, "fake": 0, "teacher": 0}
             expected_backward = {"student": 0, "fake": 0}
+            if self._canary_stage == "student_update":
+                expected_forward = {"student": 4, "fake": 1, "teacher": 1}
             if self._canary_stage == "student_update":
                 expected_backward["student"] = 1
             errors: list[str] = []
