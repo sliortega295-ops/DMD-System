@@ -31,7 +31,10 @@ PINNED_MODEL_NAME = "MiniMaxH3Transformer3DModel"
 # different forward implementation must not silently use this copied method.
 PINNED_DIFFUSERS_VERSION = "0.40.0.dev0"
 PINNED_DIFFUSERS_SOURCE_REVISION = "9284607295a09f759aadd65ed08f48b35feea6d9"
-PINNED_MINIMAX_FORWARD_SHA256 = "24fce9f0721ede96867a8b52ceb0d80431b9c2f3d576844d2b4481a3a40c0c6b"
+# This is the hash of the inspected forward source at the pinned Diffusers
+# revision above.  Keep this fail-closed identity tied to the actual source
+# checkout used by the server canary.
+PINNED_MINIMAX_FORWARD_SHA256 = "3e041a3400d58cf73d69e4eb540317d45b5f9631a73bb8e765447ca446ee1d41"
 
 
 def _validate_segment(segment: int, *, allow_debug_reference: bool = False) -> int:

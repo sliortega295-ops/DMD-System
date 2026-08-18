@@ -96,7 +96,7 @@ This helper is fail-closed against the exact prepared Diffusers source:
 ```text
 Diffusers version:       0.40.0.dev0
 Diffusers source commit: 9284607295a09f759aadd65ed08f48b35feea6d9
-MiniMax forward SHA-256: 24fce9f0721ede96867a8b52ceb0d80431b9c2f3d576844d2b4481a3a40c0c6b
+MiniMax forward SHA-256: 3e041a3400d58cf73d69e4eb540317d45b5f9631a73bb8e765447ca446ee1d41
 ```
 
 `LIGHTX2V_MINIMAX_SEGMENT_DEBUG=1` is diagnostic-only.  It records segment and
