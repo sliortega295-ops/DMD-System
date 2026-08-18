@@ -34,7 +34,7 @@ ENTRY="$DMD_SYSTEM_ROOT/scripts/distillschedule/lightx2v_minimax_matched_entry.p
 
 # Hold an atomic per-node experiment lock from preflight through teardown.  The
 # lock is intentionally outside the repository and is disposable run state.
-LOCK_PATH="${LIGHTX2V_MINIMAX_LOCK_PATH:-/tmp/lyy-experiments/DMD-System/lightx2v_minimax_fsdp_first_attribution_20260818/node_${NODE_RANK}.lock}"
+LOCK_PATH="${LIGHTX2V_MINIMAX_LOCK_PATH:-/tmp/lyy-experiments/DMD-System/lightx2v_minimax_fsdp_first_activation_offload_20260818/node_${NODE_RANK}.lock}"
 mkdir -p "$(dirname "$LOCK_PATH")"
 exec 9>"$LOCK_PATH"
 flock -n 9 || { echo "another MiniMax attribution run owns $LOCK_PATH" >&2; exit 73; }
@@ -86,8 +86,9 @@ export LIGHTX2V_MINIMAX_MODEL_PATH LIGHTX2V_MINIMAX_PROMPT_CACHE LIGHTX2V_MINIMA
 export LIGHTX2V_MINIMAX_FSDP_FIRST_INIT="${LIGHTX2V_MINIMAX_FSDP_FIRST_INIT:-1}"
 export LIGHTX2V_BENCHMARK_SOURCE_ROOT
 export LIGHTX2V_MINIMAX_OUTPUT_DIR="$RUN_ROOT/train_output"
-export LIGHTX2V_MINIMAX_MEMORY_ATTRIBUTION=1
+export LIGHTX2V_MINIMAX_MEMORY_ATTRIBUTION="${LIGHTX2V_MINIMAX_MEMORY_ATTRIBUTION:-0}"
 export LIGHTX2V_MINIMAX_MEMORY_ATTRIBUTION_DIR="$ATTRIBUTION_DIR"
+export LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD="${LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD:-0}"
 # Match the verified preparation substrate: direct huggingface.co is
 # unroutable on the training nodes, while the mirror-backed shared cache holds
 # the pinned flash-attn3 kernel fetched during the FSDP-first gates.

@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import contextlib
+import os
 import time
 from pathlib import Path
 from typing import Any
@@ -148,6 +150,9 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
             self._benchmark_phase_order: list[str] = []
             self._memory_attribution = None
             self._memory_call_index = 0
+            self._student_activation_offload = os.environ.get(
+                "LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD", "0"
+            ) == "1"
 
         def _memory_attribution_begin(self) -> None:
             if self._memory_attribution is not None:
@@ -283,7 +288,17 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
             if int(grad_accum_iters) != 1:
                 raise RuntimeError("MiniMax matched benchmark requires gradient_accumulation_iters=1")
             self._benchmark_begin()
-            result = super()._train_one_stage(samples, stage, grad_accum_iters)
+            # This is an opt-in capacity canary only.  The context must cover
+            # both the Student forward and the backward performed inside the
+            # upstream stage implementation; wrapping only forward_loss would
+            # release the saved tensors before backward.  No model, loss,
+            # trace, optimizer or distributed semantics are changed.
+            if self._student_activation_offload and stage == "student":
+                context = torch.autograd.graph.save_on_cpu(pin_memory=True)
+            else:
+                context = contextlib.nullcontext()
+            with context:
+                result = super()._train_one_stage(samples, stage, grad_accum_iters)
             self._benchmark_note_stage_end(stage)
             return result
 

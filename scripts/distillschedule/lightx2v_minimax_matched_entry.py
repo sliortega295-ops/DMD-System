@@ -71,6 +71,7 @@ def main() -> int:
         "model_path": str(Path(os.environ["LIGHTX2V_MINIMAX_MODEL_PATH"]).resolve()),
         "prompt_cache": str(prompt_cache),
         "attention_backend": os.environ.get("LIGHTX2V_MINIMAX_ATTENTION_BACKEND", "_flash_3_hub"),
+        "student_activation_offload": os.environ.get("LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD", "0"),
     }
 
     trainer = None

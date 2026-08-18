@@ -102,6 +102,9 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "LIGHTX2V_MINIMAX_ATTENTION_BACKEND": args.attention_backend,
         "LIGHTX2V_BENCHMARK_SEED": str(args.seed),
         "LIGHTX2V_BENCHMARK_SOURCE_ROOT": str(args.benchmark_source_root or (args.remote_root / "artifacts/source/lightx2v-minimax-d034-benchmark")),
+        "LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD": os.environ.get("LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD", "0"),
+        "LIGHTX2V_MINIMAX_MEMORY_ATTRIBUTION": os.environ.get("LIGHTX2V_MINIMAX_MEMORY_ATTRIBUTION", "0"),
+        "LIGHTX2V_MINIMAX_LOCK_PATH": f"/tmp/lyy-experiments/DMD-System/{args.run_id}/node_{node}.lock",
     }
     launch = " ".join(
         shlex.quote(str(value))
