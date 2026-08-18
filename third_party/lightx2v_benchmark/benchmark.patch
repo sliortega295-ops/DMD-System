@@ -5,11 +5,11 @@ diff --git a/lightx2v_train/train.py b/lightx2v_train/train.py
  import argparse
 +import os
 +import random
- 
+
 +import numpy as np
  import torch
  from loguru import logger
- 
+
 @@ -20,6 +23,16 @@ def main():
      torch.backends.cudnn.allow_tf32 = True
      init_distributed(config)
@@ -24,7 +24,7 @@ diff --git a/lightx2v_train/train.py b/lightx2v_train/train.py
 +        if torch.cuda.is_available():
 +            torch.cuda.manual_seed_all(seed)
 +        logger.info("[benchmark] deterministic seed={} rank={}", seed, rank)
- 
+
      try:
          prepare_data(config)
 diff --git a/lightx2v_train/lightx2v_train/trainers/dmd/minimax_h3_trainer.py b/lightx2v_train/lightx2v_train/trainers/dmd/minimax_h3_trainer.py
@@ -32,11 +32,11 @@ diff --git a/lightx2v_train/lightx2v_train/trainers/dmd/minimax_h3_trainer.py b/
 +++ b/lightx2v_train/lightx2v_train/trainers/dmd/minimax_h3_trainer.py
 @@ -1,5 +1,6 @@
  """DMD distillation for MiniMax-H3 text-to-audio-video generation."""
- 
+
 +import os
  import torch
  from loguru import logger
- 
+
 @@ -180,7 +181,16 @@ class MiniMaxH3T2AVDmdTrainer(VideoDmdTrainer):
      def forward_loss(self, latent_shape, conditions, stage, current_iter=None, initial_noise=None):
          del current_iter
@@ -64,7 +64,7 @@ diff --git a/lightx2v_train/lightx2v_train/trainers/dmd/trainer.py b/lightx2v_tr
  import os
 +import time
 +from pathlib import Path
- 
+
  import torch
  import torch.distributed as dist
 @@ -11,4 +14,5 @@ from lightx2v_train.runtime.distributed import (
@@ -75,7 +75,7 @@ diff --git a/lightx2v_train/lightx2v_train/trainers/dmd/trainer.py b/lightx2v_tr
      is_main_process,
 @@ -482,7 +486,18 @@ class DmdTrainer(BaseTrainer):
                  self.run_inference(current_iter)
- 
+
          samples = self._iter_train_samples()
 +        benchmark_receipt_dir = os.environ.get("LIGHTX2V_BENCHMARK_RECEIPT_DIR")
 +        benchmark_enabled = bool(benchmark_receipt_dir)
@@ -95,7 +95,7 @@ diff --git a/lightx2v_train/lightx2v_train/trainers/dmd/trainer.py b/lightx2v_tr
 @@ -530,6 +545,50 @@ class DmdTrainer(BaseTrainer):
                  self.fake_optimizer.zero_grad(set_to_none=True)
                  running_fake += fake_loss / fake_update_ratio
- 
+
 +            if benchmark_enabled:
 +                if cycle_started is None:
 +                    raise RuntimeError("benchmark cycle timer was not initialized")
@@ -143,3 +143,40 @@ diff --git a/lightx2v_train/lightx2v_train/trainers/dmd/trainer.py b/lightx2v_tr
              current_iter += 1
              display_dmd = reduce_mean(running_dmd)
              display_fake = reduce_mean(running_fake)
+diff --git a/lightx2v_train/lightx2v_train/model_zoo/minimax_h3_t2av.py b/lightx2v_train/lightx2v_train/model_zoo/minimax_h3_t2av.py
+index f4eb6ca..f0536cb 100644
+--- a/lightx2v_train/lightx2v_train/model_zoo/minimax_h3_t2av.py
++++ b/lightx2v_train/lightx2v_train/model_zoo/minimax_h3_t2av.py
+@@ -1,6 +1,7 @@
+ """LightX2V-Train wrapper for the trainable MiniMax-H3 T2AV DiT."""
+
+ from contextlib import nullcontext
++import os
+
+ import torch
+ from peft import LoraConfig, inject_adapter_in_model
+@@ -28,13 +29,23 @@ class MiniMaxH3T2AVModel(BaseModel):
+         self.audio_latent_channels = int(config.get("audio_latent_channels", 32))
+         self.vae_spatial_scale_factor = int(config.get("vae_spatial_scale_factor", 16))
+         self.use_autocast = bool(config.get("use_autocast", False))
++        # The benchmark's FSDP2 path must shard the CPU-loaded module before
++        # any full-parameter CUDA materialization.  Keep this opt-in so the
++        # ordinary LightX2V construction path retains its historical
++        # ``transformer.to(self.device)`` behavior.
++        fsdp2_config = self.config.get("distributed", {}).get("fsdp2", {})
++        self._fsdp2_first_init = (
++            os.environ.get("LIGHTX2V_MINIMAX_FSDP_FIRST_INIT", "0") == "1"
++            and bool(fsdp2_config.get("enabled", False))
++        )
+         self.transformer = load_minimax_h3_transformer(
+             self.pretrained_model_path,
+             torch_dtype=self.transformer_param_dtype,
+             local_files_only=bool(config.get("local_files_only", True)),
+             attention_backend=config.get("attention_backend"),
+         )
+-        self.transformer.to(self.device)
++        if not self._fsdp2_first_init:
++            self.transformer.to(self.device)
+
+     def denoiser_module(self):
+         return self.transformer

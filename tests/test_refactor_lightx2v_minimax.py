@@ -11,7 +11,7 @@ PATCH = ROOT / "third_party/lightx2v_benchmark/benchmark.patch"
 README = ROOT / "third_party/lightx2v_benchmark/README.md"
 
 EXPECTED_UPSTREAM = "d034a6b0ecaa31aa07c81aeb7bbe69b225f1d7be"
-EXPECTED_PATCH = "e9fd51f8a1859392b334600a0c915fc04a609baf54eb152f85e2d0bdbf9587b9"
+EXPECTED_PATCH = "89935efd36d8a149f121b428cad700363d987918718b81b1ea56b887f196d9c3"
 
 
 def test_lightx2v_minimax_contract_is_world16_g1f5() -> None:
@@ -55,8 +55,21 @@ def test_lightx2v_benchmark_patch_identity_and_scope() -> None:
     assert "LIGHTX2V_BENCHMARK_END_STEP_IDX" in text
     assert "LIGHTX2V_BENCHMARK_RECEIPT_DIR" in text
     assert "LIGHTX2V_DMD_CYCLE" in text
+    assert "LIGHTX2V_MINIMAX_FSDP_FIRST_INIT" in text
+    assert "transformer.to(self.device)" in text
     assert "dmd_loss_pair" not in text
     assert "weighted_mse_pair" not in text
+
+
+def test_fsdp_first_construction_is_opt_in_and_shared_by_benchmark_launchers() -> None:
+    model_patch = PATCH.read_text()
+    launcher = (ROOT / "scripts/distillschedule/launch_lightx2v_minimax_matched_world16_node.sh").read_text()
+    gate = (ROOT / "scripts/distillschedule/launch_lightx2v_minimax_fsdp_first_node.sh").read_text()
+    assert "and bool(fsdp2_config.get(\"enabled\", False))" in model_patch
+    assert 'if not self._fsdp2_first_init:' in model_patch
+    assert 'export LIGHTX2V_MINIMAX_FSDP_FIRST_INIT="${LIGHTX2V_MINIMAX_FSDP_FIRST_INIT:-1}"' in launcher
+    assert 'export LIGHTX2V_MINIMAX_FSDP_FIRST_INIT=1' in gate
+    assert "after_cpu_load" in (ROOT / "scripts/distillschedule/lightx2v_minimax_fsdp_first_construction.py").read_text()
 
 
 def test_cross_workload_speedup_is_explicitly_forbidden() -> None:

@@ -21,6 +21,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--seed", type=int, default=20260817)
     value.add_argument("--master-port", type=int, default=29980)
     value.add_argument("--remote-root", type=Path, default=Path("/share/project/shuchenweng/yongyan_liu/DMD-System_fsdp2_p0_20260815"))
+    value.add_argument("--benchmark-source-root", type=Path)
     value.add_argument("--evidence-root", type=Path, default=Path("/home/lyy/Helios/research_artifacts/DMD-System/lightx2v_minimax_matched"))
     value.add_argument("--order", choices=("native-first", "distillschedule-first"), default="native-first")
     value.add_argument("--dry-run", action="store_true")
@@ -49,6 +50,7 @@ def main() -> int:
             "--seed", str(args.seed),
             "--master-port", str(args.master_port + offset),
             "--remote-root", str(args.remote_root),
+            "--benchmark-source-root", str(args.benchmark_source_root or (args.remote_root / "artifacts/source/lightx2v-minimax-d034-benchmark")),
             "--local-evidence-root", str(args.evidence_root),
         ]
         if args.dry_run:

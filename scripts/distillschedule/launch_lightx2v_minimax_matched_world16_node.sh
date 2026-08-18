@@ -22,6 +22,7 @@ LIGHTX2V_MINIMAX_MODEL_PATH="${LIGHTX2V_MINIMAX_MODEL_PATH:?set LIGHTX2V_MINIMAX
 LIGHTX2V_MINIMAX_PROMPT_CACHE="${LIGHTX2V_MINIMAX_PROMPT_CACHE:?set LIGHTX2V_MINIMAX_PROMPT_CACHE}"
 LIGHTX2V_MINIMAX_ATTENTION_BACKEND="${LIGHTX2V_MINIMAX_ATTENTION_BACKEND:-_flash_3_hub}"
 LIGHTX2V_BENCHMARK_SEED="${LIGHTX2V_BENCHMARK_SEED:-20260817}"
+LIGHTX2V_BENCHMARK_SOURCE_ROOT="${LIGHTX2V_BENCHMARK_SOURCE_ROOT:-}"
 UPSTREAM_SHA="d034a6b0ecaa31aa07c81aeb7bbe69b225f1d7be"
 CONFIG="$DMD_SYSTEM_ROOT/configs/distillschedule/baselines/lightx2v_minimax_h3_world16_dmd.yaml"
 RUN_ROOT="$DMD_SYSTEM_ROOT/artifacts/runs/$RUN_ID/lightx2v_minimax_matched/$MODE"
@@ -30,10 +31,26 @@ NODE_DIR="$RUN_ROOT/node_$NODE_RANK"
 SUBMODULE="$DMD_SYSTEM_ROOT/third_party/lightx2v"
 ENTRY="$DMD_SYSTEM_ROOT/scripts/distillschedule/lightx2v_minimax_matched_entry.py"
 
-[[ "$(git -C "$DMD_SYSTEM_ROOT" rev-parse HEAD)" == "$EXPECTED_HEAD" ]] || { echo "DMD-System HEAD mismatch" >&2; exit 2; }
-git -C "$DMD_SYSTEM_ROOT" submodule update --init third_party/lightx2v
-[[ "$(git -C "$SUBMODULE" rev-parse HEAD)" == "$UPSTREAM_SHA" ]] || { echo "LightX2V submodule mismatch" >&2; exit 2; }
-[[ -z "$(git -C "$SUBMODULE" status --porcelain)" ]] || { echo "LightX2V submodule is dirty" >&2; exit 2; }
+if git -C "$DMD_SYSTEM_ROOT" rev-parse HEAD >/dev/null 2>&1; then
+  [[ "$(git -C "$DMD_SYSTEM_ROOT" rev-parse HEAD)" == "$EXPECTED_HEAD" ]] || { echo "DMD-System HEAD mismatch" >&2; exit 2; }
+elif [[ -f "$DMD_SYSTEM_ROOT/.distillschedule_source_head" ]]; then
+  grep -qx "head=$EXPECTED_HEAD" "$DMD_SYSTEM_ROOT/.distillschedule_source_head" || { echo "DMD-System source receipt mismatch" >&2; exit 2; }
+else
+  echo "DMD-System source identity is unavailable" >&2
+  exit 2
+fi
+if [[ -n "$LIGHTX2V_BENCHMARK_SOURCE_ROOT" ]]; then
+  PATCH_SHA256="$(sha256sum "$WT"/third_party/lightx2v_benchmark/benchmark.patch | awk "{print $1}")"
+  [[ -f "$LIGHTX2V_BENCHMARK_SOURCE_ROOT/.distillschedule_source_receipt" ]] || { echo "prepared LightX2V source receipt missing" >&2; exit 2; }
+  grep -qx "upstream=$UPSTREAM_SHA" "$LIGHTX2V_BENCHMARK_SOURCE_ROOT/.distillschedule_source_receipt" || { echo "prepared LightX2V upstream mismatch" >&2; exit 2; }
+  grep -qx "patch_sha256=$PATCH_SHA256" "$LIGHTX2V_BENCHMARK_SOURCE_ROOT/.distillschedule_source_receipt" || { echo "prepared LightX2V patch mismatch" >&2; exit 2; }
+  LIGHTX2V_SOURCE="$LIGHTX2V_BENCHMARK_SOURCE_ROOT/lightx2v_train"
+else
+  git -C "$DMD_SYSTEM_ROOT" submodule update --init third_party/lightx2v
+  [[ "$(git -C "$SUBMODULE" rev-parse HEAD)" == "$UPSTREAM_SHA" ]] || { echo "LightX2V submodule mismatch" >&2; exit 2; }
+  [[ -z "$(git -C "$SUBMODULE" status --porcelain)" ]] || { echo "LightX2V submodule is dirty" >&2; exit 2; }
+  LIGHTX2V_SOURCE="$SUBMODULE/lightx2v_train"
+fi
 [[ -x "$LIGHTX2V_PYTHON" ]]
 [[ -d "$LIGHTX2V_MINIMAX_MODEL_PATH" ]]
 [[ -f "$LIGHTX2V_MINIMAX_PROMPT_CACHE/metadata.jsonl" ]]
@@ -56,8 +73,10 @@ before_events="$NODE_DIR/memory.events.before"
 after_events="$NODE_DIR/memory.events.after"
 if [[ -r /sys/fs/cgroup/memory.events ]]; then cp /sys/fs/cgroup/memory.events "$before_events"; else : > "$before_events"; fi
 
-export PYTHONPATH="$DMD_SYSTEM_ROOT:$DMD_SYSTEM_ROOT/src:$SUBMODULE/lightx2v_train${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONPATH="$DMD_SYSTEM_ROOT:$DMD_SYSTEM_ROOT/src:$LIGHTX2V_SOURCE${PYTHONPATH:+:$PYTHONPATH}"
 export LIGHTX2V_MINIMAX_MODEL_PATH LIGHTX2V_MINIMAX_PROMPT_CACHE LIGHTX2V_MINIMAX_ATTENTION_BACKEND
+export LIGHTX2V_MINIMAX_FSDP_FIRST_INIT="${LIGHTX2V_MINIMAX_FSDP_FIRST_INIT:-1}"
+export LIGHTX2V_BENCHMARK_SOURCE_ROOT
 export LIGHTX2V_MINIMAX_OUTPUT_DIR="$RUN_ROOT/train_output"
 export PYTHONHASHSEED="$LIGHTX2V_BENCHMARK_SEED"
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-8}"

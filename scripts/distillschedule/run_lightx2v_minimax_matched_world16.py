@@ -76,6 +76,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--master-addr")
     value.add_argument("--master-port", type=int, default=29980)
     value.add_argument("--remote-root", type=Path, default=Path("/share/project/shuchenweng/yongyan_liu/DMD-System_fsdp2_p0_20260815"))
+    value.add_argument("--benchmark-source-root", type=Path)
     value.add_argument("--local-evidence-root", type=Path, default=Path("/home/lyy/Helios/research_artifacts/DMD-System/lightx2v_minimax_matched"))
     value.add_argument("--timeout-seconds", type=int, default=30000)
     value.add_argument("--dry-run", action="store_true")
@@ -100,6 +101,7 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "LIGHTX2V_MINIMAX_PROMPT_CACHE": str(args.prompt_cache),
         "LIGHTX2V_MINIMAX_ATTENTION_BACKEND": args.attention_backend,
         "LIGHTX2V_BENCHMARK_SEED": str(args.seed),
+        "LIGHTX2V_BENCHMARK_SOURCE_ROOT": str(args.benchmark_source_root or (args.remote_root / "artifacts/source/lightx2v-minimax-d034-benchmark")),
     }
     launch = " ".join(
         shlex.quote(str(value))
