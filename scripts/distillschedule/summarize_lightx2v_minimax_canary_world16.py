@@ -78,13 +78,26 @@ def main() -> int:
         if receipt.get("status") != "PASS":
             errors.append(f"rank {rank}: receipt status={receipt.get('status')!r}")
         inventory = receipt.get("application_inventory", {})
-        expected = {
-            "forward_counts": {"student": 4, "fake": 0, "teacher": 0},
-            "grad_forward_counts": {"student": 1, "fake": 0, "teacher": 0},
-            "backward_counts": {"student": 1 if args.canary_stage == "student_update" else 0, "fake": 0},
-            "total_forwards": 4,
-            "total_backward_graphs": 1 if args.canary_stage == "student_update" else 0,
-        }
+        if args.canary_stage == "student_update":
+            # This stage executes the complete native Student DMD update,
+            # including the one Fake Score and one Teacher Score evaluation
+            # needed to form the Student loss.  It is not a rollout-only
+            # forward canary.
+            expected = {
+                "forward_counts": {"student": 4, "fake": 1, "teacher": 1},
+                "grad_forward_counts": {"student": 1, "fake": 0, "teacher": 0},
+                "backward_counts": {"student": 1, "fake": 0},
+                "total_forwards": 6,
+                "total_backward_graphs": 1,
+            }
+        else:
+            expected = {
+                "forward_counts": {"student": 4, "fake": 0, "teacher": 0},
+                "grad_forward_counts": {"student": 1, "fake": 0, "teacher": 0},
+                "backward_counts": {"student": 0, "fake": 0},
+                "total_forwards": 4,
+                "total_backward_graphs": 0,
+            }
         for key, value in expected.items():
             if inventory.get(key) != value:
                 errors.append(f"rank {rank}: inventory {key}={inventory.get(key)!r} != {value!r}")
@@ -122,8 +135,12 @@ def main() -> int:
         debug_events_by_rank[str(rank)] = read_debug_events(
             receipts_dir / f"rank_{rank:03d}.segment_debug.jsonl"
         )
-    if not any(debug_events_by_rank.values()):
-        errors.append("no segment debug JSONL was produced")
+    # Segment debug JSONL is only required for the segmented-checkpoint
+    # canaries.  Native boundary-offload and ordinary forward/update canaries
+    # intentionally do not enable this optional instrumentation.
+    if any(receipt.get("checkpoint_segment") not in (None, "0", 0) for receipt in receipts):
+        if not any(debug_events_by_rank.values()):
+            errors.append("no segment debug JSONL was produced")
 
     node_oom: dict[str, dict[str, int]] = {}
     for node in (0, 1):
