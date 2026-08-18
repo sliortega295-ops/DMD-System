@@ -1,0 +1,182 @@
+diff --git a/lightx2v_train/train.py b/lightx2v_train/train.py
+--- a/lightx2v_train/train.py
++++ b/lightx2v_train/train.py
+@@ -1,5 +1,8 @@
+ import argparse
++import os
++import random
+
++import numpy as np
+ import torch
+ from loguru import logger
+
+@@ -20,6 +23,16 @@ def main():
+     torch.backends.cudnn.allow_tf32 = True
+     init_distributed(config)
+     setup_logger(config)
++    raw_seed = os.environ.get("LIGHTX2V_BENCHMARK_SEED")
++    if raw_seed is not None:
++        rank = int(os.environ.get("RANK", "0"))
++        seed = int(raw_seed) + rank
++        random.seed(seed)
++        np.random.seed(seed % (2**32 - 1))
++        torch.manual_seed(seed)
++        if torch.cuda.is_available():
++            torch.cuda.manual_seed_all(seed)
++        logger.info("[benchmark] deterministic seed={} rank={}", seed, rank)
+
+     try:
+         prepare_data(config)
+diff --git a/lightx2v_train/lightx2v_train/trainers/dmd/minimax_h3_trainer.py b/lightx2v_train/lightx2v_train/trainers/dmd/minimax_h3_trainer.py
+--- a/lightx2v_train/lightx2v_train/trainers/dmd/minimax_h3_trainer.py
++++ b/lightx2v_train/lightx2v_train/trainers/dmd/minimax_h3_trainer.py
+@@ -1,5 +1,6 @@
+ """DMD distillation for MiniMax-H3 text-to-audio-video generation."""
+
++import os
+ import torch
+ from loguru import logger
+
+@@ -180,7 +181,16 @@ class MiniMaxH3T2AVDmdTrainer(VideoDmdTrainer):
+     def forward_loss(self, latent_shape, conditions, stage, current_iter=None, initial_noise=None):
+         del current_iter
+         condition, _ = conditions
+-        end_step_idx = self._sample_synced_int(0, self.num_inference_steps)
++        raw_end_step = os.environ.get("LIGHTX2V_BENCHMARK_END_STEP_IDX")
++        if raw_end_step is None:
++            end_step_idx = self._sample_synced_int(0, self.num_inference_steps)
++        else:
++            end_step_idx = int(raw_end_step)
++            if not 0 <= end_step_idx < self.num_inference_steps:
++                raise ValueError(
++                    "LIGHTX2V_BENCHMARK_END_STEP_IDX must be in "
++                    f"[0, {self.num_inference_steps - 1}], got {end_step_idx}"
++                )
+         generated = self.run_back_simulation(
+             condition,
+             latent_shape,
+diff --git a/lightx2v_train/lightx2v_train/trainers/dmd/trainer.py b/lightx2v_train/lightx2v_train/trainers/dmd/trainer.py
+--- a/lightx2v_train/lightx2v_train/trainers/dmd/trainer.py
++++ b/lightx2v_train/lightx2v_train/trainers/dmd/trainer.py
+@@ -1,5 +1,8 @@
+ import copy
++import json
+ import os
++import time
++from pathlib import Path
+
+ import torch
+ import torch.distributed as dist
+@@ -11,4 +14,5 @@ from lightx2v_train.runtime.distributed import (
+     barrier,
++    get_rank,
+     get_world_size,
+     is_distributed,
+     is_main_process,
+@@ -482,7 +486,18 @@ class DmdTrainer(BaseTrainer):
+                 self.run_inference(current_iter)
+
+         samples = self._iter_train_samples()
++        benchmark_receipt_dir = os.environ.get("LIGHTX2V_BENCHMARK_RECEIPT_DIR")
++        benchmark_enabled = bool(benchmark_receipt_dir)
+         while current_iter < max_train_iters:
++            cycle_started = None
++            if benchmark_enabled:
++                barrier()
++                if torch.cuda.is_available():
++                    torch.cuda.synchronize(self.model.device)
++                    torch.cuda.reset_peak_memory_stats(self.model.device)
++                    torch.cuda.nvtx.range_push("LIGHTX2V_DMD_CYCLE")
++                cycle_started = time.perf_counter()
++
+             self.optimizer.zero_grad(set_to_none=True)
+             running_dmd = 0.0
+             running_cdm = 0.0
+@@ -530,6 +545,50 @@ class DmdTrainer(BaseTrainer):
+                 self.fake_optimizer.zero_grad(set_to_none=True)
+                 running_fake += fake_loss / fake_update_ratio
+
++            if benchmark_enabled:
++                if cycle_started is None:
++                    raise RuntimeError("benchmark cycle timer was not initialized")
++                if torch.cuda.is_available():
++                    torch.cuda.synchronize(self.model.device)
++                    torch.cuda.nvtx.range_pop()
++                barrier()
++                local_wall = time.perf_counter() - cycle_started
++                global_wall_tensor = torch.tensor(
++                    local_wall,
++                    device=self.model.device,
++                    dtype=torch.float64,
++                )
++                if is_distributed():
++                    dist.all_reduce(global_wall_tensor, op=dist.ReduceOp.MAX)
++                receipt_dir = Path(benchmark_receipt_dir)
++                receipt_dir.mkdir(parents=True, exist_ok=True)
++                rank = get_rank()
++                target = receipt_dir / f"rank_{rank:03d}.json"
++                if target.exists():
++                    raise FileExistsError(f"refusing to overwrite benchmark receipt: {target}")
++                receipt = {
++                    "schema_version": "distillschedule.lightx2v_minimax_cycle.v1",
++                    "rank": rank,
++                    "world_size": get_world_size(),
++                    "iteration_before_commit": current_iter,
++                    "student_updates": 1,
++                    "fake_updates": fake_update_ratio,
++                    "fixed_end_step_idx": os.environ.get("LIGHTX2V_BENCHMARK_END_STEP_IDX"),
++                    "local_cycle_seconds": local_wall,
++                    "global_cycle_seconds": float(global_wall_tensor.item()),
++                    "dmd_loss": float(running_dmd),
++                    "fake_loss": float(running_fake),
++                    "max_allocated_bytes": int(torch.cuda.max_memory_allocated(self.model.device)) if torch.cuda.is_available() else None,
++                    "max_reserved_bytes": int(torch.cuda.max_memory_reserved(self.model.device)) if torch.cuda.is_available() else None,
++                    "upstream_commit": os.environ.get("LIGHTX2V_UPSTREAM_COMMIT"),
++                    "benchmark_patch_sha256": os.environ.get("LIGHTX2V_BENCHMARK_PATCH_SHA256"),
++                    "dmd_system_head": os.environ.get("DMD_SYSTEM_EXPECTED_HEAD"),
++                    "config_path": self.config.get("config_path"),
++                }
++                temporary = target.with_suffix(".json.tmp")
++                temporary.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
++                temporary.replace(target)
++
+             current_iter += 1
+             display_dmd = reduce_mean(running_dmd)
+             display_fake = reduce_mean(running_fake)
+diff --git a/lightx2v_train/lightx2v_train/model_zoo/minimax_h3_t2av.py b/lightx2v_train/lightx2v_train/model_zoo/minimax_h3_t2av.py
+index f4eb6ca..f0536cb 100644
+--- a/lightx2v_train/lightx2v_train/model_zoo/minimax_h3_t2av.py
++++ b/lightx2v_train/lightx2v_train/model_zoo/minimax_h3_t2av.py
+@@ -1,6 +1,7 @@
+ """LightX2V-Train wrapper for the trainable MiniMax-H3 T2AV DiT."""
+
+ from contextlib import nullcontext
++import os
+
+ import torch
+ from peft import LoraConfig, inject_adapter_in_model
+@@ -28,13 +29,23 @@ class MiniMaxH3T2AVModel(BaseModel):
+         self.audio_latent_channels = int(config.get("audio_latent_channels", 32))
+         self.vae_spatial_scale_factor = int(config.get("vae_spatial_scale_factor", 16))
+         self.use_autocast = bool(config.get("use_autocast", False))
++        # The benchmark's FSDP2 path must shard the CPU-loaded module before
++        # any full-parameter CUDA materialization.  Keep this opt-in so the
++        # ordinary LightX2V construction path retains its historical
++        # ``transformer.to(self.device)`` behavior.
++        fsdp2_config = self.config.get("distributed", {}).get("fsdp2", {})
++        self._fsdp2_first_init = (
++            os.environ.get("LIGHTX2V_MINIMAX_FSDP_FIRST_INIT", "0") == "1"
++            and bool(fsdp2_config.get("enabled", False))
++        )
+         self.transformer = load_minimax_h3_transformer(
+             self.pretrained_model_path,
+             torch_dtype=self.transformer_param_dtype,
+             local_files_only=bool(config.get("local_files_only", True)),
+             attention_backend=config.get("attention_backend"),
+         )
+-        self.transformer.to(self.device)
++        if not self._fsdp2_first_init:
++            self.transformer.to(self.device)
+
+     def denoiser_module(self):
+         return self.transformer

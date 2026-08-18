@@ -1,0 +1,42 @@
+{
+  "schema_version": "distillschedule.fsdp2.generator_residual_gpu_evidence.v1",
+  "run_id": "iteration_306_generator_residual_gpu_20260817",
+  "code_head": "a04b1107419d5581fd9651adb91049aa1794525d",
+  "variant": "no-gan",
+  "hardware": "2 nodes x 8 A100-40GB",
+  "shape": "384x640",
+  "mesh": "world16-fsdp",
+  "rollout_batch_size": 1,
+  "score_packing": "off",
+  "ema_device": "cuda",
+  "parameter_offload": false,
+  "parameter_streaming": false,
+  "model_swap": false,
+  "policy": {
+    "generator_residual_storage": "cuda_out_of_place",
+    "critic_residual_storage": "cuda_out_of_place"
+  },
+  "correctness": {
+    "ranks": 16,
+    "status": "PASS",
+    "final_versions": "G3/C15/EMA15"
+  },
+  "control": {
+    "source_artifact": "/home/lyy/Helios/research_artifacts/DMD-System/fsdp2_p0/iteration_303_critic_residual_gpu_20260816/",
+    "formal_median_seconds": 141.54629977,
+    "formal_trials": 3,
+    "note": "three-run CPU-Generator/CUDA-Critic reference"
+  },
+  "experiment": {
+    "native_full5_seconds": 118.546756894,
+    "trials": 1,
+    "note": "single-run indicative result; not a repeated formal speedup"
+  },
+  "difference": {
+    "seconds_saved_vs_control_median": 22.999542876,
+    "wall_reduction_fraction": 0.162488,
+    "throughput_equivalent": 1.194
+  },
+  "profile": "NOT_RUN",
+  "source_artifact": "/home/lyy/Helios/research_artifacts/DMD-System/fsdp2_p0/iteration_306_generator_residual_gpu_20260817/"
+}

@@ -1,0 +1,55 @@
+{
+  "schema_version": "distillschedule.lightx2v_minimax_contract.v1",
+  "name": "lightx2v-minimax-h3-world16-full4eval-g1f5",
+  "upstream": {
+    "repository": "ModelTC/LightX2V",
+    "commit": "d034a6b0ecaa31aa07c81aeb7bbe69b225f1d7be",
+    "license": "Apache-2.0"
+  },
+  "hardware": {
+    "nodes": 2,
+    "gpus_per_node": 8,
+    "world_size": 16,
+    "gpu": "A100-40GB"
+  },
+  "model": {
+    "name": "MiniMax-H3",
+    "modality": "text-to-audio-video",
+    "height": 768,
+    "width": 1344,
+    "frames": 124,
+    "student_train_type": "lora",
+    "fake_train_type": "lora",
+    "student_lora_rank": 128,
+    "fake_lora_rank": 128
+  },
+  "parallel": {
+    "sequence_parallel_size": 1,
+    "fsdp2_size": 16,
+    "block_reshard": true,
+    "root_reshard": false,
+    "reduce_dtype": "fp32"
+  },
+  "cycle": {
+    "student_updates": 1,
+    "fake_updates": 5,
+    "ema_updates": 0,
+    "num_inference_steps": 4,
+    "benchmark_end_step_idx": 3,
+    "model_evaluations_per_back_simulation": 4,
+    "data_batch_per_rank": 1,
+    "global_batch": 16,
+    "global_batches_consumed": 6,
+    "minimum_unique_cache_samples": 96
+  },
+  "timing": {
+    "scope": "one outer DMD cycle after model/data/trainer setup",
+    "formal_runs": 3,
+    "profiled_latency_claimable": false,
+    "startup_included": false
+  },
+  "comparison": {
+    "matched_speedup_requires_same_model_and_contract": true,
+    "helios_pr16_absolute_time_is_cross_workload_only": true
+  }
+}

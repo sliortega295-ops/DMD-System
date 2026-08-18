@@ -6,7 +6,9 @@ import pytest
 
 from distillschedule.runtime.nsys_range import (
     GanFull5NsightRange,
+    StaticFSDP2Full5NsightRange,
     validate_nsys_receipts,
+    validate_static_nsys_receipts,
 )
 
 
@@ -118,3 +120,69 @@ def test_receipt_bundle_rejects_missing_rank(tmp_path) -> None:
         validate_nsys_receipts(
             tmp_path, expected_world_size=2, expected_local_world_size=1
         )
+
+
+def test_static_no_gan_range_uses_steps_10_to_14(tmp_path) -> None:
+    api = FakeProfiler()
+    receipt = tmp_path / "rank_000.json"
+    gate = StaticFSDP2Full5NsightRange(
+        variant="no-gan", api=api, receipt_path=receipt, rank=0, local_rank=0
+    )
+    gate.before_model_compute(9)
+    gate.before_model_compute(10)
+    gate.after_critic_commit(13)
+    result = gate.after_critic_commit(14)
+    assert result is not None
+    assert api.calls == ["start", "stop"]
+    assert result.start_step == 10
+    assert result.stop_step == 14
+    assert result.schema_version == "distillschedule.static_fsdp2_nsys_range.v1"
+    assert json.loads(receipt.read_text())["logical_window"] == [10, 14]
+
+
+def test_static_range_supports_bounded_single_critic_diagnostic(tmp_path) -> None:
+    api = FakeProfiler()
+    receipt = tmp_path / "rank_000.json"
+    gate = StaticFSDP2Full5NsightRange(
+        variant="no-gan",
+        api=api,
+        receipt_path=receipt,
+        rank=0,
+        local_rank=0,
+        logical_window=(10, 10),
+        start_point="before_step10_critic_compute",
+        stop_point="after_step10_critic_commit",
+    )
+    gate.before_model_compute(10)
+    gate.after_critic_commit(10)
+    value = json.loads(receipt.read_text())
+    assert value["logical_window"] == [10, 10]
+    assert value["start_point"] == "before_step10_critic_compute"
+    assert value["stop_point"] == "after_step10_critic_commit"
+    result = validate_static_nsys_receipts(
+        tmp_path,
+        variant="no-gan",
+        expected_world_size=1,
+        expected_local_world_size=1,
+        expected_window=(10, 10),
+        expected_start_point="before_step10_critic_compute",
+        expected_stop_point="after_step10_critic_commit",
+    )
+    assert result["logical_window"] == [10, 10]
+
+
+def test_static_receipt_bundle_requires_world16_and_two_controllers(tmp_path) -> None:
+    for rank in range(16):
+        local_rank = rank % 8
+        gate = StaticFSDP2Full5NsightRange(
+            api=FakeProfiler(),
+            variant="gan",
+            receipt_path=tmp_path / f"rank_{rank:03d}.json",
+            rank=rank,
+            local_rank=local_rank,
+        )
+        gate.before_model_compute(1000)
+        gate.after_critic_commit(1004)
+    result = validate_static_nsys_receipts(tmp_path, variant="gan")
+    assert result["status"] == "PASS"
+    assert result["controller_ranks"] == [0, 8]

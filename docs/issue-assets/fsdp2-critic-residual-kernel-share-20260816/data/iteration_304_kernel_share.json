@@ -1,0 +1,336 @@
+{
+  "schema_version": "iter304.current_kernel_report.v1",
+  "status": "PASS_CURRENT_PATH_PROFILE_AND_NATIVE_TELEMETRY",
+  "run_ids": {
+    "native": "iter304_nogan_gpu_residual_full5_native_telemetry_r2_20260816",
+    "nsight": "iter304_nogan_gpu_residual_full5_nsys_20260816"
+  },
+  "policy": {
+    "mesh_policy": "world16-fsdp",
+    "rollout_batch_size": 1,
+    "pack_real_score_pair": false,
+    "critic_residual_storage": "cuda_out_of_place",
+    "parameter_offload": false,
+    "parameter_streaming": false
+  },
+  "native": {
+    "formal_full5_seconds": 141.411127367,
+    "claimable_timing": true,
+    "nvml_gpu_utilization": {
+      "samples": 11944,
+      "gpu_util_mean_pct": 86.84000334896182,
+      "gpu_util_median_pct": 100.0,
+      "gpu_util_p10_pct": 53.0,
+      "gpu_util_p90_pct": 100.0,
+      "gpu_util_nonzero_fraction": 0.9486771600803751,
+      "gpu_util_ge90_fraction": 0.7649866041527127,
+      "power_mean_w": 295.9920646349632,
+      "memory_util_mean_pct": 31.53985264567984,
+      "memory_used_mean_mib": 24996.00485599464,
+      "memory_used_max_mib": 26844.0
+    }
+  },
+  "nsight": {
+    "profile_receipt_full5_seconds": 339.151646643,
+    "diagnostic_only": true,
+    "profile_receipt_vs_native_fraction": 1.3983377613758075,
+    "profile_receipt_factor": 2.3983377613758075,
+    "full5": {
+      "rank_count": 16,
+      "gpu_wall_seconds": 2303.32159574,
+      "compute_gpu_seconds": 1603.090821971,
+      "nccl_gpu_seconds": 1075.080794687,
+      "compute_pooled_percent": 69.59908789705793,
+      "nccl_pooled_percent": 46.6752361752421,
+      "wall_rank_seconds_stats": {
+        "n": 16,
+        "min": 143.930369989,
+        "median": 143.94958777099998,
+        "mean": 143.95759973375002,
+        "max": 144.046454075
+      },
+      "compute_rank_percent_stats": {
+        "n": 16,
+        "min": 69.19502882112164,
+        "median": 69.49503094687267,
+        "mean": 69.59911404042485,
+        "max": 70.3864658338103
+      },
+      "nccl_rank_percent_stats": {
+        "n": 16,
+        "min": 29.807220654552612,
+        "median": 47.85001116009835,
+        "mean": 46.67518110530954,
+        "max": 51.922189406383
+      }
+    },
+    "phases": {
+      "Critic_backward": {
+        "rank_count": 16,
+        "gpu_wall_seconds": 522.235262774,
+        "compute_gpu_seconds": 497.091886924,
+        "nccl_gpu_seconds": 106.058244384,
+        "compute_pooled_percent": 95.18543123334034,
+        "nccl_pooled_percent": 20.30851839085735,
+        "wall_rank_seconds_stats": {
+          "n": 16,
+          "min": 32.604990689,
+          "median": 32.637063827999995,
+          "mean": 32.639703923375,
+          "max": 32.69672267
+        },
+        "compute_rank_percent_stats": {
+          "n": 16,
+          "min": 94.92024480577153,
+          "median": 95.23529946439248,
+          "mean": 95.18544396848509,
+          "max": 95.41092962731732
+        },
+        "nccl_rank_percent_stats": {
+          "n": 16,
+          "min": 13.789242755319856,
+          "median": 20.723516264368463,
+          "mean": 20.309245529190978,
+          "max": 23.998125748677026
+        }
+      },
+      "Critic_forward": {
+        "rank_count": 16,
+        "gpu_wall_seconds": 203.221242602,
+        "compute_gpu_seconds": 190.585275568,
+        "nccl_gpu_seconds": 99.71254709,
+        "compute_pooled_percent": 93.7821623014347,
+        "nccl_pooled_percent": 49.06600600080116,
+        "wall_rank_seconds_stats": {
+          "n": 16,
+          "min": 12.472684194,
+          "median": 12.709780280499999,
+          "mean": 12.701327662625,
+          "max": 12.887286128
+        },
+        "compute_rank_percent_stats": {
+          "n": 16,
+          "min": 92.55479975621712,
+          "median": 93.5561034864914,
+          "mean": 93.79067176737617,
+          "max": 95.73200075770052
+        },
+        "nccl_rank_percent_stats": {
+          "n": 16,
+          "min": 40.77577662827539,
+          "median": 50.24006265917092,
+          "mean": 49.059219293229226,
+          "max": 55.95444930290716
+        }
+      },
+      "Critic_optimizer": {
+        "rank_count": 16,
+        "gpu_wall_seconds": 61.581254759,
+        "compute_gpu_seconds": 3.812213576,
+        "nccl_gpu_seconds": 1.793803228,
+        "compute_pooled_percent": 6.190542220874204,
+        "nccl_pooled_percent": 2.912904641225808,
+        "wall_rank_seconds_stats": {
+          "n": 16,
+          "min": 3.714940213,
+          "median": 3.841645213,
+          "mean": 3.8488284224375002,
+          "max": 4.004824242
+        },
+        "compute_rank_percent_stats": {
+          "n": 16,
+          "min": 5.6467629622365445,
+          "median": 6.266768183632696,
+          "mean": 6.195835027480017,
+          "max": 6.67232611530591
+        },
+        "nccl_rank_percent_stats": {
+          "n": 16,
+          "min": 0.8383368650214038,
+          "median": 3.033691953314745,
+          "mean": 2.921293761153733,
+          "max": 3.6534135988212926
+        }
+      },
+      "G_backward": {
+        "rank_count": 16,
+        "gpu_wall_seconds": 439.634754759,
+        "compute_gpu_seconds": 160.601056309,
+        "nccl_gpu_seconds": 363.992658433,
+        "compute_pooled_percent": 36.53056419459801,
+        "nccl_pooled_percent": 82.79433199782723,
+        "wall_rank_seconds_stats": {
+          "n": 16,
+          "min": 27.457504575,
+          "median": 27.4688817415,
+          "mean": 27.4771721724375,
+          "max": 27.58482456
+        },
+        "compute_rank_percent_stats": {
+          "n": 16,
+          "min": 35.063002119017284,
+          "median": 36.06868764706951,
+          "mean": 36.53108624190701,
+          "max": 39.388663967836195
+        },
+        "nccl_rank_percent_stats": {
+          "n": 16,
+          "min": 9.412778538258719,
+          "median": 89.81494995707817,
+          "mean": 82.81433571616077,
+          "max": 93.7843703882912
+        }
+      },
+      "G_backward_recompute": {
+        "rank_count": 16,
+        "gpu_wall_seconds": 438.854956484,
+        "compute_gpu_seconds": 160.267149918,
+        "nccl_gpu_seconds": 363.340620203,
+        "compute_pooled_percent": 36.519389276589635,
+        "nccl_pooled_percent": 82.79287150223786,
+        "wall_rank_seconds_stats": {
+          "n": 16,
+          "min": 27.413356465,
+          "median": 27.422061653500002,
+          "mean": 27.42843478025,
+          "max": 27.513543674
+        },
+        "compute_rank_percent_stats": {
+          "n": 16,
+          "min": 35.0792434313745,
+          "median": 36.05310722342938,
+          "mean": 36.51974963889047,
+          "max": 39.37022571580332
+        },
+        "nccl_rank_percent_stats": {
+          "n": 16,
+          "min": 9.437164753348958,
+          "median": 89.80794439722993,
+          "mean": 82.80844483552518,
+          "max": 93.78435998198526
+        }
+      },
+      "G_gradient_rollout_forward": {
+        "rank_count": 16,
+        "gpu_wall_seconds": 231.595418738,
+        "compute_gpu_seconds": 70.919152704,
+        "nccl_gpu_seconds": 58.523708732,
+        "compute_pooled_percent": 30.622001544957,
+        "nccl_pooled_percent": 25.269804148503855,
+        "wall_rank_seconds_stats": {
+          "n": 16,
+          "min": 14.407433033,
+          "median": 14.478704032,
+          "mean": 14.474713671125,
+          "max": 14.562444576
+        },
+        "compute_rank_percent_stats": {
+          "n": 16,
+          "min": 30.378992152807626,
+          "median": 30.637151738944958,
+          "mean": 30.622320848562758,
+          "max": 31.027562904335365
+        },
+        "nccl_rank_percent_stats": {
+          "n": 16,
+          "min": 18.39828929591155,
+          "median": 25.05781623213512,
+          "mean": 25.26209110501341,
+          "max": 30.673703848706502
+        }
+      },
+      "G_no_grad_rollout": {
+        "rank_count": 16,
+        "gpu_wall_seconds": 618.119992829,
+        "compute_gpu_seconds": 564.409661904,
+        "nccl_gpu_seconds": 383.266164783,
+        "compute_pooled_percent": 91.3106950837847,
+        "nccl_pooled_percent": 62.005139654013554,
+        "wall_rank_seconds_stats": {
+          "n": 16,
+          "min": 38.404081759,
+          "median": 38.6601695705,
+          "mean": 38.6324995518125,
+          "max": 38.754503107
+        },
+        "compute_rank_percent_stats": {
+          "n": 16,
+          "min": 90.73719755215875,
+          "median": 91.27158037931956,
+          "mean": 91.31103778082164,
+          "max": 92.30712187954438
+        },
+        "nccl_rank_percent_stats": {
+          "n": 16,
+          "min": 52.66503185616499,
+          "median": 63.00084808338904,
+          "mean": 62.004844145885514,
+          "max": 67.62319980318158
+        }
+      },
+      "Generator_optimizer": {
+        "rank_count": 16,
+        "gpu_wall_seconds": 69.432056182,
+        "compute_gpu_seconds": 0.13481313,
+        "nccl_gpu_seconds": 3.926286604,
+        "compute_pooled_percent": 0.19416554458162483,
+        "nccl_pooled_percent": 5.654861486037735,
+        "wall_rank_seconds_stats": {
+          "n": 16,
+          "min": 4.244802134,
+          "median": 4.3052505375,
+          "mean": 4.339503511375,
+          "max": 4.578094681
+        },
+        "compute_rank_percent_stats": {
+          "n": 16,
+          "min": 0.1548285889529761,
+          "median": 0.18476014332230045,
+          "mean": 0.19437369800088608,
+          "max": 0.2452132004055548
+        },
+        "nccl_rank_percent_stats": {
+          "n": 16,
+          "min": 0.000533131228221115,
+          "median": 6.125526793046738,
+          "mean": 5.663700835845144,
+          "max": 7.610907636632776
+        }
+      },
+      "Score_DMD_forward": {
+        "rank_count": 16,
+        "gpu_wall_seconds": 117.806953684,
+        "compute_gpu_seconds": 109.210791392,
+        "nccl_gpu_seconds": 54.582676454,
+        "compute_pooled_percent": 92.70317920701187,
+        "nccl_pooled_percent": 46.33230445836846,
+        "wall_rank_seconds_stats": {
+          "n": 16,
+          "min": 7.348783773,
+          "median": 7.362485974,
+          "mean": 7.36293460525,
+          "max": 7.390355139
+        },
+        "compute_rank_percent_stats": {
+          "n": 16,
+          "min": 92.3327193366728,
+          "median": 92.72074257876756,
+          "mean": 92.70320437271565,
+          "max": 92.9594857966782
+        },
+        "nccl_rank_percent_stats": {
+          "n": 16,
+          "min": 32.174366120134025,
+          "median": 47.63591650605693,
+          "mean": 46.33661850139468,
+          "max": 51.68212357096403
+        }
+      }
+    },
+    "semantics": {
+      "compute": "exact temporal union of non-NCCL CUDA kernels inside each per-rank NVTX window",
+      "nccl": "exact temporal union of NCCL/NVLS/CollNet kernels",
+      "non_additive": "compute and NCCL may overlap across CUDA streams; neither NCCL-only exposure nor no-kernel complement is inferred by subtraction"
+    }
+  }
+}

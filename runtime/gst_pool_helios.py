@@ -42,6 +42,7 @@ def run_generator_update_trace_rollout(
     entry: GSTTraceEntry,
     device: torch.device,
     detailed_profile: bool,
+    collect_diagnostics: bool = True,
 ) -> tuple[torch.Tensor, torch.Tensor | None, dict[str, Any]]:
     """Replay one grad-selected Generator-update sample without RNG sampling."""
 
@@ -205,14 +206,20 @@ def run_generator_update_trace_rollout(
         "output_dtype": str(generated_x0.dtype),
         "output_requires_grad": True,
         "gradient_mask_is_none": gradient_mask is None,
-        "denoised_timestep_from": float(
-            torch.as_tensor(denoised_from).detach().flatten()[0].cpu()
+        "denoised_timestep_from": (
+            float(torch.as_tensor(denoised_from).detach().flatten()[0].cpu())
+            if collect_diagnostics
+            else "omitted_in_clean_profile"
         ),
-        "denoised_timestep_to": float(
-            torch.as_tensor(denoised_to).detach().flatten()[0].cpu()
+        "denoised_timestep_to": (
+            float(torch.as_tensor(denoised_to).detach().flatten()[0].cpu())
+            if collect_diagnostics
+            else "omitted_in_clean_profile"
         ),
-        "consistency_loss": float(
-            torch.as_tensor(consistency_loss).detach().cpu()
+        "consistency_loss": (
+            float(torch.as_tensor(consistency_loss).detach().cpu())
+            if collect_diagnostics
+            else "omitted_in_clean_profile"
         ),
         "memory": _memory_snapshot(device),
     }
