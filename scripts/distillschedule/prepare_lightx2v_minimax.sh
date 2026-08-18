@@ -20,6 +20,19 @@ if [[ "$actual_patch_sha" != "$PATCH_SHA256" ]]; then
   exit 2
 fi
 
+# Some server launches intentionally use a copied, immutable source receipt
+# rather than a Git checkout.  Do not try to run ``git submodule update`` in
+# that deployment form; the worker launcher performs the same source/patch
+# receipt checks before constructing a model.
+if ! git -C "$DMD_SYSTEM_ROOT" rev-parse --show-toplevel >/dev/null 2>&1; then
+  receipt="$SOURCE_ROOT/.distillschedule_source_receipt"
+  [[ -f "$receipt" ]] || { echo "prepared source receipt missing: $receipt" >&2; exit 2; }
+  grep -qx "upstream=$UPSTREAM_SHA" "$receipt" || { echo "prepared source upstream mismatch" >&2; exit 2; }
+  grep -qx "patch_sha256=$PATCH_SHA256" "$receipt" || { echo "prepared source patch mismatch" >&2; exit 2; }
+  echo "$SOURCE_ROOT"
+  exit 0
+fi
+
 git -C "$DMD_SYSTEM_ROOT" submodule update --init third_party/lightx2v
 actual_upstream="$(git -C "$SUBMODULE_ROOT" rev-parse HEAD)"
 if [[ "$actual_upstream" != "$UPSTREAM_SHA" ]]; then
