@@ -34,10 +34,14 @@ def _install_transformer_forward(transformer: Any, segment: int) -> None:
     """Install a segmented forward on one already-FSDP-wrapped transformer."""
     if getattr(transformer, "_distillschedule_segmented_checkpoint", None) == segment:
         return
-    if getattr(transformer.__class__, "__name__", "") != PINNED_MODEL_NAME:
+    class_names = tuple(cls.__name__ for cls in transformer.__class__.__mro__)
+    # FSDP2 changes the runtime class to ``FSDPMiniMaxH3Transformer3DModel``
+    # while retaining the pinned MiniMax class in its MRO.  That wrapper is
+    # exactly the desired post-fully_shard insertion point.
+    if PINNED_MODEL_NAME not in class_names:
         raise RuntimeError(
             "segmented MiniMax checkpoint only supports the pinned "
-            f"{PINNED_MODEL_NAME}, got {transformer.__class__.__name__}"
+            f"{PINNED_MODEL_NAME}, got {transformer.__class__.__name__} (MRO={class_names})"
         )
     blocks = getattr(transformer, "transformer_blocks", None)
     if blocks is None or len(blocks) != 50:
@@ -141,4 +145,3 @@ def install_segmented_checkpoint(model: Any, segment: int) -> dict[str, Any]:
         "fsdp_granularity": "one_fully_shard_per_transformer_block",
         "activation_offload": False,
     }
-
