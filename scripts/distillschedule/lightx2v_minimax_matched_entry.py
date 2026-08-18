@@ -72,6 +72,10 @@ def main() -> int:
         "prompt_cache": str(prompt_cache),
         "attention_backend": os.environ.get("LIGHTX2V_MINIMAX_ATTENTION_BACKEND", "_flash_3_hub"),
         "student_activation_offload": os.environ.get("LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD", "0"),
+        "activation_policy": os.environ.get("LIGHTX2V_MINIMAX_ACTIVATION_POLICY", "none"),
+        "boundary_offload_manifest": os.environ.get(
+            "LIGHTX2V_MINIMAX_BOUNDARY_OFFLOAD_MANIFEST", ""
+        ),
         "checkpoint_segment": os.environ.get("LIGHTX2V_MINIMAX_CHECKPOINT_SEGMENT", "0"),
         "canary_stage": os.environ.get("LIGHTX2V_MINIMAX_CANARY_STAGE", "full"),
         "activation_offload_disabled_for_segmented_canary": os.environ.get(
@@ -103,6 +107,12 @@ def main() -> int:
         close_attribution = getattr(trainer, "close_memory_attribution", None)
         if close_attribution is not None:
             close_attribution()
+        close_boundary_offload = getattr(trainer, "close_boundary_offload", None)
+        if close_boundary_offload is not None:
+            close_boundary_offload()
+        close_boundary_census = getattr(trainer, "close_boundary_census", None)
+        if close_boundary_census is not None:
+            close_boundary_census()
         close_segment_debug = getattr(trainer, "close_segment_debug", None)
         if close_segment_debug is not None:
             close_segment_debug()

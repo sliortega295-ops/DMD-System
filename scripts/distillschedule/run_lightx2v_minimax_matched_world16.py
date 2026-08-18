@@ -86,6 +86,22 @@ def parser() -> argparse.ArgumentParser:
         default="full",
         help="bounded native canary stage; full runs the normal matched cycle",
     )
+    value.add_argument(
+        "--activation-policy",
+        choices=("none", "checkpoint_boundary_cpu"),
+        default="none",
+        help="bounded activation policy; native per-block boundary offload is opt-in",
+    )
+    value.add_argument(
+        "--boundary-manifest",
+        type=Path,
+        help="shared JSON manifest required by checkpoint_boundary_cpu",
+    )
+    value.add_argument(
+        "--boundary-census",
+        action="store_true",
+        help="record no-copy MiniMax block-input census for manifest construction",
+    )
     value.add_argument("--master-addr")
     value.add_argument("--master-port", type=int, default=29980)
     value.add_argument("--remote-root", type=Path, default=Path("/share/project/shuchenweng/yongyan_liu/DMD-System_fsdp2_p0_20260815"))
@@ -116,6 +132,9 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "LIGHTX2V_BENCHMARK_SEED": str(args.seed),
         "LIGHTX2V_BENCHMARK_SOURCE_ROOT": str(args.benchmark_source_root or (args.remote_root / "artifacts/source/lightx2v-minimax-d034-benchmark")),
         "LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD": "0",
+        "LIGHTX2V_MINIMAX_ACTIVATION_POLICY": args.activation_policy,
+        "LIGHTX2V_MINIMAX_BOUNDARY_OFFLOAD_MANIFEST": str(args.boundary_manifest or ""),
+        "LIGHTX2V_MINIMAX_BOUNDARY_CENSUS": "1" if args.boundary_census else "0",
         "LIGHTX2V_MINIMAX_CHECKPOINT_SEGMENT": str(args.checkpoint_segment),
         "LIGHTX2V_MINIMAX_CANARY_STAGE": args.canary_stage,
         "LIGHTX2V_MINIMAX_SEGMENT_DEBUG": os.environ.get("LIGHTX2V_MINIMAX_SEGMENT_DEBUG", "0"),

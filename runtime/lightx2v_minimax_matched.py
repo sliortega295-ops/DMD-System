@@ -157,6 +157,32 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
             self._student_activation_offload = os.environ.get(
                 "LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD", "0"
             ) == "1"
+            self._activation_policy = os.environ.get(
+                "LIGHTX2V_MINIMAX_ACTIVATION_POLICY", "none"
+            )
+            self._boundary_manifest_path = os.environ.get(
+                "LIGHTX2V_MINIMAX_BOUNDARY_OFFLOAD_MANIFEST", ""
+            )
+            self._boundary_offload_registrations: dict[str, Any] = {}
+            self._boundary_census_registrations: dict[str, Any] = {}
+            self._boundary_census_enabled = os.environ.get(
+                "LIGHTX2V_MINIMAX_BOUNDARY_CENSUS", "0"
+            ) == "1"
+            if self._activation_policy not in {"none", "checkpoint_boundary_cpu"}:
+                raise RuntimeError(
+                    "LIGHTX2V_MINIMAX_ACTIVATION_POLICY must be none or "
+                    f"checkpoint_boundary_cpu, got {self._activation_policy!r}"
+                )
+            if self._student_activation_offload:
+                raise RuntimeError(
+                    "LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD=1 is the retired whole-stage "
+                    "save_on_cpu experiment; use checkpoint_boundary_cpu instead"
+                )
+            if self._activation_policy == "checkpoint_boundary_cpu" and not self._boundary_manifest_path:
+                raise RuntimeError(
+                    "checkpoint_boundary_cpu requires "
+                    "LIGHTX2V_MINIMAX_BOUNDARY_OFFLOAD_MANIFEST"
+                )
             self._segment_debug = os.environ.get(
                 "LIGHTX2V_MINIMAX_SEGMENT_DEBUG", "0"
             ) == "1"
@@ -173,6 +199,11 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
             if self._checkpoint_segment not in (0, 2, 4, 5, 8):
                 raise RuntimeError(
                     "LIGHTX2V_MINIMAX_CHECKPOINT_SEGMENT must be 0 (native) or one of 2,4,5,8"
+                )
+            if self._activation_policy == "checkpoint_boundary_cpu" and self._checkpoint_segment != 0:
+                raise RuntimeError(
+                    "checkpoint_boundary_cpu is only valid with native per-block checkpointing "
+                    "(LIGHTX2V_MINIMAX_CHECKPOINT_SEGMENT=0)"
                 )
 
         def setup(self, *args: Any, **kwargs: Any):
@@ -212,6 +243,52 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
                     "fsdp_granularity": "one_fully_shard_per_transformer_block",
                     "activation_offload": False,
                 }
+            if self._activation_policy == "checkpoint_boundary_cpu":
+                from runtime.lightx2v_checkpoint_boundary_offload import (
+                    BoundaryManifest,
+                    install_checkpoint_boundary_offload,
+                )
+
+                manifest = BoundaryManifest.load(Path(self._boundary_manifest_path))
+                if manifest.checkpoint_segment != self._checkpoint_segment:
+                    raise RuntimeError("boundary manifest/checkpoint segment mismatch")
+                for role, model in (("student", self.model), ("fake", self.fake_model)):
+                    transformer = getattr(model, "transformer", None)
+                    if transformer is None and hasattr(model, "denoiser_module"):
+                        transformer = model.denoiser_module()
+                    if transformer is None:
+                        raise RuntimeError(f"MiniMax matched benchmark has no {role} transformer")
+                    event_path = (
+                        self._benchmark_receipt_dir
+                        / "boundary_offload"
+                        / f"rank_{get_rank():03d}_{role}.jsonl"
+                    )
+                    self._boundary_offload_registrations[role] = install_checkpoint_boundary_offload(
+                        transformer,
+                        manifest,
+                        role=role,
+                        event_path=event_path,
+                        pin_memory=True,
+                    )
+                self._boundary_offload_manifest = manifest
+            if self._boundary_census_enabled:
+                from runtime.lightx2v_checkpoint_boundary_offload import install_boundary_census
+
+                for role, model in (("student", self.model), ("fake", self.fake_model)):
+                    transformer = getattr(model, "transformer", None)
+                    if transformer is None and hasattr(model, "denoiser_module"):
+                        transformer = model.denoiser_module()
+                    if transformer is None:
+                        raise RuntimeError(f"MiniMax matched benchmark has no {role} transformer")
+                    census_path = (
+                        self._benchmark_receipt_dir
+                        / "boundary_census"
+                        / f"rank_{get_rank():03d}_{role}.jsonl"
+                    )
+                    self._boundary_census_registrations[role] = install_boundary_census(
+                        transformer,
+                        output_path=census_path,
+                    )
             return result
 
         def _segment_saved_tensor_stats(self) -> dict[str, int]:
@@ -426,19 +503,23 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
                 self._benchmark_begin()
             else:
                 self._canary_begin()
-            # This is an opt-in capacity canary only.  The context must cover
-            # both the Student forward and the backward performed inside the
-            # upstream stage implementation; wrapping only forward_loss would
-            # release the saved tensors before backward.  No model, loss,
-            # trace, optimizer or distributed semantics are changed.
-            if self._student_activation_offload and stage == "student":
-                context = torch.autograd.graph.save_on_cpu(pin_memory=True)
-            else:
-                context = contextlib.nullcontext()
-            with context:
-                result = super()._train_one_stage(samples, stage, grad_accum_iters)
+            # Boundary offload is installed around the native per-block
+            # checkpoint function in setup().  Do not wrap the whole stage:
+            # that retired experiment also captured recomputation and caused
+            # unbounded synchronous CPU traffic during backward.
+            result = super()._train_one_stage(samples, stage, grad_accum_iters)
             self._benchmark_note_stage_end(stage)
             return result
+
+        def close_boundary_offload(self) -> None:
+            for registration in tuple(self._boundary_offload_registrations.values()):
+                registration.remove()
+            self._boundary_offload_registrations.clear()
+
+        def close_boundary_census(self) -> None:
+            for registration in tuple(self._boundary_census_registrations.values()):
+                registration.remove()
+            self._boundary_census_registrations.clear()
 
         def _assert_contract(self) -> None:
             if int(self.max_train_iters) != 1:
@@ -655,6 +736,12 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
                     "fsdp_granularity": "one_fully_shard_per_transformer_block",
                     "activation_offload": False,
                 }),
+                "activation_policy": self._activation_policy,
+                "boundary_offload": {
+                    role: registration.receipt()
+                    for role, registration in self._boundary_offload_registrations.items()
+                },
+                "boundary_census_enabled": self._boundary_census_enabled,
                 **self._benchmark_metadata,
             }
             if errors:
@@ -710,6 +797,12 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
                     "fsdp_granularity": "one_fully_shard_per_transformer_block",
                     "activation_offload": False,
                 }),
+                "activation_policy": self._activation_policy,
+                "boundary_offload": {
+                    role: registration.receipt()
+                    for role, registration in self._boundary_offload_registrations.items()
+                },
+                "boundary_census_enabled": self._boundary_census_enabled,
                 "segment_debug_events": list(self._segment_debug_events)
                 if self._segment_debug
                 else [],
