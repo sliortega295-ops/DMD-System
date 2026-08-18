@@ -31,9 +31,11 @@ class _ToyMiniMax(torch.nn.Module):
     def __init__(self) -> None:
         super().__init__()
         self.transformer_blocks = torch.nn.ModuleList([_Block() for _ in range(50)])
-        self._gradient_checkpointing_func = lambda fn, value: torch.utils.checkpoint.checkpoint(
-            fn, value, use_reentrant=False
-        )
+        # The production adapter wraps the pinned MiniMax checkpoint function.
+        # A direct function call keeps this CPU unit test deterministic and
+        # avoids PyTorch's very slow no-grad checkpoint path on shared hosts;
+        # the exact checkpoint call-count/manifest contract remains exercised.
+        self._gradient_checkpointing_func = lambda fn, value: fn(value)
 
     def forward(self, value: torch.Tensor) -> torch.Tensor:
         for block in self.transformer_blocks:
