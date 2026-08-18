@@ -91,7 +91,9 @@ def _hash_tensor_sequence(torch: Any, values: list[tuple[str, Any]]) -> str:
             local = _local_tensor(value).detach().contiguous()
             digest.update(str(local.dtype).encode())
             digest.update(str(tuple(local.shape)).encode())
-            digest.update(local.view(torch.uint8).cpu().numpy().tobytes())
+            # Optimizer step counters are scalar tensors.  Flatten before the
+            # byte view so hashing works for both scalar and tensor states.
+            digest.update(local.reshape(-1).view(torch.uint8).cpu().numpy().tobytes())
         else:
             digest.update(repr(value).encode())
     return digest.hexdigest()
