@@ -54,6 +54,11 @@ export LIGHTX2V_MINIMAX_ATTENTION_BACKEND="${LIGHTX2V_MINIMAX_ATTENTION_BACKEND:
 # checkpoints here, but fail-closed config resolution must still have a value.
 export LIGHTX2V_MINIMAX_OUTPUT_DIR="$NODE_DIR/output"
 export LIGHTX2V_PROFILE_DIAGNOSTICS=off
+# The benchmark environment carries a partial TensorFlow namespace for other
+# jobs.  Transformers otherwise detects it and PEFT's PreTrainedModel import
+# traverses the broken optional backend.  This per-run flag keeps the PyTorch
+# MiniMax path deterministic without changing the shared environment.
+export USE_TF=0
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-8}"
 export TORCH_NCCL_ASYNC_ERROR_HANDLING=1
 
