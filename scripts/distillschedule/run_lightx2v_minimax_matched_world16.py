@@ -73,6 +73,13 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--python", dest="python_bin", type=Path, required=True)
     value.add_argument("--attention-backend", default="_flash_3_hub")
     value.add_argument("--seed", type=int, default=20260817)
+    value.add_argument(
+        "--checkpoint-segment",
+        type=int,
+        choices=(0, 2, 4, 5, 8),
+        default=0,
+        help="MiniMax-H3 activation checkpoint segment; 0 keeps upstream per-block checkpoints",
+    )
     value.add_argument("--master-addr")
     value.add_argument("--master-port", type=int, default=29980)
     value.add_argument("--remote-root", type=Path, default=Path("/share/project/shuchenweng/yongyan_liu/DMD-System_fsdp2_p0_20260815"))
@@ -102,7 +109,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "LIGHTX2V_MINIMAX_ATTENTION_BACKEND": args.attention_backend,
         "LIGHTX2V_BENCHMARK_SEED": str(args.seed),
         "LIGHTX2V_BENCHMARK_SOURCE_ROOT": str(args.benchmark_source_root or (args.remote_root / "artifacts/source/lightx2v-minimax-d034-benchmark")),
-        "LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD": os.environ.get("LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD", "0"),
+        "LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD": "0",
+        "LIGHTX2V_MINIMAX_CHECKPOINT_SEGMENT": str(args.checkpoint_segment),
         "LIGHTX2V_MINIMAX_MEMORY_ATTRIBUTION": os.environ.get("LIGHTX2V_MINIMAX_MEMORY_ATTRIBUTION", "0"),
         "LIGHTX2V_MINIMAX_LOCK_PATH": f"/tmp/lyy-experiments/DMD-System/{args.run_id}/node_{node}.lock",
     }
