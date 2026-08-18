@@ -40,7 +40,7 @@ else
   exit 2
 fi
 if [[ -n "$LIGHTX2V_BENCHMARK_SOURCE_ROOT" ]]; then
-  PATCH_SHA256="$(sha256sum "$DMD_SYSTEM_ROOT/third_party/lightx2v_benchmark/benchmark.patch" | awk "{print $1}")"
+  PATCH_SHA256="$(sha256sum "$DMD_SYSTEM_ROOT/third_party/lightx2v_benchmark/benchmark.patch" | awk '{print $1}')"
   [[ -f "$LIGHTX2V_BENCHMARK_SOURCE_ROOT/.distillschedule_source_receipt" ]] || { echo "prepared LightX2V source receipt missing" >&2; exit 2; }
   grep -qx "upstream=$UPSTREAM_SHA" "$LIGHTX2V_BENCHMARK_SOURCE_ROOT/.distillschedule_source_receipt" || { echo "prepared LightX2V upstream mismatch" >&2; exit 2; }
   grep -qx "patch_sha256=$PATCH_SHA256" "$LIGHTX2V_BENCHMARK_SOURCE_ROOT/.distillschedule_source_receipt" || { echo "prepared LightX2V patch mismatch" >&2; exit 2; }
