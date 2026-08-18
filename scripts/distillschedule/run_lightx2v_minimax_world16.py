@@ -75,6 +75,13 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--attention-backend", default="_flash_3_hub")
     p.add_argument("--seed", type=int, default=20260817)
     p.add_argument("--end-step-idx", type=int, choices=range(4), default=3)
+    p.add_argument(
+        "--checkpoint-segment",
+        type=int,
+        choices=(0, 2, 4, 5, 8),
+        default=0,
+        help="MiniMax-H3 activation checkpoint segment; 0 is the upstream per-block policy",
+    )
     p.add_argument("--master-addr")
     p.add_argument("--master-port", type=int, default=29970)
     p.add_argument(
@@ -125,6 +132,10 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "LIGHTX2V_MINIMAX_ATTENTION_BACKEND": args.attention_backend,
         "LIGHTX2V_BENCHMARK_SEED": str(args.seed),
         "LIGHTX2V_BENCHMARK_END_STEP_IDX": str(args.end_step_idx),
+        "LIGHTX2V_MINIMAX_CHECKPOINT_SEGMENT": str(args.checkpoint_segment),
+        # This experiment specifically evaluates segmented checkpoints without
+        # save_on_cpu; never inherit a stale activation-offload shell variable.
+        "LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD": "0",
     }
     launch = " ".join(
         shlex.quote(str(value))

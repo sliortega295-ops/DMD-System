@@ -153,6 +153,37 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
             self._student_activation_offload = os.environ.get(
                 "LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD", "0"
             ) == "1"
+            raw_segment = os.environ.get("LIGHTX2V_MINIMAX_CHECKPOINT_SEGMENT", "0")
+            self._checkpoint_segment = int(raw_segment)
+            if self._checkpoint_segment not in (0, 2, 4, 5, 8):
+                raise RuntimeError(
+                    "LIGHTX2V_MINIMAX_CHECKPOINT_SEGMENT must be 0 (native) or one of 2,4,5,8"
+                )
+
+        def setup(self, *args: Any, **kwargs: Any):
+            result = super().setup(*args, **kwargs)
+            if self._checkpoint_segment:
+                if self._student_activation_offload:
+                    raise RuntimeError(
+                        "segmented checkpoint canary requires activation offload disabled"
+                    )
+                from runtime.lightx2v_segmented_checkpoint import install_segmented_checkpoint
+
+                installed: dict[str, Any] = {}
+                # Both trainable backbones use the same checkpoint contract.  The
+                # teacher is no-grad and is intentionally left untouched.
+                for role, model in (("student", self.model), ("fake", self.fake_model)):
+                    installed[role] = install_segmented_checkpoint(model, self._checkpoint_segment)
+                self._segmented_checkpoint_receipt = installed
+            else:
+                self._segmented_checkpoint_receipt = {
+                    "enabled": False,
+                    "segment": 0,
+                    "block_count": 50,
+                    "fsdp_granularity": "one_fully_shard_per_transformer_block",
+                    "activation_offload": False,
+                }
+            return result
 
         def _memory_attribution_begin(self) -> None:
             if self._memory_attribution is not None:
@@ -474,6 +505,13 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
                     "student_optimizer": _hash_optimizer(torch, self.optimizer, list(self.trainable_params)),
                     "fake_optimizer": _hash_optimizer(torch, self.fake_optimizer, list(self.fake_trainable_params)),
                 },
+                "checkpoint_policy": getattr(self, "_segmented_checkpoint_receipt", {
+                    "enabled": False,
+                    "segment": 0,
+                    "block_count": 50,
+                    "fsdp_granularity": "one_fully_shard_per_transformer_block",
+                    "activation_offload": False,
+                }),
                 **self._benchmark_metadata,
             }
             errors = validate_matched_receipt(value)

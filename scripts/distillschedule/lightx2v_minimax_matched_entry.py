@@ -72,6 +72,10 @@ def main() -> int:
         "prompt_cache": str(prompt_cache),
         "attention_backend": os.environ.get("LIGHTX2V_MINIMAX_ATTENTION_BACKEND", "_flash_3_hub"),
         "student_activation_offload": os.environ.get("LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD", "0"),
+        "checkpoint_segment": os.environ.get("LIGHTX2V_MINIMAX_CHECKPOINT_SEGMENT", "0"),
+        "activation_offload_disabled_for_segmented_canary": os.environ.get(
+            "LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD", "0"
+        ) == "0",
     }
 
     trainer = None
