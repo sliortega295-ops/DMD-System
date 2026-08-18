@@ -48,6 +48,11 @@ export LIGHTX2V_MINIMAX_FSDP_FIRST_INIT=1
 export LIGHTX2V_BENCHMARK_SOURCE_ROOT
 export LIGHTX2V_MINIMAX_MODEL_PATH LIGHTX2V_MINIMAX_PROMPT_CACHE
 export LIGHTX2V_MINIMAX_ATTENTION_BACKEND="${LIGHTX2V_MINIMAX_ATTENTION_BACKEND:-_flash_3_hub}"
+# The shared MiniMax config resolves training.output_dir through OmegaConf's
+# environment resolver even for construction-only probes.  Keep this path
+# inside the per-run evidence tree; the construction gate never writes model
+# checkpoints here, but fail-closed config resolution must still have a value.
+export LIGHTX2V_MINIMAX_OUTPUT_DIR="$NODE_DIR/output"
 export LIGHTX2V_PROFILE_DIAGNOSTICS=off
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-8}"
 export TORCH_NCCL_ASYNC_ERROR_HANDLING=1
