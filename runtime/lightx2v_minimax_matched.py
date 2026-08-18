@@ -249,7 +249,9 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
                     install_checkpoint_boundary_offload,
                 )
 
-                manifest = BoundaryManifest.load(Path(self._boundary_manifest_path))
+                manifest = BoundaryManifest.load(
+                    Path(self._boundary_manifest_path), rank=get_rank()
+                )
                 if manifest.checkpoint_segment != self._checkpoint_segment:
                     raise RuntimeError("boundary manifest/checkpoint segment mismatch")
                 for role, model in (("student", self.model), ("fake", self.fake_model)):

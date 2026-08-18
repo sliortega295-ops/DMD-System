@@ -21,7 +21,13 @@ from runtime.lightx2v_checkpoint_boundary_offload import (
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--census", type=Path, required=True)
+    parser.add_argument(
+        "--census",
+        type=Path,
+        action="append",
+        required=True,
+        help="one or more rank-local JSONL census files",
+    )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument(
         "--target-bytes",
@@ -36,29 +42,61 @@ def main() -> int:
     if args.target_bytes <= 0 or args.max_blocks <= 0:
         raise ValueError("target and max-blocks must be positive")
     rows: list[dict[str, object]] = []
-    with args.census.open(encoding="utf-8") as handle:
-        for line in handle:
-            if not line.strip():
-                continue
-            value = json.loads(line)
-            rows.append(value)
-    by_index: dict[int, dict[str, object]] = {}
+    census_hashes: list[dict[str, str]] = []
+    for census_path in args.census:
+        with census_path.open(encoding="utf-8") as handle:
+            for line in handle:
+                if not line.strip():
+                    continue
+                value = json.loads(line)
+                rows.append(value)
+        census_hashes.append(
+            {"path": str(census_path.resolve()), "sha256": sha256_file(census_path)}
+        )
+    by_index: dict[int, list[dict[str, object]]] = {}
     for row in rows:
         index = int(row["block_index"])
-        if index in by_index and by_index[index] != row:
-            raise RuntimeError(f"duplicate boundary {index} has different metadata")
-        by_index[index] = row
+        by_index.setdefault(index, []).append(row)
     if sorted(by_index) != list(range(PRODUCTION_BLOCK_COUNT)):
         raise RuntimeError(
             "census must contain exactly contiguous block indices 0..49, got "
             f"{sorted(by_index)}"
         )
-    boundaries = [by_index[index] for index in range(PRODUCTION_BLOCK_COUNT)]
+    boundaries: list[dict[str, object]] = []
+    for index in range(PRODUCTION_BLOCK_COUNT):
+        samples = by_index[index]
+        first = samples[0]
+        shape_values = [list(row["shape"]) for row in samples]
+        stride_values = [list(row["stride"]) for row in samples]
+        shape_pattern = [
+            value if all(values[dim] == value for values in shape_values) else None
+            for dim, value in enumerate(shape_values[0])
+        ]
+        stride_pattern = [
+            value if all(values[dim] == value for values in stride_values) else None
+            for dim, value in enumerate(stride_values[0])
+        ]
+        dtype_values = {str(row["dtype"]) for row in samples}
+        if len(dtype_values) != 1:
+            raise RuntimeError(f"boundary {index} has multiple dtypes: {sorted(dtype_values)}")
+        boundaries.append(
+            {
+                "block_index": index,
+                "dtype": str(first["dtype"]),
+                "shape_pattern": shape_pattern,
+                "stride_pattern": stride_pattern,
+                "storage_bytes_min": min(int(row["storage_bytes"]) for row in samples),
+                "storage_bytes_max": max(int(row["storage_bytes"]) for row in samples),
+                "logical_bytes_min": min(int(row["logical_bytes"]) for row in samples),
+                "logical_bytes_max": max(int(row["logical_bytes"]) for row in samples),
+                "sample_count": len(samples),
+            }
+        )
     selected: list[int] = []
     cumulative = 0
     for row in boundaries[: args.max_blocks]:
         index = int(row["block_index"])
-        cumulative += int(row["storage_bytes"])
+        cumulative += int(row["storage_bytes_max"])
         selected.append(index)
         if cumulative >= args.target_bytes:
             break
@@ -72,8 +110,7 @@ def main() -> int:
         boundaries=boundaries,
         selected_block_indices=selected,
         source={
-            "census": str(args.census.resolve()),
-            "census_sha256": sha256_file(args.census),
+            "census": census_hashes,
             "target_bytes": args.target_bytes,
             "selected_storage_bytes": cumulative,
             "max_blocks": args.max_blocks,

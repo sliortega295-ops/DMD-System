@@ -10,6 +10,7 @@ import torch.utils.checkpoint  # noqa: F401
 from runtime.lightx2v_checkpoint_boundary_offload import (
     BoundaryManifest,
     SCHEMA_VERSION,
+    install_boundary_census,
     install_checkpoint_boundary_offload,
     write_boundary_manifest,
 )
@@ -134,3 +135,19 @@ def test_boundary_policy_rejects_non_native_segment(tmp_path: Path) -> None:
         assert "segment=0" in str(error)
     else:
         raise AssertionError("non-native checkpoint segment was accepted")
+
+
+def test_census_flushes_each_no_grad_forward_without_retaining_rows(tmp_path: Path) -> None:
+    model = _ToyMiniMax()
+    output = tmp_path / "census.jsonl"
+    registration = install_boundary_census(model, output_path=output)
+    with torch.no_grad():
+        model(torch.randn(2, 4))
+    assert output.is_file()
+    assert len(output.read_text().splitlines()) == 50
+    # A second no-grad forward appends rather than overwrites the first one.
+    with torch.no_grad():
+        model(torch.randn(2, 4))
+    assert len(output.read_text().splitlines()) == 100
+    registration.remove()
+    assert len(output.read_text().splitlines()) == 100

@@ -25,10 +25,25 @@ REPLAY_FORWARD = "REPLAY_FORWARD"
 
 SavedTensorSignature = tuple[tuple[int, ...], str, int]
 
+# FSDP2/DTensor can briefly expose a Python storage whose pointer is invalid
+# while a shard is being resharded. Storage identity is audit metadata, not a
+# reason to abort the training graph; callers conservatively keep such tensors.
+StorageId = tuple[str, int, int]
 
-def _storage_id(tensor: torch.Tensor) -> tuple[str, int, int]:
-    storage = tensor.untyped_storage()
-    return (str(tensor.device), int(storage.data_ptr()), int(storage.nbytes()))
+
+def _storage_id(tensor: torch.Tensor) -> StorageId | None:
+    try:
+        storage = tensor.untyped_storage()
+        return (str(tensor.device), int(storage.data_ptr()), int(storage.nbytes()))
+    except (RuntimeError, ValueError, TypeError):
+        return None
+
+
+def _storage_nbytes(tensor: torch.Tensor) -> int | None:
+    try:
+        return int(tensor.untyped_storage().nbytes())
+    except (RuntimeError, ValueError, TypeError):
+        return None
 
 
 def _alias_id(tensor: torch.Tensor) -> tuple[int, int, tuple[int, ...], tuple[int, ...], str]:
@@ -72,7 +87,7 @@ class AuditedSavedTensorOffloader:
         detailed_events: bool = True,
         allowed_offload_signatures: frozenset[SavedTensorSignature] | None = None,
         dynamic_excluded_storage_providers: tuple[
-            Callable[[tuple[str, int, int]], Mapping[str, str] | None], ...
+            Callable[[StorageId], Mapping[str, str] | None], ...
         ] = (),
     ) -> None:
         self.model = model
@@ -113,6 +128,7 @@ class AuditedSavedTensorOffloader:
             "offloaded_storage_bytes": 0,
             "peak_live_cpu_bytes": 0,
             "live_cpu_bytes": 0,
+            "kept_invalid_storage_count": 0,
         }
 
     def _write_event(self, event: dict[str, Any]) -> None:
@@ -148,13 +164,20 @@ class AuditedSavedTensorOffloader:
                 if tensor.device.type != "cuda" and self.pin_memory:
                     continue
                 sid = _storage_id(tensor)
+                if sid is None:
+                    # A transient invalid DTensor/FSDP storage cannot be
+                    # compared by pointer. Keep it on device rather than
+                    # attempting an unsafe copy or aborting the graph.
+                    continue
                 previous = excluded.get(sid)
                 if previous is not None and previous != {"kind": kind, "name": name}:
                     continue
                 excluded[sid] = {"kind": kind, "name": name}
         self._excluded = excluded
 
-    def _excluded_owner(self, sid: tuple[str, int, int]) -> Mapping[str, str] | None:
+    def _excluded_owner(self, sid: StorageId | None) -> Mapping[str, str] | None:
+        if sid is None:
+            return None
         owner = self._excluded.get(sid)
         if owner is not None:
             return owner
@@ -168,10 +191,11 @@ class AuditedSavedTensorOffloader:
         self.stats["pack_count"] += 1
         sid = _storage_id(tensor)
         alias = _alias_id(tensor)
+        storage_bytes = _storage_nbytes(tensor)
         base_event = {
             "event": "pack",
             "save_generation": ORIGINAL_FORWARD,
-            "storage_id": list(sid),
+            "storage_id": list(sid) if sid is not None else None,
             "alias_id": [alias[0], alias[1]],
             "shape": list(tensor.shape),
             "stride": list(tensor.stride()),
@@ -179,12 +203,20 @@ class AuditedSavedTensorOffloader:
             "dtype": str(tensor.dtype),
             "device": str(tensor.device),
             "logical_bytes": _logical_bytes(tensor),
-            "storage_bytes": int(tensor.untyped_storage().nbytes()),
+            "storage_bytes": storage_bytes,
             "contiguous": bool(tensor.is_contiguous()),
             "zero_stride": any(size > 1 and stride == 0 for size, stride in zip(tensor.shape, tensor.stride())),
             "requires_grad": bool(tensor.requires_grad),
             "leaf": bool(tensor.is_leaf),
         }
+
+        if sid is None or storage_bytes is None:
+            # FSDP2 can expose a saved tensor backed by an invalid Python
+            # storage wrapper during resharding. It is not safe to identify or
+            # copy that storage, so conservatively retain it on its device.
+            self.stats["kept_invalid_storage_count"] += 1
+            self._write_event({**base_event, "policy": "KEEP_INVALID_STORAGE"})
+            return _KeepOnDevice(tensor)
 
         excluded = self._excluded_owner(sid)
         if excluded is not None:
@@ -369,7 +401,7 @@ def install_activation_offload_hooks(
     detailed_events: bool = True,
     allowed_offload_signatures: frozenset[SavedTensorSignature] | None = None,
     dynamic_excluded_storage_providers: tuple[
-        Callable[[tuple[str, int, int]], Mapping[str, str] | None], ...
+        Callable[[StorageId], Mapping[str, str] | None], ...
     ] = (),
 ) -> ActivationOffloadRegistration:
     """Install selected-call-only hooks on a physical backbone."""

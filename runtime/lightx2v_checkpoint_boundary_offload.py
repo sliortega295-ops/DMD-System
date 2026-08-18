@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -54,6 +55,13 @@ def _tensor_metadata(value: torch.Tensor) -> dict[str, Any]:
     }
 
 
+def _matches_pattern(actual: list[int], expected: Any) -> bool:
+    """Match a manifest list where ``None`` is a deliberately dynamic field."""
+    if not isinstance(expected, list) or len(actual) != len(expected):
+        return False
+    return all(item is None or int(item) == int(value) for item, value in zip(expected, actual))
+
+
 @dataclass(frozen=True)
 class BoundaryManifest:
     path: Path
@@ -65,8 +73,14 @@ class BoundaryManifest:
     source: Mapping[str, Any]
 
     @classmethod
-    def load(cls, path: Path) -> "BoundaryManifest":
+    def load(cls, path: Path, *, rank: int | None = None) -> "BoundaryManifest":
         path = Path(path).resolve()
+        if path.is_dir():
+            if rank is None:
+                raise RuntimeError(
+                    "rank-qualified boundary manifest directory requires rank"
+                )
+            path = path / f"rank_{int(rank):03d}.json"
         if not path.is_file():
             raise FileNotFoundError(f"boundary offload manifest missing: {path}")
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -204,6 +218,25 @@ def _check_boundary(
             raise RuntimeError(
                 f"boundary metadata mismatch for block {block_index} field {key}: "
                 f"{actual[key]!r} != {expected[key]!r}"
+            )
+    for key in ("shape_pattern", "stride_pattern"):
+        if key in expected and not _matches_pattern(actual[key[:-8]], expected[key]):
+            raise RuntimeError(
+                f"boundary metadata mismatch for block {block_index} field {key}: "
+                f"{actual[key[:-8]]!r} does not match {expected[key]!r}"
+            )
+    for key in ("storage_bytes", "logical_bytes"):
+        lower = expected.get(f"{key}_min")
+        upper = expected.get(f"{key}_max")
+        if lower is not None and int(actual[key]) < int(lower):
+            raise RuntimeError(
+                f"boundary metadata mismatch for block {block_index} field {key}: "
+                f"{actual[key]!r} < minimum {lower!r}"
+            )
+        if upper is not None and int(actual[key]) > int(upper):
+            raise RuntimeError(
+                f"boundary metadata mismatch for block {block_index} field {key}: "
+                f"{actual[key]!r} > maximum {upper!r}"
             )
     return actual
 
@@ -353,7 +386,20 @@ class BoundaryCensusRegistration:
     post_hook: Any
     block_hooks: list[Any]
     rows: list[dict[str, Any]]
+    rank: int
+    _written_rows: int = 0
+    _forward_index: int = 0
     closed: bool = False
+
+    def _flush_rows(self) -> None:
+        if not self.rows:
+            return
+        self.output_path.parent.mkdir(parents=True, exist_ok=True)
+        with self.output_path.open("a", encoding="utf-8") as handle:
+            for row in self.rows:
+                handle.write(json.dumps(row, sort_keys=True) + "\n")
+        self._written_rows += len(self.rows)
+        self.rows.clear()
 
     def remove(self) -> None:
         if self.closed:
@@ -362,11 +408,9 @@ class BoundaryCensusRegistration:
         self.post_hook.remove()
         for hook in self.block_hooks:
             hook.remove()
+        self._flush_rows()
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
-        self.output_path.write_text(
-            "".join(json.dumps(row, sort_keys=True) + "\n" for row in self.rows),
-            encoding="utf-8",
-        )
+        self.output_path.touch(exist_ok=True)
         self.closed = True
 
 
@@ -385,15 +429,23 @@ def install_boundary_census(
     output_path = Path(output_path)
     if output_path.exists():
         raise FileExistsError(f"refusing to overwrite boundary census: {output_path}")
-    state = {"active": False, "seen": set()}
+    state = {"active": False, "seen": set(), "forward_index": 0}
     rows: list[dict[str, Any]] = []
+    rank = int(os.environ.get("RANK", "-1"))
 
     def top_pre(_module: Any, _inputs: tuple[Any, ...]) -> None:
         state["active"] = not torch.is_grad_enabled()
         state["seen"] = set()
+        state["forward_index"] += 1
 
     def top_post(_module: Any, _inputs: tuple[Any, ...], _output: Any) -> None:
+        was_active = bool(state["active"])
         state["active"] = False
+        if was_active:
+            # Flush after every no-grad rollout. A later grad-enabled call may
+            # stall/OOM, and the census must still retain all rank-local
+            # boundary metadata collected before that call.
+            registration._flush_rows()
 
     def block_pre(index: int, _module: Any, inputs: tuple[Any, ...]) -> None:
         if not state["active"] or index in state["seen"]:
@@ -402,7 +454,14 @@ def install_boundary_census(
             raise RuntimeError(f"boundary census block {index} has no tensor input")
         value = inputs[0]
         state["seen"].add(index)
-        rows.append({"block_index": index, **_tensor_metadata(value)})
+        rows.append(
+            {
+                "rank": rank,
+                "forward_index": int(state["forward_index"]),
+                "block_index": index,
+                **_tensor_metadata(value),
+            }
+        )
 
     pre = transformer.register_forward_pre_hook(top_pre)
     post = transformer.register_forward_hook(top_post, always_call=True)
@@ -414,5 +473,6 @@ def install_boundary_census(
         post_hook=post,
         block_hooks=block_hooks,
         rows=rows,
+        rank=rank,
     )
     return registration
