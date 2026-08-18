@@ -139,6 +139,10 @@ def test_boundary_policy_rejects_non_native_segment(tmp_path: Path) -> None:
 
 def test_census_flushes_each_no_grad_forward_without_retaining_rows(tmp_path: Path) -> None:
     model = _ToyMiniMax()
+    # The census itself is independent of checkpoint semantics.  Avoid the
+    # PyTorch no-grad checkpoint path in this tiny CPU unit test (the real
+    # MiniMax canary exercises native checkpointing on CUDA).
+    model._gradient_checkpointing_func = lambda fn, value: fn(value)
     output = tmp_path / "census.jsonl"
     registration = install_boundary_census(model, output_path=output)
     with torch.no_grad():
