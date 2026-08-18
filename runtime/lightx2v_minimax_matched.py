@@ -150,8 +150,12 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
             self._benchmark_phase_order: list[str] = []
             self._memory_attribution = None
             self._memory_call_index = 0
+            self._segment_debug_events: list[dict[str, Any]] = []
             self._student_activation_offload = os.environ.get(
                 "LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD", "0"
+            ) == "1"
+            self._segment_debug = os.environ.get(
+                "LIGHTX2V_MINIMAX_SEGMENT_DEBUG", "0"
             ) == "1"
             raw_segment = os.environ.get("LIGHTX2V_MINIMAX_CHECKPOINT_SEGMENT", "0")
             self._checkpoint_segment = int(raw_segment)
@@ -173,7 +177,18 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
                 # Both trainable backbones use the same checkpoint contract.  The
                 # teacher is no-grad and is intentionally left untouched.
                 for role, model in (("student", self.model), ("fake", self.fake_model)):
-                    installed[role] = install_segmented_checkpoint(model, self._checkpoint_segment)
+                    transformer = getattr(model, "transformer", None)
+                    if transformer is None and hasattr(model, "denoiser_module"):
+                        transformer = model.denoiser_module()
+                    if transformer is None:
+                        raise RuntimeError(f"MiniMax matched benchmark has no {role} transformer")
+                    if self._segment_debug:
+                        transformer._distillschedule_segment_debug_hook = (
+                            lambda event, role=role: self._record_segment_debug_event(role, event)
+                        )
+                    installed[role] = install_segmented_checkpoint(
+                        model, self._checkpoint_segment, debug=self._segment_debug
+                    )
                 self._segmented_checkpoint_receipt = installed
             else:
                 self._segmented_checkpoint_receipt = {
@@ -184,6 +199,28 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
                     "activation_offload": False,
                 }
             return result
+
+        def _record_segment_debug_event(self, role: str, event: dict[str, Any]) -> None:
+            """Keep only scalar progress metadata for the optional canary receipt."""
+            value = {"role": role}
+            for key, item in event.items():
+                if item is None or isinstance(item, (bool, int, float, str)):
+                    value[key] = item
+                else:
+                    value[key] = repr(item)
+            attribution = self._memory_attribution
+            if attribution is not None:
+                value.update(
+                    {
+                        "saved_tensor_count": attribution.pack_count - attribution.unpack_count,
+                        "saved_tensor_bytes": attribution.saved_live_bytes,
+                        "saved_tensor_pack_count": attribution.pack_count,
+                        "saved_tensor_pack_bytes": attribution.pack_bytes,
+                        "saved_tensor_unpack_count": attribution.unpack_count,
+                        "saved_tensor_unpack_bytes": attribution.unpack_bytes,
+                    }
+                )
+            self._segment_debug_events.append(value)
 
         def _memory_attribution_begin(self) -> None:
             if self._memory_attribution is not None:
@@ -512,6 +549,9 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
                     "fsdp_granularity": "one_fully_shard_per_transformer_block",
                     "activation_offload": False,
                 }),
+                "segment_debug_events": list(self._segment_debug_events)
+                if self._segment_debug
+                else [],
                 **self._benchmark_metadata,
             }
             errors = validate_matched_receipt(value)

@@ -83,6 +83,29 @@ Correctness/acceptance requires:
 
 Formal performance requires at least three independent unprofiled runs.
 
+## Optional segmented-checkpoint canary
+
+The no-offload capacity canary may replace the upstream per-block activation
+checkpoint with a bounded group of consecutive blocks.  FSDP2 remains one
+`fully_shard` boundary per transformer block; only the autograd checkpoint
+boundary changes.  Production values are limited to `segment=2,4,5,8` and the
+canary is not a timing result.
+
+This helper is fail-closed against the exact prepared Diffusers source:
+
+```text
+Diffusers version:       0.40.0.dev0
+Diffusers source commit: 9284607295a09f759aadd65ed08f48b35feea6d9
+MiniMax forward SHA-256: 24fce9f0721ede96867a8b52ceb0d80431b9c2f3d576844d2b4481a3a40c0c6b
+```
+
+`LIGHTX2V_MINIMAX_SEGMENT_DEBUG=1` is diagnostic-only.  It records segment and
+block enter/exit/error events, allocator counters, and any saved-tensor scalar
+census supplied by the runtime; it does not synchronize, copy, or retain a
+tensor.  A CPU semantic test executes the native reference (`segment=1`) and
+the production candidates, checking outputs, trainable gradients, per-block
+hook counts, and checkpoint-call counts (`50, 25, 13, 10, 7` respectively).
+
 ## Comparison boundary
 
 The current Helios PR16 result is approximately 141.5 s for a different
