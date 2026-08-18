@@ -73,6 +73,7 @@ def main() -> int:
         "attention_backend": os.environ.get("LIGHTX2V_MINIMAX_ATTENTION_BACKEND", "_flash_3_hub"),
         "student_activation_offload": os.environ.get("LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD", "0"),
         "checkpoint_segment": os.environ.get("LIGHTX2V_MINIMAX_CHECKPOINT_SEGMENT", "0"),
+        "canary_stage": os.environ.get("LIGHTX2V_MINIMAX_CANARY_STAGE", "full"),
         "activation_offload_disabled_for_segmented_canary": os.environ.get(
             "LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD", "0"
         ) == "0",
@@ -93,12 +94,18 @@ def main() -> int:
         trainer.set_model(model)
         trainer.set_data(dataloader_train, None)
         trainer.train()
-        trainer.write_benchmark_receipt()
+        if os.environ.get("LIGHTX2V_MINIMAX_CANARY_STAGE", "full") == "full":
+            trainer.write_benchmark_receipt()
+        else:
+            trainer.write_canary_receipt()
         return 0
     finally:
         close_attribution = getattr(trainer, "close_memory_attribution", None)
         if close_attribution is not None:
             close_attribution()
+        close_segment_debug = getattr(trainer, "close_segment_debug", None)
+        if close_segment_debug is not None:
+            close_segment_debug()
         cleanup_distributed()
 
 

@@ -21,6 +21,7 @@ EXPECTED_BACKWARD_COUNTS = {"student": 1, "fake": 5}
 EXPECTED_STAGE_SEQUENCE = ["student"] + ["fake"] * 5
 EXPECTED_END_STEP_IDX = 3
 EXPECTED_FAKE_UPDATES = 5
+CANARY_STAGES = ("full", "student_forward", "student_update")
 
 
 def expected_application_inventory() -> dict[str, Any]:
@@ -151,6 +152,8 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
             self._memory_attribution = None
             self._memory_call_index = 0
             self._segment_debug_events: list[dict[str, Any]] = []
+            self._segment_debug_handle = None
+            self._canary_started = False
             self._student_activation_offload = os.environ.get(
                 "LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD", "0"
             ) == "1"
@@ -159,6 +162,14 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
             ) == "1"
             raw_segment = os.environ.get("LIGHTX2V_MINIMAX_CHECKPOINT_SEGMENT", "0")
             self._checkpoint_segment = int(raw_segment)
+            self._canary_stage = os.environ.get("LIGHTX2V_MINIMAX_CANARY_STAGE", "full")
+            if self._canary_stage not in CANARY_STAGES:
+                raise RuntimeError(
+                    "LIGHTX2V_MINIMAX_CANARY_STAGE must be one of "
+                    f"{CANARY_STAGES}, got {self._canary_stage!r}"
+                )
+            if self._canary_stage != "full" and mode != "native":
+                raise RuntimeError("student canary stages are only valid for native mode")
             if self._checkpoint_segment not in (0, 2, 4, 5, 8):
                 raise RuntimeError(
                     "LIGHTX2V_MINIMAX_CHECKPOINT_SEGMENT must be 0 (native) or one of 2,4,5,8"
@@ -186,6 +197,9 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
                         transformer._distillschedule_segment_debug_hook = (
                             lambda event, role=role: self._record_segment_debug_event(role, event)
                         )
+                        transformer._distillschedule_saved_tensor_stats = (
+                            lambda: self._segment_saved_tensor_stats()
+                        )
                     installed[role] = install_segmented_checkpoint(
                         model, self._checkpoint_segment, debug=self._segment_debug
                     )
@@ -199,6 +213,26 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
                     "activation_offload": False,
                 }
             return result
+
+        def _segment_saved_tensor_stats(self) -> dict[str, int]:
+            attribution = self._memory_attribution
+            if attribution is None:
+                return {
+                    "saved_tensor_count": 0,
+                    "saved_tensor_bytes": 0,
+                    "saved_tensor_pack_count": 0,
+                    "saved_tensor_pack_bytes": 0,
+                    "saved_tensor_unpack_count": 0,
+                    "saved_tensor_unpack_bytes": 0,
+                }
+            return {
+                "saved_tensor_count": attribution.pack_count - attribution.unpack_count,
+                "saved_tensor_bytes": attribution.saved_live_bytes,
+                "saved_tensor_pack_count": attribution.pack_count,
+                "saved_tensor_pack_bytes": attribution.pack_bytes,
+                "saved_tensor_unpack_count": attribution.unpack_count,
+                "saved_tensor_unpack_bytes": attribution.unpack_bytes,
+            }
 
         def _record_segment_debug_event(self, role: str, event: dict[str, Any]) -> None:
             """Keep only scalar progress metadata for the optional canary receipt."""
@@ -221,6 +255,12 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
                     }
                 )
             self._segment_debug_events.append(value)
+            if self._segment_debug_handle is None:
+                path = self._benchmark_receipt_dir / f"rank_{get_rank():03d}.segment_debug.jsonl"
+                path.parent.mkdir(parents=True, exist_ok=True)
+                self._segment_debug_handle = path.open("x", encoding="utf-8")
+            self._segment_debug_handle.write(json.dumps(value, sort_keys=True) + "\n")
+            self._segment_debug_handle.flush()
 
         def _memory_attribution_begin(self) -> None:
             if self._memory_attribution is not None:
@@ -246,6 +286,12 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
         def close_memory_attribution(self) -> None:
             if self._memory_attribution is not None:
                 self._memory_attribution.close()
+
+        def close_segment_debug(self) -> None:
+            if self._segment_debug_handle is not None:
+                self._segment_debug_handle.flush()
+                self._segment_debug_handle.close()
+                self._segment_debug_handle = None
 
         def _iter_train_samples(self):
             parent = super()._iter_train_samples()
@@ -329,6 +375,27 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
             torch.cuda.nvtx.range_push(f"MINIMAX_MATCHED_CYCLE/{self.benchmark_mode}")
             self._benchmark_started = time.perf_counter()
 
+        def _canary_begin(self) -> None:
+            if self._canary_started:
+                return
+            barrier()
+            torch.cuda.synchronize(self.model.device)
+            torch.cuda.reset_peak_memory_stats(self.model.device)
+            self._memory_attribution_begin()
+            if self._memory_attribution is not None:
+                self._memory_attribution.record(
+                    "canary_begin", phase=self._canary_stage, optimizers=self._memory_optimizers()
+                )
+            torch.cuda.nvtx.range_push(f"MINIMAX_CANARY/{self._canary_stage}")
+            self._canary_started = True
+
+        def _canary_finish(self) -> None:
+            if not self._canary_started:
+                return
+            torch.cuda.synchronize(self.model.device)
+            torch.cuda.nvtx.range_pop()
+            barrier()
+
         def _benchmark_note_stage_end(self, stage: str) -> None:
             if stage not in EXPECTED_BACKWARD_COUNTS:
                 raise ValueError(stage)
@@ -355,7 +422,10 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
         def _train_one_stage(self, samples: Any, stage: str, grad_accum_iters: int):
             if int(grad_accum_iters) != 1:
                 raise RuntimeError("MiniMax matched benchmark requires gradient_accumulation_iters=1")
-            self._benchmark_begin()
+            if self._canary_stage == "full":
+                self._benchmark_begin()
+            else:
+                self._canary_begin()
             # This is an opt-in capacity canary only.  The context must cover
             # both the Student forward and the backward performed inside the
             # upstream stage implementation; wrapping only forward_loss would
@@ -497,6 +567,41 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
             )
 
         def train(self):
+            if self._canary_stage == "student_forward":
+                self.setup(resume_ckpt_path=None)
+                self._assert_contract()
+                samples = self._iter_train_samples()
+                sample = next(samples)
+                conditions = self._encode_conditions(sample)
+                latent_shape = self._latent_shape(sample)
+                initial_noise = self.sample_initial_latents(latent_shape)
+                self._canary_begin()
+                context = (
+                    self._memory_attribution.saved_tensors()
+                    if self._memory_attribution is not None
+                    else contextlib.nullcontext()
+                )
+                with context:
+                    generated = self.run_back_simulation(
+                        conditions[0],
+                        latent_shape,
+                        EXPECTED_END_STEP_IDX,
+                        grad_enabled=True,
+                        xt=initial_noise,
+                    )
+                self._benchmark_phase_order.append("student_grad_forward_only")
+                self._canary_forward_shape = [list(value.shape) for value in generated]
+                self._canary_forward_dtype = [str(value.dtype) for value in generated]
+                self._canary_finish()
+                return
+            if self._canary_stage == "student_update":
+                self.setup(resume_ckpt_path=None)
+                self._assert_contract()
+                samples = self._iter_train_samples()
+                self._benchmark_phase_order.append("student_update_only")
+                self._train_one_stage(samples, stage="student", grad_accum_iters=1)
+                self._canary_finish()
+                return
             if self.benchmark_mode == "native":
                 self._assert_contract()
                 self._benchmark_phase_order = [
@@ -509,6 +614,62 @@ def create_minimax_matched_trainer(mode: str, *, receipt_dir: Path, metadata: di
                 ]
                 return super().train()
             return self._train_distillschedule()
+
+        def canary_receipt(self) -> dict[str, Any]:
+            expected_forward = {"student": 4, "fake": 0, "teacher": 0}
+            expected_grad = {"student": 1, "fake": 0, "teacher": 0}
+            expected_backward = {"student": 0, "fake": 0}
+            if self._canary_stage == "student_update":
+                expected_backward["student"] = 1
+            errors: list[str] = []
+            if self._benchmark_forward_counts != expected_forward:
+                errors.append(f"forward_counts={self._benchmark_forward_counts!r}")
+            if self._benchmark_grad_forward_counts != expected_grad:
+                errors.append(f"grad_forward_counts={self._benchmark_grad_forward_counts!r}")
+            if self._benchmark_backward_counts != expected_backward:
+                errors.append(f"backward_counts={self._benchmark_backward_counts!r}")
+            value = {
+                "schema_version": "distillschedule.lightx2v_minimax_canary.v1",
+                "status": "PASS" if not errors else "FAIL",
+                "mode": self.benchmark_mode,
+                "canary_stage": self._canary_stage,
+                "rank": get_rank(),
+                "world_size": get_world_size(),
+                "application_inventory": {
+                    "forward_counts": dict(self._benchmark_forward_counts),
+                    "grad_forward_counts": dict(self._benchmark_grad_forward_counts),
+                    "backward_counts": dict(self._benchmark_backward_counts),
+                    "total_forwards": sum(self._benchmark_forward_counts.values()),
+                    "total_backward_graphs": sum(self._benchmark_backward_counts.values()),
+                },
+                "phase_order": list(self._benchmark_phase_order),
+                "segment_debug_events": list(self._segment_debug_events),
+                "forward_output_shapes": getattr(self, "_canary_forward_shape", []),
+                "forward_output_dtypes": getattr(self, "_canary_forward_dtype", []),
+                "max_allocated_bytes": int(torch.cuda.max_memory_allocated(self.model.device)),
+                "max_reserved_bytes": int(torch.cuda.max_memory_reserved(self.model.device)),
+                "checkpoint_policy": getattr(self, "_segmented_checkpoint_receipt", {
+                    "enabled": False,
+                    "segment": 0,
+                    "block_count": 50,
+                    "fsdp_granularity": "one_fully_shard_per_transformer_block",
+                    "activation_offload": False,
+                }),
+                **self._benchmark_metadata,
+            }
+            if errors:
+                value["contract_errors"] = errors
+            return value
+
+        def write_canary_receipt(self) -> Path:
+            value = self.canary_receipt()
+            target = self._benchmark_receipt_dir / f"rank_{get_rank():03d}.json"
+            if target.exists():
+                raise FileExistsError(target)
+            _atomic_json(target, value)
+            if value["status"] != "PASS":
+                raise RuntimeError(f"MiniMax canary contract failed: {value.get('contract_errors')}")
+            return target
 
         def benchmark_receipt(self) -> dict[str, Any]:
             if self._benchmark_global_seconds is None or self._benchmark_local_seconds is None:

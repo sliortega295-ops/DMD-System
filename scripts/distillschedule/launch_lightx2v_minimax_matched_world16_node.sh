@@ -91,6 +91,7 @@ export LIGHTX2V_MINIMAX_MEMORY_ATTRIBUTION_DIR="$ATTRIBUTION_DIR"
 export LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD="${LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD:-0}"
 export LIGHTX2V_MINIMAX_CHECKPOINT_SEGMENT="${LIGHTX2V_MINIMAX_CHECKPOINT_SEGMENT:-0}"
 export LIGHTX2V_MINIMAX_SEGMENT_DEBUG="${LIGHTX2V_MINIMAX_SEGMENT_DEBUG:-0}"
+export LIGHTX2V_MINIMAX_CANARY_STAGE="${LIGHTX2V_MINIMAX_CANARY_STAGE:-full}"
 # Match the verified preparation substrate: direct huggingface.co is
 # unroutable on the training nodes, while the mirror-backed shared cache holds
 # the pinned flash-attn3 kernel fetched during the FSDP-first gates.

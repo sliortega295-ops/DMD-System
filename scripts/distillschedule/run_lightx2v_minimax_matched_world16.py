@@ -80,6 +80,12 @@ def parser() -> argparse.ArgumentParser:
         default=0,
         help="MiniMax-H3 activation checkpoint segment; 0 keeps upstream per-block checkpoints",
     )
+    value.add_argument(
+        "--canary-stage",
+        choices=("full", "student_forward", "student_update"),
+        default="full",
+        help="bounded native canary stage; full runs the normal matched cycle",
+    )
     value.add_argument("--master-addr")
     value.add_argument("--master-port", type=int, default=29980)
     value.add_argument("--remote-root", type=Path, default=Path("/share/project/shuchenweng/yongyan_liu/DMD-System_fsdp2_p0_20260815"))
@@ -111,6 +117,7 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "LIGHTX2V_BENCHMARK_SOURCE_ROOT": str(args.benchmark_source_root or (args.remote_root / "artifacts/source/lightx2v-minimax-d034-benchmark")),
         "LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD": "0",
         "LIGHTX2V_MINIMAX_CHECKPOINT_SEGMENT": str(args.checkpoint_segment),
+        "LIGHTX2V_MINIMAX_CANARY_STAGE": args.canary_stage,
         "LIGHTX2V_MINIMAX_MEMORY_ATTRIBUTION": os.environ.get("LIGHTX2V_MINIMAX_MEMORY_ATTRIBUTION", "0"),
         "LIGHTX2V_MINIMAX_LOCK_PATH": f"/tmp/lyy-experiments/DMD-System/{args.run_id}/node_{node}.lock",
     }
@@ -146,13 +153,18 @@ def _cancel(args: argparse.Namespace, node: int) -> None:
 def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
     run_root = _run_root(args)
     summary = run_root / "summary.json"
-    script = args.remote_root / "scripts/distillschedule/summarize_lightx2v_minimax_matched_world16.py"
+    if args.canary_stage == "full":
+        script = args.remote_root / "scripts/distillschedule/summarize_lightx2v_minimax_matched_world16.py"
+    else:
+        script = args.remote_root / "scripts/distillschedule/summarize_lightx2v_minimax_canary_world16.py"
     command = (
         f"PYTHONPATH={shlex.quote(str(args.remote_root))}:{shlex.quote(str(args.remote_root / 'src'))} "
         f"python3 {shlex.quote(str(script))} "
         f"--run-root {shlex.quote(str(run_root))} --mode {shlex.quote(args.mode)} "
         f"--expected-head {shlex.quote(args.expected_head)} --output {shlex.quote(str(summary))}"
     )
+    if args.canary_stage != "full":
+        command += f" --canary-stage {shlex.quote(args.canary_stage)}"
     completed = subprocess.run(_ssh(args.hosts[0], command), check=False, timeout=300)
     raw = subprocess.check_output(_ssh(args.hosts[0], f"cat {shlex.quote(str(summary))}"), timeout=60)
     local.mkdir(parents=True, exist_ok=True)
@@ -200,6 +212,15 @@ def main() -> int:
             for worker in workers:
                 _cancel(args, worker.node)
                 worker.terminate()
+            # Canary failures are evidence, not a reason to discard the segment
+            # progress JSONL and node OOM receipts.  Summarize them fail-closed
+            # before returning the non-zero status to the caller.
+            if args.canary_stage != "full":
+                try:
+                    value = _summarize(args, local)
+                    print(json.dumps(value, indent=2, sort_keys=True))
+                except Exception as summarize_error:
+                    (local / "canary_summary_error.txt").write_text(repr(summarize_error) + "\n")
             raise RuntimeError(f"matched MiniMax {args.mode} failed/timed out: returncodes={codes}")
         value = _summarize(args, local)
         print(json.dumps(value, indent=2, sort_keys=True))
