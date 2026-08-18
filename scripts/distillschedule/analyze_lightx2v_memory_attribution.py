@@ -15,7 +15,11 @@ from pathlib import Path
 from typing import Any
 
 GIB = 1024**3
-OOM_RE = re.compile(r"Tried to allocate ([0-9.]+) GiB.*?free.*?([0-9.]+) GiB.*?allocated.*?([0-9.]+) GiB.*?reserved.*?([0-9.]+) GiB", re.S)
+OOM_RE = re.compile(
+    r"Tried to allocate ([0-9.]+) GiB.*?([0-9.]+) GiB is free.*?"
+    r"allocated memory ([0-9.]+) GiB is allocated by PyTorch, and ([0-9.]+) GiB is reserved",
+    re.S,
+)
 
 
 def _gib(value: int | float) -> float:
@@ -104,10 +108,37 @@ def _write_csv(path: Path, records: list[dict[str, Any]]) -> None:
         writer.writerows(records)
 
 
+def _construction_reference(path: Path | None) -> dict[str, Any]:
+    if path is None or not path.is_file():
+        return {"status": "NOT_AVAILABLE"}
+    value = json.loads(path.read_text(encoding="utf-8"))
+    records = value.get("records", [])
+    hbm: dict[str, int] = {}
+    previous = 0
+    role_deltas: dict[str, int] = {}
+    for record in records:
+        label = str(record.get("label", ""))
+        allocated = int(record.get("hbm", {}).get("allocated_bytes", 0))
+        if label.endswith("after_fully_shard"):
+            role = label.split(".", 1)[0]
+            hbm[role] = allocated
+            role_deltas[role] = max(0, allocated - previous)
+            previous = allocated
+    return {
+        "status": "REFERENCE_ONLY",
+        "source": str(path),
+        "final_allocated_bytes": int(value.get("final_hbm", {}).get("allocated_bytes", 0)),
+        "role_after_fully_shard_allocated_bytes": hbm,
+        "role_increment_allocated_bytes": role_deltas,
+        "note": "same-layout Gate-B construction reference; not a category measured by this failed cycle",
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--construction-reference", type=Path)
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     rank_files = sorted(args.input_dir.glob("rank_*.jsonl"))
@@ -138,6 +169,7 @@ def main() -> int:
         "rank_count": len(rank_files),
         "ranks": ranks,
         "oom_ranks": [item["rank"] for item in oom_ranks],
+        "construction_reference": _construction_reference(args.construction_reference),
         "category_semantics": {
             "observed_parameter_bytes": "sum of local parameter metadata at peak; not a CUDA allocator attribution",
             "observed_gradient_bytes": "sum of non-null local gradients at peak",
@@ -176,6 +208,10 @@ def main() -> int:
             optim=_gib(item.get("observed_optimizer_cuda_bytes", 0)), saved=_gib(item.get("saved_tensor_live_estimate_bytes", 0)),
             resid=_gib(item.get("allocator_active_residual_bytes", 0)), free=_gib(item.get("driver_free_bytes", 0))))
     lines += [
+        "",
+        "## Same-layout static construction reference",
+        "",
+        json.dumps(summary["construction_reference"], indent=2, sort_keys=True),
         "",
         "## Boundaries",
         "",
