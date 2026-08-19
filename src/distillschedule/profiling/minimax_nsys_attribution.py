@@ -72,6 +72,11 @@ class StageWindow:
     stage: str
     index: int
     interval: Interval
+    # The profiling wrapper's outer ``student/0`` range can legally enclose
+    # the nested fake updates.  In that case the cycle marker and fake ranges
+    # provide the logical student boundary; retain the raw range for audit.
+    window_source: str = "nvtx_stage_marker"
+    raw_interval: Interval | None = None
 
     @property
     def key(self) -> str:
@@ -298,24 +303,87 @@ def _discover_windows(
             value[f"{grad}_roles"][role] += 1
 
     cycles: dict[int, tuple[int, Interval]] = {}
+    cycle_markers: dict[int, Interval] = {}
     for pid, rank in pid_to_rank.items():
         values = cycle_rows_by_pid.get(pid, [])
         if len(values) != 1:
             raise ValueError(
                 f"rank {rank} / pid {pid} expected one {cycle_label!r} range, found {len(values)}"
             )
+        cycle_markers[rank] = values[0]
         cycles[rank] = (pid, values[0])
 
     for rank, values in stages_by_rank.items():
         if rank not in cycles:
             raise ValueError(f"rank {rank} has stage markers but no exact cycle marker")
-        cycle = cycles[rank][1]
+        cycle_marker = cycle_markers[rank]
+        ordered = sorted(values, key=lambda item: (item.interval.start_ns, item.index))
+        # In native MiniMax, the cycle timer is opened by the benchmark
+        # trainer, while the profiling wrapper opens the outer student range.
+        # Depending on the Python/NVTX nesting observed by Nsight, the cycle
+        # marker can close at the first fake update even though the six stage
+        # ranges cover the complete one-cycle workload.  Never clip away the
+        # five fake stages: reconstruct the cycle envelope from the exact
+        # rank-qualified stage markers, retaining the cycle marker start as the
+        # timer boundary.
+        stage_envelope_end = max(value.interval.end_ns for value in ordered)
+        cycle_end = max(cycle_marker.end_ns, stage_envelope_end)
+        cycles[rank] = (cycles[rank][0], Interval(cycle_marker.start_ns, cycle_end))
+        first_fake = next(
+            (value for value in ordered if value.stage == "fake" and value.index == 0),
+            None,
+        )
+        if first_fake is not None and not any(
+            value.stage == "student" and value.index == 0 for value in ordered
+        ):
+            # Nsight can omit a range that was opened just before capture
+            # started while retaining the nested fake ranges and cycle marker.
+            # Keep this rank auditable: synthesize only the logical boundary
+            # needed for stage aggregation and label it as inferred, rather
+            # than pretending that the missing NVTX range was observed.
+            ordered.append(
+                StageWindow(
+                    rank=rank,
+                    pid=first_fake.pid,
+                    stage="student",
+                    index=0,
+                    interval=Interval(cycle_marker.start_ns, first_fake.interval.start_ns),
+                    window_source="cycle_marker_to_first_fake_inferred_missing_nvtx",
+                    raw_interval=None,
+                )
+            )
+            ordered.sort(key=lambda item: (item.interval.start_ns, item.index, item.stage))
         clipped: list[StageWindow] = []
-        for value in sorted(values, key=lambda item: (item.interval.start_ns, item.index)):
-            interval = value.interval.clip(cycle)
+        for value in ordered:
+            raw_interval = value.interval
+            if value.stage == "student" and first_fake is not None:
+                # The native student range is the outer range around all
+                # nested fake updates.  Use the cycle start -> fake/0 start
+                # interval as the logical Student update and expose the raw
+                # wrapper interval in the report.
+                logical_end = first_fake.interval.start_ns
+                logical = Interval(cycle_marker.start_ns, logical_end)
+                clipped.append(
+                    dataclasses.replace(
+                        value,
+                        interval=logical,
+                        window_source=(
+                            value.window_source
+                            if value.window_source != "nvtx_stage_marker"
+                            else "cycle_marker_to_first_fake"
+                        ),
+                        raw_interval=(
+                            raw_interval
+                            if value.window_source == "nvtx_stage_marker"
+                            else value.raw_interval
+                        ),
+                    )
+                )
+                continue
+            interval = raw_interval.clip(cycles[rank][1])
             if interval is None:
                 continue
-            clipped.append(dataclasses.replace(value, interval=interval))
+            clipped.append(dataclasses.replace(value, interval=interval, raw_interval=raw_interval))
         stages_by_rank[rank] = clipped
 
     normalized_counts: dict[int, dict[str, Any]] = {}
@@ -708,6 +776,12 @@ def _finish_rank(
                 "stage": stage.stage,
                 "index": stage.index,
                 "window": dataclasses.asdict(stage.interval),
+                "window_source": stage.window_source,
+                "raw_window": (
+                    dataclasses.asdict(stage.raw_interval)
+                    if stage.raw_interval is not None
+                    else None
+                ),
                 "metrics": _finish_scope(value.stages[key]),
             }
             for key, stage in value.stage_windows.items()

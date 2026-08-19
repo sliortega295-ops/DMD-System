@@ -164,6 +164,25 @@ def test_node_analyzer_reports_exposed_nccl_and_offload(tmp_path) -> None:
     }
 
 
+def test_stage_envelope_recovers_cycle_when_cycle_marker_closes_early(tmp_path) -> None:
+    path = tmp_path / "node0.sqlite"
+    _make_node_sqlite(path, range(8))
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            "UPDATE NVTX_EVENTS SET end=100 WHERE text='MINIMAX_MATCHED_CYCLE/native'"
+        )
+        connection.commit()
+
+    report = analyze_minimax_node_sqlite(path, mode="native")
+    rank0 = report["ranks"][0]
+    # All six exact stage markers, rather than the prematurely closed cycle
+    # marker, define the diagnostic envelope.
+    assert rank0["cycle"]["wall_ns"] == 1000
+    assert rank0["stages"]["student/0"]["window"]["end_ns"] == 200
+    assert rank0["stages"]["student/0"]["window_source"] == "cycle_marker_to_first_fake"
+    assert rank0["stages"]["student/0"]["raw_window"]["end_ns"] == 200
+
+
 def test_world16_aggregate_uses_exact_rank_markers(tmp_path) -> None:
     node0 = tmp_path / "node0.sqlite"
     node1 = tmp_path / "node1.sqlite"
