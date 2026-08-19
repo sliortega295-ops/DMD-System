@@ -81,6 +81,7 @@ def main() -> int:
         "activation_offload_disabled_for_segmented_canary": os.environ.get(
             "LIGHTX2V_MINIMAX_ACTIVATION_OFFLOAD", "0"
         ) == "0",
+        "nsys_profile": os.environ.get("LIGHTX2V_MINIMAX_NSYS_PROFILE", "0"),
     }
 
     trainer = None
@@ -94,6 +95,18 @@ def main() -> int:
             receipt_dir=args.receipt_dir,
             metadata=metadata,
         )
+        if os.environ.get("LIGHTX2V_MINIMAX_NSYS_PROFILE", "0").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }:
+            from runtime.lightx2v_minimax_nsys import install_minimax_nsys_markers
+
+            trainer_class = install_minimax_nsys_markers(
+                trainer_class,
+                receipt_dir=args.receipt_dir,
+            )
         trainer = trainer_class(config)
         trainer.set_model(model)
         trainer.set_data(dataloader_train, None)
