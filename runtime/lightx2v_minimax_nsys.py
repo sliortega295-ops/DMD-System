@@ -105,6 +105,7 @@ def install_minimax_nsys_markers(
         return trainer_class
 
     import torch
+    import torch.distributed as dist
 
     original_train_one_stage = trainer_class._train_one_stage
     original_predict_velocity = trainer_class._predict_velocity
@@ -120,6 +121,18 @@ def install_minimax_nsys_markers(
             self._distillschedule_minimax_nsys_range = value
         return value
 
+    def ensure_profile_started(profiler: MiniMaxNsightRange) -> None:
+        if profiler.started:
+            return
+        # Profiling-only barriers sit before the benchmark's own cycle timer.
+        # They guarantee that local-rank zero starts the node capture before
+        # any peer emits the first rank-qualified NVTX stage marker.
+        if dist.is_initialized():
+            dist.barrier()
+        profiler.start()
+        if dist.is_initialized():
+            dist.barrier()
+
     def next_stage_index(self: Any, stage: str) -> int:
         counters = getattr(self, "_distillschedule_minimax_nsys_stage_counts", None)
         if counters is None:
@@ -131,7 +144,7 @@ def install_minimax_nsys_markers(
 
     def wrapped_train_one_stage(self: Any, samples: Any, stage: str, grad_accum_iters: int):
         profiler = get_range(self)
-        profiler.start()
+        ensure_profile_started(profiler)
         index = next_stage_index(self, stage)
         rank = int(os.environ["RANK"])
         label = f"MINIMAX_NSYS_STAGE/{self.benchmark_mode}/rank={rank}/{stage}/{index}"
@@ -181,7 +194,7 @@ def install_minimax_nsys_markers(
     if original_candidate_fake_update is not None:
         def wrapped_candidate_fake_update(self: Any, plan: dict[str, Any]):
             profiler = get_range(self)
-            profiler.start()
+            ensure_profile_started(profiler)
             index = next_stage_index(self, "fake")
             rank = int(os.environ["RANK"])
             label = (
