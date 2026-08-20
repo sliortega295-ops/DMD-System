@@ -142,3 +142,15 @@ def test_public_wan_missing_pyramid_modules_are_explicitly_materialized() -> Non
     assert "module.to(dtype=torch.bfloat16)" in loader
     assert "remaining_meta" in loader
     assert "WAN13B_PYRAMID_PATCH_SEED" in bootstrap
+
+
+def test_correctness_rollout_evidence_is_persisted_and_receipted() -> None:
+    source = (
+        ROOT / "scripts/distillschedule/probe_wan13b_upper_bound_world16.py"
+    ).read_text()
+    body = source.split("def _save_rollout_evidence(", 1)[1].split(
+        "def _save_trainable_evidence(", 1
+    )[0]
+    assert "save_file(" in body
+    assert '"sha256": file_sha256(path)' in body
+    assert '"tensor_keys": list(state)' in body

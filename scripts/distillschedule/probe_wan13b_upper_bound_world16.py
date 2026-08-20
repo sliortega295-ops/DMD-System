@@ -96,6 +96,17 @@ def _save_rollout_evidence(
         f"step_{step}": value.detach().cpu().contiguous()
         for step, value in sorted(values.items())
     }
+    save_file(
+        state,
+        str(path),
+        metadata={"rank": str(rank), "purpose": "cross-placement-parity"},
+    )
+    return {
+        "path": str(path),
+        "sha256": file_sha256(path),
+        "bytes": path.stat().st_size,
+        "tensor_keys": list(state),
+    }
 
 
 def _save_trainable_evidence(
@@ -173,13 +184,6 @@ def _save_optimizer_evidence(
         "tensor_count": len(state),
         "optimizer_step": int(engine.global_steps),
         "scheduler_step": int(engine.lr_scheduler.last_epoch),
-    }
-    save_file(state, str(path), metadata={"rank": str(rank), "purpose": "cross-placement-parity"})
-    return {
-        "path": str(path),
-        "sha256": file_sha256(path),
-        "bytes": path.stat().st_size,
-        "tensor_keys": list(state),
     }
 
 
