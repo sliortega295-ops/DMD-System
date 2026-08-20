@@ -1,0 +1,199 @@
+{
+  "analysis_head": "fd7aef21d24e92f36f9b4aaa5d1d5dc95de8c6df",
+  "artifact_paths": {
+    "analysis_source": "analysis/source/",
+    "attribution_json": "native_nsys_attribution.json",
+    "copy_histogram_csv": "copy_size_histogram.csv",
+    "dit_csv": "dit_breakdown.csv",
+    "nccl_csv": "nccl_kernel_breakdown.csv",
+    "plot": "reports/native_nsys_attribution.png",
+    "raw_logs": "raw/profile_node*/",
+    "raw_receipts": "raw/range_receipts/ and raw/native_receipts/",
+    "report": "reports/native_nsys_report.md",
+    "stage_csv": "stage_breakdown.csv"
+  },
+  "asset_identity": {
+    "benchmark_patch_sha256": "89935efd36d8a149f121b428cad700363d987918718b81b1ea56b887f196d9c3",
+    "config_sha256": "1e615d1c9a379f177356661e13323cafed91a4a8599cf1ee5e5683f034d8fe22",
+    "prompt_cache_metadata_sha256": "a2e479c5c8f8c656f4548d24f01408081e7c2631e07fc2cb89882dec56c5e5dd",
+    "runtime_boundary_manifest_path": "/share/project/shuchenweng/yongyan_liu/DMD-System_minimax_phase_cluster_20260818_v1/manifests/minimax_boundary_all_dynamic_20260818.json",
+    "runtime_boundary_manifest_sha256": "14ca27dd213427b955a828bbdccec71a699be6ff7a75b051021783b75aa6b6d0",
+    "superseded_preflight_boundary_manifest_sha256": "2f3c1110fa13fd0be4c9cf4e90a57a0ff73b75cd5298decea543095251ab278a"
+  },
+  "capture": {
+    "activation_offload_flag": 0,
+    "advanced_nccl": false,
+    "capture_range": "cudaProfilerApi",
+    "first_attempt": {
+      "reason": "nsys rejected --nccl-trace=default",
+      "run_id": "iteration_301_minimax_native_nsys_20260818",
+      "status": "FAIL_NSYS_OPTION_INCOMPATIBLE"
+    },
+    "launch_commands": [
+      "node0: bash scripts/distillschedule/profile_lightx2v_minimax_nsys_world16_node.sh 0 iteration_301_minimax_native_nsys_20260818_r2 native 8dcd5bf87e398afe765a78e517ef3259f4965b83 <node0_ip> 29602",
+      "node1: bash scripts/distillschedule/profile_lightx2v_minimax_nsys_world16_node.sh 1 iteration_301_minimax_native_nsys_20260818_r2 native 8dcd5bf87e398afe765a78e517ef3259f4965b83 <node0_ip> 29602",
+      "analysis: python scripts/distillschedule/analyze_lightx2v_minimax_nsys.py --node0-sqlite <node0.sqlite> --node1-sqlite <node1.sqlite> --mode native --formal-reference-seconds 917.994"
+    ],
+    "nsys_version": "2023.3.1.92",
+    "profile_diagnostics": false,
+    "session_scope": "one_nsys_session_per_node",
+    "successful_profile": {
+      "node0": {
+        "report": "/share/project/shuchenweng/yongyan_liu/DMD-System_minimax_native_nsys_20260818_v1/artifacts/runs/iteration_301_minimax_native_nsys_20260818_r2/lightx2v_minimax_nsys/native/node_0/minimax_native_node0.nsys-rep",
+        "report_sha256": "56ca126eea5fe14a4535d99f9e534048f51168bde9f7df852856e2eda21598ef",
+        "sqlite": "/share/project/shuchenweng/yongyan_liu/DMD-System_minimax_native_nsys_20260818_v1/artifacts/runs/iteration_301_minimax_native_nsys_20260818_r2/lightx2v_minimax_nsys/native/node_0/minimax_native_node0.sqlite",
+        "sqlite_sha256": "e99e68c992baf9dc08d2e1b28e9675db7eff86075e5d37bc4e1b8cf64964a1ad"
+      },
+      "node1": {
+        "report": "/share/project/shuchenweng/yongyan_liu/DMD-System_minimax_native_nsys_20260818_v1/artifacts/runs/iteration_301_minimax_native_nsys_20260818_r2/lightx2v_minimax_nsys/native/node_1/minimax_native_node1.nsys-rep",
+        "report_sha256": "3dd3025724aab39e2fe12a6af0393f38190b1b1c6c7d69d7d25bb1c7fbbef1df",
+        "sqlite": "/share/project/shuchenweng/yongyan_liu/DMD-System_minimax_native_nsys_20260818_v1/artifacts/runs/iteration_301_minimax_native_nsys_20260818_r2/lightx2v_minimax_nsys/native/node_1/minimax_native_node1.sqlite",
+        "sqlite_sha256": "128bd3daa4fa246234f8412368fa169944af027f9e814c4b58af18698ac05774"
+      }
+    },
+    "trace": "cuda,nvtx",
+    "workers_per_session": 8
+  },
+  "common_ancestor": "953bd8f34f483446d920fe51a47acf6e9e227925",
+  "diagnostic_only": true,
+  "formal_reference_seconds": 917.9939734640066,
+  "gates": {
+    "cgroup_oom_delta": {
+      "node0": 0,
+      "node1": 0
+    },
+    "cuda_oom": false,
+    "dit_per_rank_pass": true,
+    "large_copy_size_matches_boundary_manifest": true,
+    "missing_student_stage_nvtx_ranks": [
+      13,
+      15
+    ],
+    "native_census_31_forward_6_backward": true,
+    "nccl_error": false,
+    "owned_gpu_process_cleanup": true,
+    "range_receipts_16_of_16": true,
+    "raw_copy_reconciliation": true,
+    "stage_marker_complete": false
+  },
+  "hardware": {
+    "driver": "535.161.08",
+    "gpu": "NVIDIA A100-SXM4-40GB",
+    "gpus_per_node": 8,
+    "nodes": [
+      "job-ae0cd37b-2a89-489c-9a15-09932329c44a-master-0",
+      "job-a248b179-3c88-49c3-ad58-74597d6f9133-master-0"
+    ],
+    "world_size": 16
+  },
+  "key_results": {
+    "compute_union_gpu_seconds": 14044.601886338,
+    "copy_reconciliation": [
+      {
+        "analyzer_bytes": 1948165229992,
+        "analyzer_events": 43730,
+        "analyzer_sum_duration_ns": 100852077632,
+        "bytes_residual": 0,
+        "check": "copy_h2d",
+        "duration_residual_ns": 0,
+        "events_residual": 0,
+        "raw_bytes": 1948165229992,
+        "raw_events": 43730,
+        "raw_sum_duration_ns": 100852077632
+      },
+      {
+        "analyzer_bytes": 1947126493568,
+        "analyzer_events": 6962,
+        "analyzer_sum_duration_ns": 144102990014,
+        "bytes_residual": 0,
+        "check": "copy_d2h",
+        "duration_residual_ns": 0,
+        "events_residual": 0,
+        "raw_bytes": 1947126493568,
+        "raw_events": 6962,
+        "raw_sum_duration_ns": 144102990014
+      },
+      {
+        "analyzer_bytes": 682427807232,
+        "analyzer_events": 6864,
+        "analyzer_sum_duration_ns": 1163081197,
+        "bytes_residual": 0,
+        "check": "copy_d2d",
+        "duration_residual_ns": 0,
+        "events_residual": 0,
+        "raw_bytes": 682427807232,
+        "raw_events": 6864,
+        "raw_sum_duration_ns": 1163081197
+      },
+      {
+        "analyzer_bytes": 0,
+        "analyzer_events": 0,
+        "analyzer_sum_duration_ns": 0,
+        "bytes_residual": 0,
+        "check": "copy_other_copy",
+        "duration_residual_ns": 0,
+        "events_residual": 0,
+        "raw_bytes": 0,
+        "raw_events": 0,
+        "raw_sum_duration_ns": 0
+      }
+    ],
+    "dit_marker_rows": 496,
+    "movement_exposed_gpu_seconds": 502.237218769,
+    "nccl_exposed_gpu_seconds": 358.11164298,
+    "nccl_union_gpu_seconds": 2914.200114065,
+    "no_traced_gpu_activity_gpu_seconds": 121.07872307,
+    "offload_candidate_union_gpu_seconds": 244.74499889,
+    "offload_exposed_gpu_seconds": 244.034927411,
+    "pooled_gpu_seconds": 14668.344849198,
+    "profile_rank_max_wall_seconds": 916.773712021,
+    "profile_rank_median_wall_seconds": 916.771355247
+  },
+  "lightx2v_commit": "d034a6b0ecaa31aa07c81aeb7bbe69b225f1d7be",
+  "notes": [
+    "Nsight profile is diagnostic-only; formal 917.994 s remains frozen.",
+    "Two ranks lack Student stage NVTX; their student window is explicitly inferred, not treated as marker-complete.",
+    "Large raw .nsys-rep and SQLite remain at the remote paths above; local evidence stores hashes and exported tables.",
+    "Boundary receipt source.census pointers refer to historical flush head c576488... and are provenance only; current profile worker identity remains 8dcd5bf..."
+  ],
+  "profile_workload_head": "8dcd5bf87e398afe765a78e517ef3259f4965b83",
+  "profile_worktree": "/home/lyy/Helios/DMD-System/worktrees/lightx2v-minimax-selective-boundary-offload-nsys-20260818",
+  "requested_run_id": "iteration_301_minimax_native_nsys_20260818",
+  "run_id": "iteration_301_minimax_native_nsys_20260818_r2",
+  "schema_version": "distillschedule.iteration_301_minimax_native_nsys_manifest.v1",
+  "selective_workload_base": "c0c9985cfd9c3716a0fa3e78f810dd637dad60a6",
+  "status": "PASS_WITH_PARTIAL_STAGE_MARKER_PROVENANCE",
+  "workload_contract": {
+    "application_forwards": {
+      "fake": 6,
+      "student": 24,
+      "teacher": 1,
+      "total": 31
+    },
+    "attention_backend": "_flash_3_hub",
+    "backward_graphs": {
+      "fake": 5,
+      "student": 1,
+      "total": 6
+    },
+    "batch_per_rank": 1,
+    "block_count": 50,
+    "boundary_policy": "checkpoint_boundary_cpu",
+    "checkpoint_segment": 0,
+    "dtype": "BF16",
+    "ema": false,
+    "fake_lora_rank": 128,
+    "fake_update_ratio": 5,
+    "fixed_end_step_idx": 3,
+    "gan": false,
+    "mesh": "world16-fsdp",
+    "mode": "native",
+    "model_swap": false,
+    "num_inference_steps": 4,
+    "parameter_offload": false,
+    "sequence_parallel": 1,
+    "shape": "768x1344x124",
+    "student_lora_rank": 128,
+    "teacher": "frozen"
+  }
+}
