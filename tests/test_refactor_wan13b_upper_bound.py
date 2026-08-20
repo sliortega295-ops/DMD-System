@@ -120,3 +120,11 @@ def test_bootstrap_builder_materializes_one_shared_artifact() -> None:
     assert '"generator": _component' in source
     assert '"critic": _component' in source
     assert '"model_identity_sha256"' in source
+
+
+def test_controller_ignores_stale_user_controlmaster_socket() -> None:
+    source = (
+        ROOT / "scripts/distillschedule/run_wan13b_upper_bound_world16.py"
+    ).read_text()
+    assert '"ControlMaster=no"' in source
+    assert '"ControlPath=none"' in source
