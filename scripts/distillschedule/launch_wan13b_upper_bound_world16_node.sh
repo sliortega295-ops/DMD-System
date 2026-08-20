@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+# Fail-closed per-node launcher for real Wan1.3B resident-vs-FSDP2 Full5.
+set -Eeuo pipefail
+
+NODE_RANK="${1:?node rank 0 or 1}"
+RUN_ID="${2:?immutable run id}"
+MODE="${3:?validate, correctness, or timing}"
+EXPECTED_HEAD="${4:?expected DMD-System HEAD}"
+MASTER_ADDR="${5:?node0 routable address}"
+MASTER_PORT="${6:?world16 rendezvous port}"
+PLACEMENT="${7:?resident or world16-fsdp}"
+
+[[ "${NODE_RANK}" == 0 || "${NODE_RANK}" == 1 ]] || exit 2
+[[ "${MODE}" == validate || "${MODE}" == correctness || "${MODE}" == timing ]] || exit 2
+[[ "${PLACEMENT}" == resident || "${PLACEMENT}" == world16-fsdp ]] || exit 2
+[[ "${RUN_ID}" =~ ^[A-Za-z0-9._-]+$ ]] || exit 2
+[[ "${EXPECTED_HEAD}" =~ ^[0-9a-f]{40}$ ]] || exit 2
+
+ROOT="${DMD_SYSTEM_ROOT:-/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820}"
+HELIOS="${HELIOS_RUNTIME_ROOT:-/share/project/shuchenweng/yongyan_liu/DistillSchedule_gan_rolephase_exec_20260812}"
+PYENV="${DISTILLSCHEDULE_PYENV:-/tmp/distillschedule-helios-official-torch210}"
+PYTHON="${PYENV}/bin/python"
+TORCHRUN="${PYENV}/bin/torchrun"
+ASSETS="${DISTILLSCHEDULE_ASSETS:-/share/project/shuchenweng/DistillSchedule_assets}"
+MODEL_ROOT="${DISTILLSCHEDULE_WAN13B_MODEL_ROOT:?set DISTILLSCHEDULE_WAN13B_MODEL_ROOT}"
+BOOTSTRAP="${DISTILLSCHEDULE_WAN13B_BOOTSTRAP:?set DISTILLSCHEDULE_WAN13B_BOOTSTRAP}"
+BOOTSTRAP_HASH="${DISTILLSCHEDULE_WAN13B_BOOTSTRAP_HASH:?set DISTILLSCHEDULE_WAN13B_BOOTSTRAP_HASH}"
+TRACE="${DISTILLSCHEDULE_TRACE_BUNDLE:-${ASSETS}/m0/traces/syn_feature_trace_rank16_v4_strict_sync_steps20}"
+TRACE_HASH="${DISTILLSCHEDULE_TRACE_BUNDLE_HASH:-654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3}"
+NEGATIVE="${DISTILLSCHEDULE_NEGATIVE_PROMPT_ASSET:-${ASSETS}/m1/negative_prompt_official_v1}"
+RUN_ROOT="${DISTILLSCHEDULE_RUN_ROOT:-${ROOT}/artifacts/runs/${RUN_ID}}"
+EXECUTION="${RUN_ROOT}/execution"
+NODE_LOG="${RUN_ROOT}/launcher/node_${NODE_RANK}"
+LOCK_FILE="${DISTILLSCHEDULE_NODE_LOCK:-/tmp/distillschedule_gpu_node.lock}"
+EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256:-776a26c3b2921d599821f0767910830471ff94a955f5013089f9f689ac20fee7}"
+CORRECTNESS_RECEIPT="${DISTILLSCHEDULE_WAN13B_CORRECTNESS_RECEIPT:-}"
+CORRECTNESS_SHA256="${DISTILLSCHEDULE_WAN13B_CORRECTNESS_SHA256:-}"
+
+for executable in "${PYTHON}" "${TORCHRUN}"; do
+  [[ -x "${executable}" ]] || { echo missing_executable="${executable}" >&2; exit 3; }
+done
+for path in "${ROOT}" "${HELIOS}" "${MODEL_ROOT}" "${BOOTSTRAP}" "${TRACE}" "${NEGATIVE}"; do
+  [[ -e "${path}" ]] || { echo missing_path="${path}" >&2; exit 3; }
+done
+[[ "${BOOTSTRAP_HASH}" =~ ^[0-9a-f]{64}$ ]] || { echo invalid_bootstrap_hash >&2; exit 2; }
+[[ "$(git -C "${ROOT}" rev-parse HEAD)" == "${EXPECTED_HEAD}" ]] || { echo source_head_mismatch >&2; exit 4; }
+git -C "${ROOT}" diff --quiet && git -C "${ROOT}" diff --cached --quiet || { echo source_worktree_dirty >&2; exit 4; }
+HELIOS_TRANSFORMER="${HELIOS}/helios/modules/transformer_helios.py"
+[[ "$(sha256sum "${HELIOS_TRANSFORMER}" | awk '{print $1}')" == "${EXPECTED_HELIOS_TRANSFORMER_SHA256}" ]] || { echo helios_transformer_hash_mismatch >&2; exit 4; }
+
+if [[ "${MODE}" == timing ]]; then
+  [[ -f "${CORRECTNESS_RECEIPT}" ]] || { echo correctness_receipt_missing >&2; exit 3; }
+  [[ "$(sha256sum "${CORRECTNESS_RECEIPT}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || { echo correctness_receipt_hash_changed >&2; exit 3; }
+  "${PYTHON}" - "${CORRECTNESS_RECEIPT}" <<'PY'
+import json,pathlib,sys
+value=json.loads(pathlib.Path(sys.argv[1]).read_text())
+if value.get("status") != "PASS" or not value.get("claimable_for_paired_timing"):
+    raise SystemExit("cross-placement correctness gate is not PASS")
+PY
+fi
+
+mkdir -p "${NODE_LOG}" "${EXECUTION}"
+[[ ! -e "${NODE_LOG}/launch_manifest.txt" ]] || { echo run_id_already_used >&2; exit 82; }
+exec 9>"${LOCK_FILE}"
+flock -n 9 || { echo gpu_lock_busy >&2; exit 73; }
+[[ -z "$(nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | sed '/^[[:space:]]*$/d')" ]] || { echo gpu_processes_present >&2; exit 81; }
+
+export PATH="${PYENV}/bin:${PATH}"
+export PYTHONPATH="${ROOT}/src:${ROOT}:${HELIOS}"
+export PYTHONDONTWRITEBYTECODE=1
+export HF_HOME="${ASSETS}/hf_home_official_torch210"
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TOKENIZERS_PARALLELISM=false
+export OMP_NUM_THREADS=8 NCCL_ASYNC_ERROR_HANDLING=1
+
+CGROUP_EVENTS="/sys/fs/cgroup/memory.events"
+CGROUP_CURRENT="/sys/fs/cgroup/memory.current"
+CGROUP_PEAK="/sys/fs/cgroup/memory.peak"
+cp "${CGROUP_EVENTS}" "${NODE_LOG}/cgroup_memory_events_before.txt" 2>/dev/null || true
+cat "${CGROUP_CURRENT}" >"${NODE_LOG}/cgroup_memory_current_before.txt" 2>/dev/null || true
+cat "${CGROUP_PEAK}" >"${NODE_LOG}/cgroup_memory_peak_before.txt" 2>/dev/null || true
+nvidia-smi --query-gpu=index,name,memory.total,memory.free --format=csv,noheader \
+  >"${NODE_LOG}/gpu_before.csv"
+
+cat >"${NODE_LOG}/launch_manifest.txt" <<EOF
+schema_version=distillschedule.wan13b_upper_bound_launch.v1
+run_id=${RUN_ID}
+mode=${MODE}
+node_rank=${NODE_RANK}
+dmd_system_head=${EXPECTED_HEAD}
+helios_runtime_root=${HELIOS}
+helios_transformer_sha256=${EXPECTED_HELIOS_TRANSFORMER_SHA256}
+model_root=${MODEL_ROOT}
+bootstrap=${BOOTSTRAP}
+bootstrap_hash=${BOOTSTRAP_HASH}
+trace=${TRACE}
+trace_hash=${TRACE_HASH}
+placement=${PLACEMENT}
+world_size=16
+global_batch=16
+rollout_batch_size=1
+score_packing=false
+parameter_offload=false
+activation_offload=false
+optimizer_offload=false
+parameter_streaming=false
+model_swap=false
+generator_residual_storage=cuda_out_of_place
+critic_residual_storage=cuda_out_of_place
+ema_device=cuda
+EOF
+
+WORKER=(
+  "${ROOT}/scripts/distillschedule/probe_wan13b_upper_bound_world16.py"
+  --run-id "${RUN_ID}" --output-dir "${EXECUTION}" --placement "${PLACEMENT}"
+  --bootstrap "${BOOTSTRAP}" --expected-bootstrap-hash "${BOOTSTRAP_HASH}"
+  --model-root "${MODEL_ROOT}"
+  --trace-bundle "${TRACE}" --expected-trace-hash "${TRACE_HASH}"
+  --negative-prompt "${NEGATIVE}"
+)
+[[ "${MODE}" == validate ]] && WORKER+=(--validate-only)
+[[ "${MODE}" == timing ]] && WORKER+=(--timing-mode)
+
+set +e
+"${TORCHRUN}" --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}" \
+  --master-addr="${MASTER_ADDR}" --master-port="${MASTER_PORT}" \
+  "${WORKER[@]}" >"${NODE_LOG}/console.log" 2>&1
+status=$?
+set -e
+
+cp "${CGROUP_EVENTS}" "${NODE_LOG}/cgroup_memory_events_after.txt" 2>/dev/null || true
+cat "${CGROUP_CURRENT}" >"${NODE_LOG}/cgroup_memory_current_after.txt" 2>/dev/null || true
+cat "${CGROUP_PEAK}" >"${NODE_LOG}/cgroup_memory_peak_after.txt" 2>/dev/null || true
+nvidia-smi --query-gpu=index,name,memory.total,memory.free --format=csv,noheader \
+  >"${NODE_LOG}/gpu_after.csv" || true
+[[ ${status} -eq 0 ]] || exit "${status}"
+[[ -z "$(nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | sed '/^[[:space:]]*$/d')" ]] || { echo gpu_processes_remain >&2; exit 88; }

@@ -108,10 +108,16 @@ def apply_blockwise_fsdp2_policy(
     *,
     mesh_policy: str,
     world_size: int = WORLD_SIZE,
+    expected_block_count: int = 40,
     param_dtype: Any | None = None,
     reduce_dtype: Any | None = None,
 ) -> dict[str, Any]:
-    """Shard all 40 Helios blocks bottom-up under FSDP or node-local HSDP."""
+    """Shard every expected block bottom-up under FSDP or node-local HSDP.
+
+    The default remains the fail-closed 40-block Helios-14B contract.  A
+    caller must opt in explicitly to another audited architecture, such as the
+    30-block Wan2.1-T2V-1.3B control used by the FSDP upper-bound experiment.
+    """
 
     import torch
     import torch.distributed as dist
@@ -120,8 +126,12 @@ def apply_blockwise_fsdp2_policy(
     if not dist.is_initialized() or dist.get_world_size() != world_size:
         raise RuntimeError("world16 must be initialized before FSDP2")
     blocks = list(getattr(module, "blocks", ()))
-    if len(blocks) != 40:
-        raise AssertionError(f"Helios block count changed: {len(blocks)} != 40")
+    if expected_block_count <= 0:
+        raise ValueError("expected_block_count must be positive")
+    if len(blocks) != expected_block_count:
+        raise AssertionError(
+            f"Transformer block count changed: {len(blocks)} != {expected_block_count}"
+        )
     mesh = create_device_mesh(mesh_policy, world_size=world_size)
     mp_policy = MixedPrecisionPolicy(
         param_dtype=param_dtype if param_dtype is not None else torch.bfloat16,
@@ -154,7 +164,7 @@ def apply_blockwise_fsdp2_policy(
         "mesh_shape": list(mesh_shape_for_policy(mesh_policy, world_size=world_size)),
         "world_size": world_size,
         "block_count": len(blocks),
-        "wrap_policy": "40_BLOCKS_BOTTOM_UP_THEN_ROOT",
+        "wrap_policy": f"{expected_block_count}_BLOCKS_BOTTOM_UP_THEN_ROOT",
         "reshard_after_forward": True,
         "param_compute_dtype": str(mp_policy.param_dtype),
         "reduce_dtype": str(mp_policy.reduce_dtype),
