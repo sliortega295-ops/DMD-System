@@ -85,6 +85,7 @@ def build_helios_pool_model(
     max_workers: int = 4,
     enable_gan: bool = False,
     chunked_residual_storage: str = "cpu_inplace",
+    missing_pyramid_patch_seed: int | None = None,
 ) -> tuple[torch.nn.Module, dict[str, Any]]:
     """Build the official BF16 backbone plus the Stage-3 FP32 LoRA inventory."""
 
@@ -155,6 +156,38 @@ def build_helios_pool_model(
         transformer_additional_kwargs=extra,
         **load_kwargs,
     )
+
+    # The public Wan Diffusers checkpoints do not contain Helios' three
+    # pyramid-patch convolutions.  Under low_cpu_mem_usage those missing
+    # modules remain on meta, so a later model.to(cuda) fails.  Keep the
+    # official Helios checkpoint path fail-closed by default; the isolated
+    # Wan1.3B systems experiment opts in to deterministic constructor-equivalent
+    # initialization for exactly these missing modules.
+    materialized_pyramid_patches: list[str] = []
+    if missing_pyramid_patch_seed is not None:
+        with torch.random.fork_rng(devices=[]):
+            torch.manual_seed(int(missing_pyramid_patch_seed))
+            for name in ("patch_short", "patch_mid", "patch_long"):
+                module = getattr(model, name, None)
+                if module is None:
+                    raise AssertionError(f"missing Helios pyramid module: {name}")
+                parameters = list(module.parameters())
+                meta = [parameter.device.type == "meta" for parameter in parameters]
+                if not parameters or not all(meta):
+                    if any(meta):
+                        raise AssertionError(f"partially materialized pyramid module: {name}")
+                    continue
+                module.to_empty(device="cpu")
+                reset = getattr(module, "reset_parameters", None)
+                if reset is None:
+                    raise AssertionError(f"pyramid module has no reset_parameters: {name}")
+                reset()
+                materialized_pyramid_patches.append(name)
+    remaining_meta = [name for name, value in model.named_parameters() if value.device.type == "meta"]
+    if remaining_meta:
+        raise RuntimeError(
+            "pretrained Transformer left meta parameters: " + ",".join(remaining_meta[:20])
+        )
     model = replace_rmsnorm_with_fp32(model)
     model = replace_all_norms_with_flash_norms(model)
     replace_rope_with_flash_rope()
@@ -252,6 +285,8 @@ def build_helios_pool_model(
         "split_modulation": True,
         "chunked_residual_storage": chunked_residual_storage,
         "gradient_checkpointing": role != "teacher",
+        "missing_pyramid_patch_seed": missing_pyramid_patch_seed,
+        "materialized_pyramid_patches": materialized_pyramid_patches,
         "mode": "train",
         "has_adapter": role != "teacher",
     }

@@ -5,6 +5,12 @@ Transformer at revision `0fad780a534b6463e45facd96134c9f345acfa5b`.
 It is a systems-only No-GAN Step10–14 workload, not a trained Wan continuation
 and not a linear Helios14B extrapolation.
 
+The public Diffusers checkpoint does not contain Helios' three pyramid-patch
+convolutions.  This systems-only bootstrap initializes those exact missing
+modules on CPU with the pinned constructor seed `20260819`; Generator and
+Critic share that base initialization, while their LoRA seeds remain distinct.
+Both placement arms restore the same immutable bootstrap and model files.
+
 ## Frozen comparison
 
 Both arms are world16/B16, rollout B1, Score packing off, G1/C5/EMA5, LoRA

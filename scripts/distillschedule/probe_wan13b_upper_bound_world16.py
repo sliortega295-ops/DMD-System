@@ -36,6 +36,7 @@ from distillschedule.runtime.wan13b_upper_bound import (
     FreshTrainableEMA,
     PLACEMENTS,
     WAN13B_BLOCK_COUNT,
+    WAN13B_PYRAMID_PATCH_SEED,
     WORLD_SIZE,
     Wan13BBootstrap,
     build_fresh_engine,
@@ -201,6 +202,7 @@ def _build_model(
                 lora_rank=256,
                 enable_gan=False,
                 chunked_residual_storage="cuda_out_of_place",
+                missing_pyramid_patch_seed=WAN13B_PYRAMID_PATCH_SEED,
             )
     if int(metadata["block_count"]) != WAN13B_BLOCK_COUNT:
         raise AssertionError("Wan1.3B worker requires exactly 30 Transformer blocks")

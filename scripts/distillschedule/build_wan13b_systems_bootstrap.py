@@ -26,6 +26,7 @@ if str(ROOT) not in sys.path:
 from distillschedule.runtime.wan13b_upper_bound import (
     LORA_RANK,
     WAN13B_BLOCK_COUNT,
+    WAN13B_PYRAMID_PATCH_SEED,
     file_sha256,
 )
 from runtime.critic_pool_helios import build_helios_pool_model
@@ -93,6 +94,7 @@ def _component(
                 lora_rank=LORA_RANK,
                 enable_gan=False,
                 chunked_residual_storage="cuda_out_of_place",
+                missing_pyramid_patch_seed=WAN13B_PYRAMID_PATCH_SEED,
             )
     if int(metadata["block_count"]) != WAN13B_BLOCK_COUNT:
         raise AssertionError(

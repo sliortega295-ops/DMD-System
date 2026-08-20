@@ -95,6 +95,7 @@ def test_worker_fails_closed_on_the_frozen_systems_contract() -> None:
     assert '"optimizer_offload": False' in source
     assert '"generator": 1, "critic": 5, "ema": 5' in source
     assert "expected_block_count=WAN13B_BLOCK_COUNT" in source
+    assert "missing_pyramid_patch_seed=WAN13B_PYRAMID_PATCH_SEED" in source
 
 
 def test_resident_control_syncs_only_present_trainable_gradients() -> None:
@@ -128,3 +129,15 @@ def test_controller_ignores_stale_user_controlmaster_socket() -> None:
     ).read_text()
     assert '"ControlMaster=no"' in source
     assert '"ControlPath=none"' in source
+
+
+def test_public_wan_missing_pyramid_modules_are_explicitly_materialized() -> None:
+    loader = (ROOT / "runtime/critic_pool_helios.py").read_text()
+    bootstrap = (
+        ROOT / "scripts/distillschedule/build_wan13b_systems_bootstrap.py"
+    ).read_text()
+    assert "missing_pyramid_patch_seed: int | None = None" in loader
+    assert 'for name in ("patch_short", "patch_mid", "patch_long")' in loader
+    assert 'module.to_empty(device="cpu")' in loader
+    assert "remaining_meta" in loader
+    assert "WAN13B_PYRAMID_PATCH_SEED" in bootstrap

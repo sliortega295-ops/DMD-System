@@ -24,6 +24,7 @@ WORLD_SIZE = 16
 WAN13B_BLOCK_COUNT = 30
 GLOBAL_BATCH = 16
 LORA_RANK = 256
+WAN13B_PYRAMID_PATCH_SEED = 20260819
 PLACEMENTS = ("resident", "world16-fsdp")
 
 
@@ -489,6 +490,7 @@ __all__ = [
     "PLACEMENTS",
     "ReplicatedTrainableAllReduceEngine",
     "WAN13B_BLOCK_COUNT",
+    "WAN13B_PYRAMID_PATCH_SEED",
     "WORLD_SIZE",
     "Wan13BBootstrap",
     "build_fresh_engine",

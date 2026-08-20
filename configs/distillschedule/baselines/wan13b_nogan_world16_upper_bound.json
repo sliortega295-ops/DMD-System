@@ -7,6 +7,7 @@
     "revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
     "physical_backbones_per_rank": 2,
     "block_count": 30,
+    "missing_helios_pyramid_patch_init": "CONSTRUCTOR_EQUIVALENT_CPU_SEED_20260819",
     "generator_lora_rank": 256,
     "critic_lora_rank": 256
   },
