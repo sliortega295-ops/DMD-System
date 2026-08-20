@@ -182,6 +182,11 @@ def build_helios_pool_model(
                 if reset is None:
                     raise AssertionError(f"pyramid module has no reset_parameters: {name}")
                 reset()
+                # Match the BF16 dtype requested from from_pretrained.  Missing
+                # checkpoint tensors do not participate in Diffusers' normal
+                # dtype conversion, so leaving constructor FP32 here would
+                # fail on the first BF16 latent convolution.
+                module.to(dtype=torch.bfloat16)
                 materialized_pyramid_patches.append(name)
     remaining_meta = [name for name, value in model.named_parameters() if value.device.type == "meta"]
     if remaining_meta:

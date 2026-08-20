@@ -139,5 +139,6 @@ def test_public_wan_missing_pyramid_modules_are_explicitly_materialized() -> Non
     assert "missing_pyramid_patch_seed: int | None = None" in loader
     assert 'for name in ("patch_short", "patch_mid", "patch_long")' in loader
     assert 'module.to_empty(device="cpu")' in loader
+    assert "module.to(dtype=torch.bfloat16)" in loader
     assert "remaining_meta" in loader
     assert "WAN13B_PYRAMID_PATCH_SEED" in bootstrap
