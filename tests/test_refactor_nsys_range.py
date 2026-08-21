@@ -186,3 +186,28 @@ def test_static_receipt_bundle_requires_world16_and_two_controllers(tmp_path) ->
     result = validate_static_nsys_receipts(tmp_path, variant="gan")
     assert result["status"] == "PASS"
     assert result["controller_ranks"] == [0, 8]
+
+
+def test_static_receipts_can_validate_process_wide_capture_without_api_controllers(
+    tmp_path,
+) -> None:
+    for rank in range(16):
+        gate = StaticFSDP2Full5NsightRange(
+            api=FakeProfiler(),
+            variant="no-gan",
+            receipt_path=tmp_path / f"rank_{rank:03d}.json",
+            rank=rank,
+            local_rank=rank % 8,
+            controls_profiler_api=False,
+            stop_point="after_step14_ema_update",
+        )
+        gate.before_model_compute(10)
+        gate.after_critic_commit(14)
+    result = validate_static_nsys_receipts(
+        tmp_path,
+        variant="no-gan",
+        expected_stop_point="after_step14_ema_update",
+        expected_controller_ranks=[],
+    )
+    assert result["status"] == "PASS"
+    assert result["controller_ranks"] == []

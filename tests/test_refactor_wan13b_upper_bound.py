@@ -179,9 +179,11 @@ def test_profile_mode_is_diagnostic_only_and_uses_one_outer_session_per_node() -
     assert 'torch.cuda.nvtx.range_push("WAN13B_FULL5/world16-fsdp")' in worker
     assert "--profile-mode" in launcher
     assert launcher.count('"${NSYS_BIN}" profile') == 1
-    assert "--capture-range=cudaProfilerApi" in launcher
+    assert "DISTILLSCHEDULE_STATIC_FSDP2_NSYS_CONTROL_API=0" in launcher
+    assert "clip analysis to the exact balanced WAN13B_FULL5" in launcher
     assert "--trace-fork-before-exec=true" in launcher
     assert "expected_stop_point=\"after_step14_ema_update\"" in launcher
+    assert "expected_controller_ranks=[]" in launcher
     assert '"profile"' in controller
     assert '"diagnostic_only": args.mode == "profile"' in summarizer
     assert "NCCL interval union minus its intersection" in analyzer

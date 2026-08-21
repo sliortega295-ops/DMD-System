@@ -136,10 +136,12 @@ if [[ "${MODE}" == profile ]]; then
   }
   export DISTILLSCHEDULE_STATIC_FSDP2_NSYS_EXACT_RANGE=1
   export DISTILLSCHEDULE_STATIC_FSDP2_NSYS_RECEIPT_DIR="${RECEIPT_DIR}"
+  # The CUDA profiler API stop path is known to deadlock controller ranks 0/8
+  # under this two-node process tree.  Capture the complete process instead and
+  # clip analysis to the exact balanced WAN13B_FULL5 NVTX/receipt window.
+  export DISTILLSCHEDULE_STATIC_FSDP2_NSYS_CONTROL_API=0
   "${NSYS_BIN}" profile \
     --trace=cuda,nvtx \
-    --capture-range=cudaProfilerApi \
-    --capture-range-end=stop \
     --trace-fork-before-exec=true \
     --wait=all \
     --sample=none \
@@ -201,6 +203,7 @@ value = validate_static_nsys_receipts(
     pathlib.Path(sys.argv[1]),
     variant="no-gan",
     expected_stop_point="after_step14_ema_update",
+    expected_controller_ranks=[],
 )
 pathlib.Path(sys.argv[2]).write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
 PY

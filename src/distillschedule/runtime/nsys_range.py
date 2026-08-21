@@ -292,6 +292,10 @@ class StaticFSDP2Full5NsightRange:
         ).strip()
         rank = int(os.environ.get("RANK", "-1"))
         local_rank = int(os.environ.get("LOCAL_RANK", "-1"))
+        control_raw = os.environ.get(
+            "DISTILLSCHEDULE_STATIC_FSDP2_NSYS_CONTROL_API", "1"
+        )
+        control_api = control_raw.strip().lower() in {"1", "true", "yes", "on"}
         path = None
         if enabled:
             if not receipt_root:
@@ -309,7 +313,7 @@ class StaticFSDP2Full5NsightRange:
             rank=rank,
             local_rank=local_rank,
             enabled=enabled,
-            controls_profiler_api=(local_rank == 0),
+            controls_profiler_api=(local_rank == 0 and control_api),
             logical_window=logical_window,
             start_point=start_point,
             stop_point=stop_point,
@@ -387,6 +391,7 @@ def validate_static_nsys_receipts(
     expected_window: tuple[int, int] | None = None,
     expected_start_point: str = "before_first_model_compute",
     expected_stop_point: str | None = None,
+    expected_controller_ranks: list[int] | None = None,
 ) -> dict[str, Any]:
     """Require exact static Full5 receipts and one controller per node."""
 
@@ -407,6 +412,14 @@ def validate_static_nsys_receipts(
     )
     start_step, stop_step = expected_window or (default_start, default_stop)
     stop_point = expected_stop_point or default_stop_point
+    default_controllers = list(
+        range(0, expected_world_size, expected_local_world_size)
+    )
+    expected_controllers = (
+        default_controllers
+        if expected_controller_ranks is None
+        else [int(rank) for rank in expected_controller_ranks]
+    )
     controllers: list[int] = []
     for expected_rank, path in enumerate(files):
         value = json.loads(path.read_text())
@@ -418,7 +431,7 @@ def validate_static_nsys_receipts(
             raise ValueError(f"static Nsight rank drift: {path}")
         if local_rank != rank % expected_local_world_size:
             raise ValueError(f"static Nsight local-rank drift: {path}")
-        expected_controller = local_rank == 0
+        expected_controller = rank in expected_controllers
         if bool(value.get("controls_profiler_api")) != expected_controller:
             raise ValueError(f"static Nsight profiler-controller drift: {path}")
         if expected_controller:
@@ -431,7 +444,6 @@ def validate_static_nsys_receipts(
             raise ValueError(f"static Nsight range stop boundary drift: {path}")
         if value.get("diagnostic_only") is not True or value.get("formal_speedup_eligible") is not False:
             raise ValueError(f"static profiled run incorrectly marked formal: {path}")
-    expected_controllers = list(range(0, expected_world_size, expected_local_world_size))
     if controllers != expected_controllers:
         raise ValueError(
             f"static Nsight controller ranks={controllers}, expected={expected_controllers}"
