@@ -180,7 +180,7 @@ if [[ "${MODE}" == profile ]]; then
       status=88
     else
       "${NSYS_BIN}" stats --report nvtx_sum,cuda_gpu_kern_sum,cuda_api_sum --format csv \
-        "${REPORT_BASE}.nsys-rep" >"${PROFILE_NODE_DIR}/nsys_stats_validation.log" 2>&1
+        "${REPORT_BASE}.sqlite" >"${PROFILE_NODE_DIR}/nsys_stats_validation.log" 2>&1
       status=$?
     fi
   fi
