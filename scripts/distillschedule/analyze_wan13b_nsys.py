@@ -65,6 +65,12 @@ def _duration(intervals: Iterable[tuple[int, int]]) -> int:
 
 def _intersection(a: Iterable[tuple[int, int]], b: Iterable[tuple[int, int]]) -> int:
     x, y = _union(a), _union(b)
+    return _intersection_unioned(x, y)
+
+
+def _intersection_unioned(
+    x: list[tuple[int, int]], y: list[tuple[int, int]]
+) -> int:
     i = j = total = 0
     while i < len(x) and j < len(y):
         total += max(0, min(x[i][1], y[j][1]) - max(x[i][0], y[j][0]))
@@ -76,9 +82,19 @@ def _intersection(a: Iterable[tuple[int, int]], b: Iterable[tuple[int, int]]) ->
 
 
 def _exclusive(category_intervals: dict[str, list[tuple[int, int]]], window: tuple[int, int]) -> dict[str, int]:
+    return _exclusive_unioned(
+        {category: _union(intervals) for category, intervals in category_intervals.items()},
+        window,
+    )
+
+
+def _exclusive_unioned(
+    category_intervals: dict[str, list[tuple[int, int]]],
+    window: tuple[int, int],
+) -> dict[str, int]:
     points: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     for category, intervals in category_intervals.items():
-        for a, b in _union(intervals):
+        for a, b in intervals:
             clipped = _clip((a, b), window)
             if clipped:
                 points[clipped[0]][category] += 1
@@ -191,13 +207,18 @@ def analyze_node(path: Path, node: int) -> dict:
             raise RuntimeError(f"node{node}: kernel device coverage missing {missing_devices}")
         devices = []
         for device in range(8):
+            merged = {
+                category: _union(by_device[device][category])
+                for category in CATEGORIES
+            }
+            by_device[device] = merged
             wall = outer[1] - outer[0]
-            compute = _duration(by_device[device]["compute"])
-            nccl = _duration(by_device[device]["nccl"])
-            copy = _duration(by_device[device]["copy"])
-            nccl_hidden = _intersection(by_device[device]["nccl"], by_device[device]["compute"])
-            copy_hidden = _intersection(by_device[device]["copy"], by_device[device]["compute"])
-            exclusive = _exclusive(by_device[device], outer)
+            compute = sum(b - a for a, b in merged["compute"])
+            nccl = sum(b - a for a, b in merged["nccl"])
+            copy = sum(b - a for a, b in merged["copy"])
+            nccl_hidden = _intersection_unioned(merged["nccl"], merged["compute"])
+            copy_hidden = _intersection_unioned(merged["copy"], merged["compute"])
+            exclusive = _exclusive_unioned(merged, outer)
             residual = wall - sum(exclusive.values())
             if abs(residual) > 10:
                 raise RuntimeError(f"node{node}/device{device}: exclusive reconciliation residual={residual}")
@@ -213,12 +234,13 @@ def analyze_node(path: Path, node: int) -> dict:
             coll = {}
             for kind in ("all_gather", "reduce_scatter", "all_reduce", "p2p", "broadcast", "other_nccl"):
                 rows = [r for r in nccl_rows[device] if r[3] == kind]
+                intervals = _union((r[0], r[1]) for r in rows)
                 coll[kind] = {
                     "events": len(rows),
-                    "union_ns": _duration((r[0], r[1]) for r in rows),
+                    "union_ns": sum(b - a for a, b in intervals),
                     "sum_duration_ns": sum(r[1] - r[0] for r in rows),
-                    "hidden_by_compute_ns": _intersection(
-                        ((r[0], r[1]) for r in rows), by_device[device]["compute"]
+                    "hidden_by_compute_ns": _intersection_unioned(
+                        intervals, merged["compute"]
                     ),
                 }
                 coll[kind]["exposed_vs_compute_ns"] = coll[kind]["union_ns"] - coll[kind]["hidden_by_compute_ns"]
@@ -253,14 +275,14 @@ def analyze_node(path: Path, node: int) -> dict:
                     c: [x for i in by_device[device][c] if (x := _clip(i, window))]
                     for c in CATEGORIES
                 }
-                compute = _duration(clipped["compute"])
-                nccl = _duration(clipped["nccl"])
-                copy = _duration(clipped["copy"])
-                hidden_n = _intersection(clipped["nccl"], clipped["compute"])
-                hidden_c = _intersection(clipped["copy"], clipped["compute"])
+                compute = sum(b - a for a, b in clipped["compute"])
+                nccl = sum(b - a for a, b in clipped["nccl"])
+                copy = sum(b - a for a, b in clipped["copy"])
+                hidden_n = _intersection_unioned(clipped["nccl"], clipped["compute"])
+                hidden_c = _intersection_unioned(clipped["copy"], clipped["compute"])
                 per_device.append({"device": device, "wall_ns": window[1]-window[0], "compute_ns": compute,
                     "nccl_ns": nccl, "nccl_exposed_ns": nccl-hidden_n, "copy_ns": copy,
-                    "copy_exposed_ns": copy-hidden_c, "no_traced_ns": _exclusive(clipped, window).get("no_traced_activity", 0)})
+                    "copy_exposed_ns": copy-hidden_c, "no_traced_ns": _exclusive_unioned(clipped, window).get("no_traced_activity", 0)})
             stage_reports.append({"label": label, "window": list(window), "per_device": per_device})
         return {"node": node, "sqlite": str(path), "outer_window": list(outer), "devices": devices,
                 "stages": stage_reports, "kernel_device_coverage": 8,
