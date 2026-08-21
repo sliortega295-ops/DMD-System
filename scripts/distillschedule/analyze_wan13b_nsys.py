@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import heapq
 import json
 import math
 import sqlite3
@@ -103,25 +104,26 @@ def _exclusive_unioned(
     category_intervals: dict[str, list[tuple[int, int]]],
     window: tuple[int, int],
 ) -> dict[str, int]:
-    points: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
-    for category, intervals in category_intervals.items():
-        for a, b in intervals:
-            clipped = _clip((a, b), window)
+    def events(category: str, intervals: list[tuple[int, int]]):
+        for interval in intervals:
+            clipped = _clip(interval, window)
             if clipped:
-                points[clipped[0]][category] += 1
-                points[clipped[1]][category] -= 1
-    points[window[0]]
-    points[window[1]]
+                yield clipped[0], category, 1
+                yield clipped[1], category, -1
+
+    streams = [events(category, intervals) for category, intervals in category_intervals.items()]
     active = {c: 0 for c in CATEGORIES}
     result: Counter[str] = Counter()
     last = window[0]
-    for now in sorted(points):
+    for now, category, delta in heapq.merge(*streams):
         if now > last:
             key = "+".join(c for c in CATEGORIES if active[c] > 0) or "no_traced_activity"
             result[key] += now - last
-        for c, delta in points[now].items():
-            active[c] += delta
+        active[category] += delta
         last = now
+    if last < window[1]:
+        key = "+".join(c for c in CATEGORIES if active[c] > 0) or "no_traced_activity"
+        result[key] += window[1] - last
     return dict(result)
 
 
@@ -371,20 +373,33 @@ def _write_csv(path: Path, rows: list[dict]) -> None:
 
 def _plot(path: Path, nodes: list[dict], aggregate: dict) -> None:
     import matplotlib.pyplot as plt
+    import numpy as np
     from matplotlib.patches import Patch
     fig, axes = plt.subplots(3, 1, figsize=(16, 12), gridspec_kw={"height_ratios": [2.4, 1, 1.2]})
     colors = {"compute": "#2563eb", "nccl": "#f97316", "copy": "#8b5cf6"}
-    # Exact activity intervals, one row per rank.
-    global_start = min(n["outer_window"][0] for n in nodes)
+    # Rasterize the exact intervals to a bounded number of pixels.  Passing ten
+    # million individual rectangles to matplotlib is both slow and unreadable.
+    bins = 1600
+    colors_rgb = {
+        "compute": (37, 99, 235),
+        "nccl": (249, 115, 22),
+        "copy": (139, 92, 246),
+    }
+    raster = np.full((16 * len(CATEGORIES), bins, 3), 255, dtype=np.uint8)
     for n in nodes:
         base = n["outer_window"][0]
+        wall_ns = n["outer_window"][1] - base
         for device in range(8):
             rank = n["node"] * 8 + device
-            for category in CATEGORIES:
-                for a, b in _union(n["intervals"][device][category]):
-                    axes[0].broken_barh([((_seconds(a-base)), _seconds(b-a))], (rank-0.38, 0.76),
-                                        facecolors=colors[category], alpha=0.85 if category != "compute" else 0.65)
-    axes[0].set_yticks(range(16)); axes[0].set_ylabel("global rank"); axes[0].set_xlabel("seconds from node-local range start")
+            for category_index, category in enumerate(CATEGORIES):
+                row = rank * len(CATEGORIES) + category_index
+                for a, b in n["intervals"][device][category]:
+                    first = max(0, min(bins - 1, int((a - base) * bins / wall_ns)))
+                    last = max(first + 1, min(bins, math.ceil((b - base) * bins / wall_ns)))
+                    raster[row, first:last] = colors_rgb[category]
+    axes[0].imshow(raster, aspect="auto", interpolation="nearest", extent=(0, 100, 48, 0))
+    axes[0].set_yticks([rank * 3 + 1.5 for rank in range(16)], [str(rank) for rank in range(16)])
+    axes[0].set_ylabel("global rank (rows: compute/NCCL/copy)"); axes[0].set_xlabel("normalized node-local exact range (%)")
     axes[0].set_title("Wan1.3B world16 FSDP2: compute / NCCL / memcpy timeline")
     axes[0].legend(handles=[Patch(color=colors[c], label=c) for c in CATEGORIES], ncol=3, loc="upper right")
     wall = aggregate["gpu_wall_ns"]
