@@ -154,3 +154,35 @@ def test_correctness_rollout_evidence_is_persisted_and_receipted() -> None:
     assert "save_file(" in body
     assert '"sha256": file_sha256(path)' in body
     assert '"tensor_keys": list(state)' in body
+
+
+def test_profile_mode_is_diagnostic_only_and_uses_one_outer_session_per_node() -> None:
+    worker = (
+        ROOT / "scripts/distillschedule/probe_wan13b_upper_bound_world16.py"
+    ).read_text()
+    launcher = (
+        ROOT / "scripts/distillschedule/launch_wan13b_upper_bound_world16_node.sh"
+    ).read_text()
+    controller = (
+        ROOT / "scripts/distillschedule/run_wan13b_upper_bound_world16.py"
+    ).read_text()
+    summarizer = (
+        ROOT / "scripts/distillschedule/summarize_wan13b_upper_bound.py"
+    ).read_text()
+    analyzer = (
+        ROOT / "scripts/distillschedule/analyze_wan13b_nsys.py"
+    ).read_text()
+
+    assert 'value.add_argument("--profile-mode", action="store_true")' in worker
+    assert "if args.timing_mode and args.profile_mode" in worker
+    assert 'stop_point="after_step14_ema_update"' in worker
+    assert 'torch.cuda.nvtx.range_push("WAN13B_FULL5/world16-fsdp")' in worker
+    assert "--profile-mode" in launcher
+    assert launcher.count('"${NSYS_BIN}" profile') == 1
+    assert "--capture-range=cudaProfilerApi" in launcher
+    assert "--trace-fork-before-exec=true" in launcher
+    assert "expected_stop_point=\"after_step14_ema_update\"" in launcher
+    assert '"profile"' in controller
+    assert '"diagnostic_only": args.mode == "profile"' in summarizer
+    assert "NCCL interval union minus its intersection" in analyzer
+    assert "sum of the 16 per-GPU outer-range walls" in analyzer

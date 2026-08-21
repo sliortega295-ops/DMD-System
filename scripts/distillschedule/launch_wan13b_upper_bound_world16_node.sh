@@ -4,14 +4,14 @@ set -Eeuo pipefail
 
 NODE_RANK="${1:?node rank 0 or 1}"
 RUN_ID="${2:?immutable run id}"
-MODE="${3:?validate, correctness, or timing}"
+MODE="${3:?validate, correctness, timing, or profile}"
 EXPECTED_HEAD="${4:?expected DMD-System HEAD}"
 MASTER_ADDR="${5:?node0 routable address}"
 MASTER_PORT="${6:?world16 rendezvous port}"
 PLACEMENT="${7:?resident or world16-fsdp}"
 
 [[ "${NODE_RANK}" == 0 || "${NODE_RANK}" == 1 ]] || exit 2
-[[ "${MODE}" == validate || "${MODE}" == correctness || "${MODE}" == timing ]] || exit 2
+[[ "${MODE}" == validate || "${MODE}" == correctness || "${MODE}" == timing || "${MODE}" == profile ]] || exit 2
 [[ "${PLACEMENT}" == resident || "${PLACEMENT}" == world16-fsdp ]] || exit 2
 [[ "${RUN_ID}" =~ ^[A-Za-z0-9._-]+$ ]] || exit 2
 [[ "${EXPECTED_HEAD}" =~ ^[0-9a-f]{40}$ ]] || exit 2
@@ -119,12 +119,99 @@ WORKER=(
 )
 [[ "${MODE}" == validate ]] && WORKER+=(--validate-only)
 [[ "${MODE}" == timing ]] && WORKER+=(--timing-mode)
+[[ "${MODE}" == profile ]] && WORKER+=(--profile-mode)
 
 set +e
-"${TORCHRUN}" --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}" \
-  --master-addr="${MASTER_ADDR}" --master-port="${MASTER_PORT}" \
-  "${WORKER[@]}" >"${NODE_LOG}/console.log" 2>&1
-status=$?
+if [[ "${MODE}" == profile ]]; then
+  NSYS_BIN="${DISTILLSCHEDULE_NSYS_BIN:-$(command -v nsys || true)}"
+  [[ -x "${NSYS_BIN}" ]] || { echo nsys_missing >&2; exit 3; }
+  PROFILE_ROOT="${RUN_ROOT}/nsight"
+  PROFILE_NODE_DIR="${PROFILE_ROOT}/node_${NODE_RANK}"
+  RECEIPT_DIR="${PROFILE_ROOT}/range_receipts"
+  REPORT_BASE="${PROFILE_NODE_DIR}/wan13b_fsdp2_node${NODE_RANK}"
+  mkdir -p "${PROFILE_NODE_DIR}" "${RECEIPT_DIR}"
+  [[ ! -e "${REPORT_BASE}.nsys-rep" && ! -e "${REPORT_BASE}.sqlite" ]] || {
+    echo nsys_artifact_exists >&2
+    exit 82
+  }
+  export DISTILLSCHEDULE_STATIC_FSDP2_NSYS_EXACT_RANGE=1
+  export DISTILLSCHEDULE_STATIC_FSDP2_NSYS_RECEIPT_DIR="${RECEIPT_DIR}"
+  "${NSYS_BIN}" profile \
+    --trace=cuda,nvtx \
+    --capture-range=cudaProfilerApi \
+    --capture-range-end=stop \
+    --trace-fork-before-exec=true \
+    --wait=all \
+    --sample=none \
+    --cpuctxsw=none \
+    --cuda-flush-interval=1000 \
+    --force-overwrite=true \
+    --output="${REPORT_BASE}" \
+    "${TORCHRUN}" --no-python --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}" \
+      --master-addr="${MASTER_ADDR}" --master-port="${MASTER_PORT}" \
+      "${PYTHON}" "${WORKER[@]}" >"${NODE_LOG}/console.log" 2>&1
+  status=$?
+  if [[ ${status} -eq 0 ]]; then
+    if [[ ! -s "${REPORT_BASE}.nsys-rep" ]]; then
+      echo missing_nsys_report >&2
+      status=87
+    else
+      "${NSYS_BIN}" export --type sqlite --force-overwrite true \
+        --output "${REPORT_BASE}.sqlite" "${REPORT_BASE}.nsys-rep" \
+        >"${PROFILE_NODE_DIR}/nsys_export.log" 2>&1
+      status=$?
+    fi
+  fi
+  if [[ ${status} -eq 0 ]]; then
+    if [[ ! -s "${REPORT_BASE}.sqlite" ]]; then
+      echo missing_nsys_sqlite >&2
+      status=88
+    else
+      "${NSYS_BIN}" stats --report nvtx_sum,cuda_gpu_kern_sum,cuda_api_sum --format csv \
+        "${REPORT_BASE}.nsys-rep" >"${PROFILE_NODE_DIR}/nsys_stats_validation.log" 2>&1
+      status=$?
+    fi
+  fi
+  if [[ ${status} -eq 0 ]] && grep -Eq \
+      "ProcessEventsError|Unknown runtime API|Cannot find bucket|Cannot find string|Errors occurred while processing raw events|does not contain (NV Tools Extension|CUDA kernel|CUDA API)" \
+      "${PROFILE_NODE_DIR}/nsys_export.log" "${PROFILE_NODE_DIR}/nsys_stats_validation.log"; then
+    echo nsys_profile_validation_failed >&2
+    status=89
+  fi
+  if [[ ${status} -eq 0 ]]; then
+    for _ in $(seq 1 300); do
+      count="$(find "${RECEIPT_DIR}" -maxdepth 1 -type f -name 'rank_*.json' | wc -l)"
+      [[ "${count}" == 16 ]] && break
+      sleep 1
+    done
+    count="$(find "${RECEIPT_DIR}" -maxdepth 1 -type f -name 'rank_*.json' | wc -l)"
+    if [[ "${count}" != 16 ]]; then
+      echo "nsys_range_receipts=${count},expected=16" >&2
+      status=90
+    fi
+  fi
+  if [[ ${status} -eq 0 && "${NODE_RANK}" == 0 ]]; then
+    "${PYTHON}" - "${RECEIPT_DIR}" "${PROFILE_ROOT}/range_validation.json" <<'PY'
+import json
+import pathlib
+import sys
+from distillschedule.runtime.nsys_range import validate_static_nsys_receipts
+
+value = validate_static_nsys_receipts(
+    pathlib.Path(sys.argv[1]),
+    variant="no-gan",
+    expected_stop_point="after_step14_ema_update",
+)
+pathlib.Path(sys.argv[2]).write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
+PY
+    status=$?
+  fi
+else
+  "${TORCHRUN}" --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}" \
+    --master-addr="${MASTER_ADDR}" --master-port="${MASTER_PORT}" \
+    "${WORKER[@]}" >"${NODE_LOG}/console.log" 2>&1
+  status=$?
+fi
 set -e
 
 cp "${CGROUP_EVENTS}" "${NODE_LOG}/cgroup_memory_events_after.txt" 2>/dev/null || true

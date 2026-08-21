@@ -94,7 +94,9 @@ def parser() -> argparse.ArgumentParser:
         default=("baai-helios-node0", "baai-helios-node1"),
     )
     value.add_argument("--run-id", required=True)
-    value.add_argument("--mode", choices=("validate", "correctness", "timing"), required=True)
+    value.add_argument(
+        "--mode", choices=("validate", "correctness", "timing", "profile"), required=True
+    )
     value.add_argument("--placement", choices=("resident", "world16-fsdp"), required=True)
     value.add_argument("--expected-head", required=True)
     value.add_argument("--model-root", type=Path, required=True)

@@ -23,7 +23,9 @@ def parser() -> argparse.ArgumentParser:
     value = argparse.ArgumentParser()
     value.add_argument("--run-root", type=Path, required=True)
     value.add_argument("--placement", choices=("resident", "world16-fsdp"), required=True)
-    value.add_argument("--mode", choices=("validate", "correctness", "timing"), required=True)
+    value.add_argument(
+        "--mode", choices=("validate", "correctness", "timing", "profile"), required=True
+    )
     value.add_argument("--output", type=Path, required=True)
     return value
 
@@ -199,6 +201,7 @@ def main() -> int:
             else "NOT_RUN"
         ),
         "formal_eligibility": args.mode == "timing" and not errors,
+        "diagnostic_only": args.mode == "profile",
     }
     _atomic_json(args.output, summary)
     print(json.dumps(summary, indent=2, sort_keys=True))

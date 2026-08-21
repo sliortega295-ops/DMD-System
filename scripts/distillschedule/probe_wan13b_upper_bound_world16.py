@@ -32,6 +32,7 @@ _SPEC.loader.exec_module(p0)
 from distillschedule.profiling.static_profile_diagnostics import StaticProfileDiagnostics
 from distillschedule.runtime.fsdp2_p0 import StaticFSDP2P0Policy, apply_blockwise_fsdp2_policy
 from distillschedule.runtime.fsdp2_static import configure_fsdp2_checkpointing, contract_for_variant
+from distillschedule.runtime.nsys_range import StaticFSDP2Full5NsightRange
 from distillschedule.runtime.wan13b_upper_bound import (
     FreshTrainableEMA,
     PLACEMENTS,
@@ -269,7 +270,7 @@ def _build_engines(
         betas=(0.0, 0.999),
         eps=1e-8,
         weight_decay=1e-3,
-        audit_gradients=not args.timing_mode,
+        audit_gradients=not (args.timing_mode or args.profile_mode),
     )
     critic_engine, critic_engine_build = build_fresh_engine(
         module=critic,
@@ -279,7 +280,7 @@ def _build_engines(
         betas=(0.0, 0.999),
         eps=1e-8,
         weight_decay=1e-3,
-        audit_gradients=not args.timing_mode,
+        audit_gradients=not (args.timing_mode or args.profile_mode),
     )
     ema = FreshTrainableEMA(
         generator,
@@ -319,6 +320,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--negative-prompt", type=Path, required=True)
     value.add_argument("--validate-only", action="store_true")
     value.add_argument("--timing-mode", action="store_true")
+    value.add_argument("--profile-mode", action="store_true")
     return value
 
 
@@ -343,8 +345,12 @@ def main() -> int:
         "hostname": socket.gethostname(),
         "world_size": world,
         "timing_mode": bool(args.timing_mode),
+        "profile_mode": bool(args.profile_mode),
     }
     try:
+        if args.timing_mode and args.profile_mode:
+            raise ValueError("timing mode and profile mode are mutually exclusive")
+        low_overhead = bool(args.timing_mode or args.profile_mode)
         contract = contract_for_variant("no-gan")
         bootstrap = Wan13BBootstrap.load(
             args.bootstrap,
@@ -393,11 +399,17 @@ def main() -> int:
             rollout_backend="native-fsdp2-batch",
         )
         diagnostics = StaticProfileDiagnostics(
-            enabled=not args.timing_mode,
+            enabled=not low_overhead,
             rank=rank,
             output_path=None,
-            collect_cpu_diagnostics=not args.timing_mode,
+            collect_cpu_diagnostics=not low_overhead,
         )
+        nsys_range = StaticFSDP2Full5NsightRange.from_env(
+            variant="no-gan",
+            stop_point="after_step14_ema_update",
+        )
+        if args.profile_mode and not nsys_range.enabled:
+            raise ValueError("profile mode requires the exact Nsight range contract")
         result["build"] = build
         result["initial"] = {
             "generator_physical_step": int(generator_engine.global_steps),
@@ -405,12 +417,12 @@ def main() -> int:
             "ema_step": int(ema.optimization_step),
             "generator_trainable_metrics": (
                 model_trainable_metrics(generator_engine.module, placement=args.placement)
-                if not args.timing_mode
+                if not low_overhead
                 else TIMING_OMITTED
             ),
             "critic_trainable_metrics": (
                 model_trainable_metrics(critic_engine.module, placement=args.placement)
-                if not args.timing_mode
+                if not low_overhead
                 else TIMING_OMITTED
             ),
             "memory": _memory(device),
@@ -419,7 +431,15 @@ def main() -> int:
         torch.cuda.synchronize(device)
         started = time.perf_counter()
         started_ns = time.time_ns()
+        if args.profile_mode:
+            dist.barrier()
+            nsys_range.before_model_compute(contract.logical_steps[0])
+            if local_rank == 0:
+                torch.cuda.nvtx.range_push("WAN13B_FULL5/world16-fsdp")
+            dist.barrier()
 
+        if args.profile_mode and local_rank == 0:
+            torch.cuda.nvtx.range_push("WAN13B/G_UPDATE")
         generator_record = p0._run_nogan_generator_update_p0(
             rank=rank,
             device=device,
@@ -427,11 +447,14 @@ def main() -> int:
             critic_engine=critic_engine,
             trace=trace,
             negative=negative,
-            collect_diagnostics=not args.timing_mode,
+            collect_diagnostics=not low_overhead,
             diagnostics=diagnostics,
             policy=policy,
             score_pack_parity_check=False,
         )
+        if args.profile_mode and local_rank == 0:
+            torch.cuda.nvtx.range_pop()
+            torch.cuda.nvtx.range_push("WAN13B/G_ROLLOUTS")
         rollout_outputs, rollout_records = p0._precompute_critic_rollouts(
             rank=rank,
             steps=contract.logical_steps,
@@ -439,28 +462,32 @@ def main() -> int:
             generator_engine=generator_engine,
             trace=trace,
             policy=policy,
-            collect_diagnostics=not args.timing_mode,
+            collect_diagnostics=not low_overhead,
             diagnostics=diagnostics,
             rollout_parity_check=False,
         )
+        if args.profile_mode and local_rank == 0:
+            torch.cuda.nvtx.range_pop()
         rollout_metrics = (
             {
                 str(step): _tensor_metrics(rollout_outputs[step])
                 for step in contract.logical_steps
             }
-            if not args.timing_mode
+            if not low_overhead
             else TIMING_OMITTED
         )
         rollout_evidence = (
             _save_rollout_evidence(
                 output_dir=args.output_dir, rank=rank, values=rollout_outputs
             )
-            if not args.timing_mode
+            if not low_overhead
             else TIMING_OMITTED
         )
         critic_records: list[dict[str, Any]] = []
         ema_records: list[dict[str, Any]] = []
         for step in contract.logical_steps:
+            if args.profile_mode and local_rank == 0:
+                torch.cuda.nvtx.range_push(f"WAN13B/C_UPDATE/step_{step}")
             critic_records.append(
                 p0._run_nogan_critic_precomputed(
                     rank=rank,
@@ -469,10 +496,13 @@ def main() -> int:
                     device=device,
                     critic_engine=critic_engine,
                     trace=trace,
-                    collect_diagnostics=not args.timing_mode,
+                    collect_diagnostics=not low_overhead,
                     diagnostics=diagnostics,
                 )
             )
+            if args.profile_mode and local_rank == 0:
+                torch.cuda.nvtx.range_pop()
+                torch.cuda.nvtx.range_push(f"WAN13B/EMA/step_{step}")
             decay = ema.step()
             ema_records.append(
                 {
@@ -482,9 +512,17 @@ def main() -> int:
                 }
             )
             del rollout_outputs[step]
+            if args.profile_mode and local_rank == 0:
+                torch.cuda.nvtx.range_pop()
 
         torch.cuda.synchronize(device)
         dist.barrier()
+        if args.profile_mode:
+            if local_rank == 0:
+                torch.cuda.nvtx.range_pop()
+            nsys_range.after_critic_commit(contract.logical_steps[-1])
+            dist.barrier()
+            nsys_range.assert_complete()
         stopped_ns = time.time_ns()
         elapsed = time.perf_counter() - started
         expected_g = int(contract.final_versions["generator"])
@@ -503,12 +541,12 @@ def main() -> int:
 
         final_generator_metrics = (
             model_trainable_metrics(generator_engine.module, placement=args.placement)
-            if not args.timing_mode
+            if not low_overhead
             else TIMING_OMITTED
         )
         final_critic_metrics = (
             model_trainable_metrics(critic_engine.module, placement=args.placement)
-            if not args.timing_mode
+            if not low_overhead
             else TIMING_OMITTED
         )
         final_trainable_evidence = (
@@ -538,7 +576,7 @@ def main() -> int:
                     engine=critic_engine,
                 ),
             }
-            if not args.timing_mode
+            if not low_overhead
             else TIMING_OMITTED
         )
 
@@ -563,7 +601,7 @@ def main() -> int:
                 "generator_trainable_metrics": final_generator_metrics,
                 "critic_trainable_metrics": final_critic_metrics,
                 "trainable_evidence": final_trainable_evidence,
-                "ema_checksum": ema.checksum() if not args.timing_mode else TIMING_OMITTED,
+                "ema_checksum": ema.checksum() if not low_overhead else TIMING_OMITTED,
                 "memory": _memory(device),
             },
             gradient_sync={
