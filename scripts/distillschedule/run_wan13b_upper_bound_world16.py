@@ -127,6 +127,11 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--correctness-receipt", type=Path)
     value.add_argument("--correctness-sha256")
     value.add_argument(
+        "--nsys-bin",
+        type=Path,
+        default=Path("/home/lyy/Helios/tools/nsight_systems/2024.6.2.225/bin/nsys"),
+    )
+    value.add_argument(
         "--local-evidence-root",
         type=Path,
         default=Path(
@@ -165,6 +170,10 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
                 "DISTILLSCHEDULE_WAN13B_CORRECTNESS_SHA256="
                 + shlex.quote(args.correctness_sha256),
             )
+        )
+    if args.mode == "profile":
+        exports.append(
+            "DISTILLSCHEDULE_NSYS_BIN=" + shlex.quote(str(args.nsys_bin))
         )
     launch = " ".join(
         shlex.quote(str(value))

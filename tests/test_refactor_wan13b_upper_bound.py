@@ -185,6 +185,9 @@ def test_profile_mode_is_diagnostic_only_and_uses_one_outer_session_per_node() -
     assert "expected_stop_point=\"after_step14_ema_update\"" in launcher
     assert "expected_controller_ranks=[]" in launcher
     assert '"profile"' in controller
+    assert '"--nsys-bin"' in controller
+    assert "2024.6.2.225/bin/nsys" in controller
+    assert "nsys_version_not_admissible" in launcher
     assert '"diagnostic_only": args.mode == "profile"' in summarizer
     assert "NCCL interval union minus its intersection" in analyzer
     assert "sum of the 16 per-GPU outer-range walls" in analyzer

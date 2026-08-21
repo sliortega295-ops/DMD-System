@@ -125,11 +125,21 @@ set +e
 if [[ "${MODE}" == profile ]]; then
   NSYS_BIN="${DISTILLSCHEDULE_NSYS_BIN:-$(command -v nsys || true)}"
   [[ -x "${NSYS_BIN}" ]] || { echo nsys_missing >&2; exit 3; }
+  NSYS_VERSION="$(${NSYS_BIN} --version | head -1)"
+  [[ "${NSYS_VERSION}" =~ 2024\.6\.2|2024\.[789]|202[5-9]\. ]] || {
+    echo "nsys_version_not_admissible=${NSYS_VERSION}" >&2
+    exit 3
+  }
   PROFILE_ROOT="${RUN_ROOT}/nsight"
   PROFILE_NODE_DIR="${PROFILE_ROOT}/node_${NODE_RANK}"
   RECEIPT_DIR="${PROFILE_ROOT}/range_receipts"
   REPORT_BASE="${PROFILE_NODE_DIR}/wan13b_fsdp2_node${NODE_RANK}"
   mkdir -p "${PROFILE_NODE_DIR}" "${RECEIPT_DIR}"
+  {
+    echo "nsys_bin=${NSYS_BIN}"
+    echo "nsys_version=${NSYS_VERSION}"
+    echo "capture_mode=process_wide_clipped_to_exact_nvtx"
+  } >"${PROFILE_NODE_DIR}/profiler_identity.txt"
   [[ ! -e "${REPORT_BASE}.nsys-rep" && ! -e "${REPORT_BASE}.sqlite" ]] || {
     echo nsys_artifact_exists >&2
     exit 82
