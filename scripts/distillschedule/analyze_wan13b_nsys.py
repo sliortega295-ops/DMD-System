@@ -59,6 +59,17 @@ def _union(intervals: Iterable[tuple[int, int]]) -> list[tuple[int, int]]:
     return [(a, b) for a, b in out]
 
 
+def _append_merged(out: list[tuple[int, int]], start: int, end: int) -> None:
+    """Append one start-ordered interval while maintaining an exact union."""
+
+    if end <= start:
+        return
+    if out and start <= out[-1][1]:
+        out[-1] = (out[-1][0], max(out[-1][1], end))
+    else:
+        out.append((start, end))
+
+
 def _duration(intervals: Iterable[tuple[int, int]]) -> int:
     return sum(b - a for a, b in _union(intervals))
 
@@ -159,10 +170,18 @@ def analyze_node(path: Path, node: int) -> dict:
         if name_col not in kcols or "deviceId" not in kcols:
             raise RuntimeError(f"node{node}: kernel schema lacks name/deviceId: {sorted(kcols)}")
         by_device = {i: {c: [] for c in CATEGORIES} for i in range(8)}
-        kernel_rows = {i: [] for i in range(8)}
-        nccl_rows = {i: [] for i in range(8)}
+        kernel_events = Counter()
+        collective_kinds = (
+            "all_gather", "reduce_scatter", "all_reduce", "p2p", "broadcast", "other_nccl"
+        )
+        nccl_intervals = {
+            i: {kind: [] for kind in collective_kinds} for i in range(8)
+        }
+        nccl_events = {i: Counter() for i in range(8)}
+        nccl_sum_ns = {i: Counter() for i in range(8)}
         unresolved_ns = Counter()
         kernel_ns = Counter()
+        last_kernel_start: dict[int, int] = {}
         query = (
             f"select start,end,deviceId,{name_col} from CUPTI_ACTIVITY_KIND_KERNEL "
             "where end>? and start<?"
@@ -174,17 +193,32 @@ def analyze_node(path: Path, node: int) -> dict:
             clipped = _clip((int(start), int(end)), outer)
             if not clipped:
                 continue
+            if device in last_kernel_start and int(start) < last_kernel_start[device]:
+                raise RuntimeError(
+                    f"node{node}: kernel rows are not start-ordered for device {device}"
+                )
+            last_kernel_start[device] = int(start)
             n = _name(raw_name, strings)
             category = "nccl" if any(t in n.lower() for t in ("nccl", "nvls", "collnet")) else "compute"
-            by_device[device][category].append(clipped)
-            kernel_rows[device].append((clipped[0], clipped[1], n))
+            _append_merged(by_device[device][category], clipped[0], clipped[1])
+            kernel_events[device] += 1
             kernel_ns[device] += clipped[1] - clipped[0]
             if not n or n.startswith("UNRESOLVED_STRING_ID_"):
                 unresolved_ns[device] += clipped[1] - clipped[0]
             if category == "nccl":
-                nccl_rows[device].append((clipped[0], clipped[1], n, _collective(n)))
+                kind = _collective(n)
+                _append_merged(nccl_intervals[device][kind], clipped[0], clipped[1])
+                nccl_events[device][kind] += 1
+                nccl_sum_ns[device][kind] += clipped[1] - clipped[0]
 
-        copy_rows = {i: [] for i in range(8)}
+        copy_directions = ("h2d", "d2h", "d2d", "other")
+        copy_intervals = {
+            i: {direction: [] for direction in copy_directions} for i in range(8)
+        }
+        copy_events = {i: Counter() for i in range(8)}
+        copy_bytes = {i: Counter() for i in range(8)}
+        copy_sum_ns = {i: Counter() for i in range(8)}
+        last_copy_start: dict[int, int] = {}
         mcols = _cols(db, "CUPTI_ACTIVITY_KIND_MEMCPY")
         if "deviceId" not in mcols:
             raise RuntimeError(f"node{node}: memcpy schema lacks deviceId: {sorted(mcols)}")
@@ -198,19 +232,24 @@ def analyze_node(path: Path, node: int) -> dict:
             clipped = _clip((int(start), int(end)), outer)
             if not clipped:
                 continue
+            if device in last_copy_start and int(start) < last_copy_start[device]:
+                raise RuntimeError(
+                    f"node{node}: memcpy rows are not start-ordered for device {device}"
+                )
+            last_copy_start[device] = int(start)
             direction = COPY_KIND.get(int(kind), "other")
-            by_device[device]["copy"].append(clipped)
-            copy_rows[device].append((clipped[0], clipped[1], int(num_bytes or 0), direction))
+            _append_merged(by_device[device]["copy"], clipped[0], clipped[1])
+            _append_merged(copy_intervals[device][direction], clipped[0], clipped[1])
+            copy_events[device][direction] += 1
+            copy_bytes[device][direction] += int(num_bytes or 0)
+            copy_sum_ns[device][direction] += clipped[1] - clipped[0]
 
-        missing_devices = [d for d in range(8) if not kernel_rows[d]]
+        missing_devices = [d for d in range(8) if not kernel_events[d]]
         if missing_devices:
             raise RuntimeError(f"node{node}: kernel device coverage missing {missing_devices}")
         devices = []
         for device in range(8):
-            merged = {
-                category: _union(by_device[device][category])
-                for category in CATEGORIES
-            }
+            merged = by_device[device]
             by_device[device] = merged
             wall = outer[1] - outer[0]
             compute = sum(b - a for a, b in merged["compute"])
@@ -223,22 +262,21 @@ def analyze_node(path: Path, node: int) -> dict:
             if abs(residual) > 10:
                 raise RuntimeError(f"node{node}/device{device}: exclusive reconciliation residual={residual}")
             directions = {}
-            for direction in ("h2d", "d2h", "d2d", "other"):
-                rows = [r for r in copy_rows[device] if r[3] == direction]
+            for direction in copy_directions:
+                intervals = copy_intervals[device][direction]
                 directions[direction] = {
-                    "events": len(rows),
-                    "bytes": sum(r[2] for r in rows),
-                    "union_ns": _duration((r[0], r[1]) for r in rows),
-                    "sum_duration_ns": sum(r[1] - r[0] for r in rows),
+                    "events": copy_events[device][direction],
+                    "bytes": copy_bytes[device][direction],
+                    "union_ns": sum(b - a for a, b in intervals),
+                    "sum_duration_ns": copy_sum_ns[device][direction],
                 }
             coll = {}
-            for kind in ("all_gather", "reduce_scatter", "all_reduce", "p2p", "broadcast", "other_nccl"):
-                rows = [r for r in nccl_rows[device] if r[3] == kind]
-                intervals = _union((r[0], r[1]) for r in rows)
+            for kind in collective_kinds:
+                intervals = nccl_intervals[device][kind]
                 coll[kind] = {
-                    "events": len(rows),
+                    "events": nccl_events[device][kind],
                     "union_ns": sum(b - a for a, b in intervals),
-                    "sum_duration_ns": sum(r[1] - r[0] for r in rows),
+                    "sum_duration_ns": nccl_sum_ns[device][kind],
                     "hidden_by_compute_ns": _intersection_unioned(
                         intervals, merged["compute"]
                     ),
@@ -259,7 +297,7 @@ def analyze_node(path: Path, node: int) -> dict:
                 "exclusive_ns": exclusive,
                 "copy_directions": directions,
                 "nccl_collectives": coll,
-                "kernel_events": len(kernel_rows[device]),
+                "kernel_events": kernel_events[device],
                 "unresolved_kernel_ratio": unresolved_ns[device] / max(kernel_ns[device], 1),
             })
 
