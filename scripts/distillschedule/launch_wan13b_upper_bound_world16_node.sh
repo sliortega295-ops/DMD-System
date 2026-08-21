@@ -153,7 +153,7 @@ if [[ "${MODE}" == profile ]]; then
   "${NSYS_BIN}" profile \
     --trace=cuda,nvtx \
     --trace-fork-before-exec=true \
-    --wait=all \
+    --wait=primary \
     --sample=none \
     --cpuctxsw=none \
     --cuda-flush-interval=1000 \

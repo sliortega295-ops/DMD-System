@@ -182,6 +182,7 @@ def test_profile_mode_is_diagnostic_only_and_uses_one_outer_session_per_node() -
     assert "DISTILLSCHEDULE_STATIC_FSDP2_NSYS_CONTROL_API=0" in launcher
     assert "clip analysis to the exact balanced WAN13B_FULL5" in launcher
     assert "--trace-fork-before-exec=true" in launcher
+    assert "--wait=primary" in launcher
     assert "expected_stop_point=\"after_step14_ema_update\"" in launcher
     assert "expected_controller_ranks=[]" in launcher
     assert '"profile"' in controller
