@@ -15,6 +15,7 @@ from typing import Any
 from .wan13b_upper_bound import (
     FreshTrainableEMA,
     GLOBAL_BATCH,
+    ReplicatedTrainableAllReduceEngine,
     WAN13B_BLOCK_COUNT,
     WORLD_SIZE,
     build_fresh_engine,
@@ -147,6 +148,18 @@ def ddp_sum_then_divide_hook(state: _DDPCommState, bucket: Any) -> Any:
     )
 
 
+class ReferenceResidentEngine(ReplicatedTrainableAllReduceEngine):
+    """PR #21 reference engine with an explicit auditable backend receipt."""
+
+    def _synchronize_trainable_gradients(self) -> dict[str, Any]:
+        receipt = super()._synchronize_trainable_gradients()
+        # The parent appends the same dictionary object in correctness mode, so
+        # adding this field after the call also updates the stored receipt.
+        receipt["backend"] = "MANUAL_ALL_REDUCE_COALESCED"
+        receipt["overlap_with_backward"] = False
+        return receipt
+
+
 class ResidentDDPEngine:
     """Full GPU residency with DDP used only for trainable gradients."""
 
@@ -184,7 +197,7 @@ class ResidentDDPEngine:
             device_ids=[torch.cuda.current_device()],
             output_device=torch.cuda.current_device(),
             broadcast_buffers=False,
-            init_sync=False,
+            init_sync=True,
             bucket_cap_mb=int(bucket_cap_mb),
             find_unused_parameters=False,
             gradient_as_bucket_view=True,
@@ -256,6 +269,37 @@ class ResidentDDPEngine:
         return self._step_calls
 
 
+def _materialize_resident_adam_state(
+    *,
+    optimizer: Any,
+    scheduler: Any,
+    physical_step: int,
+    fused: bool,
+) -> dict[str, Any]:
+    """Materialize an identical logical Adam state for default/fused kernels."""
+
+    torch = _torch()
+    state = materialize_adam_state(
+        optimizer=optimizer,
+        scheduler=scheduler,
+        physical_step=physical_step,
+    )
+    if fused:
+        # PyTorch fused Adam requires the scalar step on the parameter device.
+        # Its numeric value and the two FP32 moment tensors remain identical.
+        for group in optimizer.param_groups:
+            for parameter in group["params"]:
+                optimizer.state[parameter]["step"] = torch.tensor(
+                    float(physical_step),
+                    dtype=torch.float32,
+                    device=parameter.device,
+                )
+    return {
+        **state,
+        "step_tensor_device": "parameter_device" if fused else "cpu",
+    }
+
+
 def build_fair_engine(
     *,
     module: Any,
@@ -268,11 +312,11 @@ def build_fair_engine(
     audit_gradients: bool = False,
     resident_ddp_bucket_mb: int = 128,
 ) -> tuple[Any, dict[str, Any]]:
-    """Build one engine without changing optimizer hyperparameters."""
+    """Build one engine without changing optimizer hyperparameters or state."""
 
     if placement not in FAIR_PLACEMENTS:
         raise ValueError(f"unsupported fair placement: {placement}")
-    if placement in {REFERENCE_RESIDENT, FSDP_PLACEMENT}:
+    if placement == FSDP_PLACEMENT:
         engine, metadata = build_fresh_engine(
             module=module,
             placement=placement,
@@ -286,53 +330,71 @@ def build_fair_engine(
         metadata = dict(metadata)
         metadata.update(
             {
-                "optimizer_state_representation": (
-                    "FULL_REPLICA_FP32"
-                    if placement == REFERENCE_RESIDENT
-                    else "LOCAL_DTENSOR_SHARD_FP32"
-                ),
-                "gradient_sync": (
-                    "WORLD16_MANUAL_SUM_THEN_DIVIDE_ALL_REDUCE"
-                    if placement == REFERENCE_RESIDENT
-                    else "FSDP2_SUM_THEN_DIVIDE_REDUCE_SCATTER"
-                ),
+                "optimizer_state_representation": "LOCAL_DTENSOR_SHARD_FP32",
+                "gradient_sync": "FSDP2_SUM_THEN_DIVIDE_REDUCE_SCATTER",
+                "optimizer_implementation": "PYTORCH_DEFAULT",
             }
         )
         return engine, metadata
 
     torch = _torch()
     trainables = list(_named_trainables(module).values())
+    if not trainables:
+        raise ValueError("Wan1.3B resident engine has no trainables")
+    fused = placement == FAST_RESIDENT
+    optimizer_kwargs: dict[str, Any] = {}
+    if fused:
+        optimizer_kwargs["fused"] = True
     optimizer = torch.optim.AdamW(
         trainables,
         lr=float(lr),
         betas=tuple(float(value) for value in betas),
         eps=float(eps),
         weight_decay=float(weight_decay),
+        **optimizer_kwargs,
     )
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda _: 1.0)
-    state = materialize_adam_state(
+    state = _materialize_resident_adam_state(
         optimizer=optimizer,
         scheduler=scheduler,
         physical_step=physical_step,
+        fused=fused,
     )
-    engine = ResidentDDPEngine(
-        module,
-        optimizer,
-        scheduler,
-        physical_step=physical_step,
-        bucket_cap_mb=resident_ddp_bucket_mb,
-        audit_gradients=audit_gradients,
-    )
+    if placement == REFERENCE_RESIDENT:
+        engine: Any = ReferenceResidentEngine(
+            module,
+            optimizer,
+            scheduler,
+            physical_step=physical_step,
+            audit_gradients=audit_gradients,
+        )
+        gradient_sync = "WORLD16_MANUAL_SUM_THEN_DIVIDE_ALL_REDUCE"
+    else:
+        engine = ResidentDDPEngine(
+            module,
+            optimizer,
+            scheduler,
+            physical_step=physical_step,
+            bucket_cap_mb=resident_ddp_bucket_mb,
+            audit_gradients=audit_gradients,
+        )
+        gradient_sync = "WORLD16_DDP_SUM_THEN_DIVIDE_ALL_REDUCE_OVERLAPPED"
     return engine, {
         **state,
         "placement": placement,
-        "gradient_sync": "WORLD16_DDP_SUM_THEN_DIVIDE_ALL_REDUCE_OVERLAPPED",
+        "gradient_sync": gradient_sync,
         "optimizer": "AdamW",
-        "optimizer_implementation": "PYTORCH_DEFAULT",
+        "optimizer_implementation": (
+            "PYTORCH_FUSED" if fused else "PYTORCH_DEFAULT"
+        ),
         "optimizer_state_representation": "FULL_REPLICA_FP32",
         "optimizer_state_device": "cuda",
         "optimizer_state_offload": False,
-        "resident_ddp_bucket_mb": int(resident_ddp_bucket_mb),
+        "resident_ddp_bucket_mb": (
+            int(resident_ddp_bucket_mb)
+            if placement in {DDP_RESIDENT, FAST_RESIDENT}
+            else None
+        ),
     }
 
 
@@ -452,6 +514,7 @@ __all__ = [
     "FairTrainableEMA",
     "LoRAComputeDtypeAudit",
     "REFERENCE_RESIDENT",
+    "ReferenceResidentEngine",
     "RESIDENT_PLACEMENTS",
     "ResidentDDPEngine",
     "apply_wan13b_fair_fsdp2_policy",
