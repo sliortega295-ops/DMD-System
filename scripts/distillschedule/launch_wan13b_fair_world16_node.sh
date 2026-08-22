@@ -60,11 +60,20 @@ if [[ "${MODE}" == timing ]]; then
     echo correctness_receipt_hash_changed >&2
     exit 3
   }
-  "${PYTHON}" - "${CORRECTNESS_RECEIPT}" <<'PY'
+  "${PYTHON}" - "${CORRECTNESS_RECEIPT}" "${PLACEMENT}" <<'PY'
 import json, pathlib, sys
 value = json.loads(pathlib.Path(sys.argv[1]).read_text())
+placement = sys.argv[2]
 if value.get("status") != "PASS" or not value.get("claimable_for_paired_timing"):
     raise SystemExit("fair numerical gate is not PASS")
+placements = {
+    value.get("reference", {}).get("placement"),
+    value.get("candidate", {}).get("placement"),
+}
+if placement not in placements:
+    raise SystemExit(
+        f"correctness receipt does not cover requested placement {placement}: {placements}"
+    )
 PY
 fi
 
@@ -115,6 +124,7 @@ lora_compute_dtype=torch.float32
 gradient_mean=SUM_THEN_DIVIDE_WORLD_SIZE
 resident_ddp_bucket_mb=128
 ema_implementation=${DISTILLSCHEDULE_WAN13B_EMA_IMPLEMENTATION}
+optimizer_implementation=$( [[ "${PLACEMENT}" == resident-fast ]] && echo PYTORCH_FUSED || echo PYTORCH_DEFAULT )
 parameter_offload=false
 activation_offload=false
 optimizer_offload=false
