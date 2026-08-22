@@ -21,3 +21,9 @@ wall was 77.336 s for world16 FSDP2 and 70.650 s for Resident, a 6.686 s gap.
 Profiled wall time is not a formal speed denominator. Numerical cross-placement
 parity was waived only for this diagnostic, so this bundle does not claim a
 correctness-equivalent or formal performance win.
+
+## Related unprofiled diagnostic
+
+The earlier unprofiled Iterations 321--322 evidence, including the failed
+cross-placement numerical gate, is published at
+[`../wan13b-resident-vs-fsdp2-unprofiled-20260820/`](../wan13b-resident-vs-fsdp2-unprofiled-20260820/README.md).

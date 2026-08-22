@@ -1,0 +1,333 @@
+{
+  "correctness_evidence": {
+    "critic_metrics": {
+      "global_numel": 356597760,
+      "l1": 554539.2368159909,
+      "l2": 52.07023110316454,
+      "max_abs": 0.02196842059493065,
+      "sum": -23.043874760375704
+    },
+    "ema_checksum_rank0": {
+      "communication_per_update": false,
+      "decay": 0.625,
+      "device": "cuda",
+      "local_norm": 52.2410200928899,
+      "local_numel": 358973440,
+      "local_sum": 34.29199397258044,
+      "optimization_step": 15,
+      "tracked_tensor_count": 618
+    },
+    "final_trainables": {
+      "critic": {
+        "bytes": 1426463608,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/correctness/final_critic_trainables.safetensors",
+        "sha256": "addcebe5c370dce5ca21d59e3969ab04616cb6b094c0e35035152f3d5049b256",
+        "status": "PASS",
+        "tensor_count": 612,
+        "writer_rank": 0
+      },
+      "critic_optimizer": {
+        "bytes": 2852939720,
+        "optimizer_step": 15,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/correctness/final_critic_optimizer.safetensors",
+        "scheduler_step": 15,
+        "sha256": "7e8adaa72775519847023265e7068b7624b35640bffa3c9d2f81dff0a567e970",
+        "status": "PASS",
+        "tensor_count": 1224,
+        "writer_rank": 0
+      },
+      "generator": {
+        "bytes": 1435967016,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/correctness/final_generator_trainables.safetensors",
+        "sha256": "c198ca8ead7c25671f486a46556bcfac3546b8181e7b5e84c9a23afa8e2fe84e",
+        "status": "PASS",
+        "tensor_count": 618,
+        "writer_rank": 0
+      },
+      "generator_optimizer": {
+        "bytes": 2871946648,
+        "optimizer_step": 3,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/correctness/final_generator_optimizer.safetensors",
+        "scheduler_step": 3,
+        "sha256": "5093f43cfc6777e398c21ffda3c6d00fddd8ad80ef0e4994478a800dce5fda64",
+        "status": "PASS",
+        "tensor_count": 1236,
+        "writer_rank": 0
+      }
+    },
+    "generator_metrics": {
+      "global_numel": 358973440,
+      "l1": 558051.6073718816,
+      "l2": 52.24102272040815,
+      "max_abs": 0.0224609375,
+      "sum": 34.29165051003161
+    },
+    "rollouts": [
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/correctness/rank_00_critic_rollouts.safetensors",
+        "sha256": "a01a12abb8a6fef5ec1920766dd3f4aad0549718e14845e6a98f783450475485",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/correctness/rank_01_critic_rollouts.safetensors",
+        "sha256": "dd8a50aad849027a4838d36b239e8d894540f1801cb3c156532b5154b1558b99",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/correctness/rank_02_critic_rollouts.safetensors",
+        "sha256": "59f7e977ce5ede900d92cebcfbe9606fe90a22aaa2a8fe391f815aff0944d905",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/correctness/rank_03_critic_rollouts.safetensors",
+        "sha256": "e7888fe8dec6c05b24564aabca8f3d421a0dff15a8c77d8e815289793d3506cd",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/correctness/rank_04_critic_rollouts.safetensors",
+        "sha256": "d530f704b11a00909bdc885463bd8df76a9e03885e9691ab96ba0f40c8c74a5b",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/correctness/rank_05_critic_rollouts.safetensors",
+        "sha256": "d67b924303aab3c9960448ac655e03d553473ee574bd7c7e5646748214c7ef06",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/correctness/rank_06_critic_rollouts.safetensors",
+        "sha256": "a3ef2e40881ebd3a623a6fd9f3dfaff8c4497c9ed0f9802a2627df74b3425b63",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/correctness/rank_07_critic_rollouts.safetensors",
+        "sha256": "5fbd32bbd48f3a5b50f76514126eec6a578426f3fd4eafe660572d5047e7065b",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/correctness/rank_08_critic_rollouts.safetensors",
+        "sha256": "c8697a6a50b17cd0efcb2a74afe71c3189d2dfb77d333bdcd638644a83bc4a76",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/correctness/rank_09_critic_rollouts.safetensors",
+        "sha256": "546e6b12b1e93829678de414cc3040bddba7c12d22d75bbea08d17e8f669a4a0",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/correctness/rank_10_critic_rollouts.safetensors",
+        "sha256": "e5c14116bf96f73cf597a0711a46e44b653c15037f97e9e6c8a8f34cd40724b6",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/correctness/rank_11_critic_rollouts.safetensors",
+        "sha256": "9ac6db4fdaaf77bde1a0c2cf7dcd0fae30cc655376281d7c5515a039741c4d22",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/correctness/rank_12_critic_rollouts.safetensors",
+        "sha256": "7fa30d319594cedfb466974e53e64e4431a1b1888aaa7b56322cb70fd58c2ba5",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/correctness/rank_13_critic_rollouts.safetensors",
+        "sha256": "25604da71571d9aef9f6a786f1c46f61fd53e9e7e44f732fab071fdb2d879477",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/correctness/rank_14_critic_rollouts.safetensors",
+        "sha256": "a7063c775f6839526cf9984bf32b3fd6fe844f8d38bbefb2f39bf165842ebfe8",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/correctness/rank_15_critic_rollouts.safetensors",
+        "sha256": "ea6f96999f9ed25a5700cb3d53be6ba88875dca08bfdb45dd70608393339e65b",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      }
+    ]
+  },
+  "errors": [],
+  "formal_eligibility": false,
+  "full5_seconds_world_max": 55.86854529380798,
+  "identities": {
+    "bootstrap_hash": "6a713476d9839cf1ea37689d63cb1cc2b405b9f9915ca5314ccdadb67b3cd60d",
+    "model_identity_sha256": "d52cf9e2d04451c018ac50c4ee1043c4ceba4014e51549bfda2ea5a123c65f54",
+    "trace_binding_hash": "bddcf32b379ea3d0cb36237b0c21f103ea59b1635473dd8080b7182cf3c1eded",
+    "trace_bundle_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3"
+  },
+  "memory": {
+    "max_allocated_bytes": 19793470976,
+    "max_reserved_bytes": 20757610496,
+    "min_driver_free_bytes": 20663631872
+  },
+  "mode": "correctness",
+  "placement": "resident",
+  "rank_count": 16,
+  "rank_full5_seconds": [
+    55.86778719769791,
+    55.867881456855685,
+    55.86781062185764,
+    55.86786833172664,
+    55.867790083400905,
+    55.8678125157021,
+    55.86778331082314,
+    55.867874313145876,
+    55.86851729010232,
+    55.86851861188188,
+    55.86853557405993,
+    55.8685327898711,
+    55.868409825023264,
+    55.86849490716122,
+    55.86844333889894,
+    55.86854529380798
+  ],
+  "rank_receipts": [
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/ranks/rank_00.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/ranks/rank_01.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/ranks/rank_02.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/ranks/rank_03.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/ranks/rank_04.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/ranks/rank_05.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/ranks/rank_06.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/ranks/rank_07.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/ranks/rank_08.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/ranks/rank_09.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/ranks/rank_10.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/ranks/rank_11.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/ranks/rank_12.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/ranks/rank_13.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/ranks/rank_14.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter321_wan13b_correctness_resident_20260820/execution/ranks/rank_15.json"
+  ],
+  "run_id": "iter321_wan13b_correctness_resident_20260820",
+  "schema_version": "distillschedule.wan13b_upper_bound_summary.v1",
+  "status": "PASS",
+  "workload": {
+    "final_versions": {
+      "critic": 15,
+      "ema": 15,
+      "generator": 3
+    },
+    "global_batch": 16,
+    "rollout_batch_size": 1,
+    "score_packing": false,
+    "unique_rank_step_rollout_identities": 80,
+    "updates": {
+      "critic": 5,
+      "ema": 5,
+      "generator": 1
+    },
+    "world_size": 16
+  }
+}

@@ -78,3 +78,8 @@ The matched Resident-vs-world16-FSDP2 Nsight diagnostic is published under
 [`docs/issue-assets/wan13b-resident-vs-fsdp2-nsight-20260822/`](../issue-assets/wan13b-resident-vs-fsdp2-nsight-20260822/README.md).
 It is diagnostic-only: profiled wall is not a formal speed denominator and the
 cross-placement numerical gate was not passed.
+
+The earlier unprofiled diagnostic windows and their failed numerical gate are
+published separately under
+[`docs/issue-assets/wan13b-resident-vs-fsdp2-unprofiled-20260820/`](../issue-assets/wan13b-resident-vs-fsdp2-unprofiled-20260820/README.md).
+They are evidence-bearing performance clues, not formal paired timing.

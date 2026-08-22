@@ -1,0 +1,36 @@
+{
+  "bootstrap_hash": "6a713476d9839cf1ea37689d63cb1cc2b405b9f9915ca5314ccdadb67b3cd60d",
+  "cross_placement_gate": {
+    "claimable_for_paired_timing": false,
+    "error_count": 84,
+    "status": "FAIL"
+  },
+  "diagnostic_only_windows": {
+    "fsdp_overhead_fraction": 0.1949847746138338,
+    "fsdp_seconds": 66.7620610059239,
+    "resident_repeat_seconds": 57.595814102794975,
+    "resident_seconds": 55.86854529380798
+  },
+  "formal_timing": "NOT_RUN",
+  "head": "a2cdefbebc90adca97fc3a9b4b90d26f0b1b5841",
+  "memory": {
+    "resident": {
+      "max_allocated_bytes": 19793470976,
+      "max_reserved_bytes": 20757610496,
+      "min_driver_free_bytes": 20663631872
+    },
+    "world16_fsdp": {
+      "max_allocated_bytes": 3793552896,
+      "max_reserved_bytes": 6457131008,
+      "min_driver_free_bytes": 34955722752
+    }
+  },
+  "nsight": "NOT_RUN",
+  "runs": {
+    "resident": "iter321_wan13b_correctness_resident_20260820",
+    "resident_repeat": "iter322_wan13b_correctness_resident_repeat_20260820",
+    "world16_fsdp": "iter321_wan13b_correctness_fsdp_20260820"
+  },
+  "schema_version": "distillschedule.wan13b_iteration321.v1",
+  "status": "FAIL_CORRECTNESS_NO_FORMAL_TIMING"
+}
