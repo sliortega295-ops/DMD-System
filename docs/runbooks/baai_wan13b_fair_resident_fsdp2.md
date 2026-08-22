@@ -10,7 +10,7 @@ The four endpoints are:
 
 1. `resident`: full model residency, manual post-backward LoRA all-reduce;
 2. `resident-ddp`: full residency, DDP gradient buckets overlapped with backward;
-3. `resident-fast`: `resident-ddp` plus foreach EMA;
+3. `resident-fast`: `resident-ddp` plus fused AdamW and foreach EMA;
 4. `world16-fsdp`: full-shard FSDP2 with original per-parameter dtypes.
 
 All endpoints use BF16 frozen base parameters, FP32 LoRA parameters, FP32
@@ -23,11 +23,22 @@ Do not launch timing first.
 
 ### 1. Validate
 
-Run all four placements with `MODE=validate`.
+Run all four placements with the central controller:
+
+```bash
+python scripts/distillschedule/run_wan13b_fair_world16.py \
+  --run-id <RUN_ID> \
+  --mode validate \
+  --placement <PLACEMENT> \
+  --expected-head <HEAD> \
+  --model-root <WAN13B_MODEL> \
+  --bootstrap <BOOTSTRAP> \
+  --bootstrap-hash <SHA256>
+```
 
 ### 2. Correctness
 
-Run all four placements with `MODE=correctness`, then summarize each:
+Run all four placements with the same controller and `--mode correctness`. The controller invokes the following fail-closed summarizer:
 
 ```bash
 python scripts/distillschedule/summarize_wan13b_fair_world16.py \
@@ -82,8 +93,25 @@ export DISTILLSCHEDULE_WAN13B_FAIR_CORRECTNESS_RECEIPT=<comparison.json>
 export DISTILLSCHEDULE_WAN13B_FAIR_CORRECTNESS_SHA256=<sha256>
 ```
 
-Run three unprofiled pairs with alternating order. Profiled/Nsight wall is never
-used as a speed denominator.
+Run three unprofiled pairs with alternating order through the pair driver:
+
+```bash
+python scripts/distillschedule/run_wan13b_fair_paired.py \
+  --run-prefix <PREFIX> \
+  --reference-placement resident \
+  --candidate-placement <resident-ddp|resident-fast|world16-fsdp> \
+  --expected-head <HEAD> \
+  --model-root <WAN13B_MODEL> \
+  --bootstrap <BOOTSTRAP> \
+  --bootstrap-hash <SHA256> \
+  --correctness-receipt <PAIR_CORRECTNESS_JSON> \
+  --remote-root <DMD_SYSTEM_ROOT> \
+  --master-addr <NODE0_IP> \
+  --output <PAIRED_RESULT_JSON>
+```
+
+The driver performs one excluded warmup per arm and three alternating unprofiled
+pairs. Profiled/Nsight wall is never used as a speed denominator.
 
 ## Per-node launch
 
@@ -111,8 +139,9 @@ Use a new immutable run ID for every arm and trial.
 communication/backward overlap while keeping full residency.
 
 `resident` vs `resident-fast` measures the complete optimized Resident
-candidate. The foreach EMA is systems-only but remains subject to the unchanged
-numerical thresholds.
+candidate. Fused AdamW and foreach EMA keep the same AdamW/EMA recurrences and
+hyperparameters but may change floating-point order, so they remain subject to
+the unchanged numerical thresholds.
 
 The physical Adam/EMA work is intentionally not equalized: full replicated
 state in Resident and local-shard state in FSDP2 are consequences of the
