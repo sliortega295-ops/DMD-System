@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Overlap-aware world16 Nsight attribution for the Wan1.3B FSDP2 diagnostic."""
+"""Overlap-aware world16 Nsight attribution for a Wan1.3B placement diagnostic."""
 from __future__ import annotations
 
 import argparse
@@ -15,7 +15,6 @@ from typing import Iterable
 
 CATEGORIES = ("compute", "nccl", "copy")
 COPY_KIND = {1: "h2d", 2: "d2h", 3: "d2d", 8: "d2d", 10: "d2d"}
-OUTER = "WAN13B_FULL5/world16-fsdp"
 STAGES = ["WAN13B/G_UPDATE", "WAN13B/G_ROLLOUTS"] + [
     f"WAN13B/C_UPDATE/step_{step}" for step in range(10, 15)
 ] + [f"WAN13B/EMA/step_{step}" for step in range(10, 15)]
@@ -142,18 +141,20 @@ def _collective(name: str) -> str:
     return "other_nccl"
 
 
-def _phase_ranges(db: sqlite3.Connection) -> dict[str, list[tuple[int, int]]]:
+def _phase_ranges(
+    db: sqlite3.Connection, outer_label: str
+) -> dict[str, list[tuple[int, int]]]:
     rows = db.execute(
         "select text,start,end from NVTX_EVENTS where text is not null and start is not null and end is not null and end>start"
     )
     out: dict[str, list[tuple[int, int]]] = defaultdict(list)
     for text, start, end in rows:
-        if str(text) == OUTER or str(text) in STAGES:
+        if str(text) == outer_label or str(text) in STAGES:
             out[str(text)].append((int(start), int(end)))
     return out
 
 
-def analyze_node(path: Path, node: int) -> dict:
+def analyze_node(path: Path, node: int, outer_label: str) -> dict:
     db = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     db.execute("pragma query_only=on")
     try:
@@ -163,10 +164,13 @@ def analyze_node(path: Path, node: int) -> dict:
         if missing:
             raise RuntimeError(f"node{node} SQLite missing tables: {missing}")
         strings = _strings(db)
-        phases = _phase_ranges(db)
-        if len(phases.get(OUTER, [])) != 1:
-            raise RuntimeError(f"node{node}: expected one {OUTER} range, found {len(phases.get(OUTER, []))}")
-        outer = phases[OUTER][0]
+        phases = _phase_ranges(db, outer_label)
+        if len(phases.get(outer_label, [])) != 1:
+            raise RuntimeError(
+                f"node{node}: expected one {outer_label} range, "
+                f"found {len(phases.get(outer_label, []))}"
+            )
+        outer = phases[outer_label][0]
         kcols = _cols(db, "CUPTI_ACTIVITY_KIND_KERNEL")
         name_col = "demangledName" if "demangledName" in kcols else "shortName"
         if name_col not in kcols or "deviceId" not in kcols:
@@ -371,7 +375,7 @@ def _write_csv(path: Path, rows: list[dict]) -> None:
         writer = csv.DictWriter(handle, fieldnames=keys); writer.writeheader(); writer.writerows(rows)
 
 
-def _plot(path: Path, nodes: list[dict], aggregate: dict) -> None:
+def _plot(path: Path, nodes: list[dict], aggregate: dict, placement: str) -> None:
     import matplotlib.pyplot as plt
     import numpy as np
     from matplotlib.patches import Patch
@@ -400,7 +404,9 @@ def _plot(path: Path, nodes: list[dict], aggregate: dict) -> None:
     axes[0].imshow(raster, aspect="auto", interpolation="nearest", extent=(0, 100, 48, 0))
     axes[0].set_yticks([rank * 3 + 1.5 for rank in range(16)], [str(rank) for rank in range(16)])
     axes[0].set_ylabel("global rank (rows: compute/NCCL/copy)"); axes[0].set_xlabel("normalized node-local exact range (%)")
-    axes[0].set_title("Wan1.3B world16 FSDP2: compute / NCCL / memcpy timeline")
+    axes[0].set_title(
+        f"Wan1.3B world16 {placement}: compute / NCCL / memcpy timeline"
+    )
     axes[0].legend(handles=[Patch(color=colors[c], label=c) for c in CATEGORIES], ncol=3, loc="upper right")
     wall = aggregate["gpu_wall_ns"]
     keys = ["compute", "nccl", "copy", "compute+nccl", "compute+copy", "nccl+copy", "compute+nccl+copy", "no_traced_activity"]
@@ -421,15 +427,16 @@ def _plot(path: Path, nodes: list[dict], aggregate: dict) -> None:
 
 
 def main() -> int:
-    p=argparse.ArgumentParser(); p.add_argument("--node0-sqlite",type=Path,required=True);p.add_argument("--node1-sqlite",type=Path,required=True);p.add_argument("--output-dir",type=Path,required=True);a=p.parse_args()
-    nodes=[analyze_node(a.node0_sqlite,0),analyze_node(a.node1_sqlite,1)]
+    p=argparse.ArgumentParser(); p.add_argument("--node0-sqlite",type=Path,required=True);p.add_argument("--node1-sqlite",type=Path,required=True);p.add_argument("--output-dir",type=Path,required=True);p.add_argument("--placement",choices=("resident","world16-fsdp"),required=True);a=p.parse_args()
+    outer_label=f"WAN13B_FULL5/{a.placement}"
+    nodes=[analyze_node(a.node0_sqlite,0,outer_label),analyze_node(a.node1_sqlite,1,outer_label)]
     aggregate=_aggregate(nodes)
     valid=(all(n["kernel_device_coverage"]==8 and n["max_unresolved_kernel_ratio"]<0.01 for n in nodes) and aggregate["rank_count"]==16)
     serializable_nodes=[]
     for n in nodes:
         serializable_nodes.append({k:v for k,v in n.items() if k!="intervals"})
     result={"schema_version":"distillschedule.wan13b_nsys.v1","status":"PASS" if valid else "FAIL_PROFILE_VALIDITY",
-            "diagnostic_only":True,"formal_speedup_eligible":False,"phase_label":OUTER,"nodes":serializable_nodes,"aggregate":aggregate,
+            "diagnostic_only":True,"formal_speedup_eligible":False,"placement":a.placement,"phase_label":outer_label,"nodes":serializable_nodes,"aggregate":aggregate,
             "definitions":{"nccl_exposed_vs_compute":"NCCL interval union minus its intersection with non-NCCL kernel union on the same GPU",
             "no_traced_activity":"phase wall not covered by CUDA kernel or memcpy activity; not proof of CPU idle",
             "denominator":"sum of the 16 per-GPU outer-range walls; GPU-seconds, not global wall-clock"}}
@@ -443,9 +450,9 @@ def main() -> int:
     for s in aggregate["stages"]:
         stage_rows.append({"stage":s["label"],"gpu_wall_s":_seconds(s["gpu_wall_ns"]),"compute_union_s":_seconds(s["compute_ns"]),"nccl_union_s":_seconds(s["nccl_ns"]),"nccl_exposed_s":_seconds(s["nccl_exposed_ns"]),"copy_union_s":_seconds(s["copy_ns"]),"copy_exposed_s":_seconds(s["copy_exposed_ns"]),"no_traced_s":_seconds(s["no_traced_ns"])})
     _write_csv(a.output_dir/"stage_attribution.csv",stage_rows)
-    _plot(a.output_dir/"wan13b_nsys_timeline.png",nodes,aggregate)
+    _plot(a.output_dir/"wan13b_nsys_timeline.png",nodes,aggregate,a.placement)
     wall=aggregate["gpu_wall_ns"];m=aggregate["metrics"]
-    md=f'''# Wan1.3B world16 FSDP2 Nsight attribution\n\nStatus: **{result['status']}** (diagnostic only).\n\nDenominator: summed 16-rank GPU phase walls = {_seconds(wall):.3f} GPU-s. Profile wall is not a formal latency result.\n\n| Category | Union GPU-s | Hidden by compute GPU-s | Exposed vs compute GPU-s | % GPU-wall |\n|---|---:|---:|---:|---:|\n| Compute | {_seconds(m['compute_union_ns']):.3f} | -- | -- | {100*m['compute_union_ns']/wall:.2f}% |\n| NCCL | {_seconds(m['nccl_union_ns']):.3f} | {_seconds(m['nccl_hidden_by_compute_ns']):.3f} | {_seconds(m['nccl_exposed_vs_compute_ns']):.3f} | {100*m['nccl_union_ns']/wall:.2f}% |\n| Memcpy | {_seconds(m['copy_union_ns']):.3f} | {_seconds(m['copy_hidden_by_compute_ns']):.3f} | {_seconds(m['copy_exposed_vs_compute_ns']):.3f} | {100*m['copy_union_ns']/wall:.2f}% |\n| No traced GPU activity | {_seconds(aggregate['exclusive_ns'].get('no_traced_activity',0)):.3f} | -- | -- | {100*aggregate['exclusive_ns'].get('no_traced_activity',0)/wall:.2f}% |\n\n`NCCL exposed vs compute` is an overlap-aware upper bound, not automatically removable wall time. `No traced activity` is not automatically CPU idle.\n'''
+    md=f'''# Wan1.3B world16 {a.placement} Nsight attribution\n\nStatus: **{result['status']}** (diagnostic only).\n\nDenominator: summed 16-rank GPU phase walls = {_seconds(wall):.3f} GPU-s. Profile wall is not a formal latency result.\n\n| Category | Union GPU-s | Hidden by compute GPU-s | Exposed vs compute GPU-s | % GPU-wall |\n|---|---:|---:|---:|---:|\n| Compute | {_seconds(m['compute_union_ns']):.3f} | -- | -- | {100*m['compute_union_ns']/wall:.2f}% |\n| NCCL | {_seconds(m['nccl_union_ns']):.3f} | {_seconds(m['nccl_hidden_by_compute_ns']):.3f} | {_seconds(m['nccl_exposed_vs_compute_ns']):.3f} | {100*m['nccl_union_ns']/wall:.2f}% |\n| Memcpy | {_seconds(m['copy_union_ns']):.3f} | {_seconds(m['copy_hidden_by_compute_ns']):.3f} | {_seconds(m['copy_exposed_vs_compute_ns']):.3f} | {100*m['copy_union_ns']/wall:.2f}% |\n| No traced GPU activity | {_seconds(aggregate['exclusive_ns'].get('no_traced_activity',0)):.3f} | -- | -- | {100*aggregate['exclusive_ns'].get('no_traced_activity',0)/wall:.2f}% |\n\n`NCCL exposed vs compute` is an overlap-aware upper bound, not automatically removable wall time. `No traced activity` is not automatically CPU idle.\n'''
     (a.output_dir/"wan13b_nsys_attribution.md").write_text(md)
     print(json.dumps({"status":result["status"],"gpu_wall_s":_seconds(wall),"compute_pct":100*m["compute_union_ns"]/wall,"nccl_pct":100*m["nccl_union_ns"]/wall,"nccl_exposed_pct":100*m["nccl_exposed_vs_compute_ns"]/wall,"copy_pct":100*m["copy_union_ns"]/wall,"no_traced_pct":100*aggregate["exclusive_ns"].get("no_traced_activity",0)/wall},indent=2))
     return 0 if valid else 2

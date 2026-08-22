@@ -435,7 +435,7 @@ def main() -> int:
             dist.barrier()
             nsys_range.before_model_compute(contract.logical_steps[0])
             if local_rank == 0:
-                torch.cuda.nvtx.range_push("WAN13B_FULL5/world16-fsdp")
+                torch.cuda.nvtx.range_push(f"WAN13B_FULL5/{args.placement}")
             dist.barrier()
 
         if args.profile_mode and local_rank == 0:

@@ -176,7 +176,7 @@ def test_profile_mode_is_diagnostic_only_and_uses_one_outer_session_per_node() -
     assert 'value.add_argument("--profile-mode", action="store_true")' in worker
     assert "if args.timing_mode and args.profile_mode" in worker
     assert 'stop_point="after_step14_ema_update"' in worker
-    assert 'torch.cuda.nvtx.range_push("WAN13B_FULL5/world16-fsdp")' in worker
+    assert 'torch.cuda.nvtx.range_push(f"WAN13B_FULL5/{args.placement}")' in worker
     assert "--profile-mode" in launcher
     assert launcher.count('"${NSYS_BIN}" profile') == 1
     assert "DISTILLSCHEDULE_STATIC_FSDP2_NSYS_CONTROL_API=0" in launcher
@@ -192,3 +192,4 @@ def test_profile_mode_is_diagnostic_only_and_uses_one_outer_session_per_node() -
     assert '"diagnostic_only": args.mode == "profile"' in summarizer
     assert "NCCL interval union minus its intersection" in analyzer
     assert "sum of the 16 per-GPU outer-range walls" in analyzer
+    assert 'p.add_argument("--placement",choices=("resident","world16-fsdp"),required=True)' in analyzer

@@ -133,7 +133,7 @@ if [[ "${MODE}" == profile ]]; then
   PROFILE_ROOT="${RUN_ROOT}/nsight"
   PROFILE_NODE_DIR="${PROFILE_ROOT}/node_${NODE_RANK}"
   RECEIPT_DIR="${PROFILE_ROOT}/range_receipts"
-  REPORT_BASE="${PROFILE_NODE_DIR}/wan13b_fsdp2_node${NODE_RANK}"
+  REPORT_BASE="${PROFILE_NODE_DIR}/wan13b_${PLACEMENT}_node${NODE_RANK}"
   mkdir -p "${PROFILE_NODE_DIR}" "${RECEIPT_DIR}"
   {
     echo "nsys_bin=${NSYS_BIN}"
