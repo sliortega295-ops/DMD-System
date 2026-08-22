@@ -84,6 +84,8 @@ def build_helios_pool_model(
     lora_rank: int = 256,
     max_workers: int = 4,
     enable_gan: bool = False,
+    chunked_residual_storage: str = "cpu_inplace",
+    missing_pyramid_patch_seed: int | None = None,
 ) -> tuple[torch.nn.Module, dict[str, Any]]:
     """Build the official BF16 backbone plus the Stage-3 FP32 LoRA inventory."""
 
@@ -91,6 +93,10 @@ def build_helios_pool_model(
         raise ValueError(f"unsupported pool role: {role}")
     if role != "critic" and enable_gan:
         raise ValueError("GAN heads belong to the physical Score/Critic model")
+    if chunked_residual_storage not in {"cpu_inplace", "cuda_out_of_place"}:
+        raise ValueError(
+            "chunked residual storage must be cpu_inplace or cuda_out_of_place"
+        )
     configure_offline_helios()
     from helios.modules.helios_kernels import (
         replace_all_norms_with_flash_norms,
@@ -150,6 +156,43 @@ def build_helios_pool_model(
         transformer_additional_kwargs=extra,
         **load_kwargs,
     )
+
+    # The public Wan Diffusers checkpoints do not contain Helios' three
+    # pyramid-patch convolutions.  Under low_cpu_mem_usage those missing
+    # modules remain on meta, so a later model.to(cuda) fails.  Keep the
+    # official Helios checkpoint path fail-closed by default; the isolated
+    # Wan1.3B systems experiment opts in to deterministic constructor-equivalent
+    # initialization for exactly these missing modules.
+    materialized_pyramid_patches: list[str] = []
+    if missing_pyramid_patch_seed is not None:
+        with torch.random.fork_rng(devices=[]):
+            torch.manual_seed(int(missing_pyramid_patch_seed))
+            for name in ("patch_short", "patch_mid", "patch_long"):
+                module = getattr(model, name, None)
+                if module is None:
+                    raise AssertionError(f"missing Helios pyramid module: {name}")
+                parameters = list(module.parameters())
+                meta = [parameter.device.type == "meta" for parameter in parameters]
+                if not parameters or not all(meta):
+                    if any(meta):
+                        raise AssertionError(f"partially materialized pyramid module: {name}")
+                    continue
+                module.to_empty(device="cpu")
+                reset = getattr(module, "reset_parameters", None)
+                if reset is None:
+                    raise AssertionError(f"pyramid module has no reset_parameters: {name}")
+                reset()
+                # Match the BF16 dtype requested from from_pretrained.  Missing
+                # checkpoint tensors do not participate in Diffusers' normal
+                # dtype conversion, so leaving constructor FP32 here would
+                # fail on the first BF16 latent convolution.
+                module.to(dtype=torch.bfloat16)
+                materialized_pyramid_patches.append(name)
+    remaining_meta = [name for name, value in model.named_parameters() if value.device.type == "meta"]
+    if remaining_meta:
+        raise RuntimeError(
+            "pretrained Transformer left meta parameters: " + ",".join(remaining_meta[:20])
+        )
     model = replace_rmsnorm_with_fp32(model)
     model = replace_all_norms_with_flash_norms(model)
     replace_rope_with_flash_rope()
@@ -205,6 +248,7 @@ def build_helios_pool_model(
     model._distillschedule_has_adapter = role != "teacher"
     for block in model.blocks:
         block._distillschedule_split_modulation = True
+        block._distillschedule_chunked_residual_storage = chunked_residual_storage
     if role != "teacher":
         model.enable_gradient_checkpointing()
     # Official Stage-3 keeps the shared Score backbone in train mode during
@@ -244,7 +288,10 @@ def build_helios_pool_model(
             if "gan_heads" in name or "gan_final_head" in name
         ),
         "split_modulation": True,
+        "chunked_residual_storage": chunked_residual_storage,
         "gradient_checkpointing": role != "teacher",
+        "missing_pyramid_patch_seed": missing_pyramid_patch_seed,
+        "materialized_pyramid_patches": materialized_pyramid_patches,
         "mode": "train",
         "has_adapter": role != "teacher",
     }
@@ -301,6 +348,8 @@ def run_generator_trace_rollout(
     detailed_profile: bool = True,
     record_output_sha256: bool = True,
     empty_cache_before_rollout: bool = True,
+    collect_diagnostics: bool = True,
+    diagnostics_scope: Any | None = None,
 ) -> tuple[torch.Tensor, dict[str, Any]]:
     """Run the exact one-section, three-stage trace with no physical autograd."""
 
@@ -449,13 +498,29 @@ def run_generator_trace_rollout(
         "output_dtype": str(generated_x0.dtype),
         "output_requires_grad": False,
         "gradient_mask_is_none": gradient_mask is None,
-        "denoised_timestep_from": float(torch.as_tensor(denoised_from).flatten()[0]),
-        "denoised_timestep_to": float(torch.as_tensor(denoised_to).flatten()[0]),
-        "consistency_loss": float(torch.as_tensor(consistency_loss)),
+        "denoised_timestep_from": (
+            float(torch.as_tensor(denoised_from).flatten()[0])
+            if collect_diagnostics
+            else "omitted_in_clean_profile"
+        ),
+        "denoised_timestep_to": (
+            float(torch.as_tensor(denoised_to).flatten()[0])
+            if collect_diagnostics
+            else "omitted_in_clean_profile"
+        ),
+        "consistency_loss": (
+            float(torch.as_tensor(consistency_loss))
+            if collect_diagnostics
+            else "omitted_in_clean_profile"
+        ),
         "memory": _memory_snapshot(device),
     }
-    if record_output_sha256:
-        details["output_sha256"] = tensor_sha256(generated_x0)
+    if record_output_sha256 and collect_diagnostics:
+        if diagnostics_scope is None:
+            details["output_sha256"] = tensor_sha256(generated_x0)
+        else:
+            with diagnostics_scope("DIAG_OUTPUT_SHA_D2H/generator_x0"):
+                details["output_sha256"] = tensor_sha256(generated_x0)
     return generated_x0.detach(), details
 
 

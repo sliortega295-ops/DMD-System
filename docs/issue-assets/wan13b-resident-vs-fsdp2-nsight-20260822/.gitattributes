@@ -1,0 +1,2 @@
+# Preserve analyzer-emitted CRLF CSV bytes so published SHA256 identities remain exact.
+*.csv binary

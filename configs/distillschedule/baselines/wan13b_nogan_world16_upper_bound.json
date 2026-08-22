@@ -1,0 +1,60 @@
+{
+  "schema_version": "distillschedule.wan13b_upper_bound.v1",
+  "id": "wan13b-nogan-world16-resident-vs-fsdp2-b1-full5",
+  "scientific_claim": "real Wan1.3B practical resident upper-bound proxy; not a Helios14B extrapolation",
+  "model": {
+    "source": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+    "revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+    "physical_backbones_per_rank": 2,
+    "block_count": 30,
+    "missing_helios_pyramid_patch_init": "CONSTRUCTOR_EQUIVALENT_CPU_SEED_20260819",
+    "generator_lora_rank": 256,
+    "critic_lora_rank": 256
+  },
+  "hardware": "2x8_A100_40GB",
+  "world_size": 16,
+  "logical_steps": [10, 11, 12, 13, 14],
+  "global_batch": 16,
+  "micro_batch_per_rank": 1,
+  "rollout_batch_size": 1,
+  "score_packing": false,
+  "generator_updates": 1,
+  "critic_updates": 5,
+  "ema_update_steps": [10, 11, 12, 13, 14],
+  "initial_versions": {"generator": 2, "critic": 10, "ema": 10},
+  "final_versions": {"generator": 3, "critic": 15, "ema": 15},
+  "placements": {
+    "resident": {
+      "frozen_parameters": "FULL_REPLICA_GPU_RESIDENT",
+      "trainable_gradient_sync": "WORLD16_MEAN_ALL_REDUCE",
+      "fsdp": false
+    },
+    "world16-fsdp": {
+      "frozen_parameters": "FSDP2_FULL_SHARD_WORLD16",
+      "trainable_gradient_sync": "FSDP2_REDUCE_SCATTER",
+      "fsdp": true,
+      "wrap": "30_BLOCKS_BOTTOM_UP_THEN_ROOT",
+      "reshard_after_forward": true
+    }
+  },
+  "common_residency": {
+    "parameter_offload": false,
+    "activation_offload": false,
+    "optimizer_offload": false,
+    "frozen_parameter_streaming": false,
+    "model_swap": false,
+    "generator_residual_storage": "cuda_out_of_place",
+    "critic_residual_storage": "cuda_out_of_place",
+    "ema_device": "cuda"
+  },
+  "measurement": {
+    "formal_trials": 3,
+    "paired_order": [
+      ["resident", "world16-fsdp"],
+      ["world16-fsdp", "resident"],
+      ["resident", "world16-fsdp"]
+    ],
+    "cold_start_included": false,
+    "profiled_latency_claimable": false
+  }
+}

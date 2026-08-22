@@ -1,0 +1,37 @@
+[
+  {
+    "bytes": 1419,
+    "path": "aggregate_compare.py",
+    "sha256": "5fde64c0c9412a04f212dc3c3c0d00a311c6a58fae5f96761b3ebebdadd80814"
+  },
+  {
+    "bytes": 803,
+    "path": "aggregate_cross.json",
+    "sha256": "58cee81305aed50a1d812702e9e0926b2ed2f434c977ee56baa95ee172da6900"
+  },
+  {
+    "bytes": 808,
+    "path": "aggregate_self_repeat.json",
+    "sha256": "ad5d22847871191cb5b7ed41ad1225c915a57ea25ee8ddf87e13670b79901f90"
+  },
+  {
+    "bytes": 499101,
+    "path": "cross_placement_correctness.json",
+    "sha256": "41b6ed43abd998af07af316551afdcf0dd5718ace673e270e21777ed6250e74b"
+  },
+  {
+    "bytes": 1189,
+    "path": "manifest.json",
+    "sha256": "c48f6d5e2af0bec3855dc527b026497e8d8ae5cf344fed62405371bf382cf1d9"
+  },
+  {
+    "bytes": 3404,
+    "path": "report.md",
+    "sha256": "1adbd9574f49d70646eb6a0f50e8b6f91400945573b6844ea8f145be442f014d"
+  },
+  {
+    "bytes": 235242,
+    "path": "resident_self_repeat.json",
+    "sha256": "f7c2bdaf294cf5bbf05d236d053822a6e9d7b7b3df906e6d9d9b2ba081e412aa"
+  }
+]

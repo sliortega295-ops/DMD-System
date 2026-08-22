@@ -1,0 +1,122 @@
+{
+  "category_semantics": {
+    "EMA_GPU_UPDATE": "explicit EMA_GPU_UPDATE NVTX interval; P2 D2D only, no P2/P3 EMA D2H",
+    "FSDP2_AUTOGRAD_INTERNAL_UNLABELED": "memcpy bytes whose exact runtime globalTid is named pt_autograd_* and whose bytes reconcile to UNKNOWN_NO_NVTX_TID; operation subsource (reshard/activation/parameter) remains unresolved",
+    "FSDP2_FRAMEWORK_PHASE": "explicit FSDP_* NVTX interval; indicates framework phase, not proof of model offload",
+    "INPUT_TRACE_STAGING": "explicit INPUT_H2D NVTX interval",
+    "OUTER_CAPTURE_ONLY": "only outer capture range; not a source attribution",
+    "UNKNOWN_NO_NVTX_CONTAINMENT": "exact runtime/rank but no enclosing named NVTX range; not assigned to model offload"
+  },
+  "deliverables": [
+    {
+      "bytes": 110351,
+      "path": "<local-evidence-root>/artifacts/profile/source_attribution/raw_correlation/p2_node0_source.json",
+      "sha256": "9d1f9810033b97131399d19e586bdc22e620c09cc0de45a8b559c186fbe94185"
+    },
+    {
+      "bytes": 108302,
+      "path": "<local-evidence-root>/artifacts/profile/source_attribution/raw_correlation/p2_node1_source.json",
+      "sha256": "a47079595c987b16814f60a592cd92e48f539094bfc46587990d9712bd198397"
+    },
+    {
+      "bytes": 104822,
+      "path": "<local-evidence-root>/artifacts/profile/source_attribution/raw_correlation/p3_node0_source.json",
+      "sha256": "28559cbf35c192d260a86420a3063f784f17062791a715aaffded803d3710bce"
+    },
+    {
+      "bytes": 104821,
+      "path": "<local-evidence-root>/artifacts/profile/source_attribution/raw_correlation/p3_node1_source.json",
+      "sha256": "c8483af0362d01377b8e3a861577fc46de848a73fd290487db27ee9a7825fa20"
+    }
+  ],
+  "formal_timing_unchanged": {
+    "gan_seconds": 348.074251748,
+    "no_gan_seconds": 214.066222628
+  },
+  "paths": {
+    "checks": "<local-evidence-root>/artifacts/profile/source_attribution/reconciliation_checks.csv",
+    "per_rank_rows": "<local-evidence-root>/artifacts/profile/source_attribution/transfer_attribution_source_rows.csv",
+    "raw_correlation": "<local-evidence-root>/artifacts/profile/source_attribution/raw_correlation",
+    "summary": "<local-evidence-root>/artifacts/profile/source_attribution/transfer_attribution_source_summary.csv"
+  },
+  "runs": [
+    {
+      "autograd_thread_join": "PASS",
+      "autograd_unknown_diff_bytes": 2432,
+      "matched_runtime_rows": 1716646,
+      "memcpy_rows": 1716646,
+      "node": 0,
+      "owner_thread_coverage_bytes": 0.9438387464529112,
+      "pt_autograd_thread_memcpy_bytes": 3506214067520,
+      "residual_unknown_bytes": 454784001196,
+      "run_id": "pr13_profile_nogan_P2_gpuema_clean_20260814",
+      "source_coverage_bytes_excluding_unknown": 0.5108565464302686,
+      "source_unknown_no_nvtx_tid_bytes": 3506214069952,
+      "total_memcpy_bytes": 8097824967790,
+      "total_memcpy_sum_duration_ns": 472707516731,
+      "unmatched_runtime_rows": 0,
+      "variant": "No-GAN",
+      "worker_count": 8,
+      "worker_rank_mapping_inferred": true
+    },
+    {
+      "autograd_thread_join": "PASS",
+      "autograd_unknown_diff_bytes": 2432,
+      "matched_runtime_rows": 1716634,
+      "memcpy_rows": 1716634,
+      "node": 1,
+      "owner_thread_coverage_bytes": 0.9438319853582879,
+      "pt_autograd_thread_memcpy_bytes": 3506214067520,
+      "residual_unknown_bytes": 454838751340,
+      "run_id": "pr13_profile_nogan_P2_gpuema_clean_20260814",
+      "source_coverage_bytes_excluding_unknown": 0.5108497853196046,
+      "source_unknown_no_nvtx_tid_bytes": 3506214069952,
+      "total_memcpy_bytes": 8097824967490,
+      "total_memcpy_sum_duration_ns": 444841279543,
+      "unmatched_runtime_rows": 0,
+      "variant": "No-GAN",
+      "worker_count": 8,
+      "worker_rank_mapping_inferred": true
+    },
+    {
+      "autograd_thread_join": "PASS",
+      "autograd_unknown_diff_bytes": 2432,
+      "matched_runtime_rows": 1795102,
+      "memcpy_rows": 1795102,
+      "node": 0,
+      "owner_thread_coverage_bytes": 0.9445794928164456,
+      "pt_autograd_thread_memcpy_bytes": 4611756772800,
+      "residual_unknown_bytes": 540147514228,
+      "run_id": "pr13_profile_gan_P3_gpuema_clean_20260814",
+      "source_coverage_bytes_excluding_unknown": 0.47140153168883736,
+      "source_unknown_no_nvtx_tid_bytes": 4611756775232,
+      "total_memcpy_bytes": 9746347366310,
+      "total_memcpy_sum_duration_ns": 907867559809,
+      "unmatched_runtime_rows": 0,
+      "variant": "GAN-on",
+      "worker_count": 8,
+      "worker_rank_mapping_inferred": true
+    },
+    {
+      "autograd_thread_join": "PASS",
+      "autograd_unknown_diff_bytes": 2432,
+      "matched_runtime_rows": 1795090,
+      "memcpy_rows": 1795090,
+      "node": 1,
+      "owner_thread_coverage_bytes": 0.9445794928147397,
+      "pt_autograd_thread_memcpy_bytes": 4611756772800,
+      "residual_unknown_bytes": 540147514228,
+      "run_id": "pr13_profile_gan_P3_gpuema_clean_20260814",
+      "source_coverage_bytes_excluding_unknown": 0.4714015316725667,
+      "source_unknown_no_nvtx_tid_bytes": 4611756775232,
+      "total_memcpy_bytes": 9746347366010,
+      "total_memcpy_sum_duration_ns": 831149371522,
+      "unmatched_runtime_rows": 0,
+      "variant": "GAN-on",
+      "worker_count": 8,
+      "worker_rank_mapping_inferred": true
+    }
+  ],
+  "schema_version": "distillschedule.pr13.source_attribution.v2",
+  "scope": "P2/P3 raw Nsight SQLite, exact memcpy->runtime correlation and runtime globalTid/PID/rank; NVTX source phase by same-TID interval containment; autograd-thread evidence separate"
+}

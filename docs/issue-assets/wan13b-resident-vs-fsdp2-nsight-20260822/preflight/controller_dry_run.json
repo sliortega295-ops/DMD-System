@@ -1,0 +1,37 @@
+{
+  "master": "172.24.211.148",
+  "commands": [
+    [
+      "ssh",
+      "-4",
+      "-o",
+      "ControlMaster=no",
+      "-o",
+      "ControlPath=none",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "UpdateHostKeys=no",
+      "baai-helios-node0",
+      "bash",
+      "-lc",
+      "'set -Eeuo pipefail; export DMD_SYSTEM_ROOT=/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820 HELIOS_RUNTIME_ROOT=/share/project/shuchenweng/yongyan_liu/DistillSchedule_gan_rolephase_exec_20260812 DISTILLSCHEDULE_WAN13B_MODEL_ROOT=/share/project/shuchenweng/DistillSchedule_assets/wan13b/Wan2.1-T2V-1.3B-Diffusers-0fad780a DISTILLSCHEDULE_WAN13B_BOOTSTRAP=/share/project/shuchenweng/DistillSchedule_assets/wan13b/systems_only_bootstrap_v3_head04e6e44 DISTILLSCHEDULE_WAN13B_BOOTSTRAP_HASH=6a713476d9839cf1ea37689d63cb1cc2b405b9f9915ca5314ccdadb67b3cd60d DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256=776a26c3b2921d599821f0767910830471ff94a955f5013089f9f689ac20fee7 DISTILLSCHEDULE_NSYS_BIN=/home/lyy/Helios/tools/nsight_systems/2024.6.2.225/bin/nsys; exec /share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/scripts/distillschedule/remote_stage_wrapper.sh /share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822_dryrun/controller/node_0.pid bash /share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/scripts/distillschedule/launch_wan13b_upper_bound_world16_node.sh 0 iter327_wan13b_resident_nsys_matched_20260822_dryrun profile 18a26bcd046adba49b30630a12e6060c8d193494 172.24.211.148 29860 resident'"
+    ],
+    [
+      "ssh",
+      "-4",
+      "-o",
+      "ControlMaster=no",
+      "-o",
+      "ControlPath=none",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "UpdateHostKeys=no",
+      "baai-helios-node1",
+      "bash",
+      "-lc",
+      "'set -Eeuo pipefail; export DMD_SYSTEM_ROOT=/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820 HELIOS_RUNTIME_ROOT=/share/project/shuchenweng/yongyan_liu/DistillSchedule_gan_rolephase_exec_20260812 DISTILLSCHEDULE_WAN13B_MODEL_ROOT=/share/project/shuchenweng/DistillSchedule_assets/wan13b/Wan2.1-T2V-1.3B-Diffusers-0fad780a DISTILLSCHEDULE_WAN13B_BOOTSTRAP=/share/project/shuchenweng/DistillSchedule_assets/wan13b/systems_only_bootstrap_v3_head04e6e44 DISTILLSCHEDULE_WAN13B_BOOTSTRAP_HASH=6a713476d9839cf1ea37689d63cb1cc2b405b9f9915ca5314ccdadb67b3cd60d DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256=776a26c3b2921d599821f0767910830471ff94a955f5013089f9f689ac20fee7 DISTILLSCHEDULE_NSYS_BIN=/home/lyy/Helios/tools/nsight_systems/2024.6.2.225/bin/nsys; exec /share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/scripts/distillschedule/remote_stage_wrapper.sh /share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822_dryrun/controller/node_1.pid bash /share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/scripts/distillschedule/launch_wan13b_upper_bound_world16_node.sh 1 iter327_wan13b_resident_nsys_matched_20260822_dryrun profile 18a26bcd046adba49b30630a12e6060c8d193494 172.24.211.148 29860 resident'"
+    ]
+  ]
+}
