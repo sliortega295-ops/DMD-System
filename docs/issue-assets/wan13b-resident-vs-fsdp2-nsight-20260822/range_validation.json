@@ -1,0 +1,33 @@
+{
+  "controller_ranks": [],
+  "diagnostic_only": true,
+  "formal_speedup_eligible": false,
+  "local_world_size": 8,
+  "logical_window": [
+    10,
+    14
+  ],
+  "profiled": true,
+  "receipts": [
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822/nsight/range_receipts/rank_000.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822/nsight/range_receipts/rank_001.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822/nsight/range_receipts/rank_002.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822/nsight/range_receipts/rank_003.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822/nsight/range_receipts/rank_004.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822/nsight/range_receipts/rank_005.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822/nsight/range_receipts/rank_006.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822/nsight/range_receipts/rank_007.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822/nsight/range_receipts/rank_008.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822/nsight/range_receipts/rank_009.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822/nsight/range_receipts/rank_010.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822/nsight/range_receipts/rank_011.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822/nsight/range_receipts/rank_012.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822/nsight/range_receipts/rank_013.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822/nsight/range_receipts/rank_014.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822/nsight/range_receipts/rank_015.json"
+  ],
+  "schema_version": "distillschedule.static_fsdp2_nsys_receipt_bundle.v1",
+  "status": "PASS",
+  "variant": "no-gan",
+  "world_size": 16
+}

@@ -1,0 +1,273 @@
+{
+  "definitions": {
+    "not_overlapped": "same-GPU NCCL union minus intersection with non-NCCL kernels; not causal critical-path time",
+    "wall": "mean of 16 rank exact-range walls in profiled runs"
+  },
+  "delta_fsdp_minus_resident": {
+    "all_gather_not_overlapped_s": 18.1923613256875,
+    "all_reduce_not_overlapped_s": -5.9910839038125,
+    "compute_union_s": -3.318955011,
+    "copy_union_s": 0.30528550981249936,
+    "d2h_gib_per_rank": 0.0,
+    "h2d_gib_per_rank": 0.013960160315036774,
+    "nccl_hidden_s": 11.9388113135625,
+    "nccl_not_overlapped_s": 23.165971578562498,
+    "nccl_union_s": 35.104782892125,
+    "no_traced_s": -9.247451167937498,
+    "reduce_scatter_not_overlapped_s": 10.9646941566875,
+    "wall_s": 6.6856559645
+  },
+  "formal_speedup_eligible": false,
+  "fsdp": {
+    "all_gather_not_overlapped_s": 18.1923613256875,
+    "all_reduce_not_overlapped_s": 0.34496487025,
+    "compute_union_s": 21.8523164303125,
+    "copy_union_s": 9.831480574875,
+    "d2h_gib_per_rank": 25.316619920544326,
+    "exclusive_s": {
+      "compute": 9.913098628875,
+      "compute+copy": 0.000406487875,
+      "compute+nccl": 11.938669065625,
+      "compute+nccl+copy": 0.0001422479375,
+      "copy": 5.6122856299375,
+      "nccl": 25.2833741435,
+      "nccl+copy": 4.218646209125,
+      "no_traced_activity": 20.369433280125
+    },
+    "h2d_gib_per_rank": 12.833233915269375,
+    "nccl_hidden_s": 11.9388113135625,
+    "nccl_not_overlapped_s": 29.502020352625,
+    "nccl_union_s": 41.4408316661875,
+    "no_traced_s": 20.369433280125,
+    "reduce_scatter_not_overlapped_s": 10.9646941566875,
+    "wall_s": 77.336055693
+  },
+  "resident": {
+    "all_gather_not_overlapped_s": 0.0,
+    "all_reduce_not_overlapped_s": 6.3360487740625,
+    "compute_union_s": 25.1712714413125,
+    "copy_union_s": 9.5261950650625,
+    "d2h_gib_per_rank": 25.316619920544326,
+    "exclusive_s": {
+      "compute": 25.1712714413125,
+      "copy": 9.5261950650625,
+      "nccl": 6.3360487740625,
+      "no_traced_activity": 29.6168844480625
+    },
+    "h2d_gib_per_rank": 12.819273754954338,
+    "nccl_hidden_s": 0.0,
+    "nccl_not_overlapped_s": 6.3360487740625,
+    "nccl_union_s": 6.3360487740625,
+    "no_traced_s": 29.6168844480625,
+    "reduce_scatter_not_overlapped_s": 0.0,
+    "wall_s": 70.6503997285
+  },
+  "schema_version": "distillschedule.wan13b_matched_nsys_comparison.v1",
+  "stages": [
+    {
+      "fsdp": {
+        "compute_s": 4.7250778060625,
+        "copy_not_overlapped_s": 2.7709410281875,
+        "nccl_not_overlapped_s": 8.1848225366875,
+        "no_traced_s": 7.858965662375,
+        "wall_s": 22.3518906235
+      },
+      "resident": {
+        "compute_s": 5.2316880418125,
+        "copy_not_overlapped_s": 2.525630606625,
+        "nccl_not_overlapped_s": 1.0187069595,
+        "no_traced_s": 9.4050150990625,
+        "wall_s": 18.181040707
+      },
+      "stage": "WAN13B/G_UPDATE"
+    },
+    {
+      "fsdp": {
+        "compute_s": 7.2852639926875,
+        "copy_not_overlapped_s": 0.2081164236875,
+        "nccl_not_overlapped_s": 7.7492795839375,
+        "no_traced_s": 1.24054262,
+        "wall_s": 16.3439380215
+      },
+      "resident": {
+        "compute_s": 8.3704622643125,
+        "copy_not_overlapped_s": 0.1852092256875,
+        "nccl_not_overlapped_s": 0.0,
+        "no_traced_s": 5.753168271,
+        "wall_s": 14.308839761
+      },
+      "stage": "WAN13B/G_ROLLOUTS"
+    },
+    {
+      "fsdp": {
+        "compute_s": 1.9684183095,
+        "copy_not_overlapped_s": 1.4803292603125,
+        "nccl_not_overlapped_s": 3.2109136485,
+        "no_traced_s": 4.152991161625,
+        "wall_s": 10.214151376
+      },
+      "resident": {
+        "compute_s": 2.232476586375,
+        "copy_not_overlapped_s": 1.270602864375,
+        "nccl_not_overlapped_s": 0.2176613438125,
+        "no_traced_s": 2.7794172834375,
+        "wall_s": 6.500158078
+      },
+      "stage": "WAN13B/C_UPDATE/step_10"
+    },
+    {
+      "fsdp": {
+        "compute_s": 1.9406803264375,
+        "copy_not_overlapped_s": 1.333346017875,
+        "nccl_not_overlapped_s": 2.3876809305,
+        "no_traced_s": 1.787306230125,
+        "wall_s": 6.9340698355
+      },
+      "resident": {
+        "compute_s": 2.24095380725,
+        "copy_not_overlapped_s": 1.262762438375,
+        "nccl_not_overlapped_s": 0.2163537349375,
+        "no_traced_s": 2.8626585214375,
+        "wall_s": 6.582728502
+      },
+      "stage": "WAN13B/C_UPDATE/step_11"
+    },
+    {
+      "fsdp": {
+        "compute_s": 1.950311822625,
+        "copy_not_overlapped_s": 1.348270215125,
+        "nccl_not_overlapped_s": 2.3807099453125,
+        "no_traced_s": 1.7878928671875,
+        "wall_s": 6.9065841485
+      },
+      "resident": {
+        "compute_s": 2.219237575625,
+        "copy_not_overlapped_s": 1.3028297815,
+        "nccl_not_overlapped_s": 0.3131687335625,
+        "no_traced_s": 2.8000116918125,
+        "wall_s": 6.6352477825
+      },
+      "stage": "WAN13B/C_UPDATE/step_12"
+    },
+    {
+      "fsdp": {
+        "compute_s": 1.97390315125,
+        "copy_not_overlapped_s": 1.4080207381875,
+        "nccl_not_overlapped_s": 2.89941038975,
+        "no_traced_s": 1.60861064525,
+        "wall_s": 7.213140911
+      },
+      "resident": {
+        "compute_s": 2.2598347673125,
+        "copy_not_overlapped_s": 1.526734943625,
+        "nccl_not_overlapped_s": 0.262885632,
+        "no_traced_s": 2.8615481385625,
+        "wall_s": 6.9110034815
+      },
+      "stage": "WAN13B/C_UPDATE/step_13"
+    },
+    {
+      "fsdp": {
+        "compute_s": 1.955974672875,
+        "copy_not_overlapped_s": 1.2750186885,
+        "nccl_not_overlapped_s": 2.11007908575,
+        "no_traced_s": 1.7472406983125,
+        "wall_s": 6.5476973335
+      },
+      "resident": {
+        "compute_s": 2.2326156169375,
+        "copy_not_overlapped_s": 1.3499946816875,
+        "nccl_not_overlapped_s": 0.2591902950625,
+        "no_traced_s": 2.8138220998125,
+        "wall_s": 6.6556226935
+      },
+      "stage": "WAN13B/C_UPDATE/step_14"
+    },
+    {
+      "fsdp": {
+        "compute_s": 0.0016154526875,
+        "copy_not_overlapped_s": 0.000401008,
+        "nccl_not_overlapped_s": 0.014092214625,
+        "no_traced_s": 0.0453355676875,
+        "wall_s": 0.061444243
+      },
+      "resident": {
+        "compute_s": 0.0868970855625,
+        "copy_not_overlapped_s": 0.0253393855625,
+        "nccl_not_overlapped_s": 1.2262853961875,
+        "no_traced_s": 0.0807987946875,
+        "wall_s": 1.419320662
+      },
+      "stage": "WAN13B/EMA/step_10"
+    },
+    {
+      "fsdp": {
+        "compute_s": 0.0136897225625,
+        "copy_not_overlapped_s": 0.002082805875,
+        "nccl_not_overlapped_s": 0.123766668625,
+        "no_traced_s": 0.0364056154375,
+        "wall_s": 0.1759448125
+      },
+      "resident": {
+        "compute_s": 0.070503666875,
+        "copy_not_overlapped_s": 0.0175192718125,
+        "nccl_not_overlapped_s": 0.5632610541875,
+        "no_traced_s": 0.055653678125,
+        "wall_s": 0.706937671
+      },
+      "stage": "WAN13B/EMA/step_11"
+    },
+    {
+      "fsdp": {
+        "compute_s": 0.011254900625,
+        "copy_not_overlapped_s": 0.001457078875,
+        "nccl_not_overlapped_s": 0.126241869375,
+        "no_traced_s": 0.030798202125,
+        "wall_s": 0.169752051
+      },
+      "resident": {
+        "compute_s": 0.0958179079375,
+        "copy_not_overlapped_s": 0.0304446984375,
+        "nccl_not_overlapped_s": 1.3003993444375,
+        "no_traced_s": 0.1000134921875,
+        "wall_s": 1.526675443
+      },
+      "stage": "WAN13B/EMA/step_12"
+    },
+    {
+      "fsdp": {
+        "compute_s": 0.0125012641875,
+        "copy_not_overlapped_s": 0.0015012771875,
+        "nccl_not_overlapped_s": 0.1318389061875,
+        "no_traced_s": 0.0319592064375,
+        "wall_s": 0.177800654
+      },
+      "resident": {
+        "compute_s": 0.051761951875,
+        "copy_not_overlapped_s": 0.007073946,
+        "nccl_not_overlapped_s": 0.184700814125,
+        "no_traced_s": 0.0320207155,
+        "wall_s": 0.2755574275
+      },
+      "stage": "WAN13B/EMA/step_13"
+    },
+    {
+      "fsdp": {
+        "compute_s": 0.013092730875,
+        "copy_not_overlapped_s": 0.0014426880625,
+        "nccl_not_overlapped_s": 0.1177062423125,
+        "no_traced_s": 0.03389495325,
+        "wall_s": 0.1661366145
+      },
+      "resident": {
+        "compute_s": 0.078868964,
+        "copy_not_overlapped_s": 0.022024796875,
+        "nccl_not_overlapped_s": 0.7698019394375,
+        "no_traced_s": 0.0716948361875,
+        "wall_s": 0.9423905365
+      },
+      "stage": "WAN13B/EMA/step_14"
+    }
+  ],
+  "status": "PASS_DIAGNOSTIC_ONLY"
+}

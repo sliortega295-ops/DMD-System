@@ -1,0 +1,5304 @@
+{
+  "aggregate": {
+    "copy_directions": {
+      "d2d": {
+        "bytes": 3001472132864,
+        "events": 2344544,
+        "sum_duration_ns": 7829752848,
+        "union_ns": 7829752848
+      },
+      "d2h": {
+        "bytes": 434936218416,
+        "events": 16176,
+        "sum_duration_ns": 127573763252,
+        "union_ns": 127573763252
+      },
+      "h2d": {
+        "bytes": 220233446144,
+        "events": 146304,
+        "sum_duration_ns": 17015604941,
+        "union_ns": 17015604941
+      },
+      "other": {
+        "bytes": 0,
+        "events": 0,
+        "sum_duration_ns": 0,
+        "union_ns": 0
+      }
+    },
+    "exclusive_ns": {
+      "compute": 402740343061,
+      "copy": 152419121041,
+      "nccl": 101376780385,
+      "no_traced_activity": 473870151169
+    },
+    "gpu_wall_ns": 1130406395656,
+    "metrics": {
+      "compute_union_ns": 402740343061,
+      "copy_exposed_vs_compute_ns": 152419121041,
+      "copy_hidden_by_compute_ns": 0,
+      "copy_union_ns": 152419121041,
+      "nccl_exposed_vs_compute_ns": 101376780385,
+      "nccl_hidden_by_compute_ns": 0,
+      "nccl_union_ns": 101376780385
+    },
+    "nccl_collectives": {
+      "all_gather": {
+        "events": 0,
+        "exposed_vs_compute_ns": 0,
+        "hidden_by_compute_ns": 0,
+        "sum_duration_ns": 0,
+        "union_ns": 0
+      },
+      "all_reduce": {
+        "events": 1088,
+        "exposed_vs_compute_ns": 101376780385,
+        "hidden_by_compute_ns": 0,
+        "sum_duration_ns": 101376780385,
+        "union_ns": 101376780385
+      },
+      "broadcast": {
+        "events": 0,
+        "exposed_vs_compute_ns": 0,
+        "hidden_by_compute_ns": 0,
+        "sum_duration_ns": 0,
+        "union_ns": 0
+      },
+      "other_nccl": {
+        "events": 0,
+        "exposed_vs_compute_ns": 0,
+        "hidden_by_compute_ns": 0,
+        "sum_duration_ns": 0,
+        "union_ns": 0
+      },
+      "p2p": {
+        "events": 0,
+        "exposed_vs_compute_ns": 0,
+        "hidden_by_compute_ns": 0,
+        "sum_duration_ns": 0,
+        "union_ns": 0
+      },
+      "reduce_scatter": {
+        "events": 0,
+        "exposed_vs_compute_ns": 0,
+        "hidden_by_compute_ns": 0,
+        "sum_duration_ns": 0,
+        "union_ns": 0
+      }
+    },
+    "per_rank": [
+      {
+        "compute_union_ns": 25154681985,
+        "copy_directions": {
+          "d2d": {
+            "bytes": 187592008256,
+            "events": 146534,
+            "sum_duration_ns": 483151810,
+            "union_ns": 483151810
+          },
+          "d2h": {
+            "bytes": 27183513645,
+            "events": 1005,
+            "sum_duration_ns": 8213464269,
+            "union_ns": 8213464269
+          },
+          "h2d": {
+            "bytes": 13764590288,
+            "events": 9144,
+            "sum_duration_ns": 1054984414,
+            "union_ns": 1054984414
+          },
+          "other": {
+            "bytes": 0,
+            "events": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "copy_exposed_vs_compute_ns": 9751600493,
+        "copy_hidden_by_compute_ns": 0,
+        "copy_union_ns": 9751600493,
+        "device": 0,
+        "exclusive_ns": {
+          "compute": 25154681985,
+          "copy": 9751600493,
+          "nccl": 5126594636,
+          "no_traced_activity": 30617191614
+        },
+        "kernel_events": 1259015,
+        "nccl_collectives": {
+          "all_gather": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "all_reduce": {
+            "events": 68,
+            "exposed_vs_compute_ns": 5126594636,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 5126594636,
+            "union_ns": 5126594636
+          },
+          "broadcast": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "other_nccl": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "p2p": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "reduce_scatter": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "nccl_exposed_vs_compute_ns": 5126594636,
+        "nccl_hidden_by_compute_ns": 0,
+        "nccl_union_ns": 5126594636,
+        "node": 0,
+        "rank": 0,
+        "unresolved_kernel_ratio": 0.0,
+        "wall_ns": 70650068728
+      },
+      {
+        "compute_union_ns": 25114887306,
+        "copy_directions": {
+          "d2d": {
+            "bytes": 187592008352,
+            "events": 146534,
+            "sum_duration_ns": 485689116,
+            "union_ns": 485689116
+          },
+          "d2h": {
+            "bytes": 27183513657,
+            "events": 1017,
+            "sum_duration_ns": 8177854601,
+            "union_ns": 8177854601
+          },
+          "h2d": {
+            "bytes": 13764590480,
+            "events": 9144,
+            "sum_duration_ns": 1109877889,
+            "union_ns": 1109877889
+          },
+          "other": {
+            "bytes": 0,
+            "events": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "copy_exposed_vs_compute_ns": 9773421606,
+        "copy_hidden_by_compute_ns": 0,
+        "copy_union_ns": 9773421606,
+        "device": 1,
+        "exclusive_ns": {
+          "compute": 25114887306,
+          "copy": 9773421606,
+          "nccl": 4887159317,
+          "no_traced_activity": 30874600499
+        },
+        "kernel_events": 1259038,
+        "nccl_collectives": {
+          "all_gather": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "all_reduce": {
+            "events": 68,
+            "exposed_vs_compute_ns": 4887159317,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 4887159317,
+            "union_ns": 4887159317
+          },
+          "broadcast": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "other_nccl": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "p2p": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "reduce_scatter": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "nccl_exposed_vs_compute_ns": 4887159317,
+        "nccl_hidden_by_compute_ns": 0,
+        "nccl_union_ns": 4887159317,
+        "node": 0,
+        "rank": 1,
+        "unresolved_kernel_ratio": 0.0,
+        "wall_ns": 70650068728
+      },
+      {
+        "compute_union_ns": 25190069139,
+        "copy_directions": {
+          "d2d": {
+            "bytes": 187592008352,
+            "events": 146534,
+            "sum_duration_ns": 491996602,
+            "union_ns": 491996602
+          },
+          "d2h": {
+            "bytes": 27183513657,
+            "events": 1017,
+            "sum_duration_ns": 8843215260,
+            "union_ns": 8843215260
+          },
+          "h2d": {
+            "bytes": 13764590480,
+            "events": 9144,
+            "sum_duration_ns": 1199560053,
+            "union_ns": 1199560053
+          },
+          "other": {
+            "bytes": 0,
+            "events": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "copy_exposed_vs_compute_ns": 10534771915,
+        "copy_hidden_by_compute_ns": 0,
+        "copy_union_ns": 10534771915,
+        "device": 2,
+        "exclusive_ns": {
+          "compute": 25190069139,
+          "copy": 10534771915,
+          "nccl": 2160418255,
+          "no_traced_activity": 32764809419
+        },
+        "kernel_events": 1259038,
+        "nccl_collectives": {
+          "all_gather": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "all_reduce": {
+            "events": 68,
+            "exposed_vs_compute_ns": 2160418255,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 2160418255,
+            "union_ns": 2160418255
+          },
+          "broadcast": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "other_nccl": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "p2p": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "reduce_scatter": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "nccl_exposed_vs_compute_ns": 2160418255,
+        "nccl_hidden_by_compute_ns": 0,
+        "nccl_union_ns": 2160418255,
+        "node": 0,
+        "rank": 2,
+        "unresolved_kernel_ratio": 0.0,
+        "wall_ns": 70650068728
+      },
+      {
+        "compute_union_ns": 25196197681,
+        "copy_directions": {
+          "d2d": {
+            "bytes": 187592008352,
+            "events": 146534,
+            "sum_duration_ns": 484792990,
+            "union_ns": 484792990
+          },
+          "d2h": {
+            "bytes": 27183513657,
+            "events": 1017,
+            "sum_duration_ns": 9240611623,
+            "union_ns": 9240611623
+          },
+          "h2d": {
+            "bytes": 13764590480,
+            "events": 9144,
+            "sum_duration_ns": 1098996804,
+            "union_ns": 1098996804
+          },
+          "other": {
+            "bytes": 0,
+            "events": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "copy_exposed_vs_compute_ns": 10824401417,
+        "copy_hidden_by_compute_ns": 0,
+        "copy_union_ns": 10824401417,
+        "device": 3,
+        "exclusive_ns": {
+          "compute": 25196197681,
+          "copy": 10824401417,
+          "nccl": 1769216815,
+          "no_traced_activity": 32860252815
+        },
+        "kernel_events": 1259038,
+        "nccl_collectives": {
+          "all_gather": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "all_reduce": {
+            "events": 68,
+            "exposed_vs_compute_ns": 1769216815,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 1769216815,
+            "union_ns": 1769216815
+          },
+          "broadcast": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "other_nccl": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "p2p": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "reduce_scatter": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "nccl_exposed_vs_compute_ns": 1769216815,
+        "nccl_hidden_by_compute_ns": 0,
+        "nccl_union_ns": 1769216815,
+        "node": 0,
+        "rank": 3,
+        "unresolved_kernel_ratio": 0.0,
+        "wall_ns": 70650068728
+      },
+      {
+        "compute_union_ns": 25171045292,
+        "copy_directions": {
+          "d2d": {
+            "bytes": 187592008112,
+            "events": 146534,
+            "sum_duration_ns": 490618253,
+            "union_ns": 490618253
+          },
+          "d2h": {
+            "bytes": 27183513627,
+            "events": 987,
+            "sum_duration_ns": 8013016075,
+            "union_ns": 8013016075
+          },
+          "h2d": {
+            "bytes": 13764590000,
+            "events": 9144,
+            "sum_duration_ns": 1076645866,
+            "union_ns": 1076645866
+          },
+          "other": {
+            "bytes": 0,
+            "events": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "copy_exposed_vs_compute_ns": 9580280194,
+        "copy_hidden_by_compute_ns": 0,
+        "copy_union_ns": 9580280194,
+        "device": 4,
+        "exclusive_ns": {
+          "compute": 25171045292,
+          "copy": 9580280194,
+          "nccl": 5010562608,
+          "no_traced_activity": 30888180634
+        },
+        "kernel_events": 1258978,
+        "nccl_collectives": {
+          "all_gather": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "all_reduce": {
+            "events": 68,
+            "exposed_vs_compute_ns": 5010562608,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 5010562608,
+            "union_ns": 5010562608
+          },
+          "broadcast": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "other_nccl": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "p2p": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "reduce_scatter": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "nccl_exposed_vs_compute_ns": 5010562608,
+        "nccl_hidden_by_compute_ns": 0,
+        "nccl_union_ns": 5010562608,
+        "node": 0,
+        "rank": 4,
+        "unresolved_kernel_ratio": 0.0,
+        "wall_ns": 70650068728
+      },
+      {
+        "compute_union_ns": 25260933961,
+        "copy_directions": {
+          "d2d": {
+            "bytes": 187592008256,
+            "events": 146534,
+            "sum_duration_ns": 491297080,
+            "union_ns": 491297080
+          },
+          "d2h": {
+            "bytes": 27183513645,
+            "events": 1005,
+            "sum_duration_ns": 9294569354,
+            "union_ns": 9294569354
+          },
+          "h2d": {
+            "bytes": 13764590288,
+            "events": 9144,
+            "sum_duration_ns": 1465895003,
+            "union_ns": 1465895003
+          },
+          "other": {
+            "bytes": 0,
+            "events": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "copy_exposed_vs_compute_ns": 11251761437,
+        "copy_hidden_by_compute_ns": 0,
+        "copy_union_ns": 11251761437,
+        "device": 5,
+        "exclusive_ns": {
+          "compute": 25260933961,
+          "copy": 11251761437,
+          "nccl": 2865967124,
+          "no_traced_activity": 31271406206
+        },
+        "kernel_events": 1259014,
+        "nccl_collectives": {
+          "all_gather": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "all_reduce": {
+            "events": 68,
+            "exposed_vs_compute_ns": 2865967124,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 2865967124,
+            "union_ns": 2865967124
+          },
+          "broadcast": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "other_nccl": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "p2p": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "reduce_scatter": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "nccl_exposed_vs_compute_ns": 2865967124,
+        "nccl_hidden_by_compute_ns": 0,
+        "nccl_union_ns": 2865967124,
+        "node": 0,
+        "rank": 5,
+        "unresolved_kernel_ratio": 0.0,
+        "wall_ns": 70650068728
+      },
+      {
+        "compute_union_ns": 25250444675,
+        "copy_directions": {
+          "d2d": {
+            "bytes": 187592008400,
+            "events": 146534,
+            "sum_duration_ns": 491909412,
+            "union_ns": 491909412
+          },
+          "d2h": {
+            "bytes": 27183513663,
+            "events": 1023,
+            "sum_duration_ns": 9092123710,
+            "union_ns": 9092123710
+          },
+          "h2d": {
+            "bytes": 13764590576,
+            "events": 9144,
+            "sum_duration_ns": 1360874879,
+            "union_ns": 1360874879
+          },
+          "other": {
+            "bytes": 0,
+            "events": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "copy_exposed_vs_compute_ns": 10944908001,
+        "copy_hidden_by_compute_ns": 0,
+        "copy_union_ns": 10944908001,
+        "device": 6,
+        "exclusive_ns": {
+          "compute": 25250444675,
+          "copy": 10944908001,
+          "nccl": 2809684432,
+          "no_traced_activity": 31645031620
+        },
+        "kernel_events": 1259051,
+        "nccl_collectives": {
+          "all_gather": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "all_reduce": {
+            "events": 68,
+            "exposed_vs_compute_ns": 2809684432,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 2809684432,
+            "union_ns": 2809684432
+          },
+          "broadcast": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "other_nccl": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "p2p": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "reduce_scatter": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "nccl_exposed_vs_compute_ns": 2809684432,
+        "nccl_hidden_by_compute_ns": 0,
+        "nccl_union_ns": 2809684432,
+        "node": 0,
+        "rank": 6,
+        "unresolved_kernel_ratio": 0.0,
+        "wall_ns": 70650068728
+      },
+      {
+        "compute_union_ns": 25165173141,
+        "copy_directions": {
+          "d2d": {
+            "bytes": 187592008400,
+            "events": 146534,
+            "sum_duration_ns": 490333341,
+            "union_ns": 490333341
+          },
+          "d2h": {
+            "bytes": 27183513663,
+            "events": 1023,
+            "sum_duration_ns": 6958436803,
+            "union_ns": 6958436803
+          },
+          "h2d": {
+            "bytes": 13764590576,
+            "events": 9144,
+            "sum_duration_ns": 855796624,
+            "union_ns": 855796624
+          },
+          "other": {
+            "bytes": 0,
+            "events": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "copy_exposed_vs_compute_ns": 8304566768,
+        "copy_hidden_by_compute_ns": 0,
+        "copy_union_ns": 8304566768,
+        "device": 7,
+        "exclusive_ns": {
+          "compute": 25165173141,
+          "copy": 8304566768,
+          "nccl": 7694743077,
+          "no_traced_activity": 29485585742
+        },
+        "kernel_events": 1259050,
+        "nccl_collectives": {
+          "all_gather": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "all_reduce": {
+            "events": 68,
+            "exposed_vs_compute_ns": 7694743077,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 7694743077,
+            "union_ns": 7694743077
+          },
+          "broadcast": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "other_nccl": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "p2p": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "reduce_scatter": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "nccl_exposed_vs_compute_ns": 7694743077,
+        "nccl_hidden_by_compute_ns": 0,
+        "nccl_union_ns": 7694743077,
+        "node": 0,
+        "rank": 7,
+        "unresolved_kernel_ratio": 0.0,
+        "wall_ns": 70650068728
+      },
+      {
+        "compute_union_ns": 25158464156,
+        "copy_directions": {
+          "d2d": {
+            "bytes": 187592008352,
+            "events": 146534,
+            "sum_duration_ns": 491505213,
+            "union_ns": 491505213
+          },
+          "d2h": {
+            "bytes": 27183513657,
+            "events": 1017,
+            "sum_duration_ns": 8386816226,
+            "union_ns": 8386816226
+          },
+          "h2d": {
+            "bytes": 13764590480,
+            "events": 9144,
+            "sum_duration_ns": 1240591690,
+            "union_ns": 1240591690
+          },
+          "other": {
+            "bytes": 0,
+            "events": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "copy_exposed_vs_compute_ns": 10118913129,
+        "copy_hidden_by_compute_ns": 0,
+        "copy_union_ns": 10118913129,
+        "device": 0,
+        "exclusive_ns": {
+          "compute": 25158464156,
+          "copy": 10118913129,
+          "nccl": 6285920050,
+          "no_traced_activity": 29087433394
+        },
+        "kernel_events": 1259039,
+        "nccl_collectives": {
+          "all_gather": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "all_reduce": {
+            "events": 68,
+            "exposed_vs_compute_ns": 6285920050,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 6285920050,
+            "union_ns": 6285920050
+          },
+          "broadcast": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "other_nccl": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "p2p": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "reduce_scatter": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "nccl_exposed_vs_compute_ns": 6285920050,
+        "nccl_hidden_by_compute_ns": 0,
+        "nccl_union_ns": 6285920050,
+        "node": 1,
+        "rank": 8,
+        "unresolved_kernel_ratio": 0.0,
+        "wall_ns": 70650730729
+      },
+      {
+        "compute_union_ns": 25182022050,
+        "copy_directions": {
+          "d2d": {
+            "bytes": 187592008208,
+            "events": 146534,
+            "sum_duration_ns": 490159153,
+            "union_ns": 490159153
+          },
+          "d2h": {
+            "bytes": 27183513639,
+            "events": 999,
+            "sum_duration_ns": 8088457193,
+            "union_ns": 8088457193
+          },
+          "h2d": {
+            "bytes": 13764590192,
+            "events": 9144,
+            "sum_duration_ns": 1040021124,
+            "union_ns": 1040021124
+          },
+          "other": {
+            "bytes": 0,
+            "events": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "copy_exposed_vs_compute_ns": 9618637470,
+        "copy_hidden_by_compute_ns": 0,
+        "copy_union_ns": 9618637470,
+        "device": 1,
+        "exclusive_ns": {
+          "compute": 25182022050,
+          "copy": 9618637470,
+          "nccl": 7296918797,
+          "no_traced_activity": 28553152412
+        },
+        "kernel_events": 1259002,
+        "nccl_collectives": {
+          "all_gather": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "all_reduce": {
+            "events": 68,
+            "exposed_vs_compute_ns": 7296918797,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 7296918797,
+            "union_ns": 7296918797
+          },
+          "broadcast": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "other_nccl": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "p2p": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "reduce_scatter": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "nccl_exposed_vs_compute_ns": 7296918797,
+        "nccl_hidden_by_compute_ns": 0,
+        "nccl_union_ns": 7296918797,
+        "node": 1,
+        "rank": 9,
+        "unresolved_kernel_ratio": 0.0,
+        "wall_ns": 70650730729
+      },
+      {
+        "compute_union_ns": 25166488081,
+        "copy_directions": {
+          "d2d": {
+            "bytes": 187592008400,
+            "events": 146534,
+            "sum_duration_ns": 493198414,
+            "union_ns": 493198414
+          },
+          "d2h": {
+            "bytes": 27183513663,
+            "events": 1023,
+            "sum_duration_ns": 6644576668,
+            "union_ns": 6644576668
+          },
+          "h2d": {
+            "bytes": 13764590576,
+            "events": 9144,
+            "sum_duration_ns": 951180581,
+            "union_ns": 951180581
+          },
+          "other": {
+            "bytes": 0,
+            "events": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "copy_exposed_vs_compute_ns": 8088955663,
+        "copy_hidden_by_compute_ns": 0,
+        "copy_union_ns": 8088955663,
+        "device": 2,
+        "exclusive_ns": {
+          "compute": 25166488081,
+          "copy": 8088955663,
+          "nccl": 9931144386,
+          "no_traced_activity": 27464142599
+        },
+        "kernel_events": 1259050,
+        "nccl_collectives": {
+          "all_gather": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "all_reduce": {
+            "events": 68,
+            "exposed_vs_compute_ns": 9931144386,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 9931144386,
+            "union_ns": 9931144386
+          },
+          "broadcast": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "other_nccl": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "p2p": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "reduce_scatter": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "nccl_exposed_vs_compute_ns": 9931144386,
+        "nccl_hidden_by_compute_ns": 0,
+        "nccl_union_ns": 9931144386,
+        "node": 1,
+        "rank": 10,
+        "unresolved_kernel_ratio": 0.0,
+        "wall_ns": 70650730729
+      },
+      {
+        "compute_union_ns": 25106591887,
+        "copy_directions": {
+          "d2d": {
+            "bytes": 187592008160,
+            "events": 146534,
+            "sum_duration_ns": 485433325,
+            "union_ns": 485433325
+          },
+          "d2h": {
+            "bytes": 27183513633,
+            "events": 993,
+            "sum_duration_ns": 7858816552,
+            "union_ns": 7858816552
+          },
+          "h2d": {
+            "bytes": 13764590096,
+            "events": 9144,
+            "sum_duration_ns": 1038134600,
+            "union_ns": 1038134600
+          },
+          "other": {
+            "bytes": 0,
+            "events": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "copy_exposed_vs_compute_ns": 9382384477,
+        "copy_hidden_by_compute_ns": 0,
+        "copy_union_ns": 9382384477,
+        "device": 3,
+        "exclusive_ns": {
+          "compute": 25106591887,
+          "copy": 9382384477,
+          "nccl": 7883207928,
+          "no_traced_activity": 28278546437
+        },
+        "kernel_events": 1258990,
+        "nccl_collectives": {
+          "all_gather": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "all_reduce": {
+            "events": 68,
+            "exposed_vs_compute_ns": 7883207928,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 7883207928,
+            "union_ns": 7883207928
+          },
+          "broadcast": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "other_nccl": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "p2p": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "reduce_scatter": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "nccl_exposed_vs_compute_ns": 7883207928,
+        "nccl_hidden_by_compute_ns": 0,
+        "nccl_union_ns": 7883207928,
+        "node": 1,
+        "rank": 11,
+        "unresolved_kernel_ratio": 0.0,
+        "wall_ns": 70650730729
+      },
+      {
+        "compute_union_ns": 25136024003,
+        "copy_directions": {
+          "d2d": {
+            "bytes": 187592008352,
+            "events": 146534,
+            "sum_duration_ns": 489115691,
+            "union_ns": 489115691
+          },
+          "d2h": {
+            "bytes": 27183513657,
+            "events": 1017,
+            "sum_duration_ns": 6820630975,
+            "union_ns": 6820630975
+          },
+          "h2d": {
+            "bytes": 13764590480,
+            "events": 9144,
+            "sum_duration_ns": 827291324,
+            "union_ns": 827291324
+          },
+          "other": {
+            "bytes": 0,
+            "events": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "copy_exposed_vs_compute_ns": 8137037990,
+        "copy_hidden_by_compute_ns": 0,
+        "copy_union_ns": 8137037990,
+        "device": 4,
+        "exclusive_ns": {
+          "compute": 25136024003,
+          "copy": 8137037990,
+          "nccl": 9974016117,
+          "no_traced_activity": 27403652619
+        },
+        "kernel_events": 1259038,
+        "nccl_collectives": {
+          "all_gather": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "all_reduce": {
+            "events": 68,
+            "exposed_vs_compute_ns": 9974016117,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 9974016117,
+            "union_ns": 9974016117
+          },
+          "broadcast": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "other_nccl": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "p2p": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "reduce_scatter": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "nccl_exposed_vs_compute_ns": 9974016117,
+        "nccl_hidden_by_compute_ns": 0,
+        "nccl_union_ns": 9974016117,
+        "node": 1,
+        "rank": 12,
+        "unresolved_kernel_ratio": 0.0,
+        "wall_ns": 70650730729
+      },
+      {
+        "compute_union_ns": 25227409204,
+        "copy_directions": {
+          "d2d": {
+            "bytes": 187592008208,
+            "events": 146534,
+            "sum_duration_ns": 493279411,
+            "union_ns": 493279411
+          },
+          "d2h": {
+            "bytes": 27183513639,
+            "events": 999,
+            "sum_duration_ns": 7981576403,
+            "union_ns": 7981576403
+          },
+          "h2d": {
+            "bytes": 13764590192,
+            "events": 9144,
+            "sum_duration_ns": 1045429448,
+            "union_ns": 1045429448
+          },
+          "other": {
+            "bytes": 0,
+            "events": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "copy_exposed_vs_compute_ns": 9520285262,
+        "copy_hidden_by_compute_ns": 0,
+        "copy_union_ns": 9520285262,
+        "device": 5,
+        "exclusive_ns": {
+          "compute": 25227409204,
+          "copy": 9520285262,
+          "nccl": 8327695268,
+          "no_traced_activity": 27575340995
+        },
+        "kernel_events": 1259002,
+        "nccl_collectives": {
+          "all_gather": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "all_reduce": {
+            "events": 68,
+            "exposed_vs_compute_ns": 8327695268,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 8327695268,
+            "union_ns": 8327695268
+          },
+          "broadcast": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "other_nccl": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "p2p": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "reduce_scatter": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "nccl_exposed_vs_compute_ns": 8327695268,
+        "nccl_hidden_by_compute_ns": 0,
+        "nccl_union_ns": 8327695268,
+        "node": 1,
+        "rank": 13,
+        "unresolved_kernel_ratio": 0.0,
+        "wall_ns": 70650730729
+      },
+      {
+        "compute_union_ns": 25129403769,
+        "copy_directions": {
+          "d2d": {
+            "bytes": 187592008304,
+            "events": 146534,
+            "sum_duration_ns": 488385779,
+            "union_ns": 488385779
+          },
+          "d2h": {
+            "bytes": 27183513651,
+            "events": 1011,
+            "sum_duration_ns": 7417920554,
+            "union_ns": 7417920554
+          },
+          "h2d": {
+            "bytes": 13764590384,
+            "events": 9144,
+            "sum_duration_ns": 864392479,
+            "union_ns": 864392479
+          },
+          "other": {
+            "bytes": 0,
+            "events": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "copy_exposed_vs_compute_ns": 8770698812,
+        "copy_hidden_by_compute_ns": 0,
+        "copy_union_ns": 8770698812,
+        "device": 6,
+        "exclusive_ns": {
+          "compute": 25129403769,
+          "copy": 8770698812,
+          "nccl": 9279901070,
+          "no_traced_activity": 27470727078
+        },
+        "kernel_events": 1259026,
+        "nccl_collectives": {
+          "all_gather": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "all_reduce": {
+            "events": 68,
+            "exposed_vs_compute_ns": 9279901070,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 9279901070,
+            "union_ns": 9279901070
+          },
+          "broadcast": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "other_nccl": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "p2p": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "reduce_scatter": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "nccl_exposed_vs_compute_ns": 9279901070,
+        "nccl_hidden_by_compute_ns": 0,
+        "nccl_union_ns": 9279901070,
+        "node": 1,
+        "rank": 14,
+        "unresolved_kernel_ratio": 0.0,
+        "wall_ns": 70650730729
+      },
+      {
+        "compute_union_ns": 25130506731,
+        "copy_directions": {
+          "d2d": {
+            "bytes": 187592008400,
+            "events": 146534,
+            "sum_duration_ns": 488887258,
+            "union_ns": 488887258
+          },
+          "d2h": {
+            "bytes": 27183513663,
+            "events": 1023,
+            "sum_duration_ns": 6541676986,
+            "union_ns": 6541676986
+          },
+          "h2d": {
+            "bytes": 13764590576,
+            "events": 9144,
+            "sum_duration_ns": 785932163,
+            "union_ns": 785932163
+          },
+          "other": {
+            "bytes": 0,
+            "events": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "copy_exposed_vs_compute_ns": 7816496407,
+        "copy_hidden_by_compute_ns": 0,
+        "copy_union_ns": 7816496407,
+        "device": 7,
+        "exclusive_ns": {
+          "compute": 25130506731,
+          "copy": 7816496407,
+          "nccl": 10073630505,
+          "no_traced_activity": 27630097086
+        },
+        "kernel_events": 1259050,
+        "nccl_collectives": {
+          "all_gather": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "all_reduce": {
+            "events": 68,
+            "exposed_vs_compute_ns": 10073630505,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 10073630505,
+            "union_ns": 10073630505
+          },
+          "broadcast": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "other_nccl": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "p2p": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          },
+          "reduce_scatter": {
+            "events": 0,
+            "exposed_vs_compute_ns": 0,
+            "hidden_by_compute_ns": 0,
+            "sum_duration_ns": 0,
+            "union_ns": 0
+          }
+        },
+        "nccl_exposed_vs_compute_ns": 10073630505,
+        "nccl_hidden_by_compute_ns": 0,
+        "nccl_union_ns": 10073630505,
+        "node": 1,
+        "rank": 15,
+        "unresolved_kernel_ratio": 0.0,
+        "wall_ns": 70650730729
+      }
+    ],
+    "rank_count": 16,
+    "stages": [
+      {
+        "compute_ns": 83707008669,
+        "copy_exposed_ns": 40410089706,
+        "copy_ns": 40410089706,
+        "gpu_wall_ns": 290896651312,
+        "label": "WAN13B/G_UPDATE",
+        "nccl_exposed_ns": 16299311352,
+        "nccl_ns": 16299311352,
+        "no_traced_ns": 150480241585
+      },
+      {
+        "compute_ns": 133927396229,
+        "copy_exposed_ns": 2963347611,
+        "copy_ns": 2963347611,
+        "gpu_wall_ns": 228941436176,
+        "label": "WAN13B/G_ROLLOUTS",
+        "nccl_exposed_ns": 0,
+        "nccl_ns": 0,
+        "no_traced_ns": 92050692336
+      },
+      {
+        "compute_ns": 35719625382,
+        "copy_exposed_ns": 20329645830,
+        "copy_ns": 20329645830,
+        "gpu_wall_ns": 104002529248,
+        "label": "WAN13B/C_UPDATE/step_10",
+        "nccl_exposed_ns": 3482581501,
+        "nccl_ns": 3482581501,
+        "no_traced_ns": 44470676535
+      },
+      {
+        "compute_ns": 35855260916,
+        "copy_exposed_ns": 20204199014,
+        "copy_ns": 20204199014,
+        "gpu_wall_ns": 105323656032,
+        "label": "WAN13B/C_UPDATE/step_11",
+        "nccl_exposed_ns": 3461659759,
+        "nccl_ns": 3461659759,
+        "no_traced_ns": 45802536343
+      },
+      {
+        "compute_ns": 35507801210,
+        "copy_exposed_ns": 20845276504,
+        "copy_ns": 20845276504,
+        "gpu_wall_ns": 106163964520,
+        "label": "WAN13B/C_UPDATE/step_12",
+        "nccl_exposed_ns": 5010699737,
+        "nccl_ns": 5010699737,
+        "no_traced_ns": 44800187069
+      },
+      {
+        "compute_ns": 36157356277,
+        "copy_exposed_ns": 24427759098,
+        "copy_ns": 24427759098,
+        "gpu_wall_ns": 110576055704,
+        "label": "WAN13B/C_UPDATE/step_13",
+        "nccl_exposed_ns": 4206170112,
+        "nccl_ns": 4206170112,
+        "no_traced_ns": 45784770217
+      },
+      {
+        "compute_ns": 35721849871,
+        "copy_exposed_ns": 21599914907,
+        "copy_ns": 21599914907,
+        "gpu_wall_ns": 106489963096,
+        "label": "WAN13B/C_UPDATE/step_14",
+        "nccl_exposed_ns": 4147044721,
+        "nccl_ns": 4147044721,
+        "no_traced_ns": 45021153597
+      },
+      {
+        "compute_ns": 1390353369,
+        "copy_exposed_ns": 405430169,
+        "copy_ns": 405430169,
+        "gpu_wall_ns": 22709130592,
+        "label": "WAN13B/EMA/step_10",
+        "nccl_exposed_ns": 19620566339,
+        "nccl_ns": 19620566339,
+        "no_traced_ns": 1292780715
+      },
+      {
+        "compute_ns": 1128058670,
+        "copy_exposed_ns": 280308349,
+        "copy_ns": 280308349,
+        "gpu_wall_ns": 11311002736,
+        "label": "WAN13B/EMA/step_11",
+        "nccl_exposed_ns": 9012176867,
+        "nccl_ns": 9012176867,
+        "no_traced_ns": 890458850
+      },
+      {
+        "compute_ns": 1533086527,
+        "copy_exposed_ns": 487115175,
+        "copy_ns": 487115175,
+        "gpu_wall_ns": 24426807088,
+        "label": "WAN13B/EMA/step_12",
+        "nccl_exposed_ns": 20806389511,
+        "nccl_ns": 20806389511,
+        "no_traced_ns": 1600215875
+      },
+      {
+        "compute_ns": 828191230,
+        "copy_exposed_ns": 113183136,
+        "copy_ns": 113183136,
+        "gpu_wall_ns": 4408918840,
+        "label": "WAN13B/EMA/step_13",
+        "nccl_exposed_ns": 2955213026,
+        "nccl_ns": 2955213026,
+        "no_traced_ns": 512331448
+      },
+      {
+        "compute_ns": 1261903424,
+        "copy_exposed_ns": 352396750,
+        "copy_ns": 352396750,
+        "gpu_wall_ns": 15078248584,
+        "label": "WAN13B/EMA/step_14",
+        "nccl_exposed_ns": 12316831031,
+        "nccl_ns": 12316831031,
+        "no_traced_ns": 1147117379
+      }
+    ]
+  },
+  "definitions": {
+    "denominator": "sum of the 16 per-GPU outer-range walls; GPU-seconds, not global wall-clock",
+    "nccl_exposed_vs_compute": "NCCL interval union minus its intersection with non-NCCL kernel union on the same GPU",
+    "no_traced_activity": "phase wall not covered by CUDA kernel or memcpy activity; not proof of CPU idle"
+  },
+  "diagnostic_only": true,
+  "formal_speedup_eligible": false,
+  "nodes": [
+    {
+      "devices": [
+        {
+          "compute_union_ns": 25154681985,
+          "copy_directions": {
+            "d2d": {
+              "bytes": 187592008256,
+              "events": 146534,
+              "sum_duration_ns": 483151810,
+              "union_ns": 483151810
+            },
+            "d2h": {
+              "bytes": 27183513645,
+              "events": 1005,
+              "sum_duration_ns": 8213464269,
+              "union_ns": 8213464269
+            },
+            "h2d": {
+              "bytes": 13764590288,
+              "events": 9144,
+              "sum_duration_ns": 1054984414,
+              "union_ns": 1054984414
+            },
+            "other": {
+              "bytes": 0,
+              "events": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "copy_exposed_vs_compute_ns": 9751600493,
+          "copy_hidden_by_compute_ns": 0,
+          "copy_union_ns": 9751600493,
+          "device": 0,
+          "exclusive_ns": {
+            "compute": 25154681985,
+            "copy": 9751600493,
+            "nccl": 5126594636,
+            "no_traced_activity": 30617191614
+          },
+          "kernel_events": 1259015,
+          "nccl_collectives": {
+            "all_gather": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "all_reduce": {
+              "events": 68,
+              "exposed_vs_compute_ns": 5126594636,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 5126594636,
+              "union_ns": 5126594636
+            },
+            "broadcast": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "other_nccl": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "p2p": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "reduce_scatter": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "nccl_exposed_vs_compute_ns": 5126594636,
+          "nccl_hidden_by_compute_ns": 0,
+          "nccl_union_ns": 5126594636,
+          "node": 0,
+          "rank": 0,
+          "unresolved_kernel_ratio": 0.0,
+          "wall_ns": 70650068728
+        },
+        {
+          "compute_union_ns": 25114887306,
+          "copy_directions": {
+            "d2d": {
+              "bytes": 187592008352,
+              "events": 146534,
+              "sum_duration_ns": 485689116,
+              "union_ns": 485689116
+            },
+            "d2h": {
+              "bytes": 27183513657,
+              "events": 1017,
+              "sum_duration_ns": 8177854601,
+              "union_ns": 8177854601
+            },
+            "h2d": {
+              "bytes": 13764590480,
+              "events": 9144,
+              "sum_duration_ns": 1109877889,
+              "union_ns": 1109877889
+            },
+            "other": {
+              "bytes": 0,
+              "events": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "copy_exposed_vs_compute_ns": 9773421606,
+          "copy_hidden_by_compute_ns": 0,
+          "copy_union_ns": 9773421606,
+          "device": 1,
+          "exclusive_ns": {
+            "compute": 25114887306,
+            "copy": 9773421606,
+            "nccl": 4887159317,
+            "no_traced_activity": 30874600499
+          },
+          "kernel_events": 1259038,
+          "nccl_collectives": {
+            "all_gather": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "all_reduce": {
+              "events": 68,
+              "exposed_vs_compute_ns": 4887159317,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 4887159317,
+              "union_ns": 4887159317
+            },
+            "broadcast": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "other_nccl": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "p2p": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "reduce_scatter": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "nccl_exposed_vs_compute_ns": 4887159317,
+          "nccl_hidden_by_compute_ns": 0,
+          "nccl_union_ns": 4887159317,
+          "node": 0,
+          "rank": 1,
+          "unresolved_kernel_ratio": 0.0,
+          "wall_ns": 70650068728
+        },
+        {
+          "compute_union_ns": 25190069139,
+          "copy_directions": {
+            "d2d": {
+              "bytes": 187592008352,
+              "events": 146534,
+              "sum_duration_ns": 491996602,
+              "union_ns": 491996602
+            },
+            "d2h": {
+              "bytes": 27183513657,
+              "events": 1017,
+              "sum_duration_ns": 8843215260,
+              "union_ns": 8843215260
+            },
+            "h2d": {
+              "bytes": 13764590480,
+              "events": 9144,
+              "sum_duration_ns": 1199560053,
+              "union_ns": 1199560053
+            },
+            "other": {
+              "bytes": 0,
+              "events": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "copy_exposed_vs_compute_ns": 10534771915,
+          "copy_hidden_by_compute_ns": 0,
+          "copy_union_ns": 10534771915,
+          "device": 2,
+          "exclusive_ns": {
+            "compute": 25190069139,
+            "copy": 10534771915,
+            "nccl": 2160418255,
+            "no_traced_activity": 32764809419
+          },
+          "kernel_events": 1259038,
+          "nccl_collectives": {
+            "all_gather": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "all_reduce": {
+              "events": 68,
+              "exposed_vs_compute_ns": 2160418255,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 2160418255,
+              "union_ns": 2160418255
+            },
+            "broadcast": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "other_nccl": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "p2p": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "reduce_scatter": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "nccl_exposed_vs_compute_ns": 2160418255,
+          "nccl_hidden_by_compute_ns": 0,
+          "nccl_union_ns": 2160418255,
+          "node": 0,
+          "rank": 2,
+          "unresolved_kernel_ratio": 0.0,
+          "wall_ns": 70650068728
+        },
+        {
+          "compute_union_ns": 25196197681,
+          "copy_directions": {
+            "d2d": {
+              "bytes": 187592008352,
+              "events": 146534,
+              "sum_duration_ns": 484792990,
+              "union_ns": 484792990
+            },
+            "d2h": {
+              "bytes": 27183513657,
+              "events": 1017,
+              "sum_duration_ns": 9240611623,
+              "union_ns": 9240611623
+            },
+            "h2d": {
+              "bytes": 13764590480,
+              "events": 9144,
+              "sum_duration_ns": 1098996804,
+              "union_ns": 1098996804
+            },
+            "other": {
+              "bytes": 0,
+              "events": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "copy_exposed_vs_compute_ns": 10824401417,
+          "copy_hidden_by_compute_ns": 0,
+          "copy_union_ns": 10824401417,
+          "device": 3,
+          "exclusive_ns": {
+            "compute": 25196197681,
+            "copy": 10824401417,
+            "nccl": 1769216815,
+            "no_traced_activity": 32860252815
+          },
+          "kernel_events": 1259038,
+          "nccl_collectives": {
+            "all_gather": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "all_reduce": {
+              "events": 68,
+              "exposed_vs_compute_ns": 1769216815,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 1769216815,
+              "union_ns": 1769216815
+            },
+            "broadcast": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "other_nccl": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "p2p": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "reduce_scatter": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "nccl_exposed_vs_compute_ns": 1769216815,
+          "nccl_hidden_by_compute_ns": 0,
+          "nccl_union_ns": 1769216815,
+          "node": 0,
+          "rank": 3,
+          "unresolved_kernel_ratio": 0.0,
+          "wall_ns": 70650068728
+        },
+        {
+          "compute_union_ns": 25171045292,
+          "copy_directions": {
+            "d2d": {
+              "bytes": 187592008112,
+              "events": 146534,
+              "sum_duration_ns": 490618253,
+              "union_ns": 490618253
+            },
+            "d2h": {
+              "bytes": 27183513627,
+              "events": 987,
+              "sum_duration_ns": 8013016075,
+              "union_ns": 8013016075
+            },
+            "h2d": {
+              "bytes": 13764590000,
+              "events": 9144,
+              "sum_duration_ns": 1076645866,
+              "union_ns": 1076645866
+            },
+            "other": {
+              "bytes": 0,
+              "events": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "copy_exposed_vs_compute_ns": 9580280194,
+          "copy_hidden_by_compute_ns": 0,
+          "copy_union_ns": 9580280194,
+          "device": 4,
+          "exclusive_ns": {
+            "compute": 25171045292,
+            "copy": 9580280194,
+            "nccl": 5010562608,
+            "no_traced_activity": 30888180634
+          },
+          "kernel_events": 1258978,
+          "nccl_collectives": {
+            "all_gather": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "all_reduce": {
+              "events": 68,
+              "exposed_vs_compute_ns": 5010562608,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 5010562608,
+              "union_ns": 5010562608
+            },
+            "broadcast": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "other_nccl": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "p2p": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "reduce_scatter": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "nccl_exposed_vs_compute_ns": 5010562608,
+          "nccl_hidden_by_compute_ns": 0,
+          "nccl_union_ns": 5010562608,
+          "node": 0,
+          "rank": 4,
+          "unresolved_kernel_ratio": 0.0,
+          "wall_ns": 70650068728
+        },
+        {
+          "compute_union_ns": 25260933961,
+          "copy_directions": {
+            "d2d": {
+              "bytes": 187592008256,
+              "events": 146534,
+              "sum_duration_ns": 491297080,
+              "union_ns": 491297080
+            },
+            "d2h": {
+              "bytes": 27183513645,
+              "events": 1005,
+              "sum_duration_ns": 9294569354,
+              "union_ns": 9294569354
+            },
+            "h2d": {
+              "bytes": 13764590288,
+              "events": 9144,
+              "sum_duration_ns": 1465895003,
+              "union_ns": 1465895003
+            },
+            "other": {
+              "bytes": 0,
+              "events": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "copy_exposed_vs_compute_ns": 11251761437,
+          "copy_hidden_by_compute_ns": 0,
+          "copy_union_ns": 11251761437,
+          "device": 5,
+          "exclusive_ns": {
+            "compute": 25260933961,
+            "copy": 11251761437,
+            "nccl": 2865967124,
+            "no_traced_activity": 31271406206
+          },
+          "kernel_events": 1259014,
+          "nccl_collectives": {
+            "all_gather": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "all_reduce": {
+              "events": 68,
+              "exposed_vs_compute_ns": 2865967124,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 2865967124,
+              "union_ns": 2865967124
+            },
+            "broadcast": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "other_nccl": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "p2p": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "reduce_scatter": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "nccl_exposed_vs_compute_ns": 2865967124,
+          "nccl_hidden_by_compute_ns": 0,
+          "nccl_union_ns": 2865967124,
+          "node": 0,
+          "rank": 5,
+          "unresolved_kernel_ratio": 0.0,
+          "wall_ns": 70650068728
+        },
+        {
+          "compute_union_ns": 25250444675,
+          "copy_directions": {
+            "d2d": {
+              "bytes": 187592008400,
+              "events": 146534,
+              "sum_duration_ns": 491909412,
+              "union_ns": 491909412
+            },
+            "d2h": {
+              "bytes": 27183513663,
+              "events": 1023,
+              "sum_duration_ns": 9092123710,
+              "union_ns": 9092123710
+            },
+            "h2d": {
+              "bytes": 13764590576,
+              "events": 9144,
+              "sum_duration_ns": 1360874879,
+              "union_ns": 1360874879
+            },
+            "other": {
+              "bytes": 0,
+              "events": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "copy_exposed_vs_compute_ns": 10944908001,
+          "copy_hidden_by_compute_ns": 0,
+          "copy_union_ns": 10944908001,
+          "device": 6,
+          "exclusive_ns": {
+            "compute": 25250444675,
+            "copy": 10944908001,
+            "nccl": 2809684432,
+            "no_traced_activity": 31645031620
+          },
+          "kernel_events": 1259051,
+          "nccl_collectives": {
+            "all_gather": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "all_reduce": {
+              "events": 68,
+              "exposed_vs_compute_ns": 2809684432,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 2809684432,
+              "union_ns": 2809684432
+            },
+            "broadcast": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "other_nccl": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "p2p": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "reduce_scatter": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "nccl_exposed_vs_compute_ns": 2809684432,
+          "nccl_hidden_by_compute_ns": 0,
+          "nccl_union_ns": 2809684432,
+          "node": 0,
+          "rank": 6,
+          "unresolved_kernel_ratio": 0.0,
+          "wall_ns": 70650068728
+        },
+        {
+          "compute_union_ns": 25165173141,
+          "copy_directions": {
+            "d2d": {
+              "bytes": 187592008400,
+              "events": 146534,
+              "sum_duration_ns": 490333341,
+              "union_ns": 490333341
+            },
+            "d2h": {
+              "bytes": 27183513663,
+              "events": 1023,
+              "sum_duration_ns": 6958436803,
+              "union_ns": 6958436803
+            },
+            "h2d": {
+              "bytes": 13764590576,
+              "events": 9144,
+              "sum_duration_ns": 855796624,
+              "union_ns": 855796624
+            },
+            "other": {
+              "bytes": 0,
+              "events": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "copy_exposed_vs_compute_ns": 8304566768,
+          "copy_hidden_by_compute_ns": 0,
+          "copy_union_ns": 8304566768,
+          "device": 7,
+          "exclusive_ns": {
+            "compute": 25165173141,
+            "copy": 8304566768,
+            "nccl": 7694743077,
+            "no_traced_activity": 29485585742
+          },
+          "kernel_events": 1259050,
+          "nccl_collectives": {
+            "all_gather": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "all_reduce": {
+              "events": 68,
+              "exposed_vs_compute_ns": 7694743077,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 7694743077,
+              "union_ns": 7694743077
+            },
+            "broadcast": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "other_nccl": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "p2p": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "reduce_scatter": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "nccl_exposed_vs_compute_ns": 7694743077,
+          "nccl_hidden_by_compute_ns": 0,
+          "nccl_union_ns": 7694743077,
+          "node": 0,
+          "rank": 7,
+          "unresolved_kernel_ratio": 0.0,
+          "wall_ns": 70650068728
+        }
+      ],
+      "kernel_device_coverage": 8,
+      "max_unresolved_kernel_ratio": 0.0,
+      "node": 0,
+      "outer_window": [
+        52066443148,
+        122716511876
+      ],
+      "sqlite": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822/nsight/node_0/wan13b_resident_node0.sqlite",
+      "stages": [
+        {
+          "label": "WAN13B/G_UPDATE",
+          "per_device": [
+            {
+              "compute_ns": 5225952271,
+              "copy_exposed_ns": 2647499778,
+              "copy_ns": 2647499778,
+              "device": 0,
+              "nccl_exposed_ns": 569011187,
+              "nccl_ns": 569011187,
+              "no_traced_ns": 9729873395,
+              "wall_ns": 18172336631
+            },
+            {
+              "compute_ns": 5224604268,
+              "copy_exposed_ns": 2543450582,
+              "copy_ns": 2543450582,
+              "device": 1,
+              "nccl_exposed_ns": 574534320,
+              "nccl_ns": 574534320,
+              "no_traced_ns": 9829747461,
+              "wall_ns": 18172336631
+            },
+            {
+              "compute_ns": 5248528087,
+              "copy_exposed_ns": 2534386092,
+              "copy_ns": 2534386092,
+              "device": 2,
+              "nccl_exposed_ns": 212294832,
+              "nccl_ns": 212294832,
+              "no_traced_ns": 10177127620,
+              "wall_ns": 18172336631
+            },
+            {
+              "compute_ns": 5288811225,
+              "copy_exposed_ns": 2577157564,
+              "copy_ns": 2577157564,
+              "device": 3,
+              "nccl_exposed_ns": 91837254,
+              "nccl_ns": 91837254,
+              "no_traced_ns": 10214530588,
+              "wall_ns": 18172336631
+            },
+            {
+              "compute_ns": 5243513567,
+              "copy_exposed_ns": 2557074235,
+              "copy_ns": 2557074235,
+              "device": 4,
+              "nccl_exposed_ns": 463879438,
+              "nccl_ns": 463879438,
+              "no_traced_ns": 9907869391,
+              "wall_ns": 18172336631
+            },
+            {
+              "compute_ns": 5271139222,
+              "copy_exposed_ns": 2689852754,
+              "copy_ns": 2689852754,
+              "device": 5,
+              "nccl_exposed_ns": 525107566,
+              "nccl_ns": 525107566,
+              "no_traced_ns": 9686237089,
+              "wall_ns": 18172336631
+            },
+            {
+              "compute_ns": 5324241009,
+              "copy_exposed_ns": 2695649055,
+              "copy_ns": 2695649055,
+              "device": 6,
+              "nccl_exposed_ns": 163115974,
+              "nccl_ns": 163115974,
+              "no_traced_ns": 9989330593,
+              "wall_ns": 18172336631
+            },
+            {
+              "compute_ns": 5229091752,
+              "copy_exposed_ns": 2385339898,
+              "copy_ns": 2385339898,
+              "device": 7,
+              "nccl_exposed_ns": 1127385622,
+              "nccl_ns": 1127385622,
+              "no_traced_ns": 9430519359,
+              "wall_ns": 18172336631
+            }
+          ],
+          "window": [
+            52066559979,
+            70238896610
+          ]
+        },
+        {
+          "label": "WAN13B/G_ROLLOUTS",
+          "per_device": [
+            {
+              "compute_ns": 8373744191,
+              "copy_exposed_ns": 164760292,
+              "copy_ns": 164760292,
+              "device": 0,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 6199451178,
+              "wall_ns": 14737955661
+            },
+            {
+              "compute_ns": 8354265405,
+              "copy_exposed_ns": 165008751,
+              "copy_ns": 165008751,
+              "device": 1,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 6218681505,
+              "wall_ns": 14737955661
+            },
+            {
+              "compute_ns": 8363385783,
+              "copy_exposed_ns": 167451120,
+              "copy_ns": 167451120,
+              "device": 2,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 6207118758,
+              "wall_ns": 14737955661
+            },
+            {
+              "compute_ns": 8109578245,
+              "copy_exposed_ns": 159920247,
+              "copy_ns": 159920247,
+              "device": 3,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 6468457169,
+              "wall_ns": 14737955661
+            },
+            {
+              "compute_ns": 8384710862,
+              "copy_exposed_ns": 171764159,
+              "copy_ns": 171764159,
+              "device": 4,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 6181480640,
+              "wall_ns": 14737955661
+            },
+            {
+              "compute_ns": 8513037932,
+              "copy_exposed_ns": 325473654,
+              "copy_ns": 325473654,
+              "device": 5,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 5899444075,
+              "wall_ns": 14737955661
+            },
+            {
+              "compute_ns": 8397557954,
+              "copy_exposed_ns": 181778649,
+              "copy_ns": 181778649,
+              "device": 6,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 6158619058,
+              "wall_ns": 14737955661
+            },
+            {
+              "compute_ns": 8455793354,
+              "copy_exposed_ns": 217792364,
+              "copy_ns": 217792364,
+              "device": 7,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 6064369943,
+              "wall_ns": 14737955661
+            }
+          ],
+          "window": [
+            70238930825,
+            84976886486
+          ]
+        },
+        {
+          "label": "WAN13B/C_UPDATE/step_10",
+          "per_device": [
+            {
+              "compute_ns": 2271314237,
+              "copy_exposed_ns": 1255628340,
+              "copy_ns": 1255628340,
+              "device": 0,
+              "nccl_exposed_ns": 42422509,
+              "nccl_ns": 42422509,
+              "no_traced_ns": 2934085523,
+              "wall_ns": 6503450609
+            },
+            {
+              "compute_ns": 2228354915,
+              "copy_exposed_ns": 1378860269,
+              "copy_ns": 1378860269,
+              "device": 1,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 2896235425,
+              "wall_ns": 6503450609
+            },
+            {
+              "compute_ns": 2103317194,
+              "copy_exposed_ns": 1438904199,
+              "copy_ns": 1438904199,
+              "device": 2,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 2961229216,
+              "wall_ns": 6503450609
+            },
+            {
+              "compute_ns": 2250507735,
+              "copy_exposed_ns": 1366402646,
+              "copy_ns": 1366402646,
+              "device": 3,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 2886540228,
+              "wall_ns": 6503450609
+            },
+            {
+              "compute_ns": 2261259912,
+              "copy_exposed_ns": 1147194099,
+              "copy_ns": 1147194099,
+              "device": 4,
+              "nccl_exposed_ns": 119270576,
+              "nccl_ns": 119270576,
+              "no_traced_ns": 2975726022,
+              "wall_ns": 6503450609
+            },
+            {
+              "compute_ns": 2133796515,
+              "copy_exposed_ns": 1405030826,
+              "copy_ns": 1405030826,
+              "device": 5,
+              "nccl_exposed_ns": 69626540,
+              "nccl_ns": 69626540,
+              "no_traced_ns": 2894996728,
+              "wall_ns": 6503450609
+            },
+            {
+              "compute_ns": 2064112293,
+              "copy_exposed_ns": 1585026255,
+              "copy_ns": 1585026255,
+              "device": 6,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 2854312061,
+              "wall_ns": 6503450609
+            },
+            {
+              "compute_ns": 2194600725,
+              "copy_exposed_ns": 1085667563,
+              "copy_ns": 1085667563,
+              "device": 7,
+              "nccl_exposed_ns": 579386570,
+              "nccl_ns": 579386570,
+              "no_traced_ns": 2643795751,
+              "wall_ns": 6503450609
+            }
+          ],
+          "window": [
+            84976927774,
+            91480378383
+          ]
+        },
+        {
+          "label": "WAN13B/C_UPDATE/step_11",
+          "per_device": [
+            {
+              "compute_ns": 2273018331,
+              "copy_exposed_ns": 1339932735,
+              "copy_ns": 1339932735,
+              "device": 0,
+              "nccl_exposed_ns": 34144077,
+              "nccl_ns": 34144077,
+              "no_traced_ns": 2982852150,
+              "wall_ns": 6629947293
+            },
+            {
+              "compute_ns": 2232743638,
+              "copy_exposed_ns": 1456976703,
+              "copy_ns": 1456976703,
+              "device": 1,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 2940226952,
+              "wall_ns": 6629947293
+            },
+            {
+              "compute_ns": 2141465842,
+              "copy_exposed_ns": 1441251178,
+              "copy_ns": 1441251178,
+              "device": 2,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 3047230273,
+              "wall_ns": 6629947293
+            },
+            {
+              "compute_ns": 2160062653,
+              "copy_exposed_ns": 1493352271,
+              "copy_ns": 1493352271,
+              "device": 3,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 2976532369,
+              "wall_ns": 6629947293
+            },
+            {
+              "compute_ns": 2272226973,
+              "copy_exposed_ns": 1278997873,
+              "copy_ns": 1278997873,
+              "device": 4,
+              "nccl_exposed_ns": 142867866,
+              "nccl_ns": 142867866,
+              "no_traced_ns": 2935854581,
+              "wall_ns": 6629947293
+            },
+            {
+              "compute_ns": 2200779719,
+              "copy_exposed_ns": 1534547310,
+              "copy_ns": 1534547310,
+              "device": 5,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 2894620264,
+              "wall_ns": 6629947293
+            },
+            {
+              "compute_ns": 2105605952,
+              "copy_exposed_ns": 1525895680,
+              "copy_ns": 1525895680,
+              "device": 6,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 2998445661,
+              "wall_ns": 6629947293
+            },
+            {
+              "compute_ns": 2272951541,
+              "copy_exposed_ns": 818993547,
+              "copy_ns": 818993547,
+              "device": 7,
+              "nccl_exposed_ns": 749023056,
+              "nccl_ns": 749023056,
+              "no_traced_ns": 2788979149,
+              "wall_ns": 6629947293
+            }
+          ],
+          "window": [
+            92475617543,
+            99105564836
+          ]
+        },
+        {
+          "label": "WAN13B/C_UPDATE/step_12",
+          "per_device": [
+            {
+              "compute_ns": 2272760018,
+              "copy_exposed_ns": 1331218980,
+              "copy_ns": 1331218980,
+              "device": 0,
+              "nccl_exposed_ns": 33609090,
+              "nccl_ns": 33609090,
+              "no_traced_ns": 2882529812,
+              "wall_ns": 6520117900
+            },
+            {
+              "compute_ns": 2264656552,
+              "copy_exposed_ns": 1308453615,
+              "copy_ns": 1308453615,
+              "device": 1,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 2947007733,
+              "wall_ns": 6520117900
+            },
+            {
+              "compute_ns": 2072064535,
+              "copy_exposed_ns": 1578130705,
+              "copy_ns": 1578130705,
+              "device": 2,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 2869922660,
+              "wall_ns": 6520117900
+            },
+            {
+              "compute_ns": 2101967543,
+              "copy_exposed_ns": 1540199361,
+              "copy_ns": 1540199361,
+              "device": 3,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 2877950996,
+              "wall_ns": 6520117900
+            },
+            {
+              "compute_ns": 2272053418,
+              "copy_exposed_ns": 1375646258,
+              "copy_ns": 1375646258,
+              "device": 4,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 2872418224,
+              "wall_ns": 6520117900
+            },
+            {
+              "compute_ns": 1872748318,
+              "copy_exposed_ns": 1664945048,
+              "copy_ns": 1664945048,
+              "device": 5,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 2982424534,
+              "wall_ns": 6520117900
+            },
+            {
+              "compute_ns": 2181858942,
+              "copy_exposed_ns": 1499282153,
+              "copy_ns": 1499282153,
+              "device": 6,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 2838976805,
+              "wall_ns": 6520117900
+            },
+            {
+              "compute_ns": 2273271658,
+              "copy_exposed_ns": 1229643186,
+              "copy_ns": 1229643186,
+              "device": 7,
+              "nccl_exposed_ns": 144876671,
+              "nccl_ns": 144876671,
+              "no_traced_ns": 2872326385,
+              "wall_ns": 6520117900
+            }
+          ],
+          "window": [
+            99765827007,
+            106285944907
+          ]
+        },
+        {
+          "label": "WAN13B/C_UPDATE/step_13",
+          "per_device": [
+            {
+              "compute_ns": 2272636187,
+              "copy_exposed_ns": 1554217845,
+              "copy_ns": 1554217845,
+              "device": 0,
+              "nccl_exposed_ns": 33228725,
+              "nccl_ns": 33228725,
+              "no_traced_ns": 2963517711,
+              "wall_ns": 6823600468
+            },
+            {
+              "compute_ns": 2266610305,
+              "copy_exposed_ns": 1531276224,
+              "copy_ns": 1531276224,
+              "device": 1,
+              "nccl_exposed_ns": 51693725,
+              "nccl_ns": 51693725,
+              "no_traced_ns": 2974020214,
+              "wall_ns": 6823600468
+            },
+            {
+              "compute_ns": 2197793504,
+              "copy_exposed_ns": 1540694395,
+              "copy_ns": 1540694395,
+              "device": 2,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 3085112569,
+              "wall_ns": 6823600468
+            },
+            {
+              "compute_ns": 2216638364,
+              "copy_exposed_ns": 1615320549,
+              "copy_ns": 1615320549,
+              "device": 3,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 2991641555,
+              "wall_ns": 6823600468
+            },
+            {
+              "compute_ns": 2225155869,
+              "copy_exposed_ns": 1586068452,
+              "copy_ns": 1586068452,
+              "device": 4,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 3012376147,
+              "wall_ns": 6823600468
+            },
+            {
+              "compute_ns": 2273780437,
+              "copy_exposed_ns": 1627533075,
+              "copy_ns": 1627533075,
+              "device": 5,
+              "nccl_exposed_ns": 17704654,
+              "nccl_ns": 17704654,
+              "no_traced_ns": 2904582302,
+              "wall_ns": 6823600468
+            },
+            {
+              "compute_ns": 2235417334,
+              "copy_exposed_ns": 1630745195,
+              "copy_ns": 1630745195,
+              "device": 6,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 2957437939,
+              "wall_ns": 6823600468
+            },
+            {
+              "compute_ns": 2273408469,
+              "copy_exposed_ns": 1446349194,
+              "copy_ns": 1446349194,
+              "device": 7,
+              "nccl_exposed_ns": 234374422,
+              "nccl_ns": 234374422,
+              "no_traced_ns": 2869468383,
+              "wall_ns": 6823600468
+            }
+          ],
+          "window": [
+            107927719245,
+            114751319713
+          ]
+        },
+        {
+          "label": "WAN13B/C_UPDATE/step_14",
+          "per_device": [
+            {
+              "compute_ns": 2272692548,
+              "copy_exposed_ns": 1458342523,
+              "copy_ns": 1458342523,
+              "device": 0,
+              "nccl_exposed_ns": 33527334,
+              "nccl_ns": 33527334,
+              "no_traced_ns": 2889792334,
+              "wall_ns": 6654354739
+            },
+            {
+              "compute_ns": 2267384710,
+              "copy_exposed_ns": 1356254630,
+              "copy_ns": 1356254630,
+              "device": 1,
+              "nccl_exposed_ns": 141989200,
+              "nccl_ns": 141989200,
+              "no_traced_ns": 2888726199,
+              "wall_ns": 6654354739
+            },
+            {
+              "compute_ns": 2088471954,
+              "copy_exposed_ns": 1433913213,
+              "copy_ns": 1433913213,
+              "device": 2,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 3131969572,
+              "wall_ns": 6654354739
+            },
+            {
+              "compute_ns": 2024729247,
+              "copy_exposed_ns": 1599304229,
+              "copy_ns": 1599304229,
+              "device": 3,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 3030321263,
+              "wall_ns": 6654354739
+            },
+            {
+              "compute_ns": 2272277585,
+              "copy_exposed_ns": 1436710744,
+              "copy_ns": 1436710744,
+              "device": 4,
+              "nccl_exposed_ns": 55507098,
+              "nccl_ns": 55507098,
+              "no_traced_ns": 2889859312,
+              "wall_ns": 6654354739
+            },
+            {
+              "compute_ns": 2145833903,
+              "copy_exposed_ns": 1620136475,
+              "copy_ns": 1620136475,
+              "device": 5,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 2888384361,
+              "wall_ns": 6654354739
+            },
+            {
+              "compute_ns": 2181403056,
+              "copy_exposed_ns": 1525302465,
+              "copy_ns": 1525302465,
+              "device": 6,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 2947649218,
+              "wall_ns": 6654354739
+            },
+            {
+              "compute_ns": 2273030011,
+              "copy_exposed_ns": 1120781016,
+              "copy_ns": 1120781016,
+              "device": 7,
+              "nccl_exposed_ns": 475532849,
+              "nccl_ns": 475532849,
+              "no_traced_ns": 2785010863,
+              "wall_ns": 6654354739
+            }
+          ],
+          "window": [
+            115111782435,
+            121766137174
+          ]
+        },
+        {
+          "label": "WAN13B/EMA/step_10",
+          "per_device": [
+            {
+              "compute_ns": 38702745,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 0,
+              "nccl_exposed_ns": 950506765,
+              "nccl_ns": 950506765,
+              "no_traced_ns": 5996408,
+              "wall_ns": 995205918
+            },
+            {
+              "compute_ns": 86201248,
+              "copy_exposed_ns": 30799680,
+              "copy_ns": 30799680,
+              "device": 1,
+              "nccl_exposed_ns": 786911789,
+              "nccl_ns": 786911789,
+              "no_traced_ns": 91293201,
+              "wall_ns": 995205918
+            },
+            {
+              "compute_ns": 229092008,
+              "copy_exposed_ns": 98502859,
+              "copy_ns": 98502859,
+              "device": 2,
+              "nccl_exposed_ns": 363978658,
+              "nccl_ns": 363978658,
+              "no_traced_ns": 303632393,
+              "wall_ns": 995205918
+            },
+            {
+              "compute_ns": 314787824,
+              "copy_exposed_ns": 157725368,
+              "copy_ns": 157725368,
+              "device": 3,
+              "nccl_exposed_ns": 89825435,
+              "nccl_ns": 89825435,
+              "no_traced_ns": 432867291,
+              "wall_ns": 995205918
+            },
+            {
+              "compute_ns": 38786269,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 4,
+              "nccl_exposed_ns": 950570405,
+              "nccl_ns": 950570405,
+              "no_traced_ns": 5849244,
+              "wall_ns": 995205918
+            },
+            {
+              "compute_ns": 38691222,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 5,
+              "nccl_exposed_ns": 950551464,
+              "nccl_ns": 950551464,
+              "no_traced_ns": 5963232,
+              "wall_ns": 995205918
+            },
+            {
+              "compute_ns": 224547199,
+              "copy_exposed_ns": 105829788,
+              "copy_ns": 105829788,
+              "device": 6,
+              "nccl_exposed_ns": 382047516,
+              "nccl_ns": 382047516,
+              "no_traced_ns": 282781415,
+              "wall_ns": 995205918
+            },
+            {
+              "compute_ns": 38855593,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 7,
+              "nccl_exposed_ns": 951053088,
+              "nccl_ns": 951053088,
+              "no_traced_ns": 5297237,
+              "wall_ns": 995205918
+            }
+          ],
+          "window": [
+            91480393391,
+            92475599309
+          ]
+        },
+        {
+          "label": "WAN13B/EMA/step_11",
+          "per_device": [
+            {
+              "compute_ns": 38484692,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 0,
+              "nccl_exposed_ns": 615801893,
+              "nccl_ns": 615801893,
+              "no_traced_ns": 5942673,
+              "wall_ns": 660229258
+            },
+            {
+              "compute_ns": 72287354,
+              "copy_exposed_ns": 2260180,
+              "copy_ns": 2260180,
+              "device": 1,
+              "nccl_exposed_ns": 533296188,
+              "nccl_ns": 533296188,
+              "no_traced_ns": 52385536,
+              "wall_ns": 660229258
+            },
+            {
+              "compute_ns": 169299525,
+              "copy_exposed_ns": 70161276,
+              "copy_ns": 70161276,
+              "device": 2,
+              "nccl_exposed_ns": 194719789,
+              "nccl_ns": 194719789,
+              "no_traced_ns": 226048668,
+              "wall_ns": 660229258
+            },
+            {
+              "compute_ns": 145986435,
+              "copy_exposed_ns": 64025893,
+              "copy_ns": 64025893,
+              "device": 3,
+              "nccl_exposed_ns": 265867764,
+              "nccl_ns": 265867764,
+              "no_traced_ns": 184349166,
+              "wall_ns": 660229258
+            },
+            {
+              "compute_ns": 38532431,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 4,
+              "nccl_exposed_ns": 616012590,
+              "nccl_ns": 616012590,
+              "no_traced_ns": 5684237,
+              "wall_ns": 660229258
+            },
+            {
+              "compute_ns": 112765185,
+              "copy_exposed_ns": 37586222,
+              "copy_ns": 37586222,
+              "device": 5,
+              "nccl_exposed_ns": 398767144,
+              "nccl_ns": 398767144,
+              "no_traced_ns": 111110707,
+              "wall_ns": 660229258
+            },
+            {
+              "compute_ns": 203976654,
+              "copy_exposed_ns": 106274778,
+              "copy_ns": 106274778,
+              "device": 6,
+              "nccl_exposed_ns": 90933416,
+              "nccl_ns": 90933416,
+              "no_traced_ns": 259044410,
+              "wall_ns": 660229258
+            },
+            {
+              "compute_ns": 38563785,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 7,
+              "nccl_exposed_ns": 616255218,
+              "nccl_ns": 616255218,
+              "no_traced_ns": 5410255,
+              "wall_ns": 660229258
+            }
+          ],
+          "window": [
+            99105576208,
+            99765805466
+          ]
+        },
+        {
+          "label": "WAN13B/EMA/step_12",
+          "per_device": [
+            {
+              "compute_ns": 38453619,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 0,
+              "nccl_exposed_ns": 1596759700,
+              "nccl_ns": 1596759700,
+              "no_traced_ns": 6517426,
+              "wall_ns": 1641730745
+            },
+            {
+              "compute_ns": 40877572,
+              "copy_exposed_ns": 69600,
+              "copy_ns": 69600,
+              "device": 1,
+              "nccl_exposed_ns": 1579265136,
+              "nccl_ns": 1579265136,
+              "no_traced_ns": 21518437,
+              "wall_ns": 1641730745
+            },
+            {
+              "compute_ns": 239889687,
+              "copy_exposed_ns": 95911902,
+              "copy_ns": 95911902,
+              "device": 2,
+              "nccl_exposed_ns": 976293271,
+              "nccl_ns": 976293271,
+              "no_traced_ns": 329635885,
+              "wall_ns": 1641730745
+            },
+            {
+              "compute_ns": 204402084,
+              "copy_exposed_ns": 87836305,
+              "copy_ns": 87836305,
+              "device": 3,
+              "nccl_exposed_ns": 1087660079,
+              "nccl_ns": 1087660079,
+              "no_traced_ns": 261832277,
+              "wall_ns": 1641730745
+            },
+            {
+              "compute_ns": 38478420,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 4,
+              "nccl_exposed_ns": 1589918949,
+              "nccl_ns": 1589918949,
+              "no_traced_ns": 13333376,
+              "wall_ns": 1641730745
+            },
+            {
+              "compute_ns": 495820714,
+              "copy_exposed_ns": 268145205,
+              "copy_ns": 268145205,
+              "device": 5,
+              "nccl_exposed_ns": 93636002,
+              "nccl_ns": 93636002,
+              "no_traced_ns": 784128824,
+              "wall_ns": 1641730745
+            },
+            {
+              "compute_ns": 128614446,
+              "copy_exposed_ns": 35152163,
+              "copy_ns": 35152163,
+              "device": 6,
+              "nccl_exposed_ns": 1343288013,
+              "nccl_ns": 1343288013,
+              "no_traced_ns": 134676123,
+              "wall_ns": 1641730745
+            },
+            {
+              "compute_ns": 38497364,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 7,
+              "nccl_exposed_ns": 1597391080,
+              "nccl_ns": 1597391080,
+              "no_traced_ns": 5842301,
+              "wall_ns": 1641730745
+            }
+          ],
+          "window": [
+            106285957281,
+            107927688026
+          ]
+        },
+        {
+          "label": "WAN13B/EMA/step_13",
+          "per_device": [
+            {
+              "compute_ns": 38450897,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 0,
+              "nccl_exposed_ns": 313397210,
+              "nccl_ns": 313397210,
+              "no_traced_ns": 8552778,
+              "wall_ns": 360400885
+            },
+            {
+              "compute_ns": 38339004,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 1,
+              "nccl_exposed_ns": 313408604,
+              "nccl_ns": 313408604,
+              "no_traced_ns": 8653277,
+              "wall_ns": 360400885
+            },
+            {
+              "compute_ns": 112648969,
+              "copy_exposed_ns": 34972321,
+              "copy_ns": 34972321,
+              "device": 2,
+              "nccl_exposed_ns": 88116486,
+              "nccl_ns": 88116486,
+              "no_traced_ns": 124663109,
+              "wall_ns": 360400885
+            },
+            {
+              "compute_ns": 94301725,
+              "copy_exposed_ns": 28553158,
+              "copy_ns": 28553158,
+              "device": 3,
+              "nccl_exposed_ns": 140466537,
+              "nccl_ns": 140466537,
+              "no_traced_ns": 97079465,
+              "wall_ns": 360400885
+            },
+            {
+              "compute_ns": 85427897,
+              "copy_exposed_ns": 26754943,
+              "copy_ns": 26754943,
+              "device": 4,
+              "nccl_exposed_ns": 166408268,
+              "nccl_ns": 166408268,
+              "no_traced_ns": 81809777,
+              "wall_ns": 360400885
+            },
+            {
+              "compute_ns": 37987512,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 5,
+              "nccl_exposed_ns": 313762387,
+              "nccl_ns": 313762387,
+              "no_traced_ns": 8650986,
+              "wall_ns": 360400885
+            },
+            {
+              "compute_ns": 74422306,
+              "copy_exposed_ns": 15015444,
+              "copy_ns": 15015444,
+              "device": 6,
+              "nccl_exposed_ns": 190932207,
+              "nccl_ns": 190932207,
+              "no_traced_ns": 80030928,
+              "wall_ns": 360400885
+            },
+            {
+              "compute_ns": 38566063,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 7,
+              "nccl_exposed_ns": 313620602,
+              "nccl_ns": 313620602,
+              "no_traced_ns": 8214220,
+              "wall_ns": 360400885
+            }
+          ],
+          "window": [
+            114751347856,
+            115111748741
+          ]
+        },
+        {
+          "label": "WAN13B/EMA/step_14",
+          "per_device": [
+            {
+              "compute_ns": 38469497,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 0,
+              "nccl_exposed_ns": 902140632,
+              "nccl_ns": 902140632,
+              "no_traced_ns": 5511153,
+              "wall_ns": 946121282
+            },
+            {
+              "compute_ns": 38480166,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 1,
+              "nccl_exposed_ns": 902168790,
+              "nccl_ns": 902168790,
+              "no_traced_ns": 5472326,
+              "wall_ns": 946121282
+            },
+            {
+              "compute_ns": 223663990,
+              "copy_exposed_ns": 100464512,
+              "copy_ns": 100464512,
+              "device": 2,
+              "nccl_exposed_ns": 322819793,
+              "nccl_ns": 322819793,
+              "no_traced_ns": 299172987,
+              "wall_ns": 946121282
+            },
+            {
+              "compute_ns": 284177127,
+              "copy_exposed_ns": 134603826,
+              "copy_ns": 134603826,
+              "device": 3,
+              "nccl_exposed_ns": 90334722,
+              "nccl_ns": 90334722,
+              "no_traced_ns": 437005607,
+              "wall_ns": 946121282
+            },
+            {
+              "compute_ns": 38587330,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 4,
+              "nccl_exposed_ns": 902229823,
+              "nccl_ns": 902229823,
+              "no_traced_ns": 5304129,
+              "wall_ns": 946121282
+            },
+            {
+              "compute_ns": 163652057,
+              "copy_exposed_ns": 78469580,
+              "copy_ns": 78469580,
+              "device": 5,
+              "nccl_exposed_ns": 496660184,
+              "nccl_ns": 496660184,
+              "no_traced_ns": 207339461,
+              "wall_ns": 946121282
+            },
+            {
+              "compute_ns": 128543658,
+              "copy_exposed_ns": 38858832,
+              "copy_ns": 38858832,
+              "device": 6,
+              "nccl_exposed_ns": 636387803,
+              "nccl_ns": 636387803,
+              "no_traced_ns": 142330989,
+              "wall_ns": 946121282
+            },
+            {
+              "compute_ns": 38457505,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 7,
+              "nccl_exposed_ns": 902056653,
+              "nccl_ns": 902056653,
+              "no_traced_ns": 5607124,
+              "wall_ns": 946121282
+            }
+          ],
+          "window": [
+            121766150279,
+            122712271561
+          ]
+        }
+      ]
+    },
+    {
+      "devices": [
+        {
+          "compute_union_ns": 25158464156,
+          "copy_directions": {
+            "d2d": {
+              "bytes": 187592008352,
+              "events": 146534,
+              "sum_duration_ns": 491505213,
+              "union_ns": 491505213
+            },
+            "d2h": {
+              "bytes": 27183513657,
+              "events": 1017,
+              "sum_duration_ns": 8386816226,
+              "union_ns": 8386816226
+            },
+            "h2d": {
+              "bytes": 13764590480,
+              "events": 9144,
+              "sum_duration_ns": 1240591690,
+              "union_ns": 1240591690
+            },
+            "other": {
+              "bytes": 0,
+              "events": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "copy_exposed_vs_compute_ns": 10118913129,
+          "copy_hidden_by_compute_ns": 0,
+          "copy_union_ns": 10118913129,
+          "device": 0,
+          "exclusive_ns": {
+            "compute": 25158464156,
+            "copy": 10118913129,
+            "nccl": 6285920050,
+            "no_traced_activity": 29087433394
+          },
+          "kernel_events": 1259039,
+          "nccl_collectives": {
+            "all_gather": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "all_reduce": {
+              "events": 68,
+              "exposed_vs_compute_ns": 6285920050,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 6285920050,
+              "union_ns": 6285920050
+            },
+            "broadcast": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "other_nccl": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "p2p": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "reduce_scatter": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "nccl_exposed_vs_compute_ns": 6285920050,
+          "nccl_hidden_by_compute_ns": 0,
+          "nccl_union_ns": 6285920050,
+          "node": 1,
+          "rank": 8,
+          "unresolved_kernel_ratio": 0.0,
+          "wall_ns": 70650730729
+        },
+        {
+          "compute_union_ns": 25182022050,
+          "copy_directions": {
+            "d2d": {
+              "bytes": 187592008208,
+              "events": 146534,
+              "sum_duration_ns": 490159153,
+              "union_ns": 490159153
+            },
+            "d2h": {
+              "bytes": 27183513639,
+              "events": 999,
+              "sum_duration_ns": 8088457193,
+              "union_ns": 8088457193
+            },
+            "h2d": {
+              "bytes": 13764590192,
+              "events": 9144,
+              "sum_duration_ns": 1040021124,
+              "union_ns": 1040021124
+            },
+            "other": {
+              "bytes": 0,
+              "events": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "copy_exposed_vs_compute_ns": 9618637470,
+          "copy_hidden_by_compute_ns": 0,
+          "copy_union_ns": 9618637470,
+          "device": 1,
+          "exclusive_ns": {
+            "compute": 25182022050,
+            "copy": 9618637470,
+            "nccl": 7296918797,
+            "no_traced_activity": 28553152412
+          },
+          "kernel_events": 1259002,
+          "nccl_collectives": {
+            "all_gather": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "all_reduce": {
+              "events": 68,
+              "exposed_vs_compute_ns": 7296918797,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 7296918797,
+              "union_ns": 7296918797
+            },
+            "broadcast": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "other_nccl": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "p2p": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "reduce_scatter": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "nccl_exposed_vs_compute_ns": 7296918797,
+          "nccl_hidden_by_compute_ns": 0,
+          "nccl_union_ns": 7296918797,
+          "node": 1,
+          "rank": 9,
+          "unresolved_kernel_ratio": 0.0,
+          "wall_ns": 70650730729
+        },
+        {
+          "compute_union_ns": 25166488081,
+          "copy_directions": {
+            "d2d": {
+              "bytes": 187592008400,
+              "events": 146534,
+              "sum_duration_ns": 493198414,
+              "union_ns": 493198414
+            },
+            "d2h": {
+              "bytes": 27183513663,
+              "events": 1023,
+              "sum_duration_ns": 6644576668,
+              "union_ns": 6644576668
+            },
+            "h2d": {
+              "bytes": 13764590576,
+              "events": 9144,
+              "sum_duration_ns": 951180581,
+              "union_ns": 951180581
+            },
+            "other": {
+              "bytes": 0,
+              "events": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "copy_exposed_vs_compute_ns": 8088955663,
+          "copy_hidden_by_compute_ns": 0,
+          "copy_union_ns": 8088955663,
+          "device": 2,
+          "exclusive_ns": {
+            "compute": 25166488081,
+            "copy": 8088955663,
+            "nccl": 9931144386,
+            "no_traced_activity": 27464142599
+          },
+          "kernel_events": 1259050,
+          "nccl_collectives": {
+            "all_gather": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "all_reduce": {
+              "events": 68,
+              "exposed_vs_compute_ns": 9931144386,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 9931144386,
+              "union_ns": 9931144386
+            },
+            "broadcast": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "other_nccl": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "p2p": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "reduce_scatter": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "nccl_exposed_vs_compute_ns": 9931144386,
+          "nccl_hidden_by_compute_ns": 0,
+          "nccl_union_ns": 9931144386,
+          "node": 1,
+          "rank": 10,
+          "unresolved_kernel_ratio": 0.0,
+          "wall_ns": 70650730729
+        },
+        {
+          "compute_union_ns": 25106591887,
+          "copy_directions": {
+            "d2d": {
+              "bytes": 187592008160,
+              "events": 146534,
+              "sum_duration_ns": 485433325,
+              "union_ns": 485433325
+            },
+            "d2h": {
+              "bytes": 27183513633,
+              "events": 993,
+              "sum_duration_ns": 7858816552,
+              "union_ns": 7858816552
+            },
+            "h2d": {
+              "bytes": 13764590096,
+              "events": 9144,
+              "sum_duration_ns": 1038134600,
+              "union_ns": 1038134600
+            },
+            "other": {
+              "bytes": 0,
+              "events": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "copy_exposed_vs_compute_ns": 9382384477,
+          "copy_hidden_by_compute_ns": 0,
+          "copy_union_ns": 9382384477,
+          "device": 3,
+          "exclusive_ns": {
+            "compute": 25106591887,
+            "copy": 9382384477,
+            "nccl": 7883207928,
+            "no_traced_activity": 28278546437
+          },
+          "kernel_events": 1258990,
+          "nccl_collectives": {
+            "all_gather": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "all_reduce": {
+              "events": 68,
+              "exposed_vs_compute_ns": 7883207928,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 7883207928,
+              "union_ns": 7883207928
+            },
+            "broadcast": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "other_nccl": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "p2p": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "reduce_scatter": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "nccl_exposed_vs_compute_ns": 7883207928,
+          "nccl_hidden_by_compute_ns": 0,
+          "nccl_union_ns": 7883207928,
+          "node": 1,
+          "rank": 11,
+          "unresolved_kernel_ratio": 0.0,
+          "wall_ns": 70650730729
+        },
+        {
+          "compute_union_ns": 25136024003,
+          "copy_directions": {
+            "d2d": {
+              "bytes": 187592008352,
+              "events": 146534,
+              "sum_duration_ns": 489115691,
+              "union_ns": 489115691
+            },
+            "d2h": {
+              "bytes": 27183513657,
+              "events": 1017,
+              "sum_duration_ns": 6820630975,
+              "union_ns": 6820630975
+            },
+            "h2d": {
+              "bytes": 13764590480,
+              "events": 9144,
+              "sum_duration_ns": 827291324,
+              "union_ns": 827291324
+            },
+            "other": {
+              "bytes": 0,
+              "events": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "copy_exposed_vs_compute_ns": 8137037990,
+          "copy_hidden_by_compute_ns": 0,
+          "copy_union_ns": 8137037990,
+          "device": 4,
+          "exclusive_ns": {
+            "compute": 25136024003,
+            "copy": 8137037990,
+            "nccl": 9974016117,
+            "no_traced_activity": 27403652619
+          },
+          "kernel_events": 1259038,
+          "nccl_collectives": {
+            "all_gather": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "all_reduce": {
+              "events": 68,
+              "exposed_vs_compute_ns": 9974016117,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 9974016117,
+              "union_ns": 9974016117
+            },
+            "broadcast": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "other_nccl": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "p2p": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "reduce_scatter": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "nccl_exposed_vs_compute_ns": 9974016117,
+          "nccl_hidden_by_compute_ns": 0,
+          "nccl_union_ns": 9974016117,
+          "node": 1,
+          "rank": 12,
+          "unresolved_kernel_ratio": 0.0,
+          "wall_ns": 70650730729
+        },
+        {
+          "compute_union_ns": 25227409204,
+          "copy_directions": {
+            "d2d": {
+              "bytes": 187592008208,
+              "events": 146534,
+              "sum_duration_ns": 493279411,
+              "union_ns": 493279411
+            },
+            "d2h": {
+              "bytes": 27183513639,
+              "events": 999,
+              "sum_duration_ns": 7981576403,
+              "union_ns": 7981576403
+            },
+            "h2d": {
+              "bytes": 13764590192,
+              "events": 9144,
+              "sum_duration_ns": 1045429448,
+              "union_ns": 1045429448
+            },
+            "other": {
+              "bytes": 0,
+              "events": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "copy_exposed_vs_compute_ns": 9520285262,
+          "copy_hidden_by_compute_ns": 0,
+          "copy_union_ns": 9520285262,
+          "device": 5,
+          "exclusive_ns": {
+            "compute": 25227409204,
+            "copy": 9520285262,
+            "nccl": 8327695268,
+            "no_traced_activity": 27575340995
+          },
+          "kernel_events": 1259002,
+          "nccl_collectives": {
+            "all_gather": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "all_reduce": {
+              "events": 68,
+              "exposed_vs_compute_ns": 8327695268,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 8327695268,
+              "union_ns": 8327695268
+            },
+            "broadcast": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "other_nccl": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "p2p": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "reduce_scatter": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "nccl_exposed_vs_compute_ns": 8327695268,
+          "nccl_hidden_by_compute_ns": 0,
+          "nccl_union_ns": 8327695268,
+          "node": 1,
+          "rank": 13,
+          "unresolved_kernel_ratio": 0.0,
+          "wall_ns": 70650730729
+        },
+        {
+          "compute_union_ns": 25129403769,
+          "copy_directions": {
+            "d2d": {
+              "bytes": 187592008304,
+              "events": 146534,
+              "sum_duration_ns": 488385779,
+              "union_ns": 488385779
+            },
+            "d2h": {
+              "bytes": 27183513651,
+              "events": 1011,
+              "sum_duration_ns": 7417920554,
+              "union_ns": 7417920554
+            },
+            "h2d": {
+              "bytes": 13764590384,
+              "events": 9144,
+              "sum_duration_ns": 864392479,
+              "union_ns": 864392479
+            },
+            "other": {
+              "bytes": 0,
+              "events": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "copy_exposed_vs_compute_ns": 8770698812,
+          "copy_hidden_by_compute_ns": 0,
+          "copy_union_ns": 8770698812,
+          "device": 6,
+          "exclusive_ns": {
+            "compute": 25129403769,
+            "copy": 8770698812,
+            "nccl": 9279901070,
+            "no_traced_activity": 27470727078
+          },
+          "kernel_events": 1259026,
+          "nccl_collectives": {
+            "all_gather": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "all_reduce": {
+              "events": 68,
+              "exposed_vs_compute_ns": 9279901070,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 9279901070,
+              "union_ns": 9279901070
+            },
+            "broadcast": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "other_nccl": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "p2p": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "reduce_scatter": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "nccl_exposed_vs_compute_ns": 9279901070,
+          "nccl_hidden_by_compute_ns": 0,
+          "nccl_union_ns": 9279901070,
+          "node": 1,
+          "rank": 14,
+          "unresolved_kernel_ratio": 0.0,
+          "wall_ns": 70650730729
+        },
+        {
+          "compute_union_ns": 25130506731,
+          "copy_directions": {
+            "d2d": {
+              "bytes": 187592008400,
+              "events": 146534,
+              "sum_duration_ns": 488887258,
+              "union_ns": 488887258
+            },
+            "d2h": {
+              "bytes": 27183513663,
+              "events": 1023,
+              "sum_duration_ns": 6541676986,
+              "union_ns": 6541676986
+            },
+            "h2d": {
+              "bytes": 13764590576,
+              "events": 9144,
+              "sum_duration_ns": 785932163,
+              "union_ns": 785932163
+            },
+            "other": {
+              "bytes": 0,
+              "events": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "copy_exposed_vs_compute_ns": 7816496407,
+          "copy_hidden_by_compute_ns": 0,
+          "copy_union_ns": 7816496407,
+          "device": 7,
+          "exclusive_ns": {
+            "compute": 25130506731,
+            "copy": 7816496407,
+            "nccl": 10073630505,
+            "no_traced_activity": 27630097086
+          },
+          "kernel_events": 1259050,
+          "nccl_collectives": {
+            "all_gather": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "all_reduce": {
+              "events": 68,
+              "exposed_vs_compute_ns": 10073630505,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 10073630505,
+              "union_ns": 10073630505
+            },
+            "broadcast": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "other_nccl": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "p2p": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            },
+            "reduce_scatter": {
+              "events": 0,
+              "exposed_vs_compute_ns": 0,
+              "hidden_by_compute_ns": 0,
+              "sum_duration_ns": 0,
+              "union_ns": 0
+            }
+          },
+          "nccl_exposed_vs_compute_ns": 10073630505,
+          "nccl_hidden_by_compute_ns": 0,
+          "nccl_union_ns": 10073630505,
+          "node": 1,
+          "rank": 15,
+          "unresolved_kernel_ratio": 0.0,
+          "wall_ns": 70650730729
+        }
+      ],
+      "kernel_device_coverage": 8,
+      "max_unresolved_kernel_ratio": 0.0,
+      "node": 1,
+      "outer_window": [
+        51555298088,
+        122206028817
+      ],
+      "sqlite": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822/nsight/node_1/wan13b_resident_node1.sqlite",
+      "stages": [
+        {
+          "label": "WAN13B/G_UPDATE",
+          "per_device": [
+            {
+              "compute_ns": 5221554871,
+              "copy_exposed_ns": 2667283360,
+              "copy_ns": 2667283360,
+              "device": 0,
+              "nccl_exposed_ns": 1186716660,
+              "nccl_ns": 1186716660,
+              "no_traced_ns": 9114189892,
+              "wall_ns": 18189744783
+            },
+            {
+              "compute_ns": 5221252303,
+              "copy_exposed_ns": 2442414765,
+              "copy_ns": 2442414765,
+              "device": 1,
+              "nccl_exposed_ns": 1382813007,
+              "nccl_ns": 1382813007,
+              "no_traced_ns": 9143264708,
+              "wall_ns": 18189744783
+            },
+            {
+              "compute_ns": 5199792284,
+              "copy_exposed_ns": 2449667327,
+              "copy_ns": 2449667327,
+              "device": 2,
+              "nccl_exposed_ns": 1605955213,
+              "nccl_ns": 1605955213,
+              "no_traced_ns": 8934329959,
+              "wall_ns": 18189744783
+            },
+            {
+              "compute_ns": 5196971026,
+              "copy_exposed_ns": 2580956988,
+              "copy_ns": 2580956988,
+              "device": 3,
+              "nccl_exposed_ns": 1329538796,
+              "nccl_ns": 1329538796,
+              "no_traced_ns": 9082277973,
+              "wall_ns": 18189744783
+            },
+            {
+              "compute_ns": 5196211666,
+              "copy_exposed_ns": 2310282540,
+              "copy_ns": 2310282540,
+              "device": 4,
+              "nccl_exposed_ns": 1844367750,
+              "nccl_ns": 1844367750,
+              "no_traced_ns": 8838882827,
+              "wall_ns": 18189744783
+            },
+            {
+              "compute_ns": 5219894408,
+              "copy_exposed_ns": 2556087427,
+              "copy_ns": 2556087427,
+              "device": 5,
+              "nccl_exposed_ns": 1576517693,
+              "nccl_ns": 1576517693,
+              "no_traced_ns": 8837245255,
+              "wall_ns": 18189744783
+            },
+            {
+              "compute_ns": 5193666325,
+              "copy_exposed_ns": 2395229480,
+              "copy_ns": 2395229480,
+              "device": 6,
+              "nccl_exposed_ns": 1772124253,
+              "nccl_ns": 1772124253,
+              "no_traced_ns": 8828724725,
+              "wall_ns": 18189744783
+            },
+            {
+              "compute_ns": 5201784385,
+              "copy_exposed_ns": 2377757861,
+              "copy_ns": 2377757861,
+              "device": 7,
+              "nccl_exposed_ns": 1874111787,
+              "nccl_ns": 1874111787,
+              "no_traced_ns": 8736090750,
+              "wall_ns": 18189744783
+            }
+          ],
+          "window": [
+            51555415752,
+            69745160535
+          ]
+        },
+        {
+          "label": "WAN13B/G_ROLLOUTS",
+          "per_device": [
+            {
+              "compute_ns": 8379191743,
+              "copy_exposed_ns": 167606850,
+              "copy_ns": 167606850,
+              "device": 0,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 5332925268,
+              "wall_ns": 13879723861
+            },
+            {
+              "compute_ns": 8361230774,
+              "copy_exposed_ns": 167270306,
+              "copy_ns": 167270306,
+              "device": 1,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 5351222781,
+              "wall_ns": 13879723861
+            },
+            {
+              "compute_ns": 8409589294,
+              "copy_exposed_ns": 176107723,
+              "copy_ns": 176107723,
+              "device": 2,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 5294026844,
+              "wall_ns": 13879723861
+            },
+            {
+              "compute_ns": 8326128827,
+              "copy_exposed_ns": 164275557,
+              "copy_ns": 164275557,
+              "device": 3,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 5389319477,
+              "wall_ns": 13879723861
+            },
+            {
+              "compute_ns": 8396959278,
+              "copy_exposed_ns": 173892090,
+              "copy_ns": 173892090,
+              "device": 4,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 5308872493,
+              "wall_ns": 13879723861
+            },
+            {
+              "compute_ns": 8501656551,
+              "copy_exposed_ns": 228824907,
+              "copy_ns": 228824907,
+              "device": 5,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 5149242403,
+              "wall_ns": 13879723861
+            },
+            {
+              "compute_ns": 8387097404,
+              "copy_exposed_ns": 168685297,
+              "copy_ns": 168685297,
+              "device": 6,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 5323941160,
+              "wall_ns": 13879723861
+            },
+            {
+              "compute_ns": 8213468632,
+              "copy_exposed_ns": 162735645,
+              "copy_ns": 162735645,
+              "device": 7,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 5503519584,
+              "wall_ns": 13879723861
+            }
+          ],
+          "window": [
+            69745190102,
+            83624913963
+          ]
+        },
+        {
+          "label": "WAN13B/C_UPDATE/step_10",
+          "per_device": [
+            {
+              "compute_ns": 2272935224,
+              "copy_exposed_ns": 1266843788,
+              "copy_ns": 1266843788,
+              "device": 0,
+              "nccl_exposed_ns": 42987523,
+              "nccl_ns": 42987523,
+              "no_traced_ns": 2914099012,
+              "wall_ns": 6496865547
+            },
+            {
+              "compute_ns": 2266716847,
+              "copy_exposed_ns": 1392577272,
+              "copy_ns": 1392577272,
+              "device": 1,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 2837571428,
+              "wall_ns": 6496865547
+            },
+            {
+              "compute_ns": 2261391838,
+              "copy_exposed_ns": 1040114281,
+              "copy_ns": 1040114281,
+              "device": 2,
+              "nccl_exposed_ns": 647163650,
+              "nccl_ns": 647163650,
+              "no_traced_ns": 2548195778,
+              "wall_ns": 6496865547
+            },
+            {
+              "compute_ns": 2271565369,
+              "copy_exposed_ns": 1430730731,
+              "copy_ns": 1430730731,
+              "device": 3,
+              "nccl_exposed_ns": 0,
+              "nccl_ns": 0,
+              "no_traced_ns": 2794569447,
+              "wall_ns": 6496865547
+            },
+            {
+              "compute_ns": 2255139935,
+              "copy_exposed_ns": 1048796057,
+              "copy_ns": 1048796057,
+              "device": 4,
+              "nccl_exposed_ns": 641705393,
+              "nccl_ns": 641705393,
+              "no_traced_ns": 2551224162,
+              "wall_ns": 6496865547
+            },
+            {
+              "compute_ns": 2189235344,
+              "copy_exposed_ns": 1302620396,
+              "copy_ns": 1302620396,
+              "device": 5,
+              "nccl_exposed_ns": 449988256,
+              "nccl_ns": 449988256,
+              "no_traced_ns": 2555021551,
+              "wall_ns": 6496865547
+            },
+            {
+              "compute_ns": 2262986233,
+              "copy_exposed_ns": 1126296023,
+              "copy_ns": 1126296023,
+              "device": 6,
+              "nccl_exposed_ns": 538847247,
+              "nccl_ns": 538847247,
+              "no_traced_ns": 2568736044,
+              "wall_ns": 6496865547
+            },
+            {
+              "compute_ns": 2432391066,
+              "copy_exposed_ns": 1058953085,
+              "copy_ns": 1058953085,
+              "device": 7,
+              "nccl_exposed_ns": 351183237,
+              "nccl_ns": 351183237,
+              "no_traced_ns": 2654338159,
+              "wall_ns": 6496865547
+            }
+          ],
+          "window": [
+            83624953698,
+            90121819245
+          ]
+        },
+        {
+          "label": "WAN13B/C_UPDATE/step_11",
+          "per_device": [
+            {
+              "compute_ns": 2272875357,
+              "copy_exposed_ns": 1343310244,
+              "copy_ns": 1343310244,
+              "device": 0,
+              "nccl_exposed_ns": 38834674,
+              "nccl_ns": 38834674,
+              "no_traced_ns": 2880489436,
+              "wall_ns": 6535509711
+            },
+            {
+              "compute_ns": 2275603295,
+              "copy_exposed_ns": 1380048136,
+              "copy_ns": 1380048136,
+              "device": 1,
+              "nccl_exposed_ns": 78615591,
+              "nccl_ns": 78615591,
+              "no_traced_ns": 2801242689,
+              "wall_ns": 6535509711
+            },
+            {
+              "compute_ns": 2275397644,
+              "copy_exposed_ns": 972249174,
+              "copy_ns": 972249174,
+              "device": 2,
+              "nccl_exposed_ns": 483208365,
+              "nccl_ns": 483208365,
+              "no_traced_ns": 2804654528,
+              "wall_ns": 6535509711
+            },
+            {
+              "compute_ns": 2270712686,
+              "copy_exposed_ns": 1293148008,
+              "copy_ns": 1293148008,
+              "device": 3,
+              "nccl_exposed_ns": 168819883,
+              "nccl_ns": 168819883,
+              "no_traced_ns": 2802829134,
+              "wall_ns": 6535509711
+            },
+            {
+              "compute_ns": 2274666803,
+              "copy_exposed_ns": 1014430813,
+              "copy_ns": 1014430813,
+              "device": 4,
+              "nccl_exposed_ns": 520828244,
+              "nccl_ns": 520828244,
+              "no_traced_ns": 2725583851,
+              "wall_ns": 6535509711
+            },
+            {
+              "compute_ns": 2280909363,
+              "copy_exposed_ns": 1219843181,
+              "copy_ns": 1219843181,
+              "device": 5,
+              "nccl_exposed_ns": 247321391,
+              "nccl_ns": 247321391,
+              "no_traced_ns": 2787435776,
+              "wall_ns": 6535509711
+            },
+            {
+              "compute_ns": 2273690663,
+              "copy_exposed_ns": 1203596136,
+              "copy_ns": 1203596136,
+              "device": 6,
+              "nccl_exposed_ns": 354102583,
+              "nccl_ns": 354102583,
+              "no_traced_ns": 2704120329,
+              "wall_ns": 6535509711
+            },
+            {
+              "compute_ns": 2272550456,
+              "copy_exposed_ns": 887626025,
+              "copy_ns": 887626025,
+              "device": 7,
+              "nccl_exposed_ns": 643894029,
+              "nccl_ns": 643894029,
+              "no_traced_ns": 2731439201,
+              "wall_ns": 6535509711
+            }
+          ],
+          "window": [
+            91965299487,
+            98500809198
+          ]
+        },
+        {
+          "label": "WAN13B/C_UPDATE/step_12",
+          "per_device": [
+            {
+              "compute_ns": 2273177232,
+              "copy_exposed_ns": 1452541871,
+              "copy_ns": 1452541871,
+              "device": 0,
+              "nccl_exposed_ns": 34450456,
+              "nccl_ns": 34450456,
+              "no_traced_ns": 2990208106,
+              "wall_ns": 6750377665
+            },
+            {
+              "compute_ns": 2276073073,
+              "copy_exposed_ns": 1372920730,
+              "copy_ns": 1372920730,
+              "device": 1,
+              "nccl_exposed_ns": 340298108,
+              "nccl_ns": 340298108,
+              "no_traced_ns": 2761085754,
+              "wall_ns": 6750377665
+            },
+            {
+              "compute_ns": 2275840187,
+              "copy_exposed_ns": 963698401,
+              "copy_ns": 963698401,
+              "device": 2,
+              "nccl_exposed_ns": 933919327,
+              "nccl_ns": 933919327,
+              "no_traced_ns": 2576919750,
+              "wall_ns": 6750377665
+            },
+            {
+              "compute_ns": 2270672195,
+              "copy_exposed_ns": 1144376993,
+              "copy_ns": 1144376993,
+              "device": 3,
+              "nccl_exposed_ns": 642757768,
+              "nccl_ns": 642757768,
+              "no_traced_ns": 2692570709,
+              "wall_ns": 6750377665
+            },
+            {
+              "compute_ns": 2273652745,
+              "copy_exposed_ns": 1001489938,
+              "copy_ns": 1001489938,
+              "device": 4,
+              "nccl_exposed_ns": 854284147,
+              "nccl_ns": 854284147,
+              "no_traced_ns": 2620950835,
+              "wall_ns": 6750377665
+            },
+            {
+              "compute_ns": 2281173617,
+              "copy_exposed_ns": 1315503751,
+              "copy_ns": 1315503751,
+              "device": 5,
+              "nccl_exposed_ns": 430615191,
+              "nccl_ns": 430615191,
+              "no_traced_ns": 2723085106,
+              "wall_ns": 6750377665
+            },
+            {
+              "compute_ns": 2273146757,
+              "copy_exposed_ns": 1129395073,
+              "copy_ns": 1129395073,
+              "device": 6,
+              "nccl_exposed_ns": 714873532,
+              "nccl_ns": 714873532,
+              "no_traced_ns": 2632962303,
+              "wall_ns": 6750377665
+            },
+            {
+              "compute_ns": 2272684420,
+              "copy_exposed_ns": 937830441,
+              "copy_ns": 937830441,
+              "device": 7,
+              "nccl_exposed_ns": 881015447,
+              "nccl_ns": 881015447,
+              "no_traced_ns": 2658847357,
+              "wall_ns": 6750377665
+            }
+          ],
+          "window": [
+            99254499987,
+            106004877652
+          ]
+        },
+        {
+          "label": "WAN13B/C_UPDATE/step_13",
+          "per_device": [
+            {
+              "compute_ns": 2272753370,
+              "copy_exposed_ns": 1714789709,
+              "copy_ns": 1714789709,
+              "device": 0,
+              "nccl_exposed_ns": 34160349,
+              "nccl_ns": 34160349,
+              "no_traced_ns": 2976703067,
+              "wall_ns": 6998406495
+            },
+            {
+              "compute_ns": 2275612263,
+              "copy_exposed_ns": 1511257180,
+              "copy_ns": 1511257180,
+              "device": 1,
+              "nccl_exposed_ns": 439034099,
+              "nccl_ns": 439034099,
+              "no_traced_ns": 2772502953,
+              "wall_ns": 6998406495
+            },
+            {
+              "compute_ns": 2275482995,
+              "copy_exposed_ns": 1306717324,
+              "copy_ns": 1306717324,
+              "device": 2,
+              "nccl_exposed_ns": 754880718,
+              "nccl_ns": 754880718,
+              "no_traced_ns": 2661325458,
+              "wall_ns": 6998406495
+            },
+            {
+              "compute_ns": 2272156278,
+              "copy_exposed_ns": 1622944110,
+              "copy_ns": 1622944110,
+              "device": 3,
+              "nccl_exposed_ns": 325957019,
+              "nccl_ns": 325957019,
+              "no_traced_ns": 2777349088,
+              "wall_ns": 6998406495
+            },
+            {
+              "compute_ns": 2273532459,
+              "copy_exposed_ns": 1385081467,
+              "copy_ns": 1385081467,
+              "device": 4,
+              "nccl_exposed_ns": 636865528,
+              "nccl_ns": 636865528,
+              "no_traced_ns": 2702927041,
+              "wall_ns": 6998406495
+            },
+            {
+              "compute_ns": 2280837607,
+              "copy_exposed_ns": 1549290250,
+              "copy_ns": 1549290250,
+              "device": 5,
+              "nccl_exposed_ns": 466402539,
+              "nccl_ns": 466402539,
+              "no_traced_ns": 2701876099,
+              "wall_ns": 6998406495
+            },
+            {
+              "compute_ns": 2273270273,
+              "copy_exposed_ns": 1470189727,
+              "copy_ns": 1470189727,
+              "device": 6,
+              "nccl_exposed_ns": 538390192,
+              "nccl_ns": 538390192,
+              "no_traced_ns": 2716556303,
+              "wall_ns": 6998406495
+            },
+            {
+              "compute_ns": 2272270563,
+              "copy_exposed_ns": 1335284402,
+              "copy_ns": 1335284402,
+              "device": 7,
+              "nccl_exposed_ns": 673478142,
+              "nccl_ns": 673478142,
+              "no_traced_ns": 2717373388,
+              "wall_ns": 6998406495
+            }
+          ],
+          "window": [
+            107416544272,
+            114414950767
+          ]
+        },
+        {
+          "label": "WAN13B/C_UPDATE/step_14",
+          "per_device": [
+            {
+              "compute_ns": 2273038403,
+              "copy_exposed_ns": 1506537307,
+              "copy_ns": 1506537307,
+              "device": 0,
+              "nccl_exposed_ns": 33425571,
+              "nccl_ns": 33425571,
+              "no_traced_ns": 2843889367,
+              "wall_ns": 6656890648
+            },
+            {
+              "compute_ns": 2276234325,
+              "copy_exposed_ns": 1342714541,
+              "copy_ns": 1342714541,
+              "device": 1,
+              "nccl_exposed_ns": 251403583,
+              "nccl_ns": 251403583,
+              "no_traced_ns": 2786538199,
+              "wall_ns": 6656890648
+            },
+            {
+              "compute_ns": 2276122474,
+              "copy_exposed_ns": 1179218741,
+              "copy_ns": 1179218741,
+              "device": 2,
+              "nccl_exposed_ns": 591160952,
+              "nccl_ns": 591160952,
+              "no_traced_ns": 2610388481,
+              "wall_ns": 6656890648
+            },
+            {
+              "compute_ns": 2271562457,
+              "copy_exposed_ns": 1140242108,
+              "copy_ns": 1140242108,
+              "device": 3,
+              "nccl_exposed_ns": 585768849,
+              "nccl_ns": 585768849,
+              "no_traced_ns": 2659317234,
+              "wall_ns": 6656890648
+            },
+            {
+              "compute_ns": 2273035346,
+              "copy_exposed_ns": 1202432251,
+              "copy_ns": 1202432251,
+              "device": 4,
+              "nccl_exposed_ns": 559629381,
+              "nccl_ns": 559629381,
+              "no_traced_ns": 2621793670,
+              "wall_ns": 6656890648
+            },
+            {
+              "compute_ns": 2280644332,
+              "copy_exposed_ns": 1346657580,
+              "copy_ns": 1346657580,
+              "device": 5,
+              "nccl_exposed_ns": 240339834,
+              "nccl_ns": 240339834,
+              "no_traced_ns": 2789248902,
+              "wall_ns": 6656890648
+            },
+            {
+              "compute_ns": 2272962291,
+              "copy_exposed_ns": 1276220230,
+              "copy_ns": 1276220230,
+              "device": 6,
+              "nccl_exposed_ns": 444568199,
+              "nccl_ns": 444568199,
+              "no_traced_ns": 2663139928,
+              "wall_ns": 6656890648
+            },
+            {
+              "compute_ns": 2272427229,
+              "copy_exposed_ns": 1055146854,
+              "copy_ns": 1055146854,
+              "device": 7,
+              "nccl_exposed_ns": 734191871,
+              "nccl_ns": 734191871,
+              "no_traced_ns": 2595124694,
+              "wall_ns": 6656890648
+            }
+          ],
+          "window": [
+            114605726184,
+            121262616832
+          ]
+        },
+        {
+          "label": "WAN13B/EMA/step_10",
+          "per_device": [
+            {
+              "compute_ns": 38837876,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 0,
+              "nccl_exposed_ns": 1798661689,
+              "nccl_ns": 1798661689,
+              "no_traced_ns": 5935841,
+              "wall_ns": 1843435406
+            },
+            {
+              "compute_ns": 75043952,
+              "copy_exposed_ns": 8224707,
+              "copy_ns": 8224707,
+              "device": 1,
+              "nccl_exposed_ns": 1688636026,
+              "nccl_ns": 1688636026,
+              "no_traced_ns": 71530721,
+              "wall_ns": 1843435406
+            },
+            {
+              "compute_ns": 38765200,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 2,
+              "nccl_exposed_ns": 1798424196,
+              "nccl_ns": 1798424196,
+              "no_traced_ns": 6246010,
+              "wall_ns": 1843435406
+            },
+            {
+              "compute_ns": 73008466,
+              "copy_exposed_ns": 4347767,
+              "copy_ns": 4347767,
+              "device": 3,
+              "nccl_exposed_ns": 1714359264,
+              "nccl_ns": 1714359264,
+              "no_traced_ns": 51719909,
+              "wall_ns": 1843435406
+            },
+            {
+              "compute_ns": 38735451,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 4,
+              "nccl_exposed_ns": 1798687469,
+              "nccl_ns": 1798687469,
+              "no_traced_ns": 6012486,
+              "wall_ns": 1843435406
+            },
+            {
+              "compute_ns": 38834744,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 5,
+              "nccl_exposed_ns": 1798668406,
+              "nccl_ns": 1798668406,
+              "no_traced_ns": 5932256,
+              "wall_ns": 1843435406
+            },
+            {
+              "compute_ns": 38683348,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 6,
+              "nccl_exposed_ns": 1798852324,
+              "nccl_ns": 1798852324,
+              "no_traced_ns": 5899734,
+              "wall_ns": 1843435406
+            },
+            {
+              "compute_ns": 38780224,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 7,
+              "nccl_exposed_ns": 1798831845,
+              "nccl_ns": 1798831845,
+              "no_traced_ns": 5823337,
+              "wall_ns": 1843435406
+            }
+          ],
+          "window": [
+            90121836107,
+            91965271513
+          ]
+        },
+        {
+          "label": "WAN13B/EMA/step_11",
+          "per_device": [
+            {
+              "compute_ns": 38554498,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 0,
+              "nccl_exposed_ns": 710151926,
+              "nccl_ns": 710151926,
+              "no_traced_ns": 4939660,
+              "wall_ns": 753646084
+            },
+            {
+              "compute_ns": 38508744,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 1,
+              "nccl_exposed_ns": 710135407,
+              "nccl_ns": 710135407,
+              "no_traced_ns": 5001933,
+              "wall_ns": 753646084
+            },
+            {
+              "compute_ns": 38532983,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 2,
+              "nccl_exposed_ns": 709803397,
+              "nccl_ns": 709803397,
+              "no_traced_ns": 5309704,
+              "wall_ns": 753646084
+            },
+            {
+              "compute_ns": 38434337,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 3,
+              "nccl_exposed_ns": 709779647,
+              "nccl_ns": 709779647,
+              "no_traced_ns": 5432100,
+              "wall_ns": 753646084
+            },
+            {
+              "compute_ns": 38502158,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 4,
+              "nccl_exposed_ns": 709956057,
+              "nccl_ns": 709956057,
+              "no_traced_ns": 5187869,
+              "wall_ns": 753646084
+            },
+            {
+              "compute_ns": 38577524,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 5,
+              "nccl_exposed_ns": 710090658,
+              "nccl_ns": 710090658,
+              "no_traced_ns": 4977902,
+              "wall_ns": 753646084
+            },
+            {
+              "compute_ns": 38492483,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 6,
+              "nccl_exposed_ns": 710304418,
+              "nccl_ns": 710304418,
+              "no_traced_ns": 4849183,
+              "wall_ns": 753646084
+            },
+            {
+              "compute_ns": 38559882,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 7,
+              "nccl_exposed_ns": 710301355,
+              "nccl_ns": 710301355,
+              "no_traced_ns": 4784847,
+              "wall_ns": 753646084
+            }
+          ],
+          "window": [
+            98500821511,
+            99254467595
+          ]
+        },
+        {
+          "label": "WAN13B/EMA/step_12",
+          "per_device": [
+            {
+              "compute_ns": 38539371,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 0,
+              "nccl_exposed_ns": 1367870786,
+              "nccl_ns": 1367870786,
+              "no_traced_ns": 5209984,
+              "wall_ns": 1411620141
+            },
+            {
+              "compute_ns": 38560512,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 1,
+              "nccl_exposed_ns": 1367892136,
+              "nccl_ns": 1367892136,
+              "no_traced_ns": 5167493,
+              "wall_ns": 1411620141
+            },
+            {
+              "compute_ns": 38507385,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 2,
+              "nccl_exposed_ns": 1367727715,
+              "nccl_ns": 1367727715,
+              "no_traced_ns": 5385041,
+              "wall_ns": 1411620141
+            },
+            {
+              "compute_ns": 38432466,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 3,
+              "nccl_exposed_ns": 1367661415,
+              "nccl_ns": 1367661415,
+              "no_traced_ns": 5526260,
+              "wall_ns": 1411620141
+            },
+            {
+              "compute_ns": 38513396,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 4,
+              "nccl_exposed_ns": 1367730572,
+              "nccl_ns": 1367730572,
+              "no_traced_ns": 5376173,
+              "wall_ns": 1411620141
+            },
+            {
+              "compute_ns": 38523259,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 5,
+              "nccl_exposed_ns": 1367691063,
+              "nccl_ns": 1367691063,
+              "no_traced_ns": 5405819,
+              "wall_ns": 1411620141
+            },
+            {
+              "compute_ns": 38455527,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 6,
+              "nccl_exposed_ns": 1367812883,
+              "nccl_ns": 1367812883,
+              "no_traced_ns": 5351731,
+              "wall_ns": 1411620141
+            },
+            {
+              "compute_ns": 38520705,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 7,
+              "nccl_exposed_ns": 1367790711,
+              "nccl_ns": 1367790711,
+              "no_traced_ns": 5308725,
+              "wall_ns": 1411620141
+            }
+          ],
+          "window": [
+            106004893723,
+            107416513864
+          ]
+        },
+        {
+          "label": "WAN13B/EMA/step_13",
+          "per_device": [
+            {
+              "compute_ns": 38534482,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 0,
+              "nccl_exposed_ns": 139339119,
+              "nccl_ns": 139339119,
+              "no_traced_ns": 12840369,
+              "wall_ns": 190713970
+            },
+            {
+              "compute_ns": 38569807,
+              "copy_exposed_ns": 1146573,
+              "copy_ns": 1146573,
+              "device": 1,
+              "nccl_exposed_ns": 139390062,
+              "nccl_ns": 139390062,
+              "no_traced_ns": 11607528,
+              "wall_ns": 190713970
+            },
+            {
+              "compute_ns": 38558396,
+              "copy_exposed_ns": 1182692,
+              "copy_ns": 1182692,
+              "device": 2,
+              "nccl_exposed_ns": 138986901,
+              "nccl_ns": 138986901,
+              "no_traced_ns": 11985981,
+              "wall_ns": 190713970
+            },
+            {
+              "compute_ns": 38413232,
+              "copy_exposed_ns": 1298955,
+              "copy_ns": 1298955,
+              "device": 3,
+              "nccl_exposed_ns": 139012261,
+              "nccl_ns": 139012261,
+              "no_traced_ns": 11989522,
+              "wall_ns": 190713970
+            },
+            {
+              "compute_ns": 38483258,
+              "copy_exposed_ns": 632834,
+              "copy_ns": 632834,
+              "device": 4,
+              "nccl_exposed_ns": 139605833,
+              "nccl_ns": 139605833,
+              "no_traced_ns": 11992045,
+              "wall_ns": 190713970
+            },
+            {
+              "compute_ns": 38588393,
+              "copy_exposed_ns": 1417011,
+              "copy_ns": 1417011,
+              "device": 5,
+              "nccl_exposed_ns": 139585703,
+              "nccl_ns": 139585703,
+              "no_traced_ns": 11122863,
+              "wall_ns": 190713970
+            },
+            {
+              "compute_ns": 38433077,
+              "copy_exposed_ns": 1047111,
+              "copy_ns": 1047111,
+              "device": 6,
+              "nccl_exposed_ns": 139570082,
+              "nccl_ns": 139570082,
+              "no_traced_ns": 11663700,
+              "wall_ns": 190713970
+            },
+            {
+              "compute_ns": 38466212,
+              "copy_exposed_ns": 1162094,
+              "copy_ns": 1162094,
+              "device": 7,
+              "nccl_exposed_ns": 139610764,
+              "nccl_ns": 139610764,
+              "no_traced_ns": 11474900,
+              "wall_ns": 190713970
+            }
+          ],
+          "window": [
+            114414965816,
+            114605679786
+          ]
+        },
+        {
+          "label": "WAN13B/EMA/step_14",
+          "per_device": [
+            {
+              "compute_ns": 38469105,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 0,
+              "nccl_exposed_ns": 895058972,
+              "nccl_ns": 895058972,
+              "no_traced_ns": 5131714,
+              "wall_ns": 938659791
+            },
+            {
+              "compute_ns": 38324363,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 1,
+              "nccl_exposed_ns": 895109860,
+              "nccl_ns": 895109860,
+              "no_traced_ns": 5225568,
+              "wall_ns": 938659791
+            },
+            {
+              "compute_ns": 38507401,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 2,
+              "nccl_exposed_ns": 895034485,
+              "nccl_ns": 895034485,
+              "no_traced_ns": 5117905,
+              "wall_ns": 938659791
+            },
+            {
+              "compute_ns": 38493501,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 3,
+              "nccl_exposed_ns": 894927912,
+              "nccl_ns": 894927912,
+              "no_traced_ns": 5238378,
+              "wall_ns": 938659791
+            },
+            {
+              "compute_ns": 38543069,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 4,
+              "nccl_exposed_ns": 895476661,
+              "nccl_ns": 895476661,
+              "no_traced_ns": 4640061,
+              "wall_ns": 938659791
+            },
+            {
+              "compute_ns": 38534062,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 5,
+              "nccl_exposed_ns": 895590974,
+              "nccl_ns": 895590974,
+              "no_traced_ns": 4534755,
+              "wall_ns": 938659791
+            },
+            {
+              "compute_ns": 38519388,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 6,
+              "nccl_exposed_ns": 895573967,
+              "nccl_ns": 895573967,
+              "no_traced_ns": 4566436,
+              "wall_ns": 938659791
+            },
+            {
+              "compute_ns": 38481205,
+              "copy_exposed_ns": 0,
+              "copy_ns": 0,
+              "device": 7,
+              "nccl_exposed_ns": 895259800,
+              "nccl_ns": 895259800,
+              "no_traced_ns": 4918786,
+              "wall_ns": 938659791
+            }
+          ],
+          "window": [
+            121262631540,
+            122201291331
+          ]
+        }
+      ]
+    }
+  ],
+  "phase_label": "WAN13B_FULL5/resident",
+  "placement": "resident",
+  "schema_version": "distillschedule.wan13b_nsys.v1",
+  "status": "PASS"
+}

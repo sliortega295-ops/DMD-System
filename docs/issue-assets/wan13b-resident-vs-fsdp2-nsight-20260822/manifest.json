@@ -1,0 +1,88 @@
+{
+  "artifacts": [
+    {
+      "bytes": 4884,
+      "path": "report.md",
+      "sha256": "6964caad9e8a2f003c208f0cc06637d87bdde524c285569dd9fdf549f955b31e"
+    },
+    {
+      "bytes": 2111,
+      "path": "research_log.md",
+      "sha256": "1fce02bbb6dc6465ed91a4c25038a71f22cd880d4452c8ffd22b6159c8c83ea5"
+    },
+    {
+      "bytes": 1961,
+      "path": "preflight/GO_NO_GO.md",
+      "sha256": "2ee93b46ee445e88e50f208b498fbf99d8200bd5ef8714a0c9d070882995f8ed"
+    },
+    {
+      "bytes": 3287,
+      "path": "preflight/controller_dry_run.json",
+      "sha256": "830ee87f72d6eb40a8a8f54f6fea454d72cb763982db7bcf879fb5298a6ed173"
+    },
+    {
+      "bytes": 886,
+      "path": "manifests/exact_command.sh",
+      "sha256": "48d26e1e70c98e65e55e8869824a78aced48de53161f802a772da8adb6ecbdc6"
+    },
+    {
+      "bytes": 454,
+      "path": "manifests/raw_artifact_identity.txt",
+      "sha256": "cb8fc5b529cf3d7da642c0d0a43fc406c7a97ffaa78305087d96494b52e5f9f5"
+    },
+    {
+      "bytes": 161480,
+      "path": "analysis/resident/wan13b_nsys_attribution.json",
+      "sha256": "f5e17f7c9c14943a173055293bc4dd21067bfe7db80a2990bb687128f01daee7"
+    },
+    {
+      "bytes": 652,
+      "path": "analysis/resident/wan13b_nsys_attribution.md",
+      "sha256": "50d327dfcb4dab39f690e0941ebdba7e38b9fb773e30dbcfc0bc2691be0901c5"
+    },
+    {
+      "bytes": 197349,
+      "path": "analysis/resident/wan13b_nsys_timeline.png",
+      "sha256": "2e6134e6daa42c5f39fe4486a85f7a988afb0b9b74ba2452386e5847e87b10b6"
+    },
+    {
+      "bytes": 1711,
+      "path": "analysis/resident/per_rank_attribution.csv",
+      "sha256": "7681ddb701f395303d2abf9dd2d877d0be2722dd54410db7f00c097278c957ba"
+    },
+    {
+      "bytes": 1399,
+      "path": "analysis/resident/stage_attribution.csv",
+      "sha256": "094b03f8386f0ceec1216aa1cb0f92f9105932df6b1b480cabdfb4482fde345f"
+    },
+    {
+      "bytes": 8603,
+      "path": "analysis/resident_vs_fsdp2_matched.json",
+      "sha256": "7c318306a5f5ade41a31aba3a8e3aa8f449ec185e56a16a184ed8ab3cfc27389"
+    },
+    {
+      "bytes": 233534,
+      "path": "analysis/resident_vs_fsdp2_matched.png",
+      "sha256": "6320915d6354b9406d935209654579fc57f0fe4d2b75d609e5e45f4909e8ec81"
+    },
+    {
+      "bytes": 3249,
+      "path": "nsight/range_validation.json",
+      "sha256": "1b2b295f5b1b2553186bc6f7c8a52ed19fb68807fe6b1756cb0ec3e712d12356"
+    }
+  ],
+  "device_coverage": "8/8 each node",
+  "formal_speedup_eligible": false,
+  "instrumentation_head": "18a26bcd046adba49b30630a12e6060c8d193494",
+  "matched_profile_fsdp_minus_resident_seconds": 6.6856559645,
+  "nsys_version": "2024.6.2.225-246235244400v0",
+  "oom_delta": 0,
+  "profile_mean_rank_seconds": 70.6503997285,
+  "profile_world_max_seconds": 70.795465759933,
+  "rank_receipts": "16/16 PASS",
+  "raw_identity_file": "manifests/raw_artifact_identity.txt",
+  "remote_run_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820/artifacts/runs/iter327_wan13b_resident_nsys_matched_20260822",
+  "run_id": "iter327_wan13b_resident_nsys_matched_20260822",
+  "schema_version": "distillschedule.wan13b_resident_matched_nsys_manifest.v1",
+  "status": "PASS_DIAGNOSTIC_ONLY"
+}

@@ -71,3 +71,10 @@ remain outside Full5.
 Do not lower resolution, batch, LoRA rank, call inventory, or update count.
 Any trace/version/parity/OOM/cgroup failure makes the candidate ineligible.
 The historical Helios14B timing may be shown as context only.
+
+## Published diagnostic evidence
+
+The matched Resident-vs-world16-FSDP2 Nsight diagnostic is published under
+[`docs/issue-assets/wan13b-resident-vs-fsdp2-nsight-20260822/`](../issue-assets/wan13b-resident-vs-fsdp2-nsight-20260822/README.md).
+It is diagnostic-only: profiled wall is not a formal speed denominator and the
+cross-placement numerical gate was not passed.
