@@ -129,8 +129,13 @@ class _DDPCommState:
     bucket_indices: list[int] = dataclasses.field(default_factory=list)
 
 
-def ddp_sum_then_divide_hook(state: _DDPCommState, bucket: Any) -> Any:
+def ddp_sum_then_divide_hook(state, bucket):
     """Issue async SUM all-reduce and divide once after the collective."""
+
+    # PyTorch 2.10 validates comm-hook annotations by exact runtime identity.
+    # With ``from __future__ import annotations``, even a nominal GradBucket
+    # annotation is a string and is rejected. Leaving the hook unannotated is
+    # the compatible form and does not alter its collective math.
 
     dist = _torch().distributed
     buffer = bucket.buffer()

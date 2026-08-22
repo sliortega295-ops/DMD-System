@@ -54,6 +54,9 @@ def test_resident_ddp_is_full_residency_with_overlapped_trainable_sync() -> None
     assert "ReduceOp.SUM" in hook
     assert "async_op=True" in hook
     assert "1.0 / state.world_size" in hook
+    signature = inspect.signature(wan.ddp_sum_then_divide_hook)
+    assert signature.parameters["bucket"].annotation is inspect.Parameter.empty
+    assert signature.return_annotation is inspect.Signature.empty
 
 
 def test_resident_fast_changes_only_ema_implementation_above_resident_ddp() -> None:
