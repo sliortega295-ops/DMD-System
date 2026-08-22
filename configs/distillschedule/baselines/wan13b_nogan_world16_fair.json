@@ -1,0 +1,107 @@
+{
+  "common": {
+    "activation_offload": false,
+    "critic_residual_storage": "cuda_out_of_place",
+    "ema_device": "cuda",
+    "frozen_parameter_streaming": false,
+    "generator_residual_storage": "cuda_out_of_place",
+    "gradient_mean": "SUM_THEN_DIVIDE_WORLD_SIZE",
+    "gradient_reduce_dtype": "torch.float32",
+    "model_swap": false,
+    "optimizer": "AdamW",
+    "optimizer_hyperparameters_unchanged": true,
+    "optimizer_offload": false,
+    "parameter_offload": false
+  },
+  "critic_updates": 5,
+  "ema_update_steps": [
+    10,
+    11,
+    12,
+    13,
+    14
+  ],
+  "final_versions": {
+    "critic": 15,
+    "ema": 15,
+    "generator": 3
+  },
+  "gates": {
+    "correctness_before_timing": true,
+    "formal_pairs": 3,
+    "resident_optimization_order": [
+      "resident vs resident-ddp",
+      "resident vs resident-fast",
+      "resident vs world16-fsdp"
+    ],
+    "runtime_lora_dtype_audit": true,
+    "thresholds": "DEFAULT_P0_PARITY_UNCHANGED"
+  },
+  "generator_updates": 1,
+  "global_batch": 16,
+  "hardware": "2x8_A100_40GB",
+  "id": "wan13b-nogan-world16-fair-resident-fsdp2",
+  "initial_versions": {
+    "critic": 10,
+    "ema": 10,
+    "generator": 2
+  },
+  "logical_steps": [
+    10,
+    11,
+    12,
+    13,
+    14
+  ],
+  "micro_batch_per_rank": 1,
+  "model": {
+    "block_count": 30,
+    "critic_lora_rank": 256,
+    "frozen_base_compute_dtype": "torch.bfloat16",
+    "generator_lora_rank": 256,
+    "physical_backbones_per_rank": 2,
+    "revision": "0fad780a534b6463e45facd96134c9f345acfa5b",
+    "source": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+    "trainable_lora_compute_dtype": "torch.float32"
+  },
+  "placements": {
+    "resident": {
+      "ema_implementation": "reference",
+      "ema_state": "FULL_REPLICA_FP32",
+      "gradient_sync": "MANUAL_ALL_REDUCE_COALESCED_AFTER_BACKWARD",
+      "optimizer_state": "FULL_REPLICA_FP32",
+      "parameters": "FULL_REPLICA_GPU_RESIDENT"
+    },
+    "resident-ddp": {
+      "ddp_bucket_cap_mb": 128,
+      "ema_implementation": "reference",
+      "ema_state": "FULL_REPLICA_FP32",
+      "gradient_as_bucket_view": true,
+      "gradient_sync": "DDP_BUCKETED_ALL_REDUCE_OVERLAPPED_WITH_BACKWARD",
+      "optimizer_state": "FULL_REPLICA_FP32",
+      "parameters": "FULL_REPLICA_GPU_RESIDENT"
+    },
+    "resident-fast": {
+      "ddp_bucket_cap_mb": 128,
+      "ema_implementation": "foreach_lerp",
+      "ema_state": "FULL_REPLICA_FP32",
+      "gradient_as_bucket_view": true,
+      "gradient_sync": "DDP_BUCKETED_ALL_REDUCE_OVERLAPPED_WITH_BACKWARD",
+      "optimizer_state": "FULL_REPLICA_FP32",
+      "parameters": "FULL_REPLICA_GPU_RESIDENT"
+    },
+    "world16-fsdp": {
+      "ema_state": "LOCAL_DTENSOR_SHARD_FP32",
+      "gradient_sync": "REDUCE_SCATTER_SUM_THEN_DIVIDE_WORLD_SIZE",
+      "optimizer_state": "LOCAL_DTENSOR_SHARD_FP32",
+      "param_dtype_policy": "PRESERVE_ORIGINAL_PER_PARAMETER",
+      "parameters": "FSDP2_FULL_SHARD_WORLD16",
+      "reshard_after_forward": true,
+      "wrap": "30_BLOCKS_BOTTOM_UP_THEN_ROOT"
+    }
+  },
+  "rollout_batch_size": 1,
+  "schema_version": "distillschedule.wan13b_fair_contract.v1",
+  "score_packing": false,
+  "world_size": 16
+}
