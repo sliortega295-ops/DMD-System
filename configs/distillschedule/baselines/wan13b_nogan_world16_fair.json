@@ -84,6 +84,7 @@
     "resident-fast": {
       "ddp_bucket_cap_mb": 128,
       "ema_implementation": "foreach_lerp",
+      "optimizer_implementation": "PYTORCH_FUSED_ADAMW",
       "ema_state": "FULL_REPLICA_FP32",
       "gradient_as_bucket_view": true,
       "gradient_sync": "DDP_BUCKETED_ALL_REDUCE_OVERLAPPED_WITH_BACKWARD",
