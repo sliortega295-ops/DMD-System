@@ -6,12 +6,16 @@ from pathlib import Path
 
 from distillschedule.runtime import wan13b_fair as wan
 
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_fair_contract_has_reference_ddp_fast_and_fsdp_endpoints() -> None:
     value = json.loads(
-        (ROOT / "configs/distillschedule/baselines/wan13b_nogan_world16_fair.json").read_text()
+        (
+            ROOT
+            / "configs/distillschedule/baselines/wan13b_nogan_world16_fair.json"
+        ).read_text()
     )
     assert tuple(value["placements"]) == wan.FAIR_PLACEMENTS
     assert wan.FAIR_PLACEMENTS == (
@@ -41,7 +45,7 @@ def test_fair_fsdp_preserves_original_dtypes_and_matches_mean_convention() -> No
 def test_resident_ddp_is_full_residency_with_overlapped_trainable_sync() -> None:
     source = inspect.getsource(wan.ResidentDDPEngine)
     assert "DistributedDataParallel" in source
-    assert "init_sync=False" in source
+    assert "init_sync=True" in source
     assert "broadcast_buffers=False" in source
     assert "gradient_as_bucket_view=True" in source
     assert "static_graph=True" in source
@@ -56,12 +60,15 @@ def test_resident_fast_changes_only_ema_implementation_above_resident_ddp() -> N
     source = inspect.getsource(wan.FairTrainableEMA.step)
     assert "torch._foreach_lerp_" in source
     builder = inspect.getsource(wan.build_fair_engine)
-    assert "ResidentDDPEngine" in builder
-    assert '"PYTORCH_DEFAULT"' in builder
+    assert "placement in {DDP_RESIDENT, FAST_RESIDENT}" in builder
+    assert '"PYTORCH_FUSED" if fused else "PYTORCH_DEFAULT"' in builder
+    assert "ReferenceResidentEngine" in builder
 
 
 def test_fair_worker_reuses_frozen_workload_and_audits_runtime_dtypes() -> None:
-    source = (ROOT / "scripts/distillschedule/probe_wan13b_fair_world16.py").read_text()
+    source = (
+        ROOT / "scripts/distillschedule/probe_wan13b_fair_world16.py"
+    ).read_text()
     assert "probe_wan13b_upper_bound_world16.py" in source
     assert "apply_wan13b_fair_fsdp2_policy" in source
     assert "LoRAComputeDtypeAudit" in source
@@ -70,7 +77,9 @@ def test_fair_worker_reuses_frozen_workload_and_audits_runtime_dtypes() -> None:
 
 
 def test_fair_launcher_is_fail_closed_and_never_profiles_as_timing() -> None:
-    source = (ROOT / "scripts/distillschedule/launch_wan13b_fair_world16_node.sh").read_text()
+    source = (
+        ROOT / "scripts/distillschedule/launch_wan13b_fair_world16_node.sh"
+    ).read_text()
     assert "resident-ddp" in source
     assert "resident-fast" in source
     assert "world16-fsdp" in source
@@ -81,7 +90,31 @@ def test_fair_launcher_is_fail_closed_and_never_profiles_as_timing() -> None:
 
 
 def test_fair_comparator_keeps_default_p0_thresholds() -> None:
-    source = (ROOT / "scripts/distillschedule/compare_wan13b_fair_correctness.py").read_text()
+    source = (
+        ROOT / "scripts/distillschedule/compare_wan13b_fair_correctness.py"
+    ).read_text()
     assert "DEFAULT_P0_PARITY" in source
     assert "runtime LoRA compute dtype evidence is missing" in source
     assert '"claimable_for_paired_timing": not errors' in source
+
+
+def test_resident_fast_uses_fused_adam_with_device_step_state() -> None:
+    source = inspect.getsource(wan.build_fair_engine)
+    state_source = inspect.getsource(wan._materialize_resident_adam_state)
+    assert 'optimizer_kwargs["fused"] = True' in source
+    assert '"PYTORCH_FUSED" if fused else "PYTORCH_DEFAULT"' in source
+    assert 'device=parameter.device' in state_source
+    assert '"step_tensor_device": "parameter_device" if fused else "cpu"' in state_source
+
+
+def test_fair_controller_and_pair_driver_are_receipt_bound() -> None:
+    controller = (
+        ROOT / "scripts/distillschedule/run_wan13b_fair_world16.py"
+    ).read_text()
+    paired = (ROOT / "scripts/distillschedule/run_wan13b_fair_paired.py").read_text()
+    assert "launch_wan13b_fair_world16_node.sh" in controller
+    assert "summarize_wan13b_fair_world16.py" in controller
+    assert "DISTILLSCHEDULE_WAN13B_FAIR_CORRECTNESS_RECEIPT" in controller
+    assert "correctness receipt covers" in paired
+    assert "warmup" in paired
+    assert "geometric_mean_candidate_speedup" in paired
