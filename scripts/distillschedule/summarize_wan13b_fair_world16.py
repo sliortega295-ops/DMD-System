@@ -170,7 +170,20 @@ def main() -> int:
             )
             build = row.get("build", {})
             for component in ("generator", "critic"):
-                placement = build.get(component, {}).get("placement", {})
+                component_build = build.get(component, {})
+                placement = component_build.get("placement", {})
+                engine = component_build.get("engine", {})
+                expected_optimizer_impl = (
+                    "PYTORCH_FUSED"
+                    if args.placement == "resident-fast"
+                    else "PYTORCH_DEFAULT"
+                )
+                if engine.get("optimizer_implementation") != expected_optimizer_impl:
+                    errors.append(
+                        f"rank{rank}/{component}: optimizer implementation="
+                        f"{engine.get('optimizer_implementation')}, "
+                        f"expected={expected_optimizer_impl}"
+                    )
                 if placement.get("block_count") != 30:
                     errors.append(f"rank{rank}: {component} is not 30-block Wan1.3B")
                 if placement.get("cpu_parameter_offload") is not False:
