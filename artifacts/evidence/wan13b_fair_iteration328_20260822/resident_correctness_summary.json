@@ -1,0 +1,449 @@
+{
+  "correctness_evidence": {
+    "critic_metrics": {
+      "global_numel": 356597760,
+      "l1": 554539.2339204862,
+      "l2": 52.07023110322628,
+      "max_abs": 0.02196842059493065,
+      "sum": -23.043111424268577
+    },
+    "ema_checksum_rank0": {
+      "communication_per_update": false,
+      "decay": 0.625,
+      "device": "cuda",
+      "implementation": "reference",
+      "local_norm": 52.24102009287822,
+      "local_numel": 358973440,
+      "local_sum": 34.292057872997546,
+      "optimization_step": 15,
+      "state_representation": "FULL_REPLICA_FP32",
+      "tracked_tensor_count": 618
+    },
+    "final_trainables": {
+      "critic": {
+        "bytes": 1426463608,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/correctness/final_critic_trainables.safetensors",
+        "sha256": "d347747a66cfbbb93b3a7800d008f0d94dde31c4bd3d7db9799680429c307ea1",
+        "status": "PASS",
+        "tensor_count": 612,
+        "writer_rank": 0
+      },
+      "critic_optimizer": {
+        "bytes": 2852939720,
+        "optimizer_step": 15,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/correctness/final_critic_optimizer.safetensors",
+        "scheduler_step": 15,
+        "sha256": "f02eb49feda079460af2dc2407dc8306855cbfd5512477aa9b4704de67b4e727",
+        "status": "PASS",
+        "tensor_count": 1224,
+        "writer_rank": 0
+      },
+      "generator": {
+        "bytes": 1435967016,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/correctness/final_generator_trainables.safetensors",
+        "sha256": "2857eeecd52ab2a2c3991e54d52a3e0b15066d708da067a65dc21eb3fe9751c8",
+        "status": "PASS",
+        "tensor_count": 618,
+        "writer_rank": 0
+      },
+      "generator_optimizer": {
+        "bytes": 2871946648,
+        "optimizer_step": 3,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/correctness/final_generator_optimizer.safetensors",
+        "scheduler_step": 3,
+        "sha256": "17c70a62482895f01b8f136b4751789269c0c8940e6d87f2f470568c5602e1aa",
+        "status": "PASS",
+        "tensor_count": 1236,
+        "writer_rank": 0
+      }
+    },
+    "generator_metrics": {
+      "global_numel": 358973440,
+      "l1": 558051.6071163298,
+      "l2": 52.241022720394646,
+      "max_abs": 0.0224609375,
+      "sum": 34.29171926682395
+    },
+    "lora_compute_dtype": {
+      "critic": {
+        "frozen_base": "torch.bfloat16",
+        "records": [
+          {
+            "base_weight_dtype": "torch.bfloat16",
+            "grad_enabled": false,
+            "input_dtype": "torch.bfloat16",
+            "lora_a_weight_dtype": "torch.float32",
+            "lora_b_weight_dtype": "torch.float32",
+            "module": "blocks.0.attn1.to_q"
+          },
+          {
+            "base_weight_dtype": "torch.bfloat16",
+            "grad_enabled": false,
+            "input_dtype": "torch.bfloat16",
+            "lora_a_weight_dtype": "torch.float32",
+            "lora_b_weight_dtype": "torch.float32",
+            "module": "blocks.15.attn1.to_q"
+          },
+          {
+            "base_weight_dtype": "torch.bfloat16",
+            "grad_enabled": false,
+            "input_dtype": "torch.bfloat16",
+            "lora_a_weight_dtype": "torch.float32",
+            "lora_b_weight_dtype": "torch.float32",
+            "module": "blocks.29.attn1.to_q"
+          },
+          {
+            "base_weight_dtype": "torch.bfloat16",
+            "grad_enabled": true,
+            "input_dtype": "torch.bfloat16",
+            "lora_a_weight_dtype": "torch.float32",
+            "lora_b_weight_dtype": "torch.float32",
+            "module": "blocks.0.attn1.to_q"
+          },
+          {
+            "base_weight_dtype": "torch.bfloat16",
+            "grad_enabled": true,
+            "input_dtype": "torch.bfloat16",
+            "lora_a_weight_dtype": "torch.float32",
+            "lora_b_weight_dtype": "torch.float32",
+            "module": "blocks.15.attn1.to_q"
+          },
+          {
+            "base_weight_dtype": "torch.bfloat16",
+            "grad_enabled": true,
+            "input_dtype": "torch.bfloat16",
+            "lora_a_weight_dtype": "torch.float32",
+            "lora_b_weight_dtype": "torch.float32",
+            "module": "blocks.29.attn1.to_q"
+          }
+        ],
+        "trainable_lora": "torch.float32"
+      },
+      "generator": {
+        "frozen_base": "torch.bfloat16",
+        "records": [
+          {
+            "base_weight_dtype": "torch.bfloat16",
+            "grad_enabled": false,
+            "input_dtype": "torch.bfloat16",
+            "lora_a_weight_dtype": "torch.float32",
+            "lora_b_weight_dtype": "torch.float32",
+            "module": "blocks.0.attn1.to_q"
+          },
+          {
+            "base_weight_dtype": "torch.bfloat16",
+            "grad_enabled": false,
+            "input_dtype": "torch.bfloat16",
+            "lora_a_weight_dtype": "torch.float32",
+            "lora_b_weight_dtype": "torch.float32",
+            "module": "blocks.15.attn1.to_q"
+          },
+          {
+            "base_weight_dtype": "torch.bfloat16",
+            "grad_enabled": false,
+            "input_dtype": "torch.bfloat16",
+            "lora_a_weight_dtype": "torch.float32",
+            "lora_b_weight_dtype": "torch.float32",
+            "module": "blocks.29.attn1.to_q"
+          },
+          {
+            "base_weight_dtype": "torch.bfloat16",
+            "grad_enabled": true,
+            "input_dtype": "torch.bfloat16",
+            "lora_a_weight_dtype": "torch.float32",
+            "lora_b_weight_dtype": "torch.float32",
+            "module": "blocks.0.attn1.to_q"
+          },
+          {
+            "base_weight_dtype": "torch.bfloat16",
+            "grad_enabled": true,
+            "input_dtype": "torch.bfloat16",
+            "lora_a_weight_dtype": "torch.float32",
+            "lora_b_weight_dtype": "torch.float32",
+            "module": "blocks.15.attn1.to_q"
+          },
+          {
+            "base_weight_dtype": "torch.bfloat16",
+            "grad_enabled": true,
+            "input_dtype": "torch.bfloat16",
+            "lora_a_weight_dtype": "torch.float32",
+            "lora_b_weight_dtype": "torch.float32",
+            "module": "blocks.29.attn1.to_q"
+          }
+        ],
+        "trainable_lora": "torch.float32"
+      }
+    },
+    "rollouts": [
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/correctness/rank_00_critic_rollouts.safetensors",
+        "sha256": "d85f805b0b4401c759cfe8a26da1a87e36fcb7ca806bda815e7e2763479acc4d",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/correctness/rank_01_critic_rollouts.safetensors",
+        "sha256": "2b03db525577029169ca031f5a7e355a3694b902f601113255cf1c269f5775f8",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/correctness/rank_02_critic_rollouts.safetensors",
+        "sha256": "bb88550e751a8afea36a4c04938412152dc9172c236843628486300035ce59e2",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/correctness/rank_03_critic_rollouts.safetensors",
+        "sha256": "789e674d4c1d987052c09e5666eca010501641d116530f45012765b101e0b22a",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/correctness/rank_04_critic_rollouts.safetensors",
+        "sha256": "305b48d83d32a73f625359a3c63b33ebbe9d82100a5a1583523dccdd1dcc5308",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/correctness/rank_05_critic_rollouts.safetensors",
+        "sha256": "9c0f91233cfb6c6895c225d18c0774c83e23a5f70f6cd18f54654ca51e478bd9",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/correctness/rank_06_critic_rollouts.safetensors",
+        "sha256": "6b792f7c89ef47551075b09b2175134d5789db1b8afc8d4e6413db9184f48c27",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/correctness/rank_07_critic_rollouts.safetensors",
+        "sha256": "3c596612f691392af21ecb92b1f20bd735f5bea28339cb578b5faa9a6cb60c38",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/correctness/rank_08_critic_rollouts.safetensors",
+        "sha256": "ebced2708dbdc4f4f3621f657415ee5849da3d97b768ea3bfa6ef8d2740d84f9",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/correctness/rank_09_critic_rollouts.safetensors",
+        "sha256": "405fc455192ca67ed303e279987fdee03d2e06637c8fce7fd175fe76f158115e",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/correctness/rank_10_critic_rollouts.safetensors",
+        "sha256": "4da6ce7170bf407d4404b18c4a89d95b2c306091fc0661ce686480f91be8f28a",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/correctness/rank_11_critic_rollouts.safetensors",
+        "sha256": "ab1d96d4f0eb00a574f99d4faa8ef94d5c48f6c3449f239760010019b5afefd7",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/correctness/rank_12_critic_rollouts.safetensors",
+        "sha256": "73bc2f5d004a4ea2f954489e009751a4136003934e534cc5c88399a357bbde93",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/correctness/rank_13_critic_rollouts.safetensors",
+        "sha256": "9b641da6a305e2f9760daaf7efe4df8ad2889a473539c639bca88a4ffac82829",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/correctness/rank_14_critic_rollouts.safetensors",
+        "sha256": "904d40a1db5c5202d608a086fcd4cbdc8e5e29775e9a8ce91fb3e474b3e99f83",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      },
+      {
+        "bytes": 5530088,
+        "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/correctness/rank_15_critic_rollouts.safetensors",
+        "sha256": "33420bc163be9f258f9f6f66ea9b9f3fd269cfa8ebb2c357029bd6f60efec706",
+        "tensor_keys": [
+          "step_10",
+          "step_11",
+          "step_12",
+          "step_13",
+          "step_14"
+        ]
+      }
+    ]
+  },
+  "diagnostic_only": false,
+  "errors": [],
+  "formal_eligibility": false,
+  "full5_seconds_world_max": 56.44622742384672,
+  "identities": {
+    "bootstrap_hash": "6a713476d9839cf1ea37689d63cb1cc2b405b9f9915ca5314ccdadb67b3cd60d",
+    "model_identity_sha256": "d52cf9e2d04451c018ac50c4ee1043c4ceba4014e51549bfda2ea5a123c65f54",
+    "trace_binding_hash": "bddcf32b379ea3d0cb36237b0c21f103ea59b1635473dd8080b7182cf3c1eded",
+    "trace_bundle_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3"
+  },
+  "memory": {
+    "max_allocated_bytes": 19793470976,
+    "max_reserved_bytes": 20757610496,
+    "min_driver_free_bytes": 20663631872
+  },
+  "mode": "correctness",
+  "placement": "resident",
+  "rank_count": 16,
+  "rank_full5_seconds": [
+    56.44583359686658,
+    56.446120710577816,
+    56.44619387993589,
+    56.446194170974195,
+    56.446142002008855,
+    56.44622742384672,
+    56.44617308070883,
+    56.44617362180725,
+    56.44603869202547,
+    56.44597002211958,
+    56.44605713803321,
+    56.44598513003439,
+    56.44595563504845,
+    56.44595768884756,
+    56.44605733710341,
+    56.44571082107723
+  ],
+  "rank_receipts": [
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/ranks/rank_00.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/ranks/rank_01.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/ranks/rank_02.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/ranks/rank_03.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/ranks/rank_04.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/ranks/rank_05.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/ranks/rank_06.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/ranks/rank_07.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/ranks/rank_08.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/ranks/rank_09.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/ranks/rank_10.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/ranks/rank_11.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/ranks/rank_12.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/ranks/rank_13.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/ranks/rank_14.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_fair_20260822/artifacts/runs/iter328_r2_correctness_resident_20260822/execution/ranks/rank_15.json"
+  ],
+  "run_id": "iter328_r2_correctness_resident_20260822",
+  "schema_version": "distillschedule.wan13b_fair_summary.v1",
+  "status": "PASS",
+  "workload": {
+    "final_versions": {
+      "critic": 15,
+      "ema": 15,
+      "generator": 3
+    },
+    "frozen_base_compute_dtype": "torch.bfloat16",
+    "global_batch": 16,
+    "gradient_mean_convention": "SUM_THEN_DIVIDE_WORLD_SIZE",
+    "lora_compute_dtype": "torch.float32",
+    "rollout_batch_size": 1,
+    "score_packing": false,
+    "unique_rank_step_rollout_identities": 80,
+    "updates": {
+      "critic": 5,
+      "ema": 5,
+      "generator": 1
+    },
+    "world_size": 16
+  }
+}
