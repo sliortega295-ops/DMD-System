@@ -206,6 +206,8 @@ def test_fair_launcher_is_fail_closed_and_never_profiles_as_timing() -> None:
     assert "nsys_profile_validation_failed" in source
     assert "claim_boundary=$(" in source
     assert "DIAGNOSTIC_ONLY" in source
+    assert "correctness receipt uses a different Helios residual runtime" in source
+    assert "helios_transformer_sha256=${EXPECTED_HELIOS_TRANSFORMER_SHA256}" in source
 
 
 def test_fair_comparator_keeps_default_p0_thresholds() -> None:

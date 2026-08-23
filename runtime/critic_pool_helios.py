@@ -21,6 +21,10 @@ from typing import Any, Literal
 
 import torch
 
+from distillschedule.runtime.helios_residual_runtime import (
+    validate_chunked_residual_runtime,
+)
+
 from .critic_pool_trace import CriticPoolTrace, CriticPoolTraceEntry
 from .dmd_boundary import add_noise, critic_denoising_loss
 from .operation_trace import OperationTrace, tensor_sha256
@@ -103,8 +107,14 @@ def build_helios_pool_model(
         replace_rmsnorm_with_fp32,
         replace_rope_with_flash_rope,
     )
+    from helios.modules import transformer_helios
     from helios.modules.transformer_helios import HeliosTransformer3DModel
     from peft import LoraConfig
+
+    residual_runtime = validate_chunked_residual_runtime(
+        transformer_helios,
+        requested_storage=chunked_residual_storage,
+    )
 
     extra = dict(TRANSFORMER_ADDITIONAL_KWARGS)
     if role in ("critic", "teacher"):
@@ -289,6 +299,7 @@ def build_helios_pool_model(
         ),
         "split_modulation": True,
         "chunked_residual_storage": chunked_residual_storage,
+        "chunked_residual_runtime": residual_runtime,
         "gradient_checkpointing": role != "teacher",
         "missing_pyramid_patch_seed": missing_pyramid_patch_seed,
         "materialized_pyramid_patches": materialized_pyramid_patches,

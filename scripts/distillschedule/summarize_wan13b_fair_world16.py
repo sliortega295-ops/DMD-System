@@ -118,6 +118,7 @@ def main() -> int:
         errors.append("source/bootstrap/trace identities differ by rank")
 
     correctness_mode = args.mode == "correctness"
+    residual_runtime_hashes: set[str] = set()
     if args.mode == "validate":
         if any(not row.get("validate_only") for row in rows):
             errors.append("validate run contains a non-validate receipt")
@@ -188,6 +189,25 @@ def main() -> int:
             build = row.get("build", {})
             for component in ("generator", "critic"):
                 component_build = build.get(component, {})
+                metadata = component_build.get("metadata", {})
+                residual_runtime = metadata.get("chunked_residual_runtime", {})
+                if metadata.get("chunked_residual_storage") != "cuda_out_of_place":
+                    errors.append(f"rank{rank}/{component}: residual storage is not CUDA")
+                if residual_runtime.get("requested_storage") != "cuda_out_of_place":
+                    errors.append(
+                        f"rank{rank}/{component}: residual runtime request changed"
+                    )
+                if residual_runtime.get("storage_capable") is not True:
+                    errors.append(
+                        f"rank{rank}/{component}: runtime cannot honor CUDA residuals"
+                    )
+                runtime_sha = residual_runtime.get("transformer_source_sha256")
+                if not isinstance(runtime_sha, str) or len(runtime_sha) != 64:
+                    errors.append(
+                        f"rank{rank}/{component}: missing residual runtime source identity"
+                    )
+                else:
+                    residual_runtime_hashes.add(runtime_sha)
                 placement = component_build.get("placement", {})
                 engine = component_build.get("engine", {})
                 expected_optimizer_impl = (
@@ -300,6 +320,11 @@ def main() -> int:
                 if shadow.get("fused") is not True:
                     errors.append(f"rank{rank}: rollout shadow was not fused")
 
+        if len(residual_runtime_hashes) != 1:
+            errors.append(
+                "Helios residual runtime source differs across ranks or components"
+            )
+
     rollout_identities: list[str] = []
     if args.mode != "validate":
         for row in rows:
@@ -330,6 +355,11 @@ def main() -> int:
                 "model_identity_sha256": next(iter(identities))[1],
                 "trace_bundle_hash": next(iter(identities))[2],
                 "trace_binding_hash": next(iter(identities))[3],
+                "helios_transformer_sha256": (
+                    next(iter(residual_runtime_hashes))
+                    if len(residual_runtime_hashes) == 1
+                    else None
+                ),
             }
             if len(identities) == 1
             else None

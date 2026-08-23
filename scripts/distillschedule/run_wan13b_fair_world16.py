@@ -121,12 +121,12 @@ def parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path(
             "/share/project/shuchenweng/yongyan_liu/"
-            "DistillSchedule_gan_rolephase_exec_20260812"
+            "DistillSchedule_fsdp2_gpu_residual_20260816"
         ),
     )
     value.add_argument(
         "--expected-helios-transformer-sha256",
-        default="776a26c3b2921d599821f0767910830471ff94a955f5013089f9f689ac20fee7",
+        default="5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
     )
     value.add_argument("--correctness-receipt", type=Path)
     value.add_argument("--correctness-sha256")

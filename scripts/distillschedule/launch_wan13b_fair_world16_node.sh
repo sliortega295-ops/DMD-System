@@ -23,7 +23,7 @@ PLACEMENT="${7:?resident, resident-clean, resident-local-fast, resident-flat256,
 [[ "${EXPECTED_HEAD}" =~ ^[0-9a-f]{40}$ ]] || exit 2
 
 ROOT="${DMD_SYSTEM_ROOT:-/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_upper_bound_20260820}"
-HELIOS="${HELIOS_RUNTIME_ROOT:-/share/project/shuchenweng/yongyan_liu/DistillSchedule_gan_rolephase_exec_20260812}"
+HELIOS="${HELIOS_RUNTIME_ROOT:-/share/project/shuchenweng/yongyan_liu/DistillSchedule_fsdp2_gpu_residual_20260816}"
 PYENV="${DISTILLSCHEDULE_PYENV:-/tmp/distillschedule-helios-official-torch210}"
 PYTHON="${PYENV}/bin/python"
 TORCHRUN="${PYENV}/bin/torchrun"
@@ -39,7 +39,7 @@ EXECUTION="${RUN_ROOT}/execution"
 NODE_LOG="${RUN_ROOT}/launcher/node_${NODE_RANK}"
 LOCK_FILE="${DISTILLSCHEDULE_NODE_LOCK:-/tmp/distillschedule_gpu_node.lock}"
 WORKER="${ROOT}/scripts/distillschedule/probe_wan13b_fair_world16.py"
-EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256:-776a26c3b2921d599821f0767910830471ff94a955f5013089f9f689ac20fee7}"
+EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256:-5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886}"
 CORRECTNESS_RECEIPT="${DISTILLSCHEDULE_WAN13B_FAIR_CORRECTNESS_RECEIPT:-}"
 CORRECTNESS_SHA256="${DISTILLSCHEDULE_WAN13B_FAIR_CORRECTNESS_SHA256:-}"
 
@@ -65,11 +65,14 @@ if [[ "${MODE}" == timing || "${MODE}" == diagnostic-timing || "${MODE}" == prof
     echo correctness_receipt_hash_changed >&2
     exit 3
   }
-  "${PYTHON}" - "${CORRECTNESS_RECEIPT}" "${PLACEMENT}" "${MODE}" <<'PY'
+  "${PYTHON}" - "${CORRECTNESS_RECEIPT}" "${PLACEMENT}" "${MODE}" "${EXPECTED_HELIOS_TRANSFORMER_SHA256}" <<'PY'
 import json, pathlib, sys
 value = json.loads(pathlib.Path(sys.argv[1]).read_text())
 placement = sys.argv[2]
 mode = sys.argv[3]
+expected_helios_sha256 = sys.argv[4]
+if value.get("identities", {}).get("helios_transformer_sha256") != expected_helios_sha256:
+    raise SystemExit("correctness receipt uses a different Helios residual runtime")
 if mode == "timing":
     if value.get("status") != "PASS" or not value.get("claimable_for_paired_timing"):
         raise SystemExit("fair numerical gate is not PASS")
@@ -147,6 +150,8 @@ run_id=${RUN_ID}
 mode=${MODE}
 node_rank=${NODE_RANK}
 dmd_system_head=${EXPECTED_HEAD}
+helios_runtime_root=${HELIOS}
+helios_transformer_sha256=${EXPECTED_HELIOS_TRANSFORMER_SHA256}
 model_root=${MODEL_ROOT}
 bootstrap=${BOOTSTRAP}
 bootstrap_hash=${BOOTSTRAP_HASH}
