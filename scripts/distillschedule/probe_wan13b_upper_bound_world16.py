@@ -367,6 +367,7 @@ def main() -> int:
             "resident-flat256",
             "resident-flat512",
             "resident-lora-zero2",
+            "resident-rollout-fused",
         }
         runtime_cache: dict[str, Any] | None = {} if clean_runtime else None
         critic_entries: dict[int, Any] | None = {} if clean_runtime else None
@@ -652,6 +653,16 @@ def main() -> int:
             gradient_sync={
                 "generator": getattr(generator_engine, "gradient_sync_receipts", []),
                 "critic": getattr(critic_engine, "gradient_sync_receipts", []),
+            },
+            rollout_shadow={
+                "enabled": bool(hasattr(generator_engine, "shadow_refresh_count")),
+                "refresh_count": int(
+                    getattr(generator_engine, "shadow_refresh_count", 0)
+                ),
+                "routed_call_count": int(
+                    getattr(generator_engine, "shadow_routed_call_count", 0)
+                ),
+                "fused": bool(getattr(generator_engine, "_shadow_fused", False)),
             },
             formal_timer_scope=(
                 "step10 Generator update; five B1 no-grad Generator rollouts; "

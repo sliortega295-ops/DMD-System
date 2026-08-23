@@ -35,6 +35,7 @@
       "resident-local-fast vs resident-flat256",
       "resident-flat256 vs resident-flat512",
       "resident-flat256 vs resident-lora-zero2",
+      "resident-lora-zero2 vs resident-rollout-fused",
       "resident vs resident-ddp",
       "resident vs resident-fast",
       "resident vs world16-fsdp"
@@ -137,6 +138,15 @@
       "optimizer_state": "WORLD16_LOCAL_FLAT_SHARD_FP32",
       "parameters": "FULL_REPLICA_GPU_RESIDENT",
       "trainable_parameter_publish": "ALL_GATHER_AFTER_EACH_COMMIT"
+    },
+    "resident-rollout-fused": {
+      "base": "resident-lora-zero2",
+      "ema_state": "WORLD16_LOCAL_FLAT_SHARD_FP32",
+      "generator_rollout_shadow": "FULL_REPLICA_BF16_FUSED_LORA",
+      "gradient_sync": "REDUCE_SCATTER_SUM_DIVIDE_THEN_PARAMETER_ALL_GATHER",
+      "optimizer_state": "WORLD16_LOCAL_FLAT_SHARD_FP32",
+      "parameters": "FULL_REPLICA_GPU_RESIDENT",
+      "shadow_refresh": "AFTER_GENERATOR_COMMIT"
     },
     "resident-ddp": {
       "ddp_bucket_cap_mb": 128,

@@ -18,6 +18,7 @@ the pinned worker.
 from __future__ import annotations
 
 import gc
+import copy
 import importlib.util
 import os
 import sys
@@ -46,6 +47,7 @@ from distillschedule.runtime.wan13b_fair import (
     FLAT_256_RESIDENT,
     FLAT_512_RESIDENT,
     LORA_ZERO2_RESIDENT,
+    ROLLOUT_FUSED_RESIDENT,
     LOCAL_FAST_RESIDENT,
     FairTrainableEMA,
     LoRAComputeDtypeAudit,
@@ -89,6 +91,12 @@ def _build_model_fair(
     model.to(device)
     torch.cuda.synchronize(device)
 
+    if args.placement == ROLLOUT_FUSED_RESIDENT and role == "generator":
+        shadow = copy.deepcopy(model)
+        shadow.requires_grad_(False)
+        shadow.train(model.training)
+        object.__setattr__(model, "_distillschedule_rollout_shadow", shadow)
+
     if args.placement == FSDP_PLACEMENT:
         placement = apply_wan13b_fair_fsdp2_policy(model)
     elif args.placement in RESIDENT_PLACEMENTS:
@@ -114,7 +122,7 @@ def _build_model_fair(
         placement = {
             "backend": (
                 "FULL_REPLICA_GPU_RESIDENT_LORA_ZERO2"
-                if args.placement == LORA_ZERO2_RESIDENT
+                if args.placement in {LORA_ZERO2_RESIDENT, ROLLOUT_FUSED_RESIDENT}
                 else (
                     "FULL_REPLICA_GPU_RESIDENT_DDP_GRAD_SYNC"
                     if args.placement
@@ -124,6 +132,7 @@ def _build_model_fair(
                         LOCAL_FAST_RESIDENT,
                         FLAT_256_RESIDENT,
                         FLAT_512_RESIDENT,
+                        ROLLOUT_FUSED_RESIDENT,
                     }
                     else "FULL_REPLICA_GPU_RESIDENT_MANUAL_GRAD_SYNC"
                 )
@@ -132,7 +141,7 @@ def _build_model_fair(
             "block_count": base.WAN13B_BLOCK_COUNT,
             "wrap_policy": (
                 "LORA_ONLY_ZERO2"
-                if args.placement == LORA_ZERO2_RESIDENT
+                if args.placement in {LORA_ZERO2_RESIDENT, ROLLOUT_FUSED_RESIDENT}
                 else (
                     "DDP_TRAINABLE_REDUCER_ONLY"
                     if args.placement
@@ -142,6 +151,7 @@ def _build_model_fair(
                         LOCAL_FAST_RESIDENT,
                         FLAT_256_RESIDENT,
                         FLAT_512_RESIDENT,
+                        ROLLOUT_FUSED_RESIDENT,
                     }
                     else "NONE"
                 )
@@ -166,6 +176,7 @@ def _build_model_fair(
         FLAT_256_RESIDENT,
         FLAT_512_RESIDENT,
         LORA_ZERO2_RESIDENT,
+        ROLLOUT_FUSED_RESIDENT,
     }:
         clean_model_state = install_resident_clean_model_state(model)
 

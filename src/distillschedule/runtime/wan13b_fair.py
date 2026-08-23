@@ -30,6 +30,7 @@ LOCAL_FAST_RESIDENT = "resident-local-fast"
 FLAT_256_RESIDENT = "resident-flat256"
 FLAT_512_RESIDENT = "resident-flat512"
 LORA_ZERO2_RESIDENT = "resident-lora-zero2"
+ROLLOUT_FUSED_RESIDENT = "resident-rollout-fused"
 DDP_RESIDENT = "resident-ddp"
 FAST_RESIDENT = "resident-fast"
 FSDP_PLACEMENT = "world16-fsdp"
@@ -40,6 +41,7 @@ RESIDENT_PLACEMENTS = (
     FLAT_256_RESIDENT,
     FLAT_512_RESIDENT,
     LORA_ZERO2_RESIDENT,
+    ROLLOUT_FUSED_RESIDENT,
     DDP_RESIDENT,
     FAST_RESIDENT,
 )
@@ -603,6 +605,53 @@ class LoRAZero2ResidentEngine(ReplicatedTrainableAllReduceEngine):
         return self._local_parameter.detach()
 
 
+class RolloutFusedLoRAZero2Engine(LoRAZero2ResidentEngine):
+    """LoRA-only ZeRO-2 plus a BF16-base fused Generator rollout shadow."""
+
+    def __init__(self, module: Any, **kwargs: Any) -> None:
+        shadow = getattr(module, "_distillschedule_rollout_shadow", None)
+        if shadow is None:
+            raise RuntimeError("rollout-fused arm is missing its shadow model")
+        self._rollout_shadow = shadow
+        self._shadow_ready = False
+        self._shadow_fused = False
+        self.shadow_refresh_count = 0
+        self.shadow_routed_call_count = 0
+        super().__init__(module, **kwargs)
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        torch = _torch()
+        if self._shadow_ready and not torch.is_grad_enabled():
+            self.shadow_routed_call_count += 1
+            return self._rollout_shadow(*args, **kwargs)
+        return self.module(*args, **kwargs)
+
+    def _refresh_rollout_shadow(self) -> None:
+        torch = _torch()
+        if self._shadow_fused:
+            self._rollout_shadow.unfuse_lora()
+            self._shadow_fused = False
+        source = _named_trainables(self.module)
+        shadow_parameters = dict(self._rollout_shadow.named_parameters())
+        if any(name not in shadow_parameters for name in source):
+            raise AssertionError("rollout shadow LoRA inventory changed")
+        with torch.no_grad():
+            for name, parameter in source.items():
+                shadow_parameters[name].copy_(parameter)
+        self._rollout_shadow.fuse_lora(
+            lora_scale=1.0,
+            safe_fusing=False,
+            adapter_names=None,
+        )
+        self._shadow_fused = True
+        self._shadow_ready = True
+        self.shadow_refresh_count += 1
+
+    def step(self) -> None:
+        super().step()
+        self._refresh_rollout_shadow()
+
+
 class ShardedTrainableEMA:
     """EMA shadow over the local LoRA-only ZeRO shard."""
 
@@ -844,8 +893,13 @@ def build_fair_engine(
     trainables = list(_named_trainables(module).values())
     if not trainables:
         raise ValueError("Wan1.3B resident engine has no trainables")
-    if placement == LORA_ZERO2_RESIDENT:
-        engine = LoRAZero2ResidentEngine(
+    if placement in {LORA_ZERO2_RESIDENT, ROLLOUT_FUSED_RESIDENT}:
+        engine_type = (
+            RolloutFusedLoRAZero2Engine
+            if placement == ROLLOUT_FUSED_RESIDENT
+            else LoRAZero2ResidentEngine
+        )
+        engine = engine_type(
             module,
             physical_step=physical_step,
             lr=lr,
@@ -1089,11 +1143,13 @@ __all__ = [
     "LORA_ZERO2_RESIDENT",
     "LocalFastResidentEngine",
     "LoRAZero2ResidentEngine",
+    "ROLLOUT_FUSED_RESIDENT",
     "REFERENCE_RESIDENT",
     "PersistentFlatResidentEngine",
     "ReferenceResidentEngine",
     "RESIDENT_PLACEMENTS",
     "ResidentDDPEngine",
+    "RolloutFusedLoRAZero2Engine",
     "ShardedTrainableEMA",
     "apply_wan13b_fair_fsdp2_policy",
     "build_fair_engine",

@@ -15,6 +15,7 @@ from distillschedule.runtime.wan13b_fair import (
     FLAT_256_RESIDENT,
     FLAT_512_RESIDENT,
     LORA_ZERO2_RESIDENT,
+    ROLLOUT_FUSED_RESIDENT,
     LOCAL_FAST_RESIDENT,
     RESIDENT_PLACEMENTS,
 )
@@ -158,7 +159,7 @@ def main() -> int:
                     errors.append(f"rank{rank}: resident sync receipt count changed")
                 expected_backend = (
                     "LORA_ZERO2_REDUCE_SCATTER_ALL_GATHER"
-                    if args.placement == LORA_ZERO2_RESIDENT
+                    if args.placement in {LORA_ZERO2_RESIDENT, ROLLOUT_FUSED_RESIDENT}
                     else (
                         "PERSISTENT_FLAT_ALL_REDUCE"
                         if args.placement in {FLAT_256_RESIDENT, FLAT_512_RESIDENT}
@@ -191,7 +192,7 @@ def main() -> int:
                 engine = component_build.get("engine", {})
                 expected_optimizer_impl = (
                     "PYTORCH_FUSED_LOCAL_SHARD"
-                    if args.placement == LORA_ZERO2_RESIDENT
+                    if args.placement in {LORA_ZERO2_RESIDENT, ROLLOUT_FUSED_RESIDENT}
                     else (
                         "PYTORCH_FUSED"
                         if args.placement
@@ -222,7 +223,7 @@ def main() -> int:
                         "expected=PYTORCH_FOREACH_TRUE"
                     )
                 if (
-                    args.placement == LORA_ZERO2_RESIDENT
+                    args.placement in {LORA_ZERO2_RESIDENT, ROLLOUT_FUSED_RESIDENT}
                     and engine.get("gradient_clip_implementation")
                     != "GLOBAL_L2_FROM_LOCAL_SHARDS"
                 ):
@@ -260,6 +261,7 @@ def main() -> int:
                 FLAT_256_RESIDENT,
                 FLAT_512_RESIDENT,
                 LORA_ZERO2_RESIDENT,
+                ROLLOUT_FUSED_RESIDENT,
             }:
                 if clean.get("enabled") is not True:
                     errors.append(f"rank{rank}: resident-clean runtime not enabled")
@@ -286,6 +288,17 @@ def main() -> int:
                         errors.append(f"rank{rank}: deferred finite gate did not pass")
                     if int(clean.get("deferred_finite_check_count", 0)) <= 0:
                         errors.append(f"rank{rank}: deferred finite gate has no inputs")
+
+            shadow = row.get("rollout_shadow", {})
+            if args.placement == ROLLOUT_FUSED_RESIDENT:
+                if shadow.get("enabled") is not True:
+                    errors.append(f"rank{rank}: rollout shadow not enabled")
+                if shadow.get("refresh_count") != 1:
+                    errors.append(f"rank{rank}: rollout shadow refresh count changed")
+                if int(shadow.get("routed_call_count", 0)) <= 0:
+                    errors.append(f"rank{rank}: rollout shadow handled no calls")
+                if shadow.get("fused") is not True:
+                    errors.append(f"rank{rank}: rollout shadow was not fused")
 
     rollout_identities: list[str] = []
     if args.mode != "validate":

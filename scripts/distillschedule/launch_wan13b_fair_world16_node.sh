@@ -8,7 +8,7 @@ MODE="${3:?validate, correctness, timing, or diagnostic-timing}"
 EXPECTED_HEAD="${4:?expected DMD-System HEAD}"
 MASTER_ADDR="${5:?node0 routable address}"
 MASTER_PORT="${6:?world16 rendezvous port}"
-PLACEMENT="${7:?resident, resident-clean, resident-local-fast, resident-flat256, resident-flat512, resident-lora-zero2, resident-ddp, resident-fast, or world16-fsdp}"
+PLACEMENT="${7:?resident, resident-clean, resident-local-fast, resident-flat256, resident-flat512, resident-lora-zero2, resident-rollout-fused, resident-ddp, resident-fast, or world16-fsdp}"
 
 [[ "${NODE_RANK}" == 0 || "${NODE_RANK}" == 1 ]] || exit 2
 [[ "${MODE}" == validate || "${MODE}" == correctness || "${MODE}" == timing || \
@@ -16,7 +16,7 @@ PLACEMENT="${7:?resident, resident-clean, resident-local-fast, resident-flat256,
 [[ "${PLACEMENT}" == resident || "${PLACEMENT}" == resident-ddp || \
    "${PLACEMENT}" == resident-clean || "${PLACEMENT}" == resident-local-fast || \
    "${PLACEMENT}" == resident-flat256 || "${PLACEMENT}" == resident-flat512 || \
-   "${PLACEMENT}" == resident-lora-zero2 || \
+   "${PLACEMENT}" == resident-lora-zero2 || "${PLACEMENT}" == resident-rollout-fused || \
    "${PLACEMENT}" == resident-fast || \
    "${PLACEMENT}" == world16-fsdp ]] || exit 2
 [[ "${RUN_ID}" =~ ^[A-Za-z0-9._-]+$ ]] || exit 2
@@ -135,7 +135,7 @@ nvidia-smi --query-gpu=index,name,memory.total,memory.free --format=csv,noheader
 optimizer_implementation=$( [[ "${PLACEMENT}" == resident-fast || "${PLACEMENT}" == resident-local-fast || "${PLACEMENT}" == resident-flat256 || "${PLACEMENT}" == resident-flat512 ]] && echo PYTORCH_FUSED || echo PYTORCH_DEFAULT )
 gradient_clip_implementation=$( [[ "${PLACEMENT}" == resident-local-fast || "${PLACEMENT}" == resident-flat256 || "${PLACEMENT}" == resident-flat512 ]] && echo PYTORCH_FOREACH_TRUE || echo PYTORCH_DEFAULT )
 ema_implementation=${DISTILLSCHEDULE_WAN13B_EMA_IMPLEMENTATION}
-if [[ "${PLACEMENT}" == resident-lora-zero2 ]]; then
+if [[ "${PLACEMENT}" == resident-lora-zero2 || "${PLACEMENT}" == resident-rollout-fused ]]; then
   optimizer_implementation=PYTORCH_FUSED_LOCAL_SHARD
   gradient_clip_implementation=GLOBAL_L2_FROM_LOCAL_SHARDS
   ema_implementation=WORLD16_LOCAL_FLAT_SHARD
