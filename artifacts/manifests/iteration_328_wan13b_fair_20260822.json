@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "run_id": "iteration_328_wan13b_fair_resident_fsdp2_20260822",
+  "status": "FAIL_NUMERICAL_PARITY",
+  "formal_timing_status": "NOT_RUN",
+  "speedup_claim": null,
+  "source": {
+    "pr22_starting_head": "839d55039a47977e6fb10bf1df61b869918826a6",
+    "executed_head": "95492b2a04055e80698d35936f081a1f70dfb0c0",
+    "branch": "codex/wan13b-fair-server-compat-20260822",
+    "compatibility_patch": "Remove PyTorch 2.10-incompatible DDP comm-hook runtime annotations; collective math unchanged",
+    "pushed_to_pr22": true
+  },
+  "workload": {
+    "nodes": 2,
+    "gpus_per_node": 8,
+    "world_size": 16,
+    "global_batch": 16,
+    "rollout_batch_size": 1,
+    "score_packing": false,
+    "updates": {"generator": 1, "critic": 5, "ema": 5},
+    "final_versions": {"generator": 3, "critic": 15, "ema": 15},
+    "frozen_base_compute_dtype": "torch.bfloat16",
+    "lora_compute_dtype": "torch.float32",
+    "gradient_reduce_dtype": "torch.float32",
+    "gradient_mean_convention": "SUM_THEN_DIVIDE_WORLD_SIZE",
+    "unique_rank_step_rollout_identities": 80
+  },
+  "identities": {
+    "bootstrap_sha256": "6a713476d9839cf1ea37689d63cb1cc2b405b9f9915ca5314ccdadb67b3cd60d",
+    "trace_bundle_sha256": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+    "trace_binding_sha256": "bddcf32b379ea3d0cb36237b0c21f103ea59b1635473dd8080b7182cf3c1eded",
+    "model_identity_sha256": "d52cf9e2d04451c018ac50c4ee1043c4ceba4014e51549bfda2ea5a123c65f54",
+    "helios_transformer_sha256": "776a26c3b2921d599821f0767910830471ff94a955f5013089f9f689ac20fee7"
+  },
+  "thresholds": {
+    "mean_relative": 0.005,
+    "normalized_l2": 0.005,
+    "min_cosine": 0.9999,
+    "max_abs_atol": 0.05,
+    "max_abs_rtol": 0.01
+  },
+  "placements": {
+    "resident": {
+      "validate": "PASS", "correctness": "PASS", "ranks": 16,
+      "diagnostic_correctness_wall_seconds": 56.44622742384672,
+      "max_allocated_bytes": 19793470976, "max_reserved_bytes": 20757610496,
+      "min_driver_free_bytes": 20663631872
+    },
+    "world16-fsdp": {
+      "validate": "PASS", "correctness": "PASS", "ranks": 16,
+      "diagnostic_correctness_wall_seconds": 69.88095835456625,
+      "max_allocated_bytes": 4527713792, "max_reserved_bytes": 7038042112,
+      "min_driver_free_bytes": 34372714496
+    },
+    "resident-ddp": {
+      "validate": "PASS", "correctness": "PASS", "ranks": 16,
+      "diagnostic_correctness_wall_seconds": 59.20437358925119,
+      "max_allocated_bytes": 22552061952, "max_reserved_bytes": 23517462528,
+      "min_driver_free_bytes": 17893294080
+    },
+    "resident-fast": {
+      "validate": "PASS", "correctness": "PASS", "ranks": 16,
+      "diagnostic_correctness_wall_seconds": 58.17523964308202,
+      "max_allocated_bytes": 22552691712, "max_reserved_bytes": 23517462528,
+      "min_driver_free_bytes": 17893294080
+    }
+  },
+  "comparisons": {
+    "resident_vs_world16_fsdp": {
+      "status": "FAIL", "claimable_for_paired_timing": false,
+      "rollout_failures": 80, "rollout_rows": 80,
+      "worst_rollout_mean_relative": 0.01500757783651352,
+      "worst_rollout_normalized_l2": 0.01578499749302864,
+      "min_rollout_cosine": 0.9998159408569336,
+      "generator_failures": 50, "critic_failures": 50,
+      "generator_optimizer_failures": 2, "critic_optimizer_failures": 17
+    },
+    "resident_vs_resident_ddp": {
+      "status": "FAIL", "claimable_for_paired_timing": false,
+      "rollout_failures": 80, "rollout_rows": 80,
+      "worst_rollout_mean_relative": 0.015005961060523987,
+      "worst_rollout_normalized_l2": 0.01579490303993225,
+      "min_rollout_cosine": 0.9998165965080261,
+      "generator_failures": 50, "critic_failures": 45,
+      "generator_optimizer_failures": 2, "critic_optimizer_failures": 32
+    },
+    "resident_vs_resident_fast": {
+      "status": "FAIL", "claimable_for_paired_timing": false,
+      "rollout_failures": 80, "rollout_rows": 80,
+      "worst_rollout_mean_relative": 0.015053140930831432,
+      "worst_rollout_normalized_l2": 0.01584104634821415,
+      "min_rollout_cosine": 0.999815821647644,
+      "generator_failures": 50, "critic_failures": 75,
+      "generator_optimizer_failures": 2, "critic_optimizer_failures": 17
+    }
+  },
+  "runtime_dtype_contract": "PASS_ALL_PLACEMENTS",
+  "oom": {"cuda": 0, "new_cgroup_oom": 0, "new_cgroup_oom_kill": 0},
+  "cleanup": {"gpu_processes": 0, "gpu_memory_used_mib_each": 0, "local_git_clean": true, "remote_git_clean": true},
+  "artifacts": {
+    "report": "reports/iteration_328_result.md",
+    "preflight": "reports/iteration_328_preflight.md",
+    "comparisons": "comparisons_r2/"
+  }
+}

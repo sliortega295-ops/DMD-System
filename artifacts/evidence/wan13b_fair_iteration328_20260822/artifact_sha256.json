@@ -1,0 +1,11 @@
+{
+  "artifacts/evidence/wan13b_fair_iteration328_20260822/resident_correctness_summary.json": "e080f7cfc5693e39b8e34bdfc99378668b31a8be4dae67feebe4e480e01d5e3e",
+  "artifacts/evidence/wan13b_fair_iteration328_20260822/resident_ddp_correctness_summary.json": "e55ad80c5af133677dce7028ff06ec24bc7d0bb462ff73ee203e2142eea5bbad",
+  "artifacts/evidence/wan13b_fair_iteration328_20260822/resident_fast_correctness_summary.json": "fb7a52c61b41485ce32517a43ea7de1b3e2e43c5f2312aa8e3395052aa601f20",
+  "artifacts/evidence/wan13b_fair_iteration328_20260822/resident_vs_resident_ddp.json": "a2c5dba4f4a3a79c2b6fa06975d3c30181ad96ad7ece3e0a470685270fbf87d7",
+  "artifacts/evidence/wan13b_fair_iteration328_20260822/resident_vs_resident_fast.json": "672505edc439ae78581d298cf678842f8da58e0654c91698576e267e54df021b",
+  "artifacts/evidence/wan13b_fair_iteration328_20260822/resident_vs_world16_fsdp.json": "47b1a4622ed4ff29f1dfa11bd8aa070b09d03750eb29ab1579154c9bc2118536",
+  "artifacts/evidence/wan13b_fair_iteration328_20260822/world16_fsdp_correctness_summary.json": "4571763cb1f93e68a2c124bcae9d457b4821792f03fc514b46ba52c801405192",
+  "artifacts/manifests/iteration_328_wan13b_fair_20260822.json": "88acaa33290e5b3229d8e084f1ca905166c2a993d13571d6d6b69bea45b9b8d4",
+  "docs/experiments/wan13b_fair_pr22_iteration328_20260822.md": "b607b6c4696cd748186b64405b3eeaf85bc5ee12da8dca2125066c049b6ef7c5"
+}
