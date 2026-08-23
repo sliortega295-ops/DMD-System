@@ -31,6 +31,7 @@
     "formal_pairs": 3,
     "resident_optimization_order": [
       "resident vs resident-clean",
+      "resident-clean vs resident-local-fast",
       "resident vs resident-ddp",
       "resident vs resident-fast",
       "resident vs world16-fsdp"
@@ -77,6 +78,22 @@
       "ema_implementation": "reference",
       "ema_state": "FULL_REPLICA_FP32",
       "gradient_sync": "MANUAL_ALL_REDUCE_COALESCED_AFTER_BACKWARD",
+      "optimizer_state": "FULL_REPLICA_FP32",
+      "parameters": "FULL_REPLICA_GPU_RESIDENT",
+      "runtime": {
+        "cuda_sync_scope": "CYCLE_BOUNDARIES_ONLY",
+        "finite_gate": "DEFERRED_TO_CYCLE_END_IN_LOW_OVERHEAD_MODE",
+        "idempotent_model_state": true,
+        "reuse_critic_trace_entries": true,
+        "reuse_fixed_schedule_tensors": true
+      }
+    },
+    "resident-local-fast": {
+      "ema_implementation": "foreach_lerp",
+      "ema_state": "FULL_REPLICA_FP32",
+      "gradient_clip": "FOREACH_TRUE",
+      "gradient_sync": "MANUAL_ALL_REDUCE_COALESCED_AFTER_BACKWARD",
+      "optimizer_implementation": "PYTORCH_FUSED_ADAMW",
       "optimizer_state": "FULL_REPLICA_FP32",
       "parameters": "FULL_REPLICA_GPU_RESIDENT",
       "runtime": {

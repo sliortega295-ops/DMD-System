@@ -12,6 +12,7 @@ from distillschedule.runtime.wan13b_fair import (
     CLEAN_RESIDENT,
     FAIR_PLACEMENTS,
     FSDP_PLACEMENT,
+    LOCAL_FAST_RESIDENT,
     RESIDENT_PLACEMENTS,
 )
 from distillschedule.runtime.wan13b_upper_bound import WORLD_SIZE
@@ -154,7 +155,7 @@ def main() -> int:
                     errors.append(f"rank{rank}: resident sync receipt count changed")
                 expected_backend = (
                     "MANUAL_ALL_REDUCE_COALESCED"
-                    if args.placement in {"resident", CLEAN_RESIDENT}
+                    if args.placement in {"resident", CLEAN_RESIDENT, LOCAL_FAST_RESIDENT}
                     else "DDP_GRADIENT_BUCKET_VIEW"
                 )
                 for receipt in sync.get("generator", []) + sync.get("critic", []):
@@ -178,7 +179,7 @@ def main() -> int:
                 engine = component_build.get("engine", {})
                 expected_optimizer_impl = (
                     "PYTORCH_FUSED"
-                    if args.placement == "resident-fast"
+                    if args.placement in {"resident-fast", LOCAL_FAST_RESIDENT}
                     else "PYTORCH_DEFAULT"
                 )
                 if engine.get("optimizer_implementation") != expected_optimizer_impl:
@@ -186,6 +187,16 @@ def main() -> int:
                         f"rank{rank}/{component}: optimizer implementation="
                         f"{engine.get('optimizer_implementation')}, "
                         f"expected={expected_optimizer_impl}"
+                    )
+                if (
+                    args.placement == LOCAL_FAST_RESIDENT
+                    and engine.get("gradient_clip_implementation")
+                    != "PYTORCH_FOREACH_TRUE"
+                ):
+                    errors.append(
+                        f"rank{rank}/{component}: gradient clip implementation="
+                        f"{engine.get('gradient_clip_implementation')}, "
+                        "expected=PYTORCH_FOREACH_TRUE"
                     )
                 if placement.get("block_count") != 30:
                     errors.append(f"rank{rank}: {component} is not 30-block Wan1.3B")
@@ -212,7 +223,7 @@ def main() -> int:
                 errors.append(f"rank{rank}: common residency contract changed")
 
             clean = row.get("resident_clean_runtime", {})
-            if args.placement == CLEAN_RESIDENT:
+            if args.placement in {CLEAN_RESIDENT, LOCAL_FAST_RESIDENT}:
                 if clean.get("enabled") is not True:
                     errors.append(f"rank{rank}: resident-clean runtime not enabled")
                 if clean.get("internal_cuda_housekeeping_skipped") is not True:

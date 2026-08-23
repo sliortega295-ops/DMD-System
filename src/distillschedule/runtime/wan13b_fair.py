@@ -26,12 +26,14 @@ from .wan13b_upper_bound import (
 
 REFERENCE_RESIDENT = "resident"
 CLEAN_RESIDENT = "resident-clean"
+LOCAL_FAST_RESIDENT = "resident-local-fast"
 DDP_RESIDENT = "resident-ddp"
 FAST_RESIDENT = "resident-fast"
 FSDP_PLACEMENT = "world16-fsdp"
 RESIDENT_PLACEMENTS = (
     REFERENCE_RESIDENT,
     CLEAN_RESIDENT,
+    LOCAL_FAST_RESIDENT,
     DDP_RESIDENT,
     FAST_RESIDENT,
 )
@@ -239,6 +241,30 @@ class ReferenceResidentEngine(ReplicatedTrainableAllReduceEngine):
         return receipt
 
 
+class LocalFastResidentEngine(ReferenceResidentEngine):
+    """Reference manual all-reduce with foreach clipping and fused local AdamW."""
+
+    def step(self) -> None:
+        torch = _torch()
+        receipt = self._synchronize_trainable_gradients()
+        trainables = [
+            parameter for parameter in self.module.parameters() if parameter.requires_grad
+        ]
+        clip_norm = torch.nn.utils.clip_grad_norm_(
+            trainables,
+            self._gradient_clip,
+            foreach=True,
+        )
+        if self._audit_gradients:
+            receipt["gradient_clip_input_norm"] = float(clip_norm)
+        self.optimizer.step()
+        self.lr_scheduler.step()
+        self.optimizer.zero_grad(set_to_none=True)
+        self.global_steps += 1
+        self.global_samples += GLOBAL_BATCH
+        self._step_calls += 1
+
+
 class ResidentDDPEngine:
     """Full GPU residency with DDP used only for trainable gradients."""
 
@@ -420,7 +446,7 @@ def build_fair_engine(
     trainables = list(_named_trainables(module).values())
     if not trainables:
         raise ValueError("Wan1.3B resident engine has no trainables")
-    fused = placement == FAST_RESIDENT
+    fused = placement in {LOCAL_FAST_RESIDENT, FAST_RESIDENT}
     optimizer_kwargs: dict[str, Any] = {}
     if fused:
         optimizer_kwargs["fused"] = True
@@ -439,8 +465,13 @@ def build_fair_engine(
         physical_step=physical_step,
         fused=fused,
     )
-    if placement in {REFERENCE_RESIDENT, CLEAN_RESIDENT}:
-        engine: Any = ReferenceResidentEngine(
+    if placement in {REFERENCE_RESIDENT, CLEAN_RESIDENT, LOCAL_FAST_RESIDENT}:
+        engine_type = (
+            LocalFastResidentEngine
+            if placement == LOCAL_FAST_RESIDENT
+            else ReferenceResidentEngine
+        )
+        engine: Any = engine_type(
             module,
             optimizer,
             scheduler,
@@ -465,6 +496,11 @@ def build_fair_engine(
         "optimizer": "AdamW",
         "optimizer_implementation": (
             "PYTORCH_FUSED" if fused else "PYTORCH_DEFAULT"
+        ),
+        "gradient_clip_implementation": (
+            "PYTORCH_FOREACH_TRUE"
+            if placement == LOCAL_FAST_RESIDENT
+            else "PYTORCH_DEFAULT"
         ),
         "optimizer_state_representation": "FULL_REPLICA_FP32",
         "optimizer_state_device": "cuda",
@@ -586,12 +622,15 @@ def fair_model_trainable_metrics(module: Any, *, placement: str) -> dict[str, An
 
 
 __all__ = [
+    "CLEAN_RESIDENT",
     "DDP_RESIDENT",
     "FAIR_PLACEMENTS",
     "FAST_RESIDENT",
     "FSDP_PLACEMENT",
     "FairTrainableEMA",
     "LoRAComputeDtypeAudit",
+    "LOCAL_FAST_RESIDENT",
+    "LocalFastResidentEngine",
     "REFERENCE_RESIDENT",
     "ReferenceResidentEngine",
     "RESIDENT_PLACEMENTS",

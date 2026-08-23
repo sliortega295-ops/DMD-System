@@ -8,13 +8,14 @@ MODE="${3:?validate, correctness, timing, or diagnostic-timing}"
 EXPECTED_HEAD="${4:?expected DMD-System HEAD}"
 MASTER_ADDR="${5:?node0 routable address}"
 MASTER_PORT="${6:?world16 rendezvous port}"
-PLACEMENT="${7:?resident, resident-clean, resident-ddp, resident-fast, or world16-fsdp}"
+PLACEMENT="${7:?resident, resident-clean, resident-local-fast, resident-ddp, resident-fast, or world16-fsdp}"
 
 [[ "${NODE_RANK}" == 0 || "${NODE_RANK}" == 1 ]] || exit 2
 [[ "${MODE}" == validate || "${MODE}" == correctness || "${MODE}" == timing || \
    "${MODE}" == diagnostic-timing ]] || exit 2
 [[ "${PLACEMENT}" == resident || "${PLACEMENT}" == resident-ddp || \
-   "${PLACEMENT}" == resident-clean || "${PLACEMENT}" == resident-fast || \
+   "${PLACEMENT}" == resident-clean || "${PLACEMENT}" == resident-local-fast || \
+   "${PLACEMENT}" == resident-fast || \
    "${PLACEMENT}" == world16-fsdp ]] || exit 2
 [[ "${RUN_ID}" =~ ^[A-Za-z0-9._-]+$ ]] || exit 2
 [[ "${EXPECTED_HEAD}" =~ ^[0-9a-f]{40}$ ]] || exit 2
@@ -117,7 +118,7 @@ export PYTHONDONTWRITEBYTECODE=1
 export HF_HOME="${ASSETS}/hf_home_official_torch210"
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TOKENIZERS_PARALLELISM=false
 export OMP_NUM_THREADS=8 NCCL_ASYNC_ERROR_HANDLING=1
-if [[ "${PLACEMENT}" == resident-fast ]]; then
+if [[ "${PLACEMENT}" == resident-fast || "${PLACEMENT}" == resident-local-fast ]]; then
   export DISTILLSCHEDULE_WAN13B_EMA_IMPLEMENTATION=foreach
 else
   export DISTILLSCHEDULE_WAN13B_EMA_IMPLEMENTATION=reference
@@ -149,7 +150,8 @@ lora_compute_dtype=torch.float32
 gradient_mean=SUM_THEN_DIVIDE_WORLD_SIZE
 resident_ddp_bucket_mb=128
 ema_implementation=${DISTILLSCHEDULE_WAN13B_EMA_IMPLEMENTATION}
-optimizer_implementation=$( [[ "${PLACEMENT}" == resident-fast ]] && echo PYTORCH_FUSED || echo PYTORCH_DEFAULT )
+optimizer_implementation=$( [[ "${PLACEMENT}" == resident-fast || "${PLACEMENT}" == resident-local-fast ]] && echo PYTORCH_FUSED || echo PYTORCH_DEFAULT )
+gradient_clip_implementation=$( [[ "${PLACEMENT}" == resident-local-fast ]] && echo PYTORCH_FOREACH_TRUE || echo PYTORCH_DEFAULT )
 parameter_offload=false
 activation_offload=false
 optimizer_offload=false
