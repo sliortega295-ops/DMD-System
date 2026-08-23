@@ -37,6 +37,7 @@ def run_generator_trace_rollout_batch(
     record_output_sha256: bool = False,
     collect_diagnostics: bool = False,
     diagnostics_scope: Any | None = None,
+    synchronize_after_rollout: bool = True,
 ) -> tuple[tuple[torch.Tensor, ...], dict[str, Any]]:
     """Run multiple step-qualified critic rollouts in one physical B>1 trace.
 
@@ -149,7 +150,8 @@ def run_generator_trace_rollout_batch(
         operation_trace=loaded.operation_trace,
         trace_prefix=loaded.pool_entry.synthetic_trace_prefix,
     )
-    torch.cuda.synchronize(device)
+    if synchronize_after_rollout:
+        torch.cuda.synchronize(device)
     batch_size = len(loaded.members)
     if list(generated_x0.shape) != [batch_size, 16, 9, 48, 80]:
         raise AssertionError(

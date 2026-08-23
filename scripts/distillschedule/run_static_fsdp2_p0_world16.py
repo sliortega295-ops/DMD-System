@@ -142,6 +142,12 @@ def parser() -> argparse.ArgumentParser:
     )
     value.add_argument("--ema-device", choices=("cpu", "cuda"), default="cuda")
     value.add_argument("--profile-diagnostics", choices=("on", "off"), default="off")
+    value.add_argument(
+        "--timing-clean",
+        choices=("on", "off"),
+        default="off",
+        help="Opt-in No-GAN deferred finite checks and rollout-local sync removal",
+    )
     value.add_argument("--critic-only-step", type=int, choices=(10,))
     value.add_argument("--operation-source", action="store_true")
     value.add_argument("--operation-source-rank", type=int, default=0)
@@ -188,6 +194,7 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
+        "DISTILLSCHEDULE_TIMING_CLEAN=" + shlex.quote(args.timing_clean),
     ]
     if args.critic_only_step is not None:
         exports.append(f"DISTILLSCHEDULE_CRITIC_ONLY_STEP={args.critic_only_step}")
@@ -282,6 +289,7 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.generator_residual_storage)} "
         + "--critic-residual-storage "
         + f"{shlex.quote(args.critic_residual_storage)} "
+        + f"--timing-clean {shlex.quote(args.timing_clean)} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
         + (
             f"--critic-only-step {args.critic_only_step} "

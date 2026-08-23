@@ -51,6 +51,7 @@ from distillschedule.runtime.fsdp2_p0 import (
 )
 from distillschedule.runtime.fsdp2_static import FSDP2ShardEMA, build_fsdp2_engine, configure_fsdp2_checkpointing, contract_for_variant
 from distillschedule.runtime.nsys_range import StaticFSDP2Full5NsightRange
+from distillschedule.runtime.timing_clean import DeferredFiniteChecks
 from runtime.critic_pool_checkpoint import LogicalCheckpointPackage, load_logical_master_into_trainables
 from runtime.critic_pool_helios import (
     build_helios_pool_model,
@@ -207,6 +208,8 @@ def _run_nogan_generator_update_p0(
     diagnostics: StaticProfileDiagnostics,
     policy: StaticFSDP2P0Policy,
     score_pack_parity_check: bool,
+    timing_clean: bool,
+    finite_checks: DeferredFiniteChecks | None,
 ) -> dict[str, Any]:
     with diagnostics.scope("INPUT_H2D/generator_entry"):
         entry = trace.load_generator_entry(rank=rank, device=device)
@@ -225,6 +228,8 @@ def _run_nogan_generator_update_p0(
             device=device,
             detailed_profile=False,
             collect_diagnostics=collect_diagnostics,
+            synchronize_after_rollout=not timing_clean,
+            empty_cache_before_rollout=not timing_clean,
         )
     batch = prepare_dmd_score_batch(generated_x0=x0, entry=entry, device=device)
     fake = score_forward(
@@ -232,6 +237,8 @@ def _run_nogan_generator_update_p0(
         batch,
         condition=batch["encoder_hidden_states"],
         adapter_enabled=True,
+        defer_finite=finite_checks.record if finite_checks is not None else None,
+        finite_name="generator/fake_score",
     )
     parity: dict[str, Any] = {"enabled": False}
     if policy.pack_real_score_pair:
@@ -295,12 +302,16 @@ def _run_nogan_generator_update_p0(
             batch,
             condition=batch["encoder_hidden_states"],
             adapter_enabled=False,
+            defer_finite=finite_checks.record if finite_checks is not None else None,
+            finite_name="generator/real_score_cond",
         )
         real_uncond = score_forward(
             critic_engine.module,
             batch,
             condition=negative,
             adapter_enabled=False,
+            defer_finite=finite_checks.record if finite_checks is not None else None,
+            finite_name="generator/real_score_uncond",
         )
         physical_score_forwards = 3
     gradient, auxiliary = construct_dmd_gradient(
@@ -308,6 +319,8 @@ def _run_nogan_generator_update_p0(
         fake_flow_cond=fake,
         real_flow_cond=real_cond,
         real_flow_uncond=real_uncond,
+        defer_finite=finite_checks.record if finite_checks is not None else None,
+        finite_name="generator/dmd_gradient",
     )
     loss = detached_dmd_surrogate_loss(x0, gradient, gradient_mask)
     with diagnostics.scope("FSDP_PRE_BACKWARD_ALL_GATHER/generator"):
@@ -371,6 +384,7 @@ def _precompute_critic_rollouts(
     collect_diagnostics: bool,
     diagnostics: StaticProfileDiagnostics,
     rollout_parity_check: bool,
+    timing_clean: bool,
 ) -> tuple[dict[int, torch.Tensor], list[dict[str, Any]]]:
     outputs: dict[int, torch.Tensor] = {}
     records: list[dict[str, Any]] = []
@@ -394,6 +408,7 @@ def _precompute_critic_rollouts(
                 record_output_sha256=collect_diagnostics,
                 collect_diagnostics=collect_diagnostics,
                 diagnostics_scope=diagnostics.scope,
+                synchronize_after_rollout=not timing_clean,
             )
         parity_rows: list[dict[str, Any]] = []
         if rollout_parity_check and len(entries) > 1:
@@ -448,13 +463,19 @@ def _run_nogan_critic_precomputed(
     trace: StaticWorld16Trace,
     collect_diagnostics: bool,
     diagnostics: StaticProfileDiagnostics,
+    finite_checks: DeferredFiniteChecks | None,
 ) -> dict[str, Any]:
     with diagnostics.scope(f"INPUT_H2D/critic_entry_update/step{step}"):
         entry = trace.load_critic_entry(rank=rank, step=step, device=device)
     diagnostics.add_tensor_tree(f"critic_entry_update/step{step}", entry, direction="H2D")
     batch = prepare_student_batch(generated_x0=x0, loaded=entry, device=device)
     with diagnostics.scope("FSDP_PRE_FORWARD_ALL_GATHER/critic"):
-        _prediction, loss = student_forward_loss(critic_engine, batch)
+        _prediction, loss = student_forward_loss(
+            critic_engine,
+            batch,
+            defer_finite=finite_checks.record if finite_checks is not None else None,
+            finite_name=f"critic/step{step}/loss",
+        )
     with diagnostics.scope("FSDP_PRE_BACKWARD_ALL_GATHER/critic"):
         critic_engine.backward(loss)
     with diagnostics.scope("OPTIMIZER_STEP/critic"):
@@ -584,6 +605,14 @@ def _parser() -> Any:
         default=DEFAULT_TARGET_BYTES,
     )
     value.add_argument("--operation-source-max-events", type=int, default=256)
+    value.add_argument(
+        "--timing-clean",
+        action="store_true",
+        help=(
+            "No-GAN only: keep finite reductions on device, defer their host "
+            "readback until after the unchanged timer stop, and remove rollout-local syncs"
+        ),
+    )
     return value
 
 
@@ -591,6 +620,10 @@ def main() -> int:
     args = _parser().parse_args()
     if args.timing_mode and args.profile_mode:
         raise ValueError("profiled runs are diagnostic and cannot be formal timing runs")
+    if args.timing_clean and args.variant != "no-gan":
+        raise ValueError("--timing-clean is currently registered only for No-GAN")
+    if args.timing_clean and args.pack_real_score_pair:
+        raise ValueError("--timing-clean requires the frozen Score-packing-off baseline")
     diagnostic_single_critic = args.critic_only_step is not None
     if diagnostic_single_critic and (
         args.variant != "no-gan" or not args.profile_mode
@@ -636,6 +669,7 @@ def main() -> int:
             "rollout_backend": policy.rollout_backend,
             "generator_residual_storage": args.generator_residual_storage,
             "critic_residual_storage": args.critic_residual_storage,
+            "timing_clean": bool(args.timing_clean),
         },
     }
     try:
@@ -719,6 +753,7 @@ def main() -> int:
             collect_cpu_diagnostics=(not args.profile_mode) or args.profile_diagnostics,
         )
         collect_diagnostics = (not args.timing_mode) and args.profile_diagnostics
+        finite_checks = DeferredFiniteChecks() if args.timing_clean else None
         score_pack_parity_check = (not args.timing_mode) and (not args.profile_mode)
         result["build"] = build
         result["profile_diagnostics"] = bool(args.profile_diagnostics)
@@ -809,6 +844,8 @@ def main() -> int:
                 diagnostics=diagnostics,
                 policy=policy,
                 score_pack_parity_check=score_pack_parity_check,
+                timing_clean=bool(args.timing_clean),
+                finite_checks=finite_checks,
             )
 
         execution_steps = (
@@ -828,6 +865,7 @@ def main() -> int:
             rollout_parity_check=(
                 (not args.timing_mode) and (not args.profile_mode)
             ),
+            timing_clean=bool(args.timing_clean),
         )
         if args.profile_mode and diagnostic_single_critic:
             torch.cuda.synchronize(device)
@@ -872,6 +910,7 @@ def main() -> int:
                         trace=trace,
                         collect_diagnostics=collect_diagnostics,
                         diagnostics=diagnostics,
+                        finite_checks=finite_checks,
                     )
                 )
             if record_this_rank:
@@ -926,6 +965,11 @@ def main() -> int:
         torch.cuda.synchronize(device)
         result["timing_stop_unix_ns"] = time.time_ns()
         result["full5_seconds"] = time.perf_counter() - started_perf
+        result["deferred_finite_checks"] = (
+            finite_checks.finalize()
+            if finite_checks is not None
+            else {"status": "DISABLED", "count": 0, "failed": []}
+        )
 
         expected_g = int(logical.component("generator")["optimizer_step"]) + 1
         expected_c = int(logical.component("critic")["optimizer_step"]) + len(

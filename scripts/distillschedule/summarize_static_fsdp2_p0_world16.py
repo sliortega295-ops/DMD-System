@@ -46,6 +46,7 @@ def main() -> int:
         required=True,
     )
     parser.add_argument("--critic-only-step", type=int, choices=(10,))
+    parser.add_argument("--timing-clean", choices=("on", "off"), required=True)
     parser.add_argument(
         "--diagnostic-timing",
         action="store_true",
@@ -66,6 +67,7 @@ def main() -> int:
         "rollout_backend": "native-fsdp2-batch",
         "generator_residual_storage": args.generator_residual_storage,
         "critic_residual_storage": args.critic_residual_storage,
+        "timing_clean": args.timing_clean == "on",
     }
     if args.critic_only_step is not None:
         if args.variant != "no-gan" or args.mode != "profile":
@@ -113,6 +115,16 @@ def main() -> int:
             errors.append(f"rank{rank} missing hardened multi-metric parity receipt")
 
         if args.mode != "validate":
+            deferred = value.get("deferred_finite_checks", {})
+            expected_deferred = 9 if expected_policy["timing_clean"] else 0
+            if expected_policy["timing_clean"]:
+                if deferred.get("status") != "PASS" or deferred.get("count") != expected_deferred:
+                    errors.append(
+                        f"rank{rank} deferred finite receipt={deferred}, "
+                        f"expected PASS/{expected_deferred}"
+                    )
+            elif deferred.get("status") not in {None, "DISABLED"}:
+                errors.append(f"rank{rank} unexpected deferred finite receipt={deferred}")
             updates = value.get("updates", {})
             if updates != {
                 "generator": 1,

@@ -6,6 +6,7 @@ same Generator rollout and detached DMD boundary for every candidate.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from types import SimpleNamespace
 from typing import Any
 
@@ -43,6 +44,8 @@ def run_generator_update_trace_rollout(
     device: torch.device,
     detailed_profile: bool,
     collect_diagnostics: bool = True,
+    synchronize_after_rollout: bool = True,
+    empty_cache_before_rollout: bool = True,
 ) -> tuple[torch.Tensor, torch.Tensor | None, dict[str, Any]]:
     """Replay one grad-selected Generator-update sample without RNG sampling."""
 
@@ -107,7 +110,8 @@ def run_generator_update_trace_rollout(
     model = _module(engine)
     model.enable_adapters()
     model.train()
-    torch.cuda.empty_cache()
+    if empty_cache_before_rollout:
+        torch.cuda.empty_cache()
     torch.cuda.reset_peak_memory_stats(device)
     (
         generated_x0,
@@ -153,7 +157,8 @@ def run_generator_update_trace_rollout(
         operation_trace=entry.operation_trace,
         trace_prefix=f"step/{entry.logical_step}/generator",
     )
-    torch.cuda.synchronize(device)
+    if synchronize_after_rollout:
+        torch.cuda.synchronize(device)
     if list(generated_x0.shape) != [1, 16, 9, 48, 80]:
         raise AssertionError("Generator returned a reduced or malformed x0")
     if generated_x0.dtype != torch.bfloat16:
@@ -276,6 +281,8 @@ def score_forward(
     *,
     condition: torch.Tensor,
     adapter_enabled: bool,
+    defer_finite: Callable[[str, torch.Tensor], None] | None = None,
+    finite_name: str = "score_prediction",
 ) -> torch.Tensor:
     """One resident Student or Teacher Score call with explicit adapter mode."""
 
@@ -302,8 +309,11 @@ def score_forward(
     )[0]
     if prediction.requires_grad or prediction.grad_fn is not None:
         raise AssertionError("resident Score inference unexpectedly retained autograd")
-    if not torch.isfinite(prediction).all():
-        raise AssertionError("resident Score inference returned non-finite values")
+    if defer_finite is None:
+        if not torch.isfinite(prediction).all():
+            raise AssertionError("resident Score inference returned non-finite values")
+    else:
+        defer_finite(finite_name, prediction)
     return prediction
 
 
@@ -314,6 +324,8 @@ def construct_dmd_gradient(
     fake_flow_cond: torch.Tensor,
     real_flow_cond: torch.Tensor,
     real_flow_uncond: torch.Tensor,
+    defer_finite: Callable[[str, torch.Tensor], None] | None = None,
+    finite_name: str = "dmd_gradient",
 ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
     gradient, auxiliary = dmd_input_gradient(
         estimated_clean=batch["generated_x0"],
@@ -330,6 +342,9 @@ def construct_dmd_gradient(
     )
     if gradient.requires_grad or gradient.grad_fn is not None:
         raise AssertionError("detached DMD boundary retained Score autograd")
-    if not torch.isfinite(gradient).all():
-        raise AssertionError("DMD gradient contains non-finite values")
+    if defer_finite is None:
+        if not torch.isfinite(gradient).all():
+            raise AssertionError("DMD gradient contains non-finite values")
+    else:
+        defer_finite(finite_name, gradient)
     return gradient, auxiliary

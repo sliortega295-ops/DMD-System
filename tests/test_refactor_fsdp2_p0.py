@@ -18,6 +18,7 @@ from distillschedule.runtime.fsdp2_p0 import (
     validate_rollout_entries,
 )
 from distillschedule.runtime.p0_parity import tensor_parity_metrics
+from distillschedule.runtime.timing_clean import DeferredFiniteChecks
 
 
 class FakeTrace:
@@ -50,6 +51,31 @@ class FakeTrace:
         assert key == expected
         value = torch.full((1, 2), self._marker)
         return value.clone() if clone else value
+
+
+def test_deferred_finite_checks_preserve_validation() -> None:
+    checks = DeferredFiniteChecks()
+    checks.record("score", torch.tensor([1.0, -2.0]))
+    checks.record("loss", torch.tensor(0.5))
+    assert checks.finalize() == {"status": "PASS", "count": 2, "failed": []}
+
+    bad = DeferredFiniteChecks()
+    bad.record("critic/loss", torch.tensor(float("nan")))
+    with pytest.raises(AssertionError, match="critic/loss"):
+        bad.finalize()
+
+
+def test_timing_clean_is_opt_in_and_policy_bound() -> None:
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    worker = (root / "scripts/distillschedule/probe_static_fsdp2_p0_world16.py").read_text()
+    launcher = (root / "scripts/distillschedule/launch_static_fsdp2_p0_world16_node.sh").read_text()
+    summarizer = (root / "scripts/distillschedule/summarize_static_fsdp2_p0_world16.py").read_text()
+    assert '"--timing-clean"' in worker
+    assert 'DISTILLSCHEDULE_TIMING_CLEAN:-off' in launcher
+    assert "timing_clean_requires_score_packing_off" in launcher
+    assert '"timing_clean": args.timing_clean == "on"' in summarizer
 
 
 def fake_entry(step: int, marker: float):

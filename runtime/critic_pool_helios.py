@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
@@ -531,6 +532,9 @@ def prepare_student_batch(
 def student_forward_loss(
     engine: Any,
     batch: dict[str, torch.Tensor],
+    *,
+    defer_finite: Callable[[str, torch.Tensor], None] | None = None,
+    finite_name: str = "critic_loss",
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Run the GAN-disabled official Fake Score/Critic denoising objective."""
 
@@ -553,8 +557,13 @@ def student_forward_loss(
     loss = critic_denoising_loss(
         prediction, batch["critic_noise"], batch["generated_x0"]
     )
-    if not loss.requires_grad or loss.grad_fn is None or not torch.isfinite(loss):
+    if not loss.requires_grad or loss.grad_fn is None:
         raise AssertionError("Student Critic loss is not a finite autograd value")
+    if defer_finite is None:
+        if not torch.isfinite(loss):
+            raise AssertionError("Student Critic loss is not a finite autograd value")
+    else:
+        defer_finite(finite_name, loss)
     return prediction, loss
 
 

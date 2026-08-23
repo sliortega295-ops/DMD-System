@@ -57,6 +57,7 @@ LOCK_FILE="${DISTILLSCHEDULE_NODE_LOCK:-/tmp/distillschedule_gpu_node.lock}"
 CORRECTNESS_SUMMARY="${DISTILLSCHEDULE_FSDP2_CORRECTNESS_SUMMARY:-}"
 CORRECTNESS_SHA256="${DISTILLSCHEDULE_FSDP2_CORRECTNESS_SHA256:-}"
 PROFILE_DIAGNOSTICS="${DISTILLSCHEDULE_PROFILE_DIAGNOSTICS:-off}"
+TIMING_CLEAN="${DISTILLSCHEDULE_TIMING_CLEAN:-off}"
 EMA_DEVICE="${DISTILLSCHEDULE_EMA_DEVICE:-cuda}"
 DIAGNOSTIC_TIMING="${DISTILLSCHEDULE_DIAGNOSTIC_TIMING:-0}"
 CRITIC_ONLY_STEP="${DISTILLSCHEDULE_CRITIC_ONLY_STEP:-}"
@@ -70,6 +71,9 @@ OPERATION_SOURCE_MAX_EVENTS="${DISTILLSCHEDULE_OPERATION_SOURCE_MAX_EVENTS:-256}
 GENERATOR_RESIDUAL_STORAGE="${DISTILLSCHEDULE_GENERATOR_RESIDUAL_STORAGE:-cuda_out_of_place}"
 CRITIC_RESIDUAL_STORAGE="${DISTILLSCHEDULE_CRITIC_RESIDUAL_STORAGE:-cuda_out_of_place}"
 EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256:-776a26c3b2921d599821f0767910830471ff94a955f5013089f9f689ac20fee7}"
+[[ "${TIMING_CLEAN}" == on || "${TIMING_CLEAN}" == off ]] || { echo invalid_timing_clean >&2; exit 2; }
+[[ "${TIMING_CLEAN}" == off || "${VARIANT}" == no-gan ]] || { echo timing_clean_requires_nogan >&2; exit 2; }
+[[ "${TIMING_CLEAN}" == off || "${PACK_REAL_SCORE_PAIR}" == off ]] || { echo timing_clean_requires_score_packing_off >&2; exit 2; }
 
 [[ -z "${CRITIC_ONLY_STEP}" || "${CRITIC_ONLY_STEP}" == 10 ]] || exit 2
 [[ "${OPERATION_SOURCE}" == on || "${OPERATION_SOURCE}" == off ]] || exit 2
@@ -101,10 +105,10 @@ HELIOS_TRANSFORMER="${HELIOS}/helios/modules/transformer_helios.py"
 if [[ "${MODE}" == timing && "${DIAGNOSTIC_TIMING}" != 1 ]]; then
   [[ -f "${CORRECTNESS_SUMMARY}" ]] || { echo correctness_summary_missing >&2; exit 3; }
   [[ "$(sha256sum "${CORRECTNESS_SUMMARY}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || { echo correctness_hash_changed >&2; exit 3; }
-  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" <<'PY'
+  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" "${TIMING_CLEAN}" <<'PY'
 import json,pathlib,sys
 value=json.loads(pathlib.Path(sys.argv[1]).read_text())
-expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7]}
+expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7],"timing_clean":sys.argv[8]=="on"}
 if value.get("status") != "PASS" or not value.get("claimable_correctness"):
     raise SystemExit("P0 correctness gate is not PASS")
 if value.get("variant") != sys.argv[2]:
@@ -147,6 +151,7 @@ transition_count=0
 parameter_offload=false
 frozen_parameter_streaming=false
 profile_diagnostics=${PROFILE_DIAGNOSTICS}
+timing_clean=${TIMING_CLEAN}
 ema_device=${EMA_DEVICE}
 hardened_worker=true
 critic_input_reuse=retain_until_one_consume
@@ -188,6 +193,7 @@ fi
 [[ "${MODE}" == timing ]] && WORKER+=(--timing-mode)
 [[ "${MODE}" == profile ]] && WORKER+=(--profile-mode)
 [[ "${PROFILE_DIAGNOSTICS}" == off ]] && WORKER+=(--no-profile-diagnostics)
+[[ "${TIMING_CLEAN}" == on ]] && WORKER+=(--timing-clean)
 if [[ -n "${CRITIC_ONLY_STEP}" ]]; then
   WORKER+=(--critic-only-step "${CRITIC_ONLY_STEP}")
 fi
