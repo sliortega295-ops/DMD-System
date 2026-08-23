@@ -200,6 +200,12 @@ def test_fair_launcher_is_fail_closed_and_never_profiles_as_timing() -> None:
     assert "lora_compute_dtype=torch.float32" in source
     assert "diagnostic-timing" in source
     assert "diagnostic timing requires a PASS semantic correctness summary" in source
+    assert '"${MODE}" == profile' in source
+    assert "DISTILLSCHEDULE_STATIC_FSDP2_NSYS_EXACT_RANGE=1" in source
+    assert "capture_mode=process_wide_clipped_to_exact_nvtx" in source
+    assert "nsys_profile_validation_failed" in source
+    assert "claim_boundary=$(" in source
+    assert "DIAGNOSTIC_ONLY" in source
 
 
 def test_fair_comparator_keeps_default_p0_thresholds() -> None:
@@ -228,6 +234,8 @@ def test_fair_controller_and_pair_driver_are_receipt_bound() -> None:
     assert "launch_wan13b_fair_world16_node.sh" in controller
     assert "summarize_wan13b_fair_world16.py" in controller
     assert "DISTILLSCHEDULE_WAN13B_FAIR_CORRECTNESS_RECEIPT" in controller
+    assert '"profile"' in controller
+    assert "DISTILLSCHEDULE_NSYS_BIN" in controller
     assert "correctness receipt covers" in paired
     assert "warmup" in paired
     assert "geometric_mean_candidate_speedup" in paired

@@ -4,7 +4,7 @@ set -Eeuo pipefail
 
 NODE_RANK="${1:?node rank 0 or 1}"
 RUN_ID="${2:?immutable run id}"
-MODE="${3:?validate, correctness, timing, or diagnostic-timing}"
+MODE="${3:?validate, correctness, timing, diagnostic-timing, or profile}"
 EXPECTED_HEAD="${4:?expected DMD-System HEAD}"
 MASTER_ADDR="${5:?node0 routable address}"
 MASTER_PORT="${6:?world16 rendezvous port}"
@@ -12,7 +12,7 @@ PLACEMENT="${7:?resident, resident-clean, resident-local-fast, resident-flat256,
 
 [[ "${NODE_RANK}" == 0 || "${NODE_RANK}" == 1 ]] || exit 2
 [[ "${MODE}" == validate || "${MODE}" == correctness || "${MODE}" == timing || \
-   "${MODE}" == diagnostic-timing ]] || exit 2
+   "${MODE}" == diagnostic-timing || "${MODE}" == profile ]] || exit 2
 [[ "${PLACEMENT}" == resident || "${PLACEMENT}" == resident-ddp || \
    "${PLACEMENT}" == resident-clean || "${PLACEMENT}" == resident-local-fast || \
    "${PLACEMENT}" == resident-flat256 || "${PLACEMENT}" == resident-flat512 || \
@@ -58,7 +58,7 @@ HELIOS_TRANSFORMER="${HELIOS}/helios/modules/transformer_helios.py"
   exit 4
 }
 
-if [[ "${MODE}" == timing || "${MODE}" == diagnostic-timing ]]; then
+if [[ "${MODE}" == timing || "${MODE}" == diagnostic-timing || "${MODE}" == profile ]]; then
   [[ -f "${CORRECTNESS_RECEIPT}" ]] || { echo correctness_receipt_missing >&2; exit 3; }
   [[ "${CORRECTNESS_SHA256}" =~ ^[0-9a-f]{64}$ ]] || { echo correctness_hash_missing >&2; exit 3; }
   [[ "$(sha256sum "${CORRECTNESS_RECEIPT}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || {
@@ -169,7 +169,7 @@ activation_offload=false
 optimizer_offload=false
 parameter_streaming=false
 model_swap=false
-claim_boundary=$( [[ "${MODE}" == diagnostic-timing ]] && echo DIAGNOSTIC_ONLY || echo FORMAL_GATE_BOUND )
+claim_boundary=$( [[ "${MODE}" == diagnostic-timing || "${MODE}" == profile ]] && echo DIAGNOSTIC_ONLY || echo FORMAL_GATE_BOUND )
 EOF
 
 WORKER_ARGS=(
@@ -186,12 +186,85 @@ WORKER_ARGS=(
 )
 [[ "${MODE}" == validate ]] && WORKER_ARGS+=(--validate-only)
 [[ "${MODE}" == timing || "${MODE}" == diagnostic-timing ]] && WORKER_ARGS+=(--timing-mode)
+[[ "${MODE}" == profile ]] && WORKER_ARGS+=(--profile-mode)
 
 set +e
-"${TORCHRUN}" --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}" \
-  --master-addr="${MASTER_ADDR}" --master-port="${MASTER_PORT}" \
-  "${WORKER_ARGS[@]}" >"${NODE_LOG}/console.log" 2>&1
-status=$?
+if [[ "${MODE}" == profile ]]; then
+  NSYS_BIN="${DISTILLSCHEDULE_NSYS_BIN:-$(command -v nsys || true)}"
+  [[ -x "${NSYS_BIN}" ]] || { echo nsys_missing >&2; exit 3; }
+  NSYS_VERSION="$(${NSYS_BIN} --version | head -1)"
+  [[ "${NSYS_VERSION}" =~ 2024\.6\.2|2024\.[789]|202[5-9]\. ]] || {
+    echo "nsys_version_not_admissible=${NSYS_VERSION}" >&2
+    exit 3
+  }
+  PROFILE_ROOT="${RUN_ROOT}/nsight"
+  PROFILE_NODE_DIR="${PROFILE_ROOT}/node_${NODE_RANK}"
+  RECEIPT_DIR="${PROFILE_ROOT}/range_receipts"
+  REPORT_BASE="${PROFILE_NODE_DIR}/wan13b_${PLACEMENT}_node${NODE_RANK}"
+  mkdir -p "${PROFILE_NODE_DIR}" "${RECEIPT_DIR}"
+  {
+    echo "nsys_bin=${NSYS_BIN}"
+    echo "nsys_version=${NSYS_VERSION}"
+    echo "capture_mode=process_wide_clipped_to_exact_nvtx"
+  } >"${PROFILE_NODE_DIR}/profiler_identity.txt"
+  [[ ! -e "${REPORT_BASE}.nsys-rep" && ! -e "${REPORT_BASE}.sqlite" ]] || {
+    echo nsys_artifact_exists >&2
+    exit 82
+  }
+  export DISTILLSCHEDULE_STATIC_FSDP2_NSYS_EXACT_RANGE=1
+  export DISTILLSCHEDULE_STATIC_FSDP2_NSYS_RECEIPT_DIR="${RECEIPT_DIR}"
+  export DISTILLSCHEDULE_STATIC_FSDP2_NSYS_CONTROL_API=0
+  "${NSYS_BIN}" profile \
+    --trace=cuda,nvtx \
+    --trace-fork-before-exec=true \
+    --wait=primary \
+    --sample=none \
+    --cpuctxsw=none \
+    --cuda-flush-interval=1000 \
+    --force-overwrite=true \
+    --output="${REPORT_BASE}" \
+    "${TORCHRUN}" --no-python --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}" \
+      --master-addr="${MASTER_ADDR}" --master-port="${MASTER_PORT}" \
+      "${PYTHON}" "${WORKER_ARGS[@]}" >"${NODE_LOG}/console.log" 2>&1
+  status=$?
+  if [[ ${status} -eq 0 ]]; then
+    [[ -s "${REPORT_BASE}.nsys-rep" ]] || { echo missing_nsys_report >&2; status=87; }
+  fi
+  if [[ ${status} -eq 0 ]]; then
+    "${NSYS_BIN}" export --type sqlite --force-overwrite true \
+      --output "${REPORT_BASE}.sqlite" "${REPORT_BASE}.nsys-rep" \
+      >"${PROFILE_NODE_DIR}/nsys_export.log" 2>&1
+    status=$?
+  fi
+  if [[ ${status} -eq 0 ]]; then
+    [[ -s "${REPORT_BASE}.sqlite" ]] || { echo missing_nsys_sqlite >&2; status=88; }
+  fi
+  if [[ ${status} -eq 0 ]]; then
+    "${NSYS_BIN}" stats --report nvtx_sum,cuda_gpu_kern_sum,cuda_api_sum --format csv \
+      "${REPORT_BASE}.sqlite" >"${PROFILE_NODE_DIR}/nsys_stats_validation.log" 2>&1
+    status=$?
+  fi
+  if [[ ${status} -eq 0 ]] && grep -Eq \
+      "ProcessEventsError|Unknown runtime API|Cannot find bucket|Cannot find string|Errors occurred while processing raw events|does not contain (NV Tools Extension|CUDA kernel|CUDA API)" \
+      "${PROFILE_NODE_DIR}/nsys_export.log" "${PROFILE_NODE_DIR}/nsys_stats_validation.log"; then
+    echo nsys_profile_validation_failed >&2
+    status=89
+  fi
+  if [[ ${status} -eq 0 ]]; then
+    for _ in $(seq 1 300); do
+      count="$(find "${RECEIPT_DIR}" -maxdepth 1 -type f -name 'rank_*.json' | wc -l)"
+      [[ "${count}" == 16 ]] && break
+      sleep 1
+    done
+    count="$(find "${RECEIPT_DIR}" -maxdepth 1 -type f -name 'rank_*.json' | wc -l)"
+    [[ "${count}" == 16 ]] || { echo "nsys_range_receipts=${count},expected=16" >&2; status=90; }
+  fi
+else
+  "${TORCHRUN}" --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}" \
+    --master-addr="${MASTER_ADDR}" --master-port="${MASTER_PORT}" \
+    "${WORKER_ARGS[@]}" >"${NODE_LOG}/console.log" 2>&1
+  status=$?
+fi
 set -e
 
 cp "${CGROUP_EVENTS}" "${NODE_LOG}/cgroup_memory_events_after.txt" 2>/dev/null || true

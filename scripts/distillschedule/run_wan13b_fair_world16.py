@@ -98,7 +98,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--run-id", required=True)
     value.add_argument(
         "--mode",
-        choices=("validate", "correctness", "timing", "diagnostic-timing"),
+        choices=("validate", "correctness", "timing", "diagnostic-timing", "profile"),
         required=True,
     )
     value.add_argument("--placement", choices=FAIR_PLACEMENTS, required=True)
@@ -130,6 +130,11 @@ def parser() -> argparse.ArgumentParser:
     )
     value.add_argument("--correctness-receipt", type=Path)
     value.add_argument("--correctness-sha256")
+    value.add_argument(
+        "--nsys-bin",
+        type=Path,
+        default=Path("/home/lyy/Helios/tools/nsight_systems/2024.6.2.225/bin/nsys"),
+    )
     value.add_argument(
         "--local-evidence-root",
         type=Path,
@@ -168,7 +173,7 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256="
         + shlex.quote(args.expected_helios_transformer_sha256),
     ]
-    if args.mode in {"timing", "diagnostic-timing"}:
+    if args.mode in {"timing", "diagnostic-timing", "profile"}:
         if args.correctness_receipt is None or not args.correctness_sha256:
             raise ValueError("low-overhead execution requires a pinned correctness receipt")
         exports.extend(
@@ -179,6 +184,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
                 + shlex.quote(args.correctness_sha256),
             )
         )
+    if args.mode == "profile":
+        exports.append("DISTILLSCHEDULE_NSYS_BIN=" + shlex.quote(str(args.nsys_bin)))
     launch = " ".join(
         shlex.quote(str(value))
         for value in (
