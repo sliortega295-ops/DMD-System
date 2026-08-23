@@ -132,6 +132,7 @@ def test_prefetch_switch_is_bound_through_launcher_and_receipts() -> None:
     ).read_text()
     assert 'DISTILLSCHEDULE_FORWARD_PREFETCH_MODE:-implicit' in launcher
     assert "--forward-prefetch-mode" in launcher
+    assert '"forward_prefetch_mode":sys.argv[8]' in launcher
     assert "DISTILLSCHEDULE_FORWARD_PREFETCH_MODE" in controller
     assert "--forward-prefetch-mode" in worker
     assert "explicit_forward_prefetch_edges" in summarizer

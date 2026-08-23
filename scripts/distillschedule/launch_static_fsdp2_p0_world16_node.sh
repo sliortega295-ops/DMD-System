@@ -103,10 +103,10 @@ HELIOS_TRANSFORMER="${HELIOS}/helios/modules/transformer_helios.py"
 if [[ "${MODE}" == timing && "${DIAGNOSTIC_TIMING}" != 1 ]]; then
   [[ -f "${CORRECTNESS_SUMMARY}" ]] || { echo correctness_summary_missing >&2; exit 3; }
   [[ "$(sha256sum "${CORRECTNESS_SUMMARY}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || { echo correctness_hash_changed >&2; exit 3; }
-  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" <<'PY'
+  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" "${FORWARD_PREFETCH_MODE}" <<'PY'
 import json,pathlib,sys
 value=json.loads(pathlib.Path(sys.argv[1]).read_text())
-expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7]}
+expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7],"forward_prefetch_mode":sys.argv[8]}
 if value.get("status") != "PASS" or not value.get("claimable_correctness"):
     raise SystemExit("P0 correctness gate is not PASS")
 if value.get("variant") != sys.argv[2]:
