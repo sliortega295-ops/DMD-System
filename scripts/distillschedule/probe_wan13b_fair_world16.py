@@ -43,6 +43,8 @@ from distillschedule.runtime.wan13b_fair import (
     CLEAN_RESIDENT,
     FAIR_PLACEMENTS,
     FSDP_PLACEMENT,
+    FLAT_256_RESIDENT,
+    FLAT_512_RESIDENT,
     LOCAL_FAST_RESIDENT,
     FairTrainableEMA,
     LoRAComputeDtypeAudit,
@@ -110,13 +112,27 @@ def _build_model_fair(
         placement = {
             "backend": (
                 "FULL_REPLICA_GPU_RESIDENT_DDP_GRAD_SYNC"
-                if args.placement not in {"resident", CLEAN_RESIDENT, LOCAL_FAST_RESIDENT}
+                if args.placement
+                not in {
+                    "resident",
+                    CLEAN_RESIDENT,
+                    LOCAL_FAST_RESIDENT,
+                    FLAT_256_RESIDENT,
+                    FLAT_512_RESIDENT,
+                }
                 else "FULL_REPLICA_GPU_RESIDENT_MANUAL_GRAD_SYNC"
             ),
             "world_size": base.WORLD_SIZE,
             "block_count": base.WAN13B_BLOCK_COUNT,
             "wrap_policy": "DDP_TRAINABLE_REDUCER_ONLY"
-            if args.placement not in {"resident", CLEAN_RESIDENT, LOCAL_FAST_RESIDENT}
+            if args.placement
+            not in {
+                "resident",
+                CLEAN_RESIDENT,
+                LOCAL_FAST_RESIDENT,
+                FLAT_256_RESIDENT,
+                FLAT_512_RESIDENT,
+            }
             else "NONE",
             "reshard_after_forward": False,
             "param_compute_dtype_policy": "PRESERVE_ORIGINAL_PER_PARAMETER",
@@ -132,7 +148,12 @@ def _build_model_fair(
         raise ValueError(args.placement)
 
     clean_model_state = None
-    if args.placement in {CLEAN_RESIDENT, LOCAL_FAST_RESIDENT}:
+    if args.placement in {
+        CLEAN_RESIDENT,
+        LOCAL_FAST_RESIDENT,
+        FLAT_256_RESIDENT,
+        FLAT_512_RESIDENT,
+    }:
         clean_model_state = install_resident_clean_model_state(model)
 
     audit_records: list[dict[str, Any]] | str = "OMITTED_IN_LOW_OVERHEAD_MODE"

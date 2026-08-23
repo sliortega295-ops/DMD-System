@@ -32,6 +32,8 @@
     "resident_optimization_order": [
       "resident vs resident-clean",
       "resident-clean vs resident-local-fast",
+      "resident-local-fast vs resident-flat256",
+      "resident-flat256 vs resident-flat512",
       "resident vs resident-ddp",
       "resident vs resident-fast",
       "resident vs world16-fsdp"
@@ -103,6 +105,28 @@
         "reuse_critic_trace_entries": true,
         "reuse_fixed_schedule_tensors": true
       }
+    },
+    "resident-flat256": {
+      "bucket_mb": 256,
+      "ema_implementation": "foreach_lerp",
+      "ema_state": "FULL_REPLICA_FP32",
+      "gradient_clip": "FOREACH_TRUE",
+      "gradient_sync": "PERSISTENT_FLAT_ALL_REDUCE_AFTER_BACKWARD",
+      "optimizer_implementation": "PYTORCH_FUSED_ADAMW",
+      "optimizer_state": "FULL_REPLICA_FP32",
+      "parameters": "FULL_REPLICA_GPU_RESIDENT",
+      "persistent_grad_views": true
+    },
+    "resident-flat512": {
+      "bucket_mb": 512,
+      "ema_implementation": "foreach_lerp",
+      "ema_state": "FULL_REPLICA_FP32",
+      "gradient_clip": "FOREACH_TRUE",
+      "gradient_sync": "PERSISTENT_FLAT_ALL_REDUCE_AFTER_BACKWARD",
+      "optimizer_implementation": "PYTORCH_FUSED_ADAMW",
+      "optimizer_state": "FULL_REPLICA_FP32",
+      "parameters": "FULL_REPLICA_GPU_RESIDENT",
+      "persistent_grad_views": true
     },
     "resident-ddp": {
       "ddp_bucket_cap_mb": 128,

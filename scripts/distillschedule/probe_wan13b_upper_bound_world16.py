@@ -351,7 +351,12 @@ def main() -> int:
         if args.timing_mode and args.profile_mode:
             raise ValueError("timing mode and profile mode are mutually exclusive")
         low_overhead = bool(args.timing_mode or args.profile_mode)
-        clean_runtime = args.placement in {"resident-clean", "resident-local-fast"}
+        clean_runtime = args.placement in {
+            "resident-clean",
+            "resident-local-fast",
+            "resident-flat256",
+            "resident-flat512",
+        }
         runtime_cache: dict[str, Any] | None = {} if clean_runtime else None
         critic_entries: dict[int, Any] | None = {} if clean_runtime else None
         deferred_finite_checks: list[torch.Tensor] | None = (

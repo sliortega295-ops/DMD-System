@@ -27,6 +27,8 @@ from .wan13b_upper_bound import (
 REFERENCE_RESIDENT = "resident"
 CLEAN_RESIDENT = "resident-clean"
 LOCAL_FAST_RESIDENT = "resident-local-fast"
+FLAT_256_RESIDENT = "resident-flat256"
+FLAT_512_RESIDENT = "resident-flat512"
 DDP_RESIDENT = "resident-ddp"
 FAST_RESIDENT = "resident-fast"
 FSDP_PLACEMENT = "world16-fsdp"
@@ -34,6 +36,8 @@ RESIDENT_PLACEMENTS = (
     REFERENCE_RESIDENT,
     CLEAN_RESIDENT,
     LOCAL_FAST_RESIDENT,
+    FLAT_256_RESIDENT,
+    FLAT_512_RESIDENT,
     DDP_RESIDENT,
     FAST_RESIDENT,
 )
@@ -265,6 +269,115 @@ class LocalFastResidentEngine(ReferenceResidentEngine):
         self._step_calls += 1
 
 
+class PersistentFlatResidentEngine(LocalFastResidentEngine):
+    """Post-backward resident sync using stable flat gradient buffers."""
+
+    def __init__(self, *args: Any, flat_bucket_bytes: int, **kwargs: Any) -> None:
+        if flat_bucket_bytes <= 0:
+            raise ValueError("flat_bucket_bytes must be positive")
+        super().__init__(*args, bucket_bytes=flat_bucket_bytes, **kwargs)
+        torch = _torch()
+        self._flat_bucket_bytes = int(flat_bucket_bytes)
+        named = [
+            (name, parameter)
+            for name, parameter in self.module.named_parameters()
+            if parameter.requires_grad
+        ]
+        if not named:
+            raise RuntimeError("persistent flat reducer has no trainables")
+        grouped = self._buckets(
+            [parameter for _name, parameter in named],
+            self._flat_bucket_bytes,
+        )
+        self._flat_buckets: list[Any] = []
+        self._flat_views: list[tuple[str, Any, Any]] = []
+        name_by_id = {id(parameter): name for name, parameter in named}
+        for parameters in grouped:
+            dtypes = {parameter.dtype for parameter in parameters}
+            devices = {parameter.device for parameter in parameters}
+            if len(dtypes) != 1 or len(devices) != 1:
+                raise AssertionError("persistent flat bucket mixed dtype/device")
+            flat = torch.zeros(
+                sum(int(parameter.numel()) for parameter in parameters),
+                dtype=parameters[0].dtype,
+                device=parameters[0].device,
+            )
+            self._flat_buckets.append(flat)
+            offset = 0
+            for parameter in parameters:
+                count = int(parameter.numel())
+                view = flat.narrow(0, offset, count).view_as(parameter)
+                self._flat_views.append((name_by_id[id(parameter)], parameter, view))
+                offset += count
+        self._install_zero_grad_views()
+
+    def _install_zero_grad_views(self) -> None:
+        for flat in self._flat_buckets:
+            flat.zero_()
+        for _name, parameter, view in self._flat_views:
+            parameter.grad = view
+
+    def _synchronize_trainable_gradients(self) -> dict[str, Any]:
+        torch = _torch()
+        dist = torch.distributed
+        if not dist.is_initialized() or dist.get_world_size() != WORLD_SIZE:
+            raise RuntimeError("persistent flat reducer requires world16")
+        for name, parameter, view in self._flat_views:
+            gradient = parameter.grad
+            if gradient is None or gradient.data_ptr() != view.data_ptr():
+                raise AssertionError(f"persistent gradient view changed: {name}")
+        names = tuple(name for name, _parameter, _view in self._flat_views)
+        if self._audit_gradients:
+            inventories: list[Any] = [None] * WORLD_SIZE
+            dist.all_gather_object(inventories, names)
+            if any(tuple(value) != names for value in inventories):
+                raise AssertionError("persistent gradient inventory differs by rank")
+        for flat in self._flat_buckets:
+            dist.all_reduce(flat, op=dist.ReduceOp.SUM)
+            flat.mul_(1.0 / WORLD_SIZE)
+        receipt = {
+            "backend": "PERSISTENT_FLAT_ALL_REDUCE",
+            "world_size": WORLD_SIZE,
+            "reduction": "SUM_THEN_DIVIDE_WORLD_SIZE",
+            "overlap_with_backward": False,
+            "trainable_gradient_tensors": len(self._flat_views),
+            "gradient_bytes": sum(
+                int(flat.numel() * flat.element_size()) for flat in self._flat_buckets
+            ),
+            "coalesced_bucket_count": len(self._flat_buckets),
+            "bucket_bytes_limit": self._flat_bucket_bytes,
+            "bucket_bytes_observed": [
+                int(flat.numel() * flat.element_size()) for flat in self._flat_buckets
+            ],
+            "persistent": True,
+            "scale_kernels_per_update": len(self._flat_buckets),
+        }
+        if self._audit_gradients:
+            self.gradient_sync_receipts.append(receipt)
+        return receipt
+
+    def step(self) -> None:
+        torch = _torch()
+        receipt = self._synchronize_trainable_gradients()
+        trainables = [parameter for _name, parameter, _view in self._flat_views]
+        clip_norm = torch.nn.utils.clip_grad_norm_(
+            trainables,
+            self._gradient_clip,
+            foreach=True,
+        )
+        if self._audit_gradients:
+            receipt["gradient_clip_input_norm"] = float(clip_norm)
+        self.optimizer.step()
+        self.lr_scheduler.step()
+        self.global_steps += 1
+        self.global_samples += GLOBAL_BATCH
+        self._step_calls += 1
+        self._install_zero_grad_views()
+
+    def zero_grad(self) -> None:
+        self._install_zero_grad_views()
+
+
 class ResidentDDPEngine:
     """Full GPU residency with DDP used only for trainable gradients."""
 
@@ -446,7 +559,16 @@ def build_fair_engine(
     trainables = list(_named_trainables(module).values())
     if not trainables:
         raise ValueError("Wan1.3B resident engine has no trainables")
-    fused = placement in {LOCAL_FAST_RESIDENT, FAST_RESIDENT}
+    flat_bucket_mb = {
+        FLAT_256_RESIDENT: 256,
+        FLAT_512_RESIDENT: 512,
+    }.get(placement)
+    fused = placement in {
+        LOCAL_FAST_RESIDENT,
+        FLAT_256_RESIDENT,
+        FLAT_512_RESIDENT,
+        FAST_RESIDENT,
+    }
     optimizer_kwargs: dict[str, Any] = {}
     if fused:
         optimizer_kwargs["fused"] = True
@@ -465,20 +587,37 @@ def build_fair_engine(
         physical_step=physical_step,
         fused=fused,
     )
-    if placement in {REFERENCE_RESIDENT, CLEAN_RESIDENT, LOCAL_FAST_RESIDENT}:
-        engine_type = (
-            LocalFastResidentEngine
-            if placement == LOCAL_FAST_RESIDENT
-            else ReferenceResidentEngine
-        )
-        engine: Any = engine_type(
-            module,
-            optimizer,
-            scheduler,
-            physical_step=physical_step,
-            audit_gradients=audit_gradients,
-        )
-        gradient_sync = "WORLD16_MANUAL_SUM_THEN_DIVIDE_ALL_REDUCE"
+    if placement in {
+        REFERENCE_RESIDENT,
+        CLEAN_RESIDENT,
+        LOCAL_FAST_RESIDENT,
+        FLAT_256_RESIDENT,
+        FLAT_512_RESIDENT,
+    }:
+        if flat_bucket_mb is not None:
+            engine: Any = PersistentFlatResidentEngine(
+                module,
+                optimizer,
+                scheduler,
+                physical_step=physical_step,
+                flat_bucket_bytes=flat_bucket_mb * 1024 * 1024,
+                audit_gradients=audit_gradients,
+            )
+            gradient_sync = "WORLD16_PERSISTENT_FLAT_SUM_THEN_DIVIDE_ALL_REDUCE"
+        else:
+            engine_type = (
+                LocalFastResidentEngine
+                if placement == LOCAL_FAST_RESIDENT
+                else ReferenceResidentEngine
+            )
+            engine = engine_type(
+                module,
+                optimizer,
+                scheduler,
+                physical_step=physical_step,
+                audit_gradients=audit_gradients,
+            )
+            gradient_sync = "WORLD16_MANUAL_SUM_THEN_DIVIDE_ALL_REDUCE"
     else:
         engine = ResidentDDPEngine(
             module,
@@ -499,9 +638,11 @@ def build_fair_engine(
         ),
         "gradient_clip_implementation": (
             "PYTORCH_FOREACH_TRUE"
-            if placement == LOCAL_FAST_RESIDENT
+            if placement
+            in {LOCAL_FAST_RESIDENT, FLAT_256_RESIDENT, FLAT_512_RESIDENT}
             else "PYTORCH_DEFAULT"
         ),
+        "persistent_flat_bucket_mb": flat_bucket_mb,
         "optimizer_state_representation": "FULL_REPLICA_FP32",
         "optimizer_state_device": "cuda",
         "optimizer_state_offload": False,
@@ -624,6 +765,8 @@ def fair_model_trainable_metrics(module: Any, *, placement: str) -> dict[str, An
 __all__ = [
     "CLEAN_RESIDENT",
     "DDP_RESIDENT",
+    "FLAT_256_RESIDENT",
+    "FLAT_512_RESIDENT",
     "FAIR_PLACEMENTS",
     "FAST_RESIDENT",
     "FSDP_PLACEMENT",
@@ -632,6 +775,7 @@ __all__ = [
     "LOCAL_FAST_RESIDENT",
     "LocalFastResidentEngine",
     "REFERENCE_RESIDENT",
+    "PersistentFlatResidentEngine",
     "ReferenceResidentEngine",
     "RESIDENT_PLACEMENTS",
     "ResidentDDPEngine",

@@ -22,6 +22,8 @@ def test_fair_contract_has_reference_ddp_fast_and_fsdp_endpoints() -> None:
         "resident",
         "resident-clean",
         "resident-local-fast",
+        "resident-flat256",
+        "resident-flat512",
         "resident-ddp",
         "resident-fast",
         "world16-fsdp",
@@ -81,9 +83,21 @@ def test_resident_local_fast_keeps_manual_sync_and_uses_local_fast_kernels() -> 
     assert '"PYTORCH_FOREACH_TRUE"' in builder
 
 
+def test_persistent_flat_reducer_uses_stable_grad_views_and_one_scale_per_bucket() -> None:
+    source = inspect.getsource(wan.PersistentFlatResidentEngine)
+    assert "parameter.grad = view" in source
+    assert "gradient.data_ptr() != view.data_ptr()" in source
+    assert "dist.all_reduce(flat" in source
+    assert "flat.mul_(1.0 / WORLD_SIZE)" in source
+    assert '"persistent": True' in source
+
+
 def test_resident_clean_keeps_reference_engine_and_makes_state_requests_idempotent() -> None:
     builder = inspect.getsource(wan.build_fair_engine)
-    assert "{REFERENCE_RESIDENT, CLEAN_RESIDENT, LOCAL_FAST_RESIDENT}" in builder
+    assert "REFERENCE_RESIDENT" in builder
+    assert "CLEAN_RESIDENT" in builder
+    assert "LOCAL_FAST_RESIDENT" in builder
+    assert "ReferenceResidentEngine" in builder
 
     class Model:
         def __init__(self) -> None:
@@ -139,7 +153,8 @@ def test_fair_worker_reuses_frozen_workload_and_audits_runtime_dtypes() -> None:
     base_worker = (
         ROOT / "scripts/distillschedule/probe_wan13b_upper_bound_world16.py"
     ).read_text()
-    assert 'clean_runtime = args.placement in {"resident-clean", "resident-local-fast"}' in base_worker
+    assert '"resident-flat256"' in base_worker
+    assert '"resident-flat512"' in base_worker
     assert "entry_outputs=critic_entries" in base_worker
     assert "deferred_finite_checks=deferred_finite_checks" in base_worker
     assert "resident-clean deferred cycle finite gate failed" in base_worker
@@ -152,6 +167,8 @@ def test_fair_launcher_is_fail_closed_and_never_profiles_as_timing() -> None:
     assert "resident-ddp" in source
     assert "resident-clean" in source
     assert "resident-local-fast" in source
+    assert "resident-flat256" in source
+    assert "resident-flat512" in source
     assert "resident-fast" in source
     assert "world16-fsdp" in source
     assert "DISTILLSCHEDULE_WAN13B_FAIR_CORRECTNESS_RECEIPT" in source

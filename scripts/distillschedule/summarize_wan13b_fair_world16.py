@@ -12,6 +12,8 @@ from distillschedule.runtime.wan13b_fair import (
     CLEAN_RESIDENT,
     FAIR_PLACEMENTS,
     FSDP_PLACEMENT,
+    FLAT_256_RESIDENT,
+    FLAT_512_RESIDENT,
     LOCAL_FAST_RESIDENT,
     RESIDENT_PLACEMENTS,
 )
@@ -154,9 +156,14 @@ def main() -> int:
                 ):
                     errors.append(f"rank{rank}: resident sync receipt count changed")
                 expected_backend = (
-                    "MANUAL_ALL_REDUCE_COALESCED"
-                    if args.placement in {"resident", CLEAN_RESIDENT, LOCAL_FAST_RESIDENT}
-                    else "DDP_GRADIENT_BUCKET_VIEW"
+                    "PERSISTENT_FLAT_ALL_REDUCE"
+                    if args.placement in {FLAT_256_RESIDENT, FLAT_512_RESIDENT}
+                    else (
+                        "MANUAL_ALL_REDUCE_COALESCED"
+                        if args.placement
+                        in {"resident", CLEAN_RESIDENT, LOCAL_FAST_RESIDENT}
+                        else "DDP_GRADIENT_BUCKET_VIEW"
+                    )
                 )
                 for receipt in sync.get("generator", []) + sync.get("critic", []):
                     if receipt.get("world_size") != WORLD_SIZE:
@@ -179,7 +186,13 @@ def main() -> int:
                 engine = component_build.get("engine", {})
                 expected_optimizer_impl = (
                     "PYTORCH_FUSED"
-                    if args.placement in {"resident-fast", LOCAL_FAST_RESIDENT}
+                    if args.placement
+                    in {
+                        "resident-fast",
+                        LOCAL_FAST_RESIDENT,
+                        FLAT_256_RESIDENT,
+                        FLAT_512_RESIDENT,
+                    }
                     else "PYTORCH_DEFAULT"
                 )
                 if engine.get("optimizer_implementation") != expected_optimizer_impl:
@@ -189,7 +202,8 @@ def main() -> int:
                         f"expected={expected_optimizer_impl}"
                     )
                 if (
-                    args.placement == LOCAL_FAST_RESIDENT
+                    args.placement
+                    in {LOCAL_FAST_RESIDENT, FLAT_256_RESIDENT, FLAT_512_RESIDENT}
                     and engine.get("gradient_clip_implementation")
                     != "PYTORCH_FOREACH_TRUE"
                 ):
@@ -223,7 +237,12 @@ def main() -> int:
                 errors.append(f"rank{rank}: common residency contract changed")
 
             clean = row.get("resident_clean_runtime", {})
-            if args.placement in {CLEAN_RESIDENT, LOCAL_FAST_RESIDENT}:
+            if args.placement in {
+                CLEAN_RESIDENT,
+                LOCAL_FAST_RESIDENT,
+                FLAT_256_RESIDENT,
+                FLAT_512_RESIDENT,
+            }:
                 if clean.get("enabled") is not True:
                     errors.append(f"rank{rank}: resident-clean runtime not enabled")
                 if clean.get("internal_cuda_housekeeping_skipped") is not True:
