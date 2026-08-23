@@ -897,6 +897,7 @@ def build_fair_engine(
         engine_type = (
             RolloutFusedLoRAZero2Engine
             if placement == ROLLOUT_FUSED_RESIDENT
+            and hasattr(module, "_distillschedule_rollout_shadow")
             else LoRAZero2ResidentEngine
         )
         engine = engine_type(
