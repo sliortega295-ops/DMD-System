@@ -618,12 +618,18 @@ class RolloutFusedLoRAZero2Engine(LoRAZero2ResidentEngine):
         self.shadow_refresh_count = 0
         self.shadow_routed_call_count = 0
         super().__init__(module, **kwargs)
+        original_forward = module.forward
+
+        def routed_forward(*args: Any, **kwargs: Any) -> Any:
+            torch = _torch()
+            if self._shadow_ready and not torch.is_grad_enabled():
+                self.shadow_routed_call_count += 1
+                return self._rollout_shadow(*args, **kwargs)
+            return original_forward(*args, **kwargs)
+
+        module.forward = routed_forward
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        torch = _torch()
-        if self._shadow_ready and not torch.is_grad_enabled():
-            self.shadow_routed_call_count += 1
-            return self._rollout_shadow(*args, **kwargs)
         return self.module(*args, **kwargs)
 
     def _refresh_rollout_shadow(self) -> None:
