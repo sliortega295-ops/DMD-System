@@ -363,6 +363,7 @@ def main() -> int:
         low_overhead = bool(args.timing_mode or args.profile_mode)
         clean_runtime = args.placement in {
             "resident-clean",
+            "resident-async128",
             "resident-local-fast",
             "resident-flat256",
             "resident-flat512",

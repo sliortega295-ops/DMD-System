@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from distillschedule.runtime.wan13b_fair import (
+    ASYNC_128_RESIDENT,
     CLEAN_RESIDENT,
     FAIR_PLACEMENTS,
     FSDP_PLACEMENT,
@@ -162,13 +163,17 @@ def main() -> int:
                     "LORA_ZERO2_REDUCE_SCATTER_ALL_GATHER"
                     if args.placement in {LORA_ZERO2_RESIDENT, ROLLOUT_FUSED_RESIDENT}
                     else (
-                        "PERSISTENT_FLAT_ALL_REDUCE"
-                        if args.placement in {FLAT_256_RESIDENT, FLAT_512_RESIDENT}
+                        "GRAD_READY_ASYNC_FLAT_ALL_REDUCE"
+                        if args.placement == ASYNC_128_RESIDENT
                         else (
-                            "MANUAL_ALL_REDUCE_COALESCED"
-                            if args.placement
-                            in {"resident", CLEAN_RESIDENT, LOCAL_FAST_RESIDENT}
-                            else "DDP_GRADIENT_BUCKET_VIEW"
+                            "PERSISTENT_FLAT_ALL_REDUCE"
+                            if args.placement in {FLAT_256_RESIDENT, FLAT_512_RESIDENT}
+                            else (
+                                "MANUAL_ALL_REDUCE_COALESCED"
+                                if args.placement
+                                in {"resident", CLEAN_RESIDENT, LOCAL_FAST_RESIDENT}
+                                else "DDP_GRADIENT_BUCKET_VIEW"
+                            )
                         )
                     )
                 )
@@ -179,6 +184,18 @@ def main() -> int:
                         errors.append(f"rank{rank}: resident reduction changed")
                     if receipt.get("backend") != expected_backend:
                         errors.append(f"rank{rank}: resident sync backend changed")
+                    if args.placement == ASYNC_128_RESIDENT:
+                        if receipt.get("overlap_with_backward") is not True:
+                            errors.append(f"rank{rank}: async reducer overlap disabled")
+                        if receipt.get("hook_count_min") != 1 or receipt.get(
+                            "hook_count_max"
+                        ) != 1:
+                            errors.append(f"rank{rank}: async reducer hook census changed")
+                        expected_order = list(
+                            range(int(receipt.get("coalesced_bucket_count", -1)))
+                        )
+                        if receipt.get("bucket_issue_order") != expected_order:
+                            errors.append(f"rank{rank}: async reducer issue order changed")
 
             _validate_dtype_contract(
                 row,
@@ -277,6 +294,7 @@ def main() -> int:
             clean = row.get("resident_clean_runtime", {})
             if args.placement in {
                 CLEAN_RESIDENT,
+                ASYNC_128_RESIDENT,
                 LOCAL_FAST_RESIDENT,
                 FLAT_256_RESIDENT,
                 FLAT_512_RESIDENT,

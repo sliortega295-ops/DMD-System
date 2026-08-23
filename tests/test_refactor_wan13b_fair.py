@@ -21,6 +21,7 @@ def test_fair_contract_has_reference_ddp_fast_and_fsdp_endpoints() -> None:
     assert wan.FAIR_PLACEMENTS == (
         "resident",
         "resident-clean",
+        "resident-async128",
         "resident-local-fast",
         "resident-flat256",
         "resident-flat512",
@@ -92,6 +93,22 @@ def test_persistent_flat_reducer_uses_stable_grad_views_and_one_scale_per_bucket
     assert "dist.all_reduce(flat" in source
     assert "flat.mul_(1.0 / WORLD_SIZE)" in source
     assert '"persistent": True' in source
+
+
+def test_grad_ready_async_reducer_is_ordered_overlapped_and_reference_local_math() -> None:
+    source = inspect.getsource(wan.GradReadyAsyncResidentEngine)
+    builder = inspect.getsource(wan.build_fair_engine)
+    assert "register_post_accumulate_grad_hook" in source
+    assert "reversed(named)" in source
+    assert "torch.cuda.Stream" in source
+    assert "async_op=True" in source
+    assert "bucket.work.wait()" in source
+    assert "wait_stream(self._comm_stream)" in source
+    assert '"overlap_with_backward": True' in source
+    assert '"hook_count_min"' in source
+    assert "GradReadyAsyncResidentEngine" in builder
+    assert "ASYNC_128_RESIDENT: 128" in builder
+    assert "ASYNC_128_RESIDENT" not in inspect.getsource(wan.LocalFastResidentEngine)
 
 
 def test_lora_zero2_keeps_model_resident_and_shards_only_trainable_state() -> None:
@@ -173,6 +190,7 @@ def test_fair_worker_reuses_frozen_workload_and_audits_runtime_dtypes() -> None:
         ROOT / "scripts/distillschedule/probe_wan13b_upper_bound_world16.py"
     ).read_text()
     assert '"resident-flat256"' in base_worker
+    assert '"resident-async128"' in base_worker
     assert '"resident-flat512"' in base_worker
     assert '"resident-lora-zero2"' in base_worker
     assert '"resident-rollout-fused"' in base_worker
@@ -187,6 +205,7 @@ def test_fair_launcher_is_fail_closed_and_never_profiles_as_timing() -> None:
     ).read_text()
     assert "resident-ddp" in source
     assert "resident-clean" in source
+    assert "resident-async128" in source
     assert "resident-local-fast" in source
     assert "resident-flat256" in source
     assert "resident-flat512" in source

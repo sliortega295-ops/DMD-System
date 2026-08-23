@@ -26,6 +26,7 @@ from .wan13b_upper_bound import (
 
 REFERENCE_RESIDENT = "resident"
 CLEAN_RESIDENT = "resident-clean"
+ASYNC_128_RESIDENT = "resident-async128"
 LOCAL_FAST_RESIDENT = "resident-local-fast"
 FLAT_256_RESIDENT = "resident-flat256"
 FLAT_512_RESIDENT = "resident-flat512"
@@ -37,6 +38,7 @@ FSDP_PLACEMENT = "world16-fsdp"
 RESIDENT_PLACEMENTS = (
     REFERENCE_RESIDENT,
     CLEAN_RESIDENT,
+    ASYNC_128_RESIDENT,
     LOCAL_FAST_RESIDENT,
     FLAT_256_RESIDENT,
     FLAT_512_RESIDENT,
@@ -380,6 +382,221 @@ class PersistentFlatResidentEngine(LocalFastResidentEngine):
 
     def zero_grad(self) -> None:
         self._install_zero_grad_views()
+
+
+@dataclasses.dataclass
+class _GradReadyBucket:
+    index: int
+    flat: Any
+    names: tuple[str, ...]
+    parameters: tuple[Any, ...]
+    ready_parameter_ids: set[int] = dataclasses.field(default_factory=set)
+    work: Any | None = None
+
+
+class GradReadyAsyncResidentEngine(ReferenceResidentEngine):
+    """Overlap deterministic FP32 LoRA all-reduce buckets with backward.
+
+    This does not wrap the model in DDP and does not change the reference
+    AdamW, gradient clipping, or EMA implementations. Persistent flat gradient
+    views remove per-step coalescing allocations. Buckets use reverse parameter
+    order (the expected transformer backward-ready order) and are issued by a
+    fixed index on a dedicated CUDA stream. Missing or duplicate hooks fail
+    before the optimizer can commit.
+    """
+
+    def __init__(self, *args: Any, async_bucket_bytes: int, **kwargs: Any) -> None:
+        if async_bucket_bytes <= 0:
+            raise ValueError("async_bucket_bytes must be positive")
+        super().__init__(*args, bucket_bytes=async_bucket_bytes, **kwargs)
+        torch = _torch()
+        named = [
+            (name, parameter)
+            for name, parameter in self.module.named_parameters()
+            if parameter.requires_grad
+        ]
+        if not named:
+            raise RuntimeError("grad-ready reducer has no trainables")
+        if {parameter.dtype for _name, parameter in named} != {torch.float32}:
+            raise AssertionError("grad-ready reducer requires FP32 LoRA trainables")
+
+        self._async_bucket_bytes = int(async_bucket_bytes)
+        grouped = self._buckets(
+            [parameter for _name, parameter in reversed(named)],
+            self._async_bucket_bytes,
+        )
+        name_by_id = {id(parameter): name for name, parameter in named}
+        self._buckets_by_index: list[_GradReadyBucket] = []
+        self._parameter_bucket: dict[int, _GradReadyBucket] = {}
+        self._hook_handles: list[Any] = []
+        self._hook_counts: dict[int, int] = {}
+        for index, parameters in enumerate(grouped):
+            devices = {parameter.device for parameter in parameters}
+            dtypes = {parameter.dtype for parameter in parameters}
+            if len(devices) != 1 or dtypes != {torch.float32}:
+                raise AssertionError("grad-ready bucket mixed dtype/device")
+            flat = torch.zeros(
+                sum(int(parameter.numel()) for parameter in parameters),
+                dtype=torch.float32,
+                device=parameters[0].device,
+            )
+            names: list[str] = []
+            offset = 0
+            for parameter in parameters:
+                count = int(parameter.numel())
+                parameter.grad = flat.narrow(0, offset, count).view_as(parameter)
+                names.append(name_by_id[id(parameter)])
+                offset += count
+            bucket = _GradReadyBucket(
+                index=index,
+                flat=flat,
+                names=tuple(names),
+                parameters=tuple(parameters),
+            )
+            self._buckets_by_index.append(bucket)
+            for parameter in parameters:
+                identity = id(parameter)
+                self._parameter_bucket[identity] = bucket
+                self._hook_counts[identity] = 0
+                self._hook_handles.append(
+                    parameter.register_post_accumulate_grad_hook(
+                        self._make_grad_ready_hook(identity)
+                    )
+                )
+
+        self._comm_stream = torch.cuda.Stream(device=named[0][1].device)
+        self._active_backward = False
+        self._next_bucket_to_issue = 0
+        self._issue_order: list[int] = []
+        self._issue_times_ns: list[int] = []
+
+    def _make_grad_ready_hook(self, parameter_id: int):
+        def hook(parameter: Any) -> None:
+            del parameter
+            if not self._active_backward:
+                raise RuntimeError("grad-ready hook fired outside engine.backward")
+            count = self._hook_counts[parameter_id] + 1
+            self._hook_counts[parameter_id] = count
+            if count != 1:
+                raise RuntimeError("grad-ready hook fired more than once in one backward")
+            self._parameter_bucket[parameter_id].ready_parameter_ids.add(parameter_id)
+            self._drain_ready_buckets()
+
+        return hook
+
+    def _drain_ready_buckets(self) -> None:
+        import time
+
+        torch = _torch()
+        dist = torch.distributed
+        while self._next_bucket_to_issue < len(self._buckets_by_index):
+            bucket = self._buckets_by_index[self._next_bucket_to_issue]
+            if len(bucket.ready_parameter_ids) != len(bucket.parameters):
+                break
+            event = torch.cuda.Event()
+            event.record(torch.cuda.current_stream(bucket.flat.device))
+            with torch.cuda.stream(self._comm_stream):
+                self._comm_stream.wait_event(event)
+                bucket.work = dist.all_reduce(
+                    bucket.flat,
+                    op=dist.ReduceOp.SUM,
+                    async_op=True,
+                )
+            self._issue_order.append(bucket.index)
+            self._issue_times_ns.append(time.perf_counter_ns())
+            self._next_bucket_to_issue += 1
+
+    def _reset_backward_state(self) -> None:
+        self._next_bucket_to_issue = 0
+        self._issue_order.clear()
+        self._issue_times_ns.clear()
+        for parameter_id in self._hook_counts:
+            self._hook_counts[parameter_id] = 0
+        for bucket in self._buckets_by_index:
+            bucket.ready_parameter_ids.clear()
+            bucket.work = None
+
+    def backward(self, loss: Any) -> None:
+        self._reset_backward_state()
+        self._active_backward = True
+        try:
+            loss.backward()
+        finally:
+            self._active_backward = False
+        expected = list(range(len(self._buckets_by_index)))
+        if self._issue_order != expected:
+            missing = [
+                name
+                for bucket in self._buckets_by_index
+                for name, parameter in zip(bucket.names, bucket.parameters, strict=True)
+                if self._hook_counts[id(parameter)] != 1
+            ]
+            raise RuntimeError(
+                f"grad-ready collective order incomplete: {self._issue_order}; "
+                f"missing={missing[:8]}"
+            )
+
+    def _finish_gradient_sync(self) -> dict[str, Any]:
+        torch = _torch()
+        for bucket in self._buckets_by_index:
+            if bucket.work is None:
+                raise RuntimeError(f"grad-ready bucket {bucket.index} was not issued")
+            bucket.work.wait()
+        torch.cuda.current_stream().wait_stream(self._comm_stream)
+        for bucket in self._buckets_by_index:
+            bucket.flat.mul_(1.0 / WORLD_SIZE)
+        receipt = {
+            "backend": "GRAD_READY_ASYNC_FLAT_ALL_REDUCE",
+            "world_size": WORLD_SIZE,
+            "reduction": "SUM_THEN_DIVIDE_WORLD_SIZE",
+            "overlap_with_backward": True,
+            "trainable_gradient_tensors": len(self._parameter_bucket),
+            "gradient_bytes": sum(
+                int(bucket.flat.numel() * bucket.flat.element_size())
+                for bucket in self._buckets_by_index
+            ),
+            "coalesced_bucket_count": len(self._buckets_by_index),
+            "bucket_bytes_limit": self._async_bucket_bytes,
+            "bucket_bytes_observed": [
+                int(bucket.flat.numel() * bucket.flat.element_size())
+                for bucket in self._buckets_by_index
+            ],
+            "bucket_issue_order": list(self._issue_order),
+            "hook_count_min": min(self._hook_counts.values()),
+            "hook_count_max": max(self._hook_counts.values()),
+            "persistent": True,
+            "dedicated_comm_stream": True,
+        }
+        if self._audit_gradients:
+            self.gradient_sync_receipts.append(receipt)
+        return receipt
+
+    def step(self) -> None:
+        torch = _torch()
+        receipt = self._finish_gradient_sync()
+        trainables = [
+            parameter
+            for _name, parameter in self.module.named_parameters()
+            if parameter.requires_grad
+        ]
+        clip_norm = torch.nn.utils.clip_grad_norm_(trainables, self._gradient_clip)
+        if self._audit_gradients:
+            receipt["gradient_clip_input_norm"] = float(clip_norm)
+        self.optimizer.step()
+        self.lr_scheduler.step()
+        self.global_steps += 1
+        self.global_samples += GLOBAL_BATCH
+        self._step_calls += 1
+        self.zero_grad()
+
+    def zero_grad(self) -> None:
+        for bucket in self._buckets_by_index:
+            bucket.flat.zero_()
+            offset = 0
+            for parameter in bucket.parameters:
+                count = int(parameter.numel())
+                parameter.grad = bucket.flat.narrow(0, offset, count).view_as(parameter)
+                offset += count
 
 
 class LoRAZero2ResidentEngine(ReplicatedTrainableAllReduceEngine):
@@ -934,6 +1151,7 @@ def build_fair_engine(
             "resident_ddp_bucket_mb": None,
         }
     flat_bucket_mb = {
+        ASYNC_128_RESIDENT: 128,
         FLAT_256_RESIDENT: 256,
         FLAT_512_RESIDENT: 512,
     }.get(placement)
@@ -964,11 +1182,22 @@ def build_fair_engine(
     if placement in {
         REFERENCE_RESIDENT,
         CLEAN_RESIDENT,
+        ASYNC_128_RESIDENT,
         LOCAL_FAST_RESIDENT,
         FLAT_256_RESIDENT,
         FLAT_512_RESIDENT,
     }:
-        if flat_bucket_mb is not None:
+        if placement == ASYNC_128_RESIDENT:
+            engine = GradReadyAsyncResidentEngine(
+                module,
+                optimizer,
+                scheduler,
+                physical_step=physical_step,
+                async_bucket_bytes=flat_bucket_mb * 1024 * 1024,
+                audit_gradients=audit_gradients,
+            )
+            gradient_sync = "WORLD16_GRAD_READY_ASYNC_SUM_THEN_DIVIDE_ALL_REDUCE"
+        elif flat_bucket_mb is not None:
             engine: Any = PersistentFlatResidentEngine(
                 module,
                 optimizer,
@@ -1016,7 +1245,12 @@ def build_fair_engine(
             in {LOCAL_FAST_RESIDENT, FLAT_256_RESIDENT, FLAT_512_RESIDENT}
             else "PYTORCH_DEFAULT"
         ),
-        "persistent_flat_bucket_mb": flat_bucket_mb,
+        "persistent_flat_bucket_mb": (
+            flat_bucket_mb if placement != ASYNC_128_RESIDENT else None
+        ),
+        "async_gradient_bucket_mb": (
+            flat_bucket_mb if placement == ASYNC_128_RESIDENT else None
+        ),
         "optimizer_state_representation": "FULL_REPLICA_FP32",
         "optimizer_state_device": "cuda",
         "optimizer_state_offload": False,
