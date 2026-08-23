@@ -45,9 +45,11 @@ from distillschedule.runtime.wan13b_fair import (
     FSDP_PLACEMENT,
     FLAT_256_RESIDENT,
     FLAT_512_RESIDENT,
+    LORA_ZERO2_RESIDENT,
     LOCAL_FAST_RESIDENT,
     FairTrainableEMA,
     LoRAComputeDtypeAudit,
+    ShardedTrainableEMA,
     RESIDENT_PLACEMENTS,
     apply_wan13b_fair_fsdp2_policy,
     build_fair_engine,
@@ -111,29 +113,39 @@ def _build_model_fair(
             )
         placement = {
             "backend": (
-                "FULL_REPLICA_GPU_RESIDENT_DDP_GRAD_SYNC"
-                if args.placement
-                not in {
-                    "resident",
-                    CLEAN_RESIDENT,
-                    LOCAL_FAST_RESIDENT,
-                    FLAT_256_RESIDENT,
-                    FLAT_512_RESIDENT,
-                }
-                else "FULL_REPLICA_GPU_RESIDENT_MANUAL_GRAD_SYNC"
+                "FULL_REPLICA_GPU_RESIDENT_LORA_ZERO2"
+                if args.placement == LORA_ZERO2_RESIDENT
+                else (
+                    "FULL_REPLICA_GPU_RESIDENT_DDP_GRAD_SYNC"
+                    if args.placement
+                    not in {
+                        "resident",
+                        CLEAN_RESIDENT,
+                        LOCAL_FAST_RESIDENT,
+                        FLAT_256_RESIDENT,
+                        FLAT_512_RESIDENT,
+                    }
+                    else "FULL_REPLICA_GPU_RESIDENT_MANUAL_GRAD_SYNC"
+                )
             ),
             "world_size": base.WORLD_SIZE,
             "block_count": base.WAN13B_BLOCK_COUNT,
-            "wrap_policy": "DDP_TRAINABLE_REDUCER_ONLY"
-            if args.placement
-            not in {
-                "resident",
-                CLEAN_RESIDENT,
-                LOCAL_FAST_RESIDENT,
-                FLAT_256_RESIDENT,
-                FLAT_512_RESIDENT,
-            }
-            else "NONE",
+            "wrap_policy": (
+                "LORA_ONLY_ZERO2"
+                if args.placement == LORA_ZERO2_RESIDENT
+                else (
+                    "DDP_TRAINABLE_REDUCER_ONLY"
+                    if args.placement
+                    not in {
+                        "resident",
+                        CLEAN_RESIDENT,
+                        LOCAL_FAST_RESIDENT,
+                        FLAT_256_RESIDENT,
+                        FLAT_512_RESIDENT,
+                    }
+                    else "NONE"
+                )
+            ),
             "reshard_after_forward": False,
             "param_compute_dtype_policy": "PRESERVE_ORIGINAL_PER_PARAMETER",
             "frozen_parameter_dtypes": frozen_dtypes,
@@ -153,6 +165,7 @@ def _build_model_fair(
         LOCAL_FAST_RESIDENT,
         FLAT_256_RESIDENT,
         FLAT_512_RESIDENT,
+        LORA_ZERO2_RESIDENT,
     }:
         clean_model_state = install_resident_clean_model_state(model)
 
@@ -189,7 +202,14 @@ def _ema_factory(
     optimization_step: int = 10,
     decay: float = 0.999,
     update_after_step: int = 0,
-) -> FairTrainableEMA:
+) -> FairTrainableEMA | ShardedTrainableEMA:
+    if hasattr(module, "_distillschedule_lora_zero2_engine"):
+        return ShardedTrainableEMA(
+            module,
+            optimization_step=optimization_step,
+            decay=decay,
+            update_after_step=update_after_step,
+        )
     implementation = os.environ.get(
         "DISTILLSCHEDULE_WAN13B_EMA_IMPLEMENTATION", "reference"
     )

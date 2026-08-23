@@ -24,6 +24,7 @@ def test_fair_contract_has_reference_ddp_fast_and_fsdp_endpoints() -> None:
         "resident-local-fast",
         "resident-flat256",
         "resident-flat512",
+        "resident-lora-zero2",
         "resident-ddp",
         "resident-fast",
         "world16-fsdp",
@@ -92,6 +93,15 @@ def test_persistent_flat_reducer_uses_stable_grad_views_and_one_scale_per_bucket
     assert '"persistent": True' in source
 
 
+def test_lora_zero2_keeps_model_resident_and_shards_only_trainable_state() -> None:
+    source = inspect.getsource(wan.LoRAZero2ResidentEngine)
+    assert "dist.reduce_scatter_tensor" in source
+    assert "dist.all_gather_into_tensor" in source
+    assert "optimizer_state_sharded" in source
+    assert "parameter.copy_" in source
+    assert "FULL_SHARD" not in source
+
+
 def test_resident_clean_keeps_reference_engine_and_makes_state_requests_idempotent() -> None:
     builder = inspect.getsource(wan.build_fair_engine)
     assert "REFERENCE_RESIDENT" in builder
@@ -155,6 +165,7 @@ def test_fair_worker_reuses_frozen_workload_and_audits_runtime_dtypes() -> None:
     ).read_text()
     assert '"resident-flat256"' in base_worker
     assert '"resident-flat512"' in base_worker
+    assert '"resident-lora-zero2"' in base_worker
     assert "entry_outputs=critic_entries" in base_worker
     assert "deferred_finite_checks=deferred_finite_checks" in base_worker
     assert "resident-clean deferred cycle finite gate failed" in base_worker
@@ -169,6 +180,7 @@ def test_fair_launcher_is_fail_closed_and_never_profiles_as_timing() -> None:
     assert "resident-local-fast" in source
     assert "resident-flat256" in source
     assert "resident-flat512" in source
+    assert "resident-lora-zero2" in source
     assert "resident-fast" in source
     assert "world16-fsdp" in source
     assert "DISTILLSCHEDULE_WAN13B_FAIR_CORRECTNESS_RECEIPT" in source

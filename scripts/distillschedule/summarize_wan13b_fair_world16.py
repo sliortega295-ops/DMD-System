@@ -14,6 +14,7 @@ from distillschedule.runtime.wan13b_fair import (
     FSDP_PLACEMENT,
     FLAT_256_RESIDENT,
     FLAT_512_RESIDENT,
+    LORA_ZERO2_RESIDENT,
     LOCAL_FAST_RESIDENT,
     RESIDENT_PLACEMENTS,
 )
@@ -156,13 +157,17 @@ def main() -> int:
                 ):
                     errors.append(f"rank{rank}: resident sync receipt count changed")
                 expected_backend = (
-                    "PERSISTENT_FLAT_ALL_REDUCE"
-                    if args.placement in {FLAT_256_RESIDENT, FLAT_512_RESIDENT}
+                    "LORA_ZERO2_REDUCE_SCATTER_ALL_GATHER"
+                    if args.placement == LORA_ZERO2_RESIDENT
                     else (
-                        "MANUAL_ALL_REDUCE_COALESCED"
-                        if args.placement
-                        in {"resident", CLEAN_RESIDENT, LOCAL_FAST_RESIDENT}
-                        else "DDP_GRADIENT_BUCKET_VIEW"
+                        "PERSISTENT_FLAT_ALL_REDUCE"
+                        if args.placement in {FLAT_256_RESIDENT, FLAT_512_RESIDENT}
+                        else (
+                            "MANUAL_ALL_REDUCE_COALESCED"
+                            if args.placement
+                            in {"resident", CLEAN_RESIDENT, LOCAL_FAST_RESIDENT}
+                            else "DDP_GRADIENT_BUCKET_VIEW"
+                        )
                     )
                 )
                 for receipt in sync.get("generator", []) + sync.get("critic", []):
@@ -185,15 +190,19 @@ def main() -> int:
                 placement = component_build.get("placement", {})
                 engine = component_build.get("engine", {})
                 expected_optimizer_impl = (
-                    "PYTORCH_FUSED"
-                    if args.placement
-                    in {
-                        "resident-fast",
-                        LOCAL_FAST_RESIDENT,
-                        FLAT_256_RESIDENT,
-                        FLAT_512_RESIDENT,
-                    }
-                    else "PYTORCH_DEFAULT"
+                    "PYTORCH_FUSED_LOCAL_SHARD"
+                    if args.placement == LORA_ZERO2_RESIDENT
+                    else (
+                        "PYTORCH_FUSED"
+                        if args.placement
+                        in {
+                            "resident-fast",
+                            LOCAL_FAST_RESIDENT,
+                            FLAT_256_RESIDENT,
+                            FLAT_512_RESIDENT,
+                        }
+                        else "PYTORCH_DEFAULT"
+                    )
                 )
                 if engine.get("optimizer_implementation") != expected_optimizer_impl:
                     errors.append(
@@ -211,6 +220,14 @@ def main() -> int:
                         f"rank{rank}/{component}: gradient clip implementation="
                         f"{engine.get('gradient_clip_implementation')}, "
                         "expected=PYTORCH_FOREACH_TRUE"
+                    )
+                if (
+                    args.placement == LORA_ZERO2_RESIDENT
+                    and engine.get("gradient_clip_implementation")
+                    != "GLOBAL_L2_FROM_LOCAL_SHARDS"
+                ):
+                    errors.append(
+                        f"rank{rank}/{component}: LoRA ZeRO gradient clip changed"
                     )
                 if placement.get("block_count") != 30:
                     errors.append(f"rank{rank}: {component} is not 30-block Wan1.3B")
@@ -242,6 +259,7 @@ def main() -> int:
                 LOCAL_FAST_RESIDENT,
                 FLAT_256_RESIDENT,
                 FLAT_512_RESIDENT,
+                LORA_ZERO2_RESIDENT,
             }:
                 if clean.get("enabled") is not True:
                     errors.append(f"rank{rank}: resident-clean runtime not enabled")

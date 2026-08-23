@@ -157,17 +157,27 @@ def _save_optimizer_evidence(
         if parameter.requires_grad
     }
     state: dict[str, torch.Tensor] = {}
-    for name, parameter in trainables.items():
-        optimizer_state = engine.optimizer.state[parameter]
-        for key in ("exp_avg", "exp_avg_sq"):
-            value = optimizer_state[key]
-            if hasattr(value, "full_tensor"):
-                full = value.detach().full_tensor()
-            else:
-                full = value.detach()
-            if rank == 0:
-                state[f"{key}/{name}"] = full.cpu().float().contiguous()
-            del full
+    sharded_evidence = getattr(engine, "full_optimizer_state_evidence", None)
+    if callable(sharded_evidence):
+        values = sharded_evidence()
+        for name in trainables:
+            for key in ("exp_avg", "exp_avg_sq"):
+                if rank == 0:
+                    state[f"{key}/{name}"] = (
+                        values[name][key].detach().cpu().float().contiguous()
+                    )
+    else:
+        for name, parameter in trainables.items():
+            optimizer_state = engine.optimizer.state[parameter]
+            for key in ("exp_avg", "exp_avg_sq"):
+                value = optimizer_state[key]
+                if hasattr(value, "full_tensor"):
+                    full = value.detach().full_tensor()
+                else:
+                    full = value.detach()
+                if rank == 0:
+                    state[f"{key}/{name}"] = full.cpu().float().contiguous()
+                del full
     if rank != 0:
         return {"writer_rank": 0, "status": "PARTICIPATED_IN_GATHER"}
     path = output_dir / "correctness" / f"final_{component}_optimizer.safetensors"
@@ -356,6 +366,7 @@ def main() -> int:
             "resident-local-fast",
             "resident-flat256",
             "resident-flat512",
+            "resident-lora-zero2",
         }
         runtime_cache: dict[str, Any] | None = {} if clean_runtime else None
         critic_entries: dict[int, Any] | None = {} if clean_runtime else None

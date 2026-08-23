@@ -29,6 +29,7 @@ CLEAN_RESIDENT = "resident-clean"
 LOCAL_FAST_RESIDENT = "resident-local-fast"
 FLAT_256_RESIDENT = "resident-flat256"
 FLAT_512_RESIDENT = "resident-flat512"
+LORA_ZERO2_RESIDENT = "resident-lora-zero2"
 DDP_RESIDENT = "resident-ddp"
 FAST_RESIDENT = "resident-fast"
 FSDP_PLACEMENT = "world16-fsdp"
@@ -38,6 +39,7 @@ RESIDENT_PLACEMENTS = (
     LOCAL_FAST_RESIDENT,
     FLAT_256_RESIDENT,
     FLAT_512_RESIDENT,
+    LORA_ZERO2_RESIDENT,
     DDP_RESIDENT,
     FAST_RESIDENT,
 )
@@ -378,6 +380,289 @@ class PersistentFlatResidentEngine(LocalFastResidentEngine):
         self._install_zero_grad_views()
 
 
+class LoRAZero2ResidentEngine(ReplicatedTrainableAllReduceEngine):
+    """Replicated model with world16-sharded LoRA gradients and Adam state.
+
+    The full frozen backbone and full FP32 LoRA parameters stay resident for
+    every forward/backward.  Only the post-backward trainable gradient and the
+    Adam moments are sharded.  Each commit performs one reduce-scatter, a local
+    AdamW update, and one all-gather of the updated LoRA values.
+    """
+
+    def __init__(
+        self,
+        module: Any,
+        *,
+        physical_step: int,
+        lr: float,
+        betas: tuple[float, float],
+        eps: float,
+        weight_decay: float,
+        audit_gradients: bool = False,
+        gradient_clip: float = 1.0,
+    ) -> None:
+        torch = _torch()
+        dist = torch.distributed
+        if not dist.is_initialized() or dist.get_world_size() != WORLD_SIZE:
+            raise RuntimeError("LoRA-only ZeRO-2 requires world16")
+        self.module = module
+        self.global_steps = int(physical_step)
+        self.global_samples = int(physical_step) * GLOBAL_BATCH
+        self.dp_world_size = WORLD_SIZE
+        self._gradient_clip = float(gradient_clip)
+        self._audit_gradients = bool(audit_gradients)
+        self._step_calls = 0
+        self._gradient_accumulation_boundary = True
+        self.gradient_sync_receipts: list[dict[str, Any]] = []
+        self._named_trainables = list(_named_trainables(module).items())
+        if not self._named_trainables:
+            raise RuntimeError("LoRA-only ZeRO-2 has no trainables")
+        if {parameter.dtype for _name, parameter in self._named_trainables} != {
+            torch.float32
+        }:
+            raise AssertionError("LoRA-only ZeRO-2 requires FP32 LoRA parameters")
+        self._offsets: list[tuple[str, Any, int, int]] = []
+        total = 0
+        for name, parameter in self._named_trainables:
+            count = int(parameter.numel())
+            self._offsets.append((name, parameter, total, total + count))
+            total += count
+        padded = ((total + WORLD_SIZE - 1) // WORLD_SIZE) * WORLD_SIZE
+        self._logical_numel = total
+        self._padded_numel = padded
+        self._local_numel = padded // WORLD_SIZE
+        self._rank = dist.get_rank()
+        device = self._named_trainables[0][1].device
+        self._full_gradient = torch.zeros(padded, dtype=torch.float32, device=device)
+        self._local_gradient = torch.zeros(
+            self._local_numel, dtype=torch.float32, device=device
+        )
+        self._full_parameter = torch.zeros(padded, dtype=torch.float32, device=device)
+        for _name, parameter, start, stop in self._offsets:
+            self._full_parameter[start:stop].copy_(parameter.detach().reshape(-1))
+        local_start = self._rank * self._local_numel
+        local_stop = local_start + self._local_numel
+        self._local_parameter = torch.nn.Parameter(
+            self._full_parameter[local_start:local_stop].clone(), requires_grad=True
+        )
+        self.optimizer = torch.optim.AdamW(
+            [self._local_parameter],
+            lr=float(lr),
+            betas=tuple(float(value) for value in betas),
+            eps=float(eps),
+            weight_decay=float(weight_decay),
+            fused=True,
+        )
+        state = self.optimizer.state[self._local_parameter]
+        state["step"] = torch.tensor(
+            float(physical_step), dtype=torch.float32, device=device
+        )
+        state["exp_avg"] = torch.zeros_like(self._local_parameter)
+        state["exp_avg_sq"] = torch.zeros_like(self._local_parameter)
+        self.lr_scheduler = torch.optim.lr_scheduler.LambdaLR(
+            self.optimizer, lambda _: 1.0
+        )
+        self.lr_scheduler.last_epoch = int(physical_step)
+        self.lr_scheduler._step_count = int(physical_step) + 1
+        self.lr_scheduler._last_lr = [
+            float(group["lr"]) for group in self.optimizer.param_groups
+        ]
+        module._distillschedule_lora_zero2_engine = self
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        return self.module(*args, **kwargs)
+
+    def backward(self, loss: Any) -> None:
+        loss.backward()
+
+    def _pack_gradients(self) -> tuple[str, ...]:
+        names: list[str] = []
+        self._full_gradient.zero_()
+        for name, parameter, start, stop in self._offsets:
+            if parameter.grad is None:
+                raise AssertionError(f"LoRA-only ZeRO-2 missing gradient: {name}")
+            self._full_gradient[start:stop].copy_(parameter.grad.detach().reshape(-1))
+            names.append(name)
+        return tuple(names)
+
+    def _synchronize_trainable_gradients(self) -> dict[str, Any]:
+        torch = _torch()
+        dist = torch.distributed
+        names = self._pack_gradients()
+        if self._audit_gradients:
+            inventories: list[Any] = [None] * WORLD_SIZE
+            dist.all_gather_object(inventories, names)
+            if any(tuple(value) != names for value in inventories):
+                raise AssertionError("LoRA-only ZeRO-2 gradient inventory differs")
+        dist.reduce_scatter_tensor(
+            self._local_gradient,
+            self._full_gradient,
+            op=dist.ReduceOp.SUM,
+        )
+        self._local_gradient.mul_(1.0 / WORLD_SIZE)
+        for _name, parameter, _start, _stop in self._offsets:
+            parameter.grad = None
+        receipt = {
+            "backend": "LORA_ZERO2_REDUCE_SCATTER_ALL_GATHER",
+            "world_size": WORLD_SIZE,
+            "reduction": "SUM_THEN_DIVIDE_WORLD_SIZE",
+            "overlap_with_backward": False,
+            "trainable_gradient_tensors": len(names),
+            "gradient_bytes": self._logical_numel * 4,
+            "local_gradient_bytes": self._local_numel * 4,
+            "reduce_scatter_count": 1,
+            "parameter_all_gather_count": 1,
+            "optimizer_state_sharded": True,
+        }
+        if self._audit_gradients:
+            self.gradient_sync_receipts.append(receipt)
+        return receipt
+
+    def _clip_local_gradient(self) -> Any:
+        torch = _torch()
+        dist = torch.distributed
+        total_sq = self._local_gradient.double().square().sum()
+        dist.all_reduce(total_sq, op=dist.ReduceOp.SUM)
+        total_norm = total_sq.sqrt().float()
+        coefficient = torch.clamp(
+            torch.tensor(
+                self._gradient_clip,
+                dtype=torch.float32,
+                device=self._local_gradient.device,
+            )
+            / (total_norm + 1.0e-6),
+            max=1.0,
+        )
+        self._local_gradient.mul_(coefficient)
+        return total_norm
+
+    def _publish_updated_parameters(self) -> None:
+        torch = _torch()
+        dist = torch.distributed
+        dist.all_gather_into_tensor(self._full_parameter, self._local_parameter.detach())
+        with torch.no_grad():
+            for _name, parameter, start, stop in self._offsets:
+                parameter.copy_(self._full_parameter[start:stop].view_as(parameter))
+
+    def step(self) -> None:
+        receipt = self._synchronize_trainable_gradients()
+        clip_norm = self._clip_local_gradient()
+        self._local_parameter.grad = self._local_gradient
+        if self._audit_gradients:
+            receipt["gradient_clip_input_norm"] = float(clip_norm)
+        self.optimizer.step()
+        self.lr_scheduler.step()
+        self.optimizer.zero_grad(set_to_none=True)
+        self._publish_updated_parameters()
+        self.global_steps += 1
+        self.global_samples += GLOBAL_BATCH
+        self._step_calls += 1
+
+    def zero_grad(self) -> None:
+        for _name, parameter, _start, _stop in self._offsets:
+            parameter.grad = None
+        self.optimizer.zero_grad(set_to_none=True)
+
+    def set_gradient_accumulation_boundary(self, *, is_boundary: bool) -> None:
+        self._gradient_accumulation_boundary = bool(is_boundary)
+
+    @staticmethod
+    def is_gradient_accumulation_boundary() -> bool:
+        return True
+
+    @staticmethod
+    def gradient_accumulation_steps() -> int:
+        return 1
+
+    @staticmethod
+    def train_micro_batch_size_per_gpu() -> int:
+        return 1
+
+    @staticmethod
+    def train_batch_size() -> int:
+        return GLOBAL_BATCH
+
+    @property
+    def step_calls(self) -> int:
+        return self._step_calls
+
+    def full_optimizer_state_evidence(self) -> dict[str, dict[str, Any]]:
+        torch = _torch()
+        dist = torch.distributed
+        state = self.optimizer.state[self._local_parameter]
+        result: dict[str, dict[str, Any]] = {}
+        for key in ("exp_avg", "exp_avg_sq"):
+            full = torch.empty_like(self._full_parameter)
+            dist.all_gather_into_tensor(full, state[key])
+            for name, parameter, start, stop in self._offsets:
+                result.setdefault(name, {})[key] = full[start:stop].view_as(parameter)
+        return result
+
+    @property
+    def local_parameter_shard(self) -> Any:
+        return self._local_parameter.detach()
+
+
+class ShardedTrainableEMA:
+    """EMA shadow over the local LoRA-only ZeRO shard."""
+
+    def __init__(
+        self,
+        module: Any,
+        *,
+        optimization_step: int = 10,
+        decay: float = 0.999,
+        update_after_step: int = 0,
+    ) -> None:
+        engine = getattr(module, "_distillschedule_lora_zero2_engine", None)
+        if not isinstance(engine, LoRAZero2ResidentEngine):
+            raise RuntimeError("sharded EMA requires LoRA-only ZeRO-2 engine")
+        self._engine = engine
+        self.optimization_step = int(optimization_step)
+        self.decay = float(decay)
+        self.update_after_step = int(update_after_step)
+        self.min_decay = 0.0
+        self.cur_decay_value: float | None = None
+        self.last_transfer_bytes = 0
+        self._shadow = engine.local_parameter_shard.float().clone()
+
+    def get_decay(self, optimization_step: int) -> float:
+        step = max(0, optimization_step - self.update_after_step - 1)
+        if step <= 0:
+            return 0.0
+        value = (1 + step) / (10 + step)
+        return max(self.min_decay, min(value, self.decay))
+
+    def step(self) -> float:
+        self.optimization_step += 1
+        decay = self.get_decay(self.optimization_step)
+        self.cur_decay_value = decay
+        self.last_transfer_bytes = 0
+        self._shadow.lerp_(self._engine.local_parameter_shard.float(), 1.0 - decay)
+        return decay
+
+    def checksum(self) -> dict[str, Any]:
+        torch = _torch()
+        dist = torch.distributed
+        values = torch.stack(
+            (self._shadow.double().sum(), self._shadow.double().square().sum())
+        )
+        dist.all_reduce(values, op=dist.ReduceOp.SUM)
+        return {
+            "tracked_tensor_count": 1,
+            "local_numel": int(self._shadow.numel()),
+            "global_numel": int(self._engine._logical_numel),
+            "global_sum": float(values[0].cpu()),
+            "global_norm": float(values[1].sqrt().cpu()),
+            "optimization_step": self.optimization_step,
+            "decay": self.cur_decay_value,
+            "communication_per_update": False,
+            "device": "cuda",
+            "implementation": "sharded_foreach_equivalent",
+            "state_representation": "WORLD16_LOCAL_FLAT_SHARD_FP32",
+        }
+
+
 class ResidentDDPEngine:
     """Full GPU residency with DDP used only for trainable gradients."""
 
@@ -559,6 +844,34 @@ def build_fair_engine(
     trainables = list(_named_trainables(module).values())
     if not trainables:
         raise ValueError("Wan1.3B resident engine has no trainables")
+    if placement == LORA_ZERO2_RESIDENT:
+        engine = LoRAZero2ResidentEngine(
+            module,
+            physical_step=physical_step,
+            lr=lr,
+            betas=betas,
+            eps=eps,
+            weight_decay=weight_decay,
+            audit_gradients=audit_gradients,
+        )
+        return engine, {
+            "optimizer_step": int(physical_step),
+            "scheduler_step": int(physical_step),
+            "state_materialized_before_timing": True,
+            "trainable_tensor_count": len(trainables),
+            "local_moment_numel_each": int(engine._local_numel),
+            "step_tensor_device": "parameter_device",
+            "placement": placement,
+            "gradient_sync": "WORLD16_LORA_ZERO2_REDUCE_SCATTER_ALL_GATHER",
+            "optimizer": "AdamW",
+            "optimizer_implementation": "PYTORCH_FUSED_LOCAL_SHARD",
+            "gradient_clip_implementation": "GLOBAL_L2_FROM_LOCAL_SHARDS",
+            "persistent_flat_bucket_mb": None,
+            "optimizer_state_representation": "WORLD16_LOCAL_FLAT_SHARD_FP32",
+            "optimizer_state_device": "cuda",
+            "optimizer_state_offload": False,
+            "resident_ddp_bucket_mb": None,
+        }
     flat_bucket_mb = {
         FLAT_256_RESIDENT: 256,
         FLAT_512_RESIDENT: 512,
@@ -773,12 +1086,15 @@ __all__ = [
     "FairTrainableEMA",
     "LoRAComputeDtypeAudit",
     "LOCAL_FAST_RESIDENT",
+    "LORA_ZERO2_RESIDENT",
     "LocalFastResidentEngine",
+    "LoRAZero2ResidentEngine",
     "REFERENCE_RESIDENT",
     "PersistentFlatResidentEngine",
     "ReferenceResidentEngine",
     "RESIDENT_PLACEMENTS",
     "ResidentDDPEngine",
+    "ShardedTrainableEMA",
     "apply_wan13b_fair_fsdp2_policy",
     "build_fair_engine",
     "ddp_sum_then_divide_hook",
