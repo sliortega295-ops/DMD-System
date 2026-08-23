@@ -351,6 +351,12 @@ def main() -> int:
         if args.timing_mode and args.profile_mode:
             raise ValueError("timing mode and profile mode are mutually exclusive")
         low_overhead = bool(args.timing_mode or args.profile_mode)
+        clean_runtime = args.placement == "resident-clean"
+        runtime_cache: dict[str, Any] | None = {} if clean_runtime else None
+        critic_entries: dict[int, Any] | None = {} if clean_runtime else None
+        deferred_finite_checks: list[torch.Tensor] | None = (
+            [] if clean_runtime and low_overhead else None
+        )
         contract = contract_for_variant("no-gan")
         bootstrap = Wan13BBootstrap.load(
             args.bootstrap,
@@ -429,6 +435,9 @@ def main() -> int:
         }
         dist.barrier()
         torch.cuda.synchronize(device)
+        if clean_runtime:
+            # One cycle-level peak boundary replaces per-call resets.
+            torch.cuda.reset_peak_memory_stats(device)
         started = time.perf_counter()
         started_ns = time.time_ns()
         if args.profile_mode:
@@ -451,6 +460,9 @@ def main() -> int:
             diagnostics=diagnostics,
             policy=policy,
             score_pack_parity_check=False,
+            clean_runtime=clean_runtime,
+            runtime_cache=runtime_cache,
+            deferred_finite_checks=deferred_finite_checks,
         )
         if args.profile_mode and local_rank == 0:
             torch.cuda.nvtx.range_pop()
@@ -465,6 +477,9 @@ def main() -> int:
             collect_diagnostics=not low_overhead,
             diagnostics=diagnostics,
             rollout_parity_check=False,
+            clean_runtime=clean_runtime,
+            runtime_cache=runtime_cache,
+            entry_outputs=critic_entries,
         )
         if args.profile_mode and local_rank == 0:
             torch.cuda.nvtx.range_pop()
@@ -498,6 +513,13 @@ def main() -> int:
                     trace=trace,
                     collect_diagnostics=not low_overhead,
                     diagnostics=diagnostics,
+                    entry=(
+                        critic_entries.get(step)
+                        if critic_entries is not None
+                        else None
+                    ),
+                    runtime_cache=runtime_cache,
+                    deferred_finite_checks=deferred_finite_checks,
                 )
             )
             if args.profile_mode and local_rank == 0:
@@ -516,6 +538,13 @@ def main() -> int:
                 torch.cuda.nvtx.range_pop()
 
         torch.cuda.synchronize(device)
+        deferred_finite_status: bool | str = "NOT_USED"
+        if deferred_finite_checks is not None:
+            deferred_finite_status = bool(
+                torch.stack(deferred_finite_checks).all().detach().cpu()
+            )
+            if not deferred_finite_status:
+                raise AssertionError("resident-clean deferred cycle finite gate failed")
         dist.barrier()
         if args.profile_mode:
             if local_rank == 0:
@@ -616,6 +645,32 @@ def main() -> int:
             activation_offload_count=0,
             model_swap_count=0,
             parameter_streaming_count=0,
+            resident_clean_runtime={
+                "enabled": clean_runtime,
+                "internal_cuda_housekeeping_skipped": clean_runtime,
+                "trace_entries_reused": (
+                    len(critic_entries) if critic_entries is not None else 0
+                ),
+                "runtime_cache_keys": (
+                    sorted(runtime_cache) if runtime_cache is not None else []
+                ),
+                "deferred_finite_check_count": (
+                    len(deferred_finite_checks)
+                    if deferred_finite_checks is not None
+                    else 0
+                ),
+                "deferred_finite_status": deferred_finite_status,
+                "generator_model_state": (
+                    generator_engine.module._distillschedule_resident_clean_state.receipt()
+                    if clean_runtime
+                    else None
+                ),
+                "critic_model_state": (
+                    critic_engine.module._distillschedule_resident_clean_state.receipt()
+                    if clean_runtime
+                    else None
+                ),
+            },
         )
         _atomic_json(output, result)
         dist.barrier()

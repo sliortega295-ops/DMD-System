@@ -40,6 +40,7 @@ sys.modules[_SPEC.name] = base
 _SPEC.loader.exec_module(base)
 
 from distillschedule.runtime.wan13b_fair import (
+    CLEAN_RESIDENT,
     FAIR_PLACEMENTS,
     FSDP_PLACEMENT,
     FairTrainableEMA,
@@ -48,6 +49,7 @@ from distillschedule.runtime.wan13b_fair import (
     apply_wan13b_fair_fsdp2_policy,
     build_fair_engine,
     fair_model_trainable_metrics,
+    install_resident_clean_model_state,
 )
 
 
@@ -107,13 +109,13 @@ def _build_model_fair(
         placement = {
             "backend": (
                 "FULL_REPLICA_GPU_RESIDENT_DDP_GRAD_SYNC"
-                if args.placement != "resident"
+                if args.placement not in {"resident", CLEAN_RESIDENT}
                 else "FULL_REPLICA_GPU_RESIDENT_MANUAL_GRAD_SYNC"
             ),
             "world_size": base.WORLD_SIZE,
             "block_count": base.WAN13B_BLOCK_COUNT,
             "wrap_policy": "DDP_TRAINABLE_REDUCER_ONLY"
-            if args.placement != "resident"
+            if args.placement not in {"resident", CLEAN_RESIDENT}
             else "NONE",
             "reshard_after_forward": False,
             "param_compute_dtype_policy": "PRESERVE_ORIGINAL_PER_PARAMETER",
@@ -127,6 +129,10 @@ def _build_model_fair(
         }
     else:
         raise ValueError(args.placement)
+
+    clean_model_state = None
+    if args.placement == CLEAN_RESIDENT:
+        clean_model_state = install_resident_clean_model_state(model)
 
     audit_records: list[dict[str, Any]] | str = "OMITTED_IN_LOW_OVERHEAD_MODE"
     if not (args.timing_mode or args.profile_mode):
@@ -148,6 +154,9 @@ def _build_model_fair(
             "records": audit_records,
         },
         "host_allocator_trimmed": host_trimmed,
+        "resident_clean_model_state_initial": (
+            clean_model_state.receipt() if clean_model_state is not None else None
+        ),
         "memory_after_placement": base._memory(device),
     }
 

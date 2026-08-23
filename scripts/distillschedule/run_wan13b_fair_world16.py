@@ -97,7 +97,9 @@ def parser() -> argparse.ArgumentParser:
     )
     value.add_argument("--run-id", required=True)
     value.add_argument(
-        "--mode", choices=("validate", "correctness", "timing"), required=True
+        "--mode",
+        choices=("validate", "correctness", "timing", "diagnostic-timing"),
+        required=True,
     )
     value.add_argument("--placement", choices=FAIR_PLACEMENTS, required=True)
     value.add_argument("--expected-head", required=True)
@@ -166,9 +168,9 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256="
         + shlex.quote(args.expected_helios_transformer_sha256),
     ]
-    if args.mode == "timing":
+    if args.mode in {"timing", "diagnostic-timing"}:
         if args.correctness_receipt is None or not args.correctness_sha256:
-            raise ValueError("timing requires a pinned fair correctness receipt")
+            raise ValueError("low-overhead execution requires a pinned correctness receipt")
         exports.extend(
             (
                 "DISTILLSCHEDULE_WAN13B_FAIR_CORRECTNESS_RECEIPT="

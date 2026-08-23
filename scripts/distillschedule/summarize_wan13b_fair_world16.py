@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from distillschedule.runtime.wan13b_fair import (
+    CLEAN_RESIDENT,
     FAIR_PLACEMENTS,
     FSDP_PLACEMENT,
     RESIDENT_PLACEMENTS,
@@ -28,7 +29,9 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--run-root", type=Path, required=True)
     value.add_argument("--placement", choices=FAIR_PLACEMENTS, required=True)
     value.add_argument(
-        "--mode", choices=("validate", "correctness", "timing", "profile"), required=True
+        "--mode",
+        choices=("validate", "correctness", "timing", "diagnostic-timing", "profile"),
+        required=True,
     )
     value.add_argument("--output", type=Path, required=True)
     return value
@@ -151,7 +154,7 @@ def main() -> int:
                     errors.append(f"rank{rank}: resident sync receipt count changed")
                 expected_backend = (
                     "MANUAL_ALL_REDUCE_COALESCED"
-                    if args.placement == "resident"
+                    if args.placement in {"resident", CLEAN_RESIDENT}
                     else "DDP_GRADIENT_BUCKET_VIEW"
                 )
                 for receipt in sync.get("generator", []) + sync.get("critic", []):
@@ -207,6 +210,34 @@ def main() -> int:
             )
             if any(residency.get(key) is not False for key in forbidden):
                 errors.append(f"rank{rank}: common residency contract changed")
+
+            clean = row.get("resident_clean_runtime", {})
+            if args.placement == CLEAN_RESIDENT:
+                if clean.get("enabled") is not True:
+                    errors.append(f"rank{rank}: resident-clean runtime not enabled")
+                if clean.get("internal_cuda_housekeeping_skipped") is not True:
+                    errors.append(f"rank{rank}: resident-clean housekeeping still enabled")
+                if clean.get("trace_entries_reused") != 5:
+                    errors.append(f"rank{rank}: resident-clean did not reuse five entries")
+                generator_state = clean.get("generator_model_state") or {}
+                critic_state = clean.get("critic_model_state") or {}
+                if generator_state.get("train_transitions") != 0:
+                    errors.append(f"rank{rank}: Generator train mode changed")
+                if generator_state.get("adapter_enable_transitions") != 0:
+                    errors.append(f"rank{rank}: Generator adapter state changed")
+                if generator_state.get("adapter_disable_transitions") != 0:
+                    errors.append(f"rank{rank}: Generator adapter was disabled")
+                if critic_state.get("train_transitions") != 0:
+                    errors.append(f"rank{rank}: Critic train mode changed")
+                if critic_state.get("adapter_enable_transitions") != 1:
+                    errors.append(f"rank{rank}: Critic adapter-on transition count changed")
+                if critic_state.get("adapter_disable_transitions") != 1:
+                    errors.append(f"rank{rank}: Critic adapter-off transition count changed")
+                if args.mode == "diagnostic-timing":
+                    if clean.get("deferred_finite_status") is not True:
+                        errors.append(f"rank{rank}: deferred finite gate did not pass")
+                    if int(clean.get("deferred_finite_check_count", 0)) <= 0:
+                        errors.append(f"rank{rank}: deferred finite gate has no inputs")
 
     rollout_identities: list[str] = []
     if args.mode != "validate":
@@ -299,7 +330,7 @@ def main() -> int:
             else "NOT_RUN"
         ),
         "formal_eligibility": args.mode == "timing" and not errors,
-        "diagnostic_only": args.mode == "profile",
+        "diagnostic_only": args.mode in {"profile", "diagnostic-timing"},
     }
     _atomic_json(args.output, summary)
     print(json.dumps(summary, indent=2, sort_keys=True))

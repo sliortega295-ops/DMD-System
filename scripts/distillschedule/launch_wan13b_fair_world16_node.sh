@@ -4,16 +4,18 @@ set -Eeuo pipefail
 
 NODE_RANK="${1:?node rank 0 or 1}"
 RUN_ID="${2:?immutable run id}"
-MODE="${3:?validate, correctness, or timing}"
+MODE="${3:?validate, correctness, timing, or diagnostic-timing}"
 EXPECTED_HEAD="${4:?expected DMD-System HEAD}"
 MASTER_ADDR="${5:?node0 routable address}"
 MASTER_PORT="${6:?world16 rendezvous port}"
-PLACEMENT="${7:?resident, resident-ddp, resident-fast, or world16-fsdp}"
+PLACEMENT="${7:?resident, resident-clean, resident-ddp, resident-fast, or world16-fsdp}"
 
 [[ "${NODE_RANK}" == 0 || "${NODE_RANK}" == 1 ]] || exit 2
-[[ "${MODE}" == validate || "${MODE}" == correctness || "${MODE}" == timing ]] || exit 2
+[[ "${MODE}" == validate || "${MODE}" == correctness || "${MODE}" == timing || \
+   "${MODE}" == diagnostic-timing ]] || exit 2
 [[ "${PLACEMENT}" == resident || "${PLACEMENT}" == resident-ddp || \
-   "${PLACEMENT}" == resident-fast || "${PLACEMENT}" == world16-fsdp ]] || exit 2
+   "${PLACEMENT}" == resident-clean || "${PLACEMENT}" == resident-fast || \
+   "${PLACEMENT}" == world16-fsdp ]] || exit 2
 [[ "${RUN_ID}" =~ ^[A-Za-z0-9._-]+$ ]] || exit 2
 [[ "${EXPECTED_HEAD}" =~ ^[0-9a-f]{40}$ ]] || exit 2
 
@@ -53,27 +55,50 @@ HELIOS_TRANSFORMER="${HELIOS}/helios/modules/transformer_helios.py"
   exit 4
 }
 
-if [[ "${MODE}" == timing ]]; then
+if [[ "${MODE}" == timing || "${MODE}" == diagnostic-timing ]]; then
   [[ -f "${CORRECTNESS_RECEIPT}" ]] || { echo correctness_receipt_missing >&2; exit 3; }
   [[ "${CORRECTNESS_SHA256}" =~ ^[0-9a-f]{64}$ ]] || { echo correctness_hash_missing >&2; exit 3; }
   [[ "$(sha256sum "${CORRECTNESS_RECEIPT}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || {
     echo correctness_receipt_hash_changed >&2
     exit 3
   }
-  "${PYTHON}" - "${CORRECTNESS_RECEIPT}" "${PLACEMENT}" <<'PY'
+  "${PYTHON}" - "${CORRECTNESS_RECEIPT}" "${PLACEMENT}" "${MODE}" <<'PY'
 import json, pathlib, sys
 value = json.loads(pathlib.Path(sys.argv[1]).read_text())
 placement = sys.argv[2]
-if value.get("status") != "PASS" or not value.get("claimable_for_paired_timing"):
-    raise SystemExit("fair numerical gate is not PASS")
-placements = {
-    value.get("reference", {}).get("placement"),
-    value.get("candidate", {}).get("placement"),
-}
-if placement not in placements:
-    raise SystemExit(
-        f"correctness receipt does not cover requested placement {placement}: {placements}"
-    )
+mode = sys.argv[3]
+if mode == "timing":
+    if value.get("status") != "PASS" or not value.get("claimable_for_paired_timing"):
+        raise SystemExit("fair numerical gate is not PASS")
+    placements = {
+        value.get("reference", {}).get("placement"),
+        value.get("candidate", {}).get("placement"),
+    }
+    if placement not in placements:
+        raise SystemExit(
+            f"correctness receipt does not cover requested placement {placement}: {placements}"
+        )
+else:
+    if value.get("status") != "PASS" or value.get("mode") != "correctness":
+        raise SystemExit("diagnostic timing requires a PASS semantic correctness summary")
+    if value.get("placement") != placement or value.get("rank_count") != 16:
+        raise SystemExit("diagnostic correctness receipt placement/rank mismatch")
+    workload = value.get("workload", {})
+    expected = {
+        "world_size": 16,
+        "global_batch": 16,
+        "rollout_batch_size": 1,
+        "score_packing": False,
+        "updates": {"generator": 1, "critic": 5, "ema": 5},
+        "final_versions": {"generator": 3, "critic": 15, "ema": 15},
+        "unique_rank_step_rollout_identities": 80,
+        "lora_compute_dtype": "torch.float32",
+        "frozen_base_compute_dtype": "torch.bfloat16",
+        "gradient_mean_convention": "SUM_THEN_DIVIDE_WORLD_SIZE",
+    }
+    for key, expected_value in expected.items():
+        if workload.get(key) != expected_value:
+            raise SystemExit(f"diagnostic semantic contract drift: {key}")
 PY
 fi
 
@@ -130,6 +155,7 @@ activation_offload=false
 optimizer_offload=false
 parameter_streaming=false
 model_swap=false
+claim_boundary=$( [[ "${MODE}" == diagnostic-timing ]] && echo DIAGNOSTIC_ONLY || echo FORMAL_GATE_BOUND )
 EOF
 
 WORKER_ARGS=(
@@ -145,7 +171,7 @@ WORKER_ARGS=(
   --negative-prompt "${NEGATIVE}"
 )
 [[ "${MODE}" == validate ]] && WORKER_ARGS+=(--validate-only)
-[[ "${MODE}" == timing ]] && WORKER_ARGS+=(--timing-mode)
+[[ "${MODE}" == timing || "${MODE}" == diagnostic-timing ]] && WORKER_ARGS+=(--timing-mode)
 
 set +e
 "${TORCHRUN}" --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}" \

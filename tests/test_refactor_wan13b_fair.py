@@ -20,6 +20,7 @@ def test_fair_contract_has_reference_ddp_fast_and_fsdp_endpoints() -> None:
     assert tuple(value["placements"]) == wan.FAIR_PLACEMENTS
     assert wan.FAIR_PLACEMENTS == (
         "resident",
+        "resident-clean",
         "resident-ddp",
         "resident-fast",
         "world16-fsdp",
@@ -68,6 +69,50 @@ def test_resident_fast_changes_only_ema_implementation_above_resident_ddp() -> N
     assert "ReferenceResidentEngine" in builder
 
 
+def test_resident_clean_keeps_reference_engine_and_makes_state_requests_idempotent() -> None:
+    builder = inspect.getsource(wan.build_fair_engine)
+    assert "{REFERENCE_RESIDENT, CLEAN_RESIDENT}" in builder
+
+    class Model:
+        def __init__(self) -> None:
+            self.training = True
+            self.adapter_enabled = True
+            self.train_calls = 0
+            self.enable_calls = 0
+            self.disable_calls = 0
+
+        def train(self, mode: bool = True):
+            self.train_calls += 1
+            self.training = mode
+            return self
+
+        def enable_adapters(self) -> None:
+            self.enable_calls += 1
+            self.adapter_enabled = True
+
+        def disable_adapters(self) -> None:
+            self.disable_calls += 1
+            self.adapter_enabled = False
+
+    model = Model()
+    state = wan.install_resident_clean_model_state(model)
+    initial_train_calls = model.train_calls
+    initial_enable_calls = model.enable_calls
+    model.train()
+    model.train()
+    model.enable_adapters()
+    model.enable_adapters()
+    assert model.train_calls == initial_train_calls
+    assert model.enable_calls == initial_enable_calls
+    model.disable_adapters()
+    model.disable_adapters()
+    model.enable_adapters()
+    assert model.disable_calls == 1
+    assert model.enable_calls == initial_enable_calls + 1
+    assert state.adapter_disable_transitions == 1
+    assert state.adapter_enable_transitions == 1
+
+
 def test_fair_worker_reuses_frozen_workload_and_audits_runtime_dtypes() -> None:
     source = (
         ROOT / "scripts/distillschedule/probe_wan13b_fair_world16.py"
@@ -77,6 +122,15 @@ def test_fair_worker_reuses_frozen_workload_and_audits_runtime_dtypes() -> None:
     assert "LoRAComputeDtypeAudit" in source
     assert "configure_fsdp2_checkpointing(model)" in source
     assert 'chunked_residual_storage="cuda_out_of_place"' in source
+    assert "install_resident_clean_model_state" in source
+
+    base_worker = (
+        ROOT / "scripts/distillschedule/probe_wan13b_upper_bound_world16.py"
+    ).read_text()
+    assert 'clean_runtime = args.placement == "resident-clean"' in base_worker
+    assert "entry_outputs=critic_entries" in base_worker
+    assert "deferred_finite_checks=deferred_finite_checks" in base_worker
+    assert "resident-clean deferred cycle finite gate failed" in base_worker
 
 
 def test_fair_launcher_is_fail_closed_and_never_profiles_as_timing() -> None:
@@ -84,12 +138,15 @@ def test_fair_launcher_is_fail_closed_and_never_profiles_as_timing() -> None:
         ROOT / "scripts/distillschedule/launch_wan13b_fair_world16_node.sh"
     ).read_text()
     assert "resident-ddp" in source
+    assert "resident-clean" in source
     assert "resident-fast" in source
     assert "world16-fsdp" in source
     assert "DISTILLSCHEDULE_WAN13B_FAIR_CORRECTNESS_RECEIPT" in source
     assert "claimable_for_paired_timing" in source
     assert "frozen_base_compute_dtype=torch.bfloat16" in source
     assert "lora_compute_dtype=torch.float32" in source
+    assert "diagnostic-timing" in source
+    assert "diagnostic timing requires a PASS semantic correctness summary" in source
 
 
 def test_fair_comparator_keeps_default_p0_thresholds() -> None:

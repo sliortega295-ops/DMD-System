@@ -25,10 +25,16 @@ from .wan13b_upper_bound import (
 
 
 REFERENCE_RESIDENT = "resident"
+CLEAN_RESIDENT = "resident-clean"
 DDP_RESIDENT = "resident-ddp"
 FAST_RESIDENT = "resident-fast"
 FSDP_PLACEMENT = "world16-fsdp"
-RESIDENT_PLACEMENTS = (REFERENCE_RESIDENT, DDP_RESIDENT, FAST_RESIDENT)
+RESIDENT_PLACEMENTS = (
+    REFERENCE_RESIDENT,
+    CLEAN_RESIDENT,
+    DDP_RESIDENT,
+    FAST_RESIDENT,
+)
 FAIR_PLACEMENTS = (*RESIDENT_PLACEMENTS, FSDP_PLACEMENT)
 
 
@@ -44,6 +50,74 @@ def _named_trainables(module: Any) -> dict[str, Any]:
         for name, parameter in module.named_parameters()
         if parameter.requires_grad
     }
+
+
+@dataclasses.dataclass
+class ResidentCleanModelState:
+    """Make repeated root mode/adapter requests idempotent without changing state."""
+
+    training: bool = True
+    adapter_enabled: bool = True
+    train_requests: int = 0
+    train_transitions: int = 0
+    adapter_enable_requests: int = 0
+    adapter_enable_transitions: int = 0
+    adapter_disable_requests: int = 0
+    adapter_disable_transitions: int = 0
+
+    def receipt(self) -> dict[str, Any]:
+        return dataclasses.asdict(self)
+
+
+def install_resident_clean_model_state(module: Any) -> ResidentCleanModelState:
+    """Install an instance-local state machine after establishing train/adapter-on."""
+
+    if hasattr(module, "_distillschedule_resident_clean_state"):
+        raise RuntimeError("resident-clean model state was installed twice")
+    if not hasattr(module, "enable_adapters") or not hasattr(module, "disable_adapters"):
+        raise TypeError("resident-clean requires explicit PEFT adapter controls")
+
+    # Establish the same initial state as the reference arm before wrapping.
+    module.train()
+    module.enable_adapters()
+    state = ResidentCleanModelState(training=True, adapter_enabled=True)
+    original_train = module.train
+    original_enable = module.enable_adapters
+    original_disable = module.disable_adapters
+
+    def train(mode: bool = True) -> Any:
+        requested = bool(mode)
+        state.train_requests += 1
+        if state.training == requested:
+            return module
+        result = original_train(requested)
+        state.training = requested
+        state.train_transitions += 1
+        return result
+
+    def enable_adapters() -> Any:
+        state.adapter_enable_requests += 1
+        if state.adapter_enabled:
+            return None
+        result = original_enable()
+        state.adapter_enabled = True
+        state.adapter_enable_transitions += 1
+        return result
+
+    def disable_adapters() -> Any:
+        state.adapter_disable_requests += 1
+        if not state.adapter_enabled:
+            return None
+        result = original_disable()
+        state.adapter_enabled = False
+        state.adapter_disable_transitions += 1
+        return result
+
+    module.train = train
+    module.enable_adapters = enable_adapters
+    module.disable_adapters = disable_adapters
+    module._distillschedule_resident_clean_state = state
+    return state
 
 
 def apply_wan13b_fair_fsdp2_policy(module: Any) -> dict[str, Any]:
@@ -365,7 +439,7 @@ def build_fair_engine(
         physical_step=physical_step,
         fused=fused,
     )
-    if placement == REFERENCE_RESIDENT:
+    if placement in {REFERENCE_RESIDENT, CLEAN_RESIDENT}:
         engine: Any = ReferenceResidentEngine(
             module,
             optimizer,

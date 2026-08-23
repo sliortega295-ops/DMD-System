@@ -529,6 +529,7 @@ def prepare_student_batch(
     generated_x0: torch.Tensor,
     loaded: LoadedPoolEntry,
     device: torch.device,
+    runtime_cache: dict[str, Any] | None = None,
 ) -> dict[str, torch.Tensor]:
     """Construct the exact trace-keyed noisy Student input and target."""
 
@@ -536,19 +537,26 @@ def prepare_student_batch(
 
     tensors = loaded.tensors
     generated_x0 = generated_x0.to(device=device, dtype=torch.bfloat16).detach()
-    sigmas = torch.linspace(
-        1.0, 1.0 / 1000, 1000, device=device, dtype=torch.float64
-    )
-    sigmas = apply_schedule_shift(
-        sigmas,
-        generated_x0,
-        base_seq_len=256,
-        max_seq_len=4096,
-        base_shift=0.5,
-        max_shift=1.15,
-        time_shift_type="linear",
-    )
-    timesteps = sigmas * 1000
+    cache_key = f"shifted_schedule/{device}/{tuple(generated_x0.shape)}"
+    cached = runtime_cache.get(cache_key) if runtime_cache is not None else None
+    if cached is None:
+        sigmas = torch.linspace(
+            1.0, 1.0 / 1000, 1000, device=device, dtype=torch.float64
+        )
+        sigmas = apply_schedule_shift(
+            sigmas,
+            generated_x0,
+            base_seq_len=256,
+            max_seq_len=4096,
+            base_shift=0.5,
+            max_shift=1.15,
+            time_shift_type="linear",
+        )
+        timesteps = sigmas * 1000
+        if runtime_cache is not None:
+            runtime_cache[cache_key] = (sigmas, timesteps)
+    else:
+        sigmas, timesteps = cached
     timestep = tensors["critic_timestep"].to(device=device)
     noise = tensors["critic_noise"].to(device=device, dtype=torch.bfloat16)
     noisy = add_noise(generated_x0, noise, timestep, sigmas, timesteps).detach()
@@ -571,6 +579,9 @@ def prepare_student_batch(
 def student_forward_loss(
     engine: Any,
     batch: dict[str, torch.Tensor],
+    *,
+    validate_finite: bool = True,
+    deferred_finite_checks: list[torch.Tensor] | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Run the GAN-disabled official Fake Score/Critic denoising objective."""
 
@@ -593,8 +604,13 @@ def student_forward_loss(
     loss = critic_denoising_loss(
         prediction, batch["critic_noise"], batch["generated_x0"]
     )
-    if not loss.requires_grad or loss.grad_fn is None or not torch.isfinite(loss):
-        raise AssertionError("Student Critic loss is not a finite autograd value")
+    if not loss.requires_grad or loss.grad_fn is None:
+        raise AssertionError("Student Critic loss lost its autograd graph")
+    finite = torch.isfinite(loss)
+    if validate_finite and not finite:
+        raise AssertionError("Student Critic loss is not finite")
+    if not validate_finite and deferred_finite_checks is not None:
+        deferred_finite_checks.append(finite)
     return prediction, loss
 
 
