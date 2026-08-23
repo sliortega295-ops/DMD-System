@@ -1,0 +1,182 @@
+{
+  "copy_stats": {
+    "D2D": {
+      "bytes": 187592008256,
+      "event_count": 146534,
+      "sum_duration_ns": 481766708,
+      "union_duration_ns": 481766708
+    },
+    "D2H": {
+      "bytes": 37,
+      "event_count": 37,
+      "sum_duration_ns": 85953,
+      "union_duration_ns": 85953
+    },
+    "H2D": {
+      "bytes": 104395808,
+      "event_count": 244,
+      "sum_duration_ns": 7881630,
+      "union_duration_ns": 7881630
+    }
+  },
+  "full5": {
+    "active_union_ns": 27808973110,
+    "compute_union_ns": 25122070877,
+    "d2d_union_ns": 481766708,
+    "d2h_union_ns": 85953,
+    "h2d_union_ns": 7881630,
+    "nccl_union_ns": 2197167942,
+    "no_traced_gpu_activity_ns": 22458609781,
+    "phase": "FULL5",
+    "wall_ns": 50267582891
+  },
+  "nccl": {
+    "compute_overlap_ns": 0,
+    "event_count": 68,
+    "kernels": {
+      "ncclDevKernel_AllReduce_Sum_f32_TREE_LL": {
+        "event_count": 68,
+        "sum_duration_ns": 2197167942
+      }
+    },
+    "union_duration_ns": 2197167942
+  },
+  "phases": [
+    {
+      "active_union_ns": 5591169101,
+      "compute_union_ns": 5201347816,
+      "d2d_union_ns": 108698828,
+      "d2h_union_ns": 24384,
+      "h2d_union_ns": 1234374,
+      "nccl_union_ns": 279863699,
+      "no_traced_gpu_activity_ns": 7379059761,
+      "phase": "WAN13B/G_UPDATE",
+      "wall_ns": 12970228862
+    },
+    {
+      "active_union_ns": 8536767961,
+      "compute_union_ns": 8372336107,
+      "d2d_union_ns": 157725461,
+      "d2h_union_ns": 59137,
+      "h2d_union_ns": 6647256,
+      "nccl_union_ns": 0,
+      "no_traced_gpu_activity_ns": 6042449447,
+      "phase": "WAN13B/G_ROLLOUTS",
+      "wall_ns": 14579217408
+    },
+    {
+      "active_union_ns": 2349010969,
+      "compute_union_ns": 2270969398,
+      "d2d_union_ns": 43280406,
+      "d2h_union_ns": 0,
+      "h2d_union_ns": 0,
+      "nccl_union_ns": 34761165,
+      "no_traced_gpu_activity_ns": 1789966604,
+      "phase": "WAN13B/C_UPDATE/step_10",
+      "wall_ns": 4138977573
+    },
+    {
+      "active_union_ns": 721035336,
+      "compute_union_ns": 38757475,
+      "d2d_union_ns": 0,
+      "d2h_union_ns": 0,
+      "h2d_union_ns": 0,
+      "nccl_union_ns": 682277861,
+      "no_traced_gpu_activity_ns": 4745199,
+      "phase": "WAN13B/EMA/step_10",
+      "wall_ns": 725780535
+    },
+    {
+      "active_union_ns": 2348824284,
+      "compute_union_ns": 2271271105,
+      "d2d_union_ns": 43108703,
+      "d2h_union_ns": 0,
+      "h2d_union_ns": 0,
+      "nccl_union_ns": 34444476,
+      "no_traced_gpu_activity_ns": 1778028707,
+      "phase": "WAN13B/C_UPDATE/step_11",
+      "wall_ns": 4126852991
+    },
+    {
+      "active_union_ns": 315407021,
+      "compute_union_ns": 38444261,
+      "d2d_union_ns": 0,
+      "d2h_union_ns": 0,
+      "h2d_union_ns": 0,
+      "nccl_union_ns": 276962760,
+      "no_traced_gpu_activity_ns": 5205556,
+      "phase": "WAN13B/EMA/step_11",
+      "wall_ns": 320612577
+    },
+    {
+      "active_union_ns": 2348047530,
+      "compute_union_ns": 2272158499,
+      "d2d_union_ns": 43116978,
+      "d2h_union_ns": 0,
+      "h2d_union_ns": 0,
+      "nccl_union_ns": 32772053,
+      "no_traced_gpu_activity_ns": 1950902669,
+      "phase": "WAN13B/C_UPDATE/step_12",
+      "wall_ns": 4298950199
+    },
+    {
+      "active_union_ns": 93819661,
+      "compute_union_ns": 37528008,
+      "d2d_union_ns": 0,
+      "d2h_union_ns": 0,
+      "h2d_union_ns": 0,
+      "nccl_union_ns": 56291653,
+      "no_traced_gpu_activity_ns": 4277361,
+      "phase": "WAN13B/EMA/step_12",
+      "wall_ns": 98097022
+    },
+    {
+      "active_union_ns": 2348505025,
+      "compute_union_ns": 2271164506,
+      "d2d_union_ns": 42937260,
+      "d2h_union_ns": 0,
+      "h2d_union_ns": 0,
+      "nccl_union_ns": 34403259,
+      "no_traced_gpu_activity_ns": 1771710412,
+      "phase": "WAN13B/C_UPDATE/step_13",
+      "wall_ns": 4120215437
+    },
+    {
+      "active_union_ns": 246861801,
+      "compute_union_ns": 38513874,
+      "d2d_union_ns": 0,
+      "d2h_union_ns": 0,
+      "h2d_union_ns": 0,
+      "nccl_union_ns": 208347927,
+      "no_traced_gpu_activity_ns": 4436881,
+      "phase": "WAN13B/EMA/step_13",
+      "wall_ns": 251298682
+    },
+    {
+      "active_union_ns": 2348542981,
+      "compute_union_ns": 2271138364,
+      "d2d_union_ns": 42899072,
+      "d2h_union_ns": 0,
+      "h2d_union_ns": 0,
+      "nccl_union_ns": 34505545,
+      "no_traced_gpu_activity_ns": 1710427441,
+      "phase": "WAN13B/C_UPDATE/step_14",
+      "wall_ns": 4058970422
+    },
+    {
+      "active_union_ns": 545427267,
+      "compute_union_ns": 38430744,
+      "d2d_union_ns": 0,
+      "d2h_union_ns": 0,
+      "h2d_union_ns": 0,
+      "nccl_union_ns": 506996523,
+      "no_traced_gpu_activity_ns": 4968291,
+      "phase": "WAN13B/EMA/step_14",
+      "wall_ns": 550395558
+    }
+  ],
+  "run_id": "iter336_profile_resident_gpu_residual_20260823",
+  "schema_version": 1,
+  "scope": "node0 representative rank/device0; exact Full5 NVTX range",
+  "sqlite": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_profile_resident_gpu_residual_20260823/nsight/node_0/wan13b_resident-clean_node0.sqlite"
+}

@@ -1,0 +1,160 @@
+{
+  "branch": "codex/wan13b-resident-clean-20260822",
+  "evidence_root": "artifacts/evidence/wan13b_resident_gpu_residual_iteration336_20260823",
+  "executed_head": "879816ad0a36ef718ae67dbf2c1159820bd29f4e",
+  "formal_timing_status": "NOT_RUN",
+  "postfix_transfer_world16": {
+    "crossing_range_event_count": 0,
+    "d2h": {
+      "old_residual_signature_bytes": 0,
+      "old_residual_signature_event_count": 0,
+      "per_device_union_max_ns": 129856,
+      "per_device_union_median_ns": 111408,
+      "per_device_union_min_ns": 50592,
+      "per_device_union_ns": [
+        85953,
+        112640,
+        111456,
+        111360,
+        50592,
+        89824,
+        129856,
+        129185,
+        111776,
+        73856,
+        126912,
+        61696,
+        117088,
+        76896,
+        102944,
+        128513
+      ],
+      "world_bytes": 688,
+      "world_event_count": 688,
+      "world_sum_duration_ns": 1620547
+    },
+    "h2d": {
+      "old_residual_signature_bytes": 0,
+      "old_residual_signature_event_count": 0,
+      "per_device_union_max_ns": 8851158,
+      "per_device_union_median_ns": 8186015,
+      "per_device_union_min_ns": 7452417,
+      "per_device_union_ns": [
+        7881630,
+        8851158,
+        8263783,
+        8346015,
+        8334461,
+        8816483,
+        8302830,
+        8067324,
+        8027961,
+        7452417,
+        8308674,
+        8495163,
+        8108247,
+        7896858,
+        7732419,
+        7650667
+      ],
+      "world_bytes": 1670334464,
+      "world_event_count": 3904,
+      "world_sum_duration_ns": 130536090
+    },
+    "old_residual_signature_event_count": 0,
+    "reconciliation": "PASS"
+  },
+  "raw_profiles": {
+    "node0_nsys_rep": {
+      "bytes": 532046922,
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_profile_resident_gpu_residual_20260823/nsight/node_0/wan13b_resident-clean_node0.nsys-rep",
+      "sha256": "fba01bf36a440f5576bcb1bd619f2d0b348a71f3ae849f5fd8219f505a3a2594"
+    },
+    "node0_sqlite": {
+      "bytes": 1409814528,
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_profile_resident_gpu_residual_20260823/nsight/node_0/wan13b_resident-clean_node0.sqlite",
+      "sha256": "7f9355cee871d80c2096c91c3732ebb98a7da33937c3aea137299fb7bc3b36aa"
+    },
+    "node1_nsys_rep": {
+      "bytes": 527310331,
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_profile_resident_gpu_residual_20260823/nsight/node_1/wan13b_resident-clean_node1.nsys-rep",
+      "sha256": "2396c18115ecbca62c140fb15ea709f4cbafe3cefee8a987094718860a85926a"
+    },
+    "node1_sqlite": {
+      "bytes": 1397219328,
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_profile_resident_gpu_residual_20260823/nsight/node_1/wan13b_resident-clean_node1.sqlite",
+      "sha256": "b5f42d3bfa295626d4997d6e63e3906cc3e5f1fd53263d09d71f44acb1862d6a"
+    }
+  },
+  "representative_before_after": {
+    "claim_boundary": "single unprofiled diagnostic; not formal paired timing",
+    "diagnostic_ratio": 1.5713604535489691,
+    "percent_reduced": 36.3608777514117,
+    "post_fix_seconds": 35.75718118296936,
+    "pre_fix_seconds": 56.1874204413034,
+    "seconds_reduced": 20.43023925833404
+  },
+  "root_cause": {
+    "historical_transformer_sha256": "776a26c3b2921d599821f0767910830471ff94a955f5013089f9f689ac20fee7",
+    "mechanism": "historical runtime silently ignored cuda_out_of_place and retained CPU residual staging",
+    "status": "PROVEN",
+    "validated_transformer_sha256": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886"
+  },
+  "run_id": "iteration_336_wan13b_resident_gpu_residual_20260823",
+  "runs": {
+    "correctness": {
+      "memory": {
+        "max_allocated_bytes": 20639542784,
+        "max_reserved_bytes": 21084766208,
+        "min_driver_free_bytes": 20376322048
+      },
+      "run_id": "iter336_correctness_resident_gpu_residual_20260823",
+      "seconds": 36.85606035031378,
+      "status": "PASS"
+    },
+    "profile": {
+      "memory": {
+        "max_allocated_bytes": 20643995648,
+        "max_reserved_bytes": 21156069376,
+        "min_driver_free_bytes": 20225327104
+      },
+      "nsys_version": "2024.6.2.225",
+      "run_id": "iter336_profile_resident_gpu_residual_20260823",
+      "seconds_diagnostic_only": 50.310064224060625,
+      "status": "PASS"
+    },
+    "unprofiled_diagnostic": {
+      "formal_eligibility": false,
+      "memory": {
+        "max_allocated_bytes": 20643995648,
+        "max_reserved_bytes": 21156069376,
+        "min_driver_free_bytes": 20288241664
+      },
+      "run_id": "iter336_diag_resident_gpu_residual_20260823",
+      "seconds": 35.75718118296936,
+      "status": "PASS"
+    }
+  },
+  "schema_version": 1,
+  "status": "PASS_BOUNDED_DIAGNOSTIC",
+  "workload": {
+    "final_versions": {
+      "critic": 15,
+      "ema": 15,
+      "generator": 3
+    },
+    "frozen_base_compute_dtype": "torch.bfloat16",
+    "global_batch": 16,
+    "gradient_mean_convention": "SUM_THEN_DIVIDE_WORLD_SIZE",
+    "lora_compute_dtype": "torch.float32",
+    "rollout_batch_size": 1,
+    "score_packing": false,
+    "unique_rank_step_rollout_identities": 80,
+    "updates": {
+      "critic": 5,
+      "ema": 5,
+      "generator": 1
+    },
+    "world_size": 16
+  }
+}

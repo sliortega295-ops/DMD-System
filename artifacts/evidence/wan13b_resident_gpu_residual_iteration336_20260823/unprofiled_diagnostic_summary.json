@@ -1,0 +1,81 @@
+{
+  "correctness_evidence": "NOT_RUN",
+  "diagnostic_only": true,
+  "errors": [],
+  "formal_eligibility": false,
+  "full5_seconds_world_max": 35.75718118296936,
+  "identities": {
+    "bootstrap_hash": "6a713476d9839cf1ea37689d63cb1cc2b405b9f9915ca5314ccdadb67b3cd60d",
+    "helios_transformer_sha256": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
+    "model_identity_sha256": "d52cf9e2d04451c018ac50c4ee1043c4ceba4014e51549bfda2ea5a123c65f54",
+    "trace_binding_hash": "bddcf32b379ea3d0cb36237b0c21f103ea59b1635473dd8080b7182cf3c1eded",
+    "trace_bundle_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3"
+  },
+  "memory": {
+    "max_allocated_bytes": 20643995648,
+    "max_reserved_bytes": 21156069376,
+    "min_driver_free_bytes": 20288241664
+  },
+  "mode": "diagnostic-timing",
+  "placement": "resident-clean",
+  "rank_count": 16,
+  "rank_full5_seconds": [
+    35.75703217694536,
+    35.75701201939955,
+    35.757046394981444,
+    35.75706911832094,
+    35.757063968107104,
+    35.757046174257994,
+    35.756973125971854,
+    35.75704316934571,
+    35.757176202721894,
+    35.7571202670224,
+    35.75718118296936,
+    35.75717716477811,
+    35.75710960710421,
+    35.75717606302351,
+    35.75717705488205,
+    35.757170592900366
+  ],
+  "rank_receipts": [
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_diag_resident_gpu_residual_20260823/execution/ranks/rank_00.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_diag_resident_gpu_residual_20260823/execution/ranks/rank_01.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_diag_resident_gpu_residual_20260823/execution/ranks/rank_02.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_diag_resident_gpu_residual_20260823/execution/ranks/rank_03.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_diag_resident_gpu_residual_20260823/execution/ranks/rank_04.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_diag_resident_gpu_residual_20260823/execution/ranks/rank_05.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_diag_resident_gpu_residual_20260823/execution/ranks/rank_06.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_diag_resident_gpu_residual_20260823/execution/ranks/rank_07.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_diag_resident_gpu_residual_20260823/execution/ranks/rank_08.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_diag_resident_gpu_residual_20260823/execution/ranks/rank_09.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_diag_resident_gpu_residual_20260823/execution/ranks/rank_10.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_diag_resident_gpu_residual_20260823/execution/ranks/rank_11.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_diag_resident_gpu_residual_20260823/execution/ranks/rank_12.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_diag_resident_gpu_residual_20260823/execution/ranks/rank_13.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_diag_resident_gpu_residual_20260823/execution/ranks/rank_14.json",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_wan13b_resident_clean_20260822/artifacts/runs/iter336_diag_resident_gpu_residual_20260823/execution/ranks/rank_15.json"
+  ],
+  "run_id": "iter336_diag_resident_gpu_residual_20260823",
+  "schema_version": "distillschedule.wan13b_fair_summary.v1",
+  "status": "PASS",
+  "workload": {
+    "final_versions": {
+      "critic": 15,
+      "ema": 15,
+      "generator": 3
+    },
+    "frozen_base_compute_dtype": "torch.bfloat16",
+    "global_batch": 16,
+    "gradient_mean_convention": "SUM_THEN_DIVIDE_WORLD_SIZE",
+    "lora_compute_dtype": "torch.float32",
+    "rollout_batch_size": 1,
+    "score_packing": false,
+    "unique_rank_step_rollout_identities": 80,
+    "updates": {
+      "critic": 5,
+      "ema": 5,
+      "generator": 1
+    },
+    "world_size": 16
+  }
+}
