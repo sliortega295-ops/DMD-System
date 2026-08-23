@@ -110,6 +110,7 @@ def apply_blockwise_fsdp2_policy(
     world_size: int = WORLD_SIZE,
     param_dtype: Any | None = None,
     reduce_dtype: Any | None = None,
+    forward_prefetch_mode: str = "implicit",
 ) -> dict[str, Any]:
     """Shard all 40 Helios blocks bottom-up under FSDP or node-local HSDP."""
 
@@ -140,6 +141,10 @@ def apply_blockwise_fsdp2_policy(
         reshard_after_forward=True,
         mp_policy=mp_policy,
     )
+    explicit_prefetch_edges = configure_forward_prefetch_chain(
+        blocks,
+        mode=forward_prefetch_mode,
+    )
     torch.cuda.synchronize()
     parameters = list(module.parameters())
     if not parameters or not all(hasattr(value, "device_mesh") for value in parameters):
@@ -156,12 +161,38 @@ def apply_blockwise_fsdp2_policy(
         "block_count": len(blocks),
         "wrap_policy": "40_BLOCKS_BOTTOM_UP_THEN_ROOT",
         "reshard_after_forward": True,
+        "forward_prefetch_mode": forward_prefetch_mode,
+        "explicit_forward_prefetch_edges": explicit_prefetch_edges,
+        "first_block_prefetch": False,
         "param_compute_dtype": str(mp_policy.param_dtype),
         "reduce_dtype": str(mp_policy.reduce_dtype),
         "cpu_parameter_offload": False,
         "parameter_streaming": False,
         "transition": False,
     }
+
+
+def configure_forward_prefetch_chain(
+    blocks: Sequence[Any],
+    *,
+    mode: str,
+) -> int:
+    """Configure only block ``i -> i+1`` explicit FSDP2 forward prefetch.
+
+    PyTorch 2.10 documents a singleton explicit list as preserving the default
+    overlap shape while issuing the next all-gather earlier from the CPU.  We
+    deliberately do not prefetch block 0 and do not request a two-block lookahead.
+    """
+
+    if mode not in {"implicit", "explicit-next"}:
+        raise ValueError(f"unsupported FSDP2 forward prefetch mode: {mode}")
+    if mode == "implicit":
+        return 0
+    if len(blocks) != 40:
+        raise AssertionError(f"Helios block count changed: {len(blocks)} != 40")
+    for current, following in zip(blocks, blocks[1:]):
+        current.set_modules_to_forward_prefetch([following])
+    return len(blocks) - 1
 
 
 def chunked(values: Sequence[Any], size: int) -> tuple[tuple[Any, ...], ...]:

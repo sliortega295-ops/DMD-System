@@ -45,6 +45,11 @@ def main() -> int:
         choices=("cpu_inplace", "cuda_out_of_place"),
         required=True,
     )
+    parser.add_argument(
+        "--forward-prefetch-mode",
+        choices=("implicit", "explicit-next"),
+        required=True,
+    )
     parser.add_argument("--critic-only-step", type=int, choices=(10,))
     parser.add_argument(
         "--diagnostic-timing",
@@ -66,6 +71,7 @@ def main() -> int:
         "rollout_backend": "native-fsdp2-batch",
         "generator_residual_storage": args.generator_residual_storage,
         "critic_residual_storage": args.critic_residual_storage,
+        "forward_prefetch_mode": args.forward_prefetch_mode,
     }
     if args.critic_only_step is not None:
         if args.variant != "no-gan" or args.mode != "profile":
@@ -103,6 +109,20 @@ def main() -> int:
         for key, expected in expected_policy.items():
             if policy.get(key) != expected:
                 errors.append(f"rank{rank} policy {key}={policy.get(key)!r}, expected={expected!r}")
+        expected_edges = 39 if args.forward_prefetch_mode == "explicit-next" else 0
+        for role in ("generator", "critic"):
+            fsdp2 = value.get("build", {}).get(role, {}).get("fsdp2", {})
+            if args.mode != "validate":
+                if fsdp2.get("forward_prefetch_mode") != args.forward_prefetch_mode:
+                    errors.append(
+                        f"rank{rank} {role} applied forward prefetch mode drift"
+                    )
+                if fsdp2.get("explicit_forward_prefetch_edges") != expected_edges:
+                    errors.append(
+                        f"rank{rank} {role} explicit prefetch edge count drift"
+                    )
+                if fsdp2.get("first_block_prefetch") is not False:
+                    errors.append(f"rank{rank} {role} first-block prefetch must be false")
 
         hardening = value.get("p0_hardening", {})
         input_reuse.append(hardening.get("input_reuse"))

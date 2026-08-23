@@ -69,6 +69,7 @@ OPERATION_SOURCE_MAX_EVENTS="${DISTILLSCHEDULE_OPERATION_SOURCE_MAX_EVENTS:-256}
 # and bounded A/B experiments; generic runtime defaults are unchanged.
 GENERATOR_RESIDUAL_STORAGE="${DISTILLSCHEDULE_GENERATOR_RESIDUAL_STORAGE:-cuda_out_of_place}"
 CRITIC_RESIDUAL_STORAGE="${DISTILLSCHEDULE_CRITIC_RESIDUAL_STORAGE:-cuda_out_of_place}"
+FORWARD_PREFETCH_MODE="${DISTILLSCHEDULE_FORWARD_PREFETCH_MODE:-implicit}"
 EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256:-776a26c3b2921d599821f0767910830471ff94a955f5013089f9f689ac20fee7}"
 
 [[ -z "${CRITIC_ONLY_STEP}" || "${CRITIC_ONLY_STEP}" == 10 ]] || exit 2
@@ -78,6 +79,7 @@ EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORME
 [[ "${OPERATION_SOURCE_MAX_EVENTS}" =~ ^[1-9][0-9]*$ ]] || exit 2
 [[ "${GENERATOR_RESIDUAL_STORAGE}" == cpu_inplace || "${GENERATOR_RESIDUAL_STORAGE}" == cuda_out_of_place ]] || exit 2
 [[ "${CRITIC_RESIDUAL_STORAGE}" == cpu_inplace || "${CRITIC_RESIDUAL_STORAGE}" == cuda_out_of_place ]] || exit 2
+[[ "${FORWARD_PREFETCH_MODE}" == implicit || "${FORWARD_PREFETCH_MODE}" == explicit-next ]] || exit 2
 [[ "${EXPECTED_HELIOS_TRANSFORMER_SHA256}" =~ ^[0-9a-f]{64}$ ]] || exit 2
 if [[ -n "${CRITIC_ONLY_STEP}" ]]; then
   [[ "${VARIANT}" == no-gan && "${MODE}" == profile ]] || exit 2
@@ -159,6 +161,7 @@ operation_source_target_bytes=${OPERATION_SOURCE_TARGET_BYTES}
 operation_source_max_events=${OPERATION_SOURCE_MAX_EVENTS}
 generator_residual_storage=${GENERATOR_RESIDUAL_STORAGE}
 critic_residual_storage=${CRITIC_RESIDUAL_STORAGE}
+forward_prefetch_mode=${FORWARD_PREFETCH_MODE}
 EOF
 
 WORKER=(
@@ -173,6 +176,7 @@ WORKER=(
   --ema-device "${EMA_DEVICE}"
   --generator-residual-storage "${GENERATOR_RESIDUAL_STORAGE}"
   --critic-residual-storage "${CRITIC_RESIDUAL_STORAGE}"
+  --forward-prefetch-mode "${FORWARD_PREFETCH_MODE}"
 )
 [[ "${VARIANT}" == gan ]] && WORKER+=(--gan-config "${GAN_CONFIG}")
 if [[ "${PACK_REAL_SCORE_PAIR}" == on ]]; then

@@ -117,6 +117,7 @@ def _build_static_model(
         model,
         mesh_policy=policy.mesh_policy,
         world_size=WORLD_SIZE,
+        forward_prefetch_mode=args.forward_prefetch_mode,
     )
     gc.collect()
     host_trimmed = trim_host_allocator()
@@ -567,6 +568,12 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--forward-prefetch-mode",
+        choices=("implicit", "explicit-next"),
+        default="implicit",
+        help="FSDP2 block forward all-gather issue policy",
+    )
+    value.add_argument(
         "--critic-only-step",
         type=int,
         choices=(10,),
@@ -598,6 +605,12 @@ def main() -> int:
         raise ValueError("--critic-only-step requires No-GAN --profile-mode")
     if args.operation_source and not diagnostic_single_critic:
         raise ValueError("--operation-source requires --critic-only-step")
+    if args.forward_prefetch_mode != "implicit" and (
+        args.variant != "no-gan" or args.mesh_policy != "world16-fsdp"
+    ):
+        raise ValueError(
+            "explicit forward prefetch is registered only for No-GAN world16 FSDP2"
+        )
     if not 0 <= args.operation_source_rank < WORLD_SIZE:
         raise ValueError("--operation-source-rank must be in [0, 15]")
     if args.operation_source_target_bytes <= 0 or args.operation_source_max_events <= 0:
@@ -636,6 +649,7 @@ def main() -> int:
             "rollout_backend": policy.rollout_backend,
             "generator_residual_storage": args.generator_residual_storage,
             "critic_residual_storage": args.critic_residual_storage,
+            "forward_prefetch_mode": args.forward_prefetch_mode,
         },
     }
     try:

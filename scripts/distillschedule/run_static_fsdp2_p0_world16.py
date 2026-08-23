@@ -109,6 +109,11 @@ def parser() -> argparse.ArgumentParser:
         default="cuda_out_of_place",
     )
     value.add_argument(
+        "--forward-prefetch-mode",
+        choices=("implicit", "explicit-next"),
+        default="implicit",
+    )
+    value.add_argument(
         "--remote-root",
         type=Path,
         default=Path(
@@ -185,6 +190,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.generator_residual_storage),
         "DISTILLSCHEDULE_CRITIC_RESIDUAL_STORAGE="
         + shlex.quote(args.critic_residual_storage),
+        "DISTILLSCHEDULE_FORWARD_PREFETCH_MODE="
+        + shlex.quote(args.forward_prefetch_mode),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -282,6 +289,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.generator_residual_storage)} "
         + "--critic-residual-storage "
         + f"{shlex.quote(args.critic_residual_storage)} "
+        + "--forward-prefetch-mode "
+        + f"{shlex.quote(args.forward_prefetch_mode)} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
         + (
             f"--critic-only-step {args.critic_only_step} "
@@ -318,6 +327,12 @@ def main() -> int:
         raise ValueError("--critic-only-step requires No-GAN profile mode")
     if args.operation_source and args.critic_only_step is None:
         raise ValueError("--operation-source requires --critic-only-step")
+    if args.forward_prefetch_mode != "implicit" and (
+        args.variant != "no-gan" or args.mesh_policy != "world16-fsdp"
+    ):
+        raise ValueError(
+            "explicit forward prefetch is registered only for No-GAN world16 FSDP2"
+        )
     if not 0 <= args.operation_source_rank < 16:
         raise ValueError("--operation-source-rank must be in [0, 15]")
     if args.operation_source_target_bytes <= 0 or args.operation_source_max_events <= 0:

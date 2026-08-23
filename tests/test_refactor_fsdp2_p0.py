@@ -10,6 +10,7 @@ from distillschedule.runtime.fsdp2_p0 import (
     StaticFSDP2P0Policy,
     build_p0_execution_order,
     chunked,
+    configure_forward_prefetch_chain,
     estimate_rollout_collective_groups,
     make_batched_loaded_entry,
     mesh_shape_for_policy,
@@ -92,6 +93,49 @@ def test_policy_and_mesh_contract() -> None:
         StaticFSDP2P0Policy(rollout_batch_size=3)
     with pytest.raises(ValueError):
         StaticFSDP2P0Policy(rollout_backend="vllm-omni")
+
+
+def test_explicit_forward_prefetch_is_singleton_next_block_only() -> None:
+    class Block:
+        def __init__(self) -> None:
+            self.prefetch = None
+
+        def set_modules_to_forward_prefetch(self, modules) -> None:
+            self.prefetch = list(modules)
+
+    blocks = [Block() for _ in range(40)]
+    assert configure_forward_prefetch_chain(blocks, mode="implicit") == 0
+    assert all(block.prefetch is None for block in blocks)
+    assert configure_forward_prefetch_chain(blocks, mode="explicit-next") == 39
+    for index, block in enumerate(blocks[:-1]):
+        assert block.prefetch == [blocks[index + 1]]
+    assert blocks[-1].prefetch is None
+    with pytest.raises(ValueError, match="unsupported"):
+        configure_forward_prefetch_chain(blocks, mode="two-ahead")
+
+
+def test_prefetch_switch_is_bound_through_launcher_and_receipts() -> None:
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    launcher = (
+        root / "scripts/distillschedule/launch_static_fsdp2_p0_world16_node.sh"
+    ).read_text()
+    controller = (
+        root / "scripts/distillschedule/run_static_fsdp2_p0_world16.py"
+    ).read_text()
+    worker = (
+        root / "scripts/distillschedule/probe_static_fsdp2_p0_world16.py"
+    ).read_text()
+    summarizer = (
+        root / "scripts/distillschedule/summarize_static_fsdp2_p0_world16.py"
+    ).read_text()
+    assert 'DISTILLSCHEDULE_FORWARD_PREFETCH_MODE:-implicit' in launcher
+    assert "--forward-prefetch-mode" in launcher
+    assert "DISTILLSCHEDULE_FORWARD_PREFETCH_MODE" in controller
+    assert "--forward-prefetch-mode" in worker
+    assert "explicit_forward_prefetch_edges" in summarizer
+    assert "first-block prefetch must be false" in summarizer
 
 
 def test_execution_order_precomputes_all_rollouts_before_critic() -> None:
