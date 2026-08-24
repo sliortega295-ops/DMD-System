@@ -66,6 +66,7 @@ OPERATION_SOURCE_TARGET_BYTES="${DISTILLSCHEDULE_OPERATION_SOURCE_TARGET_BYTES:-
 OPERATION_SOURCE_MAX_EVENTS="${DISTILLSCHEDULE_OPERATION_SOURCE_MAX_EVENTS:-256}"
 GENERATOR_RESIDUAL_STORAGE="${DISTILLSCHEDULE_GENERATOR_RESIDUAL_STORAGE:-cpu_inplace}"
 CRITIC_RESIDUAL_STORAGE="${DISTILLSCHEDULE_CRITIC_RESIDUAL_STORAGE:-cpu_inplace}"
+GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE="${DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE:-off}"
 EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256:-776a26c3b2921d599821f0767910830471ff94a955f5013089f9f689ac20fee7}"
 
 [[ -z "${CRITIC_ONLY_STEP}" || "${CRITIC_ONLY_STEP}" == 10 ]] || exit 2
@@ -75,6 +76,7 @@ EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORME
 [[ "${OPERATION_SOURCE_MAX_EVENTS}" =~ ^[1-9][0-9]*$ ]] || exit 2
 [[ "${GENERATOR_RESIDUAL_STORAGE}" == cpu_inplace || "${GENERATOR_RESIDUAL_STORAGE}" == cuda_out_of_place ]] || exit 2
 [[ "${CRITIC_RESIDUAL_STORAGE}" == cpu_inplace || "${CRITIC_RESIDUAL_STORAGE}" == cuda_out_of_place ]] || exit 2
+[[ "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" == on || "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" == off ]] || exit 2
 [[ "${EXPECTED_HELIOS_TRANSFORMER_SHA256}" =~ ^[0-9a-f]{64}$ ]] || exit 2
 if [[ -n "${CRITIC_ONLY_STEP}" ]]; then
   [[ "${VARIANT}" == no-gan && "${MODE}" == profile ]] || exit 2
@@ -98,10 +100,10 @@ HELIOS_TRANSFORMER="${HELIOS}/helios/modules/transformer_helios.py"
 if [[ "${MODE}" == timing && "${DIAGNOSTIC_TIMING}" != 1 ]]; then
   [[ -f "${CORRECTNESS_SUMMARY}" ]] || { echo correctness_summary_missing >&2; exit 3; }
   [[ "$(sha256sum "${CORRECTNESS_SUMMARY}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || { echo correctness_hash_changed >&2; exit 3; }
-  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" <<'PY'
+  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" <<'PY'
 import json,pathlib,sys
 value=json.loads(pathlib.Path(sys.argv[1]).read_text())
-expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7]}
+expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7],"generator_nograd_lora_fused_epilogue":sys.argv[8]=="on"}
 if value.get("status") != "PASS" or not value.get("claimable_correctness"):
     raise SystemExit("P0 correctness gate is not PASS")
 if value.get("variant") != sys.argv[2]:
@@ -156,6 +158,7 @@ operation_source_target_bytes=${OPERATION_SOURCE_TARGET_BYTES}
 operation_source_max_events=${OPERATION_SOURCE_MAX_EVENTS}
 generator_residual_storage=${GENERATOR_RESIDUAL_STORAGE}
 critic_residual_storage=${CRITIC_RESIDUAL_STORAGE}
+generator_nograd_lora_fused_epilogue=${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}
 EOF
 
 WORKER=(
@@ -180,6 +183,11 @@ if [[ "${PACK_REAL_SCORE_PAIR}" == on ]]; then
   WORKER+=(--pack-real-score-pair)
 else
   WORKER+=(--no-pack-real-score-pair)
+fi
+if [[ "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" == on ]]; then
+  WORKER+=(--generator-nograd-lora-fused-epilogue)
+else
+  WORKER+=(--no-generator-nograd-lora-fused-epilogue)
 fi
 [[ "${MODE}" == validate ]] && WORKER+=(--validate-only)
 [[ "${MODE}" == timing ]] && WORKER+=(--timing-mode)
