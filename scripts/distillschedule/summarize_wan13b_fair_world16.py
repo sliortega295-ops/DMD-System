@@ -12,6 +12,7 @@ from distillschedule.runtime.wan13b_fair import (
     ASYNC_128_RESIDENT,
     ASYNC_128_TREE_RESIDENT,
     ASYNC_128_TREE_CHUNK2048_RESIDENT,
+    ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT,
     ASYNC_256_RESIDENT,
     CLEAN_RESIDENT,
     FAIR_PLACEMENTS,
@@ -172,6 +173,7 @@ def main() -> int:
                             ASYNC_128_RESIDENT,
                             ASYNC_128_TREE_RESIDENT,
                             ASYNC_128_TREE_CHUNK2048_RESIDENT,
+                            ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT,
                             ASYNC_256_RESIDENT,
                         }
                         else (
@@ -197,6 +199,7 @@ def main() -> int:
                         ASYNC_128_RESIDENT,
                         ASYNC_128_TREE_RESIDENT,
                         ASYNC_128_TREE_CHUNK2048_RESIDENT,
+                        ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT,
                         ASYNC_256_RESIDENT,
                     }:
                         if receipt.get("overlap_with_backward") is not True:
@@ -236,6 +239,7 @@ def main() -> int:
                 expected_chunk = {
                     ASYNC_128_TREE_RESIDENT: 512,
                     ASYNC_128_TREE_CHUNK2048_RESIDENT: 2048,
+                    ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT: 2048,
                 }.get(args.placement)
                 if expected_chunk is not None:
                     if modulation_chunk.get("effective_tokens") != [expected_chunk]:
@@ -252,6 +256,29 @@ def main() -> int:
                         errors.append(
                             f"rank{rank}/{component}: modulation chunks are not uniform"
                         )
+                compile_runtime = metadata.get("nograd_compile_runtime", {})
+                if args.placement == ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT:
+                    expected_enabled = component == "generator"
+                    if compile_runtime.get("enabled") is not expected_enabled:
+                        errors.append(
+                            f"rank{rank}/{component}: compile enabled="
+                            f"{compile_runtime.get('enabled')}, expected={expected_enabled}"
+                        )
+                    if compile_runtime.get("scope") != (
+                        "GENERATOR_NOGRAD_TRANSFORMER_BLOCKS_ONLY"
+                    ):
+                        errors.append(f"rank{rank}/{component}: compile scope drift")
+                    if compile_runtime.get("block_count") != 30:
+                        errors.append(f"rank{rank}/{component}: compile block census drift")
+                    if component == "generator":
+                        if compile_runtime.get("all_blocks_wrapped") is not True:
+                            errors.append(f"rank{rank}/generator: not all blocks compiled")
+                        if int(compile_runtime.get("compiled_dispatch_count", 0)) <= 0:
+                            errors.append(f"rank{rank}/generator: compile path was not exercised")
+                        if int(compile_runtime.get("eager_dispatch_count", 0)) <= 0:
+                            errors.append(f"rank{rank}/generator: grad path did not stay eager")
+                elif compile_runtime.get("enabled") is True:
+                    errors.append(f"rank{rank}/{component}: unexpected compile enablement")
                 runtime_sha = residual_runtime.get("transformer_source_sha256")
                 if not isinstance(runtime_sha, str) or len(runtime_sha) != 64:
                     errors.append(
@@ -331,6 +358,7 @@ def main() -> int:
                 ASYNC_128_RESIDENT,
                 ASYNC_128_TREE_RESIDENT,
                 ASYNC_128_TREE_CHUNK2048_RESIDENT,
+                ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT,
                 ASYNC_256_RESIDENT,
                 LOCAL_FAST_RESIDENT,
                 FLAT_256_RESIDENT,

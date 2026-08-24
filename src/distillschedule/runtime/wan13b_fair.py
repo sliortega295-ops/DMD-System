@@ -10,6 +10,11 @@ base parameters BF16 and LoRA trainables FP32 in both Resident and FSDP2.
 from __future__ import annotations
 
 import dataclasses
+import functools
+import os
+import socket
+import time
+from pathlib import Path
 from typing import Any
 
 from .wan13b_upper_bound import (
@@ -29,6 +34,9 @@ CLEAN_RESIDENT = "resident-clean"
 ASYNC_128_RESIDENT = "resident-async128"
 ASYNC_128_TREE_RESIDENT = "resident-async128-tree"
 ASYNC_128_TREE_CHUNK2048_RESIDENT = "resident-async128-tree-chunk2048"
+ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT = (
+    "resident-async128-tree-chunk2048-compile"
+)
 ASYNC_256_RESIDENT = "resident-async256"
 LOCAL_FAST_RESIDENT = "resident-local-fast"
 FLAT_256_RESIDENT = "resident-flat256"
@@ -44,6 +52,7 @@ RESIDENT_PLACEMENTS = (
     ASYNC_128_RESIDENT,
     ASYNC_128_TREE_RESIDENT,
     ASYNC_128_TREE_CHUNK2048_RESIDENT,
+    ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT,
     ASYNC_256_RESIDENT,
     LOCAL_FAST_RESIDENT,
     FLAT_256_RESIDENT,
@@ -59,6 +68,7 @@ DEFAULT_MODULATION_CHUNK_TOKENS = 512
 MODULATION_CHUNK_TOKENS_BY_PLACEMENT = {
     ASYNC_128_TREE_RESIDENT: DEFAULT_MODULATION_CHUNK_TOKENS,
     ASYNC_128_TREE_CHUNK2048_RESIDENT: 2048,
+    ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT: 2048,
 }
 
 
@@ -109,6 +119,104 @@ def configure_modulation_chunk_tokens(module: Any, *, placement: str) -> dict[st
         "all_blocks_match": len(set(observed)) == 1,
         "compute_semantics": "SAME_SPLIT_MODULATION_TOKENWISE_MATH",
     }
+
+
+def install_generator_nograd_block_compile(
+    module: Any,
+    *,
+    placement: str,
+    role: str,
+) -> dict[str, Any]:
+    """Compile only Generator no-grad Transformer-block calls.
+
+    This is intentionally narrower than compiling the model or training loop:
+    gradient-bearing Generator work, all Critic work, checkpoint replay,
+    communication, optimizer, and EMA stay on the audited eager path.  The
+    dispatch predicate is solely ``torch.is_grad_enabled()`` and therefore
+    does not alter the call inventory or tensor inputs.
+    """
+
+    requested = placement == ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT
+    blocks = list(getattr(module, "blocks", ()))
+    if len(blocks) != WAN13B_BLOCK_COUNT:
+        raise AssertionError(
+            f"Wan compile audit requires {WAN13B_BLOCK_COUNT} blocks, got {len(blocks)}"
+        )
+    receipt: dict[str, Any] = {
+        "requested": requested,
+        "enabled": False,
+        "role": str(role),
+        "scope": "GENERATOR_NOGRAD_TRANSFORMER_BLOCKS_ONLY",
+        "block_count": len(blocks),
+        "backend": "inductor" if requested and role == "generator" else None,
+        "mode": "default" if requested and role == "generator" else None,
+        "dynamic": False if requested and role == "generator" else None,
+        "fullgraph": False if requested and role == "generator" else None,
+        "compiled_dispatch_count": 0,
+        "eager_dispatch_count": 0,
+        "first_dispatch_wall_seconds_by_block": [None] * len(blocks),
+        "semantic_contract": (
+            "NO_MODEL_CALL_OR_TENSOR_MATH_CHANGE; GRAD_PATH_REMAINS_EAGER"
+        ),
+    }
+    module._distillschedule_nograd_compile_runtime = receipt
+    if not requested or role != "generator":
+        receipt["disabled_reason"] = (
+            "PLACEMENT_NOT_REQUESTED" if not requested else "GENERATOR_ONLY"
+        )
+        return receipt
+
+    torch = _torch()
+    if not callable(getattr(torch, "compile", None)):
+        raise RuntimeError("requested torch.compile arm but torch.compile is unavailable")
+    cache_root = Path(
+        os.environ.get(
+            "DISTILLSCHEDULE_WAN13B_COMPILE_CACHE_ROOT",
+            "/tmp/lyy-experiments/DMD-System/wan13b_compile_cache",
+        )
+    )
+    local_rank = int(os.environ.get("LOCAL_RANK", "0"))
+    cache_dir = cache_root / socket.gethostname() / f"local_rank_{local_rank:02d}"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    os.environ["TORCHINDUCTOR_CACHE_DIR"] = str(cache_dir)
+    receipt["cache_dir"] = str(cache_dir)
+
+    for index, block in enumerate(blocks):
+        original_forward = block.forward
+        compiled_forward = torch.compile(
+            original_forward,
+            backend="inductor",
+            mode="default",
+            fullgraph=False,
+            dynamic=False,
+        )
+
+        @functools.wraps(original_forward)
+        def dispatch(
+            *args: Any,
+            _compiled: Any = compiled_forward,
+            _original: Any = original_forward,
+            _index: int = index,
+            **kwargs: Any,
+        ) -> Any:
+            if torch.is_grad_enabled():
+                receipt["eager_dispatch_count"] += 1
+                return _original(*args, **kwargs)
+            first = receipt["first_dispatch_wall_seconds_by_block"][_index] is None
+            started = time.perf_counter() if first else 0.0
+            output = _compiled(*args, **kwargs)
+            receipt["compiled_dispatch_count"] += 1
+            if first:
+                receipt["first_dispatch_wall_seconds_by_block"][_index] = (
+                    time.perf_counter() - started
+                )
+            return output
+
+        block.forward = dispatch
+
+    receipt["enabled"] = True
+    receipt["all_blocks_wrapped"] = True
+    return receipt
 
 
 @dataclasses.dataclass
@@ -1201,6 +1309,7 @@ def build_fair_engine(
         ASYNC_128_RESIDENT: 128,
         ASYNC_128_TREE_RESIDENT: 128,
         ASYNC_128_TREE_CHUNK2048_RESIDENT: 128,
+        ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT: 128,
         ASYNC_256_RESIDENT: 256,
         FLAT_256_RESIDENT: 256,
         FLAT_512_RESIDENT: 512,
@@ -1235,6 +1344,7 @@ def build_fair_engine(
         ASYNC_128_RESIDENT,
         ASYNC_128_TREE_RESIDENT,
         ASYNC_128_TREE_CHUNK2048_RESIDENT,
+        ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT,
         ASYNC_256_RESIDENT,
         LOCAL_FAST_RESIDENT,
         FLAT_256_RESIDENT,
@@ -1244,6 +1354,7 @@ def build_fair_engine(
             ASYNC_128_RESIDENT,
             ASYNC_128_TREE_RESIDENT,
             ASYNC_128_TREE_CHUNK2048_RESIDENT,
+            ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT,
             ASYNC_256_RESIDENT,
         }:
             engine = GradReadyAsyncResidentEngine(
@@ -1310,6 +1421,7 @@ def build_fair_engine(
                 ASYNC_128_RESIDENT,
                 ASYNC_128_TREE_RESIDENT,
                 ASYNC_128_TREE_CHUNK2048_RESIDENT,
+                ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT,
                 ASYNC_256_RESIDENT,
             }
             else None
@@ -1321,6 +1433,7 @@ def build_fair_engine(
                 ASYNC_128_RESIDENT,
                 ASYNC_128_TREE_RESIDENT,
                 ASYNC_128_TREE_CHUNK2048_RESIDENT,
+                ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT,
                 ASYNC_256_RESIDENT,
             }
             else None
@@ -1449,6 +1562,7 @@ __all__ = [
     "ASYNC_128_RESIDENT",
     "ASYNC_128_TREE_RESIDENT",
     "ASYNC_128_TREE_CHUNK2048_RESIDENT",
+    "ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT",
     "ASYNC_256_RESIDENT",
     "DDP_RESIDENT",
     "FLAT_256_RESIDENT",
@@ -1473,6 +1587,7 @@ __all__ = [
     "apply_wan13b_fair_fsdp2_policy",
     "build_fair_engine",
     "configure_modulation_chunk_tokens",
+    "install_generator_nograd_block_compile",
     "ddp_sum_then_divide_hook",
     "fair_model_trainable_metrics",
 ]

@@ -8,7 +8,7 @@ MODE="${3:?validate, correctness, timing, diagnostic-timing, or profile}"
 EXPECTED_HEAD="${4:?expected DMD-System HEAD}"
 MASTER_ADDR="${5:?node0 routable address}"
 MASTER_PORT="${6:?world16 rendezvous port}"
-PLACEMENT="${7:?resident, resident-clean, resident-async128, resident-async128-tree, resident-async128-tree-chunk2048, resident-async256, resident-local-fast, resident-flat256, resident-flat512, resident-lora-zero2, resident-rollout-fused, resident-ddp, resident-fast, or world16-fsdp}"
+PLACEMENT="${7:?resident, resident-clean, resident-async128, resident-async128-tree, resident-async128-tree-chunk2048, resident-async128-tree-chunk2048-compile, resident-async256, resident-local-fast, resident-flat256, resident-flat512, resident-lora-zero2, resident-rollout-fused, resident-ddp, resident-fast, or world16-fsdp}"
 
 [[ "${NODE_RANK}" == 0 || "${NODE_RANK}" == 1 ]] || exit 2
 [[ "${MODE}" == validate || "${MODE}" == correctness || "${MODE}" == timing || \
@@ -17,6 +17,7 @@ PLACEMENT="${7:?resident, resident-clean, resident-async128, resident-async128-t
    "${PLACEMENT}" == resident-clean || "${PLACEMENT}" == resident-async128 || \
    "${PLACEMENT}" == resident-async128-tree || \
    "${PLACEMENT}" == resident-async128-tree-chunk2048 || \
+   "${PLACEMENT}" == resident-async128-tree-chunk2048-compile || \
    "${PLACEMENT}" == resident-async256 || \
    "${PLACEMENT}" == resident-local-fast || \
    "${PLACEMENT}" == resident-flat256 || "${PLACEMENT}" == resident-flat512 || \
@@ -128,10 +129,16 @@ export HF_HOME="${ASSETS}/hf_home_official_torch210"
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TOKENIZERS_PARALLELISM=false
 export OMP_NUM_THREADS=8 NCCL_ASYNC_ERROR_HANDLING=1
 if [[ "${PLACEMENT}" == resident-async128-tree || \
-      "${PLACEMENT}" == resident-async128-tree-chunk2048 ]]; then
+      "${PLACEMENT}" == resident-async128-tree-chunk2048 || \
+      "${PLACEMENT}" == resident-async128-tree-chunk2048-compile ]]; then
   export NCCL_ALGO=Tree
 else
   unset NCCL_ALGO
+fi
+if [[ "${PLACEMENT}" == resident-async128-tree-chunk2048-compile ]]; then
+  export DISTILLSCHEDULE_WAN13B_COMPILE_CACHE_ROOT="${DISTILLSCHEDULE_WAN13B_COMPILE_CACHE_ROOT:-/tmp/lyy-experiments/DMD-System/wan13b_compile_cache/${EXPECTED_HEAD}}"
+else
+  unset DISTILLSCHEDULE_WAN13B_COMPILE_CACHE_ROOT
 fi
 if [[ "${PLACEMENT}" == resident-fast || "${PLACEMENT}" == resident-local-fast || \
       "${PLACEMENT}" == resident-flat256 || "${PLACEMENT}" == resident-flat512 ]]; then
@@ -176,10 +183,13 @@ frozen_base_compute_dtype=torch.bfloat16
 lora_compute_dtype=torch.float32
 gradient_mean=SUM_THEN_DIVIDE_WORLD_SIZE
 resident_ddp_bucket_mb=128
-resident_async_bucket_mb=$( case "${PLACEMENT}" in resident-async128|resident-async128-tree|resident-async128-tree-chunk2048) echo 128 ;; resident-async256) echo 256 ;; *) echo NOT_APPLICABLE ;; esac )
-resident_async_collective_order=$( [[ "${PLACEMENT}" == resident-async128 || "${PLACEMENT}" == resident-async128-tree || "${PLACEMENT}" == resident-async128-tree-chunk2048 || "${PLACEMENT}" == resident-async256 ]] && echo DETERMINISTIC_REVERSE_PARAMETER_BUCKET_ORDER || echo NOT_APPLICABLE )
-modulation_chunk_tokens=$( case "${PLACEMENT}" in resident-async128-tree) echo 512 ;; resident-async128-tree-chunk2048) echo 2048 ;; *) echo RUNTIME_DEFAULT ;; esac )
+resident_async_bucket_mb=$( case "${PLACEMENT}" in resident-async128|resident-async128-tree|resident-async128-tree-chunk2048|resident-async128-tree-chunk2048-compile) echo 128 ;; resident-async256) echo 256 ;; *) echo NOT_APPLICABLE ;; esac )
+resident_async_collective_order=$( [[ "${PLACEMENT}" == resident-async128 || "${PLACEMENT}" == resident-async128-tree || "${PLACEMENT}" == resident-async128-tree-chunk2048 || "${PLACEMENT}" == resident-async128-tree-chunk2048-compile || "${PLACEMENT}" == resident-async256 ]] && echo DETERMINISTIC_REVERSE_PARAMETER_BUCKET_ORDER || echo NOT_APPLICABLE )
+modulation_chunk_tokens=$( case "${PLACEMENT}" in resident-async128-tree) echo 512 ;; resident-async128-tree-chunk2048|resident-async128-tree-chunk2048-compile) echo 2048 ;; *) echo RUNTIME_DEFAULT ;; esac )
+torch_compile_scope=$( [[ "${PLACEMENT}" == resident-async128-tree-chunk2048-compile ]] && echo GENERATOR_NOGRAD_TRANSFORMER_BLOCKS_ONLY || echo DISABLED )
 nccl_algo=${NCCL_ALGO:-AUTO}
+torch_compile_scope=${torch_compile_scope}
+torch_compile_cache_root=${DISTILLSCHEDULE_WAN13B_COMPILE_CACHE_ROOT:-NOT_APPLICABLE}
 ema_implementation=${ema_implementation}
 optimizer_implementation=${optimizer_implementation}
 gradient_clip_implementation=${gradient_clip_implementation}

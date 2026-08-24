@@ -24,6 +24,7 @@ def test_fair_contract_has_reference_ddp_fast_and_fsdp_endpoints() -> None:
         "resident-async128",
         "resident-async128-tree",
         "resident-async128-tree-chunk2048",
+        "resident-async128-tree-chunk2048-compile",
         "resident-async256",
         "resident-local-fast",
         "resident-flat256",
@@ -113,6 +114,7 @@ def test_grad_ready_async_reducer_is_ordered_overlapped_and_reference_local_math
     assert "ASYNC_128_RESIDENT: 128" in builder
     assert "ASYNC_128_TREE_RESIDENT: 128" in builder
     assert "ASYNC_128_TREE_CHUNK2048_RESIDENT: 128" in builder
+    assert "ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT: 128" in builder
     assert "ASYNC_256_RESIDENT: 256" in builder
     assert "ASYNC_128_RESIDENT" not in inspect.getsource(wan.LocalFastResidentEngine)
 
@@ -199,6 +201,7 @@ def test_fair_worker_reuses_frozen_workload_and_audits_runtime_dtypes() -> None:
     assert '"resident-async128"' in base_worker
     assert '"resident-async128-tree"' in base_worker
     assert '"resident-async128-tree-chunk2048"' in base_worker
+    assert '"resident-async128-tree-chunk2048-compile"' in base_worker
     assert '"resident-async256"' in base_worker
     assert '"resident-flat512"' in base_worker
     assert '"resident-lora-zero2"' in base_worker
@@ -217,6 +220,8 @@ def test_fair_launcher_is_fail_closed_and_never_profiles_as_timing() -> None:
     assert "resident-async128" in source
     assert "resident-async128-tree" in source
     assert "resident-async128-tree-chunk2048" in source
+    assert "resident-async128-tree-chunk2048-compile" in source
+    assert "GENERATOR_NOGRAD_TRANSFORMER_BLOCKS_ONLY" in source
     assert "export NCCL_ALGO=Tree" in source
     assert "unset NCCL_ALGO" in source
     assert "resident-async256" in source
@@ -270,6 +275,73 @@ def test_tree_chunk2048_changes_only_pinned_modulation_chunk_granularity() -> No
         block._distillschedule_modulation_chunk_tokens == 2048
         for block in candidate.blocks
     )
+
+
+def test_compile_arm_routes_only_generator_nograd_blocks(
+    monkeypatch, tmp_path: Path
+) -> None:
+    class FakeTorch:
+        grad_enabled = False
+        compile_calls = 0
+
+        @classmethod
+        def compile(cls, function, **kwargs):
+            cls.compile_calls += 1
+            assert kwargs == {
+                "backend": "inductor",
+                "mode": "default",
+                "fullgraph": False,
+                "dynamic": False,
+            }
+
+            def compiled(*args, **call_kwargs):
+                return function(*args, **call_kwargs)
+
+            return compiled
+
+        @classmethod
+        def is_grad_enabled(cls):
+            return cls.grad_enabled
+
+    class Block:
+        def forward(self, value):
+            return value + 1
+
+    class Model:
+        def __init__(self):
+            self.blocks = [Block() for _ in range(wan.WAN13B_BLOCK_COUNT)]
+
+    monkeypatch.setattr(wan, "_torch", lambda: FakeTorch)
+    monkeypatch.setenv("DISTILLSCHEDULE_WAN13B_COMPILE_CACHE_ROOT", str(tmp_path))
+    generator = Model()
+    receipt = wan.install_generator_nograd_block_compile(
+        generator,
+        placement=wan.ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT,
+        role="generator",
+    )
+    assert receipt["enabled"] is True
+    assert receipt["all_blocks_wrapped"] is True
+    assert FakeTorch.compile_calls == wan.WAN13B_BLOCK_COUNT
+    assert [block.forward(1) for block in generator.blocks] == [2] * 30
+    assert receipt["compiled_dispatch_count"] == 30
+    assert receipt["eager_dispatch_count"] == 0
+    assert all(
+        value is not None for value in receipt["first_dispatch_wall_seconds_by_block"]
+    )
+
+    FakeTorch.grad_enabled = True
+    assert [block.forward(2) for block in generator.blocks] == [3] * 30
+    assert receipt["compiled_dispatch_count"] == 30
+    assert receipt["eager_dispatch_count"] == 30
+
+    critic = Model()
+    critic_receipt = wan.install_generator_nograd_block_compile(
+        critic,
+        placement=wan.ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT,
+        role="critic",
+    )
+    assert critic_receipt["enabled"] is False
+    assert critic_receipt["disabled_reason"] == "GENERATOR_ONLY"
 
 
 def test_fair_comparator_keeps_default_p0_thresholds() -> None:
