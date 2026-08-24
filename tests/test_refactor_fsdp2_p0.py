@@ -92,6 +92,12 @@ def test_policy_and_mesh_contract() -> None:
         StaticFSDP2P0Policy(rollout_batch_size=3)
     with pytest.raises(ValueError):
         StaticFSDP2P0Policy(rollout_backend="vllm-omni")
+    warmed = StaticFSDP2P0Policy(
+        mesh_policy="node-hsdp", optimizer_dispatch_warmup=True
+    )
+    assert warmed.id == "node-hsdp-rollout-b1-realpair-0-optwarm"
+    with pytest.raises(ValueError, match="node-HSDP"):
+        StaticFSDP2P0Policy(optimizer_dispatch_warmup=True)
 
 
 def test_execution_order_precomputes_all_rollouts_before_critic() -> None:

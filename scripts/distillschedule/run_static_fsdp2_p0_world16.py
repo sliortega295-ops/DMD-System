@@ -119,6 +119,11 @@ def parser() -> argparse.ArgumentParser:
         default="off",
     )
     value.add_argument(
+        "--optimizer-dispatch-warmup",
+        choices=("on", "off"),
+        default="off",
+    )
+    value.add_argument(
         "--remote-root",
         type=Path,
         default=Path(
@@ -199,6 +204,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.generator_nograd_lora_fused_epilogue),
         "DISTILLSCHEDULE_HELIOS_ALL_ROLE_LORA_SCALE1_ADD="
         + shlex.quote(args.all_role_lora_scale1_add),
+        "DISTILLSCHEDULE_OPTIMIZER_DISPATCH_WARMUP="
+        + shlex.quote(args.optimizer_dispatch_warmup),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -300,6 +307,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.generator_nograd_lora_fused_epilogue)} "
         + "--all-role-lora-scale1-add "
         + f"{shlex.quote(args.all_role_lora_scale1_add)} "
+        + "--optimizer-dispatch-warmup "
+        + f"{shlex.quote(args.optimizer_dispatch_warmup)} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
         + (
             f"--critic-only-step {args.critic_only_step} "
@@ -335,6 +344,8 @@ def main() -> int:
         and args.all_role_lora_scale1_add == "on"
     ):
         raise ValueError("LoRA epilogue candidates are mutually exclusive")
+    if args.optimizer_dispatch_warmup == "on" and args.mesh_policy != "node-hsdp":
+        raise ValueError("optimizer dispatch warmup is restricted to node-HSDP")
     if args.critic_only_step is not None and (
         args.variant != "no-gan" or args.mode != "profile"
     ):

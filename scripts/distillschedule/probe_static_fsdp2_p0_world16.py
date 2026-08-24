@@ -185,6 +185,7 @@ def _build_engines(
         betas=(0.0, 0.999),
         eps=1e-8,
         weight_decay=1e-3,
+        optimizer_dispatch_warmup=policy.optimizer_dispatch_warmup,
     )
     critic_engine, critic_restore = build_fsdp2_engine(
         module=critic,
@@ -194,6 +195,7 @@ def _build_engines(
         betas=(0.0, 0.999),
         eps=1e-8,
         weight_decay=1e-3,
+        optimizer_dispatch_warmup=policy.optimizer_dispatch_warmup,
     )
     return generator_engine, critic_engine, {
         "generator": {**generator_build, "optimizer_restore": generator_restore},
@@ -606,6 +608,15 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--optimizer-dispatch-warmup",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Setup-only zero-gradient AdamW/DTensor dispatch warmup with exact "
+            "parameter and optimizer-state restoration; node-HSDP only"
+        ),
+    )
+    value.add_argument(
         "--critic-only-step",
         type=int,
         choices=(10,),
@@ -646,6 +657,7 @@ def main() -> int:
         rollout_batch_size=args.rollout_batch_size,
         pack_real_score_pair=bool(args.pack_real_score_pair),
         rollout_backend=args.rollout_backend,
+        optimizer_dispatch_warmup=bool(args.optimizer_dispatch_warmup),
     )
     dist.init_process_group("nccl")
     rank = dist.get_rank()
@@ -679,6 +691,9 @@ def main() -> int:
                 args.generator_nograd_lora_fused_epilogue
             ),
             "all_role_lora_scale1_add": bool(args.all_role_lora_scale1_add),
+            "optimizer_dispatch_warmup": bool(
+                args.optimizer_dispatch_warmup
+            ),
         },
     }
     try:

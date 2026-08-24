@@ -11,6 +11,7 @@ import dataclasses
 import functools
 import json
 import math
+import time
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
@@ -381,6 +382,191 @@ class FSDP2EngineAdapter:
         return self._step_calls
 
 
+def _optimizer_dispatch_warmup(
+    *,
+    optimizer: Any,
+    trainables: list[Any],
+    gradient_clip: float,
+) -> dict[str, Any]:
+    """Warm DTensor/foreach dispatch without changing logical training state.
+
+    PyTorch builds several DTensor sharding-propagation and foreach dispatch
+    paths lazily on the first AdamW update.  The formal Full5 timer starts after
+    optimizer state restoration, so this setup-only probe uses zero gradients,
+    ``lr=0`` and ``weight_decay=0`` to populate those caches, then restores the
+    exact local parameter and Adam state bytes before model computation.
+
+    This is deliberately restricted to the audited node-HSDP layout.  It does
+    not replace gradient clipping or optimizer math in the real update path.
+    """
+
+    torch = _torch()
+    try:
+        from torch.distributed.tensor import Replicate, Shard
+    except ImportError as error:
+        raise RuntimeError("optimizer dispatch warmup requires DTensor") from error
+    if not trainables:
+        raise ValueError("optimizer dispatch warmup requires trainable parameters")
+
+    local_parameters: list[Any] = []
+    parameter_snapshots: list[Any] = []
+    state_snapshots: list[tuple[Any, Any, Any]] = []
+    local_state_values: list[tuple[Any, Any]] = []
+    expected_mesh = None
+    local_parameter_bytes = 0
+    local_state_bytes = 0
+    for index, parameter in enumerate(trainables):
+        if not hasattr(parameter, "device_mesh") or not hasattr(parameter, "placements"):
+            raise TypeError(f"warmup parameter {index} is not a DTensor")
+        mesh = parameter.device_mesh
+        if tuple(getattr(mesh, "mesh_dim_names", ())) != ("replicate", "shard"):
+            raise ValueError("optimizer warmup is restricted to node-HSDP")
+        placements = tuple(parameter.placements)
+        if (
+            len(placements) != 2
+            or not isinstance(placements[0], Replicate)
+            or not isinstance(placements[1], Shard)
+        ):
+            raise ValueError(
+                "optimizer warmup requires (Replicate(), Shard(...)) parameters"
+            )
+        if expected_mesh is None:
+            expected_mesh = mesh
+        elif mesh is not expected_mesh:
+            raise ValueError("optimizer warmup observed multiple HSDP meshes")
+
+        local_parameter = parameter.detach().to_local()
+        local_parameters.append(local_parameter)
+        parameter_snapshots.append(local_parameter.clone())
+        local_parameter_bytes += int(
+            local_parameter.numel() * local_parameter.element_size()
+        )
+
+        state = optimizer.state.get(parameter)
+        if not isinstance(state, dict) or set(state) != {
+            "step",
+            "exp_avg",
+            "exp_avg_sq",
+        }:
+            raise ValueError(f"warmup parameter {index} Adam state is not materialized")
+        first = state["exp_avg"]
+        second = state["exp_avg_sq"]
+        for name, value in (("exp_avg", first), ("exp_avg_sq", second)):
+            if (
+                not hasattr(value, "device_mesh")
+                or value.device_mesh is not mesh
+                or tuple(value.placements) != placements
+            ):
+                raise ValueError(
+                    f"warmup parameter {index} {name} DTensor layout changed"
+                )
+        first_local = first.to_local()
+        second_local = second.to_local()
+        state_snapshots.append(
+            (
+                state["step"].detach().clone(),
+                first_local.detach().clone(),
+                second_local.detach().clone(),
+            )
+        )
+        local_state_values.append((first_local, second_local))
+        local_state_bytes += int(
+            first_local.numel() * first_local.element_size()
+            + second_local.numel() * second_local.element_size()
+        )
+
+    group_values = [
+        (group, group.get("lr"), group.get("weight_decay"))
+        for group in optimizer.param_groups
+    ]
+    device = local_parameters[0].device
+    use_cuda = device.type == "cuda"
+    if use_cuda:
+        torch.cuda.synchronize(device)
+    started = time.perf_counter()
+    warmup_error: BaseException | None = None
+    try:
+        for group, _lr, _weight_decay in group_values:
+            group["lr"] = 0.0
+            group["weight_decay"] = 0.0
+        for parameter in trainables:
+            parameter.grad = torch.zeros_like(parameter)
+        # Keep the official clipping implementation and threshold.  The probe
+        # changes only values (all-zero gradients), not the dispatched graph.
+        torch.nn.utils.clip_grad_norm_(trainables, float(gradient_clip))
+        optimizer.step()
+        if use_cuda:
+            torch.cuda.synchronize(device)
+    except BaseException as error:  # restore exact state before failing closed
+        warmup_error = error
+    finally:
+        optimizer.zero_grad(set_to_none=True)
+        for group, lr, weight_decay in group_values:
+            group["lr"] = lr
+            group["weight_decay"] = weight_decay
+
+    changed = torch.zeros((), dtype=torch.int64, device=device)
+    for current, snapshot in zip(
+        local_parameters, parameter_snapshots, strict=True
+    ):
+        changed.add_(torch.count_nonzero(current != snapshot))
+        current.copy_(snapshot)
+    changed_elements = int(changed.item())
+
+    for parameter, (step, first_snapshot, second_snapshot), (
+        first_local,
+        second_local,
+    ) in zip(trainables, state_snapshots, local_state_values, strict=True):
+        state = optimizer.state[parameter]
+        state["step"].copy_(step)
+        first_local.copy_(first_snapshot)
+        second_local.copy_(second_snapshot)
+
+    state_residual = torch.zeros((), dtype=torch.int64, device=device)
+    step_restored = True
+    for parameter, (step, first_snapshot, second_snapshot), (
+        first_local,
+        second_local,
+    ) in zip(trainables, state_snapshots, local_state_values, strict=True):
+        state_residual.add_(torch.count_nonzero(first_local != first_snapshot))
+        state_residual.add_(torch.count_nonzero(second_local != second_snapshot))
+        step_restored = step_restored and bool(torch.equal(optimizer.state[parameter]["step"], step))
+    state_changed_elements_after_restore = int(state_residual.item())
+    if use_cuda:
+        torch.cuda.synchronize(device)
+    wall = time.perf_counter() - started
+
+    del parameter_snapshots, state_snapshots
+    if warmup_error is not None:
+        raise RuntimeError("optimizer dispatch warmup failed after state restore") from warmup_error
+    if changed_elements != 0:
+        raise RuntimeError(
+            "zero-lr optimizer warmup changed parameter values before restoration: "
+            f"{changed_elements} elements"
+        )
+    if state_changed_elements_after_restore != 0 or not step_restored:
+        raise RuntimeError("optimizer dispatch warmup did not restore Adam state exactly")
+    if any(parameter.grad is not None for parameter in trainables):
+        raise RuntimeError("optimizer dispatch warmup left gradients attached")
+    return {
+        "enabled": True,
+        "implementation": "ZERO_GRAD_ZERO_LR_ZERO_WEIGHT_DECAY_THEN_EXACT_RESTORE",
+        "scope": "SETUP_ONLY_BEFORE_FORMAL_TIMER",
+        "mesh_dim_names": ["replicate", "shard"],
+        "trainable_tensor_count": len(trainables),
+        "local_parameter_bytes": local_parameter_bytes,
+        "local_adam_state_bytes": local_state_bytes,
+        "synthetic_gradient_bytes": local_parameter_bytes,
+        "configured_gradient_clip": float(gradient_clip),
+        "parameter_changed_elements_before_restore": changed_elements,
+        "state_changed_elements_after_restore": state_changed_elements_after_restore,
+        "step_state_restored": step_restored,
+        "gradients_cleared": True,
+        "warmup_wall_seconds": wall,
+        "formal_timer_includes_warmup": False,
+    }
+
+
 
 def build_fsdp2_engine(
     *,
@@ -391,6 +577,7 @@ def build_fsdp2_engine(
     betas: tuple[float, float],
     eps: float,
     weight_decay: float,
+    optimizer_dispatch_warmup: bool = False,
 ) -> tuple[FSDP2EngineAdapter, dict[str, Any]]:
     torch = _torch()
     trainables = list(_named_trainables(module).values())
@@ -411,13 +598,26 @@ def build_fsdp2_engine(
         package=package,
         component=component,
     )
+    warmup = (
+        _optimizer_dispatch_warmup(
+            optimizer=optimizer,
+            trainables=trainables,
+            gradient_clip=1.0,
+        )
+        if optimizer_dispatch_warmup
+        else {
+            "enabled": False,
+            "disabled_reason": "NOT_REQUESTED",
+            "formal_timer_includes_warmup": False,
+        }
+    )
     engine = FSDP2EngineAdapter(
         module,
         optimizer,
         scheduler,
         physical_step=int(package.component(component)["optimizer_step"]),
     )
-    return engine, restore
+    return engine, {**restore, "optimizer_dispatch_warmup": warmup}
 
 
 class FSDP2ShardEMA:
@@ -595,4 +795,5 @@ __all__ = [
     "build_fsdp2_engine",
     "contract_for_variant",
     "restore_fsdp2_optimizer_from_logical",
+    "_optimizer_dispatch_warmup",
 ]

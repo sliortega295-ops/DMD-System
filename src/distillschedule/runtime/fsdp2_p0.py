@@ -5,6 +5,7 @@ The module keeps the PR #13 baseline intact and provides three opt-in changes:
 * batch the five post-Generator-update no-grad rollouts by logical step;
 * pack the Real-Score conditional/unconditional requests into one B2 forward;
 * choose world16 FSDP or a two-node ``replicate=2, shard=8`` HSDP mesh.
+* optionally warm one-time node-HSDP optimizer dispatch before formal timing.
 
 All helpers are fail-closed: operations with different physical DiT schedules,
 non-stackable trace tensors, or unsupported execution backends are rejected
@@ -52,6 +53,7 @@ class StaticFSDP2P0Policy:
     rollout_batch_size: int = 1
     pack_real_score_pair: bool = False
     rollout_backend: str = "native-fsdp2-batch"
+    optimizer_dispatch_warmup: bool = False
 
     def __post_init__(self) -> None:
         if self.mesh_policy not in SUPPORTED_MESH_POLICIES:
@@ -66,13 +68,18 @@ class StaticFSDP2P0Policy:
                 f"rollout backend {self.rollout_backend!r} is not integrated; "
                 "external serving engines require an explicit latent/trace/LoRA-sync adapter"
             )
+        if self.optimizer_dispatch_warmup and self.mesh_policy != "node-hsdp":
+            raise ValueError(
+                "optimizer dispatch warmup is restricted to the node-HSDP candidate"
+            )
 
     @property
     def id(self) -> str:
-        return (
+        base = (
             f"{self.mesh_policy}-rollout-b{self.rollout_batch_size}-"
             f"realpair-{int(self.pack_real_score_pair)}"
         )
+        return f"{base}-optwarm" if self.optimizer_dispatch_warmup else base
 
 
 def mesh_shape_for_policy(policy: str, *, world_size: int = WORLD_SIZE) -> tuple[int, ...]:
