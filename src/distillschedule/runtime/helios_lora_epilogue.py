@@ -2,8 +2,15 @@
 
 Only Generator calls made with autograd disabled enter this path.  Gradient
 calls and every Critic call retain PEFT's source-pinned implementation.  The
-fused kernel preserves PEFT's FP32 multiply, FP32 add, and final BF16 rounding
-while replacing three pointwise kernels with one.
+fused kernel preserves either of the two source-pinned PEFT epilogues observed
+under the supported precision policies:
+
+* FP32 update: FP32 multiply, FP32 add, final BF16 rounding;
+* BF16 update: BF16 multiply rounding, BF16 add rounding.
+
+The second contract is important for the real Helios FSDP2 path, whose mixed
+precision policy materializes both the frozen base and LoRA parameters as
+BF16.  It must not be replaced with a one-round FP32 fused expression.
 """
 from __future__ import annotations
 
@@ -48,12 +55,17 @@ def install_generator_nograd_lora_fused_epilogue(
         "model_call_count": 0,
         "fused_invocation_count": 0,
         "fused_element_count": 0,
+        "fused_update_dtype_counts": {},
         "reference_fallback_count": 0,
         "reference_fallback_reasons": {},
-        "reference_pointwise_kernel_count_per_invocation": 3,
+        "reference_pointwise_kernel_count_per_invocation": {
+            "torch.float32": 3,
+            "torch.bfloat16": 2,
+        },
         "candidate_kernel_count_per_invocation": 1,
         "semantic_contract": (
-            "FP32_MUL_RN_THEN_FP32_ADD_RN_THEN_BF16_RN_STORE;"
+            "FP32_UPDATE:FP32_MUL_RN_THEN_FP32_ADD_RN_THEN_BF16_RN_STORE;"
+            "BF16_UPDATE:BF16_MUL_RN_THEN_BF16_ADD_RN;"
             "GRAD_AND_CRITIC_PATHS_UNCHANGED"
         ),
     }
@@ -152,7 +164,7 @@ def install_generator_nograd_lora_fused_epilogue(
             fallback_reason = None
             if result.dtype != torch.bfloat16:
                 fallback_reason = f"BASE_DTYPE_{result.dtype}"
-            elif update.dtype != torch.float32:
+            elif update.dtype not in (torch.float32, torch.bfloat16):
                 fallback_reason = f"UPDATE_DTYPE_{update.dtype}"
             elif result.shape != update.shape:
                 fallback_reason = "SHAPE_MISMATCH"
@@ -162,6 +174,9 @@ def install_generator_nograd_lora_fused_epilogue(
                 result = fused_epilogue(result, update, _child.scaling[adapter])
                 receipt["fused_invocation_count"] += 1
                 receipt["fused_element_count"] += int(result.numel())
+                dtype_counts = receipt["fused_update_dtype_counts"]
+                dtype_key = str(update.dtype)
+                dtype_counts[dtype_key] = int(dtype_counts.get(dtype_key, 0)) + 1
             else:
                 result = (result + update * _child.scaling[adapter]).to(result_dtype)
                 receipt["reference_fallback_count"] += 1

@@ -50,6 +50,22 @@ class Model(torch.nn.Module):
         return self.linear(value)
 
 
+class FakeLinearBF16(FakeLinear):
+    def __init__(self) -> None:
+        super().__init__()
+        self.lora_A = self.lora_A.to(torch.bfloat16)
+        self.lora_B = self.lora_B.to(torch.bfloat16)
+
+
+class ModelBF16(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.linear = FakeLinearBF16()
+
+    def forward(self, value):
+        return self.linear(value)
+
+
 def test_epilogue_is_default_off() -> None:
     model = Model()
     receipt = install_generator_nograd_lora_fused_epilogue(
@@ -89,6 +105,35 @@ def test_epilogue_is_generator_nograd_only_and_exact() -> None:
     model(value)
     assert receipt["model_call_count"] == before["model_call_count"]
     assert receipt["fused_invocation_count"] == before["fused_invocation_count"]
+
+
+def test_epilogue_accepts_real_fsdp_bf16_update_contract() -> None:
+    calls = []
+
+    def fused(base, update, scaling):
+        calls.append((base.dtype, update.dtype, scaling))
+        # Keep both eager BF16 roundings in this injected reference.
+        scaled = update * scaling
+        return base + scaled
+
+    model = ModelBF16()
+    value = torch.tensor([[1.0, 2.0]], dtype=torch.bfloat16)
+    with torch.no_grad():
+        reference = model(value)
+    receipt = install_generator_nograd_lora_fused_epilogue(
+        model,
+        enabled=True,
+        role="generator",
+        linear_type=FakeLinearBF16,
+        fused_epilogue=fused,
+    )
+    with torch.no_grad():
+        candidate = model(value)
+    assert torch.equal(reference, candidate)
+    assert calls == [(torch.bfloat16, torch.bfloat16, 0.5)]
+    assert receipt["fused_invocation_count"] == 1
+    assert receipt["fused_update_dtype_counts"] == {"torch.bfloat16": 1}
+    assert receipt["reference_fallback_count"] == 0
 
 
 def test_peft_source_and_launcher_contract_are_pinned() -> None:
