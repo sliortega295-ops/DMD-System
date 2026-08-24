@@ -304,6 +304,7 @@ if [[ "${NODE_RANK}" == 0 ]]; then
     --devices 0 \
     --nvtx \
     --nvtx-include "${NCU_NVTX_FILTER}" \
+    --kernel-name-base demangled \
     --kernel-name "${NCU_KERNEL_NAME}" \
     --launch-skip "${NCU_LAUNCH_SKIP}" \
     --launch-count 1 \
