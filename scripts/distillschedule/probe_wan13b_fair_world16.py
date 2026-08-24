@@ -43,6 +43,7 @@ _SPEC.loader.exec_module(base)
 from distillschedule.runtime.wan13b_fair import (
     ASYNC_128_RESIDENT,
     ASYNC_128_TREE_RESIDENT,
+    ASYNC_128_TREE_CHUNK2048_RESIDENT,
     ASYNC_256_RESIDENT,
     CLEAN_RESIDENT,
     FAIR_PLACEMENTS,
@@ -58,6 +59,7 @@ from distillschedule.runtime.wan13b_fair import (
     RESIDENT_PLACEMENTS,
     apply_wan13b_fair_fsdp2_policy,
     build_fair_engine,
+    configure_modulation_chunk_tokens,
     fair_model_trainable_metrics,
     install_resident_clean_model_state,
 )
@@ -87,6 +89,11 @@ def _build_model_fair(
     if int(metadata["block_count"]) != base.WAN13B_BLOCK_COUNT:
         raise AssertionError("Wan1.3B fair worker requires exactly 30 blocks")
     restore = bootstrap.restore_trainables(model, component=role)
+    modulation_chunk = configure_modulation_chunk_tokens(
+        model, placement=args.placement
+    )
+    metadata = dict(metadata)
+    metadata["modulation_chunk_runtime"] = modulation_chunk
 
     # Use the same non-reentrant checkpoint wrapper on every arm. Disabling the
     # metadata check changes no tensor math but removes a wrapper-only variable.
@@ -134,6 +141,7 @@ def _build_model_fair(
                         CLEAN_RESIDENT,
                         ASYNC_128_RESIDENT,
                         ASYNC_128_TREE_RESIDENT,
+                        ASYNC_128_TREE_CHUNK2048_RESIDENT,
                         ASYNC_256_RESIDENT,
                         LOCAL_FAST_RESIDENT,
                         FLAT_256_RESIDENT,
@@ -156,6 +164,7 @@ def _build_model_fair(
                         CLEAN_RESIDENT,
                         ASYNC_128_RESIDENT,
                         ASYNC_128_TREE_RESIDENT,
+                        ASYNC_128_TREE_CHUNK2048_RESIDENT,
                         ASYNC_256_RESIDENT,
                         LOCAL_FAST_RESIDENT,
                         FLAT_256_RESIDENT,
@@ -183,6 +192,7 @@ def _build_model_fair(
         CLEAN_RESIDENT,
         ASYNC_128_RESIDENT,
         ASYNC_128_TREE_RESIDENT,
+        ASYNC_128_TREE_CHUNK2048_RESIDENT,
         ASYNC_256_RESIDENT,
         LOCAL_FAST_RESIDENT,
         FLAT_256_RESIDENT,

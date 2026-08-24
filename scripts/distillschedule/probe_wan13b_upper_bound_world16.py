@@ -365,6 +365,7 @@ def main() -> int:
             "resident-clean",
             "resident-async128",
             "resident-async128-tree",
+            "resident-async128-tree-chunk2048",
             "resident-async256",
             "resident-local-fast",
             "resident-flat256",

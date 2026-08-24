@@ -11,6 +11,7 @@ from typing import Any
 from distillschedule.runtime.wan13b_fair import (
     ASYNC_128_RESIDENT,
     ASYNC_128_TREE_RESIDENT,
+    ASYNC_128_TREE_CHUNK2048_RESIDENT,
     ASYNC_256_RESIDENT,
     CLEAN_RESIDENT,
     FAIR_PLACEMENTS,
@@ -170,6 +171,7 @@ def main() -> int:
                         in {
                             ASYNC_128_RESIDENT,
                             ASYNC_128_TREE_RESIDENT,
+                            ASYNC_128_TREE_CHUNK2048_RESIDENT,
                             ASYNC_256_RESIDENT,
                         }
                         else (
@@ -194,6 +196,7 @@ def main() -> int:
                     if args.placement in {
                         ASYNC_128_RESIDENT,
                         ASYNC_128_TREE_RESIDENT,
+                        ASYNC_128_TREE_CHUNK2048_RESIDENT,
                         ASYNC_256_RESIDENT,
                     }:
                         if receipt.get("overlap_with_backward") is not True:
@@ -219,6 +222,7 @@ def main() -> int:
                 component_build = build.get(component, {})
                 metadata = component_build.get("metadata", {})
                 residual_runtime = metadata.get("chunked_residual_runtime", {})
+                modulation_chunk = metadata.get("modulation_chunk_runtime", {})
                 if metadata.get("chunked_residual_storage") != "cuda_out_of_place":
                     errors.append(f"rank{rank}/{component}: residual storage is not CUDA")
                 if residual_runtime.get("requested_storage") != "cuda_out_of_place":
@@ -229,6 +233,25 @@ def main() -> int:
                     errors.append(
                         f"rank{rank}/{component}: runtime cannot honor CUDA residuals"
                     )
+                expected_chunk = {
+                    ASYNC_128_TREE_RESIDENT: 512,
+                    ASYNC_128_TREE_CHUNK2048_RESIDENT: 2048,
+                }.get(args.placement)
+                if expected_chunk is not None:
+                    if modulation_chunk.get("effective_tokens") != [expected_chunk]:
+                        errors.append(
+                            f"rank{rank}/{component}: modulation chunk tokens="
+                            f"{modulation_chunk.get('effective_tokens')}, "
+                            f"expected={[expected_chunk]}"
+                        )
+                    if modulation_chunk.get("block_count") != 30:
+                        errors.append(
+                            f"rank{rank}/{component}: modulation chunk block census changed"
+                        )
+                    if modulation_chunk.get("all_blocks_match") is not True:
+                        errors.append(
+                            f"rank{rank}/{component}: modulation chunks are not uniform"
+                        )
                 runtime_sha = residual_runtime.get("transformer_source_sha256")
                 if not isinstance(runtime_sha, str) or len(runtime_sha) != 64:
                     errors.append(
@@ -307,6 +330,7 @@ def main() -> int:
                 CLEAN_RESIDENT,
                 ASYNC_128_RESIDENT,
                 ASYNC_128_TREE_RESIDENT,
+                ASYNC_128_TREE_CHUNK2048_RESIDENT,
                 ASYNC_256_RESIDENT,
                 LOCAL_FAST_RESIDENT,
                 FLAT_256_RESIDENT,

@@ -28,6 +28,7 @@ REFERENCE_RESIDENT = "resident"
 CLEAN_RESIDENT = "resident-clean"
 ASYNC_128_RESIDENT = "resident-async128"
 ASYNC_128_TREE_RESIDENT = "resident-async128-tree"
+ASYNC_128_TREE_CHUNK2048_RESIDENT = "resident-async128-tree-chunk2048"
 ASYNC_256_RESIDENT = "resident-async256"
 LOCAL_FAST_RESIDENT = "resident-local-fast"
 FLAT_256_RESIDENT = "resident-flat256"
@@ -42,6 +43,7 @@ RESIDENT_PLACEMENTS = (
     CLEAN_RESIDENT,
     ASYNC_128_RESIDENT,
     ASYNC_128_TREE_RESIDENT,
+    ASYNC_128_TREE_CHUNK2048_RESIDENT,
     ASYNC_256_RESIDENT,
     LOCAL_FAST_RESIDENT,
     FLAT_256_RESIDENT,
@@ -52,6 +54,12 @@ RESIDENT_PLACEMENTS = (
     FAST_RESIDENT,
 )
 FAIR_PLACEMENTS = (*RESIDENT_PLACEMENTS, FSDP_PLACEMENT)
+
+DEFAULT_MODULATION_CHUNK_TOKENS = 512
+MODULATION_CHUNK_TOKENS_BY_PLACEMENT = {
+    ASYNC_128_TREE_RESIDENT: DEFAULT_MODULATION_CHUNK_TOKENS,
+    ASYNC_128_TREE_CHUNK2048_RESIDENT: 2048,
+}
 
 
 def _torch() -> Any:
@@ -65,6 +73,41 @@ def _named_trainables(module: Any) -> dict[str, Any]:
         name: parameter
         for name, parameter in module.named_parameters()
         if parameter.requires_grad
+    }
+
+
+def configure_modulation_chunk_tokens(module: Any, *, placement: str) -> dict[str, Any]:
+    """Pin the split-modulation tile size and emit a fail-closed receipt."""
+
+    requested = MODULATION_CHUNK_TOKENS_BY_PLACEMENT.get(placement)
+    blocks = list(getattr(module, "blocks", ()))
+    if len(blocks) != WAN13B_BLOCK_COUNT:
+        raise AssertionError(
+            f"Wan modulation chunk audit requires {WAN13B_BLOCK_COUNT} blocks, "
+            f"got {len(blocks)}"
+        )
+    if requested is not None:
+        module._distillschedule_modulation_chunk_tokens = int(requested)
+        for block in blocks:
+            block._distillschedule_modulation_chunk_tokens = int(requested)
+    observed = [
+        int(
+            getattr(
+                block,
+                "_distillschedule_modulation_chunk_tokens",
+                DEFAULT_MODULATION_CHUNK_TOKENS,
+            )
+        )
+        for block in blocks
+    ]
+    if requested is not None and observed != [int(requested)] * WAN13B_BLOCK_COUNT:
+        raise AssertionError("modulation chunk token setting was not applied uniformly")
+    return {
+        "requested_tokens": int(requested) if requested is not None else None,
+        "effective_tokens": sorted(set(observed)),
+        "block_count": len(blocks),
+        "all_blocks_match": len(set(observed)) == 1,
+        "compute_semantics": "SAME_SPLIT_MODULATION_TOKENWISE_MATH",
     }
 
 
@@ -1157,6 +1200,7 @@ def build_fair_engine(
     flat_bucket_mb = {
         ASYNC_128_RESIDENT: 128,
         ASYNC_128_TREE_RESIDENT: 128,
+        ASYNC_128_TREE_CHUNK2048_RESIDENT: 128,
         ASYNC_256_RESIDENT: 256,
         FLAT_256_RESIDENT: 256,
         FLAT_512_RESIDENT: 512,
@@ -1190,6 +1234,7 @@ def build_fair_engine(
         CLEAN_RESIDENT,
         ASYNC_128_RESIDENT,
         ASYNC_128_TREE_RESIDENT,
+        ASYNC_128_TREE_CHUNK2048_RESIDENT,
         ASYNC_256_RESIDENT,
         LOCAL_FAST_RESIDENT,
         FLAT_256_RESIDENT,
@@ -1198,6 +1243,7 @@ def build_fair_engine(
         if placement in {
             ASYNC_128_RESIDENT,
             ASYNC_128_TREE_RESIDENT,
+            ASYNC_128_TREE_CHUNK2048_RESIDENT,
             ASYNC_256_RESIDENT,
         }:
             engine = GradReadyAsyncResidentEngine(
@@ -1263,6 +1309,7 @@ def build_fair_engine(
             not in {
                 ASYNC_128_RESIDENT,
                 ASYNC_128_TREE_RESIDENT,
+                ASYNC_128_TREE_CHUNK2048_RESIDENT,
                 ASYNC_256_RESIDENT,
             }
             else None
@@ -1273,6 +1320,7 @@ def build_fair_engine(
             in {
                 ASYNC_128_RESIDENT,
                 ASYNC_128_TREE_RESIDENT,
+                ASYNC_128_TREE_CHUNK2048_RESIDENT,
                 ASYNC_256_RESIDENT,
             }
             else None
@@ -1400,6 +1448,7 @@ __all__ = [
     "CLEAN_RESIDENT",
     "ASYNC_128_RESIDENT",
     "ASYNC_128_TREE_RESIDENT",
+    "ASYNC_128_TREE_CHUNK2048_RESIDENT",
     "ASYNC_256_RESIDENT",
     "DDP_RESIDENT",
     "FLAT_256_RESIDENT",
@@ -1423,6 +1472,7 @@ __all__ = [
     "ShardedTrainableEMA",
     "apply_wan13b_fair_fsdp2_policy",
     "build_fair_engine",
+    "configure_modulation_chunk_tokens",
     "ddp_sum_then_divide_hook",
     "fair_model_trainable_metrics",
 ]

@@ -23,6 +23,7 @@ def test_fair_contract_has_reference_ddp_fast_and_fsdp_endpoints() -> None:
         "resident-clean",
         "resident-async128",
         "resident-async128-tree",
+        "resident-async128-tree-chunk2048",
         "resident-async256",
         "resident-local-fast",
         "resident-flat256",
@@ -111,6 +112,7 @@ def test_grad_ready_async_reducer_is_ordered_overlapped_and_reference_local_math
     assert "GradReadyAsyncResidentEngine" in builder
     assert "ASYNC_128_RESIDENT: 128" in builder
     assert "ASYNC_128_TREE_RESIDENT: 128" in builder
+    assert "ASYNC_128_TREE_CHUNK2048_RESIDENT: 128" in builder
     assert "ASYNC_256_RESIDENT: 256" in builder
     assert "ASYNC_128_RESIDENT" not in inspect.getsource(wan.LocalFastResidentEngine)
 
@@ -196,6 +198,7 @@ def test_fair_worker_reuses_frozen_workload_and_audits_runtime_dtypes() -> None:
     assert '"resident-flat256"' in base_worker
     assert '"resident-async128"' in base_worker
     assert '"resident-async128-tree"' in base_worker
+    assert '"resident-async128-tree-chunk2048"' in base_worker
     assert '"resident-async256"' in base_worker
     assert '"resident-flat512"' in base_worker
     assert '"resident-lora-zero2"' in base_worker
@@ -213,6 +216,7 @@ def test_fair_launcher_is_fail_closed_and_never_profiles_as_timing() -> None:
     assert "resident-clean" in source
     assert "resident-async128" in source
     assert "resident-async128-tree" in source
+    assert "resident-async128-tree-chunk2048" in source
     assert "export NCCL_ALGO=Tree" in source
     assert "unset NCCL_ALGO" in source
     assert "resident-async256" in source
@@ -237,6 +241,35 @@ def test_fair_launcher_is_fail_closed_and_never_profiles_as_timing() -> None:
     assert "DIAGNOSTIC_ONLY" in source
     assert "correctness receipt uses a different Helios residual runtime" in source
     assert "helios_transformer_sha256=${EXPECTED_HELIOS_TRANSFORMER_SHA256}" in source
+
+
+def test_tree_chunk2048_changes_only_pinned_modulation_chunk_granularity() -> None:
+    class Block:
+        pass
+
+    class Model:
+        def __init__(self) -> None:
+            self.blocks = [Block() for _ in range(wan.WAN13B_BLOCK_COUNT)]
+
+    reference = Model()
+    reference_receipt = wan.configure_modulation_chunk_tokens(
+        reference, placement=wan.ASYNC_128_TREE_RESIDENT
+    )
+    assert reference_receipt["effective_tokens"] == [512]
+    assert reference_receipt["block_count"] == 30
+    assert reference_receipt["all_blocks_match"] is True
+
+    candidate = Model()
+    candidate_receipt = wan.configure_modulation_chunk_tokens(
+        candidate, placement=wan.ASYNC_128_TREE_CHUNK2048_RESIDENT
+    )
+    assert candidate_receipt["effective_tokens"] == [2048]
+    assert candidate_receipt["block_count"] == 30
+    assert candidate_receipt["all_blocks_match"] is True
+    assert all(
+        block._distillschedule_modulation_chunk_tokens == 2048
+        for block in candidate.blocks
+    )
 
 
 def test_fair_comparator_keeps_default_p0_thresholds() -> None:
