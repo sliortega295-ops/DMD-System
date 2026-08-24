@@ -42,6 +42,7 @@ _SPEC.loader.exec_module(base)
 
 from distillschedule.runtime.wan13b_fair import (
     ASYNC_128_RESIDENT,
+    ASYNC_256_RESIDENT,
     CLEAN_RESIDENT,
     FAIR_PLACEMENTS,
     FSDP_PLACEMENT,
@@ -131,6 +132,7 @@ def _build_model_fair(
                         "resident",
                         CLEAN_RESIDENT,
                         ASYNC_128_RESIDENT,
+                        ASYNC_256_RESIDENT,
                         LOCAL_FAST_RESIDENT,
                         FLAT_256_RESIDENT,
                         FLAT_512_RESIDENT,
@@ -151,6 +153,7 @@ def _build_model_fair(
                         "resident",
                         CLEAN_RESIDENT,
                         ASYNC_128_RESIDENT,
+                        ASYNC_256_RESIDENT,
                         LOCAL_FAST_RESIDENT,
                         FLAT_256_RESIDENT,
                         FLAT_512_RESIDENT,
@@ -176,6 +179,7 @@ def _build_model_fair(
     if args.placement in {
         CLEAN_RESIDENT,
         ASYNC_128_RESIDENT,
+        ASYNC_256_RESIDENT,
         LOCAL_FAST_RESIDENT,
         FLAT_256_RESIDENT,
         FLAT_512_RESIDENT,

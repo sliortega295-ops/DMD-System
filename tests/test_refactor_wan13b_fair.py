@@ -22,6 +22,7 @@ def test_fair_contract_has_reference_ddp_fast_and_fsdp_endpoints() -> None:
         "resident",
         "resident-clean",
         "resident-async128",
+        "resident-async256",
         "resident-local-fast",
         "resident-flat256",
         "resident-flat512",
@@ -108,6 +109,7 @@ def test_grad_ready_async_reducer_is_ordered_overlapped_and_reference_local_math
     assert '"hook_count_min"' in source
     assert "GradReadyAsyncResidentEngine" in builder
     assert "ASYNC_128_RESIDENT: 128" in builder
+    assert "ASYNC_256_RESIDENT: 256" in builder
     assert "ASYNC_128_RESIDENT" not in inspect.getsource(wan.LocalFastResidentEngine)
 
 
@@ -191,6 +193,7 @@ def test_fair_worker_reuses_frozen_workload_and_audits_runtime_dtypes() -> None:
     ).read_text()
     assert '"resident-flat256"' in base_worker
     assert '"resident-async128"' in base_worker
+    assert '"resident-async256"' in base_worker
     assert '"resident-flat512"' in base_worker
     assert '"resident-lora-zero2"' in base_worker
     assert '"resident-rollout-fused"' in base_worker
@@ -206,6 +209,7 @@ def test_fair_launcher_is_fail_closed_and_never_profiles_as_timing() -> None:
     assert "resident-ddp" in source
     assert "resident-clean" in source
     assert "resident-async128" in source
+    assert "resident-async256" in source
     assert "resident-local-fast" in source
     assert "resident-flat256" in source
     assert "resident-flat512" in source

@@ -8,13 +8,14 @@ MODE="${3:?validate, correctness, timing, diagnostic-timing, or profile}"
 EXPECTED_HEAD="${4:?expected DMD-System HEAD}"
 MASTER_ADDR="${5:?node0 routable address}"
 MASTER_PORT="${6:?world16 rendezvous port}"
-PLACEMENT="${7:?resident, resident-clean, resident-async128, resident-local-fast, resident-flat256, resident-flat512, resident-lora-zero2, resident-rollout-fused, resident-ddp, resident-fast, or world16-fsdp}"
+PLACEMENT="${7:?resident, resident-clean, resident-async128, resident-async256, resident-local-fast, resident-flat256, resident-flat512, resident-lora-zero2, resident-rollout-fused, resident-ddp, resident-fast, or world16-fsdp}"
 
 [[ "${NODE_RANK}" == 0 || "${NODE_RANK}" == 1 ]] || exit 2
 [[ "${MODE}" == validate || "${MODE}" == correctness || "${MODE}" == timing || \
    "${MODE}" == diagnostic-timing || "${MODE}" == profile ]] || exit 2
 [[ "${PLACEMENT}" == resident || "${PLACEMENT}" == resident-ddp || \
    "${PLACEMENT}" == resident-clean || "${PLACEMENT}" == resident-async128 || \
+   "${PLACEMENT}" == resident-async256 || \
    "${PLACEMENT}" == resident-local-fast || \
    "${PLACEMENT}" == resident-flat256 || "${PLACEMENT}" == resident-flat512 || \
    "${PLACEMENT}" == resident-lora-zero2 || "${PLACEMENT}" == resident-rollout-fused || \
@@ -167,8 +168,8 @@ frozen_base_compute_dtype=torch.bfloat16
 lora_compute_dtype=torch.float32
 gradient_mean=SUM_THEN_DIVIDE_WORLD_SIZE
 resident_ddp_bucket_mb=128
-resident_async_bucket_mb=$( [[ "${PLACEMENT}" == resident-async128 ]] && echo 128 || echo NOT_APPLICABLE )
-resident_async_collective_order=$( [[ "${PLACEMENT}" == resident-async128 ]] && echo DETERMINISTIC_REVERSE_PARAMETER_BUCKET_ORDER || echo NOT_APPLICABLE )
+resident_async_bucket_mb=$( case "${PLACEMENT}" in resident-async128) echo 128 ;; resident-async256) echo 256 ;; *) echo NOT_APPLICABLE ;; esac )
+resident_async_collective_order=$( [[ "${PLACEMENT}" == resident-async128 || "${PLACEMENT}" == resident-async256 ]] && echo DETERMINISTIC_REVERSE_PARAMETER_BUCKET_ORDER || echo NOT_APPLICABLE )
 ema_implementation=${ema_implementation}
 optimizer_implementation=${optimizer_implementation}
 gradient_clip_implementation=${gradient_clip_implementation}

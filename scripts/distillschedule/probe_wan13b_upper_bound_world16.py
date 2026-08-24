@@ -364,6 +364,7 @@ def main() -> int:
         clean_runtime = args.placement in {
             "resident-clean",
             "resident-async128",
+            "resident-async256",
             "resident-local-fast",
             "resident-flat256",
             "resident-flat512",

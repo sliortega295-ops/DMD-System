@@ -10,6 +10,7 @@ from typing import Any
 
 from distillschedule.runtime.wan13b_fair import (
     ASYNC_128_RESIDENT,
+    ASYNC_256_RESIDENT,
     CLEAN_RESIDENT,
     FAIR_PLACEMENTS,
     FSDP_PLACEMENT,
@@ -164,7 +165,7 @@ def main() -> int:
                     if args.placement in {LORA_ZERO2_RESIDENT, ROLLOUT_FUSED_RESIDENT}
                     else (
                         "GRAD_READY_ASYNC_FLAT_ALL_REDUCE"
-                        if args.placement == ASYNC_128_RESIDENT
+                        if args.placement in {ASYNC_128_RESIDENT, ASYNC_256_RESIDENT}
                         else (
                             "PERSISTENT_FLAT_ALL_REDUCE"
                             if args.placement in {FLAT_256_RESIDENT, FLAT_512_RESIDENT}
@@ -184,7 +185,7 @@ def main() -> int:
                         errors.append(f"rank{rank}: resident reduction changed")
                     if receipt.get("backend") != expected_backend:
                         errors.append(f"rank{rank}: resident sync backend changed")
-                    if args.placement == ASYNC_128_RESIDENT:
+                    if args.placement in {ASYNC_128_RESIDENT, ASYNC_256_RESIDENT}:
                         if receipt.get("overlap_with_backward") is not True:
                             errors.append(f"rank{rank}: async reducer overlap disabled")
                         if receipt.get("hook_count_min") != 1 or receipt.get(
@@ -295,6 +296,7 @@ def main() -> int:
             if args.placement in {
                 CLEAN_RESIDENT,
                 ASYNC_128_RESIDENT,
+                ASYNC_256_RESIDENT,
                 LOCAL_FAST_RESIDENT,
                 FLAT_256_RESIDENT,
                 FLAT_512_RESIDENT,
