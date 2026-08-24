@@ -222,6 +222,9 @@ def test_fair_launcher_is_fail_closed_and_never_profiles_as_timing() -> None:
     assert "resident-async128-tree-chunk2048" in source
     assert "resident-async128-tree-chunk2048-compile" in source
     assert "GENERATOR_NOGRAD_TRANSFORMER_BLOCKS_ONLY" in source
+    assert source.index("torch_compile_scope=$( [[") < source.index(
+        'cat >"${NODE_LOG}/launch_manifest.txt"'
+    )
     assert "export NCCL_ALGO=Tree" in source
     assert "unset NCCL_ALGO" in source
     assert "resident-async256" in source
