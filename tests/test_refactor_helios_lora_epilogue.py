@@ -56,6 +56,12 @@ class FakeLinearBF16(FakeLinear):
         self.lora_A = self.lora_A.to(torch.bfloat16)
         self.lora_B = self.lora_B.to(torch.bfloat16)
 
+    def forward(self, value, *args, **kwargs):
+        del args, kwargs
+        result = self.base_layer(value)
+        update = self.lora_B["default"](self.lora_A["default"](value))
+        return result + update * self.scaling["default"]
+
 
 class ModelBF16(torch.nn.Module):
     def __init__(self) -> None:
