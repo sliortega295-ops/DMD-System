@@ -125,6 +125,42 @@ def _validate_lora_cast_cache(
         errors.append(f"rank{rank}: Generator no-grad model-call count changed")
 
 
+def _validate_lora_fused_epilogue(
+    row: dict[str, Any], *, rank: int, errors: list[str]
+) -> None:
+    build = row.get("build", {})
+    generator = (
+        build.get("generator", {})
+        .get("metadata", {})
+        .get("generator_nograd_lora_fused_epilogue", {})
+    )
+    critic = (
+        build.get("critic", {})
+        .get("metadata", {})
+        .get("generator_nograd_lora_fused_epilogue", {})
+    )
+    if not isinstance(generator, dict) or not isinstance(critic, dict):
+        errors.append(f"rank{rank}: missing Generator fused-epilogue receipt")
+        return
+    requested = bool(generator.get("requested"))
+    if bool(critic.get("requested")) != requested:
+        errors.append(f"rank{rank}: fused-epilogue request differs by model role")
+    if not requested:
+        if generator.get("enabled") or critic.get("enabled"):
+            errors.append(f"rank{rank}: unrequested fused epilogue is enabled")
+        return
+    if generator.get("enabled") is not True:
+        errors.append(f"rank{rank}: requested Generator fused epilogue is disabled")
+    if critic.get("enabled") is not False or critic.get("disabled_reason") != "GENERATOR_ONLY":
+        errors.append(f"rank{rank}: Critic unexpectedly entered fused epilogue")
+    if int(generator.get("model_call_count", -1)) != 28:
+        errors.append(f"rank{rank}: fused epilogue changed no-grad model-call count")
+    if int(generator.get("fused_invocation_count", -1)) <= 0:
+        errors.append(f"rank{rank}: fused epilogue executed no real LoRA calls")
+    if int(generator.get("fused_element_count", -1)) <= 0:
+        errors.append(f"rank{rank}: fused epilogue recorded no output elements")
+
+
 def main() -> int:
     args = parser().parse_args()
     rows: list[dict[str, Any]] = []
@@ -260,6 +296,7 @@ def main() -> int:
                 errors=errors,
             )
             _validate_lora_cast_cache(row, rank=rank, errors=errors)
+            _validate_lora_fused_epilogue(row, rank=rank, errors=errors)
             build = row.get("build", {})
             for component in ("generator", "critic"):
                 component_build = build.get(component, {})

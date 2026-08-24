@@ -147,6 +147,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--lora-attribution-target-rank", type=int, default=0)
     value.add_argument("--lora-attribution-target-nograd-calls", type=int, default=3)
     value.add_argument("--generator-nograd-lora-cast-cache", action="store_true")
+    value.add_argument("--generator-nograd-lora-fused-epilogue", action="store_true")
     value.add_argument("--timeout-seconds", type=int, default=18000)
     value.add_argument("--dry-run", action="store_true")
     return value
@@ -208,6 +209,10 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         )
     if args.generator_nograd_lora_cast_cache:
         exports.append("DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE=1")
+    if args.generator_nograd_lora_fused_epilogue:
+        exports.append(
+            "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE=1"
+        )
     launch = " ".join(
         shlex.quote(str(value))
         for value in (

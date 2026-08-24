@@ -67,6 +67,7 @@ from distillschedule.runtime.wan13b_fair import (
 )
 from distillschedule.runtime.wan13b_lora_cast import (
     install_generator_nograd_lora_cast_cache,
+    install_generator_nograd_lora_fused_epilogue,
     install_lora_operator_attribution,
 )
 
@@ -222,6 +223,11 @@ def _build_model_fair(
         role=role,
     )
     metadata["generator_nograd_lora_cast_cache"] = lora_cast_cache
+    lora_fused_epilogue = install_generator_nograd_lora_fused_epilogue(
+        model,
+        role=role,
+    )
+    metadata["generator_nograd_lora_fused_epilogue"] = lora_fused_epilogue
     lora_operator_attribution = install_lora_operator_attribution(
         model,
         role=role,

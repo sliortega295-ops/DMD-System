@@ -340,6 +340,82 @@ def test_generator_nograd_lora_cast_cache_reuses_only_exact_input(monkeypatch) -
     assert receipt["cache_hit_count"] == before["cache_hit_count"]
 
 
+def test_generator_nograd_lora_fused_epilogue_is_no_grad_generator_only(
+    monkeypatch,
+) -> None:
+    import torch
+
+    class FakeLinear(torch.nn.Module):
+        disable_adapters = False
+        merged = False
+        active_adapters = ["default"]
+        lora_variant = {}
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.base_layer = torch.nn.Linear(2, 2, bias=False).to(torch.bfloat16)
+            self.lora_A = torch.nn.ModuleDict(
+                {"default": torch.nn.Linear(2, 1, bias=False).to(torch.float32)}
+            )
+            self.lora_B = torch.nn.ModuleDict(
+                {"default": torch.nn.Linear(1, 2, bias=False).to(torch.float32)}
+            )
+            self.lora_dropout = torch.nn.ModuleDict({"default": torch.nn.Identity()})
+            self.scaling = {"default": 0.5}
+
+        def _check_forward_args(self, value, *args, **kwargs):
+            del value, args, kwargs
+
+        def _cast_input_dtype(self, value, dtype):
+            return value.to(dtype=dtype)
+
+        def forward(self, value, *args, **kwargs):
+            del args, kwargs
+            result = self.base_layer(value)
+            update = self.lora_B["default"](
+                self.lora_A["default"](value.to(torch.float32))
+            )
+            return (result + update * self.scaling["default"]).to(result.dtype)
+
+    class Model(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.linear = FakeLinear()
+
+        def forward(self, value):
+            return self.linear(value)
+
+    calls = []
+
+    def fused(base, update, scaling):
+        calls.append((base.dtype, update.dtype, scaling))
+        return (base + update * scaling).to(base.dtype)
+
+    model = Model()
+    value = torch.tensor([[1.0, 2.0]], dtype=torch.bfloat16)
+    with torch.no_grad():
+        reference = model(value)
+    monkeypatch.setenv(lora_cast.FUSED_EPILOGUE_ENV, "1")
+    receipt = lora_cast.install_generator_nograd_lora_fused_epilogue(
+        model,
+        role="generator",
+        linear_type=FakeLinear,
+        fused_epilogue=fused,
+    )
+    with torch.no_grad():
+        candidate = model(value)
+    assert torch.equal(reference, candidate)
+    assert receipt["enabled"] is True
+    assert receipt["model_call_count"] == 1
+    assert receipt["fused_invocation_count"] == 1
+    assert calls == [(torch.bfloat16, torch.float32, 0.5)]
+
+    before = dict(receipt)
+    model(value)
+    assert receipt["model_call_count"] == before["model_call_count"]
+    assert receipt["fused_invocation_count"] == before["fused_invocation_count"]
+
+
 def test_controller_forwards_bounded_lora_attribution_only_to_profile() -> None:
     source = (
         ROOT / "scripts/distillschedule/run_wan13b_fair_world16.py"
@@ -351,6 +427,8 @@ def test_controller_forwards_bounded_lora_attribution_only_to_profile() -> None:
     assert "DISTILLSCHEDULE_WAN13B_LORA_OPERATOR_ATTRIBUTION=1" in source
     assert '"--generator-nograd-lora-cast-cache"' in source
     assert "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE=1" in source
+    assert '"--generator-nograd-lora-fused-epilogue"' in source
+    assert "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE=1" in source
 
 
 def test_tree_chunk2048_changes_only_pinned_modulation_chunk_granularity() -> None:
