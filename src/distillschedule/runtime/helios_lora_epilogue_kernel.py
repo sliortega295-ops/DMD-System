@@ -1,10 +1,15 @@
-"""Exact eager Triton epilogue for one no-grad FP32 Helios LoRA update.
+"""Exact eager Triton epilogue for one no-grad Helios LoRA update.
 
 The reference PEFT path first rounds ``update * scaling`` to FP32, then rounds
 the FP32 add with the BF16 base result, and finally converts the result to
 BF16.  CUDA normally emits separate pointwise kernels for those operations.
 This diagnostic candidate preserves the two IEEE round-to-nearest FP32
 operations with inline PTX and performs the final BF16 store in one kernel.
+
+The real Helios FSDP2 path instead supplies a BF16 update.  In that case the
+reference has two BF16 roundings: one after the multiply and one after the
+add.  ``ROUND_SCALED_TO_BF16`` explicitly preserves the intermediate
+quantization; it is not a one-round FP32 fused multiply-add.
 
 This module is imported lazily only when the explicitly gated candidate is
 enabled.  The ordinary training path therefore has no Triton dependency or
@@ -26,6 +31,7 @@ def _helios_lora_epilogue_kernel(
     output,
     numel,
     scaling,
+    ROUND_SCALED_TO_BF16: tl.constexpr,
     BLOCK_SIZE: tl.constexpr,
 ):
     offsets = tl.program_id(0) * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)
@@ -41,6 +47,11 @@ def _helios_lora_epilogue_kernel(
         is_pure=True,
         pack=1,
     )
+    if ROUND_SCALED_TO_BF16:
+        # PEFT's eager BF16 `update * scaling` stores a BF16 temporary before
+        # the following add.  The BF16 -> FP32 expansion makes that rounding
+        # barrier explicit to Triton/LLVM and prevents contraction.
+        scaled = scaled.to(tl.bfloat16).to(tl.float32)
     summed = tl.inline_asm_elementwise(
         "add.rn.f32 $0, $1, $2;",
         "=f,f,f",
@@ -67,8 +78,10 @@ def fused_lora_epilogue(
         raise RuntimeError("Helios fused LoRA epilogue requires CUDA tensors")
     if base_result.dtype is not torch.bfloat16:
         raise RuntimeError("Helios fused LoRA epilogue requires a BF16 base result")
-    if lora_update.dtype is not torch.float32:
-        raise RuntimeError("Helios fused LoRA epilogue requires an FP32 LoRA update")
+    if lora_update.dtype not in (torch.float32, torch.bfloat16):
+        raise RuntimeError(
+            "Helios fused LoRA epilogue requires an FP32 or BF16 LoRA update"
+        )
     if base_result.shape != lora_update.shape:
         raise RuntimeError("Helios fused LoRA epilogue shape mismatch")
     if not base_result.is_contiguous() or not lora_update.is_contiguous():
@@ -86,6 +99,7 @@ def fused_lora_epilogue(
         output,
         numel,
         float(scaling),
+        ROUND_SCALED_TO_BF16=lora_update.dtype is torch.bfloat16,
         BLOCK_SIZE=block_size,
         num_warps=4,
     )
@@ -94,7 +108,9 @@ def fused_lora_epilogue(
 
 def runtime_identity() -> dict[str, Any]:
     return {
-        "implementation": "TRITON_INLINE_PTX_MUL_RN_ADD_RN_BF16_STORE",
+        "implementation": (
+            "TRITON_INLINE_PTX_MUL_RN_OPTIONAL_BF16_ROUND_ADD_RN_BF16_STORE"
+        ),
         "triton_version": str(triton.__version__),
         "torch_version": str(torch.__version__),
         "block_size": 256,
