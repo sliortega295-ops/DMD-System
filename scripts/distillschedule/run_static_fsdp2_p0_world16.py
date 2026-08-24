@@ -109,6 +109,11 @@ def parser() -> argparse.ArgumentParser:
         default="cuda_out_of_place",
     )
     value.add_argument(
+        "--generator-nograd-lora-fused-epilogue",
+        choices=("on", "off"),
+        default="off",
+    )
+    value.add_argument(
         "--remote-root",
         type=Path,
         default=Path(
@@ -193,6 +198,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.generator_residual_storage),
         "DISTILLSCHEDULE_CRITIC_RESIDUAL_STORAGE="
         + shlex.quote(args.critic_residual_storage),
+        "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE="
+        + shlex.quote(args.generator_nograd_lora_fused_epilogue),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -297,6 +304,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.generator_residual_storage)} "
         + "--critic-residual-storage "
         + f"{shlex.quote(args.critic_residual_storage)} "
+        + "--generator-nograd-lora-fused-epilogue "
+        + f"{shlex.quote(args.generator_nograd_lora_fused_epilogue)} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
         + (
             f"--critic-only-step {args.critic_only_step} "

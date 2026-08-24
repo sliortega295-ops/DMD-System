@@ -45,6 +45,11 @@ def main() -> int:
         choices=("cpu_inplace", "cuda_out_of_place"),
         required=True,
     )
+    parser.add_argument(
+        "--generator-nograd-lora-fused-epilogue",
+        choices=("on", "off"),
+        required=True,
+    )
     parser.add_argument("--critic-only-step", type=int, choices=(10,))
     parser.add_argument(
         "--diagnostic-timing",
@@ -66,6 +71,9 @@ def main() -> int:
         "rollout_backend": "native-fsdp2-batch",
         "generator_residual_storage": args.generator_residual_storage,
         "critic_residual_storage": args.critic_residual_storage,
+        "generator_nograd_lora_fused_epilogue": (
+            args.generator_nograd_lora_fused_epilogue == "on"
+        ),
     }
     if args.critic_only_step is not None:
         if args.variant != "no-gan" or args.mode != "profile":
@@ -113,6 +121,21 @@ def main() -> int:
             errors.append(f"rank{rank} missing hardened multi-metric parity receipt")
 
         if args.mode != "validate":
+            if expected_policy["generator_nograd_lora_fused_epilogue"]:
+                epilogue = value.get("build", {}).get("generator", {}).get(
+                    "generator_nograd_lora_fused_epilogue", {}
+                )
+                if not epilogue.get("enabled"):
+                    errors.append(f"rank{rank} fused LoRA epilogue was not enabled")
+                if int(epilogue.get("model_call_count", 0)) <= 0:
+                    errors.append(f"rank{rank} fused LoRA epilogue saw no model calls")
+                if int(epilogue.get("fused_invocation_count", 0)) <= 0:
+                    errors.append(f"rank{rank} fused LoRA epilogue fused no calls")
+                if int(epilogue.get("reference_fallback_count", -1)) != 0:
+                    errors.append(
+                        f"rank{rank} fused LoRA epilogue fallback="
+                        f"{epilogue.get('reference_fallback_count')}"
+                    )
             updates = value.get("updates", {})
             if updates != {
                 "generator": 1,
