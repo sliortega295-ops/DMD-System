@@ -65,6 +65,9 @@ from distillschedule.runtime.wan13b_fair import (
     install_resident_clean_model_state,
     install_generator_nograd_block_compile,
 )
+from distillschedule.runtime.wan13b_lora_cast import (
+    install_lora_operator_attribution,
+)
 
 
 def _build_model_fair(
@@ -213,6 +216,13 @@ def _build_model_fair(
         role=role,
     )
     metadata["nograd_compile_runtime"] = compile_runtime
+    lora_operator_attribution = install_lora_operator_attribution(
+        model,
+        role=role,
+        profile_mode=bool(args.profile_mode),
+        global_rank=int(torch.distributed.get_rank()),
+    )
+    metadata["lora_operator_attribution"] = lora_operator_attribution
 
     audit_records: list[dict[str, Any]] | str = "OMITTED_IN_LOW_OVERHEAD_MODE"
     if not (args.timing_mode or args.profile_mode):

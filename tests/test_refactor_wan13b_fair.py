@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from distillschedule.runtime import wan13b_fair as wan
+from distillschedule.runtime import wan13b_lora_cast as lora_cast
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -193,6 +194,7 @@ def test_fair_worker_reuses_frozen_workload_and_audits_runtime_dtypes() -> None:
     assert "configure_fsdp2_checkpointing(model)" in source
     assert 'chunked_residual_storage="cuda_out_of_place"' in source
     assert "install_resident_clean_model_state" in source
+    assert "install_lora_operator_attribution" in source
 
     base_worker = (
         ROOT / "scripts/distillschedule/probe_wan13b_upper_bound_world16.py"
@@ -249,6 +251,54 @@ def test_fair_launcher_is_fail_closed_and_never_profiles_as_timing() -> None:
     assert "DIAGNOSTIC_ONLY" in source
     assert "correctness receipt uses a different Helios residual runtime" in source
     assert "helios_transformer_sha256=${EXPECTED_HELIOS_TRANSFORMER_SHA256}" in source
+    assert "lora_operator_attribution_requires_profile_mode" in source
+    assert "lora_operator_attribution=${LORA_OPERATOR_ATTRIBUTION}" in source
+
+
+def test_lora_operator_attribution_is_default_off_and_profile_only(monkeypatch) -> None:
+    monkeypatch.delenv(lora_cast.ATTRIBUTION_ENV, raising=False)
+    receipt = lora_cast.install_lora_operator_attribution(
+        object(), role="generator", profile_mode=False, global_rank=0
+    )
+    assert receipt["requested"] is False
+    assert receipt["enabled"] is False
+    assert receipt["disabled_reason"] == "NOT_REQUESTED"
+
+    monkeypatch.setenv(lora_cast.ATTRIBUTION_ENV, "1")
+    try:
+        lora_cast.install_lora_operator_attribution(
+            object(), role="generator", profile_mode=False, global_rank=0
+        )
+    except RuntimeError as error:
+        assert "only in profile mode" in str(error)
+    else:
+        raise AssertionError("attribution unexpectedly enabled outside profile mode")
+
+
+def test_lora_operator_attribution_pins_peft_and_preserves_operator_order() -> None:
+    source = inspect.getsource(lora_cast.install_lora_operator_attribution)
+    assert lora_cast.PEFT_0181_LINEAR_FORWARD_SHA256 == (
+        "ec0a80f5c5ce05f5dd90027952bb5d29aaf910e9d2ab40486a90e8a03c7e1cd9"
+    )
+    assert source.index('op=BASE') < source.index('op=INPUT_CAST')
+    assert source.index('op=INPUT_CAST') < source.index('op=LORA_A')
+    assert source.index('op=LORA_A') < source.index('op=LORA_B')
+    assert source.index('op=LORA_B') < source.index('op=SCALE_ADD')
+    assert source.index('op=SCALE_ADD') < source.index('op=OUTPUT_CAST')
+    assert "result = result + update * scaling" in source
+    assert "result = result.to(torch_result_dtype)" in source
+    assert "synchronize" not in source
+
+
+def test_controller_forwards_bounded_lora_attribution_only_to_profile() -> None:
+    source = (
+        ROOT / "scripts/distillschedule/run_wan13b_fair_world16.py"
+    ).read_text()
+    assert '"--lora-operator-attribution"' in source
+    assert '"--lora-attribution-target-rank"' in source
+    assert '"--lora-attribution-target-nograd-calls"' in source
+    assert "LoRA operator attribution requires --mode profile" in source
+    assert "DISTILLSCHEDULE_WAN13B_LORA_OPERATOR_ATTRIBUTION=1" in source
 
 
 def test_tree_chunk2048_changes_only_pinned_modulation_chunk_granularity() -> None:

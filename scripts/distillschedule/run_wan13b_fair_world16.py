@@ -143,6 +143,9 @@ def parser() -> argparse.ArgumentParser:
             "wan13b_fair_resident_fsdp2_20260822"
         ),
     )
+    value.add_argument("--lora-operator-attribution", action="store_true")
+    value.add_argument("--lora-attribution-target-rank", type=int, default=0)
+    value.add_argument("--lora-attribution-target-nograd-calls", type=int, default=3)
     value.add_argument("--timeout-seconds", type=int, default=18000)
     value.add_argument("--dry-run", action="store_true")
     return value
@@ -186,6 +189,22 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         )
     if args.mode == "profile":
         exports.append("DISTILLSCHEDULE_NSYS_BIN=" + shlex.quote(str(args.nsys_bin)))
+    if args.lora_operator_attribution:
+        if args.mode != "profile":
+            raise ValueError("LoRA operator attribution requires --mode profile")
+        if not 0 <= args.lora_attribution_target_rank < 16:
+            raise ValueError("LoRA attribution target rank must be in [0, 15]")
+        if args.lora_attribution_target_nograd_calls <= 0:
+            raise ValueError("LoRA attribution target call count must be positive")
+        exports.extend(
+            (
+                "DISTILLSCHEDULE_WAN13B_LORA_OPERATOR_ATTRIBUTION=1",
+                "DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_TARGET_RANK="
+                + str(args.lora_attribution_target_rank),
+                "DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS="
+                + str(args.lora_attribution_target_nograd_calls),
+            )
+        )
     launch = " ".join(
         shlex.quote(str(value))
         for value in (

@@ -47,6 +47,14 @@ WORKER="${ROOT}/scripts/distillschedule/probe_wan13b_fair_world16.py"
 EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256:-5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886}"
 CORRECTNESS_RECEIPT="${DISTILLSCHEDULE_WAN13B_FAIR_CORRECTNESS_RECEIPT:-}"
 CORRECTNESS_SHA256="${DISTILLSCHEDULE_WAN13B_FAIR_CORRECTNESS_SHA256:-}"
+LORA_OPERATOR_ATTRIBUTION="${DISTILLSCHEDULE_WAN13B_LORA_OPERATOR_ATTRIBUTION:-0}"
+LORA_ATTRIBUTION_TARGET_RANK="${DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_TARGET_RANK:-0}"
+LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS="${DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS:-3}"
+
+if [[ "${LORA_OPERATOR_ATTRIBUTION}" == 1 && "${MODE}" != profile ]]; then
+  echo lora_operator_attribution_requires_profile_mode >&2
+  exit 2
+fi
 
 for executable in "${PYTHON}" "${TORCHRUN}"; do
   [[ -x "${executable}" ]] || { echo missing_executable="${executable}" >&2; exit 3; }
@@ -190,6 +198,9 @@ modulation_chunk_tokens=$( case "${PLACEMENT}" in resident-async128-tree) echo 5
 nccl_algo=${NCCL_ALGO:-AUTO}
 torch_compile_scope=${torch_compile_scope}
 torch_compile_cache_root=${DISTILLSCHEDULE_WAN13B_COMPILE_CACHE_ROOT:-NOT_APPLICABLE}
+lora_operator_attribution=${LORA_OPERATOR_ATTRIBUTION}
+lora_attribution_target_rank=${LORA_ATTRIBUTION_TARGET_RANK}
+lora_attribution_target_nograd_calls=${LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS}
 ema_implementation=${ema_implementation}
 optimizer_implementation=${optimizer_implementation}
 gradient_clip_implementation=${gradient_clip_implementation}
