@@ -395,6 +395,8 @@ def _install_conservative_direct_defaults() -> None:
         sys.argv.append("--no-all-role-lora-scale1-add")
     if "--optimizer-dispatch-warmup" not in sys.argv and "--no-optimizer-dispatch-warmup" not in sys.argv:
         sys.argv.append("--no-optimizer-dispatch-warmup")
+    if "--generator-nograd-residual-fusion" not in sys.argv and "--no-generator-nograd-residual-fusion" not in sys.argv:
+        sys.argv.append("--no-generator-nograd-residual-fusion")
 
 
 def main() -> int:
