@@ -3,13 +3,40 @@ from __future__ import annotations
 
 import functools
 import hashlib
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 
 SUPPORTED_HELIOS_TRANSFORMER_SHA256 = (
     "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886"
 )
+
+
+_GENERATOR_NOGRAD_SCOPE: ContextVar[bool] = ContextVar(
+    "distillschedule_helios_generator_nograd_residual_scope",
+    default=False,
+)
+
+
+@contextmanager
+def generator_nograd_residual_fusion_scope() -> Iterator[None]:
+    """Mark the already-audited Generator critic-rollout model-call boundary.
+
+    The pinned Helios block tag is not a reliable execution-role discriminator
+    after composable FSDP wrapping.  The caller already owns the stronger
+    semantic boundary: ``run_generator_trace_rollout_batch`` is decorated with
+    ``torch.no_grad`` and invokes only the persistent Generator.  A ContextVar
+    keeps the marker local to that call without adding synchronization or tensor
+    operations.
+    """
+
+    token = _GENERATOR_NOGRAD_SCOPE.set(True)
+    try:
+        yield
+    finally:
+        _GENERATOR_NOGRAD_SCOPE.reset(token)
 
 
 def _sha256(path: Path) -> str:
@@ -41,6 +68,7 @@ def install_generator_nograd_residual_fusion(
         "fused_call_count": 0,
         "fused_chunk_count": 0,
         "fused_element_count": 0,
+        "scope_active_call_count": 0,
         "grad_bypass_count": 0,
         "non_generator_bypass_count": 0,
         "non_cuda_storage_bypass_count": 0,
@@ -113,9 +141,10 @@ def install_generator_nograd_residual_fusion(
         if torch.is_grad_enabled():
             receipt["grad_bypass_count"] += 1
             return original(*common)
-        if str(logical_component) != "generator":
+        if not _GENERATOR_NOGRAD_SCOPE.get():
             receipt["non_generator_bypass_count"] += 1
             return original(*common)
+        receipt["scope_active_call_count"] += 1
         if residual_storage != "cuda_out_of_place":
             receipt["non_cuda_storage_bypass_count"] += 1
             return original(*common)
@@ -178,6 +207,7 @@ def warmup_generator_nograd_residual_fusion(
 
 __all__ = [
     "SUPPORTED_HELIOS_TRANSFORMER_SHA256",
+    "generator_nograd_residual_fusion_scope",
     "install_generator_nograd_residual_fusion",
     "warmup_generator_nograd_residual_fusion",
 ]
