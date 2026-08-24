@@ -27,6 +27,7 @@ from .wan13b_upper_bound import (
 REFERENCE_RESIDENT = "resident"
 CLEAN_RESIDENT = "resident-clean"
 ASYNC_128_RESIDENT = "resident-async128"
+ASYNC_128_TREE_RESIDENT = "resident-async128-tree"
 ASYNC_256_RESIDENT = "resident-async256"
 LOCAL_FAST_RESIDENT = "resident-local-fast"
 FLAT_256_RESIDENT = "resident-flat256"
@@ -40,6 +41,7 @@ RESIDENT_PLACEMENTS = (
     REFERENCE_RESIDENT,
     CLEAN_RESIDENT,
     ASYNC_128_RESIDENT,
+    ASYNC_128_TREE_RESIDENT,
     ASYNC_256_RESIDENT,
     LOCAL_FAST_RESIDENT,
     FLAT_256_RESIDENT,
@@ -1154,6 +1156,7 @@ def build_fair_engine(
         }
     flat_bucket_mb = {
         ASYNC_128_RESIDENT: 128,
+        ASYNC_128_TREE_RESIDENT: 128,
         ASYNC_256_RESIDENT: 256,
         FLAT_256_RESIDENT: 256,
         FLAT_512_RESIDENT: 512,
@@ -1186,12 +1189,17 @@ def build_fair_engine(
         REFERENCE_RESIDENT,
         CLEAN_RESIDENT,
         ASYNC_128_RESIDENT,
+        ASYNC_128_TREE_RESIDENT,
         ASYNC_256_RESIDENT,
         LOCAL_FAST_RESIDENT,
         FLAT_256_RESIDENT,
         FLAT_512_RESIDENT,
     }:
-        if placement in {ASYNC_128_RESIDENT, ASYNC_256_RESIDENT}:
+        if placement in {
+            ASYNC_128_RESIDENT,
+            ASYNC_128_TREE_RESIDENT,
+            ASYNC_256_RESIDENT,
+        }:
             engine = GradReadyAsyncResidentEngine(
                 module,
                 optimizer,
@@ -1251,12 +1259,22 @@ def build_fair_engine(
         ),
         "persistent_flat_bucket_mb": (
             flat_bucket_mb
-            if placement not in {ASYNC_128_RESIDENT, ASYNC_256_RESIDENT}
+            if placement
+            not in {
+                ASYNC_128_RESIDENT,
+                ASYNC_128_TREE_RESIDENT,
+                ASYNC_256_RESIDENT,
+            }
             else None
         ),
         "async_gradient_bucket_mb": (
             flat_bucket_mb
-            if placement in {ASYNC_128_RESIDENT, ASYNC_256_RESIDENT}
+            if placement
+            in {
+                ASYNC_128_RESIDENT,
+                ASYNC_128_TREE_RESIDENT,
+                ASYNC_256_RESIDENT,
+            }
             else None
         ),
         "optimizer_state_representation": "FULL_REPLICA_FP32",
@@ -1381,6 +1399,7 @@ def fair_model_trainable_metrics(module: Any, *, placement: str) -> dict[str, An
 __all__ = [
     "CLEAN_RESIDENT",
     "ASYNC_128_RESIDENT",
+    "ASYNC_128_TREE_RESIDENT",
     "ASYNC_256_RESIDENT",
     "DDP_RESIDENT",
     "FLAT_256_RESIDENT",
