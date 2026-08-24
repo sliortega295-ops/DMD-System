@@ -54,6 +54,7 @@ NODE_LOG="${RUN_ROOT}/launcher/node_${NODE_RANK}"
 PROFILE_NODE_DIR="${RUN_ROOT}/nsight/node_${NODE_RANK}"
 RECEIPT_DIR="${RUN_ROOT}/nsight/range_receipts"
 LOCK_FILE="${DISTILLSCHEDULE_NODE_LOCK:-/tmp/distillschedule_gpu_node.lock}"
+WORLD_LOCK_FILE="${DISTILLSCHEDULE_WORLD_LOCK:-/tmp/distillschedule-world16.lock}"
 CORRECTNESS_SUMMARY="${DISTILLSCHEDULE_FSDP2_CORRECTNESS_SUMMARY:-}"
 CORRECTNESS_SHA256="${DISTILLSCHEDULE_FSDP2_CORRECTNESS_SHA256:-}"
 PROFILE_DIAGNOSTICS="${DISTILLSCHEDULE_PROFILE_DIAGNOSTICS:-off}"
@@ -126,6 +127,8 @@ fi
 
 mkdir -p "${NODE_LOG}" "${EXECUTION}"
 [[ ! -e "${NODE_LOG}/launch_manifest.txt" ]] || { echo run_id_already_used >&2; exit 82; }
+exec 8>"${WORLD_LOCK_FILE}"
+flock -n 8 || { echo world16_lock_busy >&2; exit 73; }
 exec 9>"${LOCK_FILE}"
 flock -n 9 || { echo gpu_lock_busy >&2; exit 73; }
 [[ -z "$(nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | sed '/^[[:space:]]*$/d')" ]] || { echo gpu_processes_present >&2; exit 81; }
