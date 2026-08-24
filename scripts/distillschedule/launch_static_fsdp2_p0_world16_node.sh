@@ -72,6 +72,7 @@ CRITIC_RESIDUAL_STORAGE="${DISTILLSCHEDULE_CRITIC_RESIDUAL_STORAGE:-cuda_out_of_
 GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE="${DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE:-off}"
 ALL_ROLE_LORA_SCALE1_ADD="${DISTILLSCHEDULE_HELIOS_ALL_ROLE_LORA_SCALE1_ADD:-off}"
 OPTIMIZER_DISPATCH_WARMUP="${DISTILLSCHEDULE_OPTIMIZER_DISPATCH_WARMUP:-off}"
+GENERATOR_NOGRAD_RESIDUAL_FUSION="${DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_RESIDUAL_FUSION:-off}"
 EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256:-776a26c3b2921d599821f0767910830471ff94a955f5013089f9f689ac20fee7}"
 
 [[ -z "${CRITIC_ONLY_STEP}" || "${CRITIC_ONLY_STEP}" == 10 ]] || exit 2
@@ -84,6 +85,9 @@ EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORME
 [[ "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" == on || "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" == off ]] || exit 2
 [[ "${ALL_ROLE_LORA_SCALE1_ADD}" == on || "${ALL_ROLE_LORA_SCALE1_ADD}" == off ]] || exit 2
 [[ "${OPTIMIZER_DISPATCH_WARMUP}" == on || "${OPTIMIZER_DISPATCH_WARMUP}" == off ]] || exit 2
+[[ "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" == on || "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" == off ]] || exit 2
+[[ "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" != on || "${GENERATOR_RESIDUAL_STORAGE}" == cuda_out_of_place ]] || exit 2
+[[ "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" != on || "${ROLLOUT_BATCH_SIZE}" == 1 ]] || exit 2
 [[ "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" != on || "${ALL_ROLE_LORA_SCALE1_ADD}" != on ]] || exit 2
 [[ "${OPTIMIZER_DISPATCH_WARMUP}" != on || "${MESH_POLICY}" == node-hsdp ]] || exit 2
 [[ "${EXPECTED_HELIOS_TRANSFORMER_SHA256}" =~ ^[0-9a-f]{64}$ ]] || exit 2
@@ -109,10 +113,10 @@ HELIOS_TRANSFORMER="${HELIOS}/helios/modules/transformer_helios.py"
 if [[ "${MODE}" == timing && "${DIAGNOSTIC_TIMING}" != 1 ]]; then
   [[ -f "${CORRECTNESS_SUMMARY}" ]] || { echo correctness_summary_missing >&2; exit 3; }
   [[ "$(sha256sum "${CORRECTNESS_SUMMARY}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || { echo correctness_hash_changed >&2; exit 3; }
-  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" "${ALL_ROLE_LORA_SCALE1_ADD}" "${OPTIMIZER_DISPATCH_WARMUP}" <<'PY'
+  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" "${ALL_ROLE_LORA_SCALE1_ADD}" "${OPTIMIZER_DISPATCH_WARMUP}" "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" <<'PY'
 import json,pathlib,sys
 value=json.loads(pathlib.Path(sys.argv[1]).read_text())
-expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7],"generator_nograd_lora_fused_epilogue":sys.argv[8]=="on","all_role_lora_scale1_add":sys.argv[9]=="on","optimizer_dispatch_warmup":sys.argv[10]=="on"}
+expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7],"generator_nograd_lora_fused_epilogue":sys.argv[8]=="on","all_role_lora_scale1_add":sys.argv[9]=="on","optimizer_dispatch_warmup":sys.argv[10]=="on","generator_nograd_residual_fusion":sys.argv[11]=="on"}
 if value.get("status") != "PASS" or not value.get("claimable_correctness"):
     raise SystemExit("P0 correctness gate is not PASS")
 if value.get("variant") != sys.argv[2]:
@@ -176,6 +180,7 @@ critic_residual_storage=${CRITIC_RESIDUAL_STORAGE}
 generator_nograd_lora_fused_epilogue=${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}
 all_role_lora_scale1_add=${ALL_ROLE_LORA_SCALE1_ADD}
 optimizer_dispatch_warmup=${OPTIMIZER_DISPATCH_WARMUP}
+generator_nograd_residual_fusion=${GENERATOR_NOGRAD_RESIDUAL_FUSION}
 EOF
 
 WORKER=(
@@ -215,6 +220,11 @@ if [[ "${OPTIMIZER_DISPATCH_WARMUP}" == on ]]; then
   WORKER+=(--optimizer-dispatch-warmup)
 else
   WORKER+=(--no-optimizer-dispatch-warmup)
+fi
+if [[ "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" == on ]]; then
+  WORKER+=(--generator-nograd-residual-fusion)
+else
+  WORKER+=(--no-generator-nograd-residual-fusion)
 fi
 [[ "${MODE}" == validate ]] && WORKER+=(--validate-only)
 [[ "${MODE}" == timing ]] && WORKER+=(--timing-mode)

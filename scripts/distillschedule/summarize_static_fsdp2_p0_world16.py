@@ -60,6 +60,11 @@ def main() -> int:
         choices=("on", "off"),
         required=True,
     )
+    parser.add_argument(
+        "--generator-nograd-residual-fusion",
+        choices=("on", "off"),
+        required=True,
+    )
     parser.add_argument("--critic-only-step", type=int, choices=(10,))
     parser.add_argument(
         "--diagnostic-timing",
@@ -86,6 +91,9 @@ def main() -> int:
         ),
         "all_role_lora_scale1_add": args.all_role_lora_scale1_add == "on",
         "optimizer_dispatch_warmup": args.optimizer_dispatch_warmup == "on",
+        "generator_nograd_residual_fusion": (
+            args.generator_nograd_residual_fusion == "on"
+        ),
     }
     if args.critic_only_step is not None:
         if args.variant != "no-gan" or args.mode != "profile":
@@ -112,6 +120,7 @@ def main() -> int:
     loss_audits: list[dict[str, Any] | None] = []
     input_reuse: list[dict[str, Any] | None] = []
     optimizer_warmups: list[dict[str, Any] | None] = []
+    residual_fusions: list[dict[str, Any] | None] = []
 
     for rank, value in enumerate(ranks):
         if value.get("rank") != rank:
@@ -162,6 +171,34 @@ def main() -> int:
                 elif warmup.get("enabled"):
                     errors.append(f"{prefix} enabled outside requested policy")
             optimizer_warmups.append(role_warmups)
+            residual_fusion = (
+                value.get("build", {})
+                .get("generator", {})
+                .get("generator_nograd_residual_fusion", {})
+            )
+            residual_fusions.append(residual_fusion)
+            if expected_policy["generator_nograd_residual_fusion"]:
+                prefix = f"rank{rank} Generator no-grad residual fusion"
+                if not residual_fusion.get("enabled"):
+                    errors.append(f"{prefix} was not enabled")
+                if residual_fusion.get("scope") != "GENERATOR_NOGRAD_GATED_RESIDUAL_ONLY":
+                    errors.append(f"{prefix} scope changed")
+                warmup = residual_fusion.get("warmup", {})
+                if warmup.get("status") != "PASS":
+                    errors.append(f"{prefix} warmup did not pass")
+                if warmup.get("formal_timer_includes_warmup") is not False:
+                    errors.append(f"{prefix} warmup contaminated formal timing")
+                if int(residual_fusion.get("fused_call_count", 0)) <= 0:
+                    errors.append(f"{prefix} fused no helper calls")
+                if int(residual_fusion.get("fused_chunk_count", 0)) <= 0:
+                    errors.append(f"{prefix} fused no chunks")
+                if int(residual_fusion.get("reference_fallback_count", -1)) != 0:
+                    errors.append(
+                        f"{prefix} fallback="
+                        f"{residual_fusion.get('reference_fallback_count')}"
+                    )
+            elif residual_fusion.get("enabled"):
+                errors.append(f"rank{rank} residual fusion enabled outside requested policy")
             if expected_policy["generator_nograd_lora_fused_epilogue"]:
                 epilogue = value.get("build", {}).get("generator", {}).get(
                     "generator_nograd_lora_fused_epilogue", {}
@@ -290,6 +327,7 @@ def main() -> int:
             state_audits.append(None)
             loss_audits.append(None)
             optimizer_warmups.append(None)
+            residual_fusions.append(None)
 
     starts = [int(value["timing_start_unix_ns"]) for value in ranks if "timing_start_unix_ns" in value]
     stops = [int(value["timing_stop_unix_ns"]) for value in ranks if "timing_stop_unix_ns" in value]
@@ -329,6 +367,7 @@ def main() -> int:
         "rank_loss_audits": loss_audits if args.mode == "correctness" else None,
         "rank_input_reuse": input_reuse,
         "rank_optimizer_dispatch_warmup": optimizer_warmups,
+        "rank_generator_nograd_residual_fusion": residual_fusions,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")

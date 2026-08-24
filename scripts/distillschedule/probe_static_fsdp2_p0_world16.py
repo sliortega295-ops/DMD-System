@@ -53,6 +53,10 @@ from distillschedule.runtime.fsdp2_static import FSDP2ShardEMA, build_fsdp2_engi
 from distillschedule.runtime.helios_lora_epilogue import (
     install_generator_nograd_lora_fused_epilogue,
 )
+from distillschedule.runtime.helios_residual_fusion import (
+    install_generator_nograd_residual_fusion,
+    warmup_generator_nograd_residual_fusion,
+)
 from distillschedule.runtime.nsys_range import StaticFSDP2Full5NsightRange
 from runtime.critic_pool_checkpoint import LogicalCheckpointPackage, load_logical_master_into_trainables
 from runtime.critic_pool_helios import (
@@ -121,11 +125,29 @@ def _build_static_model(
         role=role,
         all_role_scale1=bool(args.all_role_lora_scale1_add),
     )
+    residual_fusion = (
+        install_generator_nograd_residual_fusion(
+            enabled=bool(args.generator_nograd_residual_fusion),
+            role=role,
+        )
+        if role == "generator"
+        else {
+            "requested": bool(args.generator_nograd_residual_fusion),
+            "enabled": False,
+            "role": role,
+            "disabled_reason": "GENERATOR_INSTALL_ONLY",
+        }
+    )
     configure_fsdp2_checkpointing(
         model,
         operation_source=bool(args.operation_source),
     )
     model.to(device)
+    if role == "generator":
+        warmup_generator_nograd_residual_fusion(
+            residual_fusion,
+            device=device,
+        )
     torch.cuda.synchronize(device)
     sharding = apply_blockwise_fsdp2_policy(
         model,
@@ -148,6 +170,7 @@ def _build_static_model(
             if args.all_role_lora_scale1_add
             else {"enabled": False, "disabled_reason": "NOT_REQUESTED"}
         ),
+        "generator_nograd_residual_fusion": residual_fusion,
         "fsdp2": sharding,
         "host_allocator_trimmed_after_shard": host_trimmed,
         "memory_after_shard": base._memory(device),
@@ -617,6 +640,15 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--generator-nograd-residual-fusion",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Fuse only B1 Generator no-grad FP32 gated residual tiles; "
+            "grad and Critic paths remain source-pinned"
+        ),
+    )
+    value.add_argument(
         "--critic-only-step",
         type=int,
         choices=(10,),
@@ -652,12 +684,22 @@ def main() -> int:
         raise ValueError("--operation-source-rank must be in [0, 15]")
     if args.operation_source_target_bytes <= 0 or args.operation_source_max_events <= 0:
         raise ValueError("operation-source byte/event limits must be positive")
+    if args.generator_nograd_residual_fusion and (
+        args.rollout_batch_size != 1
+        or args.generator_residual_storage != "cuda_out_of_place"
+    ):
+        raise ValueError(
+            "Generator no-grad residual fusion requires B1 and cuda_out_of_place"
+        )
     policy = StaticFSDP2P0Policy(
         mesh_policy=args.mesh_policy,
         rollout_batch_size=args.rollout_batch_size,
         pack_real_score_pair=bool(args.pack_real_score_pair),
         rollout_backend=args.rollout_backend,
         optimizer_dispatch_warmup=bool(args.optimizer_dispatch_warmup),
+        generator_nograd_residual_fusion=bool(
+            args.generator_nograd_residual_fusion
+        ),
     )
     dist.init_process_group("nccl")
     rank = dist.get_rank()
@@ -693,6 +735,9 @@ def main() -> int:
             "all_role_lora_scale1_add": bool(args.all_role_lora_scale1_add),
             "optimizer_dispatch_warmup": bool(
                 args.optimizer_dispatch_warmup
+            ),
+            "generator_nograd_residual_fusion": (
+                policy.generator_nograd_residual_fusion
             ),
         },
     }

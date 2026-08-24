@@ -54,6 +54,7 @@ class StaticFSDP2P0Policy:
     pack_real_score_pair: bool = False
     rollout_backend: str = "native-fsdp2-batch"
     optimizer_dispatch_warmup: bool = False
+    generator_nograd_residual_fusion: bool = False
 
     def __post_init__(self) -> None:
         if self.mesh_policy not in SUPPORTED_MESH_POLICIES:
@@ -72,6 +73,8 @@ class StaticFSDP2P0Policy:
             raise ValueError(
                 "optimizer dispatch warmup is restricted to the node-HSDP candidate"
             )
+        if self.generator_nograd_residual_fusion and self.rollout_batch_size != 1:
+            raise ValueError("Generator no-grad residual fusion is restricted to B1")
 
     @property
     def id(self) -> str:
@@ -79,7 +82,12 @@ class StaticFSDP2P0Policy:
             f"{self.mesh_policy}-rollout-b{self.rollout_batch_size}-"
             f"realpair-{int(self.pack_real_score_pair)}"
         )
-        return f"{base}-optwarm" if self.optimizer_dispatch_warmup else base
+        suffixes = []
+        if self.optimizer_dispatch_warmup:
+            suffixes.append("optwarm")
+        if self.generator_nograd_residual_fusion:
+            suffixes.append("residualfusion")
+        return "-".join((base, *suffixes))
 
 
 def mesh_shape_for_policy(policy: str, *, world_size: int = WORLD_SIZE) -> tuple[int, ...]:
