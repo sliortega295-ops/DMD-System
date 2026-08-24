@@ -6,6 +6,7 @@ import torch
 import pytest
 
 from distillschedule.runtime.helios_residual_fusion import (
+    generator_nograd_residual_fusion_scope,
     install_generator_nograd_residual_fusion,
 )
 
@@ -72,7 +73,7 @@ def test_residual_fusion_is_generator_nograd_only_and_exact() -> None:
         transformer_module=module,
         fused_chunk=_fused,
     )
-    with torch.no_grad():
+    with torch.no_grad(), generator_nograd_residual_fusion_scope():
         actual = module._apply_chunked_gated_residual(
             hidden,
             residual,
@@ -80,12 +81,13 @@ def test_residual_fusion_is_generator_nograd_only_and_exact() -> None:
             temb,
             2,
             4,
-            "generator",
+            "unknown_after_fsdp_wrap",
             "cuda_out_of_place",
         )
     assert torch.equal(expected, actual)
     assert receipt["fused_call_count"] == 1
     assert receipt["fused_chunk_count"] == 2
+    assert receipt["scope_active_call_count"] == 1
     assert receipt["reference_fallback_count"] == 0
 
     # Grad-enabled Generator and every Critic call stay on the source helper.

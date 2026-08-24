@@ -6,6 +6,9 @@ from typing import Any, Sequence
 
 import torch
 
+from distillschedule.runtime.helios_residual_fusion import (
+    generator_nograd_residual_fusion_scope,
+)
 from distillschedule.runtime.fsdp2_p0 import (
     estimate_rollout_collective_groups,
     make_batched_loaded_entry,
@@ -111,44 +114,51 @@ def run_generator_trace_rollout_batch(
     model.enable_adapters()
     model.train()
     torch.cuda.reset_peak_memory_stats(device)
-    generated_x0, gradient_mask, denoised_from, denoised_to, consistency_loss = run_generator(
-        args=args,
-        accelerator=SimpleNamespace(device=device, is_main_process=False),
-        transformer=physical_call,
-        scheduler=scheduler,
-        noise=tensors["entry_noise"],
-        prompt_embeds=tensors["text_embedding"],
-        dmd_is_low_vram_mode=False,
-        is_keep_x0=True,
-        history_sizes=[16, 2, 1],
-        is_enable_stage2=True,
-        stage2_num_stages=3,
-        stage2_num_inference_steps_list=[2, 2, 2],
-        denoising_step_list=[1000, 750, 500, 250],
-        last_step_only=False,
-        last_section_grad_only=False,
-        return_sim_step=False,
-        sigmas=sigmas,
-        timesteps=timesteps,
-        timestep_shift=5.0,
-        use_dynamic_shifting=True,
-        time_shift_type="linear",
-        num_critic_input_frames=9,
-        num_rollout_sections=1,
-        is_skip_first_section=False,
-        is_amplify_first_chunk=True,
-        is_corrupt_history_latents=True,
-        is_add_saturation=True,
-        is_use_gt_history=True,
-        gt_all_data=gt_all_data,
-        is_dmd_vae_decode=False,
-        is_multi_pyramid_stage_backward_simulated=False,
-        init_pyramid_stage_flag=2,
-        is_consistency_align=False,
-        use_kv_cache=False,
-        operation_trace=loaded.operation_trace,
-        trace_prefix=loaded.pool_entry.synthetic_trace_prefix,
-    )
+    with generator_nograd_residual_fusion_scope():
+        (
+            generated_x0,
+            gradient_mask,
+            denoised_from,
+            denoised_to,
+            consistency_loss,
+        ) = run_generator(
+            args=args,
+            accelerator=SimpleNamespace(device=device, is_main_process=False),
+            transformer=physical_call,
+            scheduler=scheduler,
+            noise=tensors["entry_noise"],
+            prompt_embeds=tensors["text_embedding"],
+            dmd_is_low_vram_mode=False,
+            is_keep_x0=True,
+            history_sizes=[16, 2, 1],
+            is_enable_stage2=True,
+            stage2_num_stages=3,
+            stage2_num_inference_steps_list=[2, 2, 2],
+            denoising_step_list=[1000, 750, 500, 250],
+            last_step_only=False,
+            last_section_grad_only=False,
+            return_sim_step=False,
+            sigmas=sigmas,
+            timesteps=timesteps,
+            timestep_shift=5.0,
+            use_dynamic_shifting=True,
+            time_shift_type="linear",
+            num_critic_input_frames=9,
+            num_rollout_sections=1,
+            is_skip_first_section=False,
+            is_amplify_first_chunk=True,
+            is_corrupt_history_latents=True,
+            is_add_saturation=True,
+            is_use_gt_history=True,
+            gt_all_data=gt_all_data,
+            is_dmd_vae_decode=False,
+            is_multi_pyramid_stage_backward_simulated=False,
+            init_pyramid_stage_flag=2,
+            is_consistency_align=False,
+            use_kv_cache=False,
+            operation_trace=loaded.operation_trace,
+            trace_prefix=loaded.pool_entry.synthetic_trace_prefix,
+        )
     torch.cuda.synchronize(device)
     batch_size = len(loaded.members)
     if list(generated_x0.shape) != [batch_size, 16, 9, 48, 80]:
