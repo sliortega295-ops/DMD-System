@@ -393,6 +393,8 @@ def _install_conservative_direct_defaults() -> None:
         sys.argv.append("--no-pack-real-score-pair")
     if "--all-role-lora-scale1-add" not in sys.argv and "--no-all-role-lora-scale1-add" not in sys.argv:
         sys.argv.append("--no-all-role-lora-scale1-add")
+    if "--optimizer-dispatch-warmup" not in sys.argv and "--no-optimizer-dispatch-warmup" not in sys.argv:
+        sys.argv.append("--no-optimizer-dispatch-warmup")
 
 
 def main() -> int:

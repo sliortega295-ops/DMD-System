@@ -55,6 +55,11 @@ def main() -> int:
         choices=("on", "off"),
         required=True,
     )
+    parser.add_argument(
+        "--optimizer-dispatch-warmup",
+        choices=("on", "off"),
+        required=True,
+    )
     parser.add_argument("--critic-only-step", type=int, choices=(10,))
     parser.add_argument(
         "--diagnostic-timing",
@@ -80,6 +85,7 @@ def main() -> int:
             args.generator_nograd_lora_fused_epilogue == "on"
         ),
         "all_role_lora_scale1_add": args.all_role_lora_scale1_add == "on",
+        "optimizer_dispatch_warmup": args.optimizer_dispatch_warmup == "on",
     }
     if args.critic_only_step is not None:
         if args.variant != "no-gan" or args.mode != "profile":
@@ -105,6 +111,7 @@ def main() -> int:
     state_audits: list[dict[str, Any] | None] = []
     loss_audits: list[dict[str, Any] | None] = []
     input_reuse: list[dict[str, Any] | None] = []
+    optimizer_warmups: list[dict[str, Any] | None] = []
 
     for rank, value in enumerate(ranks):
         if value.get("rank") != rank:
@@ -127,6 +134,34 @@ def main() -> int:
             errors.append(f"rank{rank} missing hardened multi-metric parity receipt")
 
         if args.mode != "validate":
+            role_warmups: dict[str, Any] = {}
+            for role in ("generator", "critic"):
+                warmup = (
+                    value.get("build", {})
+                    .get(role, {})
+                    .get("optimizer_restore", {})
+                    .get("optimizer_dispatch_warmup", {})
+                )
+                role_warmups[role] = warmup
+                prefix = f"rank{rank} {role} optimizer warmup"
+                if expected_policy["optimizer_dispatch_warmup"]:
+                    if not warmup.get("enabled"):
+                        errors.append(f"{prefix} was not enabled")
+                    if warmup.get("scope") != "SETUP_ONLY_BEFORE_FORMAL_TIMER":
+                        errors.append(f"{prefix} scope changed")
+                    if warmup.get("formal_timer_includes_warmup") is not False:
+                        errors.append(f"{prefix} contaminated formal timing")
+                    if warmup.get("parameter_changed_elements_before_restore") != 0:
+                        errors.append(f"{prefix} changed parameters")
+                    if warmup.get("state_changed_elements_after_restore") != 0:
+                        errors.append(f"{prefix} did not restore Adam state")
+                    if warmup.get("step_state_restored") is not True:
+                        errors.append(f"{prefix} did not restore step state")
+                    if warmup.get("gradients_cleared") is not True:
+                        errors.append(f"{prefix} left gradients attached")
+                elif warmup.get("enabled"):
+                    errors.append(f"{prefix} enabled outside requested policy")
+            optimizer_warmups.append(role_warmups)
             if expected_policy["generator_nograd_lora_fused_epilogue"]:
                 epilogue = value.get("build", {}).get("generator", {}).get(
                     "generator_nograd_lora_fused_epilogue", {}
@@ -254,6 +289,7 @@ def main() -> int:
         else:
             state_audits.append(None)
             loss_audits.append(None)
+            optimizer_warmups.append(None)
 
     starts = [int(value["timing_start_unix_ns"]) for value in ranks if "timing_start_unix_ns" in value]
     stops = [int(value["timing_stop_unix_ns"]) for value in ranks if "timing_stop_unix_ns" in value]
@@ -292,6 +328,7 @@ def main() -> int:
         "rank_training_state_audits": state_audits if args.mode == "correctness" else None,
         "rank_loss_audits": loss_audits if args.mode == "correctness" else None,
         "rank_input_reuse": input_reuse,
+        "rank_optimizer_dispatch_warmup": optimizer_warmups,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
