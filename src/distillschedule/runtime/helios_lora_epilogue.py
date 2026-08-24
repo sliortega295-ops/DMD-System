@@ -56,6 +56,7 @@ def install_generator_nograd_lora_fused_epilogue(
         "fused_invocation_count": 0,
         "fused_element_count": 0,
         "fused_update_dtype_counts": {},
+        "fused_scale_counts": {},
         "reference_fallback_count": 0,
         "reference_fallback_reasons": {},
         "reference_pointwise_kernel_count_per_invocation": {
@@ -177,6 +178,9 @@ def install_generator_nograd_lora_fused_epilogue(
                 dtype_counts = receipt["fused_update_dtype_counts"]
                 dtype_key = str(update.dtype)
                 dtype_counts[dtype_key] = int(dtype_counts.get(dtype_key, 0)) + 1
+                scale_counts = receipt["fused_scale_counts"]
+                scale_key = repr(float(_child.scaling[adapter]))
+                scale_counts[scale_key] = int(scale_counts.get(scale_key, 0)) + 1
             else:
                 result = (result + update * _child.scaling[adapter]).to(result_dtype)
                 receipt["reference_fallback_count"] += 1
