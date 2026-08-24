@@ -391,6 +391,8 @@ def _install_conservative_direct_defaults() -> None:
         sys.argv.extend(("--rollout-batch-size", "1"))
     if "--pack-real-score-pair" not in sys.argv and "--no-pack-real-score-pair" not in sys.argv:
         sys.argv.append("--no-pack-real-score-pair")
+    if "--all-role-lora-scale1-add" not in sys.argv and "--no-all-role-lora-scale1-add" not in sys.argv:
+        sys.argv.append("--no-all-role-lora-scale1-add")
 
 
 def main() -> int:
