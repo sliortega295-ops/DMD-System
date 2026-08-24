@@ -50,6 +50,7 @@ CORRECTNESS_SHA256="${DISTILLSCHEDULE_WAN13B_FAIR_CORRECTNESS_SHA256:-}"
 LORA_OPERATOR_ATTRIBUTION="${DISTILLSCHEDULE_WAN13B_LORA_OPERATOR_ATTRIBUTION:-0}"
 LORA_ATTRIBUTION_TARGET_RANK="${DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_TARGET_RANK:-0}"
 LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS="${DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS:-3}"
+GENERATOR_NOGRAD_LORA_CAST_CACHE="${DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE:-0}"
 
 if [[ "${LORA_OPERATOR_ATTRIBUTION}" == 1 && "${MODE}" != profile ]]; then
   echo lora_operator_attribution_requires_profile_mode >&2
@@ -201,6 +202,7 @@ torch_compile_cache_root=${DISTILLSCHEDULE_WAN13B_COMPILE_CACHE_ROOT:-NOT_APPLIC
 lora_operator_attribution=${LORA_OPERATOR_ATTRIBUTION}
 lora_attribution_target_rank=${LORA_ATTRIBUTION_TARGET_RANK}
 lora_attribution_target_nograd_calls=${LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS}
+generator_nograd_lora_cast_cache=${GENERATOR_NOGRAD_LORA_CAST_CACHE}
 ema_implementation=${ema_implementation}
 optimizer_implementation=${optimizer_implementation}
 gradient_clip_implementation=${gradient_clip_implementation}

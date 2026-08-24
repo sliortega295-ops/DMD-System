@@ -194,6 +194,7 @@ def test_fair_worker_reuses_frozen_workload_and_audits_runtime_dtypes() -> None:
     assert "configure_fsdp2_checkpointing(model)" in source
     assert 'chunked_residual_storage="cuda_out_of_place"' in source
     assert "install_resident_clean_model_state" in source
+    assert "install_generator_nograd_lora_cast_cache" in source
     assert "install_lora_operator_attribution" in source
 
     base_worker = (
@@ -253,6 +254,7 @@ def test_fair_launcher_is_fail_closed_and_never_profiles_as_timing() -> None:
     assert "helios_transformer_sha256=${EXPECTED_HELIOS_TRANSFORMER_SHA256}" in source
     assert "lora_operator_attribution_requires_profile_mode" in source
     assert "lora_operator_attribution=${LORA_OPERATOR_ATTRIBUTION}" in source
+    assert "generator_nograd_lora_cast_cache=${GENERATOR_NOGRAD_LORA_CAST_CACHE}" in source
 
 
 def test_lora_operator_attribution_is_default_off_and_profile_only(monkeypatch) -> None:
@@ -290,6 +292,54 @@ def test_lora_operator_attribution_pins_peft_and_preserves_operator_order() -> N
     assert "synchronize" not in source
 
 
+def test_generator_nograd_lora_cast_cache_reuses_only_exact_input(monkeypatch) -> None:
+    import torch
+
+    class FakeLinear(torch.nn.Module):
+        cast_input_dtype_enabled = True
+
+        def _cast_input_dtype(self, value, dtype):
+            return value.to(dtype=dtype)
+
+        def forward(self, value):
+            return self._cast_input_dtype(value, torch.float64)
+
+    class Model(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.first = FakeLinear()
+            self.second = FakeLinear()
+
+        def forward(self, value):
+            return self.first(value) + self.second(value)
+
+    model = Model()
+    value = torch.tensor([1.0, 2.0], dtype=torch.float32)
+    with torch.no_grad():
+        reference = model(value)
+    monkeypatch.setenv(lora_cast.CAST_CACHE_ENV, "1")
+    receipt = lora_cast.install_generator_nograd_lora_cast_cache(
+        model,
+        role="generator",
+        linear_type=FakeLinear,
+    )
+    with torch.no_grad():
+        candidate = model(value)
+    assert torch.equal(reference, candidate)
+    assert receipt["enabled"] is True
+    assert receipt["model_call_count"] == 1
+    assert receipt["eligible_cast_requests"] == 2
+    assert receipt["cache_miss_count"] == 1
+    assert receipt["cache_hit_count"] == 1
+    assert receipt["avoided_source_read_bytes"] == value.numel() * value.element_size()
+    assert receipt["avoided_destination_write_bytes"] == value.numel() * 8
+
+    before = dict(receipt)
+    model(value)
+    assert receipt["model_call_count"] == before["model_call_count"]
+    assert receipt["cache_hit_count"] == before["cache_hit_count"]
+
+
 def test_controller_forwards_bounded_lora_attribution_only_to_profile() -> None:
     source = (
         ROOT / "scripts/distillschedule/run_wan13b_fair_world16.py"
@@ -299,6 +349,8 @@ def test_controller_forwards_bounded_lora_attribution_only_to_profile() -> None:
     assert '"--lora-attribution-target-nograd-calls"' in source
     assert "LoRA operator attribution requires --mode profile" in source
     assert "DISTILLSCHEDULE_WAN13B_LORA_OPERATOR_ATTRIBUTION=1" in source
+    assert '"--generator-nograd-lora-cast-cache"' in source
+    assert "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE=1" in source
 
 
 def test_tree_chunk2048_changes_only_pinned_modulation_chunk_granularity() -> None:

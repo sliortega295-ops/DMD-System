@@ -86,6 +86,45 @@ def _validate_dtype_contract(
                 )
 
 
+def _validate_lora_cast_cache(
+    row: dict[str, Any], *, rank: int, errors: list[str]
+) -> None:
+    build = row.get("build", {})
+    generator = (
+        build.get("generator", {})
+        .get("metadata", {})
+        .get("generator_nograd_lora_cast_cache", {})
+    )
+    critic = (
+        build.get("critic", {})
+        .get("metadata", {})
+        .get("generator_nograd_lora_cast_cache", {})
+    )
+    if not isinstance(generator, dict) or not isinstance(critic, dict):
+        errors.append(f"rank{rank}: missing Generator no-grad LoRA cast-cache receipt")
+        return
+    requested = bool(generator.get("requested"))
+    if bool(critic.get("requested")) != requested:
+        errors.append(f"rank{rank}: cast-cache request differs by model role")
+    if not requested:
+        if generator.get("enabled") or critic.get("enabled"):
+            errors.append(f"rank{rank}: unrequested LoRA cast cache is enabled")
+        return
+    if generator.get("enabled") is not True:
+        errors.append(f"rank{rank}: requested Generator LoRA cast cache is disabled")
+    if critic.get("enabled") is not False or critic.get("disabled_reason") != "GENERATOR_ONLY":
+        errors.append(f"rank{rank}: Critic unexpectedly entered Generator cast cache")
+    eligible = int(generator.get("eligible_cast_requests", -1))
+    hits = int(generator.get("cache_hit_count", -1))
+    misses = int(generator.get("cache_miss_count", -1))
+    if eligible < 0 or hits < 0 or misses < 0 or hits + misses != eligible:
+        errors.append(f"rank{rank}: cast-cache request reconciliation failed")
+    if hits <= 0:
+        errors.append(f"rank{rank}: cast-cache produced no actual reuse")
+    if int(generator.get("model_call_count", -1)) != 28:
+        errors.append(f"rank{rank}: Generator no-grad model-call count changed")
+
+
 def main() -> int:
     args = parser().parse_args()
     rows: list[dict[str, Any]] = []
@@ -220,6 +259,7 @@ def main() -> int:
                 correctness_mode=correctness_mode,
                 errors=errors,
             )
+            _validate_lora_cast_cache(row, rank=rank, errors=errors)
             build = row.get("build", {})
             for component in ("generator", "critic"):
                 component_build = build.get(component, {})

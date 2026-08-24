@@ -28,6 +28,7 @@ PEFT_0181_LINEAR_FORWARD_SHA256 = (
 ATTRIBUTION_ENV = "DISTILLSCHEDULE_WAN13B_LORA_OPERATOR_ATTRIBUTION"
 TARGET_RANK_ENV = "DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_TARGET_RANK"
 TARGET_CALLS_ENV = "DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS"
+CAST_CACHE_ENV = "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE"
 
 
 def _torch() -> Any:
@@ -260,11 +261,172 @@ def install_lora_operator_attribution(
     return receipt
 
 
+def install_generator_nograd_lora_cast_cache(
+    model: Any,
+    *,
+    role: str,
+    linear_type: type[Any] | None = None,
+) -> dict[str, Any]:
+    """Reuse an exact FP32 cast for adjacent LoRA calls with identical input.
+
+    Wan attention projections commonly invoke several PEFT Linear modules with
+    the exact same BF16 Tensor object. PEFT independently materializes an FP32
+    copy for every module because the LoRA trainables are FP32. This bounded
+    cache retains at most one converted tensor, only during one Generator
+    no-grad Transformer call, and reuses it only when tensor identity, in-place
+    version, target dtype, device, shape, and stride all still match.
+
+    Gradient-bearing paths and Critic paths never enter the cache. The returned
+    value is the exact result of PEFT's original ``Tensor.to(dtype)`` call; no
+    arithmetic, parameter dtype, operator count, or model call is changed.
+    """
+
+    requested = _enabled(os.environ.get(CAST_CACHE_ENV))
+    receipt: dict[str, Any] = {
+        "requested": requested,
+        "enabled": False,
+        "role": str(role),
+        "scope": "GENERATOR_NOGRAD_MODEL_FORWARD_ONLY",
+        "cache_capacity": 1,
+        "model_call_count": 0,
+        "eligible_cast_requests": 0,
+        "cache_hit_count": 0,
+        "cache_miss_count": 0,
+        "passthrough_count": 0,
+        "avoided_source_read_bytes": 0,
+        "avoided_destination_write_bytes": 0,
+        "max_cached_tensor_bytes": 0,
+        "semantic_contract": (
+            "EXACT_TENSOR_TO_RESULT_REUSE_FOR_IDENTICAL_UNMODIFIED_INPUT;"
+            "GRAD_AND_CRITIC_PATHS_UNCHANGED"
+        ),
+    }
+    model._distillschedule_generator_nograd_lora_cast_cache = receipt
+    if not requested:
+        receipt["disabled_reason"] = "NOT_REQUESTED"
+        return receipt
+    if role != "generator":
+        receipt["disabled_reason"] = "GENERATOR_ONLY"
+        return receipt
+
+    injected_type = linear_type is not None
+    if linear_type is None:
+        from peft.tuners.lora.layer import Linear
+
+        linear_type = Linear
+    observed_sha = source_sha256(linear_type.forward)
+    receipt["peft_linear_forward_sha256"] = observed_sha
+    receipt["expected_peft_linear_forward_sha256"] = (
+        PEFT_0181_LINEAR_FORWARD_SHA256 if not injected_type else "TEST_INJECTED"
+    )
+    if not injected_type and observed_sha != PEFT_0181_LINEAR_FORWARD_SHA256:
+        raise RuntimeError(
+            "installed PEFT Linear.forward source changed: "
+            f"{observed_sha} != {PEFT_0181_LINEAR_FORWARD_SHA256}"
+        )
+
+    linears = [child for child in model.modules() if isinstance(child, linear_type)]
+    if not linears:
+        raise RuntimeError("Generator no-grad LoRA cast cache found no PEFT Linear modules")
+    receipt["instrumented_module_count"] = len(linears)
+    active_cache: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
+        "wan13b_generator_nograd_lora_cast_cache", default=None
+    )
+
+    for child in linears:
+        original_cast = child._cast_input_dtype
+
+        def cached_cast(
+            x: Any,
+            dtype: Any,
+            *,
+            _child: Any = child,
+            _original_cast: Any = original_cast,
+        ) -> Any:
+            state = active_cache.get()
+            if state is None:
+                return _original_cast(x, dtype)
+            if not getattr(_child, "cast_input_dtype_enabled", True) or x.dtype == dtype:
+                receipt["passthrough_count"] += 1
+                return _original_cast(x, dtype)
+
+            receipt["eligible_cast_requests"] += 1
+            version = int(getattr(x, "_version", -1))
+            signature = (
+                dtype,
+                x.device,
+                tuple(int(value) for value in x.shape),
+                tuple(int(value) for value in x.stride()),
+                int(x.storage_offset()),
+                version,
+            )
+            cached_input = state.get("input")
+            cached_value = state.get("value")
+            if (
+                cached_input is x
+                and cached_value is not None
+                and state.get("signature") == signature
+                and int(getattr(cached_value, "_version", -1))
+                == state.get("value_version")
+            ):
+                receipt["cache_hit_count"] += 1
+                numel = int(x.numel())
+                receipt["avoided_source_read_bytes"] += numel * int(x.element_size())
+                receipt["avoided_destination_write_bytes"] += numel * int(
+                    cached_value.element_size()
+                )
+                return cached_value
+
+            value = _original_cast(x, dtype)
+            state.clear()
+            state.update(
+                {
+                    "input": x,
+                    "value": value,
+                    "signature": signature,
+                    "value_version": int(getattr(value, "_version", -1)),
+                }
+            )
+            receipt["cache_miss_count"] += 1
+            receipt["max_cached_tensor_bytes"] = max(
+                int(receipt["max_cached_tensor_bytes"]),
+                int(value.numel()) * int(value.element_size()),
+            )
+            return value
+
+        child._cast_input_dtype = cached_cast
+
+    original_model_forward = model.forward
+
+    @functools.wraps(original_model_forward)
+    def model_forward(*args: Any, **kwargs: Any) -> Any:
+        torch = _torch()
+        if torch.is_grad_enabled():
+            return original_model_forward(*args, **kwargs)
+        if active_cache.get() is not None:
+            raise RuntimeError("nested Generator no-grad LoRA cast-cache scope")
+        token = active_cache.set({})
+        receipt["model_call_count"] += 1
+        try:
+            return original_model_forward(*args, **kwargs)
+        finally:
+            state = active_cache.get()
+            if state is not None:
+                state.clear()
+            active_cache.reset(token)
+
+    model.forward = model_forward
+    receipt["enabled"] = True
+    return receipt
+
+
 __all__ = [
     "ATTRIBUTION_ENV",
+    "CAST_CACHE_ENV",
     "PEFT_0181_LINEAR_FORWARD_SHA256",
     "TARGET_CALLS_ENV",
     "TARGET_RANK_ENV",
     "install_lora_operator_attribution",
+    "install_generator_nograd_lora_cast_cache",
     "source_sha256",
 ]
