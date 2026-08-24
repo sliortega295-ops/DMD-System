@@ -446,6 +446,8 @@ def install_generator_nograd_lora_fused_epilogue(
         "model_call_count": 0,
         "fused_invocation_count": 0,
         "fused_element_count": 0,
+        "reference_fallback_count": 0,
+        "reference_fallback_reasons": {},
         "reference_pointwise_kernel_count_per_invocation": 3,
         "candidate_kernel_count_per_invocation": 1,
         "semantic_contract": (
@@ -542,16 +544,33 @@ def install_generator_nograd_lora_fused_epilogue(
                 raise RuntimeError("LoRA variant kwargs are outside the fused contract")
 
             result = _child.base_layer(x, *args, **kwargs)
-            if result.dtype is not _torch().bfloat16:
-                raise RuntimeError("fused LoRA epilogue base output is not BF16")
+            torch_result_dtype = result.dtype
             lora_a = _child.lora_A[adapter]
             lora_b = _child.lora_B[adapter]
             dropout = _child.lora_dropout[adapter]
             cast_x = _child._cast_input_dtype(x, lora_a.weight.dtype)
             update = lora_b(lora_a(dropout(cast_x)))
-            result = fused_epilogue(result, update, _child.scaling[adapter])
-            receipt["fused_invocation_count"] += 1
-            receipt["fused_element_count"] += int(result.numel())
+            fallback_reason = None
+            torch = _torch()
+            if result.dtype != torch.bfloat16:
+                fallback_reason = f"BASE_DTYPE_{result.dtype}"
+            elif update.dtype != torch.float32:
+                fallback_reason = f"UPDATE_DTYPE_{update.dtype}"
+            elif result.shape != update.shape:
+                fallback_reason = "SHAPE_MISMATCH"
+            elif not result.is_contiguous() or not update.is_contiguous():
+                fallback_reason = "NONCONTIGUOUS"
+            if fallback_reason is None:
+                result = fused_epilogue(result, update, _child.scaling[adapter])
+                receipt["fused_invocation_count"] += 1
+                receipt["fused_element_count"] += int(result.numel())
+            else:
+                result = (result + update * _child.scaling[adapter]).to(
+                    torch_result_dtype
+                )
+                receipt["reference_fallback_count"] += 1
+                reasons = receipt["reference_fallback_reasons"]
+                reasons[fallback_reason] = int(reasons.get(fallback_reason, 0)) + 1
             return result
 
         child.forward = fused_forward
