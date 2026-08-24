@@ -139,6 +139,7 @@ def test_epilogue_accepts_real_fsdp_bf16_update_contract() -> None:
     assert calls == [(torch.bfloat16, torch.bfloat16, 0.5)]
     assert receipt["fused_invocation_count"] == 1
     assert receipt["fused_update_dtype_counts"] == {"torch.bfloat16": 1}
+    assert receipt["fused_scale_counts"] == {"0.5": 1}
     assert receipt["reference_fallback_count"] == 0
 
 

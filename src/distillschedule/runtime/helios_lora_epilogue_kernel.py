@@ -87,6 +87,15 @@ def fused_lora_epilogue(
     if not base_result.is_contiguous() or not lora_update.is_contiguous():
         raise RuntimeError("Helios fused LoRA epilogue requires contiguous inputs")
 
+    # The frozen Helios contract uses alpha == rank == 256, hence scaling 1.0.
+    # For the real BF16 path, `update * 1.0` is bitwise the identity and the
+    # reference add also rounds to BF16.  Updating the freshly produced base
+    # result in place therefore preserves the exact output while using one
+    # vectorized ATen kernel and no epilogue allocation.  This scope is
+    # no-grad-only, so no saved tensor or version counter is consumed later.
+    if lora_update.dtype is torch.bfloat16 and float(scaling) == 1.0:
+        return base_result.add_(lora_update)
+
     output = torch.empty_like(base_result)
     numel = int(output.numel())
     if numel == 0:
@@ -109,6 +118,7 @@ def fused_lora_epilogue(
 def runtime_identity() -> dict[str, Any]:
     return {
         "implementation": (
+            "BF16_SCALE1_ATEN_INPLACE_ADD_ELSE_"
             "TRITON_INLINE_PTX_MUL_RN_OPTIONAL_BF16_ROUND_ADD_RN_BF16_STORE"
         ),
         "triton_version": str(triton.__version__),
