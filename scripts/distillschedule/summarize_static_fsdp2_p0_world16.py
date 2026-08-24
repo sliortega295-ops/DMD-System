@@ -50,6 +50,11 @@ def main() -> int:
         choices=("on", "off"),
         required=True,
     )
+    parser.add_argument(
+        "--all-role-lora-scale1-add",
+        choices=("on", "off"),
+        required=True,
+    )
     parser.add_argument("--critic-only-step", type=int, choices=(10,))
     parser.add_argument(
         "--diagnostic-timing",
@@ -74,6 +79,7 @@ def main() -> int:
         "generator_nograd_lora_fused_epilogue": (
             args.generator_nograd_lora_fused_epilogue == "on"
         ),
+        "all_role_lora_scale1_add": args.all_role_lora_scale1_add == "on",
     }
     if args.critic_only_step is not None:
         if args.variant != "no-gan" or args.mode != "profile":
@@ -136,6 +142,35 @@ def main() -> int:
                         f"rank{rank} fused LoRA epilogue fallback="
                         f"{epilogue.get('reference_fallback_count')}"
                     )
+            if expected_policy["all_role_lora_scale1_add"]:
+                for role in ("generator", "critic"):
+                    epilogue = value.get("build", {}).get(role, {}).get(
+                        "all_role_lora_scale1_add", {}
+                    )
+                    prefix = f"rank{rank} {role} all-role LoRA add"
+                    if not epilogue.get("enabled"):
+                        errors.append(f"{prefix} was not enabled")
+                    if epilogue.get("scope") != "ALL_ROLE_SCALE1_MODEL_FORWARD":
+                        errors.append(f"{prefix} scope changed")
+                    if int(epilogue.get("model_call_count", 0)) <= 0:
+                        errors.append(f"{prefix} saw no model calls")
+                    if int(epilogue.get("fused_invocation_count", 0)) <= 0:
+                        errors.append(f"{prefix} fused no calls")
+                    if int(epilogue.get("fused_grad_invocation_count", 0)) <= 0:
+                        errors.append(f"{prefix} fused no grad calls")
+                    if int(epilogue.get("reference_fallback_count", -1)) != 0:
+                        errors.append(
+                            f"{prefix} fallback="
+                            f"{epilogue.get('reference_fallback_count')}"
+                        )
+                    if epilogue.get("fused_update_dtype_counts", {}) != {
+                        "torch.bfloat16": epilogue.get("fused_invocation_count")
+                    }:
+                        errors.append(f"{prefix} dtype inventory changed")
+                    if epilogue.get("fused_scale_counts", {}) != {
+                        "1.0": epilogue.get("fused_invocation_count")
+                    }:
+                        errors.append(f"{prefix} scale inventory changed")
             updates = value.get("updates", {})
             if updates != {
                 "generator": 1,

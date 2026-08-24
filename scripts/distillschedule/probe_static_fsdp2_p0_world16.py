@@ -110,10 +110,16 @@ def _build_static_model(
             component=role,
             verify_payload_sha256=(dist.get_rank() == 0),
         )
+    if args.generator_nograd_lora_fused_epilogue and args.all_role_lora_scale1_add:
+        raise ValueError("LoRA epilogue candidates are mutually exclusive")
     lora_fused_epilogue = install_generator_nograd_lora_fused_epilogue(
         model,
-        enabled=bool(args.generator_nograd_lora_fused_epilogue),
+        enabled=bool(
+            args.generator_nograd_lora_fused_epilogue
+            or args.all_role_lora_scale1_add
+        ),
         role=role,
+        all_role_scale1=bool(args.all_role_lora_scale1_add),
     )
     configure_fsdp2_checkpointing(
         model,
@@ -132,7 +138,16 @@ def _build_static_model(
     return model, {
         "metadata": metadata,
         "logical_restore": logical_restore,
-        "generator_nograd_lora_fused_epilogue": lora_fused_epilogue,
+        "generator_nograd_lora_fused_epilogue": (
+            lora_fused_epilogue
+            if args.generator_nograd_lora_fused_epilogue
+            else {"enabled": False, "disabled_reason": "NOT_REQUESTED"}
+        ),
+        "all_role_lora_scale1_add": (
+            lora_fused_epilogue
+            if args.all_role_lora_scale1_add
+            else {"enabled": False, "disabled_reason": "NOT_REQUESTED"}
+        ),
         "fsdp2": sharding,
         "host_allocator_trimmed_after_shard": host_trimmed,
         "memory_after_shard": base._memory(device),
@@ -582,6 +597,15 @@ def _parser() -> Any:
         help="Fuse only the Generator no-grad PEFT LoRA scale/add/BF16 epilogue",
     )
     value.add_argument(
+        "--all-role-lora-scale1-add",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Replace exact BF16 update*1+base with one add for enabled LoRA "
+            "calls in both model roles, including grad-enabled calls"
+        ),
+    )
+    value.add_argument(
         "--critic-only-step",
         type=int,
         choices=(10,),
@@ -654,6 +678,7 @@ def main() -> int:
             "generator_nograd_lora_fused_epilogue": bool(
                 args.generator_nograd_lora_fused_epilogue
             ),
+            "all_role_lora_scale1_add": bool(args.all_role_lora_scale1_add),
         },
     }
     try:

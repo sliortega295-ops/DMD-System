@@ -44,37 +44,57 @@ def install_generator_nograd_lora_fused_epilogue(
     linear_type: type[Any] | None = None,
     variant_kwarg_keys: Iterable[str] | None = None,
     fused_epilogue: Any | None = None,
+    all_role_scale1: bool = False,
 ) -> dict[str, Any]:
-    """Install the bounded Helios Generator no-grad replacement."""
+    """Install one bounded exact Helios LoRA epilogue replacement.
+
+    ``all_role_scale1`` is a separate candidate: it activates for both roles
+    and for grad-enabled calls, but only accepts BF16 updates with scaling 1.
+    Grad calls use an out-of-place BF16 add; no-grad calls retain the safe
+    in-place specialization.  The ordinary Generator-no-grad candidate remains
+    available unchanged when this argument is false.
+    """
 
     receipt: dict[str, Any] = {
         "requested": bool(enabled),
         "enabled": False,
         "role": str(role),
-        "scope": "GENERATOR_NOGRAD_MODEL_FORWARD_ONLY",
+        "scope": (
+            "ALL_ROLE_SCALE1_MODEL_FORWARD"
+            if all_role_scale1
+            else "GENERATOR_NOGRAD_MODEL_FORWARD_ONLY"
+        ),
         "model_call_count": 0,
         "fused_invocation_count": 0,
+        "fused_grad_invocation_count": 0,
+        "fused_nograd_invocation_count": 0,
         "fused_element_count": 0,
         "fused_update_dtype_counts": {},
         "fused_scale_counts": {},
         "reference_fallback_count": 0,
         "reference_fallback_reasons": {},
+        "adapter_disabled_bypass_count": 0,
         "reference_pointwise_kernel_count_per_invocation": {
             "torch.float32": 3,
             "torch.bfloat16": 2,
         },
         "candidate_kernel_count_per_invocation": 1,
         "semantic_contract": (
-            "FP32_UPDATE:FP32_MUL_RN_THEN_FP32_ADD_RN_THEN_BF16_RN_STORE;"
-            "BF16_UPDATE:BF16_MUL_RN_THEN_BF16_ADD_RN;"
-            "GRAD_AND_CRITIC_PATHS_UNCHANGED"
+            "ALL_ROLE_BF16_SCALE1_ADD_FORWARD_AND_BACKWARD_EXACT;"
+            "TRAINING_MATH_UNCHANGED"
+            if all_role_scale1
+            else (
+                "FP32_UPDATE:FP32_MUL_RN_THEN_FP32_ADD_RN_THEN_BF16_RN_STORE;"
+                "BF16_UPDATE:BF16_MUL_RN_THEN_BF16_ADD_RN;"
+                "GRAD_AND_CRITIC_PATHS_UNCHANGED"
+            )
         ),
     }
     model._distillschedule_helios_nograd_lora_epilogue = receipt
     if not enabled:
         receipt["disabled_reason"] = "NOT_REQUESTED"
         return receipt
-    if role != "generator":
+    if role != "generator" and not all_role_scale1:
         receipt["disabled_reason"] = "GENERATOR_ONLY"
         return receipt
 
@@ -136,12 +156,16 @@ def install_generator_nograd_lora_fused_epilogue(
             if not active_call.get():
                 return _original_forward(x, *args, **kwargs)
 
+            if _child.disable_adapters:
+                receipt["adapter_disabled_bypass_count"] += 1
+                return _original_forward(x, *args, **kwargs)
+
             _child._check_forward_args(x, *args, **kwargs)
             adapter_names = kwargs.pop("adapter_names", None)
             variant_kwargs = {
                 key: kwargs.pop(key, None) for key in variant_kwarg_keys
             }
-            if _child.disable_adapters or adapter_names is not None or _child.merged:
+            if adapter_names is not None or _child.merged:
                 raise RuntimeError(
                     "fused Helios LoRA epilogue requires enabled, unmerged, "
                     "non-mixed adapters"
@@ -165,15 +189,36 @@ def install_generator_nograd_lora_fused_epilogue(
             fallback_reason = None
             if result.dtype != torch.bfloat16:
                 fallback_reason = f"BASE_DTYPE_{result.dtype}"
-            elif update.dtype not in (torch.float32, torch.bfloat16):
+            elif all_role_scale1 and update.dtype != torch.bfloat16:
+                fallback_reason = f"ALL_ROLE_UPDATE_DTYPE_{update.dtype}"
+            elif not all_role_scale1 and update.dtype not in (
+                torch.float32,
+                torch.bfloat16,
+            ):
                 fallback_reason = f"UPDATE_DTYPE_{update.dtype}"
+            elif all_role_scale1 and float(_child.scaling[adapter]) != 1.0:
+                fallback_reason = f"ALL_ROLE_SCALE_{_child.scaling[adapter]!r}"
             elif result.shape != update.shape:
                 fallback_reason = "SHAPE_MISMATCH"
             elif not result.is_contiguous() or not update.is_contiguous():
                 fallback_reason = "NONCONTIGUOUS"
             if fallback_reason is None:
-                result = fused_epilogue(result, update, _child.scaling[adapter])
+                if all_role_scale1 and torch.is_grad_enabled():
+                    # `update * 1.0` is bitwise the BF16 identity.  Dropping
+                    # that node keeps the same AddBackward gradients while
+                    # eliminating one pointwise kernel.
+                    result = result + update
+                else:
+                    result = fused_epilogue(
+                        result, update, _child.scaling[adapter]
+                    )
                 receipt["fused_invocation_count"] += 1
+                grad_key = (
+                    "fused_grad_invocation_count"
+                    if torch.is_grad_enabled()
+                    else "fused_nograd_invocation_count"
+                )
+                receipt[grad_key] += 1
                 receipt["fused_element_count"] += int(result.numel())
                 dtype_counts = receipt["fused_update_dtype_counts"]
                 dtype_key = str(update.dtype)
@@ -195,7 +240,7 @@ def install_generator_nograd_lora_fused_epilogue(
     @functools.wraps(original_model_forward)
     def model_forward(*args: Any, **kwargs: Any) -> Any:
         torch = _torch()
-        if torch.is_grad_enabled():
+        if torch.is_grad_enabled() and not all_role_scale1:
             return original_model_forward(*args, **kwargs)
         if active_call.get():
             raise RuntimeError("nested Helios no-grad LoRA epilogue scope")

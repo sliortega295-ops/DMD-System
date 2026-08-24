@@ -114,6 +114,11 @@ def parser() -> argparse.ArgumentParser:
         default="off",
     )
     value.add_argument(
+        "--all-role-lora-scale1-add",
+        choices=("on", "off"),
+        default="off",
+    )
+    value.add_argument(
         "--remote-root",
         type=Path,
         default=Path(
@@ -200,6 +205,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.critic_residual_storage),
         "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE="
         + shlex.quote(args.generator_nograd_lora_fused_epilogue),
+        "DISTILLSCHEDULE_HELIOS_ALL_ROLE_LORA_SCALE1_ADD="
+        + shlex.quote(args.all_role_lora_scale1_add),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -306,6 +313,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.critic_residual_storage)} "
         + "--generator-nograd-lora-fused-epilogue "
         + f"{shlex.quote(args.generator_nograd_lora_fused_epilogue)} "
+        + "--all-role-lora-scale1-add "
+        + f"{shlex.quote(args.all_role_lora_scale1_add)} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
         + (
             f"--critic-only-step {args.critic_only_step} "
@@ -336,6 +345,11 @@ def main() -> int:
         raise ValueError("--expected-head must be a full Git SHA")
     if len(args.expected_helios_transformer_sha256) != 64:
         raise ValueError("--expected-helios-transformer-sha256 must be SHA256")
+    if (
+        args.generator_nograd_lora_fused_epilogue == "on"
+        and args.all_role_lora_scale1_add == "on"
+    ):
+        raise ValueError("LoRA epilogue candidates are mutually exclusive")
     if args.critic_only_step is not None and (
         args.variant != "no-gan" or args.mode != "profile"
     ):
