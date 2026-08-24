@@ -180,7 +180,6 @@ resident_async_bucket_mb=$( case "${PLACEMENT}" in resident-async128|resident-as
 resident_async_collective_order=$( [[ "${PLACEMENT}" == resident-async128 || "${PLACEMENT}" == resident-async128-tree || "${PLACEMENT}" == resident-async128-tree-chunk2048 || "${PLACEMENT}" == resident-async256 ]] && echo DETERMINISTIC_REVERSE_PARAMETER_BUCKET_ORDER || echo NOT_APPLICABLE )
 modulation_chunk_tokens=$( case "${PLACEMENT}" in resident-async128-tree) echo 512 ;; resident-async128-tree-chunk2048) echo 2048 ;; *) echo RUNTIME_DEFAULT ;; esac )
 nccl_algo=${NCCL_ALGO:-AUTO}
-modulation_chunk_tokens=${modulation_chunk_tokens}
 ema_implementation=${ema_implementation}
 optimizer_implementation=${optimizer_implementation}
 gradient_clip_implementation=${gradient_clip_implementation}
