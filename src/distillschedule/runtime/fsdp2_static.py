@@ -76,10 +76,47 @@ def _torch() -> Any:
     return torch
 
 
+SELECTIVE_FLASH_ATTN_OP = (
+    "_flash_attn2_cuda_a511a4c._flash_attn_forward.default"
+)
+
+
+def _selective_flash_checkpoint_contexts(
+    receipt: dict[str, Any],
+) -> tuple[Any, Any]:
+    """Save only the pinned FA2 result inside one selected block checkpoint."""
+
+    from torch.utils.checkpoint import (
+        CheckpointPolicy,
+        create_selective_checkpoint_contexts,
+    )
+
+    receipt["selective_flash_context_count"] += 1
+
+    def policy(context: Any, operation: Any, *args: Any, **kwargs: Any) -> Any:
+        del args, kwargs
+        # The kernels dispatcher loads its custom-op library lazily inside the
+        # checkpointed block.  The context itself is created before that load,
+        # so resolving torch.ops here would incorrectly fail on the first
+        # selected block.  Match the exact pinned dispatcher identity when the
+        # policy observes the operation instead; the final receipt requires
+        # the exact original/replay counts and therefore still fails closed.
+        if str(operation) == SELECTIVE_FLASH_ATTN_OP:
+            if bool(context.is_recompute):
+                receipt["selective_flash_recompute_reuse_count"] += 1
+            else:
+                receipt["selective_flash_original_save_count"] += 1
+            return CheckpointPolicy.MUST_SAVE
+        return CheckpointPolicy.PREFER_RECOMPUTE
+
+    return create_selective_checkpoint_contexts(policy)
+
+
 def fsdp2_metadata_tolerant_checkpoint(
     module: Any,
     *args: Any,
     operation_source: bool = False,
+    selective_flash_receipt: dict[str, Any] | None = None,
     **kwargs: Any,
 ) -> Any:
     """Run Helios' non-reentrant checkpoint under the FSDP2 compatibility policy.
@@ -104,10 +141,20 @@ def fsdp2_metadata_tolerant_checkpoint(
             "FSDP2 checkpoint policy owns use_reentrant and determinism_check"
         )
     checkpoint_kwargs = dict(kwargs)
+    if operation_source and selective_flash_receipt is not None:
+        raise ValueError(
+            "operation-source markers and selective Flash checkpoint contexts "
+            "cannot be combined in one diagnostic run"
+        )
     if operation_source:
         from distillschedule.profiling.fsdp2_operation_source import checkpoint_context_fn
 
         checkpoint_kwargs["context_fn"] = checkpoint_context_fn
+    elif selective_flash_receipt is not None:
+        checkpoint_kwargs["context_fn"] = functools.partial(
+            _selective_flash_checkpoint_contexts,
+            selective_flash_receipt,
+        )
     return checkpoint(
         module.__call__,
         *args,
@@ -122,20 +169,136 @@ def configure_fsdp2_checkpointing(
     model: Any,
     *,
     operation_source: bool = False,
-) -> None:
+    checkpoint_bypass_stride: int = 0,
+    selective_flash_checkpoint_stride: int = 0,
+) -> dict[str, Any]:
     """Install the FSDP2-only checkpoint adapter on an enabled Helios model."""
 
     if not bool(getattr(model, "gradient_checkpointing", False)):
         raise RuntimeError(
             "FSDP2 checkpoint policy requires Helios gradient checkpointing"
         )
-    if operation_source:
+    if checkpoint_bypass_stride not in {0, 2, 4, 10}:
+        raise ValueError("checkpoint bypass stride must be one of 0, 2, 4, or 10")
+    if selective_flash_checkpoint_stride not in {0, 2, 4, 10}:
+        raise ValueError(
+            "selective Flash checkpoint stride must be one of 0, 2, 4, or 10"
+        )
+    if checkpoint_bypass_stride and selective_flash_checkpoint_stride:
+        raise ValueError(
+            "checkpoint bypass and selective Flash save are mutually exclusive"
+        )
+    if operation_source and selective_flash_checkpoint_stride:
+        raise ValueError(
+            "operation-source diagnostics cannot be combined with selective Flash save"
+        )
+
+    blocks = tuple(getattr(model, "blocks", ()))
+    if (checkpoint_bypass_stride or selective_flash_checkpoint_stride) and len(blocks) != 40:
+        raise ValueError(
+            "partial checkpoint bypass is pinned to the 40-block Helios model"
+        )
+    block_index_by_id = {id(block): index for index, block in enumerate(blocks)}
+    if len(block_index_by_id) != len(blocks):
+        raise ValueError("Helios block identities are not unique")
+    module_name_by_id = {
+        id(module): str(name)
+        for name, module in (
+            model.named_modules() if hasattr(model, "named_modules") else ()
+        )
+    }
+    module_name_by_id.update(
+        {id(block): f"blocks.{index}" for index, block in enumerate(blocks)}
+    )
+    bypass_indices = tuple(
+        range(0, len(blocks), checkpoint_bypass_stride)
+        if checkpoint_bypass_stride
+        else ()
+    )
+    selective_flash_indices = tuple(
+        range(0, len(blocks), selective_flash_checkpoint_stride)
+        if selective_flash_checkpoint_stride
+        else ()
+    )
+    receipt: dict[str, Any] = {
+        "schema_version": "distillschedule.fsdp2_checkpoint_policy.v1",
+        "enabled": bool(checkpoint_bypass_stride),
+        "scope": (
+            "SPARSE_BLOCK_ACTIVATION_CHECKPOINT_BYPASS"
+            if checkpoint_bypass_stride
+            else "ALL_BLOCKS_NON_REENTRANT_CHECKPOINT"
+        ),
+        "block_count": len(blocks),
+        "bypass_stride": int(checkpoint_bypass_stride),
+        "bypass_block_indices": list(bypass_indices),
+        "selective_flash_enabled": bool(selective_flash_checkpoint_stride),
+        "selective_flash_stride": int(selective_flash_checkpoint_stride),
+        "selective_flash_block_indices": list(selective_flash_indices),
+        "selective_flash_op": SELECTIVE_FLASH_ATTN_OP,
+        "selective_flash_context_count": 0,
+        "selective_flash_original_save_count": 0,
+        "selective_flash_recompute_reuse_count": 0,
+        "checkpoint_block_indices": [
+            index for index in range(len(blocks)) if index not in bypass_indices
+        ],
+        "direct_forward_count": 0,
+        "checkpoint_forward_count": 0,
+        "auxiliary_checkpoint_forward_count": 0,
+        "auxiliary_checkpoint_module_counts": {},
+        "block_call_counts": {str(index): 0 for index in range(len(blocks))},
+        "operation_source": bool(operation_source),
+        "adds_synchronization": False,
+        "changes_module_math": False,
+    }
+    model._distillschedule_checkpoint_policy_receipt = receipt
+
+    if checkpoint_bypass_stride or selective_flash_checkpoint_stride:
+        bypass_set = frozenset(bypass_indices)
+        selective_flash_set = frozenset(selective_flash_indices)
+
+        def checkpoint_or_direct(module: Any, *args: Any, **kwargs: Any) -> Any:
+            module_id = id(module)
+            if module_id not in module_name_by_id:
+                raise RuntimeError(
+                    "checkpoint dispatch received a module outside the Helios model"
+                )
+            block_index = block_index_by_id.get(module_id)
+            if block_index is None:
+                module_name = module_name_by_id[module_id]
+                receipt["auxiliary_checkpoint_forward_count"] += 1
+                auxiliary_counts = receipt["auxiliary_checkpoint_module_counts"]
+                auxiliary_counts[module_name] = auxiliary_counts.get(module_name, 0) + 1
+                return fsdp2_metadata_tolerant_checkpoint(
+                    module,
+                    *args,
+                    operation_source=operation_source,
+                    **kwargs,
+                )
+            key = str(block_index)
+            receipt["block_call_counts"][key] += 1
+            if block_index in bypass_set:
+                receipt["direct_forward_count"] += 1
+                return module(*args, **kwargs)
+            receipt["checkpoint_forward_count"] += 1
+            return fsdp2_metadata_tolerant_checkpoint(
+                module,
+                *args,
+                operation_source=operation_source,
+                selective_flash_receipt=(
+                    receipt if block_index in selective_flash_set else None
+                ),
+                **kwargs,
+            )
+
+        model._gradient_checkpointing_func = checkpoint_or_direct
+    elif operation_source:
         model._gradient_checkpointing_func = functools.partial(
             fsdp2_metadata_tolerant_checkpoint,
             operation_source=True,
         )
     else:
         model._gradient_checkpointing_func = fsdp2_metadata_tolerant_checkpoint
+    return receipt
 
 
 def _named_trainables(module: Any) -> dict[str, Any]:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shlex
 import signal
 import subprocess
@@ -29,6 +30,7 @@ def _ssh(host: str, command: str) -> list[str]:
         "BatchMode=yes",
         "-o",
         "UpdateHostKeys=no",
+        "-tt",
         host,
         "bash",
         "-lc",
@@ -37,13 +39,17 @@ def _ssh(host: str, command: str) -> list[str]:
 
 
 def _resolve_master(host: str) -> str:
-    values = subprocess.check_output(
+    output = subprocess.check_output(
         _ssh(host, "hostname -I"), text=True, timeout=30
-    ).split()
-    ipv4 = [value for value in values if ":" not in value]
+    )
+    ipv4 = re.findall(
+        r"(?<![0-9.])(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})"
+        r"(?:\.(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})){3}(?![0-9.])",
+        output,
+    )
     if not ipv4:
         raise RuntimeError("node0 has no routable IPv4 address")
-    return ipv4[0]
+    return ipv4[-1]
 
 
 @dataclass
@@ -99,6 +105,11 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--rollout-batch-size", type=int, choices=(1, 2, 5), required=True)
     value.add_argument("--pack-real-score-pair", choices=("on", "off"), default="on")
     value.add_argument(
+        "--attention-backend",
+        choices=("sdpa", "local-fa2"),
+        default="sdpa",
+    )
+    value.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         default="cpu_inplace",
@@ -142,6 +153,23 @@ def parser() -> argparse.ArgumentParser:
         "--exact-modulated-norm-materialization",
         choices=("on", "off"),
         default="off",
+    )
+    value.add_argument(
+        "--checkpoint-bypass-stride",
+        type=int,
+        choices=(0, 2, 4, 10),
+        default=0,
+    )
+    value.add_argument(
+        "--checkpoint-bypass-role",
+        choices=("all", "generator", "critic"),
+        default="all",
+    )
+    value.add_argument(
+        "--selective-flash-checkpoint-stride",
+        type=int,
+        choices=(0, 2, 4, 10),
+        default=0,
     )
     value.add_argument(
         "--remote-root",
@@ -234,6 +262,14 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.exact_modulated_norm_epilogue),
         "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_MATERIALIZATION="
         + shlex.quote(args.exact_modulated_norm_materialization),
+        "DISTILLSCHEDULE_HELIOS_ATTENTION_BACKEND="
+        + shlex.quote(args.attention_backend),
+        "DISTILLSCHEDULE_HELIOS_CHECKPOINT_BYPASS_STRIDE="
+        + shlex.quote(str(args.checkpoint_bypass_stride)),
+        "DISTILLSCHEDULE_HELIOS_CHECKPOINT_BYPASS_ROLE="
+        + shlex.quote(args.checkpoint_bypass_role),
+        "DISTILLSCHEDULE_HELIOS_SELECTIVE_FLASH_CHECKPOINT_STRIDE="
+        + shlex.quote(str(args.selective_flash_checkpoint_stride)),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -327,6 +363,7 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"--mesh-policy {shlex.quote(args.mesh_policy)} "
         + f"--rollout-batch-size {args.rollout_batch_size} "
         + f"--pack-real-score-pair {shlex.quote(args.pack_real_score_pair)} "
+        + f"--attention-backend {shlex.quote(args.attention_backend)} "
         + "--generator-residual-storage "
         + f"{shlex.quote(args.generator_residual_storage)} "
         + "--critic-residual-storage "
@@ -345,6 +382,12 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.exact_modulated_norm_epilogue)} "
         + "--exact-modulated-norm-materialization "
         + f"{shlex.quote(args.exact_modulated_norm_materialization)} "
+        + "--checkpoint-bypass-stride "
+        + f"{args.checkpoint_bypass_stride} "
+        + "--checkpoint-bypass-role "
+        + f"{shlex.quote(args.checkpoint_bypass_role)} "
+        + "--selective-flash-checkpoint-stride "
+        + f"{args.selective_flash_checkpoint_stride} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
         + (
             f"--critic-only-step {args.critic_only_step} "
@@ -420,12 +463,28 @@ def main() -> int:
         raise ValueError(
             "Exact modulation materialization requires the exact epilogue"
         )
+    if args.checkpoint_bypass_stride and args.variant != "no-gan":
+        raise ValueError("checkpoint bypass is restricted to the No-GAN iteration")
+    if args.selective_flash_checkpoint_stride and args.variant != "no-gan":
+        raise ValueError(
+            "selective Flash checkpoint save is restricted to the No-GAN iteration"
+        )
+    if args.checkpoint_bypass_stride and args.selective_flash_checkpoint_stride:
+        raise ValueError(
+            "checkpoint bypass and selective Flash checkpoint save are mutually exclusive"
+        )
+    if not args.checkpoint_bypass_stride and args.checkpoint_bypass_role != "all":
+        raise ValueError("checkpoint bypass role requires a nonzero stride")
     if args.critic_only_step is not None and (
         args.variant != "no-gan" or args.mode != "profile"
     ):
         raise ValueError("--critic-only-step requires No-GAN profile mode")
     if args.operation_source and args.critic_only_step is None:
         raise ValueError("--operation-source requires --critic-only-step")
+    if args.operation_source and args.selective_flash_checkpoint_stride:
+        raise ValueError(
+            "operation-source diagnostics cannot be combined with selective Flash save"
+        )
     if not 0 <= args.operation_source_rank < 16:
         raise ValueError("--operation-source-rank must be in [0, 15]")
     if args.operation_source_target_bytes <= 0 or args.operation_source_max_events <= 0:
