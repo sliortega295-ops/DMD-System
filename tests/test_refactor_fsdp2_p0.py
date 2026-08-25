@@ -130,8 +130,20 @@ def test_policy_and_mesh_contract() -> None:
         )
     checkpoint_bypass = StaticFSDP2P0Policy(checkpoint_bypass_stride=4)
     assert checkpoint_bypass.id.endswith("ckptbypass10")
+    critic_checkpoint_bypass = StaticFSDP2P0Policy(
+        checkpoint_bypass_stride=4,
+        checkpoint_bypass_role="critic",
+    )
+    assert critic_checkpoint_bypass.id.endswith("criticckptbypass10")
     with pytest.raises(ValueError, match="checkpoint_bypass_stride"):
         StaticFSDP2P0Policy(checkpoint_bypass_stride=5)
+    with pytest.raises(ValueError, match="checkpoint_bypass_role"):
+        StaticFSDP2P0Policy(
+            checkpoint_bypass_stride=4,
+            checkpoint_bypass_role="teacher",
+        )
+    with pytest.raises(ValueError, match="requires a nonzero stride"):
+        StaticFSDP2P0Policy(checkpoint_bypass_role="critic")
 
 
 def test_execution_order_precomputes_all_rollouts_before_critic() -> None:

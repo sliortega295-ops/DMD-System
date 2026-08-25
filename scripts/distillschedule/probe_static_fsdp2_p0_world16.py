@@ -163,7 +163,11 @@ def _build_static_model(
     checkpoint_policy = configure_fsdp2_checkpointing(
         model,
         operation_source=bool(args.operation_source),
-        checkpoint_bypass_stride=int(args.checkpoint_bypass_stride),
+        checkpoint_bypass_stride=(
+            int(args.checkpoint_bypass_stride)
+            if args.checkpoint_bypass_role in {"all", role}
+            else 0
+        ),
     )
     model.to(device)
     if role == "generator":
@@ -717,6 +721,12 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--checkpoint-bypass-role",
+        choices=("all", "generator", "critic"),
+        default="all",
+        help="Role scope for the bounded checkpoint-bypass candidate",
+    )
+    value.add_argument(
         "--critic-only-step",
         type=int,
         choices=(10,),
@@ -794,6 +804,7 @@ def main() -> int:
             args.exact_modulated_norm_materialization
         ),
         checkpoint_bypass_stride=int(args.checkpoint_bypass_stride),
+        checkpoint_bypass_role=str(args.checkpoint_bypass_role),
     )
     dist.init_process_group("nccl")
     rank = dist.get_rank()
@@ -841,6 +852,7 @@ def main() -> int:
                 policy.exact_modulated_norm_materialization
             ),
             "checkpoint_bypass_stride": policy.checkpoint_bypass_stride,
+            "checkpoint_bypass_role": policy.checkpoint_bypass_role,
         },
     }
     try:

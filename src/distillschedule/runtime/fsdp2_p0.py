@@ -28,6 +28,7 @@ SUPPORTED_ROLLOUT_BATCH_SIZES = (1, 2, 5)
 SUPPORTED_MESH_POLICIES = ("world16-fsdp", "node-hsdp")
 SUPPORTED_ROLLOUT_BACKENDS = ("native-fsdp2-batch",)
 SUPPORTED_CHECKPOINT_BYPASS_STRIDES = (0, 2, 4)
+SUPPORTED_CHECKPOINT_BYPASS_ROLES = ("all", "generator", "critic")
 ROLLOUT_TENSOR_ROLES = (
     "text_embedding",
     "continuous_history",
@@ -60,6 +61,7 @@ class StaticFSDP2P0Policy:
     exact_modulated_norm_epilogue: bool = False
     exact_modulated_norm_materialization: bool = False
     checkpoint_bypass_stride: int = 0
+    checkpoint_bypass_role: str = "all"
 
     def __post_init__(self) -> None:
         if self.mesh_policy not in SUPPORTED_MESH_POLICIES:
@@ -97,6 +99,14 @@ class StaticFSDP2P0Policy:
                 f"{SUPPORTED_CHECKPOINT_BYPASS_STRIDES}, got "
                 f"{self.checkpoint_bypass_stride}"
             )
+        if self.checkpoint_bypass_role not in SUPPORTED_CHECKPOINT_BYPASS_ROLES:
+            raise ValueError(
+                "checkpoint_bypass_role must be one of "
+                f"{SUPPORTED_CHECKPOINT_BYPASS_ROLES}, got "
+                f"{self.checkpoint_bypass_role!r}"
+            )
+        if not self.checkpoint_bypass_stride and self.checkpoint_bypass_role != "all":
+            raise ValueError("checkpoint bypass role requires a nonzero stride")
 
     @property
     def id(self) -> str:
@@ -116,7 +126,10 @@ class StaticFSDP2P0Policy:
         if self.exact_modulated_norm_materialization:
             suffixes.append("modnormmaterialization")
         if self.checkpoint_bypass_stride:
-            suffixes.append(f"ckptbypass{40 // self.checkpoint_bypass_stride}")
+            role = "" if self.checkpoint_bypass_role == "all" else self.checkpoint_bypass_role
+            suffixes.append(
+                f"{role}ckptbypass{40 // self.checkpoint_bypass_stride}"
+            )
         return "-".join((base, *suffixes))
 
 

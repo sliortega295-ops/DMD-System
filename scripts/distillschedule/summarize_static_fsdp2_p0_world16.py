@@ -86,6 +86,11 @@ def main() -> int:
         choices=(0, 2, 4),
         required=True,
     )
+    parser.add_argument(
+        "--checkpoint-bypass-role",
+        choices=("all", "generator", "critic"),
+        required=True,
+    )
     parser.add_argument("--critic-only-step", type=int, choices=(10,))
     parser.add_argument(
         "--diagnostic-timing",
@@ -123,6 +128,7 @@ def main() -> int:
             args.exact_modulated_norm_materialization == "on"
         ),
         "checkpoint_bypass_stride": args.checkpoint_bypass_stride,
+        "checkpoint_bypass_role": args.checkpoint_bypass_role,
     }
     if args.critic_only_step is not None:
         if args.variant != "no-gan" or args.mode != "profile":
@@ -338,7 +344,11 @@ def main() -> int:
                 )
                 role_checkpoint_policies[role] = checkpoint_policy
                 prefix = f"rank{rank} {role} checkpoint policy"
-                expected_stride = expected_policy["checkpoint_bypass_stride"]
+                requested_stride = expected_policy["checkpoint_bypass_stride"]
+                requested_role = expected_policy["checkpoint_bypass_role"]
+                expected_stride = (
+                    requested_stride if requested_role in {"all", role} else 0
+                )
                 expected_indices = (
                     list(range(0, 40, expected_stride)) if expected_stride else []
                 )

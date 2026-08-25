@@ -150,6 +150,11 @@ def parser() -> argparse.ArgumentParser:
         default=0,
     )
     value.add_argument(
+        "--checkpoint-bypass-role",
+        choices=("all", "generator", "critic"),
+        default="all",
+    )
+    value.add_argument(
         "--remote-root",
         type=Path,
         default=Path(
@@ -242,6 +247,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.exact_modulated_norm_materialization),
         "DISTILLSCHEDULE_HELIOS_CHECKPOINT_BYPASS_STRIDE="
         + shlex.quote(str(args.checkpoint_bypass_stride)),
+        "DISTILLSCHEDULE_HELIOS_CHECKPOINT_BYPASS_ROLE="
+        + shlex.quote(args.checkpoint_bypass_role),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -355,6 +362,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.exact_modulated_norm_materialization)} "
         + "--checkpoint-bypass-stride "
         + f"{args.checkpoint_bypass_stride} "
+        + "--checkpoint-bypass-role "
+        + f"{shlex.quote(args.checkpoint_bypass_role)} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
         + (
             f"--critic-only-step {args.critic_only_step} "
@@ -432,6 +441,8 @@ def main() -> int:
         )
     if args.checkpoint_bypass_stride and args.variant != "no-gan":
         raise ValueError("checkpoint bypass is restricted to the No-GAN iteration")
+    if not args.checkpoint_bypass_stride and args.checkpoint_bypass_role != "all":
+        raise ValueError("checkpoint bypass role requires a nonzero stride")
     if args.critic_only_step is not None and (
         args.variant != "no-gan" or args.mode != "profile"
     ):
