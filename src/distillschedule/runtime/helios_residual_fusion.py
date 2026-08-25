@@ -2,9 +2,10 @@
 
 The established candidate fuses only the Generator no-grad critic-rollout
 scope.  A second, independently gated candidate handles grad-enabled calls
-only when the AdaLN table and every timestep-projection input are frozen.  The
-grad path uses a custom autograd function that preserves the pinned FP32
-rounding contract and never falls back after its forward has been selected.
+when the AdaLN table is frozen, including the trainable tensor and phase-local
+timestep projections observed in the real Helios backward.  The grad path uses
+a custom autograd function that preserves the pinned FP32 rounding contract
+and never falls back after its forward has been selected.
 """
 from __future__ import annotations
 
@@ -71,10 +72,10 @@ def install_generator_nograd_residual_fusion(
         "enabled": False,
         "role": str(role),
         "scope": (
-            "GENERATOR_NOGRAD_AND_FROZEN_TEMB_EXACT_GRAD_GATED_RESIDUAL"
+            "GENERATOR_NOGRAD_AND_TRAINABLE_TEMB_EXACT_GRAD_GATED_RESIDUAL"
             if enabled and exact_grad_enabled
             else (
-                "FROZEN_TEMB_EXACT_GRAD_GATED_RESIDUAL_ONLY"
+                "TRAINABLE_TEMB_EXACT_GRAD_GATED_RESIDUAL_ONLY"
                 if exact_grad_enabled
                 else "GENERATOR_NOGRAD_GATED_RESIDUAL_ONLY"
             )
@@ -82,8 +83,9 @@ def install_generator_nograd_residual_fusion(
         "semantic_contract": (
             "BF16_LOADS;MUL_RN_F32;ADD_RN_F32;BF16_RN_STORE;"
             + (
-                "FROZEN_TEMB_GRAD_RESIDUAL_MUL_RN_F32_BF16_RN_STORE;"
-                "NO_TRAINABLE_ADALN_OR_TEMB"
+                "TRAINABLE_TEMB_GRAD_RESIDUAL_MUL_RN_F32_BF16_RN_STORE;"
+                "EXPLICIT_TENSOR_OR_PHASE_LOCAL_TEMB_GRADIENT;"
+                "NO_TRAINABLE_ADALN_TABLE"
                 if exact_grad_enabled
                 else "GRAD_AND_CRITIC_PATHS_UNCHANGED"
             )
@@ -103,6 +105,11 @@ def install_generator_nograd_residual_fusion(
         "grad_reference_fallback_count": 0,
         "grad_reference_fallback_reasons": {},
         "grad_saved_residual_tensor_count": 0,
+        "grad_trainable_temb_call_count": 0,
+        "grad_frozen_temb_call_count": 0,
+        "grad_temb_descriptor_counts": {},
+        "grad_temb_dtype_counts": {},
+        "grad_temb_gradient_tensor_count": 0,
         "non_generator_bypass_count": 0,
         "non_cuda_storage_bypass_count": 0,
         "reference_fallback_count": 0,
@@ -164,8 +171,8 @@ def install_generator_nograd_residual_fusion(
 
     import torch
 
-    class _ExactFrozenTembResidual(torch.autograd.Function):
-        """Exact residual derivative when all modulation inputs are frozen."""
+    class _ExactTrainableTembResidual(torch.autograd.Function):
+        """Exact residual derivative with explicit timestep-input gradients."""
 
         @staticmethod
         def forward(
@@ -190,9 +197,11 @@ def install_generator_nograd_residual_fusion(
             ctx.residual_dtype = residual.dtype
             ctx.sequence_length = int(hidden_states.shape[1])
             ctx.temb_input_count = len(temb_inputs)
-            # The frozen-gate residual derivative is independent of the
-            # residual value.  Saving it would extend a full latent lifetime.
-            ctx.save_for_backward(*temb_inputs)
+            # The residual value is required by dL/d(temb).  This matches the
+            # pinned reference autograd path, which also saves the residual for
+            # trainable timestep projections.
+            ctx.save_for_backward(residual, *temb_inputs)
+            receipt["grad_saved_residual_tensor_count"] += 1
             temb_value = rebuild_temb(temb_descriptor, tuple(temb_inputs))
             output = torch.empty_like(hidden_states)
             chunk_count = 0
@@ -205,8 +214,22 @@ def install_generator_nograd_residual_fusion(
                     start,
                     end,
                 )
+                hidden_chunk = hidden_states[:, start:end]
+                if gate.shape != hidden_chunk.shape:
+                    if (
+                        gate.ndim == 3
+                        and gate.shape[0] == hidden_chunk.shape[0]
+                        and gate.shape[1] == 1
+                        and gate.shape[2] == hidden_chunk.shape[2]
+                    ):
+                        gate = gate.expand_as(hidden_chunk)
+                    else:
+                        raise RuntimeError(
+                            "unsupported exact residual gate shape: "
+                            f"{tuple(gate.shape)} != {tuple(hidden_chunk.shape)}"
+                        )
                 fused_chunk(
-                    hidden_states[:, start:end],
+                    hidden_chunk,
                     residual[:, start:end],
                     gate,
                     output[:, start:end],
@@ -219,7 +242,8 @@ def install_generator_nograd_residual_fusion(
 
         @staticmethod
         def backward(ctx: Any, grad_output: Any) -> tuple[Any, ...]:
-            saved_temb_inputs = tuple(ctx.saved_tensors)
+            residual_value, *saved_temb_inputs = ctx.saved_tensors
+            saved_temb_inputs = tuple(saved_temb_inputs)
             hidden_gradient = (
                 grad_output.to(ctx.hidden_dtype)
                 if ctx.needs_input_grad[0]
@@ -230,8 +254,10 @@ def install_generator_nograd_residual_fusion(
                 if ctx.needs_input_grad[1]
                 else None
             )
+            temb_needs_grad = tuple(bool(value) for value in ctx.needs_input_grad[8:])
+            temb_gradients: list[Any | None] = [None for _ in saved_temb_inputs]
             chunk_count = 0
-            if residual_gradient is not None:
+            if residual_gradient is not None or any(temb_needs_grad):
                 temb_value = rebuild_temb(
                     ctx.temb_descriptor,
                     saved_temb_inputs,
@@ -245,11 +271,111 @@ def install_generator_nograd_residual_fusion(
                         start,
                         end,
                     )
-                    fused_backward_chunk(
-                        grad_output[:, start:end],
-                        gate,
-                        residual_gradient[:, start:end],
-                    )
+                    grad_chunk = grad_output[:, start:end]
+                    if gate.shape != grad_chunk.shape:
+                        if (
+                            gate.ndim == 3
+                            and gate.shape[0] == grad_chunk.shape[0]
+                            and gate.shape[1] == 1
+                            and gate.shape[2] == grad_chunk.shape[2]
+                        ):
+                            gate = gate.expand_as(grad_chunk)
+                        else:
+                            raise RuntimeError(
+                                "unsupported exact residual gate shape: "
+                                f"{tuple(gate.shape)} != {tuple(grad_chunk.shape)}"
+                            )
+                    if residual_gradient is not None:
+                        fused_backward_chunk(
+                            grad_chunk,
+                            gate,
+                            residual_gradient[:, start:end],
+                        )
+                    gate_gradient = None
+                    if any(temb_needs_grad):
+                        residual_chunk = residual_value[:, start:end]
+                        gate_gradient = (
+                            residual_chunk.float()
+                            * grad_chunk.float()
+                        )
+                    descriptor_kind, descriptor_lengths = ctx.temb_descriptor
+                    contributions: list[Any | None] = [
+                        None for _ in saved_temb_inputs
+                    ]
+                    if descriptor_kind == "tensor":
+                        if len(saved_temb_inputs) != 1:
+                            raise RuntimeError(
+                                "tensor timestep descriptor requires one input"
+                            )
+                        value = saved_temb_inputs[0]
+                        if temb_needs_grad[0]:
+                            contribution = torch.zeros_like(value)
+                            if value.ndim == 4:
+                                assert gate_gradient is not None
+                                contribution[
+                                    :, start:end, ctx.component_index, :
+                                ].copy_(gate_gradient.to(value.dtype))
+                            elif value.ndim == 3:
+                                assert gate_gradient is not None
+                                contribution[:, ctx.component_index, :].copy_(
+                                    gate_gradient.sum(dim=1).to(value.dtype)
+                                )
+                            else:
+                                raise RuntimeError(
+                                    "unsupported tensor timestep rank: "
+                                    f"{value.ndim}"
+                                )
+                            contributions[0] = contribution
+                    elif descriptor_kind == "phase_local":
+                        if len(descriptor_lengths) != len(saved_temb_inputs):
+                            raise RuntimeError(
+                                "phase-local timestep descriptor/input mismatch"
+                            )
+                        segment_start = 0
+                        for index, (value, length, needs_grad) in enumerate(
+                            zip(
+                                saved_temb_inputs,
+                                descriptor_lengths,
+                                temb_needs_grad,
+                                strict=True,
+                            )
+                        ):
+                            segment_end = segment_start + int(length)
+                            overlap_start = max(start, segment_start)
+                            overlap_end = min(end, segment_end)
+                            if needs_grad and overlap_start < overlap_end:
+                                local_start = overlap_start - start
+                                local_end = overlap_end - start
+                                contribution = torch.zeros_like(value)
+                                assert gate_gradient is not None
+                                contribution[:, ctx.component_index, :].copy_(
+                                    # PhaseLocalTimestepProjection expands the
+                                    # input before ``component.float()``.  Its
+                                    # source backward therefore casts each
+                                    # token gradient back to the input dtype
+                                    # before ExpandBackward performs the token
+                                    # reduction.  Reversing this order changes
+                                    # BF16 rounding substantially.
+                                    gate_gradient[:, local_start:local_end]
+                                    .to(value.dtype)
+                                    .sum(dim=1)
+                                )
+                                contributions[index] = contribution
+                            segment_start = segment_end
+                    else:
+                        raise RuntimeError(
+                            f"unsupported timestep descriptor: {descriptor_kind!r}"
+                        )
+                    for index, contribution in enumerate(contributions):
+                        if contribution is None:
+                            continue
+                        current = temb_gradients[index]
+                        temb_gradients[index] = (
+                            contribution
+                            if current is None
+                            else current + contribution
+                        )
+                        receipt["grad_temb_gradient_tensor_count"] += 1
                     chunk_count += 1
             receipt["grad_backward_call_count"] += 1
             receipt["grad_backward_chunk_count"] += chunk_count
@@ -266,7 +392,7 @@ def install_generator_nograd_residual_fusion(
                 None,
                 None,
                 None,
-                *(None for _ in saved_temb_inputs),
+                *temb_gradients,
             )
 
     @functools.wraps(original)
@@ -321,11 +447,22 @@ def install_generator_nograd_residual_fusion(
             ):
                 return _grad_fallback("NON_CUDA_INPUT", *common)
             temb_descriptor, temb_inputs = flatten_temb(temb)
-            if any(value.requires_grad for value in temb_inputs):
-                return _grad_fallback("TRAINABLE_TEMB_INPUT", *common)
             if not hidden_states.requires_grad and not residual.requires_grad:
                 return _grad_fallback("NO_DIFFERENTIABLE_INPUT", *common)
-            return _ExactFrozenTembResidual.apply(
+            descriptor_key = str(temb_descriptor[0])
+            descriptor_counts = receipt["grad_temb_descriptor_counts"]
+            descriptor_counts[descriptor_key] = int(
+                descriptor_counts.get(descriptor_key, 0)
+            ) + 1
+            dtype_counts = receipt["grad_temb_dtype_counts"]
+            for value in temb_inputs:
+                dtype_key = str(value.dtype)
+                dtype_counts[dtype_key] = int(dtype_counts.get(dtype_key, 0)) + 1
+            if any(value.requires_grad for value in temb_inputs):
+                receipt["grad_trainable_temb_call_count"] += 1
+            else:
+                receipt["grad_frozen_temb_call_count"] += 1
+            return _ExactTrainableTembResidual.apply(
                 hidden_states,
                 residual,
                 scale_shift_table,
@@ -383,7 +520,7 @@ def install_generator_nograd_residual_fusion(
     receipt["enabled"] = True
     receipt["implementation"] = (
         (
-            "TRITON_B1_TILE_FORWARD_AND_FROZEN_TEMB_EXACT_BACKWARD"
+            "TRITON_B1_TILE_FORWARD_AND_TRAINABLE_TEMB_EXACT_BACKWARD"
             if exact_grad_enabled
             else "TRITON_B1_TILE_MUL_RN_F32_ADD_RN_F32_BF16_STORE"
         )

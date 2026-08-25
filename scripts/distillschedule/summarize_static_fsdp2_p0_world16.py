@@ -191,11 +191,11 @@ def main() -> int:
                 if not residual_fusion.get("enabled"):
                     errors.append(f"{prefix} was not enabled")
                 expected_scope = (
-                    "GENERATOR_NOGRAD_AND_FROZEN_TEMB_EXACT_GRAD_GATED_RESIDUAL"
+                    "GENERATOR_NOGRAD_AND_TRAINABLE_TEMB_EXACT_GRAD_GATED_RESIDUAL"
                     if expected_policy["generator_nograd_residual_fusion"]
                     and expected_policy["exact_grad_residual_fusion"]
                     else (
-                        "FROZEN_TEMB_EXACT_GRAD_GATED_RESIDUAL_ONLY"
+                        "TRAINABLE_TEMB_EXACT_GRAD_GATED_RESIDUAL_ONLY"
                         if expected_policy["exact_grad_residual_fusion"]
                         else "GENERATOR_NOGRAD_GATED_RESIDUAL_ONLY"
                     )
@@ -236,8 +236,45 @@ def main() -> int:
                             f"{prefix} exact-grad fallback="
                             f"{residual_fusion.get('grad_reference_fallback_count')}"
                         )
-                    if int(residual_fusion.get("grad_saved_residual_tensor_count", -1)) != 0:
-                        errors.append(f"{prefix} saved a residual tensor")
+                    fused_calls = int(
+                        residual_fusion.get("grad_fused_call_count", 0)
+                    )
+                    saved_residuals = int(
+                        residual_fusion.get("grad_saved_residual_tensor_count", -1)
+                    )
+                    if saved_residuals != fused_calls:
+                        errors.append(
+                            f"{prefix} saved residual count={saved_residuals}, "
+                            f"expected={fused_calls}"
+                        )
+                    if int(
+                        residual_fusion.get("grad_trainable_temb_call_count", 0)
+                    ) <= 0:
+                        errors.append(f"{prefix} saw no trainable timestep inputs")
+                    if int(
+                        residual_fusion.get("grad_temb_gradient_tensor_count", 0)
+                    ) <= 0:
+                        errors.append(f"{prefix} produced no timestep gradients")
+                    descriptor_counts = residual_fusion.get(
+                        "grad_temb_descriptor_counts", {}
+                    )
+                    if not descriptor_counts or not set(descriptor_counts).issubset(
+                        {"tensor", "phase_local"}
+                    ):
+                        errors.append(
+                            f"{prefix} timestep descriptor counts changed: "
+                            f"{descriptor_counts!r}"
+                        )
+                    dtype_counts = residual_fusion.get(
+                        "grad_temb_dtype_counts", {}
+                    )
+                    if not dtype_counts or not set(dtype_counts).issubset(
+                        {"torch.bfloat16", "torch.float32"}
+                    ):
+                        errors.append(
+                            f"{prefix} timestep dtype counts changed: "
+                            f"{dtype_counts!r}"
+                        )
             elif residual_fusion.get("enabled"):
                 errors.append(f"rank{rank} residual fusion enabled outside requested policy")
             if expected_policy["generator_nograd_lora_fused_epilogue"]:
