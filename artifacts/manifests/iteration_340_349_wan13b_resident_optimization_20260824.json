@@ -1,0 +1,76 @@
+{
+  "schema_version": "distillschedule.wan13b.optimization_ladder.v1",
+  "status": "PASS_DIAGNOSTIC_WINNER",
+  "publication_head_parent": "67b2880901abece947732ba5de45a5c2685ab274",
+  "stack_base": "524048c94c6374ae5071bc23e93daf19fc1e0bb9",
+  "hardware": "2x8 A100-SXM4-40GB",
+  "workload": {
+    "variant": "no-gan",
+    "world_size": 16,
+    "global_batch": 16,
+    "rollout_batch_size": 1,
+    "score_packing": false,
+    "updates": {"generator": 1, "critic": 5, "ema": 5},
+    "final_versions": {"generator": 3, "critic": 15, "ema": 15},
+    "frozen_base_compute_dtype": "bfloat16",
+    "lora_compute_dtype": "float32",
+    "parameter_offload": false,
+    "activation_offload": false,
+    "model_swap": false
+  },
+  "identities": {
+    "bootstrap_sha256": "6a713476d9839cf1ea37689d63cb1cc2b405b9f9915ca5314ccdadb67b3cd60d",
+    "trace_bundle_sha256": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+    "transformer_sha256": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
+    "model_identity_sha256": "d52cf9e2d04451c018ac50c4ee1043c4ceba4014e51549bfda2ea5a123c65f54"
+  },
+  "observations": [
+    {"iteration": 340, "arm": "resident-clean", "seconds": 36.825722, "status": "PASS_DIAGNOSTIC"},
+    {"iteration": 340, "arm": "resident-async128", "seconds": 35.416233, "status": "PASS_DIAGNOSTIC"},
+    {"iteration": 342, "arm": "resident-async128", "seconds": 34.785843678, "status": "PASS_DIAGNOSTIC"},
+    {"iteration": 342, "arm": "resident-async256", "seconds": 34.788326901, "status": "REJECTED_NO_GAIN"},
+    {"iteration": 343, "arm": "resident-async128-auto", "seconds": 34.95704887001193, "status": "PASS_DIAGNOSTIC"},
+    {"iteration": 343, "arm": "resident-async128-tree", "seconds": 34.74960086900683, "status": "PASS_DIAGNOSTIC"},
+    {"iteration": 344, "arm": "tree-chunk512", "seconds": 34.47350598400226, "status": "PASS_DIAGNOSTIC"},
+    {"iteration": 344, "arm": "tree-chunk2048", "seconds": 27.233467853002367, "status": "PASS_DIAGNOSTIC"},
+    {"iteration": 345, "arm": "same-head-eager", "seconds": 27.181842625999707, "status": "PASS_DIAGNOSTIC"},
+    {"iteration": 345, "arm": "generator-nograd-torch-compile", "seconds": 33.730887614001404, "status": "REJECTED_REGRESSION_AND_PARITY"},
+    {"iteration": 348, "arm": "cast-cache-off", "seconds": 27.050073297999916, "status": "PASS_DIAGNOSTIC"},
+    {"iteration": 348, "arm": "single-entry-input-cast-cache", "seconds": 27.16621935799776, "status": "REJECTED_NO_SPEEDUP"},
+    {"iteration": 349, "arm": "fused-epilogue-off", "seconds": 27.052163770000334, "status": "PASS_DIAGNOSTIC"},
+    {"iteration": 349, "arm": "generator-nograd-exact-fused-epilogue", "seconds": 26.227822832996026, "status": "PASS_DIAGNOSTIC_WINNER"}
+  ],
+  "winner": {
+    "run_id": "iter349_wan13b_fused_epilogue_candidate_timing_r5_20260824",
+    "seconds": 26.227822832996026,
+    "rank_count": 16,
+    "rollout_identity_count": 80,
+    "max_allocated_bytes": 23508250624,
+    "max_reserved_bytes": 24022876160,
+    "min_driver_free_bytes": 17421434880,
+    "fused_lora_invocations_per_rank": 8540,
+    "reference_fp32_base_fallbacks_per_rank": 112,
+    "cuda_or_cgroup_oom_delta": 0
+  },
+  "chain_comparison": {
+    "first_seconds": 36.825722,
+    "winner_seconds": 26.227822832996026,
+    "seconds_saved": 10.597899167003974,
+    "reduction_fraction": 0.2877852379107183,
+    "speedup": 1.404070869110464
+  },
+  "profile_evidence": {
+    "tree_nccl_union_seconds_gpu0": 2.73705,
+    "tree_nccl_exposed_seconds_gpu0": 1.37264,
+    "lora_input_cast_kernel_sum_seconds_rank0": 0.507424369,
+    "lora_output_cast_kernel_sum_seconds_rank0": 0.390234439,
+    "lora_scale_add_kernel_sum_seconds_rank0": 1.270473428,
+    "end_to_end_mfu": "NOT_AVAILABLE_NO_VALIDATED_FLOP_INVENTORY"
+  },
+  "claim_boundary": {
+    "formal_three_pair_timing": "NOT_RUN",
+    "strict_independent_run_numerical_gate": "FAIL_AT_KNOWN_NOISE_FLOOR",
+    "timing_claim": "DIAGNOSTIC_ONLY",
+    "profiled_wall_used_for_speedup": false
+  }
+}
