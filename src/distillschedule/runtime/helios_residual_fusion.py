@@ -85,6 +85,7 @@ def install_generator_nograd_residual_fusion(
             "BF16_LOADS;MUL_RN_F32;ADD_RN_F32;BF16_RN_STORE;"
             + (
                 "TRAINABLE_TEMB_GRAD_RESIDUAL_MUL_RN_F32_BF16_RN_STORE;"
+                "PHASE_LOCAL_TEMB_PRODUCT_MUL_RN_F32_BF16_RN_STORE;"
                 "EXPLICIT_TENSOR_OR_PHASE_LOCAL_TEMB_GRADIENT;"
                 "NO_TRAINABLE_ADALN_TABLE"
                 if exact_grad_enabled
@@ -576,7 +577,7 @@ def install_generator_nograd_residual_fusion(
     receipt["enabled"] = True
     receipt["implementation"] = (
         (
-            "TRITON_B1_TILE_FORWARD_AND_TRAINABLE_TEMB_EXACT_BACKWARD"
+            "TRITON_B1_TILE_FORWARD_AND_PHASE_LOCAL_TEMB_EXACT_BACKWARD"
             if exact_grad_enabled
             else "TRITON_B1_TILE_MUL_RN_F32_ADD_RN_F32_BF16_STORE"
         )
