@@ -144,6 +144,11 @@ def parser() -> argparse.ArgumentParser:
         default="off",
     )
     value.add_argument(
+        "--generator-nograd-cross-kv-cache",
+        choices=("on", "off"),
+        default="off",
+    )
+    value.add_argument(
         "--remote-root",
         type=Path,
         default=Path(
@@ -234,6 +239,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.exact_modulated_norm_epilogue),
         "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_MATERIALIZATION="
         + shlex.quote(args.exact_modulated_norm_materialization),
+        "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_CROSS_KV_CACHE="
+        + shlex.quote(args.generator_nograd_cross_kv_cache),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -345,6 +352,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.exact_modulated_norm_epilogue)} "
         + "--exact-modulated-norm-materialization "
         + f"{shlex.quote(args.exact_modulated_norm_materialization)} "
+        + "--generator-nograd-cross-kv-cache "
+        + f"{shlex.quote(args.generator_nograd_cross_kv_cache)} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
         + (
             f"--critic-only-step {args.critic_only_step} "
