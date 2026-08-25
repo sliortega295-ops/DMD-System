@@ -565,7 +565,10 @@ def main() -> int:
                         )
                 if int(cross_kv_cache.get("cache_resident_bytes_sum", 0)) <= 0:
                     errors.append(f"{prefix} cached no encoder K/V bytes")
-            if args.mode == "correctness" and args.rollout_batch_size > 1:
+            if args.mode == "correctness" and (
+                args.rollout_batch_size > 1
+                or expected_policy["generator_nograd_cross_kv_cache"]
+            ):
                 for batch in batches:
                     parity = batch.get("batch_parity", {})
                     if parity.get("status") != "PASS":

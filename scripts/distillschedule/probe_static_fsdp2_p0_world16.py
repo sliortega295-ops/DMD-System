@@ -61,6 +61,7 @@ from distillschedule.runtime.helios_modulated_norm_fusion import (
     warmup_exact_modulated_norm_epilogue,
 )
 from distillschedule.runtime.helios_residual_fusion import (
+    generator_nograd_residual_fusion_scope,
     install_generator_nograd_residual_fusion,
     warmup_generator_nograd_residual_fusion,
 )
@@ -481,17 +482,23 @@ def _precompute_critic_rollouts(
                 use_cross_kv_cache=policy.generator_nograd_cross_kv_cache,
             )
         parity_rows: list[dict[str, Any]] = []
-        if rollout_parity_check and len(entries) > 1:
+        needs_reference = rollout_parity_check and (
+            len(entries) > 1 or policy.generator_nograd_cross_kv_cache
+        )
+        if needs_reference:
             for entry, candidate in zip(entries, generated, strict=True):
-                reference, _reference_record = run_generator_trace_rollout(
-                    model=generator_engine.module,
-                    loaded=entry,
-                    device=device,
-                    detailed_profile=False,
-                    record_output_sha256=False,
-                    empty_cache_before_rollout=False,
-                    collect_diagnostics=False,
-                )
+                # Match every already-validated no-grad fusion while leaving
+                # only the new cross-K/V cache disabled for the reference arm.
+                with generator_nograd_residual_fusion_scope():
+                    reference, _reference_record = run_generator_trace_rollout(
+                        model=generator_engine.module,
+                        loaded=entry,
+                        device=device,
+                        detailed_profile=False,
+                        record_output_sha256=False,
+                        empty_cache_before_rollout=False,
+                        collect_diagnostics=False,
+                    )
                 error = _rollout_pack_error(reference, candidate)
                 parity_rows.append(
                     {
@@ -511,8 +518,13 @@ def _precompute_critic_rollouts(
             outputs[int(step)] = value
         record["batch_index"] = batch_index
         record["batch_parity"] = {
-            "enabled": bool(rollout_parity_check and len(entries) > 1),
+            "enabled": bool(needs_reference),
             "status": "PASS" if parity_rows else "NOT_RUN",
+            "reason": (
+                "CROSS_KV_CACHE_B1_REFERENCE"
+                if policy.generator_nograd_cross_kv_cache and len(entries) == 1
+                else "BATCHED_VS_B1_REFERENCE"
+            ),
             "tolerance_mean_relative": PACKED_SCORE_MEAN_REL_TOLERANCE,
             "samples": parity_rows,
         }
