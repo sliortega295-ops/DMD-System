@@ -265,6 +265,11 @@ def main() -> int:
                             f"{prefix} timestep descriptor counts changed: "
                             f"{descriptor_counts!r}"
                         )
+                    if set(descriptor_counts) != {"phase_local"}:
+                        errors.append(
+                            f"{prefix} live timestep descriptors are not exclusively "
+                            f"phase_local: {descriptor_counts!r}"
+                        )
                     dtype_counts = residual_fusion.get(
                         "grad_temb_dtype_counts", {}
                     )
@@ -274,6 +279,24 @@ def main() -> int:
                         errors.append(
                             f"{prefix} timestep dtype counts changed: "
                             f"{dtype_counts!r}"
+                        )
+                    if set(dtype_counts) != {"torch.bfloat16"}:
+                        errors.append(
+                            f"{prefix} live timestep dtypes are not exclusively BF16: "
+                            f"{dtype_counts!r}"
+                        )
+                    backward_chunks = int(
+                        residual_fusion.get("grad_backward_chunk_count", 0)
+                    )
+                    fused_staging_chunks = int(
+                        residual_fusion.get(
+                            "grad_phase_local_fused_staging_chunk_count", 0
+                        )
+                    )
+                    if fused_staging_chunks != backward_chunks:
+                        errors.append(
+                            f"{prefix} fused timestep staging chunks="
+                            f"{fused_staging_chunks}, expected={backward_chunks}"
                         )
             elif residual_fusion.get("enabled"):
                 errors.append(f"rank{rank} residual fusion enabled outside requested policy")
