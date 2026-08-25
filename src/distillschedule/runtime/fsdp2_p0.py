@@ -57,6 +57,7 @@ class StaticFSDP2P0Policy:
     generator_nograd_residual_fusion: bool = False
     exact_grad_residual_fusion: bool = False
     exact_modulated_norm_epilogue: bool = False
+    exact_modulated_norm_materialization: bool = False
 
     def __post_init__(self) -> None:
         if self.mesh_policy not in SUPPORTED_MESH_POLICIES:
@@ -81,6 +82,13 @@ class StaticFSDP2P0Policy:
             raise ValueError("Exact grad residual fusion is restricted to B1")
         if self.exact_modulated_norm_epilogue and self.rollout_batch_size != 1:
             raise ValueError("Exact modulated-norm epilogue is restricted to B1")
+        if (
+            self.exact_modulated_norm_materialization
+            and not self.exact_modulated_norm_epilogue
+        ):
+            raise ValueError(
+                "Exact modulation materialization requires the exact epilogue"
+            )
 
     @property
     def id(self) -> str:
@@ -97,6 +105,8 @@ class StaticFSDP2P0Policy:
             suffixes.append("gradresidualfusion")
         if self.exact_modulated_norm_epilogue:
             suffixes.append("modnormepilogue")
+        if self.exact_modulated_norm_materialization:
+            suffixes.append("modnormmaterialization")
         return "-".join((base, *suffixes))
 
 

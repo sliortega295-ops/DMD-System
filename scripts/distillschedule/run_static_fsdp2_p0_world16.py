@@ -139,6 +139,11 @@ def parser() -> argparse.ArgumentParser:
         default="off",
     )
     value.add_argument(
+        "--exact-modulated-norm-materialization",
+        choices=("on", "off"),
+        default="off",
+    )
+    value.add_argument(
         "--remote-root",
         type=Path,
         default=Path(
@@ -227,6 +232,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.exact_grad_residual_fusion),
         "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_EPILOGUE="
         + shlex.quote(args.exact_modulated_norm_epilogue),
+        "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_MATERIALIZATION="
+        + shlex.quote(args.exact_modulated_norm_materialization),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -336,6 +343,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.exact_grad_residual_fusion)} "
         + "--exact-modulated-norm-epilogue "
         + f"{shlex.quote(args.exact_modulated_norm_epilogue)} "
+        + "--exact-modulated-norm-materialization "
+        + f"{shlex.quote(args.exact_modulated_norm_materialization)} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
         + (
             f"--critic-only-step {args.critic_only_step} "
@@ -404,6 +413,13 @@ def main() -> int:
         )
     if args.exact_modulated_norm_epilogue == "on" and args.rollout_batch_size != 1:
         raise ValueError("Exact modulated-norm epilogue requires B1")
+    if (
+        args.exact_modulated_norm_materialization == "on"
+        and args.exact_modulated_norm_epilogue != "on"
+    ):
+        raise ValueError(
+            "Exact modulation materialization requires the exact epilogue"
+        )
     if args.critic_only_step is not None and (
         args.variant != "no-gan" or args.mode != "profile"
     ):

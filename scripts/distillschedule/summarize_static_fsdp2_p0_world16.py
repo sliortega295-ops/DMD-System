@@ -75,6 +75,11 @@ def main() -> int:
         choices=("on", "off"),
         required=True,
     )
+    parser.add_argument(
+        "--exact-modulated-norm-materialization",
+        choices=("on", "off"),
+        required=True,
+    )
     parser.add_argument("--critic-only-step", type=int, choices=(10,))
     parser.add_argument(
         "--diagnostic-timing",
@@ -107,6 +112,9 @@ def main() -> int:
         "exact_grad_residual_fusion": args.exact_grad_residual_fusion == "on",
         "exact_modulated_norm_epilogue": (
             args.exact_modulated_norm_epilogue == "on"
+        ),
+        "exact_modulated_norm_materialization": (
+            args.exact_modulated_norm_materialization == "on"
         ),
     }
     if args.critic_only_step is not None:
@@ -347,6 +355,34 @@ def main() -> int:
                         f"{prefix} fallback="
                         f"{modulated_norm_fusion.get('reference_fallback_count')}"
                     )
+                expected_materialization = expected_policy[
+                    "exact_modulated_norm_materialization"
+                ]
+                if (
+                    modulated_norm_fusion.get("materialization_requested")
+                    is not expected_materialization
+                ):
+                    errors.append(f"{prefix} materialization request drifted")
+                if expected_materialization:
+                    if modulated_norm_fusion.get("materialization_contract") != (
+                        "SOURCE_TABLE_PLUS_COMPONENT_ADD_RN_F32_FUSED_BEFORE_"
+                        "EXISTING_EPILOGUE"
+                    ):
+                        errors.append(f"{prefix} materialization contract changed")
+                    if int(
+                        modulated_norm_fusion.get(
+                            "materialization_fused_call_count", 0
+                        )
+                    ) <= 0:
+                        errors.append(f"{prefix} fused no materialization calls")
+                    if int(
+                        modulated_norm_fusion.get(
+                            "materialization_fused_chunk_count", 0
+                        )
+                    ) <= 0:
+                        errors.append(f"{prefix} fused no materialization chunks")
+                    if warmup.get("fuse_materialization") is not True:
+                        errors.append(f"{prefix} did not warm materialization kernel")
             elif modulated_norm_fusion.get("enabled"):
                 errors.append(f"{prefix} enabled outside requested policy")
             if expected_policy["generator_nograd_lora_fused_epilogue"]:

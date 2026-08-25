@@ -148,6 +148,9 @@ def _build_static_model(
         install_exact_modulated_norm_epilogue(
             enabled=bool(args.exact_modulated_norm_epilogue),
             role=role,
+            fuse_materialization=bool(
+                args.exact_modulated_norm_materialization
+            ),
         )
         if role == "generator"
         else {
@@ -692,6 +695,15 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--exact-modulated-norm-materialization",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Also fuse the two exact FP32 table-plus-timestep component "
+            "materializations into the B1 modulated-norm epilogue"
+        ),
+    )
+    value.add_argument(
         "--critic-only-step",
         type=int,
         choices=(10,),
@@ -745,6 +757,13 @@ def main() -> int:
         )
     if args.exact_modulated_norm_epilogue and args.rollout_batch_size != 1:
         raise ValueError("Exact modulated-norm epilogue requires B1")
+    if (
+        args.exact_modulated_norm_materialization
+        and not args.exact_modulated_norm_epilogue
+    ):
+        raise ValueError(
+            "Exact modulation materialization requires the exact epilogue"
+        )
     policy = StaticFSDP2P0Policy(
         mesh_policy=args.mesh_policy,
         rollout_batch_size=args.rollout_batch_size,
@@ -756,6 +775,9 @@ def main() -> int:
         ),
         exact_grad_residual_fusion=bool(args.exact_grad_residual_fusion),
         exact_modulated_norm_epilogue=bool(args.exact_modulated_norm_epilogue),
+        exact_modulated_norm_materialization=bool(
+            args.exact_modulated_norm_materialization
+        ),
     )
     dist.init_process_group("nccl")
     rank = dist.get_rank()
@@ -798,6 +820,9 @@ def main() -> int:
             "exact_grad_residual_fusion": policy.exact_grad_residual_fusion,
             "exact_modulated_norm_epilogue": (
                 policy.exact_modulated_norm_epilogue
+            ),
+            "exact_modulated_norm_materialization": (
+                policy.exact_modulated_norm_materialization
             ),
         },
     }

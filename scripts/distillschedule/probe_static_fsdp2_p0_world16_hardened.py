@@ -401,6 +401,8 @@ def _install_conservative_direct_defaults() -> None:
         sys.argv.append("--no-exact-grad-residual-fusion")
     if "--exact-modulated-norm-epilogue" not in sys.argv and "--no-exact-modulated-norm-epilogue" not in sys.argv:
         sys.argv.append("--no-exact-modulated-norm-epilogue")
+    if "--exact-modulated-norm-materialization" not in sys.argv and "--no-exact-modulated-norm-materialization" not in sys.argv:
+        sys.argv.append("--no-exact-modulated-norm-materialization")
 
 
 def main() -> int:

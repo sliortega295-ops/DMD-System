@@ -25,8 +25,10 @@ def install_exact_modulated_norm_epilogue(
     *,
     enabled: bool,
     role: str,
+    fuse_materialization: bool = False,
     transformer_module: Any | None = None,
     fused_epilogue: Any | None = None,
+    fused_materialization: Any | None = None,
 ) -> dict[str, Any]:
     """Patch only the pinned custom Function forward; retain source backward."""
 
@@ -44,6 +46,12 @@ def install_exact_modulated_norm_epilogue(
         "fused_element_count": 0,
         "reference_fallback_count": 0,
         "reference_fallback_reasons": {},
+        "materialization_requested": bool(fuse_materialization),
+        "materialization_contract": (
+            "SOURCE_TABLE_PLUS_COMPONENT_ADD_RN_F32_FUSED_BEFORE_EXISTING_EPILOGUE"
+        ),
+        "materialization_fused_call_count": 0,
+        "materialization_fused_chunk_count": 0,
         "warmup": {"status": "NOT_RUN"},
     }
     if not enabled:
@@ -63,7 +71,9 @@ def install_exact_modulated_norm_epilogue(
     receipt["transformer_source"] = str(source_path)
     receipt["transformer_sha256"] = observed_sha
     receipt["expected_transformer_sha256"] = SUPPORTED_HELIOS_TRANSFORMER_SHA256
-    test_injected = fused_epilogue is not None
+    test_injected = (
+        fused_epilogue is not None or fused_materialization is not None
+    )
     if not test_injected and observed_sha != SUPPORTED_HELIOS_TRANSFORMER_SHA256:
         raise RuntimeError(
             "Helios transformer source changed: "
@@ -75,10 +85,28 @@ def install_exact_modulated_norm_epilogue(
         )
 
         fused_epilogue = fused_modulated_norm_epilogue
+    if fuse_materialization and fused_materialization is None:
+        from distillschedule.runtime.helios_modulated_norm_kernel import (
+            fused_modulated_norm_materialization,
+        )
+
+        fused_materialization = fused_modulated_norm_materialization
 
     function = transformer_module._TembAwareChunkedNorm
     original_forward = function.forward
     materialize = transformer_module._materialize_scale_shift_component
+    phase_local_type = getattr(
+        transformer_module, "PhaseLocalTimestepProjection", ()
+    )
+
+    def component(
+        temb: Any, index: int, start: int, end: int
+    ) -> Any:
+        if isinstance(temb, phase_local_type):
+            return temb.materialize_component(index, start, end)
+        if temb.ndim == 4:
+            return temb[:, slice(start, end), index, :]
+        return temb[:, index, :].unsqueeze(1)
 
     def fallback(reason: str, ctx: Any, *args: Any) -> Any:
         receipt["reference_fallback_count"] += 1
@@ -139,37 +167,74 @@ def install_exact_modulated_norm_epilogue(
         chunk_count = 0
         for start in range(0, ctx.sequence_length, ctx.chunk_tokens):
             end = min(ctx.sequence_length, start + ctx.chunk_tokens)
-            scale = materialize(
-                scale_shift_table, temb, ctx.scale_index, start, end
-            )
-            shift = materialize(
-                scale_shift_table, temb, ctx.shift_index, start, end
-            )
             hidden_chunk = hidden_states[:, start:end]
             normalized = norm(hidden_chunk.float())
-            for name, value in (("scale", scale), ("shift", shift)):
-                if value.shape != hidden_chunk.shape:
-                    if (
-                        value.ndim == 3
-                        and value.shape[0] == hidden_chunk.shape[0]
-                        and value.shape[1] == 1
-                        and value.shape[2] == hidden_chunk.shape[2]
-                    ):
-                        value = value.expand_as(hidden_chunk)
+            if fuse_materialization:
+                scale_component = component(temb, ctx.scale_index, start, end)
+                shift_component = component(temb, ctx.shift_index, start, end)
+                for name, value in (
+                    ("scale_component", scale_component),
+                    ("shift_component", shift_component),
+                ):
+                    if value.shape != hidden_chunk.shape:
+                        if (
+                            value.ndim == 3
+                            and value.shape[0] == hidden_chunk.shape[0]
+                            and value.shape[1] == 1
+                            and value.shape[2] == hidden_chunk.shape[2]
+                        ):
+                            value = value.expand_as(hidden_chunk)
+                        else:
+                            raise RuntimeError(
+                                f"unsupported exact modulated-norm {name} shape: "
+                                f"{tuple(value.shape)} != {tuple(hidden_chunk.shape)}"
+                            )
+                    if name == "scale_component":
+                        scale_component = value
                     else:
-                        raise RuntimeError(
-                            f"unsupported exact modulated-norm {name} shape: "
-                            f"{tuple(value.shape)} != {tuple(hidden_chunk.shape)}"
-                        )
-                if name == "scale":
-                    scale = value
-                else:
-                    shift = value
-            fused_epilogue(normalized, scale, shift, output[:, start:end])
+                        shift_component = value
+                fused_materialization(
+                    normalized,
+                    scale_shift_table,
+                    ctx.scale_index,
+                    ctx.shift_index,
+                    scale_component,
+                    shift_component,
+                    output[:, start:end],
+                )
+                receipt["materialization_fused_chunk_count"] += 1
+            else:
+                scale = materialize(
+                    scale_shift_table, temb, ctx.scale_index, start, end
+                )
+                shift = materialize(
+                    scale_shift_table, temb, ctx.shift_index, start, end
+                )
+                for name, value in (("scale", scale), ("shift", shift)):
+                    if value.shape != hidden_chunk.shape:
+                        if (
+                            value.ndim == 3
+                            and value.shape[0] == hidden_chunk.shape[0]
+                            and value.shape[1] == 1
+                            and value.shape[2] == hidden_chunk.shape[2]
+                        ):
+                            value = value.expand_as(hidden_chunk)
+                        else:
+                            raise RuntimeError(
+                                f"unsupported exact modulated-norm {name} shape: "
+                                f"{tuple(value.shape)} != {tuple(hidden_chunk.shape)}"
+                            )
+                    if name == "scale":
+                        scale = value
+                    else:
+                        shift = value
+                fused_epilogue(normalized, scale, shift, output[:, start:end])
             chunk_count += 1
         receipt["fused_call_count"] += 1
         receipt["fused_chunk_count"] += chunk_count
         receipt["fused_element_count"] += int(output.numel())
+        if fuse_materialization:
+            receipt["materialization_fused_call_count"] += 1
         return output
 
     function.forward = forward
@@ -178,7 +243,11 @@ def install_exact_modulated_norm_epilogue(
     receipt["implementation"] = (
         "TEST_INJECTED"
         if test_injected
-        else "TRITON_B1_FP32_MODULATION_EPILOGUE_SOURCE_BACKWARD"
+        else (
+            "TRITON_B1_FP32_TABLE_COMPONENT_AND_MODULATION_EPILOGUE_SOURCE_BACKWARD"
+            if fuse_materialization
+            else "TRITON_B1_FP32_MODULATION_EPILOGUE_SOURCE_BACKWARD"
+        )
     )
     return receipt
 
@@ -190,7 +259,13 @@ def warmup_exact_modulated_norm_epilogue(
         return receipt
     from distillschedule.runtime.helios_modulated_norm_kernel import warmup
 
-    receipt["warmup"] = {"status": "PASS", **warmup(device)}
+    receipt["warmup"] = {
+        "status": "PASS",
+        **warmup(
+            device,
+            fuse_materialization=bool(receipt.get("materialization_requested")),
+        ),
+    }
     return receipt
 
 

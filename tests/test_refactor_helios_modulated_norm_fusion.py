@@ -86,10 +86,18 @@ class _SourceChunkedNorm(torch.autograd.Function):
         return hidden_grad, None, None, None, None, None, None, temb_grad
 
 
+_SOURCE_FORWARD = _SourceChunkedNorm.forward
+_SOURCE_BACKWARD = _SourceChunkedNorm.backward
+
+
 def _module():
+    class FreshSourceChunkedNorm(torch.autograd.Function):
+        forward = staticmethod(_SOURCE_FORWARD)
+        backward = staticmethod(_SOURCE_BACKWARD)
+
     return SimpleNamespace(
         __file__=__file__,
-        _TembAwareChunkedNorm=_SourceChunkedNorm,
+        _TembAwareChunkedNorm=FreshSourceChunkedNorm,
         _materialize_scale_shift_component=_materialize,
         _rebuild_temb=_rebuild_temb,
     )
@@ -164,6 +172,62 @@ def test_forward_and_gradients_are_exact_and_source_backward_is_unchanged() -> N
     assert receipt["reference_fallback_count"] == 0
 
 
+def test_table_component_materialization_is_exact() -> None:
+    torch.manual_seed(41)
+    module = _module()
+    function = module._TembAwareChunkedNorm
+    norm_reference = torch.nn.LayerNorm(8, elementwise_affine=False)
+    norm_candidate = copy.deepcopy(norm_reference)
+    table = torch.randn(1, 6, 8, dtype=torch.float32)
+    hidden_reference = torch.randn(1, 7, 8, dtype=torch.bfloat16).requires_grad_()
+    hidden_candidate = hidden_reference.detach().clone().requires_grad_()
+    temb_reference = torch.randn(1, 6, 8, dtype=torch.bfloat16).requires_grad_()
+    temb_candidate = temb_reference.detach().clone().requires_grad_()
+    upstream = torch.randn_like(hidden_reference)
+
+    expected = _run(
+        function, hidden_reference, norm_reference, table, temb_reference
+    )
+    expected.backward(upstream)
+
+    def fused_epilogue(normalized, scale, shift, output):
+        output.copy_((normalized * (1 + scale) + shift).to(output.dtype))
+        return output
+
+    def fused_materialization(
+        normalized,
+        source_table,
+        scale_index,
+        shift_index,
+        scale_component,
+        shift_component,
+        output,
+    ):
+        scale = source_table[:, scale_index, :].unsqueeze(1) + scale_component.float()
+        shift = source_table[:, shift_index, :].unsqueeze(1) + shift_component.float()
+        output.copy_((normalized * (1 + scale) + shift).to(output.dtype))
+        return output
+
+    receipt = install_exact_modulated_norm_epilogue(
+        enabled=True,
+        role="generator",
+        fuse_materialization=True,
+        transformer_module=module,
+        fused_epilogue=fused_epilogue,
+        fused_materialization=fused_materialization,
+    )
+    actual = _run(function, hidden_candidate, norm_candidate, table, temb_candidate)
+    actual.backward(upstream)
+
+    assert torch.equal(expected, actual)
+    assert torch.equal(hidden_reference.grad, hidden_candidate.grad)
+    assert torch.equal(temb_reference.grad, temb_candidate.grad)
+    assert receipt["materialization_requested"] is True
+    assert receipt["materialization_fused_call_count"] == 1
+    assert receipt["materialization_fused_chunk_count"] == 3
+    assert receipt["reference_fallback_count"] == 0
+
+
 def test_launcher_controller_and_summarizer_are_fail_closed() -> None:
     root = Path(__file__).resolve().parents[1]
     launcher = (
@@ -178,7 +242,9 @@ def test_launcher_controller_and_summarizer_are_fail_closed() -> None:
     for source in (launcher, controller, summarizer):
         assert "exact_modulated_norm_epilogue" in source
     assert "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_EPILOGUE" in launcher
+    assert "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_MATERIALIZATION" in launcher
     assert "rank_exact_modulated_norm_epilogue" in summarizer
+    assert "materialization_fused_chunk_count" in summarizer
     assert "reference_fallback_count" in summarizer
 
 
@@ -213,5 +279,63 @@ def test_real_triton_kernel_is_bitwise_exact(
     expected = (normalized * (1 + scale) + shift).to(torch.bfloat16)
     actual = torch.empty_like(expected)
     fused_modulated_norm_epilogue(normalized, scale, shift, actual)
+    torch.cuda.synchronize()
+    assert torch.equal(expected, actual)
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA-only Triton parity")
+@pytest.mark.parametrize("sequence_length", [1, 127, 512])
+@pytest.mark.parametrize("broadcast_modulation", [False, True])
+def test_real_materialization_kernel_is_bitwise_exact(
+    sequence_length: int, broadcast_modulation: bool
+) -> None:
+    from distillschedule.runtime.helios_modulated_norm_kernel import (
+        fused_modulated_norm_materialization,
+    )
+
+    generator = torch.Generator(device="cuda").manual_seed(43 + sequence_length)
+    normalized = torch.randn(
+        (1, sequence_length, 5120),
+        device="cuda",
+        dtype=torch.float32,
+        generator=generator,
+    )
+    table = torch.randn(
+        (1, 6, 5120),
+        device="cuda",
+        dtype=torch.float32,
+        generator=generator,
+    )
+    if broadcast_modulation:
+        temb = torch.randn(
+            (1, 6, 5120),
+            device="cuda",
+            dtype=torch.bfloat16,
+            generator=generator,
+        )
+        scale_component = temb[:, 1, :].unsqueeze(1).expand_as(normalized)
+        shift_component = temb[:, 2, :].unsqueeze(1).expand_as(normalized)
+    else:
+        temb = torch.randn(
+            (1, sequence_length, 6, 5120),
+            device="cuda",
+            dtype=torch.bfloat16,
+            generator=generator,
+        )
+        scale_component = temb[:, :, 1, :]
+        shift_component = temb[:, :, 2, :]
+    scale = table[:, 1, :].unsqueeze(1) + scale_component.float()
+    shift = table[:, 2, :].unsqueeze(1) + shift_component.float()
+    expected = (normalized * (1 + scale) + shift).to(torch.bfloat16)
+    actual = torch.empty_like(expected)
+    fused_modulated_norm_materialization(
+        normalized,
+        table,
+        1,
+        2,
+        scale_component,
+        shift_component,
+        actual,
+    )
     torch.cuda.synchronize()
     assert torch.equal(expected, actual)
