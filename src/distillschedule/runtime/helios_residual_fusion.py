@@ -299,9 +299,41 @@ def install_generator_nograd_residual_fusion(
                             * grad_chunk.float()
                         )
                     descriptor_kind, descriptor_lengths = ctx.temb_descriptor
-                    contributions: list[Any | None] = [
-                        None for _ in saved_temb_inputs
-                    ]
+                    def accumulate_component_gradient(
+                        input_index: int,
+                        value: Any,
+                        partial: Any,
+                        *,
+                        token_start: int | None = None,
+                        token_end: int | None = None,
+                    ) -> None:
+                        current = temb_gradients[input_index]
+                        first_contribution = current is None
+                        if first_contribution:
+                            current = torch.zeros_like(value)
+                            temb_gradients[input_index] = current
+                        if value.ndim == 4:
+                            if token_start is None or token_end is None:
+                                raise RuntimeError(
+                                    "token bounds are required for rank-four timestep gradients"
+                                )
+                            target = current[
+                                :, token_start:token_end, ctx.component_index, :
+                            ]
+                            # Chunks cover disjoint token ranges, so no arithmetic
+                            # is required for the rank-four form.
+                            target.copy_(partial)
+                        else:
+                            target = current[:, ctx.component_index, :]
+                            if first_contribution:
+                                target.copy_(partial)
+                            else:
+                                # Preserve the source's chunk-order BF16 additions
+                                # without allocating a zero-filled full descriptor
+                                # tensor and adding its five untouched components.
+                                target.add_(partial)
+                        receipt["grad_temb_gradient_tensor_count"] += 1
+
                     if descriptor_kind == "tensor":
                         if len(saved_temb_inputs) != 1:
                             raise RuntimeError(
@@ -309,23 +341,27 @@ def install_generator_nograd_residual_fusion(
                             )
                         value = saved_temb_inputs[0]
                         if temb_needs_grad[0]:
-                            contribution = torch.zeros_like(value)
                             if value.ndim == 4:
                                 assert gate_gradient is not None
-                                contribution[
-                                    :, start:end, ctx.component_index, :
-                                ].copy_(gate_gradient.to(value.dtype))
+                                accumulate_component_gradient(
+                                    0,
+                                    value,
+                                    gate_gradient.to(value.dtype),
+                                    token_start=start,
+                                    token_end=end,
+                                )
                             elif value.ndim == 3:
                                 assert gate_gradient is not None
-                                contribution[:, ctx.component_index, :].copy_(
-                                    gate_gradient.sum(dim=1).to(value.dtype)
+                                accumulate_component_gradient(
+                                    0,
+                                    value,
+                                    gate_gradient.sum(dim=1).to(value.dtype),
                                 )
                             else:
                                 raise RuntimeError(
                                     "unsupported tensor timestep rank: "
                                     f"{value.ndim}"
                                 )
-                            contributions[0] = contribution
                     elif descriptor_kind == "phase_local":
                         if len(descriptor_lengths) != len(saved_temb_inputs):
                             raise RuntimeError(
@@ -346,9 +382,10 @@ def install_generator_nograd_residual_fusion(
                             if needs_grad and overlap_start < overlap_end:
                                 local_start = overlap_start - start
                                 local_end = overlap_end - start
-                                contribution = torch.zeros_like(value)
                                 assert gate_gradient is not None
-                                contribution[:, ctx.component_index, :].copy_(
+                                accumulate_component_gradient(
+                                    index,
+                                    value,
                                     # PhaseLocalTimestepProjection expands the
                                     # input before ``component.float()``.  Its
                                     # source backward therefore casts each
@@ -358,24 +395,13 @@ def install_generator_nograd_residual_fusion(
                                     # BF16 rounding substantially.
                                     gate_gradient[:, local_start:local_end]
                                     .to(value.dtype)
-                                    .sum(dim=1)
+                                    .sum(dim=1),
                                 )
-                                contributions[index] = contribution
                             segment_start = segment_end
                     else:
                         raise RuntimeError(
                             f"unsupported timestep descriptor: {descriptor_kind!r}"
                         )
-                    for index, contribution in enumerate(contributions):
-                        if contribution is None:
-                            continue
-                        current = temb_gradients[index]
-                        temb_gradients[index] = (
-                            contribution
-                            if current is None
-                            else current + contribution
-                        )
-                        receipt["grad_temb_gradient_tensor_count"] += 1
                     chunk_count += 1
             receipt["grad_backward_call_count"] += 1
             receipt["grad_backward_chunk_count"] += chunk_count
