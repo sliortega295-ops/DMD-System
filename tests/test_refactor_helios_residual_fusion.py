@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-import torch
 import pytest
+torch = pytest.importorskip("torch")
 
 from distillschedule.runtime.helios_residual_fusion import (
     generator_nograd_residual_fusion_scope,

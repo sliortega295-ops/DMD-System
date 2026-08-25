@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-import torch
+import pytest
+
+torch = pytest.importorskip("torch")
 
 from distillschedule.runtime.helios_lora_epilogue import (
     PEFT_0181_LINEAR_FORWARD_SHA256,

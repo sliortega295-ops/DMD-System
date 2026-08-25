@@ -3,7 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
-import torch
+torch = pytest.importorskip("torch")
 from torch.distributed.tensor import Replicate, Shard
 
 from distillschedule.runtime.fsdp2_static import _optimizer_dispatch_warmup

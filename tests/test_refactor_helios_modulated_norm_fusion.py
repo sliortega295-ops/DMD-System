@@ -5,7 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-import torch
+torch = pytest.importorskip("torch")
 
 from distillschedule.runtime.helios_modulated_norm_fusion import (
     install_exact_modulated_norm_epilogue,
