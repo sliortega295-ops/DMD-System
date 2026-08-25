@@ -424,7 +424,7 @@ def main() -> int:
                 if expected_flash_stride:
                     if checkpoint_policy.get("selective_flash_op") != (
                         "_flash_attn2_cuda_a511a4c."
-                        "_flash_attn_varlen_forward.default"
+                        "_flash_attn_forward.default"
                     ):
                         errors.append(f"{prefix} selective Flash op identity changed")
                     counts = checkpoint_policy.get("block_call_counts", {})
@@ -460,7 +460,7 @@ def main() -> int:
                                 f"{prefix} selective Flash context census changed"
                             )
                         # The pinned Critic block performs exactly self- and
-                        # cross-attention through this varlen FA2 op.
+                        # cross-attention through this fixed-length FA2 op.
                         if original_saves != expected_contexts * 2:
                             errors.append(
                                 f"{prefix} selective Flash original-save census changed"

@@ -741,7 +741,7 @@ def _parser() -> Any:
         default=0,
         help=(
             "Critic-only systems candidate: retain the pinned FlashAttention-2 "
-            "varlen result for every Nth checkpointed block; 0 preserves the "
+            "fixed-length result for every Nth checkpointed block; 0 preserves the "
             "all-recompute baseline"
         ),
     )

@@ -77,7 +77,7 @@ def _torch() -> Any:
 
 
 SELECTIVE_FLASH_ATTN_OP = (
-    "_flash_attn2_cuda_a511a4c._flash_attn_varlen_forward.default"
+    "_flash_attn2_cuda_a511a4c._flash_attn_forward.default"
 )
 
 
