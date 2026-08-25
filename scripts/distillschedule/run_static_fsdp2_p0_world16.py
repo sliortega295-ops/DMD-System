@@ -129,6 +129,11 @@ def parser() -> argparse.ArgumentParser:
         default="off",
     )
     value.add_argument(
+        "--exact-grad-residual-fusion",
+        choices=("on", "off"),
+        default="off",
+    )
+    value.add_argument(
         "--remote-root",
         type=Path,
         default=Path(
@@ -213,6 +218,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.optimizer_dispatch_warmup),
         "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_RESIDUAL_FUSION="
         + shlex.quote(args.generator_nograd_residual_fusion),
+        "DISTILLSCHEDULE_HELIOS_EXACT_GRAD_RESIDUAL_FUSION="
+        + shlex.quote(args.exact_grad_residual_fusion),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -318,6 +325,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.optimizer_dispatch_warmup)} "
         + "--generator-nograd-residual-fusion "
         + f"{shlex.quote(args.generator_nograd_residual_fusion)} "
+        + "--exact-grad-residual-fusion "
+        + f"{shlex.quote(args.exact_grad_residual_fusion)} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
         + (
             f"--critic-only-step {args.critic_only_step} "
@@ -361,6 +370,15 @@ def main() -> int:
     ):
         raise ValueError(
             "Generator no-grad residual fusion requires B1 and cuda_out_of_place"
+        )
+    if args.exact_grad_residual_fusion == "on" and (
+        args.rollout_batch_size != 1
+        or args.generator_residual_storage != "cuda_out_of_place"
+        or args.critic_residual_storage != "cuda_out_of_place"
+    ):
+        raise ValueError(
+            "Exact grad residual fusion requires B1 and cuda_out_of_place "
+            "for both Generator and Critic"
         )
     if args.critic_only_step is not None and (
         args.variant != "no-gan" or args.mode != "profile"
