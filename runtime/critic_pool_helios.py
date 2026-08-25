@@ -84,6 +84,7 @@ def build_helios_pool_model(
     lora_rank: int = 256,
     max_workers: int = 4,
     enable_gan: bool = False,
+    chunked_residual_storage: str = "cpu_inplace",
 ) -> tuple[torch.nn.Module, dict[str, Any]]:
     """Build the official BF16 backbone plus the Stage-3 FP32 LoRA inventory."""
 
@@ -91,6 +92,10 @@ def build_helios_pool_model(
         raise ValueError(f"unsupported pool role: {role}")
     if role != "critic" and enable_gan:
         raise ValueError("GAN heads belong to the physical Score/Critic model")
+    if chunked_residual_storage not in {"cpu_inplace", "cuda_out_of_place"}:
+        raise ValueError(
+            "chunked residual storage must be cpu_inplace or cuda_out_of_place"
+        )
     configure_offline_helios()
     from helios.modules.helios_kernels import (
         replace_all_norms_with_flash_norms,
@@ -205,6 +210,7 @@ def build_helios_pool_model(
     model._distillschedule_has_adapter = role != "teacher"
     for block in model.blocks:
         block._distillschedule_split_modulation = True
+        block._distillschedule_chunked_residual_storage = chunked_residual_storage
     if role != "teacher":
         model.enable_gradient_checkpointing()
     # Official Stage-3 keeps the shared Score backbone in train mode during
@@ -244,6 +250,7 @@ def build_helios_pool_model(
             if "gan_heads" in name or "gan_final_head" in name
         ),
         "split_modulation": True,
+        "chunked_residual_storage": chunked_residual_storage,
         "gradient_checkpointing": role != "teacher",
         "mode": "train",
         "has_adapter": role != "teacher",

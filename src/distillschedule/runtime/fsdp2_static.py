@@ -8,8 +8,10 @@ offload in the timed window.
 from __future__ import annotations
 
 import dataclasses
+import functools
 import json
 import math
+import time
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
@@ -74,7 +76,49 @@ def _torch() -> Any:
     return torch
 
 
-def fsdp2_metadata_tolerant_checkpoint(module: Any, *args: Any, **kwargs: Any) -> Any:
+SELECTIVE_FLASH_ATTN_OP = (
+    "_flash_attn2_cuda_a511a4c._flash_attn_forward.default"
+)
+
+
+def _selective_flash_checkpoint_contexts(
+    receipt: dict[str, Any],
+) -> tuple[Any, Any]:
+    """Save only the pinned FA2 result inside one selected block checkpoint."""
+
+    from torch.utils.checkpoint import (
+        CheckpointPolicy,
+        create_selective_checkpoint_contexts,
+    )
+
+    receipt["selective_flash_context_count"] += 1
+
+    def policy(context: Any, operation: Any, *args: Any, **kwargs: Any) -> Any:
+        del args, kwargs
+        # The kernels dispatcher loads its custom-op library lazily inside the
+        # checkpointed block.  The context itself is created before that load,
+        # so resolving torch.ops here would incorrectly fail on the first
+        # selected block.  Match the exact pinned dispatcher identity when the
+        # policy observes the operation instead; the final receipt requires
+        # the exact original/replay counts and therefore still fails closed.
+        if str(operation) == SELECTIVE_FLASH_ATTN_OP:
+            if bool(context.is_recompute):
+                receipt["selective_flash_recompute_reuse_count"] += 1
+            else:
+                receipt["selective_flash_original_save_count"] += 1
+            return CheckpointPolicy.MUST_SAVE
+        return CheckpointPolicy.PREFER_RECOMPUTE
+
+    return create_selective_checkpoint_contexts(policy)
+
+
+def fsdp2_metadata_tolerant_checkpoint(
+    module: Any,
+    *args: Any,
+    operation_source: bool = False,
+    selective_flash_receipt: dict[str, Any] | None = None,
+    **kwargs: Any,
+) -> Any:
     """Run Helios' non-reentrant checkpoint under the FSDP2 compatibility policy.
 
     PyTorch's default non-reentrant checkpoint validator compares saved and
@@ -96,24 +140,165 @@ def fsdp2_metadata_tolerant_checkpoint(module: Any, *args: Any, **kwargs: Any) -
         raise TypeError(
             "FSDP2 checkpoint policy owns use_reentrant and determinism_check"
         )
+    checkpoint_kwargs = dict(kwargs)
+    if operation_source and selective_flash_receipt is not None:
+        raise ValueError(
+            "operation-source markers and selective Flash checkpoint contexts "
+            "cannot be combined in one diagnostic run"
+        )
+    if operation_source:
+        from distillschedule.profiling.fsdp2_operation_source import checkpoint_context_fn
+
+        checkpoint_kwargs["context_fn"] = checkpoint_context_fn
+    elif selective_flash_receipt is not None:
+        checkpoint_kwargs["context_fn"] = functools.partial(
+            _selective_flash_checkpoint_contexts,
+            selective_flash_receipt,
+        )
     return checkpoint(
         module.__call__,
         *args,
         use_reentrant=False,
         determinism_check="none",
         preserve_rng_state=True,
-        **kwargs,
+        **checkpoint_kwargs,
     )
 
 
-def configure_fsdp2_checkpointing(model: Any) -> None:
+def configure_fsdp2_checkpointing(
+    model: Any,
+    *,
+    operation_source: bool = False,
+    checkpoint_bypass_stride: int = 0,
+    selective_flash_checkpoint_stride: int = 0,
+) -> dict[str, Any]:
     """Install the FSDP2-only checkpoint adapter on an enabled Helios model."""
 
     if not bool(getattr(model, "gradient_checkpointing", False)):
         raise RuntimeError(
             "FSDP2 checkpoint policy requires Helios gradient checkpointing"
         )
-    model._gradient_checkpointing_func = fsdp2_metadata_tolerant_checkpoint
+    if checkpoint_bypass_stride not in {0, 2, 4, 10}:
+        raise ValueError("checkpoint bypass stride must be one of 0, 2, 4, or 10")
+    if selective_flash_checkpoint_stride not in {0, 2, 4, 10}:
+        raise ValueError(
+            "selective Flash checkpoint stride must be one of 0, 2, 4, or 10"
+        )
+    if checkpoint_bypass_stride and selective_flash_checkpoint_stride:
+        raise ValueError(
+            "checkpoint bypass and selective Flash save are mutually exclusive"
+        )
+    if operation_source and selective_flash_checkpoint_stride:
+        raise ValueError(
+            "operation-source diagnostics cannot be combined with selective Flash save"
+        )
+
+    blocks = tuple(getattr(model, "blocks", ()))
+    if (checkpoint_bypass_stride or selective_flash_checkpoint_stride) and len(blocks) != 40:
+        raise ValueError(
+            "partial checkpoint bypass is pinned to the 40-block Helios model"
+        )
+    block_index_by_id = {id(block): index for index, block in enumerate(blocks)}
+    if len(block_index_by_id) != len(blocks):
+        raise ValueError("Helios block identities are not unique")
+    module_name_by_id = {
+        id(module): str(name)
+        for name, module in (
+            model.named_modules() if hasattr(model, "named_modules") else ()
+        )
+    }
+    module_name_by_id.update(
+        {id(block): f"blocks.{index}" for index, block in enumerate(blocks)}
+    )
+    bypass_indices = tuple(
+        range(0, len(blocks), checkpoint_bypass_stride)
+        if checkpoint_bypass_stride
+        else ()
+    )
+    selective_flash_indices = tuple(
+        range(0, len(blocks), selective_flash_checkpoint_stride)
+        if selective_flash_checkpoint_stride
+        else ()
+    )
+    receipt: dict[str, Any] = {
+        "schema_version": "distillschedule.fsdp2_checkpoint_policy.v1",
+        "enabled": bool(checkpoint_bypass_stride),
+        "scope": (
+            "SPARSE_BLOCK_ACTIVATION_CHECKPOINT_BYPASS"
+            if checkpoint_bypass_stride
+            else "ALL_BLOCKS_NON_REENTRANT_CHECKPOINT"
+        ),
+        "block_count": len(blocks),
+        "bypass_stride": int(checkpoint_bypass_stride),
+        "bypass_block_indices": list(bypass_indices),
+        "selective_flash_enabled": bool(selective_flash_checkpoint_stride),
+        "selective_flash_stride": int(selective_flash_checkpoint_stride),
+        "selective_flash_block_indices": list(selective_flash_indices),
+        "selective_flash_op": SELECTIVE_FLASH_ATTN_OP,
+        "selective_flash_context_count": 0,
+        "selective_flash_original_save_count": 0,
+        "selective_flash_recompute_reuse_count": 0,
+        "checkpoint_block_indices": [
+            index for index in range(len(blocks)) if index not in bypass_indices
+        ],
+        "direct_forward_count": 0,
+        "checkpoint_forward_count": 0,
+        "auxiliary_checkpoint_forward_count": 0,
+        "auxiliary_checkpoint_module_counts": {},
+        "block_call_counts": {str(index): 0 for index in range(len(blocks))},
+        "operation_source": bool(operation_source),
+        "adds_synchronization": False,
+        "changes_module_math": False,
+    }
+    model._distillschedule_checkpoint_policy_receipt = receipt
+
+    if checkpoint_bypass_stride or selective_flash_checkpoint_stride:
+        bypass_set = frozenset(bypass_indices)
+        selective_flash_set = frozenset(selective_flash_indices)
+
+        def checkpoint_or_direct(module: Any, *args: Any, **kwargs: Any) -> Any:
+            module_id = id(module)
+            if module_id not in module_name_by_id:
+                raise RuntimeError(
+                    "checkpoint dispatch received a module outside the Helios model"
+                )
+            block_index = block_index_by_id.get(module_id)
+            if block_index is None:
+                module_name = module_name_by_id[module_id]
+                receipt["auxiliary_checkpoint_forward_count"] += 1
+                auxiliary_counts = receipt["auxiliary_checkpoint_module_counts"]
+                auxiliary_counts[module_name] = auxiliary_counts.get(module_name, 0) + 1
+                return fsdp2_metadata_tolerant_checkpoint(
+                    module,
+                    *args,
+                    operation_source=operation_source,
+                    **kwargs,
+                )
+            key = str(block_index)
+            receipt["block_call_counts"][key] += 1
+            if block_index in bypass_set:
+                receipt["direct_forward_count"] += 1
+                return module(*args, **kwargs)
+            receipt["checkpoint_forward_count"] += 1
+            return fsdp2_metadata_tolerant_checkpoint(
+                module,
+                *args,
+                operation_source=operation_source,
+                selective_flash_receipt=(
+                    receipt if block_index in selective_flash_set else None
+                ),
+                **kwargs,
+            )
+
+        model._gradient_checkpointing_func = checkpoint_or_direct
+    elif operation_source:
+        model._gradient_checkpointing_func = functools.partial(
+            fsdp2_metadata_tolerant_checkpoint,
+            operation_source=True,
+        )
+    else:
+        model._gradient_checkpointing_func = fsdp2_metadata_tolerant_checkpoint
+    return receipt
 
 
 def _named_trainables(module: Any) -> dict[str, Any]:
@@ -360,6 +545,191 @@ class FSDP2EngineAdapter:
         return self._step_calls
 
 
+def _optimizer_dispatch_warmup(
+    *,
+    optimizer: Any,
+    trainables: list[Any],
+    gradient_clip: float,
+) -> dict[str, Any]:
+    """Warm DTensor/foreach dispatch without changing logical training state.
+
+    PyTorch builds several DTensor sharding-propagation and foreach dispatch
+    paths lazily on the first AdamW update.  The formal Full5 timer starts after
+    optimizer state restoration, so this setup-only probe uses zero gradients,
+    ``lr=0`` and ``weight_decay=0`` to populate those caches, then restores the
+    exact local parameter and Adam state bytes before model computation.
+
+    This is deliberately restricted to the audited node-HSDP layout.  It does
+    not replace gradient clipping or optimizer math in the real update path.
+    """
+
+    torch = _torch()
+    try:
+        from torch.distributed.tensor import Replicate, Shard
+    except ImportError as error:
+        raise RuntimeError("optimizer dispatch warmup requires DTensor") from error
+    if not trainables:
+        raise ValueError("optimizer dispatch warmup requires trainable parameters")
+
+    local_parameters: list[Any] = []
+    parameter_snapshots: list[Any] = []
+    state_snapshots: list[tuple[Any, Any, Any]] = []
+    local_state_values: list[tuple[Any, Any]] = []
+    expected_mesh = None
+    local_parameter_bytes = 0
+    local_state_bytes = 0
+    for index, parameter in enumerate(trainables):
+        if not hasattr(parameter, "device_mesh") or not hasattr(parameter, "placements"):
+            raise TypeError(f"warmup parameter {index} is not a DTensor")
+        mesh = parameter.device_mesh
+        if tuple(getattr(mesh, "mesh_dim_names", ())) != ("replicate", "shard"):
+            raise ValueError("optimizer warmup is restricted to node-HSDP")
+        placements = tuple(parameter.placements)
+        if (
+            len(placements) != 2
+            or not isinstance(placements[0], Replicate)
+            or not isinstance(placements[1], Shard)
+        ):
+            raise ValueError(
+                "optimizer warmup requires (Replicate(), Shard(...)) parameters"
+            )
+        if expected_mesh is None:
+            expected_mesh = mesh
+        elif mesh is not expected_mesh:
+            raise ValueError("optimizer warmup observed multiple HSDP meshes")
+
+        local_parameter = parameter.detach().to_local()
+        local_parameters.append(local_parameter)
+        parameter_snapshots.append(local_parameter.clone())
+        local_parameter_bytes += int(
+            local_parameter.numel() * local_parameter.element_size()
+        )
+
+        state = optimizer.state.get(parameter)
+        if not isinstance(state, dict) or set(state) != {
+            "step",
+            "exp_avg",
+            "exp_avg_sq",
+        }:
+            raise ValueError(f"warmup parameter {index} Adam state is not materialized")
+        first = state["exp_avg"]
+        second = state["exp_avg_sq"]
+        for name, value in (("exp_avg", first), ("exp_avg_sq", second)):
+            if (
+                not hasattr(value, "device_mesh")
+                or value.device_mesh is not mesh
+                or tuple(value.placements) != placements
+            ):
+                raise ValueError(
+                    f"warmup parameter {index} {name} DTensor layout changed"
+                )
+        first_local = first.to_local()
+        second_local = second.to_local()
+        state_snapshots.append(
+            (
+                state["step"].detach().clone(),
+                first_local.detach().clone(),
+                second_local.detach().clone(),
+            )
+        )
+        local_state_values.append((first_local, second_local))
+        local_state_bytes += int(
+            first_local.numel() * first_local.element_size()
+            + second_local.numel() * second_local.element_size()
+        )
+
+    group_values = [
+        (group, group.get("lr"), group.get("weight_decay"))
+        for group in optimizer.param_groups
+    ]
+    device = local_parameters[0].device
+    use_cuda = device.type == "cuda"
+    if use_cuda:
+        torch.cuda.synchronize(device)
+    started = time.perf_counter()
+    warmup_error: BaseException | None = None
+    try:
+        for group, _lr, _weight_decay in group_values:
+            group["lr"] = 0.0
+            group["weight_decay"] = 0.0
+        for parameter in trainables:
+            parameter.grad = torch.zeros_like(parameter)
+        # Keep the official clipping implementation and threshold.  The probe
+        # changes only values (all-zero gradients), not the dispatched graph.
+        torch.nn.utils.clip_grad_norm_(trainables, float(gradient_clip))
+        optimizer.step()
+        if use_cuda:
+            torch.cuda.synchronize(device)
+    except BaseException as error:  # restore exact state before failing closed
+        warmup_error = error
+    finally:
+        optimizer.zero_grad(set_to_none=True)
+        for group, lr, weight_decay in group_values:
+            group["lr"] = lr
+            group["weight_decay"] = weight_decay
+
+    changed = torch.zeros((), dtype=torch.int64, device=device)
+    for current, snapshot in zip(
+        local_parameters, parameter_snapshots, strict=True
+    ):
+        changed.add_(torch.count_nonzero(current != snapshot))
+        current.copy_(snapshot)
+    changed_elements = int(changed.item())
+
+    for parameter, (step, first_snapshot, second_snapshot), (
+        first_local,
+        second_local,
+    ) in zip(trainables, state_snapshots, local_state_values, strict=True):
+        state = optimizer.state[parameter]
+        state["step"].copy_(step)
+        first_local.copy_(first_snapshot)
+        second_local.copy_(second_snapshot)
+
+    state_residual = torch.zeros((), dtype=torch.int64, device=device)
+    step_restored = True
+    for parameter, (step, first_snapshot, second_snapshot), (
+        first_local,
+        second_local,
+    ) in zip(trainables, state_snapshots, local_state_values, strict=True):
+        state_residual.add_(torch.count_nonzero(first_local != first_snapshot))
+        state_residual.add_(torch.count_nonzero(second_local != second_snapshot))
+        step_restored = step_restored and bool(torch.equal(optimizer.state[parameter]["step"], step))
+    state_changed_elements_after_restore = int(state_residual.item())
+    if use_cuda:
+        torch.cuda.synchronize(device)
+    wall = time.perf_counter() - started
+
+    del parameter_snapshots, state_snapshots
+    if warmup_error is not None:
+        raise RuntimeError("optimizer dispatch warmup failed after state restore") from warmup_error
+    if changed_elements != 0:
+        raise RuntimeError(
+            "zero-lr optimizer warmup changed parameter values before restoration: "
+            f"{changed_elements} elements"
+        )
+    if state_changed_elements_after_restore != 0 or not step_restored:
+        raise RuntimeError("optimizer dispatch warmup did not restore Adam state exactly")
+    if any(parameter.grad is not None for parameter in trainables):
+        raise RuntimeError("optimizer dispatch warmup left gradients attached")
+    return {
+        "enabled": True,
+        "implementation": "ZERO_GRAD_ZERO_LR_ZERO_WEIGHT_DECAY_THEN_EXACT_RESTORE",
+        "scope": "SETUP_ONLY_BEFORE_FORMAL_TIMER",
+        "mesh_dim_names": ["replicate", "shard"],
+        "trainable_tensor_count": len(trainables),
+        "local_parameter_bytes": local_parameter_bytes,
+        "local_adam_state_bytes": local_state_bytes,
+        "synthetic_gradient_bytes": local_parameter_bytes,
+        "configured_gradient_clip": float(gradient_clip),
+        "parameter_changed_elements_before_restore": changed_elements,
+        "state_changed_elements_after_restore": state_changed_elements_after_restore,
+        "step_state_restored": step_restored,
+        "gradients_cleared": True,
+        "warmup_wall_seconds": wall,
+        "formal_timer_includes_warmup": False,
+    }
+
+
 
 def build_fsdp2_engine(
     *,
@@ -370,6 +740,7 @@ def build_fsdp2_engine(
     betas: tuple[float, float],
     eps: float,
     weight_decay: float,
+    optimizer_dispatch_warmup: bool = False,
 ) -> tuple[FSDP2EngineAdapter, dict[str, Any]]:
     torch = _torch()
     trainables = list(_named_trainables(module).values())
@@ -390,13 +761,26 @@ def build_fsdp2_engine(
         package=package,
         component=component,
     )
+    warmup = (
+        _optimizer_dispatch_warmup(
+            optimizer=optimizer,
+            trainables=trainables,
+            gradient_clip=1.0,
+        )
+        if optimizer_dispatch_warmup
+        else {
+            "enabled": False,
+            "disabled_reason": "NOT_REQUESTED",
+            "formal_timer_includes_warmup": False,
+        }
+    )
     engine = FSDP2EngineAdapter(
         module,
         optimizer,
         scheduler,
         physical_step=int(package.component(component)["optimizer_step"]),
     )
-    return engine, restore
+    return engine, {**restore, "optimizer_dispatch_warmup": warmup}
 
 
 class FSDP2ShardEMA:
@@ -574,4 +958,5 @@ __all__ = [
     "build_fsdp2_engine",
     "contract_for_variant",
     "restore_fsdp2_optimizer_from_logical",
+    "_optimizer_dispatch_warmup",
 ]
