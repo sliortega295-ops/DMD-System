@@ -155,6 +155,12 @@ def parser() -> argparse.ArgumentParser:
         default="all",
     )
     value.add_argument(
+        "--selective-flash-checkpoint-stride",
+        type=int,
+        choices=(0, 2, 4, 10),
+        default=0,
+    )
+    value.add_argument(
         "--remote-root",
         type=Path,
         default=Path(
@@ -249,6 +255,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(str(args.checkpoint_bypass_stride)),
         "DISTILLSCHEDULE_HELIOS_CHECKPOINT_BYPASS_ROLE="
         + shlex.quote(args.checkpoint_bypass_role),
+        "DISTILLSCHEDULE_HELIOS_SELECTIVE_FLASH_CHECKPOINT_STRIDE="
+        + shlex.quote(str(args.selective_flash_checkpoint_stride)),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -364,6 +372,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{args.checkpoint_bypass_stride} "
         + "--checkpoint-bypass-role "
         + f"{shlex.quote(args.checkpoint_bypass_role)} "
+        + "--selective-flash-checkpoint-stride "
+        + f"{args.selective_flash_checkpoint_stride} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
         + (
             f"--critic-only-step {args.critic_only_step} "
@@ -441,6 +451,14 @@ def main() -> int:
         )
     if args.checkpoint_bypass_stride and args.variant != "no-gan":
         raise ValueError("checkpoint bypass is restricted to the No-GAN iteration")
+    if args.selective_flash_checkpoint_stride and args.variant != "no-gan":
+        raise ValueError(
+            "selective Flash checkpoint save is restricted to the No-GAN iteration"
+        )
+    if args.checkpoint_bypass_stride and args.selective_flash_checkpoint_stride:
+        raise ValueError(
+            "checkpoint bypass and selective Flash checkpoint save are mutually exclusive"
+        )
     if not args.checkpoint_bypass_stride and args.checkpoint_bypass_role != "all":
         raise ValueError("checkpoint bypass role requires a nonzero stride")
     if args.critic_only_step is not None and (
@@ -449,6 +467,10 @@ def main() -> int:
         raise ValueError("--critic-only-step requires No-GAN profile mode")
     if args.operation_source and args.critic_only_step is None:
         raise ValueError("--operation-source requires --critic-only-step")
+    if args.operation_source and args.selective_flash_checkpoint_stride:
+        raise ValueError(
+            "operation-source diagnostics cannot be combined with selective Flash save"
+        )
     if not 0 <= args.operation_source_rank < 16:
         raise ValueError("--operation-source-rank must be in [0, 15]")
     if args.operation_source_target_bytes <= 0 or args.operation_source_max_events <= 0:

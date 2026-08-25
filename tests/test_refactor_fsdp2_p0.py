@@ -149,6 +149,17 @@ def test_policy_and_mesh_contract() -> None:
         )
     with pytest.raises(ValueError, match="requires a nonzero stride"):
         StaticFSDP2P0Policy(checkpoint_bypass_role="critic")
+    selective_flash = StaticFSDP2P0Policy(
+        selective_flash_checkpoint_stride=2,
+    )
+    assert selective_flash.id.endswith("criticflashsave20")
+    with pytest.raises(ValueError, match="selective_flash_checkpoint_stride"):
+        StaticFSDP2P0Policy(selective_flash_checkpoint_stride=5)
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        StaticFSDP2P0Policy(
+            checkpoint_bypass_stride=10,
+            selective_flash_checkpoint_stride=2,
+        )
 
 
 def test_execution_order_precomputes_all_rollouts_before_critic() -> None:

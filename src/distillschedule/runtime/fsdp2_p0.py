@@ -29,6 +29,7 @@ SUPPORTED_MESH_POLICIES = ("world16-fsdp", "node-hsdp")
 SUPPORTED_ROLLOUT_BACKENDS = ("native-fsdp2-batch",)
 SUPPORTED_CHECKPOINT_BYPASS_STRIDES = (0, 2, 4, 10)
 SUPPORTED_CHECKPOINT_BYPASS_ROLES = ("all", "generator", "critic")
+SUPPORTED_SELECTIVE_FLASH_CHECKPOINT_STRIDES = (0, 2, 4, 10)
 ROLLOUT_TENSOR_ROLES = (
     "text_embedding",
     "continuous_history",
@@ -62,6 +63,7 @@ class StaticFSDP2P0Policy:
     exact_modulated_norm_materialization: bool = False
     checkpoint_bypass_stride: int = 0
     checkpoint_bypass_role: str = "all"
+    selective_flash_checkpoint_stride: int = 0
 
     def __post_init__(self) -> None:
         if self.mesh_policy not in SUPPORTED_MESH_POLICIES:
@@ -107,6 +109,19 @@ class StaticFSDP2P0Policy:
             )
         if not self.checkpoint_bypass_stride and self.checkpoint_bypass_role != "all":
             raise ValueError("checkpoint bypass role requires a nonzero stride")
+        if (
+            self.selective_flash_checkpoint_stride
+            not in SUPPORTED_SELECTIVE_FLASH_CHECKPOINT_STRIDES
+        ):
+            raise ValueError(
+                "selective_flash_checkpoint_stride must be one of "
+                f"{SUPPORTED_SELECTIVE_FLASH_CHECKPOINT_STRIDES}, got "
+                f"{self.selective_flash_checkpoint_stride}"
+            )
+        if self.checkpoint_bypass_stride and self.selective_flash_checkpoint_stride:
+            raise ValueError(
+                "checkpoint bypass and selective Flash checkpoint save are mutually exclusive"
+            )
 
     @property
     def id(self) -> str:
@@ -129,6 +144,11 @@ class StaticFSDP2P0Policy:
             role = "" if self.checkpoint_bypass_role == "all" else self.checkpoint_bypass_role
             suffixes.append(
                 f"{role}ckptbypass{40 // self.checkpoint_bypass_stride}"
+            )
+        if self.selective_flash_checkpoint_stride:
+            suffixes.append(
+                "criticflashsave"
+                f"{40 // self.selective_flash_checkpoint_stride}"
             )
         return "-".join((base, *suffixes))
 

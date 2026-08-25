@@ -168,6 +168,14 @@ def _build_static_model(
             if args.checkpoint_bypass_role in {"all", role}
             else 0
         ),
+        # Saving FA2 results is intentionally Critic-only.  Generator DMD
+        # holds several differentiable graphs concurrently and would multiply
+        # the activation-residency budget.
+        selective_flash_checkpoint_stride=(
+            int(args.selective_flash_checkpoint_stride)
+            if role == "critic"
+            else 0
+        ),
     )
     model.to(device)
     if role == "generator":
@@ -727,6 +735,17 @@ def _parser() -> Any:
         help="Role scope for the bounded checkpoint-bypass candidate",
     )
     value.add_argument(
+        "--selective-flash-checkpoint-stride",
+        type=int,
+        choices=(0, 2, 4, 10),
+        default=0,
+        help=(
+            "Critic-only systems candidate: retain the pinned FlashAttention-2 "
+            "varlen result for every Nth checkpointed block; 0 preserves the "
+            "all-recompute baseline"
+        ),
+    )
+    value.add_argument(
         "--critic-only-step",
         type=int,
         choices=(10,),
@@ -789,6 +808,18 @@ def main() -> int:
         )
     if args.checkpoint_bypass_stride and args.variant != "no-gan":
         raise ValueError("checkpoint bypass is restricted to the No-GAN iteration")
+    if args.selective_flash_checkpoint_stride and args.variant != "no-gan":
+        raise ValueError(
+            "selective Flash checkpoint save is restricted to the No-GAN iteration"
+        )
+    if args.checkpoint_bypass_stride and args.selective_flash_checkpoint_stride:
+        raise ValueError(
+            "checkpoint bypass and selective Flash checkpoint save are mutually exclusive"
+        )
+    if args.operation_source and args.selective_flash_checkpoint_stride:
+        raise ValueError(
+            "operation-source diagnostics cannot be combined with selective Flash save"
+        )
     policy = StaticFSDP2P0Policy(
         mesh_policy=args.mesh_policy,
         rollout_batch_size=args.rollout_batch_size,
@@ -805,6 +836,9 @@ def main() -> int:
         ),
         checkpoint_bypass_stride=int(args.checkpoint_bypass_stride),
         checkpoint_bypass_role=str(args.checkpoint_bypass_role),
+        selective_flash_checkpoint_stride=int(
+            args.selective_flash_checkpoint_stride
+        ),
     )
     dist.init_process_group("nccl")
     rank = dist.get_rank()
@@ -853,6 +887,9 @@ def main() -> int:
             ),
             "checkpoint_bypass_stride": policy.checkpoint_bypass_stride,
             "checkpoint_bypass_role": policy.checkpoint_bypass_role,
+            "selective_flash_checkpoint_stride": (
+                policy.selective_flash_checkpoint_stride
+            ),
         },
     }
     try:
