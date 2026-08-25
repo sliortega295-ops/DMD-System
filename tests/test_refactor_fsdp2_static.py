@@ -262,8 +262,8 @@ def test_selective_flash_checkpoint_context_reuses_target_op(
 ) -> None:
     monkeypatch.setattr(
         fsdp2_static,
-        "_resolve_selective_flash_op",
-        lambda: torch.ops.aten.mm.default,
+        "SELECTIVE_FLASH_ATTN_OP",
+        str(torch.ops.aten.mm.default),
     )
 
     class MatmulSigmoid:

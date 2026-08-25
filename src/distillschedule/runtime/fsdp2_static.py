@@ -81,26 +81,6 @@ SELECTIVE_FLASH_ATTN_OP = (
 )
 
 
-def _resolve_selective_flash_op() -> Any:
-    """Resolve the exact pinned A100 FlashAttention-2 dispatcher operation."""
-
-    torch = _torch()
-    try:
-        namespace = getattr(torch.ops, "_flash_attn2_cuda_a511a4c")
-        packet = getattr(namespace, "_flash_attn_varlen_forward")
-        operation = packet.default
-    except (AttributeError, RuntimeError) as error:
-        raise RuntimeError(
-            "pinned FlashAttention-2 dispatcher operation is unavailable"
-        ) from error
-    if str(operation) != SELECTIVE_FLASH_ATTN_OP:
-        raise RuntimeError(
-            "FlashAttention dispatcher identity changed: "
-            f"{operation!s} != {SELECTIVE_FLASH_ATTN_OP}"
-        )
-    return operation
-
-
 def _selective_flash_checkpoint_contexts(
     receipt: dict[str, Any],
 ) -> tuple[Any, Any]:
@@ -111,12 +91,17 @@ def _selective_flash_checkpoint_contexts(
         create_selective_checkpoint_contexts,
     )
 
-    target = _resolve_selective_flash_op()
     receipt["selective_flash_context_count"] += 1
 
     def policy(context: Any, operation: Any, *args: Any, **kwargs: Any) -> Any:
         del args, kwargs
-        if operation is target or str(operation) == SELECTIVE_FLASH_ATTN_OP:
+        # The kernels dispatcher loads its custom-op library lazily inside the
+        # checkpointed block.  The context itself is created before that load,
+        # so resolving torch.ops here would incorrectly fail on the first
+        # selected block.  Match the exact pinned dispatcher identity when the
+        # policy observes the operation instead; the final receipt requires
+        # the exact original/replay counts and therefore still fails closed.
+        if str(operation) == SELECTIVE_FLASH_ATTN_OP:
             if bool(context.is_recompute):
                 receipt["selective_flash_recompute_reuse_count"] += 1
             else:
