@@ -656,7 +656,8 @@ def _parser() -> Any:
         default=False,
         help=(
             "Fuse B1 grad-enabled gated residual forward/backward only when "
-            "the AdaLN table and all timestep inputs are frozen"
+            "the AdaLN table is frozen, including exact gradients for the "
+            "observed tensor or phase-local timestep inputs"
         ),
     )
     value.add_argument(

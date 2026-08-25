@@ -11,6 +11,32 @@ from distillschedule.runtime.helios_residual_fusion import (
 )
 
 
+class _PhaseLocalTemb:
+    def __init__(self, segments):
+        self.segments = tuple(segments)
+        self.total_length = sum(int(length) for _value, length in self.segments)
+
+    def materialize_component(self, index, token_start=None, token_end=None):
+        start = 0 if token_start is None else int(token_start)
+        end = self.total_length if token_end is None else int(token_end)
+        views = []
+        segment_start = 0
+        for values, length in self.segments:
+            segment_end = segment_start + int(length)
+            overlap_start = max(start, segment_start)
+            overlap_end = min(end, segment_end)
+            if overlap_start < overlap_end:
+                views.append(
+                    values[:, index, :]
+                    .unsqueeze(1)
+                    .expand(-1, overlap_end - overlap_start, -1)
+                )
+            segment_start = segment_end
+        if not views:
+            return self.segments[0][0][:, index, :].unsqueeze(1)[:, :0, :]
+        return views[0] if len(views) == 1 else torch.cat(views, dim=1)
+
+
 def _reference(
     hidden,
     residual,
@@ -21,27 +47,198 @@ def _reference(
     logical_component="unknown",
     residual_storage="cpu_inplace",
 ):
-    del component_index, chunk_tokens, logical_component, residual_storage
-    gate = scale_shift_table + temb
-    return (hidden.float() + residual.float() * gate).to(hidden.dtype)
+    del logical_component, residual_storage
+    chunks = []
+    for start in range(0, int(hidden.shape[1]), int(chunk_tokens)):
+        end = min(int(hidden.shape[1]), start + int(chunk_tokens))
+        gate = _materialize(
+            scale_shift_table,
+            temb,
+            component_index,
+            start,
+            end,
+        )
+        chunks.append(
+            (
+                hidden[:, start:end].float()
+                + residual[:, start:end].float() * gate
+            ).to(hidden.dtype)
+        )
+    return torch.cat(chunks, dim=1)
 
 
 def _materialize(table, temb, component_index, start=None, end=None):
-    del component_index
-    gate = table + temb
-    if int(gate.shape[1]) == 1:
-        gate = gate.expand(1, 7, 5120)
-    return gate[:, start:end] if start is not None else gate
+    if isinstance(temb, _PhaseLocalTemb):
+        component = temb.materialize_component(component_index, start, end)
+        return table[:, component_index, :] + component.float()
+    if temb.ndim == 4:
+        return (
+            table[:, component_index, :]
+            + temb[:, slice(start, end), component_index, :].float()
+        )
+    return (
+        table[:, component_index, :] + temb[:, component_index, :].float()
+    ).unsqueeze(1)
 
 
 def _flatten_temb(temb):
+    if isinstance(temb, _PhaseLocalTemb):
+        return (
+            ("phase_local", tuple(int(length) for _value, length in temb.segments)),
+            tuple(value for value, _length in temb.segments),
+        )
     return ("tensor", ()), (temb,)
 
 
 def _rebuild_temb(descriptor, inputs):
-    assert descriptor == ("tensor", ())
-    assert len(inputs) == 1
-    return inputs[0]
+    kind, lengths = descriptor
+    if kind == "tensor":
+        assert lengths == ()
+        assert len(inputs) == 1
+        return inputs[0]
+    assert kind == "phase_local"
+    assert len(lengths) == len(inputs)
+    return _PhaseLocalTemb(list(zip(inputs, lengths, strict=True)))
+
+
+class _SourceTembAwareResidual(torch.autograd.Function):
+    """Test copy of the pinned Helios cuda_out_of_place backward contract."""
+
+    @staticmethod
+    def forward(
+        ctx,
+        hidden,
+        residual,
+        table,
+        component_index,
+        chunk_tokens,
+        descriptor,
+        logical_component,
+        residual_storage,
+        *temb_inputs,
+    ):
+        del logical_component
+        assert residual_storage == "cuda_out_of_place"
+        ctx.table = table
+        ctx.component_index = int(component_index)
+        ctx.chunk_tokens = int(chunk_tokens)
+        ctx.descriptor = descriptor
+        ctx.hidden_dtype = hidden.dtype
+        ctx.residual_dtype = residual.dtype
+        ctx.sequence_length = int(hidden.shape[1])
+        ctx.save_for_backward(residual, *temb_inputs)
+        temb = _rebuild_temb(descriptor, tuple(temb_inputs))
+        output = torch.empty_like(hidden)
+        for start in range(0, ctx.sequence_length, ctx.chunk_tokens):
+            end = min(ctx.sequence_length, start + ctx.chunk_tokens)
+            gate = _materialize(
+                table, temb, ctx.component_index, start, end
+            )
+            output[:, start:end].copy_(
+                (
+                    hidden[:, start:end].float()
+                    + residual[:, start:end].float() * gate
+                ).to(hidden.dtype)
+            )
+        return output
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        residual, *saved_temb_inputs = ctx.saved_tensors
+        hidden_gradient = (
+            grad_output.to(ctx.hidden_dtype) if ctx.needs_input_grad[0] else None
+        )
+        residual_gradient = (
+            torch.empty_like(residual) if ctx.needs_input_grad[1] else None
+        )
+        temb_gradients = [None for _ in saved_temb_inputs]
+        temb_needs_grad = list(ctx.needs_input_grad[8:])
+        if residual_gradient is not None or any(temb_needs_grad):
+            for start in range(0, ctx.sequence_length, ctx.chunk_tokens):
+                end = min(ctx.sequence_length, start + ctx.chunk_tokens)
+                residual_chunk = residual[:, start:end].detach()
+                residual_chunk.requires_grad_(ctx.needs_input_grad[1])
+                functional_inputs = tuple(
+                    value.detach().requires_grad_(needs_grad)
+                    for value, needs_grad in zip(
+                        saved_temb_inputs, temb_needs_grad, strict=True
+                    )
+                )
+                functional_temb = _rebuild_temb(ctx.descriptor, functional_inputs)
+                with torch.enable_grad():
+                    gate = _materialize(
+                        ctx.table,
+                        functional_temb,
+                        ctx.component_index,
+                        start,
+                        end,
+                    )
+                    product = residual_chunk.float() * gate
+                gradient_inputs = (
+                    [residual_chunk] if ctx.needs_input_grad[1] else []
+                ) + [
+                    value
+                    for value, needs_grad in zip(
+                        functional_inputs, temb_needs_grad, strict=True
+                    )
+                    if needs_grad
+                ]
+                gradients = torch.autograd.grad(
+                    product,
+                    gradient_inputs,
+                    grad_output[:, start:end].float(),
+                    allow_unused=True,
+                )
+                offset = 0
+                if residual_gradient is not None:
+                    residual_gradient[:, start:end].copy_(gradients[0])
+                    offset = 1
+                gradient_index = offset
+                for index, needs_grad in enumerate(temb_needs_grad):
+                    if not needs_grad:
+                        continue
+                    gradient = gradients[gradient_index]
+                    current = temb_gradients[index]
+                    if gradient is not None:
+                        temb_gradients[index] = (
+                            gradient if current is None else current + gradient
+                        )
+                    gradient_index += 1
+        return (
+            hidden_gradient,
+            residual_gradient,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            *temb_gradients,
+        )
+
+
+def _source_reference(
+    hidden,
+    residual,
+    table,
+    temb,
+    component_index,
+    chunk_tokens,
+    logical_component="unknown",
+    residual_storage="cuda_out_of_place",
+):
+    descriptor, inputs = _flatten_temb(temb)
+    return _SourceTembAwareResidual.apply(
+        hidden,
+        residual,
+        table,
+        component_index,
+        chunk_tokens,
+        descriptor,
+        logical_component,
+        residual_storage,
+        *inputs,
+    )
 
 
 def _module() -> SimpleNamespace:
@@ -82,8 +279,8 @@ def test_residual_fusion_is_generator_nograd_only_and_exact() -> None:
     torch.manual_seed(17)
     hidden = torch.randn((1, 7, 5120), dtype=torch.bfloat16)
     residual = torch.randn_like(hidden)
-    table = torch.randn((1, 1, 5120), dtype=torch.float32)
-    temb = torch.randn((1, 1, 5120), dtype=torch.float32)
+    table = torch.randn((1, 6, 5120), dtype=torch.float32)
+    temb = torch.randn((1, 6, 5120), dtype=torch.float32)
     with torch.no_grad():
         expected = _reference(hidden, residual, table, temb, 2, 4)
     receipt = install_generator_nograd_residual_fusion(
@@ -141,10 +338,10 @@ def test_exact_grad_residual_fusion_matches_forward_and_gradients() -> None:
         (1, 7, 5120), dtype=torch.bfloat16, requires_grad=True
     )
     residual_reference = torch.randn_like(hidden_reference, requires_grad=True)
-    table = torch.randn((1, 1, 5120), dtype=torch.float32)
-    temb = torch.randn((1, 1, 5120), dtype=torch.float32)
+    table = torch.randn((1, 6, 5120), dtype=torch.float32)
+    temb = torch.randn((1, 6, 5120), dtype=torch.float32)
     upstream = torch.randn_like(hidden_reference)
-    expected = _reference(
+    expected = _source_reference(
         hidden_reference,
         residual_reference,
         table,
@@ -185,11 +382,16 @@ def test_exact_grad_residual_fusion_matches_forward_and_gradients() -> None:
     assert receipt["grad_fused_chunk_count"] == 2
     assert receipt["grad_backward_call_count"] == 1
     assert receipt["grad_backward_chunk_count"] == 2
-    assert receipt["grad_saved_residual_tensor_count"] == 0
+    assert receipt["grad_saved_residual_tensor_count"] == 1
+    assert receipt["grad_frozen_temb_call_count"] == 1
+    assert receipt["grad_trainable_temb_call_count"] == 0
+    assert receipt["grad_temb_gradient_tensor_count"] == 0
     assert receipt["grad_reference_fallback_count"] == 0
 
 
-def test_exact_grad_fusion_fails_closed_for_trainable_temb() -> None:
+@pytest.mark.parametrize("temb_rank", [3, 4])
+def test_exact_grad_fusion_matches_trainable_tensor_temb(temb_rank: int) -> None:
+    torch.manual_seed(41 + temb_rank)
     module = _module()
     receipt = install_generator_nograd_residual_fusion(
         enabled=False,
@@ -199,25 +401,119 @@ def test_exact_grad_fusion_fails_closed_for_trainable_temb() -> None:
         fused_chunk=_fused,
         fused_backward_chunk=_fused_backward,
     )
-    hidden = torch.randn((1, 7, 5120), dtype=torch.bfloat16, requires_grad=True)
-    residual = torch.randn_like(hidden, requires_grad=True)
-    table = torch.randn((1, 1, 5120), dtype=torch.float32)
-    temb = torch.randn((1, 1, 5120), dtype=torch.float32, requires_grad=True)
-    module._apply_chunked_gated_residual(
-        hidden,
-        residual,
+    hidden_reference = torch.randn(
+        (1, 7, 32), dtype=torch.bfloat16, requires_grad=True
+    )
+    residual_reference = torch.randn_like(hidden_reference, requires_grad=True)
+    table = torch.randn((1, 6, 32), dtype=torch.float32)
+    temb_shape = (1, 6, 32) if temb_rank == 3 else (1, 7, 6, 32)
+    temb_reference = torch.randn(
+        temb_shape, dtype=torch.float32, requires_grad=True
+    )
+    upstream = torch.randn_like(hidden_reference)
+    expected = _source_reference(
+        hidden_reference,
+        residual_reference,
         table,
-        temb,
+        temb_reference,
         2,
         4,
         "generator",
         "cuda_out_of_place",
-    ).sum().backward()
-    assert receipt["grad_fused_call_count"] == 0
-    assert receipt["grad_reference_fallback_count"] == 1
-    assert receipt["grad_reference_fallback_reasons"] == {
-        "TRAINABLE_TEMB_INPUT": 1
-    }
+    )
+    expected.backward(upstream)
+
+    hidden_actual = hidden_reference.detach().clone().requires_grad_(True)
+    residual_actual = residual_reference.detach().clone().requires_grad_(True)
+    temb_actual = temb_reference.detach().clone().requires_grad_(True)
+    actual = module._apply_chunked_gated_residual(
+        hidden_actual,
+        residual_actual,
+        table,
+        temb_actual,
+        2,
+        4,
+        "generator",
+        "cuda_out_of_place",
+    )
+    actual.backward(upstream)
+    assert torch.equal(expected, actual)
+    assert torch.equal(hidden_reference.grad, hidden_actual.grad)
+    assert torch.equal(residual_reference.grad, residual_actual.grad)
+    assert torch.equal(temb_reference.grad, temb_actual.grad)
+    assert receipt["grad_fused_call_count"] == 1
+    assert receipt["grad_trainable_temb_call_count"] == 1
+    assert receipt["grad_temb_descriptor_counts"] == {"tensor": 1}
+    assert receipt["grad_temb_dtype_counts"] == {"torch.float32": 1}
+    assert receipt["grad_temb_gradient_tensor_count"] == 2
+    assert receipt["grad_reference_fallback_count"] == 0
+
+
+def test_exact_grad_fusion_matches_trainable_phase_local_temb() -> None:
+    torch.manual_seed(47)
+    hidden_reference = torch.randn(
+        (1, 7, 32), dtype=torch.bfloat16, requires_grad=True
+    )
+    residual_reference = torch.randn_like(hidden_reference, requires_grad=True)
+    table = torch.randn((1, 6, 32), dtype=torch.float32)
+    first_reference = torch.randn(
+        (1, 6, 32), dtype=torch.float32, requires_grad=True
+    )
+    second_reference = torch.randn(
+        (1, 6, 32), dtype=torch.float32, requires_grad=True
+    )
+    temb_reference = _PhaseLocalTemb(
+        [(first_reference, 3), (second_reference, 4)]
+    )
+    upstream = torch.randn_like(hidden_reference)
+    expected = _source_reference(
+        hidden_reference,
+        residual_reference,
+        table,
+        temb_reference,
+        4,
+        4,
+        "generator",
+        "cuda_out_of_place",
+    )
+    expected.backward(upstream)
+
+    hidden_actual = hidden_reference.detach().clone().requires_grad_(True)
+    residual_actual = residual_reference.detach().clone().requires_grad_(True)
+    first_actual = first_reference.detach().clone().requires_grad_(True)
+    second_actual = second_reference.detach().clone().requires_grad_(True)
+    temb_actual = _PhaseLocalTemb([(first_actual, 3), (second_actual, 4)])
+    module = _module()
+    receipt = install_generator_nograd_residual_fusion(
+        enabled=False,
+        exact_grad_enabled=True,
+        role="generator",
+        transformer_module=module,
+        fused_chunk=_fused,
+        fused_backward_chunk=_fused_backward,
+    )
+    actual = module._apply_chunked_gated_residual(
+        hidden_actual,
+        residual_actual,
+        table,
+        temb_actual,
+        4,
+        4,
+        "generator",
+        "cuda_out_of_place",
+    )
+    actual.backward(upstream)
+    assert torch.equal(expected, actual)
+    assert torch.equal(hidden_reference.grad, hidden_actual.grad)
+    assert torch.equal(residual_reference.grad, residual_actual.grad)
+    assert torch.equal(first_reference.grad, first_actual.grad)
+    assert torch.equal(second_reference.grad, second_actual.grad)
+    assert receipt["grad_fused_call_count"] == 1
+    assert receipt["grad_trainable_temb_call_count"] == 1
+    assert receipt["grad_temb_descriptor_counts"] == {"phase_local": 1}
+    assert receipt["grad_temb_dtype_counts"] == {"torch.float32": 2}
+    assert receipt["grad_temb_gradient_tensor_count"] == 3
+    assert receipt["grad_reference_fallback_count"] == 0
 
 
 def test_launcher_and_policy_are_fail_closed() -> None:
@@ -285,13 +581,17 @@ def test_real_triton_exact_grad_autograd_is_bitwise_exact() -> None:
     )
     residual_reference = torch.randn_like(hidden_reference, requires_grad=True)
     table = torch.randn(
-        (1, 1, 5120), device="cuda", dtype=torch.float32, generator=generator
+        (1, 6, 5120), device="cuda", dtype=torch.float32, generator=generator
     )
     temb = torch.randn(
-        (1, 511, 5120), device="cuda", dtype=torch.float32, generator=generator
+        (1, 6, 5120),
+        device="cuda",
+        dtype=torch.float32,
+        generator=generator,
+        requires_grad=True,
     )
     upstream = torch.randn_like(hidden_reference)
-    expected = _reference(
+    expected = _source_reference(
         hidden_reference,
         residual_reference,
         table,
@@ -305,6 +605,7 @@ def test_real_triton_exact_grad_autograd_is_bitwise_exact() -> None:
 
     hidden_actual = hidden_reference.detach().clone().requires_grad_(True)
     residual_actual = residual_reference.detach().clone().requires_grad_(True)
+    temb_actual = temb.detach().clone().requires_grad_(True)
     module = _module()
     receipt = install_generator_nograd_residual_fusion(
         enabled=False,
@@ -318,7 +619,7 @@ def test_real_triton_exact_grad_autograd_is_bitwise_exact() -> None:
         hidden_actual,
         residual_actual,
         table,
-        temb,
+        temb_actual,
         2,
         127,
         "generator",
@@ -329,8 +630,12 @@ def test_real_triton_exact_grad_autograd_is_bitwise_exact() -> None:
     assert torch.equal(expected, actual)
     assert torch.equal(hidden_reference.grad, hidden_actual.grad)
     assert torch.equal(residual_reference.grad, residual_actual.grad)
+    assert torch.equal(temb.grad, temb_actual.grad)
     assert receipt["grad_fused_call_count"] == 1
     assert receipt["grad_fused_chunk_count"] == 5
     assert receipt["grad_backward_call_count"] == 1
     assert receipt["grad_backward_chunk_count"] == 5
+    assert receipt["grad_trainable_temb_call_count"] == 1
+    assert receipt["grad_temb_dtype_counts"] == {"torch.float32": 1}
+    assert receipt["grad_temb_gradient_tensor_count"] == 5
     assert receipt["grad_reference_fallback_count"] == 0
