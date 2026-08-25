@@ -1,0 +1,83 @@
+{
+  "schema_version": "distillschedule.helios14b.optimization_ladder.v1",
+  "status": "PASS_ONE_TRIAL_WINNER",
+  "tested_head": "6005c036a8fc0df1d35938e845fbecb919d2cd3b",
+  "stack_base": "a04b1107419d5581fd9651adb91049aa1794525d",
+  "hardware": "2x8 A100-SXM4-40GB",
+  "workload": {
+    "variant": "no-gan",
+    "shape": "384x640",
+    "dtype": "bfloat16",
+    "world_size": 16,
+    "mesh_policy": "node-hsdp-replicate2-shard8",
+    "global_batch": 16,
+    "rollout_batch_size": 1,
+    "score_packing": false,
+    "generator_residual_storage": "cuda_out_of_place",
+    "critic_residual_storage": "cuda_out_of_place",
+    "ema_device": "cuda",
+    "parameter_offload": false,
+    "parameter_streaming": false,
+    "model_swap": false,
+    "updates": {"generator": 1, "critic": 5, "ema": 5},
+    "initial_versions": {"generator": 2, "critic": 10, "ema": 10},
+    "final_versions": {"generator": 3, "critic": 15, "ema": 15}
+  },
+  "observations": [
+    {"iteration": 0, "arm": "world16-fsdp2-historical", "seconds": 118.546756894, "evidence": "three_trial_median", "status": "PASS"},
+    {"iteration": 351, "arm": "node-hsdp-control", "seconds": 117.3046133145, "evidence": "two_trial_median", "status": "PASS"},
+    {"iteration": 353, "arm": "generator-bf16-scale1-lora-epilogue", "seconds": 116.498820167, "evidence": "two_trial_median", "status": "PASS"},
+    {"iteration": 354, "arm": "all-role-scale1-lora-add", "seconds": 115.731201865, "evidence": "two_trial_median", "status": "PASS"},
+    {"iteration": 355, "arm": "schedule-compatible-b2", "seconds": null, "evidence": "strict_parity_failed", "status": "NOT_RUN_TIMING"},
+    {"iteration": 356, "arm": "modulation-chunk2048", "seconds": 116.008084625, "evidence": "one_trial", "status": "REJECTED_REGRESSION"},
+    {"iteration": 357, "arm": "local-shard-clip", "seconds": null, "evidence": "cpu_audit_only", "status": "NO_GO_BEFORE_GPU"},
+    {"iteration": 358, "arm": "state-preserving-optimizer-dispatch-warmup", "seconds": 108.438765057, "evidence": "two_trial_median", "status": "PASS"},
+    {"iteration": 361, "arm": "generator-nograd-residual-fusion", "seconds": 106.699091761, "evidence": "one_trial", "status": "PASS"},
+    {"iteration": 364, "arm": "trainable-temb-residual-fusion", "seconds": 104.866739929, "evidence": "one_trial", "status": "PASS"},
+    {"iteration": 365, "arm": "fused-temb-gradient-staging", "seconds": 103.952150921, "evidence": "one_trial", "status": "PASS"},
+    {"iteration": 366, "arm": "exact-modulated-norm-epilogue", "seconds": 101.212336404, "evidence": "one_trial", "status": "PASS"},
+    {"iteration": 367, "arm": "exact-modulation-materialization", "seconds": 96.52901975, "evidence": "one_trial", "status": "PASS_ONE_TRIAL_WINNER"}
+  ],
+  "winner": {
+    "run_id": "iter367_helios14b_hsdp_modnorm_materialization_timing_r1_20260825",
+    "seconds": 96.52901975,
+    "rank_seconds": {"min": 96.50773672998184, "median": 96.513712193002, "max": 96.52899220801191},
+    "correctness_rank_count": 16,
+    "fused_calls_per_rank": 3760,
+    "fused_chunks_per_rank": 54640,
+    "materialization_calls_per_rank": 3760,
+    "materialization_chunks_per_rank": 54640,
+    "reference_fallbacks_per_rank": 0,
+    "max_allocated_gib": 19.745532512664795,
+    "max_reserved_gib": 31.6640625,
+    "min_driver_free_gib": 4.6116943359375,
+    "cuda_or_cgroup_oom_delta": 0,
+    "correctness_summary_sha256": "6d67f5f2c38ecc9307c3bb63ab6e4e5ee97d23558cbc57b9292d8aa09c81bd1f",
+    "timing_summary_sha256": "45944bf7cbbd83f1c0581e00387c906ee315b487fc1c0e4b0d915cca02c9f0a3"
+  },
+  "comparisons": {
+    "vs_world16_fsdp2": {"seconds_saved": 22.017737143999994, "reduction_fraction": 0.185730404786083, "speedup": 1.2280944860004133},
+    "vs_node_hsdp_control": {"seconds_saved": 20.7755935645, "reduction_fraction": 0.17710806913279284, "speedup": 1.2152264015350678},
+    "vs_iteration_366": {"seconds_saved": 4.683316653999995, "reduction_fraction": 0.04627219191251578, "speedup": 1.048517188573232},
+    "remaining_to_85_seconds": {"seconds": 11.529019750000003, "required_reduction_fraction": 0.11943579018888777, "required_speedup": 1.1356355264705882}
+  },
+  "profile_iteration_359": {
+    "diagnostic_only": true,
+    "formal_unprofiled_reference_seconds": 108.438765057,
+    "rank0_compute_on_path_fraction": 0.8948,
+    "rank0_nccl_only_fraction": 0.0184,
+    "rank0_no_kernel_complement_fraction": 0.0868,
+    "world16_no_traced_fraction": 0.07883,
+    "unknown_no_gpu_activity_gpu_seconds": 138.183634655,
+    "hardware_metrics": "NOT_CAPTURED",
+    "mfu": "NOT_AVAILABLE"
+  },
+  "claim_boundary": {
+    "winner_trials": 1,
+    "final_three_trial_timing": "NOT_RUN",
+    "fresh_post_iteration367_nsys": "NOT_RUN",
+    "tp_pp_dp_ablation": "NOT_RUN",
+    "new_schedule_reorder": "NOT_RUN",
+    "profiled_wall_used_for_speedup": false
+  }
+}
