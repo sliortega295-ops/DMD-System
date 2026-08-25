@@ -1,5 +1,6 @@
 {
   "schema_version": "distillschedule.helios14b.optimization_ladder.v1",
+  "publication_pr": 24,
   "status": "PASS_ONE_TRIAL_WINNER",
   "tested_head": "6005c036a8fc0df1d35938e845fbecb919d2cd3b",
   "stack_base": "a04b1107419d5581fd9651adb91049aa1794525d",

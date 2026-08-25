@@ -6,6 +6,8 @@ This document publishes the exact optimization chain that reduced the Helios
 14B No-GAN Full5 wall from the historical world16 FSDP2 median
 `118.546757 s` to `96.529020 s` on 16 A100-40GB GPUs.
 
+GitHub publication: Draft PR #24.
+
 The topology was changed once, in Iteration 351, from world16 FSDP2 to
 node-local HSDP (`replicate=2`, `shard=8`). All later candidates use that HSDP
 control. Consequently:
@@ -198,4 +200,3 @@ machine-readable manifest.
 
 The machine-readable result is
 `artifacts/manifests/iteration_351_367_helios14b_hsdp_optimization_20260825.json`.
-
