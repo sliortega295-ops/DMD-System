@@ -28,6 +28,9 @@ def _policy(backend: str) -> dict[str, object]:
         "exact_grad_residual_fusion": True,
         "exact_modulated_norm_epilogue": True,
         "exact_modulated_norm_materialization": True,
+        "checkpoint_bypass_stride": 0,
+        "checkpoint_bypass_role": "all",
+        "selective_flash_checkpoint_stride": 0,
     }
 
 
@@ -104,6 +107,12 @@ def _run_validate_summary(tmp_path: Path, backend: str) -> dict[str, object]:
         "on",
         "--exact-modulated-norm-materialization",
         "on",
+        "--checkpoint-bypass-stride",
+        "0",
+        "--checkpoint-bypass-role",
+        "all",
+        "--selective-flash-checkpoint-stride",
+        "0",
         "--output",
         str(output),
     ]
@@ -199,6 +208,12 @@ def test_validate_summary_rejects_backend_identity_drift(tmp_path: Path) -> None
         "on",
         "--exact-modulated-norm-materialization",
         "on",
+        "--checkpoint-bypass-stride",
+        "0",
+        "--checkpoint-bypass-role",
+        "all",
+        "--selective-flash-checkpoint-stride",
+        "0",
         "--output",
         str(output),
     ]
