@@ -144,6 +144,12 @@ def parser() -> argparse.ArgumentParser:
         default="off",
     )
     value.add_argument(
+        "--checkpoint-bypass-stride",
+        type=int,
+        choices=(0, 2, 4),
+        default=0,
+    )
+    value.add_argument(
         "--remote-root",
         type=Path,
         default=Path(
@@ -234,6 +240,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.exact_modulated_norm_epilogue),
         "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_MATERIALIZATION="
         + shlex.quote(args.exact_modulated_norm_materialization),
+        "DISTILLSCHEDULE_HELIOS_CHECKPOINT_BYPASS_STRIDE="
+        + shlex.quote(str(args.checkpoint_bypass_stride)),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -345,6 +353,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.exact_modulated_norm_epilogue)} "
         + "--exact-modulated-norm-materialization "
         + f"{shlex.quote(args.exact_modulated_norm_materialization)} "
+        + "--checkpoint-bypass-stride "
+        + f"{args.checkpoint_bypass_stride} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
         + (
             f"--critic-only-step {args.critic_only_step} "
@@ -420,6 +430,8 @@ def main() -> int:
         raise ValueError(
             "Exact modulation materialization requires the exact epilogue"
         )
+    if args.checkpoint_bypass_stride and args.variant != "no-gan":
+        raise ValueError("checkpoint bypass is restricted to the No-GAN iteration")
     if args.critic_only_step is not None and (
         args.variant != "no-gan" or args.mode != "profile"
     ):

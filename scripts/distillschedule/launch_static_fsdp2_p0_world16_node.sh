@@ -74,6 +74,7 @@ GENERATOR_NOGRAD_RESIDUAL_FUSION="${DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_RESI
 EXACT_GRAD_RESIDUAL_FUSION="${DISTILLSCHEDULE_HELIOS_EXACT_GRAD_RESIDUAL_FUSION:-off}"
 EXACT_MODULATED_NORM_EPILOGUE="${DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_EPILOGUE:-off}"
 EXACT_MODULATED_NORM_MATERIALIZATION="${DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_MATERIALIZATION:-off}"
+CHECKPOINT_BYPASS_STRIDE="${DISTILLSCHEDULE_HELIOS_CHECKPOINT_BYPASS_STRIDE:-0}"
 EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256:-776a26c3b2921d599821f0767910830471ff94a955f5013089f9f689ac20fee7}"
 
 [[ -z "${CRITIC_ONLY_STEP}" || "${CRITIC_ONLY_STEP}" == 10 ]] || exit 2
@@ -90,6 +91,7 @@ EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORME
 [[ "${EXACT_GRAD_RESIDUAL_FUSION}" == on || "${EXACT_GRAD_RESIDUAL_FUSION}" == off ]] || exit 2
 [[ "${EXACT_MODULATED_NORM_EPILOGUE}" == on || "${EXACT_MODULATED_NORM_EPILOGUE}" == off ]] || exit 2
 [[ "${EXACT_MODULATED_NORM_MATERIALIZATION}" == on || "${EXACT_MODULATED_NORM_MATERIALIZATION}" == off ]] || exit 2
+[[ "${CHECKPOINT_BYPASS_STRIDE}" == 0 || "${CHECKPOINT_BYPASS_STRIDE}" == 2 || "${CHECKPOINT_BYPASS_STRIDE}" == 4 ]] || exit 2
 [[ "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" != on || "${GENERATOR_RESIDUAL_STORAGE}" == cuda_out_of_place ]] || exit 2
 [[ "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" != on || "${ROLLOUT_BATCH_SIZE}" == 1 ]] || exit 2
 [[ "${EXACT_GRAD_RESIDUAL_FUSION}" != on || "${GENERATOR_RESIDUAL_STORAGE}" == cuda_out_of_place ]] || exit 2
@@ -99,6 +101,7 @@ EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORME
 [[ "${EXACT_MODULATED_NORM_MATERIALIZATION}" != on || "${EXACT_MODULATED_NORM_EPILOGUE}" == on ]] || exit 2
 [[ "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" != on || "${ALL_ROLE_LORA_SCALE1_ADD}" != on ]] || exit 2
 [[ "${OPTIMIZER_DISPATCH_WARMUP}" != on || "${MESH_POLICY}" == node-hsdp ]] || exit 2
+[[ "${CHECKPOINT_BYPASS_STRIDE}" == 0 || "${VARIANT}" == no-gan ]] || exit 2
 [[ "${EXPECTED_HELIOS_TRANSFORMER_SHA256}" =~ ^[0-9a-f]{64}$ ]] || exit 2
 if [[ -n "${CRITIC_ONLY_STEP}" ]]; then
   [[ "${VARIANT}" == no-gan && "${MODE}" == profile ]] || exit 2
@@ -122,10 +125,10 @@ HELIOS_TRANSFORMER="${HELIOS}/helios/modules/transformer_helios.py"
 if [[ "${MODE}" == timing && "${DIAGNOSTIC_TIMING}" != 1 ]]; then
   [[ -f "${CORRECTNESS_SUMMARY}" ]] || { echo correctness_summary_missing >&2; exit 3; }
   [[ "$(sha256sum "${CORRECTNESS_SUMMARY}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || { echo correctness_hash_changed >&2; exit 3; }
-  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" "${ALL_ROLE_LORA_SCALE1_ADD}" "${OPTIMIZER_DISPATCH_WARMUP}" "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" "${EXACT_GRAD_RESIDUAL_FUSION}" "${EXACT_MODULATED_NORM_EPILOGUE}" "${EXACT_MODULATED_NORM_MATERIALIZATION}" <<'PY'
+  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" "${ALL_ROLE_LORA_SCALE1_ADD}" "${OPTIMIZER_DISPATCH_WARMUP}" "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" "${EXACT_GRAD_RESIDUAL_FUSION}" "${EXACT_MODULATED_NORM_EPILOGUE}" "${EXACT_MODULATED_NORM_MATERIALIZATION}" "${CHECKPOINT_BYPASS_STRIDE}" <<'PY'
 import json,pathlib,sys
 value=json.loads(pathlib.Path(sys.argv[1]).read_text())
-expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7],"generator_nograd_lora_fused_epilogue":sys.argv[8]=="on","all_role_lora_scale1_add":sys.argv[9]=="on","optimizer_dispatch_warmup":sys.argv[10]=="on","generator_nograd_residual_fusion":sys.argv[11]=="on","exact_grad_residual_fusion":sys.argv[12]=="on","exact_modulated_norm_epilogue":sys.argv[13]=="on","exact_modulated_norm_materialization":sys.argv[14]=="on"}
+expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7],"generator_nograd_lora_fused_epilogue":sys.argv[8]=="on","all_role_lora_scale1_add":sys.argv[9]=="on","optimizer_dispatch_warmup":sys.argv[10]=="on","generator_nograd_residual_fusion":sys.argv[11]=="on","exact_grad_residual_fusion":sys.argv[12]=="on","exact_modulated_norm_epilogue":sys.argv[13]=="on","exact_modulated_norm_materialization":sys.argv[14]=="on","checkpoint_bypass_stride":int(sys.argv[15])}
 if value.get("status") != "PASS" or not value.get("claimable_correctness"):
     raise SystemExit("P0 correctness gate is not PASS")
 if value.get("variant") != sys.argv[2]:
@@ -189,6 +192,7 @@ generator_nograd_residual_fusion=${GENERATOR_NOGRAD_RESIDUAL_FUSION}
 exact_grad_residual_fusion=${EXACT_GRAD_RESIDUAL_FUSION}
 exact_modulated_norm_epilogue=${EXACT_MODULATED_NORM_EPILOGUE}
 exact_modulated_norm_materialization=${EXACT_MODULATED_NORM_MATERIALIZATION}
+checkpoint_bypass_stride=${CHECKPOINT_BYPASS_STRIDE}
 EOF
 
 WORKER=(
@@ -203,6 +207,7 @@ WORKER=(
   --ema-device "${EMA_DEVICE}"
   --generator-residual-storage "${GENERATOR_RESIDUAL_STORAGE}"
   --critic-residual-storage "${CRITIC_RESIDUAL_STORAGE}"
+  --checkpoint-bypass-stride "${CHECKPOINT_BYPASS_STRIDE}"
 )
 [[ "${VARIANT}" == gan ]] && WORKER+=(--gan-config "${GAN_CONFIG}")
 if [[ "${PACK_REAL_SCORE_PAIR}" == on ]]; then

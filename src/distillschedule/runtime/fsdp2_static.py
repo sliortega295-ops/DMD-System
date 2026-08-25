@@ -122,20 +122,85 @@ def configure_fsdp2_checkpointing(
     model: Any,
     *,
     operation_source: bool = False,
-) -> None:
+    checkpoint_bypass_stride: int = 0,
+) -> dict[str, Any]:
     """Install the FSDP2-only checkpoint adapter on an enabled Helios model."""
 
     if not bool(getattr(model, "gradient_checkpointing", False)):
         raise RuntimeError(
             "FSDP2 checkpoint policy requires Helios gradient checkpointing"
         )
-    if operation_source:
+    if checkpoint_bypass_stride not in {0, 2, 4}:
+        raise ValueError("checkpoint bypass stride must be one of 0, 2, or 4")
+
+    blocks = tuple(getattr(model, "blocks", ()))
+    if checkpoint_bypass_stride and len(blocks) != 40:
+        raise ValueError(
+            "partial checkpoint bypass is pinned to the 40-block Helios model"
+        )
+    block_index_by_id = {id(block): index for index, block in enumerate(blocks)}
+    if len(block_index_by_id) != len(blocks):
+        raise ValueError("Helios block identities are not unique")
+    bypass_indices = tuple(
+        range(0, len(blocks), checkpoint_bypass_stride)
+        if checkpoint_bypass_stride
+        else ()
+    )
+    receipt: dict[str, Any] = {
+        "schema_version": "distillschedule.fsdp2_checkpoint_policy.v1",
+        "enabled": bool(checkpoint_bypass_stride),
+        "scope": (
+            "SPARSE_BLOCK_ACTIVATION_CHECKPOINT_BYPASS"
+            if checkpoint_bypass_stride
+            else "ALL_BLOCKS_NON_REENTRANT_CHECKPOINT"
+        ),
+        "block_count": len(blocks),
+        "bypass_stride": int(checkpoint_bypass_stride),
+        "bypass_block_indices": list(bypass_indices),
+        "checkpoint_block_indices": [
+            index for index in range(len(blocks)) if index not in bypass_indices
+        ],
+        "direct_forward_count": 0,
+        "checkpoint_forward_count": 0,
+        "block_call_counts": {str(index): 0 for index in range(len(blocks))},
+        "operation_source": bool(operation_source),
+        "adds_synchronization": False,
+        "changes_module_math": False,
+    }
+    model._distillschedule_checkpoint_policy_receipt = receipt
+
+    if checkpoint_bypass_stride:
+        bypass_set = frozenset(bypass_indices)
+
+        def checkpoint_or_direct(module: Any, *args: Any, **kwargs: Any) -> Any:
+            try:
+                block_index = block_index_by_id[id(module)]
+            except KeyError as error:
+                raise RuntimeError(
+                    "checkpoint dispatch received a module outside model.blocks"
+                ) from error
+            key = str(block_index)
+            receipt["block_call_counts"][key] += 1
+            if block_index in bypass_set:
+                receipt["direct_forward_count"] += 1
+                return module(*args, **kwargs)
+            receipt["checkpoint_forward_count"] += 1
+            return fsdp2_metadata_tolerant_checkpoint(
+                module,
+                *args,
+                operation_source=operation_source,
+                **kwargs,
+            )
+
+        model._gradient_checkpointing_func = checkpoint_or_direct
+    elif operation_source:
         model._gradient_checkpointing_func = functools.partial(
             fsdp2_metadata_tolerant_checkpoint,
             operation_source=True,
         )
     else:
         model._gradient_checkpointing_func = fsdp2_metadata_tolerant_checkpoint
+    return receipt
 
 
 def _named_trainables(module: Any) -> dict[str, Any]:

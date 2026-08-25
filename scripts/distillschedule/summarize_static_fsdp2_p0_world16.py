@@ -80,6 +80,12 @@ def main() -> int:
         choices=("on", "off"),
         required=True,
     )
+    parser.add_argument(
+        "--checkpoint-bypass-stride",
+        type=int,
+        choices=(0, 2, 4),
+        required=True,
+    )
     parser.add_argument("--critic-only-step", type=int, choices=(10,))
     parser.add_argument(
         "--diagnostic-timing",
@@ -116,6 +122,7 @@ def main() -> int:
         "exact_modulated_norm_materialization": (
             args.exact_modulated_norm_materialization == "on"
         ),
+        "checkpoint_bypass_stride": args.checkpoint_bypass_stride,
     }
     if args.critic_only_step is not None:
         if args.variant != "no-gan" or args.mode != "profile":
@@ -144,6 +151,7 @@ def main() -> int:
     optimizer_warmups: list[dict[str, Any] | None] = []
     residual_fusions: list[dict[str, Any] | None] = []
     modulated_norm_fusions: list[dict[str, Any] | None] = []
+    checkpoint_policies: list[dict[str, Any] | None] = []
 
     for rank, value in enumerate(ranks):
         if value.get("rank") != rank:
@@ -323,6 +331,47 @@ def main() -> int:
                 .get("exact_modulated_norm_epilogue", {})
             )
             modulated_norm_fusions.append(modulated_norm_fusion)
+            role_checkpoint_policies: dict[str, Any] = {}
+            for role in ("generator", "critic"):
+                checkpoint_policy = (
+                    value.get("build", {}).get(role, {}).get("checkpoint_policy", {})
+                )
+                role_checkpoint_policies[role] = checkpoint_policy
+                prefix = f"rank{rank} {role} checkpoint policy"
+                expected_stride = expected_policy["checkpoint_bypass_stride"]
+                expected_indices = (
+                    list(range(0, 40, expected_stride)) if expected_stride else []
+                )
+                if checkpoint_policy.get("enabled") is not bool(expected_stride):
+                    errors.append(f"{prefix} enabled state changed")
+                if checkpoint_policy.get("block_count") != 40:
+                    errors.append(f"{prefix} block count changed")
+                if checkpoint_policy.get("bypass_stride") != expected_stride:
+                    errors.append(f"{prefix} stride changed")
+                if checkpoint_policy.get("bypass_block_indices") != expected_indices:
+                    errors.append(f"{prefix} block selection changed")
+                if expected_stride:
+                    counts = checkpoint_policy.get("block_call_counts", {})
+                    if set(counts) != {str(index) for index in range(40)}:
+                        errors.append(f"{prefix} lacks the 40-block runtime census")
+                    else:
+                        per_block = [int(counts[str(index)]) for index in range(40)]
+                        if not per_block or min(per_block) <= 0:
+                            errors.append(f"{prefix} was not exercised")
+                        if len(set(per_block)) != 1:
+                            errors.append(f"{prefix} per-block call counts drifted")
+                        invocations = per_block[0] if per_block else 0
+                        direct = int(checkpoint_policy.get("direct_forward_count", -1))
+                        checkpointed = int(
+                            checkpoint_policy.get("checkpoint_forward_count", -1)
+                        )
+                        if direct != invocations * len(expected_indices):
+                            errors.append(f"{prefix} direct-forward census changed")
+                        if checkpointed != invocations * (40 - len(expected_indices)):
+                            errors.append(f"{prefix} checkpoint census changed")
+                elif int(checkpoint_policy.get("direct_forward_count", -1)) != 0:
+                    errors.append(f"{prefix} bypassed blocks outside requested policy")
+            checkpoint_policies.append(role_checkpoint_policies)
             prefix = f"rank{rank} exact modulated-norm epilogue"
             if expected_policy["exact_modulated_norm_epilogue"]:
                 if not modulated_norm_fusion.get("enabled"):
@@ -515,6 +564,7 @@ def main() -> int:
             optimizer_warmups.append(None)
             residual_fusions.append(None)
             modulated_norm_fusions.append(None)
+            checkpoint_policies.append(None)
 
     starts = [int(value["timing_start_unix_ns"]) for value in ranks if "timing_start_unix_ns" in value]
     stops = [int(value["timing_stop_unix_ns"]) for value in ranks if "timing_stop_unix_ns" in value]
@@ -556,6 +606,7 @@ def main() -> int:
         "rank_optimizer_dispatch_warmup": optimizer_warmups,
         "rank_generator_nograd_residual_fusion": residual_fusions,
         "rank_exact_modulated_norm_epilogue": modulated_norm_fusions,
+        "rank_checkpoint_policies": checkpoint_policies,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")

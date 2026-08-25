@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
+import distillschedule.runtime.fsdp2_static as fsdp2_static
 
 from distillschedule.runtime.fsdp2_static import (
     GAN_CONTRACT,
@@ -144,6 +145,58 @@ def test_fsdp2_checkpoint_adapter_only_disables_metadata_check() -> None:
     model = Model()
     configure_fsdp2_checkpointing(model)
     assert model._gradient_checkpointing_func is fsdp2_metadata_tolerant_checkpoint
+
+
+def test_partial_checkpoint_bypass_is_sparse_default_off_and_censused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Block:
+        def __init__(self, index: int) -> None:
+            self.index = index
+
+        def __call__(self, value: int) -> int:
+            return value + self.index
+
+    class Model:
+        gradient_checkpointing = True
+
+        def __init__(self) -> None:
+            self.blocks = [Block(index) for index in range(40)]
+
+    checkpointed: list[int] = []
+
+    def fake_checkpoint(module: Block, value: int, **_: object) -> int:
+        checkpointed.append(module.index)
+        return module(value)
+
+    monkeypatch.setattr(
+        fsdp2_static,
+        "fsdp2_metadata_tolerant_checkpoint",
+        fake_checkpoint,
+    )
+    model = Model()
+    receipt = configure_fsdp2_checkpointing(model, checkpoint_bypass_stride=4)
+    outputs = [
+        model._gradient_checkpointing_func(block, 100) for block in model.blocks
+    ]
+
+    assert outputs == [100 + index for index in range(40)]
+    assert receipt["bypass_block_indices"] == list(range(0, 40, 4))
+    assert receipt["direct_forward_count"] == 10
+    assert receipt["checkpoint_forward_count"] == 30
+    assert checkpointed == [index for index in range(40) if index % 4]
+    assert set(receipt["block_call_counts"].values()) == {1}
+    assert receipt["adds_synchronization"] is False
+    assert receipt["changes_module_math"] is False
+
+
+def test_partial_checkpoint_bypass_fails_closed_on_wrong_model_shape() -> None:
+    class Model:
+        gradient_checkpointing = True
+        blocks = [object() for _ in range(39)]
+
+    with pytest.raises(ValueError, match="40-block Helios"):
+        configure_fsdp2_checkpointing(Model(), checkpoint_bypass_stride=4)
 
 
 def test_fsdp2_engine_exposes_official_gan_boundary_hook() -> None:

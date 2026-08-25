@@ -160,9 +160,10 @@ def _build_static_model(
             "disabled_reason": "INSTALL_ONCE_FROM_GENERATOR_BUILD",
         }
     )
-    configure_fsdp2_checkpointing(
+    checkpoint_policy = configure_fsdp2_checkpointing(
         model,
         operation_source=bool(args.operation_source),
+        checkpoint_bypass_stride=int(args.checkpoint_bypass_stride),
     )
     model.to(device)
     if role == "generator":
@@ -198,6 +199,7 @@ def _build_static_model(
         ),
         "generator_nograd_residual_fusion": residual_fusion,
         "exact_modulated_norm_epilogue": modulated_norm_fusion,
+        "checkpoint_policy": checkpoint_policy,
         "fsdp2": sharding,
         "host_allocator_trimmed_after_shard": host_trimmed,
         "memory_after_shard": base._memory(device),
@@ -704,6 +706,17 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--checkpoint-bypass-stride",
+        type=int,
+        choices=(0, 2, 4),
+        default=0,
+        help=(
+            "Diagnostic systems candidate: retain activations for every Nth "
+            "Helios block instead of checkpoint-recomputing it; 0 preserves "
+            "the all-block checkpoint baseline"
+        ),
+    )
+    value.add_argument(
         "--critic-only-step",
         type=int,
         choices=(10,),
@@ -764,6 +777,8 @@ def main() -> int:
         raise ValueError(
             "Exact modulation materialization requires the exact epilogue"
         )
+    if args.checkpoint_bypass_stride and args.variant != "no-gan":
+        raise ValueError("checkpoint bypass is restricted to the No-GAN iteration")
     policy = StaticFSDP2P0Policy(
         mesh_policy=args.mesh_policy,
         rollout_batch_size=args.rollout_batch_size,
@@ -778,6 +793,7 @@ def main() -> int:
         exact_modulated_norm_materialization=bool(
             args.exact_modulated_norm_materialization
         ),
+        checkpoint_bypass_stride=int(args.checkpoint_bypass_stride),
     )
     dist.init_process_group("nccl")
     rank = dist.get_rank()
@@ -824,6 +840,7 @@ def main() -> int:
             "exact_modulated_norm_materialization": (
                 policy.exact_modulated_norm_materialization
             ),
+            "checkpoint_bypass_stride": policy.checkpoint_bypass_stride,
         },
     }
     try:

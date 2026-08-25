@@ -128,6 +128,10 @@ def test_policy_and_mesh_contract() -> None:
         StaticFSDP2P0Policy(
             exact_modulated_norm_materialization=True,
         )
+    checkpoint_bypass = StaticFSDP2P0Policy(checkpoint_bypass_stride=4)
+    assert checkpoint_bypass.id.endswith("ckptbypass10")
+    with pytest.raises(ValueError, match="checkpoint_bypass_stride"):
+        StaticFSDP2P0Policy(checkpoint_bypass_stride=5)
 
 
 def test_execution_order_precomputes_all_rollouts_before_critic() -> None:
