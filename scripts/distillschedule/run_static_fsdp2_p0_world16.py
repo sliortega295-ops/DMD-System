@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shlex
 import signal
 import subprocess
@@ -29,6 +30,7 @@ def _ssh(host: str, command: str) -> list[str]:
         "BatchMode=yes",
         "-o",
         "UpdateHostKeys=no",
+        "-tt",
         host,
         "bash",
         "-lc",
@@ -37,13 +39,17 @@ def _ssh(host: str, command: str) -> list[str]:
 
 
 def _resolve_master(host: str) -> str:
-    values = subprocess.check_output(
+    output = subprocess.check_output(
         _ssh(host, "hostname -I"), text=True, timeout=30
-    ).split()
-    ipv4 = [value for value in values if ":" not in value]
+    )
+    ipv4 = re.findall(
+        r"(?<![0-9.])(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})"
+        r"(?:\.(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})){3}(?![0-9.])",
+        output,
+    )
     if not ipv4:
         raise RuntimeError("node0 has no routable IPv4 address")
-    return ipv4[0]
+    return ipv4[-1]
 
 
 @dataclass
@@ -98,6 +104,11 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--mesh-policy", choices=("world16-fsdp", "node-hsdp"), required=True)
     value.add_argument("--rollout-batch-size", type=int, choices=(1, 2, 5), required=True)
     value.add_argument("--pack-real-score-pair", choices=("on", "off"), default="on")
+    value.add_argument(
+        "--attention-backend",
+        choices=("sdpa", "local-fa2"),
+        default="sdpa",
+    )
     value.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
@@ -234,6 +245,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.exact_modulated_norm_epilogue),
         "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_MATERIALIZATION="
         + shlex.quote(args.exact_modulated_norm_materialization),
+        "DISTILLSCHEDULE_HELIOS_ATTENTION_BACKEND="
+        + shlex.quote(args.attention_backend),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -327,6 +340,7 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"--mesh-policy {shlex.quote(args.mesh_policy)} "
         + f"--rollout-batch-size {args.rollout_batch_size} "
         + f"--pack-real-score-pair {shlex.quote(args.pack_real_score_pair)} "
+        + f"--attention-backend {shlex.quote(args.attention_backend)} "
         + "--generator-residual-storage "
         + f"{shlex.quote(args.generator_residual_storage)} "
         + "--critic-residual-storage "

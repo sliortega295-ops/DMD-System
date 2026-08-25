@@ -12,6 +12,7 @@ logical updates while changing only physical execution:
 from __future__ import annotations
 
 import gc
+import hashlib
 import importlib.util
 import json
 import os
@@ -25,6 +26,10 @@ from typing import Any
 import torch
 import torch.distributed as dist
 
+PINNED_FLASH_ATTN2_EXTENSION_SHA256 = (
+    "c2acd487c5d1d77b7f6721eabc0fee4f8c5c8f9e682aadf43bfa99b394eecba7"
+)
+
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -36,6 +41,68 @@ if _SPEC is None or _SPEC.loader is None:
 base = importlib.util.module_from_spec(_SPEC)
 sys.modules[_SPEC.name] = base
 _SPEC.loader.exec_module(base)
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _attention_backend_receipt(expected: str) -> dict[str, Any]:
+    """Fail closed on the attention implementation imported by this worker."""
+
+    from helios.modules.helios_kernels import attention_dispatch
+
+    local_kernels = os.environ.get("LOCAL_KERNELS", "")
+    function = attention_dispatch.flash_attn_func
+    function_module = getattr(function, "__module__", None)
+    receipt: dict[str, Any] = {
+        "status": "PASS",
+        "requested": expected,
+        "local_kernels": local_kernels,
+        "flash_attn_func_available": callable(function),
+        "flash_attn_func_module": function_module,
+        "extension_path": None,
+        "extension_sha256": None,
+    }
+    if expected == "sdpa":
+        if local_kernels:
+            raise AssertionError("SDPA control inherited LOCAL_KERNELS")
+        if function is not None:
+            raise AssertionError(
+                "SDPA control unexpectedly imported an external FlashAttention function"
+            )
+        receipt["runtime"] = "sdpa"
+        return receipt
+
+    if expected != "local-fa2":
+        raise AssertionError(f"unsupported attention backend: {expected}")
+    prefix = "kernels-community/flash-attn2="
+    if not local_kernels.startswith(prefix):
+        raise AssertionError("local-fa2 requires the pinned LOCAL_KERNELS mapping")
+    kernel_root = Path(local_kernels[len(prefix) :])
+    extension = kernel_root / "_flash_attn2_cuda_a511a4c.abi3.so"
+    if not extension.is_file():
+        raise AssertionError(f"local FlashAttention extension is missing: {extension}")
+    extension_sha256 = _file_sha256(extension)
+    if extension_sha256 != PINNED_FLASH_ATTN2_EXTENSION_SHA256:
+        raise AssertionError(
+            "local FlashAttention extension identity changed: "
+            f"{extension_sha256}"
+        )
+    if not callable(function) or "flash_attn2" not in str(function_module):
+        raise AssertionError(
+            "local-fa2 did not import the expected FlashAttention-2 callable"
+        )
+    receipt.update(
+        runtime="local-fa2",
+        extension_path=str(extension),
+        extension_sha256=extension_sha256,
+    )
+    return receipt
 
 from distillschedule.profiling.static_profile_diagnostics import StaticProfileDiagnostics
 from distillschedule.profiling.fsdp2_operation_source import (
@@ -625,6 +692,12 @@ def _parser() -> Any:
         default="native-fsdp2-batch",
     )
     value.add_argument(
+        "--attention-backend",
+        choices=("sdpa", "local-fa2"),
+        default="sdpa",
+        help="Pinned physical attention implementation; training semantics are unchanged",
+    )
+    value.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         default="cpu_inplace",
@@ -805,6 +878,7 @@ def main() -> int:
             "rollout_batch_size": policy.rollout_batch_size,
             "pack_real_score_pair": policy.pack_real_score_pair,
             "rollout_backend": policy.rollout_backend,
+            "attention_backend": args.attention_backend,
             "generator_residual_storage": args.generator_residual_storage,
             "critic_residual_storage": args.critic_residual_storage,
             "generator_nograd_lora_fused_epilogue": bool(
@@ -827,6 +901,9 @@ def main() -> int:
         },
     }
     try:
+        result["attention_backend"] = _attention_backend_receipt(
+            args.attention_backend
+        )
         contract = contract_for_variant(args.variant)
         nsys_range = StaticFSDP2Full5NsightRange.from_env(
             variant=args.variant,
