@@ -30,6 +30,16 @@
     "correctness_before_timing": true,
     "formal_pairs": 3,
     "resident_optimization_order": [
+      "resident vs resident-clean",
+      "resident-clean vs resident-async128",
+      "resident-async128 vs resident-async128-tree",
+      "resident-async128-tree vs resident-async128-tree-chunk2048",
+      "resident-async128 vs resident-async256",
+      "resident-clean vs resident-local-fast",
+      "resident-local-fast vs resident-flat256",
+      "resident-flat256 vs resident-flat512",
+      "resident-flat256 vs resident-lora-zero2",
+      "resident-lora-zero2 vs resident-rollout-fused",
       "resident vs resident-ddp",
       "resident vs resident-fast",
       "resident vs world16-fsdp"
@@ -71,6 +81,186 @@
       "gradient_sync": "MANUAL_ALL_REDUCE_COALESCED_AFTER_BACKWARD",
       "optimizer_state": "FULL_REPLICA_FP32",
       "parameters": "FULL_REPLICA_GPU_RESIDENT"
+    },
+    "resident-clean": {
+      "ema_implementation": "reference",
+      "ema_state": "FULL_REPLICA_FP32",
+      "gradient_sync": "MANUAL_ALL_REDUCE_COALESCED_AFTER_BACKWARD",
+      "optimizer_state": "FULL_REPLICA_FP32",
+      "parameters": "FULL_REPLICA_GPU_RESIDENT",
+      "runtime": {
+        "cuda_sync_scope": "CYCLE_BOUNDARIES_ONLY",
+        "finite_gate": "DEFERRED_TO_CYCLE_END_IN_LOW_OVERHEAD_MODE",
+        "idempotent_model_state": true,
+        "reuse_critic_trace_entries": true,
+        "reuse_fixed_schedule_tensors": true
+      }
+    },
+    "resident-async128": {
+      "bucket_mb": 128,
+      "dedicated_comm_stream": true,
+      "ema_implementation": "reference",
+      "ema_state": "FULL_REPLICA_FP32",
+      "gradient_clip": "PYTORCH_DEFAULT",
+      "gradient_sync": "GRAD_READY_ASYNC_FLAT_ALL_REDUCE_DURING_BACKWARD",
+      "optimizer_implementation": "PYTORCH_DEFAULT",
+      "optimizer_state": "FULL_REPLICA_FP32",
+      "parameters": "FULL_REPLICA_GPU_RESIDENT",
+      "persistent_grad_views": true,
+      "runtime": {
+        "cuda_sync_scope": "CYCLE_BOUNDARIES_ONLY",
+        "finite_gate": "DEFERRED_TO_CYCLE_END_IN_LOW_OVERHEAD_MODE",
+        "idempotent_model_state": true,
+        "reuse_critic_trace_entries": true,
+        "reuse_fixed_schedule_tensors": true
+      }
+    },
+    "resident-async128-tree": {
+      "bucket_mb": 128,
+      "dedicated_comm_stream": true,
+      "ema_implementation": "reference",
+      "ema_state": "FULL_REPLICA_FP32",
+      "gradient_clip": "PYTORCH_DEFAULT",
+      "gradient_sync": "GRAD_READY_ASYNC_FLAT_ALL_REDUCE_DURING_BACKWARD",
+      "nccl_algo": "Tree",
+      "optimizer_implementation": "PYTORCH_DEFAULT",
+      "optimizer_state": "FULL_REPLICA_FP32",
+      "parameters": "FULL_REPLICA_GPU_RESIDENT",
+      "persistent_grad_views": true,
+      "runtime": {
+        "cuda_sync_scope": "CYCLE_BOUNDARIES_ONLY",
+        "finite_gate": "DEFERRED_TO_CYCLE_END_IN_LOW_OVERHEAD_MODE",
+        "idempotent_model_state": true,
+        "reuse_critic_trace_entries": true,
+        "reuse_fixed_schedule_tensors": true
+      }
+    },
+    "resident-async128-tree-chunk2048": {
+      "base": "resident-async128-tree",
+      "bucket_mb": 128,
+      "dedicated_comm_stream": true,
+      "ema_implementation": "reference",
+      "ema_state": "FULL_REPLICA_FP32",
+      "gradient_clip": "PYTORCH_DEFAULT",
+      "gradient_sync": "GRAD_READY_ASYNC_FLAT_ALL_REDUCE_DURING_BACKWARD",
+      "modulation_chunk_tokens": 2048,
+      "nccl_algo": "Tree",
+      "optimizer_implementation": "PYTORCH_DEFAULT",
+      "optimizer_state": "FULL_REPLICA_FP32",
+      "parameters": "FULL_REPLICA_GPU_RESIDENT",
+      "persistent_grad_views": true,
+      "runtime": {
+        "cuda_sync_scope": "CYCLE_BOUNDARIES_ONLY",
+        "finite_gate": "DEFERRED_TO_CYCLE_END_IN_LOW_OVERHEAD_MODE",
+        "idempotent_model_state": true,
+        "reuse_critic_trace_entries": true,
+        "reuse_fixed_schedule_tensors": true
+      }
+    },
+    "resident-async128-tree-chunk2048-compile": {
+      "base": "resident-async128-tree-chunk2048",
+      "bucket_mb": 128,
+      "dedicated_comm_stream": true,
+      "ema_implementation": "reference",
+      "ema_state": "FULL_REPLICA_FP32",
+      "gradient_clip": "PYTORCH_DEFAULT",
+      "gradient_sync": "GRAD_READY_ASYNC_FLAT_ALL_REDUCE_DURING_BACKWARD",
+      "modulation_chunk_tokens": 2048,
+      "nccl_algo": "Tree",
+      "optimizer_implementation": "PYTORCH_DEFAULT",
+      "optimizer_state": "FULL_REPLICA_FP32",
+      "parameters": "FULL_REPLICA_GPU_RESIDENT",
+      "persistent_grad_views": true,
+      "runtime": {
+        "cuda_sync_scope": "CYCLE_BOUNDARIES_ONLY",
+        "finite_gate": "DEFERRED_TO_CYCLE_END_IN_LOW_OVERHEAD_MODE",
+        "idempotent_model_state": true,
+        "reuse_critic_trace_entries": true,
+        "reuse_fixed_schedule_tensors": true
+      },
+      "torch_compile": {
+        "enabled": true,
+        "scope": "GENERATOR_NOGRAD_TRANSFORMER_BLOCKS_ONLY",
+        "backend": "inductor",
+        "mode": "default",
+        "dynamic": false,
+        "fullgraph": false
+      }
+    },
+    "resident-async256": {
+      "bucket_mb": 256,
+      "dedicated_comm_stream": true,
+      "ema_implementation": "reference",
+      "ema_state": "FULL_REPLICA_FP32",
+      "gradient_clip": "PYTORCH_DEFAULT",
+      "gradient_sync": "GRAD_READY_ASYNC_FLAT_ALL_REDUCE_DURING_BACKWARD",
+      "optimizer_implementation": "PYTORCH_DEFAULT",
+      "optimizer_state": "FULL_REPLICA_FP32",
+      "parameters": "FULL_REPLICA_GPU_RESIDENT",
+      "persistent_grad_views": true,
+      "runtime": {
+        "cuda_sync_scope": "CYCLE_BOUNDARIES_ONLY",
+        "finite_gate": "DEFERRED_TO_CYCLE_END_IN_LOW_OVERHEAD_MODE",
+        "idempotent_model_state": true,
+        "reuse_critic_trace_entries": true,
+        "reuse_fixed_schedule_tensors": true
+      }
+    },
+    "resident-local-fast": {
+      "ema_implementation": "foreach_lerp",
+      "ema_state": "FULL_REPLICA_FP32",
+      "gradient_clip": "FOREACH_TRUE",
+      "gradient_sync": "MANUAL_ALL_REDUCE_COALESCED_AFTER_BACKWARD",
+      "optimizer_implementation": "PYTORCH_FUSED_ADAMW",
+      "optimizer_state": "FULL_REPLICA_FP32",
+      "parameters": "FULL_REPLICA_GPU_RESIDENT",
+      "runtime": {
+        "cuda_sync_scope": "CYCLE_BOUNDARIES_ONLY",
+        "finite_gate": "DEFERRED_TO_CYCLE_END_IN_LOW_OVERHEAD_MODE",
+        "idempotent_model_state": true,
+        "reuse_critic_trace_entries": true,
+        "reuse_fixed_schedule_tensors": true
+      }
+    },
+    "resident-flat256": {
+      "bucket_mb": 256,
+      "ema_implementation": "foreach_lerp",
+      "ema_state": "FULL_REPLICA_FP32",
+      "gradient_clip": "FOREACH_TRUE",
+      "gradient_sync": "PERSISTENT_FLAT_ALL_REDUCE_AFTER_BACKWARD",
+      "optimizer_implementation": "PYTORCH_FUSED_ADAMW",
+      "optimizer_state": "FULL_REPLICA_FP32",
+      "parameters": "FULL_REPLICA_GPU_RESIDENT",
+      "persistent_grad_views": true
+    },
+    "resident-flat512": {
+      "bucket_mb": 512,
+      "ema_implementation": "foreach_lerp",
+      "ema_state": "FULL_REPLICA_FP32",
+      "gradient_clip": "FOREACH_TRUE",
+      "gradient_sync": "PERSISTENT_FLAT_ALL_REDUCE_AFTER_BACKWARD",
+      "optimizer_implementation": "PYTORCH_FUSED_ADAMW",
+      "optimizer_state": "FULL_REPLICA_FP32",
+      "parameters": "FULL_REPLICA_GPU_RESIDENT",
+      "persistent_grad_views": true
+    },
+    "resident-lora-zero2": {
+      "ema_state": "WORLD16_LOCAL_FLAT_SHARD_FP32",
+      "gradient_clip": "GLOBAL_L2_FROM_LOCAL_SHARDS",
+      "gradient_sync": "REDUCE_SCATTER_SUM_DIVIDE_THEN_PARAMETER_ALL_GATHER",
+      "optimizer_implementation": "PYTORCH_FUSED_LOCAL_SHARD",
+      "optimizer_state": "WORLD16_LOCAL_FLAT_SHARD_FP32",
+      "parameters": "FULL_REPLICA_GPU_RESIDENT",
+      "trainable_parameter_publish": "ALL_GATHER_AFTER_EACH_COMMIT"
+    },
+    "resident-rollout-fused": {
+      "base": "resident-lora-zero2",
+      "ema_state": "WORLD16_LOCAL_FLAT_SHARD_FP32",
+      "generator_rollout_shadow": "FULL_REPLICA_BF16_FUSED_LORA",
+      "gradient_sync": "REDUCE_SCATTER_SUM_DIVIDE_THEN_PARAMETER_ALL_GATHER",
+      "optimizer_state": "WORLD16_LOCAL_FLAT_SHARD_FP32",
+      "parameters": "FULL_REPLICA_GPU_RESIDENT",
+      "shadow_refresh": "AFTER_GENERATOR_COMMIT"
     },
     "resident-ddp": {
       "ddp_bucket_cap_mb": 128,

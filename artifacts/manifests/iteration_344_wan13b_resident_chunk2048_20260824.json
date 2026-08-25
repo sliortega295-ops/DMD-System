@@ -1,0 +1,48 @@
+{
+  "schema_version": "distillschedule.iteration_result.v1",
+  "iteration": "iteration_344_wan13b_resident_tree_chunk2048_20260824",
+  "experiment_head": "1fe2f0be33db83fdbea99bb2e786749adc776149",
+  "status": "PASS_DIAGNOSTIC_ONLY",
+  "hardware": "2x8_A100_40GB",
+  "contract": {
+    "world_size": 16,
+    "global_batch": 16,
+    "rollout_batch_size": 1,
+    "score_packing": false,
+    "updates": {"generator": 1, "critic": 5, "ema": 5},
+    "final_versions": {"generator": 3, "critic": 15, "ema": 15},
+    "frozen_base_dtype": "torch.bfloat16",
+    "lora_dtype": "torch.float32",
+    "nccl_algo": "Tree",
+    "async_gradient_bucket_mib": 128,
+    "offload": false
+  },
+  "reference": {
+    "placement": "resident-async128-tree",
+    "modulation_chunk_tokens": 512,
+    "full5_seconds": 34.47350598400226,
+    "max_allocated_bytes": 23505487872,
+    "max_reserved_bytes": 24024973312,
+    "min_driver_free_bytes": 17419337728,
+    "rank_count": 16,
+    "status": "PASS"
+  },
+  "candidate": {
+    "placement": "resident-async128-tree-chunk2048",
+    "modulation_chunk_tokens": 2048,
+    "full5_seconds": 27.233467853002367,
+    "max_allocated_bytes": 23500664832,
+    "max_reserved_bytes": 23639097344,
+    "min_driver_free_bytes": 17805213696,
+    "rank_count": 16,
+    "status": "PASS"
+  },
+  "comparison": {
+    "candidate_minus_reference_seconds": -7.240038130999892,
+    "candidate_wall_reduction_fraction": 0.2100174590411459,
+    "candidate_speedup": 1.2658507601778564,
+    "formal_eligibility": false,
+    "claim_boundary": "ONE_BOUNDED_UNPROFILED_DIAGNOSTIC_PAIR"
+  },
+  "not_run": ["formal_three_pair_timing", "Nsight_chunk2048", "NCU"]
+}

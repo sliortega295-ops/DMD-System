@@ -18,6 +18,7 @@ the pinned worker.
 from __future__ import annotations
 
 import gc
+import copy
 import importlib.util
 import os
 import sys
@@ -40,14 +41,34 @@ sys.modules[_SPEC.name] = base
 _SPEC.loader.exec_module(base)
 
 from distillschedule.runtime.wan13b_fair import (
+    ASYNC_128_RESIDENT,
+    ASYNC_128_TREE_RESIDENT,
+    ASYNC_128_TREE_CHUNK2048_RESIDENT,
+    ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT,
+    ASYNC_256_RESIDENT,
+    CLEAN_RESIDENT,
     FAIR_PLACEMENTS,
     FSDP_PLACEMENT,
+    FLAT_256_RESIDENT,
+    FLAT_512_RESIDENT,
+    LORA_ZERO2_RESIDENT,
+    ROLLOUT_FUSED_RESIDENT,
+    LOCAL_FAST_RESIDENT,
     FairTrainableEMA,
     LoRAComputeDtypeAudit,
+    ShardedTrainableEMA,
     RESIDENT_PLACEMENTS,
     apply_wan13b_fair_fsdp2_policy,
     build_fair_engine,
+    configure_modulation_chunk_tokens,
     fair_model_trainable_metrics,
+    install_resident_clean_model_state,
+    install_generator_nograd_block_compile,
+)
+from distillschedule.runtime.wan13b_lora_cast import (
+    install_generator_nograd_lora_cast_cache,
+    install_generator_nograd_lora_fused_epilogue,
+    install_lora_operator_attribution,
 )
 
 
@@ -75,12 +96,23 @@ def _build_model_fair(
     if int(metadata["block_count"]) != base.WAN13B_BLOCK_COUNT:
         raise AssertionError("Wan1.3B fair worker requires exactly 30 blocks")
     restore = bootstrap.restore_trainables(model, component=role)
+    modulation_chunk = configure_modulation_chunk_tokens(
+        model, placement=args.placement
+    )
+    metadata = dict(metadata)
+    metadata["modulation_chunk_runtime"] = modulation_chunk
 
     # Use the same non-reentrant checkpoint wrapper on every arm. Disabling the
     # metadata check changes no tensor math but removes a wrapper-only variable.
     base.configure_fsdp2_checkpointing(model)
     model.to(device)
     torch.cuda.synchronize(device)
+
+    if args.placement == ROLLOUT_FUSED_RESIDENT and role == "generator":
+        shadow = copy.deepcopy(model)
+        shadow.requires_grad_(False)
+        shadow.train(model.training)
+        object.__setattr__(model, "_distillschedule_rollout_shadow", shadow)
 
     if args.placement == FSDP_PLACEMENT:
         placement = apply_wan13b_fair_fsdp2_policy(model)
@@ -106,15 +138,51 @@ def _build_model_fair(
             )
         placement = {
             "backend": (
-                "FULL_REPLICA_GPU_RESIDENT_DDP_GRAD_SYNC"
-                if args.placement != "resident"
-                else "FULL_REPLICA_GPU_RESIDENT_MANUAL_GRAD_SYNC"
+                "FULL_REPLICA_GPU_RESIDENT_LORA_ZERO2"
+                if args.placement in {LORA_ZERO2_RESIDENT, ROLLOUT_FUSED_RESIDENT}
+                else (
+                    "FULL_REPLICA_GPU_RESIDENT_DDP_GRAD_SYNC"
+                    if args.placement
+                    not in {
+                        "resident",
+                        CLEAN_RESIDENT,
+                        ASYNC_128_RESIDENT,
+                        ASYNC_128_TREE_RESIDENT,
+                        ASYNC_128_TREE_CHUNK2048_RESIDENT,
+                        ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT,
+                        ASYNC_256_RESIDENT,
+                        LOCAL_FAST_RESIDENT,
+                        FLAT_256_RESIDENT,
+                        FLAT_512_RESIDENT,
+                        ROLLOUT_FUSED_RESIDENT,
+                    }
+                    else "FULL_REPLICA_GPU_RESIDENT_MANUAL_GRAD_SYNC"
+                )
             ),
             "world_size": base.WORLD_SIZE,
             "block_count": base.WAN13B_BLOCK_COUNT,
-            "wrap_policy": "DDP_TRAINABLE_REDUCER_ONLY"
-            if args.placement != "resident"
-            else "NONE",
+            "wrap_policy": (
+                "LORA_ONLY_ZERO2"
+                if args.placement in {LORA_ZERO2_RESIDENT, ROLLOUT_FUSED_RESIDENT}
+                else (
+                    "DDP_TRAINABLE_REDUCER_ONLY"
+                    if args.placement
+                    not in {
+                        "resident",
+                        CLEAN_RESIDENT,
+                        ASYNC_128_RESIDENT,
+                        ASYNC_128_TREE_RESIDENT,
+                        ASYNC_128_TREE_CHUNK2048_RESIDENT,
+                        ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT,
+                        ASYNC_256_RESIDENT,
+                        LOCAL_FAST_RESIDENT,
+                        FLAT_256_RESIDENT,
+                        FLAT_512_RESIDENT,
+                        ROLLOUT_FUSED_RESIDENT,
+                    }
+                    else "NONE"
+                )
+            ),
             "reshard_after_forward": False,
             "param_compute_dtype_policy": "PRESERVE_ORIGINAL_PER_PARAMETER",
             "frozen_parameter_dtypes": frozen_dtypes,
@@ -127,6 +195,46 @@ def _build_model_fair(
         }
     else:
         raise ValueError(args.placement)
+
+    clean_model_state = None
+    if args.placement in {
+        CLEAN_RESIDENT,
+        ASYNC_128_RESIDENT,
+        ASYNC_128_TREE_RESIDENT,
+        ASYNC_128_TREE_CHUNK2048_RESIDENT,
+        ASYNC_128_TREE_CHUNK2048_COMPILE_RESIDENT,
+        ASYNC_256_RESIDENT,
+        LOCAL_FAST_RESIDENT,
+        FLAT_256_RESIDENT,
+        FLAT_512_RESIDENT,
+        LORA_ZERO2_RESIDENT,
+        ROLLOUT_FUSED_RESIDENT,
+    }:
+        clean_model_state = install_resident_clean_model_state(model)
+
+    compile_runtime = install_generator_nograd_block_compile(
+        model,
+        placement=args.placement,
+        role=role,
+    )
+    metadata["nograd_compile_runtime"] = compile_runtime
+    lora_cast_cache = install_generator_nograd_lora_cast_cache(
+        model,
+        role=role,
+    )
+    metadata["generator_nograd_lora_cast_cache"] = lora_cast_cache
+    lora_fused_epilogue = install_generator_nograd_lora_fused_epilogue(
+        model,
+        role=role,
+    )
+    metadata["generator_nograd_lora_fused_epilogue"] = lora_fused_epilogue
+    lora_operator_attribution = install_lora_operator_attribution(
+        model,
+        role=role,
+        profile_mode=bool(args.profile_mode),
+        global_rank=int(torch.distributed.get_rank()),
+    )
+    metadata["lora_operator_attribution"] = lora_operator_attribution
 
     audit_records: list[dict[str, Any]] | str = "OMITTED_IN_LOW_OVERHEAD_MODE"
     if not (args.timing_mode or args.profile_mode):
@@ -148,6 +256,9 @@ def _build_model_fair(
             "records": audit_records,
         },
         "host_allocator_trimmed": host_trimmed,
+        "resident_clean_model_state_initial": (
+            clean_model_state.receipt() if clean_model_state is not None else None
+        ),
         "memory_after_placement": base._memory(device),
     }
 
@@ -158,7 +269,14 @@ def _ema_factory(
     optimization_step: int = 10,
     decay: float = 0.999,
     update_after_step: int = 0,
-) -> FairTrainableEMA:
+) -> FairTrainableEMA | ShardedTrainableEMA:
+    if hasattr(module, "_distillschedule_lora_zero2_engine"):
+        return ShardedTrainableEMA(
+            module,
+            optimization_step=optimization_step,
+            decay=decay,
+            update_after_step=update_after_step,
+        )
     implementation = os.environ.get(
         "DISTILLSCHEDULE_WAN13B_EMA_IMPLEMENTATION", "reference"
     )

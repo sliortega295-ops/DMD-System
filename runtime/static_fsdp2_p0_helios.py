@@ -37,6 +37,8 @@ def run_generator_trace_rollout_batch(
     record_output_sha256: bool = False,
     collect_diagnostics: bool = False,
     diagnostics_scope: Any | None = None,
+    clean_runtime: bool = False,
+    runtime_cache: dict[str, Any] | None = None,
 ) -> tuple[tuple[torch.Tensor, ...], dict[str, Any]]:
     """Run multiple step-qualified critic rollouts in one physical B>1 trace.
 
@@ -73,21 +75,28 @@ def run_generator_trace_rollout_batch(
         stage_range=[0, 1 / 3, 2 / 3, 1],
         gamma=1 / 3,
     )
-    sigmas = torch.linspace(
-        1.0, 1.0 / 1000, 1000, device=device, dtype=torch.float64
-    )
-    timesteps = sigmas * 1000
-    args = SimpleNamespace(
-        training_config=SimpleNamespace(
-            base_seq_len=256,
-            max_seq_len=4096,
-            base_shift=0.5,
-            max_shift=1.15,
-            saturation_ratio_min=0.3,
-            saturation_ratio_max=1.7,
-            saturation_ratio_clean_prob=0.1,
+    cache_key = f"rollout_constants/{device}"
+    cached = runtime_cache.get(cache_key) if runtime_cache is not None else None
+    if cached is None:
+        sigmas = torch.linspace(
+            1.0, 1.0 / 1000, 1000, device=device, dtype=torch.float64
         )
-    )
+        timesteps = sigmas * 1000
+        args = SimpleNamespace(
+            training_config=SimpleNamespace(
+                base_seq_len=256,
+                max_seq_len=4096,
+                base_shift=0.5,
+                max_shift=1.15,
+                saturation_ratio_min=0.3,
+                saturation_ratio_max=1.7,
+                saturation_ratio_clean_prob=0.1,
+            )
+        )
+        if runtime_cache is not None:
+            runtime_cache[cache_key] = (sigmas, timesteps, args)
+    else:
+        sigmas, timesteps, args = cached
     tracer: Any
     if detailed_profile:
         tracer = NestedCallTracer(
@@ -110,7 +119,8 @@ def run_generator_trace_rollout_batch(
     physical_call = ForceNoGradCalls(tracer)
     model.enable_adapters()
     model.train()
-    torch.cuda.reset_peak_memory_stats(device)
+    if not clean_runtime:
+        torch.cuda.reset_peak_memory_stats(device)
     generated_x0, gradient_mask, denoised_from, denoised_to, consistency_loss = run_generator(
         args=args,
         accelerator=SimpleNamespace(device=device, is_main_process=False),
@@ -149,7 +159,8 @@ def run_generator_trace_rollout_batch(
         operation_trace=loaded.operation_trace,
         trace_prefix=loaded.pool_entry.synthetic_trace_prefix,
     )
-    torch.cuda.synchronize(device)
+    if not clean_runtime:
+        torch.cuda.synchronize(device)
     batch_size = len(loaded.members)
     if list(generated_x0.shape) != [batch_size, 16, 9, 48, 80]:
         raise AssertionError(

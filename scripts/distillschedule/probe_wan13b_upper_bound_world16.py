@@ -157,17 +157,27 @@ def _save_optimizer_evidence(
         if parameter.requires_grad
     }
     state: dict[str, torch.Tensor] = {}
-    for name, parameter in trainables.items():
-        optimizer_state = engine.optimizer.state[parameter]
-        for key in ("exp_avg", "exp_avg_sq"):
-            value = optimizer_state[key]
-            if hasattr(value, "full_tensor"):
-                full = value.detach().full_tensor()
-            else:
-                full = value.detach()
-            if rank == 0:
-                state[f"{key}/{name}"] = full.cpu().float().contiguous()
-            del full
+    sharded_evidence = getattr(engine, "full_optimizer_state_evidence", None)
+    if callable(sharded_evidence):
+        values = sharded_evidence()
+        for name in trainables:
+            for key in ("exp_avg", "exp_avg_sq"):
+                if rank == 0:
+                    state[f"{key}/{name}"] = (
+                        values[name][key].detach().cpu().float().contiguous()
+                    )
+    else:
+        for name, parameter in trainables.items():
+            optimizer_state = engine.optimizer.state[parameter]
+            for key in ("exp_avg", "exp_avg_sq"):
+                value = optimizer_state[key]
+                if hasattr(value, "full_tensor"):
+                    full = value.detach().full_tensor()
+                else:
+                    full = value.detach()
+                if rank == 0:
+                    state[f"{key}/{name}"] = full.cpu().float().contiguous()
+                del full
     if rank != 0:
         return {"writer_rank": 0, "status": "PARTICIPATED_IN_GATHER"}
     path = output_dir / "correctness" / f"final_{component}_optimizer.safetensors"
@@ -351,6 +361,24 @@ def main() -> int:
         if args.timing_mode and args.profile_mode:
             raise ValueError("timing mode and profile mode are mutually exclusive")
         low_overhead = bool(args.timing_mode or args.profile_mode)
+        clean_runtime = args.placement in {
+            "resident-clean",
+            "resident-async128",
+            "resident-async128-tree",
+            "resident-async128-tree-chunk2048",
+            "resident-async128-tree-chunk2048-compile",
+            "resident-async256",
+            "resident-local-fast",
+            "resident-flat256",
+            "resident-flat512",
+            "resident-lora-zero2",
+            "resident-rollout-fused",
+        }
+        runtime_cache: dict[str, Any] | None = {} if clean_runtime else None
+        critic_entries: dict[int, Any] | None = {} if clean_runtime else None
+        deferred_finite_checks: list[torch.Tensor] | None = (
+            [] if clean_runtime and low_overhead else None
+        )
         contract = contract_for_variant("no-gan")
         bootstrap = Wan13BBootstrap.load(
             args.bootstrap,
@@ -429,6 +457,9 @@ def main() -> int:
         }
         dist.barrier()
         torch.cuda.synchronize(device)
+        if clean_runtime:
+            # One cycle-level peak boundary replaces per-call resets.
+            torch.cuda.reset_peak_memory_stats(device)
         started = time.perf_counter()
         started_ns = time.time_ns()
         if args.profile_mode:
@@ -451,6 +482,9 @@ def main() -> int:
             diagnostics=diagnostics,
             policy=policy,
             score_pack_parity_check=False,
+            clean_runtime=clean_runtime,
+            runtime_cache=runtime_cache,
+            deferred_finite_checks=deferred_finite_checks,
         )
         if args.profile_mode and local_rank == 0:
             torch.cuda.nvtx.range_pop()
@@ -465,6 +499,9 @@ def main() -> int:
             collect_diagnostics=not low_overhead,
             diagnostics=diagnostics,
             rollout_parity_check=False,
+            clean_runtime=clean_runtime,
+            runtime_cache=runtime_cache,
+            entry_outputs=critic_entries,
         )
         if args.profile_mode and local_rank == 0:
             torch.cuda.nvtx.range_pop()
@@ -498,6 +535,13 @@ def main() -> int:
                     trace=trace,
                     collect_diagnostics=not low_overhead,
                     diagnostics=diagnostics,
+                    entry=(
+                        critic_entries.get(step)
+                        if critic_entries is not None
+                        else None
+                    ),
+                    runtime_cache=runtime_cache,
+                    deferred_finite_checks=deferred_finite_checks,
                 )
             )
             if args.profile_mode and local_rank == 0:
@@ -516,6 +560,13 @@ def main() -> int:
                 torch.cuda.nvtx.range_pop()
 
         torch.cuda.synchronize(device)
+        deferred_finite_status: bool | str = "NOT_USED"
+        if deferred_finite_checks is not None:
+            deferred_finite_status = bool(
+                torch.stack(deferred_finite_checks).all().detach().cpu()
+            )
+            if not deferred_finite_status:
+                raise AssertionError("resident-clean deferred cycle finite gate failed")
         dist.barrier()
         if args.profile_mode:
             if local_rank == 0:
@@ -608,6 +659,16 @@ def main() -> int:
                 "generator": getattr(generator_engine, "gradient_sync_receipts", []),
                 "critic": getattr(critic_engine, "gradient_sync_receipts", []),
             },
+            rollout_shadow={
+                "enabled": bool(hasattr(generator_engine, "shadow_refresh_count")),
+                "refresh_count": int(
+                    getattr(generator_engine, "shadow_refresh_count", 0)
+                ),
+                "routed_call_count": int(
+                    getattr(generator_engine, "shadow_routed_call_count", 0)
+                ),
+                "fused": bool(getattr(generator_engine, "_shadow_fused", False)),
+            },
             formal_timer_scope=(
                 "step10 Generator update; five B1 no-grad Generator rollouts; "
                 "five Critic commits; five GPU EMA updates"
@@ -616,6 +677,32 @@ def main() -> int:
             activation_offload_count=0,
             model_swap_count=0,
             parameter_streaming_count=0,
+            resident_clean_runtime={
+                "enabled": clean_runtime,
+                "internal_cuda_housekeeping_skipped": clean_runtime,
+                "trace_entries_reused": (
+                    len(critic_entries) if critic_entries is not None else 0
+                ),
+                "runtime_cache_keys": (
+                    sorted(runtime_cache) if runtime_cache is not None else []
+                ),
+                "deferred_finite_check_count": (
+                    len(deferred_finite_checks)
+                    if deferred_finite_checks is not None
+                    else 0
+                ),
+                "deferred_finite_status": deferred_finite_status,
+                "generator_model_state": (
+                    generator_engine.module._distillschedule_resident_clean_state.receipt()
+                    if clean_runtime
+                    else None
+                ),
+                "critic_model_state": (
+                    critic_engine.module._distillschedule_resident_clean_state.receipt()
+                    if clean_runtime
+                    else None
+                ),
+            },
         )
         _atomic_json(output, result)
         dist.barrier()

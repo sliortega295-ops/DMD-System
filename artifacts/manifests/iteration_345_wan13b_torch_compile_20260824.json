@@ -1,0 +1,27 @@
+{
+  "schema_version": "distillschedule.iteration_manifest.v1",
+  "iteration": "iteration_345_wan13b_generator_nograd_compile_20260824",
+  "experiment_head": "9cca98381a36ef43b308863c6765785cce34483e",
+  "status": "COMPLETED_NEGATIVE_RESULT",
+  "scope": "GENERATOR_NOGRAD_TRANSFORMER_BLOCKS_ONLY",
+  "runs": {
+    "validate_failed": "iter345_validate_compile_nograd_20260824",
+    "validate_pass": "iter345_validate_compile_nograd_20260824_R2",
+    "compile_correctness": "iter345_correctness_compile_nograd_20260824",
+    "eager_correctness": "iter345_correctness_eager_samehead_20260824",
+    "eager_diagnostic_timing": "iter345_timing_eager_samehead_diag_20260824",
+    "compile_diagnostic_timing": "iter345_timing_compile_nograd_diag_20260824"
+  },
+  "semantic_correctness": "PASS_16_OF_16",
+  "strict_numerical_parity": "FAIL_80_OF_80_ROLLOUT_ROWS",
+  "formal_timing": "NOT_RUN_STRICT_PARITY_FAIL",
+  "diagnostic_full5_seconds": {
+    "eager": 27.181842625999707,
+    "compile": 33.730887614001404,
+    "compile_minus_eager": 6.549044988001697,
+    "compile_regression_percent": 24.093454877622868
+  },
+  "decision": "REJECT_CURRENT_COMPILE_ARM",
+  "persistent_evidence_root": "/home/lyy/Helios/research_artifacts/DMD-System/wan13b_compile_20260824",
+  "report": "docs/experiments/WAN13B_TORCH_COMPILE_CANARY_20260824.md"
+}

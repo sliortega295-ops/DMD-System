@@ -97,7 +97,9 @@ def parser() -> argparse.ArgumentParser:
     )
     value.add_argument("--run-id", required=True)
     value.add_argument(
-        "--mode", choices=("validate", "correctness", "timing"), required=True
+        "--mode",
+        choices=("validate", "correctness", "timing", "diagnostic-timing", "profile"),
+        required=True,
     )
     value.add_argument("--placement", choices=FAIR_PLACEMENTS, required=True)
     value.add_argument("--expected-head", required=True)
@@ -119,15 +121,20 @@ def parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path(
             "/share/project/shuchenweng/yongyan_liu/"
-            "DistillSchedule_gan_rolephase_exec_20260812"
+            "DistillSchedule_fsdp2_gpu_residual_20260816"
         ),
     )
     value.add_argument(
         "--expected-helios-transformer-sha256",
-        default="776a26c3b2921d599821f0767910830471ff94a955f5013089f9f689ac20fee7",
+        default="5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
     )
     value.add_argument("--correctness-receipt", type=Path)
     value.add_argument("--correctness-sha256")
+    value.add_argument(
+        "--nsys-bin",
+        type=Path,
+        default=Path("/home/lyy/Helios/tools/nsight_systems/2024.6.2.225/bin/nsys"),
+    )
     value.add_argument(
         "--local-evidence-root",
         type=Path,
@@ -136,6 +143,11 @@ def parser() -> argparse.ArgumentParser:
             "wan13b_fair_resident_fsdp2_20260822"
         ),
     )
+    value.add_argument("--lora-operator-attribution", action="store_true")
+    value.add_argument("--lora-attribution-target-rank", type=int, default=0)
+    value.add_argument("--lora-attribution-target-nograd-calls", type=int, default=3)
+    value.add_argument("--generator-nograd-lora-cast-cache", action="store_true")
+    value.add_argument("--generator-nograd-lora-fused-epilogue", action="store_true")
     value.add_argument("--timeout-seconds", type=int, default=18000)
     value.add_argument("--dry-run", action="store_true")
     return value
@@ -166,9 +178,9 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256="
         + shlex.quote(args.expected_helios_transformer_sha256),
     ]
-    if args.mode == "timing":
+    if args.mode in {"timing", "diagnostic-timing", "profile"}:
         if args.correctness_receipt is None or not args.correctness_sha256:
-            raise ValueError("timing requires a pinned fair correctness receipt")
+            raise ValueError("low-overhead execution requires a pinned correctness receipt")
         exports.extend(
             (
                 "DISTILLSCHEDULE_WAN13B_FAIR_CORRECTNESS_RECEIPT="
@@ -176,6 +188,30 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
                 "DISTILLSCHEDULE_WAN13B_FAIR_CORRECTNESS_SHA256="
                 + shlex.quote(args.correctness_sha256),
             )
+        )
+    if args.mode == "profile":
+        exports.append("DISTILLSCHEDULE_NSYS_BIN=" + shlex.quote(str(args.nsys_bin)))
+    if args.lora_operator_attribution:
+        if args.mode != "profile":
+            raise ValueError("LoRA operator attribution requires --mode profile")
+        if not 0 <= args.lora_attribution_target_rank < 16:
+            raise ValueError("LoRA attribution target rank must be in [0, 15]")
+        if args.lora_attribution_target_nograd_calls <= 0:
+            raise ValueError("LoRA attribution target call count must be positive")
+        exports.extend(
+            (
+                "DISTILLSCHEDULE_WAN13B_LORA_OPERATOR_ATTRIBUTION=1",
+                "DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_TARGET_RANK="
+                + str(args.lora_attribution_target_rank),
+                "DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS="
+                + str(args.lora_attribution_target_nograd_calls),
+            )
+        )
+    if args.generator_nograd_lora_cast_cache:
+        exports.append("DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE=1")
+    if args.generator_nograd_lora_fused_epilogue:
+        exports.append(
+            "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE=1"
         )
     launch = " ".join(
         shlex.quote(str(value))
