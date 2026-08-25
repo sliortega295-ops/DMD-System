@@ -244,8 +244,11 @@ def fused_modulated_norm_materialization(
         raise RuntimeError("Helios modulation materialization requires CUDA tensors")
     if normalized.dtype is not torch.float32:
         raise RuntimeError("Helios modulated-norm input must be FP32")
-    if scale_shift_table.dtype is not torch.float32:
-        raise RuntimeError("Helios scale-shift table must be FP32")
+    if scale_shift_table.dtype not in (torch.bfloat16, torch.float32):
+        raise RuntimeError(
+            "unsupported Helios scale-shift table dtype: "
+            f"{scale_shift_table.dtype}"
+        )
     if scale_component.dtype not in (torch.bfloat16, torch.float32):
         raise RuntimeError("unsupported Helios scale-component dtype")
     if shift_component.dtype not in (torch.bfloat16, torch.float32):
@@ -314,8 +317,10 @@ def warmup(
         (1, 512, SUPPORTED_WIDTH), device=device, dtype=torch.bfloat16
     )
     if fuse_materialization:
+        # The live FSDP mixed-precision policy unshards this frozen parameter
+        # as BF16.  Precompile that exact specialization outside the timer.
         table = torch.zeros(
-            (1, 6, SUPPORTED_WIDTH), device=device, dtype=torch.float32
+            (1, 6, SUPPORTED_WIDTH), device=device, dtype=torch.bfloat16
         )
         component = torch.zeros(
             (1, 512, SUPPORTED_WIDTH), device=device, dtype=torch.bfloat16
@@ -335,6 +340,9 @@ def warmup(
         "block_size": BLOCK_SIZE,
         "num_warps": NUM_WARPS,
         "fuse_materialization": bool(fuse_materialization),
+        "materialization_table_dtype": (
+            "torch.bfloat16" if fuse_materialization else None
+        ),
         "torch_version": str(torch.__version__),
         "triton_version": str(triton.__version__),
     }

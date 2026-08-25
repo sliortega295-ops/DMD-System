@@ -286,8 +286,11 @@ def test_real_triton_kernel_is_bitwise_exact(
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA-only Triton parity")
 @pytest.mark.parametrize("sequence_length", [1, 127, 512])
 @pytest.mark.parametrize("broadcast_modulation", [False, True])
+@pytest.mark.parametrize("table_dtype", [torch.bfloat16, torch.float32])
 def test_real_materialization_kernel_is_bitwise_exact(
-    sequence_length: int, broadcast_modulation: bool
+    sequence_length: int,
+    broadcast_modulation: bool,
+    table_dtype: torch.dtype,
 ) -> None:
     from distillschedule.runtime.helios_modulated_norm_kernel import (
         fused_modulated_norm_materialization,
@@ -303,7 +306,7 @@ def test_real_materialization_kernel_is_bitwise_exact(
     table = torch.randn(
         (1, 6, 5120),
         device="cuda",
-        dtype=torch.float32,
+        dtype=table_dtype,
         generator=generator,
     )
     if broadcast_modulation:
