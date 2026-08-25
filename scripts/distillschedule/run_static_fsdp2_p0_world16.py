@@ -338,11 +338,24 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
     completed = subprocess.run(
         _ssh(args.hosts[0], command), check=False, timeout=300
     )
-    raw = subprocess.check_output(
-        _ssh(args.hosts[0], f"cat {shlex.quote(str(summary))}"), timeout=60
-    )
     local.mkdir(parents=True, exist_ok=True)
-    (local / "summary.json").write_bytes(raw)
+    local_summary = local / "summary.json"
+    subprocess.run(
+        [
+            "scp",
+            "-4",
+            "-q",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "UpdateHostKeys=no",
+            f"{args.hosts[0]}:{summary}",
+            str(local_summary),
+        ],
+        check=True,
+        timeout=600,
+    )
+    raw = local_summary.read_bytes()
     value = json.loads(raw)
     if completed.returncode != 0 or value.get("status") != "PASS":
         raise RuntimeError(f"P0 summary failed: {value.get('errors')}")
