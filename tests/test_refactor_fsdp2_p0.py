@@ -128,6 +128,17 @@ def test_policy_and_mesh_contract() -> None:
         StaticFSDP2P0Policy(
             exact_modulated_norm_materialization=True,
         )
+    cached = StaticFSDP2P0Policy(
+        mesh_policy="node-hsdp",
+        rollout_batch_size=1,
+        generator_nograd_history_kv_cache=True,
+    )
+    assert cached.id.endswith("historykvcache")
+    with pytest.raises(ValueError, match="history KV cache is restricted to B1"):
+        StaticFSDP2P0Policy(
+            rollout_batch_size=2,
+            generator_nograd_history_kv_cache=True,
+        )
 
 
 def test_execution_order_precomputes_all_rollouts_before_critic() -> None:

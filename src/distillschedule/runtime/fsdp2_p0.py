@@ -58,6 +58,7 @@ class StaticFSDP2P0Policy:
     exact_grad_residual_fusion: bool = False
     exact_modulated_norm_epilogue: bool = False
     exact_modulated_norm_materialization: bool = False
+    generator_nograd_history_kv_cache: bool = False
 
     def __post_init__(self) -> None:
         if self.mesh_policy not in SUPPORTED_MESH_POLICIES:
@@ -89,6 +90,11 @@ class StaticFSDP2P0Policy:
             raise ValueError(
                 "Exact modulation materialization requires the exact epilogue"
             )
+        if (
+            self.generator_nograd_history_kv_cache
+            and self.rollout_batch_size != 1
+        ):
+            raise ValueError("Generator no-grad history KV cache is restricted to B1")
 
     @property
     def id(self) -> str:
@@ -107,6 +113,8 @@ class StaticFSDP2P0Policy:
             suffixes.append("modnormepilogue")
         if self.exact_modulated_norm_materialization:
             suffixes.append("modnormmaterialization")
+        if self.generator_nograd_history_kv_cache:
+            suffixes.append("historykvcache")
         return "-".join((base, *suffixes))
 
 

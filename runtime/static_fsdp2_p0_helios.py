@@ -9,6 +9,9 @@ import torch
 from distillschedule.runtime.helios_residual_fusion import (
     generator_nograd_residual_fusion_scope,
 )
+from distillschedule.runtime.helios_history_kv_cache import (
+    generator_nograd_history_kv_cache_scope,
+)
 from distillschedule.runtime.fsdp2_p0 import (
     estimate_rollout_collective_groups,
     make_batched_loaded_entry,
@@ -40,6 +43,7 @@ def run_generator_trace_rollout_batch(
     record_output_sha256: bool = False,
     collect_diagnostics: bool = False,
     diagnostics_scope: Any | None = None,
+    use_history_kv_cache: bool = False,
 ) -> tuple[tuple[torch.Tensor, ...], dict[str, Any]]:
     """Run multiple step-qualified critic rollouts in one physical B>1 trace.
 
@@ -114,7 +118,11 @@ def run_generator_trace_rollout_batch(
     model.enable_adapters()
     model.train()
     torch.cuda.reset_peak_memory_stats(device)
-    with generator_nograd_residual_fusion_scope():
+    with generator_nograd_history_kv_cache_scope(
+        model,
+        enabled=use_history_kv_cache,
+        expected_model_calls=expected_call_count,
+    ) as history_kv_cache, generator_nograd_residual_fusion_scope():
         (
             generated_x0,
             gradient_mask,
@@ -212,6 +220,7 @@ def run_generator_trace_rollout_batch(
             batch_size=batch_size,
         ),
         "memory": _memory_snapshot(device),
+        "history_kv_cache": history_kv_cache,
     }
     if collect_diagnostics:
         details.update(

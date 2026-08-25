@@ -53,6 +53,9 @@ from distillschedule.runtime.fsdp2_static import FSDP2ShardEMA, build_fsdp2_engi
 from distillschedule.runtime.helios_lora_epilogue import (
     install_generator_nograd_lora_fused_epilogue,
 )
+from distillschedule.runtime.helios_history_kv_cache import (
+    install_generator_nograd_history_kv_cache,
+)
 from distillschedule.runtime.helios_modulated_norm_fusion import (
     install_exact_modulated_norm_epilogue,
     warmup_exact_modulated_norm_epilogue,
@@ -160,6 +163,10 @@ def _build_static_model(
             "disabled_reason": "INSTALL_ONCE_FROM_GENERATOR_BUILD",
         }
     )
+    history_kv_cache = install_generator_nograd_history_kv_cache(
+        enabled=bool(args.generator_nograd_history_kv_cache),
+        role=role,
+    )
     configure_fsdp2_checkpointing(
         model,
         operation_source=bool(args.operation_source),
@@ -198,6 +205,7 @@ def _build_static_model(
         ),
         "generator_nograd_residual_fusion": residual_fusion,
         "exact_modulated_norm_epilogue": modulated_norm_fusion,
+        "generator_nograd_history_kv_cache": history_kv_cache,
         "fsdp2": sharding,
         "host_allocator_trimmed_after_shard": host_trimmed,
         "memory_after_shard": base._memory(device),
@@ -470,6 +478,7 @@ def _precompute_critic_rollouts(
                 record_output_sha256=collect_diagnostics,
                 collect_diagnostics=collect_diagnostics,
                 diagnostics_scope=diagnostics.scope,
+                use_history_kv_cache=policy.generator_nograd_history_kv_cache,
             )
         parity_rows: list[dict[str, Any]] = []
         if rollout_parity_check and len(entries) > 1:
@@ -704,6 +713,15 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--generator-nograd-history-kv-cache",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Reuse the pinned Helios restrict-self-attention history KV only "
+            "within each B1 Generator no-grad rollout"
+        ),
+    )
+    value.add_argument(
         "--critic-only-step",
         type=int,
         choices=(10,),
@@ -764,6 +782,12 @@ def main() -> int:
         raise ValueError(
             "Exact modulation materialization requires the exact epilogue"
         )
+    if args.generator_nograd_history_kv_cache and (
+        args.variant != "no-gan" or args.rollout_batch_size != 1
+    ):
+        raise ValueError(
+            "Generator no-grad history KV cache requires No-GAN B1"
+        )
     policy = StaticFSDP2P0Policy(
         mesh_policy=args.mesh_policy,
         rollout_batch_size=args.rollout_batch_size,
@@ -777,6 +801,9 @@ def main() -> int:
         exact_modulated_norm_epilogue=bool(args.exact_modulated_norm_epilogue),
         exact_modulated_norm_materialization=bool(
             args.exact_modulated_norm_materialization
+        ),
+        generator_nograd_history_kv_cache=bool(
+            args.generator_nograd_history_kv_cache
         ),
     )
     dist.init_process_group("nccl")
@@ -823,6 +850,9 @@ def main() -> int:
             ),
             "exact_modulated_norm_materialization": (
                 policy.exact_modulated_norm_materialization
+            ),
+            "generator_nograd_history_kv_cache": (
+                policy.generator_nograd_history_kv_cache
             ),
         },
     }

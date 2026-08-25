@@ -80,6 +80,11 @@ def main() -> int:
         choices=("on", "off"),
         required=True,
     )
+    parser.add_argument(
+        "--generator-nograd-history-kv-cache",
+        choices=("on", "off"),
+        required=True,
+    )
     parser.add_argument("--critic-only-step", type=int, choices=(10,))
     parser.add_argument(
         "--diagnostic-timing",
@@ -116,6 +121,9 @@ def main() -> int:
         "exact_modulated_norm_materialization": (
             args.exact_modulated_norm_materialization == "on"
         ),
+        "generator_nograd_history_kv_cache": (
+            args.generator_nograd_history_kv_cache == "on"
+        ),
     }
     if args.critic_only_step is not None:
         if args.variant != "no-gan" or args.mode != "profile":
@@ -144,6 +152,7 @@ def main() -> int:
     optimizer_warmups: list[dict[str, Any] | None] = []
     residual_fusions: list[dict[str, Any] | None] = []
     modulated_norm_fusions: list[dict[str, Any] | None] = []
+    history_kv_caches: list[dict[str, Any] | None] = []
 
     for rank, value in enumerate(ranks):
         if value.get("rank") != rank:
@@ -385,6 +394,32 @@ def main() -> int:
                         errors.append(f"{prefix} did not warm materialization kernel")
             elif modulated_norm_fusion.get("enabled"):
                 errors.append(f"{prefix} enabled outside requested policy")
+            history_kv_cache = (
+                value.get("build", {})
+                .get("generator", {})
+                .get("generator_nograd_history_kv_cache", {})
+            )
+            history_kv_caches.append(history_kv_cache)
+            prefix = f"rank{rank} Generator no-grad history KV cache"
+            if expected_policy["generator_nograd_history_kv_cache"]:
+                if not history_kv_cache.get("enabled"):
+                    errors.append(f"{prefix} was not enabled")
+                if history_kv_cache.get("scope") != (
+                    "GENERATOR_NOGRAD_ONE_ROLLOUT_ONLY"
+                ):
+                    errors.append(f"{prefix} scope changed")
+                if history_kv_cache.get("changes_model_call_count") is not False:
+                    errors.append(f"{prefix} changed model-call semantics")
+                if history_kv_cache.get("changes_attention_math") is not False:
+                    errors.append(f"{prefix} changed attention math")
+                if history_kv_cache.get("cross_rollout_reuse") is not False:
+                    errors.append(f"{prefix} crossed a rollout boundary")
+                if int(history_kv_cache.get("cache_miss_count", -1)) != 0:
+                    errors.append(f"{prefix} recorded cache misses")
+                if int(history_kv_cache.get("navit_incompatible_count", -1)) != 0:
+                    errors.append(f"{prefix} entered NAViT")
+            elif history_kv_cache.get("enabled"):
+                errors.append(f"{prefix} enabled outside requested policy")
             if expected_policy["generator_nograd_lora_fused_epilogue"]:
                 epilogue = value.get("build", {}).get("generator", {}).get(
                     "generator_nograd_lora_fused_epilogue", {}
@@ -466,6 +501,51 @@ def main() -> int:
                 errors.append(
                     f"rank{rank} rollout batch count={len(batches)}, expected={expected_batches}"
                 )
+            if expected_policy["generator_nograd_history_kv_cache"]:
+                expected_total_calls = 0
+                expected_total_reuses = 0
+                for batch_index, batch in enumerate(batches):
+                    cache = batch.get("history_kv_cache", {})
+                    call_count = int(batch.get("call_count", 0))
+                    expected_total_calls += call_count * 40
+                    expected_total_reuses += max(0, call_count - 1) * 40
+                    cache_prefix = f"rank{rank} rollout batch{batch_index} history KV"
+                    if cache.get("status") != "PASS":
+                        errors.append(f"{cache_prefix} status={cache.get('status')}")
+                    expected_cache = {
+                        "processor_count": 40,
+                        "expected_model_calls": call_count,
+                        "enabled_processor_calls": call_count * 40,
+                        "first_step_calls": 40,
+                        "cache_fill_count": 40,
+                        "cache_reuse_count": max(0, call_count - 1) * 40,
+                        "cache_miss_count": 0,
+                        "navit_incompatible_count": 0,
+                        "populated_before_clear": 40,
+                        "cache_enabled_after_scope": 0,
+                        "populated_after_scope": 0,
+                    }
+                    for key, expected in expected_cache.items():
+                        if cache.get(key) != expected:
+                            errors.append(
+                                f"{cache_prefix} {key}={cache.get(key)!r}, "
+                                f"expected={expected!r}"
+                            )
+                expected_install = {
+                    "rollout_scope_count": expected_batches,
+                    "enabled_processor_calls": expected_total_calls,
+                    "first_step_calls": expected_batches * 40,
+                    "cache_fill_count": expected_batches * 40,
+                    "cache_reuse_count": expected_total_reuses,
+                    "cache_miss_count": 0,
+                    "navit_incompatible_count": 0,
+                }
+                for key, expected in expected_install.items():
+                    if history_kv_cache.get(key) != expected:
+                        errors.append(
+                            f"{prefix} {key}={history_kv_cache.get(key)!r}, "
+                            f"expected={expected!r}"
+                        )
             if args.mode == "correctness" and args.rollout_batch_size > 1:
                 for batch in batches:
                     parity = batch.get("batch_parity", {})
@@ -515,6 +595,7 @@ def main() -> int:
             optimizer_warmups.append(None)
             residual_fusions.append(None)
             modulated_norm_fusions.append(None)
+            history_kv_caches.append(None)
 
     starts = [int(value["timing_start_unix_ns"]) for value in ranks if "timing_start_unix_ns" in value]
     stops = [int(value["timing_stop_unix_ns"]) for value in ranks if "timing_stop_unix_ns" in value]
@@ -556,6 +637,7 @@ def main() -> int:
         "rank_optimizer_dispatch_warmup": optimizer_warmups,
         "rank_generator_nograd_residual_fusion": residual_fusions,
         "rank_exact_modulated_norm_epilogue": modulated_norm_fusions,
+        "rank_generator_nograd_history_kv_cache": history_kv_caches,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
