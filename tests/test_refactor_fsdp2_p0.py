@@ -110,6 +110,15 @@ def test_policy_and_mesh_contract() -> None:
             rollout_batch_size=2,
             exact_grad_residual_fusion=True,
         )
+    modulated_norm = StaticFSDP2P0Policy(
+        exact_modulated_norm_epilogue=True,
+    )
+    assert modulated_norm.id.endswith("modnormepilogue")
+    with pytest.raises(ValueError, match="modulated-norm"):
+        StaticFSDP2P0Policy(
+            rollout_batch_size=2,
+            exact_modulated_norm_epilogue=True,
+        )
 
 
 def test_execution_order_precomputes_all_rollouts_before_critic() -> None:

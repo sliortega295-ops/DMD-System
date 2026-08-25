@@ -53,6 +53,10 @@ from distillschedule.runtime.fsdp2_static import FSDP2ShardEMA, build_fsdp2_engi
 from distillschedule.runtime.helios_lora_epilogue import (
     install_generator_nograd_lora_fused_epilogue,
 )
+from distillschedule.runtime.helios_modulated_norm_fusion import (
+    install_exact_modulated_norm_epilogue,
+    warmup_exact_modulated_norm_epilogue,
+)
 from distillschedule.runtime.helios_residual_fusion import (
     install_generator_nograd_residual_fusion,
     warmup_generator_nograd_residual_fusion,
@@ -140,6 +144,19 @@ def _build_static_model(
             "disabled_reason": "GENERATOR_INSTALL_ONLY",
         }
     )
+    modulated_norm_fusion = (
+        install_exact_modulated_norm_epilogue(
+            enabled=bool(args.exact_modulated_norm_epilogue),
+            role=role,
+        )
+        if role == "generator"
+        else {
+            "requested": bool(args.exact_modulated_norm_epilogue),
+            "enabled": False,
+            "role": role,
+            "disabled_reason": "INSTALL_ONCE_FROM_GENERATOR_BUILD",
+        }
+    )
     configure_fsdp2_checkpointing(
         model,
         operation_source=bool(args.operation_source),
@@ -148,6 +165,10 @@ def _build_static_model(
     if role == "generator":
         warmup_generator_nograd_residual_fusion(
             residual_fusion,
+            device=device,
+        )
+        warmup_exact_modulated_norm_epilogue(
+            modulated_norm_fusion,
             device=device,
         )
     torch.cuda.synchronize(device)
@@ -173,6 +194,7 @@ def _build_static_model(
             else {"enabled": False, "disabled_reason": "NOT_REQUESTED"}
         ),
         "generator_nograd_residual_fusion": residual_fusion,
+        "exact_modulated_norm_epilogue": modulated_norm_fusion,
         "fsdp2": sharding,
         "host_allocator_trimmed_after_shard": host_trimmed,
         "memory_after_shard": base._memory(device),
@@ -661,6 +683,15 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--exact-modulated-norm-epilogue",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Fuse only the B1 FP32 LayerNorm scale/shift forward epilogue; "
+            "PyTorch LayerNorm and the source backward remain unchanged"
+        ),
+    )
+    value.add_argument(
         "--critic-only-step",
         type=int,
         choices=(10,),
@@ -712,6 +743,8 @@ def main() -> int:
             "Exact grad residual fusion requires B1 and cuda_out_of_place "
             "for both Generator and Critic"
         )
+    if args.exact_modulated_norm_epilogue and args.rollout_batch_size != 1:
+        raise ValueError("Exact modulated-norm epilogue requires B1")
     policy = StaticFSDP2P0Policy(
         mesh_policy=args.mesh_policy,
         rollout_batch_size=args.rollout_batch_size,
@@ -722,6 +755,7 @@ def main() -> int:
             args.generator_nograd_residual_fusion
         ),
         exact_grad_residual_fusion=bool(args.exact_grad_residual_fusion),
+        exact_modulated_norm_epilogue=bool(args.exact_modulated_norm_epilogue),
     )
     dist.init_process_group("nccl")
     rank = dist.get_rank()
@@ -762,6 +796,9 @@ def main() -> int:
                 policy.generator_nograd_residual_fusion
             ),
             "exact_grad_residual_fusion": policy.exact_grad_residual_fusion,
+            "exact_modulated_norm_epilogue": (
+                policy.exact_modulated_norm_epilogue
+            ),
         },
     }
     try:
