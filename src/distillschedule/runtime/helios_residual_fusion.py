@@ -63,6 +63,7 @@ def install_generator_nograd_residual_fusion(
     transformer_module: Any | None = None,
     fused_chunk: Any | None = None,
     fused_backward_chunk: Any | None = None,
+    fused_trainable_backward_chunk: Any | None = None,
 ) -> dict[str, Any]:
     """Patch the pinned module helper for the explicitly requested exact paths."""
 
@@ -110,6 +111,8 @@ def install_generator_nograd_residual_fusion(
         "grad_temb_descriptor_counts": {},
         "grad_temb_dtype_counts": {},
         "grad_temb_gradient_tensor_count": 0,
+        "grad_phase_local_fused_staging_chunk_count": 0,
+        "grad_phase_local_fused_staging_element_count": 0,
         "non_generator_bypass_count": 0,
         "non_cuda_storage_bypass_count": 0,
         "reference_fallback_count": 0,
@@ -148,10 +151,14 @@ def install_generator_nograd_residual_fusion(
         from distillschedule.runtime.helios_residual_kernel import (
             fused_gated_residual_backward_chunk,
             fused_gated_residual_chunk,
+            fused_gated_residual_trainable_temb_backward_chunk,
         )
 
         fused_chunk = fused_gated_residual_chunk
         fused_backward_chunk = fused_gated_residual_backward_chunk
+        fused_trainable_backward_chunk = (
+            fused_gated_residual_trainable_temb_backward_chunk
+        )
     elif exact_grad_enabled and fused_backward_chunk is None:
         raise ValueError(
             "exact grad residual fusion tests must inject the backward tile"
@@ -285,20 +292,43 @@ def install_generator_nograd_residual_fusion(
                                 "unsupported exact residual gate shape: "
                                 f"{tuple(gate.shape)} != {tuple(grad_chunk.shape)}"
                             )
-                    if residual_gradient is not None:
+                    descriptor_kind, descriptor_lengths = ctx.temb_descriptor
+                    use_fused_phase_local_staging = bool(
+                        descriptor_kind == "phase_local"
+                        and fused_trainable_backward_chunk is not None
+                        and residual_gradient is not None
+                        and any(temb_needs_grad)
+                        and all(
+                            value.dtype is torch.bfloat16
+                            for value in saved_temb_inputs
+                        )
+                    )
+                    gate_gradient = None
+                    if use_fused_phase_local_staging:
+                        gate_gradient = torch.empty_like(grad_chunk)
+                        fused_trainable_backward_chunk(
+                            grad_chunk,
+                            residual_value[:, start:end],
+                            gate,
+                            residual_gradient[:, start:end],
+                            gate_gradient,
+                        )
+                        receipt["grad_phase_local_fused_staging_chunk_count"] += 1
+                        receipt["grad_phase_local_fused_staging_element_count"] += int(
+                            gate_gradient.numel()
+                        )
+                    elif residual_gradient is not None:
                         fused_backward_chunk(
                             grad_chunk,
                             gate,
                             residual_gradient[:, start:end],
                         )
-                    gate_gradient = None
-                    if any(temb_needs_grad):
+                    if any(temb_needs_grad) and gate_gradient is None:
                         residual_chunk = residual_value[:, start:end]
                         gate_gradient = (
                             residual_chunk.float()
                             * grad_chunk.float()
                         )
-                    descriptor_kind, descriptor_lengths = ctx.temb_descriptor
                     def accumulate_component_gradient(
                         input_index: int,
                         value: Any,

@@ -261,6 +261,16 @@ def _fused_backward(grad_output, gate, grad_residual):
     return grad_residual
 
 
+def _fused_trainable_backward(
+    grad_output, residual, gate, grad_residual, temb_product
+):
+    grad_residual.copy_((grad_output.float() * gate).to(grad_residual.dtype))
+    temb_product.copy_(
+        (residual.float() * grad_output.float()).to(temb_product.dtype)
+    )
+    return grad_residual, temb_product
+
+
 def test_residual_fusion_is_default_off() -> None:
     module = _module()
     receipt = install_generator_nograd_residual_fusion(
@@ -449,7 +459,8 @@ def test_exact_grad_fusion_matches_trainable_tensor_temb(temb_rank: int) -> None
     assert receipt["grad_reference_fallback_count"] == 0
 
 
-def test_exact_grad_fusion_matches_trainable_phase_local_temb() -> None:
+@pytest.mark.parametrize("temb_dtype", [torch.float32, torch.bfloat16])
+def test_exact_grad_fusion_matches_trainable_phase_local_temb(temb_dtype) -> None:
     torch.manual_seed(47)
     hidden_reference = torch.randn(
         (1, 7, 32), dtype=torch.bfloat16, requires_grad=True
@@ -457,10 +468,10 @@ def test_exact_grad_fusion_matches_trainable_phase_local_temb() -> None:
     residual_reference = torch.randn_like(hidden_reference, requires_grad=True)
     table = torch.randn((1, 6, 32), dtype=torch.float32)
     first_reference = torch.randn(
-        (1, 6, 32), dtype=torch.float32, requires_grad=True
+        (1, 6, 32), dtype=temb_dtype, requires_grad=True
     )
     second_reference = torch.randn(
-        (1, 6, 32), dtype=torch.float32, requires_grad=True
+        (1, 6, 32), dtype=temb_dtype, requires_grad=True
     )
     temb_reference = _PhaseLocalTemb(
         [(first_reference, 3), (second_reference, 4)]
@@ -491,6 +502,11 @@ def test_exact_grad_fusion_matches_trainable_phase_local_temb() -> None:
         transformer_module=module,
         fused_chunk=_fused,
         fused_backward_chunk=_fused_backward,
+        fused_trainable_backward_chunk=(
+            _fused_trainable_backward
+            if temb_dtype is torch.bfloat16
+            else None
+        ),
     )
     actual = module._apply_chunked_gated_residual(
         hidden_actual,
@@ -511,8 +527,11 @@ def test_exact_grad_fusion_matches_trainable_phase_local_temb() -> None:
     assert receipt["grad_fused_call_count"] == 1
     assert receipt["grad_trainable_temb_call_count"] == 1
     assert receipt["grad_temb_descriptor_counts"] == {"phase_local": 1}
-    assert receipt["grad_temb_dtype_counts"] == {"torch.float32": 2}
+    assert receipt["grad_temb_dtype_counts"] == {str(temb_dtype): 2}
     assert receipt["grad_temb_gradient_tensor_count"] == 3
+    assert receipt["grad_phase_local_fused_staging_chunk_count"] == (
+        2 if temb_dtype is torch.bfloat16 else 0
+    )
     assert receipt["grad_reference_fallback_count"] == 0
 
 
@@ -540,6 +559,7 @@ def test_real_triton_kernel_is_bitwise_exact(contiguous_gate: bool) -> None:
     from distillschedule.runtime.helios_residual_kernel import (
         fused_gated_residual_backward_chunk,
         fused_gated_residual_chunk,
+        fused_gated_residual_trainable_temb_backward_chunk,
     )
 
     generator = torch.Generator(device="cuda").manual_seed(23)
@@ -559,9 +579,23 @@ def test_real_triton_kernel_is_bitwise_exact(contiguous_gate: bool) -> None:
     expected_grad = (grad_output.float() * gate).to(torch.bfloat16)
     actual_grad = torch.empty_like(hidden)
     fused_gated_residual_backward_chunk(grad_output, gate, actual_grad)
+    expected_temb_product = (
+        residual.float() * grad_output.float()
+    ).to(torch.bfloat16)
+    actual_temb_product = torch.empty_like(hidden)
+    actual_trainable_grad = torch.empty_like(hidden)
+    fused_gated_residual_trainable_temb_backward_chunk(
+        grad_output,
+        residual,
+        gate,
+        actual_trainable_grad,
+        actual_temb_product,
+    )
     torch.cuda.synchronize()
     assert torch.equal(expected, actual)
     assert torch.equal(expected_grad, actual_grad)
+    assert torch.equal(expected_grad, actual_trainable_grad)
+    assert torch.equal(expected_temb_product, actual_temb_product)
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA-only autograd parity")

@@ -94,6 +94,56 @@ def _helios_gated_residual_backward_kernel(
     tl.store(grad_residual_ptr + output_offsets, grad_residual, mask=mask)
 
 
+@triton.jit
+def _helios_gated_residual_trainable_temb_backward_kernel(
+    grad_output_ptr,
+    residual_ptr,
+    gate_ptr,
+    grad_residual_ptr,
+    temb_product_ptr,
+    n_elements,
+    grad_stride_t,
+    residual_stride_t,
+    gate_stride_t,
+    grad_residual_stride_t,
+    temb_product_stride_t,
+    WIDTH: tl.constexpr,
+    BLOCK: tl.constexpr,
+):
+    """Emit both exact BF16 backward products from one set of input loads."""
+
+    offsets = tl.program_id(0) * BLOCK + tl.arange(0, BLOCK)
+    mask = offsets < n_elements
+    token_index = offsets // WIDTH
+    feature_index = offsets - token_index * WIDTH
+    grad_offsets = token_index * grad_stride_t + feature_index
+    residual_offsets = token_index * residual_stride_t + feature_index
+    gate_offsets = token_index * gate_stride_t + feature_index
+    grad_residual_offsets = token_index * grad_residual_stride_t + feature_index
+    temb_product_offsets = token_index * temb_product_stride_t + feature_index
+    grad_output = tl.load(grad_output_ptr + grad_offsets, mask=mask).to(tl.float32)
+    residual = tl.load(residual_ptr + residual_offsets, mask=mask).to(tl.float32)
+    gate = tl.load(gate_ptr + gate_offsets, mask=mask).to(tl.float32)
+    grad_residual = tl.inline_asm_elementwise(
+        "mul.rn.f32 $0, $1, $2;",
+        "=f,f,f",
+        [grad_output, gate],
+        dtype=tl.float32,
+        is_pure=True,
+        pack=1,
+    )
+    temb_product = tl.inline_asm_elementwise(
+        "mul.rn.f32 $0, $1, $2;",
+        "=f,f,f",
+        [residual, grad_output],
+        dtype=tl.float32,
+        is_pure=True,
+        pack=1,
+    )
+    tl.store(grad_residual_ptr + grad_residual_offsets, grad_residual, mask=mask)
+    tl.store(temb_product_ptr + temb_product_offsets, temb_product, mask=mask)
+
+
 def fused_gated_residual_chunk(
     hidden: torch.Tensor,
     residual: torch.Tensor,
@@ -198,6 +248,65 @@ def fused_gated_residual_backward_chunk(
     return grad_residual
 
 
+def fused_gated_residual_trainable_temb_backward_chunk(
+    grad_output: torch.Tensor,
+    residual: torch.Tensor,
+    gate: torch.Tensor,
+    grad_residual: torch.Tensor,
+    temb_product: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Write exact residual and BF16-before-reduction timestep products."""
+
+    values = (grad_output, residual, gate, grad_residual, temb_product)
+    if not all(value.is_cuda for value in values):
+        raise RuntimeError("Helios trainable-temb backward fusion requires CUDA tensors")
+    if grad_output.dtype is not torch.bfloat16 or residual.dtype is not torch.bfloat16:
+        raise RuntimeError("Helios trainable-temb backward fusion requires BF16 inputs")
+    if gate.dtype is not torch.float32:
+        raise RuntimeError("Helios trainable-temb backward fusion requires an FP32 gate")
+    if grad_residual.dtype is not torch.bfloat16 or temb_product.dtype is not torch.bfloat16:
+        raise RuntimeError("Helios trainable-temb backward outputs must be BF16")
+    if grad_output.ndim != 3 or int(grad_output.shape[0]) != 1:
+        raise RuntimeError("Helios trainable-temb backward fusion requires rank-local B1")
+    if any(value.shape != grad_output.shape for value in values[1:]):
+        raise RuntimeError("Helios trainable-temb backward fusion shape mismatch")
+    if int(grad_output.shape[2]) != SUPPORTED_WIDTH:
+        raise RuntimeError(f"Helios residual width changed: {grad_output.shape[2]}")
+    for name, value in (
+        ("grad_output", grad_output),
+        ("residual", residual),
+        ("grad_residual", grad_residual),
+        ("temb_product", temb_product),
+    ):
+        if value.stride(2) != 1 or value.stride(1) != SUPPORTED_WIDTH:
+            raise RuntimeError(f"unsupported Helios {name} strides: {value.stride()}")
+    if gate.stride(2) != 1 or gate.stride(1) not in (0, SUPPORTED_WIDTH):
+        raise RuntimeError(f"unsupported Helios gate strides: {gate.stride()}")
+
+    n_elements = int(grad_output.numel())
+    if n_elements == 0:
+        return grad_residual, temb_product
+    _helios_gated_residual_trainable_temb_backward_kernel[
+        (triton.cdiv(n_elements, BLOCK_SIZE),)
+    ](
+        grad_output,
+        residual,
+        gate,
+        grad_residual,
+        temb_product,
+        n_elements,
+        int(grad_output.stride(1)),
+        int(residual.stride(1)),
+        int(gate.stride(1)),
+        int(grad_residual.stride(1)),
+        int(temb_product.stride(1)),
+        WIDTH=SUPPORTED_WIDTH,
+        BLOCK=BLOCK_SIZE,
+        num_warps=NUM_WARPS,
+    )
+    return grad_residual, temb_product
+
+
 def warmup(
     device: torch.device | str, *, include_backward: bool = False
 ) -> dict[str, Any]:
@@ -212,10 +321,18 @@ def warmup(
         grad_output = torch.zeros_like(hidden)
         grad_residual = torch.empty_like(hidden)
         fused_gated_residual_backward_chunk(grad_output, gate, grad_residual)
+        temb_product = torch.empty_like(hidden)
+        fused_gated_residual_trainable_temb_backward_chunk(
+            grad_output,
+            residual,
+            gate,
+            grad_residual,
+            temb_product,
+        )
     torch.cuda.synchronize(device)
     del hidden, residual, gate, output
     if include_backward:
-        del grad_output, grad_residual
+        del grad_output, grad_residual, temb_product
     return {
         "scope": "SETUP_ONLY_BEFORE_FORMAL_TIMER",
         "formal_timer_includes_warmup": False,
@@ -231,5 +348,6 @@ def warmup(
 __all__ = [
     "fused_gated_residual_backward_chunk",
     "fused_gated_residual_chunk",
+    "fused_gated_residual_trainable_temb_backward_chunk",
     "warmup",
 ]
