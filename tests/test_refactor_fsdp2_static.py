@@ -162,6 +162,13 @@ def test_partial_checkpoint_bypass_is_sparse_default_off_and_censused(
 
         def __init__(self) -> None:
             self.blocks = [Block(index) for index in range(40)]
+            self.patch_embedding = Block(100)
+
+        def named_modules(self):
+            yield "", self
+            yield "patch_embedding", self.patch_embedding
+            for index, block in enumerate(self.blocks):
+                yield f"blocks.{index}", block
 
     checkpointed: list[int] = []
 
@@ -179,13 +186,17 @@ def test_partial_checkpoint_bypass_is_sparse_default_off_and_censused(
     outputs = [
         model._gradient_checkpointing_func(block, 100) for block in model.blocks
     ]
+    patch_output = model._gradient_checkpointing_func(model.patch_embedding, 100)
 
     assert outputs == [100 + index for index in range(40)]
+    assert patch_output == 200
     assert receipt["bypass_block_indices"] == list(range(0, 40, 4))
     assert receipt["direct_forward_count"] == 10
     assert receipt["checkpoint_forward_count"] == 30
-    assert checkpointed == [index for index in range(40) if index % 4]
+    assert checkpointed == [index for index in range(40) if index % 4] + [100]
     assert set(receipt["block_call_counts"].values()) == {1}
+    assert receipt["auxiliary_checkpoint_forward_count"] == 1
+    assert receipt["auxiliary_checkpoint_module_counts"] == {"patch_embedding": 1}
     assert receipt["adds_synchronization"] is False
     assert receipt["changes_module_math"] is False
 

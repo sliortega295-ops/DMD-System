@@ -141,6 +141,15 @@ def configure_fsdp2_checkpointing(
     block_index_by_id = {id(block): index for index, block in enumerate(blocks)}
     if len(block_index_by_id) != len(blocks):
         raise ValueError("Helios block identities are not unique")
+    module_name_by_id = {
+        id(module): str(name)
+        for name, module in (
+            model.named_modules() if hasattr(model, "named_modules") else ()
+        )
+    }
+    module_name_by_id.update(
+        {id(block): f"blocks.{index}" for index, block in enumerate(blocks)}
+    )
     bypass_indices = tuple(
         range(0, len(blocks), checkpoint_bypass_stride)
         if checkpoint_bypass_stride
@@ -162,6 +171,8 @@ def configure_fsdp2_checkpointing(
         ],
         "direct_forward_count": 0,
         "checkpoint_forward_count": 0,
+        "auxiliary_checkpoint_forward_count": 0,
+        "auxiliary_checkpoint_module_counts": {},
         "block_call_counts": {str(index): 0 for index in range(len(blocks))},
         "operation_source": bool(operation_source),
         "adds_synchronization": False,
@@ -173,12 +184,23 @@ def configure_fsdp2_checkpointing(
         bypass_set = frozenset(bypass_indices)
 
         def checkpoint_or_direct(module: Any, *args: Any, **kwargs: Any) -> Any:
-            try:
-                block_index = block_index_by_id[id(module)]
-            except KeyError as error:
+            module_id = id(module)
+            if module_id not in module_name_by_id:
                 raise RuntimeError(
-                    "checkpoint dispatch received a module outside model.blocks"
-                ) from error
+                    "checkpoint dispatch received a module outside the Helios model"
+                )
+            block_index = block_index_by_id.get(module_id)
+            if block_index is None:
+                module_name = module_name_by_id[module_id]
+                receipt["auxiliary_checkpoint_forward_count"] += 1
+                auxiliary_counts = receipt["auxiliary_checkpoint_module_counts"]
+                auxiliary_counts[module_name] = auxiliary_counts.get(module_name, 0) + 1
+                return fsdp2_metadata_tolerant_checkpoint(
+                    module,
+                    *args,
+                    operation_source=operation_source,
+                    **kwargs,
+                )
             key = str(block_index)
             receipt["block_call_counts"][key] += 1
             if block_index in bypass_set:

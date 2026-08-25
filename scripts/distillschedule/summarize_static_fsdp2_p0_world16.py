@@ -369,6 +369,16 @@ def main() -> int:
                             errors.append(f"{prefix} direct-forward census changed")
                         if checkpointed != invocations * (40 - len(expected_indices)):
                             errors.append(f"{prefix} checkpoint census changed")
+                    auxiliary = int(
+                        checkpoint_policy.get("auxiliary_checkpoint_forward_count", -1)
+                    )
+                    auxiliary_counts = checkpoint_policy.get(
+                        "auxiliary_checkpoint_module_counts", {}
+                    )
+                    if auxiliary < 0 or auxiliary != sum(
+                        int(count) for count in auxiliary_counts.values()
+                    ):
+                        errors.append(f"{prefix} auxiliary checkpoint census changed")
                 elif int(checkpoint_policy.get("direct_forward_count", -1)) != 0:
                     errors.append(f"{prefix} bypassed blocks outside requested policy")
             checkpoint_policies.append(role_checkpoint_policies)
