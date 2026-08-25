@@ -397,6 +397,8 @@ def _install_conservative_direct_defaults() -> None:
         sys.argv.append("--no-optimizer-dispatch-warmup")
     if "--generator-nograd-residual-fusion" not in sys.argv and "--no-generator-nograd-residual-fusion" not in sys.argv:
         sys.argv.append("--no-generator-nograd-residual-fusion")
+    if "--exact-grad-residual-fusion" not in sys.argv and "--no-exact-grad-residual-fusion" not in sys.argv:
+        sys.argv.append("--no-exact-grad-residual-fusion")
 
 
 def main() -> int:

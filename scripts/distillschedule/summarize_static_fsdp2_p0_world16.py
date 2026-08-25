@@ -65,6 +65,11 @@ def main() -> int:
         choices=("on", "off"),
         required=True,
     )
+    parser.add_argument(
+        "--exact-grad-residual-fusion",
+        choices=("on", "off"),
+        required=True,
+    )
     parser.add_argument("--critic-only-step", type=int, choices=(10,))
     parser.add_argument(
         "--diagnostic-timing",
@@ -94,6 +99,7 @@ def main() -> int:
         "generator_nograd_residual_fusion": (
             args.generator_nograd_residual_fusion == "on"
         ),
+        "exact_grad_residual_fusion": args.exact_grad_residual_fusion == "on",
     }
     if args.critic_only_step is not None:
         if args.variant != "no-gan" or args.mode != "profile":
@@ -177,26 +183,61 @@ def main() -> int:
                 .get("generator_nograd_residual_fusion", {})
             )
             residual_fusions.append(residual_fusion)
-            if expected_policy["generator_nograd_residual_fusion"]:
-                prefix = f"rank{rank} Generator no-grad residual fusion"
+            if (
+                expected_policy["generator_nograd_residual_fusion"]
+                or expected_policy["exact_grad_residual_fusion"]
+            ):
+                prefix = f"rank{rank} residual fusion"
                 if not residual_fusion.get("enabled"):
                     errors.append(f"{prefix} was not enabled")
-                if residual_fusion.get("scope") != "GENERATOR_NOGRAD_GATED_RESIDUAL_ONLY":
+                expected_scope = (
+                    "GENERATOR_NOGRAD_AND_FROZEN_TEMB_EXACT_GRAD_GATED_RESIDUAL"
+                    if expected_policy["generator_nograd_residual_fusion"]
+                    and expected_policy["exact_grad_residual_fusion"]
+                    else (
+                        "FROZEN_TEMB_EXACT_GRAD_GATED_RESIDUAL_ONLY"
+                        if expected_policy["exact_grad_residual_fusion"]
+                        else "GENERATOR_NOGRAD_GATED_RESIDUAL_ONLY"
+                    )
+                )
+                if residual_fusion.get("scope") != expected_scope:
                     errors.append(f"{prefix} scope changed")
                 warmup = residual_fusion.get("warmup", {})
                 if warmup.get("status") != "PASS":
                     errors.append(f"{prefix} warmup did not pass")
                 if warmup.get("formal_timer_includes_warmup") is not False:
                     errors.append(f"{prefix} warmup contaminated formal timing")
-                if int(residual_fusion.get("fused_call_count", 0)) <= 0:
-                    errors.append(f"{prefix} fused no helper calls")
-                if int(residual_fusion.get("fused_chunk_count", 0)) <= 0:
-                    errors.append(f"{prefix} fused no chunks")
-                if int(residual_fusion.get("reference_fallback_count", -1)) != 0:
-                    errors.append(
-                        f"{prefix} fallback="
-                        f"{residual_fusion.get('reference_fallback_count')}"
-                    )
+                if expected_policy["generator_nograd_residual_fusion"]:
+                    if int(residual_fusion.get("fused_call_count", 0)) <= 0:
+                        errors.append(f"{prefix} fused no no-grad helper calls")
+                    if int(residual_fusion.get("fused_chunk_count", 0)) <= 0:
+                        errors.append(f"{prefix} fused no no-grad chunks")
+                    if int(residual_fusion.get("reference_fallback_count", -1)) != 0:
+                        errors.append(
+                            f"{prefix} no-grad fallback="
+                            f"{residual_fusion.get('reference_fallback_count')}"
+                        )
+                if expected_policy["exact_grad_residual_fusion"]:
+                    if residual_fusion.get("exact_grad_requested") is not True:
+                        errors.append(f"{prefix} exact-grad request was lost")
+                    if warmup.get("backward_kernel") is not True:
+                        errors.append(f"{prefix} backward kernel was not warmed")
+                    for key in (
+                        "grad_scope_active_call_count",
+                        "grad_fused_call_count",
+                        "grad_fused_chunk_count",
+                        "grad_backward_call_count",
+                        "grad_backward_chunk_count",
+                    ):
+                        if int(residual_fusion.get(key, 0)) <= 0:
+                            errors.append(f"{prefix} {key}=0")
+                    if int(residual_fusion.get("grad_reference_fallback_count", -1)) != 0:
+                        errors.append(
+                            f"{prefix} exact-grad fallback="
+                            f"{residual_fusion.get('grad_reference_fallback_count')}"
+                        )
+                    if int(residual_fusion.get("grad_saved_residual_tensor_count", -1)) != 0:
+                        errors.append(f"{prefix} saved a residual tensor")
             elif residual_fusion.get("enabled"):
                 errors.append(f"rank{rank} residual fusion enabled outside requested policy")
             if expected_policy["generator_nograd_lora_fused_epilogue"]:

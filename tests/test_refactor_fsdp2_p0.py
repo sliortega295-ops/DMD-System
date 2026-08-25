@@ -98,6 +98,18 @@ def test_policy_and_mesh_contract() -> None:
     assert warmed.id == "node-hsdp-rollout-b1-realpair-0-optwarm"
     with pytest.raises(ValueError, match="node-HSDP"):
         StaticFSDP2P0Policy(optimizer_dispatch_warmup=True)
+    fused = StaticFSDP2P0Policy(
+        mesh_policy="node-hsdp",
+        generator_nograd_residual_fusion=True,
+        exact_grad_residual_fusion=True,
+    )
+    assert fused.id.endswith("optwarm") is False
+    assert fused.id.endswith("residualfusion-gradresidualfusion")
+    with pytest.raises(ValueError, match="Exact grad"):
+        StaticFSDP2P0Policy(
+            rollout_batch_size=2,
+            exact_grad_residual_fusion=True,
+        )
 
 
 def test_execution_order_precomputes_all_rollouts_before_critic() -> None:

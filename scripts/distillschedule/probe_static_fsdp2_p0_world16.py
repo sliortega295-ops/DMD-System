@@ -128,11 +128,13 @@ def _build_static_model(
     residual_fusion = (
         install_generator_nograd_residual_fusion(
             enabled=bool(args.generator_nograd_residual_fusion),
+            exact_grad_enabled=bool(args.exact_grad_residual_fusion),
             role=role,
         )
         if role == "generator"
         else {
             "requested": bool(args.generator_nograd_residual_fusion),
+            "exact_grad_requested": bool(args.exact_grad_residual_fusion),
             "enabled": False,
             "role": role,
             "disabled_reason": "GENERATOR_INSTALL_ONLY",
@@ -649,6 +651,15 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--exact-grad-residual-fusion",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Fuse B1 grad-enabled gated residual forward/backward only when "
+            "the AdaLN table and all timestep inputs are frozen"
+        ),
+    )
+    value.add_argument(
         "--critic-only-step",
         type=int,
         choices=(10,),
@@ -691,6 +702,15 @@ def main() -> int:
         raise ValueError(
             "Generator no-grad residual fusion requires B1 and cuda_out_of_place"
         )
+    if args.exact_grad_residual_fusion and (
+        args.rollout_batch_size != 1
+        or args.generator_residual_storage != "cuda_out_of_place"
+        or args.critic_residual_storage != "cuda_out_of_place"
+    ):
+        raise ValueError(
+            "Exact grad residual fusion requires B1 and cuda_out_of_place "
+            "for both Generator and Critic"
+        )
     policy = StaticFSDP2P0Policy(
         mesh_policy=args.mesh_policy,
         rollout_batch_size=args.rollout_batch_size,
@@ -700,6 +720,7 @@ def main() -> int:
         generator_nograd_residual_fusion=bool(
             args.generator_nograd_residual_fusion
         ),
+        exact_grad_residual_fusion=bool(args.exact_grad_residual_fusion),
     )
     dist.init_process_group("nccl")
     rank = dist.get_rank()
@@ -739,6 +760,7 @@ def main() -> int:
             "generator_nograd_residual_fusion": (
                 policy.generator_nograd_residual_fusion
             ),
+            "exact_grad_residual_fusion": policy.exact_grad_residual_fusion,
         },
     }
     try:
