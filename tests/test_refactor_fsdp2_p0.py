@@ -119,6 +119,15 @@ def test_policy_and_mesh_contract() -> None:
             rollout_batch_size=2,
             exact_modulated_norm_epilogue=True,
         )
+    materialization = StaticFSDP2P0Policy(
+        exact_modulated_norm_epilogue=True,
+        exact_modulated_norm_materialization=True,
+    )
+    assert materialization.id.endswith("modnormmaterialization")
+    with pytest.raises(ValueError, match="requires the exact epilogue"):
+        StaticFSDP2P0Policy(
+            exact_modulated_norm_materialization=True,
+        )
 
 
 def test_execution_order_precomputes_all_rollouts_before_critic() -> None:
