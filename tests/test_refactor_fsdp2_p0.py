@@ -128,6 +128,38 @@ def test_policy_and_mesh_contract() -> None:
         StaticFSDP2P0Policy(
             exact_modulated_norm_materialization=True,
         )
+    checkpoint_bypass = StaticFSDP2P0Policy(checkpoint_bypass_stride=4)
+    assert checkpoint_bypass.id.endswith("ckptbypass10")
+    critic_checkpoint_bypass = StaticFSDP2P0Policy(
+        checkpoint_bypass_stride=4,
+        checkpoint_bypass_role="critic",
+    )
+    assert critic_checkpoint_bypass.id.endswith("criticckptbypass10")
+    critic_checkpoint_bypass_four = StaticFSDP2P0Policy(
+        checkpoint_bypass_stride=10,
+        checkpoint_bypass_role="critic",
+    )
+    assert critic_checkpoint_bypass_four.id.endswith("criticckptbypass4")
+    with pytest.raises(ValueError, match="checkpoint_bypass_stride"):
+        StaticFSDP2P0Policy(checkpoint_bypass_stride=5)
+    with pytest.raises(ValueError, match="checkpoint_bypass_role"):
+        StaticFSDP2P0Policy(
+            checkpoint_bypass_stride=4,
+            checkpoint_bypass_role="teacher",
+        )
+    with pytest.raises(ValueError, match="requires a nonzero stride"):
+        StaticFSDP2P0Policy(checkpoint_bypass_role="critic")
+    selective_flash = StaticFSDP2P0Policy(
+        selective_flash_checkpoint_stride=2,
+    )
+    assert selective_flash.id.endswith("criticflashsave20")
+    with pytest.raises(ValueError, match="selective_flash_checkpoint_stride"):
+        StaticFSDP2P0Policy(selective_flash_checkpoint_stride=5)
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        StaticFSDP2P0Policy(
+            checkpoint_bypass_stride=10,
+            selective_flash_checkpoint_stride=2,
+        )
 
 
 def test_execution_order_precomputes_all_rollouts_before_critic() -> None:

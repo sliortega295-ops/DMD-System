@@ -27,6 +27,9 @@ GPUS_PER_NODE = 8
 SUPPORTED_ROLLOUT_BATCH_SIZES = (1, 2, 5)
 SUPPORTED_MESH_POLICIES = ("world16-fsdp", "node-hsdp")
 SUPPORTED_ROLLOUT_BACKENDS = ("native-fsdp2-batch",)
+SUPPORTED_CHECKPOINT_BYPASS_STRIDES = (0, 2, 4, 10)
+SUPPORTED_CHECKPOINT_BYPASS_ROLES = ("all", "generator", "critic")
+SUPPORTED_SELECTIVE_FLASH_CHECKPOINT_STRIDES = (0, 2, 4, 10)
 ROLLOUT_TENSOR_ROLES = (
     "text_embedding",
     "continuous_history",
@@ -58,6 +61,9 @@ class StaticFSDP2P0Policy:
     exact_grad_residual_fusion: bool = False
     exact_modulated_norm_epilogue: bool = False
     exact_modulated_norm_materialization: bool = False
+    checkpoint_bypass_stride: int = 0
+    checkpoint_bypass_role: str = "all"
+    selective_flash_checkpoint_stride: int = 0
 
     def __post_init__(self) -> None:
         if self.mesh_policy not in SUPPORTED_MESH_POLICIES:
@@ -89,6 +95,33 @@ class StaticFSDP2P0Policy:
             raise ValueError(
                 "Exact modulation materialization requires the exact epilogue"
             )
+        if self.checkpoint_bypass_stride not in SUPPORTED_CHECKPOINT_BYPASS_STRIDES:
+            raise ValueError(
+                "checkpoint_bypass_stride must be one of "
+                f"{SUPPORTED_CHECKPOINT_BYPASS_STRIDES}, got "
+                f"{self.checkpoint_bypass_stride}"
+            )
+        if self.checkpoint_bypass_role not in SUPPORTED_CHECKPOINT_BYPASS_ROLES:
+            raise ValueError(
+                "checkpoint_bypass_role must be one of "
+                f"{SUPPORTED_CHECKPOINT_BYPASS_ROLES}, got "
+                f"{self.checkpoint_bypass_role!r}"
+            )
+        if not self.checkpoint_bypass_stride and self.checkpoint_bypass_role != "all":
+            raise ValueError("checkpoint bypass role requires a nonzero stride")
+        if (
+            self.selective_flash_checkpoint_stride
+            not in SUPPORTED_SELECTIVE_FLASH_CHECKPOINT_STRIDES
+        ):
+            raise ValueError(
+                "selective_flash_checkpoint_stride must be one of "
+                f"{SUPPORTED_SELECTIVE_FLASH_CHECKPOINT_STRIDES}, got "
+                f"{self.selective_flash_checkpoint_stride}"
+            )
+        if self.checkpoint_bypass_stride and self.selective_flash_checkpoint_stride:
+            raise ValueError(
+                "checkpoint bypass and selective Flash checkpoint save are mutually exclusive"
+            )
 
     @property
     def id(self) -> str:
@@ -107,6 +140,16 @@ class StaticFSDP2P0Policy:
             suffixes.append("modnormepilogue")
         if self.exact_modulated_norm_materialization:
             suffixes.append("modnormmaterialization")
+        if self.checkpoint_bypass_stride:
+            role = "" if self.checkpoint_bypass_role == "all" else self.checkpoint_bypass_role
+            suffixes.append(
+                f"{role}ckptbypass{40 // self.checkpoint_bypass_stride}"
+            )
+        if self.selective_flash_checkpoint_stride:
+            suffixes.append(
+                "criticflashsave"
+                f"{40 // self.selective_flash_checkpoint_stride}"
+            )
         return "-".join((base, *suffixes))
 
 

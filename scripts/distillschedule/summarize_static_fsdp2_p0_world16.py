@@ -85,6 +85,23 @@ def main() -> int:
         choices=("on", "off"),
         required=True,
     )
+    parser.add_argument(
+        "--checkpoint-bypass-stride",
+        type=int,
+        choices=(0, 2, 4, 10),
+        required=True,
+    )
+    parser.add_argument(
+        "--checkpoint-bypass-role",
+        choices=("all", "generator", "critic"),
+        required=True,
+    )
+    parser.add_argument(
+        "--selective-flash-checkpoint-stride",
+        type=int,
+        choices=(0, 2, 4, 10),
+        required=True,
+    )
     parser.add_argument("--critic-only-step", type=int, choices=(10,))
     parser.add_argument(
         "--diagnostic-timing",
@@ -122,6 +139,11 @@ def main() -> int:
         "exact_modulated_norm_materialization": (
             args.exact_modulated_norm_materialization == "on"
         ),
+        "checkpoint_bypass_stride": args.checkpoint_bypass_stride,
+        "checkpoint_bypass_role": args.checkpoint_bypass_role,
+        "selective_flash_checkpoint_stride": (
+            args.selective_flash_checkpoint_stride
+        ),
     }
     if args.critic_only_step is not None:
         if args.variant != "no-gan" or args.mode != "profile":
@@ -151,6 +173,7 @@ def main() -> int:
     residual_fusions: list[dict[str, Any] | None] = []
     modulated_norm_fusions: list[dict[str, Any] | None] = []
     attention_backends: list[dict[str, Any] | None] = []
+    checkpoint_policies: list[dict[str, Any] | None] = []
 
     for rank, value in enumerate(ranks):
         if value.get("rank") != rank:
@@ -354,6 +377,151 @@ def main() -> int:
                 .get("exact_modulated_norm_epilogue", {})
             )
             modulated_norm_fusions.append(modulated_norm_fusion)
+            role_checkpoint_policies: dict[str, Any] = {}
+            for role in ("generator", "critic"):
+                checkpoint_policy = (
+                    value.get("build", {}).get(role, {}).get("checkpoint_policy", {})
+                )
+                role_checkpoint_policies[role] = checkpoint_policy
+                prefix = f"rank{rank} {role} checkpoint policy"
+                requested_stride = expected_policy["checkpoint_bypass_stride"]
+                requested_role = expected_policy["checkpoint_bypass_role"]
+                expected_stride = (
+                    requested_stride if requested_role in {"all", role} else 0
+                )
+                expected_indices = (
+                    list(range(0, 40, expected_stride)) if expected_stride else []
+                )
+                if checkpoint_policy.get("enabled") is not bool(expected_stride):
+                    errors.append(f"{prefix} enabled state changed")
+                if checkpoint_policy.get("block_count") != 40:
+                    errors.append(f"{prefix} block count changed")
+                if checkpoint_policy.get("bypass_stride") != expected_stride:
+                    errors.append(f"{prefix} stride changed")
+                if checkpoint_policy.get("bypass_block_indices") != expected_indices:
+                    errors.append(f"{prefix} block selection changed")
+                if expected_stride:
+                    counts = checkpoint_policy.get("block_call_counts", {})
+                    if set(counts) != {str(index) for index in range(40)}:
+                        errors.append(f"{prefix} lacks the 40-block runtime census")
+                    else:
+                        per_block = [int(counts[str(index)]) for index in range(40)]
+                        if not per_block or min(per_block) <= 0:
+                            errors.append(f"{prefix} was not exercised")
+                        if len(set(per_block)) != 1:
+                            errors.append(f"{prefix} per-block call counts drifted")
+                        invocations = per_block[0] if per_block else 0
+                        direct = int(checkpoint_policy.get("direct_forward_count", -1))
+                        checkpointed = int(
+                            checkpoint_policy.get("checkpoint_forward_count", -1)
+                        )
+                        if direct != invocations * len(expected_indices):
+                            errors.append(f"{prefix} direct-forward census changed")
+                        if checkpointed != invocations * (40 - len(expected_indices)):
+                            errors.append(f"{prefix} checkpoint census changed")
+                    auxiliary = int(
+                        checkpoint_policy.get("auxiliary_checkpoint_forward_count", -1)
+                    )
+                    auxiliary_counts = checkpoint_policy.get(
+                        "auxiliary_checkpoint_module_counts", {}
+                    )
+                    if auxiliary < 0 or auxiliary != sum(
+                        int(count) for count in auxiliary_counts.values()
+                    ):
+                        errors.append(f"{prefix} auxiliary checkpoint census changed")
+                elif int(checkpoint_policy.get("direct_forward_count", -1)) != 0:
+                    errors.append(f"{prefix} bypassed blocks outside requested policy")
+                expected_flash_stride = (
+                    expected_policy["selective_flash_checkpoint_stride"]
+                    if role == "critic"
+                    else 0
+                )
+                expected_flash_indices = (
+                    list(range(0, 40, expected_flash_stride))
+                    if expected_flash_stride
+                    else []
+                )
+                if checkpoint_policy.get("selective_flash_enabled") is not bool(
+                    expected_flash_stride
+                ):
+                    errors.append(f"{prefix} selective Flash enabled state changed")
+                if checkpoint_policy.get("selective_flash_stride") != expected_flash_stride:
+                    errors.append(f"{prefix} selective Flash stride changed")
+                if (
+                    checkpoint_policy.get("selective_flash_block_indices")
+                    != expected_flash_indices
+                ):
+                    errors.append(f"{prefix} selective Flash block selection changed")
+                if expected_flash_stride:
+                    if checkpoint_policy.get("selective_flash_op") != (
+                        "_flash_attn2_cuda_a511a4c."
+                        "_flash_attn_forward.default"
+                    ):
+                        errors.append(f"{prefix} selective Flash op identity changed")
+                    counts = checkpoint_policy.get("block_call_counts", {})
+                    if set(counts) != {str(index) for index in range(40)}:
+                        errors.append(f"{prefix} lacks selective Flash block census")
+                    else:
+                        per_block = [int(counts[str(index)]) for index in range(40)]
+                        if not per_block or min(per_block) <= 0:
+                            errors.append(f"{prefix} selective Flash was not exercised")
+                        if len(set(per_block)) != 1:
+                            errors.append(
+                                f"{prefix} selective Flash per-block calls drifted"
+                            )
+                        invocations = per_block[0] if per_block else 0
+                        expected_contexts = invocations * len(expected_flash_indices)
+                        contexts = int(
+                            checkpoint_policy.get(
+                                "selective_flash_context_count", -1
+                            )
+                        )
+                        original_saves = int(
+                            checkpoint_policy.get(
+                                "selective_flash_original_save_count", -1
+                            )
+                        )
+                        recompute_reuses = int(
+                            checkpoint_policy.get(
+                                "selective_flash_recompute_reuse_count", -1
+                            )
+                        )
+                        if contexts != expected_contexts:
+                            errors.append(
+                                f"{prefix} selective Flash context census changed"
+                            )
+                        # The pinned Critic block performs exactly self- and
+                        # cross-attention through this fixed-length FA2 op.
+                        if original_saves != expected_contexts * 2:
+                            errors.append(
+                                f"{prefix} selective Flash original-save census changed"
+                            )
+                        if recompute_reuses != original_saves:
+                            errors.append(
+                                f"{prefix} selective Flash replay census changed"
+                            )
+                        if int(
+                            checkpoint_policy.get("direct_forward_count", -1)
+                        ) != 0:
+                            errors.append(
+                                f"{prefix} selective Flash unexpectedly bypassed blocks"
+                            )
+                        if int(
+                            checkpoint_policy.get("checkpoint_forward_count", -1)
+                        ) != invocations * 40:
+                            errors.append(
+                                f"{prefix} selective Flash changed checkpoint calls"
+                            )
+                elif any(
+                    int(checkpoint_policy.get(key, 0)) != 0
+                    for key in (
+                        "selective_flash_context_count",
+                        "selective_flash_original_save_count",
+                        "selective_flash_recompute_reuse_count",
+                    )
+                ):
+                    errors.append(f"{prefix} selective Flash ran outside policy")
+            checkpoint_policies.append(role_checkpoint_policies)
             prefix = f"rank{rank} exact modulated-norm epilogue"
             if expected_policy["exact_modulated_norm_epilogue"]:
                 if not modulated_norm_fusion.get("enabled"):
@@ -546,6 +714,7 @@ def main() -> int:
             optimizer_warmups.append(None)
             residual_fusions.append(None)
             modulated_norm_fusions.append(None)
+            checkpoint_policies.append(None)
 
     starts = [int(value["timing_start_unix_ns"]) for value in ranks if "timing_start_unix_ns" in value]
     stops = [int(value["timing_stop_unix_ns"]) for value in ranks if "timing_stop_unix_ns" in value]
@@ -588,6 +757,7 @@ def main() -> int:
         "rank_generator_nograd_residual_fusion": residual_fusions,
         "rank_exact_modulated_norm_epilogue": modulated_norm_fusions,
         "rank_attention_backends": attention_backends,
+        "rank_checkpoint_policies": checkpoint_policies,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
