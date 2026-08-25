@@ -134,6 +134,11 @@ def parser() -> argparse.ArgumentParser:
         default="off",
     )
     value.add_argument(
+        "--exact-modulated-norm-epilogue",
+        choices=("on", "off"),
+        default="off",
+    )
+    value.add_argument(
         "--remote-root",
         type=Path,
         default=Path(
@@ -228,6 +233,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.generator_nograd_residual_fusion),
         "DISTILLSCHEDULE_HELIOS_EXACT_GRAD_RESIDUAL_FUSION="
         + shlex.quote(args.exact_grad_residual_fusion),
+        "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_EPILOGUE="
+        + shlex.quote(args.exact_modulated_norm_epilogue),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -342,6 +349,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.generator_nograd_residual_fusion)} "
         + "--exact-grad-residual-fusion "
         + f"{shlex.quote(args.exact_grad_residual_fusion)} "
+        + "--exact-modulated-norm-epilogue "
+        + f"{shlex.quote(args.exact_modulated_norm_epilogue)} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
         + (
             f"--critic-only-step {args.critic_only_step} "
@@ -395,6 +404,8 @@ def main() -> int:
             "Exact grad residual fusion requires B1 and cuda_out_of_place "
             "for both Generator and Critic"
         )
+    if args.exact_modulated_norm_epilogue == "on" and args.rollout_batch_size != 1:
+        raise ValueError("Exact modulated-norm epilogue requires B1")
     if args.critic_only_step is not None and (
         args.variant != "no-gan" or args.mode != "profile"
     ):

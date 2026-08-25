@@ -70,6 +70,11 @@ def main() -> int:
         choices=("on", "off"),
         required=True,
     )
+    parser.add_argument(
+        "--exact-modulated-norm-epilogue",
+        choices=("on", "off"),
+        required=True,
+    )
     parser.add_argument("--critic-only-step", type=int, choices=(10,))
     parser.add_argument(
         "--diagnostic-timing",
@@ -100,6 +105,9 @@ def main() -> int:
             args.generator_nograd_residual_fusion == "on"
         ),
         "exact_grad_residual_fusion": args.exact_grad_residual_fusion == "on",
+        "exact_modulated_norm_epilogue": (
+            args.exact_modulated_norm_epilogue == "on"
+        ),
     }
     if args.critic_only_step is not None:
         if args.variant != "no-gan" or args.mode != "profile":
@@ -127,6 +135,7 @@ def main() -> int:
     input_reuse: list[dict[str, Any] | None] = []
     optimizer_warmups: list[dict[str, Any] | None] = []
     residual_fusions: list[dict[str, Any] | None] = []
+    modulated_norm_fusions: list[dict[str, Any] | None] = []
 
     for rank, value in enumerate(ranks):
         if value.get("rank") != rank:
@@ -300,6 +309,46 @@ def main() -> int:
                         )
             elif residual_fusion.get("enabled"):
                 errors.append(f"rank{rank} residual fusion enabled outside requested policy")
+            modulated_norm_fusion = (
+                value.get("build", {})
+                .get("generator", {})
+                .get("exact_modulated_norm_epilogue", {})
+            )
+            modulated_norm_fusions.append(modulated_norm_fusion)
+            prefix = f"rank{rank} exact modulated-norm epilogue"
+            if expected_policy["exact_modulated_norm_epilogue"]:
+                if not modulated_norm_fusion.get("enabled"):
+                    errors.append(f"{prefix} was not enabled")
+                if modulated_norm_fusion.get("scope") != (
+                    "ALL_ROLE_B1_MODULATED_NORM_FORWARD_EPILOGUE"
+                ):
+                    errors.append(f"{prefix} scope changed")
+                if modulated_norm_fusion.get("semantic_contract") != (
+                    "PYTORCH_FP32_LAYERNORM_UNCHANGED;ADD_RN_F32_ONE_PLUS_SCALE;"
+                    "MUL_RN_F32;ADD_RN_F32_SHIFT;BF16_RN_STORE;"
+                    "SOURCE_BACKWARD_UNCHANGED"
+                ):
+                    errors.append(f"{prefix} semantic contract changed")
+                warmup = modulated_norm_fusion.get("warmup", {})
+                if warmup.get("status") != "PASS":
+                    errors.append(f"{prefix} warmup did not pass")
+                if warmup.get("scope") != "SETUP_ONLY_BEFORE_FORMAL_TIMER":
+                    errors.append(f"{prefix} warmup scope changed")
+                if warmup.get("formal_timer_includes_warmup") is not False:
+                    errors.append(f"{prefix} warmup contaminated formal timing")
+                if int(modulated_norm_fusion.get("fused_call_count", 0)) <= 0:
+                    errors.append(f"{prefix} fused no calls")
+                if int(modulated_norm_fusion.get("fused_chunk_count", 0)) <= 0:
+                    errors.append(f"{prefix} fused no chunks")
+                if int(
+                    modulated_norm_fusion.get("reference_fallback_count", -1)
+                ) != 0:
+                    errors.append(
+                        f"{prefix} fallback="
+                        f"{modulated_norm_fusion.get('reference_fallback_count')}"
+                    )
+            elif modulated_norm_fusion.get("enabled"):
+                errors.append(f"{prefix} enabled outside requested policy")
             if expected_policy["generator_nograd_lora_fused_epilogue"]:
                 epilogue = value.get("build", {}).get("generator", {}).get(
                     "generator_nograd_lora_fused_epilogue", {}
@@ -429,6 +478,7 @@ def main() -> int:
             loss_audits.append(None)
             optimizer_warmups.append(None)
             residual_fusions.append(None)
+            modulated_norm_fusions.append(None)
 
     starts = [int(value["timing_start_unix_ns"]) for value in ranks if "timing_start_unix_ns" in value]
     stops = [int(value["timing_stop_unix_ns"]) for value in ranks if "timing_stop_unix_ns" in value]
@@ -469,6 +519,7 @@ def main() -> int:
         "rank_input_reuse": input_reuse,
         "rank_optimizer_dispatch_warmup": optimizer_warmups,
         "rank_generator_nograd_residual_fusion": residual_fusions,
+        "rank_exact_modulated_norm_epilogue": modulated_norm_fusions,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
