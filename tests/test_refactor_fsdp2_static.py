@@ -4,7 +4,8 @@ import json
 from pathlib import Path
 
 import pytest
-import torch
+
+torch = pytest.importorskip("torch")
 import distillschedule.runtime.fsdp2_static as fsdp2_static
 
 from distillschedule.runtime.fsdp2_static import (
