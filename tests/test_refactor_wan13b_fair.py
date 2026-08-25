@@ -4,6 +4,8 @@ import inspect
 import json
 from pathlib import Path
 
+import pytest
+
 from distillschedule.runtime import wan13b_fair as wan
 from distillschedule.runtime import wan13b_lora_cast as lora_cast
 
@@ -293,7 +295,7 @@ def test_lora_operator_attribution_pins_peft_and_preserves_operator_order() -> N
 
 
 def test_generator_nograd_lora_cast_cache_reuses_only_exact_input(monkeypatch) -> None:
-    import torch
+    torch = pytest.importorskip("torch")
 
     class FakeLinear(torch.nn.Module):
         cast_input_dtype_enabled = True
@@ -343,7 +345,7 @@ def test_generator_nograd_lora_cast_cache_reuses_only_exact_input(monkeypatch) -
 def test_generator_nograd_lora_fused_epilogue_is_no_grad_generator_only(
     monkeypatch,
 ) -> None:
-    import torch
+    torch = pytest.importorskip("torch")
 
     class FakeLinear(torch.nn.Module):
         disable_adapters = False
