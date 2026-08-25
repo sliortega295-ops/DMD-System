@@ -83,7 +83,7 @@ def main() -> int:
     parser.add_argument(
         "--checkpoint-bypass-stride",
         type=int,
-        choices=(0, 2, 4),
+        choices=(0, 2, 4, 10),
         required=True,
     )
     parser.add_argument(

@@ -130,8 +130,8 @@ def configure_fsdp2_checkpointing(
         raise RuntimeError(
             "FSDP2 checkpoint policy requires Helios gradient checkpointing"
         )
-    if checkpoint_bypass_stride not in {0, 2, 4}:
-        raise ValueError("checkpoint bypass stride must be one of 0, 2, or 4")
+    if checkpoint_bypass_stride not in {0, 2, 4, 10}:
+        raise ValueError("checkpoint bypass stride must be one of 0, 2, 4, or 10")
 
     blocks = tuple(getattr(model, "blocks", ()))
     if checkpoint_bypass_stride and len(blocks) != 40:

@@ -135,6 +135,11 @@ def test_policy_and_mesh_contract() -> None:
         checkpoint_bypass_role="critic",
     )
     assert critic_checkpoint_bypass.id.endswith("criticckptbypass10")
+    critic_checkpoint_bypass_four = StaticFSDP2P0Policy(
+        checkpoint_bypass_stride=10,
+        checkpoint_bypass_role="critic",
+    )
+    assert critic_checkpoint_bypass_four.id.endswith("criticckptbypass4")
     with pytest.raises(ValueError, match="checkpoint_bypass_stride"):
         StaticFSDP2P0Policy(checkpoint_bypass_stride=5)
     with pytest.raises(ValueError, match="checkpoint_bypass_role"):

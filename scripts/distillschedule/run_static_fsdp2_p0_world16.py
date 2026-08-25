@@ -146,7 +146,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument(
         "--checkpoint-bypass-stride",
         type=int,
-        choices=(0, 2, 4),
+        choices=(0, 2, 4, 10),
         default=0,
     )
     value.add_argument(

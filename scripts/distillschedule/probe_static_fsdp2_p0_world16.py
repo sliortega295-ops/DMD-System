@@ -712,7 +712,7 @@ def _parser() -> Any:
     value.add_argument(
         "--checkpoint-bypass-stride",
         type=int,
-        choices=(0, 2, 4),
+        choices=(0, 2, 4, 10),
         default=0,
         help=(
             "Diagnostic systems candidate: retain activations for every Nth "

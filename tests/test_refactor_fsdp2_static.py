@@ -210,6 +210,52 @@ def test_partial_checkpoint_bypass_fails_closed_on_wrong_model_shape() -> None:
         configure_fsdp2_checkpointing(Model(), checkpoint_bypass_stride=4)
 
 
+def test_partial_checkpoint_bypass_supports_four_block_canary(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Block:
+        def __init__(self, index: int) -> None:
+            self.index = index
+
+        def __call__(self, value: int) -> int:
+            return value + self.index
+
+    class Model:
+        gradient_checkpointing = True
+
+        def __init__(self) -> None:
+            self.blocks = [Block(index) for index in range(40)]
+
+        def named_modules(self):
+            yield "", self
+            for index, block in enumerate(self.blocks):
+                yield f"blocks.{index}", block
+
+    checkpointed: list[int] = []
+
+    def fake_checkpoint(module: Block, value: int, **_: object) -> int:
+        checkpointed.append(module.index)
+        return module(value)
+
+    monkeypatch.setattr(
+        fsdp2_static,
+        "fsdp2_metadata_tolerant_checkpoint",
+        fake_checkpoint,
+    )
+    model = Model()
+    receipt = configure_fsdp2_checkpointing(model, checkpoint_bypass_stride=10)
+    outputs = [
+        model._gradient_checkpointing_func(block, 100) for block in model.blocks
+    ]
+
+    assert outputs == [100 + index for index in range(40)]
+    assert receipt["bypass_block_indices"] == [0, 10, 20, 30]
+    assert receipt["direct_forward_count"] == 4
+    assert receipt["checkpoint_forward_count"] == 36
+    assert checkpointed == [index for index in range(40) if index % 10]
+    assert set(receipt["block_call_counts"].values()) == {1}
+
+
 def test_fsdp2_engine_exposes_official_gan_boundary_hook() -> None:
     source = (
         ROOT / "src/distillschedule/runtime/fsdp2_static.py"
