@@ -133,3 +133,29 @@ The next preregistered arm is C3, which changes only the attention backend from
 the historical PyTorch SDPA fallback to the previously validated pinned local
 FA2 build.  Selective checkpoint-output retention, HSDP, or a new kernel remain
 separate later arms.
+
+## C3 measured result
+
+- Exact source HEAD: `86d819813a800181ba5294b2dfa72a09a2f41442`.
+- Focused tests: `75 passed`.
+- Validate-only run `iter353_gan_cuda_localfa2_validate_r1_20260829`: 16/16
+  PASS; every rank loaded the pinned local FA2 extension with SHA-256
+  `c2acd487c5d1d77b7f6721eabc0fee4f8c5c8f9e682aadf43bfa99b394eecba7`.
+- Correctness run `iter353_gan_cuda_localfa2_correctness_r1_20260829`, summary
+  SHA-256
+  `d239b73493f16df5ab5e703963ec0f440a6ee819421b21094a934bfd08557bbc`:
+  16/16 PASS, G1/C5/EMA1, final G201/C1005/EMA801, four logical and four
+  physical Generator Score calls, exact fused-kernel receipts, and no OOM.
+- Formal unprofiled run `iter353_gan_cuda_localfa2_timing_r1_20260829`, summary
+  SHA-256
+  `4a2dc68d633df66140149a3d5fa63bd209ca7d0c0affd291421ce90842815805`:
+  `143.379703687 s`.
+- C3 saves `1.242041569 s` (`0.8588%`) versus C2 and `29.634779317 s`
+  (`17.1285%`) versus C0.
+- The requested threshold remains unmet by `22.269565584 s`; C3 needs another
+  `15.5319%` reduction.
+
+The result matches the historical No-GAN finding that changing only the
+attention backend is useful but small.  The next high-value work must target
+the repeated block compute/launch path or a separately gated logical-equivalent
+packing mechanism; exposed NCCL alone cannot close the remaining gap.

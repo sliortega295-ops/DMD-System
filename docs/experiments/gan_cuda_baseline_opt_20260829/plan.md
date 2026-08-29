@@ -35,3 +35,14 @@
     is C3: only enable the previously validated pinned local FA2 backend on the
     C2 substrate.  Do not combine selective checkpoint-output retention, HSDP,
     or a new kernel until C3 has its own correctness and timing evidence.
+13. C3 passed validate-only, 16-rank correctness, and matched unprofiled timing.
+    Its Full5 is `143.379703687 s`, only `1.242041569 s` (`0.8588%`) faster than
+    C2.  Promote the result, but do not mistake the pinned attention backend for
+    the missing large optimization: `22.269565584 s` still separates C3 from
+    the requested threshold.
+14. The next candidate must attack measured compute/launch overhead rather than
+    blind communication tuning.  Iteration 351 shows only `6.812 s` exposed
+    NCCL versus compute, while the current critical path remains dominated by
+    repeated Generator/Critic block compute.  Use a bounded exact chunk/launch
+    canary or a GAN-specific packed execution only after its logical-row parity
+    and inventory contract is preregistered.
