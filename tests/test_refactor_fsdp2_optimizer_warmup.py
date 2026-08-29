@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -7,6 +8,9 @@ import torch
 from torch.distributed.tensor import Replicate, Shard
 
 from distillschedule.runtime.fsdp2_static import _optimizer_dispatch_warmup
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class FakeMesh:
@@ -173,3 +177,16 @@ def test_optimizer_dispatch_warmup_fails_closed_on_unknown_mesh() -> None:
             trainables=[parameter],
             gradient_clip=1.0,
         )
+
+
+def test_world16_optimizer_warmup_is_not_rejected_by_the_node_launcher() -> None:
+    launcher = (
+        ROOT / "scripts/distillschedule/launch_static_fsdp2_p0_world16_node.sh"
+    ).read_text()
+    stale_node_hsdp_only_gate = (
+        '[[ "${OPTIMIZER_DISPATCH_WARMUP}" != on || '
+        '"${MESH_POLICY}" == node-hsdp ]] || exit 2'
+    )
+    assert stale_node_hsdp_only_gate not in launcher
+    assert "DISTILLSCHEDULE_OPTIMIZER_DISPATCH_WARMUP" in launcher
+    assert "--optimizer-dispatch-warmup" in launcher

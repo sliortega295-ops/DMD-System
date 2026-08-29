@@ -100,7 +100,9 @@ EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORME
 [[ "${EXACT_MODULATED_NORM_EPILOGUE}" != on || "${ROLLOUT_BATCH_SIZE}" == 1 ]] || exit 2
 [[ "${EXACT_MODULATED_NORM_MATERIALIZATION}" != on || "${EXACT_MODULATED_NORM_EPILOGUE}" == on ]] || exit 2
 [[ "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" != on || "${ALL_ROLE_LORA_SCALE1_ADD}" != on ]] || exit 2
-[[ "${OPTIMIZER_DISPATCH_WARMUP}" != on || "${MESH_POLICY}" == node-hsdp ]] || exit 2
+# Both supported mesh policies use sharded DTensor optimizer state.  The
+# runtime warmup validates the exact mesh names/placements and fails closed;
+# do not reject the validated world16 FULL_SHARD topology in the launcher.
 [[ "${EXPECTED_HELIOS_TRANSFORMER_SHA256}" =~ ^[0-9a-f]{64}$ ]] || exit 2
 if [[ -n "${CRITIC_ONLY_STEP}" ]]; then
   [[ "${VARIANT}" == no-gan && "${MODE}" == profile ]] || exit 2
