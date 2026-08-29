@@ -84,3 +84,4 @@ def test_p0_worker_and_launcher_keep_canary_fail_closed() -> None:
     assert 'exports.append("NSYS_BIN="' in controller
     assert 'NSYS_TOOL="${NSYS_BIN:-$(command -v nsys || true)}"' in launcher
     assert launcher.count('"${NSYS_TOOL}"') >= 3
+    assert '"${SQLITE}" >"${PROFILE_NODE_DIR}/nsys_stats_validation.log"' in launcher

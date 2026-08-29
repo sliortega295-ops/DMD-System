@@ -234,7 +234,7 @@ if [[ "${MODE}" == profile ]]; then
   "${NSYS_TOOL}" export --type sqlite --force-overwrite true --output "${SQLITE}" "${REPORT_BASE}.nsys-rep" >/dev/null
   [[ -s "${SQLITE}" ]] || { echo missing_nsys_sqlite="${SQLITE}" >&2; exit 88; }
   "${NSYS_TOOL}" stats --report nvtx_sum,cuda_gpu_kern_sum,cuda_api_sum --format csv \
-    "${REPORT_BASE}.nsys-rep" >"${PROFILE_NODE_DIR}/nsys_stats_validation.log" 2>&1
+    "${SQLITE}" >"${PROFILE_NODE_DIR}/nsys_stats_validation.log" 2>&1
   if grep -Eq "does not contain (NV Tools Extension|CUDA kernel|CUDA API)" \
       "${PROFILE_NODE_DIR}/nsys_stats_validation.log"; then
     echo nsys_empty_capture >&2
