@@ -486,8 +486,8 @@ def install_generator_nograd_residual_fusion(
                 return _grad_fallback("NONPOSITIVE_CHUNK_SIZE", *common)
             if hidden_states.shape != residual.shape:
                 return _grad_fallback("SHAPE_MISMATCH", *common)
-            if hidden_states.ndim != 3 or int(hidden_states.shape[0]) != 1:
-                return _grad_fallback("NON_B1_HIDDEN", *common)
+            if hidden_states.ndim != 3 or int(hidden_states.shape[0]) not in (1, 3):
+                return _grad_fallback("UNSUPPORTED_BATCH", *common)
             if (
                 hidden_states.dtype is not torch.bfloat16
                 or residual.dtype is not torch.bfloat16
@@ -541,8 +541,8 @@ def install_generator_nograd_residual_fusion(
             return _fallback("TRAINABLE_SCALE_SHIFT_TABLE", *common)
         if chunk_tokens <= 0:
             return _fallback("NONPOSITIVE_CHUNK_SIZE", *common)
-        if hidden_states.ndim != 3 or int(hidden_states.shape[0]) != 1:
-            return _fallback("NON_B1_HIDDEN", *common)
+        if hidden_states.ndim != 3 or int(hidden_states.shape[0]) not in (1, 3):
+            return _fallback("UNSUPPORTED_BATCH", *common)
         if hidden_states.dtype is not torch.bfloat16 or residual.dtype is not torch.bfloat16:
             return _fallback("NON_BF16_INPUT", *common)
         if (not hidden_states.is_cuda or not residual.is_cuda) and not test_injected:
@@ -577,9 +577,9 @@ def install_generator_nograd_residual_fusion(
     receipt["enabled"] = True
     receipt["implementation"] = (
         (
-            "TRITON_B1_TILE_FORWARD_AND_PHASE_LOCAL_TEMB_EXACT_BACKWARD"
+            "TRITON_B1_B3_TILE_FORWARD_AND_PHASE_LOCAL_TEMB_EXACT_BACKWARD"
             if exact_grad_enabled
-            else "TRITON_B1_TILE_MUL_RN_F32_ADD_RN_F32_BF16_STORE"
+            else "TRITON_B1_B3_TILE_MUL_RN_F32_ADD_RN_F32_BF16_STORE"
         )
         if not test_injected
         else "TEST_INJECTED"

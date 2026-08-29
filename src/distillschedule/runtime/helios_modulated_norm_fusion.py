@@ -36,7 +36,7 @@ def install_exact_modulated_norm_epilogue(
         "requested": bool(enabled),
         "enabled": False,
         "role": str(role),
-        "scope": "ALL_ROLE_B1_MODULATED_NORM_FORWARD_EPILOGUE",
+        "scope": "ALL_ROLE_REGISTERED_B1_B3_MODULATED_NORM_FORWARD_EPILOGUE",
         "semantic_contract": (
             "PYTORCH_FP32_LAYERNORM_UNCHANGED;ADD_RN_F32_ONE_PLUS_SCALE;"
             "MUL_RN_F32;ADD_RN_F32_SHIFT;BF16_RN_STORE;SOURCE_BACKWARD_UNCHANGED"
@@ -142,8 +142,8 @@ def install_exact_modulated_norm_epilogue(
             return fallback("TRAINABLE_NORM", ctx, *common)
         if int(chunk_tokens) <= 0:
             return fallback("NONPOSITIVE_CHUNK_SIZE", ctx, *common)
-        if hidden_states.ndim != 3 or int(hidden_states.shape[0]) != 1:
-            return fallback("NON_B1_HIDDEN", ctx, *common)
+        if hidden_states.ndim != 3 or int(hidden_states.shape[0]) not in (1, 3):
+            return fallback("UNSUPPORTED_BATCH", ctx, *common)
         if hidden_states.dtype is not torch.bfloat16:
             return fallback("NON_BF16_HIDDEN", ctx, *common)
         if int(hidden_states.shape[2]) != 5120 and not test_injected:
@@ -244,9 +244,9 @@ def install_exact_modulated_norm_epilogue(
         "TEST_INJECTED"
         if test_injected
         else (
-            "TRITON_B1_FP32_TABLE_COMPONENT_AND_MODULATION_EPILOGUE_SOURCE_BACKWARD"
+            "TRITON_B1_B3_FP32_TABLE_COMPONENT_AND_MODULATION_EPILOGUE_SOURCE_BACKWARD"
             if fuse_materialization
-            else "TRITON_B1_FP32_MODULATION_EPILOGUE_SOURCE_BACKWARD"
+            else "TRITON_B1_B3_FP32_MODULATION_EPILOGUE_SOURCE_BACKWARD"
         )
     )
     return receipt

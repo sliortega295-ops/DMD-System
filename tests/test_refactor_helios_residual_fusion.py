@@ -459,19 +459,22 @@ def test_exact_grad_fusion_matches_trainable_tensor_temb(temb_rank: int) -> None
     assert receipt["grad_reference_fallback_count"] == 0
 
 
+@pytest.mark.parametrize("batch_size", [1, 3])
 @pytest.mark.parametrize("temb_dtype", [torch.float32, torch.bfloat16])
-def test_exact_grad_fusion_matches_trainable_phase_local_temb(temb_dtype) -> None:
+def test_exact_grad_fusion_matches_trainable_phase_local_temb(
+    temb_dtype, batch_size: int
+) -> None:
     torch.manual_seed(47)
     hidden_reference = torch.randn(
-        (1, 7, 32), dtype=torch.bfloat16, requires_grad=True
+        (batch_size, 7, 32), dtype=torch.bfloat16, requires_grad=True
     )
     residual_reference = torch.randn_like(hidden_reference, requires_grad=True)
     table = torch.randn((1, 6, 32), dtype=torch.float32)
     first_reference = torch.randn(
-        (1, 6, 32), dtype=temb_dtype, requires_grad=True
+        (batch_size, 6, 32), dtype=temb_dtype, requires_grad=True
     )
     second_reference = torch.randn(
-        (1, 6, 32), dtype=temb_dtype, requires_grad=True
+        (batch_size, 6, 32), dtype=temb_dtype, requires_grad=True
     )
     temb_reference = _PhaseLocalTemb(
         [(first_reference, 3), (second_reference, 4)]
@@ -554,8 +557,11 @@ def test_launcher_and_policy_are_fail_closed() -> None:
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA-only Triton parity")
+@pytest.mark.parametrize("batch_size", [1, 3])
 @pytest.mark.parametrize("contiguous_gate", [False, True])
-def test_real_triton_kernel_is_bitwise_exact(contiguous_gate: bool) -> None:
+def test_real_triton_kernel_is_bitwise_exact(
+    contiguous_gate: bool, batch_size: int
+) -> None:
     from distillschedule.runtime.helios_residual_kernel import (
         fused_gated_residual_backward_chunk,
         fused_gated_residual_chunk,
@@ -564,11 +570,17 @@ def test_real_triton_kernel_is_bitwise_exact(contiguous_gate: bool) -> None:
 
     generator = torch.Generator(device="cuda").manual_seed(23)
     hidden = torch.randn(
-        (1, 511, 5120), device="cuda", dtype=torch.bfloat16, generator=generator
+        (batch_size, 511, 5120),
+        device="cuda",
+        dtype=torch.bfloat16,
+        generator=generator,
     )
     residual = torch.randn_like(hidden)
     gate = torch.randn(
-        (1, 1, 5120), device="cuda", dtype=torch.float32, generator=generator
+        (batch_size, 1, 5120),
+        device="cuda",
+        dtype=torch.float32,
+        generator=generator,
     ).expand_as(hidden)
     if contiguous_gate:
         gate = gate.contiguous()
@@ -599,7 +611,8 @@ def test_real_triton_kernel_is_bitwise_exact(contiguous_gate: bool) -> None:
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA-only autograd parity")
-def test_real_triton_exact_grad_autograd_is_bitwise_exact() -> None:
+@pytest.mark.parametrize("batch_size", [1, 3])
+def test_real_triton_exact_grad_autograd_is_bitwise_exact(batch_size: int) -> None:
     from distillschedule.runtime.helios_residual_kernel import (
         fused_gated_residual_backward_chunk,
         fused_gated_residual_chunk,
@@ -607,7 +620,7 @@ def test_real_triton_exact_grad_autograd_is_bitwise_exact() -> None:
 
     generator = torch.Generator(device="cuda").manual_seed(31)
     hidden_reference = torch.randn(
-        (1, 511, 5120),
+        (batch_size, 511, 5120),
         device="cuda",
         dtype=torch.bfloat16,
         generator=generator,
@@ -618,7 +631,7 @@ def test_real_triton_exact_grad_autograd_is_bitwise_exact() -> None:
         (1, 6, 5120), device="cuda", dtype=torch.float32, generator=generator
     )
     temb = torch.randn(
-        (1, 6, 5120),
+        (batch_size, 6, 5120),
         device="cuda",
         dtype=torch.float32,
         generator=generator,

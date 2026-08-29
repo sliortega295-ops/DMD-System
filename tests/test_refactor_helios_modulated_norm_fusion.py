@@ -172,16 +172,21 @@ def test_forward_and_gradients_are_exact_and_source_backward_is_unchanged() -> N
     assert receipt["reference_fallback_count"] == 0
 
 
-def test_table_component_materialization_is_exact() -> None:
+@pytest.mark.parametrize("batch_size", [1, 3])
+def test_table_component_materialization_is_exact(batch_size: int) -> None:
     torch.manual_seed(41)
     module = _module()
     function = module._TembAwareChunkedNorm
     norm_reference = torch.nn.LayerNorm(8, elementwise_affine=False)
     norm_candidate = copy.deepcopy(norm_reference)
     table = torch.randn(1, 6, 8, dtype=torch.float32)
-    hidden_reference = torch.randn(1, 7, 8, dtype=torch.bfloat16).requires_grad_()
+    hidden_reference = torch.randn(
+        batch_size, 7, 8, dtype=torch.bfloat16
+    ).requires_grad_()
     hidden_candidate = hidden_reference.detach().clone().requires_grad_()
-    temb_reference = torch.randn(1, 6, 8, dtype=torch.bfloat16).requires_grad_()
+    temb_reference = torch.randn(
+        batch_size, 6, 8, dtype=torch.bfloat16
+    ).requires_grad_()
     temb_candidate = temb_reference.detach().clone().requires_grad_()
     upstream = torch.randn_like(hidden_reference)
 
@@ -249,10 +254,11 @@ def test_launcher_controller_and_summarizer_are_fail_closed() -> None:
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA-only Triton parity")
+@pytest.mark.parametrize("batch_size", [1, 3])
 @pytest.mark.parametrize("sequence_length", [1, 511, 512])
 @pytest.mark.parametrize("broadcast_modulation", [False, True])
 def test_real_triton_kernel_is_bitwise_exact(
-    sequence_length: int, broadcast_modulation: bool
+    sequence_length: int, broadcast_modulation: bool, batch_size: int
 ) -> None:
     from distillschedule.runtime.helios_modulated_norm_kernel import (
         fused_modulated_norm_epilogue,
@@ -260,14 +266,14 @@ def test_real_triton_kernel_is_bitwise_exact(
 
     generator = torch.Generator(device="cuda").manual_seed(37)
     normalized = torch.randn(
-        (1, sequence_length, 5120),
+        (batch_size, sequence_length, 5120),
         device="cuda",
         dtype=torch.float32,
         generator=generator,
     )
     modulation_length = 1 if broadcast_modulation else sequence_length
     scale = torch.randn(
-        (1, modulation_length, 5120),
+        (batch_size, modulation_length, 5120),
         device="cuda",
         dtype=torch.float32,
         generator=generator,
@@ -284,6 +290,7 @@ def test_real_triton_kernel_is_bitwise_exact(
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA-only Triton parity")
+@pytest.mark.parametrize("batch_size", [1, 3])
 @pytest.mark.parametrize("sequence_length", [1, 127, 512])
 @pytest.mark.parametrize("broadcast_modulation", [False, True])
 @pytest.mark.parametrize("table_dtype", [torch.bfloat16, torch.float32])
@@ -291,6 +298,7 @@ def test_real_materialization_kernel_is_bitwise_exact(
     sequence_length: int,
     broadcast_modulation: bool,
     table_dtype: torch.dtype,
+    batch_size: int,
 ) -> None:
     from distillschedule.runtime.helios_modulated_norm_kernel import (
         fused_modulated_norm_materialization,
@@ -298,7 +306,7 @@ def test_real_materialization_kernel_is_bitwise_exact(
 
     generator = torch.Generator(device="cuda").manual_seed(43 + sequence_length)
     normalized = torch.randn(
-        (1, sequence_length, 5120),
+        (batch_size, sequence_length, 5120),
         device="cuda",
         dtype=torch.float32,
         generator=generator,
@@ -311,7 +319,7 @@ def test_real_materialization_kernel_is_bitwise_exact(
     )
     if broadcast_modulation:
         temb = torch.randn(
-            (1, 6, 5120),
+            (batch_size, 6, 5120),
             device="cuda",
             dtype=torch.bfloat16,
             generator=generator,
@@ -320,7 +328,7 @@ def test_real_materialization_kernel_is_bitwise_exact(
         shift_component = temb[:, 2, :].unsqueeze(1).expand_as(normalized)
     else:
         temb = torch.randn(
-            (1, sequence_length, 6, 5120),
+            (batch_size, sequence_length, 6, 5120),
             device="cuda",
             dtype=torch.bfloat16,
             generator=generator,

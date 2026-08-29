@@ -29,21 +29,40 @@ def _helios_modulated_norm_epilogue_kernel(
     shift_ptr,
     output_ptr,
     n_elements,
+    tokens_per_batch,
+    normalized_stride_b,
     normalized_stride_t,
+    scale_stride_b,
     scale_stride_t,
+    shift_stride_b,
     shift_stride_t,
+    output_stride_b,
     output_stride_t,
     WIDTH: tl.constexpr,
     BLOCK: tl.constexpr,
 ):
     offsets = tl.program_id(0) * BLOCK + tl.arange(0, BLOCK)
     mask = offsets < n_elements
-    token_index = offsets // WIDTH
-    feature_index = offsets - token_index * WIDTH
-    normalized_offsets = token_index * normalized_stride_t + feature_index
-    scale_offsets = token_index * scale_stride_t + feature_index
-    shift_offsets = token_index * shift_stride_t + feature_index
-    output_offsets = token_index * output_stride_t + feature_index
+    global_token_index = offsets // WIDTH
+    feature_index = offsets - global_token_index * WIDTH
+    batch_index = global_token_index // tokens_per_batch
+    token_index = global_token_index - batch_index * tokens_per_batch
+    normalized_offsets = (
+        batch_index * normalized_stride_b
+        + token_index * normalized_stride_t
+        + feature_index
+    )
+    scale_offsets = (
+        batch_index * scale_stride_b + token_index * scale_stride_t + feature_index
+    )
+    shift_offsets = (
+        batch_index * shift_stride_b + token_index * shift_stride_t + feature_index
+    )
+    output_offsets = (
+        batch_index * output_stride_b
+        + token_index * output_stride_t
+        + feature_index
+    )
 
     normalized = tl.load(normalized_ptr + normalized_offsets, mask=mask).to(
         tl.float32
@@ -85,10 +104,15 @@ def _helios_modulated_norm_materialization_kernel(
     shift_component_ptr,
     output_ptr,
     n_elements,
+    tokens_per_batch,
+    normalized_stride_b,
     normalized_stride_t,
     table_stride_c,
+    scale_component_stride_b,
     scale_component_stride_t,
+    shift_component_stride_b,
     shift_component_stride_t,
+    output_stride_b,
     output_stride_t,
     SCALE_INDEX: tl.constexpr,
     SHIFT_INDEX: tl.constexpr,
@@ -97,10 +121,15 @@ def _helios_modulated_norm_materialization_kernel(
 ):
     offsets = tl.program_id(0) * BLOCK + tl.arange(0, BLOCK)
     mask = offsets < n_elements
-    token_index = offsets // WIDTH
-    feature_index = offsets - token_index * WIDTH
+    global_token_index = offsets // WIDTH
+    feature_index = offsets - global_token_index * WIDTH
+    batch_index = global_token_index // tokens_per_batch
+    token_index = global_token_index - batch_index * tokens_per_batch
     normalized = tl.load(
-        normalized_ptr + token_index * normalized_stride_t + feature_index,
+        normalized_ptr
+        + batch_index * normalized_stride_b
+        + token_index * normalized_stride_t
+        + feature_index,
         mask=mask,
     ).to(tl.float32)
     scale_table = tl.load(
@@ -113,12 +142,14 @@ def _helios_modulated_norm_materialization_kernel(
     ).to(tl.float32)
     scale_component = tl.load(
         scale_component_ptr
+        + batch_index * scale_component_stride_b
         + token_index * scale_component_stride_t
         + feature_index,
         mask=mask,
     ).to(tl.float32)
     shift_component = tl.load(
         shift_component_ptr
+        + batch_index * shift_component_stride_b
         + token_index * shift_component_stride_t
         + feature_index,
         mask=mask,
@@ -164,7 +195,10 @@ def _helios_modulated_norm_materialization_kernel(
         pack=1,
     )
     tl.store(
-        output_ptr + token_index * output_stride_t + feature_index,
+        output_ptr
+        + batch_index * output_stride_b
+        + token_index * output_stride_t
+        + feature_index,
         value,
         mask=mask,
     )
@@ -176,7 +210,7 @@ def fused_modulated_norm_epilogue(
     shift: torch.Tensor,
     output: torch.Tensor,
 ) -> torch.Tensor:
-    """Write one B1 Helios tile, rejecting unregistered layouts."""
+    """Write one registered B1/B3 Helios tile with batch-aware modulation."""
 
     values = (normalized, scale, shift, output)
     if not all(value.is_cuda for value in values):
@@ -187,8 +221,8 @@ def fused_modulated_norm_epilogue(
         raise RuntimeError("Helios modulated-norm scale/shift must be FP32")
     if output.dtype is not torch.bfloat16:
         raise RuntimeError("Helios modulated-norm output must be BF16")
-    if normalized.ndim != 3 or int(normalized.shape[0]) != 1:
-        raise RuntimeError("Helios modulated-norm fusion requires rank-local B1")
+    if normalized.ndim != 3 or int(normalized.shape[0]) not in (1, 3):
+        raise RuntimeError("Helios modulated-norm fusion requires B1/B3")
     if any(value.shape != normalized.shape for value in values[1:]):
         raise RuntimeError("Helios modulated-norm fusion shape mismatch")
     if int(normalized.shape[2]) != SUPPORTED_WIDTH:
@@ -199,6 +233,8 @@ def fused_modulated_norm_epilogue(
     for name, value in (("scale", scale), ("shift", shift)):
         if value.stride(2) != 1 or value.stride(1) not in (0, SUPPORTED_WIDTH):
             raise RuntimeError(f"unsupported Helios {name} strides: {value.stride()}")
+    if any(value.stride(0) < 0 for value in values):
+        raise RuntimeError("unsupported negative batch stride in modulated norm")
 
     n_elements = int(output.numel())
     if n_elements == 0:
@@ -211,9 +247,14 @@ def fused_modulated_norm_epilogue(
         shift,
         output,
         n_elements,
+        int(normalized.shape[1]),
+        int(normalized.stride(0)),
         int(normalized.stride(1)),
+        int(scale.stride(0)),
         int(scale.stride(1)),
+        int(shift.stride(0)),
         int(shift.stride(1)),
+        int(output.stride(0)),
         int(output.stride(1)),
         WIDTH=SUPPORTED_WIDTH,
         BLOCK=BLOCK_SIZE,
@@ -231,7 +272,7 @@ def fused_modulated_norm_materialization(
     shift_component: torch.Tensor,
     output: torch.Tensor,
 ) -> torch.Tensor:
-    """Fuse the two source table additions into the exact B1 epilogue."""
+    """Fuse source table additions into the exact registered B1/B3 epilogue."""
 
     values = (
         normalized,
@@ -255,8 +296,8 @@ def fused_modulated_norm_materialization(
         raise RuntimeError("unsupported Helios shift-component dtype")
     if output.dtype is not torch.bfloat16:
         raise RuntimeError("Helios modulated-norm output must be BF16")
-    if normalized.ndim != 3 or int(normalized.shape[0]) != 1:
-        raise RuntimeError("Helios modulation materialization requires rank-local B1")
+    if normalized.ndim != 3 or int(normalized.shape[0]) not in (1, 3):
+        raise RuntimeError("Helios modulation materialization requires B1/B3")
     if scale_shift_table.ndim != 3 or tuple(scale_shift_table.shape[:2]) != (1, 6):
         raise RuntimeError("Helios scale-shift table layout changed")
     if int(normalized.shape[2]) != SUPPORTED_WIDTH:
@@ -278,6 +319,8 @@ def fused_modulated_norm_materialization(
             raise RuntimeError(f"unsupported Helios {name} stride: {value.stride()}")
     if scale_shift_table.stride(2) != 1:
         raise RuntimeError("unsupported Helios scale-shift table stride")
+    if any(value.stride(0) < 0 for value in values):
+        raise RuntimeError("unsupported negative batch stride in modulation materialization")
 
     n_elements = int(output.numel())
     if n_elements == 0:
@@ -291,10 +334,15 @@ def fused_modulated_norm_materialization(
         shift_component,
         output,
         n_elements,
+        int(normalized.shape[1]),
+        int(normalized.stride(0)),
         int(normalized.stride(1)),
         int(scale_shift_table.stride(1)),
+        int(scale_component.stride(0)),
         int(scale_component.stride(1)),
+        int(shift_component.stride(0)),
         int(shift_component.stride(1)),
+        int(output.stride(0)),
         int(output.stride(1)),
         SCALE_INDEX=int(scale_index),
         SHIFT_INDEX=int(shift_index),
@@ -306,37 +354,58 @@ def fused_modulated_norm_materialization(
 
 
 def warmup(
-    device: torch.device | str, *, fuse_materialization: bool = False
+    device: torch.device | str,
+    *,
+    fuse_materialization: bool = False,
+    batch_sizes: tuple[int, ...] = (1, 3),
 ) -> dict[str, Any]:
-    """Compile the exact B1 specialization outside the formal timer."""
+    """Compile registered B1/B3 specializations outside the formal timer."""
 
-    normalized = torch.zeros(
-        (1, 512, SUPPORTED_WIDTH), device=device, dtype=torch.float32
-    )
-    output = torch.empty(
-        (1, 512, SUPPORTED_WIDTH), device=device, dtype=torch.bfloat16
-    )
-    if fuse_materialization:
-        # The live FSDP mixed-precision policy unshards this frozen parameter
-        # as BF16.  Precompile that exact specialization outside the timer.
-        table = torch.zeros(
-            (1, 6, SUPPORTED_WIDTH), device=device, dtype=torch.bfloat16
+    for batch_size in batch_sizes:
+        if int(batch_size) not in (1, 3):
+            raise ValueError(f"unsupported Helios modulated-norm warmup batch: {batch_size}")
+        normalized = torch.zeros(
+            (int(batch_size), 512, SUPPORTED_WIDTH),
+            device=device,
+            dtype=torch.float32,
         )
-        component = torch.zeros(
-            (1, 512, SUPPORTED_WIDTH), device=device, dtype=torch.bfloat16
+        output = torch.empty(
+            (int(batch_size), 512, SUPPORTED_WIDTH),
+            device=device,
+            dtype=torch.bfloat16,
         )
-        fused_modulated_norm_materialization(
-            normalized, table, 1, 2, component, component, output
-        )
-    else:
-        scale = torch.zeros_like(normalized)
-        shift = torch.zeros_like(normalized)
-        fused_modulated_norm_epilogue(normalized, scale, shift, output)
+        if fuse_materialization:
+            # The live FSDP mixed-precision policy unshards this frozen parameter
+            # as BF16.  Its leading dimension stays one and broadcasts across B3.
+            table = torch.zeros(
+                (1, 6, SUPPORTED_WIDTH), device=device, dtype=torch.bfloat16
+            )
+            component = torch.zeros(
+                (int(batch_size), 1, SUPPORTED_WIDTH),
+                device=device,
+                dtype=torch.bfloat16,
+            ).expand_as(normalized)
+            fused_modulated_norm_materialization(
+                normalized, table, 1, 2, component, component, output
+            )
+        else:
+            scale = torch.zeros(
+                (int(batch_size), 1, SUPPORTED_WIDTH),
+                device=device,
+                dtype=torch.float32,
+            ).expand_as(normalized)
+            shift = torch.zeros_like(scale)
+            fused_modulated_norm_epilogue(normalized, scale, shift, output)
+        del normalized, output
+        if fuse_materialization:
+            del table, component
+        else:
+            del scale, shift
     torch.cuda.synchronize(device)
     return {
         "scope": "SETUP_ONLY_BEFORE_FORMAL_TIMER",
         "formal_timer_includes_warmup": False,
-        "shape": [1, 512, SUPPORTED_WIDTH],
+        "shapes": [[int(batch), 512, SUPPORTED_WIDTH] for batch in batch_sizes],
         "block_size": BLOCK_SIZE,
         "num_warps": NUM_WARPS,
         "fuse_materialization": bool(fuse_materialization),
