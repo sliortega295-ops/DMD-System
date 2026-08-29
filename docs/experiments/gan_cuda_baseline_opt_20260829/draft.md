@@ -159,3 +159,15 @@ The result matches the historical No-GAN finding that changing only the
 attention backend is useful but small.  The next high-value work must target
 the repeated block compute/launch path or a separately gated logical-equivalent
 packing mechanism; exposed NCCL alone cannot close the remaining gap.
+
+## C4 selected hypothesis
+
+The pinned Helios transformer already exposes
+`_distillschedule_modulation_chunk_tokens`, with source default 512.  C3's
+correctness receipts report 63,280 modulated-norm forward chunks and tens of
+thousands of residual forward/backward chunks per rank.  C4 changes only that
+physical grouping to 2048 while retaining C3's exact fused kernels and all
+workload semantics.  It includes setup-only warmup at the selected chunk size
+so first-use compilation cannot contaminate the formal timer.  Promotion still
+requires a real B1/B3 CUDA parity canary, focused tests, validate-only, 16-rank
+correctness, and a faster matched unprofiled Full5.

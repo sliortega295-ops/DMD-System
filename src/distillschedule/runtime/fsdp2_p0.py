@@ -27,6 +27,7 @@ GPUS_PER_NODE = 8
 SUPPORTED_ROLLOUT_BATCH_SIZES = (1, 2, 5)
 SUPPORTED_MESH_POLICIES = ("world16-fsdp", "node-hsdp")
 SUPPORTED_ROLLOUT_BACKENDS = ("native-fsdp2-batch",)
+SUPPORTED_MODULATION_CHUNK_TOKENS = (512, 1024, 2048)
 ROLLOUT_TENSOR_ROLES = (
     "text_embedding",
     "continuous_history",
@@ -58,6 +59,7 @@ class StaticFSDP2P0Policy:
     exact_grad_residual_fusion: bool = False
     exact_modulated_norm_epilogue: bool = False
     exact_modulated_norm_materialization: bool = False
+    modulation_chunk_tokens: int = 512
 
     def __post_init__(self) -> None:
         if self.mesh_policy not in SUPPORTED_MESH_POLICIES:
@@ -71,6 +73,12 @@ class StaticFSDP2P0Policy:
             raise ValueError(
                 f"rollout backend {self.rollout_backend!r} is not integrated; "
                 "external serving engines require an explicit latent/trace/LoRA-sync adapter"
+            )
+        if self.modulation_chunk_tokens not in SUPPORTED_MODULATION_CHUNK_TOKENS:
+            raise ValueError(
+                "modulation_chunk_tokens must be one of "
+                f"{SUPPORTED_MODULATION_CHUNK_TOKENS}, got "
+                f"{self.modulation_chunk_tokens}"
             )
         if self.generator_nograd_residual_fusion and self.rollout_batch_size != 1:
             raise ValueError("Generator no-grad residual fusion is restricted to B1")
@@ -103,6 +111,8 @@ class StaticFSDP2P0Policy:
             suffixes.append("modnormepilogue")
         if self.exact_modulated_norm_materialization:
             suffixes.append("modnormmaterialization")
+        if self.modulation_chunk_tokens != 512:
+            suffixes.append(f"chunk{self.modulation_chunk_tokens}")
         return "-".join((base, *suffixes))
 
 

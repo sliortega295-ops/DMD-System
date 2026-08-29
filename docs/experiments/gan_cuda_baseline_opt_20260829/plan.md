@@ -46,3 +46,8 @@
     repeated Generator/Critic block compute.  Use a bounded exact chunk/launch
     canary or a GAN-specific packed execution only after its logical-row parity
     and inventory contract is preregistered.
+15. C4 changes only the pinned Helios token grouping used by the existing
+    modulation/residual/cross-norm helpers from 512 to 2048.  First run a real
+    B1/B3 CUDA output-and-gradient canary, then focused tests, validate-only,
+    world16 correctness, and at most one matched unprofiled timing.  Reject C4
+    rather than combining another mechanism if it does not improve C3.

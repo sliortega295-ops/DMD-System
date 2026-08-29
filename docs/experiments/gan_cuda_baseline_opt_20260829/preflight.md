@@ -49,3 +49,35 @@
   16/16 world16 receipt with zero fallback?
 - Decision: **GO**, limited to exact B1/B3 addressing, focused parity tests,
   and one fresh correctness run. No timing or other optimization is combined.
+
+## C4 modulation/residual chunk-2048 preflight
+
+- Current gate: C3 is the fastest correctness-qualified substrate at
+  `143.379703687 s`, still `22.269565584 s` above the requested threshold.
+- Live source before C4: `5f399a0f4faf4df0a38e7a46255299e00992da71`;
+  both remote execution trees are clean at C3 code HEAD `86d819813a800181ba5294b2dfa72a09a2f41442`.
+- Live resources: both assigned nodes expose eight idle A100-SXM4-40GB GPUs;
+  node locks are not held, no live CUDA worker exists, and both cgroups remain
+  at `oom=0`, `oom_kill=0`.
+- Authorized hypothesis: the pinned Helios source implements token-independent
+  modulation, gated residual, and cross-normalization in source-default chunks
+  of 512 tokens.  C3 receipts record tens of thousands of such chunks.  Raising
+  only this already-existing launch-grouping control to 2048 may reduce Python,
+  autograd, launch, cast, and temporary-materialization overhead.
+- Frozen contract: C3 source assets, world16 FSDP2 topology, GAN-on steps
+  1000--1004, trace/RNG, B1/global-B16, physical Score inventory, local FA2,
+  losses, precision, updates, optimizer/EMA order, residual residency, and
+  formal timer boundaries remain unchanged.
+- Matching prior evidence: the same mechanism was the largest measured
+  low-risk launch-granularity gain in the Wan1.3B path.  It has not previously
+  been measured on this GAN-on Helios execution graph, so this is a new bounded
+  question rather than reuse of a timing claim.
+- Rejected/superseded paths: no segment/checkpoint policy, no HSDP, no
+  all-gather prefetch, no Score/rollout packing, and no GAN physical-call
+  regrouping are combined with C4.
+- Falsifiable question: do the pinned real Helios B1/B3 residual and
+  modulated-norm paths preserve output/gradient parity for 512 versus 2048,
+  followed by 16/16 world16 correctness with identical inventory and zero OOM,
+  and does one matched unprofiled Full5 improve over C3?
+- Decision: **GO**, conditional on the bounded CUDA canary and focused tests.
+  Any parity, receipt, inventory, or capacity failure rejects C4 before timing.

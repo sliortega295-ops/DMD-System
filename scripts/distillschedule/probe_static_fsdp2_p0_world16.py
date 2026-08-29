@@ -120,6 +120,9 @@ from distillschedule.runtime.fsdp2_static import FSDP2ShardEMA, build_fsdp2_engi
 from distillschedule.runtime.helios_lora_epilogue import (
     install_generator_nograd_lora_fused_epilogue,
 )
+from distillschedule.runtime.helios_modulation_chunks import (
+    configure_helios_modulation_chunk_tokens,
+)
 from distillschedule.runtime.helios_modulated_norm_fusion import (
     install_exact_modulated_norm_epilogue,
     warmup_exact_modulated_norm_epilogue,
@@ -187,6 +190,11 @@ def _build_static_model(
         )
     if args.generator_nograd_lora_fused_epilogue and args.all_role_lora_scale1_add:
         raise ValueError("LoRA epilogue candidates are mutually exclusive")
+    modulation_chunks = configure_helios_modulation_chunk_tokens(
+        model,
+        chunk_tokens=args.modulation_chunk_tokens,
+        role=role,
+    )
     lora_fused_epilogue = install_generator_nograd_lora_fused_epilogue(
         model,
         enabled=bool(
@@ -236,10 +244,12 @@ def _build_static_model(
         warmup_generator_nograd_residual_fusion(
             residual_fusion,
             device=device,
+            chunk_tokens=args.modulation_chunk_tokens,
         )
         warmup_exact_modulated_norm_epilogue(
             modulated_norm_fusion,
             device=device,
+            chunk_tokens=args.modulation_chunk_tokens,
         )
     torch.cuda.synchronize(device)
     sharding = apply_blockwise_fsdp2_policy(
@@ -265,6 +275,7 @@ def _build_static_model(
         ),
         "generator_nograd_residual_fusion": residual_fusion,
         "exact_modulated_norm_epilogue": modulated_norm_fusion,
+        "modulation_chunks": modulation_chunks,
         "fsdp2": sharding,
         "host_allocator_trimmed_after_shard": host_trimmed,
         "memory_after_shard": base._memory(device),
@@ -698,6 +709,16 @@ def _parser() -> Any:
         help="Pinned physical attention implementation; training semantics are unchanged",
     )
     value.add_argument(
+        "--modulation-chunk-tokens",
+        type=int,
+        choices=(512, 1024, 2048),
+        default=512,
+        help=(
+            "Pinned token chunk used only by Helios modulation/residual/cross-norm "
+            "helpers; 512 reproduces the source default"
+        ),
+    )
+    value.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         default="cuda_out_of_place",
@@ -851,6 +872,7 @@ def main() -> int:
         exact_modulated_norm_materialization=bool(
             args.exact_modulated_norm_materialization
         ),
+        modulation_chunk_tokens=int(args.modulation_chunk_tokens),
     )
     dist.init_process_group("nccl")
     rank = dist.get_rank()
@@ -879,6 +901,7 @@ def main() -> int:
             "pack_real_score_pair": policy.pack_real_score_pair,
             "rollout_backend": policy.rollout_backend,
             "attention_backend": args.attention_backend,
+            "modulation_chunk_tokens": policy.modulation_chunk_tokens,
             "generator_residual_storage": args.generator_residual_storage,
             "critic_residual_storage": args.critic_residual_storage,
             "generator_nograd_lora_fused_epilogue": bool(

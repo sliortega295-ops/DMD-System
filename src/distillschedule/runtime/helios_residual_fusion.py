@@ -588,7 +588,7 @@ def install_generator_nograd_residual_fusion(
 
 
 def warmup_generator_nograd_residual_fusion(
-    receipt: dict[str, Any], *, device: Any
+    receipt: dict[str, Any], *, device: Any, chunk_tokens: int = 512
 ) -> dict[str, Any]:
     if not receipt.get("enabled"):
         return receipt
@@ -599,6 +599,7 @@ def warmup_generator_nograd_residual_fusion(
         **warmup(
             device,
             include_backward=bool(receipt.get("exact_grad_requested")),
+            chunk_tokens=int(chunk_tokens),
         ),
     }
     return receipt

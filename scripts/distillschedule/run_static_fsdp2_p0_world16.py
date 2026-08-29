@@ -104,6 +104,12 @@ def parser() -> argparse.ArgumentParser:
         default="sdpa",
     )
     value.add_argument(
+        "--modulation-chunk-tokens",
+        type=int,
+        choices=(512, 1024, 2048),
+        default=512,
+    )
+    value.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         default="cuda_out_of_place",
@@ -258,6 +264,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.exact_modulated_norm_materialization),
         "DISTILLSCHEDULE_HELIOS_ATTENTION_BACKEND="
         + shlex.quote(args.attention_backend),
+        "DISTILLSCHEDULE_HELIOS_MODULATION_CHUNK_TOKENS="
+        + shlex.quote(str(args.modulation_chunk_tokens)),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -359,6 +367,7 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"--rollout-batch-size {args.rollout_batch_size} "
         + f"--pack-real-score-pair {shlex.quote(args.pack_real_score_pair)} "
         + f"--attention-backend {shlex.quote(args.attention_backend)} "
+        + f"--modulation-chunk-tokens {args.modulation_chunk_tokens} "
         + "--generator-residual-storage "
         + f"{shlex.quote(args.generator_residual_storage)} "
         + "--critic-residual-storage "

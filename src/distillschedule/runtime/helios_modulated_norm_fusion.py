@@ -253,7 +253,7 @@ def install_exact_modulated_norm_epilogue(
 
 
 def warmup_exact_modulated_norm_epilogue(
-    receipt: dict[str, Any], *, device: Any
+    receipt: dict[str, Any], *, device: Any, chunk_tokens: int = 512
 ) -> dict[str, Any]:
     if not receipt.get("enabled"):
         return receipt
@@ -264,6 +264,7 @@ def warmup_exact_modulated_norm_epilogue(
         **warmup(
             device,
             fuse_materialization=bool(receipt.get("materialization_requested")),
+            chunk_tokens=int(chunk_tokens),
         ),
     }
     return receipt

@@ -41,6 +41,12 @@ def main() -> int:
         required=True,
     )
     parser.add_argument(
+        "--modulation-chunk-tokens",
+        type=int,
+        choices=(512, 1024, 2048),
+        default=512,
+    )
+    parser.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         required=True,
@@ -105,6 +111,7 @@ def main() -> int:
         "pack_real_score_pair": args.pack_real_score_pair == "on",
         "rollout_backend": "native-fsdp2-batch",
         "attention_backend": args.attention_backend,
+        "modulation_chunk_tokens": args.modulation_chunk_tokens,
         "generator_residual_storage": args.generator_residual_storage,
         "critic_residual_storage": args.critic_residual_storage,
         "generator_nograd_lora_fused_epilogue": (
@@ -151,6 +158,7 @@ def main() -> int:
     residual_fusions: list[dict[str, Any] | None] = []
     modulated_norm_fusions: list[dict[str, Any] | None] = []
     attention_backends: list[dict[str, Any] | None] = []
+    modulation_chunks: list[dict[str, Any] | None] = []
 
     for rank, value in enumerate(ranks):
         if value.get("rank") != rank:
@@ -187,6 +195,31 @@ def main() -> int:
                 "c2acd487c5d1d77b7f6721eabc0fee4f8c5c8f9e682aadf43bfa99b394eecba7"
             ):
                 errors.append(f"{prefix} extension identity changed")
+
+        if args.mode != "validate":
+            role_chunks = value.get("build", {})
+            rank_chunks: dict[str, Any] = {}
+            for role in ("generator", "critic"):
+                receipt = role_chunks.get(role, {}).get("modulation_chunks", {})
+                rank_chunks[role] = receipt
+                chunk_prefix = f"rank{rank} {role} modulation chunks"
+                if receipt.get("status") != "PASS":
+                    errors.append(f"{chunk_prefix} receipt did not pass")
+                if receipt.get("role") != role:
+                    errors.append(f"{chunk_prefix} role drifted")
+                if int(receipt.get("requested_chunk_tokens", -1)) != int(
+                    args.modulation_chunk_tokens
+                ):
+                    errors.append(f"{chunk_prefix} request drifted")
+                if receipt.get("block_count") != 40:
+                    errors.append(f"{chunk_prefix} block inventory drifted")
+                if receipt.get("observed_chunk_tokens") != [
+                    int(args.modulation_chunk_tokens)
+                ]:
+                    errors.append(f"{chunk_prefix} assignment drifted")
+            modulation_chunks.append(rank_chunks)
+        else:
+            modulation_chunks.append(None)
 
         hardening = value.get("p0_hardening", {})
         input_reuse.append(hardening.get("input_reuse"))
@@ -588,6 +621,7 @@ def main() -> int:
         "rank_generator_nograd_residual_fusion": residual_fusions,
         "rank_exact_modulated_norm_epilogue": modulated_norm_fusions,
         "rank_attention_backends": attention_backends,
+        "rank_modulation_chunks": modulation_chunks,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")

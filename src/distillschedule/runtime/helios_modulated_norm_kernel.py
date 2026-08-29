@@ -358,19 +358,22 @@ def warmup(
     *,
     fuse_materialization: bool = False,
     batch_sizes: tuple[int, ...] = (1, 3),
+    chunk_tokens: int = 512,
 ) -> dict[str, Any]:
     """Compile registered B1/B3 specializations outside the formal timer."""
 
+    if int(chunk_tokens) <= 0:
+        raise ValueError("Helios modulated-norm warmup chunk size must be positive")
     for batch_size in batch_sizes:
         if int(batch_size) not in (1, 3):
             raise ValueError(f"unsupported Helios modulated-norm warmup batch: {batch_size}")
         normalized = torch.zeros(
-            (int(batch_size), 512, SUPPORTED_WIDTH),
+            (int(batch_size), int(chunk_tokens), SUPPORTED_WIDTH),
             device=device,
             dtype=torch.float32,
         )
         output = torch.empty(
-            (int(batch_size), 512, SUPPORTED_WIDTH),
+            (int(batch_size), int(chunk_tokens), SUPPORTED_WIDTH),
             device=device,
             dtype=torch.bfloat16,
         )
@@ -405,7 +408,11 @@ def warmup(
     return {
         "scope": "SETUP_ONLY_BEFORE_FORMAL_TIMER",
         "formal_timer_includes_warmup": False,
-        "shapes": [[int(batch), 512, SUPPORTED_WIDTH] for batch in batch_sizes],
+        "shapes": [
+            [int(batch), int(chunk_tokens), SUPPORTED_WIDTH]
+            for batch in batch_sizes
+        ],
+        "chunk_tokens": int(chunk_tokens),
         "block_size": BLOCK_SIZE,
         "num_warps": NUM_WARPS,
         "fuse_materialization": bool(fuse_materialization),
