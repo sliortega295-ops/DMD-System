@@ -101,3 +101,15 @@
     recovery: restore on CPU and invoke the same bottom-up `fully_shard`
     sequence directly, allowing each managed block to move and shard before
     the next.  Re-run the same C6 correctness gate; do not change runtime math.
+25. C6.1 fixed construction without changing the timed workload.  Validate and
+    correctness both pass on 16 ranks with HSDP `(replicate=2, shard=8)`, exact
+    G1/C5/EMA1 and final G201/C1005/EMA801.  The matched unprofiled Full5 is
+    `144.716706512 s`, however: `2.421364876 s` (`1.7016%`) slower than C5.
+    Reject HSDP as a performance arm and return to the `142.295341636 s` C5
+    world16-FSDP substrate.  Retain the FSDP-first change only as a bounded
+    cold-construction compatibility path.
+26. The next iteration must target compute.  Iteration 356 measures
+    `128.836834 s` compute union, while C6 shows that shortening the shard group
+    does not reduce formal wall.  Use a bounded NCU capture on a real dominant
+    C5 GEMM/attention kernel before changing kernel math or schedule; do not
+    infer MFU from Nsight Systems temporal coverage.
