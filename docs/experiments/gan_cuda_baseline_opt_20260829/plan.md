@@ -79,3 +79,25 @@
     use nsys-ai overlap/idle/compute evidence and the kernel-design candidate
     ledger to choose one new mechanism.  Do not use profiled wall as formal
     timing and do not repeat B2/B5 or Score packing.
+21. Iteration 356 is preregistered as that diagnostic-only profile.  Keep the
+    exact C5 runtime at `e75c80e`, validate 16 range receipts and both node
+    SQLite reports, analyze remotely, and promote at most one new mechanism
+    from measured exposed time rather than aggregate kernel duration.
+22. Iteration 356 passed: both node profiles and 16 range receipts are valid.
+    The all-rank median range contains `128.837 s` compute union, `60.529 s`
+    NCCL union with `53.170 s` hidden under compute, `7.354 s` exposed NCCL,
+    `0.488 s` exposed copy and `6.128 s` no-traced activity.  D2H is
+    effectively absent.  The remaining root cause is repeated model compute;
+    communication-only work cannot close the target.
+23. C6 is a bounded topology-only arm: run exact C5 with node-local HSDP
+    `(replicate=2, shard=8)`.  Preserve B1/global-B16 and every rank-qualified
+    sample and physical call.  Validate and run correctness/capacity before one
+    formal timing.  Do not combine prefetch, batching, packing, or a new kernel.
+24. C6 validate passed, but its first correctness run failed before workload
+    execution: the resident HSDP Generator shard plus a full pre-shard Critic
+    CUDA copy reached `38.27 GiB` allocated and a `144 MiB` allocation OOMed.
+    This is the known full-device-before-FSDP construction mechanism, not a
+    steady-state HSDP capacity result.  C6.1 reuses the bounded FSDP-first
+    recovery: restore on CPU and invoke the same bottom-up `fully_shard`
+    sequence directly, allowing each managed block to move and shard before
+    the next.  Re-run the same C6 correctness gate; do not change runtime math.

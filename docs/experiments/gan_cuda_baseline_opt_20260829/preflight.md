@@ -116,3 +116,91 @@
   capacity gates, then reduce one matched unprofiled Full5 below C4?
 - Decision: **GO** for C5 only.  Any missing dispatcher match, count mismatch,
   fallback, parity/inventory failure, or OOM rejects C5 before timing.
+
+## Iteration 356 C5 diagnostic-profile preflight
+
+- Current gate: C5 is correctness-qualified and is the fastest formal arm at
+  `142.295341636 s`, but it remains `21.185203533 s` above the requested
+  `121.110138103 s` threshold.  This iteration may only diagnose C5; its
+  profiled wall is not a new performance denominator.
+- Source identity: local orchestration/docs HEAD is
+  `7613dcedcbdca1428c0a484894bf2e421ac5f2c8`; the exact clean execution tree
+  on both nodes is runtime HEAD
+  `e75c80e95198690ee070a8d7f77c6db9bfb85ce9`.  The only later local commit is
+  the C5 result document, so no runtime diff is omitted from the remote tree.
+- Live substrate: both assigned nodes expose eight idle A100-SXM4-40GB GPUs,
+  no live CUDA worker owns a device, the node lock is not held, and both
+  cgroups report `oom=0`, `oom_kill=0`.  PID-1-owned defunct `nsys-launcher`
+  entries have no GPU context, listener, or lock and are retained as harmless
+  historical zombies rather than killed.
+- Environment: reuse `/tmp/distillschedule-helios-official-torch210`, restored
+  from the validated persistent Torch-2.10 archive; reuse the same pinned local
+  FA2 extension.  Reuse `/usr/local/bin/nsys` because the same binary produced
+  the valid Iteration-351 trace on this exact CUDA/Torch substrate.  Analyze
+  large SQLite reports in place over SSH using the already-provisioned
+  `/tmp/lyy-experiments/DMD-System/gan_cuda_baseline_opt_20260829/nsys-ai-0.3.0`
+  environment; do not create another environment or download the reports.
+- Frozen contract: GAN-on steps 1000--1004, world16 FSDP2, B1/global-B16,
+  Score packing off, pinned local FA2, chunk 2048, C1 exact fusions, C2
+  optimizer warmup, Critic selective replay stride 2, CUDA residuals/EMA,
+  trace/RNG/loss/precision/update order/inventory and exact Full5 range.
+- Matching prior evidence and rejected paths: B2/B5 and Score packing retain
+  their bounded parity failures; C5 capacity evidence rejects expanding the
+  replay set to stride 1; Iteration 351 shows exposed NCCL alone cannot close
+  the remaining gap.  None is retried in this diagnostic.
+- Falsifiable question: after C2--C5, which phase/kernel/host or communication
+  mechanism now owns the largest *exposed* critical-path time, and does it
+  support one concrete single-variable candidate with enough potential to
+  justify a fresh correctness/timing iteration?
+- Decision: **GO** for one immutable node-outer world16 diagnostic profile,
+  remote `nsys-ai doctor/analyze/evidence`, overlap-aware phase attribution,
+  and kernel-design candidate selection.  Any missing report, SQLite, range
+  receipt, rank, or parser-health gate makes the profile invalid.
+
+## C6 node-HSDP topology preflight
+
+- Current gate: Iteration 356 is a valid diagnostic of C5.  Formal C5 remains
+  `142.295341636 s`; the profile contributes no replacement timing claim.
+- Matching evidence: median Full5 compute union is `128.836834 s`, NCCL union
+  `60.529270 s`, compute/NCCL overlap `53.169919 s`, and NCCL exposed versus
+  compute `7.354369 s`.  No-GAN node-HSDP previously provided only a bounded
+  `~1.24 s` control improvement, so C6 is not preregistered as sufficient for
+  the 30% goal.
+- Live substrate at preregistration: both remote trees are clean at `e75c80e`;
+  each assigned node exposes eight idle A100-SXM4-40GB GPUs, the node lock is
+  free, and cgroup `oom=0`, `oom_kill=0`.
+- Authorized hypothesis: node-local shard groups may shorten parameter
+  all-gathers and reduce cross-node parameter-materialization contention while
+  the replica dimension preserves global gradient semantics.
+- Frozen contracts: steps1000--1004, 16 distinct B1 rank inputs/global-B16,
+  trace/RNG, physical Score/DiT inventory, losses, BF16, G1/C5/EMA1,
+  G201/C1005/EMA801, CUDA residuals/EMA, local FA2, chunk2048, optimizer warmup,
+  exact fusions, selective Critic replay stride2 and timer boundary.
+- Rejected paths: B2/B5, Score packing, persistent GAN pipeline, denser
+  checkpoint retention, prefetch and any simultaneous kernel change remain
+  excluded.
+- New falsifiable question: does C5 with `(replicate=2, shard=8)` fit the GAN
+  graph, pass all 16-rank state/inventory/trace/capacity gates, then improve one
+  unprofiled Full5?
+- Decision: **GO** for validate-only, one correctness/capacity run, and one
+  timing only after correctness PASS.
+
+## C6.1 bounded construction recovery
+
+- C6 validate passed with 16 ranks and the exact HSDP policy.  Its first real
+  run did not enter model computation: after the Generator was sharded, the
+  Critic loader called `model.to(device)` before `fully_shard`.  Every rank
+  reached about `38.27 GiB` allocated and failed a `144 MiB` allocation.
+- This matches the documented pre-FSDP full-model CUDA materialization
+  mechanism.  It is not evidence that the persistent HSDP workload OOMs.
+- Authorized repair: node-HSDP only, keep checkpoint restore and LoRA injection
+  on CPU, then call the existing 40-block bottom-up FSDP2 policy.  PyTorch
+  `fully_shard` moves each managed group to its CUDA mesh device and shards it
+  immediately.  World16 construction stays unchanged.
+- Frozen runtime contract: no parameter offload, no streaming, no model swap,
+  no timer-boundary change, and the exact C6 topology/math/inventory remain.
+- Stop condition: any post-construction topology mismatch, parameter/state hash
+  mismatch, steady-state CUDA OOM, or correctness failure rejects C6; no
+  allocator flag or additional memory mechanism may be added automatically.
+- Decision: **GO** for focused tests and one fresh correctness run with a new
+  immutable run ID.
