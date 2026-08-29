@@ -231,6 +231,9 @@ def test_table_component_materialization_is_exact(batch_size: int) -> None:
     assert receipt["materialization_fused_call_count"] == 1
     assert receipt["materialization_fused_chunk_count"] == 3
     assert receipt["reference_fallback_count"] == 0
+    assert receipt["scope"] == (
+        "ALL_ROLE_REGISTERED_B1_B3_MODULATED_NORM_FORWARD_EPILOGUE"
+    )
 
 
 def test_launcher_controller_and_summarizer_are_fail_closed() -> None:

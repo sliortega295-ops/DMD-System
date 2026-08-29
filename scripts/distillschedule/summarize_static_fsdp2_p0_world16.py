@@ -328,7 +328,7 @@ def main() -> int:
                 if not modulated_norm_fusion.get("enabled"):
                     errors.append(f"{prefix} was not enabled")
                 if modulated_norm_fusion.get("scope") != (
-                    "ALL_ROLE_B1_MODULATED_NORM_FORWARD_EPILOGUE"
+                    "ALL_ROLE_REGISTERED_B1_B3_MODULATED_NORM_FORWARD_EPILOGUE"
                 ):
                     errors.append(f"{prefix} scope changed")
                 if modulated_norm_fusion.get("semantic_contract") != (
