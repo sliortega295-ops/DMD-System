@@ -117,6 +117,9 @@ from distillschedule.runtime.fsdp2_p0 import (
     score_forward_real_pair,
 )
 from distillschedule.runtime.fsdp2_static import FSDP2ShardEMA, build_fsdp2_engine, configure_fsdp2_checkpointing, contract_for_variant
+from distillschedule.runtime.helios_cross_kv_cache import (
+    install_generator_nograd_cross_kv_cache,
+)
 from distillschedule.runtime.helios_lora_epilogue import (
     install_generator_nograd_lora_fused_epilogue,
 )
@@ -128,10 +131,12 @@ from distillschedule.runtime.helios_modulated_norm_fusion import (
     warmup_exact_modulated_norm_epilogue,
 )
 from distillschedule.runtime.helios_residual_fusion import (
+    generator_nograd_residual_fusion_scope,
     install_generator_nograd_residual_fusion,
     warmup_generator_nograd_residual_fusion,
 )
 from distillschedule.runtime.nsys_range import StaticFSDP2Full5NsightRange
+from distillschedule.runtime.p0_parity import require_tensor_parity
 from runtime.critic_pool_checkpoint import LogicalCheckpointPackage, load_logical_master_into_trainables
 from runtime.critic_pool_helios import (
     build_helios_pool_model,
@@ -235,6 +240,10 @@ def _build_static_model(
             "disabled_reason": "INSTALL_ONCE_FROM_GENERATOR_BUILD",
         }
     )
+    cross_kv_cache = install_generator_nograd_cross_kv_cache(
+        enabled=bool(args.generator_nograd_cross_kv_cache),
+        role=role,
+    )
     checkpoint_policy = configure_fsdp2_checkpointing(
         model,
         operation_source=bool(args.operation_source),
@@ -294,6 +303,7 @@ def _build_static_model(
         ),
         "generator_nograd_residual_fusion": residual_fusion,
         "exact_modulated_norm_epilogue": modulated_norm_fusion,
+        "generator_nograd_cross_kv_cache": cross_kv_cache,
         "modulation_chunks": modulation_chunks,
         "checkpoint_policy": checkpoint_policy,
         "fsdp2": sharding,
@@ -574,40 +584,63 @@ def _precompute_critic_rollouts(
                 record_output_sha256=collect_diagnostics,
                 collect_diagnostics=collect_diagnostics,
                 diagnostics_scope=diagnostics.scope,
+                use_cross_kv_cache=policy.generator_nograd_cross_kv_cache,
             )
         parity_rows: list[dict[str, Any]] = []
-        if rollout_parity_check and len(entries) > 1:
+        needs_reference = rollout_parity_check and (
+            len(entries) > 1 or policy.generator_nograd_cross_kv_cache
+        )
+        if needs_reference:
             for entry, candidate in zip(entries, generated, strict=True):
-                reference, _reference_record = run_generator_trace_rollout(
-                    model=generator_engine.module,
-                    loaded=entry,
-                    device=device,
-                    detailed_profile=False,
-                    record_output_sha256=False,
-                    empty_cache_before_rollout=False,
-                    collect_diagnostics=False,
-                )
-                error = _rollout_pack_error(reference, candidate)
+                # Keep every already-validated C5 no-grad fusion active and
+                # disable only the new K/V cache in the reference arm.
+                with generator_nograd_residual_fusion_scope():
+                    reference, _reference_record = run_generator_trace_rollout(
+                        model=generator_engine.module,
+                        loaded=entry,
+                        device=device,
+                        detailed_profile=False,
+                        record_output_sha256=False,
+                        empty_cache_before_rollout=False,
+                        collect_diagnostics=False,
+                    )
+                if policy.generator_nograd_cross_kv_cache:
+                    error = require_tensor_parity(
+                        reference,
+                        candidate,
+                        label=(
+                            "Generator no-grad cross-KV B1 step"
+                            f"{entry.pool_entry.logical_step}"
+                        ),
+                    )
+                else:
+                    error = _rollout_pack_error(reference, candidate)
+                    if error["mean_relative"] > PACKED_SCORE_MEAN_REL_TOLERANCE:
+                        raise AssertionError(
+                            "batched Generator rollout exceeds mean-relative "
+                            "tolerance: "
+                            f"step={entry.pool_entry.logical_step} "
+                            f"{error['mean_relative']:.6g} > "
+                            f"{PACKED_SCORE_MEAN_REL_TOLERANCE:.6g}"
+                        )
                 parity_rows.append(
                     {
                         "logical_step": int(entry.pool_entry.logical_step),
                         **error,
                     }
                 )
-                if error["mean_relative"] > PACKED_SCORE_MEAN_REL_TOLERANCE:
-                    raise AssertionError(
-                        "batched Generator rollout exceeds mean-relative tolerance: "
-                        f"step={entry.pool_entry.logical_step} "
-                        f"{error['mean_relative']:.6g} > "
-                        f"{PACKED_SCORE_MEAN_REL_TOLERANCE:.6g}"
-                    )
                 del reference, _reference_record
         for step, value in zip(step_group, generated, strict=True):
             outputs[int(step)] = value
         record["batch_index"] = batch_index
         record["batch_parity"] = {
-            "enabled": bool(rollout_parity_check and len(entries) > 1),
+            "enabled": bool(needs_reference),
             "status": "PASS" if parity_rows else "NOT_RUN",
+            "reason": (
+                "CROSS_KV_CACHE_B1_REFERENCE"
+                if policy.generator_nograd_cross_kv_cache and len(entries) == 1
+                else "BATCHED_VS_B1_REFERENCE"
+            ),
             "tolerance_mean_relative": PACKED_SCORE_MEAN_REL_TOLERANCE,
             "samples": parity_rows,
         }
@@ -834,6 +867,15 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--generator-nograd-cross-kv-cache",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Reuse exact cross-attention encoder K/V projections only within "
+            "each B1 Generator no-grad rollout"
+        ),
+    )
+    value.add_argument(
         "--critic-only-step",
         type=int,
         choices=(10,),
@@ -901,6 +943,10 @@ def main() -> int:
         raise ValueError(
             "selective Flash checkpoint save requires the pinned local-fa2 backend"
         )
+    if args.generator_nograd_cross_kv_cache and args.rollout_batch_size != 1:
+        raise ValueError(
+            "Generator no-grad cross-attention KV reuse requires B1"
+        )
     if args.operation_source and args.selective_flash_checkpoint_stride:
         raise ValueError(
             "operation-source diagnostics cannot be combined with selective Flash save"
@@ -922,6 +968,9 @@ def main() -> int:
         modulation_chunk_tokens=int(args.modulation_chunk_tokens),
         selective_flash_checkpoint_stride=int(
             args.selective_flash_checkpoint_stride
+        ),
+        generator_nograd_cross_kv_cache=bool(
+            args.generator_nograd_cross_kv_cache
         ),
     )
     dist.init_process_group("nccl")
@@ -954,6 +1003,9 @@ def main() -> int:
             "modulation_chunk_tokens": policy.modulation_chunk_tokens,
             "selective_flash_checkpoint_stride": (
                 policy.selective_flash_checkpoint_stride
+            ),
+            "generator_nograd_cross_kv_cache": (
+                policy.generator_nograd_cross_kv_cache
             ),
             "generator_residual_storage": args.generator_residual_storage,
             "critic_residual_storage": args.critic_residual_storage,

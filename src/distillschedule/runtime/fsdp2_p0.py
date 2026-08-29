@@ -62,6 +62,7 @@ class StaticFSDP2P0Policy:
     exact_modulated_norm_materialization: bool = False
     modulation_chunk_tokens: int = 512
     selective_flash_checkpoint_stride: int = 0
+    generator_nograd_cross_kv_cache: bool = False
 
     def __post_init__(self) -> None:
         if self.mesh_policy not in SUPPORTED_MESH_POLICIES:
@@ -88,6 +89,10 @@ class StaticFSDP2P0Policy:
             raise ValueError("Exact grad residual fusion is restricted to B1")
         if self.exact_modulated_norm_epilogue and self.rollout_batch_size != 1:
             raise ValueError("Exact modulated-norm epilogue is restricted to B1")
+        if self.generator_nograd_cross_kv_cache and self.rollout_batch_size != 1:
+            raise ValueError(
+                "Generator no-grad cross-attention KV reuse is restricted to B1"
+            )
         if (
             self.exact_modulated_norm_materialization
             and not self.exact_modulated_norm_epilogue
@@ -129,6 +134,8 @@ class StaticFSDP2P0Policy:
                 "criticflashsave"
                 f"{40 // self.selective_flash_checkpoint_stride}"
             )
+        if self.generator_nograd_cross_kv_cache:
+            suffixes.append("crosskvcache")
         return "-".join((base, *suffixes))
 
 

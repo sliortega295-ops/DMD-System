@@ -21,6 +21,7 @@ def _policy(backend: str) -> dict[str, object]:
         "attention_backend": backend,
         "modulation_chunk_tokens": 512,
         "selective_flash_checkpoint_stride": 0,
+        "generator_nograd_cross_kv_cache": False,
         "generator_residual_storage": "cuda_out_of_place",
         "critic_residual_storage": "cuda_out_of_place",
         "generator_nograd_lora_fused_epilogue": False,

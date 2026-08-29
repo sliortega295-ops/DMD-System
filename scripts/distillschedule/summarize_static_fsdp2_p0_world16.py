@@ -53,6 +53,11 @@ def main() -> int:
         default=0,
     )
     parser.add_argument(
+        "--generator-nograd-cross-kv-cache",
+        choices=("on", "off"),
+        default="off",
+    )
+    parser.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         required=True,
@@ -121,6 +126,9 @@ def main() -> int:
         "selective_flash_checkpoint_stride": (
             args.selective_flash_checkpoint_stride
         ),
+        "generator_nograd_cross_kv_cache": (
+            args.generator_nograd_cross_kv_cache == "on"
+        ),
         "generator_residual_storage": args.generator_residual_storage,
         "critic_residual_storage": args.critic_residual_storage,
         "generator_nograd_lora_fused_epilogue": (
@@ -169,6 +177,7 @@ def main() -> int:
     attention_backends: list[dict[str, Any] | None] = []
     modulation_chunks: list[dict[str, Any] | None] = []
     checkpoint_policies: list[dict[str, Any] | None] = []
+    cross_kv_caches: list[dict[str, Any] | None] = []
 
     for rank, value in enumerate(ranks):
         if value.get("rank") != rank:
@@ -573,6 +582,46 @@ def main() -> int:
                         errors.append(f"{prefix} did not warm materialization kernel")
             elif modulated_norm_fusion.get("enabled"):
                 errors.append(f"{prefix} enabled outside requested policy")
+            cross_kv_cache = (
+                value.get("build", {})
+                .get("generator", {})
+                .get("generator_nograd_cross_kv_cache", {})
+            )
+            cross_kv_caches.append(cross_kv_cache)
+            prefix = f"rank{rank} Generator no-grad cross-attention KV cache"
+            if expected_policy["generator_nograd_cross_kv_cache"]:
+                install_prefix = (
+                    f"rank{rank} Generator no-grad cross-attention KV cache"
+                )
+                if not cross_kv_cache.get("enabled"):
+                    errors.append(f"{prefix} was not enabled")
+                if cross_kv_cache.get("scope") != (
+                    "GENERATOR_NOGRAD_ONE_ROLLOUT_ONLY"
+                ):
+                    errors.append(f"{prefix} scope changed")
+                if cross_kv_cache.get("changes_model_call_count") is not False:
+                    errors.append(f"{prefix} changed model-call semantics")
+                if cross_kv_cache.get("changes_attention_math") is not False:
+                    errors.append(f"{prefix} changed attention math")
+                if cross_kv_cache.get("changes_fsdp_collectives") is not False:
+                    errors.append(f"{prefix} changed FSDP collectives")
+                if cross_kv_cache.get("cross_rollout_reuse") is not False:
+                    errors.append(f"{prefix} crossed a rollout boundary")
+                for key in (
+                    "cache_miss_count",
+                    "encoder_signature_mismatch_count",
+                    "cached_tensor_mutation_count",
+                    "grad_enabled_call_count",
+                    "unexpected_cross_attention_count",
+                    "source_encoder_identity_mismatch_count",
+                    "missing_source_encoder_count",
+                ):
+                    if int(cross_kv_cache.get(key, -1)) != 0:
+                        errors.append(
+                            f"{prefix} {key}={cross_kv_cache.get(key)}"
+                        )
+            elif cross_kv_cache.get("enabled"):
+                errors.append(f"{prefix} enabled outside requested policy")
             if expected_policy["generator_nograd_lora_fused_epilogue"]:
                 epilogue = value.get("build", {}).get("generator", {}).get(
                     "generator_nograd_lora_fused_epilogue", {}
@@ -654,7 +703,85 @@ def main() -> int:
                 errors.append(
                     f"rank{rank} rollout batch count={len(batches)}, expected={expected_batches}"
                 )
-            if args.mode == "correctness" and args.rollout_batch_size > 1:
+            if expected_policy["generator_nograd_cross_kv_cache"]:
+                expected_total_calls = 0
+                expected_total_reuses = 0
+                for batch_index, batch in enumerate(batches):
+                    cache = batch.get("cross_kv_cache", {})
+                    call_count = int(batch.get("call_count", 0))
+                    expected_total_calls += call_count * 40
+                    expected_total_reuses += max(0, call_count - 1) * 40
+                    cache_prefix = (
+                        f"rank{rank} rollout batch{batch_index} "
+                        "cross-attention KV"
+                    )
+                    if cache.get("status") != "PASS":
+                        errors.append(
+                            f"{cache_prefix} status={cache.get('status')}"
+                        )
+                    if cache.get("source_encoder_identity_contract") != (
+                        "EXACT_STORAGE_POINTER_OFFSET_VERSION_DTYPE_SHAPE_"
+                        "STRIDE_DEVICE"
+                    ):
+                        errors.append(f"{cache_prefix} source identity drifted")
+                    expected_cache = {
+                        "attention_count": 40,
+                        "expected_model_calls": call_count,
+                        "cross_projection_call_count": call_count * 40,
+                        "self_projection_call_count": call_count * 40,
+                        "query_projection_count": call_count * 40,
+                        "cache_fill_count": 40,
+                        "cache_reuse_count": max(0, call_count - 1) * 40,
+                        "cache_miss_count": 0,
+                        "encoder_signature_mismatch_count": 0,
+                        "cached_tensor_mutation_count": 0,
+                        "grad_enabled_call_count": 0,
+                        "unexpected_cross_attention_count": 0,
+                        "model_call_count": call_count,
+                        "source_encoder_identity_mismatch_count": 0,
+                        "missing_source_encoder_count": 0,
+                        "cached_attention_count_before_clear": 40,
+                        "cached_attention_count_after_clear": 0,
+                    }
+                    for key, expected in expected_cache.items():
+                        if cache.get(key) != expected:
+                            errors.append(
+                                f"{cache_prefix} {key}={cache.get(key)!r}, "
+                                f"expected={expected!r}"
+                            )
+                    if int(cache.get("cache_resident_bytes_before_clear", 0)) <= 0:
+                        errors.append(f"{cache_prefix} cached no encoder K/V bytes")
+                expected_install = {
+                    "rollout_scope_count": expected_batches,
+                    "cross_projection_call_count": expected_total_calls,
+                    "self_projection_call_count": expected_total_calls,
+                    "query_projection_count": expected_total_calls,
+                    "cache_fill_count": expected_batches * 40,
+                    "cache_reuse_count": expected_total_reuses,
+                    "cache_miss_count": 0,
+                    "encoder_signature_mismatch_count": 0,
+                    "cached_tensor_mutation_count": 0,
+                    "grad_enabled_call_count": 0,
+                    "unexpected_cross_attention_count": 0,
+                    "model_call_count": expected_total_calls // 40,
+                    "source_encoder_identity_mismatch_count": 0,
+                    "missing_source_encoder_count": 0,
+                }
+                for key, expected in expected_install.items():
+                    if cross_kv_cache.get(key) != expected:
+                        errors.append(
+                            f"{install_prefix} {key}="
+                            f"{cross_kv_cache.get(key)!r}, "
+                            f"expected={expected!r}"
+                        )
+                if int(cross_kv_cache.get("cache_resident_bytes_sum", 0)) <= 0:
+                    errors.append(
+                        f"{install_prefix} cached no encoder K/V bytes"
+                    )
+            if args.mode == "correctness" and (
+                args.rollout_batch_size > 1
+                or expected_policy["generator_nograd_cross_kv_cache"]
+            ):
                 for batch in batches:
                     parity = batch.get("batch_parity", {})
                     if parity.get("status") != "PASS":
@@ -703,6 +830,7 @@ def main() -> int:
             optimizer_warmups.append(None)
             residual_fusions.append(None)
             modulated_norm_fusions.append(None)
+            cross_kv_caches.append(None)
 
     starts = [int(value["timing_start_unix_ns"]) for value in ranks if "timing_start_unix_ns" in value]
     stops = [int(value["timing_stop_unix_ns"]) for value in ranks if "timing_stop_unix_ns" in value]
@@ -744,6 +872,7 @@ def main() -> int:
         "rank_optimizer_dispatch_warmup": optimizer_warmups,
         "rank_generator_nograd_residual_fusion": residual_fusions,
         "rank_exact_modulated_norm_epilogue": modulated_norm_fusions,
+        "rank_generator_nograd_cross_kv_cache": cross_kv_caches,
         "rank_attention_backends": attention_backends,
         "rank_modulation_chunks": modulation_chunks,
         "rank_checkpoint_policies": checkpoint_policies,

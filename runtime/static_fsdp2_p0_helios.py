@@ -6,6 +6,9 @@ from typing import Any, Sequence
 
 import torch
 
+from distillschedule.runtime.helios_cross_kv_cache import (
+    generator_nograd_cross_kv_cache_scope,
+)
 from distillschedule.runtime.helios_residual_fusion import (
     generator_nograd_residual_fusion_scope,
 )
@@ -40,6 +43,7 @@ def run_generator_trace_rollout_batch(
     record_output_sha256: bool = False,
     collect_diagnostics: bool = False,
     diagnostics_scope: Any | None = None,
+    use_cross_kv_cache: bool = False,
 ) -> tuple[tuple[torch.Tensor, ...], dict[str, Any]]:
     """Run multiple step-qualified critic rollouts in one physical B>1 trace.
 
@@ -114,7 +118,12 @@ def run_generator_trace_rollout_batch(
     model.enable_adapters()
     model.train()
     torch.cuda.reset_peak_memory_stats(device)
-    with generator_nograd_residual_fusion_scope():
+    with generator_nograd_cross_kv_cache_scope(
+        model,
+        enabled=use_cross_kv_cache,
+        expected_model_calls=expected_call_count,
+        source_encoder_hidden_states=tensors["text_embedding"],
+    ) as cross_kv_cache, generator_nograd_residual_fusion_scope():
         (
             generated_x0,
             gradient_mask,
@@ -212,6 +221,7 @@ def run_generator_trace_rollout_batch(
             batch_size=batch_size,
         ),
         "memory": _memory_snapshot(device),
+        "cross_kv_cache": cross_kv_cache,
     }
     if collect_diagnostics:
         details.update(
