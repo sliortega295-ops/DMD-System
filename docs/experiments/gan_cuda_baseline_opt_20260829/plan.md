@@ -56,11 +56,18 @@
     `0.172990577 s` (`0.1207%`) faster than C3.  Retain it as the measured
     fastest substrate but classify the chunk-size gain as tiny and insufficient
     to explain the remaining `22.096575007 s` gap.
-17. Before another GPU launch, search the existing P0 batching evidence.  The
-    historical Real-Score packing arm already failed at roughly 1.7-2.0%
-    output error and is NO-GO without materially new evidence.  The historical
-    B2 rollout arm failed before execution because `global_step` was treated as
-    a physical control; the current audited path removes only that metadata and
-    adds per-row B1 multi-metric parity, so one bounded B2 correctness attempt
-    is eligible after the current exact kernels are explicitly registered for
-    B2 and pass CUDA parity.
+17. The broader failure-index search found the later schedule-compatible B2
+    implementation, superseding the earlier pre-execution failure.  It already
+    removed metadata-only mismatches, batched only rows with identical physical
+    schedules, and ran per-row B1 parity.  Run
+    `iter355_helios14b_hsdp_compatible_b2_correctness_r2_20260824` failed on all
+    15 preserved rank receipts with normalized-L2 `0.058--0.071` and cosine
+    `0.9977--0.9984`.  Record B2/B5 as a matching bounded negative and do not
+    launch it again.  Real-Score packing remains independently NO-GO.
+18. C5 changes only Critic checkpoint replay: for stride-2 blocks, save the
+    exact pinned FA2 dispatcher result in the original forward and reuse it in
+    non-reentrant replay.  Port the existing fail-closed receipt path to the C4
+    substrate without checkpoint bypass, batching, topology, or math changes.
+    Run focused tests, validate-only, then 16-rank GAN correctness/capacity.
+    Timing is allowed only if every rank reports the exact selected-block,
+    original-save, and replay-reuse inventory with zero OOM and no fallback.

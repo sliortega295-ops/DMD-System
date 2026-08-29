@@ -81,3 +81,38 @@
   and does one matched unprofiled Full5 improve over C3?
 - Decision: **GO**, conditional on the bounded CUDA canary and focused tests.
   Any parity, receipt, inventory, or capacity failure rejects C4 before timing.
+
+## Post-C4 repeated-failure audit and C5 preflight
+
+- Current gate: C4 is the fastest correctness-qualified substrate at
+  `143.206713110 s`, still `22.096575007 s` above the requested 30%-reduction
+  threshold.
+- Live source before C5: `92de9f07af81a9e7ff96de755aafdcf4dadadf2b`,
+  clean.  At the renewed audit both assigned nodes expose eight idle
+  A100-SXM4-40GB GPUs, no live CUDA worker, and cgroup `oom=0`, `oom_kill=0`.
+- Frozen contract: C4 source/assets, world16 FSDP2, GAN-on steps 1000--1004,
+  trace/RNG, B1/global-B16, official physical Score/DiT inventory, local FA2,
+  losses, BF16 precision, updates, optimizer/EMA ordering, CUDA residency and
+  formal timer boundaries.
+- Matching B2 evidence: commits `3f8d16f` and `a240f58` implement
+  schedule-compatible grouping, metadata normalization, and per-row B1 parity.
+  `iter355_helios14b_hsdp_compatible_b2_correctness_r2_20260824` then failed
+  before update on all 15 preserved ranks: normalized-L2 about `0.058--0.071`
+  and cosine about `0.9977--0.9984`, versus limits `0.005` and `0.9999`.
+  This matches the proposed physical batching mechanism and magnitude; B2 and
+  B5 are therefore **NO-GO** under the repeated-failure rule.
+- Matching packing evidence: `iter298_nogan_B_correctness_20260815` already
+  rejected Real-Score packing under the same strict gate.  It is not retried.
+- Authorized C5 hypothesis: keep every physical call unchanged, but use the
+  previously validated selective-checkpoint mechanism (`28ab629` through
+  `ad9e16b`) on Critic blocks `0,2,...,38`.  Only the exact pinned FA2 result is
+  saved in the original forward and reused during checkpoint replay.  The
+  official GAN-D B3 graph is materially new capacity/execution evidence.
+- Rejected/superseded paths: no B2/B5, no Score packing, no block checkpoint
+  bypass, no KV cache, no HSDP, no parameter prefetch/offload, and no relaxed
+  numerical or inventory gate.
+- New falsifiable question: can selective FA2 replay on 20 Critic blocks pass
+  exact per-rank save/reuse receipts and the frozen 16-rank GAN correctness and
+  capacity gates, then reduce one matched unprofiled Full5 below C4?
+- Decision: **GO** for C5 only.  Any missing dispatcher match, count mismatch,
+  fallback, parity/inventory failure, or OOM rejects C5 before timing.

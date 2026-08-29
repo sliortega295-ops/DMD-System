@@ -198,9 +198,20 @@ correctness, and a faster matched unprofiled Full5.
   improvement.  It is retained as the fastest correctness-qualified substrate,
   while the requested threshold remains unmet by `22.096575007 s`.
 
-The next candidate must therefore change a larger physical execution unit.  A
-fresh preflight rejects repeating the known Real-Score packing failure.  It
-permits one bounded B2 rollout attempt because the current path materially
-differs from the historical pre-execution failure: logical `global_step` is now
-metadata-only and every batched row is compared against its own original-step
-B1 execution before any optimizer update.
+The next candidate must therefore change a larger repeated execution unit, but
+the broader failure-index search closes both obvious packing routes.  Real-Score
+packing previously failed strict parity.  More importantly, the later
+schedule-compatible B2 implementation already ignored non-runtime metadata,
+batched only identical physical schedules, and checked every row against its B1
+reference.  Its world16 correctness run still failed before update on 15
+preserved ranks with normalized-L2 about `0.058--0.071` and cosine about
+`0.9977--0.9984`, far outside the frozen gate.  Repeating B2 or B5 on C4 is
+therefore **NO-GO**, not a new experiment.
+
+C5 instead ports the previously correctness-qualified selective checkpoint
+policy that saves only the exact pinned FA2 result for every other Critic block
+(`stride=2`, blocks `0,2,...,38`) and reuses it during checkpoint replay.  It
+does not bypass a block, alter a Score call, change rollout grouping, or change
+the optimizer.  The material new question is whether the same exact mechanism
+fits and helps the official GAN-D physical-B3 Critic graph.  Capacity and exact
+original-save/replay receipt counts are mandatory before timing.
