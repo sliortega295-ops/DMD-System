@@ -51,3 +51,16 @@
     B1/B3 CUDA output-and-gradient canary, then focused tests, validate-only,
     world16 correctness, and at most one matched unprofiled timing.  Reject C4
     rather than combining another mechanism if it does not improve C3.
+16. C4 passed the CUDA canary, 78 focused tests, validate-only, 16-rank
+    correctness, and one matched timing.  Full5 is `143.206713110 s`, only
+    `0.172990577 s` (`0.1207%`) faster than C3.  Retain it as the measured
+    fastest substrate but classify the chunk-size gain as tiny and insufficient
+    to explain the remaining `22.096575007 s` gap.
+17. Before another GPU launch, search the existing P0 batching evidence.  The
+    historical Real-Score packing arm already failed at roughly 1.7-2.0%
+    output error and is NO-GO without materially new evidence.  The historical
+    B2 rollout arm failed before execution because `global_step` was treated as
+    a physical control; the current audited path removes only that metadata and
+    adds per-row B1 multi-metric parity, so one bounded B2 correctness attempt
+    is eligible after the current exact kernels are explicitly registered for
+    B2 and pass CUDA parity.

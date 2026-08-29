@@ -171,3 +171,36 @@ workload semantics.  It includes setup-only warmup at the selected chunk size
 so first-use compilation cannot contaminate the formal timer.  Promotion still
 requires a real B1/B3 CUDA parity canary, focused tests, validate-only, 16-rank
 correctness, and a faster matched unprofiled Full5.
+
+## C4 measured result
+
+- Exact source HEAD: `9736b433b2f8653c12ed1fd495efd2004306d8fe`.
+- Real A100 B1/B3 CUDA canary: PASS.  Output, hidden gradient, and residual
+  gradient are bitwise identical between chunk 512 and 2048; timestep-gradient
+  drift remains inside the existing P0 multi-metric gate (worst normalized L2
+  `0.004255535`, worst cosine `0.999990880`).
+- Focused tests: `78 passed`.
+- Validate-only run `iter354_gan_cuda_chunk2048_validate_r1_20260829`: 16/16
+  PASS, summary SHA-256
+  `51394b3a01ccc4953624bfc7398c18c6991a6a28acdf45721f280a13f3067dd9`.
+- Correctness run `iter354_gan_cuda_chunk2048_correctness_r1_20260829`: 16/16
+  PASS, G1/C5/EMA1, final G201/C1005/EMA801, four logical/four physical
+  Generator Score calls, and zero kernel fallbacks or OOM deltas.  Summary
+  SHA-256
+  `8ba3331d6f716c956e705e38a963a65884cd4cbf361527c0e7df60fae347458c`.
+- Per-rank chunk counts fell from 63,280 to 18,640 for modulated norm; the
+  residual/grad forward/backward receipts are 7,600/9,440/4,720 chunks.
+- Formal run `iter354_gan_cuda_chunk2048_timing_r1_20260829`: unprofiled Full5
+  `143.206713110 s`, summary SHA-256
+  `8733318616ca4ef9a1112fb7fab36435fbcccec9996b1764bbbc2fd596702091`.
+- C4 saves only `0.172990577 s` (`0.1207%`) versus C3.  This is a tiny,
+  one-run gain and should not be generalized as the Wan1.3B-sized launch
+  improvement.  It is retained as the fastest correctness-qualified substrate,
+  while the requested threshold remains unmet by `22.096575007 s`.
+
+The next candidate must therefore change a larger physical execution unit.  A
+fresh preflight rejects repeating the known Real-Score packing failure.  It
+permits one bounded B2 rollout attempt because the current path materially
+differs from the historical pre-execution failure: logical `global_step` is now
+metadata-only and every batched row is compared against its own original-step
+B1 execution before any optimizer update.
