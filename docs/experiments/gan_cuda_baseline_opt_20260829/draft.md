@@ -215,3 +215,19 @@ does not bypass a block, alter a Score call, change rollout grouping, or change
 the optimizer.  The material new question is whether the same exact mechanism
 fits and helps the official GAN-D physical-B3 Critic graph.  Capacity and exact
 original-save/replay receipt counts are mandatory before timing.
+
+## C5 measured result
+
+C5 passes all frozen gates at
+`e75c80e95198690ee070a8d7f77c6db9bfb85ce9`.  Each rank reports 220 selected
+checkpoint contexts, 440 exact FA2 saves, and 440 replay reuses; G1/C5/EMA1
+and G201/C1005/EMA801 remain unchanged.  The matched unprofiled Full5 is
+`142.295341636 s`, saving `0.911371474 s` (`0.6364%`) from C4 and
+`30.719141368 s` (`17.7552%`) from C0.
+
+The candidate is memory-tight: peak reserved is `38.533203 GiB/rank`, with a
+minimum end-receipt driver-free value of only `0.012085 GiB`.  Do not infer
+that retaining all 40 blocks is safe.  C5 is promoted as the fastest substrate,
+but remains `21.185203533 s` above the requested threshold.  A fresh C5 profile
+must now select the next mechanism; neither known physical batching failures
+nor exposed NCCL alone can supply the missing time.

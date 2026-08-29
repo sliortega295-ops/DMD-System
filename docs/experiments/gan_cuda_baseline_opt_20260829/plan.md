@@ -71,3 +71,11 @@
     Run focused tests, validate-only, then 16-rank GAN correctness/capacity.
     Timing is allowed only if every rank reports the exact selected-block,
     original-save, and replay-reuse inventory with zero OOM and no fallback.
+19. C5 passed all gates.  Its formal Full5 is `142.295341636 s`, a small
+    `0.911371474 s` improvement over C4 and `17.7552%` over C0.  Promote the
+    substrate, but do not test stride 1: peak reserved reached `38.533203 GiB`
+    and the smallest driver-free end receipt was `0.012085 GiB`.
+20. Capture one diagnostic C5 profile with the same correctness summary, then
+    use nsys-ai overlap/idle/compute evidence and the kernel-design candidate
+    ledger to choose one new mechanism.  Do not use profiled wall as formal
+    timing and do not repeat B2/B5 or Score packing.
