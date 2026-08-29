@@ -113,3 +113,14 @@
     does not reduce formal wall.  Use a bounded NCU capture on a real dominant
     C5 GEMM/attention kernel before changing kernel math or schedule; do not
     infer MFU from Nsight Systems temporal coverage.
+27. Iteration 358 passes its diagnostic gates.  The representative dominant
+    Critic BF16 GEMM reaches `88.322976%` Tensor/SM throughput and only
+    `25.233768%` DRAM throughput.  Direct tuning of that single already
+    Tensor-bound cuBLAS kernel has an impossible all-occurrence upper bound of
+    only about `3.31 GPU-s/GPU`; it cannot close the remaining `21.185 s` gap.
+28. C8 ports the existing exact per-rollout Generator no-grad cross-attention
+    encoder K/V reuse onto C5 and extends only its admission/gates to GAN-on.
+    Keep five logical rollouts distinct, preserve all DiT/attention calls and
+    FSDP collectives, clear the cache after each rollout, strengthen exact
+    encoder storage/version identity, and compare every cached B1 output with
+    the uncached C5 reference before one formal timing.

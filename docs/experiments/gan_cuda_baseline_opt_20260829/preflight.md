@@ -236,3 +236,35 @@
 - Decision: **GO diagnostic-only**.  The NCU wall cannot update formal timing.
   Missing range receipts, wrong kernel/range, empty report, replay failure, or
   any workload/OOM gate failure invalidates the capture.
+
+## C8 Generator no-grad cross-attention K/V preflight
+
+- Current gate: C7 proves the dominant Critic BF16 GEMM is already
+  Tensor-compute bound (`88.322976%` Tensor/SM throughput, `25.233768%` DRAM),
+  while C5 remains `21.185203533 s` above target.  A marginal replacement of
+  that GEMM is not selected.
+- Matching prior code: commits `89b7efa` and `945a9f3` implement source-pinned
+  per-rollout encoder K/V reuse and B1 reference parity.  No preserved real-GPU
+  timing or failure artifact exists for this mechanism, and it was restricted
+  to No-GAN admission rather than rejected on GAN semantics.
+- Authorized hypothesis: after G201 commits, the Generator version and one
+  rollout's text conditioning are invariant across its six physical DiT calls.
+  Reusing each block's exact pre-norm cross-attention encoder K/V inside that
+  one rollout removes repeated projection compute without removing query,
+  attention, output projection, block, DiT, or FSDP calls.
+- Frozen contract: exact C5 source/assets, GAN steps1000--1004, five distinct
+  B1 rank-qualified rollouts/global-B16, trace/RNG/loss/physical inventory,
+  world16 FSDP, local FA2, chunk2048, checkpoint stride2, G1/C5/EMA1,
+  G201/C1005/EMA801, CUDA residency and timer boundary.
+- Strengthened fail-closed gate: cache reuse requires the exact same encoder
+  storage pointer, offset, tensor version, dtype, shape, stride and device;
+  cache clears after every logical rollout.  Correctness must compare every
+  candidate rollout to the uncached C5 B1 path under the existing multi-metric
+  threshold and report exact 40 fills plus 200 reuses per rollout.
+- Rejected combinations: no B2/B5, Score packing, HSDP, denser checkpoint
+  retention, TP/PP, kernel replacement or cross-rollout reuse is combined.
+- New falsifiable question: does the existing exact cache mechanism admit the
+  real GAN-on rollout trace, pass all five per-rank B1 parity and lifecycle
+  gates on 16 ranks, fit capacity, and reduce one unprofiled C5 Full5?
+- Decision: **GO** for a source-only port, focused tests, validate-only,
+  correctness/capacity, then one formal timing only after PASS.
