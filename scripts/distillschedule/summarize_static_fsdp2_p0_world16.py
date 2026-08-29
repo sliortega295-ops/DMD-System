@@ -58,11 +58,6 @@ def main() -> int:
         default="off",
     )
     parser.add_argument(
-        "--generator-nograd-history-kv-cache",
-        choices=("on", "off"),
-        default="off",
-    )
-    parser.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         required=True,
@@ -134,9 +129,6 @@ def main() -> int:
         "generator_nograd_cross_kv_cache": (
             args.generator_nograd_cross_kv_cache == "on"
         ),
-        "generator_nograd_history_kv_cache": (
-            args.generator_nograd_history_kv_cache == "on"
-        ),
         "generator_residual_storage": args.generator_residual_storage,
         "critic_residual_storage": args.critic_residual_storage,
         "generator_nograd_lora_fused_epilogue": (
@@ -186,7 +178,6 @@ def main() -> int:
     modulation_chunks: list[dict[str, Any] | None] = []
     checkpoint_policies: list[dict[str, Any] | None] = []
     cross_kv_caches: list[dict[str, Any] | None] = []
-    history_kv_caches: list[dict[str, Any] | None] = []
 
     for rank, value in enumerate(ranks):
         if value.get("rank") != rank:
@@ -631,46 +622,6 @@ def main() -> int:
                         )
             elif cross_kv_cache.get("enabled"):
                 errors.append(f"{prefix} enabled outside requested policy")
-            history_kv_cache = (
-                value.get("build", {})
-                .get("generator", {})
-                .get("generator_nograd_history_kv_cache", {})
-            )
-            history_kv_caches.append(history_kv_cache)
-            history_prefix = f"rank{rank} Generator no-grad history KV cache"
-            if expected_policy["generator_nograd_history_kv_cache"]:
-                if not history_kv_cache.get("enabled"):
-                    errors.append(f"{history_prefix} was not enabled")
-                if history_kv_cache.get("scope") != (
-                    "GENERATOR_NOGRAD_ONE_ROLLOUT_ONLY"
-                ):
-                    errors.append(f"{history_prefix} scope changed")
-                if history_kv_cache.get("cached_value") != (
-                    "RESTRICT_SELF_ATTN_HISTORY_KV_AND_HISTORY_OUTPUT"
-                ):
-                    errors.append(f"{history_prefix} cached-value contract changed")
-                for key in (
-                    "changes_model_call_count",
-                    "changes_attention_math",
-                    "changes_fsdp_collectives",
-                    "cross_rollout_reuse",
-                ):
-                    if history_kv_cache.get(key) is not False:
-                        errors.append(
-                            f"{history_prefix} {key}={history_kv_cache.get(key)}"
-                        )
-                for key in (
-                    "cache_miss_count",
-                    "navit_incompatible_count",
-                    "grad_enabled_call_count",
-                    "cached_tensor_mutation_count",
-                ):
-                    if int(history_kv_cache.get(key, -1)) != 0:
-                        errors.append(
-                            f"{history_prefix} {key}={history_kv_cache.get(key)}"
-                        )
-            elif history_kv_cache.get("enabled"):
-                errors.append(f"{history_prefix} enabled outside requested policy")
             if expected_policy["generator_nograd_lora_fused_epilogue"]:
                 epilogue = value.get("build", {}).get("generator", {}).get(
                     "generator_nograd_lora_fused_epilogue", {}
@@ -827,64 +778,9 @@ def main() -> int:
                     errors.append(
                         f"{install_prefix} cached no encoder K/V bytes"
                     )
-            if expected_policy["generator_nograd_history_kv_cache"]:
-                expected_total_calls = 0
-                expected_total_reuses = 0
-                for batch_index, batch in enumerate(batches):
-                    cache = batch.get("history_kv_cache", {})
-                    call_count = int(batch.get("call_count", 0))
-                    expected_total_calls += call_count * 40
-                    expected_total_reuses += max(0, call_count - 1) * 40
-                    cache_prefix = (
-                        f"rank{rank} rollout batch{batch_index} history KV"
-                    )
-                    expected_cache = {
-                        "status": "PASS",
-                        "processor_count": 40,
-                        "expected_model_calls": call_count,
-                        "enabled_processor_calls": call_count * 40,
-                        "first_step_calls": 40,
-                        "cache_fill_count": 40,
-                        "cache_reuse_count": max(0, call_count - 1) * 40,
-                        "cache_miss_count": 0,
-                        "navit_incompatible_count": 0,
-                        "grad_enabled_call_count": 0,
-                        "cached_tensor_mutation_count": 0,
-                        "populated_before_clear": 40,
-                        "cache_enabled_after_scope": 0,
-                        "populated_after_scope": 0,
-                    }
-                    for key, expected in expected_cache.items():
-                        if cache.get(key) != expected:
-                            errors.append(
-                                f"{cache_prefix} {key}={cache.get(key)!r}, "
-                                f"expected={expected!r}"
-                            )
-                    if int(cache.get("cache_resident_bytes_before_clear", 0)) <= 0:
-                        errors.append(f"{cache_prefix} cached no history bytes")
-                expected_install = {
-                    "rollout_scope_count": expected_batches,
-                    "enabled_processor_calls": expected_total_calls,
-                    "first_step_calls": expected_batches * 40,
-                    "cache_fill_count": expected_batches * 40,
-                    "cache_reuse_count": expected_total_reuses,
-                    "cache_miss_count": 0,
-                    "navit_incompatible_count": 0,
-                    "grad_enabled_call_count": 0,
-                    "cached_tensor_mutation_count": 0,
-                }
-                for key, expected in expected_install.items():
-                    if history_kv_cache.get(key) != expected:
-                        errors.append(
-                            f"{history_prefix} {key}="
-                            f"{history_kv_cache.get(key)!r}, expected={expected!r}"
-                        )
-                if int(history_kv_cache.get("cache_resident_bytes_sum", 0)) <= 0:
-                    errors.append(f"{history_prefix} cached no history bytes")
             if args.mode == "correctness" and (
                 args.rollout_batch_size > 1
                 or expected_policy["generator_nograd_cross_kv_cache"]
-                or expected_policy["generator_nograd_history_kv_cache"]
             ):
                 for batch in batches:
                     parity = batch.get("batch_parity", {})
@@ -935,7 +831,6 @@ def main() -> int:
             residual_fusions.append(None)
             modulated_norm_fusions.append(None)
             cross_kv_caches.append(None)
-            history_kv_caches.append(None)
 
     starts = [int(value["timing_start_unix_ns"]) for value in ranks if "timing_start_unix_ns" in value]
     stops = [int(value["timing_stop_unix_ns"]) for value in ranks if "timing_stop_unix_ns" in value]
@@ -978,7 +873,6 @@ def main() -> int:
         "rank_generator_nograd_residual_fusion": residual_fusions,
         "rank_exact_modulated_norm_epilogue": modulated_norm_fusions,
         "rank_generator_nograd_cross_kv_cache": cross_kv_caches,
-        "rank_generator_nograd_history_kv_cache": history_kv_caches,
         "rank_attention_backends": attention_backends,
         "rank_modulation_chunks": modulation_chunks,
         "rank_checkpoint_policies": checkpoint_policies,

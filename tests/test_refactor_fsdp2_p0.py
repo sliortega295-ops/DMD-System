@@ -142,13 +142,6 @@ def test_policy_and_mesh_contract() -> None:
             rollout_batch_size=2,
             generator_nograd_cross_kv_cache=True,
         )
-    history_kv = StaticFSDP2P0Policy(generator_nograd_history_kv_cache=True)
-    assert history_kv.id.endswith("historykvcache")
-    with pytest.raises(ValueError, match="history KV"):
-        StaticFSDP2P0Policy(
-            rollout_batch_size=2,
-            generator_nograd_history_kv_cache=True,
-        )
 
 
 def test_selective_flash_checkpoint_flag_is_end_to_end_and_fail_closed() -> None:
