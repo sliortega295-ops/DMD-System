@@ -1,0 +1,2 @@
+candidate,code_head,run_id,correctness_status,seconds,target_seconds,decision
+C0_fresh_cuda_resident_baseline,55d8884cf394ecb2ddd9b762844466a82055b983,iter348_gan_cuda_timing_r1_20260829,PASS,173.014483004,121.110138103,BASELINE
