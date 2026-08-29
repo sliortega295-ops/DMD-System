@@ -130,6 +130,14 @@ def parser() -> argparse.ArgumentParser:
     )
     value.add_argument("--master-addr")
     value.add_argument("--master-port", type=int, default=29950)
+    value.add_argument(
+        "--nsys-bin",
+        type=Path,
+        help=(
+            "Exact remote Nsight Systems binary used for profile mode.  The path "
+            "must exist on both hosts; timing/correctness modes ignore it."
+        ),
+    )
     value.add_argument("--correctness-summary", type=Path)
     value.add_argument("--correctness-sha256")
     value.add_argument(
@@ -189,6 +197,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
     ]
+    if args.nsys_bin is not None:
+        exports.append("NSYS_BIN=" + shlex.quote(str(args.nsys_bin)))
     if args.critic_only_step is not None:
         exports.append(f"DISTILLSCHEDULE_CRITIC_ONLY_STEP={args.critic_only_step}")
     if args.operation_source:

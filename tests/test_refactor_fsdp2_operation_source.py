@@ -80,3 +80,7 @@ def test_p0_worker_and_launcher_keep_canary_fail_closed() -> None:
     assert 'export LD_LIBRARY_PATH="${PYENV}/lib' in launcher
     assert 'pyenv = Path("/tmp/distillschedule-helios-official-torch210")' in controller
     assert '"${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}; "' in controller
+    assert '"--nsys-bin"' in controller
+    assert 'exports.append("NSYS_BIN="' in controller
+    assert 'NSYS_TOOL="${NSYS_BIN:-$(command -v nsys || true)}"' in launcher
+    assert launcher.count('"${NSYS_TOOL}"') >= 3

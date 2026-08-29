@@ -207,13 +207,14 @@ if [[ "${OPERATION_SOURCE}" == on ]]; then
 fi
 
 if [[ "${MODE}" == profile ]]; then
-  command -v nsys >/dev/null || { echo nsys_missing >&2; exit 3; }
+  NSYS_TOOL="${NSYS_BIN:-$(command -v nsys || true)}"
+  [[ -n "${NSYS_TOOL}" && -x "${NSYS_TOOL}" ]] || { echo nsys_missing >&2; exit 3; }
   mkdir -p "${PROFILE_NODE_DIR}" "${RECEIPT_DIR}"
   REPORT_BASE="${PROFILE_NODE_DIR}/static_fsdp2_p0_node${NODE_RANK}"
   [[ ! -e "${REPORT_BASE}.nsys-rep" ]] || { echo refusing_to_overwrite="${REPORT_BASE}.nsys-rep" >&2; exit 82; }
   export DISTILLSCHEDULE_STATIC_FSDP2_NSYS_EXACT_RANGE=1
   export DISTILLSCHEDULE_STATIC_FSDP2_NSYS_RECEIPT_DIR="${RECEIPT_DIR}"
-  "${NSYS_BIN:-$(command -v nsys)}" profile \
+  "${NSYS_TOOL}" profile \
     --trace=cuda,nvtx \
     --capture-range=cudaProfilerApi \
     --capture-range-end=stop \
@@ -230,9 +231,9 @@ if [[ "${MODE}" == profile ]]; then
       "${PYTHON}" "${WORKER[@]}" >"${NODE_LOG}/console.log" 2>&1
   [[ -s "${REPORT_BASE}.nsys-rep" ]] || { echo missing_nsys_report="${REPORT_BASE}.nsys-rep" >&2; exit 87; }
   SQLITE="${REPORT_BASE}.sqlite"
-  nsys export --type sqlite --force-overwrite true --output "${SQLITE}" "${REPORT_BASE}.nsys-rep" >/dev/null
+  "${NSYS_TOOL}" export --type sqlite --force-overwrite true --output "${SQLITE}" "${REPORT_BASE}.nsys-rep" >/dev/null
   [[ -s "${SQLITE}" ]] || { echo missing_nsys_sqlite="${SQLITE}" >&2; exit 88; }
-  nsys stats --report nvtx_sum,cuda_gpu_kern_sum,cuda_api_sum --format csv \
+  "${NSYS_TOOL}" stats --report nvtx_sum,cuda_gpu_kern_sum,cuda_api_sum --format csv \
     "${REPORT_BASE}.nsys-rep" >"${PROFILE_NODE_DIR}/nsys_stats_validation.log" 2>&1
   if grep -Eq "does not contain (NV Tools Extension|CUDA kernel|CUDA API)" \
       "${PROFILE_NODE_DIR}/nsys_stats_validation.log"; then
