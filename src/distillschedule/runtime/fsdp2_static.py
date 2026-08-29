@@ -413,9 +413,10 @@ def _optimizer_dispatch_warmup(
     parameter_snapshots: list[Any] = []
     state_snapshots: list[tuple[Any, Any, Any]] = []
     local_state_values: list[tuple[Any, Any]] = []
-    expected_mesh = None
+    expected_mesh_signature: tuple[Any, ...] | None = None
     expected_mesh_dim_names: tuple[str, ...] | None = None
     expected_placement_names: tuple[str, ...] | None = None
+    mesh_object_ids: set[int] = set()
     topology = None
     local_parameter_bytes = 0
     local_state_bytes = 0
@@ -424,6 +425,15 @@ def _optimizer_dispatch_warmup(
             raise TypeError(f"warmup parameter {index} is not a DTensor")
         mesh = parameter.device_mesh
         mesh_dim_names = tuple(getattr(mesh, "mesh_dim_names", ()))
+        mesh_tensor = getattr(mesh, "mesh", None)
+        if mesh_tensor is None or not hasattr(mesh_tensor, "tolist"):
+            raise TypeError(f"warmup parameter {index} has no inspectable DeviceMesh")
+        mesh_signature = (
+            str(getattr(mesh, "device_type", "")),
+            mesh_dim_names,
+            tuple(int(value) for value in mesh_tensor.reshape(-1).tolist()),
+            tuple(int(value) for value in mesh_tensor.shape),
+        )
         placements = tuple(parameter.placements)
         if mesh_dim_names == ("fsdp",):
             valid_placements = len(placements) == 1 and isinstance(
@@ -445,15 +455,18 @@ def _optimizer_dispatch_warmup(
                 "optimizer warmup requires world16 (Shard(...),) or node-HSDP "
                 "(Replicate(), Shard(...)) DTensor parameters"
             )
-        if expected_mesh is None:
-            expected_mesh = mesh
+        if expected_mesh_signature is None:
+            expected_mesh_signature = mesh_signature
             expected_mesh_dim_names = mesh_dim_names
             expected_placement_names = tuple(
                 type(placement).__name__ for placement in placements
             )
             topology = current_topology
-        elif mesh is not expected_mesh:
-            raise ValueError("optimizer warmup observed multiple DTensor meshes")
+        elif mesh_signature != expected_mesh_signature:
+            raise ValueError(
+                "optimizer warmup observed different logical DTensor meshes"
+            )
+        mesh_object_ids.add(id(mesh))
 
         local_parameter = parameter.detach().to_local()
         local_parameters.append(local_parameter)
@@ -474,7 +487,16 @@ def _optimizer_dispatch_warmup(
         for name, value in (("exp_avg", first), ("exp_avg_sq", second)):
             if (
                 not hasattr(value, "device_mesh")
-                or value.device_mesh is not mesh
+                or (
+                    str(getattr(value.device_mesh, "device_type", "")),
+                    tuple(getattr(value.device_mesh, "mesh_dim_names", ())),
+                    tuple(
+                        int(item)
+                        for item in value.device_mesh.mesh.reshape(-1).tolist()
+                    ),
+                    tuple(int(item) for item in value.device_mesh.mesh.shape),
+                )
+                != mesh_signature
                 or tuple(value.placements) != placements
             ):
                 raise ValueError(
@@ -575,6 +597,10 @@ def _optimizer_dispatch_warmup(
         "topology": topology,
         "mesh_dim_names": list(expected_mesh_dim_names or ()),
         "placement_types": list(expected_placement_names or ()),
+        "logical_mesh_rank_count": len(expected_mesh_signature[2])
+        if expected_mesh_signature is not None
+        else 0,
+        "device_mesh_object_count": len(mesh_object_ids),
         "trainable_tensor_count": len(trainables),
         "local_parameter_bytes": local_parameter_bytes,
         "local_adam_state_bytes": local_state_bytes,

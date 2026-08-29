@@ -16,6 +16,12 @@ ROOT = Path(__file__).resolve().parents[1]
 class FakeMesh:
     def __init__(self, mesh_dim_names: tuple[str, ...] = ("replicate", "shard")) -> None:
         self.mesh_dim_names = mesh_dim_names
+        self.device_type = "cuda"
+        self.mesh = (
+            torch.arange(16).reshape(2, 8)
+            if mesh_dim_names == ("replicate", "shard")
+            else torch.arange(16)
+        )
 
 
 class FakeDTensor:
@@ -105,6 +111,8 @@ def test_optimizer_dispatch_warmup_restores_state_and_keeps_parameters(
     assert receipt["topology"] == "node-hsdp"
     assert receipt["mesh_dim_names"] == ["replicate", "shard"]
     assert receipt["placement_types"] == ["Replicate", "Shard"]
+    assert receipt["logical_mesh_rank_count"] == 16
+    assert receipt["device_mesh_object_count"] == 1
     assert receipt["configured_gradient_clip"] == 1.0
     assert receipt["parameter_changed_elements_before_restore"] == 0
     assert receipt["state_changed_elements_after_restore"] == 0
@@ -156,6 +164,8 @@ def test_optimizer_dispatch_warmup_accepts_world16_fsdp_and_restores_state(
     assert receipt["topology"] == "world16-fsdp"
     assert receipt["mesh_dim_names"] == ["fsdp"]
     assert receipt["placement_types"] == ["Shard"]
+    assert receipt["logical_mesh_rank_count"] == 16
+    assert receipt["device_mesh_object_count"] == 1
     assert receipt["state_changed_elements_after_restore"] == 0
     for parameter, expected, state_expected in zip(
         parameters, before_parameters, before_states, strict=True
@@ -166,6 +176,35 @@ def test_optimizer_dispatch_warmup_accepts_world16_fsdp_and_restores_state(
         assert torch.equal(state["exp_avg"].to_local(), state_expected[1])
         assert torch.equal(state["exp_avg_sq"].to_local(), state_expected[2])
         assert parameter.grad is None
+
+
+def test_optimizer_dispatch_warmup_accepts_equivalent_mesh_objects(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first_mesh = FakeMesh(("fsdp",))
+    second_mesh = FakeMesh(("fsdp",))
+    parameters = [
+        FakeDTensor(torch.tensor([1.0, 2.0]), first_mesh, (Shard(0),)),
+        FakeDTensor(torch.tensor([3.0, 4.0]), second_mesh, (Shard(0),)),
+    ]
+    optimizer = FakeOptimizer(parameters)
+    monkeypatch.setattr(torch, "zeros_like", lambda value: SimpleNamespace())
+    monkeypatch.setattr(
+        torch.nn.utils,
+        "clip_grad_norm_",
+        lambda values, limit: torch.tensor(0.0),
+    )
+
+    receipt = _optimizer_dispatch_warmup(
+        optimizer=optimizer,
+        trainables=parameters,
+        gradient_clip=1.0,
+    )
+
+    assert receipt["topology"] == "world16-fsdp"
+    assert receipt["logical_mesh_rank_count"] == 16
+    assert receipt["device_mesh_object_count"] == 2
+    assert receipt["state_changed_elements_after_restore"] == 0
 
 
 def test_optimizer_dispatch_warmup_fails_closed_on_unknown_mesh() -> None:
