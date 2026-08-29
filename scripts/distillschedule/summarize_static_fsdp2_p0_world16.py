@@ -36,6 +36,11 @@ def main() -> int:
     parser.add_argument("--rollout-batch-size", type=int, choices=(1, 2, 5), required=True)
     parser.add_argument("--pack-real-score-pair", choices=("on", "off"), required=True)
     parser.add_argument(
+        "--attention-backend",
+        choices=("sdpa", "local-fa2"),
+        required=True,
+    )
+    parser.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         required=True,
@@ -99,6 +104,7 @@ def main() -> int:
         "rollout_batch_size": args.rollout_batch_size,
         "pack_real_score_pair": args.pack_real_score_pair == "on",
         "rollout_backend": "native-fsdp2-batch",
+        "attention_backend": args.attention_backend,
         "generator_residual_storage": args.generator_residual_storage,
         "critic_residual_storage": args.critic_residual_storage,
         "generator_nograd_lora_fused_epilogue": (
@@ -144,6 +150,7 @@ def main() -> int:
     optimizer_warmups: list[dict[str, Any] | None] = []
     residual_fusions: list[dict[str, Any] | None] = []
     modulated_norm_fusions: list[dict[str, Any] | None] = []
+    attention_backends: list[dict[str, Any] | None] = []
 
     for rank, value in enumerate(ranks):
         if value.get("rank") != rank:
@@ -156,6 +163,30 @@ def main() -> int:
         for key, expected in expected_policy.items():
             if policy.get(key) != expected:
                 errors.append(f"rank{rank} policy {key}={policy.get(key)!r}, expected={expected!r}")
+
+        attention = value.get("attention_backend", {})
+        attention_backends.append(attention)
+        prefix = f"rank{rank} attention backend"
+        if attention.get("status") != "PASS":
+            errors.append(f"{prefix} receipt did not pass")
+        if attention.get("requested") != args.attention_backend:
+            errors.append(f"{prefix} request drifted")
+        if attention.get("runtime") != args.attention_backend:
+            errors.append(f"{prefix} runtime={attention.get('runtime')!r}")
+        if args.attention_backend == "sdpa":
+            if attention.get("local_kernels"):
+                errors.append(f"{prefix} inherited LOCAL_KERNELS")
+            if attention.get("flash_attn_func_available") is not False:
+                errors.append(f"{prefix} unexpectedly loaded FlashAttention")
+        else:
+            if attention.get("flash_attn_func_available") is not True:
+                errors.append(f"{prefix} did not load FlashAttention")
+            if "flash_attn2" not in str(attention.get("flash_attn_func_module")):
+                errors.append(f"{prefix} callable is not FlashAttention-2")
+            if attention.get("extension_sha256") != (
+                "c2acd487c5d1d77b7f6721eabc0fee4f8c5c8f9e682aadf43bfa99b394eecba7"
+            ):
+                errors.append(f"{prefix} extension identity changed")
 
         hardening = value.get("p0_hardening", {})
         input_reuse.append(hardening.get("input_reuse"))
@@ -556,6 +587,7 @@ def main() -> int:
         "rank_optimizer_dispatch_warmup": optimizer_warmups,
         "rank_generator_nograd_residual_fusion": residual_fusions,
         "rank_exact_modulated_norm_epilogue": modulated_norm_fusions,
+        "rank_attention_backends": attention_backends,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")

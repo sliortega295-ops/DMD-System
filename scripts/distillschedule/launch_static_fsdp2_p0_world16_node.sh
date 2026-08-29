@@ -76,6 +76,10 @@ GENERATOR_NOGRAD_RESIDUAL_FUSION="${DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_RESI
 EXACT_GRAD_RESIDUAL_FUSION="${DISTILLSCHEDULE_HELIOS_EXACT_GRAD_RESIDUAL_FUSION:-off}"
 EXACT_MODULATED_NORM_EPILOGUE="${DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_EPILOGUE:-off}"
 EXACT_MODULATED_NORM_MATERIALIZATION="${DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_MATERIALIZATION:-off}"
+ATTENTION_BACKEND="${DISTILLSCHEDULE_HELIOS_ATTENTION_BACKEND:-sdpa}"
+FLASH_ATTN_KERNEL="${DISTILLSCHEDULE_FLASH_ATTN_KERNEL:-${ASSETS}/hf_home_official_torch210/hub/models--kernels-community--flash-attn2/snapshots/6a810a7a010ba2aad6613f1f0f7b226fb8bdee3c/build/torch210-cxx11-cu128-x86_64-linux}"
+FLASH_ATTN_EXTENSION="${FLASH_ATTN_KERNEL}/_flash_attn2_cuda_a511a4c.abi3.so"
+FLASH_ATTN_EXTENSION_SHA256="c2acd487c5d1d77b7f6721eabc0fee4f8c5c8f9e682aadf43bfa99b394eecba7"
 EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256:-776a26c3b2921d599821f0767910830471ff94a955f5013089f9f689ac20fee7}"
 
 [[ -z "${CRITIC_ONLY_STEP}" || "${CRITIC_ONLY_STEP}" == 10 ]] || exit 2
@@ -92,6 +96,7 @@ EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORME
 [[ "${EXACT_GRAD_RESIDUAL_FUSION}" == on || "${EXACT_GRAD_RESIDUAL_FUSION}" == off ]] || exit 2
 [[ "${EXACT_MODULATED_NORM_EPILOGUE}" == on || "${EXACT_MODULATED_NORM_EPILOGUE}" == off ]] || exit 2
 [[ "${EXACT_MODULATED_NORM_MATERIALIZATION}" == on || "${EXACT_MODULATED_NORM_MATERIALIZATION}" == off ]] || exit 2
+[[ "${ATTENTION_BACKEND}" == sdpa || "${ATTENTION_BACKEND}" == local-fa2 ]] || exit 2
 [[ "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" != on || "${GENERATOR_RESIDUAL_STORAGE}" == cuda_out_of_place ]] || exit 2
 [[ "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" != on || "${ROLLOUT_BATCH_SIZE}" == 1 ]] || exit 2
 [[ "${EXACT_GRAD_RESIDUAL_FUSION}" != on || "${GENERATOR_RESIDUAL_STORAGE}" == cuda_out_of_place ]] || exit 2
@@ -104,6 +109,14 @@ EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORME
 # runtime warmup validates the exact mesh names/placements and fails closed;
 # do not reject the validated world16 FULL_SHARD topology in the launcher.
 [[ "${EXPECTED_HELIOS_TRANSFORMER_SHA256}" =~ ^[0-9a-f]{64}$ ]] || exit 2
+if [[ "${ATTENTION_BACKEND}" == local-fa2 ]]; then
+  [[ -d "${FLASH_ATTN_KERNEL}" ]] || { echo flash_attn_kernel_missing="${FLASH_ATTN_KERNEL}" >&2; exit 3; }
+  [[ -f "${FLASH_ATTN_EXTENSION}" ]] || { echo flash_attn_extension_missing="${FLASH_ATTN_EXTENSION}" >&2; exit 3; }
+  [[ "$(sha256sum "${FLASH_ATTN_EXTENSION}" | awk '{print $1}')" == "${FLASH_ATTN_EXTENSION_SHA256}" ]] || {
+    echo flash_attn_extension_hash_mismatch >&2
+    exit 4
+  }
+fi
 if [[ -n "${CRITIC_ONLY_STEP}" ]]; then
   [[ "${VARIANT}" == no-gan && "${MODE}" == profile ]] || exit 2
 fi
@@ -126,10 +139,10 @@ HELIOS_TRANSFORMER="${HELIOS}/helios/modules/transformer_helios.py"
 if [[ "${MODE}" == timing && "${DIAGNOSTIC_TIMING}" != 1 ]]; then
   [[ -f "${CORRECTNESS_SUMMARY}" ]] || { echo correctness_summary_missing >&2; exit 3; }
   [[ "$(sha256sum "${CORRECTNESS_SUMMARY}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || { echo correctness_hash_changed >&2; exit 3; }
-  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" "${ALL_ROLE_LORA_SCALE1_ADD}" "${OPTIMIZER_DISPATCH_WARMUP}" "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" "${EXACT_GRAD_RESIDUAL_FUSION}" "${EXACT_MODULATED_NORM_EPILOGUE}" "${EXACT_MODULATED_NORM_MATERIALIZATION}" <<'PY'
+  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" "${ALL_ROLE_LORA_SCALE1_ADD}" "${OPTIMIZER_DISPATCH_WARMUP}" "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" "${EXACT_GRAD_RESIDUAL_FUSION}" "${EXACT_MODULATED_NORM_EPILOGUE}" "${EXACT_MODULATED_NORM_MATERIALIZATION}" "${ATTENTION_BACKEND}" <<'PY'
 import json,pathlib,sys
 value=json.loads(pathlib.Path(sys.argv[1]).read_text())
-expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7],"generator_nograd_lora_fused_epilogue":sys.argv[8]=="on","all_role_lora_scale1_add":sys.argv[9]=="on","optimizer_dispatch_warmup":sys.argv[10]=="on","generator_nograd_residual_fusion":sys.argv[11]=="on","exact_grad_residual_fusion":sys.argv[12]=="on","exact_modulated_norm_epilogue":sys.argv[13]=="on","exact_modulated_norm_materialization":sys.argv[14]=="on"}
+expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7],"generator_nograd_lora_fused_epilogue":sys.argv[8]=="on","all_role_lora_scale1_add":sys.argv[9]=="on","optimizer_dispatch_warmup":sys.argv[10]=="on","generator_nograd_residual_fusion":sys.argv[11]=="on","exact_grad_residual_fusion":sys.argv[12]=="on","exact_modulated_norm_epilogue":sys.argv[13]=="on","exact_modulated_norm_materialization":sys.argv[14]=="on","attention_backend":sys.argv[15]}
 if value.get("status") != "PASS" or not value.get("claimable_correctness"):
     raise SystemExit("P0 correctness gate is not PASS")
 if value.get("variant") != sys.argv[2]:
@@ -159,6 +172,11 @@ export HF_HOME="${ASSETS}/hf_home_official_torch210"
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TOKENIZERS_PARALLELISM=false
 export OMP_NUM_THREADS=8 NCCL_ASYNC_ERROR_HANDLING=1
 export DISTILLSCHEDULE_NODE_RANK="${NODE_RANK}"
+if [[ "${ATTENTION_BACKEND}" == local-fa2 ]]; then
+  export LOCAL_KERNELS="kernels-community/flash-attn2=${FLASH_ATTN_KERNEL}"
+else
+  unset LOCAL_KERNELS
+fi
 
 cat >"${NODE_LOG}/launch_manifest.txt" <<EOF
 schema_version=distillschedule.static_fsdp2_p0_launch.v2
@@ -197,6 +215,9 @@ generator_nograd_residual_fusion=${GENERATOR_NOGRAD_RESIDUAL_FUSION}
 exact_grad_residual_fusion=${EXACT_GRAD_RESIDUAL_FUSION}
 exact_modulated_norm_epilogue=${EXACT_MODULATED_NORM_EPILOGUE}
 exact_modulated_norm_materialization=${EXACT_MODULATED_NORM_MATERIALIZATION}
+attention_backend=${ATTENTION_BACKEND}
+flash_attn_kernel=$([[ "${ATTENTION_BACKEND}" == local-fa2 ]] && printf '%s' "${FLASH_ATTN_KERNEL}" || printf 'none')
+flash_attn_extension_sha256=$([[ "${ATTENTION_BACKEND}" == local-fa2 ]] && printf '%s' "${FLASH_ATTN_EXTENSION_SHA256}" || printf 'none')
 EOF
 
 WORKER=(
@@ -209,6 +230,7 @@ WORKER=(
   --negative-prompt "${NEGATIVE}" --mesh-policy "${MESH_POLICY}"
   --rollout-batch-size "${ROLLOUT_BATCH_SIZE}" --rollout-backend native-fsdp2-batch
   --ema-device "${EMA_DEVICE}"
+  --attention-backend "${ATTENTION_BACKEND}"
   --generator-residual-storage "${GENERATOR_RESIDUAL_STORAGE}"
   --critic-residual-storage "${CRITIC_RESIDUAL_STORAGE}"
 )

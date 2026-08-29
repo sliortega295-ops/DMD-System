@@ -99,6 +99,11 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--rollout-batch-size", type=int, choices=(1, 2, 5), required=True)
     value.add_argument("--pack-real-score-pair", choices=("on", "off"), default="on")
     value.add_argument(
+        "--attention-backend",
+        choices=("sdpa", "local-fa2"),
+        default="sdpa",
+    )
+    value.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         default="cuda_out_of_place",
@@ -251,6 +256,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.exact_modulated_norm_epilogue),
         "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_MATERIALIZATION="
         + shlex.quote(args.exact_modulated_norm_materialization),
+        "DISTILLSCHEDULE_HELIOS_ATTENTION_BACKEND="
+        + shlex.quote(args.attention_backend),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -351,6 +358,7 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"--mesh-policy {shlex.quote(args.mesh_policy)} "
         + f"--rollout-batch-size {args.rollout_batch_size} "
         + f"--pack-real-score-pair {shlex.quote(args.pack_real_score_pair)} "
+        + f"--attention-backend {shlex.quote(args.attention_backend)} "
         + "--generator-residual-storage "
         + f"{shlex.quote(args.generator_residual_storage)} "
         + "--critic-residual-storage "
