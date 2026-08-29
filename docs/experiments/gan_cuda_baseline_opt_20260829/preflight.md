@@ -268,3 +268,44 @@
   gates on 16 ranks, fit capacity, and reduce one unprofiled C5 Full5?
 - Decision: **GO** for a source-only port, focused tests, validate-only,
   correctness/capacity, then one formal timing only after PASS.
+
+## C9 Generator no-grad history K/V preflight
+
+- Current gate: C8 is the fastest correctness-qualified arm at
+  `141.235767135 s`, but remains `20.125629032 s` above the requested
+  `121.110138103 s` threshold.  C8's cross-attention encoder K/V reuse is
+  exact but saves only `1.059574501 s`; broadening that same cache without a
+  separate invariant is rejected.
+- Live substrate: the local branch is clean at the C8 result commit, both
+  remote execution trees are clean at runtime `9cee963`, all sixteen assigned
+  A100-SXM4-40GB devices are idle with no CUDA process, and both cgroups retain
+  `oom=0`, `oom_kill=0`.  Reuse the validated Torch-2.10 environment and pinned
+  local FA2 asset; create no replacement environment.
+- Matching prior code: commit `5dc7e5c` wraps the source-pinned Helios
+  `HeliosAttnProcessor` cache that already implements exact restrict-self-
+  attention history K/V and history-attention-output reuse.  No real-GPU
+  timing or documented failure for that candidate exists.  Its old No-GAN
+  admission restriction is an untested gate, not a GAN semantic result.
+- Source invariant: within one no-grad rollout the history latents, indices,
+  Generator version, and restrict-self-attention history prefix stay fixed
+  while only the current noisy latent/timestep advance.  The pinned upstream
+  processor caches the first call's history K/V and history attention output,
+  still executes current-token Q/K/V, attention, output projection, every
+  block, every DiT call, and every FSDP collective.
+- Authorized hypothesis: add the existing history cache to C8 for Generator
+  no-grad B1 rollouts only.  Clear all 40 processor caches at every rollout
+  boundary, audit exact fill/reuse/miss counts, and in correctness mode compare
+  every cached rollout against the same uncached C8/C5 B1 reference.
+- Frozen contract: C8 GAN steps1000--1004, five distinct rank-qualified B1
+  rollouts/global-B16, world16 FSDP2, trace/RNG/loss/physical call inventory,
+  G1/C5/EMA1, G201/C1005/EMA801, local FA2, chunk2048, selective Critic replay
+  stride2, CUDA residuals/EMA, cross-attention cache scope and timer boundary.
+- Rejected/superseded paths: B2/B5, Real-Score packing, node-HSDP, stride-1
+  retained checkpoint state, TP/PP, parameter offload/prefetch, and direct
+  tuning of the C7 Tensor-bound GEMM are not retried or combined.
+- Falsifiable question: does exact same-rollout history reuse pass five
+  uncached B1 parity checks and all 16-rank lifecycle/capacity/state gates, then
+  improve one unprofiled Full5 over C8?
+- Decision: **GO for C9 only**. Any unexpected cache miss, mutation/leak,
+  NAViT path, output-parity failure, physical-inventory drift, or OOM rejects
+  C9 before timing.

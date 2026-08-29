@@ -135,3 +135,8 @@
     GEMM.  Reconcile the remaining phase profile with source call inventory and
     preregister one structural exact-compute or launch-gap candidate before
     editing or launching.
+31. C9 adds only the source-pinned restrict-self-attention history K/V cache to
+    C8's five Generator no-grad B1 rollouts.  It reuses the invariant history
+    prefix within one rollout while preserving all current-token, attention,
+    block, DiT and FSDP calls.  Require exact 40-processor lifecycle receipts
+    and an uncached B1 reference for every rollout before one formal timing.

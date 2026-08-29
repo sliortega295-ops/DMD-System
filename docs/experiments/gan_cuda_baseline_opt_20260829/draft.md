@@ -249,3 +249,20 @@ the 30% target remains unmet by `20.125629032 s`.  The small result bounds this
 particular context-hoisting opportunity; the next candidate must address a
 larger exact-compute or launch-gap mechanism rather than widening the cache
 without evidence.
+
+## C9 selected hypothesis
+
+The pinned Helios self-attention processor contains a separate, exact cache for
+the invariant history prefix.  On the first denoising call it stores the
+history K/V and history-only attention output; later calls still compute all
+current-token Q/K/V and attention but avoid repeating history projection,
+history rotary work, restricted-history LoRA, and history-only attention.  This
+is distinct from C8's text cross-attention K/V cache.
+
+C9 ports the already source-pinned wrapper from `5dc7e5c` onto C8 and removes
+only its historical No-GAN admission restriction.  It is active solely in one
+Generator no-grad B1 rollout, clears all processor state afterward, and keeps
+the C8 cache and every workload/inventory contract.  Correctness executes an
+uncached B1 reference for each of the five rollout rows.  Any miss, leaked
+state, mutation, parity failure, or capacity regression rejects the candidate
+before formal timing.
