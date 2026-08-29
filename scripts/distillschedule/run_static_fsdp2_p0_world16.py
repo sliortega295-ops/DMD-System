@@ -197,6 +197,15 @@ def parser() -> argparse.ArgumentParser:
             "/home/lyy/Helios/research_artifacts/DMD-System/fsdp2_p0"
         ),
     )
+    value.add_argument(
+        "--summary-transport",
+        choices=("full", "compact"),
+        default="full",
+        help=(
+            "Use compact to validate the persistent remote summary over SSH "
+            "without copying the large rank-expanded JSON to the controller host."
+        ),
+    )
     value.add_argument("--timeout-seconds", type=int, default=30000)
     value.add_argument("--dry-run", action="store_true")
     return value
@@ -371,11 +380,36 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
     completed = subprocess.run(
         _ssh(args.hosts[0], command), check=False, timeout=300
     )
-    raw = subprocess.check_output(
-        _ssh(args.hosts[0], f"cat {shlex.quote(str(summary))}"), timeout=60
-    )
     local.mkdir(parents=True, exist_ok=True)
-    (local / "summary.json").write_bytes(raw)
+    if args.summary_transport == "compact":
+        compact_code = (
+            "import hashlib,json,sys;"
+            "p=sys.argv[1];raw=open(p,'rb').read();d=json.loads(raw);"
+            "keys=('status','errors','claimable_correctness','claimable_timing',"
+            "'diagnostic_timing','global_full5_seconds','rank_count','mode','policy',"
+            "'student_version','critic_version','ema_version');"
+            "o={k:d.get(k) for k in keys};"
+            "o['remote_summary_path']=p;"
+            "o['remote_summary_sha256']=hashlib.sha256(raw).hexdigest();"
+            "print(json.dumps(o,sort_keys=True))"
+        )
+        raw = subprocess.check_output(
+            _ssh(
+                args.hosts[0],
+                shlex.quote(str(pyenv / "bin/python"))
+                + " -c "
+                + shlex.quote(compact_code)
+                + " "
+                + shlex.quote(str(summary)),
+            ),
+            timeout=60,
+        )
+        (local / "summary_pointer.json").write_bytes(raw)
+    else:
+        raw = subprocess.check_output(
+            _ssh(args.hosts[0], f"cat {shlex.quote(str(summary))}"), timeout=60
+        )
+        (local / "summary.json").write_bytes(raw)
     value = json.loads(raw)
     if completed.returncode != 0 or value.get("status") != "PASS":
         raise RuntimeError(f"P0 summary failed: {value.get('errors')}")
