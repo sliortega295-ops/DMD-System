@@ -377,6 +377,12 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         )
         + f"--output {shlex.quote(str(summary))}"
     )
+    # The summarizer persists the authoritative rank-expanded JSON remotely.
+    # Compact transport must not stream that large JSON through SSH merely
+    # because the summarizer also writes it to stdout; retain stderr so a
+    # fail-closed diagnostic is still visible to the controller.
+    if args.summary_transport == "compact":
+        command += " >/dev/null"
     completed = subprocess.run(
         _ssh(args.hosts[0], command), check=False, timeout=300
     )
@@ -429,8 +435,6 @@ def main() -> int:
         and args.all_role_lora_scale1_add == "on"
     ):
         raise ValueError("LoRA epilogue candidates are mutually exclusive")
-    if args.optimizer_dispatch_warmup == "on" and args.mesh_policy != "node-hsdp":
-        raise ValueError("optimizer dispatch warmup is restricted to node-HSDP")
     if args.generator_nograd_residual_fusion == "on" and (
         args.rollout_batch_size != 1
         or args.generator_residual_storage != "cuda_out_of_place"

@@ -35,6 +35,21 @@
   split, and materialization kernels. This is the same mechanism targeted by
   the previously validated Helios exact residual/modulation fusion ladder.
 
+## C1.1 measured result
+
+- Exact source HEAD: `42c0cc6aae6c7039ebcf9944eb1d821c38371671`.
+- Correctness run: `iter350_gan_cuda_fusions_b3_correctness_r1_20260829`,
+  summary SHA-256
+  `90ba7b7c377d1b9a85ac0ab2c04af15198dddb4e94cd9611a355cacb5a6046c7`.
+- Correctness: 16/16 PASS, G1/C5/EMA1, final G201/C1005/EMA801, exact
+  packed-B3 physical inventory, zero residual or modulated-norm fallback, and
+  no CUDA/cgroup OOM increment.
+- Formal unprofiled timing:
+  `iter350_gan_cuda_fusions_b3_timing_r1_20260829`, `151.851949039 s`.
+- Improvement from C0: `21.162533965 s` (`12.23%`, `1.1394x`).
+- Remaining gap to the requested 30% threshold: `30.741810936 s`; C1.1 is an
+  intermediate promoted substrate, not completion of the task.
+
 ## Risks and unknowns
 
 1. Prior fusion evidence is No-GAN/node-HSDP, while this denominator is
@@ -73,3 +88,17 @@
 - Promote a candidate only when correctness passes and formal time improves.
   The goal is complete only at `<=121.110138103 s`.
 
+## C2 selected hypothesis
+
+Iteration 351 closes the C1.1 profile loop over all 16 ranks.  The formal
+result is still `151.851949039 s`; its diagnostic Full5 range has a 16-rank
+median of `151.753837642 s`.  The largest clean setup-shaped bubble is not
+parameter communication: G optimizer has `3.810982 s` and Critic update 0 has
+`4.172721 s` of no-traced GPU activity, while later Critic updates fall to
+`0.291-0.416 s`.  Full5 exposed NCCL is only `6.811882 s`.
+
+C2 therefore keeps world16 FSDP and all training semantics frozen and extends
+the previously exact-restoring optimizer dispatch warmup to the world16
+`(Shard(),)` DTensor layout.  It is rejected if local parameter or Adam-state
+bytes do not restore exactly, gradients remain attached, any rank/fingerprint
+gate changes, or formal timing fails to improve.

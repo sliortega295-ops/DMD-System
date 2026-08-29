@@ -12,7 +12,17 @@
 6. Extend only the exact tensor addressing to registered B1/B3, including
    batch-specific modulation-table/component strides, and prove bitwise B3
    forward/backward parity before another world16 run.
-7. If C1.1 correctness passes with zero fallback, run one unprofiled timing
-   gate and promote/reject it.
-8. If C1.1 remains above 121.110138103 s, profile only the remaining hotspot
-   and iterate on the next single evidence-backed candidate.
+7. C1.1 passed focused CPU/CUDA tests and the frozen world16 correctness gate
+   with zero residual/modulated-norm fallback.  Its matched unprofiled Full5
+   is `151.851949039 s`, a `21.162533965 s` (`12.23%`) reduction from C0.
+8. C1.1 remains `30.741810936 s` above the 30%-reduction threshold.  Analyze
+   the remaining hotspot and iterate on the next single evidence-backed
+   candidate; do not combine mechanisms before each one has its own gate.
+9. Iteration 351 attributes the current `151.754 s` profile envelope to
+   `130.967 s` compute union, `6.812 s` NCCL exposed versus compute, and
+   `13.424 s` no-traced activity.  The first G optimizer and first C optimizer
+   boundaries alone contain about `7.98 s` of setup-shaped no-traced time.
+10. C2 changes only setup: extend the exact-restoring optimizer dispatch warmup
+    from its validated node-HSDP layout to world16 `(Shard(),)`.  Run focused
+    tests, a fresh 16-rank correctness gate, and only then one unprofiled
+    timing.  Do not combine HSDP, attention, or another kernel in C2.
