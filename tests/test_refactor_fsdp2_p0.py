@@ -170,6 +170,30 @@ def test_node_hsdp_uses_fsdp_first_cold_construction() -> None:
     assert "construction_only_compatibility" in worker
 
 
+def test_ncu_launcher_preserves_current_p0_policy_and_profiles_one_device() -> None:
+    root = Path(__file__).resolve().parents[1]
+    launcher = (
+        root / "scripts/distillschedule/launch_static_fsdp2_p0_ncu_world16_node.sh"
+    ).read_text()
+    for flag in (
+        "--attention-backend",
+        "--modulation-chunk-tokens",
+        "--selective-flash-checkpoint-stride",
+        "--generator-nograd-residual-fusion",
+        "--exact-grad-residual-fusion",
+        "--exact-modulated-norm-epilogue",
+        "--exact-modulated-norm-materialization",
+    ):
+        assert flag in launcher
+    assert '[[ "${MODE}" == profile ]]' in launcher
+    assert '--devices 0' in launcher
+    assert '--launch-count 1' in launcher
+    assert '--kernel-name-base demangled' in launcher
+    assert 'if [[ "${NODE_RANK}" == 0 ]]' in launcher
+    assert "formal_speedup_eligible=false" in launcher
+    assert "scp " not in launcher
+
+
 def test_execution_order_precomputes_all_rollouts_before_critic() -> None:
     order = build_p0_execution_order(
         (1000, 1001, 1002, 1003, 1004),

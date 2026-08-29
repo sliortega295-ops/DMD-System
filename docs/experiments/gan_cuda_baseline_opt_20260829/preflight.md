@@ -204,3 +204,35 @@
   allocator flag or additional memory mechanism may be added automatically.
 - Decision: **GO** for focused tests and one fresh correctness run with a new
   immutable run ID.
+
+## C7 bounded NCU preflight
+
+- Current gate: C6.1 is rejected at `144.716706512 s`; C5 world16 FSDP remains
+  the fastest formal arm at `142.295341636 s`.  The requested target remains
+  `121.110138103 s`.
+- Live evidence: Iteration 356 measures `128.836834 s` compute union.  Its
+  largest non-NCCL family is the production BF16 GEMM
+  `ampere_bf16_s16816gemm_bf16_128x256_ldg8_relu_f2f_stages_64x3_tn`, with
+  `226.94062 GPU-s` aggregated over the node0 eight-GPU report.  This aggregate
+  is not wall time and is used only to choose a representative kernel.
+- Repeated-failure audit: node-HSDP has just regressed formal wall; B2/B5 and
+  Score packing retain their bounded parity failures; denser retained
+  checkpoint state has no new capacity evidence.  None is retried.
+- Environment: reuse `/tmp/distillschedule-helios-official-torch210` and the
+  existing `/opt/nvidia/nsight-compute/2023.2.1/ncu`.  A one-kernel A100 canary
+  completed ten replay passes and produced a valid report, proving profiler
+  permission before an expensive run.  No environment is rebuilt.
+- Authorized action: add an instrumentation-only launcher that inherits every
+  current P0 worker argument, profiles node0 device0 only, filters one exact
+  demangled kernel inside one exact block NVTX range, and leaves the other 15
+  ranks executing normally.  Raw NCU evidence stays on remote shared storage.
+- Frozen contract: C5 world16 FSDP, GAN steps1000--1004, B1/global-B16,
+  rank-qualified trace/RNG, physical inventory, local FA2, chunk2048, exact
+  fusions, optimizer warmup, selective Critic replay stride2, CUDA residuals
+  and EMA, losses, updates and precision.
+- Falsifiable question: is the dominant GEMM already near A100 Tensor/SM
+  throughput, requiring a structural compute reduction, or is there measured
+  kernel-level headroom for an exact implementation change?
+- Decision: **GO diagnostic-only**.  The NCU wall cannot update formal timing.
+  Missing range receipts, wrong kernel/range, empty report, replay failure, or
+  any workload/OOM gate failure invalidates the capture.
