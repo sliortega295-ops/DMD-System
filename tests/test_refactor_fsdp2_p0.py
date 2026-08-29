@@ -159,6 +159,17 @@ def test_selective_flash_checkpoint_flag_is_end_to_end_and_fail_closed() -> None
     assert "rank_checkpoint_policies" in summarizer
 
 
+def test_node_hsdp_uses_fsdp_first_cold_construction() -> None:
+    root = Path(__file__).resolve().parents[1]
+    worker = (
+        root / "scripts/distillschedule/probe_static_fsdp2_p0_world16.py"
+    ).read_text()
+    assert 'fsdp_first_construction = policy.mesh_policy == "node-hsdp"' in worker
+    assert 'if not fsdp_first_construction:\n        model.to(device)' in worker
+    assert "CPU_RESTORE_THEN_BLOCKWISE_FSDP_DEVICE_SHARD" in worker
+    assert "construction_only_compatibility" in worker
+
+
 def test_execution_order_precomputes_all_rollouts_before_critic() -> None:
     order = build_p0_execution_order(
         (1000, 1001, 1002, 1003, 1004),

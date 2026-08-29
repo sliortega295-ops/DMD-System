@@ -247,7 +247,23 @@ def _build_static_model(
             else 0
         ),
     )
-    model.to(device)
+    # A node-HSDP shard owns twice as many parameters as a world16 shard.  If
+    # the already-sharded Generator remains resident while the Critic is first
+    # materialized in full on one device, the cold construction peak exceeds a
+    # 40-GB A100 before FSDP has a chance to shard the Critic.  Composable
+    # FSDP2 moves each managed group to the mesh device inside ``fully_shard``;
+    # applying the existing bottom-up block policy directly to the CPU model
+    # therefore materializes at most one block before immediately sharding it.
+    # This is construction-only and does not add parameter offload or change
+    # the persistent HSDP execution graph.
+    fsdp_first_construction = policy.mesh_policy == "node-hsdp"
+    if not fsdp_first_construction:
+        model.to(device)
+    sharding = apply_blockwise_fsdp2_policy(
+        model,
+        mesh_policy=policy.mesh_policy,
+        world_size=WORLD_SIZE,
+    )
     if role == "generator":
         warmup_generator_nograd_residual_fusion(
             residual_fusion,
@@ -260,11 +276,6 @@ def _build_static_model(
             chunk_tokens=args.modulation_chunk_tokens,
         )
     torch.cuda.synchronize(device)
-    sharding = apply_blockwise_fsdp2_policy(
-        model,
-        mesh_policy=policy.mesh_policy,
-        world_size=WORLD_SIZE,
-    )
     gc.collect()
     host_trimmed = trim_host_allocator()
     torch.cuda.empty_cache()
@@ -286,6 +297,12 @@ def _build_static_model(
         "modulation_chunks": modulation_chunks,
         "checkpoint_policy": checkpoint_policy,
         "fsdp2": sharding,
+        "construction_order": (
+            "CPU_RESTORE_THEN_BLOCKWISE_FSDP_DEVICE_SHARD"
+            if fsdp_first_construction
+            else "FULL_DEVICE_MATERIALIZE_THEN_BLOCKWISE_FSDP_SHARD"
+        ),
+        "construction_only_compatibility": fsdp_first_construction,
         "host_allocator_trimmed_after_shard": host_trimmed,
         "memory_after_shard": base._memory(device),
     }
