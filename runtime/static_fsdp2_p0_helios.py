@@ -9,6 +9,9 @@ import torch
 from distillschedule.runtime.helios_cross_kv_cache import (
     generator_nograd_cross_kv_cache_scope,
 )
+from distillschedule.runtime.helios_history_kv_cache import (
+    generator_nograd_history_kv_cache_scope,
+)
 from distillschedule.runtime.helios_residual_fusion import (
     generator_nograd_residual_fusion_scope,
 )
@@ -44,6 +47,7 @@ def run_generator_trace_rollout_batch(
     collect_diagnostics: bool = False,
     diagnostics_scope: Any | None = None,
     use_cross_kv_cache: bool = False,
+    use_history_kv_cache: bool = False,
 ) -> tuple[tuple[torch.Tensor, ...], dict[str, Any]]:
     """Run multiple step-qualified critic rollouts in one physical B>1 trace.
 
@@ -123,7 +127,11 @@ def run_generator_trace_rollout_batch(
         enabled=use_cross_kv_cache,
         expected_model_calls=expected_call_count,
         source_encoder_hidden_states=tensors["text_embedding"],
-    ) as cross_kv_cache, generator_nograd_residual_fusion_scope():
+    ) as cross_kv_cache, generator_nograd_history_kv_cache_scope(
+        model,
+        enabled=use_history_kv_cache,
+        expected_model_calls=expected_call_count,
+    ) as history_kv_cache, generator_nograd_residual_fusion_scope():
         (
             generated_x0,
             gradient_mask,
@@ -222,6 +230,7 @@ def run_generator_trace_rollout_batch(
         ),
         "memory": _memory_snapshot(device),
         "cross_kv_cache": cross_kv_cache,
+        "history_kv_cache": history_kv_cache,
     }
     if collect_diagnostics:
         details.update(

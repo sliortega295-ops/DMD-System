@@ -405,6 +405,8 @@ def _install_conservative_direct_defaults() -> None:
         sys.argv.append("--no-exact-modulated-norm-materialization")
     if "--generator-nograd-cross-kv-cache" not in sys.argv and "--no-generator-nograd-cross-kv-cache" not in sys.argv:
         sys.argv.append("--no-generator-nograd-cross-kv-cache")
+    if "--generator-nograd-history-kv-cache" not in sys.argv and "--no-generator-nograd-history-kv-cache" not in sys.argv:
+        sys.argv.append("--no-generator-nograd-history-kv-cache")
 
 
 def main() -> int:

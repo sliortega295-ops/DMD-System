@@ -121,6 +121,11 @@ def parser() -> argparse.ArgumentParser:
         default="off",
     )
     value.add_argument(
+        "--generator-nograd-history-kv-cache",
+        choices=("on", "off"),
+        default="off",
+    )
+    value.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         default="cuda_out_of_place",
@@ -281,6 +286,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(str(args.selective_flash_checkpoint_stride)),
         "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_CROSS_KV_CACHE="
         + shlex.quote(args.generator_nograd_cross_kv_cache),
+        "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_HISTORY_KV_CACHE="
+        + shlex.quote(args.generator_nograd_history_kv_cache),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -405,6 +412,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{args.selective_flash_checkpoint_stride} "
         + "--generator-nograd-cross-kv-cache "
         + f"{shlex.quote(args.generator_nograd_cross_kv_cache)} "
+        + "--generator-nograd-history-kv-cache "
+        + f"{shlex.quote(args.generator_nograd_history_kv_cache)} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
         + (
             f"--critic-only-step {args.critic_only_step} "
@@ -508,6 +517,11 @@ def main() -> int:
         and args.rollout_batch_size != 1
     ):
         raise ValueError("Generator no-grad cross-attention KV reuse requires B1")
+    if (
+        args.generator_nograd_history_kv_cache == "on"
+        and args.rollout_batch_size != 1
+    ):
+        raise ValueError("Generator no-grad history KV reuse requires B1")
     if args.critic_only_step is not None and (
         args.variant != "no-gan" or args.mode != "profile"
     ):
