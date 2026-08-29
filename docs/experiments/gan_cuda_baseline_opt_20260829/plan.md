@@ -26,3 +26,12 @@
     from its validated node-HSDP layout to world16 `(Shard(),)`.  Run focused
     tests, a fresh 16-rank correctness gate, and only then one unprofiled
     timing.  Do not combine HSDP, attention, or another kernel in C2.
+11. C2 passed after one preserved fail-closed run exposed logically equivalent
+    DeviceMesh wrappers.  The bounded fix validates the logical mesh signature,
+    not Python object identity.  Correctness is 16/16 PASS and formal Full5 is
+    `144.621745256 s`, `7.230203783 s` faster than C1.1 and `28.392737748 s`
+    faster than C0.
+12. C2 is still `23.511607153 s` above the requested threshold.  The next arm
+    is C3: only enable the previously validated pinned local FA2 backend on the
+    C2 substrate.  Do not combine selective checkpoint-output retention, HSDP,
+    or a new kernel until C3 has its own correctness and timing evidence.

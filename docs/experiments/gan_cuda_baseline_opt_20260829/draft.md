@@ -102,3 +102,34 @@ the previously exact-restoring optimizer dispatch warmup to the world16
 `(Shard(),)` DTensor layout.  It is rejected if local parameter or Adam-state
 bytes do not restore exactly, gradients remain attached, any rank/fingerprint
 gate changes, or formal timing fails to improve.
+
+## C2 measured result
+
+- Exact source HEAD: `9bb21c0a833c7bc53d675df6be1792200ac5777f`.
+- The first bounded implementation failed closed in
+  `iter352_gan_cuda_optwarm_correctness_r2_20260829`: Critic trainables used two
+  different DeviceMesh wrapper objects that described the same logical
+  world16 `(Shard(),)` mesh.  The rejected run is retained; no timing was
+  reported from it.
+- The repair compares the logical mesh signature and still rejects different
+  device types, rank sets, dimensions, names, or placements.  It does not
+  weaken the frozen topology contract.
+- Correctness run `iter352_gan_cuda_optwarm_correctness_r3_20260829`, summary
+  SHA-256
+  `c84b839371aec84eedce4593a9ac21fa9f5d07b3d5abc4382303b66e66b8849b`:
+  16/16 PASS, G1/C5/EMA1, final G201/C1005/EMA801, exact Score inventory, no
+  CUDA/cgroup OOM, and exact restoration of local parameters, Adam state,
+  optimizer step, and gradients after warmup.
+- Formal unprofiled timing run
+  `iter352_gan_cuda_optwarm_timing_r1_20260829`, summary SHA-256
+  `000742835774fd96bfe1996dff6a46b58ae94da2ec6f801cd7b36793d129fd4d`:
+  `144.621745256 s`.
+- Improvement from C1.1: `7.230203783 s` (`4.7614%`).
+- Improvement from C0: `28.392737748 s` (`16.4106%`, `1.1963x`).
+- Remaining gap to the requested 30% threshold: `23.511607153 s`; another
+  `16.2573%` reduction from C2 is still required.
+
+The next preregistered arm is C3, which changes only the attention backend from
+the historical PyTorch SDPA fallback to the previously validated pinned local
+FA2 build.  Selective checkpoint-output retention, HSDP, or a new kernel remain
+separate later arms.
