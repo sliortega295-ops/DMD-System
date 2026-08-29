@@ -124,3 +124,14 @@
     FSDP collectives, clear the cache after each rollout, strengthen exact
     encoder storage/version identity, and compare every cached B1 output with
     the uncached C5 reference before one formal timing.
+29. C8 passed validate-only and 16-rank correctness at `9cee963`, with every
+    rank reporting 200 cache fills and 880 same-rollout reuses.  Its matched
+    unprofiled Full5 is `141.235767135 s`, only `1.059574501 s` (`0.7446%`)
+    faster than C5.  Promote it as the fastest substrate, but classify the
+    isolated context-hoisting gain as small.
+30. C8 is still `20.125629032 s` above the requested threshold.  The next
+    iteration must not repeat B2/B5, Real-Score packing, HSDP, stride-1 retained
+    checkpoint state, or direct tuning of the already Tensor-bound dominant
+    GEMM.  Reconcile the remaining phase profile with source call inventory and
+    preregister one structural exact-compute or launch-gap candidate before
+    editing or launching.

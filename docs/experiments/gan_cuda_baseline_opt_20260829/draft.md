@@ -231,3 +231,21 @@ that retaining all 40 blocks is safe.  C5 is promoted as the fastest substrate,
 but remains `21.185203533 s` above the requested threshold.  A fresh C5 profile
 must now select the next mechanism; neither known physical batching failures
 nor exposed NCCL alone can supply the missing time.
+
+## C8 measured result
+
+C8 preserves the C5 workload and reuses only exact cross-attention encoder K/V
+inside one Generator no-grad rollout.  At
+`9cee963a55175aad02d94da105f32ad0690451d4`, validate-only and correctness both
+pass on 16 ranks.  Every rank records 200 cache fills and 880 reuses; the cache
+is cleared at every rollout boundary and correctness compares against an
+uncached B1 reference.
+
+The matched unprofiled run
+`iter359_gan_cuda_c8_crosskv_timing_r1_20260829` completes in
+`141.235767135 s`.  This saves `1.059574501 s` (`0.7446%`) from C5 and
+`31.778715869 s` (`18.3677%`) from C0.  C8 is the new fastest substrate, but
+the 30% target remains unmet by `20.125629032 s`.  The small result bounds this
+particular context-hoisting opportunity; the next candidate must address a
+larger exact-compute or launch-gap mechanism rather than widening the cache
+without evidence.
