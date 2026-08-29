@@ -122,6 +122,12 @@ flock -n 9 || { echo gpu_lock_busy >&2; exit 73; }
 [[ -z "$(nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | sed '/^[[:space:]]*$/d')" ]] || { echo gpu_processes_present >&2; exit 81; }
 
 export PATH="${PYENV}/bin:${PATH}"
+# The validated Torch 2.10 environment is a relocatable conda archive.  New
+# cluster images can provide an older system libstdc++ than the archive's ICU
+# and sqlite extensions require, so prefer the archive's own runtime libraries.
+# This only repairs dynamic-library resolution; it does not change the model or
+# CUDA workload.
+export LD_LIBRARY_PATH="${PYENV}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 export PYTHONPATH="${ROOT}/src:${ROOT}:${HELIOS}"
 export PYTHONDONTWRITEBYTECODE=1
 export HF_HOME="${ASSETS}/hf_home_official_torch210"

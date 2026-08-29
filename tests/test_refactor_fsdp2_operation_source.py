@@ -77,3 +77,6 @@ def test_p0_worker_and_launcher_keep_canary_fail_closed() -> None:
     assert '"--critic-residual-storage"' in controller
     assert 'default="cuda_out_of_place"' in controller
     assert 'args.variant != "no-gan" or args.mode != "profile"' in controller
+    assert 'export LD_LIBRARY_PATH="${PYENV}/lib' in launcher
+    assert 'pyenv = Path("/tmp/distillschedule-helios-official-torch210")' in controller
+    assert '"${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}; "' in controller

@@ -269,9 +269,14 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         / "scripts/distillschedule/summarize_static_fsdp2_p0_world16.py"
     )
     pythonpath = f"{args.remote_root}/src:{args.remote_root}"
+    pyenv = Path("/tmp/distillschedule-helios-official-torch210")
     command = (
         f"export PYTHONPATH={shlex.quote(pythonpath)}; "
-        + "/tmp/distillschedule-helios-official-torch210/bin/python "
+        + "export LD_LIBRARY_PATH="
+        + shlex.quote(str(pyenv / "lib"))
+        + "${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}; "
+        + shlex.quote(str(pyenv / "bin/python"))
+        + " "
         + f"{shlex.quote(str(summarizer))} "
         + f"--run-root {shlex.quote(str(run_root))} "
         + f"--variant {shlex.quote(args.variant)} --mode {shlex.quote(args.mode)} "
