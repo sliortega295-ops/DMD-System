@@ -396,8 +396,9 @@ def _optimizer_dispatch_warmup(
     ``lr=0`` and ``weight_decay=0`` to populate those caches, then restores the
     exact local parameter and Adam state bytes before model computation.
 
-    This is deliberately restricted to the audited node-HSDP layout.  It does
-    not replace gradient clipping or optimizer math in the real update path.
+    Both audited DTensor layouts are accepted: world16 ``(Shard(),)`` and
+    node-HSDP ``(Replicate(), Shard())``.  It does not replace gradient
+    clipping or optimizer math in the real update path.
     """
 
     torch = _torch()
@@ -413,27 +414,46 @@ def _optimizer_dispatch_warmup(
     state_snapshots: list[tuple[Any, Any, Any]] = []
     local_state_values: list[tuple[Any, Any]] = []
     expected_mesh = None
+    expected_mesh_dim_names: tuple[str, ...] | None = None
+    expected_placement_names: tuple[str, ...] | None = None
+    topology = None
     local_parameter_bytes = 0
     local_state_bytes = 0
     for index, parameter in enumerate(trainables):
         if not hasattr(parameter, "device_mesh") or not hasattr(parameter, "placements"):
             raise TypeError(f"warmup parameter {index} is not a DTensor")
         mesh = parameter.device_mesh
-        if tuple(getattr(mesh, "mesh_dim_names", ())) != ("replicate", "shard"):
-            raise ValueError("optimizer warmup is restricted to node-HSDP")
+        mesh_dim_names = tuple(getattr(mesh, "mesh_dim_names", ()))
         placements = tuple(parameter.placements)
-        if (
-            len(placements) != 2
-            or not isinstance(placements[0], Replicate)
-            or not isinstance(placements[1], Shard)
-        ):
+        if mesh_dim_names == ("fsdp",):
+            valid_placements = len(placements) == 1 and isinstance(
+                placements[0], Shard
+            )
+            current_topology = "world16-fsdp"
+        elif mesh_dim_names == ("replicate", "shard"):
+            valid_placements = (
+                len(placements) == 2
+                and isinstance(placements[0], Replicate)
+                and isinstance(placements[1], Shard)
+            )
+            current_topology = "node-hsdp"
+        else:
+            valid_placements = False
+            current_topology = None
+        if not valid_placements:
             raise ValueError(
-                "optimizer warmup requires (Replicate(), Shard(...)) parameters"
+                "optimizer warmup requires world16 (Shard(...),) or node-HSDP "
+                "(Replicate(), Shard(...)) DTensor parameters"
             )
         if expected_mesh is None:
             expected_mesh = mesh
+            expected_mesh_dim_names = mesh_dim_names
+            expected_placement_names = tuple(
+                type(placement).__name__ for placement in placements
+            )
+            topology = current_topology
         elif mesh is not expected_mesh:
-            raise ValueError("optimizer warmup observed multiple HSDP meshes")
+            raise ValueError("optimizer warmup observed multiple DTensor meshes")
 
         local_parameter = parameter.detach().to_local()
         local_parameters.append(local_parameter)
@@ -552,7 +572,9 @@ def _optimizer_dispatch_warmup(
         "enabled": True,
         "implementation": "ZERO_GRAD_ZERO_LR_ZERO_WEIGHT_DECAY_THEN_EXACT_RESTORE",
         "scope": "SETUP_ONLY_BEFORE_FORMAL_TIMER",
-        "mesh_dim_names": ["replicate", "shard"],
+        "topology": topology,
+        "mesh_dim_names": list(expected_mesh_dim_names or ()),
+        "placement_types": list(expected_placement_names or ()),
         "trainable_tensor_count": len(trainables),
         "local_parameter_bytes": local_parameter_bytes,
         "local_adam_state_bytes": local_state_bytes,

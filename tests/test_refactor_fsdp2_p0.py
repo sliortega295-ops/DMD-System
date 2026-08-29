@@ -96,8 +96,8 @@ def test_policy_and_mesh_contract() -> None:
         mesh_policy="node-hsdp", optimizer_dispatch_warmup=True
     )
     assert warmed.id == "node-hsdp-rollout-b1-realpair-0-optwarm"
-    with pytest.raises(ValueError, match="node-HSDP"):
-        StaticFSDP2P0Policy(optimizer_dispatch_warmup=True)
+    world16_warmed = StaticFSDP2P0Policy(optimizer_dispatch_warmup=True)
+    assert world16_warmed.id == "world16-fsdp-rollout-b1-realpair-0-optwarm"
     fused = StaticFSDP2P0Policy(
         mesh_policy="node-hsdp",
         generator_nograd_residual_fusion=True,

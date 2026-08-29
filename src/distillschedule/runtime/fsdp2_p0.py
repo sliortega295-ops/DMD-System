@@ -72,10 +72,6 @@ class StaticFSDP2P0Policy:
                 f"rollout backend {self.rollout_backend!r} is not integrated; "
                 "external serving engines require an explicit latent/trace/LoRA-sync adapter"
             )
-        if self.optimizer_dispatch_warmup and self.mesh_policy != "node-hsdp":
-            raise ValueError(
-                "optimizer dispatch warmup is restricted to the node-HSDP candidate"
-            )
         if self.generator_nograd_residual_fusion and self.rollout_batch_size != 1:
             raise ValueError("Generator no-grad residual fusion is restricted to B1")
         if self.exact_grad_residual_fusion and self.rollout_batch_size != 1:
