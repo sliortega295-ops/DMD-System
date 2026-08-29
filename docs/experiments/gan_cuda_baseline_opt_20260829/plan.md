@@ -140,3 +140,9 @@
     prefix within one rollout while preserving all current-token, attention,
     block, DiT and FSDP calls.  Require exact 40-processor lifecycle receipts
     and an uncached B1 reference for every rollout before one formal timing.
+32. C9 is rejected before timing.  Validate-only passed, but the first real
+    call proved the frozen model has `restrict_self_attn=False` on all blocks;
+    the wrapper failed closed on all ranks.  Changing that flag would change
+    self-attention math, while skipping every block would save nothing.  Return
+    to C8 and retain the failed run as the one bounded verification permitted
+    by the repeated-failure rule.

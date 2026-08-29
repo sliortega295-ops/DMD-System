@@ -266,3 +266,14 @@ the C8 cache and every workload/inventory contract.  Correctness executes an
 uncached B1 reference for each of the five rollout rows.  Any miss, leaked
 state, mutation, parity failure, or capacity regression rejects the candidate
 before formal timing.
+
+## C9 measured result
+
+C9 is a bounded negative result, not a performance arm.  Its validate-only run
+passed on 16 ranks, but the first real no-grad rollout failed closed immediately:
+the frozen Helios assets omit `restrict_self_attn`, so the pinned model default
+is `False` for all 40 blocks.  The upstream history-prefix cache is therefore
+not semantically available in this workload.  Enabling restricted attention
+would change model math, and enabling the wrapper on zero blocks would provide
+zero reuse.  C9 formal timing is `NOT_RUN`; C8 remains the fastest valid arm at
+`141.235767135 s`.

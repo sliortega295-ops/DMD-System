@@ -309,3 +309,30 @@
 - Decision: **GO for C9 only**. Any unexpected cache miss, mutation/leak,
   NAViT path, output-parity failure, physical-inventory drift, or OOM rejects
   C9 before timing.
+
+## C9 iteration-end failure handoff
+
+- Source-only validation passed at `31d28f77f4dec393e2bfff82058f260f50ab4ca3`:
+  compile/shell gates passed, the focused admissible subset was `30 passed`,
+  and `iter360_gan_cuda_c9_historykv_validate_r1_20260829` returned 16/16
+  validate receipts with summary SHA-256
+  `8cac3a46e6a8af6cbf1ff64b806f8b8dc533dd0daa79326723383e6cfff9e1b4`.
+- The first real bounded verification,
+  `iter360_gan_cuda_c9_historykv_correctness_r1_20260829`, failed closed on
+  all ranks at the first Generator no-grad self-attention call, before a
+  complete rollout or update.  The exact error is
+  `cache-enabled Helios processor escaped restrict-self-attention`; CUDA and
+  cgroup OOM deltas remained zero.
+- Root cause: the frozen Generator and Score config assets omit
+  `restrict_self_attn`, whose pinned `HeliosTransformer3DModel` default is
+  `False`.  That single config value is passed to all 40 blocks.  Therefore
+  the upstream history-prefix cache is not part of this workload's attention
+  graph; enabling restrict-self-attention to make it applicable would change
+  the frozen attention math.
+- Validated recovery: keep C8 and leave the optional history cache disabled.
+  The C9 implementation is reverted from the active substrate after preserving
+  its commit and failed run evidence.  Do not retry C9 unless the official
+  workload itself materially changes to restrict-self-attention.
+- Rejected paths: silently skipping all non-restrict processors yields zero
+  reuse and no candidate; changing the model config is a semantic-contract
+  violation.  Formal C9 timing is **NOT_RUN**.
