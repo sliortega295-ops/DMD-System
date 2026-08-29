@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -128,6 +129,34 @@ def test_policy_and_mesh_contract() -> None:
         StaticFSDP2P0Policy(
             exact_modulated_norm_materialization=True,
         )
+    selective_flash = StaticFSDP2P0Policy(
+        selective_flash_checkpoint_stride=2,
+    )
+    assert selective_flash.id.endswith("criticflashsave20")
+    with pytest.raises(ValueError, match="selective_flash_checkpoint_stride"):
+        StaticFSDP2P0Policy(selective_flash_checkpoint_stride=5)
+
+
+def test_selective_flash_checkpoint_flag_is_end_to_end_and_fail_closed() -> None:
+    root = Path(__file__).resolve().parents[1]
+    controller = (
+        root / "scripts/distillschedule/run_static_fsdp2_p0_world16.py"
+    ).read_text()
+    launcher = (
+        root / "scripts/distillschedule/launch_static_fsdp2_p0_world16_node.sh"
+    ).read_text()
+    worker = (
+        root / "scripts/distillschedule/probe_static_fsdp2_p0_world16.py"
+    ).read_text()
+    summarizer = (
+        root / "scripts/distillschedule/summarize_static_fsdp2_p0_world16.py"
+    ).read_text()
+    for source in (controller, launcher, worker, summarizer):
+        assert "selective-flash-checkpoint-stride" in source
+    assert "requires the pinned local-fa2 backend" in controller
+    assert "requires the pinned local-fa2 backend" in worker
+    assert "SELECTIVE_FLASH_CHECKPOINT_STRIDE" in launcher
+    assert "rank_checkpoint_policies" in summarizer
 
 
 def test_execution_order_precomputes_all_rollouts_before_critic() -> None:

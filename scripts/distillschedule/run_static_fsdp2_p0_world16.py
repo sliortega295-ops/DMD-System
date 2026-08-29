@@ -110,6 +110,12 @@ def parser() -> argparse.ArgumentParser:
         default=512,
     )
     value.add_argument(
+        "--selective-flash-checkpoint-stride",
+        type=int,
+        choices=(0, 2, 4, 10),
+        default=0,
+    )
+    value.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         default="cuda_out_of_place",
@@ -266,6 +272,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.attention_backend),
         "DISTILLSCHEDULE_HELIOS_MODULATION_CHUNK_TOKENS="
         + shlex.quote(str(args.modulation_chunk_tokens)),
+        "DISTILLSCHEDULE_HELIOS_SELECTIVE_FLASH_CHECKPOINT_STRIDE="
+        + shlex.quote(str(args.selective_flash_checkpoint_stride)),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -386,6 +394,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.exact_modulated_norm_epilogue)} "
         + "--exact-modulated-norm-materialization "
         + f"{shlex.quote(args.exact_modulated_norm_materialization)} "
+        + "--selective-flash-checkpoint-stride "
+        + f"{args.selective_flash_checkpoint_stride} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
         + (
             f"--critic-only-step {args.critic_only_step} "
@@ -477,12 +487,23 @@ def main() -> int:
         raise ValueError(
             "Exact modulation materialization requires the exact epilogue"
         )
+    if (
+        args.selective_flash_checkpoint_stride
+        and args.attention_backend != "local-fa2"
+    ):
+        raise ValueError(
+            "selective Flash checkpoint save requires the pinned local-fa2 backend"
+        )
     if args.critic_only_step is not None and (
         args.variant != "no-gan" or args.mode != "profile"
     ):
         raise ValueError("--critic-only-step requires No-GAN profile mode")
     if args.operation_source and args.critic_only_step is None:
         raise ValueError("--operation-source requires --critic-only-step")
+    if args.operation_source and args.selective_flash_checkpoint_stride:
+        raise ValueError(
+            "operation-source diagnostics cannot be combined with selective Flash save"
+        )
     if not 0 <= args.operation_source_rank < 16:
         raise ValueError("--operation-source-rank must be in [0, 15]")
     if args.operation_source_target_bytes <= 0 or args.operation_source_max_events <= 0:

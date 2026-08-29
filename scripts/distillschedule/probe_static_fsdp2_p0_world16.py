@@ -235,9 +235,17 @@ def _build_static_model(
             "disabled_reason": "INSTALL_ONCE_FROM_GENERATOR_BUILD",
         }
     )
-    configure_fsdp2_checkpointing(
+    checkpoint_policy = configure_fsdp2_checkpointing(
         model,
         operation_source=bool(args.operation_source),
+        # Saving attention results is intentionally Critic-only.  Generator
+        # DMD holds several differentiable graphs concurrently and would
+        # multiply the activation-residency budget.
+        selective_flash_checkpoint_stride=(
+            int(args.selective_flash_checkpoint_stride)
+            if role == "critic"
+            else 0
+        ),
     )
     model.to(device)
     if role == "generator":
@@ -276,6 +284,7 @@ def _build_static_model(
         "generator_nograd_residual_fusion": residual_fusion,
         "exact_modulated_norm_epilogue": modulated_norm_fusion,
         "modulation_chunks": modulation_chunks,
+        "checkpoint_policy": checkpoint_policy,
         "fsdp2": sharding,
         "host_allocator_trimmed_after_shard": host_trimmed,
         "memory_after_shard": base._memory(device),
@@ -798,6 +807,16 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--selective-flash-checkpoint-stride",
+        type=int,
+        choices=(0, 2, 4, 10),
+        default=0,
+        help=(
+            "Critic-only systems candidate: retain the exact pinned FA2 result "
+            "for every Nth checkpointed block; 0 preserves all-recompute"
+        ),
+    )
+    value.add_argument(
         "--critic-only-step",
         type=int,
         choices=(10,),
@@ -858,6 +877,17 @@ def main() -> int:
         raise ValueError(
             "Exact modulation materialization requires the exact epilogue"
         )
+    if (
+        args.selective_flash_checkpoint_stride
+        and args.attention_backend != "local-fa2"
+    ):
+        raise ValueError(
+            "selective Flash checkpoint save requires the pinned local-fa2 backend"
+        )
+    if args.operation_source and args.selective_flash_checkpoint_stride:
+        raise ValueError(
+            "operation-source diagnostics cannot be combined with selective Flash save"
+        )
     policy = StaticFSDP2P0Policy(
         mesh_policy=args.mesh_policy,
         rollout_batch_size=args.rollout_batch_size,
@@ -873,6 +903,9 @@ def main() -> int:
             args.exact_modulated_norm_materialization
         ),
         modulation_chunk_tokens=int(args.modulation_chunk_tokens),
+        selective_flash_checkpoint_stride=int(
+            args.selective_flash_checkpoint_stride
+        ),
     )
     dist.init_process_group("nccl")
     rank = dist.get_rank()
@@ -902,6 +935,9 @@ def main() -> int:
             "rollout_backend": policy.rollout_backend,
             "attention_backend": args.attention_backend,
             "modulation_chunk_tokens": policy.modulation_chunk_tokens,
+            "selective_flash_checkpoint_stride": (
+                policy.selective_flash_checkpoint_stride
+            ),
             "generator_residual_storage": args.generator_residual_storage,
             "critic_residual_storage": args.critic_residual_storage,
             "generator_nograd_lora_fused_epilogue": bool(

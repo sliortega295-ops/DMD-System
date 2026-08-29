@@ -47,6 +47,12 @@ def main() -> int:
         default=512,
     )
     parser.add_argument(
+        "--selective-flash-checkpoint-stride",
+        type=int,
+        choices=(0, 2, 4, 10),
+        default=0,
+    )
+    parser.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         required=True,
@@ -112,6 +118,9 @@ def main() -> int:
         "rollout_backend": "native-fsdp2-batch",
         "attention_backend": args.attention_backend,
         "modulation_chunk_tokens": args.modulation_chunk_tokens,
+        "selective_flash_checkpoint_stride": (
+            args.selective_flash_checkpoint_stride
+        ),
         "generator_residual_storage": args.generator_residual_storage,
         "critic_residual_storage": args.critic_residual_storage,
         "generator_nograd_lora_fused_epilogue": (
@@ -159,6 +168,7 @@ def main() -> int:
     modulated_norm_fusions: list[dict[str, Any] | None] = []
     attention_backends: list[dict[str, Any] | None] = []
     modulation_chunks: list[dict[str, Any] | None] = []
+    checkpoint_policies: list[dict[str, Any] | None] = []
 
     for rank, value in enumerate(ranks):
         if value.get("rank") != rank:
@@ -218,8 +228,122 @@ def main() -> int:
                 ]:
                     errors.append(f"{chunk_prefix} assignment drifted")
             modulation_chunks.append(rank_chunks)
+
+            role_checkpoint_policies: dict[str, Any] = {}
+            for role in ("generator", "critic"):
+                checkpoint_policy = (
+                    value.get("build", {})
+                    .get(role, {})
+                    .get("checkpoint_policy", {})
+                )
+                role_checkpoint_policies[role] = checkpoint_policy
+                prefix = f"rank{rank} {role} checkpoint policy"
+                expected_stride = (
+                    expected_policy["selective_flash_checkpoint_stride"]
+                    if role == "critic"
+                    else 0
+                )
+                # Historical synthetic summarizer fixtures predate this
+                # opt-in receipt.  Missing data is admissible only when the
+                # selective candidate is disabled; an enabled run fails closed.
+                if not checkpoint_policy:
+                    if expected_stride:
+                        errors.append(f"{prefix} receipt is missing")
+                    continue
+                if checkpoint_policy.get("block_count") != 40:
+                    errors.append(f"{prefix} block inventory drifted")
+                if checkpoint_policy.get("adds_synchronization") is not False:
+                    errors.append(f"{prefix} introduced synchronization")
+                if checkpoint_policy.get("changes_module_math") is not False:
+                    errors.append(f"{prefix} changed module math")
+                if (
+                    checkpoint_policy.get("changes_physical_model_call_inventory")
+                    is not False
+                ):
+                    errors.append(f"{prefix} changed physical model calls")
+
+                expected_indices = (
+                    list(range(0, 40, expected_stride))
+                    if expected_stride
+                    else []
+                )
+                if checkpoint_policy.get("selective_flash_enabled") is not bool(
+                    expected_stride
+                ):
+                    errors.append(f"{prefix} selective Flash enabled state changed")
+                if checkpoint_policy.get("selective_flash_stride") != expected_stride:
+                    errors.append(f"{prefix} selective Flash stride changed")
+                if (
+                    checkpoint_policy.get("selective_flash_block_indices")
+                    != expected_indices
+                ):
+                    errors.append(f"{prefix} selective Flash block selection changed")
+
+                counter_keys = (
+                    "selective_flash_context_count",
+                    "selective_flash_original_save_count",
+                    "selective_flash_recompute_reuse_count",
+                )
+                if not expected_stride:
+                    if any(
+                        int(checkpoint_policy.get(key, 0)) != 0
+                        for key in counter_keys
+                    ):
+                        errors.append(f"{prefix} selective Flash ran outside policy")
+                    continue
+
+                if checkpoint_policy.get("selective_flash_op") != (
+                    "_flash_attn2_cuda_a511a4c."
+                    "_flash_attn_forward.default"
+                ):
+                    errors.append(f"{prefix} selective Flash op identity changed")
+                counts = checkpoint_policy.get("block_call_counts", {})
+                if set(counts) != {str(index) for index in range(40)}:
+                    errors.append(f"{prefix} lacks per-block checkpoint census")
+                    continue
+                per_block = [int(counts[str(index)]) for index in range(40)]
+                if min(per_block, default=0) <= 0:
+                    errors.append(f"{prefix} selective Flash was not exercised")
+                if len(set(per_block)) != 1:
+                    errors.append(f"{prefix} per-block calls drifted")
+                invocations = per_block[0] if per_block else 0
+                expected_contexts = invocations * len(expected_indices)
+                contexts = int(
+                    checkpoint_policy.get("selective_flash_context_count", -1)
+                )
+                original_saves = int(
+                    checkpoint_policy.get("selective_flash_original_save_count", -1)
+                )
+                replay_reuses = int(
+                    checkpoint_policy.get(
+                        "selective_flash_recompute_reuse_count", -1
+                    )
+                )
+                if contexts != expected_contexts:
+                    errors.append(
+                        f"{prefix} selective contexts={contexts}, "
+                        f"expected={expected_contexts}"
+                    )
+                # Each pinned Helios block invokes the same fixed-length FA2
+                # dispatcher once for self-attention and once for cross-attention.
+                if original_saves != expected_contexts * 2:
+                    errors.append(
+                        f"{prefix} original saves={original_saves}, "
+                        f"expected={expected_contexts * 2}"
+                    )
+                if replay_reuses != original_saves:
+                    errors.append(
+                        f"{prefix} replay reuses={replay_reuses}, "
+                        f"expected={original_saves}"
+                    )
+                if int(checkpoint_policy.get("checkpoint_forward_count", -1)) != (
+                    invocations * 40
+                ):
+                    errors.append(f"{prefix} checkpoint call census changed")
+            checkpoint_policies.append(role_checkpoint_policies)
         else:
             modulation_chunks.append(None)
+            checkpoint_policies.append(None)
 
         hardening = value.get("p0_hardening", {})
         input_reuse.append(hardening.get("input_reuse"))
@@ -622,6 +746,7 @@ def main() -> int:
         "rank_exact_modulated_norm_epilogue": modulated_norm_fusions,
         "rank_attention_backends": attention_backends,
         "rank_modulation_chunks": modulation_chunks,
+        "rank_checkpoint_policies": checkpoint_policies,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")

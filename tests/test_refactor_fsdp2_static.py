@@ -4,6 +4,9 @@ import json
 from pathlib import Path
 
 import pytest
+import torch
+
+import distillschedule.runtime.fsdp2_static as fsdp2_static
 
 from distillschedule.runtime.fsdp2_static import (
     GAN_CONTRACT,
@@ -144,6 +147,118 @@ def test_fsdp2_checkpoint_adapter_only_disables_metadata_check() -> None:
     model = Model()
     configure_fsdp2_checkpointing(model)
     assert model._gradient_checkpointing_func is fsdp2_metadata_tolerant_checkpoint
+
+
+def test_selective_flash_checkpoint_context_reuses_only_target_op(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        fsdp2_static,
+        "SELECTIVE_FLASH_ATTN_OP",
+        str(torch.ops.aten.mm.default),
+    )
+
+    class MatmulSigmoid:
+        def __call__(self, left: torch.Tensor, right: torch.Tensor) -> torch.Tensor:
+            return torch.sigmoid(left @ right)
+
+    receipt = {
+        "selective_flash_context_count": 0,
+        "selective_flash_original_save_count": 0,
+        "selective_flash_recompute_reuse_count": 0,
+    }
+    torch.manual_seed(376)
+    left = torch.randn(8, 8, requires_grad=True)
+    right = torch.randn(8, 8, requires_grad=True)
+    output = fsdp2_metadata_tolerant_checkpoint(
+        MatmulSigmoid(),
+        left,
+        right,
+        selective_flash_receipt=receipt,
+    )
+    output.sum().backward()
+
+    assert receipt == {
+        "selective_flash_context_count": 1,
+        "selective_flash_original_save_count": 1,
+        "selective_flash_recompute_reuse_count": 1,
+    }
+    assert left.grad is not None
+    assert right.grad is not None
+
+
+def test_selective_flash_checkpoint_is_critic_ready_and_censused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Block:
+        def __init__(self, index: int) -> None:
+            self.index = index
+
+        def __call__(self, value: int) -> int:
+            return value + self.index
+
+    class Model:
+        gradient_checkpointing = True
+
+        def __init__(self) -> None:
+            self.blocks = [Block(index) for index in range(40)]
+
+        def named_modules(self):
+            yield "", self
+            for index, block in enumerate(self.blocks):
+                yield f"blocks.{index}", block
+
+    selective_calls: list[int] = []
+
+    def fake_checkpoint(
+        module: Block,
+        value: int,
+        *,
+        selective_flash_receipt: dict[str, object] | None = None,
+        **_: object,
+    ) -> int:
+        if selective_flash_receipt is not None:
+            selective_calls.append(module.index)
+        return module(value)
+
+    monkeypatch.setattr(
+        fsdp2_static,
+        "fsdp2_metadata_tolerant_checkpoint",
+        fake_checkpoint,
+    )
+    model = Model()
+    receipt = configure_fsdp2_checkpointing(
+        model,
+        selective_flash_checkpoint_stride=2,
+    )
+    outputs = [
+        model._gradient_checkpointing_func(block, 100) for block in model.blocks
+    ]
+
+    assert outputs == [100 + index for index in range(40)]
+    assert receipt["selective_flash_enabled"] is True
+    assert receipt["selective_flash_block_indices"] == list(range(0, 40, 2))
+    assert receipt["checkpoint_forward_count"] == 40
+    assert set(receipt["block_call_counts"].values()) == {1}
+    assert selective_calls == list(range(0, 40, 2))
+
+
+def test_selective_flash_checkpoint_rejects_conflicting_contexts() -> None:
+    class Model:
+        gradient_checkpointing = True
+        blocks = [object() for _ in range(40)]
+
+    with pytest.raises(ValueError, match="operation-source"):
+        configure_fsdp2_checkpointing(
+            Model(),
+            operation_source=True,
+            selective_flash_checkpoint_stride=2,
+        )
+    with pytest.raises(ValueError, match="one of"):
+        configure_fsdp2_checkpointing(
+            Model(),
+            selective_flash_checkpoint_stride=5,
+        )
 
 
 def test_fsdp2_engine_exposes_official_gan_boundary_hook() -> None:
