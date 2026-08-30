@@ -166,65 +166,99 @@ def analyze_node(path: Path, node: int) -> dict:
                 f"node{node}: outer rank coverage {sorted(outer_by_rank)}, expected {expected_ranks}"
             )
 
+        # The activity tables have no process/time indices.  Running one SQL
+        # query per rank therefore performs eight complete scans of a large
+        # node SQLite.  Stream each activity table once and dispatch rows using
+        # the process-qualified rank map recovered from NVTX.
+        state_by_pid: dict[int, dict] = {}
+        for rank in expected_ranks:
+            outer_start, outer_end, pid = outer_by_rank[rank]
+            state_by_pid[pid] = {
+                "rank": rank,
+                "outer": (outer_start, outer_end),
+                "device": rank % 8,
+                "observed_devices": set(),
+                "intervals": {name: [] for name in ("compute", "nccl", "copy")},
+                "collective_intervals": {kind: [] for kind in COLLECTIVES},
+                "collective_events": Counter(),
+                "unresolved_ns": 0,
+                "kernel_sum_ns": 0,
+                "copy_rows": {
+                    direction: {
+                        "events": 0,
+                        "bytes": 0,
+                        "sum_duration_ns": 0,
+                        "intervals": [],
+                    }
+                    for direction in ("h2d", "d2h", "d2d", "other")
+                },
+            }
+
+        global_start = min(start for start, _, _ in outer_by_rank.values())
+        global_end = max(end for _, end, _ in outer_by_rank.values())
+        for start, end, raw_name, global_pid, device_id in db.execute(
+            f"SELECT start,end,{name_column},globalPid,deviceId "
+            "FROM CUPTI_ACTIVITY_KIND_KERNEL WHERE end>? AND start<?",
+            (global_start, global_end),
+        ):
+            state = state_by_pid.get(int(global_pid))
+            if state is None:
+                continue
+            state["observed_devices"].add(int(device_id))
+            if int(device_id) != state["device"]:
+                continue
+            part = _clip((int(start), int(end)), state["outer"])
+            if not part:
+                continue
+            name = _string(raw_name, strings)
+            category = (
+                "nccl"
+                if any(token in name.lower() for token in ("nccl", "nvls", "collnet"))
+                else "compute"
+            )
+            state["intervals"][category].append(part)
+            duration = part[1] - part[0]
+            state["kernel_sum_ns"] += duration
+            if not name or name.startswith("UNRESOLVED_STRING_ID_"):
+                state["unresolved_ns"] += duration
+            if category == "nccl":
+                kind = _collective(name)
+                state["collective_intervals"][kind].append(part)
+                state["collective_events"][kind] += 1
+
+        for start, end, num_bytes, copy_kind, global_pid, device_id in db.execute(
+            "SELECT start,end,bytes,copyKind,globalPid,deviceId "
+            "FROM CUPTI_ACTIVITY_KIND_MEMCPY WHERE end>? AND start<?",
+            (global_start, global_end),
+        ):
+            state = state_by_pid.get(int(global_pid))
+            if state is None or int(device_id) != state["device"]:
+                continue
+            part = _clip((int(start), int(end)), state["outer"])
+            if not part:
+                continue
+            direction = COPY_KIND.get(int(copy_kind), "other")
+            state["intervals"]["copy"].append(part)
+            row = state["copy_rows"][direction]
+            row["events"] += 1
+            row["bytes"] += int(num_bytes or 0)
+            row["sum_duration_ns"] += part[1] - part[0]
+            row["intervals"].append(part)
+
         ranks = []
         for rank in expected_ranks:
             outer_start, outer_end, pid = outer_by_rank[rank]
             outer = (outer_start, outer_end)
-            local_device = rank % 8
-            observed_devices = {
-                int(row[0])
-                for row in db.execute(
-                    "SELECT DISTINCT deviceId FROM CUPTI_ACTIVITY_KIND_KERNEL WHERE globalPid=?",
-                    (pid,),
-                )
-            }
-            if observed_devices != {local_device}:
+            state = state_by_pid[pid]
+            local_device = state["device"]
+            if state["observed_devices"] != {local_device}:
                 raise RuntimeError(
-                    f"node{node}/rank{rank}: CUDA devices {sorted(observed_devices)}, expected [{local_device}]"
+                    f"node{node}/rank{rank}: CUDA devices "
+                    f"{sorted(state['observed_devices'])}, expected [{local_device}]"
                 )
-
-            intervals = {category: [] for category in ("compute", "nccl", "copy")}
-            collective_intervals = {kind: [] for kind in COLLECTIVES}
-            collective_events = Counter()
-            unresolved_ns = kernel_sum_ns = 0
-            for start, end, raw_name in db.execute(
-                f"SELECT start,end,{name_column} FROM CUPTI_ACTIVITY_KIND_KERNEL "
-                "WHERE globalPid=? AND deviceId=? AND end>? AND start<? ORDER BY start",
-                (pid, local_device, outer_start, outer_end),
-            ):
-                part = _clip((int(start), int(end)), outer)
-                if not part:
-                    continue
-                name = _string(raw_name, strings)
-                category = "nccl" if any(token in name.lower() for token in ("nccl", "nvls", "collnet")) else "compute"
-                intervals[category].append(part)
-                duration = part[1] - part[0]
-                kernel_sum_ns += duration
-                if not name or name.startswith("UNRESOLVED_STRING_ID_"):
-                    unresolved_ns += duration
-                if category == "nccl":
-                    kind = _collective(name)
-                    collective_intervals[kind].append(part)
-                    collective_events[kind] += 1
-
-            copy_rows = {direction: {"events": 0, "bytes": 0, "sum_duration_ns": 0, "intervals": []}
-                         for direction in ("h2d", "d2h", "d2d", "other")}
-            for start, end, num_bytes, copy_kind in db.execute(
-                "SELECT start,end,bytes,copyKind FROM CUPTI_ACTIVITY_KIND_MEMCPY "
-                "WHERE globalPid=? AND deviceId=? AND end>? AND start<? ORDER BY start",
-                (pid, local_device, outer_start, outer_end),
-            ):
-                part = _clip((int(start), int(end)), outer)
-                if not part:
-                    continue
-                direction = COPY_KIND.get(int(copy_kind), "other")
-                intervals["copy"].append(part)
-                copy_rows[direction]["events"] += 1
-                copy_rows[direction]["bytes"] += int(num_bytes or 0)
-                copy_rows[direction]["sum_duration_ns"] += part[1] - part[0]
-                copy_rows[direction]["intervals"].append(part)
-
-            intervals = {name: _union(values) for name, values in intervals.items()}
+            intervals = {
+                name: _union(values) for name, values in state["intervals"].items()
+            }
             phases = []
             role_prefix = "livewan/pipeline/g/" if rank < 8 else "livewan/pipeline/score/"
             for label, start, end in nvtx_by_pid[pid]:
@@ -234,16 +268,18 @@ def analyze_node(path: Path, node: int) -> dict:
 
             collectives = {}
             for kind in COLLECTIVES:
-                union_ns = _duration(collective_intervals[kind])
-                hidden_ns = _intersection(collective_intervals[kind], intervals["compute"])
+                union_ns = _duration(state["collective_intervals"][kind])
+                hidden_ns = _intersection(
+                    state["collective_intervals"][kind], intervals["compute"]
+                )
                 collectives[kind] = {
-                    "events": collective_events[kind],
+                    "events": state["collective_events"][kind],
                     "union_ns": union_ns,
                     "hidden_by_compute_ns": hidden_ns,
                     "exposed_vs_compute_ns": union_ns - hidden_ns,
                 }
             copies = {}
-            for direction, row in copy_rows.items():
+            for direction, row in state["copy_rows"].items():
                 copies[direction] = {
                     "events": row["events"],
                     "bytes": row["bytes"],
@@ -257,7 +293,8 @@ def analyze_node(path: Path, node: int) -> dict:
                 "role": "generator" if rank < 8 else "score",
                 "global_pid": pid,
                 **_metric(outer, intervals),
-                "unresolved_kernel_duration_ratio": unresolved_ns / max(kernel_sum_ns, 1),
+                "unresolved_kernel_duration_ratio": state["unresolved_ns"]
+                / max(state["kernel_sum_ns"], 1),
                 "collectives": collectives,
                 "copies": copies,
                 "phases": phases,

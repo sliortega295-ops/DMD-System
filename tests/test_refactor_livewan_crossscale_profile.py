@@ -136,3 +136,17 @@ def test_profile_markers_and_capture_are_absent_from_formal_timing_path() -> Non
         "critic_commit",
     ):
         assert label in worker
+
+
+def test_profile_analyzer_streams_each_large_activity_table_once() -> None:
+    analyzer = (
+        ROOT / "scripts/distillschedule/analyze_livewan_crossscale_nsys.py"
+    ).read_text(encoding="utf-8")
+    # Nsight activity tables do not carry useful process/time indices in this
+    # export.  A query per rank performs eight full scans of an 819 MB SQLite.
+    # The production analyzer must instead scan each table once and dispatch
+    # rows through the process-qualified NVTX rank map.
+    assert analyzer.count("FROM CUPTI_ACTIVITY_KIND_KERNEL WHERE") == 1
+    assert analyzer.count("FROM CUPTI_ACTIVITY_KIND_MEMCPY WHERE") == 1
+    assert "state_by_pid" in analyzer
+    assert "ORDER BY globalPid,start" not in analyzer
