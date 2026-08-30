@@ -609,3 +609,18 @@
   stride and device remain fail-closed.  Every DiT/attention/FFN/FSDP call and
   the five uncached B1 parity rows remain mandatory.  Decision remains **GO**
   for the same C13 hypothesis after focused tests.
+
+## C13 iteration-end handoff
+
+- Exact code `02517f1bbdb3a1fb3d5b184305fdc6f4d48e2a3e` passes focused tests,
+  validate-only, world16 correctness/capacity and one unprofiled timing.
+- Correctness is 16/16 PASS with G1/C5/EMA1, final G201/C1005/EMA801, five
+  bitwise uncached B1 rollout references per rank and zero cache lifecycle,
+  identity, mutation, layout, CUDA OOM or cgroup OOM failure.
+- Formal Full5 is `138.243935311 s`, a `0.067852767 s` (`0.049106%`)
+  regression against C12. The exact history/text/RoPE preparation is not a
+  material Full5 bottleneck after C8/C11/C12 and its bookkeeping offsets the
+  removed work.
+- Decision: **REJECT C13 for performance and return to C12**. Preserve C13 as
+  bounded negative evidence; do not stack it into the next candidate. The
+  fastest substrate remains `138.176082544 s`, `17.065944441 s` above target.

@@ -217,3 +217,9 @@
     still executes on every physical call.  Require exactly three layout fills
     plus `call_count-3` layout reuses per rollout; do not weaken the exact
     history/index/text identity gates.
+45. C13 passes all correctness and capacity gates at `02517f1`: 16/16 ranks,
+    exact five-row uncached B1 parity, G1/C5/EMA1, final G201/C1005/EMA801,
+    exact cache lifecycle, and zero CUDA/cgroup OOM. Its formal Full5 is
+    `138.243935311 s`, however, which is `0.067852767 s` (`0.049106%`) slower
+    than C12. Reject C13 for performance and return to C12 rather than stacking
+    a negative cache mechanism into the next candidate.

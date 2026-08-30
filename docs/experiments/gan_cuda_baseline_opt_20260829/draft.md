@@ -404,3 +404,14 @@ mostly waiting for work that the next phase required anyway, so rank0's
 estimate.  Further broad synchronization deletion is closed.  The remaining
 `17.065944441 s` requires a source-qualified repeated compute,
 materialization, or structural execution mechanism.
+
+## C13 exact rollout-context result
+
+C13 proves that immutable history patch/RoPE, text projection and the three
+current-token RoPE layouts can be reused exactly inside a Generator no-grad
+rollout. All 16 ranks pass five bitwise uncached B1 references and retain
+G1/C5/EMA1, final G201/C1005/EMA801, the physical call inventory and zero OOM.
+The optimization is not useful at Full5 scale: `138.243935311 s` is
+`0.067852767 s` slower than C12. The exact context preparation was therefore
+not a material remaining bottleneck, and C13 is kept as negative evidence
+rather than becoming the next substrate.
