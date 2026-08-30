@@ -28,10 +28,14 @@ def install_exact_modulated_norm_epilogue(
     fuse_materialization: bool = False,
     fuse_backward: bool = False,
     fuse_layernorm: bool = False,
+    fuse_backward_kernel: bool = False,
     transformer_module: Any | None = None,
     fused_epilogue: Any | None = None,
     fused_materialization: Any | None = None,
     fused_layernorm: Any | None = None,
+    fused_hidden_backward: Any | None = None,
+    fused_reduced_component_gradient: Any | None = None,
+    fused_tensor4d_component_gradient: Any | None = None,
 ) -> dict[str, Any]:
     """Patch the pinned custom Function with independently gated exact paths."""
 
@@ -49,7 +53,12 @@ def install_exact_modulated_norm_epilogue(
             + "ADD_RN_F32_ONE_PLUS_SCALE;"
             "MUL_RN_F32;ADD_RN_F32_SHIFT;BF16_RN_STORE;"
             + (
-                "EXPLICIT_NATIVE_LAYERNORM_BACKWARD_AND_COMPONENT_GRADIENTS"
+                (
+                    "FUSED_TRITON_LAYERNORM_BACKWARD_AND_DETERMINISTIC_"
+                    "COMPONENT_GRADIENTS"
+                    if fuse_backward_kernel
+                    else "EXPLICIT_NATIVE_LAYERNORM_BACKWARD_AND_COMPONENT_GRADIENTS"
+                )
                 if fuse_backward
                 else "SOURCE_BACKWARD_UNCHANGED"
             )
@@ -67,18 +76,42 @@ def install_exact_modulated_norm_epilogue(
         "materialization_fused_chunk_count": 0,
         "backward_requested": bool(fuse_backward),
         "backward_contract": (
-            "SOURCE_CHUNK_ORDER;FP32_NATIVE_LAYERNORM_BACKWARD;"
-            "BF16_COMPONENT_GRADIENT_ACCUMULATION"
+            (
+                "SOURCE_CHUNK_ORDER;TRITON_FP32_LAYERNORM_BACKWARD;"
+                "DETERMINISTIC_BF16_COMPONENT_GRADIENT_ACCUMULATION"
+            )
+            if fuse_backward_kernel
+            else (
+                "SOURCE_CHUNK_ORDER;FP32_NATIVE_LAYERNORM_BACKWARD;"
+                "BF16_COMPONENT_GRADIENT_ACCUMULATION"
+            )
         ),
         "backward_call_count": 0,
         "backward_chunk_count": 0,
         "backward_hidden_element_count": 0,
         "backward_layout_counts": {},
+        "backward_kernel_requested": bool(fuse_backward_kernel),
+        "backward_kernel_contract": (
+            "SOURCE_CHUNK_ORDER;BF16_INPUT_AND_UPSTREAM;FP32_AFFINE_FREE_"
+            "LAYERNORM_GRAD_INPUT;DETERMINISTIC_PHASE_LOCAL_OR_TENSOR_"
+            "COMPONENT_REDUCTIONS;BF16_GRADIENT_OUTPUT"
+        ),
+        "backward_kernel_call_count": 0,
+        "backward_kernel_chunk_count": 0,
+        "backward_hidden_kernel_launch_count": 0,
+        "backward_component_kernel_launch_count": 0,
+        "backward_tensor4d_kernel_launch_count": 0,
+        "backward_kernel_reference_fallback_count": 0,
         "layernorm_requested": bool(fuse_layernorm),
         "layernorm_contract": (
             "BF16_INPUT;FP32_AFFINE_FREE_LAYERNORM_WIDTH5120;"
             "SOURCE_TABLE_COMPONENT_FP32_ADDS;SOURCE_MODULATION_FP32_FORMULA;"
-            "BF16_OUTPUT;EXPLICIT_NATIVE_LAYERNORM_BACKWARD_UNCHANGED"
+            "BF16_OUTPUT;"
+            + (
+                "TRITON_FUSED_LAYERNORM_BACKWARD"
+                if fuse_backward_kernel
+                else "EXPLICIT_NATIVE_LAYERNORM_BACKWARD_UNCHANGED"
+            )
         ),
         "layernorm_fused_call_count": 0,
         "layernorm_fused_chunk_count": 0,
@@ -106,9 +139,23 @@ def install_exact_modulated_norm_epilogue(
         raise ValueError("fused LayerNorm requires fused modulation materialization")
     if fuse_layernorm and not fuse_backward:
         raise ValueError("fused LayerNorm requires the explicit backward")
+    if fuse_backward_kernel and not (
+        fuse_materialization and fuse_backward and fuse_layernorm
+    ):
+        raise ValueError(
+            "fused backward kernel requires materialization, explicit backward, "
+            "and fused LayerNorm"
+        )
     test_injected = any(
         value is not None
-        for value in (fused_epilogue, fused_materialization, fused_layernorm)
+        for value in (
+            fused_epilogue,
+            fused_materialization,
+            fused_layernorm,
+            fused_hidden_backward,
+            fused_reduced_component_gradient,
+            fused_tensor4d_component_gradient,
+        )
     )
     if not test_injected and observed_sha != SUPPORTED_HELIOS_TRANSFORMER_SHA256:
         raise RuntimeError(
@@ -133,6 +180,23 @@ def install_exact_modulated_norm_epilogue(
         )
 
         fused_layernorm = fused_bf16_layernorm_modulation
+    if fuse_backward_kernel and (
+        fused_hidden_backward is None
+        or fused_reduced_component_gradient is None
+        or fused_tensor4d_component_gradient is None
+    ):
+        from distillschedule.runtime.helios_fused_layernorm_backward_kernel import (
+            fused_bf16_layernorm_modulation_hidden_backward,
+            fused_reduced_component_gradient as default_reduced_component_gradient,
+            fused_tensor4d_component_gradient as default_tensor4d_component_gradient,
+        )
+
+        if fused_hidden_backward is None:
+            fused_hidden_backward = fused_bf16_layernorm_modulation_hidden_backward
+        if fused_reduced_component_gradient is None:
+            fused_reduced_component_gradient = default_reduced_component_gradient
+        if fused_tensor4d_component_gradient is None:
+            fused_tensor4d_component_gradient = default_tensor4d_component_gradient
 
     function = transformer_module._TembAwareChunkedNorm
     original_forward = function.forward
@@ -322,8 +386,198 @@ def install_exact_modulated_norm_epilogue(
             receipt["layernorm_fused_call_count"] += 1
         return output
 
+    def fused_kernel_backward(ctx: Any, grad_output: Any) -> Any:
+        hidden_states, *saved_temb_inputs = ctx.saved_tensors
+        hidden_gradient = (
+            torch.empty_like(hidden_states) if ctx.needs_input_grad[0] else None
+        )
+        temb_needs_grad = list(ctx.needs_input_grad[7:])
+        if len(temb_needs_grad) != len(saved_temb_inputs):
+            raise RuntimeError("modulated-norm timestep gradient arity changed")
+        temb_gradients: list[Any | None] = [None for _ in saved_temb_inputs]
+        kind, lengths = ctx.temb_descriptor
+        if kind == "phase_local":
+            if len(lengths) != len(saved_temb_inputs):
+                raise RuntimeError("phase-local timestep descriptor arity changed")
+        elif kind == "tensor":
+            if lengths or len(saved_temb_inputs) != 1:
+                raise RuntimeError("tensor timestep descriptor layout changed")
+        else:
+            raise RuntimeError(f"unsupported timestep descriptor: {kind!r}")
+        if any(parameter.requires_grad for parameter in ctx.norm.parameters()):
+            raise RuntimeError("fused modulated-norm backward requires frozen norm")
+        if ctx.scale_shift_table.requires_grad:
+            raise RuntimeError(
+                "fused modulated-norm backward requires frozen scale-shift table"
+            )
+
+        chunk_count = 0
+        hidden_launch_count = 0
+        component_launch_count = 0
+        tensor4d_launch_count = 0
+        if hidden_gradient is not None or any(temb_needs_grad):
+            # Row statistics are tiny compared with the eliminated FP32
+            # hidden/normalized temporaries and are reused by the deterministic
+            # component-gradient kernel.
+            mean = torch.empty(
+                hidden_states.shape[:2],
+                device=hidden_states.device,
+                dtype=torch.float32,
+            )
+            rstd = torch.empty_like(mean)
+            hidden_target = (
+                hidden_gradient
+                if hidden_gradient is not None
+                else torch.empty_like(hidden_states)
+            )
+            for start in range(0, ctx.sequence_length, ctx.chunk_tokens):
+                end = min(ctx.sequence_length, start + ctx.chunk_tokens)
+                if kind == "phase_local":
+                    segment_start = 0
+                    for index, (value, length, needs_grad) in enumerate(
+                        zip(
+                            saved_temb_inputs,
+                            lengths,
+                            temb_needs_grad,
+                            strict=True,
+                        )
+                    ):
+                        segment_end = segment_start + int(length)
+                        overlap_start = max(start, segment_start)
+                        overlap_end = min(end, segment_end)
+                        if overlap_start < overlap_end:
+                            hidden_slice = hidden_states[:, overlap_start:overlap_end]
+                            grad_slice = grad_output[:, overlap_start:overlap_end]
+                            scale_component = (
+                                value[:, ctx.scale_index, :]
+                                .unsqueeze(1)
+                                .expand_as(hidden_slice)
+                            )
+                            mean_slice = mean[:, overlap_start:overlap_end]
+                            rstd_slice = rstd[:, overlap_start:overlap_end]
+                            fused_hidden_backward(
+                                hidden_slice,
+                                grad_slice,
+                                ctx.scale_shift_table,
+                                ctx.scale_index,
+                                scale_component,
+                                hidden_target[:, overlap_start:overlap_end],
+                                mean_slice,
+                                rstd_slice,
+                                eps=float(ctx.norm.eps),
+                            )
+                            hidden_launch_count += 1
+                            if needs_grad:
+                                chunk_gradient = torch.zeros_like(value)
+                                fused_reduced_component_gradient(
+                                    hidden_slice,
+                                    grad_slice,
+                                    mean_slice,
+                                    rstd_slice,
+                                    chunk_gradient,
+                                    ctx.scale_index,
+                                    ctx.shift_index,
+                                )
+                                component_launch_count += 1
+                                current = temb_gradients[index]
+                                temb_gradients[index] = (
+                                    chunk_gradient
+                                    if current is None
+                                    else current + chunk_gradient
+                                )
+                        segment_start = segment_end
+                else:
+                    value = saved_temb_inputs[0]
+                    hidden_slice = hidden_states[:, start:end]
+                    grad_slice = grad_output[:, start:end]
+                    scale_component = (
+                        value[:, start:end, ctx.scale_index, :]
+                        if value.ndim == 4
+                        else value[:, ctx.scale_index, :]
+                        .unsqueeze(1)
+                        .expand_as(hidden_slice)
+                    )
+                    mean_slice = mean[:, start:end]
+                    rstd_slice = rstd[:, start:end]
+                    fused_hidden_backward(
+                        hidden_slice,
+                        grad_slice,
+                        ctx.scale_shift_table,
+                        ctx.scale_index,
+                        scale_component,
+                        hidden_target[:, start:end],
+                        mean_slice,
+                        rstd_slice,
+                        eps=float(ctx.norm.eps),
+                    )
+                    hidden_launch_count += 1
+                    if temb_needs_grad[0]:
+                        chunk_gradient = torch.zeros_like(value)
+                        if value.ndim == 4:
+                            fused_tensor4d_component_gradient(
+                                hidden_slice,
+                                grad_slice,
+                                mean_slice,
+                                rstd_slice,
+                                chunk_gradient[:, start:end],
+                                ctx.scale_index,
+                                ctx.shift_index,
+                            )
+                            layout = "tensor_4d"
+                            tensor4d_launch_count += 1
+                        elif value.ndim == 3:
+                            fused_reduced_component_gradient(
+                                hidden_slice,
+                                grad_slice,
+                                mean_slice,
+                                rstd_slice,
+                                chunk_gradient,
+                                ctx.scale_index,
+                                ctx.shift_index,
+                            )
+                            layout = "tensor_3d"
+                            component_launch_count += 1
+                        else:
+                            raise RuntimeError(
+                                "unsupported tensor timestep rank in fused backward: "
+                                f"{value.ndim}"
+                            )
+                        current = temb_gradients[0]
+                        temb_gradients[0] = (
+                            chunk_gradient
+                            if current is None
+                            else current + chunk_gradient
+                        )
+                        counts = receipt["backward_layout_counts"]
+                        counts[layout] = int(counts.get(layout, 0)) + 1
+                chunk_count += 1
+
+        receipt["backward_call_count"] += 1
+        receipt["backward_chunk_count"] += chunk_count
+        if hidden_gradient is not None:
+            receipt["backward_hidden_element_count"] += int(hidden_states.numel())
+        counts = receipt["backward_layout_counts"]
+        counts[kind] = int(counts.get(kind, 0)) + chunk_count
+        receipt["backward_kernel_call_count"] += 1
+        receipt["backward_kernel_chunk_count"] += chunk_count
+        receipt["backward_hidden_kernel_launch_count"] += hidden_launch_count
+        receipt["backward_component_kernel_launch_count"] += component_launch_count
+        receipt["backward_tensor4d_kernel_launch_count"] += tensor4d_launch_count
+        return (
+            hidden_gradient,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            *temb_gradients,
+        )
+
     @staticmethod
     def backward(ctx: Any, grad_output: Any) -> Any:
+        if fuse_backward_kernel:
+            return fused_kernel_backward(ctx, grad_output)
         hidden_states, *saved_temb_inputs = ctx.saved_tensors
         hidden_gradient = (
             torch.empty_like(hidden_states) if ctx.needs_input_grad[0] else None
@@ -494,7 +748,11 @@ def install_exact_modulated_norm_epilogue(
                 else "TRITON_B1_B3_FP32_TABLE_COMPONENT_AND_MODULATION_EPILOGUE_"
             )
             + (
-                "EXPLICIT_NATIVE_LAYERNORM_BACKWARD"
+                (
+                    "TRITON_FUSED_LAYERNORM_AND_COMPONENT_BACKWARD"
+                    if fuse_backward_kernel
+                    else "EXPLICIT_NATIVE_LAYERNORM_BACKWARD"
+                )
                 if fuse_backward
                 else "SOURCE_BACKWARD"
             )
@@ -502,7 +760,11 @@ def install_exact_modulated_norm_epilogue(
             else (
                 "TRITON_B1_B3_FP32_MODULATION_EPILOGUE_"
                 + (
-                    "EXPLICIT_NATIVE_LAYERNORM_BACKWARD"
+                    (
+                        "TRITON_FUSED_LAYERNORM_AND_COMPONENT_BACKWARD"
+                        if fuse_backward_kernel
+                        else "EXPLICIT_NATIVE_LAYERNORM_BACKWARD"
+                    )
                     if fuse_backward
                     else "SOURCE_BACKWARD"
                 )
@@ -534,6 +796,16 @@ def warmup_exact_modulated_norm_epilogue(
             chunk_tokens=int(chunk_tokens),
         )
         details["fuse_layernorm"] = False
+    if receipt.get("backward_kernel_requested"):
+        from distillschedule.runtime.helios_fused_layernorm_backward_kernel import (
+            warmup as warmup_backward,
+        )
+
+        details["fused_backward"] = warmup_backward(
+            device, tokens=int(chunk_tokens)
+        )
+    else:
+        details["fused_backward"] = {"status": "NOT_REQUESTED"}
     receipt["warmup"] = {"status": "PASS", **details}
     return receipt
 

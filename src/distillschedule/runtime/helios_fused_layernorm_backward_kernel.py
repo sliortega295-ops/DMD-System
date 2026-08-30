@@ -558,6 +558,7 @@ def warmup(
         del mean, rstd, component_gradient
     torch.cuda.synchronize(device)
     return {
+        "status": "PASS",
         "scope": "SETUP_ONLY_BEFORE_FORMAL_TIMER",
         "formal_timer_includes_warmup": False,
         "shapes": [

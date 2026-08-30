@@ -118,6 +118,11 @@ def main() -> int:
         required=True,
     )
     parser.add_argument(
+        "--exact-modulated-norm-fused-backward",
+        choices=("on", "off"),
+        required=True,
+    )
+    parser.add_argument(
         "--elide-explicit-rollout-sync",
         choices=("on", "off"),
         default="off",
@@ -174,6 +179,9 @@ def main() -> int:
         ),
         "exact_modulated_norm_layernorm": (
             args.exact_modulated_norm_layernorm == "on"
+        ),
+        "exact_modulated_norm_fused_backward": (
+            args.exact_modulated_norm_fused_backward == "on"
         ),
         "elide_explicit_rollout_sync": (
             args.elide_explicit_rollout_sync == "on"
@@ -598,6 +606,9 @@ def main() -> int:
                 expected_layernorm = expected_policy[
                     "exact_modulated_norm_layernorm"
                 ]
+                expected_fused_backward = expected_policy[
+                    "exact_modulated_norm_fused_backward"
+                ]
                 expected_semantic_contract = (
                     (
                         "FUSED_BF16_INPUT_FP32_AFFINE_FREE_LAYERNORM_WIDTH5120;"
@@ -607,7 +618,12 @@ def main() -> int:
                     + "ADD_RN_F32_ONE_PLUS_SCALE;"
                     "MUL_RN_F32;ADD_RN_F32_SHIFT;BF16_RN_STORE;"
                     + (
-                        "EXPLICIT_NATIVE_LAYERNORM_BACKWARD_AND_COMPONENT_GRADIENTS"
+                        (
+                            "FUSED_TRITON_LAYERNORM_BACKWARD_AND_DETERMINISTIC_"
+                            "COMPONENT_GRADIENTS"
+                            if expected_fused_backward
+                            else "EXPLICIT_NATIVE_LAYERNORM_BACKWARD_AND_COMPONENT_GRADIENTS"
+                        )
                         if expected_backward
                         else "SOURCE_BACKWARD_UNCHANGED"
                     )
@@ -673,7 +689,11 @@ def main() -> int:
                         "BF16_INPUT;FP32_AFFINE_FREE_LAYERNORM_WIDTH5120;"
                         "SOURCE_TABLE_COMPONENT_FP32_ADDS;"
                         "SOURCE_MODULATION_FP32_FORMULA;BF16_OUTPUT;"
-                        "EXPLICIT_NATIVE_LAYERNORM_BACKWARD_UNCHANGED"
+                        + (
+                            "TRITON_FUSED_LAYERNORM_BACKWARD"
+                            if expected_fused_backward
+                            else "EXPLICIT_NATIVE_LAYERNORM_BACKWARD_UNCHANGED"
+                        )
                     ):
                         errors.append(f"{prefix} LayerNorm contract changed")
                     if int(
@@ -699,9 +719,18 @@ def main() -> int:
                 ):
                     errors.append(f"{prefix} backward request drifted")
                 if expected_backward:
-                    if modulated_norm_fusion.get("backward_contract") != (
-                        "SOURCE_CHUNK_ORDER;FP32_NATIVE_LAYERNORM_BACKWARD;"
-                        "BF16_COMPONENT_GRADIENT_ACCUMULATION"
+                    expected_backward_contract = (
+                        "SOURCE_CHUNK_ORDER;TRITON_FP32_LAYERNORM_BACKWARD;"
+                        "DETERMINISTIC_BF16_COMPONENT_GRADIENT_ACCUMULATION"
+                        if expected_fused_backward
+                        else (
+                            "SOURCE_CHUNK_ORDER;FP32_NATIVE_LAYERNORM_BACKWARD;"
+                            "BF16_COMPONENT_GRADIENT_ACCUMULATION"
+                        )
+                    )
+                    if (
+                        modulated_norm_fusion.get("backward_contract")
+                        != expected_backward_contract
                     ):
                         errors.append(f"{prefix} backward contract changed")
                     if args.mode != "validate":
@@ -715,6 +744,55 @@ def main() -> int:
                             errors.append(f"{prefix} explicit backward executed no work")
                         if not modulated_norm_fusion.get("backward_layout_counts"):
                             errors.append(f"{prefix} explicit backward recorded no layout")
+                if (
+                    modulated_norm_fusion.get("backward_kernel_requested")
+                    is not expected_fused_backward
+                ):
+                    errors.append(f"{prefix} fused backward request drifted")
+                if expected_fused_backward:
+                    if modulated_norm_fusion.get("backward_kernel_contract") != (
+                        "SOURCE_CHUNK_ORDER;BF16_INPUT_AND_UPSTREAM;FP32_AFFINE_"
+                        "FREE_LAYERNORM_GRAD_INPUT;DETERMINISTIC_PHASE_LOCAL_OR_"
+                        "TENSOR_COMPONENT_REDUCTIONS;BF16_GRADIENT_OUTPUT"
+                    ):
+                        errors.append(f"{prefix} fused backward contract changed")
+                    if int(
+                        modulated_norm_fusion.get(
+                            "backward_kernel_reference_fallback_count", -1
+                        )
+                    ) != 0:
+                        errors.append(f"{prefix} fused backward used a fallback")
+                    backward_warmup = warmup.get("fused_backward", {})
+                    if backward_warmup.get("status") != "PASS":
+                        errors.append(f"{prefix} fused backward warmup did not pass")
+                    if backward_warmup.get("scope") != (
+                        "SETUP_ONLY_BEFORE_FORMAL_TIMER"
+                    ):
+                        errors.append(f"{prefix} fused backward warmup scope changed")
+                    if args.mode != "validate":
+                        if int(
+                            modulated_norm_fusion.get(
+                                "backward_kernel_call_count", 0
+                            )
+                        ) <= 0:
+                            errors.append(f"{prefix} fused backward executed no calls")
+                        if int(
+                            modulated_norm_fusion.get(
+                                "backward_hidden_kernel_launch_count", 0
+                            )
+                        ) <= 0:
+                            errors.append(f"{prefix} fused hidden-gradient kernel did not run")
+                        if int(
+                            modulated_norm_fusion.get(
+                                "backward_component_kernel_launch_count", 0
+                            )
+                        ) <= 0:
+                            errors.append(f"{prefix} fused component kernel did not run")
+                else:
+                    if int(
+                        modulated_norm_fusion.get("backward_kernel_call_count", 0)
+                    ) != 0:
+                        errors.append(f"{prefix} fused backward ran while disabled")
             elif modulated_norm_fusion.get("enabled"):
                 errors.append(f"{prefix} enabled outside requested policy")
             cross_kv_cache = (

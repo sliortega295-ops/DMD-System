@@ -34,6 +34,7 @@ def _policy(backend: str) -> dict[str, object]:
         "exact_modulated_norm_materialization": True,
         "exact_modulated_norm_backward": False,
         "exact_modulated_norm_layernorm": False,
+        "exact_modulated_norm_fused_backward": False,
         "elide_explicit_rollout_sync": False,
     }
 
@@ -116,6 +117,8 @@ def _run_validate_summary(tmp_path: Path, backend: str) -> dict[str, object]:
         "--exact-modulated-norm-backward",
         "off",
         "--exact-modulated-norm-layernorm",
+        "off",
+        "--exact-modulated-norm-fused-backward",
         "off",
         "--output",
         str(output),
@@ -217,6 +220,8 @@ def test_validate_summary_rejects_backend_identity_drift(tmp_path: Path) -> None
         "--exact-modulated-norm-backward",
         "off",
         "--exact-modulated-norm-layernorm",
+        "off",
+        "--exact-modulated-norm-fused-backward",
         "off",
         "--output",
         str(output),

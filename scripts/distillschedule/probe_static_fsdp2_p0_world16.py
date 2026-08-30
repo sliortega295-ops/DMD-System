@@ -236,6 +236,9 @@ def _build_static_model(
             ),
             fuse_backward=bool(args.exact_modulated_norm_backward),
             fuse_layernorm=bool(args.exact_modulated_norm_layernorm),
+            fuse_backward_kernel=bool(
+                args.exact_modulated_norm_fused_backward
+            ),
         )
         if role == "generator"
         else {
@@ -901,6 +904,15 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--exact-modulated-norm-fused-backward",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Fuse the registered C11 LayerNorm grad-input and deterministic "
+            "timestep-component reductions on top of the complete C14 path"
+        ),
+    )
+    value.add_argument(
         "--selective-flash-checkpoint-stride",
         type=int,
         choices=(0, 2, 4, 10),
@@ -1011,6 +1023,15 @@ def main() -> int:
             "Fused modulated LayerNorm requires epilogue, materialization, "
             "and explicit backward"
         )
+    if args.exact_modulated_norm_fused_backward and not (
+        args.exact_modulated_norm_epilogue
+        and args.exact_modulated_norm_materialization
+        and args.exact_modulated_norm_backward
+        and args.exact_modulated_norm_layernorm
+    ):
+        raise ValueError(
+            "Fused modulated LayerNorm backward requires the complete C14 substrate"
+        )
     if (
         args.selective_flash_checkpoint_stride
         and args.attention_backend != "local-fa2"
@@ -1047,6 +1068,9 @@ def main() -> int:
         ),
         exact_modulated_norm_backward=bool(args.exact_modulated_norm_backward),
         exact_modulated_norm_layernorm=bool(args.exact_modulated_norm_layernorm),
+        exact_modulated_norm_fused_backward=bool(
+            args.exact_modulated_norm_fused_backward
+        ),
         modulation_chunk_tokens=int(args.modulation_chunk_tokens),
         selective_flash_checkpoint_stride=int(
             args.selective_flash_checkpoint_stride
@@ -1117,6 +1141,9 @@ def main() -> int:
             ),
             "exact_modulated_norm_backward": policy.exact_modulated_norm_backward,
             "exact_modulated_norm_layernorm": policy.exact_modulated_norm_layernorm,
+            "exact_modulated_norm_fused_backward": (
+                policy.exact_modulated_norm_fused_backward
+            ),
             "elide_explicit_rollout_sync": policy.elide_explicit_rollout_sync,
         },
     }

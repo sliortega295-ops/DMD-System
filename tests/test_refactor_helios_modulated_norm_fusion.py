@@ -355,6 +355,157 @@ def test_fused_layernorm_path_matches_source_and_keeps_explicit_backward() -> No
     assert receipt["reference_fallback_count"] == 0
 
 
+def test_fused_layernorm_backward_path_matches_explicit_reference() -> None:
+    torch.manual_seed(59)
+    module = _module()
+    function = module._TembAwareChunkedNorm
+    norm_reference = torch.nn.LayerNorm(8, elementwise_affine=False)
+    norm_candidate = copy.deepcopy(norm_reference)
+    table = torch.randn(1, 6, 8, dtype=torch.float32)
+    hidden_reference = torch.randn(1, 7, 8, dtype=torch.bfloat16).requires_grad_()
+    hidden_candidate = hidden_reference.detach().clone().requires_grad_()
+    temb_reference = torch.randn(1, 6, 8, dtype=torch.bfloat16).requires_grad_()
+    temb_candidate = temb_reference.detach().clone().requires_grad_()
+    upstream = torch.randn_like(hidden_reference)
+
+    expected = _run(
+        function, hidden_reference, norm_reference, table, temb_reference
+    )
+    expected.backward(upstream)
+
+    def fused_layernorm(
+        hidden,
+        source_table,
+        scale_index,
+        shift_index,
+        scale_component,
+        shift_component,
+        output,
+        *,
+        eps,
+    ):
+        normalized = torch.nn.functional.layer_norm(
+            hidden.float(), (hidden.shape[-1],), eps=eps
+        )
+        scale = (
+            source_table[:, scale_index, :].unsqueeze(1)
+            + scale_component.float()
+        )
+        shift = (
+            source_table[:, shift_index, :].unsqueeze(1)
+            + shift_component.float()
+        )
+        output.copy_((normalized * (1 + scale) + shift).to(output.dtype))
+        return output
+
+    def fused_hidden_backward(
+        hidden,
+        grad_output,
+        source_table,
+        scale_index,
+        scale_component,
+        hidden_gradient,
+        mean_output,
+        rstd_output,
+        *,
+        eps,
+    ):
+        hidden_float = hidden.float()
+        normalized, mean, rstd = torch.native_layer_norm(
+            hidden_float,
+            [hidden.shape[-1]],
+            None,
+            None,
+            eps,
+        )
+        scale = (
+            source_table[:, scale_index, :].unsqueeze(1)
+            + scale_component.float()
+        )
+        grad_normalized = grad_output.float() * (1 + scale)
+        gradient, _weight, _bias = torch.ops.aten.native_layer_norm_backward.default(
+            grad_normalized,
+            hidden_float,
+            [hidden.shape[-1]],
+            mean,
+            rstd,
+            None,
+            None,
+            [True, False, False],
+        )
+        hidden_gradient.copy_(gradient.to(hidden_gradient.dtype))
+        mean_output.copy_(mean.squeeze(-1))
+        rstd_output.copy_(rstd.squeeze(-1))
+        return hidden_gradient
+
+    def fused_reduced_gradient(
+        hidden,
+        grad_output,
+        mean,
+        rstd,
+        component_gradient,
+        scale_index,
+        shift_index,
+    ):
+        normalized = (hidden.float() - mean.unsqueeze(-1)) * rstd.unsqueeze(-1)
+        component_gradient[:, scale_index, :].copy_(
+            (grad_output.float() * normalized)
+            .sum(dim=1)
+            .to(component_gradient.dtype)
+        )
+        component_gradient[:, shift_index, :].copy_(
+            grad_output.float().sum(dim=1).to(component_gradient.dtype)
+        )
+        return component_gradient
+
+    def fused_tensor4d_gradient(
+        hidden,
+        grad_output,
+        mean,
+        rstd,
+        component_gradient,
+        scale_index,
+        shift_index,
+    ):
+        normalized = (hidden.float() - mean.unsqueeze(-1)) * rstd.unsqueeze(-1)
+        component_gradient[:, :, scale_index, :].copy_(
+            (grad_output.float() * normalized).to(component_gradient.dtype)
+        )
+        component_gradient[:, :, shift_index, :].copy_(
+            grad_output.to(component_gradient.dtype)
+        )
+        return component_gradient
+
+    receipt = install_exact_modulated_norm_epilogue(
+        enabled=True,
+        role="generator",
+        fuse_materialization=True,
+        fuse_backward=True,
+        fuse_layernorm=True,
+        fuse_backward_kernel=True,
+        transformer_module=module,
+        fused_layernorm=fused_layernorm,
+        fused_hidden_backward=fused_hidden_backward,
+        fused_reduced_component_gradient=fused_reduced_gradient,
+        fused_tensor4d_component_gradient=fused_tensor4d_gradient,
+    )
+    actual = _run(function, hidden_candidate, norm_candidate, table, temb_candidate)
+    actual.backward(upstream)
+
+    assert torch.equal(expected, actual)
+    assert tensor_parity_metrics(
+        hidden_reference.grad, hidden_candidate.grad
+    )["status"] == "PASS"
+    assert tensor_parity_metrics(
+        temb_reference.grad, temb_candidate.grad
+    )["status"] == "PASS"
+    assert receipt["backward_kernel_requested"] is True
+    assert receipt["backward_kernel_call_count"] == 1
+    assert receipt["backward_hidden_kernel_launch_count"] == 3
+    assert receipt["backward_component_kernel_launch_count"] == 3
+    assert receipt["backward_kernel_reference_fallback_count"] == 0
+
+
 def test_launcher_controller_and_summarizer_are_fail_closed() -> None:
     root = Path(__file__).resolve().parents[1]
     launcher = (
@@ -370,10 +521,12 @@ def test_launcher_controller_and_summarizer_are_fail_closed() -> None:
         assert "exact_modulated_norm_epilogue" in source
         assert "exact_modulated_norm_backward" in source
         assert "exact_modulated_norm_layernorm" in source
+        assert "exact_modulated_norm_fused_backward" in source
     assert "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_EPILOGUE" in launcher
     assert "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_MATERIALIZATION" in launcher
     assert "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_BACKWARD" in launcher
     assert "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_LAYERNORM" in launcher
+    assert "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_FUSED_BACKWARD" in launcher
     assert "rank_exact_modulated_norm_epilogue" in summarizer
     assert "materialization_fused_chunk_count" in summarizer
     assert "backward_chunk_count" in summarizer
