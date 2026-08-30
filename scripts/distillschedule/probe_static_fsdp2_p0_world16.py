@@ -116,6 +116,9 @@ from distillschedule.runtime.fsdp2_p0 import (
     estimate_rollout_collective_groups,
     score_forward_real_pair,
 )
+from distillschedule.runtime.fsdp2_nograd_persistence import (
+    generator_nograd_persistent_unshard_scope,
+)
 from distillschedule.runtime.fsdp2_static import FSDP2ShardEMA, build_fsdp2_engine, configure_fsdp2_checkpointing, contract_for_variant
 from distillschedule.runtime.helios_cross_kv_cache import (
     install_generator_nograd_cross_kv_cache,
@@ -583,107 +586,126 @@ def _precompute_critic_rollouts(
     collect_diagnostics: bool,
     diagnostics: StaticProfileDiagnostics,
     rollout_parity_check: bool,
-) -> tuple[dict[int, torch.Tensor], list[dict[str, Any]]]:
+) -> tuple[dict[int, torch.Tensor], list[dict[str, Any]], dict[str, Any]]:
     outputs: dict[int, torch.Tensor] = {}
     records: list[dict[str, Any]] = []
-    for batch_index, step_group in enumerate(chunked(steps, policy.rollout_batch_size)):
-        entries = []
-        for step in step_group:
-            with diagnostics.scope(f"INPUT_H2D/critic_entry_rollout/step{step}"):
-                entry = trace.load_critic_entry(rank=rank, step=step, device=device)
-            diagnostics.add_tensor_tree(
-                f"critic_entry_rollout/step{step}", entry, direction="H2D"
-            )
-            entries.append(entry)
-        with diagnostics.scope(
-            f"FSDP_BATCHED_GENERATOR_ROLLOUT/batch{batch_index}/B{len(entries)}"
+    with generator_nograd_persistent_unshard_scope(
+        generator_engine.module,
+        enabled=policy.generator_nograd_persistent_unshard,
+    ) as persistence:
+        persistence["rollout_memory"] = []
+        for batch_index, step_group in enumerate(
+            chunked(steps, policy.rollout_batch_size)
         ):
-            generated, record = run_generator_trace_rollout_batch(
-                model=generator_engine.module,
-                loaded_entries=entries,
-                device=device,
-                detailed_profile=False,
-                record_output_sha256=collect_diagnostics,
-                collect_diagnostics=collect_diagnostics,
-                diagnostics_scope=diagnostics.scope,
-                use_cross_kv_cache=policy.generator_nograd_cross_kv_cache,
-                use_static_context_cache=(
-                    policy.generator_nograd_static_context_cache
-                ),
-                synchronize_after_rollout=not policy.elide_explicit_rollout_sync,
+            entries = []
+            for step in step_group:
+                with diagnostics.scope(f"INPUT_H2D/critic_entry_rollout/step{step}"):
+                    entry = trace.load_critic_entry(rank=rank, step=step, device=device)
+                diagnostics.add_tensor_tree(
+                    f"critic_entry_rollout/step{step}", entry, direction="H2D"
+                )
+                entries.append(entry)
+            with diagnostics.scope(
+                f"FSDP_BATCHED_GENERATOR_ROLLOUT/batch{batch_index}/B{len(entries)}"
+            ):
+                generated, record = run_generator_trace_rollout_batch(
+                    model=generator_engine.module,
+                    loaded_entries=entries,
+                    device=device,
+                    detailed_profile=False,
+                    record_output_sha256=collect_diagnostics,
+                    collect_diagnostics=collect_diagnostics,
+                    diagnostics_scope=diagnostics.scope,
+                    use_cross_kv_cache=policy.generator_nograd_cross_kv_cache,
+                    use_static_context_cache=(
+                        policy.generator_nograd_static_context_cache
+                    ),
+                    synchronize_after_rollout=not policy.elide_explicit_rollout_sync,
+                )
+            persistence["rollout_batch_count"] += 1
+            persistence["rollout_memory"].append(
+                {
+                    "batch_index": batch_index,
+                    "allocated_bytes": int(torch.cuda.memory_allocated(device)),
+                    "reserved_bytes": int(torch.cuda.memory_reserved(device)),
+                    "max_allocated_bytes": int(
+                        torch.cuda.max_memory_allocated(device)
+                    ),
+                    "max_reserved_bytes": int(torch.cuda.max_memory_reserved(device)),
+                }
             )
-        parity_rows: list[dict[str, Any]] = []
-        needs_reference = rollout_parity_check and (
-            len(entries) > 1
-            or policy.generator_nograd_cross_kv_cache
-            or policy.generator_nograd_static_context_cache
-        )
-        if needs_reference:
-            for entry, candidate in zip(entries, generated, strict=True):
-                # Keep every already-validated C5 no-grad fusion active and
-                # disable only the new K/V cache in the reference arm.
-                with generator_nograd_residual_fusion_scope():
-                    reference, _reference_record = run_generator_trace_rollout(
-                        model=generator_engine.module,
-                        loaded=entry,
-                        device=device,
-                        detailed_profile=False,
-                        record_output_sha256=False,
-                        empty_cache_before_rollout=False,
-                        collect_diagnostics=False,
-                    )
-                if (
-                    policy.generator_nograd_cross_kv_cache
-                    or policy.generator_nograd_static_context_cache
-                ):
-                    error = require_tensor_parity(
-                        reference,
-                        candidate,
-                        label=(
-                            "Generator no-grad context-cache B1 step"
-                            f"{entry.pool_entry.logical_step}"
-                        ),
-                    )
-                else:
-                    error = _rollout_pack_error(reference, candidate)
-                    if error["mean_relative"] > PACKED_SCORE_MEAN_REL_TOLERANCE:
-                        raise AssertionError(
-                            "batched Generator rollout exceeds mean-relative "
-                            "tolerance: "
-                            f"step={entry.pool_entry.logical_step} "
-                            f"{error['mean_relative']:.6g} > "
-                            f"{PACKED_SCORE_MEAN_REL_TOLERANCE:.6g}"
+            parity_rows: list[dict[str, Any]] = []
+            needs_reference = rollout_parity_check and (
+                len(entries) > 1
+                or policy.generator_nograd_cross_kv_cache
+                or policy.generator_nograd_static_context_cache
+            )
+            if needs_reference:
+                for entry, candidate in zip(entries, generated, strict=True):
+                    # Keep every already-validated C5 no-grad fusion active and
+                    # disable only the new K/V cache in the reference arm.
+                    with generator_nograd_residual_fusion_scope():
+                        reference, _reference_record = run_generator_trace_rollout(
+                            model=generator_engine.module,
+                            loaded=entry,
+                            device=device,
+                            detailed_profile=False,
+                            record_output_sha256=False,
+                            empty_cache_before_rollout=False,
+                            collect_diagnostics=False,
                         )
-                parity_rows.append(
-                    {
-                        "logical_step": int(entry.pool_entry.logical_step),
-                        **error,
-                    }
-                )
-                del reference, _reference_record
-        for step, value in zip(step_group, generated, strict=True):
-            outputs[int(step)] = value
-        record["batch_index"] = batch_index
-        record["batch_parity"] = {
-            "enabled": bool(needs_reference),
-            "status": "PASS" if parity_rows else "NOT_RUN",
-            "reason": (
-                "CONTEXT_CACHE_B1_REFERENCE"
-                if (
-                    policy.generator_nograd_cross_kv_cache
-                    or policy.generator_nograd_static_context_cache
-                )
-                and len(entries) == 1
-                else "BATCHED_VS_B1_REFERENCE"
-            ),
-            "tolerance_mean_relative": PACKED_SCORE_MEAN_REL_TOLERANCE,
-            "samples": parity_rows,
-        }
-        records.append(record)
-        del entries, generated
+                    if (
+                        policy.generator_nograd_cross_kv_cache
+                        or policy.generator_nograd_static_context_cache
+                    ):
+                        error = require_tensor_parity(
+                            reference,
+                            candidate,
+                            label=(
+                                "Generator no-grad context-cache B1 step"
+                                f"{entry.pool_entry.logical_step}"
+                            ),
+                        )
+                    else:
+                        error = _rollout_pack_error(reference, candidate)
+                        if error["mean_relative"] > PACKED_SCORE_MEAN_REL_TOLERANCE:
+                            raise AssertionError(
+                                "batched Generator rollout exceeds mean-relative "
+                                "tolerance: "
+                                f"step={entry.pool_entry.logical_step} "
+                                f"{error['mean_relative']:.6g} > "
+                                f"{PACKED_SCORE_MEAN_REL_TOLERANCE:.6g}"
+                            )
+                    parity_rows.append(
+                        {
+                            "logical_step": int(entry.pool_entry.logical_step),
+                            **error,
+                        }
+                    )
+                    del reference, _reference_record
+            for step, value in zip(step_group, generated, strict=True):
+                outputs[int(step)] = value
+            record["batch_index"] = batch_index
+            record["batch_parity"] = {
+                "enabled": bool(needs_reference),
+                "status": "PASS" if parity_rows else "NOT_RUN",
+                "reason": (
+                    "CONTEXT_CACHE_B1_REFERENCE"
+                    if (
+                        policy.generator_nograd_cross_kv_cache
+                        or policy.generator_nograd_static_context_cache
+                    )
+                    and len(entries) == 1
+                    else "BATCHED_VS_B1_REFERENCE"
+                ),
+                "tolerance_mean_relative": PACKED_SCORE_MEAN_REL_TOLERANCE,
+                "samples": parity_rows,
+            }
+            records.append(record)
+            del entries, generated
     if set(outputs) != set(steps):
         raise AssertionError("P0 rollout precompute missed one or more logical steps")
-    return outputs, records
+    return outputs, records, persistence
 
 
 def _run_nogan_critic_precomputed(
@@ -949,6 +971,15 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--generator-nograd-persistent-unshard",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Retain all 41 Generator FSDP2 units only across the five B1 "
+            "no-grad rollouts, then explicitly restore the sharded policy"
+        ),
+    )
+    value.add_argument(
         "--elide-explicit-rollout-sync",
         action=argparse.BooleanOptionalAction,
         default=False,
@@ -1074,6 +1105,14 @@ def main() -> int:
         and args.rollout_batch_size != 1
     ):
         raise ValueError("Generator no-grad static-context reuse requires B1")
+    if args.generator_nograd_persistent_unshard and (
+        args.variant != "gan"
+        or args.mesh_policy != "world16-fsdp"
+        or args.rollout_batch_size != 1
+    ):
+        raise ValueError(
+            "Generator no-grad persistent unshard requires GAN world16 FSDP2 B1"
+        )
     if args.operation_source and args.selective_flash_checkpoint_stride:
         raise ValueError(
             "operation-source diagnostics cannot be combined with selective Flash save"
@@ -1106,6 +1145,9 @@ def main() -> int:
         ),
         generator_nograd_static_context_cache=bool(
             args.generator_nograd_static_context_cache
+        ),
+        generator_nograd_persistent_unshard=bool(
+            args.generator_nograd_persistent_unshard
         ),
         elide_explicit_rollout_sync=bool(args.elide_explicit_rollout_sync),
         elide_critic_scalar_logs=bool(args.elide_critic_scalar_logs),
@@ -1149,6 +1191,9 @@ def main() -> int:
             ),
             "generator_nograd_static_context_cache": (
                 policy.generator_nograd_static_context_cache
+            ),
+            "generator_nograd_persistent_unshard": (
+                policy.generator_nograd_persistent_unshard
             ),
             "generator_residual_storage": args.generator_residual_storage,
             "critic_residual_storage": args.critic_residual_storage,
@@ -1383,7 +1428,11 @@ def main() -> int:
             if diagnostic_single_critic
             else contract.logical_steps
         )
-        rollout_outputs, rollout_records = _precompute_critic_rollouts(
+        (
+            rollout_outputs,
+            rollout_records,
+            generator_nograd_persistent_unshard,
+        ) = _precompute_critic_rollouts(
             rank=rank,
             steps=execution_steps,
             device=device,
@@ -1523,6 +1572,9 @@ def main() -> int:
             status="PASS",
             generator=generator_record,
             rollout_batches=rollout_records,
+            generator_nograd_persistent_unshard=(
+                generator_nograd_persistent_unshard
+            ),
             rollout_fence_policy={
                 "elide_explicit_rollout_sync": policy.elide_explicit_rollout_sync,
                 "generator_update_empty_cache_count": int(

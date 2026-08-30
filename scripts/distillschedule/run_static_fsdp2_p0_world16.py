@@ -126,6 +126,11 @@ def parser() -> argparse.ArgumentParser:
         default="off",
     )
     value.add_argument(
+        "--generator-nograd-persistent-unshard",
+        choices=("on", "off"),
+        default="off",
+    )
+    value.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         default="cuda_out_of_place",
@@ -330,6 +335,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.generator_nograd_cross_kv_cache),
         "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE="
         + shlex.quote(args.generator_nograd_static_context_cache),
+        "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_PERSISTENT_UNSHARD="
+        + shlex.quote(args.generator_nograd_persistent_unshard),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -468,6 +475,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.generator_nograd_cross_kv_cache)} "
         + "--generator-nograd-static-context-cache "
         + f"{shlex.quote(args.generator_nograd_static_context_cache)} "
+        + "--generator-nograd-persistent-unshard "
+        + f"{shlex.quote(args.generator_nograd_persistent_unshard)} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
         + (
             f"--critic-only-step {args.critic_only_step} "
@@ -601,6 +610,14 @@ def main() -> int:
         and args.rollout_batch_size != 1
     ):
         raise ValueError("Generator no-grad static-context reuse requires B1")
+    if args.generator_nograd_persistent_unshard == "on" and (
+        args.variant != "gan"
+        or args.mesh_policy != "world16-fsdp"
+        or args.rollout_batch_size != 1
+    ):
+        raise ValueError(
+            "Generator no-grad persistent unshard requires GAN world16 FSDP2 B1"
+        )
     if args.critic_only_step is not None and (
         args.variant != "no-gan" or args.mode != "profile"
     ):

@@ -70,6 +70,7 @@ class StaticFSDP2P0Policy:
     elide_explicit_rollout_sync: bool = False
     elide_critic_scalar_logs: bool = False
     elide_official_generator_free_memory: bool = False
+    generator_nograd_persistent_unshard: bool = False
 
     def __post_init__(self) -> None:
         if self.mesh_policy not in SUPPORTED_MESH_POLICIES:
@@ -106,6 +107,12 @@ class StaticFSDP2P0Policy:
         ):
             raise ValueError(
                 "Generator no-grad static-context reuse is restricted to B1"
+            )
+        if self.generator_nograd_persistent_unshard and (
+            self.rollout_batch_size != 1 or self.mesh_policy != "world16-fsdp"
+        ):
+            raise ValueError(
+                "Generator no-grad persistent unshard requires world16 FSDP2 B1"
             )
         if (
             self.exact_modulated_norm_materialization
@@ -187,6 +194,8 @@ class StaticFSDP2P0Policy:
             suffixes.append("criticscalarnosync")
         if self.elide_official_generator_free_memory:
             suffixes.append("generatornofreememory")
+        if self.generator_nograd_persistent_unshard:
+            suffixes.append("generatorpersistunshard")
         return "-".join((base, *suffixes))
 
 

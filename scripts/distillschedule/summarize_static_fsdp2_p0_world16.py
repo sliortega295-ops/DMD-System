@@ -63,6 +63,11 @@ def main() -> int:
         default="off",
     )
     parser.add_argument(
+        "--generator-nograd-persistent-unshard",
+        choices=("on", "off"),
+        default="off",
+    )
+    parser.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         required=True,
@@ -167,6 +172,9 @@ def main() -> int:
         "generator_nograd_static_context_cache": (
             args.generator_nograd_static_context_cache == "on"
         ),
+        "generator_nograd_persistent_unshard": (
+            args.generator_nograd_persistent_unshard == "on"
+        ),
         "generator_residual_storage": args.generator_residual_storage,
         "critic_residual_storage": args.critic_residual_storage,
         "generator_nograd_lora_fused_epilogue": (
@@ -233,6 +241,7 @@ def main() -> int:
     checkpoint_policies: list[dict[str, Any] | None] = []
     cross_kv_caches: list[dict[str, Any] | None] = []
     static_context_caches: list[dict[str, Any] | None] = []
+    persistent_unshard_receipts: list[dict[str, Any] | None] = []
     generator_free_memory_receipts: list[dict[str, Any] | None] = []
 
     for rank, value in enumerate(ranks):
@@ -353,6 +362,43 @@ def main() -> int:
                 errors.append(f"rank{rank} Critic rollout sync census drifted")
             if fence.get("outer_full5_boundary_sync_preserved") is not True:
                 errors.append(f"rank{rank} outer Full5 boundary sync was not preserved")
+
+            persistence = value.get("generator_nograd_persistent_unshard", {})
+            persistent_unshard_receipts.append(persistence)
+            persistence_prefix = f"rank{rank} Generator persistent unshard"
+            if expected_policy["generator_nograd_persistent_unshard"]:
+                expected_persistence = {
+                    "enabled": True,
+                    "scope": "GENERATOR_NOGRAD_ROLLOUTS_ONLY",
+                    "expected_fsdp_module_count": 41,
+                    "fsdp_module_count": 41,
+                    "parameter_group_count": 41,
+                    "rollout_batch_count": expected_logical_rollouts,
+                    "pre_empty_cache_count": 1,
+                    "post_empty_cache_count": 1,
+                    "set_no_reshard_count": 41,
+                    "restore_reshard_policy_count": 41,
+                    "explicit_reshard_count": 41,
+                    "fully_unsharded_before_exit_count": 41,
+                    "unsharded_after_exit_count": 0,
+                    "restored": True,
+                }
+                for key, expected in expected_persistence.items():
+                    if persistence.get(key) != expected:
+                        errors.append(
+                            f"{persistence_prefix} {key}="
+                            f"{persistence.get(key)!r}, expected={expected!r}"
+                        )
+                rollout_memory = persistence.get("rollout_memory", [])
+                if len(rollout_memory) != expected_logical_rollouts:
+                    errors.append(
+                        f"{persistence_prefix} memory samples="
+                        f"{len(rollout_memory)}, expected={expected_logical_rollouts}"
+                    )
+            elif persistence.get("enabled"):
+                errors.append(
+                    f"{persistence_prefix} enabled outside requested policy"
+                )
 
             scalar_logs = value.get("critic_scalar_logs", {})
             scalar_prefix = f"rank{rank} official Critic scalar logs"
@@ -1287,6 +1333,7 @@ def main() -> int:
             residual_fusions.append(None)
             modulated_norm_fusions.append(None)
             cross_kv_caches.append(None)
+            persistent_unshard_receipts.append(None)
 
     starts = [int(value["timing_start_unix_ns"]) for value in ranks if "timing_start_unix_ns" in value]
     stops = [int(value["timing_stop_unix_ns"]) for value in ranks if "timing_stop_unix_ns" in value]
@@ -1330,6 +1377,9 @@ def main() -> int:
         "rank_exact_modulated_norm_epilogue": modulated_norm_fusions,
         "rank_generator_nograd_cross_kv_cache": cross_kv_caches,
         "rank_generator_nograd_static_context_cache": static_context_caches,
+        "rank_generator_nograd_persistent_unshard": (
+            persistent_unshard_receipts
+        ),
         "rank_generator_free_memory": generator_free_memory_receipts,
         "rank_attention_backends": attention_backends,
         "rank_modulation_chunks": modulation_chunks,

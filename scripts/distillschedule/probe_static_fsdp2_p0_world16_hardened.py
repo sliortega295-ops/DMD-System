@@ -413,6 +413,8 @@ def _install_conservative_direct_defaults() -> None:
         sys.argv.append("--no-generator-nograd-cross-kv-cache")
     if "--generator-nograd-static-context-cache" not in sys.argv and "--no-generator-nograd-static-context-cache" not in sys.argv:
         sys.argv.append("--no-generator-nograd-static-context-cache")
+    if "--generator-nograd-persistent-unshard" not in sys.argv and "--no-generator-nograd-persistent-unshard" not in sys.argv:
+        sys.argv.append("--no-generator-nograd-persistent-unshard")
     if "--elide-explicit-rollout-sync" not in sys.argv and "--no-elide-explicit-rollout-sync" not in sys.argv:
         sys.argv.append("--no-elide-explicit-rollout-sync")
     if "--elide-critic-scalar-logs" not in sys.argv and "--no-elide-critic-scalar-logs" not in sys.argv:
