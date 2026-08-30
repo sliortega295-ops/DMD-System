@@ -255,3 +255,10 @@
     timestep-component math. Require deterministic reductions and locked-A100
     B1/B3 parity plus at least `1.15x` warm forward+backward improvement before
     any world16 integration. Do not combine it with schedule or topology work.
+50. C15 passes validate-only, 16/16 correctness/capacity and formal timing at
+    `c2ccd57`. Every rank records 1,120 fused backward calls, 5,840 hidden and
+    5,840 component launches, zero fallback, and G201/C1005/EMA801. Formal
+    Full5 is `131.562027140 s`, improving C14 by `4.522654637 s` (`3.3234%`).
+    Promote C15, but retain the goal because it remains `10.451889037 s` above
+    target. The next hypothesis must be preregistered from a current C15
+    overlap-aware profile; do not continue changing the fused backward blindly.

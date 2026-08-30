@@ -710,3 +710,25 @@
   least `1.15x`, before any world16 implementation?
 - Decision: **GO for C15 canary only**. Failure returns to C14 without further
   invasive repair.
+
+## C15 iteration-end handoff
+
+- Exact integrated HEAD: `c2ccd577b4e94a1ea64cf538cd7626373206ebfa`.
+- Validate, correctness and formal timing runs are respectively
+  `iter369_gan_cuda_c15_fusedbackward_validate_r1_20260830`,
+  `iter369_gan_cuda_c15_fusedbackward_correctness_r1_20260830`, and
+  `iter369_gan_cuda_c15_fusedbackward_timing_r1_20260830`; all PASS.
+- Frozen contract remained world16 FSDP2 GAN steps1000--1004, B1/global-B16,
+  Score packing off, GPU residuals/EMA, local FA2, unchanged trace/RNG/losses,
+  G1/C5/EMA1 and G201/C1005/EMA801.
+- Every rank records 1,120 fused calls, 4,720 chunks, 5,840 hidden-gradient and
+  5,840 component-gradient launches, with zero fallback. No CUDA or cgroup OOM
+  occurred.
+- Formal Full5 is `131.562027140 s`, improving C14 by `4.522654637 s`
+  (`3.323411995%`). C15 is the validated substrate.
+- The original `121.110138103 s` target is not met. Remaining gap is
+  `10.451889037 s`; next falsifiable question must come from a current C15
+  profile, not a repeated or more invasive C15 repair.
+- Decision: **GO for one diagnostic-only C15 Nsight capture**, followed by one
+  preregistered single-variable candidate. Profile wall time is never a formal
+  denominator.

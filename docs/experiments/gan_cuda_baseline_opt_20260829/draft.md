@@ -464,3 +464,12 @@ warm forward-plus-backward falls from `1.432627/3.675955 ms` to
 normalized-L2 is `2.094e-5` for B1 and `7.665e-6` for B3.  This evidence
 authorizes a default-off integration, but it is not yet a Full5 performance
 claim.
+
+## C15 measured result
+
+C15 passes the full world16 gate at `c2ccd577b4e94a1ea64cf538cd7626373206ebfa`.
+The formal unprofiled Full5 is `131.562027140 s`, versus C14's
+`136.084681777 s`: `4.522654637 s` (`3.3234%`) faster. The receipts show
+1,120 fused backward calls and zero reference fallback on every rank, with
+G201/C1005/EMA801 and no CUDA/cgroup OOM. C15 is promoted, but it is still
+`10.451889037 s` above the registered 30%-faster target.
