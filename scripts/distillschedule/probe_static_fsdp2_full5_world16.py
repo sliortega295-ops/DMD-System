@@ -369,6 +369,12 @@ def _run_gan_generator_update(
             device=device,
             detailed_profile=False,
             collect_diagnostics=collect_diagnostics,
+            empty_cache_before_rollout=not bool(
+                getattr(args, "elide_explicit_rollout_sync", False)
+            ),
+            synchronize_after_rollout=not bool(
+                getattr(args, "elide_explicit_rollout_sync", False)
+            ),
         )
     with diagnostics.scope("FSDP_POST_FORWARD_RESHARD/generator"):
         pass

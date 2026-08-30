@@ -64,6 +64,7 @@ class StaticFSDP2P0Policy:
     modulation_chunk_tokens: int = 512
     selective_flash_checkpoint_stride: int = 0
     generator_nograd_cross_kv_cache: bool = False
+    elide_explicit_rollout_sync: bool = False
 
     def __post_init__(self) -> None:
         if self.mesh_policy not in SUPPORTED_MESH_POLICIES:
@@ -143,6 +144,8 @@ class StaticFSDP2P0Policy:
             )
         if self.generator_nograd_cross_kv_cache:
             suffixes.append("crosskvcache")
+        if self.elide_explicit_rollout_sync:
+            suffixes.append("rolloutnosync")
         return "-".join((base, *suffixes))
 
 

@@ -171,6 +171,11 @@ def parser() -> argparse.ArgumentParser:
         default="off",
     )
     value.add_argument(
+        "--elide-explicit-rollout-sync",
+        choices=("on", "off"),
+        default="off",
+    )
+    value.add_argument(
         "--remote-root",
         type=Path,
         default=Path(
@@ -280,6 +285,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.exact_modulated_norm_materialization),
         "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_BACKWARD="
         + shlex.quote(args.exact_modulated_norm_backward),
+        "DISTILLSCHEDULE_ELIDE_EXPLICIT_ROLLOUT_SYNC="
+        + shlex.quote(args.elide_explicit_rollout_sync),
         "DISTILLSCHEDULE_HELIOS_ATTENTION_BACKEND="
         + shlex.quote(args.attention_backend),
         "DISTILLSCHEDULE_HELIOS_MODULATION_CHUNK_TOKENS="
@@ -410,6 +417,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.exact_modulated_norm_materialization)} "
         + "--exact-modulated-norm-backward "
         + f"{shlex.quote(args.exact_modulated_norm_backward)} "
+        + "--elide-explicit-rollout-sync "
+        + f"{shlex.quote(args.elide_explicit_rollout_sync)} "
         + "--selective-flash-checkpoint-stride "
         + f"{args.selective_flash_checkpoint_stride} "
         + "--generator-nograd-cross-kv-cache "

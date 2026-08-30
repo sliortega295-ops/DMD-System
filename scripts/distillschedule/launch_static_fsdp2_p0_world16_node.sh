@@ -77,6 +77,7 @@ EXACT_GRAD_RESIDUAL_FUSION="${DISTILLSCHEDULE_HELIOS_EXACT_GRAD_RESIDUAL_FUSION:
 EXACT_MODULATED_NORM_EPILOGUE="${DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_EPILOGUE:-off}"
 EXACT_MODULATED_NORM_MATERIALIZATION="${DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_MATERIALIZATION:-off}"
 EXACT_MODULATED_NORM_BACKWARD="${DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_BACKWARD:-off}"
+ELIDE_EXPLICIT_ROLLOUT_SYNC="${DISTILLSCHEDULE_ELIDE_EXPLICIT_ROLLOUT_SYNC:-off}"
 ATTENTION_BACKEND="${DISTILLSCHEDULE_HELIOS_ATTENTION_BACKEND:-sdpa}"
 MODULATION_CHUNK_TOKENS="${DISTILLSCHEDULE_HELIOS_MODULATION_CHUNK_TOKENS:-512}"
 SELECTIVE_FLASH_CHECKPOINT_STRIDE="${DISTILLSCHEDULE_HELIOS_SELECTIVE_FLASH_CHECKPOINT_STRIDE:-0}"
@@ -101,6 +102,7 @@ EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORME
 [[ "${EXACT_MODULATED_NORM_EPILOGUE}" == on || "${EXACT_MODULATED_NORM_EPILOGUE}" == off ]] || exit 2
 [[ "${EXACT_MODULATED_NORM_MATERIALIZATION}" == on || "${EXACT_MODULATED_NORM_MATERIALIZATION}" == off ]] || exit 2
 [[ "${EXACT_MODULATED_NORM_BACKWARD}" == on || "${EXACT_MODULATED_NORM_BACKWARD}" == off ]] || exit 2
+[[ "${ELIDE_EXPLICIT_ROLLOUT_SYNC}" == on || "${ELIDE_EXPLICIT_ROLLOUT_SYNC}" == off ]] || exit 2
 [[ "${ATTENTION_BACKEND}" == sdpa || "${ATTENTION_BACKEND}" == local-fa2 ]] || exit 2
 [[ "${MODULATION_CHUNK_TOKENS}" == 512 || "${MODULATION_CHUNK_TOKENS}" == 1024 || "${MODULATION_CHUNK_TOKENS}" == 2048 ]] || exit 2
 [[ "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" == 0 || "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" == 2 || "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" == 4 || "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" == 10 ]] || exit 2
@@ -151,10 +153,10 @@ HELIOS_TRANSFORMER="${HELIOS}/helios/modules/transformer_helios.py"
 if [[ "${MODE}" == timing && "${DIAGNOSTIC_TIMING}" != 1 ]]; then
   [[ -f "${CORRECTNESS_SUMMARY}" ]] || { echo correctness_summary_missing >&2; exit 3; }
   [[ "$(sha256sum "${CORRECTNESS_SUMMARY}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || { echo correctness_hash_changed >&2; exit 3; }
-  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" "${ALL_ROLE_LORA_SCALE1_ADD}" "${OPTIMIZER_DISPATCH_WARMUP}" "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" "${EXACT_GRAD_RESIDUAL_FUSION}" "${EXACT_MODULATED_NORM_EPILOGUE}" "${EXACT_MODULATED_NORM_MATERIALIZATION}" "${ATTENTION_BACKEND}" "${MODULATION_CHUNK_TOKENS}" "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" "${GENERATOR_NOGRAD_CROSS_KV_CACHE}" "${EXACT_MODULATED_NORM_BACKWARD}" <<'PY'
+  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" "${ALL_ROLE_LORA_SCALE1_ADD}" "${OPTIMIZER_DISPATCH_WARMUP}" "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" "${EXACT_GRAD_RESIDUAL_FUSION}" "${EXACT_MODULATED_NORM_EPILOGUE}" "${EXACT_MODULATED_NORM_MATERIALIZATION}" "${ATTENTION_BACKEND}" "${MODULATION_CHUNK_TOKENS}" "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" "${GENERATOR_NOGRAD_CROSS_KV_CACHE}" "${EXACT_MODULATED_NORM_BACKWARD}" "${ELIDE_EXPLICIT_ROLLOUT_SYNC}" <<'PY'
 import json,pathlib,sys
 value=json.loads(pathlib.Path(sys.argv[1]).read_text())
-expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7],"generator_nograd_lora_fused_epilogue":sys.argv[8]=="on","all_role_lora_scale1_add":sys.argv[9]=="on","optimizer_dispatch_warmup":sys.argv[10]=="on","generator_nograd_residual_fusion":sys.argv[11]=="on","exact_grad_residual_fusion":sys.argv[12]=="on","exact_modulated_norm_epilogue":sys.argv[13]=="on","exact_modulated_norm_materialization":sys.argv[14]=="on","attention_backend":sys.argv[15],"modulation_chunk_tokens":int(sys.argv[16]),"selective_flash_checkpoint_stride":int(sys.argv[17]),"generator_nograd_cross_kv_cache":sys.argv[18]=="on","exact_modulated_norm_backward":sys.argv[19]=="on"}
+expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7],"generator_nograd_lora_fused_epilogue":sys.argv[8]=="on","all_role_lora_scale1_add":sys.argv[9]=="on","optimizer_dispatch_warmup":sys.argv[10]=="on","generator_nograd_residual_fusion":sys.argv[11]=="on","exact_grad_residual_fusion":sys.argv[12]=="on","exact_modulated_norm_epilogue":sys.argv[13]=="on","exact_modulated_norm_materialization":sys.argv[14]=="on","attention_backend":sys.argv[15],"modulation_chunk_tokens":int(sys.argv[16]),"selective_flash_checkpoint_stride":int(sys.argv[17]),"generator_nograd_cross_kv_cache":sys.argv[18]=="on","exact_modulated_norm_backward":sys.argv[19]=="on","elide_explicit_rollout_sync":sys.argv[20]=="on"}
 if value.get("status") != "PASS" or not value.get("claimable_correctness"):
     raise SystemExit("P0 correctness gate is not PASS")
 if value.get("variant") != sys.argv[2]:
@@ -228,6 +230,7 @@ exact_grad_residual_fusion=${EXACT_GRAD_RESIDUAL_FUSION}
 exact_modulated_norm_epilogue=${EXACT_MODULATED_NORM_EPILOGUE}
 exact_modulated_norm_materialization=${EXACT_MODULATED_NORM_MATERIALIZATION}
 exact_modulated_norm_backward=${EXACT_MODULATED_NORM_BACKWARD}
+elide_explicit_rollout_sync=${ELIDE_EXPLICIT_ROLLOUT_SYNC}
 attention_backend=${ATTENTION_BACKEND}
 modulation_chunk_tokens=${MODULATION_CHUNK_TOKENS}
 selective_flash_checkpoint_stride=${SELECTIVE_FLASH_CHECKPOINT_STRIDE}
@@ -306,6 +309,11 @@ if [[ "${GENERATOR_NOGRAD_CROSS_KV_CACHE}" == on ]]; then
   WORKER+=(--generator-nograd-cross-kv-cache)
 else
   WORKER+=(--no-generator-nograd-cross-kv-cache)
+fi
+if [[ "${ELIDE_EXPLICIT_ROLLOUT_SYNC}" == on ]]; then
+  WORKER+=(--elide-explicit-rollout-sync)
+else
+  WORKER+=(--no-elide-explicit-rollout-sync)
 fi
 [[ "${MODE}" == validate ]] && WORKER+=(--validate-only)
 [[ "${MODE}" == timing ]] && WORKER+=(--timing-mode)

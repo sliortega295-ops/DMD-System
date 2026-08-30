@@ -107,6 +107,11 @@ def main() -> int:
         choices=("on", "off"),
         required=True,
     )
+    parser.add_argument(
+        "--elide-explicit-rollout-sync",
+        choices=("on", "off"),
+        default="off",
+    )
     parser.add_argument("--critic-only-step", type=int, choices=(10,))
     parser.add_argument(
         "--diagnostic-timing",
@@ -153,6 +158,9 @@ def main() -> int:
         ),
         "exact_modulated_norm_backward": (
             args.exact_modulated_norm_backward == "on"
+        ),
+        "elide_explicit_rollout_sync": (
+            args.elide_explicit_rollout_sync == "on"
         ),
     }
     if args.critic_only_step is not None:
@@ -224,6 +232,37 @@ def main() -> int:
                 errors.append(f"{prefix} extension identity changed")
 
         if args.mode != "validate":
+            expected_sync = not expected_policy["elide_explicit_rollout_sync"]
+            generator_rollout = value.get("generator", {}).get("rollout", {})
+            if generator_rollout.get("empty_cache_before_rollout") is not expected_sync:
+                errors.append(f"rank{rank} Generator rollout empty_cache policy drifted")
+            if generator_rollout.get("synchronize_after_rollout") is not expected_sync:
+                errors.append(f"rank{rank} Generator rollout sync policy drifted")
+            rollout_batches = value.get("rollout_batches", [])
+            if any(
+                batch.get("synchronize_after_rollout") is not expected_sync
+                for batch in rollout_batches
+            ):
+                errors.append(f"rank{rank} Critic rollout sync policy drifted")
+            fence = value.get("rollout_fence_policy", {})
+            expected_batch_count = len(rollout_batches)
+            if fence.get("elide_explicit_rollout_sync") is not (
+                expected_policy["elide_explicit_rollout_sync"]
+            ):
+                errors.append(f"rank{rank} rollout fence request drifted")
+            if int(fence.get("generator_update_empty_cache_count", -1)) != int(
+                expected_sync
+            ):
+                errors.append(f"rank{rank} rollout empty_cache census drifted")
+            if int(fence.get("generator_update_sync_count", -1)) != int(expected_sync):
+                errors.append(f"rank{rank} Generator rollout sync census drifted")
+            if int(fence.get("critic_rollout_sync_count", -1)) != (
+                expected_batch_count if expected_sync else 0
+            ):
+                errors.append(f"rank{rank} Critic rollout sync census drifted")
+            if fence.get("outer_full5_boundary_sync_preserved") is not True:
+                errors.append(f"rank{rank} outer Full5 boundary sync was not preserved")
+
             role_chunks = value.get("build", {})
             rank_chunks: dict[str, Any] = {}
             for role in ("generator", "critic"):

@@ -32,6 +32,7 @@ def _policy(backend: str) -> dict[str, object]:
         "exact_modulated_norm_epilogue": True,
         "exact_modulated_norm_materialization": True,
         "exact_modulated_norm_backward": False,
+        "elide_explicit_rollout_sync": False,
     }
 
 

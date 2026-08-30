@@ -407,6 +407,8 @@ def _install_conservative_direct_defaults() -> None:
         sys.argv.append("--no-exact-modulated-norm-backward")
     if "--generator-nograd-cross-kv-cache" not in sys.argv and "--no-generator-nograd-cross-kv-cache" not in sys.argv:
         sys.argv.append("--no-generator-nograd-cross-kv-cache")
+    if "--elide-explicit-rollout-sync" not in sys.argv and "--no-elide-explicit-rollout-sync" not in sys.argv:
+        sys.argv.append("--no-elide-explicit-rollout-sync")
 
 
 def main() -> int:

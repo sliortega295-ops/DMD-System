@@ -416,6 +416,8 @@ def _run_nogan_generator_update_p0(
             device=device,
             detailed_profile=False,
             collect_diagnostics=collect_diagnostics,
+            empty_cache_before_rollout=not policy.elide_explicit_rollout_sync,
+            synchronize_after_rollout=not policy.elide_explicit_rollout_sync,
         )
     batch = prepare_dmd_score_batch(generated_x0=x0, entry=entry, device=device)
     fake = score_forward(
@@ -586,6 +588,7 @@ def _precompute_critic_rollouts(
                 collect_diagnostics=collect_diagnostics,
                 diagnostics_scope=diagnostics.scope,
                 use_cross_kv_cache=policy.generator_nograd_cross_kv_cache,
+                synchronize_after_rollout=not policy.elide_explicit_rollout_sync,
             )
         parity_rows: list[dict[str, Any]] = []
         needs_reference = rollout_parity_check and (
@@ -886,6 +889,15 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--elide-explicit-rollout-sync",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Omit only the application-owned rollout cuda synchronizations and "
+            "Generator-update empty_cache; outer Full5 synchronization is unchanged"
+        ),
+    )
+    value.add_argument(
         "--critic-only-step",
         type=int,
         choices=(10,),
@@ -987,6 +999,7 @@ def main() -> int:
         generator_nograd_cross_kv_cache=bool(
             args.generator_nograd_cross_kv_cache
         ),
+        elide_explicit_rollout_sync=bool(args.elide_explicit_rollout_sync),
     )
     dist.init_process_group("nccl")
     rank = dist.get_rank()
@@ -1042,6 +1055,7 @@ def main() -> int:
                 policy.exact_modulated_norm_materialization
             ),
             "exact_modulated_norm_backward": policy.exact_modulated_norm_backward,
+            "elide_explicit_rollout_sync": policy.elide_explicit_rollout_sync,
         },
     }
     try:
@@ -1361,6 +1375,20 @@ def main() -> int:
             status="PASS",
             generator=generator_record,
             rollout_batches=rollout_records,
+            rollout_fence_policy={
+                "elide_explicit_rollout_sync": policy.elide_explicit_rollout_sync,
+                "generator_update_empty_cache_count": int(
+                    not policy.elide_explicit_rollout_sync
+                ),
+                "generator_update_sync_count": int(
+                    not policy.elide_explicit_rollout_sync
+                ),
+                "critic_rollout_sync_count": sum(
+                    int(bool(record.get("synchronize_after_rollout")))
+                    for record in rollout_records
+                ),
+                "outer_full5_boundary_sync_preserved": True,
+            },
             rollout_collective_estimate=rollout_estimate,
             critic=critic_records,
             ema=ema_records,
