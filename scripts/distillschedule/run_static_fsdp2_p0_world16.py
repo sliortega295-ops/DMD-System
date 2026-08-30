@@ -176,6 +176,11 @@ def parser() -> argparse.ArgumentParser:
         default="off",
     )
     value.add_argument(
+        "--exact-modulated-norm-layernorm",
+        choices=("on", "off"),
+        default="off",
+    )
+    value.add_argument(
         "--elide-explicit-rollout-sync",
         choices=("on", "off"),
         default="off",
@@ -290,6 +295,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.exact_modulated_norm_materialization),
         "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_BACKWARD="
         + shlex.quote(args.exact_modulated_norm_backward),
+        "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_LAYERNORM="
+        + shlex.quote(args.exact_modulated_norm_layernorm),
         "DISTILLSCHEDULE_ELIDE_EXPLICIT_ROLLOUT_SYNC="
         + shlex.quote(args.elide_explicit_rollout_sync),
         "DISTILLSCHEDULE_HELIOS_ATTENTION_BACKEND="
@@ -424,6 +431,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.exact_modulated_norm_materialization)} "
         + "--exact-modulated-norm-backward "
         + f"{shlex.quote(args.exact_modulated_norm_backward)} "
+        + "--exact-modulated-norm-layernorm "
+        + f"{shlex.quote(args.exact_modulated_norm_layernorm)} "
         + "--elide-explicit-rollout-sync "
         + f"{shlex.quote(args.elide_explicit_rollout_sync)} "
         + "--selective-flash-checkpoint-stride "
@@ -529,6 +538,15 @@ def main() -> int:
     ):
         raise ValueError(
             "Exact modulated-norm backward requires the exact epilogue"
+        )
+    if args.exact_modulated_norm_layernorm == "on" and not (
+        args.exact_modulated_norm_epilogue == "on"
+        and args.exact_modulated_norm_materialization == "on"
+        and args.exact_modulated_norm_backward == "on"
+    ):
+        raise ValueError(
+            "Fused modulated LayerNorm requires epilogue, materialization, "
+            "and explicit backward"
         )
     if (
         args.selective_flash_checkpoint_stride

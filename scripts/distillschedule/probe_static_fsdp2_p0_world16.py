@@ -235,6 +235,7 @@ def _build_static_model(
                 args.exact_modulated_norm_materialization
             ),
             fuse_backward=bool(args.exact_modulated_norm_backward),
+            fuse_layernorm=bool(args.exact_modulated_norm_layernorm),
         )
         if role == "generator"
         else {
@@ -891,6 +892,15 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--exact-modulated-norm-layernorm",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Fuse the BF16 input cast, affine-free FP32 width-5120 LayerNorm, "
+            "table/component adds, and modulation into one exact C14 kernel"
+        ),
+    )
+    value.add_argument(
         "--selective-flash-checkpoint-stride",
         type=int,
         choices=(0, 2, 4, 10),
@@ -992,6 +1002,15 @@ def main() -> int:
         raise ValueError(
             "Exact modulated-norm backward requires the exact epilogue"
         )
+    if args.exact_modulated_norm_layernorm and not (
+        args.exact_modulated_norm_epilogue
+        and args.exact_modulated_norm_materialization
+        and args.exact_modulated_norm_backward
+    ):
+        raise ValueError(
+            "Fused modulated LayerNorm requires epilogue, materialization, "
+            "and explicit backward"
+        )
     if (
         args.selective_flash_checkpoint_stride
         and args.attention_backend != "local-fa2"
@@ -1027,6 +1046,7 @@ def main() -> int:
             args.exact_modulated_norm_materialization
         ),
         exact_modulated_norm_backward=bool(args.exact_modulated_norm_backward),
+        exact_modulated_norm_layernorm=bool(args.exact_modulated_norm_layernorm),
         modulation_chunk_tokens=int(args.modulation_chunk_tokens),
         selective_flash_checkpoint_stride=int(
             args.selective_flash_checkpoint_stride
@@ -1096,6 +1116,7 @@ def main() -> int:
                 policy.exact_modulated_norm_materialization
             ),
             "exact_modulated_norm_backward": policy.exact_modulated_norm_backward,
+            "exact_modulated_norm_layernorm": policy.exact_modulated_norm_layernorm,
             "elide_explicit_rollout_sync": policy.elide_explicit_rollout_sync,
         },
     }

@@ -139,6 +139,15 @@ def test_policy_and_mesh_contract() -> None:
     assert backward.id.endswith("modnormbackward")
     with pytest.raises(ValueError, match="backward requires the exact epilogue"):
         StaticFSDP2P0Policy(exact_modulated_norm_backward=True)
+    layernorm = StaticFSDP2P0Policy(
+        exact_modulated_norm_epilogue=True,
+        exact_modulated_norm_materialization=True,
+        exact_modulated_norm_backward=True,
+        exact_modulated_norm_layernorm=True,
+    )
+    assert layernorm.id.endswith("modnormlayernorm")
+    with pytest.raises(ValueError, match="Fused modulated LayerNorm"):
+        StaticFSDP2P0Policy(exact_modulated_norm_layernorm=True)
     selective_flash = StaticFSDP2P0Policy(
         selective_flash_checkpoint_stride=2,
     )
@@ -212,6 +221,7 @@ def test_ncu_launcher_preserves_current_p0_policy_and_profiles_one_device() -> N
         "--exact-modulated-norm-epilogue",
         "--exact-modulated-norm-materialization",
         "--exact-modulated-norm-backward",
+        "--exact-modulated-norm-layernorm",
         "--generator-nograd-cross-kv-cache",
     ):
         assert flag in launcher

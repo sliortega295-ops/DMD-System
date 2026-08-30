@@ -27,9 +27,11 @@ def install_exact_modulated_norm_epilogue(
     role: str,
     fuse_materialization: bool = False,
     fuse_backward: bool = False,
+    fuse_layernorm: bool = False,
     transformer_module: Any | None = None,
     fused_epilogue: Any | None = None,
     fused_materialization: Any | None = None,
+    fused_layernorm: Any | None = None,
 ) -> dict[str, Any]:
     """Patch the pinned custom Function with independently gated exact paths."""
 
@@ -39,7 +41,12 @@ def install_exact_modulated_norm_epilogue(
         "role": str(role),
         "scope": "ALL_ROLE_REGISTERED_B1_B3_MODULATED_NORM_FORWARD_EPILOGUE",
         "semantic_contract": (
-            "PYTORCH_FP32_LAYERNORM_UNCHANGED;ADD_RN_F32_ONE_PLUS_SCALE;"
+            (
+                "FUSED_BF16_INPUT_FP32_AFFINE_FREE_LAYERNORM_WIDTH5120;"
+                if fuse_layernorm
+                else "PYTORCH_FP32_LAYERNORM_UNCHANGED;"
+            )
+            + "ADD_RN_F32_ONE_PLUS_SCALE;"
             "MUL_RN_F32;ADD_RN_F32_SHIFT;BF16_RN_STORE;"
             + (
                 "EXPLICIT_NATIVE_LAYERNORM_BACKWARD_AND_COMPONENT_GRADIENTS"
@@ -67,6 +74,15 @@ def install_exact_modulated_norm_epilogue(
         "backward_chunk_count": 0,
         "backward_hidden_element_count": 0,
         "backward_layout_counts": {},
+        "layernorm_requested": bool(fuse_layernorm),
+        "layernorm_contract": (
+            "BF16_INPUT;FP32_AFFINE_FREE_LAYERNORM_WIDTH5120;"
+            "SOURCE_TABLE_COMPONENT_FP32_ADDS;SOURCE_MODULATION_FP32_FORMULA;"
+            "BF16_OUTPUT;EXPLICIT_NATIVE_LAYERNORM_BACKWARD_UNCHANGED"
+        ),
+        "layernorm_fused_call_count": 0,
+        "layernorm_fused_chunk_count": 0,
+        "layernorm_fused_element_count": 0,
         "warmup": {"status": "NOT_RUN"},
     }
     if not enabled:
@@ -86,8 +102,13 @@ def install_exact_modulated_norm_epilogue(
     receipt["transformer_source"] = str(source_path)
     receipt["transformer_sha256"] = observed_sha
     receipt["expected_transformer_sha256"] = SUPPORTED_HELIOS_TRANSFORMER_SHA256
-    test_injected = (
-        fused_epilogue is not None or fused_materialization is not None
+    if fuse_layernorm and not fuse_materialization:
+        raise ValueError("fused LayerNorm requires fused modulation materialization")
+    if fuse_layernorm and not fuse_backward:
+        raise ValueError("fused LayerNorm requires the explicit backward")
+    test_injected = any(
+        value is not None
+        for value in (fused_epilogue, fused_materialization, fused_layernorm)
     )
     if not test_injected and observed_sha != SUPPORTED_HELIOS_TRANSFORMER_SHA256:
         raise RuntimeError(
@@ -106,6 +127,12 @@ def install_exact_modulated_norm_epilogue(
         )
 
         fused_materialization = fused_modulated_norm_materialization
+    if fuse_layernorm and fused_layernorm is None:
+        from distillschedule.runtime.helios_fused_layernorm_kernel import (
+            fused_bf16_layernorm_modulation,
+        )
+
+        fused_layernorm = fused_bf16_layernorm_modulation
 
     function = transformer_module._TembAwareChunkedNorm
     original_forward = function.forward
@@ -184,8 +211,47 @@ def install_exact_modulated_norm_epilogue(
         for start in range(0, ctx.sequence_length, ctx.chunk_tokens):
             end = min(ctx.sequence_length, start + ctx.chunk_tokens)
             hidden_chunk = hidden_states[:, start:end]
-            normalized = norm(hidden_chunk.float())
-            if fuse_materialization:
+            if fuse_layernorm:
+                scale_component = component(temb, ctx.scale_index, start, end)
+                shift_component = component(temb, ctx.shift_index, start, end)
+                for name, value in (
+                    ("scale_component", scale_component),
+                    ("shift_component", shift_component),
+                ):
+                    if value.shape != hidden_chunk.shape:
+                        if (
+                            value.ndim == 3
+                            and value.shape[0] == hidden_chunk.shape[0]
+                            and value.shape[1] == 1
+                            and value.shape[2] == hidden_chunk.shape[2]
+                        ):
+                            value = value.expand_as(hidden_chunk)
+                        else:
+                            raise RuntimeError(
+                                f"unsupported exact modulated-norm {name} shape: "
+                                f"{tuple(value.shape)} != {tuple(hidden_chunk.shape)}"
+                            )
+                    if name == "scale_component":
+                        scale_component = value
+                    else:
+                        shift_component = value
+                fused_layernorm(
+                    hidden_chunk,
+                    scale_shift_table,
+                    ctx.scale_index,
+                    ctx.shift_index,
+                    scale_component,
+                    shift_component,
+                    output[:, start:end],
+                    eps=float(norm.eps),
+                )
+                receipt["layernorm_fused_chunk_count"] += 1
+                receipt["layernorm_fused_element_count"] += int(
+                    hidden_chunk.numel()
+                )
+                receipt["materialization_fused_chunk_count"] += 1
+            elif fuse_materialization:
+                normalized = norm(hidden_chunk.float())
                 scale_component = component(temb, ctx.scale_index, start, end)
                 shift_component = component(temb, ctx.shift_index, start, end)
                 for name, value in (
@@ -220,6 +286,7 @@ def install_exact_modulated_norm_epilogue(
                 )
                 receipt["materialization_fused_chunk_count"] += 1
             else:
+                normalized = norm(hidden_chunk.float())
                 scale = materialize(
                     scale_shift_table, temb, ctx.scale_index, start, end
                 )
@@ -251,6 +318,8 @@ def install_exact_modulated_norm_epilogue(
         receipt["fused_element_count"] += int(output.numel())
         if fuse_materialization:
             receipt["materialization_fused_call_count"] += 1
+        if fuse_layernorm:
+            receipt["layernorm_fused_call_count"] += 1
         return output
 
     @staticmethod
@@ -418,7 +487,12 @@ def install_exact_modulated_norm_epilogue(
         "TEST_INJECTED"
         if test_injected
         else (
-            "TRITON_B1_B3_FP32_TABLE_COMPONENT_AND_MODULATION_EPILOGUE_"
+            (
+                "TRITON_B1_B3_BF16_INPUT_FP32_LAYERNORM_TABLE_COMPONENT_"
+                "AND_MODULATION_EPILOGUE_"
+                if fuse_layernorm
+                else "TRITON_B1_B3_FP32_TABLE_COMPONENT_AND_MODULATION_EPILOGUE_"
+            )
             + (
                 "EXPLICIT_NATIVE_LAYERNORM_BACKWARD"
                 if fuse_backward
@@ -443,16 +517,24 @@ def warmup_exact_modulated_norm_epilogue(
 ) -> dict[str, Any]:
     if not receipt.get("enabled"):
         return receipt
-    from distillschedule.runtime.helios_modulated_norm_kernel import warmup
+    if receipt.get("layernorm_requested"):
+        from distillschedule.runtime.helios_fused_layernorm_kernel import (
+            warmup as warmup_layernorm,
+        )
 
-    receipt["warmup"] = {
-        "status": "PASS",
-        **warmup(
+        details = warmup_layernorm(device, chunk_tokens=int(chunk_tokens))
+        details["fuse_materialization"] = True
+        details["fuse_layernorm"] = True
+    else:
+        from distillschedule.runtime.helios_modulated_norm_kernel import warmup
+
+        details = warmup(
             device,
             fuse_materialization=bool(receipt.get("materialization_requested")),
             chunk_tokens=int(chunk_tokens),
-        ),
-    }
+        )
+        details["fuse_layernorm"] = False
+    receipt["warmup"] = {"status": "PASS", **details}
     return receipt
 
 

@@ -405,6 +405,8 @@ def _install_conservative_direct_defaults() -> None:
         sys.argv.append("--no-exact-modulated-norm-materialization")
     if "--exact-modulated-norm-backward" not in sys.argv and "--no-exact-modulated-norm-backward" not in sys.argv:
         sys.argv.append("--no-exact-modulated-norm-backward")
+    if "--exact-modulated-norm-layernorm" not in sys.argv and "--no-exact-modulated-norm-layernorm" not in sys.argv:
+        sys.argv.append("--no-exact-modulated-norm-layernorm")
     if "--generator-nograd-cross-kv-cache" not in sys.argv and "--no-generator-nograd-cross-kv-cache" not in sys.argv:
         sys.argv.append("--no-generator-nograd-cross-kv-cache")
     if "--generator-nograd-static-context-cache" not in sys.argv and "--no-generator-nograd-static-context-cache" not in sys.argv:

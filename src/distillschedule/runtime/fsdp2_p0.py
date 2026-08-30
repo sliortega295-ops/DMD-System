@@ -61,6 +61,7 @@ class StaticFSDP2P0Policy:
     exact_modulated_norm_epilogue: bool = False
     exact_modulated_norm_materialization: bool = False
     exact_modulated_norm_backward: bool = False
+    exact_modulated_norm_layernorm: bool = False
     modulation_chunk_tokens: int = 512
     selective_flash_checkpoint_stride: int = 0
     generator_nograd_cross_kv_cache: bool = False
@@ -114,6 +115,15 @@ class StaticFSDP2P0Policy:
             raise ValueError(
                 "Exact modulated-norm backward requires the exact epilogue"
             )
+        if self.exact_modulated_norm_layernorm and not (
+            self.exact_modulated_norm_epilogue
+            and self.exact_modulated_norm_materialization
+            and self.exact_modulated_norm_backward
+        ):
+            raise ValueError(
+                "Fused modulated LayerNorm requires epilogue, materialization, "
+                "and explicit backward"
+            )
         if (
             self.selective_flash_checkpoint_stride
             not in SUPPORTED_SELECTIVE_FLASH_CHECKPOINT_STRIDES
@@ -143,6 +153,8 @@ class StaticFSDP2P0Policy:
             suffixes.append("modnormmaterialization")
         if self.exact_modulated_norm_backward:
             suffixes.append("modnormbackward")
+        if self.exact_modulated_norm_layernorm:
+            suffixes.append("modnormlayernorm")
         if self.modulation_chunk_tokens != 512:
             suffixes.append(f"chunk{self.modulation_chunk_tokens}")
         if self.selective_flash_checkpoint_stride:

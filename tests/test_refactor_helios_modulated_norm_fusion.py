@@ -285,6 +285,76 @@ def test_explicit_backward_matches_source_under_frozen_p0_gate() -> None:
     assert receipt["backward_hidden_element_count"] == hidden_candidate.numel()
 
 
+def test_fused_layernorm_path_matches_source_and_keeps_explicit_backward() -> None:
+    torch.manual_seed(53)
+    module = _module()
+    function = module._TembAwareChunkedNorm
+    norm_reference = torch.nn.LayerNorm(8, elementwise_affine=False)
+    norm_candidate = copy.deepcopy(norm_reference)
+    table = torch.randn(1, 6, 8, dtype=torch.float32)
+    hidden_reference = torch.randn(1, 7, 8, dtype=torch.bfloat16).requires_grad_()
+    hidden_candidate = hidden_reference.detach().clone().requires_grad_()
+    temb_reference = torch.randn(1, 6, 8, dtype=torch.bfloat16).requires_grad_()
+    temb_candidate = temb_reference.detach().clone().requires_grad_()
+    upstream = torch.randn_like(hidden_reference)
+
+    expected = _run(
+        function, hidden_reference, norm_reference, table, temb_reference
+    )
+    expected.backward(upstream)
+
+    def fused_layernorm(
+        hidden,
+        source_table,
+        scale_index,
+        shift_index,
+        scale_component,
+        shift_component,
+        output,
+        *,
+        eps,
+    ):
+        normalized = torch.nn.functional.layer_norm(
+            hidden.float(), (hidden.shape[-1],), eps=eps
+        )
+        scale = (
+            source_table[:, scale_index, :].unsqueeze(1)
+            + scale_component.float()
+        )
+        shift = (
+            source_table[:, shift_index, :].unsqueeze(1)
+            + shift_component.float()
+        )
+        output.copy_((normalized * (1 + scale) + shift).to(output.dtype))
+        return output
+
+    receipt = install_exact_modulated_norm_epilogue(
+        enabled=True,
+        role="generator",
+        fuse_materialization=True,
+        fuse_backward=True,
+        fuse_layernorm=True,
+        transformer_module=module,
+        fused_layernorm=fused_layernorm,
+    )
+    actual = _run(function, hidden_candidate, norm_candidate, table, temb_candidate)
+    actual.backward(upstream)
+
+    assert torch.equal(expected, actual)
+    assert tensor_parity_metrics(
+        hidden_reference.grad, hidden_candidate.grad
+    )["status"] == "PASS"
+    assert tensor_parity_metrics(
+        temb_reference.grad, temb_candidate.grad
+    )["status"] == "PASS"
+    assert receipt["layernorm_requested"] is True
+    assert receipt["layernorm_fused_call_count"] == 1
+    assert receipt["layernorm_fused_chunk_count"] == 3
+    assert receipt["materialization_fused_call_count"] == 1
+    assert receipt["backward_call_count"] == 1
+    assert receipt["reference_fallback_count"] == 0
+
+
 def test_launcher_controller_and_summarizer_are_fail_closed() -> None:
     root = Path(__file__).resolve().parents[1]
     launcher = (
@@ -299,12 +369,15 @@ def test_launcher_controller_and_summarizer_are_fail_closed() -> None:
     for source in (launcher, controller, summarizer):
         assert "exact_modulated_norm_epilogue" in source
         assert "exact_modulated_norm_backward" in source
+        assert "exact_modulated_norm_layernorm" in source
     assert "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_EPILOGUE" in launcher
     assert "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_MATERIALIZATION" in launcher
     assert "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_BACKWARD" in launcher
+    assert "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_LAYERNORM" in launcher
     assert "rank_exact_modulated_norm_epilogue" in summarizer
     assert "materialization_fused_chunk_count" in summarizer
     assert "backward_chunk_count" in summarizer
+    assert "layernorm_fused_chunk_count" in summarizer
     assert "reference_fallback_count" in summarizer
 
 

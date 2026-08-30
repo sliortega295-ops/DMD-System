@@ -6,6 +6,8 @@ become an opt-in policy.
 """
 from __future__ import annotations
 
+from typing import Any
+
 import torch
 import triton
 import triton.language as tl
@@ -220,9 +222,66 @@ def fused_bf16_layernorm_modulation(
     return output
 
 
+def warmup(
+    device: torch.device | str,
+    *,
+    batch_sizes: tuple[int, ...] = (1, 3),
+    chunk_tokens: int = 2048,
+    eps: float = 1.0e-6,
+) -> dict[str, Any]:
+    """Compile the registered C14 B1/B3 specializations before timing."""
+
+    if int(chunk_tokens) <= 0:
+        raise ValueError("C14 warmup chunk size must be positive")
+    for batch_size in batch_sizes:
+        if int(batch_size) not in (1, 3):
+            raise ValueError(f"unsupported C14 warmup batch: {batch_size}")
+        hidden = torch.zeros(
+            (int(batch_size), int(chunk_tokens), SUPPORTED_WIDTH),
+            device=device,
+            dtype=torch.bfloat16,
+        )
+        table = torch.zeros(
+            (1, 6, SUPPORTED_WIDTH), device=device, dtype=torch.bfloat16
+        )
+        component = torch.zeros(
+            (int(batch_size), 1, SUPPORTED_WIDTH),
+            device=device,
+            dtype=torch.bfloat16,
+        ).expand_as(hidden)
+        output = torch.empty_like(hidden)
+        fused_bf16_layernorm_modulation(
+            hidden,
+            table,
+            4,
+            3,
+            component,
+            component,
+            output,
+            eps=float(eps),
+        )
+        del hidden, table, component, output
+    torch.cuda.synchronize(device)
+    return {
+        "scope": "SETUP_ONLY_BEFORE_FORMAL_TIMER",
+        "formal_timer_includes_warmup": False,
+        "shapes": [
+            [int(batch), int(chunk_tokens), SUPPORTED_WIDTH]
+            for batch in batch_sizes
+        ],
+        "chunk_tokens": int(chunk_tokens),
+        "row_block": ROW_BLOCK,
+        "num_warps": NUM_WARPS,
+        "eps": float(eps),
+        "torch_version": str(torch.__version__),
+        "triton_version": str(triton.__version__),
+    }
+
+
 __all__ = [
     "fused_bf16_layernorm_modulation",
     "NUM_WARPS",
     "ROW_BLOCK",
     "SUPPORTED_WIDTH",
+    "warmup",
 ]

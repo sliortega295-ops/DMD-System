@@ -113,6 +113,11 @@ def main() -> int:
         required=True,
     )
     parser.add_argument(
+        "--exact-modulated-norm-layernorm",
+        choices=("on", "off"),
+        required=True,
+    )
+    parser.add_argument(
         "--elide-explicit-rollout-sync",
         choices=("on", "off"),
         default="off",
@@ -166,6 +171,9 @@ def main() -> int:
         ),
         "exact_modulated_norm_backward": (
             args.exact_modulated_norm_backward == "on"
+        ),
+        "exact_modulated_norm_layernorm": (
+            args.exact_modulated_norm_layernorm == "on"
         ),
         "elide_explicit_rollout_sync": (
             args.elide_explicit_rollout_sync == "on"
@@ -587,8 +595,16 @@ def main() -> int:
                 expected_backward = expected_policy[
                     "exact_modulated_norm_backward"
                 ]
+                expected_layernorm = expected_policy[
+                    "exact_modulated_norm_layernorm"
+                ]
                 expected_semantic_contract = (
-                    "PYTORCH_FP32_LAYERNORM_UNCHANGED;ADD_RN_F32_ONE_PLUS_SCALE;"
+                    (
+                        "FUSED_BF16_INPUT_FP32_AFFINE_FREE_LAYERNORM_WIDTH5120;"
+                        if expected_layernorm
+                        else "PYTORCH_FP32_LAYERNORM_UNCHANGED;"
+                    )
+                    + "ADD_RN_F32_ONE_PLUS_SCALE;"
                     "MUL_RN_F32;ADD_RN_F32_SHIFT;BF16_RN_STORE;"
                     + (
                         "EXPLICIT_NATIVE_LAYERNORM_BACKWARD_AND_COMPONENT_GRADIENTS"
@@ -647,6 +663,36 @@ def main() -> int:
                         errors.append(f"{prefix} fused no materialization chunks")
                     if warmup.get("fuse_materialization") is not True:
                         errors.append(f"{prefix} did not warm materialization kernel")
+                if (
+                    modulated_norm_fusion.get("layernorm_requested")
+                    is not expected_layernorm
+                ):
+                    errors.append(f"{prefix} LayerNorm request drifted")
+                if expected_layernorm:
+                    if modulated_norm_fusion.get("layernorm_contract") != (
+                        "BF16_INPUT;FP32_AFFINE_FREE_LAYERNORM_WIDTH5120;"
+                        "SOURCE_TABLE_COMPONENT_FP32_ADDS;"
+                        "SOURCE_MODULATION_FP32_FORMULA;BF16_OUTPUT;"
+                        "EXPLICIT_NATIVE_LAYERNORM_BACKWARD_UNCHANGED"
+                    ):
+                        errors.append(f"{prefix} LayerNorm contract changed")
+                    if int(
+                        modulated_norm_fusion.get("layernorm_fused_call_count", 0)
+                    ) <= 0:
+                        errors.append(f"{prefix} fused no LayerNorm calls")
+                    if int(
+                        modulated_norm_fusion.get("layernorm_fused_chunk_count", 0)
+                    ) <= 0:
+                        errors.append(f"{prefix} fused no LayerNorm chunks")
+                    if warmup.get("fuse_layernorm") is not True:
+                        errors.append(f"{prefix} did not warm fused LayerNorm kernel")
+                else:
+                    if int(
+                        modulated_norm_fusion.get("layernorm_fused_call_count", 0)
+                    ) != 0:
+                        errors.append(f"{prefix} fused LayerNorm ran while disabled")
+                    if warmup.get("fuse_layernorm") is not False:
+                        errors.append(f"{prefix} unexpectedly warmed fused LayerNorm")
                 if (
                     modulated_norm_fusion.get("backward_requested")
                     is not expected_backward
