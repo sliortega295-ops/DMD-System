@@ -68,6 +68,7 @@ class StaticFSDP2P0Policy:
     generator_nograd_cross_kv_cache: bool = False
     generator_nograd_static_context_cache: bool = False
     elide_explicit_rollout_sync: bool = False
+    elide_critic_scalar_logs: bool = False
 
     def __post_init__(self) -> None:
         if self.mesh_policy not in SUPPORTED_MESH_POLICIES:
@@ -181,6 +182,8 @@ class StaticFSDP2P0Policy:
             suffixes.append("staticcontextcache")
         if self.elide_explicit_rollout_sync:
             suffixes.append("rolloutnosync")
+        if self.elide_critic_scalar_logs:
+            suffixes.append("criticscalarnosync")
         return "-".join((base, *suffixes))
 
 

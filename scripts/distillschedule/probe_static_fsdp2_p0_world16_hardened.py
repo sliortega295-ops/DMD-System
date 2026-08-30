@@ -415,6 +415,8 @@ def _install_conservative_direct_defaults() -> None:
         sys.argv.append("--no-generator-nograd-static-context-cache")
     if "--elide-explicit-rollout-sync" not in sys.argv and "--no-elide-explicit-rollout-sync" not in sys.argv:
         sys.argv.append("--no-elide-explicit-rollout-sync")
+    if "--elide-critic-scalar-logs" not in sys.argv and "--no-elide-critic-scalar-logs" not in sys.argv:
+        sys.argv.append("--no-elide-critic-scalar-logs")
 
 
 def main() -> int:

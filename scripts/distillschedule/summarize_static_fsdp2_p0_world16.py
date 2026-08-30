@@ -127,6 +127,11 @@ def main() -> int:
         choices=("on", "off"),
         default="off",
     )
+    parser.add_argument(
+        "--elide-critic-scalar-logs",
+        choices=("on", "off"),
+        default="off",
+    )
     parser.add_argument("--critic-only-step", type=int, choices=(10,))
     parser.add_argument(
         "--diagnostic-timing",
@@ -186,6 +191,7 @@ def main() -> int:
         "elide_explicit_rollout_sync": (
             args.elide_explicit_rollout_sync == "on"
         ),
+        "elide_critic_scalar_logs": args.elide_critic_scalar_logs == "on",
     }
     if args.critic_only_step is not None:
         if args.variant != "no-gan" or args.mode != "profile":
@@ -287,6 +293,39 @@ def main() -> int:
                 errors.append(f"rank{rank} Critic rollout sync census drifted")
             if fence.get("outer_full5_boundary_sync_preserved") is not True:
                 errors.append(f"rank{rank} outer Full5 boundary sync was not preserved")
+
+            scalar_logs = value.get("critic_scalar_logs", {})
+            scalar_prefix = f"rank{rank} official Critic scalar logs"
+            if expected_policy["elide_critic_scalar_logs"]:
+                if args.variant != "gan":
+                    errors.append(f"{scalar_prefix} requested outside GAN")
+                if not scalar_logs.get("enabled"):
+                    errors.append(f"{scalar_prefix} patch was not enabled")
+                if scalar_logs.get("scope") != "OFFICIAL_GAN_CRITIC_SCALAR_LOGS_ONLY":
+                    errors.append(f"{scalar_prefix} scope changed")
+                if scalar_logs.get("shared_source_modified") is not False:
+                    errors.append(f"{scalar_prefix} modified shared source")
+                expected_calls = expected_critic_updates
+                if int(scalar_logs.get("call_count", -1)) != expected_calls:
+                    errors.append(
+                        f"{scalar_prefix} call_count={scalar_logs.get('call_count')}"
+                    )
+                if args.mode == "correctness":
+                    expected_collected, expected_elided = 4 * expected_calls, 0
+                else:
+                    expected_collected, expected_elided = 0, 4 * expected_calls
+                if int(scalar_logs.get("collected_scalar_count", -1)) != expected_collected:
+                    errors.append(
+                        f"{scalar_prefix} collected="
+                        f"{scalar_logs.get('collected_scalar_count')}"
+                    )
+                if int(scalar_logs.get("elided_scalar_count", -1)) != expected_elided:
+                    errors.append(
+                        f"{scalar_prefix} elided="
+                        f"{scalar_logs.get('elided_scalar_count')}"
+                    )
+            elif scalar_logs.get("enabled"):
+                errors.append(f"{scalar_prefix} enabled outside requested policy")
 
             role_chunks = value.get("build", {})
             rank_chunks: dict[str, Any] = {}

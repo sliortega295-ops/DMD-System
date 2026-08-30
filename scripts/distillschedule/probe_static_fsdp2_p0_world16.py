@@ -120,6 +120,9 @@ from distillschedule.runtime.fsdp2_static import FSDP2ShardEMA, build_fsdp2_engi
 from distillschedule.runtime.helios_cross_kv_cache import (
     install_generator_nograd_cross_kv_cache,
 )
+from distillschedule.runtime.helios_critic_scalar_logs import (
+    install_critic_scalar_log_elision,
+)
 from distillschedule.runtime.helios_rollout_context_cache import (
     install_generator_nograd_static_context_cache,
 )
@@ -725,6 +728,7 @@ def _run_gan_critic_precomputed(
     trace: StaticWorld16Trace,
     cfg: Any,
     collect_diagnostics: bool,
+    collect_official_scalar_logs: bool,
     diagnostics: StaticProfileDiagnostics,
 ) -> dict[str, Any]:
     from helios.utils.utils_helios_post import _critic_loss
@@ -742,6 +746,7 @@ def _run_gan_critic_precomputed(
         x0,
         critic_engine,
     )
+    kwargs["collect_scalar_logs"] = bool(collect_official_scalar_logs)
     before = int(critic_engine.global_steps)
     with diagnostics.scope("FSDP_PRE_FORWARD_ALL_GATHER/critic"):
         loss, logs = _critic_loss(fake_score_model=critic_engine.module, **kwargs)
@@ -950,6 +955,15 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--elide-critic-scalar-logs",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Keep official GAN Critic scalar .item() logs in correctness, but "
+            "return omission sentinels in low-overhead timing/profile runs"
+        ),
+    )
+    value.add_argument(
         "--critic-only-step",
         type=int,
         choices=(10,),
@@ -1082,6 +1096,7 @@ def main() -> int:
             args.generator_nograd_static_context_cache
         ),
         elide_explicit_rollout_sync=bool(args.elide_explicit_rollout_sync),
+        elide_critic_scalar_logs=bool(args.elide_critic_scalar_logs),
     )
     dist.init_process_group("nccl")
     rank = dist.get_rank()
@@ -1145,9 +1160,14 @@ def main() -> int:
                 policy.exact_modulated_norm_fused_backward
             ),
             "elide_explicit_rollout_sync": policy.elide_explicit_rollout_sync,
+            "elide_critic_scalar_logs": policy.elide_critic_scalar_logs,
         },
     }
     try:
+        critic_scalar_logs = install_critic_scalar_log_elision(
+            enabled=bool(policy.elide_critic_scalar_logs and args.variant == "gan")
+        )
+        result["critic_scalar_logs"] = critic_scalar_logs
         result["attention_backend"] = _attention_backend_receipt(
             args.attention_backend
         )
@@ -1372,6 +1392,10 @@ def main() -> int:
                         trace=trace,
                         cfg=cfg,
                         collect_diagnostics=collect_diagnostics,
+                        collect_official_scalar_logs=not (
+                            policy.elide_critic_scalar_logs
+                            and (args.timing_mode or args.profile_mode)
+                        ),
                         diagnostics=diagnostics,
                     )
                     if args.variant == "gan"
@@ -1478,6 +1502,7 @@ def main() -> int:
                 ),
                 "outer_full5_boundary_sync_preserved": True,
             },
+            critic_scalar_logs=critic_scalar_logs,
             rollout_collective_estimate=rollout_estimate,
             critic=critic_records,
             ema=ema_records,

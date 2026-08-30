@@ -80,6 +80,7 @@ EXACT_MODULATED_NORM_BACKWARD="${DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_BAC
 EXACT_MODULATED_NORM_LAYERNORM="${DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_LAYERNORM:-off}"
 EXACT_MODULATED_NORM_FUSED_BACKWARD="${DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_FUSED_BACKWARD:-off}"
 ELIDE_EXPLICIT_ROLLOUT_SYNC="${DISTILLSCHEDULE_ELIDE_EXPLICIT_ROLLOUT_SYNC:-off}"
+ELIDE_CRITIC_SCALAR_LOGS="${DISTILLSCHEDULE_ELIDE_CRITIC_SCALAR_LOGS:-off}"
 ATTENTION_BACKEND="${DISTILLSCHEDULE_HELIOS_ATTENTION_BACKEND:-sdpa}"
 MODULATION_CHUNK_TOKENS="${DISTILLSCHEDULE_HELIOS_MODULATION_CHUNK_TOKENS:-512}"
 SELECTIVE_FLASH_CHECKPOINT_STRIDE="${DISTILLSCHEDULE_HELIOS_SELECTIVE_FLASH_CHECKPOINT_STRIDE:-0}"
@@ -108,6 +109,7 @@ EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORME
 [[ "${EXACT_MODULATED_NORM_LAYERNORM}" == on || "${EXACT_MODULATED_NORM_LAYERNORM}" == off ]] || exit 2
 [[ "${EXACT_MODULATED_NORM_FUSED_BACKWARD}" == on || "${EXACT_MODULATED_NORM_FUSED_BACKWARD}" == off ]] || exit 2
 [[ "${ELIDE_EXPLICIT_ROLLOUT_SYNC}" == on || "${ELIDE_EXPLICIT_ROLLOUT_SYNC}" == off ]] || exit 2
+[[ "${ELIDE_CRITIC_SCALAR_LOGS}" == on || "${ELIDE_CRITIC_SCALAR_LOGS}" == off ]] || exit 2
 [[ "${ATTENTION_BACKEND}" == sdpa || "${ATTENTION_BACKEND}" == local-fa2 ]] || exit 2
 [[ "${MODULATION_CHUNK_TOKENS}" == 512 || "${MODULATION_CHUNK_TOKENS}" == 1024 || "${MODULATION_CHUNK_TOKENS}" == 2048 ]] || exit 2
 [[ "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" == 0 || "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" == 2 || "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" == 4 || "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" == 10 ]] || exit 2
@@ -167,10 +169,10 @@ HELIOS_TRANSFORMER="${HELIOS}/helios/modules/transformer_helios.py"
 if [[ "${MODE}" == timing && "${DIAGNOSTIC_TIMING}" != 1 ]]; then
   [[ -f "${CORRECTNESS_SUMMARY}" ]] || { echo correctness_summary_missing >&2; exit 3; }
   [[ "$(sha256sum "${CORRECTNESS_SUMMARY}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || { echo correctness_hash_changed >&2; exit 3; }
-  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" "${ALL_ROLE_LORA_SCALE1_ADD}" "${OPTIMIZER_DISPATCH_WARMUP}" "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" "${EXACT_GRAD_RESIDUAL_FUSION}" "${EXACT_MODULATED_NORM_EPILOGUE}" "${EXACT_MODULATED_NORM_MATERIALIZATION}" "${ATTENTION_BACKEND}" "${MODULATION_CHUNK_TOKENS}" "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" "${GENERATOR_NOGRAD_CROSS_KV_CACHE}" "${EXACT_MODULATED_NORM_BACKWARD}" "${EXACT_MODULATED_NORM_LAYERNORM}" "${ELIDE_EXPLICIT_ROLLOUT_SYNC}" "${GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE}" "${EXACT_MODULATED_NORM_FUSED_BACKWARD}" <<'PY'
+  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" "${ALL_ROLE_LORA_SCALE1_ADD}" "${OPTIMIZER_DISPATCH_WARMUP}" "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" "${EXACT_GRAD_RESIDUAL_FUSION}" "${EXACT_MODULATED_NORM_EPILOGUE}" "${EXACT_MODULATED_NORM_MATERIALIZATION}" "${ATTENTION_BACKEND}" "${MODULATION_CHUNK_TOKENS}" "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" "${GENERATOR_NOGRAD_CROSS_KV_CACHE}" "${EXACT_MODULATED_NORM_BACKWARD}" "${EXACT_MODULATED_NORM_LAYERNORM}" "${ELIDE_EXPLICIT_ROLLOUT_SYNC}" "${GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE}" "${EXACT_MODULATED_NORM_FUSED_BACKWARD}" "${ELIDE_CRITIC_SCALAR_LOGS}" <<'PY'
 import json,pathlib,sys
 value=json.loads(pathlib.Path(sys.argv[1]).read_text())
-expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7],"generator_nograd_lora_fused_epilogue":sys.argv[8]=="on","all_role_lora_scale1_add":sys.argv[9]=="on","optimizer_dispatch_warmup":sys.argv[10]=="on","generator_nograd_residual_fusion":sys.argv[11]=="on","exact_grad_residual_fusion":sys.argv[12]=="on","exact_modulated_norm_epilogue":sys.argv[13]=="on","exact_modulated_norm_materialization":sys.argv[14]=="on","attention_backend":sys.argv[15],"modulation_chunk_tokens":int(sys.argv[16]),"selective_flash_checkpoint_stride":int(sys.argv[17]),"generator_nograd_cross_kv_cache":sys.argv[18]=="on","exact_modulated_norm_backward":sys.argv[19]=="on","exact_modulated_norm_layernorm":sys.argv[20]=="on","elide_explicit_rollout_sync":sys.argv[21]=="on","generator_nograd_static_context_cache":sys.argv[22]=="on","exact_modulated_norm_fused_backward":sys.argv[23]=="on"}
+expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7],"generator_nograd_lora_fused_epilogue":sys.argv[8]=="on","all_role_lora_scale1_add":sys.argv[9]=="on","optimizer_dispatch_warmup":sys.argv[10]=="on","generator_nograd_residual_fusion":sys.argv[11]=="on","exact_grad_residual_fusion":sys.argv[12]=="on","exact_modulated_norm_epilogue":sys.argv[13]=="on","exact_modulated_norm_materialization":sys.argv[14]=="on","attention_backend":sys.argv[15],"modulation_chunk_tokens":int(sys.argv[16]),"selective_flash_checkpoint_stride":int(sys.argv[17]),"generator_nograd_cross_kv_cache":sys.argv[18]=="on","exact_modulated_norm_backward":sys.argv[19]=="on","exact_modulated_norm_layernorm":sys.argv[20]=="on","elide_explicit_rollout_sync":sys.argv[21]=="on","generator_nograd_static_context_cache":sys.argv[22]=="on","exact_modulated_norm_fused_backward":sys.argv[23]=="on","elide_critic_scalar_logs":sys.argv[24]=="on"}
 if value.get("status") != "PASS" or not value.get("claimable_correctness"):
     raise SystemExit("P0 correctness gate is not PASS")
 if value.get("variant") != sys.argv[2]:
@@ -247,6 +249,7 @@ exact_modulated_norm_backward=${EXACT_MODULATED_NORM_BACKWARD}
 exact_modulated_norm_layernorm=${EXACT_MODULATED_NORM_LAYERNORM}
 exact_modulated_norm_fused_backward=${EXACT_MODULATED_NORM_FUSED_BACKWARD}
 elide_explicit_rollout_sync=${ELIDE_EXPLICIT_ROLLOUT_SYNC}
+elide_critic_scalar_logs=${ELIDE_CRITIC_SCALAR_LOGS}
 attention_backend=${ATTENTION_BACKEND}
 modulation_chunk_tokens=${MODULATION_CHUNK_TOKENS}
 selective_flash_checkpoint_stride=${SELECTIVE_FLASH_CHECKPOINT_STRIDE}
@@ -346,6 +349,11 @@ if [[ "${ELIDE_EXPLICIT_ROLLOUT_SYNC}" == on ]]; then
   WORKER+=(--elide-explicit-rollout-sync)
 else
   WORKER+=(--no-elide-explicit-rollout-sync)
+fi
+if [[ "${ELIDE_CRITIC_SCALAR_LOGS}" == on ]]; then
+  WORKER+=(--elide-critic-scalar-logs)
+else
+  WORKER+=(--no-elide-critic-scalar-logs)
 fi
 [[ "${MODE}" == validate ]] && WORKER+=(--validate-only)
 [[ "${MODE}" == timing ]] && WORKER+=(--timing-mode)

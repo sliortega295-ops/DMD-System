@@ -274,3 +274,11 @@
     candidate meets the 5% promotion gate. `Simple` makes the overlap window
     `0.260%` slower; `LL128` makes it `1.276%` slower. Reject C16 without a
     formal workload launch and return to exact GAN compute/source gaps on C15.
+53. C17 targets one source- and runtime-correlated GAN host fence. The pinned
+    official `_critic_loss` performs four detached CUDA scalar `.item()` calls
+    after each of five Critic commits although the P0 timing caller consumes
+    only `critic_optimizer_committed`. In all 40 node0 Critic ranges, the tail
+    contains `cudaHostAlloc -> cudaMemcpyAsync -> cudaStreamSynchronize`; the
+    longest sync has a `381.563 ms` median. Add a default-true, source-pinned
+    logging keyword in memory only. Correctness must still collect all 20
+    scalars/rank; profile/timing may elide exactly 20 and nothing else.
