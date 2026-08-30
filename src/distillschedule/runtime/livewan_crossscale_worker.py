@@ -1141,12 +1141,19 @@ def run_worker(
     }
     _write_rank_receipt(output_dir=output_dir, rank=rank, value=receipt)
     dist.barrier()
+    if is_profile:
+        # Nsight 2024.6.2 has now consumed cudaProfilerStop and every worker has
+        # atomically closed its receipt.  With this large resident model, one
+        # arbitrary worker can hang in NCCL/CUDA object destruction during
+        # interpreter shutdown even after an explicit process-group teardown.
+        # A profile-only immediate successful exit avoids that nondeterministic
+        # destructor path.  It is after the capture range, timer, evidence, and
+        # final barrier, and the OS still releases the CUDA context normally.
+        os._exit(0)
     # Explicitly tear down NCCL before the interpreter starts destroying CUDA
-    # objects.  Under node-outer Nsight one worker could otherwise remain in a
-    # process-exit futex after every rank had written its PASS receipt and the
-    # capture range had stopped.  This is deliberately after the Full5 timer,
-    # profiler range, evidence generation, and final world barrier, so it
-    # changes lifecycle cleanup only and cannot alter the measured workload.
+    # objects in unprofiled runs.  This is deliberately after the Full5 timer,
+    # evidence generation, and final world barrier, so it changes lifecycle
+    # cleanup only and cannot alter the measured workload.
     dist.destroy_process_group()
     return receipt
 

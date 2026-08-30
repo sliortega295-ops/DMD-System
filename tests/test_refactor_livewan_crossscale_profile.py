@@ -117,6 +117,8 @@ def test_profile_markers_and_capture_are_absent_from_formal_timing_path() -> Non
     assert worker.index("dist.destroy_process_group()") > worker.index(
         "_write_rank_receipt(output_dir=output_dir, rank=rank, value=receipt)"
     )
+    assert worker.index("os._exit(0)") > worker.index("cudaProfilerStop")
+    assert worker.index("os._exit(0)") < worker.index("dist.destroy_process_group()")
     for label in (
         "rollout_wave_0",
         "rollout_wave_1",
