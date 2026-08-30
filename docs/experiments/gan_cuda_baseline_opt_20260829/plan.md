@@ -237,6 +237,14 @@
     harness failed before kernel launch on a wrong function alias and remains
     preserved as environment-only evidence. C14 is now authorized for one
     independently gated, default-off integration and the normal world16 gates.
+48. C15 locked-A100 canary
+    `iter368_gan_cuda_c15_fusedbackward_canary_r5_20260830` passes all B1/B3
+    PhaseLocal/Tensor gradient cases and improves the production PhaseLocal
+    warm forward-plus-backward kernel family by `2.168x/2.916x`.  The r1-r4
+    environment/harness failures remain immutable evidence and do not alter
+    the kernel or workload contract.  C15 is authorized for one default-off
+    runtime integration, focused tests, validate-only, world16 correctness and
+    one formal timing if every prior gate passes.
 48. C14 passes validate-only and 16/16 correctness/capacity at `e391bb4`.
     Every rank records G1/C5/EMA1, final G201/C1005/EMA801, 6,880 fused
     LayerNorm calls, 26,240 chunks and zero fallback. The formal Full5 is

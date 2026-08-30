@@ -455,3 +455,12 @@ the registered backward math with deterministic feature reductions, and cover
 every B1/B3 PhaseLocal/Tensor layout.  World16 integration is unauthorized
 unless the unchanged gradient parity contract passes and warm
 forward-plus-backward improves by at least `1.15x`.
+
+The real C15 A100 canary now passes.  Every B1/B3 PhaseLocal, Tensor3d and
+Tensor4d gradient case, plus a multi-chunk PhaseLocal edge case, remains inside
+the unchanged P0 gate.  For the production PhaseLocal B1/B3 shapes, combined
+warm forward-plus-backward falls from `1.432627/3.675955 ms` to
+`0.660890/1.260442 ms`, or `2.168x/2.916x`.  The component-gradient maximum
+normalized-L2 is `2.094e-5` for B1 and `7.665e-6` for B3.  This evidence
+authorizes a default-off integration, but it is not yet a Full5 performance
+claim.

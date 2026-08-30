@@ -667,6 +667,24 @@
 - Decision: **GO** for default-off C14 runtime integration, focused tests,
   validate-only, correctness/capacity and one timing only after all gates pass.
 
+### C15 canary result
+
+- `iter368_gan_cuda_c15_fusedbackward_canary_r5_20260830` runs on one locked
+  A100 using the validated Torch 2.10/Triton 3.6 environment.  Report SHA-256:
+  `55e21b69eb062509005f089eb03a3e266f75f409c84025ee88dbfdd60afe9d99`.
+- All B1/B3 PhaseLocal/Tensor3d/Tensor4d and multi-chunk PhaseLocal hidden and
+  component gradients pass the unchanged P0 thresholds.  Production B1/B3
+  hidden-gradient normalized-L2 is `1.848e-5`/`1.991e-5`.
+- Warm production PhaseLocal forward-plus-backward latency is
+  `1.432627/0.660890 ms` for B1 and `3.675955/1.260442 ms` for B3, or
+  `2.1677x`/`2.9164x`; CUDA/cgroup OOM deltas are zero.
+- The preserved r1-r4 failures are bounded environment/canary-harness issues:
+  missing the already-validated local FA2 mapping, creating the evidence root
+  before the clean-tree gate, and two correctness-only Tensor4d stride gates.
+  Neither changed the production PhaseLocal kernel math.
+- Decision: **GO** for default-off C15 integration and the normal world16
+  gates; no Full5 claim exists until those gates and one unprofiled timing pass.
+
 ## C14 iteration-end handoff and C15 GO decision
 
 - C14 exact HEAD: `e391bb43f811929d59fb33c3cd36cdc2ee9a6fca`.
