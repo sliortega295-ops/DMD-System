@@ -992,6 +992,15 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--cuda-allocator-expandable-segments",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Use process-start PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True "
+            "for the bounded persistent-unshard no-flush capacity candidate"
+        ),
+    )
+    value.add_argument(
         "--elide-explicit-rollout-sync",
         action=argparse.BooleanOptionalAction,
         default=False,
@@ -1164,6 +1173,9 @@ def main() -> int:
         generator_nograd_persistent_unshard_flush_allocator_cache=bool(
             args.generator_nograd_persistent_unshard_flush_allocator_cache
         ),
+        cuda_allocator_expandable_segments=bool(
+            args.cuda_allocator_expandable_segments
+        ),
         elide_explicit_rollout_sync=bool(args.elide_explicit_rollout_sync),
         elide_critic_scalar_logs=bool(args.elide_critic_scalar_logs),
         elide_official_generator_free_memory=bool(
@@ -1178,6 +1190,15 @@ def main() -> int:
         raise AssertionError(f"P0 static FSDP2 requires world16, got {world}")
     torch.cuda.set_device(local_rank)
     device = torch.device("cuda", local_rank)
+    expected_allocator_conf = (
+        "expandable_segments:True" if policy.cuda_allocator_expandable_segments else ""
+    )
+    actual_allocator_conf = os.environ.get("PYTORCH_CUDA_ALLOC_CONF", "")
+    if actual_allocator_conf != expected_allocator_conf:
+        raise AssertionError(
+            "CUDA allocator policy drifted: "
+            f"{actual_allocator_conf!r} != {expected_allocator_conf!r}"
+        )
     output = args.output_dir / "ranks" / f"rank_{rank:02d}.json"
     result: dict[str, Any] = {
         "schema_version": "distillschedule.static_fsdp2_p0_rank.v1",
@@ -1212,6 +1233,9 @@ def main() -> int:
             ),
             "generator_nograd_persistent_unshard_flush_allocator_cache": (
                 policy.generator_nograd_persistent_unshard_flush_allocator_cache
+            ),
+            "cuda_allocator_expandable_segments": (
+                policy.cuda_allocator_expandable_segments
             ),
             "generator_residual_storage": args.generator_residual_storage,
             "critic_residual_storage": args.critic_residual_storage,

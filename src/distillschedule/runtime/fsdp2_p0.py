@@ -72,6 +72,7 @@ class StaticFSDP2P0Policy:
     elide_official_generator_free_memory: bool = False
     generator_nograd_persistent_unshard: bool = False
     generator_nograd_persistent_unshard_flush_allocator_cache: bool = True
+    cuda_allocator_expandable_segments: bool = False
 
     def __post_init__(self) -> None:
         if self.mesh_policy not in SUPPORTED_MESH_POLICIES:
@@ -122,6 +123,14 @@ class StaticFSDP2P0Policy:
             raise ValueError(
                 "Generator persistent-unshard allocator flush policy requires "
                 "persistent unshard"
+            )
+        if self.cuda_allocator_expandable_segments and not (
+            self.generator_nograd_persistent_unshard
+            and not self.generator_nograd_persistent_unshard_flush_allocator_cache
+        ):
+            raise ValueError(
+                "expandable CUDA segments are restricted to the persistent "
+                "unshard no-flush capacity candidate"
             )
         if (
             self.exact_modulated_norm_materialization
@@ -207,6 +216,8 @@ class StaticFSDP2P0Policy:
             suffixes.append("generatorpersistunshard")
             if not self.generator_nograd_persistent_unshard_flush_allocator_cache:
                 suffixes.append("generatorpersistnoflush")
+        if self.cuda_allocator_expandable_segments:
+            suffixes.append("expandablesegments")
         return "-".join((base, *suffixes))
 
 

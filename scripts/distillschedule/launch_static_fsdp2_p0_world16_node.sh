@@ -89,6 +89,7 @@ GENERATOR_NOGRAD_CROSS_KV_CACHE="${DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_CROSS
 GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE="${DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE:-off}"
 GENERATOR_NOGRAD_PERSISTENT_UNSHARD="${DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_PERSISTENT_UNSHARD:-off}"
 GENERATOR_NOGRAD_PERSISTENT_UNSHARD_FLUSH_ALLOCATOR_CACHE="${DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_PERSISTENT_UNSHARD_FLUSH_ALLOCATOR_CACHE:-on}"
+CUDA_ALLOCATOR_EXPANDABLE_SEGMENTS="${DISTILLSCHEDULE_CUDA_ALLOCATOR_EXPANDABLE_SEGMENTS:-off}"
 FLASH_ATTN_KERNEL="${DISTILLSCHEDULE_FLASH_ATTN_KERNEL:-${ASSETS}/hf_home_official_torch210/hub/models--kernels-community--flash-attn2/snapshots/6a810a7a010ba2aad6613f1f0f7b226fb8bdee3c/build/torch210-cxx11-cu128-x86_64-linux}"
 FLASH_ATTN_EXTENSION="${FLASH_ATTN_KERNEL}/_flash_attn2_cuda_a511a4c.abi3.so"
 FLASH_ATTN_EXTENSION_SHA256="c2acd487c5d1d77b7f6721eabc0fee4f8c5c8f9e682aadf43bfa99b394eecba7"
@@ -121,6 +122,7 @@ EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORME
 [[ "${GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE}" == on || "${GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE}" == off ]] || exit 2
 [[ "${GENERATOR_NOGRAD_PERSISTENT_UNSHARD}" == on || "${GENERATOR_NOGRAD_PERSISTENT_UNSHARD}" == off ]] || exit 2
 [[ "${GENERATOR_NOGRAD_PERSISTENT_UNSHARD_FLUSH_ALLOCATOR_CACHE}" == on || "${GENERATOR_NOGRAD_PERSISTENT_UNSHARD_FLUSH_ALLOCATOR_CACHE}" == off ]] || exit 2
+[[ "${CUDA_ALLOCATOR_EXPANDABLE_SEGMENTS}" == on || "${CUDA_ALLOCATOR_EXPANDABLE_SEGMENTS}" == off ]] || exit 2
 [[ "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" != on || "${GENERATOR_RESIDUAL_STORAGE}" == cuda_out_of_place ]] || exit 2
 [[ "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" != on || "${ROLLOUT_BATCH_SIZE}" == 1 ]] || exit 2
 [[ "${EXACT_GRAD_RESIDUAL_FUSION}" != on || "${GENERATOR_RESIDUAL_STORAGE}" == cuda_out_of_place ]] || exit 2
@@ -144,6 +146,8 @@ EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORME
 [[ "${GENERATOR_NOGRAD_PERSISTENT_UNSHARD}" != on || "${MESH_POLICY}" == world16-fsdp ]] || exit 2
 [[ "${GENERATOR_NOGRAD_PERSISTENT_UNSHARD}" != on || "${ROLLOUT_BATCH_SIZE}" == 1 ]] || exit 2
 [[ "${GENERATOR_NOGRAD_PERSISTENT_UNSHARD_FLUSH_ALLOCATOR_CACHE}" != off || "${GENERATOR_NOGRAD_PERSISTENT_UNSHARD}" == on ]] || exit 2
+[[ "${CUDA_ALLOCATOR_EXPANDABLE_SEGMENTS}" != on || "${GENERATOR_NOGRAD_PERSISTENT_UNSHARD}" == on ]] || exit 2
+[[ "${CUDA_ALLOCATOR_EXPANDABLE_SEGMENTS}" != on || "${GENERATOR_NOGRAD_PERSISTENT_UNSHARD_FLUSH_ALLOCATOR_CACHE}" == off ]] || exit 2
 [[ "${OPERATION_SOURCE}" != on || "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" == 0 ]] || exit 2
 # Both supported mesh policies use sharded DTensor optimizer state.  The
 # runtime warmup validates the exact mesh names/placements and fails closed;
@@ -156,6 +160,11 @@ if [[ "${ATTENTION_BACKEND}" == local-fa2 ]]; then
     echo flash_attn_extension_hash_mismatch >&2
     exit 4
   }
+fi
+if [[ "${CUDA_ALLOCATOR_EXPANDABLE_SEGMENTS}" == on ]]; then
+  export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+else
+  unset PYTORCH_CUDA_ALLOC_CONF
 fi
 if [[ -n "${CRITIC_ONLY_STEP}" ]]; then
   [[ "${VARIANT}" == no-gan && "${MODE}" == profile ]] || exit 2
@@ -179,10 +188,10 @@ HELIOS_TRANSFORMER="${HELIOS}/helios/modules/transformer_helios.py"
 if [[ "${MODE}" == timing && "${DIAGNOSTIC_TIMING}" != 1 ]]; then
   [[ -f "${CORRECTNESS_SUMMARY}" ]] || { echo correctness_summary_missing >&2; exit 3; }
   [[ "$(sha256sum "${CORRECTNESS_SUMMARY}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || { echo correctness_hash_changed >&2; exit 3; }
-  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" "${ALL_ROLE_LORA_SCALE1_ADD}" "${OPTIMIZER_DISPATCH_WARMUP}" "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" "${EXACT_GRAD_RESIDUAL_FUSION}" "${EXACT_MODULATED_NORM_EPILOGUE}" "${EXACT_MODULATED_NORM_MATERIALIZATION}" "${ATTENTION_BACKEND}" "${MODULATION_CHUNK_TOKENS}" "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" "${GENERATOR_NOGRAD_CROSS_KV_CACHE}" "${EXACT_MODULATED_NORM_BACKWARD}" "${EXACT_MODULATED_NORM_LAYERNORM}" "${ELIDE_EXPLICIT_ROLLOUT_SYNC}" "${GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE}" "${EXACT_MODULATED_NORM_FUSED_BACKWARD}" "${ELIDE_CRITIC_SCALAR_LOGS}" "${ELIDE_OFFICIAL_GENERATOR_FREE_MEMORY}" "${GENERATOR_NOGRAD_PERSISTENT_UNSHARD}" "${GENERATOR_NOGRAD_PERSISTENT_UNSHARD_FLUSH_ALLOCATOR_CACHE}" <<'PY'
+  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" "${ALL_ROLE_LORA_SCALE1_ADD}" "${OPTIMIZER_DISPATCH_WARMUP}" "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" "${EXACT_GRAD_RESIDUAL_FUSION}" "${EXACT_MODULATED_NORM_EPILOGUE}" "${EXACT_MODULATED_NORM_MATERIALIZATION}" "${ATTENTION_BACKEND}" "${MODULATION_CHUNK_TOKENS}" "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" "${GENERATOR_NOGRAD_CROSS_KV_CACHE}" "${EXACT_MODULATED_NORM_BACKWARD}" "${EXACT_MODULATED_NORM_LAYERNORM}" "${ELIDE_EXPLICIT_ROLLOUT_SYNC}" "${GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE}" "${EXACT_MODULATED_NORM_FUSED_BACKWARD}" "${ELIDE_CRITIC_SCALAR_LOGS}" "${ELIDE_OFFICIAL_GENERATOR_FREE_MEMORY}" "${GENERATOR_NOGRAD_PERSISTENT_UNSHARD}" "${GENERATOR_NOGRAD_PERSISTENT_UNSHARD_FLUSH_ALLOCATOR_CACHE}" "${CUDA_ALLOCATOR_EXPANDABLE_SEGMENTS}" <<'PY'
 import json,pathlib,sys
 value=json.loads(pathlib.Path(sys.argv[1]).read_text())
-expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7],"generator_nograd_lora_fused_epilogue":sys.argv[8]=="on","all_role_lora_scale1_add":sys.argv[9]=="on","optimizer_dispatch_warmup":sys.argv[10]=="on","generator_nograd_residual_fusion":sys.argv[11]=="on","exact_grad_residual_fusion":sys.argv[12]=="on","exact_modulated_norm_epilogue":sys.argv[13]=="on","exact_modulated_norm_materialization":sys.argv[14]=="on","attention_backend":sys.argv[15],"modulation_chunk_tokens":int(sys.argv[16]),"selective_flash_checkpoint_stride":int(sys.argv[17]),"generator_nograd_cross_kv_cache":sys.argv[18]=="on","exact_modulated_norm_backward":sys.argv[19]=="on","exact_modulated_norm_layernorm":sys.argv[20]=="on","elide_explicit_rollout_sync":sys.argv[21]=="on","generator_nograd_static_context_cache":sys.argv[22]=="on","exact_modulated_norm_fused_backward":sys.argv[23]=="on","elide_critic_scalar_logs":sys.argv[24]=="on","elide_official_generator_free_memory":sys.argv[25]=="on","generator_nograd_persistent_unshard":sys.argv[26]=="on","generator_nograd_persistent_unshard_flush_allocator_cache":sys.argv[27]=="on"}
+expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7],"generator_nograd_lora_fused_epilogue":sys.argv[8]=="on","all_role_lora_scale1_add":sys.argv[9]=="on","optimizer_dispatch_warmup":sys.argv[10]=="on","generator_nograd_residual_fusion":sys.argv[11]=="on","exact_grad_residual_fusion":sys.argv[12]=="on","exact_modulated_norm_epilogue":sys.argv[13]=="on","exact_modulated_norm_materialization":sys.argv[14]=="on","attention_backend":sys.argv[15],"modulation_chunk_tokens":int(sys.argv[16]),"selective_flash_checkpoint_stride":int(sys.argv[17]),"generator_nograd_cross_kv_cache":sys.argv[18]=="on","exact_modulated_norm_backward":sys.argv[19]=="on","exact_modulated_norm_layernorm":sys.argv[20]=="on","elide_explicit_rollout_sync":sys.argv[21]=="on","generator_nograd_static_context_cache":sys.argv[22]=="on","exact_modulated_norm_fused_backward":sys.argv[23]=="on","elide_critic_scalar_logs":sys.argv[24]=="on","elide_official_generator_free_memory":sys.argv[25]=="on","generator_nograd_persistent_unshard":sys.argv[26]=="on","generator_nograd_persistent_unshard_flush_allocator_cache":sys.argv[27]=="on","cuda_allocator_expandable_segments":sys.argv[28]=="on"}
 if value.get("status") != "PASS" or not value.get("claimable_correctness"):
     raise SystemExit("P0 correctness gate is not PASS")
 if value.get("variant") != sys.argv[2]:
@@ -268,6 +277,8 @@ generator_nograd_cross_kv_cache=${GENERATOR_NOGRAD_CROSS_KV_CACHE}
 generator_nograd_static_context_cache=${GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE}
 generator_nograd_persistent_unshard=${GENERATOR_NOGRAD_PERSISTENT_UNSHARD}
 generator_nograd_persistent_unshard_flush_allocator_cache=${GENERATOR_NOGRAD_PERSISTENT_UNSHARD_FLUSH_ALLOCATOR_CACHE}
+cuda_allocator_expandable_segments=${CUDA_ALLOCATOR_EXPANDABLE_SEGMENTS}
+pytorch_cuda_alloc_conf=${PYTORCH_CUDA_ALLOC_CONF:-}
 flash_attn_kernel=$([[ "${ATTENTION_BACKEND}" == local-fa2 ]] && printf '%s' "${FLASH_ATTN_KERNEL}" || printf 'none')
 flash_attn_extension_sha256=$([[ "${ATTENTION_BACKEND}" == local-fa2 ]] && printf '%s' "${FLASH_ATTN_EXTENSION_SHA256}" || printf 'none')
 EOF
@@ -367,6 +378,11 @@ if [[ "${GENERATOR_NOGRAD_PERSISTENT_UNSHARD_FLUSH_ALLOCATOR_CACHE}" == on ]]; t
   WORKER+=(--generator-nograd-persistent-unshard-flush-allocator-cache)
 else
   WORKER+=(--no-generator-nograd-persistent-unshard-flush-allocator-cache)
+fi
+if [[ "${CUDA_ALLOCATOR_EXPANDABLE_SEGMENTS}" == on ]]; then
+  WORKER+=(--cuda-allocator-expandable-segments)
+else
+  WORKER+=(--no-cuda-allocator-expandable-segments)
 fi
 if [[ "${ELIDE_EXPLICIT_ROLLOUT_SYNC}" == on ]]; then
   WORKER+=(--elide-explicit-rollout-sync)

@@ -74,6 +74,16 @@ def test_policy_is_opt_in_and_restricted_to_world16_b1() -> None:
         generator_nograd_persistent_unshard_flush_allocator_cache=False,
     )
     assert no_flush.id.endswith("generatorpersistunshard-generatorpersistnoflush")
+    with pytest.raises(ValueError, match="expandable CUDA segments"):
+        StaticFSDP2P0Policy(cuda_allocator_expandable_segments=True)
+    expandable = StaticFSDP2P0Policy(
+        generator_nograd_persistent_unshard=True,
+        generator_nograd_persistent_unshard_flush_allocator_cache=False,
+        cuda_allocator_expandable_segments=True,
+    )
+    assert expandable.id.endswith(
+        "generatorpersistunshard-generatorpersistnoflush-expandablesegments"
+    )
 
 
 def test_scope_retains_then_restores_all_41_fsdp_groups() -> None:
@@ -165,8 +175,11 @@ def test_persistent_unshard_flag_is_wired_end_to_end() -> None:
         assert "generator_nograd_persistent_unshard" in source
         assert "generator-nograd-persistent-unshard-flush-allocator-cache" in source
         assert "generator_nograd_persistent_unshard_flush_allocator_cache" in source
+        assert "cuda-allocator-expandable-segments" in source
+        assert "cuda_allocator_expandable_segments" in source
     launcher = paths[2].read_text()
     assert "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_PERSISTENT_UNSHARD" in launcher
+    assert "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True" in launcher
     summarizer = paths[3].read_text()
     assert "rank_generator_nograd_persistent_unshard" in summarizer
     hardened = (

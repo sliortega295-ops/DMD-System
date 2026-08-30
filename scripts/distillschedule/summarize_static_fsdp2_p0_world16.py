@@ -73,6 +73,11 @@ def main() -> int:
         default="on",
     )
     parser.add_argument(
+        "--cuda-allocator-expandable-segments",
+        choices=("on", "off"),
+        default="off",
+    )
+    parser.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         required=True,
@@ -182,6 +187,9 @@ def main() -> int:
         ),
         "generator_nograd_persistent_unshard_flush_allocator_cache": (
             args.generator_nograd_persistent_unshard_flush_allocator_cache == "on"
+        ),
+        "cuda_allocator_expandable_segments": (
+            args.cuda_allocator_expandable_segments == "on"
         ),
         "generator_residual_storage": args.generator_residual_storage,
         "critic_residual_storage": args.critic_residual_storage,

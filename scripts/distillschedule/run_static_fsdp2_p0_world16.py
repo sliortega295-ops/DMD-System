@@ -136,6 +136,11 @@ def parser() -> argparse.ArgumentParser:
         default="on",
     )
     value.add_argument(
+        "--cuda-allocator-expandable-segments",
+        choices=("on", "off"),
+        default="off",
+    )
+    value.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         default="cuda_out_of_place",
@@ -346,6 +351,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(
             args.generator_nograd_persistent_unshard_flush_allocator_cache
         ),
+        "DISTILLSCHEDULE_CUDA_ALLOCATOR_EXPANDABLE_SEGMENTS="
+        + shlex.quote(args.cuda_allocator_expandable_segments),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -488,6 +495,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.generator_nograd_persistent_unshard)} "
         + "--generator-nograd-persistent-unshard-flush-allocator-cache "
         + f"{shlex.quote(args.generator_nograd_persistent_unshard_flush_allocator_cache)} "
+        + "--cuda-allocator-expandable-segments "
+        + f"{shlex.quote(args.cuda_allocator_expandable_segments)} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
         + (
             f"--critic-only-step {args.critic_only_step} "
@@ -635,6 +644,13 @@ def main() -> int:
     ):
         raise ValueError(
             "disabling the persistent-unshard allocator flush requires persistent unshard"
+        )
+    if args.cuda_allocator_expandable_segments == "on" and not (
+        args.generator_nograd_persistent_unshard == "on"
+        and args.generator_nograd_persistent_unshard_flush_allocator_cache == "off"
+    ):
+        raise ValueError(
+            "expandable CUDA segments require persistent unshard with allocator flush off"
         )
     if args.critic_only_step is not None and (
         args.variant != "no-gan" or args.mode != "profile"
