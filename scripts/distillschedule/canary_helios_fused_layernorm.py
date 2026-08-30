@@ -16,7 +16,7 @@ from distillschedule.runtime.helios_fused_layernorm_kernel import (
 from distillschedule.runtime.helios_modulated_norm_kernel import (
     fused_modulated_norm_materialization,
 )
-from distillschedule.runtime.p0_parity import compare_tensors
+from distillschedule.runtime.p0_parity import tensor_parity_metrics
 
 
 def _sha256(path: Path) -> str:
@@ -104,7 +104,7 @@ def _one_shape(batch: int, tokens: int, *, warmup: int, repeats: int) -> dict[st
     source()
     fused()
     torch.cuda.synchronize()
-    parity = compare_tensors(reference, candidate)
+    parity = tensor_parity_metrics(reference, candidate)
     source_ms = _measure(source, warmup=warmup, repeats=repeats)
     candidate_ms = _measure(fused, warmup=warmup, repeats=repeats)
     return {
