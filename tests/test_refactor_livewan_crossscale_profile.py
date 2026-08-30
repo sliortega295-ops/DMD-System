@@ -61,7 +61,18 @@ def test_profile_gate_is_diagnostic_only_and_preserves_failed_pair(tmp_path: Pat
     assert value["status"] == "PASS_DIAGNOSTIC_ONLY"
     assert value["profile_authorized"] is True
     assert value["formal_timing_authorized"] is False
-    assert value["heads"] == {"baseline": HEAD, "pipeline": HEAD}
+    assert value["heads"] == {
+        "baseline": HEAD,
+        "pipeline": HEAD,
+        "profile": HEAD,
+    }
+    assert value["profile_source"] == {
+        "diff_paths": [],
+        "instrumentation_only": True,
+        "profile_head": HEAD,
+        "verification": "exact_correctness_head",
+        "workload_head": HEAD,
+    }
     assert value["failed_pair_receipt"]["rollout_failure_count"] == 63
     assert value["failed_pair_receipt"]["sha256"] == hashlib.sha256(
         pair.read_bytes()
@@ -79,6 +90,8 @@ def test_profile_launcher_is_node_outer_and_fail_closed() -> None:
     assert "profile requires --nsys-bin" in controller
     assert "profile_authorized" in launcher
     assert "formal_timing_authorized" in launcher
+    assert 'source.get("profile_head") != expected_head' in launcher
+    assert 'source.get("instrumentation_only") is not True' in launcher
     assert "claimable_for_timing" in launcher
     assert '"${NSYS_BIN}" profile' in launcher
     assert "--capture-range=cudaProfilerApi" in launcher

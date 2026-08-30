@@ -69,11 +69,20 @@ run_kind = sys.argv[3]
 if run_kind == "timing":
     if value.get("status") != "PASS" or value.get("claimable_for_timing") is not True:
         raise SystemExit("paired correctness gate is not PASS")
+    if set(value.get("heads", {}).values()) != {expected_head}:
+        raise SystemExit("paired correctness gate uses a different source HEAD")
 else:
     if value.get("profile_authorized") is not True or value.get("formal_timing_authorized") is not False:
         raise SystemExit("diagnostic profile gate is not PASS")
-if set(value.get("heads", {}).values()) != {expected_head}:
-    raise SystemExit("correctness/diagnostic gate uses a different source HEAD")
+    source = value.get("profile_source", {})
+    if source.get("profile_head") != expected_head or source.get("instrumentation_only") is not True:
+        raise SystemExit("diagnostic gate does not authorize this exact profile HEAD")
+    heads = value.get("heads", {})
+    if not (
+        heads.get("baseline") == heads.get("pipeline") == source.get("workload_head")
+        and heads.get("profile") == expected_head
+    ):
+        raise SystemExit("diagnostic gate lost its correctness workload identity")
 PY
 fi
 
