@@ -218,3 +218,7 @@ def test_launcher_fails_before_model_load_on_world16_and_p2p_drift() -> None:
     ).read_text()
     assert "default_world_initialized_collectively" in probe
     assert "range(2)" in probe
+    assert probe.index("dist.recv(gradient, src=peer)") < probe.index(
+        "works = (dist.isend(header, dst=peer), dist.isend(payload, dst=peer))"
+    )
+    assert '"observed_gradients"' in probe

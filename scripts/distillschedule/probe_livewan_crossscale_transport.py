@@ -59,16 +59,28 @@ def main() -> int:
 
     peer = rank + 8 if rank < 8 else rank - 8
     observed: list[int] = []
+    observed_gradients: list[int] = []
     retained: list[torch.Tensor] = []
     if rank < 8:
-        works = []
         for wave in range(2):
             header = torch.tensor([rank, peer, wave, rank + 100 * wave], device=device)
             payload = torch.full((256,), float(rank + 100 * wave), dtype=torch.bfloat16, device=device)
             retained.extend((header, payload))
-            works.extend((dist.isend(header, dst=peer), dist.isend(payload, dst=peer)))
-        for work in works:
-            work.wait()
+            if wave == 0:
+                dist.send(header, dst=peer)
+                dist.send(payload, dst=peer)
+                gradient = torch.empty(1, dtype=torch.int64, device=device)
+                dist.recv(gradient, src=peer)
+                observed_gradients.append(int(gradient.cpu()))
+            else:
+                works = (dist.isend(header, dst=peer), dist.isend(payload, dst=peer))
+                for work in works:
+                    work.wait()
+                gradient = torch.empty(1, dtype=torch.int64, device=device)
+                dist.recv(gradient, src=peer)
+                observed_gradients.append(int(gradient.cpu()))
+        if observed_gradients != [peer + 1000, peer + 1001]:
+            raise RuntimeError("P2P returned-gradient identity mismatch")
     else:
         for wave in range(2):
             header = torch.empty(4, dtype=torch.int64, device=device)
@@ -81,6 +93,8 @@ def main() -> int:
             if not torch.equal(payload, torch.full_like(payload, float(expected))):
                 raise RuntimeError("P2P payload mismatch")
             observed.append(expected)
+            gradient = torch.tensor([rank + 1000 + wave], dtype=torch.int64, device=device)
+            dist.send(gradient, dst=peer)
 
     torch.cuda.synchronize(device)
     dist.barrier()
@@ -94,6 +108,7 @@ def main() -> int:
         "subgroup_size": 8,
         "default_world_initialized_collectively": True,
         "observed": observed,
+        "observed_gradients": observed_gradients,
     }
     atomic_json(args.output_dir / f"rank_{rank:03d}.json", receipt)
     dist.barrier()
