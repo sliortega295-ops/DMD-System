@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -28,6 +29,7 @@ from distillschedule.runtime.livewan_crossscale_worker import (
     _batch_seeded_flow_inputs,
     _per_sample_mse,
     _pipeline_slot_routes,
+    prepare_score_sample_context,
 )
 
 
@@ -241,6 +243,43 @@ def test_score_b2_mean_loss_matches_two_weighted_b1_losses() -> None:
         ).mul(0.5).backward()
     assert torch.equal(losses.detach(), torch.tensor([1.0, 14.5]))
     assert torch.equal(batched_gradient, prediction_b1.grad)
+
+
+def test_critic_only_context_skips_unused_teacher_projection() -> None:
+    torch = pytest.importorskip("torch")
+
+    class Projection:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def text_embedding(self, value):
+            self.calls += 1
+            return value + self.calls
+
+    teacher = Projection()
+    critic = Projection()
+    bundle = SimpleNamespace(teacher=teacher, critic=critic)
+    raw = torch.ones((1, 2, 3), dtype=torch.float32)
+
+    critic_only = prepare_score_sample_context(
+        torch,
+        bundle=bundle,
+        raw_context=raw,
+        include_teacher=False,
+    )
+    assert critic_only.teacher is None
+    assert teacher.calls == 0
+    assert critic.calls == 1
+
+    dmd = prepare_score_sample_context(
+        torch,
+        bundle=bundle,
+        raw_context=raw,
+        include_teacher=True,
+    )
+    assert dmd.teacher is not None
+    assert teacher.calls == 1
+    assert critic.calls == 2
 
 
 def test_livewan_adapter_fails_closed_on_semantic_drift() -> None:

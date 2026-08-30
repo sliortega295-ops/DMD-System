@@ -1001,7 +1001,7 @@ class ScoreContext:
 
 @dataclass
 class ScoreSampleContext:
-    teacher: Any
+    teacher: Any | None
     critic: Any
 
 
@@ -1015,9 +1015,27 @@ def build_score_context(torch: Any, *, bundle: ModelBundle, loader: InputLoader,
     return ScoreContext(rope=rope, negative_teacher_context=negative)
 
 
-def prepare_score_sample_context(torch: Any, *, bundle: ModelBundle, raw_context: Any) -> ScoreSampleContext:
+def prepare_score_sample_context(
+    torch: Any,
+    *,
+    bundle: ModelBundle,
+    raw_context: Any,
+    include_teacher: bool,
+) -> ScoreSampleContext:
+    """Project only the context tensors consumed by this logical step.
+
+    The Teacher context belongs to the step-0 DMD objective.  Computing it in
+    steps 1--4 is dead work and, because the Teacher is FSDP2, launches an
+    otherwise-unused root-unit all-gather.  Preserve the original step-0 call
+    order while omitting that projection from Critic-only steps.
+    """
+
     with torch.no_grad():
-        teacher_context = bundle.teacher.text_embedding(raw_context.to(torch.bfloat16))
+        teacher_context = (
+            bundle.teacher.text_embedding(raw_context.to(torch.bfloat16))
+            if include_teacher
+            else None
+        )
         critic_context = bundle.critic.text_embedding(raw_context.to(torch.bfloat16))
     return ScoreSampleContext(teacher=teacher_context, critic=critic_context)
 
@@ -1034,6 +1052,8 @@ def dmd_gradient_for_sample(
 ) -> Any:
     from wanstreamer import dmd as D
     from wanstreamer.lora import lora_enabled
+
+    _require(sample_context.teacher is not None, "DMD requires Teacher context")
 
     t = _sample_flow_t(torch, seed=row.seeds["generator_dmd_t"], device=x0.device)
     noise = _randn(torch, x0.shape, seed=row.seeds["generator_dmd_noise"], device=x0.device)
@@ -1121,6 +1141,7 @@ def dmd_gradient_for_batch(
     from wanstreamer import dmd as D
     from wanstreamer.lora import lora_enabled
 
+    _require(sample_context.teacher is not None, "DMD requires Teacher context")
     batch = len(rows)
     _require(batch == x0.shape[0] == context_lens.numel(), "DMD B2 identity mismatch")
     _require(sample_context.teacher.shape[0] == batch, "Teacher context batch mismatch")
@@ -1720,7 +1741,10 @@ def _run_baseline(
                 label=f"livewan/baseline/step_{step}/score_context",
             ):
                 sample_context = prepare_score_sample_context(
-                    torch, bundle=bundle, raw_context=prepared.raw_context,
+                    torch,
+                    bundle=bundle,
+                    raw_context=prepared.raw_context,
+                    include_teacher=step == 0,
                 )
             if step == 0:
                 with _profile_range(
@@ -2149,7 +2173,10 @@ def _run_pipeline_8x8(
             evidence.transport_bytes += pair_bytes
             context_lens = torch.tensor([TEXT_SHAPE[1]], device=device, dtype=torch.long)
             first_sample_context = prepare_score_sample_context(
-                torch, bundle=bundle, raw_context=first_context,
+                torch,
+                bundle=bundle,
+                raw_context=first_context,
+                include_teacher=step == 0,
             )
             if step == 0:
                 with _profile_range(
@@ -2171,7 +2198,10 @@ def _run_pipeline_8x8(
                 second_x0, second_context = _recv_pair(torch, source=peer, device=device)
             evidence.transport_bytes += pair_bytes
             second_sample_context = prepare_score_sample_context(
-                torch, bundle=bundle, raw_context=second_context,
+                torch,
+                bundle=bundle,
+                raw_context=second_context,
+                include_teacher=step == 0,
             )
             grad1_work = None
             grad1_send = None
@@ -2204,9 +2234,16 @@ def _run_pipeline_8x8(
                     label=f"livewan/pipeline_runahead/score/step_{step}/critic_backward_b2",
                 ):
                     batched_context = ScoreSampleContext(
-                        teacher=torch.cat(
-                            (first_sample_context.teacher, second_sample_context.teacher),
-                            dim=0,
+                        teacher=(
+                            torch.cat(
+                                (
+                                    first_sample_context.teacher,
+                                    second_sample_context.teacher,
+                                ),
+                                dim=0,
+                            )
+                            if step == 0
+                            else None
                         ),
                         critic=torch.cat(
                             (first_sample_context.critic, second_sample_context.critic),
@@ -2472,7 +2509,10 @@ def _run_pipeline_8x8_score_b2(
                 (2,), TEXT_SHAPE[1], device=device, dtype=torch.long
             )
             sample_context = prepare_score_sample_context(
-                torch, bundle=bundle, raw_context=raw_context_batch
+                torch,
+                bundle=bundle,
+                raw_context=raw_context_batch,
+                include_teacher=step == 0,
             )
             if step == 0:
                 with _profile_range(
@@ -2660,7 +2700,10 @@ def _run_pipeline_6g10score(
                 dtype=torch.long,
             )
             sample_context = prepare_score_sample_context(
-                torch, bundle=bundle, raw_context=raw_context_batch
+                torch,
+                bundle=bundle,
+                raw_context=raw_context_batch,
+                include_teacher=step == 0,
             )
             if step == 0:
                 with _profile_range(
