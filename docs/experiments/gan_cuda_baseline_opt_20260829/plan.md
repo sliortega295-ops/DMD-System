@@ -223,3 +223,11 @@
     `138.243935311 s`, however, which is `0.067852767 s` (`0.049106%`) slower
     than C12. Reject C13 for performance and return to C12 rather than stacking
     a negative cache mechanism into the next candidate.
+46. C14 returns to C12 and targets a source-qualified repeated kernel chain:
+    BF16-to-FP32 cast, affine-free width-5120 LayerNorm, and the already-fused
+    modulation materialization. The C11 profile records `20.526 s` of native
+    LayerNorm kernels and `10.334 s` of materialization kernels across node0's
+    eight GPUs. First test one single-kernel Triton implementation on one locked
+    A100 for real B1/B3 chunk layouts. Require unchanged P0 output thresholds
+    and at least `1.15x` warm forward speed on both shapes; otherwise reject it
+    before policy plumbing or a world16 launch.

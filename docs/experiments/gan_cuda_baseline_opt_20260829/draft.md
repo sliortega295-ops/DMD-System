@@ -415,3 +415,19 @@ The optimization is not useful at Full5 scale: `138.243935311 s` is
 `0.067852767 s` slower than C12. The exact context preparation was therefore
 not a material remaining bottleneck, and C13 is kept as negative evidence
 rather than becoming the next substrate.
+
+## C14 selected kernel hypothesis
+
+The next candidate returns to C12 and attacks a repeated chain rather than
+another context cache. In each registered `_TembAwareChunkedNorm` tile the
+pinned source converts BF16 hidden state to a full FP32 tensor, runs frozen
+affine-free width-5120 LayerNorm, and launches the separate modulation
+materialization kernel. The valid C11 profile measures `20.52632 s` of native
+LayerNorm kernels and `10.33442 s` of the materialization kernel across eight
+node0 GPUs, before counting the cast/materialization family.
+
+C14 first implements a standalone Triton kernel that reads BF16 directly,
+computes the same FP32 LayerNorm and modulation formula, and writes the final
+BF16 tile. It is not admitted to the workload until a real locked-A100 B1/B3
+canary passes the unchanged P0 output contract and improves both warm shapes by
+at least `1.15x`. The already-validated C11 explicit backward remains unchanged.

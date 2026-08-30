@@ -624,3 +624,29 @@
 - Decision: **REJECT C13 for performance and return to C12**. Preserve C13 as
   bounded negative evidence; do not stack it into the next candidate. The
   fastest substrate remains `138.176082544 s`, `17.065944441 s` above target.
+
+## C14 fused BF16 LayerNorm plus modulation preflight
+
+- Current gate and substrate: C12 remains the fastest valid workload at
+  `138.176082544 s`; C13 is disabled and retained only as negative evidence.
+- Matching evidence: the valid C11 profile records `20.52632 s` of native
+  LayerNorm kernels and `10.33442 s` of the custom modulation-materialization
+  kernel across node0's eight GPUs. The pinned `_TembAwareChunkedNorm` source
+  performs a BF16-to-FP32 materialization, affine-free width-5120 LayerNorm,
+  then the separate fused modulation epilogue for every registered tile.
+- Authorized first step: add only a standalone Triton forward kernel and one
+  locked-A100 B1/B3 canary. The kernel must preserve the source FP32 formula,
+  epsilon, component/table additions, BF16 output and existing C11 backward.
+  It may not change chunk size, model code, checkpointing, FSDP, or the formal
+  workload before the canary passes.
+- Frozen contracts: GAN steps1000--1004, world16 FSDP2, B1/global-B16, local
+  FA2, chunk2048, trace/RNG/loss/precision, DiT/attention/FFN counts,
+  G1/C5/EMA1, final G201/C1005/EMA801, CUDA residual/EMA residency, and the C12
+  formal timer. No C13 cache, packing, batching, topology or prefetch change.
+- Rejected paths remain closed: B2/B5, Score packing, HSDP, explicit FSDP
+  prefetch, stride1 saved state, history-KV, LoRA beta-add, broad sync removal,
+  static rollout context and direct dominant-GEMM tuning.
+- Falsifiable canary: both B1 and B3 width5120/chunk2048 outputs must pass the
+  unchanged P0 multi-metric thresholds and warm forward latency must improve by
+  at least `1.15x` for both. Failure rejects C14 before world16.
+- Decision: **GO for the bounded C14 canary only**.
