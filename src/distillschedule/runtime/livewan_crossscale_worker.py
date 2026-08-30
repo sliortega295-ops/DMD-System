@@ -344,25 +344,30 @@ def materialize_adam_state(torch: Any, optimizer: Any, *, step: int = 0) -> dict
     return {"tensor_count": tensors, "local_numel_each_moment": local_numel, "step": step}
 
 
-def _state_metrics(torch: Any, parameters: Sequence[Any], *, group: Any | None) -> dict[str, float | int]:
-    device = next(iter(parameters)).device
+def _state_metrics(torch: Any, parameters: Sequence[Any]) -> dict[str, float | int]:
+    """Return placement-invariant aggregate tensor statistics.
+
+    FSDP2 may leave a full unsharded parameter buffer resident after a forward
+    even though the optimizer owns a sharded DTensor.  Reducing ``to_local()``
+    statistics across the mesh in that state counts every full tensor once per
+    rank.  ``full_tensor()`` gives one canonical logical value on every owner;
+    replicated tensors are already canonical and need no collective reduction.
+    This helper is correctness-only and is never entered by a formal timing run.
+    """
+    tensors = [value for value in parameters if value is not None]
+    _require(bool(tensors), "state metrics require at least one tensor")
+    device = tensors[0].device
     values = torch.zeros(5, device=device, dtype=torch.float64)
     count = torch.zeros(1, device=device, dtype=torch.int64)
-    for index, parameter in enumerate(parameters):
-        local = parameter.to_local() if hasattr(parameter, "to_local") else parameter
-        value = local.detach().double()
+    for index, parameter in enumerate(tensors):
+        logical = parameter.full_tensor() if hasattr(parameter, "full_tensor") else parameter
+        value = logical.detach().double()
         values[0] += value.sum()
         values[1] += value.square().sum()
         values[2] = torch.maximum(values[2], value.abs().max())
         values[3] += value.sum() * float((index % 97) + 1)
         values[4] += value.square().sum() * float((index % 89) + 1)
         count += value.numel()
-    if group is not None:
-        import torch.distributed as dist
-        dist.all_reduce(values[:2], group=group)
-        dist.all_reduce(values[2], op=dist.ReduceOp.MAX, group=group)
-        dist.all_reduce(values[3:], group=group)
-        dist.all_reduce(count, group=group)
     cpu = values.cpu().tolist()
     return {
         "numel": int(count.cpu()),
@@ -873,6 +878,33 @@ class RunEvidence:
     loss_fingerprints: list[dict[str, Any]] = field(default_factory=list)
     transport_bytes: int = 0
     gradient_sync: list[dict[str, Any]] = field(default_factory=list)
+    optimizer_diagnostics: list[dict[str, Any]] = field(default_factory=list)
+
+
+def _record_optimizer_diagnostics(
+    torch: Any,
+    evidence: RunEvidence,
+    *,
+    run_kind: str,
+    role: str,
+    step: int,
+    parameters: Sequence[Any],
+    clip_norm: Any,
+    gradient_before_clip: Mapping[str, float | int] | None,
+) -> None:
+    if run_kind != "correctness":
+        return
+    gradients = [parameter.grad for parameter in parameters if parameter.grad is not None]
+    norm = clip_norm.full_tensor() if hasattr(clip_norm, "full_tensor") else clip_norm
+    evidence.optimizer_diagnostics.append(
+        {
+            "role": role,
+            "step": step,
+            "gradient_before_clip": gradient_before_clip,
+            "gradient_after_clip": _state_metrics(torch, gradients),
+            "clip_input_norm": float(norm.detach().float().cpu()),
+        }
+    )
 
 
 def _write_rank_receipt(
@@ -1044,12 +1076,11 @@ def run_worker(
     generator_metrics = None
     critic_metrics = None
     if bundle.student is not None:
-        group = bundle.generator_group if mode == "baseline" else None
-        generator_metrics = _state_metrics(torch, list(bundle.student.parameters()), group=group)
+        generator_metrics = _state_metrics(torch, list(bundle.student.parameters()))
     if bundle.critic is not None:
         # Critic is replicated in both paths.  One local metric is sufficient;
         # the summarizer checks equality across owners.
-        critic_metrics = _state_metrics(torch, bundle.critic_lora_params, group=None)
+        critic_metrics = _state_metrics(torch, bundle.critic_lora_params)
     receipt = {
         "status": "PASS",
         "rank": rank,
@@ -1078,6 +1109,7 @@ def run_worker(
         "loss_fingerprints": evidence.loss_fingerprints,
         "transport_bytes": evidence.transport_bytes,
         "gradient_sync": evidence.gradient_sync,
+        "optimizer_diagnostics": evidence.optimizer_diagnostics,
         "generator_state_metrics": generator_metrics,
         "critic_state_metrics": critic_metrics,
         "build": bundle.metadata,
@@ -1145,7 +1177,17 @@ def _run_baseline(
                 {"operation_key": row.operation_key, "kind": "critic", **_tensor_fingerprint(torch, critic_loss)}
             )
         if step == 0:
-            torch.nn.utils.clip_grad_norm_(list(bundle.student.parameters()), 1.0)
+            generator_parameters = list(bundle.student.parameters())
+            generator_pre_clip = (
+                _state_metrics(torch, [parameter.grad for parameter in generator_parameters])
+                if run_kind == "correctness" else None
+            )
+            generator_clip_norm = torch.nn.utils.clip_grad_norm_(generator_parameters, 1.0)
+            _record_optimizer_diagnostics(
+                torch, evidence, run_kind=run_kind, role="generator", step=step,
+                parameters=generator_parameters, clip_norm=generator_clip_norm,
+                gradient_before_clip=generator_pre_clip,
+            )
             bundle.generator_optimizer.step()
             versions["generator"] += 1
         sync = _mean_replicated_gradients(
@@ -1153,7 +1195,16 @@ def _run_baseline(
             group_size=bundle.score_group_size, bucket_mib=128,
         )
         evidence.gradient_sync.append({"step": step, "role": "critic", **sync})
-        torch.nn.utils.clip_grad_norm_(bundle.critic_lora_params, 1.0, foreach=True)
+        critic_pre_clip = (
+            _state_metrics(torch, [parameter.grad for parameter in bundle.critic_lora_params])
+            if run_kind == "correctness" else None
+        )
+        critic_clip_norm = torch.nn.utils.clip_grad_norm_(bundle.critic_lora_params, 1.0, foreach=True)
+        _record_optimizer_diagnostics(
+            torch, evidence, run_kind=run_kind, role="critic", step=step,
+            parameters=bundle.critic_lora_params, clip_norm=critic_clip_norm,
+            gradient_before_clip=critic_pre_clip,
+        )
         bundle.critic_optimizer.step()
         versions["critic"] += 1
 
@@ -1254,7 +1305,19 @@ def _run_pipeline_8x8(
                     group_size=bundle.generator_group_size, bucket_mib=256,
                 )
                 evidence.gradient_sync.append({"step": step, "role": "generator", **sync})
-                torch.nn.utils.clip_grad_norm_(list(bundle.student.parameters()), 1.0, foreach=True)
+                generator_parameters = list(bundle.student.parameters())
+                generator_pre_clip = (
+                    _state_metrics(torch, [parameter.grad for parameter in generator_parameters])
+                    if run_kind == "correctness" else None
+                )
+                generator_clip_norm = torch.nn.utils.clip_grad_norm_(
+                    generator_parameters, 1.0, foreach=True,
+                )
+                _record_optimizer_diagnostics(
+                    torch, evidence, run_kind=run_kind, role="generator", step=step,
+                    parameters=generator_parameters, clip_norm=generator_clip_norm,
+                    gradient_before_clip=generator_pre_clip,
+                )
                 bundle.generator_optimizer.step()
                 versions["generator"] += 1
             else:
@@ -1310,7 +1373,18 @@ def _run_pipeline_8x8(
                 group_size=bundle.score_group_size, bucket_mib=128,
             )
             evidence.gradient_sync.append({"step": step, "role": "critic", **sync})
-            torch.nn.utils.clip_grad_norm_(bundle.critic_lora_params, 1.0, foreach=True)
+            critic_pre_clip = (
+                _state_metrics(torch, [parameter.grad for parameter in bundle.critic_lora_params])
+                if run_kind == "correctness" else None
+            )
+            critic_clip_norm = torch.nn.utils.clip_grad_norm_(
+                bundle.critic_lora_params, 1.0, foreach=True,
+            )
+            _record_optimizer_diagnostics(
+                torch, evidence, run_kind=run_kind, role="critic", step=step,
+                parameters=bundle.critic_lora_params, clip_norm=critic_clip_norm,
+                gradient_before_clip=critic_pre_clip,
+            )
             bundle.critic_optimizer.step()
             versions["critic"] += 1
 

@@ -145,6 +145,18 @@ def test_cold_loader_avoids_redundant_full_fp32_copies() -> None:
     assert '_wan_model(WanModel, size="1.3B", config=config).to(torch.bfloat16)' in worker
 
 
+def test_correctness_state_evidence_is_placement_invariant() -> None:
+    worker = (
+        ROOT / "src/distillschedule/runtime/livewan_crossscale_worker.py"
+    ).read_text()
+    metrics = worker.split("def _state_metrics(", 1)[1].split("@dataclass", 1)[0]
+    assert "full_tensor()" in metrics
+    assert "dist.all_reduce(values" not in metrics
+    assert 'run_kind != "correctness"' in worker
+    assert '"gradient_before_clip"' in worker
+    assert '"gradient_after_clip"' in worker
+
+
 def test_step0_p2p_posts_gradient_receive_before_second_wave_send() -> None:
     """Default-PG P2P peers must enqueue matching operations in one order."""
     worker = (
