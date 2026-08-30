@@ -114,6 +114,9 @@ def test_profile_markers_and_capture_are_absent_from_formal_timing_path() -> Non
     assert "torch.cuda.nvtx.range(label)" in helper
     assert "cudaProfilerStart" in worker
     assert "cudaProfilerStop" in worker
+    assert worker.index("dist.destroy_process_group()") > worker.index(
+        "_write_rank_receipt(output_dir=output_dir, rank=rank, value=receipt)"
+    )
     for label in (
         "rollout_wave_0",
         "rollout_wave_1",

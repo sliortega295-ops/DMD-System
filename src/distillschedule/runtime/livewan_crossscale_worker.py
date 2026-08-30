@@ -1141,6 +1141,13 @@ def run_worker(
     }
     _write_rank_receipt(output_dir=output_dir, rank=rank, value=receipt)
     dist.barrier()
+    # Explicitly tear down NCCL before the interpreter starts destroying CUDA
+    # objects.  Under node-outer Nsight one worker could otherwise remain in a
+    # process-exit futex after every rank had written its PASS receipt and the
+    # capture range had stopped.  This is deliberately after the Full5 timer,
+    # profiler range, evidence generation, and final world barrier, so it
+    # changes lifecycle cleanup only and cannot alter the measured workload.
+    dist.destroy_process_group()
     return receipt
 
 
