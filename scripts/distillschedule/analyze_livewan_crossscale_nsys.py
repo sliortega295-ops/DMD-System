@@ -260,9 +260,17 @@ def analyze_node(path: Path, node: int) -> dict:
                 name: _union(values) for name, values in state["intervals"].items()
             }
             phases = []
-            role_prefix = "livewan/pipeline/g/" if rank < 8 else "livewan/pipeline/score/"
+            role_prefixes = (
+                ("livewan/pipeline/g/", "livewan/pipeline_runahead/g/")
+                if rank < 8
+                else ("livewan/pipeline/score/", "livewan/pipeline_runahead/score/")
+            )
             for label, start, end in nvtx_by_pid[pid]:
-                if label.startswith(role_prefix) and start >= outer_start and end <= outer_end:
+                if (
+                    label.startswith(role_prefixes)
+                    and start >= outer_start
+                    and end <= outer_end
+                ):
                     phases.append({"label": label, **_metric((start, end), intervals)})
             phases.sort(key=lambda row: (int(row["label"].split("step_")[1].split("/")[0]), row["label"]))
 

@@ -153,3 +153,5 @@ def test_profile_analyzer_streams_each_large_activity_table_once() -> None:
     assert analyzer.count("FROM CUPTI_ACTIVITY_KIND_MEMCPY WHERE") == 1
     assert "state_by_pid" in analyzer
     assert "ORDER BY globalPid,start" not in analyzer
+    assert '"livewan/pipeline_runahead/g/"' in analyzer
+    assert '"livewan/pipeline_runahead/score/"' in analyzer
