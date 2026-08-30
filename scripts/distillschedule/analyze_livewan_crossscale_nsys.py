@@ -129,6 +129,40 @@ def _metric(window: tuple[int, int], intervals: dict[str, list[tuple[int, int]]]
     }
 
 
+def _collective_metric(
+    window: tuple[int, int],
+    collective_intervals: dict[str, list[tuple[int, int]]],
+    compute_intervals: list[tuple[int, int]],
+) -> dict[str, dict[str, int]]:
+    """Attribute exact collective classes inside one process-scoped NVTX range.
+
+    Kernel launches are asynchronous, so this intentionally classifies the
+    device intervals that execute inside the phase rather than guessing from
+    the host API that happened to enqueue them.  Event counts are counts of
+    kernels intersecting the range; duration fields remain interval unions.
+    """
+
+    clipped_compute = [
+        part for value in compute_intervals if (part := _clip(value, window))
+    ]
+    result: dict[str, dict[str, int]] = {}
+    for kind in COLLECTIVES:
+        clipped = [
+            part
+            for value in collective_intervals[kind]
+            if (part := _clip(value, window))
+        ]
+        union_ns = _duration(clipped)
+        hidden_ns = _intersection(clipped, clipped_compute)
+        result[kind] = {
+            "events": len(clipped),
+            "union_ns": union_ns,
+            "hidden_by_compute_ns": hidden_ns,
+            "exposed_vs_compute_ns": union_ns - hidden_ns,
+        }
+    return result
+
+
 def _validate_schema(db: sqlite3.Connection, node: int) -> None:
     required = {"CUPTI_ACTIVITY_KIND_KERNEL", "CUPTI_ACTIVITY_KIND_MEMCPY", "NVTX_EVENTS", "StringIds"}
     missing = sorted(required - _tables(db))
@@ -280,7 +314,16 @@ def analyze_node(path: Path, node: int) -> dict:
                     and start >= outer_start
                     and end <= outer_end
                 ):
-                    phases.append({"label": label, **_metric((start, end), intervals)})
+                    window = (start, end)
+                    phases.append({
+                        "label": label,
+                        **_metric(window, intervals),
+                        "collectives": _collective_metric(
+                            window,
+                            state["collective_intervals"],
+                            intervals["compute"],
+                        ),
+                    })
             phases.sort(key=_phase_sort_key)
 
             collectives = {}
@@ -364,6 +407,36 @@ def aggregate(nodes: list[dict]) -> dict:
                 "max_ns": max(int(row[key]) for row in rows),
             }
             for key in keys
+        }, "collectives": {
+            kind: {
+                field: {
+                    "sum_ns": sum(
+                        int(row["collectives"][kind][field]) for row in rows
+                    ),
+                    "median_ns": int(statistics.median(
+                        int(row["collectives"][kind][field]) for row in rows
+                    )),
+                    "max_ns": max(
+                        int(row["collectives"][kind][field]) for row in rows
+                    ),
+                }
+                for field in (
+                    "union_ns", "hidden_by_compute_ns", "exposed_vs_compute_ns"
+                )
+            } | {
+                "events": {
+                    "sum": sum(
+                        int(row["collectives"][kind]["events"]) for row in rows
+                    ),
+                    "median": int(statistics.median(
+                        int(row["collectives"][kind]["events"]) for row in rows
+                    )),
+                    "max": max(
+                        int(row["collectives"][kind]["events"]) for row in rows
+                    ),
+                }
+            }
+            for kind in COLLECTIVES
         }})
     collective_summary = {}
     for kind in COLLECTIVES:
@@ -448,6 +521,15 @@ def main() -> int:
             "median_nccl_exposed_s": _seconds(phase["nccl_exposed_vs_compute_ns"]["median_ns"]),
             "median_copy_s": _seconds(phase["copy_union_ns"]["median_ns"]),
             "median_no_traced_s": _seconds(phase["no_traced_gpu_activity_ns"]["median_ns"]),
+            "median_all_gather_exposed_s": _seconds(
+                phase["collectives"]["all_gather"]["exposed_vs_compute_ns"]["median_ns"]
+            ),
+            "median_all_reduce_exposed_s": _seconds(
+                phase["collectives"]["all_reduce"]["exposed_vs_compute_ns"]["median_ns"]
+            ),
+            "median_p2p_exposed_s": _seconds(
+                phase["collectives"]["p2p"]["exposed_vs_compute_ns"]["median_ns"]
+            ),
         })
     _write_csv(args.output_dir / "phase_attribution.csv", phase_rows)
     generator_wall = _seconds(result["by_role"]["generator"]["wall_ns"]["median_ns"])
