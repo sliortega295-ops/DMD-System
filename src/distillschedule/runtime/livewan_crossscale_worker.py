@@ -49,6 +49,16 @@ def _require(condition: bool, message: str) -> None:
         raise RuntimeError(message)
 
 
+@contextmanager
+def _profile_range(torch: Any, *, run_kind: str, label: str):
+    """Add profile-only NVTX without changing the formal timing path."""
+    if run_kind == "profile":
+        with torch.cuda.nvtx.range(label):
+            yield
+    else:
+        yield
+
+
 def _canonical_without_sha(value: Mapping[str, Any], key: str) -> bytes:
     copy = dict(value)
     copy.pop(key, None)
@@ -1029,25 +1039,39 @@ def run_worker(
         )
         if model is not None
     }
+    is_profile = run_kind == "profile"
     dist.barrier()
+    if is_profile and local_rank == 0:
+        torch.cuda.cudart().cudaProfilerStart()
+    if is_profile:
+        # Make sure all eight workers on both nodes enter the workload after
+        # their node-local profiler session has started.
+        dist.barrier()
     torch.cuda.synchronize(device)
     start = time.perf_counter()
-    with inventory.install(torch=torch, blockcausal=bc, roles=roles):
-        if mode == "baseline":
-            _run_baseline(
-                torch=torch, rank=rank, trace=trace, loader=loader, bundle=bundle,
-                streamers=generator_streamers, score_context=score_context,
-                run_kind=run_kind, evidence=evidence, versions=versions, device=device,
-            )
-        else:
-            _run_pipeline_8x8(
-                torch=torch, rank=rank, trace=trace, loader=loader, bundle=bundle,
-                streamers=generator_streamers, score_context=score_context,
-                run_kind=run_kind, evidence=evidence, versions=versions, device=device,
-            )
+    with _profile_range(
+        torch, run_kind=run_kind, label=f"livewan/full5/{mode}/rank_{rank}"
+    ):
+        with inventory.install(torch=torch, blockcausal=bc, roles=roles):
+            if mode == "baseline":
+                _run_baseline(
+                    torch=torch, rank=rank, trace=trace, loader=loader, bundle=bundle,
+                    streamers=generator_streamers, score_context=score_context,
+                    run_kind=run_kind, evidence=evidence, versions=versions, device=device,
+                )
+            else:
+                _run_pipeline_8x8(
+                    torch=torch, rank=rank, trace=trace, loader=loader, bundle=bundle,
+                    streamers=generator_streamers, score_context=score_context,
+                    run_kind=run_kind, evidence=evidence, versions=versions, device=device,
+                )
     torch.cuda.synchronize(device)
     dist.barrier()
     full5_wall = time.perf_counter() - start
+    if is_profile:
+        dist.barrier()
+        if local_rank == 0:
+            torch.cuda.cudart().cudaProfilerStop()
     version_tensor = torch.tensor(
         [versions["generator"], versions["critic"], versions["ema"]],
         device=device,
@@ -1142,71 +1166,102 @@ def _run_baseline(
 ) -> None:
     _require(bundle.student is not None and bundle.critic is not None and bundle.teacher is not None, "baseline needs all roles")
     for step in range(FULL5_STEPS):
-        row = trace.row(step, rank)
-        bundle.generator_optimizer.zero_grad(set_to_none=True)
-        bundle.critic_optimizer.zero_grad(set_to_none=True)
-        prepared = prepare_rollout(
-            torch, row=row, streamer=streamers[0], student=bundle.student,
-            loader=loader, device=device,
-        )
-        _record_output(torch, evidence, row=row, x0=prepared.x0, run_kind=run_kind)
-        sample_context = prepare_score_sample_context(
-            torch, bundle=bundle, raw_context=prepared.raw_context,
-        )
-        if step == 0:
-            gradient = dmd_gradient_for_sample(
-                torch, bundle=bundle, score_context=score_context, row=row,
-                x0=prepared.x0, sample_context=sample_context,
-                context_lens=prepared.context_lens,
-            )
-            losses = generator_backward_for_sample(
-                torch, prepared=prepared, dmd_gradient=gradient, sample_weight=1.0,
-            )
-            if run_kind == "correctness":
-                evidence.loss_fingerprints.extend(
-                    {"operation_key": row.operation_key, "kind": "generator", **_tensor_fingerprint(torch, value)}
-                    for value in losses
+        with _profile_range(
+            torch, run_kind=run_kind, label=f"livewan/baseline/step_{step}"
+        ):
+            row = trace.row(step, rank)
+            bundle.generator_optimizer.zero_grad(set_to_none=True)
+            bundle.critic_optimizer.zero_grad(set_to_none=True)
+            with _profile_range(
+                torch, run_kind=run_kind,
+                label=f"livewan/baseline/step_{step}/student_rollout",
+            ):
+                prepared = prepare_rollout(
+                    torch, row=row, streamer=streamers[0], student=bundle.student,
+                    loader=loader, device=device,
                 )
-        critic_loss = critic_backward_for_sample(
-            torch, bundle=bundle, score_context=score_context, row=row,
-            x0=prepared.x0, sample_context=sample_context,
-            context_lens=prepared.context_lens, sample_weight=1.0,
-        )
-        if run_kind == "correctness":
-            evidence.loss_fingerprints.append(
-                {"operation_key": row.operation_key, "kind": "critic", **_tensor_fingerprint(torch, critic_loss)}
-            )
-        if step == 0:
-            generator_parameters = list(bundle.student.parameters())
-            generator_pre_clip = (
-                _state_metrics(torch, [parameter.grad for parameter in generator_parameters])
-                if run_kind == "correctness" else None
-            )
-            generator_clip_norm = torch.nn.utils.clip_grad_norm_(generator_parameters, 1.0)
-            _record_optimizer_diagnostics(
-                torch, evidence, run_kind=run_kind, role="generator", step=step,
-                parameters=generator_parameters, clip_norm=generator_clip_norm,
-                gradient_before_clip=generator_pre_clip,
-            )
-            bundle.generator_optimizer.step()
-            versions["generator"] += 1
-        sync = _mean_replicated_gradients(
-            torch, bundle.critic_lora_params, group=bundle.score_group,
-            group_size=bundle.score_group_size, bucket_mib=128,
-        )
-        evidence.gradient_sync.append({"step": step, "role": "critic", **sync})
-        critic_pre_clip = (
-            _state_metrics(torch, [parameter.grad for parameter in bundle.critic_lora_params])
-            if run_kind == "correctness" else None
-        )
-        critic_clip_norm = torch.nn.utils.clip_grad_norm_(bundle.critic_lora_params, 1.0, foreach=True)
-        _record_optimizer_diagnostics(
-            torch, evidence, run_kind=run_kind, role="critic", step=step,
-            parameters=bundle.critic_lora_params, clip_norm=critic_clip_norm,
-            gradient_before_clip=critic_pre_clip,
-        )
-        bundle.critic_optimizer.step()
-        versions["critic"] += 1
+                _record_output(torch, evidence, row=row, x0=prepared.x0, run_kind=run_kind)
+            with _profile_range(
+                torch, run_kind=run_kind,
+                label=f"livewan/baseline/step_{step}/score_context",
+            ):
+                sample_context = prepare_score_sample_context(
+                    torch, bundle=bundle, raw_context=prepared.raw_context,
+                )
+            if step == 0:
+                with _profile_range(
+                    torch, run_kind=run_kind,
+                    label="livewan/baseline/step_0/dmd_score",
+                ):
+                    gradient = dmd_gradient_for_sample(
+                        torch, bundle=bundle, score_context=score_context, row=row,
+                        x0=prepared.x0, sample_context=sample_context,
+                        context_lens=prepared.context_lens,
+                    )
+                with _profile_range(
+                    torch, run_kind=run_kind,
+                    label="livewan/baseline/step_0/generator_backward",
+                ):
+                    losses = generator_backward_for_sample(
+                        torch, prepared=prepared, dmd_gradient=gradient, sample_weight=1.0,
+                    )
+                if run_kind == "correctness":
+                    evidence.loss_fingerprints.extend(
+                        {"operation_key": row.operation_key, "kind": "generator", **_tensor_fingerprint(torch, value)}
+                        for value in losses
+                    )
+            with _profile_range(
+                torch, run_kind=run_kind,
+                label=f"livewan/baseline/step_{step}/critic_backward",
+            ):
+                critic_loss = critic_backward_for_sample(
+                    torch, bundle=bundle, score_context=score_context, row=row,
+                    x0=prepared.x0, sample_context=sample_context,
+                    context_lens=prepared.context_lens, sample_weight=1.0,
+                )
+            if run_kind == "correctness":
+                evidence.loss_fingerprints.append(
+                    {"operation_key": row.operation_key, "kind": "critic", **_tensor_fingerprint(torch, critic_loss)}
+                )
+            if step == 0:
+                with _profile_range(
+                    torch, run_kind=run_kind,
+                    label="livewan/baseline/step_0/generator_commit",
+                ):
+                    generator_parameters = list(bundle.student.parameters())
+                    generator_pre_clip = (
+                        _state_metrics(torch, [parameter.grad for parameter in generator_parameters])
+                        if run_kind == "correctness" else None
+                    )
+                    generator_clip_norm = torch.nn.utils.clip_grad_norm_(generator_parameters, 1.0)
+                    _record_optimizer_diagnostics(
+                        torch, evidence, run_kind=run_kind, role="generator", step=step,
+                        parameters=generator_parameters, clip_norm=generator_clip_norm,
+                        gradient_before_clip=generator_pre_clip,
+                    )
+                    bundle.generator_optimizer.step()
+                    versions["generator"] += 1
+            with _profile_range(
+                torch, run_kind=run_kind,
+                label=f"livewan/baseline/step_{step}/critic_commit",
+            ):
+                sync = _mean_replicated_gradients(
+                    torch, bundle.critic_lora_params, group=bundle.score_group,
+                    group_size=bundle.score_group_size, bucket_mib=128,
+                )
+                evidence.gradient_sync.append({"step": step, "role": "critic", **sync})
+                critic_pre_clip = (
+                    _state_metrics(torch, [parameter.grad for parameter in bundle.critic_lora_params])
+                    if run_kind == "correctness" else None
+                )
+                critic_clip_norm = torch.nn.utils.clip_grad_norm_(bundle.critic_lora_params, 1.0, foreach=True)
+                _record_optimizer_diagnostics(
+                    torch, evidence, run_kind=run_kind, role="critic", step=step,
+                    parameters=bundle.critic_lora_params, clip_norm=critic_clip_norm,
+                    gradient_before_clip=critic_pre_clip,
+                )
+                bundle.critic_optimizer.step()
+                versions["critic"] += 1
 
 
 def _recv_pair(torch: Any, *, source: int, device: Any) -> tuple[Any, Any]:
@@ -1258,17 +1313,29 @@ def _run_pipeline_8x8(
         if is_generator:
             bundle.generator_optimizer.zero_grad(set_to_none=True)
             rows = (trace.row(step, rank), trace.row(step, rank + 8))
-            first = prepare_rollout(
-                torch, row=rows[0], streamer=streamers[0], student=bundle.student,
-                loader=loader, device=device,
-            )
+            with _profile_range(
+                torch, run_kind=run_kind,
+                label=f"livewan/pipeline/g/step_{step}/rollout_wave_0",
+            ):
+                first = prepare_rollout(
+                    torch, row=rows[0], streamer=streamers[0], student=bundle.student,
+                    loader=loader, device=device,
+                )
             _record_output(torch, evidence, row=rows[0], x0=first.x0, run_kind=run_kind)
-            _send_pair(destination=peer, prepared=first, asynchronous=False)
+            with _profile_range(
+                torch, run_kind=run_kind,
+                label=f"livewan/pipeline/g/step_{step}/send_wave_0",
+            ):
+                _send_pair(destination=peer, prepared=first, asynchronous=False)
             evidence.transport_bytes += pair_bytes
-            second = prepare_rollout(
-                torch, row=rows[1], streamer=streamers[1], student=bundle.student,
-                loader=loader, device=device,
-            )
+            with _profile_range(
+                torch, run_kind=run_kind,
+                label=f"livewan/pipeline/g/step_{step}/rollout_wave_1",
+            ):
+                second = prepare_rollout(
+                    torch, row=rows[1], streamer=streamers[1], student=bundle.student,
+                    loader=loader, device=device,
+                )
             _record_output(torch, evidence, row=rows[1], x0=second.x0, run_kind=run_kind)
             if step == 0:
                 # The rank-pair traffic shares the default NCCL process group.
@@ -1279,47 +1346,67 @@ def _run_pipeline_8x8(
                 # grad0 before posting wave1.  The wave1 transfer can still
                 # overlap G backward0 with Score's receive/critic0 work.
                 grad0 = torch.empty_like(first.x0)
-                dist.recv(grad0, src=peer)
+                with _profile_range(
+                    torch, run_kind=run_kind,
+                    label="livewan/pipeline/g/step_0/recv_gradient_0",
+                ):
+                    dist.recv(grad0, src=peer)
                 evidence.transport_bytes += grad0.numel() * grad0.element_size()
                 sends = _send_pair(destination=peer, prepared=second, asynchronous=True)
                 evidence.transport_bytes += pair_bytes
-                losses0 = generator_backward_for_sample(
-                    torch, prepared=first, dmd_gradient=grad0, sample_weight=0.5,
-                )
+                with _profile_range(
+                    torch, run_kind=run_kind,
+                    label="livewan/pipeline/g/step_0/backward_wave_0",
+                ):
+                    losses0 = generator_backward_for_sample(
+                        torch, prepared=first, dmd_gradient=grad0, sample_weight=0.5,
+                    )
                 for request in sends:
                     request.wait()
                 grad1 = torch.empty_like(second.x0)
-                dist.recv(grad1, src=peer)
+                with _profile_range(
+                    torch, run_kind=run_kind,
+                    label="livewan/pipeline/g/step_0/recv_gradient_1",
+                ):
+                    dist.recv(grad1, src=peer)
                 evidence.transport_bytes += grad1.numel() * grad1.element_size()
-                losses1 = generator_backward_for_sample(
-                    torch, prepared=second, dmd_gradient=grad1, sample_weight=0.5,
-                )
+                with _profile_range(
+                    torch, run_kind=run_kind,
+                    label="livewan/pipeline/g/step_0/backward_wave_1",
+                ):
+                    losses1 = generator_backward_for_sample(
+                        torch, prepared=second, dmd_gradient=grad1, sample_weight=0.5,
+                    )
                 if run_kind == "correctness":
                     for row, losses in zip(rows, (losses0, losses1)):
                         evidence.loss_fingerprints.extend(
                             {"operation_key": row.operation_key, "kind": "generator", **_tensor_fingerprint(torch, value)}
                             for value in losses
                         )
-                sync = _mean_replicated_gradients(
-                    torch, list(bundle.student.parameters()), group=bundle.generator_group,
-                    group_size=bundle.generator_group_size, bucket_mib=256,
-                )
-                evidence.gradient_sync.append({"step": step, "role": "generator", **sync})
-                generator_parameters = list(bundle.student.parameters())
-                generator_pre_clip = (
-                    _state_metrics(torch, [parameter.grad for parameter in generator_parameters])
-                    if run_kind == "correctness" else None
-                )
-                generator_clip_norm = torch.nn.utils.clip_grad_norm_(
-                    generator_parameters, 1.0, foreach=True,
-                )
-                _record_optimizer_diagnostics(
-                    torch, evidence, run_kind=run_kind, role="generator", step=step,
-                    parameters=generator_parameters, clip_norm=generator_clip_norm,
-                    gradient_before_clip=generator_pre_clip,
-                )
-                bundle.generator_optimizer.step()
-                versions["generator"] += 1
+                with _profile_range(
+                    torch, run_kind=run_kind,
+                    label="livewan/pipeline/g/step_0/generator_commit",
+                ):
+                    sync = _mean_replicated_gradients(
+                        torch, list(bundle.student.parameters()), group=bundle.generator_group,
+                        group_size=bundle.generator_group_size, bucket_mib=256,
+                    )
+                    evidence.gradient_sync.append({"step": step, "role": "generator", **sync})
+                    generator_parameters = list(bundle.student.parameters())
+                    generator_pre_clip = (
+                        _state_metrics(torch, [parameter.grad for parameter in generator_parameters])
+                        if run_kind == "correctness" else None
+                    )
+                    generator_clip_norm = torch.nn.utils.clip_grad_norm_(
+                        generator_parameters, 1.0, foreach=True,
+                    )
+                    _record_optimizer_diagnostics(
+                        torch, evidence, run_kind=run_kind, role="generator", step=step,
+                        parameters=generator_parameters, clip_norm=generator_clip_norm,
+                        gradient_before_clip=generator_pre_clip,
+                    )
+                    bundle.generator_optimizer.step()
+                    versions["generator"] += 1
             else:
                 sends = _send_pair(destination=peer, prepared=second, asynchronous=True)
                 evidence.transport_bytes += pair_bytes
@@ -1328,65 +1415,93 @@ def _run_pipeline_8x8(
         else:
             bundle.critic_optimizer.zero_grad(set_to_none=True)
             rows = (trace.row(step, peer), trace.row(step, peer + 8))
-            first_x0, first_context = _recv_pair(torch, source=peer, device=device)
+            with _profile_range(
+                torch, run_kind=run_kind,
+                label=f"livewan/pipeline/score/step_{step}/recv_wave_0",
+            ):
+                first_x0, first_context = _recv_pair(torch, source=peer, device=device)
             evidence.transport_bytes += pair_bytes
             context_lens = torch.tensor([TEXT_SHAPE[1]], device=device, dtype=torch.long)
             first_sample_context = prepare_score_sample_context(
                 torch, bundle=bundle, raw_context=first_context,
             )
             if step == 0:
-                grad0 = dmd_gradient_for_sample(
-                    torch, bundle=bundle, score_context=score_context, row=rows[0],
-                    x0=first_x0, sample_context=first_sample_context, context_lens=context_lens,
-                )
-                dist.send(grad0.contiguous(), dst=peer)
+                with _profile_range(
+                    torch, run_kind=run_kind,
+                    label="livewan/pipeline/score/step_0/dmd_wave_0",
+                ):
+                    grad0 = dmd_gradient_for_sample(
+                        torch, bundle=bundle, score_context=score_context, row=rows[0],
+                        x0=first_x0, sample_context=first_sample_context, context_lens=context_lens,
+                    )
+                    dist.send(grad0.contiguous(), dst=peer)
                 evidence.transport_bytes += grad0.numel() * grad0.element_size()
-            second_x0, second_context = _recv_pair(torch, source=peer, device=device)
+            with _profile_range(
+                torch, run_kind=run_kind,
+                label=f"livewan/pipeline/score/step_{step}/recv_wave_1",
+            ):
+                second_x0, second_context = _recv_pair(torch, source=peer, device=device)
             evidence.transport_bytes += pair_bytes
             second_sample_context = prepare_score_sample_context(
                 torch, bundle=bundle, raw_context=second_context,
             )
-            loss0 = critic_backward_for_sample(
-                torch, bundle=bundle, score_context=score_context, row=rows[0],
-                x0=first_x0, sample_context=first_sample_context, context_lens=context_lens,
-                sample_weight=0.5,
-            )
+            with _profile_range(
+                torch, run_kind=run_kind,
+                label=f"livewan/pipeline/score/step_{step}/critic_backward_wave_0",
+            ):
+                loss0 = critic_backward_for_sample(
+                    torch, bundle=bundle, score_context=score_context, row=rows[0],
+                    x0=first_x0, sample_context=first_sample_context, context_lens=context_lens,
+                    sample_weight=0.5,
+                )
             if step == 0:
-                grad1 = dmd_gradient_for_sample(
+                with _profile_range(
+                    torch, run_kind=run_kind,
+                    label="livewan/pipeline/score/step_0/dmd_wave_1",
+                ):
+                    grad1 = dmd_gradient_for_sample(
+                        torch, bundle=bundle, score_context=score_context, row=rows[1],
+                        x0=second_x0, sample_context=second_sample_context, context_lens=context_lens,
+                    )
+                    dist.send(grad1.contiguous(), dst=peer)
+                evidence.transport_bytes += grad1.numel() * grad1.element_size()
+            with _profile_range(
+                torch, run_kind=run_kind,
+                label=f"livewan/pipeline/score/step_{step}/critic_backward_wave_1",
+            ):
+                loss1 = critic_backward_for_sample(
                     torch, bundle=bundle, score_context=score_context, row=rows[1],
                     x0=second_x0, sample_context=second_sample_context, context_lens=context_lens,
+                    sample_weight=0.5,
                 )
-                dist.send(grad1.contiguous(), dst=peer)
-                evidence.transport_bytes += grad1.numel() * grad1.element_size()
-            loss1 = critic_backward_for_sample(
-                torch, bundle=bundle, score_context=score_context, row=rows[1],
-                x0=second_x0, sample_context=second_sample_context, context_lens=context_lens,
-                sample_weight=0.5,
-            )
             if run_kind == "correctness":
                 for row, loss in zip(rows, (loss0, loss1)):
                     evidence.loss_fingerprints.append(
                         {"operation_key": row.operation_key, "kind": "critic", **_tensor_fingerprint(torch, loss)}
                     )
-            sync = _mean_replicated_gradients(
-                torch, bundle.critic_lora_params, group=bundle.score_group,
-                group_size=bundle.score_group_size, bucket_mib=128,
-            )
-            evidence.gradient_sync.append({"step": step, "role": "critic", **sync})
-            critic_pre_clip = (
-                _state_metrics(torch, [parameter.grad for parameter in bundle.critic_lora_params])
-                if run_kind == "correctness" else None
-            )
-            critic_clip_norm = torch.nn.utils.clip_grad_norm_(
-                bundle.critic_lora_params, 1.0, foreach=True,
-            )
-            _record_optimizer_diagnostics(
-                torch, evidence, run_kind=run_kind, role="critic", step=step,
-                parameters=bundle.critic_lora_params, clip_norm=critic_clip_norm,
-                gradient_before_clip=critic_pre_clip,
-            )
-            bundle.critic_optimizer.step()
-            versions["critic"] += 1
+            with _profile_range(
+                torch, run_kind=run_kind,
+                label=f"livewan/pipeline/score/step_{step}/critic_commit",
+            ):
+                sync = _mean_replicated_gradients(
+                    torch, bundle.critic_lora_params, group=bundle.score_group,
+                    group_size=bundle.score_group_size, bucket_mib=128,
+                )
+                evidence.gradient_sync.append({"step": step, "role": "critic", **sync})
+                critic_pre_clip = (
+                    _state_metrics(torch, [parameter.grad for parameter in bundle.critic_lora_params])
+                    if run_kind == "correctness" else None
+                )
+                critic_clip_norm = torch.nn.utils.clip_grad_norm_(
+                    bundle.critic_lora_params, 1.0, foreach=True,
+                )
+                _record_optimizer_diagnostics(
+                    torch, evidence, run_kind=run_kind, role="critic", step=step,
+                    parameters=bundle.critic_lora_params, clip_norm=critic_clip_norm,
+                    gradient_before_clip=critic_pre_clip,
+                )
+                bundle.critic_optimizer.step()
+                versions["critic"] += 1
 
 
 __all__ = [

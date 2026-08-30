@@ -57,18 +57,23 @@ git -C "${ROOT}" diff --quiet && git -C "${ROOT}" diff --cached --quiet || {
   9737cba9c1c3c4d04b33fcad41c111989865d315 ]] || exit 4
 
 if [[ "${RUN_KIND}" == timing || "${RUN_KIND}" == profile ]]; then
-  CORRECTNESS_RECEIPT="${LIVEWAN_PAIR_CORRECTNESS_RECEIPT:?timing requires LIVEWAN_PAIR_CORRECTNESS_RECEIPT}"
-  CORRECTNESS_SHA256="${LIVEWAN_PAIR_CORRECTNESS_SHA256:?timing requires LIVEWAN_PAIR_CORRECTNESS_SHA256}"
+  CORRECTNESS_RECEIPT="${LIVEWAN_PAIR_CORRECTNESS_RECEIPT:?run requires LIVEWAN_PAIR_CORRECTNESS_RECEIPT}"
+  CORRECTNESS_SHA256="${LIVEWAN_PAIR_CORRECTNESS_SHA256:?run requires LIVEWAN_PAIR_CORRECTNESS_SHA256}"
   [[ -f "${CORRECTNESS_RECEIPT}" && "${CORRECTNESS_SHA256}" =~ ^[0-9a-f]{64}$ ]] || exit 3
   [[ "$(sha256sum "${CORRECTNESS_RECEIPT}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || exit 3
-  "${PYTHON}" - "${CORRECTNESS_RECEIPT}" "${EXPECTED_HEAD}" <<'PY'
+  "${PYTHON}" - "${CORRECTNESS_RECEIPT}" "${EXPECTED_HEAD}" "${RUN_KIND}" <<'PY'
 import json, pathlib, sys
 value = json.loads(pathlib.Path(sys.argv[1]).read_text())
 expected_head = sys.argv[2]
-if value.get("status") != "PASS" or value.get("claimable_for_timing") is not True:
-    raise SystemExit("paired correctness gate is not PASS")
+run_kind = sys.argv[3]
+if run_kind == "timing":
+    if value.get("status") != "PASS" or value.get("claimable_for_timing") is not True:
+        raise SystemExit("paired correctness gate is not PASS")
+else:
+    if value.get("profile_authorized") is not True or value.get("formal_timing_authorized") is not False:
+        raise SystemExit("diagnostic profile gate is not PASS")
 if set(value.get("heads", {}).values()) != {expected_head}:
-    raise SystemExit("paired correctness gate uses a different source HEAD")
+    raise SystemExit("correctness/diagnostic gate uses a different source HEAD")
 PY
 fi
 
@@ -184,12 +189,104 @@ if [[ "${RUN_KIND}" == validate ]]; then
     --repo-root "${ROOT}" >"${NODE_LOG}/console.log" 2>&1
   status=$?
 else
-  "${TORCHRUN}" --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}" \
-    --master-addr="${MASTER_ADDR}" --master-port="$((MASTER_PORT + 2))" \
-    "${ROOT}/scripts/distillschedule/livewan_crossscale_entrypoint.py" \
-    --plan "${RESOLVED}" --mode "${EXECUTION_MODE}" --run-kind "${RUN_KIND}" \
-    --repo-root "${ROOT}" >"${NODE_LOG}/console.log" 2>&1
-  status=$?
+  workload=(
+    "${TORCHRUN}" --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}"
+    --master-addr="${MASTER_ADDR}" --master-port="$((MASTER_PORT + 2))"
+    "${ROOT}/scripts/distillschedule/livewan_crossscale_entrypoint.py"
+    --plan "${RESOLVED}" --mode "${EXECUTION_MODE}" --run-kind "${RUN_KIND}"
+    --repo-root "${ROOT}"
+  )
+  if [[ "${RUN_KIND}" == profile ]]; then
+    NSYS_BIN="${DISTILLSCHEDULE_NSYS_BIN:?profile requires DISTILLSCHEDULE_NSYS_BIN}"
+    [[ -x "${NSYS_BIN}" ]] || { echo "missing_nsys=${NSYS_BIN}" >&2; exit 3; }
+    mkdir -p "${RUN_ROOT}/nsight"
+    PROFILE_REPORT_BASE="${RUN_ROOT}/nsight/node_${NODE_RANK}"
+    PROFILE_REPORT="${PROFILE_REPORT_BASE}.nsys-rep"
+    PROFILE_SQLITE="${PROFILE_REPORT_BASE}.sqlite"
+    PROFILE_STATS="${PROFILE_REPORT_BASE}.stats.csv"
+    PROFILE_EXPORT_LOG="${PROFILE_REPORT_BASE}.export.log"
+    PROFILE_RECEIPT="${PROFILE_REPORT_BASE}.receipt.json"
+    for path in "${PROFILE_REPORT}" "${PROFILE_SQLITE}" "${PROFILE_STATS}" \
+      "${PROFILE_EXPORT_LOG}" "${PROFILE_RECEIPT}"; do
+      [[ ! -e "${path}" ]] || { echo "profile_artifact_exists=${path}" >&2; exit 82; }
+    done
+    "${NSYS_BIN}" profile \
+      --trace=cuda,nvtx --sample=none --cpuctxsw=none \
+      --trace-fork-before-exec=true --wait=primary \
+      --capture-range=cudaProfilerApi --capture-range-end=stop \
+      --force-overwrite=false \
+      --output="${PROFILE_REPORT_BASE}" \
+      "${workload[@]}" >"${NODE_LOG}/console.log" 2>&1
+    status=$?
+    if [[ ${status} -eq 0 && ! -s "${PROFILE_REPORT}" ]]; then
+      echo "missing_nsys_report=${PROFILE_REPORT}" >&2
+      status=87
+    fi
+    if [[ ${status} -eq 0 ]]; then
+      "${NSYS_BIN}" export --type=sqlite --force-overwrite=true \
+        --output="${PROFILE_SQLITE}" "${PROFILE_REPORT}" \
+        >"${PROFILE_EXPORT_LOG}" 2>&1
+      status=$?
+    fi
+    if [[ ${status} -eq 0 && ! -s "${PROFILE_SQLITE}" ]]; then
+      echo "missing_nsys_sqlite=${PROFILE_SQLITE}" >&2
+      status=88
+    fi
+    if [[ ${status} -eq 0 ]]; then
+      "${NSYS_BIN}" stats --report=nvtx_sum,cuda_gpu_kern_sum,cuda_api_sum \
+        --format=csv "${PROFILE_REPORT}" >"${PROFILE_STATS}" 2>&1
+      status=$?
+    fi
+    if [[ ${status} -eq 0 ]] && grep -Eq \
+      'ProcessEventsError|Unknown runtime API|Cannot find bucket|Cannot find string|Errors occurred while processing raw events|does not contain (NV Tools Extension|CUDA kernel|CUDA API)' \
+      "${NODE_LOG}/console.log" "${PROFILE_EXPORT_LOG}" "${PROFILE_STATS}"; then
+      echo nsys_profile_validation_failed >&2
+      status=89
+    fi
+    if [[ ${status} -eq 0 ]]; then
+      "${PYTHON}" - "${PROFILE_RECEIPT}" "${NODE_RANK}" "${EXPECTED_HEAD}" \
+        "${NSYS_BIN}" "${PROFILE_REPORT}" "${PROFILE_SQLITE}" "${PROFILE_STATS}" <<'PY'
+import hashlib, json, os, pathlib, subprocess, sys, tempfile
+
+destination = pathlib.Path(sys.argv[1])
+paths = [pathlib.Path(value) for value in sys.argv[5:8]]
+
+def sha256(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+value = {
+    "schema_version": 1,
+    "status": "PASS_CAPTURE_CONTAINER",
+    "diagnostic_only": True,
+    "formal_timing_eligible": False,
+    "node_rank": int(sys.argv[2]),
+    "head": sys.argv[3],
+    "nsys_bin": sys.argv[4],
+    "nsys_version": subprocess.check_output([sys.argv[4], "--version"], text=True).strip(),
+    "artifacts": {
+        path.suffix.lstrip(".") or path.name: {
+            "path": str(path), "bytes": path.stat().st_size, "sha256": sha256(path)
+        }
+        for path in paths
+    },
+}
+destination.parent.mkdir(parents=True, exist_ok=True)
+fd, temporary = tempfile.mkstemp(prefix=destination.name + ".", dir=destination.parent)
+with os.fdopen(fd, "w", encoding="utf-8") as handle:
+    json.dump(value, handle, indent=2, sort_keys=True)
+    handle.write("\n")
+os.replace(temporary, destination)
+PY
+      status=$?
+    fi
+  else
+    "${workload[@]}" >"${NODE_LOG}/console.log" 2>&1
+    status=$?
+  fi
 fi
 set -e
 

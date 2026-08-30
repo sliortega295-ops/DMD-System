@@ -79,7 +79,10 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--hosts", type=hosts, required=True)
     value.add_argument("--ssh-port", type=int, default=2222)
     value.add_argument("--run-id", required=True)
-    value.add_argument("--run-kind", choices=("validate", "correctness", "timing"), required=True)
+    value.add_argument(
+        "--run-kind", choices=("validate", "correctness", "timing", "profile"),
+        required=True,
+    )
     value.add_argument("--execution-mode", choices=("baseline", "pipeline"), required=True)
     value.add_argument("--expected-head", required=True)
     value.add_argument("--remote-root", required=True, type=Path)
@@ -98,6 +101,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--python-overlay", required=True, type=Path)
     value.add_argument("--correctness-receipt", type=Path)
     value.add_argument("--correctness-sha256")
+    value.add_argument("--nsys-bin", type=Path)
     value.add_argument("--master-addr")
     value.add_argument("--master-port", type=int, default=29930)
     value.add_argument("--timeout-seconds", type=int, default=21600)
@@ -130,11 +134,15 @@ def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "LIVEWAN_WAN21_SOURCE": args.source_root,
         "LIVEWAN_SOURCE_RECEIPT": args.source_receipt,
     }
-    if args.run_kind == "timing":
+    if args.run_kind in {"timing", "profile"}:
         if args.correctness_receipt is None or not args.correctness_sha256:
-            raise ValueError("timing requires paired correctness receipt and SHA256")
+            raise ValueError(f"{args.run_kind} requires a correctness/diagnostic receipt and SHA256")
         exports["LIVEWAN_PAIR_CORRECTNESS_RECEIPT"] = args.correctness_receipt
         exports["LIVEWAN_PAIR_CORRECTNESS_SHA256"] = args.correctness_sha256
+    if args.run_kind == "profile":
+        if args.nsys_bin is None:
+            raise ValueError("profile requires --nsys-bin")
+        exports["DISTILLSCHEDULE_NSYS_BIN"] = args.nsys_bin
     export_text = " ".join(f"{key}={shlex.quote(str(value))}" for key, value in exports.items())
     launch = " ".join(
         shlex.quote(str(value))
