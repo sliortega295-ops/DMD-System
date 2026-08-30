@@ -439,3 +439,19 @@
   `36008126ce3567551474431d5ab3c81af679afca0c31e2c53f08fe0f5592e31c`.
 - Decision: **GO** for the preregistered default-off implementation and its
   focused/world16 gates.  No second optimization may be combined.
+
+## C11 iteration-end handoff
+
+- Validate-only, correctness, and timing all PASS at
+  `f3c5ed480001fb0007914de25264edd8439e9f50`; exact run IDs and summary hashes
+  are recorded in `iteration363_c11_modnorm_backward.md`.
+- Failure signature: none.  All 16 ranks end at G201/C1005/EMA801 with exact
+  G1/C5/EMA1 update counts; explicit backward executes 1,120 calls and 4,720
+  PhaseLocal chunks per rank with zero fallback.
+- Formal result: `138.462140212 s`, an isolated `1.963828%` gain over C8 and a
+  cumulative `19.970781%` reduction from C0.
+- Recovery/next constraint: C11 is the validated substrate.  Do not retry
+  explicit FSDP prefetch, C10 beta-add, HSDP, B2/B5, Score packing, stride1, or
+  history cache without materially new evidence.  The next iteration must ask
+  a new falsifiable question capable of addressing the remaining
+  `17.352002109 s` gap.

@@ -178,3 +178,7 @@
     the independently gated default-off backward, record exact execution
     receipts, then run focused tests, validate-only, correctness, and one
     formal timing without combining another candidate.
+39. C11 completes all gates at `f3c5ed480001fb0007914de25264edd8439e9f50`.
+    Formal Full5 is `138.462140212 s`, `2.773626923 s` faster than C8 and
+    `19.970781%` below C0.  Promote C11 as the new substrate; the 30% target is
+    still `17.352002109 s` away.

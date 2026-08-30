@@ -355,3 +355,11 @@ The earlier `r1` did not start the workload because the standalone command
 omitted the pinned `LOCAL_KERNELS` mapping; it is retained as environment-only
 failure evidence, not counted as a mechanism test.  Report SHA-256:
 `36008126ce3567551474431d5ab3c81af679afca0c31e2c53f08fe0f5592e31c`.
+
+The world16 implementation also passes.  Validate-only and correctness are
+16/16 PASS; every rank records 1,120 explicit-backward calls, 4,720 PhaseLocal
+chunks, and zero fallback, ending at G201/C1005/EMA801.  The matched unprofiled
+run `iter363_gan_cuda_c11_modnormbackward_timing_r1_20260830` is
+`138.462140212 s`: `2.773626923 s` (`1.963828%`) faster than C8 and
+`34.552342792 s` (`19.970781%`) below C0.  C11 is promoted, but remains
+`17.352002109 s` above the requested threshold.
