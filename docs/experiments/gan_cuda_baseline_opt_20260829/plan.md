@@ -392,3 +392,10 @@
 70. The bounded C26 repair restores bitwise parity, but improves B1/B3 by only
     `1.0085x`/`1.0087x`; reject it below the `1.15x` gate and do not launch
     world16.  C25 remains the authoritative substrate.
+71. C27 targets only the pinned frozen affine cross-attention `norm2` path.
+    First implement a standalone BF16-input/FP32-math/BF16-output forward and
+    hidden-only backward, then compare it with the actual
+    `_ChunkedFrozenNorm` plus patched Flash-LayerNorm source on one locked A100.
+    Require unchanged P0 output/gradient parity, zero fallback, and at least
+    `1.15x` warm forward-plus-backward speedup for both B1 and B3 before any
+    source rewrite, world16 option, or distributed launch.

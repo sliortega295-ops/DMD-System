@@ -635,3 +635,25 @@ That repair is bitwise exact on B1 and B3, but measures only `1.0085x` and
 a useful boundary: almost all apparent single-launch microkernel gain came
 from changed arithmetic/codegen, while exact shared frequency staging alone
 is too small to justify distributed validation.
+
+## C27 selected frozen cross-attention LayerNorm fusion
+
+The C22 profile and pinned source expose a different LayerNorm path that C14
+and C15 never optimized.  Every cross-attention-enabled block owns a frozen
+affine `norm2`.  After the model-wide Flash-LayerNorm patch,
+`_ChunkedFrozenNorm` still converts each BF16 tile to a full FP32 tensor, runs
+the FP32-output Flash kernel, casts that output back to BF16, and copies it into
+a preallocated result.  Its custom backward rebuilds this graph with native
+autograd for every tile.  The profile records the expected production
+`layernorm_forward`/`layernorm_backward` families, but their GPU-kernel sums and
+the broader cast/copy families are selection evidence only.
+
+C27 may implement one standalone frozen affine LayerNorm operation that reads
+BF16 hidden state and FP32 affine parameters, performs the source FP32 mean,
+variance, normalization and affine arithmetic, and stores BF16 output.  Its
+backward recomputes the same row statistics and writes only the BF16 hidden
+gradient because the affine parameters are frozen.  The first step is a
+locked-A100 B1/B3 canary against the actual pinned `_ChunkedFrozenNorm` plus
+patched Flash-LayerNorm implementation.  No Helios source rewrite or world16
+option is allowed unless both output and gradient meet `DEFAULT_P0_PARITY` and
+both production batches improve by at least `1.15x` with zero fallback.

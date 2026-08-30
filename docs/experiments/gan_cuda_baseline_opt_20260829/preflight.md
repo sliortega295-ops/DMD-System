@@ -1029,3 +1029,45 @@
   BF16 results; the exact form has negligible isolated gain.  Do not integrate
   either implementation or spend a world16 run on this path.  C25 remains the
   authoritative denominator at `125.258735931 s`.
+
+## C27 fused frozen cross-attention LayerNorm preflight
+
+- **Current gate:** C25 remains the fastest correctness-qualified substrate at
+  `125.258735931 s`, `4.148597828 s` above the registered 30%-reduction target.
+  C26 is closed and no distributed launch is authorized before a locked-A100
+  kernel canary passes.
+- **Authorized hypothesis:** replace only the frozen affine `norm2` tile used
+  by `_ChunkedFrozenNorm` with one BF16-input/FP32-math/BF16-output Triton
+  forward and one hidden-gradient-only Triton backward.  The operation keeps
+  the exact LayerNorm epsilon, affine weight/bias, width 5120, chunking and
+  frozen-parameter semantics while eliminating the explicit BF16-to-FP32
+  tensor, FP32 output, BF16 cast/copy and native-autograd reconstruction.
+- **Frozen baseline and contracts:** exact C25 GAN steps 1000--1004, world16
+  FSDP2, B1/global-B16, Score packing off, trace/RNG/loss/physical calls,
+  checkpoint policy, local FA2, prior exact fusions, 41-unit Generator
+  persistence, G1/C5/EMA1, final G201/C1005/EMA801 and timer boundaries.
+- **Matching evidence:** the pinned Helios source at SHA-256
+  `5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886`
+  routes every frozen affine cross-attention `norm2` through
+  `_ChunkedFrozenNorm`.  Its forward explicitly executes
+  `hidden.float() -> Flash LayerNorm FP32 output -> BF16 cast -> copy_`; its
+  backward reconstructs that graph per chunk.  C22 device 0 records 8,760
+  `layernorm_forward` launches (`0.520950048 GPU-s`) and 1,800
+  `layernorm_backward` launches (`0.171421406 GPU-s`).  Copy/cast kernel totals
+  are only broad upper bounds until the canary and runtime receipt identify
+  this helper's exact ownership; none are treated as removable wall time.
+- **Matching prior result:** C14/C15 prove that the same width-5120
+  FP32-LayerNorm arithmetic can pass the unchanged multi-metric P0 contract and
+  produce large isolated forward/backward gains, but those kernels implement
+  affine-free modulated `norm1`/`norm3`, not this frozen affine `norm2` path.
+- **Rejected or superseded paths:** C23/C24 allocator no-flush, B2/B5, Score
+  packing, HSDP, explicit FSDP prefetch, NCCL forcing, static-context and
+  history-KV caches, LoRA beta-add, stride-1 Flash retention, direct attention
+  replacement and C26 paired RoPE remain closed.
+- **New falsifiable question:** for production B1/B3, width-5120, 2,048-token
+  tiles with nontrivial FP32 affine parameters, do output and hidden gradient
+  pass the unchanged P0 contract with zero fallback while warm
+  forward-plus-backward improves by at least `1.15x` for both batches?
+- **Decision:** **GO_CANARY_ONLY**.  Any source mismatch, unsupported dtype or
+  layout, fallback, parity failure, or sub-threshold batch closes C27 before a
+  world16 policy is added.
