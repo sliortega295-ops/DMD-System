@@ -1017,3 +1017,15 @@
   codegen while removing only redundant frequency staging.  The original
   bitwise and `1.15x` gates remain unchanged.  Failure closes C26; no further
   arithmetic or tolerance repair is authorized.
+
+### C26 bounded-repair result
+
+- `iter384_gan_cuda_c26_shared_freq_canary_r3_20260830` passes bitwise Q/K
+  output and input-gradient parity for both production shapes, proving that
+  reusing the installed arithmetic kernel restores the frozen contract.
+- Warm forward-plus-backward is only `1.0085x` for B1 and `1.0087x` for B3,
+  far below the preregistered `1.15x` promotion threshold.
+- **Decision:** **REJECT_C26_NO_WORLD16**.  The fast single-launch form changes
+  BF16 results; the exact form has negligible isolated gain.  Do not integrate
+  either implementation or spend a world16 run on this path.  C25 remains the
+  authoritative denominator at `125.258735931 s`.

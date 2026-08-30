@@ -389,3 +389,6 @@
     staging but invokes the installed Helios arithmetic kernel twice.  Keep
     the bitwise and `1.15x` gates unchanged; failure closes C26 before
     world16.
+70. The bounded C26 repair restores bitwise parity, but improves B1/B3 by only
+    `1.0085x`/`1.0087x`; reject it below the `1.15x` gate and do not launch
+    world16.  C25 remains the authoritative substrate.

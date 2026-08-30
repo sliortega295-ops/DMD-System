@@ -629,3 +629,9 @@ between Q and K (and sharing sine negation in backward).  This intentionally
 gives up single-launch fusion to preserve exact codegen.  It must still be
 bitwise for both outputs and gradients and at least `1.15x` faster on both
 production shapes; otherwise C26 closes without a world16 run.
+
+That repair is bitwise exact on B1 and B3, but measures only `1.0085x` and
+`1.0087x`.  C26 is therefore closed before integration.  The experiment gives
+a useful boundary: almost all apparent single-launch microkernel gain came
+from changed arithmetic/codegen, while exact shared frequency staging alone
+is too small to justify distributed validation.
