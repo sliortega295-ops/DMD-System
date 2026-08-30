@@ -1469,6 +1469,28 @@ def _run_pipeline_8x8(
             second_sample_context = prepare_score_sample_context(
                 torch, bundle=bundle, raw_context=second_context,
             )
+            grad1_work = None
+            grad1_send = None
+            if step == 0:
+                # DMD uses frozen Score/Teacher parameters and is independent
+                # of the Critic gradient buffers.  Producing both returned
+                # gradients before Critic backward therefore preserves the
+                # original loss/backward order while removing a false cross-
+                # pool dependency: G backward0 can now overlap Critic
+                # backward0, instead of waiting for Critic0 before Score even
+                # starts DMD1.  Keep the second send asynchronous so Score can
+                # immediately enter Critic backward while G consumes grad0.
+                with _profile_range(
+                    torch, run_kind=run_kind,
+                    label="livewan/pipeline/score/step_0/dmd_wave_1",
+                ):
+                    grad1 = dmd_gradient_for_sample(
+                        torch, bundle=bundle, score_context=score_context, row=rows[1],
+                        x0=second_x0, sample_context=second_sample_context, context_lens=context_lens,
+                    )
+                    grad1_send = grad1.contiguous()
+                    grad1_work = dist.isend(grad1_send, dst=peer)
+                evidence.transport_bytes += grad1.numel() * grad1.element_size()
             with _profile_range(
                 torch, run_kind=run_kind,
                 label=f"livewan/pipeline/score/step_{step}/critic_backward_wave_0",
@@ -1478,17 +1500,6 @@ def _run_pipeline_8x8(
                     x0=first_x0, sample_context=first_sample_context, context_lens=context_lens,
                     sample_weight=0.5,
                 )
-            if step == 0:
-                with _profile_range(
-                    torch, run_kind=run_kind,
-                    label="livewan/pipeline/score/step_0/dmd_wave_1",
-                ):
-                    grad1 = dmd_gradient_for_sample(
-                        torch, bundle=bundle, score_context=score_context, row=rows[1],
-                        x0=second_x0, sample_context=second_sample_context, context_lens=context_lens,
-                    )
-                    dist.send(grad1.contiguous(), dst=peer)
-                evidence.transport_bytes += grad1.numel() * grad1.element_size()
             with _profile_range(
                 torch, run_kind=run_kind,
                 label=f"livewan/pipeline/score/step_{step}/critic_backward_wave_1",
@@ -1498,6 +1509,16 @@ def _run_pipeline_8x8(
                     x0=second_x0, sample_context=second_sample_context, context_lens=context_lens,
                     sample_weight=0.5,
                 )
+            if grad1_work is not None:
+                with _profile_range(
+                    torch, run_kind=run_kind,
+                    label="livewan/pipeline/score/step_0/send_gradient_1_wait",
+                ):
+                    grad1_work.wait()
+                # Retain the contiguous send tensor until the asynchronous
+                # work is complete; deleting it earlier would make the
+                # transport lifetime implementation-dependent.
+                del grad1_send
             if run_kind == "correctness":
                 for row, loss in zip(rows, (loss0, loss1)):
                     evidence.loss_fingerprints.append(

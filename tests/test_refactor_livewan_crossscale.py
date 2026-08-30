@@ -172,6 +172,28 @@ def test_step0_p2p_posts_gradient_receive_before_second_wave_send() -> None:
     )
 
 
+def test_score_prioritizes_both_dmd_gradients_before_critic_backward() -> None:
+    """The second returned gradient must not sit behind Critic backward0."""
+    worker = (
+        ROOT / "src/distillschedule/runtime/livewan_crossscale_worker.py"
+    ).read_text()
+    score_path = worker.split("def _run_pipeline_8x8(", 1)[1].split(
+        "else:\n            bundle.critic_optimizer.zero_grad", 1
+    )[1]
+    dmd1 = score_path.index('label="livewan/pipeline/score/step_0/dmd_wave_1"')
+    async_send = score_path.index("grad1_work = dist.isend(grad1_send, dst=peer)")
+    critic0 = score_path.index(
+        'label=f"livewan/pipeline/score/step_{step}/critic_backward_wave_0"'
+    )
+    critic1 = score_path.index(
+        'label=f"livewan/pipeline/score/step_{step}/critic_backward_wave_1"'
+    )
+    send_wait = score_path.index(
+        'label="livewan/pipeline/score/step_0/send_gradient_1_wait"'
+    )
+    assert dmd1 < async_send < critic0 < critic1 < send_wait
+
+
 def test_trace_builder_requires_80_distinct_source_samples(tmp_path: Path) -> None:
     data = tmp_path / "latents"
     data.mkdir()
@@ -232,5 +254,9 @@ def test_launcher_fails_before_model_load_on_world16_and_p2p_drift() -> None:
     assert "range(2)" in probe
     assert probe.index("dist.recv(gradient, src=peer)") < probe.index(
         "works = (dist.isend(header, dst=peer), dist.isend(payload, dst=peer))"
+    )
+    assert "deferred_gradient_work = dist.isend(gradient, dst=peer)" in probe
+    assert probe.index("deferred_gradient_work = dist.isend") < probe.index(
+        "deferred_gradient_work.wait()"
     )
     assert '"observed_gradients"' in probe

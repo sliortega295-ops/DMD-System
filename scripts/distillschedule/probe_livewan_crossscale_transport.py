@@ -61,6 +61,7 @@ def main() -> int:
     observed: list[int] = []
     observed_gradients: list[int] = []
     retained: list[torch.Tensor] = []
+    deferred_gradient_work = None
     if rank < 8:
         for wave in range(2):
             header = torch.tensor([rank, peer, wave, rank + 100 * wave], device=device)
@@ -94,7 +95,17 @@ def main() -> int:
                 raise RuntimeError("P2P payload mismatch")
             observed.append(expected)
             gradient = torch.tensor([rank + 1000 + wave], dtype=torch.int64, device=device)
-            dist.send(gradient, dst=peer)
+            retained.append(gradient)
+            if wave == 0:
+                dist.send(gradient, dst=peer)
+            else:
+                # Match the production score-priority DAG: return gradient1
+                # asynchronously, then allow independent Critic work to run
+                # before waiting for the transport at the commit boundary.
+                deferred_gradient_work = dist.isend(gradient, dst=peer)
+
+    if deferred_gradient_work is not None:
+        deferred_gradient_work.wait()
 
     torch.cuda.synchronize(device)
     dist.barrier()
@@ -107,6 +118,7 @@ def main() -> int:
         "waves": 2,
         "subgroup_size": 8,
         "default_world_initialized_collectively": True,
+        "score_gradient_1_async": True,
         "observed": observed,
         "observed_gradients": observed_gradients,
     }
