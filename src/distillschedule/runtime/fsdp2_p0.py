@@ -64,6 +64,7 @@ class StaticFSDP2P0Policy:
     modulation_chunk_tokens: int = 512
     selective_flash_checkpoint_stride: int = 0
     generator_nograd_cross_kv_cache: bool = False
+    generator_nograd_static_context_cache: bool = False
     elide_explicit_rollout_sync: bool = False
 
     def __post_init__(self) -> None:
@@ -94,6 +95,13 @@ class StaticFSDP2P0Policy:
         if self.generator_nograd_cross_kv_cache and self.rollout_batch_size != 1:
             raise ValueError(
                 "Generator no-grad cross-attention KV reuse is restricted to B1"
+            )
+        if (
+            self.generator_nograd_static_context_cache
+            and self.rollout_batch_size != 1
+        ):
+            raise ValueError(
+                "Generator no-grad static-context reuse is restricted to B1"
             )
         if (
             self.exact_modulated_norm_materialization
@@ -144,6 +152,8 @@ class StaticFSDP2P0Policy:
             )
         if self.generator_nograd_cross_kv_cache:
             suffixes.append("crosskvcache")
+        if self.generator_nograd_static_context_cache:
+            suffixes.append("staticcontextcache")
         if self.elide_explicit_rollout_sync:
             suffixes.append("rolloutnosync")
         return "-".join((base, *suffixes))

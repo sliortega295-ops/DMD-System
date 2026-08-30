@@ -58,6 +58,11 @@ def main() -> int:
         default="off",
     )
     parser.add_argument(
+        "--generator-nograd-static-context-cache",
+        choices=("on", "off"),
+        default="off",
+    )
+    parser.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         required=True,
@@ -139,6 +144,9 @@ def main() -> int:
         "generator_nograd_cross_kv_cache": (
             args.generator_nograd_cross_kv_cache == "on"
         ),
+        "generator_nograd_static_context_cache": (
+            args.generator_nograd_static_context_cache == "on"
+        ),
         "generator_residual_storage": args.generator_residual_storage,
         "critic_residual_storage": args.critic_residual_storage,
         "generator_nograd_lora_fused_epilogue": (
@@ -194,6 +202,7 @@ def main() -> int:
     modulation_chunks: list[dict[str, Any] | None] = []
     checkpoint_policies: list[dict[str, Any] | None] = []
     cross_kv_caches: list[dict[str, Any] | None] = []
+    static_context_caches: list[dict[str, Any] | None] = []
 
     for rank, value in enumerate(ranks):
         if value.get("rank") != rank:
@@ -702,6 +711,44 @@ def main() -> int:
                         )
             elif cross_kv_cache.get("enabled"):
                 errors.append(f"{prefix} enabled outside requested policy")
+            static_context_cache = (
+                value.get("build", {})
+                .get("generator", {})
+                .get("generator_nograd_static_context_cache", {})
+            )
+            static_context_caches.append(static_context_cache)
+            context_prefix = f"rank{rank} Generator no-grad static-context cache"
+            if expected_policy["generator_nograd_static_context_cache"]:
+                if not static_context_cache.get("enabled"):
+                    errors.append(f"{context_prefix} was not enabled")
+                if static_context_cache.get("scope") != (
+                    "GENERATOR_NOGRAD_ONE_ROLLOUT_ONLY"
+                ):
+                    errors.append(f"{context_prefix} scope changed")
+                for key in (
+                    "changes_model_call_count",
+                    "changes_dit_attention_ffn_calls",
+                    "changes_fsdp_collectives",
+                    "cross_rollout_reuse",
+                ):
+                    if static_context_cache.get(key) is not False:
+                        errors.append(f"{context_prefix} {key} changed")
+                if static_context_cache.get("current_latent_patch_recomputed") is not True:
+                    errors.append(f"{context_prefix} cached current-latent work")
+                for key in (
+                    "grad_enabled_call_count",
+                    "source_encoder_identity_mismatch_count",
+                    "static_input_identity_mismatch_count",
+                    "cached_tensor_mutation_count",
+                    "unsupported_layout_count",
+                ):
+                    if int(static_context_cache.get(key, -1)) != 0:
+                        errors.append(
+                            f"{context_prefix} {key}="
+                            f"{static_context_cache.get(key)}"
+                        )
+            elif static_context_cache.get("enabled"):
+                errors.append(f"{context_prefix} enabled outside requested policy")
             if expected_policy["generator_nograd_lora_fused_epilogue"]:
                 epilogue = value.get("build", {}).get("generator", {}).get(
                     "generator_nograd_lora_fused_epilogue", {}
@@ -858,9 +905,79 @@ def main() -> int:
                     errors.append(
                         f"{install_prefix} cached no encoder K/V bytes"
                     )
+            if expected_policy["generator_nograd_static_context_cache"]:
+                expected_calls = 0
+                expected_reuses = 0
+                for batch_index, batch in enumerate(batches):
+                    cache = batch.get("static_context_cache", {})
+                    call_count = int(batch.get("call_count", 0))
+                    expected_calls += call_count
+                    expected_reuses += max(0, call_count - 1)
+                    cache_prefix = (
+                        f"rank{rank} rollout batch{batch_index} static context"
+                    )
+                    if cache.get("status") != "PASS":
+                        errors.append(
+                            f"{cache_prefix} status={cache.get('status')}"
+                        )
+                    if cache.get("source_identity_contract") != (
+                        "EXACT_STORAGE_POINTER_OFFSET_VERSION_DTYPE_SHAPE_"
+                        "STRIDE_DEVICE"
+                    ):
+                        errors.append(f"{cache_prefix} source identity drifted")
+                    expected_cache = {
+                        "expected_model_calls": call_count,
+                        "model_call_count": call_count,
+                        "process_call_count": call_count,
+                        "process_fill_count": 1,
+                        "process_reuse_count": max(0, call_count - 1),
+                        "text_projection_call_count": call_count,
+                        "text_fill_count": 1,
+                        "text_reuse_count": max(0, call_count - 1),
+                        "grad_enabled_call_count": 0,
+                        "source_encoder_identity_mismatch_count": 0,
+                        "static_input_identity_mismatch_count": 0,
+                        "cached_tensor_mutation_count": 0,
+                        "unsupported_layout_count": 0,
+                        "cache_entries_before_clear": 3,
+                        "cache_entries_after_clear": 0,
+                    }
+                    for key, expected in expected_cache.items():
+                        if cache.get(key) != expected:
+                            errors.append(
+                                f"{cache_prefix} {key}={cache.get(key)!r}, "
+                                f"expected={expected!r}"
+                            )
+                    if int(cache.get("cache_resident_bytes_before_clear", 0)) <= 0:
+                        errors.append(f"{cache_prefix} cached no static bytes")
+                expected_install = {
+                    "rollout_scope_count": expected_batches,
+                    "model_call_count": expected_calls,
+                    "process_call_count": expected_calls,
+                    "process_fill_count": expected_batches,
+                    "process_reuse_count": expected_reuses,
+                    "text_projection_call_count": expected_calls,
+                    "text_fill_count": expected_batches,
+                    "text_reuse_count": expected_reuses,
+                    "grad_enabled_call_count": 0,
+                    "source_encoder_identity_mismatch_count": 0,
+                    "static_input_identity_mismatch_count": 0,
+                    "cached_tensor_mutation_count": 0,
+                    "unsupported_layout_count": 0,
+                }
+                for key, expected in expected_install.items():
+                    if static_context_cache.get(key) != expected:
+                        errors.append(
+                            f"{context_prefix} {key}="
+                            f"{static_context_cache.get(key)!r}, "
+                            f"expected={expected!r}"
+                        )
+                if int(static_context_cache.get("cache_resident_bytes_sum", 0)) <= 0:
+                    errors.append(f"{context_prefix} cached no static bytes")
             if args.mode == "correctness" and (
                 args.rollout_batch_size > 1
                 or expected_policy["generator_nograd_cross_kv_cache"]
+                or expected_policy["generator_nograd_static_context_cache"]
             ):
                 for batch in batches:
                     parity = batch.get("batch_parity", {})
@@ -953,6 +1070,7 @@ def main() -> int:
         "rank_generator_nograd_residual_fusion": residual_fusions,
         "rank_exact_modulated_norm_epilogue": modulated_norm_fusions,
         "rank_generator_nograd_cross_kv_cache": cross_kv_caches,
+        "rank_generator_nograd_static_context_cache": static_context_caches,
         "rank_attention_backends": attention_backends,
         "rank_modulation_chunks": modulation_chunks,
         "rank_checkpoint_policies": checkpoint_policies,

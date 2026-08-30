@@ -83,6 +83,7 @@ def test_policy_and_mesh_contract() -> None:
     assert conservative.rollout_batch_size == 1
     assert conservative.pack_real_score_pair is False
     assert conservative.elide_explicit_rollout_sync is False
+    assert conservative.generator_nograd_static_context_cache is False
 
     policy = StaticFSDP2P0Policy(
         mesh_policy="node-hsdp", rollout_batch_size=5, pack_real_score_pair=True
@@ -153,6 +154,15 @@ def test_policy_and_mesh_contract() -> None:
         )
     no_sync = StaticFSDP2P0Policy(elide_explicit_rollout_sync=True)
     assert no_sync.id.endswith("rolloutnosync")
+    static_context = StaticFSDP2P0Policy(
+        generator_nograd_static_context_cache=True
+    )
+    assert static_context.id.endswith("staticcontextcache")
+    with pytest.raises(ValueError, match="static-context"):
+        StaticFSDP2P0Policy(
+            rollout_batch_size=2,
+            generator_nograd_static_context_cache=True,
+        )
 
 
 def test_selective_flash_checkpoint_flag_is_end_to_end_and_fail_closed() -> None:
