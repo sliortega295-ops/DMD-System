@@ -877,3 +877,24 @@
 - **Decision:** **GO_CAPACITY_FIRST for C23**. Any CUDA/cgroup OOM, missing
   reshard receipt, or inventory drift rejects no-flush mode and returns to
   C21. Timing is allowed only after correctness/capacity passes.
+
+## C23 result and C24 allocator-fragmentation GO decision
+
+- C23 exact HEAD `fce8bcf011171c2e3a337ab8929d62d4e313f061` passes
+  119 focused tests, validate-only and a 16/16 correctness/capacity run. The
+  correctness receipt has G201/C1005/EMA801, zero pre/post cache flushes,
+  41/0 unsharded-unit lifecycle and 41 explicit reshards.
+- The separate formal timing attempt is not capacity-safe. Ranks 3, 4, 11 and
+  12 fail a 292-MiB allocation with about 36.43 GiB allocated, 1.91 GiB
+  reserved-but-unallocated, and only 196--202 MiB driver-free. It is retained
+  as `iter378_gan_cuda_c23_persist_noflush_timing_r1_20260830`; no partial
+  latency is claimable.
+- **Matching prior substrate:** the repository's earlier GAN launcher and
+  Route-A plans already use PyTorch `expandable_segments:True`; this is not a
+  new allocator implementation or a workload change.
+- **New falsifiable question:** can process-start expandable CUDA segments
+  make the exact C23 cache layout service the 292-MiB LoRA allocation while
+  preserving every C21/C23 receipt and avoiding OOM?
+- **Decision:** **GO for one bounded C24 recovery**. Validate-only and a fresh
+  matched correctness run are required before timing. A repeated OOM closes
+  the no-flush path and returns to C21; no further allocator patch escalation.

@@ -351,3 +351,10 @@
     `2.1232 s`. C23 may only elide these two cache releases while preserving
     the 41 explicit reshard operations and all model/collective semantics.
     Run correctness/capacity before one formal timing; OOM rejects C23.
+63. C23 passes validate and correctness, but its formal timing attempt OOMs on
+    four ranks while requesting 292 MiB with 1.91 GiB reserved-but-unallocated.
+    Reject the measured candidate; C21 remains authoritative. Permit one
+    bounded C24 recovery using PyTorch `expandable_segments:True`, because the
+    failure is specifically allocator fragmentation and the repository already
+    uses this source-supported setting on earlier GAN paths. If C24 repeats
+    OOM, close no-flush rather than escalating allocator patches.
