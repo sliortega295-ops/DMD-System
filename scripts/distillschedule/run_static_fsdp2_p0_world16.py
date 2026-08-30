@@ -131,6 +131,11 @@ def parser() -> argparse.ArgumentParser:
         default="off",
     )
     value.add_argument(
+        "--generator-nograd-persistent-unshard-flush-allocator-cache",
+        choices=("on", "off"),
+        default="on",
+    )
+    value.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         default="cuda_out_of_place",
@@ -337,6 +342,10 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.generator_nograd_static_context_cache),
         "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_PERSISTENT_UNSHARD="
         + shlex.quote(args.generator_nograd_persistent_unshard),
+        "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_PERSISTENT_UNSHARD_FLUSH_ALLOCATOR_CACHE="
+        + shlex.quote(
+            args.generator_nograd_persistent_unshard_flush_allocator_cache
+        ),
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
@@ -477,6 +486,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.generator_nograd_static_context_cache)} "
         + "--generator-nograd-persistent-unshard "
         + f"{shlex.quote(args.generator_nograd_persistent_unshard)} "
+        + "--generator-nograd-persistent-unshard-flush-allocator-cache "
+        + f"{shlex.quote(args.generator_nograd_persistent_unshard_flush_allocator_cache)} "
         + ("--diagnostic-timing " if args.allow_numerical_parity_failure else "")
         + (
             f"--critic-only-step {args.critic_only_step} "
@@ -617,6 +628,13 @@ def main() -> int:
     ):
         raise ValueError(
             "Generator no-grad persistent unshard requires GAN world16 FSDP2 B1"
+        )
+    if (
+        args.generator_nograd_persistent_unshard_flush_allocator_cache == "off"
+        and args.generator_nograd_persistent_unshard != "on"
+    ):
+        raise ValueError(
+            "disabling the persistent-unshard allocator flush requires persistent unshard"
         )
     if args.critic_only_step is not None and (
         args.variant != "no-gan" or args.mode != "profile"

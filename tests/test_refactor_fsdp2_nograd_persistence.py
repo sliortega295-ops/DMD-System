@@ -51,6 +51,10 @@ def _tree() -> _FakeFSDP:
 
 def test_policy_is_opt_in_and_restricted_to_world16_b1() -> None:
     assert StaticFSDP2P0Policy().generator_nograd_persistent_unshard is False
+    assert (
+        StaticFSDP2P0Policy().generator_nograd_persistent_unshard_flush_allocator_cache
+        is True
+    )
     policy = StaticFSDP2P0Policy(generator_nograd_persistent_unshard=True)
     assert policy.id.endswith("generatorpersistunshard")
     with pytest.raises(ValueError, match="world16 FSDP2 B1"):
@@ -61,6 +65,15 @@ def test_policy_is_opt_in_and_restricted_to_world16_b1() -> None:
         StaticFSDP2P0Policy(
             mesh_policy="node-hsdp", generator_nograd_persistent_unshard=True
         )
+    with pytest.raises(ValueError, match="requires persistent unshard"):
+        StaticFSDP2P0Policy(
+            generator_nograd_persistent_unshard_flush_allocator_cache=False
+        )
+    no_flush = StaticFSDP2P0Policy(
+        generator_nograd_persistent_unshard=True,
+        generator_nograd_persistent_unshard_flush_allocator_cache=False,
+    )
+    assert no_flush.id.endswith("generatorpersistunshard-generatorpersistnoflush")
 
 
 def test_scope_retains_then_restores_all_41_fsdp_groups() -> None:
@@ -93,6 +106,34 @@ def test_scope_retains_then_restores_all_41_fsdp_groups() -> None:
     assert all(value.reshard_count == 1 for value in modules)
 
 
+def test_scope_can_preserve_allocator_cache_without_changing_reshard_lifecycle() -> None:
+    root = _tree()
+    empty_cache_calls: list[int] = []
+    snapshots = iter(
+        {"allocated_bytes": i, "reserved_bytes": i} for i in range(4)
+    )
+    with generator_nograd_persistent_unshard_scope(
+        root,
+        enabled=True,
+        flush_allocator_cache=False,
+        module_type=_FakeFSDP,
+        empty_cache=lambda: empty_cache_calls.append(1),
+        memory_snapshot=lambda: next(snapshots),
+    ) as receipt:
+        for value in root.modules():
+            value.state._fsdp_param_group.is_unsharded = True
+        receipt["rollout_batch_count"] = 5
+
+    assert empty_cache_calls == []
+    assert receipt["flush_allocator_cache"] is False
+    assert receipt["pre_empty_cache_count"] == 0
+    assert receipt["post_empty_cache_count"] == 0
+    assert receipt["fully_unsharded_before_exit_count"] == 41
+    assert receipt["unsharded_after_exit_count"] == 0
+    assert receipt["restored"] is True
+    assert all(value.reshard_count == 1 for value in root.modules())
+
+
 def test_scope_fails_closed_if_a_forward_did_not_materialize_every_group() -> None:
     root = _tree()
     with pytest.raises(AssertionError, match="did not materialize every FSDP unit"):
@@ -122,6 +163,8 @@ def test_persistent_unshard_flag_is_wired_end_to_end() -> None:
         source = path.read_text()
         assert "generator-nograd-persistent-unshard" in source
         assert "generator_nograd_persistent_unshard" in source
+        assert "generator-nograd-persistent-unshard-flush-allocator-cache" in source
+        assert "generator_nograd_persistent_unshard_flush_allocator_cache" in source
     launcher = paths[2].read_text()
     assert "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_PERSISTENT_UNSHARD" in launcher
     summarizer = paths[3].read_text()

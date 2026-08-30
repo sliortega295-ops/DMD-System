@@ -71,6 +71,7 @@ class StaticFSDP2P0Policy:
     elide_critic_scalar_logs: bool = False
     elide_official_generator_free_memory: bool = False
     generator_nograd_persistent_unshard: bool = False
+    generator_nograd_persistent_unshard_flush_allocator_cache: bool = True
 
     def __post_init__(self) -> None:
         if self.mesh_policy not in SUPPORTED_MESH_POLICIES:
@@ -113,6 +114,14 @@ class StaticFSDP2P0Policy:
         ):
             raise ValueError(
                 "Generator no-grad persistent unshard requires world16 FSDP2 B1"
+            )
+        if (
+            not self.generator_nograd_persistent_unshard_flush_allocator_cache
+            and not self.generator_nograd_persistent_unshard
+        ):
+            raise ValueError(
+                "Generator persistent-unshard allocator flush policy requires "
+                "persistent unshard"
             )
         if (
             self.exact_modulated_norm_materialization
@@ -196,6 +205,8 @@ class StaticFSDP2P0Policy:
             suffixes.append("generatornofreememory")
         if self.generator_nograd_persistent_unshard:
             suffixes.append("generatorpersistunshard")
+            if not self.generator_nograd_persistent_unshard_flush_allocator_cache:
+                suffixes.append("generatorpersistnoflush")
         return "-".join((base, *suffixes))
 
 

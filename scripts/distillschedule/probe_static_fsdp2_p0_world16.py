@@ -592,6 +592,9 @@ def _precompute_critic_rollouts(
     with generator_nograd_persistent_unshard_scope(
         generator_engine.module,
         enabled=policy.generator_nograd_persistent_unshard,
+        flush_allocator_cache=(
+            policy.generator_nograd_persistent_unshard_flush_allocator_cache
+        ),
     ) as persistence:
         persistence["rollout_memory"] = []
         for batch_index, step_group in enumerate(
@@ -980,6 +983,15 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--generator-nograd-persistent-unshard-flush-allocator-cache",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Flush the CUDA allocator cache immediately before and after the "
+            "bounded Generator persistent-unshard scope"
+        ),
+    )
+    value.add_argument(
         "--elide-explicit-rollout-sync",
         action=argparse.BooleanOptionalAction,
         default=False,
@@ -1149,6 +1161,9 @@ def main() -> int:
         generator_nograd_persistent_unshard=bool(
             args.generator_nograd_persistent_unshard
         ),
+        generator_nograd_persistent_unshard_flush_allocator_cache=bool(
+            args.generator_nograd_persistent_unshard_flush_allocator_cache
+        ),
         elide_explicit_rollout_sync=bool(args.elide_explicit_rollout_sync),
         elide_critic_scalar_logs=bool(args.elide_critic_scalar_logs),
         elide_official_generator_free_memory=bool(
@@ -1194,6 +1209,9 @@ def main() -> int:
             ),
             "generator_nograd_persistent_unshard": (
                 policy.generator_nograd_persistent_unshard
+            ),
+            "generator_nograd_persistent_unshard_flush_allocator_cache": (
+                policy.generator_nograd_persistent_unshard_flush_allocator_cache
             ),
             "generator_residual_storage": args.generator_residual_storage,
             "critic_residual_storage": args.critic_residual_storage,

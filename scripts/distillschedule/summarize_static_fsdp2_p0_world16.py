@@ -68,6 +68,11 @@ def main() -> int:
         default="off",
     )
     parser.add_argument(
+        "--generator-nograd-persistent-unshard-flush-allocator-cache",
+        choices=("on", "off"),
+        default="on",
+    )
+    parser.add_argument(
         "--generator-residual-storage",
         choices=("cpu_inplace", "cuda_out_of_place"),
         required=True,
@@ -174,6 +179,9 @@ def main() -> int:
         ),
         "generator_nograd_persistent_unshard": (
             args.generator_nograd_persistent_unshard == "on"
+        ),
+        "generator_nograd_persistent_unshard_flush_allocator_cache": (
+            args.generator_nograd_persistent_unshard_flush_allocator_cache == "on"
         ),
         "generator_residual_storage": args.generator_residual_storage,
         "critic_residual_storage": args.critic_residual_storage,
@@ -369,13 +377,24 @@ def main() -> int:
             if expected_policy["generator_nograd_persistent_unshard"]:
                 expected_persistence = {
                     "enabled": True,
+                    "flush_allocator_cache": expected_policy[
+                        "generator_nograd_persistent_unshard_flush_allocator_cache"
+                    ],
                     "scope": "GENERATOR_NOGRAD_ROLLOUTS_ONLY",
                     "expected_fsdp_module_count": 41,
                     "fsdp_module_count": 41,
                     "parameter_group_count": 41,
                     "rollout_batch_count": expected_logical_rollouts,
-                    "pre_empty_cache_count": 1,
-                    "post_empty_cache_count": 1,
+                    "pre_empty_cache_count": int(
+                        expected_policy[
+                            "generator_nograd_persistent_unshard_flush_allocator_cache"
+                        ]
+                    ),
+                    "post_empty_cache_count": int(
+                        expected_policy[
+                            "generator_nograd_persistent_unshard_flush_allocator_cache"
+                        ]
+                    ),
                     "set_no_reshard_count": 41,
                     "restore_reshard_policy_count": 41,
                     "explicit_reshard_count": 41,

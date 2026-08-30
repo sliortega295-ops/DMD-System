@@ -44,6 +44,7 @@ def generator_nograd_persistent_unshard_scope(
     module: Any,
     *,
     enabled: bool,
+    flush_allocator_cache: bool = True,
     module_type: type[Any] | tuple[type[Any], ...] | None = None,
     empty_cache: Callable[[], None] | None = None,
     memory_snapshot: Callable[[], dict[str, int]] | None = None,
@@ -58,6 +59,7 @@ def generator_nograd_persistent_unshard_scope(
     if not enabled:
         yield {
             "enabled": False,
+            "flush_allocator_cache": bool(flush_allocator_cache),
             "scope": "GENERATOR_NOGRAD_ROLLOUTS_ONLY",
             "expected_fsdp_module_count": EXPECTED_HELIOS_FSDP_MODULES,
             "rollout_batch_count": 0,
@@ -69,7 +71,7 @@ def generator_nograd_persistent_unshard_scope(
         from torch.distributed.fsdp import FSDPModule
 
         module_type = FSDPModule
-    if empty_cache is None:
+    if flush_allocator_cache and empty_cache is None:
         import torch
 
         empty_cache = torch.cuda.empty_cache
@@ -93,6 +95,7 @@ def generator_nograd_persistent_unshard_scope(
 
     receipt: dict[str, Any] = {
         "enabled": True,
+        "flush_allocator_cache": bool(flush_allocator_cache),
         "scope": "GENERATOR_NOGRAD_ROLLOUTS_ONLY",
         "expected_fsdp_module_count": EXPECTED_HELIOS_FSDP_MODULES,
         "fsdp_module_count": len(modules),
@@ -112,8 +115,10 @@ def generator_nograd_persistent_unshard_scope(
         "memory_after_restore": None,
     }
 
-    empty_cache()
-    receipt["pre_empty_cache_count"] = 1
+    if flush_allocator_cache:
+        assert empty_cache is not None
+        empty_cache()
+        receipt["pre_empty_cache_count"] = 1
     receipt["memory_after_pre_empty_cache"] = snapshot()
     for value in modules:
         value.set_reshard_after_forward(False, recurse=False)
@@ -136,8 +141,10 @@ def generator_nograd_persistent_unshard_scope(
             value.reshard()
             receipt["explicit_reshard_count"] += 1
 
-        empty_cache()
-        receipt["post_empty_cache_count"] = 1
+        if flush_allocator_cache:
+            assert empty_cache is not None
+            empty_cache()
+            receipt["post_empty_cache_count"] = 1
         receipt["unsharded_after_exit_count"] = _count_unsharded(modules)
         receipt["memory_after_restore"] = snapshot()
         receipt["restored"] = receipt["unsharded_after_exit_count"] == 0
