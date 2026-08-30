@@ -350,7 +350,14 @@ def materialize_adam_state(torch: Any, optimizer: Any, *, step: int = 0) -> dict
     for group in optimizer.param_groups:
         for parameter in group["params"]:
             state = optimizer.state[parameter]
-            state["step"] = torch.tensor(float(step), dtype=torch.float32, device="cpu")
+            # Fused AdamW requires its scalar step on the same device as the
+            # CUDA parameters.  The reference foreach implementation keeps the
+            # scalar on CPU.  This only materializes the same initial state in
+            # the representation required by each PyTorch kernel.
+            step_device = parameter.device if group.get("fused") else "cpu"
+            state["step"] = torch.tensor(
+                float(step), dtype=torch.float32, device=step_device
+            )
             state["exp_avg"] = torch.zeros_like(parameter, dtype=torch.float32)
             state["exp_avg_sq"] = torch.zeros_like(parameter, dtype=torch.float32)
             local = parameter.to_local() if hasattr(parameter, "to_local") else parameter
@@ -527,14 +534,26 @@ def build_models(
         else:
             student.to(device)
         student.train()
+        generator_options = dict(
+            plan["training_backends"]["generator"].get("options", {})
+        )
+        optimizer_impl = str(generator_options.get("optimizer_impl", "foreach_adamw"))
+        _require(
+            optimizer_impl in {"foreach_adamw", "fused_adamw"},
+            "unknown Generator optimizer implementation",
+        )
+        optimizer_kwargs = (
+            {"fused": True} if optimizer_impl == "fused_adamw" else {"foreach": True}
+        )
         opt_g = torch.optim.AdamW(
             list(student.parameters()), lr=2e-6, betas=(0.0, 0.99),
-            weight_decay=0.0, eps=1e-8, foreach=True,
+            weight_decay=0.0, eps=1e-8, **optimizer_kwargs,
         )
         metadata["student"] = {
             "placement": "world16_fsdp2_keep_unsharded" if mode == "baseline" else "gpu_resident_replica",
             "state": state_receipt,
             "fsdp_group_count": fsdp_groups,
+            "optimizer_impl": optimizer_impl,
             "optimizer": materialize_adam_state(torch, opt_g, step=int(bootstrap.value["optimizer"]["generator_step"])),
         }
         gc.collect()

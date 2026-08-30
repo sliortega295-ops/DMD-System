@@ -1,0 +1,15 @@
+{
+  "include": ["livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score_node_local.json"],
+  "id": "livewan-wan13b-14b-sfdmd-g1c5-world16-pipeline6g10score-node-local-fused",
+  "training_backends": {
+    "generator": {
+      "options": {
+        "optimizer_impl": "fused_adamw"
+      }
+    }
+  },
+  "metadata": {
+    "generator_optimizer_impl": "fused_adamw",
+    "capacity_recovery": "eliminate_foreach_adam_out_of_place_sqrt_temporary"
+  }
+}

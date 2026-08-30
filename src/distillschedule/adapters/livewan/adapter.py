@@ -151,8 +151,23 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
             if plan.training_backends["teacher"].kind != TrainingBackendKind.FSDP:
                 self._fail("pipeline Teacher must use its score-pool FSDP2 mesh", "training_backends.teacher.kind")
             if pool_policy == "persistent_6g_10score_teacher_node_local_hierarchical":
+                generator_options = dict(plan.training_backends["generator"].options)
                 teacher_options = dict(plan.training_backends["teacher"].options)
                 score_options = dict(plan.training_backends["score"].options)
+                optimizer_impl = generator_options.get(
+                    "optimizer_impl", "foreach_adamw"
+                )
+                if optimizer_impl not in {"foreach_adamw", "fused_adamw"}:
+                    self._fail(
+                        "node-local candidate has an unknown Generator optimizer implementation",
+                        "training_backends.generator.options.optimizer_impl",
+                    )
+                metadata_impl = plan.metadata.get("generator_optimizer_impl")
+                if metadata_impl is not None and metadata_impl != optimizer_impl:
+                    self._fail(
+                        "Generator optimizer metadata differs from its runtime option",
+                        "metadata.generator_optimizer_impl",
+                    )
                 if teacher_options.get("mesh_ranks_by_node") != [
                     list(ranks) for ranks in PIPELINE_6G10S_SCORE_NODE_GROUPS
                 ]:

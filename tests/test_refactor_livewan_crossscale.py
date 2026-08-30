@@ -37,6 +37,7 @@ PIPELINE = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_
 PIPELINE_SCORE_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
 PIPELINE_6G10S = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json"
 PIPELINE_6G10S_NODE_LOCAL = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score_node_local.json"
+PIPELINE_6G10S_NODE_LOCAL_FUSED = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score_node_local_fused.json"
 
 
 @pytest.fixture(autouse=True)
@@ -117,6 +118,21 @@ def test_6g10score_node_local_plan_changes_only_collective_substrate() -> None:
     ]
     assert candidate.training_backends["score"].options["leader_ranks"] == list(
         PIPELINE_6G10S_SCORE_LEADERS
+    )
+
+
+def test_6g10score_node_local_fused_changes_only_generator_adam_kernel() -> None:
+    reference = load_plan(PIPELINE_6G10S_NODE_LOCAL).plan
+    candidate = load_plan(PIPELINE_6G10S_NODE_LOCAL_FUSED).plan
+    LiveWanSFDMDAdapter().validate(candidate)
+    assert reference.workload.to_dict() == candidate.workload.to_dict()
+    assert reference.hardware.to_dict() == candidate.hardware.to_dict()
+    assert reference.rank_groups == candidate.rank_groups
+    assert candidate.metadata["pool_policy"] == reference.metadata["pool_policy"]
+    assert candidate.metadata["generator_optimizer_impl"] == "fused_adamw"
+    assert (
+        candidate.training_backends["generator"].options["optimizer_impl"]
+        == "fused_adamw"
     )
 
 
@@ -321,7 +337,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert 'args.remote_output_root / args.run_id' in controller
     assert 'args.remote_root / "artifacts/runs"' not in controller
     assert (
-        'choices=("b1", "score-b2", "6g10score", "6g10score-node-local")'
+        '"6g10score-node-local-fused",'
         in controller
     )
     assert '"LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant' in controller
@@ -469,7 +485,7 @@ def test_launcher_fails_before_model_load_on_world16_and_p2p_drift() -> None:
         "deferred_gradient_work.wait()"
     )
     assert '"observed_gradients"' in probe
-    assert 'choices=("b1", "score-b2", "6g10score", "6g10score-node-local")' in probe
+    assert '"6g10score-node-local-fused",' in probe
     assert "node-local Teacher all-gather payload mismatch" in probe
     assert "hierarchical Score mean mismatch" in probe
     assert "dist.batch_isend_irecv" in probe

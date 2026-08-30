@@ -39,7 +39,10 @@ def main() -> int:
     parser.add_argument("--timeout-seconds", type=int, default=180)
     parser.add_argument(
         "--pipeline-variant",
-        choices=("b1", "score-b2", "6g10score", "6g10score-node-local"),
+        choices=(
+            "b1", "score-b2", "6g10score", "6g10score-node-local",
+            "6g10score-node-local-fused",
+        ),
         default="b1",
     )
     args = parser.parse_args()
@@ -56,14 +59,19 @@ def main() -> int:
     dist.init_process_group("nccl", timeout=timedelta(seconds=args.timeout_seconds))
     generator_ranks, score_ranks = (
         (GENERATOR_RANKS_6G10S, SCORE_RANKS_6G10S)
-        if args.pipeline_variant in {"6g10score", "6g10score-node-local"}
+        if args.pipeline_variant in {
+            "6g10score", "6g10score-node-local", "6g10score-node-local-fused"
+        }
         else (GENERATOR_RANKS, SCORE_RANKS)
     )
     generator_group = dist.new_group(ranks=list(generator_ranks), backend="nccl")
     score_group = dist.new_group(ranks=list(score_ranks), backend="nccl")
     score_node_groups = []
     score_leader_group = None
-    if args.pipeline_variant == "6g10score-node-local":
+    node_local_variant = args.pipeline_variant in {
+        "6g10score-node-local", "6g10score-node-local-fused"
+    }
+    if node_local_variant:
         score_node_groups = [
             dist.new_group(ranks=list(ranks), backend="nccl")
             for ranks in SCORE_NODE_GROUPS_6G10S
@@ -84,7 +92,7 @@ def main() -> int:
         raise RuntimeError("role subgroup all-reduce mismatch")
 
     node_local_collective = None
-    if args.pipeline_variant == "6g10score-node-local" and rank in score_ranks:
+    if node_local_variant and rank in score_ranks:
         group_index = next(
             index for index, ranks in enumerate(SCORE_NODE_GROUPS_6G10S) if rank in ranks
         )
@@ -133,7 +141,9 @@ def main() -> int:
             "large_score10_collective": False,
         }
 
-    if args.pipeline_variant in {"6g10score", "6g10score-node-local"}:
+    if args.pipeline_variant in {
+        "6g10score", "6g10score-node-local", "6g10score-node-local-fused"
+    }:
         generator_by_slot = {
             slot: generator_ranks[slot % len(generator_ranks)] for slot in range(WORLD_SIZE)
         }
