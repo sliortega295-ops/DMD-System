@@ -314,9 +314,9 @@ _original_precompute = impl._precompute_critic_rollouts
 
 
 def _hardened_precompute(*args: Any, **kwargs: Any):
-    outputs, records = _original_precompute(*args, **kwargs)
+    outputs, records, persistence = _original_precompute(*args, **kwargs)
     _enforce_rollout_records(records)
-    return outputs, records
+    return outputs, records, persistence
 
 
 impl._precompute_critic_rollouts = _hardened_precompute

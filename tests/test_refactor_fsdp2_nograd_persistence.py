@@ -126,3 +126,9 @@ def test_persistent_unshard_flag_is_wired_end_to_end() -> None:
     assert "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_PERSISTENT_UNSHARD" in launcher
     summarizer = paths[3].read_text()
     assert "rank_generator_nograd_persistent_unshard" in summarizer
+    hardened = (
+        root
+        / "scripts/distillschedule/probe_static_fsdp2_p0_world16_hardened.py"
+    ).read_text()
+    assert "outputs, records, persistence = _original_precompute" in hardened
+    assert "return outputs, records, persistence" in hardened
