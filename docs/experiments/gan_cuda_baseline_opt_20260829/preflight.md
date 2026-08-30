@@ -827,3 +827,26 @@
 - **Decision:** **GO for C21 capacity/correctness first**.  Full persistence is
   one bounded candidate.  OOM, a non-restored module, or any inventory drift
   rejects it; there is no automatic partial-block fallback in this iteration.
+
+## C21 result and C22 diagnostic-only GO decision
+
+- C21 passes validate-only and the second correctness run at exact HEAD
+  `9b528b356b9351fe18e1e1247c2bd786bdc4a5ef`. The first correctness run is
+  retained as an integration-only failure caused by a stale two-value hardened
+  wrapper; its bounded receipt-propagation fix changed no workload operation.
+- All 16 ranks report 41 fully materialized Generator FSDP units during the
+  five no-grad rollouts, zero after explicit reshard, G201/C1005/EMA801 and
+  zero CUDA/cgroup OOM.
+- Formal unprofiled C21 is `125.814004444 s`, improving C18 by
+  `3.627375023 s` (`2.8023%`) and C0 by `47.200478560 s` (`27.2812%`,
+  `1.37516x`). The registered 30%-reduction target remains
+  `4.703866341 s` away.
+- Peak rollout receipt memory is about `37.006 GiB` allocated and
+  `38.594 GiB` reserved, so no broader persistence experiment is authorized
+  without a new capacity proof.
+- **New falsifiable question:** after removing repeated Generator-rollout
+  materialization, which exact Score, Critic, allocator/host or compute phase
+  owns a source-qualified removable budget of at least 4.70 seconds?
+- **Decision:** **GO_DIAGNOSTIC_ONLY for one exact C21 Nsight capture**. Keep
+  the C21 formal denominator frozen; select no next optimization until the new
+  phase attribution exists.
