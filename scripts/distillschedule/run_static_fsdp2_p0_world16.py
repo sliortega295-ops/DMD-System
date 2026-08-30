@@ -166,6 +166,11 @@ def parser() -> argparse.ArgumentParser:
         default="off",
     )
     value.add_argument(
+        "--exact-modulated-norm-backward",
+        choices=("on", "off"),
+        default="off",
+    )
+    value.add_argument(
         "--remote-root",
         type=Path,
         default=Path(
@@ -273,6 +278,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.exact_modulated_norm_epilogue),
         "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_MATERIALIZATION="
         + shlex.quote(args.exact_modulated_norm_materialization),
+        "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_BACKWARD="
+        + shlex.quote(args.exact_modulated_norm_backward),
         "DISTILLSCHEDULE_HELIOS_ATTENTION_BACKEND="
         + shlex.quote(args.attention_backend),
         "DISTILLSCHEDULE_HELIOS_MODULATION_CHUNK_TOKENS="
@@ -401,6 +408,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.exact_modulated_norm_epilogue)} "
         + "--exact-modulated-norm-materialization "
         + f"{shlex.quote(args.exact_modulated_norm_materialization)} "
+        + "--exact-modulated-norm-backward "
+        + f"{shlex.quote(args.exact_modulated_norm_backward)} "
         + "--selective-flash-checkpoint-stride "
         + f"{args.selective_flash_checkpoint_stride} "
         + "--generator-nograd-cross-kv-cache "
@@ -495,6 +504,13 @@ def main() -> int:
     ):
         raise ValueError(
             "Exact modulation materialization requires the exact epilogue"
+        )
+    if (
+        args.exact_modulated_norm_backward == "on"
+        and args.exact_modulated_norm_epilogue != "on"
+    ):
+        raise ValueError(
+            "Exact modulated-norm backward requires the exact epilogue"
         )
     if (
         args.selective_flash_checkpoint_stride

@@ -10,6 +10,7 @@ import torch
 from distillschedule.runtime.helios_modulated_norm_fusion import (
     install_exact_modulated_norm_epilogue,
 )
+from distillschedule.runtime.p0_parity import tensor_parity_metrics
 
 
 def _materialize(table, temb, index, start=None, end=None):
@@ -236,6 +237,54 @@ def test_table_component_materialization_is_exact(batch_size: int) -> None:
     )
 
 
+def test_explicit_backward_matches_source_under_frozen_p0_gate() -> None:
+    torch.manual_seed(47)
+    module = _module()
+    function = module._TembAwareChunkedNorm
+    norm_reference = torch.nn.LayerNorm(8, elementwise_affine=False)
+    norm_candidate = copy.deepcopy(norm_reference)
+    table = torch.randn(1, 6, 8, dtype=torch.float32)
+    hidden_reference = torch.randn(1, 7, 8, dtype=torch.bfloat16).requires_grad_()
+    hidden_candidate = hidden_reference.detach().clone().requires_grad_()
+    temb_reference = torch.randn(1, 6, 8, dtype=torch.bfloat16).requires_grad_()
+    temb_candidate = temb_reference.detach().clone().requires_grad_()
+    upstream = torch.randn_like(hidden_reference)
+
+    expected = _run(
+        function, hidden_reference, norm_reference, table, temb_reference
+    )
+    expected.backward(upstream)
+    source_backward = function.backward
+
+    def fused_epilogue(normalized, scale, shift, output):
+        output.copy_((normalized * (1 + scale) + shift).to(output.dtype))
+        return output
+
+    receipt = install_exact_modulated_norm_epilogue(
+        enabled=True,
+        role="generator",
+        fuse_backward=True,
+        transformer_module=module,
+        fused_epilogue=fused_epilogue,
+    )
+    actual = _run(function, hidden_candidate, norm_candidate, table, temb_candidate)
+    actual.backward(upstream)
+
+    assert torch.equal(expected, actual)
+    assert tensor_parity_metrics(
+        hidden_reference.grad, hidden_candidate.grad
+    )["status"] == "PASS"
+    assert tensor_parity_metrics(
+        temb_reference.grad, temb_candidate.grad
+    )["status"] == "PASS"
+    assert function.backward is not source_backward
+    assert receipt["backward_requested"] is True
+    assert receipt["backward_call_count"] == 1
+    assert receipt["backward_chunk_count"] == 3
+    assert receipt["backward_layout_counts"] == {"tensor_3d": 3, "tensor": 3}
+    assert receipt["backward_hidden_element_count"] == hidden_candidate.numel()
+
+
 def test_launcher_controller_and_summarizer_are_fail_closed() -> None:
     root = Path(__file__).resolve().parents[1]
     launcher = (
@@ -249,10 +298,13 @@ def test_launcher_controller_and_summarizer_are_fail_closed() -> None:
     ).read_text()
     for source in (launcher, controller, summarizer):
         assert "exact_modulated_norm_epilogue" in source
+        assert "exact_modulated_norm_backward" in source
     assert "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_EPILOGUE" in launcher
     assert "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_MATERIALIZATION" in launcher
+    assert "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_BACKWARD" in launcher
     assert "rank_exact_modulated_norm_epilogue" in summarizer
     assert "materialization_fused_chunk_count" in summarizer
+    assert "backward_chunk_count" in summarizer
     assert "reference_fallback_count" in summarizer
 
 

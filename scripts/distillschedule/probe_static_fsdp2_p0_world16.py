@@ -231,6 +231,7 @@ def _build_static_model(
             fuse_materialization=bool(
                 args.exact_modulated_norm_materialization
             ),
+            fuse_backward=bool(args.exact_modulated_norm_backward),
         )
         if role == "generator"
         else {
@@ -857,6 +858,15 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--exact-modulated-norm-backward",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Replace per-chunk autograd graph reconstruction with the exact "
+            "native LayerNorm backward and explicit timestep-component gradients"
+        ),
+    )
+    value.add_argument(
         "--selective-flash-checkpoint-stride",
         type=int,
         choices=(0, 2, 4, 10),
@@ -936,6 +946,10 @@ def main() -> int:
         raise ValueError(
             "Exact modulation materialization requires the exact epilogue"
         )
+    if args.exact_modulated_norm_backward and not args.exact_modulated_norm_epilogue:
+        raise ValueError(
+            "Exact modulated-norm backward requires the exact epilogue"
+        )
     if (
         args.selective_flash_checkpoint_stride
         and args.attention_backend != "local-fa2"
@@ -965,6 +979,7 @@ def main() -> int:
         exact_modulated_norm_materialization=bool(
             args.exact_modulated_norm_materialization
         ),
+        exact_modulated_norm_backward=bool(args.exact_modulated_norm_backward),
         modulation_chunk_tokens=int(args.modulation_chunk_tokens),
         selective_flash_checkpoint_stride=int(
             args.selective_flash_checkpoint_stride
@@ -1026,6 +1041,7 @@ def main() -> int:
             "exact_modulated_norm_materialization": (
                 policy.exact_modulated_norm_materialization
             ),
+            "exact_modulated_norm_backward": policy.exact_modulated_norm_backward,
         },
     }
     try:

@@ -277,3 +277,81 @@ not semantically available in this workload.  Enabling restricted attention
 would change model math, and enabling the wrapper on zero blocks would provide
 zero reuse.  C9 formal timing is `NOT_RUN`; C8 remains the fastest valid arm at
 `141.235767135 s`.
+
+## C10 selected hypothesis
+
+The valid C5 Nsight profile contains `439,436` BF16 add-kernel launches on
+node0.  The C8 correctness receipts independently count `26,870` enabled
+scale-1 LoRA epilogues per rank (`21,962` Generator plus `4,908` Critic), or
+`214,960` across the eight node0 ranks.  Thus about half of that launch family
+has a direct source-level owner: the source-pinned PEFT path computes the LoRA-B
+GEMM and then launches a separate BF16 `base + update` kernel.  This is stronger
+evidence than the previously considered cross-attention residual add, whose
+static call count is far smaller.
+
+C10 tests one bounded exact-workload rewrite: for supported contiguous BF16,
+scale-1 LoRA linears, use a single `addmm`-style LoRA-B GEMM with the base result
+as the beta input.  LoRA-A, LoRA-B, base GEMM, adapter selection, model-call
+inventory, FSDP placement, and every workload semantic remain unchanged.  The
+candidate may change BF16 rounding because a GEMM epilogue can add before the
+source path's intermediate BF16 rounding.  Therefore it is **not** admitted to
+world16 merely from static reasoning: a real A100 B1/B3 forward plus input,
+LoRA-A, LoRA-B, and base-result gradient canary must first pass the frozen P0
+multi-metric thresholds and show a CUDA-event improvement.  Failure rejects
+C10 without relaxing the gate.
+
+The existing world16 explicit-next FSDP2 prefetch result is a matching bounded
+negative, not a new GAN hypothesis: exact No-GAN control was `118.267264657 s`
+and explicit prefetch was `118.737632053 s` (`+0.398%`).  C10 therefore does not
+combine or retry FSDP prefetch.
+
+## C10 measured result
+
+C10 is rejected by its preregistered one-GPU gate; no world16 run or formal
+timing was launched.  Run
+`iter361_gan_cuda_c10_lora_beta_canary_r1_20260830` passes the frozen P0 output
+and all-gradient thresholds for all four registered B1/B3 attention/FFN
+shapes.  The beta-add GEMM changes output rounding only (worst normalized L2
+`0.001065207`, worst max-absolute `0.03125`), while input, LoRA-A, LoRA-B, and
+base gradients are bitwise identical in this canary.
+
+It does not, however, provide a consistent latency gain.  Warm no-grad forward
+is `1.0171x`/`1.0081x` for B1 attention/FFN but `0.9971x`/`0.9950x` for B3;
+forward+backward is `1.0375x`, `1.1227x`, `0.9862x`, and `1.1953x`.  The
+dominant Generator no-grad B1 path therefore gains only about one percent in
+the isolated epilogue while two registered shapes regress.  This cannot close
+the `20.126 s` target gap and fails the all-shape promotion gate.  C8 remains
+the active substrate.
+
+## C11 selected hypothesis
+
+C10 closes the simple LoRA beta-add route.  The next source-qualified launch
+cluster is the exact modulated-norm backward.  The pinned implementation
+rebuilds a PyTorch autograd graph and calls `torch.autograd.grad` separately for
+every token chunk.  With chunk2048, the formal receipt contains about `4,720`
+gradient chunks per rank.  Each chunk rematerializes two modulation components,
+runs LayerNorm forward and backward, casts BF16/FP32, reduces timestep
+gradients, and copies the hidden gradient.  This directly explains a repeated
+subset of the profile's layernorm, layernorm-grad, FP32 add/mul, cast/copy, and
+reduction kernels; unlike a broad kernel-name guess, the owner and frequency
+are executable.
+
+C11 first tests a source-equivalent explicit backward that calls the installed
+native LayerNorm backward directly and computes the two timestep-component
+gradients without rebuilding autograd.  It changes neither forward nor saved
+tensors.  A locked A100 B1/B3 PhaseLocal canary must compare hidden and every
+timestep-input gradient under the frozen P0 thresholds and show a warm
+forward+backward improvement.  Only a passing canary can authorize a
+default-off runtime implementation and world16 gates.
+
+The admissible canary
+`iter362_gan_cuda_c11_modnorm_backward_canary_r2_20260830` passes that gate.
+Output and hidden-state gradients are bitwise equal for B1 and B3.  The worst
+timestep-gradient result remains inside the unchanged P0 contract
+(`normalized_l2=0.002174`, `cosine=0.9999976`, `max_abs=1.0`).  Warm
+forward-plus-backward improves from `4.341077 ms` to `3.164160 ms` for B1
+(`1.37195x`) and from `10.837334 ms` to `7.937024 ms` for B3 (`1.36542x`).
+The earlier `r1` did not start the workload because the standalone command
+omitted the pinned `LOCAL_KERNELS` mapping; it is retained as environment-only
+failure evidence, not counted as a mechanism test.  Report SHA-256:
+`36008126ce3567551474431d5ab3c81af679afca0c31e2c53f08fe0f5592e31c`.

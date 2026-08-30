@@ -336,3 +336,106 @@
 - Rejected paths: silently skipping all non-restrict processors yields zero
   reuse and no candidate; changing the model config is a semantic-contract
   violation.  Formal C9 timing is **NOT_RUN**.
+
+## C10 LoRA-B beta-add epilogue preflight
+
+- Current gate: C8 remains the fastest valid arm at `141.235767135 s`, still
+  `20.125629032 s` above the requested threshold.  C9 is semantically
+  inapplicable and has been reverted; the active local and remote trees are
+  clean at `065c92913b2e57d1be21a43272969780fa536e08`.
+- Live substrate: both owned A100 nodes were rechecked on 2026-08-30 UTC; all
+  sixteen GPUs had no compute processes.  Reuse the validated
+  `/tmp/distillschedule-helios-official-torch210` runtime and pinned FA2 asset;
+  no environment construction or large artifact transfer is authorized.
+- Matching prior evidence: C5 node0 profile reports `439,436` BF16 vector-add
+  launches.  C8 receipts report `21,962` Generator and `4,908` Critic scale-1
+  LoRA epilogues per rank, so `214,960` node0 additions have an executable
+  source owner.  In contrast, the exact world16 FSDP2 explicit-next prefetch
+  test regressed from `118.267264657 s` to `118.737632053 s`; it is rejected.
+- Authorized hypothesis: replace only the supported PEFT `LoRA-B` followed by
+  BF16 scale-1 addition with a beta-add GEMM using the already computed base
+  result.  The LoRA-A GEMM, LoRA-B weights, base output, adapter state, and
+  autograd gradients remain present.  No model call or optimizer operation is
+  removed.
+- Frozen contract: C8 GAN steps1000--1004, B1/global-B16, world16 FSDP2,
+  trace/RNG/loss/physical call counts, BF16 policy, local FA2, chunk2048,
+  Critic selective replay stride2, exact cross-attention K/V scope,
+  G1/C5/EMA1, final G201/C1005/EMA801, CUDA residency, and timer boundaries.
+- Mandatory canary: on one locked owned A100, compare source `linear + add`
+  against the candidate for registered B1/B3 representative LoRA shapes.  Gate
+  output, base-result/input/LoRA-A/LoRA-B gradients with the existing P0
+  multi-metric thresholds; record bitwise status and warm CUDA-event latency.
+- Promotion gate: canary parity PASS and candidate faster; focused tests PASS;
+  validate-only 16/16; correctness/capacity 16/16 with exact new receipt counts
+  and zero fallback/OOM; only then one unprofiled Full5 faster than C8.
+- Rejected combinations: no FSDP prefetch, HSDP, B2/B5, Score packing,
+  checkpoint stride1, history cache, TP/PP, host offload, or other kernel is
+  combined.
+- New falsifiable question: can the LoRA-B beta-add GEMM preserve the frozen
+  output/gradient gate while eliminating a meaningful fraction of the
+  source-qualified BF16 add launches and improve C8 formal wall time?
+- Decision: **GO for the bounded one-GPU canary only**.  World16 remains
+  `NOT_RUN` until that gate passes.
+
+## C10 iteration-end failure handoff
+
+- Run `iter361_gan_cuda_c10_lora_beta_canary_r1_20260830` acquired the same
+  node lock used by formal launches, used node0 GPU0 only, and left cgroup
+  `oom=0`, `oom_kill=0` with no residual GPU process.
+- Parity: all B1/B3 attention/FFN outputs pass the unchanged P0 gate; all four
+  input, LoRA-A, LoRA-B, and base-result gradients are bitwise identical.
+- Failure signature: warm forward speedups are `1.0171x`, `0.9971x`,
+  `1.0081x`, and `0.9950x`.  The beta-add epilogue is not uniformly faster and
+  its dominant no-grad B1 benefit is only about one percent.  Two B3 shapes
+  regress, violating the registered promotion gate.
+- Root cause: cuBLAS already executes the standalone low-rank LoRA-B GEMM and
+  subsequent bandwidth add efficiently; folding beta into GEMM does not reduce
+  the dominant GEMM work and can select a slightly worse B3 path.  Large B3
+  training gains do not compensate the much more frequent no-grad B1 calls
+  under the frozen workload.
+- Evidence: report SHA-256
+  `9e4e9ce951fd5c890fdfe0ab2e853a1baee95c4123f3b6a790f2757b9c5aab07`.
+- Recovery: retain C8 at `141.235767135 s`.  Do not implement or launch C10
+  world16 without materially different kernel evidence; formal C10 timing is
+  **NOT_RUN**.
+
+## C11 explicit modulated-norm backward preflight
+
+- Current gate: C10 is closed by its canary; C8 remains the active substrate.
+- Matching evidence: the chunk2048 formal receipts contain about `4,720`
+  modulated-norm backward chunks per rank.  The pinned source rebuilds an
+  autograd graph and invokes `torch.autograd.grad` once per chunk, mapping
+  directly to repeated LayerNorm forward/backward, add, multiply, cast, copy,
+  and reduction families in the valid C5 profile.
+- Authorized hypothesis: preserve the installed exact forward and saved tensor
+  set; replace only backward graph reconstruction with the algebraically same
+  FP32 LayerNorm backward and scale/shift component gradients.  Preserve the
+  source chunk order and BF16 accumulation boundaries for PhaseLocal inputs.
+- Frozen contract: identical to C8/C10; no workload, call-count, topology,
+  attention, checkpoint, cache, optimizer, residency, or timer change.
+- Mandatory canary: one locked node0 A100, B1 and B3, width5120, chunk2048,
+  two-segment PhaseLocal timestep projection.  Compare output, hidden gradient,
+  and both timestep-input gradients with the unchanged P0 metrics; record
+  bitwise status and warm source/candidate forward+backward CUDA-event time.
+- Promotion gate: both shapes pass parity and improve latency before any
+  repository implementation or world16 launch.  Subsequent implementation is
+  default-off/source-pinned and still requires focused tests, validate-only,
+  16/16 correctness/capacity, exact receipts, and one faster formal timing.
+- Decision: **GO for the bounded C11 canary only**.
+
+## C11 canary result and implementation GO
+
+- `iter362_gan_cuda_c11_modnorm_backward_canary_r2_20260830` used one locked
+  node0 A100 with the validated Torch 2.10 runtime and pinned local FA2 mapping.
+- Output and hidden gradients are bitwise equal.  Both PhaseLocal timestep
+  gradients pass the unchanged P0 gate; worst observed metrics are normalized
+  L2 `0.002174`, cosine `0.9999976`, and max-absolute `1.0`.
+- Warm forward-plus-backward latency improves `4.341077 -> 3.164160 ms` for B1
+  and `10.837334 -> 7.937024 ms` for B3 (`1.37195x`/`1.36542x`).
+- The preserved `r1` failure omitted `LOCAL_KERNELS` before model execution. It
+  is an environment-integration failure and does not authorize a second
+  mechanism variant; `r2` is the one bounded C11 mechanism verification.
+- Evidence SHA-256:
+  `36008126ce3567551474431d5ab3c81af679afca0c31e2c53f08fe0f5592e31c`.
+- Decision: **GO** for the preregistered default-off implementation and its
+  focused/world16 gates.  No second optimization may be combined.

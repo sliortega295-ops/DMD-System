@@ -26,11 +26,12 @@ def install_exact_modulated_norm_epilogue(
     enabled: bool,
     role: str,
     fuse_materialization: bool = False,
+    fuse_backward: bool = False,
     transformer_module: Any | None = None,
     fused_epilogue: Any | None = None,
     fused_materialization: Any | None = None,
 ) -> dict[str, Any]:
-    """Patch only the pinned custom Function forward; retain source backward."""
+    """Patch the pinned custom Function with independently gated exact paths."""
 
     receipt: dict[str, Any] = {
         "requested": bool(enabled),
@@ -39,7 +40,12 @@ def install_exact_modulated_norm_epilogue(
         "scope": "ALL_ROLE_REGISTERED_B1_B3_MODULATED_NORM_FORWARD_EPILOGUE",
         "semantic_contract": (
             "PYTORCH_FP32_LAYERNORM_UNCHANGED;ADD_RN_F32_ONE_PLUS_SCALE;"
-            "MUL_RN_F32;ADD_RN_F32_SHIFT;BF16_RN_STORE;SOURCE_BACKWARD_UNCHANGED"
+            "MUL_RN_F32;ADD_RN_F32_SHIFT;BF16_RN_STORE;"
+            + (
+                "EXPLICIT_NATIVE_LAYERNORM_BACKWARD_AND_COMPONENT_GRADIENTS"
+                if fuse_backward
+                else "SOURCE_BACKWARD_UNCHANGED"
+            )
         ),
         "fused_call_count": 0,
         "fused_chunk_count": 0,
@@ -52,6 +58,15 @@ def install_exact_modulated_norm_epilogue(
         ),
         "materialization_fused_call_count": 0,
         "materialization_fused_chunk_count": 0,
+        "backward_requested": bool(fuse_backward),
+        "backward_contract": (
+            "SOURCE_CHUNK_ORDER;FP32_NATIVE_LAYERNORM_BACKWARD;"
+            "BF16_COMPONENT_GRADIENT_ACCUMULATION"
+        ),
+        "backward_call_count": 0,
+        "backward_chunk_count": 0,
+        "backward_hidden_element_count": 0,
+        "backward_layout_counts": {},
         "warmup": {"status": "NOT_RUN"},
     }
     if not enabled:
@@ -94,7 +109,9 @@ def install_exact_modulated_norm_epilogue(
 
     function = transformer_module._TembAwareChunkedNorm
     original_forward = function.forward
+    original_backward = function.backward
     materialize = transformer_module._materialize_scale_shift_component
+    rebuild_temb = transformer_module._rebuild_temb
     phase_local_type = getattr(
         transformer_module, "PhaseLocalTimestepProjection", ()
     )
@@ -151,7 +168,6 @@ def install_exact_modulated_norm_epilogue(
         if not hidden_states.is_cuda and not test_injected:
             return fallback("NON_CUDA_HIDDEN", ctx, *common)
 
-        rebuild_temb = transformer_module._rebuild_temb
         ctx.norm = norm
         ctx.scale_shift_table = scale_shift_table
         ctx.scale_index = int(scale_index)
@@ -237,16 +253,186 @@ def install_exact_modulated_norm_epilogue(
             receipt["materialization_fused_call_count"] += 1
         return output
 
+    @staticmethod
+    def backward(ctx: Any, grad_output: Any) -> Any:
+        hidden_states, *saved_temb_inputs = ctx.saved_tensors
+        hidden_gradient = (
+            torch.empty_like(hidden_states) if ctx.needs_input_grad[0] else None
+        )
+        temb_needs_grad = list(ctx.needs_input_grad[7:])
+        if len(temb_needs_grad) != len(saved_temb_inputs):
+            raise RuntimeError("modulated-norm timestep gradient arity changed")
+        temb_gradients: list[Any | None] = [None for _ in saved_temb_inputs]
+        kind, lengths = ctx.temb_descriptor
+        if kind == "phase_local":
+            if len(lengths) != len(saved_temb_inputs):
+                raise RuntimeError("phase-local timestep descriptor arity changed")
+        elif kind == "tensor":
+            if lengths or len(saved_temb_inputs) != 1:
+                raise RuntimeError("tensor timestep descriptor layout changed")
+        else:
+            raise RuntimeError(f"unsupported timestep descriptor: {kind!r}")
+        if any(parameter.requires_grad for parameter in ctx.norm.parameters()):
+            raise RuntimeError("explicit modulated-norm backward requires frozen norm")
+        if ctx.scale_shift_table.requires_grad:
+            raise RuntimeError(
+                "explicit modulated-norm backward requires frozen scale-shift table"
+            )
+        normalized_shape = [int(hidden_states.shape[-1])]
+        epsilon = float(ctx.norm.eps)
+        chunk_count = 0
+
+        if hidden_gradient is not None or any(temb_needs_grad):
+            temb = rebuild_temb(ctx.temb_descriptor, tuple(saved_temb_inputs))
+            for start in range(0, ctx.sequence_length, ctx.chunk_tokens):
+                end = min(ctx.sequence_length, start + ctx.chunk_tokens)
+                hidden_float = hidden_states[:, start:end].float()
+                normalized, mean, rstd = torch.native_layer_norm(
+                    hidden_float,
+                    normalized_shape,
+                    None,
+                    None,
+                    epsilon,
+                )
+                scale = materialize(
+                    ctx.scale_shift_table,
+                    temb,
+                    ctx.scale_index,
+                    start,
+                    end,
+                )
+                grad_float = grad_output[:, start:end].float()
+                if hidden_gradient is not None:
+                    grad_normalized = grad_float * (1.0 + scale)
+                    hidden_chunk, _weight_gradient, _bias_gradient = (
+                        torch.ops.aten.native_layer_norm_backward.default(
+                            grad_normalized,
+                            hidden_float,
+                            normalized_shape,
+                            mean,
+                            rstd,
+                            None,
+                            None,
+                            [True, False, False],
+                        )
+                    )
+                    hidden_gradient[:, start:end].copy_(
+                        hidden_chunk.to(hidden_states.dtype)
+                    )
+
+                if kind == "phase_local":
+                    segment_start = 0
+                    for index, (value, length, needs_grad) in enumerate(
+                        zip(
+                            saved_temb_inputs,
+                            lengths,
+                            temb_needs_grad,
+                            strict=True,
+                        )
+                    ):
+                        segment_end = segment_start + int(length)
+                        overlap_start = max(start, segment_start)
+                        overlap_end = min(end, segment_end)
+                        if needs_grad and overlap_start < overlap_end:
+                            local = slice(
+                                overlap_start - start, overlap_end - start
+                            )
+                            chunk_gradient = torch.zeros_like(value)
+                            chunk_gradient[:, ctx.scale_index, :].copy_(
+                                (
+                                    grad_float[:, local]
+                                    * normalized[:, local]
+                                )
+                                .sum(dim=1)
+                                .to(value.dtype)
+                            )
+                            chunk_gradient[:, ctx.shift_index, :].copy_(
+                                grad_float[:, local].sum(dim=1).to(value.dtype)
+                            )
+                            current = temb_gradients[index]
+                            temb_gradients[index] = (
+                                chunk_gradient
+                                if current is None
+                                else current + chunk_gradient
+                            )
+                        segment_start = segment_end
+                elif temb_needs_grad[0]:
+                    value = saved_temb_inputs[0]
+                    chunk_gradient = torch.zeros_like(value)
+                    scale_gradient = grad_float * normalized
+                    shift_gradient = grad_float
+                    if value.ndim == 4:
+                        chunk_gradient[:, start:end, ctx.scale_index, :].copy_(
+                            scale_gradient.to(value.dtype)
+                        )
+                        chunk_gradient[:, start:end, ctx.shift_index, :].copy_(
+                            shift_gradient.to(value.dtype)
+                        )
+                        layout = "tensor_4d"
+                    elif value.ndim == 3:
+                        chunk_gradient[:, ctx.scale_index, :].copy_(
+                            scale_gradient.sum(dim=1).to(value.dtype)
+                        )
+                        chunk_gradient[:, ctx.shift_index, :].copy_(
+                            shift_gradient.sum(dim=1).to(value.dtype)
+                        )
+                        layout = "tensor_3d"
+                    else:
+                        raise RuntimeError(
+                            "unsupported tensor timestep rank in explicit backward: "
+                            f"{value.ndim}"
+                        )
+                    current = temb_gradients[0]
+                    temb_gradients[0] = (
+                        chunk_gradient
+                        if current is None
+                        else current + chunk_gradient
+                    )
+                    counts = receipt["backward_layout_counts"]
+                    counts[layout] = int(counts.get(layout, 0)) + 1
+                chunk_count += 1
+
+        receipt["backward_call_count"] += 1
+        receipt["backward_chunk_count"] += chunk_count
+        if hidden_gradient is not None:
+            receipt["backward_hidden_element_count"] += int(hidden_states.numel())
+        counts = receipt["backward_layout_counts"]
+        counts[kind] = int(counts.get(kind, 0)) + chunk_count
+        return (
+            hidden_gradient,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            *temb_gradients,
+        )
+
     function.forward = forward
+    if fuse_backward:
+        function.backward = backward
     transformer_module._distillschedule_modulated_norm_receipt = receipt
     receipt["enabled"] = True
     receipt["implementation"] = (
         "TEST_INJECTED"
         if test_injected
         else (
-            "TRITON_B1_B3_FP32_TABLE_COMPONENT_AND_MODULATION_EPILOGUE_SOURCE_BACKWARD"
+            "TRITON_B1_B3_FP32_TABLE_COMPONENT_AND_MODULATION_EPILOGUE_"
+            + (
+                "EXPLICIT_NATIVE_LAYERNORM_BACKWARD"
+                if fuse_backward
+                else "SOURCE_BACKWARD"
+            )
             if fuse_materialization
-            else "TRITON_B1_B3_FP32_MODULATION_EPILOGUE_SOURCE_BACKWARD"
+            else (
+                "TRITON_B1_B3_FP32_MODULATION_EPILOGUE_"
+                + (
+                    "EXPLICIT_NATIVE_LAYERNORM_BACKWARD"
+                    if fuse_backward
+                    else "SOURCE_BACKWARD"
+                )
+            )
         )
     )
     return receipt

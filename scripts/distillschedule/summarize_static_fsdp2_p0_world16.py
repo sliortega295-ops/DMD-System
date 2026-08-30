@@ -102,6 +102,11 @@ def main() -> int:
         choices=("on", "off"),
         required=True,
     )
+    parser.add_argument(
+        "--exact-modulated-norm-backward",
+        choices=("on", "off"),
+        required=True,
+    )
     parser.add_argument("--critic-only-step", type=int, choices=(10,))
     parser.add_argument(
         "--diagnostic-timing",
@@ -145,6 +150,9 @@ def main() -> int:
         ),
         "exact_modulated_norm_materialization": (
             args.exact_modulated_norm_materialization == "on"
+        ),
+        "exact_modulated_norm_backward": (
+            args.exact_modulated_norm_backward == "on"
         ),
     }
     if args.critic_only_step is not None:
@@ -528,10 +536,21 @@ def main() -> int:
                     "ALL_ROLE_REGISTERED_B1_B3_MODULATED_NORM_FORWARD_EPILOGUE"
                 ):
                     errors.append(f"{prefix} scope changed")
-                if modulated_norm_fusion.get("semantic_contract") != (
+                expected_backward = expected_policy[
+                    "exact_modulated_norm_backward"
+                ]
+                expected_semantic_contract = (
                     "PYTORCH_FP32_LAYERNORM_UNCHANGED;ADD_RN_F32_ONE_PLUS_SCALE;"
                     "MUL_RN_F32;ADD_RN_F32_SHIFT;BF16_RN_STORE;"
-                    "SOURCE_BACKWARD_UNCHANGED"
+                    + (
+                        "EXPLICIT_NATIVE_LAYERNORM_BACKWARD_AND_COMPONENT_GRADIENTS"
+                        if expected_backward
+                        else "SOURCE_BACKWARD_UNCHANGED"
+                    )
+                )
+                if (
+                    modulated_norm_fusion.get("semantic_contract")
+                    != expected_semantic_contract
                 ):
                     errors.append(f"{prefix} semantic contract changed")
                 warmup = modulated_norm_fusion.get("warmup", {})
@@ -580,6 +599,28 @@ def main() -> int:
                         errors.append(f"{prefix} fused no materialization chunks")
                     if warmup.get("fuse_materialization") is not True:
                         errors.append(f"{prefix} did not warm materialization kernel")
+                if (
+                    modulated_norm_fusion.get("backward_requested")
+                    is not expected_backward
+                ):
+                    errors.append(f"{prefix} backward request drifted")
+                if expected_backward:
+                    if modulated_norm_fusion.get("backward_contract") != (
+                        "SOURCE_CHUNK_ORDER;FP32_NATIVE_LAYERNORM_BACKWARD;"
+                        "BF16_COMPONENT_GRADIENT_ACCUMULATION"
+                    ):
+                        errors.append(f"{prefix} backward contract changed")
+                    if args.mode != "validate":
+                        backward_calls = int(
+                            modulated_norm_fusion.get("backward_call_count", 0)
+                        )
+                        backward_chunks = int(
+                            modulated_norm_fusion.get("backward_chunk_count", 0)
+                        )
+                        if backward_calls <= 0 or backward_chunks <= 0:
+                            errors.append(f"{prefix} explicit backward executed no work")
+                        if not modulated_norm_fusion.get("backward_layout_counts"):
+                            errors.append(f"{prefix} explicit backward recorded no layout")
             elif modulated_norm_fusion.get("enabled"):
                 errors.append(f"{prefix} enabled outside requested policy")
             cross_kv_cache = (

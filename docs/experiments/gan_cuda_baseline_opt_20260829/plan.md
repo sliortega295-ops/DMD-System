@@ -146,3 +146,35 @@
     self-attention math, while skipping every block would save nothing.  Return
     to C8 and retain the failed run as the one bounded verification permitted
     by the repeated-failure rule.
+33. Existing explicit-next FSDP2 prefetch is closed by the exact No-GAN matched
+    result (`118.267264657 s` control versus `118.737632053 s` prefetch).  Do
+    not rerun the same mechanism on GAN without materially new evidence.
+34. C10 targets the measured BF16 add family at its largest source-qualified
+    owner: scale-1 PEFT LoRA epilogues account for `214,960` invocations across
+    node0's eight ranks versus `439,436` BF16 add launches in the C5 profile.
+    First run one locked A100 B1/B3 `linear + add` versus beta-add GEMM canary,
+    comparing output and all gradients under the frozen P0 thresholds and
+    measuring warm CUDA-event latency.  If either parity or latency fails,
+    reject C10 without a world16 launch.
+35. Only after the canary passes, add the default-off, source-pinned runtime
+    path and receipts; run focused tests, validate-only, 16-rank correctness,
+    and one unprofiled timing.  Do not combine a second kernel, topology,
+    prefetch, packing, batching, or timer change.
+36. C10 is rejected before implementation.  Its locked A100 canary passes P0
+    parity and has bitwise-identical input/LoRA-A/LoRA-B/base gradients, but
+    no-grad B1 improves only `0.8--1.7%` and both B3 forward shapes regress
+    slightly.  Because the preregistered gate required every registered shape
+    to improve, world16 correctness and timing remain `NOT_RUN`; return to C8.
+37. C11 targets the source-pinned modulated-norm backward's per-chunk autograd
+    reconstruction.  The formal path executes about `4,720` such gradient
+    chunks per rank.  First compare the source backward with an explicit
+    native-LayerNorm backward on one locked A100 for real B1/B3 PhaseLocal
+    layouts, including hidden and every timestep-input gradient plus warm CUDA
+    event latency.  Reject before implementation if parity or both-shape
+    latency does not pass.
+38. C11 canary `iter362_gan_cuda_c11_modnorm_backward_canary_r2_20260830`
+    passes: output and hidden gradients are bitwise, timestep gradients pass
+    P0, and B1/B3 forward+backward improve `1.37195x`/`1.36542x`.  Implement
+    the independently gated default-off backward, record exact execution
+    receipts, then run focused tests, validate-only, correctness, and one
+    formal timing without combining another candidate.

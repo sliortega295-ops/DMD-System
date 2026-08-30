@@ -31,6 +31,7 @@ def _policy(backend: str) -> dict[str, object]:
         "exact_grad_residual_fusion": True,
         "exact_modulated_norm_epilogue": True,
         "exact_modulated_norm_materialization": True,
+        "exact_modulated_norm_backward": False,
     }
 
 
@@ -109,6 +110,8 @@ def _run_validate_summary(tmp_path: Path, backend: str) -> dict[str, object]:
         "on",
         "--exact-modulated-norm-materialization",
         "on",
+        "--exact-modulated-norm-backward",
+        "off",
         "--output",
         str(output),
     ]
@@ -206,6 +209,8 @@ def test_validate_summary_rejects_backend_identity_drift(tmp_path: Path) -> None
         "on",
         "--exact-modulated-norm-materialization",
         "on",
+        "--exact-modulated-norm-backward",
+        "off",
         "--output",
         str(output),
     ]
