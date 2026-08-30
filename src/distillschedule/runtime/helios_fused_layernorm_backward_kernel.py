@@ -322,10 +322,11 @@ def _validate_hidden_inputs(
     ):
         if value.stride(2) != 1 or value.stride(1) != SUPPORTED_WIDTH:
             raise RuntimeError(f"unsupported C15 {name} stride: {value.stride()}")
-    if scale_component.stride(2) != 1 or scale_component.stride(1) not in (
-        0,
-        SUPPORTED_WIDTH,
-    ):
+    # The production PhaseLocal layouts are contiguous or token-expanded.  The
+    # registered tensor4d correctness layout selects one of six interleaved
+    # components and therefore carries a 6*WIDTH token stride; the kernel uses
+    # the explicit stride and can admit it without materialization.
+    if scale_component.stride(2) != 1 or scale_component.stride(1) < 0:
         raise RuntimeError(
             f"unsupported C15 scale-component stride: {scale_component.stride()}"
         )
