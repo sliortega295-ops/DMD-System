@@ -446,6 +446,7 @@ def _plan_role_ranks(plan: Mapping[str, Any], *, mode: str) -> tuple[tuple[int, 
     policy = plan.get("metadata", {}).get("pool_policy")
     expected = {
         "persistent_8g_8score_teacher_fsdp8": PIPELINE_8G8S_LAYOUT,
+        "persistent_8g_8score_teacher_fsdp8_runahead": PIPELINE_8G8S_LAYOUT,
         "persistent_8g_8score_teacher_fsdp8_score_b2": PIPELINE_8G8S_LAYOUT,
         "persistent_6g_10score_teacher_fsdp10": PIPELINE_6G10S_LAYOUT,
         "persistent_6g_10score_teacher_node_local_hierarchical": PIPELINE_6G10S_NODE_LOCAL_LAYOUT,
@@ -1517,11 +1518,18 @@ def run_worker(
                     streamers=generator_streamers, score_context=score_context,
                     run_kind=run_kind, evidence=evidence, versions=versions, device=device,
                 )
-            elif plan.get("metadata", {}).get("pool_policy") == "persistent_8g_8score_teacher_fsdp8":
+            elif plan.get("metadata", {}).get("pool_policy") in {
+                "persistent_8g_8score_teacher_fsdp8",
+                "persistent_8g_8score_teacher_fsdp8_runahead",
+            }:
                 _run_pipeline_8x8(
                     torch=torch, rank=rank, trace=trace, loader=loader, bundle=bundle,
                     streamers=generator_streamers, score_context=score_context,
                     run_kind=run_kind, evidence=evidence, versions=versions, device=device,
+                    rollout_runahead=(
+                        plan.get("metadata", {}).get("pool_policy")
+                        == "persistent_8g_8score_teacher_fsdp8_runahead"
+                    ),
                 )
             elif plan.get("metadata", {}).get("pool_policy") == "persistent_8g_8score_teacher_fsdp8_score_b2":
                 _run_pipeline_8x8_score_b2(
@@ -1904,6 +1912,7 @@ def _run_pipeline_8x8(
     evidence: RunEvidence,
     versions: dict[str, int],
     device: Any,
+    rollout_runahead: bool = False,
 ) -> None:
     import torch.distributed as dist
 
@@ -1916,6 +1925,85 @@ def _run_pipeline_8x8(
         _require(bundle.critic is not None and bundle.teacher is not None and score_context is not None, "pipeline Score role is incomplete")
 
     for step in range(FULL5_STEPS):
+        if is_generator and rollout_runahead and step == 1:
+            # Critic steps 1--4 do not feed a gradient back into Generator.
+            # Keep exactly two persistent streamers and two pending P2P
+            # payloads.  A streamer is reused only after its previous send has
+            # completed, while the other streamer can produce the next real B1
+            # sample during the preceding Critic backward/update.
+            bundle.generator_optimizer.zero_grad(set_to_none=True)
+            pending: list[tuple[PreparedRollout, tuple[Any, ...]] | None] = [
+                None,
+                None,
+            ]
+            for ahead_step in range(1, FULL5_STEPS):
+                ahead_rows = (
+                    trace.row(ahead_step, rank),
+                    trace.row(ahead_step, rank + 8),
+                )
+                for wave in (0, 1):
+                    previous = pending[wave]
+                    if previous is not None:
+                        with _profile_range(
+                            torch,
+                            run_kind=run_kind,
+                            label=(
+                                "livewan/pipeline_runahead/g/"
+                                f"step_{ahead_step}/reuse_wait_wave_{wave}"
+                            ),
+                        ):
+                            for request in previous[1]:
+                                request.wait()
+                        pending[wave] = None
+                    with _profile_range(
+                        torch,
+                        run_kind=run_kind,
+                        label=(
+                            "livewan/pipeline_runahead/g/"
+                            f"step_{ahead_step}/rollout_wave_{wave}"
+                        ),
+                    ):
+                        prepared = prepare_rollout(
+                            torch,
+                            row=ahead_rows[wave],
+                            streamer=streamers[wave],
+                            student=bundle.student,
+                            loader=loader,
+                            device=device,
+                        )
+                    _record_output(
+                        torch,
+                        evidence,
+                        row=ahead_rows[wave],
+                        x0=prepared.x0,
+                        run_kind=run_kind,
+                    )
+                    with _profile_range(
+                        torch,
+                        run_kind=run_kind,
+                        label=(
+                            "livewan/pipeline_runahead/g/"
+                            f"step_{ahead_step}/isend_wave_{wave}"
+                        ),
+                    ):
+                        works = _send_pair(
+                            destination=peer,
+                            prepared=prepared,
+                            asynchronous=True,
+                        )
+                    evidence.transport_bytes += pair_bytes
+                    # Retain payload tensors until NCCL reports completion.
+                    pending[wave] = (prepared, tuple(works))
+            for wave, previous in enumerate(pending):
+                _require(previous is not None, "missing final run-ahead send")
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label=f"livewan/pipeline_runahead/g/final_wait_wave_{wave}",
+                ):
+                    for request in previous[1]:
+                        request.wait()
+            break
         if is_generator:
             bundle.generator_optimizer.zero_grad(set_to_none=True)
             rows = (trace.row(step, rank), trace.row(step, rank + 8))

@@ -87,7 +87,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument(
         "--pipeline-variant",
         choices=(
-            "b1", "score-b2", "6g10score", "6g10score-node-local",
+            "b1", "b1-runahead", "score-b2", "6g10score", "6g10score-node-local",
             "6g10score-node-local-fused",
         ),
         default="b1",

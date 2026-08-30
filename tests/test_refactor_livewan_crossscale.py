@@ -34,6 +34,7 @@ from distillschedule.runtime.livewan_crossscale_worker import (
 ROOT = Path(__file__).resolve().parents[1]
 BASELINE = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_fsdp2.json"
 PIPELINE = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8.json"
+PIPELINE_RUNAHEAD = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead.json"
 PIPELINE_SCORE_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
 PIPELINE_6G10S = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json"
 PIPELINE_6G10S_NODE_LOCAL = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score_node_local.json"
@@ -85,6 +86,19 @@ def test_score_b2_plan_changes_only_physical_score_batching() -> None:
     assert b2.metadata["score_physical_batch_size"] == 2
     assert b2.metadata["logical_batch_preserved"] is True
     assert b2.metadata["per_sample_rng_preserved"] is True
+
+
+def test_runahead_plan_changes_only_cross_step_ordering() -> None:
+    reference = load_plan(PIPELINE).plan
+    candidate = load_plan(PIPELINE_RUNAHEAD).plan
+    LiveWanSFDMDAdapter().validate(candidate)
+    assert reference.workload.to_dict() == candidate.workload.to_dict()
+    assert reference.hardware.to_dict() == candidate.hardware.to_dict()
+    assert reference.rank_groups == candidate.rank_groups
+    assert reference.training_backends == candidate.training_backends
+    assert candidate.metadata["generator_nograd_runahead"] is True
+    assert candidate.metadata["runahead_buffers_per_generator_rank"] == 2
+    assert candidate.metadata["runahead_steps"] == [1, 2, 3, 4]
 
 
 def test_6g10score_plan_changes_only_placement_and_exact_physical_batching() -> None:
@@ -340,6 +354,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
         '"6g10score-node-local-fused",'
         in controller
     )
+    assert '"b1-runahead"' in controller
     assert '"LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant' in controller
     assert 'resolved_plan.node0.json' in controller
 
@@ -486,6 +501,7 @@ def test_launcher_fails_before_model_load_on_world16_and_p2p_drift() -> None:
     )
     assert '"observed_gradients"' in probe
     assert '"6g10score-node-local-fused",' in probe
+    assert '"b1-runahead"' in probe
     assert "node-local Teacher all-gather payload mismatch" in probe
     assert "hierarchical Score mean mismatch" in probe
     assert "dist.batch_isend_irecv" in probe

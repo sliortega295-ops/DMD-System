@@ -133,6 +133,7 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
             pool_policy = str(plan.metadata.get("pool_policy", ""))
             layout = {
                 "persistent_8g_8score_teacher_fsdp8": PIPELINE_8G8S_LAYOUT,
+                "persistent_8g_8score_teacher_fsdp8_runahead": PIPELINE_8G8S_LAYOUT,
                 "persistent_8g_8score_teacher_fsdp8_score_b2": PIPELINE_8G8S_LAYOUT,
                 "persistent_6g_10score_teacher_fsdp10": PIPELINE_6G10S_LAYOUT,
                 "persistent_6g_10score_teacher_node_local_hierarchical": PIPELINE_6G10S_NODE_LOCAL_LAYOUT,
@@ -150,6 +151,17 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                 self._fail("pipeline Student must be GPU-resident", "training_backends.generator.kind")
             if plan.training_backends["teacher"].kind != TrainingBackendKind.FSDP:
                 self._fail("pipeline Teacher must use its score-pool FSDP2 mesh", "training_backends.teacher.kind")
+            if pool_policy == "persistent_8g_8score_teacher_fsdp8_runahead":
+                if plan.metadata.get("generator_nograd_runahead") is not True:
+                    self._fail(
+                        "run-ahead policy must explicitly enable Generator no-grad run-ahead",
+                        "metadata.generator_nograd_runahead",
+                    )
+                if plan.metadata.get("runahead_buffers_per_generator_rank") != 2:
+                    self._fail(
+                        "run-ahead policy requires exactly the two existing B1 streamers",
+                        "metadata.runahead_buffers_per_generator_rank",
+                    )
             if pool_policy == "persistent_6g_10score_teacher_node_local_hierarchical":
                 generator_options = dict(plan.training_backends["generator"].options)
                 teacher_options = dict(plan.training_backends["teacher"].options)

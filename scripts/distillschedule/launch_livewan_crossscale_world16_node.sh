@@ -28,7 +28,8 @@ LOCK_FILE="${DISTILLSCHEDULE_NODE_LOCK:-/tmp/distillschedule_gpu_node.lock}"
 SOURCE_ROOT="${LIVEWAN_WAN21_SOURCE:?set LIVEWAN_WAN21_SOURCE}"
 SOURCE_RECEIPT="${LIVEWAN_SOURCE_RECEIPT:?set LIVEWAN_SOURCE_RECEIPT}"
 PIPELINE_VARIANT="${LIVEWAN_PIPELINE_VARIANT:-b1}"
-[[ "${PIPELINE_VARIANT}" == b1 || "${PIPELINE_VARIANT}" == score-b2 || \
+[[ "${PIPELINE_VARIANT}" == b1 || "${PIPELINE_VARIANT}" == b1-runahead || \
+   "${PIPELINE_VARIANT}" == score-b2 || \
    "${PIPELINE_VARIANT}" == 6g10score || \
    "${PIPELINE_VARIANT}" == 6g10score-node-local || \
    "${PIPELINE_VARIANT}" == 6g10score-node-local-fused ]] || exit 2
@@ -38,6 +39,8 @@ if [[ "${EXECUTION_MODE}" == baseline ]]; then
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_fsdp2.json"
 elif [[ "${PIPELINE_VARIANT}" == score-b2 ]]; then
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
+elif [[ "${PIPELINE_VARIANT}" == b1-runahead ]]; then
+  PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead.json"
 elif [[ "${PIPELINE_VARIANT}" == 6g10score ]]; then
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json"
 elif [[ "${PIPELINE_VARIANT}" == 6g10score-node-local ]]; then
