@@ -262,3 +262,15 @@
     Promote C15, but retain the goal because it remains `10.451889037 s` above
     target. The next hypothesis must be preregistered from a current C15
     overlap-aware profile; do not continue changing the fused backward blindly.
+51. Iteration 370 passes the post-fix C15 profile gates. Its all-rank median
+    range is `131.550 s`: `119.348 s` non-NCCL compute union, `57.902 s` NCCL
+    union, `51.028 s` compute/NCCL overlap, only `6.874 s` NCCL exposed versus
+    compute, `0.377 s` exposed copy and `5.040 s` no-traced activity. D2H is
+    effectively absent. The formal `131.562027140 s` denominator is unchanged.
+52. C16 tests the only new communication evidence from that profile: force
+    `Simple` or `LL128` instead of the observed default `LL` protocol for a
+    source-sized world16 all-gather/reduce-scatter plus overlapping GEMM
+    canary. All 48 rank/protocol receipts and value gates pass, but neither
+    candidate meets the 5% promotion gate. `Simple` makes the overlap window
+    `0.260%` slower; `LL128` makes it `1.276%` slower. Reject C16 without a
+    formal workload launch and return to exact GAN compute/source gaps on C15.
