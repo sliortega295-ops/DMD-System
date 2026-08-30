@@ -24,6 +24,7 @@ def _policy(backend: str) -> dict[str, object]:
         "generator_nograd_cross_kv_cache": False,
         "generator_nograd_static_context_cache": False,
         "generator_nograd_persistent_unshard": False,
+        "generator_nograd_persistent_unshard_flush_allocator_cache": True,
         "generator_residual_storage": "cuda_out_of_place",
         "critic_residual_storage": "cuda_out_of_place",
         "generator_nograd_lora_fused_epilogue": False,
