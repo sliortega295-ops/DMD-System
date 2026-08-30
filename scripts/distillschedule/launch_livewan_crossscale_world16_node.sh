@@ -234,7 +234,7 @@ else
     fi
     if [[ ${status} -eq 0 ]]; then
       "${NSYS_BIN}" stats --report=nvtx_sum,cuda_gpu_kern_sum,cuda_api_sum \
-        --format=csv "${PROFILE_REPORT}" >"${PROFILE_STATS}" 2>&1
+        --format=csv "${PROFILE_SQLITE}" >"${PROFILE_STATS}" 2>&1
       status=$?
     fi
     if [[ ${status} -eq 0 ]] && grep -Eq \

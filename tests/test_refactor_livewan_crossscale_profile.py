@@ -86,6 +86,7 @@ def test_profile_launcher_is_node_outer_and_fail_closed() -> None:
     assert '"${workload[@]}"' in launcher
     assert "missing_nsys_report" in launcher
     assert "missing_nsys_sqlite" in launcher
+    assert '--format=csv "${PROFILE_SQLITE}"' in launcher
     assert "nsys_profile_validation_failed" in launcher
 
 
