@@ -23,7 +23,8 @@ if [[ ! -f "${RECEIPT}" ]]; then
     echo "refusing to reuse incomplete overlay: ${OUTPUT}" >&2; exit 82;
   }
   mkdir -p "${OUTPUT}"
-  "$(dirname "${PYTHON}")/pip" install --no-deps --target "${OUTPUT}" \
+  PIP_CONFIG_FILE=/dev/null "$(dirname "${PYTHON}")/pip" --isolated \
+    --disable-pip-version-check install --no-cache-dir --no-deps --target "${OUTPUT}" \
     --index-url "${INDEX_URL}" --trusted-host "$(python3 - "${INDEX_URL}" <<'PY'
 from urllib.parse import urlparse
 import sys

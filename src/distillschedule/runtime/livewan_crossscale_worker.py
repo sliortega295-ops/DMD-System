@@ -544,6 +544,69 @@ def _mean_replicated_gradients(
     return {"gradient_tensors": len(gradients), "buckets": len(buckets)}
 
 
+def _warm_communicators(
+    torch: Any,
+    *,
+    bundle: ModelBundle,
+    mode: str,
+    rank: int,
+    device: Any,
+) -> dict[str, Any]:
+    """Initialize Full5 communicators without touching workload state.
+
+    The scalar exchanges run after construction but before the formal timer.
+    Without the final rank-pair handshake, the pipeline's first timed latent
+    send would also pay lazy cross-node NCCL communicator creation.
+    """
+    import torch.distributed as dist
+
+    started = time.perf_counter()
+    world = torch.ones(1, dtype=torch.int64, device=device)
+    dist.all_reduce(world)
+    _require(int(world.cpu()) == WORLD_SIZE, "default communicator warm-up failed")
+
+    warmed_groups: list[str] = ["world"]
+    if bundle.generator_group is not None:
+        token = torch.ones(1, dtype=torch.int64, device=device)
+        dist.all_reduce(token, group=bundle.generator_group)
+        _require(
+            int(token.cpu()) == bundle.generator_group_size,
+            "Generator communicator warm-up failed",
+        )
+        warmed_groups.append("generator")
+    if bundle.score_group is not None:
+        token = torch.ones(1, dtype=torch.int64, device=device)
+        dist.all_reduce(token, group=bundle.score_group)
+        _require(
+            int(token.cpu()) == bundle.score_group_size,
+            "Score communicator warm-up failed",
+        )
+        warmed_groups.append("score")
+
+    pair_peer = None
+    if mode == "pipeline":
+        pair_peer = rank + 8 if rank < 8 else rank - 8
+        sent = torch.tensor([rank], dtype=torch.int64, device=device)
+        received = torch.empty_like(sent)
+        if rank < 8:
+            dist.send(sent, dst=pair_peer)
+            dist.recv(received, src=pair_peer)
+        else:
+            dist.recv(received, src=pair_peer)
+            dist.send(sent, dst=pair_peer)
+        _require(int(received.cpu()) == pair_peer, "pipeline P2P warm-up identity mismatch")
+        warmed_groups.append("rank_pair_p2p")
+
+    dist.barrier()
+    torch.cuda.synchronize(device)
+    return {
+        "status": "PASS",
+        "groups": warmed_groups,
+        "pair_peer": pair_peer,
+        "wall_seconds_outside_full5": time.perf_counter() - started,
+    }
+
+
 def _sample_flow_t(torch: Any, *, seed: int, device: Any) -> Any:
     generator = torch.Generator(device=device).manual_seed(seed)
     u = torch.rand(1, device=device, generator=generator)
@@ -901,6 +964,9 @@ def run_worker(
     score_context = (
         build_score_context(torch, bundle=bundle, loader=loader, device=device)
         if bundle.critic is not None else None
+    )
+    bundle.metadata["communicator_warmup"] = _warm_communicators(
+        torch, bundle=bundle, mode=mode, rank=rank, device=device,
     )
     build_wall = time.perf_counter() - build_started
     setup_memory = memory_snapshot(torch, device)

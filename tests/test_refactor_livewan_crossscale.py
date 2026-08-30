@@ -126,6 +126,15 @@ def test_submodules_are_pinned_and_source_prepare_is_non_installing() -> None:
     assert "pip install" not in overlay.replace('"$(dirname "${PYTHON}")/pip" install', "")
 
 
+def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
+    controller = (
+        ROOT / "scripts/distillschedule/run_livewan_crossscale_world16.py"
+    ).read_text()
+    assert '"--remote-output-root", required=True' in controller
+    assert 'args.remote_output_root / args.run_id' in controller
+    assert 'args.remote_root / "artifacts/runs"' not in controller
+
+
 def test_trace_builder_requires_80_distinct_source_samples(tmp_path: Path) -> None:
     data = tmp_path / "latents"
     data.mkdir()

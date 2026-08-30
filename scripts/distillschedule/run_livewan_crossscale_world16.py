@@ -83,6 +83,10 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--execution-mode", choices=("baseline", "pipeline"), required=True)
     value.add_argument("--expected-head", required=True)
     value.add_argument("--remote-root", required=True, type=Path)
+    value.add_argument(
+        "--remote-output-root", required=True, type=Path,
+        help="persistent run root outside the clean source checkout",
+    )
     value.add_argument("--student-checkpoint", required=True, type=Path)
     value.add_argument("--critic-checkpoint", required=True, type=Path)
     value.add_argument("--teacher-checkpoint", required=True, type=Path)
@@ -106,11 +110,11 @@ def parser() -> argparse.ArgumentParser:
 
 
 def pid_file(args: argparse.Namespace, node: int) -> Path:
-    return args.remote_root / "artifacts/runs" / args.run_id / "controller" / f"node_{node}.pid"
+    return args.remote_output_root / args.run_id / "controller" / f"node_{node}.pid"
 
 
 def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
-    run_root = args.remote_root / "artifacts/runs" / args.run_id
+    run_root = args.remote_output_root / args.run_id
     launcher = args.remote_root / "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh"
     wrapper = args.remote_root / "scripts/distillschedule/remote_stage_wrapper.sh"
     exports = {
@@ -163,7 +167,7 @@ def cancel(args: argparse.Namespace, node: int) -> None:
 
 
 def summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
-    run_root = args.remote_root / "artifacts/runs" / args.run_id
+    run_root = args.remote_output_root / args.run_id
     summary = run_root / "summary.json"
     script = args.remote_root / "scripts/distillschedule/summarize_livewan_crossscale_world16.py"
     remote = (

@@ -59,4 +59,6 @@ python scripts/distillschedule/build_livewan_crossscale_bootstrap.py \
 
 The controller defaults to SSH port 2222 and copies only small summaries to
 `/home/lyy/Helios/research_artifacts/DMD-System/livewan_crossscale_20260830`.
-Raw model/run/profile artifacts remain on shared remote storage.
+Pass `--remote-output-root` explicitly; raw model/run/profile artifacts remain
+under that persistent shared-storage directory and are never written into the
+clean source checkout.
