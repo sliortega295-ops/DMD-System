@@ -36,3 +36,46 @@ and 116 focused tests pass in the exact remote environment.
 **PROMOTE_TO_WORLD16_GATES**, not yet a performance promotion.  The next steps
 are validate-only, a fresh 16/16 correctness/capacity run with live shape/call
 receipts and zero fallback, then one unprofiled formal timing only on PASS.
+
+## World16 gates and formal result
+
+All world16 runs used exact code HEAD
+`d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d`, the frozen C21 policy, and no
+Nsight instrumentation.
+
+| Gate | Run | Result |
+|---|---|---|
+| validate-only | `iter381_gan_cuda_c25_history_current_validate_r1_20260830` | 16/16 PASS |
+| correctness/capacity | `iter381_gan_cuda_c25_history_current_correctness_r1_20260830` | 16/16 PASS |
+| unprofiled timing | `iter381_gan_cuda_c25_history_current_timing_r1_20260830` | **125.258735931 s** |
+
+- Validate summary SHA-256:
+  `5652bd0fdddefc830e702c6387c997aea1bc66212d1c71b86b5851485b67fc8d`.
+- Correctness summary SHA-256:
+  `1712b0ef48743f3e840787eed6efd1715ee44b25d1d9d536f8e46adcbfa3db11`.
+- Timing summary SHA-256:
+  `d30f7beab5b72d710c9fcf9d9c9023a3aadcd0e24d0f27dd7882bc81e1fc7e20`.
+- Every rank finishes G201/C1005/EMA801 with G1/C5/EMA1 updates.
+- Timing receipts report 2,360 fused calls per rank: 1,120 grad-enabled and
+  1,240 no-grad.  All observed B1/B3 shapes are supported and reference
+  fallback is zero.
+- The C21 persistence contract remains intact: 41 units fully unsharded inside
+  the bounded rollout phase, 41 explicit reshards, and zero unsharded units at
+  phase exit.
+- Maximum rollout allocated/reserved memory is approximately
+  `37.0057/38.5938 GiB`; CUDA and cgroup OOM deltas are zero and both nodes are
+  clean after teardown.
+
+## Performance decision
+
+| Denominator | Full5 seconds | Change |
+|---|---:|---:|
+| C0 | 173.014483004 | -- |
+| C21 | 125.814004444 | -- |
+| C25 | **125.258735931** | -0.555268513 s / -0.4413% vs C21 |
+| 30%-reduction target | 121.110138103 | C25 remains +4.148597828 s |
+
+C25 is promoted as the fastest correctness-qualified intermediate result.  It
+reduces C0 by `27.6022%` (`1.38126x`) but does not yet meet the registered 30%
+target.  The end-to-end gain is deliberately reported from the formal run, not
+extrapolated from the much larger isolated-kernel canary speedup.

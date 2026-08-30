@@ -949,3 +949,18 @@
 - **Decision:** **GO_WORLD16_GATES** for this candidate only.  Validate-only
   and fresh 16/16 correctness/capacity must pass with live calls, registered
   B1/B3 shapes and zero fallback before one unprofiled timing.
+
+### C25 world16 result
+
+- Exact HEAD `d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d` passes validate-only,
+  16/16 correctness/capacity, and one unprofiled formal timing.
+- Every timing rank reports 2,360 fused calls (1,120 grad, 1,240 no-grad), all
+  expected B1/B3 shapes, zero reference fallback, G201/C1005/EMA801, and the
+  unchanged 41 fully-unsharded to zero-at-exit lifecycle.  CUDA/cgroup OOM
+  deltas are zero.
+- Formal Full5 is `125.258735931 s`, improving C21 by `0.555268513 s`
+  (`0.4413%`) and C0 by `27.6022%`.  It remains `4.148597828 s` above the
+  registered 30%-reduction target.
+- **Decision:** promote C25 as the new intermediate denominator; do not infer
+  end-to-end savings from isolated kernel-sum or canary speedup.  A subsequent
+  candidate requires new measured evidence and the exact C25 contract.

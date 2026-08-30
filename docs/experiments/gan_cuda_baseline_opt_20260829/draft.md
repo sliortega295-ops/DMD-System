@@ -591,3 +591,11 @@ gradient and attention gradient are bitwise equal for both shapes.  The actual
 pinned Helios method also rewrites successfully, and 116 focused tests pass in
 the validated remote environment.  This authorizes the default-off world16
 integration and normal gates, but is not yet an end-to-end timing claim.
+
+The world16 integration subsequently passes validate-only and 16/16
+correctness/capacity with the exact C21 policy.  Formal unprofiled Full5 is
+`125.258735931 s`, improving C21 by `0.555268513 s` (`0.4413%`).  Live timing
+receipts show 2,360 fused calls per rank, all expected B1/B3 layouts, zero
+fallback, G201/C1005/EMA801, and the unchanged 41-to-0 persistence lifecycle.
+The isolated canary therefore predicts direction but not magnitude: C25 is a
+real small end-to-end improvement, not the remaining 4.15-second solution.

@@ -371,3 +371,8 @@
     focused tests, validate-only, 16-rank correctness/capacity, and one
     unprofiled timing on the exact C21 workload.  Do not combine allocator,
     topology, batching, packing, prefetch, or attention changes.
+67. C25 passes all gates at exact HEAD `d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d`.
+    Formal Full5 is `125.258735931 s`, a `0.555268513 s` (`0.4413%`) gain over
+    C21 and a `27.6022%` reduction from C0.  Promote it as the new
+    correctness-qualified intermediate substrate, but keep the goal open: the
+    registered target remains `121.110138103 s`, `4.148597828 s` faster.
