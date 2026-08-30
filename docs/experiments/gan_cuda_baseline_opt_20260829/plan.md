@@ -399,3 +399,8 @@
     Require unchanged P0 output/gradient parity, zero fallback, and at least
     `1.15x` warm forward-plus-backward speedup for both B1 and B3 before any
     source rewrite, world16 option, or distributed launch.
+72. C27's locked-A100 canary passes P0 parity and measures `2.9772x`/`6.8783x`
+    B1/B3 forward-plus-backward speedup.  The user paused optimization before
+    world16 integration.  Preserve C25 `125.258735931 s` as the formal winner,
+    record C27 as `CANARY_PASS / WORLD16_NOT_RUN`, clean both nodes, and push
+    only reconstructable canary code and bounded evidence.

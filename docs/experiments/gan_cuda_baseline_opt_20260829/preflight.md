@@ -1071,3 +1071,17 @@
 - **Decision:** **GO_CANARY_ONLY**.  Any source mismatch, unsupported dtype or
   layout, fallback, parity failure, or sub-threshold batch closes C27 before a
   world16 policy is added.
+
+### C27 canary result and user pause
+
+- `iter386_gan_cuda_c27_frozen_crossnorm_canary_r3_20260830` passes the
+  preregistered P0 output/hidden-gradient gate and measures `2.9772x` B1 and
+  `6.8783x` B3 warm forward-plus-backward speedup on one locked A100.
+- The two earlier immutable run IDs are launcher/result-path failures, not
+  kernel verdicts; neither changes the successful r3 evidence.
+- C27 is eligible for a future default-off world16 integration, but the user
+  explicitly paused optimization before that integration.  Therefore the
+  formal denominator stays C25 `125.258735931 s`; no end-to-end C27 gain is
+  claimed.
+- Both nodes were checked after the pause: 16/16 A100s are idle, there are no
+  compute processes, both locks are free, and cgroup OOM counters remain zero.

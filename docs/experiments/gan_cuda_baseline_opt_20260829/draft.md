@@ -657,3 +657,10 @@ locked-A100 B1/B3 canary against the actual pinned `_ChunkedFrozenNorm` plus
 patched Flash-LayerNorm implementation.  No Helios source rewrite or world16
 option is allowed unless both output and gradient meet `DEFAULT_P0_PARITY` and
 both production batches improve by at least `1.15x` with zero fallback.
+
+The locked-A100 canary subsequently passes: B1/B3 forward-plus-backward
+improves `2.9772x`/`6.8783x`, while output and hidden gradient pass the unchanged
+P0 multi-metric thresholds.  This proves a real microkernel opportunity but not
+an end-to-end saving.  The user paused the task before world16 integration, so
+C25 remains the only formal denominator and C27 is recorded as
+`CANARY_PASS / WORLD16_NOT_RUN`.
