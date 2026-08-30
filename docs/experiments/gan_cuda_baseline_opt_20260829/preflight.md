@@ -964,3 +964,34 @@
 - **Decision:** promote C25 as the new intermediate denominator; do not infer
   end-to-end savings from isolated kernel-sum or canary speedup.  A subsequent
   candidate requires new measured evidence and the exact C25 contract.
+
+## C26 exact paired-RoPE canary preflight
+
+- **Current gate:** C25 is the fastest correctness-qualified substrate at
+  `125.258735931 s`; only one locked-A100 kernel canary is authorized before
+  another world16 launch.
+- **Authorized hypothesis:** replace the two consecutive self-attention
+  query/key calls to the pinned Triton RoPE implementation with one paired
+  kernel that reads the shared rotary table once and writes two independent
+  outputs.  The paired backward performs the same inverse rotation for both
+  incoming gradients.
+- **Frozen baseline and contracts:** exact C25 GAN steps 1000--1004, world16
+  FSDP2 B1/global-B16, Score packing off, trace/RNG/loss/model-call inventory,
+  local FA2, checkpointing, all prior exact fusions, 41-unit Generator
+  persistence, G1/C5/EMA1, final G201/C1005/EMA801, and timer boundaries.
+- **Matching evidence:** C22 node0 records `46,720` production
+  `_apply_rope_transposed_kernel` launches totaling `12.83587 GPU-s` across
+  eight ranks.  This reconciles exactly to two launches for each of 40 blocks
+  across 73 application DiT forwards per rank.  The pinned source also
+  materializes the identical cos/sin views independently for query and key.
+  These are GPU-kernel sums and selection evidence, not removable wall time.
+- **Rejected or superseded paths:** C23/C24 allocator no-flush, B2/B5, Score
+  packing, HSDP, explicit prefetch, NCCL protocol forcing, static-context
+  cache, history K/V cache, LoRA beta-add, stride-1 Flash retention, direct
+  attention replacement, and further C25 repair remain closed.
+- **New falsifiable question:** for production B1/B3 width-128 head layouts,
+  can paired query/key RoPE preserve both outputs and both input gradients
+  bitwise while reducing warm forward-plus-backward time by at least `1.15x`
+  with zero fallback?
+- **Decision:** **GO_CANARY_ONLY**.  World16 integration is forbidden unless
+  both shapes pass the unchanged parity and latency gate.

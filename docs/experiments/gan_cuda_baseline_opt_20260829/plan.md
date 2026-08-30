@@ -376,3 +376,10 @@
     C21 and a `27.6022%` reduction from C0.  Promote it as the new
     correctness-qualified intermediate substrate, but keep the goal open: the
     registered target remains `121.110138103 s`, `4.148597828 s` faster.
+68. C26 starts from C25 and targets only the exactly reconciled pair of
+    query/key RoPE calls in every self-attention block.  Implement and run one
+    locked-A100 B1/B3 canary first.  Require bitwise query/key outputs and
+    input gradients, zero fallback, and at least `1.15x` warm
+    forward-plus-backward speedup for both registered batches before adding a
+    default-off world16 policy.  Do not combine another kernel or schedule
+    change.

@@ -599,3 +599,20 @@ receipts show 2,360 fused calls per rank, all expected B1/B3 layouts, zero
 fallback, G201/C1005/EMA801, and the unchanged 41-to-0 persistence lifecycle.
 The isolated canary therefore predicts direction but not magnitude: C25 is a
 real small end-to-end improvement, not the remaining 4.15-second solution.
+
+## C26 selected paired-RoPE hypothesis
+
+The C22 profile has one remaining source-reconciled launch family that has not
+been tested: `_apply_rope_transposed_kernel` runs `46,720` times across node0's
+eight ranks and consumes `12.83587 GPU-s`.  The count is exact: every rank
+executes 73 DiT forwards, each with 40 self-attention blocks and two separate
+query/key RoPE launches.  The pinned implementation also creates identical
+contiguous cos/sin views separately in those two calls.
+
+C26 may pair only these query/key rotations.  One Triton program reads the
+same frequency row and applies the unchanged operations independently to Q and
+K; its custom backward applies the unchanged inverse rotation independently
+to both gradients.  Attention, Q/K projection, values, shapes, dtype,
+checkpointing and model-call count remain untouched.  Because the profile
+number is an eight-GPU kernel sum, promotion begins with a real locked-A100
+B1/B3 canary and assumes no Full5 saving.
