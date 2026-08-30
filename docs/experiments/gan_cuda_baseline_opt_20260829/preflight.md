@@ -898,3 +898,18 @@
 - **Decision:** **GO for one bounded C24 recovery**. Validate-only and a fresh
   matched correctness run are required before timing. A repeated OOM closes
   the no-flush path and returns to C21; no further allocator patch escalation.
+
+## C24 result and allocator-path closeout
+
+- C24 exact HEAD `5655a771c16a31e2ae0fa0e142914f8b18b58241` passes 119
+  focused tests, validate-only, 16/16 correctness/capacity and one unprofiled
+  formal timing.  All ranks retain the exact C23 no-flush lifecycle, explicit
+  41-to-0 reshard contract and G201/C1005/EMA801; CUDA/cgroup OOM deltas are
+  zero.
+- `expandable_segments:True` resolves the observed C23 allocation failure, but
+  formal Full5 is `127.619803944 s`, a `1.805799500 s` (`1.4353%`)
+  regression from C21 `125.814004444 s`.
+- **Decision:** reject C24 and return to C21.  C23/C24 now form a bounded
+  negative result for allocator-cache no-flush: one arm OOMs and the supported
+  fragmentation recovery is slower.  Do not retry or escalate allocator
+  changes without materially new evidence.
