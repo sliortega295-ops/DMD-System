@@ -36,6 +36,7 @@ def _policy(backend: str) -> dict[str, object]:
         "exact_modulated_norm_layernorm": False,
         "exact_modulated_norm_fused_backward": False,
         "elide_explicit_rollout_sync": False,
+        "elide_critic_scalar_logs": False,
     }
 
 
