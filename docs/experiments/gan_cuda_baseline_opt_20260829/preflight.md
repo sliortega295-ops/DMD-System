@@ -732,3 +732,49 @@
 - Decision: **GO for one diagnostic-only C15 Nsight capture**, followed by one
   preregistered single-variable candidate. Profile wall time is never a formal
   denominator.
+
+## C19 bounded FlashAttention NCU diagnostic preflight
+
+- **Current gate:** C18 is the fastest correctness-qualified substrate at
+  `129.441379467 s`, still `8.331241364 s` above the registered
+  `121.110138103 s` target.  C19 is diagnostic-only and cannot replace either
+  formal timing number.
+- **Live substrate:** local orchestration HEAD is `d91c3727`; both remote
+  execution trees are clean at C18 runtime HEAD `823a999f`, all 16 assigned
+  A100-SXM4-40GB GPUs are idle, both cgroups remain at `oom=0/oom_kill=0`, and
+  the validated Torch 2.10 plus pinned local-FA2 assets remain available.
+- **Matching evidence:** the valid C15 profile remains representative of C18's
+  unchanged model kernels.  On device 0, FA2 forward contributes
+  `14.359417 s` of kernel sum and its dominant dense signature contributes
+  `10.180233 s` across 820 launches.  The exact kernel has
+  `grid=(87,1,40)`, `block=128`, `registers/thread=255`, and its longest
+  instances are source-correlated to Critic block-forward ranges.  FA2
+  backward contributes another roughly `13 s/GPU` of kernel sum.  These are
+  GPU-kernel sums, not removable wall time.
+- **Source audit:** the pinned A100 dispatcher already selects the dense
+  `flash_attn_func` when no NAViT mask exists and the varlen entry only when a
+  real mask is passed.  No source-qualified redundant dispatch or flag was
+  found.  Naive projection fusion is rejected because the installed
+  `fuse_projections()` copies only base Q/K/V weights and would bypass PEFT
+  LoRA semantics.
+- **Repeated-failure audit:** B2/B5, Real-Score packing, HSDP, explicit FSDP
+  prefetch, forced NCCL protocols, static-context caching, simple LoRA
+  beta-add, stride-1 retained Flash state and dominant-GEMM tuning remain
+  closed.  This diagnostic does not retry any of them.
+- **Authorized action:** first bring the NCU launcher up to the current C18
+  policy flags without changing the worker math.  Then profile exactly one
+  occurrence of the exact dominant FA2 forward kernel on node0 GPU0 inside
+  one exact `FSDP_BLOCK_FORWARD/critic/block_32` range while the other 15 ranks
+  execute the frozen workload normally.  Keep raw evidence remote.
+- **Frozen contract:** GAN-on steps 1000--1004, world16 FSDP2, B1/global-B16,
+  Score packing off, trace/RNG/loss/call inventory, local FA2, chunk2048,
+  Critic Flash retention stride2, Generator cross-KV cache, all exact fused
+  kernels, GPU residuals/EMA, scalar-log/free-memory elision and G/C/EMA
+  update/version receipts remain unchanged.
+- **Falsifiable question:** is this dominant FA2 forward already near A100
+  SM/Tensor throughput, or do NCU roofline, warp-stall, occupancy and memory
+  metrics identify a specific source-compatible tuning with enough measured
+  headroom to justify one new canary?
+- **Decision:** **GO_DIAGNOSTIC_ONLY** after focused tests and a locked NCU
+  permission canary.  Missing 16-rank receipts, a wrong range/kernel, empty
+  report, replay error, OOM or contract mismatch invalidates C19.

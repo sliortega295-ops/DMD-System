@@ -236,6 +236,10 @@ def test_ncu_launcher_preserves_current_p0_policy_and_profiles_one_device() -> N
         "--exact-modulated-norm-layernorm",
         "--exact-modulated-norm-fused-backward",
         "--generator-nograd-cross-kv-cache",
+        "--generator-nograd-static-context-cache",
+        "--elide-explicit-rollout-sync",
+        "--elide-critic-scalar-logs",
+        "--elide-official-generator-free-memory",
     ):
         assert flag in launcher
     assert '[[ "${MODE}" == profile ]]' in launcher

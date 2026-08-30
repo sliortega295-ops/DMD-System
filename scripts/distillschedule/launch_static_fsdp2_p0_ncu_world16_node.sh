@@ -79,10 +79,14 @@ EXACT_MODULATED_NORM_MATERIALIZATION="${DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_N
 EXACT_MODULATED_NORM_BACKWARD="${DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_BACKWARD:-off}"
 EXACT_MODULATED_NORM_LAYERNORM="${DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_LAYERNORM:-off}"
 EXACT_MODULATED_NORM_FUSED_BACKWARD="${DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_FUSED_BACKWARD:-off}"
+ELIDE_EXPLICIT_ROLLOUT_SYNC="${DISTILLSCHEDULE_ELIDE_EXPLICIT_ROLLOUT_SYNC:-off}"
+ELIDE_CRITIC_SCALAR_LOGS="${DISTILLSCHEDULE_ELIDE_CRITIC_SCALAR_LOGS:-off}"
+ELIDE_OFFICIAL_GENERATOR_FREE_MEMORY="${DISTILLSCHEDULE_ELIDE_OFFICIAL_GENERATOR_FREE_MEMORY:-off}"
 ATTENTION_BACKEND="${DISTILLSCHEDULE_HELIOS_ATTENTION_BACKEND:-sdpa}"
 MODULATION_CHUNK_TOKENS="${DISTILLSCHEDULE_HELIOS_MODULATION_CHUNK_TOKENS:-512}"
 SELECTIVE_FLASH_CHECKPOINT_STRIDE="${DISTILLSCHEDULE_HELIOS_SELECTIVE_FLASH_CHECKPOINT_STRIDE:-0}"
 GENERATOR_NOGRAD_CROSS_KV_CACHE="${DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_CROSS_KV_CACHE:-off}"
+GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE="${DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE:-off}"
 FLASH_ATTN_KERNEL="${DISTILLSCHEDULE_FLASH_ATTN_KERNEL:-${ASSETS}/hf_home_official_torch210/hub/models--kernels-community--flash-attn2/snapshots/6a810a7a010ba2aad6613f1f0f7b226fb8bdee3c/build/torch210-cxx11-cu128-x86_64-linux}"
 FLASH_ATTN_EXTENSION="${FLASH_ATTN_KERNEL}/_flash_attn2_cuda_a511a4c.abi3.so"
 FLASH_ATTN_EXTENSION_SHA256="c2acd487c5d1d77b7f6721eabc0fee4f8c5c8f9e682aadf43bfa99b394eecba7"
@@ -105,6 +109,9 @@ EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORME
 [[ "${EXACT_MODULATED_NORM_BACKWARD}" == on || "${EXACT_MODULATED_NORM_BACKWARD}" == off ]] || exit 2
 [[ "${EXACT_MODULATED_NORM_LAYERNORM}" == on || "${EXACT_MODULATED_NORM_LAYERNORM}" == off ]] || exit 2
 [[ "${EXACT_MODULATED_NORM_FUSED_BACKWARD}" == on || "${EXACT_MODULATED_NORM_FUSED_BACKWARD}" == off ]] || exit 2
+[[ "${ELIDE_EXPLICIT_ROLLOUT_SYNC}" == on || "${ELIDE_EXPLICIT_ROLLOUT_SYNC}" == off ]] || exit 2
+[[ "${ELIDE_CRITIC_SCALAR_LOGS}" == on || "${ELIDE_CRITIC_SCALAR_LOGS}" == off ]] || exit 2
+[[ "${ELIDE_OFFICIAL_GENERATOR_FREE_MEMORY}" == on || "${ELIDE_OFFICIAL_GENERATOR_FREE_MEMORY}" == off ]] || exit 2
 [[ "${ATTENTION_BACKEND}" == sdpa || "${ATTENTION_BACKEND}" == local-fa2 ]] || exit 2
 [[ "${MODULATION_CHUNK_TOKENS}" == 512 || "${MODULATION_CHUNK_TOKENS}" == 1024 || "${MODULATION_CHUNK_TOKENS}" == 2048 ]] || exit 2
 [[ "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" == 0 || "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" == 2 || "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" == 4 || "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" == 10 ]] || exit 2
@@ -127,6 +134,8 @@ EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORME
 [[ "${GENERATOR_NOGRAD_CROSS_KV_CACHE}" != on || "${ROLLOUT_BATCH_SIZE}" == 1 ]] || exit 2
 [[ "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" != on || "${ALL_ROLE_LORA_SCALE1_ADD}" != on ]] || exit 2
 [[ "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" == 0 || "${ATTENTION_BACKEND}" == local-fa2 ]] || exit 2
+[[ "${GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE}" == on || "${GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE}" == off ]] || exit 2
+[[ "${GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE}" != on || "${ROLLOUT_BATCH_SIZE}" == 1 ]] || exit 2
 [[ "${OPERATION_SOURCE}" != on || "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" == 0 ]] || exit 2
 # Both supported mesh policies use sharded DTensor optimizer state.  The
 # runtime warmup validates the exact mesh names/placements and fails closed;
@@ -241,10 +250,14 @@ exact_modulated_norm_materialization=${EXACT_MODULATED_NORM_MATERIALIZATION}
 exact_modulated_norm_backward=${EXACT_MODULATED_NORM_BACKWARD}
 exact_modulated_norm_layernorm=${EXACT_MODULATED_NORM_LAYERNORM}
 exact_modulated_norm_fused_backward=${EXACT_MODULATED_NORM_FUSED_BACKWARD}
+elide_explicit_rollout_sync=${ELIDE_EXPLICIT_ROLLOUT_SYNC}
+elide_critic_scalar_logs=${ELIDE_CRITIC_SCALAR_LOGS}
+elide_official_generator_free_memory=${ELIDE_OFFICIAL_GENERATOR_FREE_MEMORY}
 attention_backend=${ATTENTION_BACKEND}
 modulation_chunk_tokens=${MODULATION_CHUNK_TOKENS}
 selective_flash_checkpoint_stride=${SELECTIVE_FLASH_CHECKPOINT_STRIDE}
 generator_nograd_cross_kv_cache=${GENERATOR_NOGRAD_CROSS_KV_CACHE}
+generator_nograd_static_context_cache=${GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE}
 flash_attn_kernel=$([[ "${ATTENTION_BACKEND}" == local-fa2 ]] && printf '%s' "${FLASH_ATTN_KERNEL}" || printf 'none')
 flash_attn_extension_sha256=$([[ "${ATTENTION_BACKEND}" == local-fa2 ]] && printf '%s' "${FLASH_ATTN_EXTENSION_SHA256}" || printf 'none')
 EOF
@@ -329,6 +342,26 @@ if [[ "${GENERATOR_NOGRAD_CROSS_KV_CACHE}" == on ]]; then
   WORKER+=(--generator-nograd-cross-kv-cache)
 else
   WORKER+=(--no-generator-nograd-cross-kv-cache)
+fi
+if [[ "${GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE}" == on ]]; then
+  WORKER+=(--generator-nograd-static-context-cache)
+else
+  WORKER+=(--no-generator-nograd-static-context-cache)
+fi
+if [[ "${ELIDE_EXPLICIT_ROLLOUT_SYNC}" == on ]]; then
+  WORKER+=(--elide-explicit-rollout-sync)
+else
+  WORKER+=(--no-elide-explicit-rollout-sync)
+fi
+if [[ "${ELIDE_CRITIC_SCALAR_LOGS}" == on ]]; then
+  WORKER+=(--elide-critic-scalar-logs)
+else
+  WORKER+=(--no-elide-critic-scalar-logs)
+fi
+if [[ "${ELIDE_OFFICIAL_GENERATOR_FREE_MEMORY}" == on ]]; then
+  WORKER+=(--elide-official-generator-free-memory)
+else
+  WORKER+=(--no-elide-official-generator-free-memory)
 fi
 [[ "${MODE}" == validate ]] && WORKER+=(--validate-only)
 [[ "${MODE}" == timing ]] && WORKER+=(--timing-mode)

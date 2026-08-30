@@ -316,3 +316,11 @@
     OOM and lower maximum reserved HBM.  Promote C18, but retain the goal: it
     remains `8.331241364 s` above target.  Re-profile only if the old C15
     timeline cannot source-qualify the next compute/launch candidate.
+58. C19 uses the existing valid C15 timeline only to select one exact current
+    hotspot, then captures one dominant FA2 forward kernel with NCU on the C18
+    policy.  Update only the diagnostic launcher to propagate C12/C17/C18
+    flags, run focused tests and a permission canary, and profile node0 GPU0
+    inside `FSDP_BLOCK_FORWARD/critic/block_32` while all 16 ranks preserve the
+    frozen workload.  Use SM/Tensor, roofline, occupancy, warp-stall and memory
+    metrics to choose one source-compatible candidate; do not infer a Full5
+    speedup from kernel-sum time or modify the workload during this diagnostic.

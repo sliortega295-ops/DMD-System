@@ -514,3 +514,21 @@ maximum reserved falls to `38.009765625 GiB`; there is no CUDA/cgroup OOM.
 This validates the allocator/GC source attribution, but the remaining
 `8.331241364 s` still requires compute/launch work rather than more broad
 allocator cleanup.
+
+## C19 selected kernel diagnostic
+
+The C15 timeline cannot by itself distinguish whether the remaining
+FlashAttention kernel time is an optimized mathematical floor or actionable
+kernel inefficiency.  Device 0 spends `14.359417 s` of kernel sum in FA2
+forward; one exact dense signature (`grid=(87,1,40)`, 255 registers/thread)
+accounts for `10.180233 s` across 820 launches, while FA2 backward adds roughly
+another `13 s/GPU`.  These values overlap FSDP communication and other ranks,
+so they are selection evidence rather than wall-time overhead.
+
+The pinned dispatcher already chooses dense FA2 for an absent mask and varlen
+FA2 only for real NAViT masks.  There is no honest source-only dispatch toggle
+to benchmark.  C19 therefore uses the kernel-design workflow: capture exactly
+one production forward instance inside a source-qualified Critic block with
+NCU, then require hardware evidence before designing another kernel or backend
+candidate.  Projection fusion is not admitted because the official helper
+copies base Q/K/V weights into new modules and would omit active PEFT LoRA.
