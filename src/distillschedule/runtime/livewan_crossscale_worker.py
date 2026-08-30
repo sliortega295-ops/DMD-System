@@ -308,7 +308,10 @@ def _load_student_state(torch: Any, model: Any, bootstrap: Bootstrap) -> dict[st
         return {"kind": "base_weights", "sha256": bootstrap.value["student_base"]["sha256"]}
     path = Path(spec["path"])
     _require(sha256_file(path) == spec["sha256"], "Student state SHA mismatch")
-    blob = torch.load(path, map_location="cpu", weights_only=False)
+    # The pinned Stage-1 file is a complete zip-format state.  mmap keeps its
+    # immutable storage file-backed while load_state_dict copies into the model;
+    # it does not change any tensor value.
+    blob = torch.load(path, map_location="cpu", weights_only=False, mmap=True)
     state = blob.get("model", blob)
     model.load_state_dict(state, strict=True)
     return {"kind": "stage1_state", "sha256": spec["sha256"]}
@@ -436,8 +439,18 @@ def build_models(
         student = _wan_model(WanModel, size="1.3B", config=config)
         student_root = Path(workload["generator"]["checkpoint"]).expanduser().resolve()
         _require(student_root == Path(bootstrap.value["student_base"]["root"]), "plan/bootstrap Student root mismatch")
-        student.load_state_dict(_load_checkpoint(load_file, student_root), strict=True)
-        state_receipt = _load_student_state(torch, student, bootstrap)
+        if bootstrap.value.get("student_state") is None:
+            student.load_state_dict(_load_checkpoint(load_file, student_root), strict=True)
+            state_receipt = {
+                "kind": "base_weights",
+                "sha256": bootstrap.value["student_base"]["sha256"],
+                "load_policy": "base_checkpoint",
+            }
+        else:
+            # The full Stage-1 state strictly covers every parameter, so reading
+            # the base checkpoint first would be pure cold-start I/O and memory.
+            state_receipt = _load_student_state(torch, student, bootstrap)
+            state_receipt["load_policy"] = "complete_stage1_direct_mmap"
         fsdp_groups = 0
         if mode == "baseline":
             mesh = _make_mesh(torch, generator_ranks, generator_group)
@@ -461,11 +474,13 @@ def build_models(
 
     if owns_score:
         torch.manual_seed(0)
-        critic = _wan_model(WanModel, size="1.3B", config=config)
+        # Match LiveWan's final BF16 value exactly while avoiding a transient
+        # full FP32 model plus full BF16 conversion copy on every rank.
+        critic = _wan_model(WanModel, size="1.3B", config=config).to(torch.bfloat16)
         critic_root = Path(workload["score"]["checkpoint"]).expanduser().resolve()
         _require(critic_root == Path(bootstrap.value["critic_base"]["root"]), "plan/bootstrap Critic root mismatch")
         critic.load_state_dict(_load_checkpoint(load_file, critic_root), strict=True)
-        critic.to(torch.bfloat16).eval().requires_grad_(False)
+        critic.eval().requires_grad_(False)
         with torch.random.fork_rng(devices=[]):
             torch.manual_seed(int(bootstrap.value["critic_lora"]["seed"]))
             lora_params, lora_modules, lora_numel = inject_lora(critic, rank=LORA_RANK)
@@ -484,11 +499,11 @@ def build_models(
         gc.collect()
 
         torch.manual_seed(0)
-        teacher = _wan_model(WanModel, size="14B", config=config)
+        teacher = _wan_model(WanModel, size="14B", config=config).to(torch.bfloat16)
         teacher_root = Path(workload["teacher"]["checkpoint"]).expanduser().resolve()
         _require(teacher_root == Path(bootstrap.value["teacher_base"]["root"]), "plan/bootstrap Teacher root mismatch")
         teacher.load_state_dict(_load_checkpoint(load_file, teacher_root), strict=True)
-        teacher.to(torch.bfloat16).eval().requires_grad_(False)
+        teacher.eval().requires_grad_(False)
         teacher_mesh = _make_mesh(torch, score_ranks, score_group)
         shard_model(teacher, mesh=teacher_mesh, reshard_after_forward=True)
         teacher.to(device)

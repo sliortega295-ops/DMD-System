@@ -135,6 +135,16 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert 'args.remote_root / "artifacts/runs"' not in controller
 
 
+def test_cold_loader_avoids_redundant_full_fp32_copies() -> None:
+    worker = (
+        ROOT / "src/distillschedule/runtime/livewan_crossscale_worker.py"
+    ).read_text()
+    assert 'mmap=True' in worker
+    assert '"complete_stage1_direct_mmap"' in worker
+    assert '_wan_model(WanModel, size="14B", config=config).to(torch.bfloat16)' in worker
+    assert '_wan_model(WanModel, size="1.3B", config=config).to(torch.bfloat16)' in worker
+
+
 def test_trace_builder_requires_80_distinct_source_samples(tmp_path: Path) -> None:
     data = tmp_path / "latents"
     data.mkdir()
