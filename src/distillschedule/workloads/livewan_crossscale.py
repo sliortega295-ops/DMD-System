@@ -113,6 +113,14 @@ PIPELINE_8G8S_LAYOUT = PoolLayout(
     overlap=False,
 )
 
+PIPELINE_6G10S_LAYOUT = PoolLayout(
+    name="persistent_6g_10score_teacher_fsdp10",
+    generator_ranks=tuple(range(6)),
+    score_ranks=tuple(range(6, 16)),
+    teacher_ranks=tuple(range(6, 16)),
+    overlap=False,
+)
+
 
 def balanced_slots(ranks: Sequence[int], *, batch: int = GLOBAL_BATCH) -> dict[int, tuple[int, ...]]:
     """Assign every logical sample once with rank-local counts differing by <=1."""

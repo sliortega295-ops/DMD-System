@@ -17,6 +17,8 @@ from distillschedule.workloads.livewan_crossscale import (
     GLOBAL_BATCH,
     LIVEWAN_COMMIT,
     LORA_RANK,
+    PIPELINE_6G10S_LAYOUT,
+    PIPELINE_8G8S_LAYOUT,
     TEACHER_SIZE,
     WAN21_COMMIT,
     WORLD_SIZE,
@@ -125,10 +127,21 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
             if plan.training_backends["teacher"].kind != TrainingBackendKind.FSDP:
                 self._fail("baseline Teacher must use FSDP2", "training_backends.teacher.kind")
         elif mode == "pipeline":
-            if groups.get("generator") != tuple(range(8)):
-                self._fail("pipeline Generator pool must be ranks0..7", "rank_groups.generator")
-            if groups.get("score") != tuple(range(8, 16)) or groups.get("teacher") != tuple(range(8, 16)):
-                self._fail("pipeline Score/Teacher pool must be ranks8..15", "rank_groups")
+            pool_policy = str(plan.metadata.get("pool_policy", ""))
+            layout = {
+                "persistent_8g_8score_teacher_fsdp8": PIPELINE_8G8S_LAYOUT,
+                "persistent_8g_8score_teacher_fsdp8_score_b2": PIPELINE_8G8S_LAYOUT,
+                "persistent_6g_10score_teacher_fsdp10": PIPELINE_6G10S_LAYOUT,
+            }.get(pool_policy)
+            if layout is None:
+                self._fail("pipeline pool policy is not registered", "metadata.pool_policy")
+            if groups.get("generator") != layout.generator_ranks:
+                self._fail("pipeline Generator pool differs from policy", "rank_groups.generator")
+            if (
+                groups.get("score") != layout.score_ranks
+                or groups.get("teacher") != layout.teacher_ranks
+            ):
+                self._fail("pipeline Score/Teacher pool differs from policy", "rank_groups")
             if plan.training_backends["generator"].kind != TrainingBackendKind.NATIVE:
                 self._fail("pipeline Student must be GPU-resident", "training_backends.generator.kind")
             if plan.training_backends["teacher"].kind != TrainingBackendKind.FSDP:

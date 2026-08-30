@@ -61,6 +61,20 @@ It uses the same 8G+8Score ranks and trace. It must emit logical call inventory
 equal to the B1 control while separately reporting the expected reduced
 physical Teacher/Fake/Critic inventory. Do not use `score-b2` for the sequential
 denominator or silently replace the default B1 plan.
+
+The preregistered role-ratio capacity candidate is selected explicitly with:
+
+```text
+--execution-mode pipeline --pipeline-variant 6g10score
+```
+
+It maps ranks 0-5 to persistent Generator replicas and ranks 6-15 to the
+resident Critic plus FSDP10 Teacher. All 16 logical B1 samples remain real and
+trace-qualified. Generator ranks own 2-3 samples; Score ranks own 1-2 samples
+and make exactly one heterogeneous B1/B2 physical call per phase. Treat this as
+a capacity/correctness candidate until its individual receipt passes; it is not
+a formal timing arm while paired numerical parity remains locked.
+
 3. Run one baseline correctness/capacity trial.
 4. Run one 8G+8Score correctness/capacity trial.
 5. Generate the paired correctness receipt. Only a PASS receipt unlocks timing.

@@ -86,7 +86,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--execution-mode", choices=("baseline", "pipeline"), required=True)
     value.add_argument(
         "--pipeline-variant",
-        choices=("b1", "score-b2"),
+        choices=("b1", "score-b2", "6g10score"),
         default="b1",
         help="physical pipeline policy; logical workload remains frozen",
     )

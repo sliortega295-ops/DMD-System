@@ -20,6 +20,8 @@ import socket
 WORLD_SIZE = 16
 GENERATOR_RANKS = tuple(range(8))
 SCORE_RANKS = tuple(range(8, 16))
+GENERATOR_RANKS_6G10S = tuple(range(6))
+SCORE_RANKS_6G10S = tuple(range(6, 16))
 
 
 def atomic_json(path: Path, value: object) -> None:
@@ -33,6 +35,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--timeout-seconds", type=int, default=180)
+    parser.add_argument(
+        "--pipeline-variant",
+        choices=("b1", "score-b2", "6g10score"),
+        default="b1",
+    )
     args = parser.parse_args()
 
     import torch
@@ -45,17 +52,130 @@ def main() -> int:
     torch.cuda.set_device(local_rank)
     device = torch.device("cuda", local_rank)
     dist.init_process_group("nccl", timeout=timedelta(seconds=args.timeout_seconds))
-    generator_group = dist.new_group(ranks=list(GENERATOR_RANKS), backend="nccl")
-    score_group = dist.new_group(ranks=list(SCORE_RANKS), backend="nccl")
+    generator_ranks, score_ranks = (
+        (GENERATOR_RANKS_6G10S, SCORE_RANKS_6G10S)
+        if args.pipeline_variant == "6g10score"
+        else (GENERATOR_RANKS, SCORE_RANKS)
+    )
+    generator_group = dist.new_group(ranks=list(generator_ranks), backend="nccl")
+    score_group = dist.new_group(ranks=list(score_ranks), backend="nccl")
 
     # Collectively initialize default world before asymmetric default-group P2P.
     dist.barrier()
-    subgroup = generator_group if rank < 8 else score_group
+    subgroup = generator_group if rank in generator_ranks else score_group
     subgroup_token = torch.tensor([rank + 1], dtype=torch.int64, device=device)
     dist.all_reduce(subgroup_token, group=subgroup)
-    expected_subgroup = sum(value + 1 for value in (GENERATOR_RANKS if rank < 8 else SCORE_RANKS))
+    expected_subgroup = sum(
+        value + 1 for value in (generator_ranks if rank in generator_ranks else score_ranks)
+    )
     if int(subgroup_token.cpu()) != expected_subgroup:
         raise RuntimeError("role subgroup all-reduce mismatch")
+
+    if args.pipeline_variant == "6g10score":
+        generator_by_slot = {
+            slot: generator_ranks[slot % len(generator_ranks)] for slot in range(WORLD_SIZE)
+        }
+        score_by_slot = {
+            slot: score_ranks[slot % len(score_ranks)] for slot in range(WORLD_SIZE)
+        }
+        forward_ops = []
+        reverse_ops = []
+        received_headers: dict[int, torch.Tensor] = {}
+        received_payloads: dict[int, torch.Tensor] = {}
+        acknowledgements: dict[int, torch.Tensor] = {}
+        local_slots: list[int] = []
+        retained: list[torch.Tensor] = []
+        for slot in range(WORLD_SIZE):
+            generator_rank = generator_by_slot[slot]
+            score_rank = score_by_slot[slot]
+            if rank == generator_rank:
+                header = torch.tensor(
+                    [slot, generator_rank, score_rank], dtype=torch.int64, device=device
+                )
+                payload = torch.full(
+                    (256,), float(slot), dtype=torch.bfloat16, device=device
+                )
+                acknowledgement = torch.empty(1, dtype=torch.int64, device=device)
+                retained.extend((header, payload))
+                acknowledgements[slot] = acknowledgement
+                forward_ops.extend(
+                    (
+                        dist.P2POp(dist.isend, header, score_rank),
+                        dist.P2POp(dist.isend, payload, score_rank),
+                    )
+                )
+                reverse_ops.append(
+                    dist.P2POp(dist.irecv, acknowledgement, score_rank)
+                )
+                local_slots.append(slot)
+            elif rank == score_rank:
+                header = torch.empty(3, dtype=torch.int64, device=device)
+                payload = torch.empty(256, dtype=torch.bfloat16, device=device)
+                acknowledgement = torch.tensor([slot], dtype=torch.int64, device=device)
+                received_headers[slot] = header
+                received_payloads[slot] = payload
+                retained.append(acknowledgement)
+                forward_ops.extend(
+                    (
+                        dist.P2POp(dist.irecv, header, generator_rank),
+                        dist.P2POp(dist.irecv, payload, generator_rank),
+                    )
+                )
+                reverse_ops.append(
+                    dist.P2POp(dist.isend, acknowledgement, generator_rank)
+                )
+                local_slots.append(slot)
+        for work in dist.batch_isend_irecv(forward_ops):
+            work.wait()
+        for slot, header in received_headers.items():
+            expected = [slot, generator_by_slot[slot], score_by_slot[slot]]
+            if [int(value) for value in header.cpu()] != expected:
+                raise RuntimeError("routed P2P identity header mismatch")
+            if not torch.equal(
+                received_payloads[slot],
+                torch.full_like(received_payloads[slot], float(slot)),
+            ):
+                raise RuntimeError("routed P2P payload mismatch")
+        for work in dist.batch_isend_irecv(reverse_ops):
+            work.wait()
+        for slot, acknowledgement in acknowledgements.items():
+            if int(acknowledgement.cpu()) != slot:
+                raise RuntimeError("routed P2P acknowledgement mismatch")
+
+        torch.cuda.synchronize(device)
+        dist.barrier()
+        receipt = {
+            "status": "PASS",
+            "rank": rank,
+            "local_rank": local_rank,
+            "hostname": socket.gethostname(),
+            "pipeline_variant": args.pipeline_variant,
+            "local_slots": local_slots,
+            "subgroup_size": len(generator_ranks) if rank in generator_ranks else len(score_ranks),
+            "default_world_initialized_collectively": True,
+            "routed_batch_p2p": True,
+        }
+        atomic_json(args.output_dir / f"rank_{rank:03d}.json", receipt)
+        dist.barrier()
+        if rank == 0:
+            rows = [
+                json.loads((args.output_dir / f"rank_{member:03d}.json").read_text())
+                for member in range(WORLD_SIZE)
+            ]
+            atomic_json(
+                args.output_dir / "summary.json",
+                {
+                    "status": "PASS" if all(row["status"] == "PASS" for row in rows) else "FAIL",
+                    "rank_count": len(rows),
+                    "pipeline_variant": args.pipeline_variant,
+                    "generator_ranks": list(generator_ranks),
+                    "score_ranks": list(score_ranks),
+                    "slot_count": sum(len(row["local_slots"]) for row in rows) // 2,
+                },
+            )
+        dist.barrier()
+        dist.destroy_process_group()
+        return 0
 
     peer = rank + 8 if rank < 8 else rank - 8
     observed: list[int] = []
@@ -119,6 +239,7 @@ def main() -> int:
         "subgroup_size": 8,
         "default_world_initialized_collectively": True,
         "score_gradient_1_async": True,
+        "pipeline_variant": args.pipeline_variant,
         "observed": observed,
         "observed_gradients": observed_gradients,
     }
@@ -134,8 +255,8 @@ def main() -> int:
             {
                 "status": "PASS" if all(row["status"] == "PASS" for row in rows) else "FAIL",
                 "rank_count": len(rows),
-                "generator_ranks": list(GENERATOR_RANKS),
-                "score_ranks": list(SCORE_RANKS),
+                "generator_ranks": list(generator_ranks),
+                "score_ranks": list(score_ranks),
                 "waves": 2,
             },
         )

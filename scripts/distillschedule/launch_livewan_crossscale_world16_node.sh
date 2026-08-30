@@ -28,13 +28,16 @@ LOCK_FILE="${DISTILLSCHEDULE_NODE_LOCK:-/tmp/distillschedule_gpu_node.lock}"
 SOURCE_ROOT="${LIVEWAN_WAN21_SOURCE:?set LIVEWAN_WAN21_SOURCE}"
 SOURCE_RECEIPT="${LIVEWAN_SOURCE_RECEIPT:?set LIVEWAN_SOURCE_RECEIPT}"
 PIPELINE_VARIANT="${LIVEWAN_PIPELINE_VARIANT:-b1}"
-[[ "${PIPELINE_VARIANT}" == b1 || "${PIPELINE_VARIANT}" == score-b2 ]] || exit 2
+[[ "${PIPELINE_VARIANT}" == b1 || "${PIPELINE_VARIANT}" == score-b2 || \
+   "${PIPELINE_VARIANT}" == 6g10score ]] || exit 2
 
 if [[ "${EXECUTION_MODE}" == baseline ]]; then
   [[ "${PIPELINE_VARIANT}" == b1 ]] || { echo baseline_pipeline_variant_mismatch >&2; exit 2; }
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_fsdp2.json"
 elif [[ "${PIPELINE_VARIANT}" == score-b2 ]]; then
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
+elif [[ "${PIPELINE_VARIANT}" == 6g10score ]]; then
+  PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json"
 else
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8.json"
 fi
@@ -192,7 +195,8 @@ if [[ "${EXECUTION_MODE}" == pipeline ]]; then
   "${TORCHRUN}" --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}" \
     --master-addr="${MASTER_ADDR}" --master-port="$((MASTER_PORT + 1))" \
     "${ROOT}/scripts/distillschedule/probe_livewan_crossscale_transport.py" \
-    --output-dir "${TRANSPORT_DIR}" >"${NODE_LOG}/transport_probe.log" 2>&1
+    --output-dir "${TRANSPORT_DIR}" --pipeline-variant "${PIPELINE_VARIANT}" \
+    >"${NODE_LOG}/transport_probe.log" 2>&1
   transport_status=$?
   set -e
   [[ ${transport_status} -eq 0 ]] || { echo transport_probe_failed >&2; exit "${transport_status}"; }

@@ -27,9 +27,11 @@ from distillschedule.workloads.livewan_crossscale import (
     GLOBAL_BATCH,
     LIVEWAN_COMMIT,
     LORA_RANK,
+    PIPELINE_6G10S_LAYOUT,
     PIPELINE_8G8S_LAYOUT,
     WAN21_COMMIT,
     WORLD_SIZE,
+    balanced_slots,
     sha256_file,
 )
 
@@ -412,6 +414,33 @@ def _make_mesh(torch: Any, ranks: Sequence[int], group: Any) -> Any:
         return DeviceMesh("cuda", list(ranks), mesh_dim_names=("fsdp",))
 
 
+def _plan_role_ranks(plan: Mapping[str, Any], *, mode: str) -> tuple[tuple[int, ...], tuple[int, ...]]:
+    if mode == "baseline":
+        ranks = tuple(range(WORLD_SIZE))
+        return ranks, ranks
+    groups = {str(row["name"]): tuple(int(rank) for rank in row["ranks"]) for row in plan["rank_groups"]}
+    generator_ranks = groups.get("generator", ())
+    score_ranks = groups.get("score", ())
+    teacher_ranks = groups.get("teacher", ())
+    _require(bool(generator_ranks) and bool(score_ranks), "pipeline role ranks are missing")
+    _require(teacher_ranks == score_ranks, "Teacher ranks must equal Score ranks")
+    _require(not (set(generator_ranks) & set(score_ranks)), "pipeline role pools overlap")
+    _require(
+        set(generator_ranks) | set(score_ranks) == set(range(WORLD_SIZE)),
+        "pipeline role pools do not cover world16",
+    )
+    policy = plan.get("metadata", {}).get("pool_policy")
+    expected = {
+        "persistent_8g_8score_teacher_fsdp8": PIPELINE_8G8S_LAYOUT,
+        "persistent_8g_8score_teacher_fsdp8_score_b2": PIPELINE_8G8S_LAYOUT,
+        "persistent_6g_10score_teacher_fsdp10": PIPELINE_6G10S_LAYOUT,
+    }.get(policy)
+    _require(expected is not None, "unknown pipeline pool policy")
+    _require(generator_ranks == expected.generator_ranks, "Generator rank policy mismatch")
+    _require(score_ranks == expected.score_ranks, "Score rank policy mismatch")
+    return generator_ranks, score_ranks
+
+
 def build_models(
     *,
     torch: Any,
@@ -430,8 +459,7 @@ def build_models(
 
     _require(mode in {"baseline", "pipeline"}, "unknown execution mode")
     config = WAN_CONFIGS["t2v-1.3B"]
-    generator_ranks = tuple(range(WORLD_SIZE)) if mode == "baseline" else PIPELINE_8G8S_LAYOUT.generator_ranks
-    score_ranks = tuple(range(WORLD_SIZE)) if mode == "baseline" else PIPELINE_8G8S_LAYOUT.score_ranks
+    generator_ranks, score_ranks = _plan_role_ranks(plan, mode=mode)
     # Every rank calls new_group in the same global order.
     generator_group = dist.new_group(ranks=list(generator_ranks))
     score_group = dist.new_group(ranks=list(score_ranks))
@@ -574,6 +602,27 @@ def _mean_replicated_gradients(
     return {"gradient_tensors": len(gradients), "buckets": len(buckets)}
 
 
+def _pipeline_slot_routes(
+    generator_ranks: Sequence[int], score_ranks: Sequence[int]
+) -> tuple[tuple[int, int, int], ...]:
+    """Return the exact logical slot -> Generator -> Score routing table."""
+
+    generator_by_slot = {
+        slot: rank for rank, slots in balanced_slots(generator_ranks).items() for slot in slots
+    }
+    score_by_slot = {
+        slot: rank for rank, slots in balanced_slots(score_ranks).items() for slot in slots
+    }
+    _require(
+        set(generator_by_slot) == set(score_by_slot) == set(range(GLOBAL_BATCH)),
+        "pipeline slot route is not a world16 bijection",
+    )
+    return tuple(
+        (slot, generator_by_slot[slot], score_by_slot[slot])
+        for slot in range(GLOBAL_BATCH)
+    )
+
+
 def _warm_communicators(
     torch: Any,
     *,
@@ -614,18 +663,59 @@ def _warm_communicators(
         warmed_groups.append("score")
 
     pair_peer = None
+    routed_slots: list[int] = []
     if mode == "pipeline":
-        pair_peer = rank + 8 if rank < 8 else rank - 8
-        sent = torch.tensor([rank], dtype=torch.int64, device=device)
-        received = torch.empty_like(sent)
-        if rank < 8:
-            dist.send(sent, dst=pair_peer)
-            dist.recv(received, src=pair_peer)
+        generator_ranks = tuple(int(value) for value in bundle.metadata["generator_ranks"])
+        score_ranks = tuple(int(value) for value in bundle.metadata["score_ranks"])
+        if generator_ranks == PIPELINE_8G8S_LAYOUT.generator_ranks:
+            pair_peer = rank + 8 if rank < 8 else rank - 8
+            sent = torch.tensor([rank], dtype=torch.int64, device=device)
+            received = torch.empty_like(sent)
+            if rank < 8:
+                dist.send(sent, dst=pair_peer)
+                dist.recv(received, src=pair_peer)
+            else:
+                dist.recv(received, src=pair_peer)
+                dist.send(sent, dst=pair_peer)
+            _require(int(received.cpu()) == pair_peer, "pipeline P2P warm-up identity mismatch")
+            warmed_groups.append("rank_pair_p2p")
         else:
-            dist.recv(received, src=pair_peer)
-            dist.send(sent, dst=pair_peer)
-        _require(int(received.cpu()) == pair_peer, "pipeline P2P warm-up identity mismatch")
-        warmed_groups.append("rank_pair_p2p")
+            routes = _pipeline_slot_routes(generator_ranks, score_ranks)
+            forward_ops: list[Any] = []
+            reverse_ops: list[Any] = []
+            received_by_slot: dict[int, Any] = {}
+            acknowledgements: dict[int, Any] = {}
+            retained: list[Any] = []
+            for slot, generator_rank, score_rank in routes:
+                if rank == generator_rank:
+                    token = torch.tensor([slot, generator_rank, score_rank], dtype=torch.int64, device=device)
+                    acknowledgement = torch.empty(1, dtype=torch.int64, device=device)
+                    retained.append(token)
+                    acknowledgements[slot] = acknowledgement
+                    forward_ops.append(dist.P2POp(dist.isend, token, score_rank))
+                    reverse_ops.append(dist.P2POp(dist.irecv, acknowledgement, score_rank))
+                    routed_slots.append(slot)
+                elif rank == score_rank:
+                    token = torch.empty(3, dtype=torch.int64, device=device)
+                    acknowledgement = torch.tensor([slot], dtype=torch.int64, device=device)
+                    received_by_slot[slot] = token
+                    retained.append(acknowledgement)
+                    forward_ops.append(dist.P2POp(dist.irecv, token, generator_rank))
+                    reverse_ops.append(dist.P2POp(dist.isend, acknowledgement, generator_rank))
+                    routed_slots.append(slot)
+            for request in dist.batch_isend_irecv(forward_ops):
+                request.wait()
+            for slot, value in received_by_slot.items():
+                expected = next(row for row in routes if row[0] == slot)
+                _require(
+                    tuple(int(item) for item in value.cpu()) == expected,
+                    "routed pipeline P2P warm-up identity mismatch",
+                )
+            for request in dist.batch_isend_irecv(reverse_ops):
+                request.wait()
+            for slot, value in acknowledgements.items():
+                _require(int(value.cpu()) == slot, "routed pipeline P2P acknowledgement mismatch")
+            warmed_groups.append("routed_batch_p2p")
 
     dist.barrier()
     torch.cuda.synchronize(device)
@@ -633,6 +723,7 @@ def _warm_communicators(
         "status": "PASS",
         "groups": warmed_groups,
         "pair_peer": pair_peer,
+        "routed_slots": routed_slots,
         "wall_seconds_outside_full5": time.perf_counter() - started,
     }
 
@@ -962,8 +1053,9 @@ def critic_backward_for_batch(
     x0: Any,
     sample_context: ScoreSampleContext,
     context_lens: Any,
+    loss_scale: float = 1.0,
 ) -> tuple[Any, ...]:
-    """Backpropagate the mean of exact per-sample Critic losses in one B2 call."""
+    """Backpropagate a scaled local mean of exact per-sample Critic losses."""
 
     from wanstreamer import dmd as D
     from wanstreamer.data import add_noise
@@ -992,7 +1084,7 @@ def critic_backward_for_batch(
             grad_checkpoint=True,
         )
     losses = _per_sample_mse(torch, velocity, target)
-    losses.mean().backward()
+    losses.mean().mul(loss_scale).backward()
     return tuple(value.detach() for value in losses.unbind(0))
 
 
@@ -1108,7 +1200,10 @@ def _score_physical_batch_size(plan: Mapping[str, Any], *, mode: str) -> int:
         _require(mode == "pipeline", "Score B2 is a pipeline-only candidate")
         _require(
             plan.get("metadata", {}).get("pool_policy")
-            == "persistent_8g_8score_teacher_fsdp8_score_b2",
+            in {
+                "persistent_8g_8score_teacher_fsdp8_score_b2",
+                "persistent_6g_10score_teacher_fsdp10",
+            },
             "Score B2 plan policy identity mismatch",
         )
     return value
@@ -1202,8 +1297,14 @@ def run_worker(
     loader = InputLoader(torch=torch, trace=trace)
     generator_streamers = []
     if bundle.student is not None:
+        generator_ranks = tuple(int(value) for value in bundle.metadata["generator_ranks"])
+        streamer_count = (
+            1
+            if mode == "baseline"
+            else len(balanced_slots(generator_ranks)[rank])
+        )
         generator_streamers = _build_streamers(
-            torch, student=bundle.student, count=(1 if mode == "baseline" else 2), device=device,
+            torch, student=bundle.student, count=streamer_count, device=device,
         )
     score_context = (
         build_score_context(torch, bundle=bundle, loader=loader, device=device)
@@ -1256,14 +1357,20 @@ def run_worker(
                     streamers=generator_streamers, score_context=score_context,
                     run_kind=run_kind, evidence=evidence, versions=versions, device=device,
                 )
-            elif _score_physical_batch_size(plan, mode=mode) == 1:
+            elif plan.get("metadata", {}).get("pool_policy") == "persistent_8g_8score_teacher_fsdp8":
                 _run_pipeline_8x8(
                     torch=torch, rank=rank, trace=trace, loader=loader, bundle=bundle,
                     streamers=generator_streamers, score_context=score_context,
                     run_kind=run_kind, evidence=evidence, versions=versions, device=device,
                 )
-            else:
+            elif plan.get("metadata", {}).get("pool_policy") == "persistent_8g_8score_teacher_fsdp8_score_b2":
                 _run_pipeline_8x8_score_b2(
+                    torch=torch, rank=rank, trace=trace, loader=loader, bundle=bundle,
+                    streamers=generator_streamers, score_context=score_context,
+                    run_kind=run_kind, evidence=evidence, versions=versions, device=device,
+                )
+            else:
+                _run_pipeline_6g10score(
                     torch=torch, rank=rank, trace=trace, loader=loader, bundle=bundle,
                     streamers=generator_streamers, score_context=score_context,
                     run_kind=run_kind, evidence=evidence, versions=versions, device=device,
@@ -1329,6 +1436,7 @@ def run_worker(
         "physical_call_inventory": inventory.counts,
         "logical_call_inventory": logical_call_inventory,
         "score_physical_batch_size": _score_physical_batch_size(plan, mode=mode),
+        "pool_policy": plan.get("metadata", {}).get("pool_policy", "world16_fsdp2_sequential"),
         "full5_wall_seconds": full5_wall,
         "construction_wall_seconds": build_wall,
         "setup_memory": setup_memory,
@@ -1508,6 +1616,114 @@ def _send_pair(*, destination: int, prepared: PreparedRollout, asynchronous: boo
     dist.send(prepared.x0.contiguous(), dst=destination)
     dist.send(prepared.raw_context.contiguous(), dst=destination)
     return ()
+
+
+def _exchange_routed_inputs(
+    torch: Any,
+    *,
+    rank: int,
+    device: Any,
+    generator_ranks: Sequence[int],
+    score_ranks: Sequence[int],
+    prepared_by_slot: Mapping[int, PreparedRollout],
+) -> dict[int, tuple[Any, Any]]:
+    """Exchange all real B1 samples for one step in one collective P2P batch.
+
+    Every world rank enters the first ``batch_isend_irecv`` on the default
+    communicator.  This preserves NCCL's first-call requirement while allowing
+    a non-paired 6G+10Score routing graph without dummy samples.
+    """
+
+    import torch.distributed as dist
+
+    routes = _pipeline_slot_routes(generator_ranks, score_ranks)
+    expected_generator_slots = set(balanced_slots(generator_ranks).get(rank, ()))
+    expected_score_slots = set(balanced_slots(score_ranks).get(rank, ()))
+    if rank in generator_ranks:
+        _require(
+            set(prepared_by_slot) == expected_generator_slots,
+            "Generator routed-input slot inventory mismatch",
+        )
+    else:
+        _require(not prepared_by_slot, "Score rank unexpectedly owns Generator inputs")
+
+    operations: list[Any] = []
+    received: dict[int, tuple[Any, Any]] = {}
+    retained: list[Any] = []
+    for slot, generator_rank, score_rank in routes:
+        if rank == generator_rank:
+            prepared = prepared_by_slot[slot]
+            x0 = prepared.x0.contiguous()
+            context = prepared.raw_context.contiguous()
+            retained.extend((x0, context))
+            operations.extend(
+                (
+                    dist.P2POp(dist.isend, x0, score_rank),
+                    dist.P2POp(dist.isend, context, score_rank),
+                )
+            )
+        elif rank == score_rank:
+            x0 = torch.empty(LATENT_SHAPE, device=device, dtype=torch.float32)
+            context = torch.empty(TEXT_SHAPE, device=device, dtype=torch.float32)
+            received[slot] = (x0, context)
+            operations.extend(
+                (
+                    dist.P2POp(dist.irecv, x0, generator_rank),
+                    dist.P2POp(dist.irecv, context, generator_rank),
+                )
+            )
+    _require(
+        set(received) == expected_score_slots,
+        "Score routed-input slot inventory mismatch",
+    )
+    for request in dist.batch_isend_irecv(operations):
+        request.wait()
+    return received
+
+
+def _exchange_routed_gradients(
+    torch: Any,
+    *,
+    rank: int,
+    device: Any,
+    generator_ranks: Sequence[int],
+    score_ranks: Sequence[int],
+    gradients_by_slot: Mapping[int, Any],
+) -> dict[int, Any]:
+    """Return one trace-qualified DMD latent gradient for every logical slot."""
+
+    import torch.distributed as dist
+
+    routes = _pipeline_slot_routes(generator_ranks, score_ranks)
+    expected_generator_slots = set(balanced_slots(generator_ranks).get(rank, ()))
+    expected_score_slots = set(balanced_slots(score_ranks).get(rank, ()))
+    if rank in score_ranks:
+        _require(
+            set(gradients_by_slot) == expected_score_slots,
+            "Score routed-gradient slot inventory mismatch",
+        )
+    else:
+        _require(not gradients_by_slot, "Generator rank unexpectedly owns Score gradients")
+
+    operations: list[Any] = []
+    received: dict[int, Any] = {}
+    retained: list[Any] = []
+    for slot, generator_rank, score_rank in routes:
+        if rank == score_rank:
+            gradient = gradients_by_slot[slot].contiguous()
+            retained.append(gradient)
+            operations.append(dist.P2POp(dist.isend, gradient, generator_rank))
+        elif rank == generator_rank:
+            gradient = torch.empty(LATENT_SHAPE, device=device, dtype=torch.float32)
+            received[slot] = gradient
+            operations.append(dist.P2POp(dist.irecv, gradient, score_rank))
+    _require(
+        set(received) == expected_generator_slots,
+        "Generator routed-gradient slot inventory mismatch",
+    )
+    for request in dist.batch_isend_irecv(operations):
+        request.wait()
+    return received
 
 
 def _run_pipeline_8x8(
@@ -2001,6 +2217,309 @@ def _run_pipeline_8x8_score_b2(
                 evidence.gradient_sync.append({"step": step, "role": "critic", **sync})
                 critic_pre_clip = (
                     _state_metrics(torch, [parameter.grad for parameter in bundle.critic_lora_params])
+                    if run_kind == "correctness"
+                    else None
+                )
+                critic_clip_norm = torch.nn.utils.clip_grad_norm_(
+                    bundle.critic_lora_params, 1.0, foreach=True
+                )
+                _record_optimizer_diagnostics(
+                    torch,
+                    evidence,
+                    run_kind=run_kind,
+                    role="critic",
+                    step=step,
+                    parameters=bundle.critic_lora_params,
+                    clip_norm=critic_clip_norm,
+                    gradient_before_clip=critic_pre_clip,
+                )
+                bundle.critic_optimizer.step()
+                versions["critic"] += 1
+
+
+def _run_pipeline_6g10score(
+    *,
+    torch: Any,
+    rank: int,
+    trace: FormalTrace,
+    loader: InputLoader,
+    bundle: ModelBundle,
+    streamers: Sequence[Any],
+    score_context: ScoreContext | None,
+    run_kind: str,
+    evidence: RunEvidence,
+    versions: dict[str, int],
+    device: Any,
+) -> None:
+    """Persistent 6G+10Score exact global-B16 role pipeline.
+
+    Logical slots are routed independently to both pools. Generator ranks own
+    either two or three real B1 samples; Score ranks own one or two. Every Score
+    rank executes exactly one physical model call per phase, so its FSDP10
+    Teacher collective sequence remains identical even though local batch sizes
+    differ. Loss scales compensate for the replicated-group gradient mean and
+    recover the exact global sample mean without dummy work.
+    """
+
+    generator_ranks = PIPELINE_6G10S_LAYOUT.generator_ranks
+    score_ranks = PIPELINE_6G10S_LAYOUT.score_ranks
+    generator_slots = balanced_slots(generator_ranks).get(rank, ())
+    score_slots = balanced_slots(score_ranks).get(rank, ())
+    is_generator = rank in generator_ranks
+    is_score = rank in score_ranks
+    _require(is_generator != is_score, "6G+10Score role ownership is not exclusive")
+    if is_generator:
+        _require(
+            bundle.student is not None and len(streamers) == len(generator_slots),
+            "6G+10Score Generator role is incomplete",
+        )
+    else:
+        _require(
+            bundle.critic is not None
+            and bundle.teacher is not None
+            and score_context is not None,
+            "6G+10Score role is incomplete",
+        )
+
+    pair_bytes = (math.prod(LATENT_SHAPE) + math.prod(TEXT_SHAPE)) * 4
+    gradient_bytes = math.prod(LATENT_SHAPE) * 4
+    for step in range(FULL5_STEPS):
+        prepared_by_slot: dict[int, PreparedRollout] = {}
+        if is_generator:
+            bundle.generator_optimizer.zero_grad(set_to_none=True)
+            for local_index, slot in enumerate(generator_slots):
+                row = trace.row(step, slot)
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label=f"livewan/pipeline_6g10/g/step_{step}/rollout_slot_{slot}",
+                ):
+                    prepared = prepare_rollout(
+                        torch,
+                        row=row,
+                        streamer=streamers[local_index],
+                        student=bundle.student,
+                        loader=loader,
+                        device=device,
+                    )
+                prepared_by_slot[slot] = prepared
+                _record_output(
+                    torch, evidence, row=row, x0=prepared.x0, run_kind=run_kind
+                )
+        else:
+            bundle.critic_optimizer.zero_grad(set_to_none=True)
+
+        with _profile_range(
+            torch,
+            run_kind=run_kind,
+            label=f"livewan/pipeline_6g10/step_{step}/exchange_inputs",
+        ):
+            received_by_slot = _exchange_routed_inputs(
+                torch,
+                rank=rank,
+                device=device,
+                generator_ranks=generator_ranks,
+                score_ranks=score_ranks,
+                prepared_by_slot=prepared_by_slot,
+            )
+        evidence.transport_bytes += pair_bytes * (
+            len(generator_slots) if is_generator else len(score_slots)
+        )
+
+        rows: tuple[OperationTraceRow, ...] = ()
+        x0_batch = raw_context_batch = context_lens = sample_context = None
+        gradients_by_slot: dict[int, Any] = {}
+        if is_score:
+            rows = tuple(trace.row(step, slot) for slot in score_slots)
+            x0_batch = torch.cat(
+                [received_by_slot[slot][0] for slot in score_slots], dim=0
+            )
+            raw_context_batch = torch.cat(
+                [received_by_slot[slot][1] for slot in score_slots], dim=0
+            )
+            context_lens = torch.full(
+                (len(score_slots),),
+                TEXT_SHAPE[1],
+                device=device,
+                dtype=torch.long,
+            )
+            sample_context = prepare_score_sample_context(
+                torch, bundle=bundle, raw_context=raw_context_batch
+            )
+            if step == 0:
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label=(
+                        "livewan/pipeline_6g10/score/step_0/"
+                        f"dmd_b{len(score_slots)}"
+                    ),
+                ):
+                    gradient_batch = dmd_gradient_for_batch(
+                        torch,
+                        bundle=bundle,
+                        score_context=score_context,
+                        rows=rows,
+                        x0=x0_batch,
+                        sample_context=sample_context,
+                        context_lens=context_lens,
+                    )
+                gradients_by_slot = {
+                    slot: gradient_batch[index : index + 1]
+                    for index, slot in enumerate(score_slots)
+                }
+                evidence.add_logical_score_calls(
+                    "teacher/nograd/plain", len(score_slots)
+                )
+                evidence.add_logical_score_calls(
+                    "critic/nograd/plain", len(score_slots)
+                )
+
+        if step == 0:
+            with _profile_range(
+                torch,
+                run_kind=run_kind,
+                label="livewan/pipeline_6g10/step_0/exchange_gradients",
+            ):
+                received_gradients = _exchange_routed_gradients(
+                    torch,
+                    rank=rank,
+                    device=device,
+                    generator_ranks=generator_ranks,
+                    score_ranks=score_ranks,
+                    gradients_by_slot=gradients_by_slot,
+                )
+            evidence.transport_bytes += gradient_bytes * (
+                len(generator_slots) if is_generator else len(score_slots)
+            )
+        else:
+            received_gradients = {}
+
+        # After the step-0 gradient exchange, Generator backward and Critic
+        # backward are independent and execute concurrently on disjoint pools.
+        if is_generator and step == 0:
+            for slot in generator_slots:
+                prepared = prepared_by_slot[slot]
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label=f"livewan/pipeline_6g10/g/step_0/backward_slot_{slot}",
+                ):
+                    losses = generator_backward_for_sample(
+                        torch,
+                        prepared=prepared,
+                        dmd_gradient=received_gradients[slot],
+                        sample_weight=len(generator_ranks) / GLOBAL_BATCH,
+                    )
+                if run_kind == "correctness":
+                    evidence.loss_fingerprints.extend(
+                        {
+                            "operation_key": prepared.row.operation_key,
+                            "kind": "generator",
+                            **_tensor_fingerprint(torch, value),
+                        }
+                        for value in losses
+                    )
+            with _profile_range(
+                torch,
+                run_kind=run_kind,
+                label="livewan/pipeline_6g10/g/step_0/generator_commit",
+            ):
+                generator_parameters = list(bundle.student.parameters())
+                sync = _mean_replicated_gradients(
+                    torch,
+                    generator_parameters,
+                    group=bundle.generator_group,
+                    group_size=bundle.generator_group_size,
+                    bucket_mib=256,
+                )
+                evidence.gradient_sync.append(
+                    {"step": step, "role": "generator", **sync}
+                )
+                generator_pre_clip = (
+                    _state_metrics(
+                        torch,
+                        [
+                            parameter.grad
+                            for parameter in generator_parameters
+                            if parameter.grad is not None
+                        ],
+                    )
+                    if run_kind == "correctness"
+                    else None
+                )
+                generator_clip_norm = torch.nn.utils.clip_grad_norm_(
+                    generator_parameters, 1.0, foreach=True
+                )
+                _record_optimizer_diagnostics(
+                    torch,
+                    evidence,
+                    run_kind=run_kind,
+                    role="generator",
+                    step=step,
+                    parameters=generator_parameters,
+                    clip_norm=generator_clip_norm,
+                    gradient_before_clip=generator_pre_clip,
+                )
+                bundle.generator_optimizer.step()
+                versions["generator"] += 1
+
+        if is_score:
+            local_batch = len(score_slots)
+            with _profile_range(
+                torch,
+                run_kind=run_kind,
+                label=(
+                    f"livewan/pipeline_6g10/score/step_{step}/"
+                    f"critic_backward_b{local_batch}"
+                ),
+            ):
+                losses = critic_backward_for_batch(
+                    torch,
+                    bundle=bundle,
+                    score_context=score_context,
+                    rows=rows,
+                    x0=x0_batch,
+                    sample_context=sample_context,
+                    context_lens=context_lens,
+                    loss_scale=(len(score_ranks) * local_batch / GLOBAL_BATCH),
+                )
+                evidence.add_logical_score_calls(
+                    "critic/grad/checkpoint", local_batch
+                )
+            if run_kind == "correctness":
+                for row, loss in zip(rows, losses):
+                    evidence.loss_fingerprints.append(
+                        {
+                            "operation_key": row.operation_key,
+                            "kind": "critic",
+                            **_tensor_fingerprint(torch, loss),
+                        }
+                    )
+            with _profile_range(
+                torch,
+                run_kind=run_kind,
+                label=f"livewan/pipeline_6g10/score/step_{step}/critic_commit",
+            ):
+                sync = _mean_replicated_gradients(
+                    torch,
+                    bundle.critic_lora_params,
+                    group=bundle.score_group,
+                    group_size=bundle.score_group_size,
+                    bucket_mib=128,
+                )
+                evidence.gradient_sync.append(
+                    {"step": step, "role": "critic", **sync}
+                )
+                critic_pre_clip = (
+                    _state_metrics(
+                        torch,
+                        [
+                            parameter.grad
+                            for parameter in bundle.critic_lora_params
+                            if parameter.grad is not None
+                        ],
+                    )
                     if run_kind == "correctness"
                     else None
                 )

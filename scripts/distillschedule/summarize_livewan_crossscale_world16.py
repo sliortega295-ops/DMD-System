@@ -62,6 +62,25 @@ def main() -> int:
 
     trace = FormalTrace.load(args.trace)
     plan = json.loads(args.plan.read_text(encoding="utf-8"))
+    pool_policy = plan.get("metadata", {}).get(
+        "pool_policy", "world16_fsdp2_sequential"
+    )
+    rank_groups = {
+        str(row["name"]): tuple(int(rank) for rank in row["ranks"])
+        for row in plan.get("rank_groups", [])
+    }
+    generator_ranks = (
+        tuple(range(WORLD_SIZE))
+        if args.execution_mode == "baseline"
+        else rank_groups.get("generator", ())
+    )
+    score_ranks = (
+        tuple(range(WORLD_SIZE))
+        if args.execution_mode == "baseline"
+        else rank_groups.get("score", ())
+    )
+    if not generator_ranks or not score_ranks:
+        errors.append("plan role ranks are missing")
     score_physical_batch_size = int(plan.get("metadata", {}).get("score_physical_batch_size", 1))
     if score_physical_batch_size not in {1, 2}:
         errors.append(f"unsupported Score physical batch size={score_physical_batch_size}")
@@ -102,8 +121,8 @@ def main() -> int:
 
     expected_physical = {
         rank: (
-            (1, 5) if args.execution_mode == "baseline"
-            else ((1, 0) if rank < 8 else (0, 5))
+            1 if rank in generator_ranks else 0,
+            5 if rank in score_ranks else 0,
         )
         for rank in range(WORLD_SIZE)
     }
@@ -124,12 +143,20 @@ def main() -> int:
         "critic/grad/checkpoint": 80,
     }
     expected_physical_inventory = dict(expected_logical_inventory)
-    if args.execution_mode == "pipeline" and score_physical_batch_size == 2:
+    if pool_policy == "persistent_8g_8score_teacher_fsdp8_score_b2":
         expected_physical_inventory.update(
             {
                 "teacher/nograd/plain": 8,
                 "critic/nograd/plain": 8,
                 "critic/grad/checkpoint": 40,
+            }
+        )
+    elif pool_policy == "persistent_6g_10score_teacher_fsdp10":
+        expected_physical_inventory.update(
+            {
+                "teacher/nograd/plain": 10,
+                "critic/nograd/plain": 10,
+                "critic/grad/checkpoint": 50,
             }
         )
     actual_logical_inventory: dict[str, int] = {}
@@ -143,6 +170,8 @@ def main() -> int:
             actual_physical_inventory[key] = actual_physical_inventory.get(key, 0) + int(count)
         if int(row.get("score_physical_batch_size", score_physical_batch_size)) != score_physical_batch_size:
             errors.append(f"rank{row['rank']}: Score physical batch receipt differs from plan")
+        if row.get("pool_policy") != pool_policy:
+            errors.append(f"rank{row['rank']}: pool policy receipt differs from plan")
     for key, expected in expected_logical_inventory.items():
         if actual_logical_inventory.get(key, 0) != expected:
             errors.append(
@@ -179,7 +208,7 @@ def main() -> int:
             )
         for row in rows:
             artifact = row.get("output_tensor_artifact")
-            owns_generator = args.execution_mode == "baseline" or int(row["rank"]) < 8
+            owns_generator = int(row["rank"]) in generator_ranks
             if owns_generator and (not artifact or not Path(artifact["path"]).is_file()):
                 errors.append(f"rank{row['rank']}: rollout tensor artifact missing")
 
@@ -226,6 +255,9 @@ def main() -> int:
         "physical_call_inventory": actual_physical_inventory,
         "expected_physical_call_inventory": expected_physical_inventory,
         "score_physical_batch_size": score_physical_batch_size,
+        "pool_policy": pool_policy,
+        "generator_ranks": list(generator_ranks),
+        "score_ranks": list(score_ranks),
         "full5_seconds": max(walls) if walls else None,
         "rank_wall_min_seconds": min(walls) if walls else None,
         "rank_wall_max_seconds": max(walls) if walls else None,

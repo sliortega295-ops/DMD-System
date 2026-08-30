@@ -12,6 +12,7 @@ from distillschedule.adapters.livewan import LiveWanSFDMDAdapter
 from distillschedule.core.config import load_plan
 from distillschedule.core.contracts import ContractViolation
 from distillschedule.workloads.livewan_crossscale import (
+    PIPELINE_6G10S_LAYOUT,
     PIPELINE_8G8S_LAYOUT,
     balanced_slots,
     compile_trace_identities,
@@ -23,6 +24,7 @@ from distillschedule.runtime.livewan_crossscale_worker import (
     OperationTraceRow,
     _batch_seeded_flow_inputs,
     _per_sample_mse,
+    _pipeline_slot_routes,
 )
 
 
@@ -30,6 +32,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BASELINE = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_fsdp2.json"
 PIPELINE = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8.json"
 PIPELINE_SCORE_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
+PIPELINE_6G10S = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json"
 
 
 @pytest.fixture(autouse=True)
@@ -77,6 +80,21 @@ def test_score_b2_plan_changes_only_physical_score_batching() -> None:
     assert b2.metadata["score_physical_batch_size"] == 2
     assert b2.metadata["logical_batch_preserved"] is True
     assert b2.metadata["per_sample_rng_preserved"] is True
+
+
+def test_6g10score_plan_changes_only_placement_and_exact_physical_batching() -> None:
+    b1 = load_plan(PIPELINE).plan
+    candidate = load_plan(PIPELINE_6G10S).plan
+    adapter = LiveWanSFDMDAdapter()
+    adapter.validate(candidate)
+    assert b1.workload.to_dict() == candidate.workload.to_dict()
+    assert b1.hardware.to_dict() == candidate.hardware.to_dict()
+    assert candidate.rank_groups[0].ranks == tuple(range(6))
+    assert candidate.rank_groups[1].ranks == tuple(range(6, 16))
+    assert candidate.metadata["pool_policy"] == "persistent_6g_10score_teacher_fsdp10"
+    assert candidate.metadata["score_physical_batch_size"] == 2
+    assert candidate.metadata["logical_batch_preserved"] is True
+    assert candidate.metadata["per_sample_rng_preserved"] is True
 
 
 def _trace_row(slot: int, offset: int) -> OperationTraceRow:
@@ -166,6 +184,54 @@ def test_pipeline_8x8_routes_form_two_b1_waves() -> None:
     }
 
 
+def test_pipeline_6g10score_routes_are_balanced_bijective_and_real_only() -> None:
+    PIPELINE_6G10S_LAYOUT.validate()
+    assert balanced_slots(PIPELINE_6G10S_LAYOUT.generator_ranks) == {
+        0: (0, 6, 12),
+        1: (1, 7, 13),
+        2: (2, 8, 14),
+        3: (3, 9, 15),
+        4: (4, 10),
+        5: (5, 11),
+    }
+    assert balanced_slots(PIPELINE_6G10S_LAYOUT.score_ranks) == {
+        6: (0, 10),
+        7: (1, 11),
+        8: (2, 12),
+        9: (3, 13),
+        10: (4, 14),
+        11: (5, 15),
+        12: (6,),
+        13: (7,),
+        14: (8,),
+        15: (9,),
+    }
+    routes = _pipeline_slot_routes(
+        PIPELINE_6G10S_LAYOUT.generator_ranks,
+        PIPELINE_6G10S_LAYOUT.score_ranks,
+    )
+    assert [slot for slot, _, _ in routes] == list(range(16))
+    assert len(set(routes)) == 16
+
+
+def test_pipeline_6g10score_loss_scales_recover_global_sample_mean() -> None:
+    values = [float(index + 1) for index in range(16)]
+    score_slots = balanced_slots(PIPELINE_6G10S_LAYOUT.score_ranks)
+    local_scaled_means = []
+    for slots in score_slots.values():
+        local_mean = sum(values[slot] for slot in slots) / len(slots)
+        scale = len(PIPELINE_6G10S_LAYOUT.score_ranks) * len(slots) / 16
+        local_scaled_means.append(local_mean * scale)
+    assert sum(local_scaled_means) / len(local_scaled_means) == sum(values) / 16
+
+    generator_slots = balanced_slots(PIPELINE_6G10S_LAYOUT.generator_ranks)
+    local_weighted_sums = [
+        sum(values[slot] * (len(generator_slots) / 16) for slot in slots)
+        for slots in generator_slots.values()
+    ]
+    assert sum(local_weighted_sums) / len(local_weighted_sums) == sum(values) / 16
+
+
 def test_operation_trace_identity_is_stable_and_rank_qualified() -> None:
     rows = compile_trace_identities(sample_count=96, seed=20260830)
     assert len(rows) == 80
@@ -216,7 +282,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert '"--remote-output-root", required=True' in controller
     assert 'args.remote_output_root / args.run_id' in controller
     assert 'args.remote_root / "artifacts/runs"' not in controller
-    assert 'choices=("b1", "score-b2")' in controller
+    assert 'choices=("b1", "score-b2", "6g10score")' in controller
     assert '"LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant' in controller
     assert 'resolved_plan.node0.json' in controller
 
@@ -224,6 +290,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
         ROOT / "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh"
     ).read_text()
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json" in launcher
+    assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json" in launcher
     assert "baseline_pipeline_variant_mismatch" in launcher
     summarizer = (
         ROOT / "scripts/distillschedule/summarize_livewan_crossscale_world16.py"
@@ -231,6 +298,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert 'value.add_argument("--plan", required=True' in summarizer
     assert '"physical_call_inventory"' in summarizer
     assert '"logical_call_inventory"' in summarizer
+    assert '"persistent_6g_10score_teacher_fsdp10"' in summarizer
 
 
 def test_cold_loader_avoids_redundant_full_fp32_copies() -> None:
@@ -358,3 +426,5 @@ def test_launcher_fails_before_model_load_on_world16_and_p2p_drift() -> None:
         "deferred_gradient_work.wait()"
     )
     assert '"observed_gradients"' in probe
+    assert 'choices=("b1", "score-b2", "6g10score")' in probe
+    assert "dist.batch_isend_irecv" in probe

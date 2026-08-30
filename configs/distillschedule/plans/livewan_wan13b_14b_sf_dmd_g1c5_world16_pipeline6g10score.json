@@ -1,0 +1,44 @@
+{
+  "include": ["livewan_wan13b_14b_sf_dmd_g1c5_world16_fsdp2.json"],
+  "id": "livewan-wan13b-14b-sfdmd-g1c5-world16-pipeline6g10score",
+  "rank_groups": [
+    {"name": "generator", "ranks": [0,1,2,3,4,5], "components": ["generator", "rollout"]},
+    {"name": "score", "ranks": [6,7,8,9,10,11,12,13,14,15], "components": ["score", "critic"]},
+    {"name": "teacher", "ranks": [6,7,8,9,10,11,12,13,14,15], "components": ["teacher"]}
+  ],
+  "training_backends": {
+    "generator": {"kind": "native", "parameter_offload": "none", "optimizer_offload": "none", "gradient_checkpointing": true, "options": {"resident": true, "gradient_sync": "group_all_reduce_sum_then_divide", "logical_samples_per_rank": [2,3]}},
+    "score": {"kind": "native", "parameter_offload": "none", "optimizer_offload": "none", "gradient_checkpointing": true, "options": {"resident": true, "gradient_sync": "group_all_reduce_sum_then_divide", "physical_batch_policy": "heterogeneous_b1_b2"}},
+    "teacher": {"kind": "fsdp", "parameter_offload": "none", "optimizer_offload": "none", "gradient_checkpointing": false, "options": {"reshard_after_forward": true, "mesh_ranks": [6,7,8,9,10,11,12,13,14,15], "physical_cfg_batch_policy": "heterogeneous_b2_b4"}}
+  },
+  "lifecycle": {
+    "phase_resident_critic_generator": true,
+    "metadata": {
+      "model_redistribution": false,
+      "transport": "cuda_p2p_round_robin_16_slots",
+      "generator_slot_counts": [3,3,3,3,2,2],
+      "score_slot_counts": [2,2,2,2,2,2,1,1,1,1],
+      "score_physical_batch_policy": "heterogeneous_b1_b2",
+      "ack": false,
+      "dummy_samples": false,
+      "global_barrier_inside_full5": false
+    }
+  },
+  "evidence": {
+    "run_id": "${ENV:DISTILLSCHEDULE_RUN_ID:-livewan-crossscale-pipeline6g10score}",
+    "output_dir": "${ENV:DISTILLSCHEDULE_OUTPUT_DIR:-../../../artifacts/runs/livewan-crossscale-pipeline6g10score}"
+  },
+  "metadata": {
+    "execution_mode": "pipeline",
+    "pool_policy": "persistent_6g_10score_teacher_fsdp10",
+    "score_physical_batch_size": 2,
+    "score_physical_batch_policy": "heterogeneous_b1_b2",
+    "logical_batch_preserved": true,
+    "per_sample_rng_preserved": true,
+    "per_sample_dmd_normalizer_preserved": true,
+    "generator_loss_scale": 0.375,
+    "critic_loss_scale_policy": "score_group_size_times_local_batch_over_global_batch",
+    "target_speedup": 1.30,
+    "formal_speedup_denominator": false
+  }
+}
