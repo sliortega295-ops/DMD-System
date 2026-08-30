@@ -383,3 +383,9 @@
     forward-plus-backward speedup for both registered batches before adding a
     default-off world16 policy.  Do not combine another kernel or schedule
     change.
+69. The first direct-paired C26 canary is deterministic and fast but fails
+    bitwise parity on about `1.0e-5` of BF16 elements.  Reject that arithmetic
+    implementation.  Permit exactly one bounded repair that shares frequency
+    staging but invokes the installed Helios arithmetic kernel twice.  Keep
+    the bitwise and `1.15x` gates unchanged; failure closes C26 before
+    world16.

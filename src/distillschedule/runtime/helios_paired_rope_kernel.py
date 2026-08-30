@@ -2,11 +2,13 @@
 
 The installed Helios attention processor applies the same rotary table to Q
 and K with two independent ``Flash_RoPE_Transposed`` calls.  Each call also
-materializes identical contiguous cosine and sine views.  This opt-in kernel
-performs the same per-tensor arithmetic in one launch and reads the original
-contiguous ``[cos, sin]`` table directly.  It changes neither projections nor
-attention math and remains outside the default workload unless installed by
-the separately gated runtime rewrite.
+materializes identical contiguous cosine and sine views.  This opt-in wrapper
+materializes those views once and invokes the *installed Helios arithmetic
+kernel* for Q and K.  Reusing the exact production kernel is intentional: the
+first single-launch prototype changed one BF16 rounding bit in roughly 1e-5 of
+elements.  The bounded repair keeps source arithmetic/codegen intact while
+removing redundant frequency staging.  It remains outside the default
+workload unless installed by the separately gated runtime rewrite.
 """
 from __future__ import annotations
 
@@ -108,7 +110,7 @@ def _validate(
     return batch, sequence, heads, head_dim
 
 
-def _launch_pair(
+def _launch_direct_pair(
     query: torch.Tensor,
     key: torch.Tensor,
     freqs_cis: torch.Tensor,
@@ -153,10 +155,14 @@ class _ExactPairedRoPE(torch.autograd.Function):
         key: torch.Tensor,
         freqs_cis: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        query_out, key_out = _launch_pair(
-            query, key, freqs_cis, negate_sin=False
-        )
-        ctx.save_for_backward(freqs_cis)
+        batch, sequence, _, head_dim = _validate(query, key, freqs_cis)
+        freqs_flat = freqs_cis.reshape(
+            batch * sequence, head_dim * 2
+        ).contiguous()
+        cos = freqs_flat[:, :head_dim].contiguous()
+        sin = freqs_flat[:, head_dim:].contiguous()
+        query_out, key_out = _launch_source_pair(query, key, cos, sin)
+        ctx.save_for_backward(cos, sin)
         return query_out, key_out
 
     @staticmethod
@@ -165,14 +171,67 @@ class _ExactPairedRoPE(torch.autograd.Function):
         query_grad: torch.Tensor,
         key_grad: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor, None]:
-        (freqs_cis,) = ctx.saved_tensors
-        query_input_grad, key_input_grad = _launch_pair(
+        cos, sin = ctx.saved_tensors
+        query_input_grad, key_input_grad = _launch_source_pair(
             query_grad.contiguous(),
             key_grad.contiguous(),
-            freqs_cis,
-            negate_sin=True,
+            cos,
+            -sin,
         )
         return query_input_grad, key_input_grad, None
+
+
+def _launch_source_pair(
+    query: torch.Tensor,
+    key: torch.Tensor,
+    cos: torch.Tensor,
+    sin: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Launch the exact installed Helios production kernel for both tensors."""
+
+    from helios.modules.helios_kernels.triton_rope import (
+        _apply_rope_transposed_kernel,
+    )
+    from helios.modules.helios_kernels.utils import (
+        calculate_settings,
+        torch_gpu_device,
+    )
+
+    batch, sequence, heads, head_dim = map(int, query.shape)
+    if tuple(key.shape) != tuple(query.shape):
+        raise RuntimeError("paired Helios RoPE query/key shape drift")
+    if tuple(cos.shape) != (batch * sequence, head_dim):
+        raise RuntimeError("paired Helios RoPE cosine shape drift")
+    if tuple(sin.shape) != tuple(cos.shape):
+        raise RuntimeError("paired Helios RoPE sine shape drift")
+    query_flat = query.reshape(-1, head_dim).contiguous()
+    key_flat = key.reshape(-1, head_dim).contiguous()
+    query_out_flat = torch.empty_like(query_flat)
+    key_out_flat = torch.empty_like(key_flat)
+    n_rows = int(query_flat.shape[0])
+    block_size, num_warps = calculate_settings(head_dim // 2)
+    with torch_gpu_device(query.device):
+        for value, output in (
+            (query_flat, query_out_flat),
+            (key_flat, key_out_flat),
+        ):
+            _apply_rope_transposed_kernel[(n_rows,)](
+                value,
+                output,
+                cos,
+                sin,
+                heads,
+                int(value.stride(0)),
+                int(output.stride(0)),
+                int(cos.stride(0)),
+                head_dim,
+                BLOCK_SIZE=block_size,
+                num_warps=num_warps,
+            )
+    return (
+        query_out_flat.reshape(batch, sequence, heads, head_dim),
+        key_out_flat.reshape(batch, sequence, heads, head_dim),
+    )
 
 
 def exact_paired_rope(
@@ -187,7 +246,7 @@ def exact_paired_rope(
 
 def runtime_identity() -> dict[str, Any]:
     return {
-        "implementation": "TRITON_PAIRED_QK_ROPE_DIRECT_COMBINED_FREQ_TABLE",
+        "implementation": "HELIOS_SOURCE_KERNEL_QK_SHARED_FREQ_STAGING",
         "torch_version": str(torch.__version__),
         "triton_version": str(triton.__version__),
         "heads": SUPPORTED_HEADS,

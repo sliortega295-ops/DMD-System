@@ -616,3 +616,16 @@ to both gradients.  Attention, Q/K projection, values, shapes, dtype,
 checkpointing and model-call count remain untouched.  Because the profile
 number is an eight-GPU kernel sum, promotion begins with a real locked-A100
 B1/B3 canary and assumes no Full5 saving.
+
+The first direct-paired canary is fast (`1.9358x` B1 and `1.8789x` B3) but
+fails the preregistered bitwise contract.  Both implementations are internally
+deterministic; only roughly `1.0e-5` of elements differ, with maximum BF16
+absolute difference `0.03125`, which is consistent with changed arithmetic
+codegen rather than a layout error.  That implementation is rejected.
+
+The single bounded repair reuses the exact installed Helios Triton arithmetic
+kernel for two launches while sharing the contiguous cosine/sine staging
+between Q and K (and sharing sine negation in backward).  This intentionally
+gives up single-launch fusion to preserve exact codegen.  It must still be
+bitwise for both outputs and gradients and at least `1.15x` faster on both
+production shapes; otherwise C26 closes without a world16 run.

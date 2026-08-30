@@ -995,3 +995,25 @@
   with zero fallback?
 - **Decision:** **GO_CANARY_ONLY**.  World16 integration is forbidden unless
   both shapes pass the unchanged parity and latency gate.
+
+### C26 direct-paired failure and bounded repair
+
+- `iter382_gan_cuda_c26_paired_rope_canary_r1_20260830` is an immutable
+  environment-integration failure before CUDA work: the diagnostic launcher
+  omitted the already validated offline `LOCAL_KERNELS` mapping.  It is not a
+  candidate verdict and the shared environment was not modified.
+- `iter382_gan_cuda_c26_paired_rope_canary_r2_20260830` uses the validated
+  mapping and measures `1.9358x`/`1.8789x` B1/B3 forward-plus-backward
+  speedups, but **fails** all four bitwise output/gradient gates.  A compact
+  follow-up finds deterministic differences in about `1.0e-5` of elements,
+  with production-shape maximum BF16 absolute difference `0.03125`.
+- **Matching mechanism:** the direct combined Triton program changes codegen
+  and BF16 rounding relative to the separately launched pinned Helios kernel;
+  this is not trace noise or nondeterminism.  The fast result is therefore not
+  eligible for world16 integration.
+- **One permitted bounded repair:** materialize the identical FP32 cosine and
+  sine views once, then invoke the exact installed Helios arithmetic kernel
+  separately for Q and K in forward/backward.  This retains the production
+  codegen while removing only redundant frequency staging.  The original
+  bitwise and `1.15x` gates remain unchanged.  Failure closes C26; no further
+  arithmetic or tolerance repair is authorized.
