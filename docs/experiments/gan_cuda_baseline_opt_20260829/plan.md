@@ -282,3 +282,11 @@
     longest sync has a `381.563 ms` median. Add a default-true, source-pinned
     logging keyword in memory only. Correctness must still collect all 20
     scalars/rank; profile/timing may elide exactly 20 and nothing else.
+54. C17 passes validate-only, 16/16 correctness and formal timing at `b295c5e`.
+    Correctness records `5/20/0` calls/collected/elided per rank; formal timing
+    records `5/0/20`. G1/C5/EMA1, G201/C1005/EMA801 and all OOM gates pass.
+    Full5 is `130.630471052 s`, `0.931556088 s` (`0.7081%`) faster than C15.
+    Promote C17, but retain the goal: it remains `9.520332949 s` above the
+    `121.110138103 s` threshold. The next candidate must be selected from the
+    remaining compute/NCCL evidence and may not infer 9.5 seconds from the
+    now-closed scalar-sync path.

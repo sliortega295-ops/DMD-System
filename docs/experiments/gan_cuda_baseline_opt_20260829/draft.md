@@ -473,3 +473,13 @@ The formal unprofiled Full5 is `131.562027140 s`, versus C14's
 1,120 fused backward calls and zero reference fallback on every rank, with
 G201/C1005/EMA801 and no CUDA/cgroup OOM. C15 is promoted, but it is still
 `10.451889037 s` above the registered 30%-faster target.
+
+## C17 measured result
+
+C17 removes only the 20 unused official GAN Critic scalar conversions from
+formal timing while retaining them in correctness. It passes 16/16 at
+`b295c5e02e1555f06f4d7acf82e151eeac84c467` and records
+`130.630471052 s`, `0.931556088 s` faster than C15. This validates the
+source-qualified host-fence diagnosis, but the remaining `9.520332949 s`
+cannot be closed by more scalar-log cleanup and requires a new compute or
+communication candidate.
