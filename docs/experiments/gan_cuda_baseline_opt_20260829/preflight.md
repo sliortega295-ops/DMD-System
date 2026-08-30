@@ -543,3 +543,51 @@
   the 30% target.  The next candidate must target repeated compute or a larger
   source-qualified launch/materialization family; no further broad sync
   removal is authorized without new evidence.
+
+## C13 Generator no-grad static-context reuse preflight
+
+- Current gate: C12 at `7811b20e967d0807987094f22ab3f8647357d8f1`
+  is the fastest correctness-qualified substrate at `138.176082544 s`; the
+  requested threshold remains `121.110138103 s`.
+- Live substrate revalidation: the local worktree is clean apart from this
+  preregistration, both remote worktrees are clean at exact C12, all 16 owned
+  A100s have no compute process, both node locks are acquirable, both cgroups
+  remain at `oom=0`/`oom_kill=0`, and the previously validated Torch 2.10
+  environment and pinned Helios transformer SHA are unchanged.
+- Matching profile evidence: C11/C12 remains GPU-compute-bound.  The five
+  Generator no-grad rollouts have median wall/compute of
+  `31.913/28.993 s`.  C8 removed only repeated per-block encoder K/V
+  projections and saved `1.059574501 s`; its source-pinned scope still calls
+  `process_input_hidden_states()` and `condition_embedder()` on every physical
+  DiT invocation.
+- Source-qualified repeated work: within one immutable B1 rollout the history
+  latents, history/current indices, text embedding and model version do not
+  change.  The pinned transformer nevertheless repeats the three history
+  Conv3d patch paths, history/current RoPE construction, history concatenation,
+  and the PixArt text projection for every DiT call.  The current C8 receipts
+  prove more than one call per rollout (`200` K/V fills and `880` reuses per
+  rank over five scopes), so this is recurring rather than one-time setup.
+- Authorized C13 change: inside the existing Generator-no-grad one-rollout
+  scope only, cache the exact first-call history-patch prefix, full RoPE tensor,
+  structural shape lists, and projected text tensor.  Subsequent calls still
+  execute the current-latent patch, every DiT block/attention/FFN, every FSDP
+  collective and the complete variable-exit schedule.  Cache entries are
+  CUDA-resident, identity/version pinned, cleared after each rollout, and the
+  implementation is pinned to the exact Helios source SHA.
+- Frozen baseline/contracts: GAN-on steps 1000--1004, world16 FSDP2,
+  B1/global-B16, Score packing off, trace/RNG/noise/history/indices, losses,
+  precision, model/LoRA versions, physical DiT/attention inventory,
+  G1/C5/EMA1, final G201/C1005/EMA801, C12 residency and timer boundaries all
+  remain unchanged.  No cross-rollout cache, batching, topology, prefetch,
+  offload, checkpoint-policy or logging change may be combined.
+- Matching rejected/superseded paths: B2/B5, Score packing, HSDP, explicit
+  FSDP prefetch, stride1 Flash retention, restrict-self-attention history K/V,
+  LoRA beta-add, broad synchronization removal and direct tuning of the
+  Tensor-bound dominant GEMM remain closed.
+- New falsifiable question: can exact per-rollout static-context reuse pass a
+  five-row uncached B1 output reference on every rank, report the expected
+  fill/reuse/clear inventory with zero fallback or mutation, retain all frozen
+  correctness/capacity gates, and reduce one unprofiled Full5 below C12?
+- Decision: **GO** for C13 alone: focused CPU/CUDA tests, validate-only,
+  16-rank correctness/capacity, then one formal timing only after all gates
+  pass.

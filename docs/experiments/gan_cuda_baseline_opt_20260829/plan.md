@@ -200,3 +200,11 @@
     C11.  Promote the code as the fastest substrate, close broad sync removal
     as a major hypothesis, and return to profile-qualified compute/kernel
     ownership for the remaining `17.065944441 s` gap.
+43. C13 targets repeated immutable Generator-rollout context preparation that
+    C8 did not cache: history Conv3d patching, RoPE construction, history
+    packing and PixArt text projection.  Reuse these values only inside one
+    existing B1 no-grad rollout scope, with exact tensor identity/version and
+    lifecycle receipts.  Keep current-latent patching, every DiT/attention/FFN
+    call and every FSDP collective unchanged.  Require focused tests,
+    validate-only, five uncached B1 parity rows per rank, 16-rank
+    correctness/capacity and then one faster unprofiled timing.
