@@ -96,6 +96,15 @@ def _collective(name: str) -> str:
     return "other_nccl"
 
 
+def _phase_sort_key(row: dict) -> tuple[int, str]:
+    label = str(row["label"])
+    marker = "/step_"
+    if marker not in label:
+        return (1 << 30, label)
+    suffix = label.split(marker, 1)[1].split("/", 1)[0]
+    return (int(suffix), label)
+
+
 def _metric(window: tuple[int, int], intervals: dict[str, list[tuple[int, int]]]) -> dict:
     clipped = {
         category: [part for value in values if (part := _clip(value, window))]
@@ -272,7 +281,7 @@ def analyze_node(path: Path, node: int) -> dict:
                     and end <= outer_end
                 ):
                     phases.append({"label": label, **_metric((start, end), intervals)})
-            phases.sort(key=lambda row: (int(row["label"].split("step_")[1].split("/")[0]), row["label"]))
+            phases.sort(key=_phase_sort_key)
 
             collectives = {}
             for kind in COLLECTIVES:

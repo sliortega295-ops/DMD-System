@@ -155,3 +155,4 @@ def test_profile_analyzer_streams_each_large_activity_table_once() -> None:
     assert "ORDER BY globalPid,start" not in analyzer
     assert '"livewan/pipeline_runahead/g/"' in analyzer
     assert '"livewan/pipeline_runahead/score/"' in analyzer
+    assert "def _phase_sort_key" in analyzer
