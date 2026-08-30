@@ -237,3 +237,13 @@
     harness failed before kernel launch on a wrong function alias and remains
     preserved as environment-only evidence. C14 is now authorized for one
     independently gated, default-off integration and the normal world16 gates.
+48. C14 passes validate-only and 16/16 correctness/capacity at `e391bb4`.
+    Every rank records G1/C5/EMA1, final G201/C1005/EMA801, 6,880 fused
+    LayerNorm calls, 26,240 chunks and zero fallback. The formal Full5 is
+    `136.084681777 s`, improving C12 by `2.091400767 s` (`1.513577%`). Promote
+    C14, but retain the goal because it remains `14.974543674 s` above target.
+49. C15 is the next bounded kernel candidate. First fuse only the C11 explicit
+    modulated-norm backward's cast, affine-free LayerNorm grad-input and
+    timestep-component math. Require deterministic reductions and locked-A100
+    B1/B3 parity plus at least `1.15x` warm forward+backward improvement before
+    any world16 integration. Do not combine it with schedule or topology work.

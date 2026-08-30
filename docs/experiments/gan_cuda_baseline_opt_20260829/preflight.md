@@ -666,3 +666,29 @@
   or test contract.
 - Decision: **GO** for default-off C14 runtime integration, focused tests,
   validate-only, correctness/capacity and one timing only after all gates pass.
+
+## C14 iteration-end handoff and C15 GO decision
+
+- C14 exact HEAD: `e391bb43f811929d59fb33c3cd36cdc2ee9a6fca`.
+- Validate-only, correctness and formal timing all PASS. All 16 ranks preserve
+  G1/C5/EMA1, final G201/C1005/EMA801, exact C12 workload identity, zero
+  fallback and no admitted OOM. Formal Full5 is `136.084681777 s`.
+- Root-cause conclusion: the repeated forward LayerNorm/materialization chain
+  was measurable and C14 removes enough of it for a `2.091400767 s` gain, but
+  it does not dominate Full5. C14 becomes the validated substrate.
+- Matching next evidence: the same valid profile records `7.119277 s` of
+  native LayerNorm grad-input kernels across node0's eight GPUs, owned by the
+  1,120 explicit-backward calls and 4,720 chunks per rank. Existing C11 code
+  still launches native LayerNorm backward plus separate cast, product,
+  reduction and store work for every tile.
+- Frozen contracts: C14 world16 GAN steps1000--1004, B1/global-B16,
+  trace/RNG/noise/loss/precision, physical calls, G/C/EMA updates, local FA2,
+  selective checkpoint-save stride 2, CUDA residency and formal timer.
+- Rejected paths remain closed: B2/B5, packing, HSDP, explicit FSDP prefetch,
+  stride1 saved state, history KV, LoRA beta-add, broad sync removal, static
+  rollout context and dominant GEMM tuning.
+- New falsifiable question: can deterministic source-pinned backward kernels
+  pass all registered B1/B3 layouts and improve warm forward+backward by at
+  least `1.15x`, before any world16 implementation?
+- Decision: **GO for C15 canary only**. Failure returns to C14 without further
+  invasive repair.

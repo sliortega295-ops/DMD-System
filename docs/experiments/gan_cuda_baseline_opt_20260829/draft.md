@@ -436,3 +436,22 @@ The real A100 canary passes decisively. B1 and B3 remain inside the unchanged
 P0 numerical contract and improve from `0.231240` to `0.041779 ms` and from
 `0.661422` to `0.106926 ms`. This authorizes a default-off runtime integration;
 it does not yet establish a Full5 benefit.
+
+## C14 measured result and C15 selected kernel hypothesis
+
+C14 passes the full world16 gate and reduces formal Full5 from
+`138.176082544 s` to `136.084681777 s`.  The promoted gain is
+`2.091400767 s` (`1.513577%`), leaving `14.974543674 s` to the requested
+threshold.  This confirms that the repeated BF16 cast/LayerNorm/modulation
+chain was real but also shows why the standalone `5.5--6.2x` kernel result
+cannot be treated as an end-to-end estimate.
+
+The next source-qualified kernel family is the remaining explicit backward.
+The valid C11 profile records `7.119277 s` of native affine-free LayerNorm
+grad-input kernels across node0's eight GPUs, before its cast, scale/shift
+component products, reductions and stores.  C15 therefore begins with a
+locked-A100 canary only: preserve the exact C11 forward and saved tensors, fuse
+the registered backward math with deterministic feature reductions, and cover
+every B1/B3 PhaseLocal/Tensor layout.  World16 integration is unauthorized
+unless the unchanged gradient parity contract passes and warm
+forward-plus-backward improves by at least `1.15x`.
