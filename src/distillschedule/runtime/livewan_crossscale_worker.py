@@ -1510,11 +1510,14 @@ def run_worker(
     }
     is_profile = run_kind == "profile"
     dist.barrier()
-    if is_profile and local_rank == 0:
-        torch.cuda.cudart().cudaProfilerStart()
     if is_profile:
+        # cudaProfilerApi capture state is process-scoped under the node-outer
+        # Nsight session. Every torchrun child must arm its own CUDA context;
+        # arming only local rank 0 can leave the other seven workers with NVTX
+        # ranges but no CUDA activity in the exported SQLite.
+        torch.cuda.cudart().cudaProfilerStart()
         # Make sure all eight workers on both nodes enter the workload after
-        # their node-local profiler session has started.
+        # every process-local profiler range has started.
         dist.barrier()
         # Nsight attaches to the eight child workers asynchronously after the
         # node-local rank calls cudaProfilerStart().  A world barrier proves
@@ -1581,8 +1584,7 @@ def run_worker(
     full5_wall = time.perf_counter() - start
     if is_profile:
         dist.barrier()
-        if local_rank == 0:
-            torch.cuda.cudart().cudaProfilerStop()
+        torch.cuda.cudart().cudaProfilerStop()
     version_tensor = torch.tensor(
         [versions["generator"], versions["critic"], versions["ema"]],
         device=device,

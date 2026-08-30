@@ -120,6 +120,9 @@ def test_profile_markers_and_capture_are_absent_from_formal_timing_path() -> Non
     assert "torch.cuda.nvtx.range(label)" in helper
     assert "cudaProfilerStart" in worker
     assert "cudaProfilerStop" in worker
+    assert "if is_profile and local_rank == 0" not in worker
+    assert worker.count("torch.cuda.cudart().cudaProfilerStart()") == 1
+    assert worker.count("torch.cuda.cudart().cudaProfilerStop()") == 1
     assert "time.sleep(10.0)" in worker
     assert worker.index("time.sleep(10.0)") < worker.index("start = time.perf_counter()")
     assert worker.index("dist.destroy_process_group()") > worker.index(
