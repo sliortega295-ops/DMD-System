@@ -483,3 +483,23 @@ formal timing while retaining them in correctness. It passes 16/16 at
 source-qualified host-fence diagnosis, but the remaining `9.520332949 s`
 cannot be closed by more scalar-log cleanup and requires a new compute or
 communication candidate.
+
+## C18 selected Generator allocator hypothesis
+
+Remote-first analysis of the existing valid C15 SQLite now resolves a separate
+Generator gap without transferring the 522 MiB database.  During the unchanged
+Score/DMD/GAN-G phase, the median no-visible-GPU complement is `2.630651 s`;
+`1.277312 s` overlaps CUDA memory APIs dominated by `cudaFree`, while
+`1.253964 s` has no CUDA Runtime interval.  Source inspection explains the
+signature: the configured official low-VRAM GAN-G route calls Diffusers
+`free_memory()` four times, each performing Python garbage collection and an
+allocator flush.
+
+C18 does not delete a model operation or change low-VRAM GAN math.  It installs
+a source-pinned, in-memory wrapper only while the official Generator
+Score/DMD/GAN-G helper executes.  Correctness delegates all four calls to the
+official implementation; low-overhead timing/profile may count and elide them.
+The wrapper is restored in `finally`, cannot affect Critic work, and fails on
+source drift or an unexpected call count.  Because retained allocator blocks
+can reduce driver-free HBM, capacity remains a first-class gate and no gain is
+assumed from profile-time API duration.

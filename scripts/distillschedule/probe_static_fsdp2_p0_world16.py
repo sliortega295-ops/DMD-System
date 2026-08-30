@@ -123,6 +123,9 @@ from distillschedule.runtime.helios_cross_kv_cache import (
 from distillschedule.runtime.helios_critic_scalar_logs import (
     install_critic_scalar_log_elision,
 )
+from distillschedule.runtime.helios_generator_free_memory import (
+    prepare_generator_free_memory_receipt,
+)
 from distillschedule.runtime.helios_rollout_context_cache import (
     install_generator_nograd_static_context_cache,
 )
@@ -964,6 +967,15 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--elide-official-generator-free-memory",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Execute the four source-pinned official GAN Generator free_memory "
+            "calls in correctness, but elide them in low-overhead timing/profile"
+        ),
+    )
+    value.add_argument(
         "--critic-only-step",
         type=int,
         choices=(10,),
@@ -1097,6 +1109,9 @@ def main() -> int:
         ),
         elide_explicit_rollout_sync=bool(args.elide_explicit_rollout_sync),
         elide_critic_scalar_logs=bool(args.elide_critic_scalar_logs),
+        elide_official_generator_free_memory=bool(
+            args.elide_official_generator_free_memory
+        ),
     )
     dist.init_process_group("nccl")
     rank = dist.get_rank()
@@ -1161,6 +1176,9 @@ def main() -> int:
             ),
             "elide_explicit_rollout_sync": policy.elide_explicit_rollout_sync,
             "elide_critic_scalar_logs": policy.elide_critic_scalar_logs,
+            "elide_official_generator_free_memory": (
+                policy.elide_official_generator_free_memory
+            ),
         },
     }
     try:
@@ -1168,6 +1186,13 @@ def main() -> int:
             enabled=bool(policy.elide_critic_scalar_logs and args.variant == "gan")
         )
         result["critic_scalar_logs"] = critic_scalar_logs
+        generator_free_memory = prepare_generator_free_memory_receipt(
+            enabled=bool(
+                policy.elide_official_generator_free_memory
+                and args.variant == "gan"
+            )
+        )
+        result["generator_free_memory"] = generator_free_memory
         result["attention_backend"] = _attention_backend_receipt(
             args.attention_backend
         )
@@ -1297,6 +1322,11 @@ def main() -> int:
                         negative=negative,
                         collect_diagnostics=collect_diagnostics,
                         diagnostics=diagnostics,
+                        generator_free_memory_receipt=generator_free_memory,
+                        elide_official_generator_free_memory=bool(
+                            policy.elide_official_generator_free_memory
+                            and (args.timing_mode or args.profile_mode)
+                        ),
                     )
                 generator_record.update(
                     logical_score_requests=4,
@@ -1322,6 +1352,11 @@ def main() -> int:
                     negative=negative,
                     collect_diagnostics=collect_diagnostics,
                     diagnostics=diagnostics,
+                    generator_free_memory_receipt=generator_free_memory,
+                    elide_official_generator_free_memory=bool(
+                        policy.elide_official_generator_free_memory
+                        and (args.timing_mode or args.profile_mode)
+                    ),
                 )
                 generator_record.update(
                     logical_score_requests=4,
@@ -1503,6 +1538,7 @@ def main() -> int:
                 "outer_full5_boundary_sync_preserved": True,
             },
             critic_scalar_logs=critic_scalar_logs,
+            generator_free_memory=generator_free_memory,
             rollout_collective_estimate=rollout_estimate,
             critic=critic_records,
             ema=ema_records,

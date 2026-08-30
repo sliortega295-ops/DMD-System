@@ -196,6 +196,11 @@ def parser() -> argparse.ArgumentParser:
         default="off",
     )
     value.add_argument(
+        "--elide-official-generator-free-memory",
+        choices=("on", "off"),
+        default="off",
+    )
+    value.add_argument(
         "--remote-root",
         type=Path,
         default=Path(
@@ -313,6 +318,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.elide_explicit_rollout_sync),
         "DISTILLSCHEDULE_ELIDE_CRITIC_SCALAR_LOGS="
         + shlex.quote(args.elide_critic_scalar_logs),
+        "DISTILLSCHEDULE_ELIDE_OFFICIAL_GENERATOR_FREE_MEMORY="
+        + shlex.quote(args.elide_official_generator_free_memory),
         "DISTILLSCHEDULE_HELIOS_ATTENTION_BACKEND="
         + shlex.quote(args.attention_backend),
         "DISTILLSCHEDULE_HELIOS_MODULATION_CHUNK_TOKENS="
@@ -453,6 +460,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.elide_explicit_rollout_sync)} "
         + "--elide-critic-scalar-logs "
         + f"{shlex.quote(args.elide_critic_scalar_logs)} "
+        + "--elide-official-generator-free-memory "
+        + f"{shlex.quote(args.elide_official_generator_free_memory)} "
         + "--selective-flash-checkpoint-stride "
         + f"{args.selective_flash_checkpoint_stride} "
         + "--generator-nograd-cross-kv-cache "

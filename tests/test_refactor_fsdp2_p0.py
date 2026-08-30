@@ -84,6 +84,7 @@ def test_policy_and_mesh_contract() -> None:
     assert conservative.pack_real_score_pair is False
     assert conservative.elide_explicit_rollout_sync is False
     assert conservative.elide_critic_scalar_logs is False
+    assert conservative.elide_official_generator_free_memory is False
     assert conservative.generator_nograd_static_context_cache is False
 
     policy = StaticFSDP2P0Policy(

@@ -290,3 +290,20 @@
     `121.110138103 s` threshold. The next candidate must be selected from the
     remaining compute/NCCL evidence and may not infer 9.5 seconds from the
     now-closed scalar-sync path.
+55. C18 targets a different, source-qualified Generator-only allocator flush.
+    The unchanged C15/C17 Generator Score/DMD/GAN-G path spends a median
+    `2.630651 s` with no visible GPU kernel/copy.  Process-scoped Runtime
+    attribution assigns a median `1.277312 s` of that complement to memory
+    APIs, dominated by `cudaFree`; the remaining median `1.253964 s` has no
+    CUDA Runtime interval.  The pinned official helper executes exactly four
+    `diffusers.training_utils.free_memory()` calls because
+    `is_gan_low_vram_mode=True`, and each call runs Python `gc.collect()` plus
+    `torch.cuda.empty_cache()`.
+56. C18 may elide only those four calls, only while the official Generator
+    Score/DMD/GAN-G helper is active, and only in low-overhead timing/profile.
+    Correctness must execute and count all four.  Source-pin the official loss,
+    cached-gradient helper and Diffusers `free_memory`; patch only the live
+    module global in a bounded context and restore it even on error.  Require
+    16/16 receipts, unchanged G1/C5/EMA1 and G201/C1005/EMA801, zero OOM, and
+    one formal result below C17.  Because C17 ended with only `0.231 GiB`
+    driver free on the slowest rank, any capacity regression fails closed.

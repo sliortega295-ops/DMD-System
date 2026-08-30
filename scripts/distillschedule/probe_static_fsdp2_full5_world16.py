@@ -36,6 +36,9 @@ from distillschedule.runtime.fsdp2_static import (
 )
 from distillschedule.runtime.nsys_range import StaticFSDP2Full5NsightRange
 from distillschedule.profiling.static_profile_diagnostics import StaticProfileDiagnostics
+from distillschedule.runtime.helios_generator_free_memory import (
+    generator_free_memory_scope,
+)
 from runtime.critic_pool_checkpoint import (
     LogicalCheckpointPackage,
     load_logical_master_into_trainables,
@@ -300,6 +303,8 @@ def _gan_score_boundary_gradient(
     official_kwargs: dict[str, Any],
     collect_diagnostics: bool,
     diagnostics: StaticProfileDiagnostics,
+    generator_free_memory_receipt: dict[str, Any] | None = None,
+    elide_official_generator_free_memory: bool = False,
 ) -> tuple[torch.Tensor, dict[str, Any]]:
     """Compute d(DMD + w*GAN-G)/dx without mutating FSDP2 requires_grad state."""
 
@@ -311,11 +316,15 @@ def _gan_score_boundary_gradient(
         if parameter.grad is not None
     }
     leaf = generated_latent.detach().requires_grad_(True)
-    outputs = compute_distribution_matching_loss(
-        real_fake_score_model=score_model,
-        image_or_video=leaf,
-        **official_kwargs,
-    )
+    with generator_free_memory_scope(
+        generator_free_memory_receipt,
+        elide=elide_official_generator_free_memory,
+    ):
+        outputs = compute_distribution_matching_loss(
+            real_fake_score_model=score_model,
+            image_or_video=leaf,
+            **official_kwargs,
+        )
     if len(outputs) != 5:
         raise AssertionError("official GAN score return signature changed")
     dmd_loss, _ca, _dm, gan_g_loss, _logs = outputs
@@ -351,6 +360,8 @@ def _run_gan_generator_update(
     negative: torch.Tensor,
     collect_diagnostics: bool,
     diagnostics: StaticProfileDiagnostics,
+    generator_free_memory_receipt: dict[str, Any] | None = None,
+    elide_official_generator_free_memory: bool = False,
 ) -> dict[str, Any]:
     with diagnostics.scope("INPUT_H2D/generator_entry"):
         entry = trace.load_generator_entry(rank=rank, device=device)
@@ -392,6 +403,10 @@ def _run_gan_generator_update(
         ),
         collect_diagnostics=collect_diagnostics,
         diagnostics=diagnostics,
+        generator_free_memory_receipt=generator_free_memory_receipt,
+        elide_official_generator_free_memory=(
+            elide_official_generator_free_memory
+        ),
     )
     # The Score helper already returned the normalized latent derivative.  Use
     # a SUM chain-rule surrogate, matching the validated GAN pipeline seam.

@@ -132,6 +132,11 @@ def main() -> int:
         choices=("on", "off"),
         default="off",
     )
+    parser.add_argument(
+        "--elide-official-generator-free-memory",
+        choices=("on", "off"),
+        default="off",
+    )
     parser.add_argument("--critic-only-step", type=int, choices=(10,))
     parser.add_argument(
         "--diagnostic-timing",
@@ -192,6 +197,9 @@ def main() -> int:
             args.elide_explicit_rollout_sync == "on"
         ),
         "elide_critic_scalar_logs": args.elide_critic_scalar_logs == "on",
+        "elide_official_generator_free_memory": (
+            args.elide_official_generator_free_memory == "on"
+        ),
     }
     if args.critic_only_step is not None:
         if args.variant != "no-gan" or args.mode != "profile":
@@ -225,6 +233,7 @@ def main() -> int:
     checkpoint_policies: list[dict[str, Any] | None] = []
     cross_kv_caches: list[dict[str, Any] | None] = []
     static_context_caches: list[dict[str, Any] | None] = []
+    generator_free_memory_receipts: list[dict[str, Any] | None] = []
 
     for rank, value in enumerate(ranks):
         if value.get("rank") != rank:
@@ -261,6 +270,57 @@ def main() -> int:
                 "c2acd487c5d1d77b7f6721eabc0fee4f8c5c8f9e682aadf43bfa99b394eecba7"
             ):
                 errors.append(f"{prefix} extension identity changed")
+
+        free_memory = value.get("generator_free_memory", {})
+        generator_free_memory_receipts.append(free_memory)
+        free_memory_prefix = f"rank{rank} official Generator free_memory"
+        if expected_policy["elide_official_generator_free_memory"]:
+            if args.variant != "gan":
+                errors.append(f"{free_memory_prefix} requested outside GAN")
+            if not free_memory.get("enabled"):
+                errors.append(f"{free_memory_prefix} scope was not enabled")
+            if free_memory.get("scope") != (
+                "OFFICIAL_GAN_GENERATOR_SCORE_DMD_GAN_G_ONLY"
+            ):
+                errors.append(f"{free_memory_prefix} scope changed")
+            if free_memory.get("shared_source_modified") is not False:
+                errors.append(f"{free_memory_prefix} modified shared source")
+            expected_sources = {
+                "compute_distribution_matching_loss": (
+                    "c479e4f3eec2730d1e991ecb19e06588ec30510dabe48e2daf3846d9f7960db1"
+                ),
+                "Gan_D_Loss_With_Cached_Grad": (
+                    "8455f5d265b189208491681e6372790f7b5809773953a6c855a668f10b632643"
+                ),
+                "free_memory": (
+                    "d16707d1b9935038a99f9a927043844d7eea8d22a9b6e008fbfc014c49885df3"
+                ),
+            }
+            if free_memory.get("source_sha256") != expected_sources:
+                errors.append(f"{free_memory_prefix} source identity changed")
+            if args.mode == "validate":
+                expected_scopes = expected_calls = expected_executed = expected_elided = 0
+            elif args.mode == "correctness":
+                expected_scopes, expected_calls = 1, 4
+                expected_executed, expected_elided = 4, 0
+            else:
+                expected_scopes, expected_calls = 1, 4
+                expected_executed, expected_elided = 0, 4
+            observed = {
+                "scope_entry_count": expected_scopes,
+                "call_count": expected_calls,
+                "executed_count": expected_executed,
+                "elided_count": expected_elided,
+                "restored_count": expected_scopes,
+            }
+            for key, expected in observed.items():
+                if int(free_memory.get(key, -1)) != expected:
+                    errors.append(
+                        f"{free_memory_prefix} {key}={free_memory.get(key)!r}, "
+                        f"expected={expected}"
+                    )
+        elif free_memory.get("enabled"):
+            errors.append(f"{free_memory_prefix} enabled outside requested policy")
 
         if args.mode != "validate":
             expected_sync = not expected_policy["elide_explicit_rollout_sync"]
@@ -1270,6 +1330,7 @@ def main() -> int:
         "rank_exact_modulated_norm_epilogue": modulated_norm_fusions,
         "rank_generator_nograd_cross_kv_cache": cross_kv_caches,
         "rank_generator_nograd_static_context_cache": static_context_caches,
+        "rank_generator_free_memory": generator_free_memory_receipts,
         "rank_attention_backends": attention_backends,
         "rank_modulation_chunks": modulation_chunks,
         "rank_checkpoint_policies": checkpoint_policies,
