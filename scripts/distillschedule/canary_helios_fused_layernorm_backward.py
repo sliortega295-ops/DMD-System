@@ -103,6 +103,16 @@ def _forward(
             ),
             hidden_chunk,
         )
+        # Tensor4d is a correctness-only C15 backward layout.  Its selected
+        # component has the parent six-component token stride, whereas the C14
+        # forward kernel admits only the production contiguous/expanded
+        # component layouts.  Materialize only this bounded canary input so the
+        # unchanged forward is shared by both backward arms; PhaseLocal timing
+        # never enters this branch.
+        if scale_component.stride(1) not in (0, WIDTH):
+            scale_component = scale_component.contiguous()
+        if shift_component.stride(1) not in (0, WIDTH):
+            shift_component = shift_component.contiguous()
         fused_bf16_layernorm_modulation(
             hidden_chunk,
             table,
