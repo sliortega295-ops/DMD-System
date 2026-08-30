@@ -145,6 +145,21 @@ def test_cold_loader_avoids_redundant_full_fp32_copies() -> None:
     assert '_wan_model(WanModel, size="1.3B", config=config).to(torch.bfloat16)' in worker
 
 
+def test_step0_p2p_posts_gradient_receive_before_second_wave_send() -> None:
+    """Default-PG P2P peers must enqueue matching operations in one order."""
+    worker = (
+        ROOT / "src/distillschedule/runtime/livewan_crossscale_worker.py"
+    ).read_text()
+    pipeline = worker.split("def _run_pipeline_8x8(", 1)[1]
+    generator_path = pipeline.split("for step in range(FULL5_STEPS):", 1)[1].split(
+        "else:\n            bundle.critic_optimizer.zero_grad", 1
+    )[0]
+    step0 = generator_path.split("if step == 0:", 1)[1]
+    assert step0.index("dist.recv(grad0, src=peer)") < step0.index(
+        "sends = _send_pair(destination=peer, prepared=second, asynchronous=True)"
+    )
+
+
 def test_trace_builder_requires_80_distinct_source_samples(tmp_path: Path) -> None:
     data = tmp_path / "latents"
     data.mkdir()

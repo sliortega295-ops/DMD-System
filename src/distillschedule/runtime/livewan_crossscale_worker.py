@@ -1219,12 +1219,19 @@ def _run_pipeline_8x8(
                 loader=loader, device=device,
             )
             _record_output(torch, evidence, row=rows[1], x0=second.x0, run_kind=run_kind)
-            sends = _send_pair(destination=peer, prepared=second, asynchronous=True)
-            evidence.transport_bytes += pair_bytes
             if step == 0:
+                # The rank-pair traffic shares the default NCCL process group.
+                # Posting wave1 SEND before wave0-gradient RECV makes both peers
+                # enqueue SEND as the next P2P operation (G sends wave1 while
+                # Score sends grad0), so neither has a matching receive.  Keep
+                # the useful G-wave1/Score-wave0 compute overlap, but receive
+                # grad0 before posting wave1.  The wave1 transfer can still
+                # overlap G backward0 with Score's receive/critic0 work.
                 grad0 = torch.empty_like(first.x0)
                 dist.recv(grad0, src=peer)
                 evidence.transport_bytes += grad0.numel() * grad0.element_size()
+                sends = _send_pair(destination=peer, prepared=second, asynchronous=True)
+                evidence.transport_bytes += pair_bytes
                 losses0 = generator_backward_for_sample(
                     torch, prepared=first, dmd_gradient=grad0, sample_weight=0.5,
                 )
@@ -1251,6 +1258,8 @@ def _run_pipeline_8x8(
                 bundle.generator_optimizer.step()
                 versions["generator"] += 1
             else:
+                sends = _send_pair(destination=peer, prepared=second, asynchronous=True)
+                evidence.transport_bytes += pair_bytes
                 for request in sends:
                     request.wait()
         else:
