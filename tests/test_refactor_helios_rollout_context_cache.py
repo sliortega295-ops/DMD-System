@@ -49,6 +49,20 @@ class MockHelios(torch.nn.Module):
     def gradient_checkpointing_method(block: torch.nn.Module, *args: object) -> object:
         return block(*args)
 
+    @staticmethod
+    def rope(
+        *,
+        frame_indices: torch.Tensor,
+        height: int,
+        width: int,
+        device: torch.device,
+    ) -> torch.Tensor:
+        batch, frames = frame_indices.shape
+        tokens = int(frames) * int(height) * int(width)
+        return torch.arange(tokens * 2, device=device, dtype=torch.float32).view(
+            1, 2, frames, height, width
+        ).expand(batch, -1, -1, -1, -1)
+
     def process_input_hidden_states(
         self,
         latents: torch.Tensor,
@@ -60,12 +74,10 @@ class MockHelios(torch.nn.Module):
         latents_history_mid: torch.Tensor | None = None,
         latents_history_long: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor, list[int], list[int], list[int], list[int]]:
-        del (
-            indices_hidden_states,
-            indices_latents_history_short,
-            indices_latents_history_mid,
-            indices_latents_history_long,
-        )
+        assert indices_hidden_states is not None
+        assert indices_latents_history_short is not None
+        assert indices_latents_history_mid is not None
+        assert indices_latents_history_long is not None
         assert latents_history_short is not None
         assert latents_history_mid is not None
         assert latents_history_long is not None
@@ -79,9 +91,24 @@ class MockHelios(torch.nn.Module):
             return value.flatten(2).transpose(1, 2)
 
         hidden = torch.cat((tokens(long), tokens(mid), tokens(short), tokens(current)), dim=1)
-        rope = torch.arange(
-            hidden.shape[1] * 2, dtype=hidden.dtype, device=hidden.device
-        ).view(1, hidden.shape[1], 2)
+        def rope_tokens(indices: torch.Tensor, value: torch.Tensor) -> torch.Tensor:
+            _b, _c, _t, h, w = value.shape
+            return self.rope(
+                frame_indices=indices,
+                height=h,
+                width=w,
+                device=value.device,
+            ).flatten(2).transpose(1, 2)
+
+        rope = torch.cat(
+            (
+                rope_tokens(indices_latents_history_long, long),
+                rope_tokens(indices_latents_history_mid, mid),
+                rope_tokens(indices_latents_history_short, short),
+                rope_tokens(indices_hidden_states, current),
+            ),
+            dim=1,
+        )
         return hidden, rope, [height], [width], [frames], [frames * height * width]
 
     def forward(
@@ -138,7 +165,10 @@ def test_static_context_cache_matches_uncached_and_clears() -> None:
     candidate = MockHelios()
     static = _static_inputs()
     encoder = torch.randn(1, 5, 4)
-    latents = [torch.randn(1, 1, 1, 2, 2) for _ in range(3)]
+    # Real Helios uses three pyramid layouts within one rollout.  Storage and
+    # values change every call, while each layout repeats at least once.
+    layouts = ((2, 2), (2, 2), (4, 4), (4, 4), (8, 8))
+    latents = [torch.randn(1, 1, 1, h, w) for h, w in layouts]
     timestep = torch.tensor([1])
     install = _install(candidate, enabled=True)
 
@@ -155,7 +185,8 @@ def test_static_context_cache_matches_uncached_and_clears() -> None:
         with generator_nograd_static_context_cache_scope(
             candidate,
             enabled=True,
-            expected_model_calls=3,
+            expected_model_calls=5,
+            expected_current_layouts=3,
             source_encoder_hidden_states=encoder,
         ) as receipt:
             observed = [
@@ -171,17 +202,21 @@ def test_static_context_cache_matches_uncached_and_clears() -> None:
     assert all(torch.equal(left, right) for left, right in zip(expected, observed))
     assert receipt["status"] == "PASS"
     assert receipt["process_fill_count"] == 1
-    assert receipt["process_reuse_count"] == 2
+    assert receipt["process_reuse_count"] == 4
     assert receipt["text_fill_count"] == 1
-    assert receipt["text_reuse_count"] == 2
+    assert receipt["text_reuse_count"] == 4
+    assert receipt["current_layout_count"] == 3
+    assert receipt["current_rope_fill_count"] == 3
+    assert receipt["current_rope_reuse_count"] == 2
+    assert receipt["cache_entries_before_clear"] == 6
     assert receipt["cache_entries_after_clear"] == 0
-    assert candidate.patch_embedding.calls == 3
+    assert candidate.patch_embedding.calls == 5
     assert candidate.patch_short.calls == 1
     assert candidate.patch_mid.calls == 1
     assert candidate.patch_long.calls == 1
     assert candidate.condition_embedder.text_embedder.calls == 1
     assert install["rollout_scope_count"] == 1
-    assert install["process_reuse_count"] == 2
+    assert install["process_reuse_count"] == 4
     assert install["cache_resident_bytes_sum"] > 0
 
 
@@ -196,6 +231,7 @@ def test_static_context_cache_fails_on_history_identity_change() -> None:
             model,
             enabled=True,
             expected_model_calls=2,
+            expected_current_layouts=1,
             source_encoder_hidden_states=encoder,
         ):
             model(
@@ -227,4 +263,3 @@ def test_static_context_flag_is_wired_end_to_end() -> None:
     )
     for path in required:
         assert "generator-nograd-static-context-cache" in path.read_text()
-

@@ -208,3 +208,12 @@
     call and every FSDP collective unchanged.  Require focused tests,
     validate-only, five uncached B1 parity rows per rank, 16-rank
     correctness/capacity and then one faster unprofiled timing.
+44. The pre-launch source audit corrected one instrumentation-only assumption
+    before any C13 GPU run: an official rollout traverses three pyramid
+    layouts, so the changing current latent cannot have one layout contract.
+    C13 therefore retains one exact history-patch/history-RoPE prefix and one
+    text projection per rollout, while caching current-token RoPE separately
+    for each of the three observed post-patch layouts.  Current-latent patching
+    still executes on every physical call.  Require exactly three layout fills
+    plus `call_count-3` layout reuses per rollout; do not weaken the exact
+    history/index/text identity gates.

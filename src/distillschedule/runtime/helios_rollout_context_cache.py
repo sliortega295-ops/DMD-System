@@ -52,6 +52,34 @@ def _contract(value: torch.Tensor) -> tuple[Any, ...]:
     )
 
 
+def _current_structure_key(
+    value: torch.Tensor,
+    *,
+    frames: int,
+    height: int,
+    width: int,
+    tokens: int,
+) -> tuple[Any, ...]:
+    """Return only the fields on which the current-token RoPE depends.
+
+    The noisy latent value and storage allocation deliberately change between
+    denoising calls.  They are therefore not an invariant and must not be used
+    as a cache key.  The current patch is still recomputed on every call; only
+    the position tensor is keyed by its exact post-patch geometry and device.
+    """
+
+    return (
+        int(value.shape[0]),
+        int(frames),
+        int(height),
+        int(width),
+        int(tokens),
+        str(value.dtype),
+        str(value.device),
+        str(value.layout),
+    )
+
+
 def _identity(value: torch.Tensor) -> tuple[Any, ...]:
     return (
         *_contract(value),
@@ -77,10 +105,12 @@ class _ScopeState:
         *,
         model: Any,
         expected_model_calls: int,
+        expected_current_layouts: int,
         source_encoder_identity: tuple[Any, ...],
     ) -> None:
         self.model = model
         self.expected_model_calls = int(expected_model_calls)
+        self.expected_current_layouts = int(expected_current_layouts)
         self.source_encoder_identity = source_encoder_identity
         self.model_call_count = 0
         self.process_call_count = 0
@@ -89,23 +119,22 @@ class _ScopeState:
         self.text_projection_call_count = 0
         self.text_fill_count = 0
         self.text_reuse_count = 0
+        self.current_rope_fill_count = 0
+        self.current_rope_reuse_count = 0
         self.grad_enabled_call_count = 0
         self.source_encoder_identity_mismatch_count = 0
         self.static_input_identity_mismatch_count = 0
         self.cached_tensor_mutation_count = 0
         self.unsupported_layout_count = 0
         self.static_input_identities: dict[str, tuple[Any, ...] | None] = {}
-        self.current_contract: tuple[Any, ...] | None = None
         self.history_prefix: torch.Tensor | None = None
-        self.rope: torch.Tensor | None = None
+        self.history_rope: torch.Tensor | None = None
         self.text_projection: torch.Tensor | None = None
         self.history_version: int | None = None
-        self.rope_version: int | None = None
+        self.history_rope_version: int | None = None
         self.text_version: int | None = None
-        self.height_list: tuple[int, ...] = ()
-        self.width_list: tuple[int, ...] = ()
-        self.temporal_list: tuple[int, ...] = ()
-        self.seq_list: tuple[int, ...] = ()
+        self.current_ropes: dict[tuple[Any, ...], torch.Tensor] = {}
+        self.current_rope_versions: dict[tuple[Any, ...], int] = {}
 
 
 _ACTIVE_SCOPE: contextvars.ContextVar[_ScopeState | None] = contextvars.ContextVar(
@@ -156,6 +185,8 @@ def install_generator_nograd_static_context_cache(
         "text_projection_call_count": 0,
         "text_fill_count": 0,
         "text_reuse_count": 0,
+        "current_rope_fill_count": 0,
+        "current_rope_reuse_count": 0,
         "grad_enabled_call_count": 0,
         "source_encoder_identity_mismatch_count": 0,
         "static_input_identity_mismatch_count": 0,
@@ -189,6 +220,7 @@ def install_generator_nograd_static_context_cache(
         "process_input_hidden_states",
         "gradient_checkpointing_method",
         "patch_embedding",
+        "rope",
         "condition_embedder",
     )
     if any(not hasattr(model, name) for name in required):
@@ -248,30 +280,38 @@ def install_generator_nograd_static_context_cache(
                 state.unsupported_layout_count += 1
                 raise RuntimeError("Helios rollout has no cacheable history prefix")
             state.static_input_identities = static_identities
-            state.current_contract = _contract(latents)
             # Clone only the history slice.  Retaining the original view would
             # pin the first call's current-latent patch for the full rollout.
             state.history_prefix = hidden[:, :history_tokens].clone()
-            state.rope = rope
+            state.history_rope = rope[:, :history_tokens].clone()
             state.history_version = int(state.history_prefix._version)
-            state.rope_version = int(rope._version)
-            state.height_list = tuple(int(value) for value in heights)
-            state.width_list = tuple(int(value) for value in widths)
-            state.temporal_list = tuple(int(value) for value in temporals)
-            state.seq_list = seq_list
+            state.history_rope_version = int(state.history_rope._version)
+            if not (
+                len(heights) == len(widths) == len(temporals) == len(seqs) == 1
+            ):
+                state.unsupported_layout_count += 1
+                raise RuntimeError("B1 rollout current input must have one layout")
+            current_key = _current_structure_key(
+                hidden[:, history_tokens:],
+                frames=int(temporals[0]),
+                height=int(heights[0]),
+                width=int(widths[0]),
+                tokens=int(seqs[0]),
+            )
+            current_rope = rope[:, history_tokens:].clone()
+            state.current_ropes[current_key] = current_rope
+            state.current_rope_versions[current_key] = int(current_rope._version)
+            state.current_rope_fill_count += 1
             state.process_fill_count += 1
             return output
 
         if static_identities != state.static_input_identities:
             state.static_input_identity_mismatch_count += 1
             raise RuntimeError("static rollout history/index identity changed")
-        if _contract(latents) != state.current_contract:
-            state.unsupported_layout_count += 1
-            raise RuntimeError("current rollout latent contract changed")
-        assert state.rope is not None
+        assert state.history_rope is not None
         if (
             int(state.history_prefix._version) != state.history_version
-            or int(state.rope._version) != state.rope_version
+            or int(state.history_rope._version) != state.history_rope_version
         ):
             state.cached_tensor_mutation_count += 1
             raise RuntimeError("cached rollout history/RoPE tensor was mutated")
@@ -282,32 +322,43 @@ def install_generator_nograd_static_context_cache(
             raise RuntimeError("current-latent patch return contract changed")
         _batch, _channels, frames, height, width = current.shape
         current = current.flatten(2).transpose(1, 2)
-        observed_lists = (
-            (int(height),),
-            (int(width),),
-            (int(frames),),
-            (int(current.shape[1]),),
+        current_key = _current_structure_key(
+            current,
+            frames=int(frames),
+            height=int(height),
+            width=int(width),
+            tokens=int(current.shape[1]),
         )
-        expected_lists = (
-            state.height_list,
-            state.width_list,
-            state.temporal_list,
-            state.seq_list,
-        )
-        if observed_lists != expected_lists:
-            state.unsupported_layout_count += 1
-            raise RuntimeError(
-                f"current rollout patch shape changed: {observed_lists} != "
-                f"{expected_lists}"
+        current_rope = state.current_ropes.get(current_key)
+        if current_rope is None:
+            indices = values["indices_hidden_states"]
+            if not isinstance(indices, torch.Tensor):
+                state.unsupported_layout_count += 1
+                raise RuntimeError("current rollout indices are missing")
+            current_rope = model.rope(
+                frame_indices=indices,
+                height=int(height),
+                width=int(width),
+                device=current.device,
             )
+            current_rope = current_rope.flatten(2).transpose(1, 2).clone()
+            state.current_ropes[current_key] = current_rope
+            state.current_rope_versions[current_key] = int(current_rope._version)
+            state.current_rope_fill_count += 1
+        else:
+            expected_version = state.current_rope_versions[current_key]
+            if int(current_rope._version) != expected_version:
+                state.cached_tensor_mutation_count += 1
+                raise RuntimeError("cached current-stage RoPE tensor was mutated")
+            state.current_rope_reuse_count += 1
         state.process_reuse_count += 1
         return (
             torch.cat([state.history_prefix, current], dim=1),
-            state.rope,
-            list(state.height_list),
-            list(state.width_list),
-            list(state.temporal_list),
-            list(state.seq_list),
+            torch.cat([state.history_rope, current_rope], dim=1),
+            [int(height)],
+            [int(width)],
+            [int(frames)],
+            [int(current.shape[1])],
         )
 
     def cached_text_forward(encoder_hidden_states: Any, *args: Any, **kwargs: Any) -> Any:
@@ -359,6 +410,7 @@ def generator_nograd_static_context_cache_scope(
     *,
     enabled: bool,
     expected_model_calls: int,
+    expected_current_layouts: int,
     source_encoder_hidden_states: torch.Tensor | None,
 ) -> Iterator[dict[str, Any]]:
     """Keep exact immutable context for one B1 Generator rollout."""
@@ -376,6 +428,8 @@ def generator_nograd_static_context_cache_scope(
         raise RuntimeError("Helios rollout-context scope requires no-grad")
     if int(expected_model_calls) <= 1:
         raise RuntimeError("rollout-context reuse requires at least two model calls")
+    if not 1 <= int(expected_current_layouts) <= int(expected_model_calls):
+        raise RuntimeError("invalid rollout-context current-layout inventory")
     if not isinstance(source_encoder_hidden_states, torch.Tensor):
         raise RuntimeError("rollout-context scope requires source text tensor")
     install_receipt = getattr(
@@ -387,6 +441,7 @@ def generator_nograd_static_context_cache_scope(
     state = _ScopeState(
         model=model,
         expected_model_calls=int(expected_model_calls),
+        expected_current_layouts=int(expected_current_layouts),
         source_encoder_identity=_identity(source_encoder_hidden_states),
     )
 
@@ -411,8 +466,12 @@ def generator_nograd_static_context_cache_scope(
         "status": "RUNNING",
         "scope": "GENERATOR_NOGRAD_ONE_ROLLOUT_ONLY",
         "expected_model_calls": int(expected_model_calls),
+        "expected_current_layouts": int(expected_current_layouts),
         "source_identity_contract": (
             "EXACT_STORAGE_POINTER_OFFSET_VERSION_DTYPE_SHAPE_STRIDE_DEVICE"
+        ),
+        "current_structure_contract": (
+            "POST_PATCH_B_T_H_W_TOKENS_DTYPE_DEVICE_LAYOUT"
         ),
     }
     error: BaseException | None = None
@@ -424,27 +483,37 @@ def generator_nograd_static_context_cache_scope(
     finally:
         _ACTIVE_SCOPE.reset(token)
         hook.remove()
+        cached_values = (
+            state.history_prefix,
+            state.history_rope,
+            state.text_projection,
+            *state.current_ropes.values(),
+        )
         cache_bytes = sum(
             int(value.numel() * value.element_size())
-            for value in (
-                state.history_prefix,
-                state.rope,
-                state.text_projection,
-            )
+            for value in cached_values
             if isinstance(value, torch.Tensor)
         )
         versions_ok = True
         for value, expected in (
             (state.history_prefix, state.history_version),
-            (state.rope, state.rope_version),
+            (state.history_rope, state.history_rope_version),
             (state.text_projection, state.text_version),
         ):
             if isinstance(value, torch.Tensor) and int(value._version) != expected:
                 versions_ok = False
                 state.cached_tensor_mutation_count += 1
+        for key, value in state.current_ropes.items():
+            if int(value._version) != state.current_rope_versions[key]:
+                versions_ok = False
+                state.cached_tensor_mutation_count += 1
+        current_layout_count = len(state.current_ropes)
+        tensor_entries_before_clear = 3 + current_layout_count
         state.history_prefix = None
-        state.rope = None
+        state.history_rope = None
         state.text_projection = None
+        state.current_ropes.clear()
+        state.current_rope_versions.clear()
         scope_receipt.update(
             status="PASS" if error is None else "ERROR_CLEANED",
             model_call_count=state.model_call_count,
@@ -454,6 +523,9 @@ def generator_nograd_static_context_cache_scope(
             text_projection_call_count=state.text_projection_call_count,
             text_fill_count=state.text_fill_count,
             text_reuse_count=state.text_reuse_count,
+            current_rope_fill_count=state.current_rope_fill_count,
+            current_rope_reuse_count=state.current_rope_reuse_count,
+            current_layout_count=current_layout_count,
             grad_enabled_call_count=state.grad_enabled_call_count,
             source_encoder_identity_mismatch_count=(
                 state.source_encoder_identity_mismatch_count
@@ -464,7 +536,7 @@ def generator_nograd_static_context_cache_scope(
             cached_tensor_mutation_count=state.cached_tensor_mutation_count,
             unsupported_layout_count=state.unsupported_layout_count,
             cache_resident_bytes_before_clear=cache_bytes,
-            cache_entries_before_clear=3,
+            cache_entries_before_clear=tensor_entries_before_clear,
             cache_entries_after_clear=0,
         )
 
@@ -476,6 +548,8 @@ def generator_nograd_static_context_cache_scope(
             "text_projection_call_count",
             "text_fill_count",
             "text_reuse_count",
+            "current_rope_fill_count",
+            "current_rope_reuse_count",
             "grad_enabled_call_count",
             "source_encoder_identity_mismatch_count",
             "static_input_identity_mismatch_count",
@@ -495,6 +569,10 @@ def generator_nograd_static_context_cache_scope(
                 "text_projection_call_count": int(expected_model_calls),
                 "text_fill_count": 1,
                 "text_reuse_count": int(expected_model_calls) - 1,
+                "current_rope_fill_count": int(expected_current_layouts),
+                "current_rope_reuse_count": (
+                    int(expected_model_calls) - int(expected_current_layouts)
+                ),
                 "grad_enabled_call_count": 0,
                 "source_encoder_identity_mismatch_count": 0,
                 "static_input_identity_mismatch_count": 0,
@@ -502,11 +580,18 @@ def generator_nograd_static_context_cache_scope(
                 "unsupported_layout_count": 0,
             }
             observed = {key: scope_receipt[key] for key in expected}
-            if observed != expected or not versions_ok or cache_bytes <= 0:
+            if (
+                observed != expected
+                or current_layout_count != int(expected_current_layouts)
+                or not versions_ok
+                or cache_bytes <= 0
+            ):
                 scope_receipt["status"] = "FAIL"
                 raise RuntimeError(
                     "Helios rollout-context lifecycle mismatch: "
                     f"observed={observed}, expected={expected}, "
+                    f"current_layout_count={current_layout_count}, "
+                    f"expected_current_layouts={expected_current_layouts}, "
                     f"versions_ok={versions_ok}, cache_bytes={cache_bytes}"
                 )
 

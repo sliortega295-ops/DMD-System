@@ -911,6 +911,10 @@ def main() -> int:
                 for batch_index, batch in enumerate(batches):
                     cache = batch.get("static_context_cache", {})
                     call_count = int(batch.get("call_count", 0))
+                    current_layouts = sum(
+                        int(count) > 0
+                        for count in batch.get("stage_call_count", {}).values()
+                    )
                     expected_calls += call_count
                     expected_reuses += max(0, call_count - 1)
                     cache_prefix = (
@@ -925,8 +929,15 @@ def main() -> int:
                         "STRIDE_DEVICE"
                     ):
                         errors.append(f"{cache_prefix} source identity drifted")
+                    if cache.get("current_structure_contract") != (
+                        "POST_PATCH_B_T_H_W_TOKENS_DTYPE_DEVICE_LAYOUT"
+                    ):
+                        errors.append(
+                            f"{cache_prefix} current structure contract drifted"
+                        )
                     expected_cache = {
                         "expected_model_calls": call_count,
+                        "expected_current_layouts": current_layouts,
                         "model_call_count": call_count,
                         "process_call_count": call_count,
                         "process_fill_count": 1,
@@ -934,12 +945,17 @@ def main() -> int:
                         "text_projection_call_count": call_count,
                         "text_fill_count": 1,
                         "text_reuse_count": max(0, call_count - 1),
+                        "current_layout_count": current_layouts,
+                        "current_rope_fill_count": current_layouts,
+                        "current_rope_reuse_count": max(
+                            0, call_count - current_layouts
+                        ),
                         "grad_enabled_call_count": 0,
                         "source_encoder_identity_mismatch_count": 0,
                         "static_input_identity_mismatch_count": 0,
                         "cached_tensor_mutation_count": 0,
                         "unsupported_layout_count": 0,
-                        "cache_entries_before_clear": 3,
+                        "cache_entries_before_clear": 3 + current_layouts,
                         "cache_entries_after_clear": 0,
                     }
                     for key, expected in expected_cache.items():
@@ -959,6 +975,26 @@ def main() -> int:
                     "text_projection_call_count": expected_calls,
                     "text_fill_count": expected_batches,
                     "text_reuse_count": expected_reuses,
+                    "current_rope_fill_count": sum(
+                        sum(
+                            int(count) > 0
+                            for count in batch.get("stage_call_count", {}).values()
+                        )
+                        for batch in batches
+                    ),
+                    "current_rope_reuse_count": sum(
+                        max(
+                            0,
+                            int(batch.get("call_count", 0))
+                            - sum(
+                                int(count) > 0
+                                for count in batch.get(
+                                    "stage_call_count", {}
+                                ).values()
+                            ),
+                        )
+                        for batch in batches
+                    ),
                     "grad_enabled_call_count": 0,
                     "source_encoder_identity_mismatch_count": 0,
                     "static_input_identity_mismatch_count": 0,

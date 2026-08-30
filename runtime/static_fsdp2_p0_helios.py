@@ -132,6 +132,9 @@ def run_generator_trace_rollout_batch(
         model,
         enabled=use_static_context_cache,
         expected_model_calls=expected_call_count,
+        expected_current_layouts=sum(
+            int(count) > 0 for count in expected_stage_calls.values()
+        ),
         source_encoder_hidden_states=tensors["text_embedding"],
     ) as static_context_cache, generator_nograd_residual_fusion_scope():
         (

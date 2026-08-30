@@ -591,3 +591,21 @@
 - Decision: **GO** for C13 alone: focused CPU/CUDA tests, validate-only,
   16-rank correctness/capacity, then one formal timing only after all gates
   pass.
+
+### C13 pre-launch source-contract correction
+
+- No C13 GPU workload had started when the pinned `run_generator` and
+  `inference_with_trajectory_stage2` source was re-read.  The rollout has one
+  immutable history/text identity but traverses three current-latent pyramid
+  layouts.  The original one-layout mock would therefore have failed closed at
+  a normal stage transition and was not admitted to validate/correctness.
+- This does not authorize a broader optimization.  The corrected cache keeps
+  one exact history patch prefix, one history RoPE prefix and one projected
+  text tensor for the existing rollout scope.  It computes the current patch
+  on every call and keys only current-token RoPE by exact post-patch
+  `(B,T,H,W,tokens,dtype,device,layout)`, expecting three layouts from the
+  rank-qualified trace.
+- Static history/index/text storage pointer, offset, version, dtype, shape,
+  stride and device remain fail-closed.  Every DiT/attention/FFN/FSDP call and
+  the five uncached B1 parity rows remain mandatory.  Decision remains **GO**
+  for the same C13 hypothesis after focused tests.
