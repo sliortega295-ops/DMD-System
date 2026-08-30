@@ -1,0 +1,6 @@
+[submodule "third_party/livewan"]
+	path = third_party/livewan
+	url = https://github.com/JonathanColetti/LiveWan.git
+[submodule "third_party/wan21"]
+	path = third_party/wan21
+	url = https://github.com/Wan-Video/Wan2.1.git
