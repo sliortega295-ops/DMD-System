@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 from collections import Counter, defaultdict
 import csv
+import heapq
 import json
 from pathlib import Path
 import sqlite3
@@ -114,6 +115,24 @@ def _intersection_unioned(
     return total
 
 
+def _merged_duration(*groups: list[tuple[int, int]]) -> int:
+    """Union duration of already sorted interval groups without a global sort."""
+
+    total = 0
+    active_start = active_end = None
+    for start, end in heapq.merge(*groups):
+        if active_start is None:
+            active_start, active_end = start, end
+        elif start > active_end:
+            total += active_end - active_start
+            active_start, active_end = start, end
+        else:
+            active_end = max(active_end, end)
+    if active_start is not None:
+        total += active_end - active_start
+    return total
+
+
 def _collective(name: str) -> str:
     lowered = name.lower()
     if "allgather" in lowered or "all_gather" in lowered:
@@ -140,23 +159,25 @@ def _phase_sort_key(row: dict) -> tuple[int, str]:
 
 def _metric(window: tuple[int, int], intervals: dict[str, list[tuple[int, int]]]) -> dict:
     clipped = {
-        category: [part for value in values if (part := _clip(value, window))]
+        category: _clip_unioned(values, window)
         for category, values in intervals.items()
     }
-    compute = _duration(clipped["compute"])
-    nccl = _duration(clipped["nccl"])
-    copy = _duration(clipped["copy"])
-    active = _duration(clipped["compute"] + clipped["nccl"] + clipped["copy"])
+    compute = sum(end - start for start, end in clipped["compute"])
+    nccl = sum(end - start for start, end in clipped["nccl"])
+    copy = sum(end - start for start, end in clipped["copy"])
+    active = _merged_duration(clipped["compute"], clipped["nccl"], clipped["copy"])
     wall = window[1] - window[0]
+    nccl_hidden = _intersection_unioned(clipped["nccl"], clipped["compute"])
+    copy_hidden = _intersection_unioned(clipped["copy"], clipped["compute"])
     return {
         "wall_ns": wall,
         "compute_union_ns": compute,
         "nccl_union_ns": nccl,
-        "nccl_hidden_by_compute_ns": _intersection(clipped["nccl"], clipped["compute"]),
-        "nccl_exposed_vs_compute_ns": nccl - _intersection(clipped["nccl"], clipped["compute"]),
+        "nccl_hidden_by_compute_ns": nccl_hidden,
+        "nccl_exposed_vs_compute_ns": nccl - nccl_hidden,
         "copy_union_ns": copy,
-        "copy_hidden_by_compute_ns": _intersection(clipped["copy"], clipped["compute"]),
-        "copy_exposed_vs_compute_ns": copy - _intersection(clipped["copy"], clipped["compute"]),
+        "copy_hidden_by_compute_ns": copy_hidden,
+        "copy_exposed_vs_compute_ns": copy - copy_hidden,
         "active_union_ns": active,
         "no_traced_gpu_activity_ns": wall - active,
     }
