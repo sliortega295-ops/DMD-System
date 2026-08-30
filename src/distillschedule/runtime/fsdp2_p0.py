@@ -63,6 +63,7 @@ class StaticFSDP2P0Policy:
     exact_modulated_norm_backward: bool = False
     exact_modulated_norm_layernorm: bool = False
     exact_modulated_norm_fused_backward: bool = False
+    exact_history_current_fusion: bool = False
     modulation_chunk_tokens: int = 512
     selective_flash_checkpoint_stride: int = 0
     generator_nograd_cross_kv_cache: bool = False
@@ -99,6 +100,8 @@ class StaticFSDP2P0Policy:
             raise ValueError("Exact grad residual fusion is restricted to B1")
         if self.exact_modulated_norm_epilogue and self.rollout_batch_size != 1:
             raise ValueError("Exact modulated-norm epilogue is restricted to B1")
+        if self.exact_history_current_fusion and self.rollout_batch_size != 1:
+            raise ValueError("Exact history/current fusion is restricted to B1")
         if self.generator_nograd_cross_kv_cache and self.rollout_batch_size != 1:
             raise ValueError(
                 "Generator no-grad cross-attention KV reuse is restricted to B1"
@@ -195,6 +198,8 @@ class StaticFSDP2P0Policy:
             suffixes.append("modnormlayernorm")
         if self.exact_modulated_norm_fused_backward:
             suffixes.append("modnormfusedbackward")
+        if self.exact_history_current_fusion:
+            suffixes.append("historycurrentfusion")
         if self.modulation_chunk_tokens != 512:
             suffixes.append(f"chunk{self.modulation_chunk_tokens}")
         if self.selective_flash_checkpoint_stride:

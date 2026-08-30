@@ -358,3 +358,16 @@
     failure is specifically allocator fragmentation and the repository already
     uses this source-supported setting on earlier GAN paths. If C24 repeats
     OOM, close no-flush rather than escalating allocator patches.
+64. C24 resolves the C23 allocation failure but regresses to
+    `127.619803944 s`; reject it and restore C21 `125.814004444 s` as the
+    authoritative substrate.  The allocator no-flush branch is closed.
+65. C25 targets only the source-qualified non-NaViT guidance-cross-attention
+    `current + attention` followed by history concatenation.  First fuse the
+    forward data movement and exact backward routing in a locked-A100 B1/B3
+    canary.  Require unchanged P0 output/gradient parity, zero fallback, and at
+    least `1.15x` warm forward-plus-backward improvement for every registered
+    shape before any world16 integration.
+66. If the canary passes, add one default-off source-pinned policy and complete
+    focused tests, validate-only, 16-rank correctness/capacity, and one
+    unprofiled timing on the exact C21 workload.  Do not combine allocator,
+    topology, batching, packing, prefetch, or attention changes.

@@ -79,6 +79,7 @@ EXACT_MODULATED_NORM_MATERIALIZATION="${DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_N
 EXACT_MODULATED_NORM_BACKWARD="${DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_BACKWARD:-off}"
 EXACT_MODULATED_NORM_LAYERNORM="${DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_LAYERNORM:-off}"
 EXACT_MODULATED_NORM_FUSED_BACKWARD="${DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_FUSED_BACKWARD:-off}"
+EXACT_HISTORY_CURRENT_FUSION="${DISTILLSCHEDULE_HELIOS_EXACT_HISTORY_CURRENT_FUSION:-off}"
 ELIDE_EXPLICIT_ROLLOUT_SYNC="${DISTILLSCHEDULE_ELIDE_EXPLICIT_ROLLOUT_SYNC:-off}"
 ELIDE_CRITIC_SCALAR_LOGS="${DISTILLSCHEDULE_ELIDE_CRITIC_SCALAR_LOGS:-off}"
 ELIDE_OFFICIAL_GENERATOR_FREE_MEMORY="${DISTILLSCHEDULE_ELIDE_OFFICIAL_GENERATOR_FREE_MEMORY:-off}"
@@ -112,6 +113,7 @@ EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORME
 [[ "${EXACT_MODULATED_NORM_BACKWARD}" == on || "${EXACT_MODULATED_NORM_BACKWARD}" == off ]] || exit 2
 [[ "${EXACT_MODULATED_NORM_LAYERNORM}" == on || "${EXACT_MODULATED_NORM_LAYERNORM}" == off ]] || exit 2
 [[ "${EXACT_MODULATED_NORM_FUSED_BACKWARD}" == on || "${EXACT_MODULATED_NORM_FUSED_BACKWARD}" == off ]] || exit 2
+[[ "${EXACT_HISTORY_CURRENT_FUSION}" == on || "${EXACT_HISTORY_CURRENT_FUSION}" == off ]] || exit 2
 [[ "${ELIDE_EXPLICIT_ROLLOUT_SYNC}" == on || "${ELIDE_EXPLICIT_ROLLOUT_SYNC}" == off ]] || exit 2
 [[ "${ELIDE_CRITIC_SCALAR_LOGS}" == on || "${ELIDE_CRITIC_SCALAR_LOGS}" == off ]] || exit 2
 [[ "${ELIDE_OFFICIAL_GENERATOR_FREE_MEMORY}" == on || "${ELIDE_OFFICIAL_GENERATOR_FREE_MEMORY}" == off ]] || exit 2
@@ -138,6 +140,7 @@ EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORME
 [[ "${EXACT_MODULATED_NORM_FUSED_BACKWARD}" != on || "${EXACT_MODULATED_NORM_MATERIALIZATION}" == on ]] || exit 2
 [[ "${EXACT_MODULATED_NORM_FUSED_BACKWARD}" != on || "${EXACT_MODULATED_NORM_BACKWARD}" == on ]] || exit 2
 [[ "${EXACT_MODULATED_NORM_FUSED_BACKWARD}" != on || "${EXACT_MODULATED_NORM_LAYERNORM}" == on ]] || exit 2
+[[ "${EXACT_HISTORY_CURRENT_FUSION}" != on || "${ROLLOUT_BATCH_SIZE}" == 1 ]] || exit 2
 [[ "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" != on || "${ALL_ROLE_LORA_SCALE1_ADD}" != on ]] || exit 2
 [[ "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" == 0 || "${ATTENTION_BACKEND}" == local-fa2 ]] || exit 2
 [[ "${GENERATOR_NOGRAD_CROSS_KV_CACHE}" != on || "${ROLLOUT_BATCH_SIZE}" == 1 ]] || exit 2
@@ -188,10 +191,10 @@ HELIOS_TRANSFORMER="${HELIOS}/helios/modules/transformer_helios.py"
 if [[ "${MODE}" == timing && "${DIAGNOSTIC_TIMING}" != 1 ]]; then
   [[ -f "${CORRECTNESS_SUMMARY}" ]] || { echo correctness_summary_missing >&2; exit 3; }
   [[ "$(sha256sum "${CORRECTNESS_SUMMARY}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || { echo correctness_hash_changed >&2; exit 3; }
-  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" "${ALL_ROLE_LORA_SCALE1_ADD}" "${OPTIMIZER_DISPATCH_WARMUP}" "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" "${EXACT_GRAD_RESIDUAL_FUSION}" "${EXACT_MODULATED_NORM_EPILOGUE}" "${EXACT_MODULATED_NORM_MATERIALIZATION}" "${ATTENTION_BACKEND}" "${MODULATION_CHUNK_TOKENS}" "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" "${GENERATOR_NOGRAD_CROSS_KV_CACHE}" "${EXACT_MODULATED_NORM_BACKWARD}" "${EXACT_MODULATED_NORM_LAYERNORM}" "${ELIDE_EXPLICIT_ROLLOUT_SYNC}" "${GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE}" "${EXACT_MODULATED_NORM_FUSED_BACKWARD}" "${ELIDE_CRITIC_SCALAR_LOGS}" "${ELIDE_OFFICIAL_GENERATOR_FREE_MEMORY}" "${GENERATOR_NOGRAD_PERSISTENT_UNSHARD}" "${GENERATOR_NOGRAD_PERSISTENT_UNSHARD_FLUSH_ALLOCATOR_CACHE}" "${CUDA_ALLOCATOR_EXPANDABLE_SEGMENTS}" <<'PY'
+  "${PYTHON}" - "${CORRECTNESS_SUMMARY}" "${VARIANT}" "${MESH_POLICY}" "${ROLLOUT_BATCH_SIZE}" "${PACK_REAL_SCORE_PAIR}" "${GENERATOR_RESIDUAL_STORAGE}" "${CRITIC_RESIDUAL_STORAGE}" "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" "${ALL_ROLE_LORA_SCALE1_ADD}" "${OPTIMIZER_DISPATCH_WARMUP}" "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" "${EXACT_GRAD_RESIDUAL_FUSION}" "${EXACT_MODULATED_NORM_EPILOGUE}" "${EXACT_MODULATED_NORM_MATERIALIZATION}" "${ATTENTION_BACKEND}" "${MODULATION_CHUNK_TOKENS}" "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" "${GENERATOR_NOGRAD_CROSS_KV_CACHE}" "${EXACT_MODULATED_NORM_BACKWARD}" "${EXACT_MODULATED_NORM_LAYERNORM}" "${ELIDE_EXPLICIT_ROLLOUT_SYNC}" "${GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE}" "${EXACT_MODULATED_NORM_FUSED_BACKWARD}" "${ELIDE_CRITIC_SCALAR_LOGS}" "${ELIDE_OFFICIAL_GENERATOR_FREE_MEMORY}" "${GENERATOR_NOGRAD_PERSISTENT_UNSHARD}" "${GENERATOR_NOGRAD_PERSISTENT_UNSHARD_FLUSH_ALLOCATOR_CACHE}" "${CUDA_ALLOCATOR_EXPANDABLE_SEGMENTS}" "${EXACT_HISTORY_CURRENT_FUSION}" <<'PY'
 import json,pathlib,sys
 value=json.loads(pathlib.Path(sys.argv[1]).read_text())
-expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7],"generator_nograd_lora_fused_epilogue":sys.argv[8]=="on","all_role_lora_scale1_add":sys.argv[9]=="on","optimizer_dispatch_warmup":sys.argv[10]=="on","generator_nograd_residual_fusion":sys.argv[11]=="on","exact_grad_residual_fusion":sys.argv[12]=="on","exact_modulated_norm_epilogue":sys.argv[13]=="on","exact_modulated_norm_materialization":sys.argv[14]=="on","attention_backend":sys.argv[15],"modulation_chunk_tokens":int(sys.argv[16]),"selective_flash_checkpoint_stride":int(sys.argv[17]),"generator_nograd_cross_kv_cache":sys.argv[18]=="on","exact_modulated_norm_backward":sys.argv[19]=="on","exact_modulated_norm_layernorm":sys.argv[20]=="on","elide_explicit_rollout_sync":sys.argv[21]=="on","generator_nograd_static_context_cache":sys.argv[22]=="on","exact_modulated_norm_fused_backward":sys.argv[23]=="on","elide_critic_scalar_logs":sys.argv[24]=="on","elide_official_generator_free_memory":sys.argv[25]=="on","generator_nograd_persistent_unshard":sys.argv[26]=="on","generator_nograd_persistent_unshard_flush_allocator_cache":sys.argv[27]=="on","cuda_allocator_expandable_segments":sys.argv[28]=="on"}
+expected={"mesh_policy":sys.argv[3],"rollout_batch_size":int(sys.argv[4]),"pack_real_score_pair":sys.argv[5]=="on","generator_residual_storage":sys.argv[6],"critic_residual_storage":sys.argv[7],"generator_nograd_lora_fused_epilogue":sys.argv[8]=="on","all_role_lora_scale1_add":sys.argv[9]=="on","optimizer_dispatch_warmup":sys.argv[10]=="on","generator_nograd_residual_fusion":sys.argv[11]=="on","exact_grad_residual_fusion":sys.argv[12]=="on","exact_modulated_norm_epilogue":sys.argv[13]=="on","exact_modulated_norm_materialization":sys.argv[14]=="on","attention_backend":sys.argv[15],"modulation_chunk_tokens":int(sys.argv[16]),"selective_flash_checkpoint_stride":int(sys.argv[17]),"generator_nograd_cross_kv_cache":sys.argv[18]=="on","exact_modulated_norm_backward":sys.argv[19]=="on","exact_modulated_norm_layernorm":sys.argv[20]=="on","elide_explicit_rollout_sync":sys.argv[21]=="on","generator_nograd_static_context_cache":sys.argv[22]=="on","exact_modulated_norm_fused_backward":sys.argv[23]=="on","elide_critic_scalar_logs":sys.argv[24]=="on","elide_official_generator_free_memory":sys.argv[25]=="on","generator_nograd_persistent_unshard":sys.argv[26]=="on","generator_nograd_persistent_unshard_flush_allocator_cache":sys.argv[27]=="on","cuda_allocator_expandable_segments":sys.argv[28]=="on","exact_history_current_fusion":sys.argv[29]=="on"}
 if value.get("status") != "PASS" or not value.get("claimable_correctness"):
     raise SystemExit("P0 correctness gate is not PASS")
 if value.get("variant") != sys.argv[2]:
@@ -267,6 +270,7 @@ exact_modulated_norm_materialization=${EXACT_MODULATED_NORM_MATERIALIZATION}
 exact_modulated_norm_backward=${EXACT_MODULATED_NORM_BACKWARD}
 exact_modulated_norm_layernorm=${EXACT_MODULATED_NORM_LAYERNORM}
 exact_modulated_norm_fused_backward=${EXACT_MODULATED_NORM_FUSED_BACKWARD}
+exact_history_current_fusion=${EXACT_HISTORY_CURRENT_FUSION}
 elide_explicit_rollout_sync=${ELIDE_EXPLICIT_ROLLOUT_SYNC}
 elide_critic_scalar_logs=${ELIDE_CRITIC_SCALAR_LOGS}
 elide_official_generator_free_memory=${ELIDE_OFFICIAL_GENERATOR_FREE_MEMORY}
@@ -358,6 +362,11 @@ if [[ "${EXACT_MODULATED_NORM_FUSED_BACKWARD}" == on ]]; then
   WORKER+=(--exact-modulated-norm-fused-backward)
 else
   WORKER+=(--no-exact-modulated-norm-fused-backward)
+fi
+if [[ "${EXACT_HISTORY_CURRENT_FUSION}" == on ]]; then
+  WORKER+=(--exact-history-current-fusion)
+else
+  WORKER+=(--no-exact-history-current-fusion)
 fi
 if [[ "${GENERATOR_NOGRAD_CROSS_KV_CACHE}" == on ]]; then
   WORKER+=(--generator-nograd-cross-kv-cache)

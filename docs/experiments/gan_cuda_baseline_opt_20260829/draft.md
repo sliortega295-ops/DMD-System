@@ -550,3 +550,44 @@ fusion drops active LoRA computation. Before selecting another optimization,
 the next bounded action is a post-C17/C18 diagnostic Nsight capture so the
 remaining host gap and phase budgets are not inferred from the older C15
 timeline.
+
+## C25 selected exact history/current cross-attention fusion
+
+C24 closes the allocator no-flush branch: expandable segments prevent the C23
+OOM, but regress formal Full5 from C21 `125.814004444 s` to
+`127.619803944 s`.  The next candidate therefore returns to the frozen C21
+substrate and uses the valid C22 profile plus pinned Helios source, rather than
+continuing allocator changes.
+
+On node0 device 0, the C22 kernel ledger contains `15,860`
+`CatArrayBatchedCopy` launches totaling `1.4589 GPU-s`, and `1,320`
+`split_with_sizes_copy_out_contiguous_no_cast_kernel` launches totaling
+`1.5597 GPU-s`, in addition to repeated BF16 add kernels.  These are
+GPU-kernel sums, not critical-path seconds, but source inspection identifies a
+single exact owner in every non-NaViT guidance-cross-attention block:
+
+```python
+current = current + attn_output
+hidden_states = torch.cat([history, current], dim=1)
+```
+
+C25 may replace only that two-operation data-movement chain with one
+source-pinned custom autograd operation.  Its forward writes the unchanged
+history prefix and BF16 `current + attn_output` suffix in one Triton kernel;
+its backward returns the full upstream gradient directly for the pre-split
+hidden tensor and the suffix gradient for attention.  It must not change the
+attention call, normalization, history length, NaViT branch, model role,
+checkpointing, FSDP, trace, loss, update order, or timer.
+
+Promotion starts with a locked-A100 B1/B3 canary over representative width
+5120 layouts.  Output, full-hidden gradient, and attention gradient must pass
+the unchanged P0 parity contract, every registered shape must avoid fallback,
+and warm forward-plus-backward must improve by at least `1.15x`.  Only then may
+the default-off policy be wired into the frozen C21 world16 validate,
+correctness/capacity, and one unprofiled timing sequence.
+
+The canary passes: B1 improves `1.5882x` and B3 `2.0946x`; output, full-hidden
+gradient and attention gradient are bitwise equal for both shapes.  The actual
+pinned Helios method also rewrites successfully, and 116 focused tests pass in
+the validated remote environment.  This authorizes the default-off world16
+integration and normal gates, but is not yet an end-to-end timing claim.

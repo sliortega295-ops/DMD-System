@@ -129,6 +129,9 @@ from distillschedule.runtime.helios_critic_scalar_logs import (
 from distillschedule.runtime.helios_generator_free_memory import (
     prepare_generator_free_memory_receipt,
 )
+from distillschedule.runtime.helios_history_current_fusion import (
+    install_exact_history_current_fusion,
+)
 from distillschedule.runtime.helios_rollout_context_cache import (
     install_generator_nograd_static_context_cache,
 )
@@ -257,6 +260,19 @@ def _build_static_model(
             "disabled_reason": "INSTALL_ONCE_FROM_GENERATOR_BUILD",
         }
     )
+    history_current_fusion = (
+        install_exact_history_current_fusion(
+            enabled=bool(args.exact_history_current_fusion),
+            role=role,
+        )
+        if role == "generator"
+        else {
+            "requested": bool(args.exact_history_current_fusion),
+            "enabled": False,
+            "role": role,
+            "disabled_reason": "INSTALL_ONCE_FROM_GENERATOR_BUILD",
+        }
+    )
     cross_kv_cache = install_generator_nograd_cross_kv_cache(
         enabled=bool(args.generator_nograd_cross_kv_cache),
         role=role,
@@ -325,6 +341,7 @@ def _build_static_model(
         ),
         "generator_nograd_residual_fusion": residual_fusion,
         "exact_modulated_norm_epilogue": modulated_norm_fusion,
+        "exact_history_current_fusion": history_current_fusion,
         "generator_nograd_cross_kv_cache": cross_kv_cache,
         "generator_nograd_static_context_cache": static_context_cache,
         "modulation_chunks": modulation_chunks,
@@ -946,6 +963,15 @@ def _parser() -> Any:
         ),
     )
     value.add_argument(
+        "--exact-history-current-fusion",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Fuse only the pinned non-NaViT guidance-cross-attention current "
+            "BF16 add and history concatenation with exact gradients"
+        ),
+    )
+    value.add_argument(
         "--selective-flash-checkpoint-stride",
         type=int,
         choices=(0, 2, 4, 10),
@@ -1110,6 +1136,8 @@ def main() -> int:
         raise ValueError(
             "Fused modulated LayerNorm backward requires the complete C14 substrate"
         )
+    if args.exact_history_current_fusion and args.rollout_batch_size != 1:
+        raise ValueError("Exact history/current fusion requires B1")
     if (
         args.selective_flash_checkpoint_stride
         and args.attention_backend != "local-fa2"
@@ -1157,6 +1185,7 @@ def main() -> int:
         exact_modulated_norm_fused_backward=bool(
             args.exact_modulated_norm_fused_backward
         ),
+        exact_history_current_fusion=bool(args.exact_history_current_fusion),
         modulation_chunk_tokens=int(args.modulation_chunk_tokens),
         selective_flash_checkpoint_stride=int(
             args.selective_flash_checkpoint_stride
@@ -1261,6 +1290,7 @@ def main() -> int:
             "exact_modulated_norm_fused_backward": (
                 policy.exact_modulated_norm_fused_backward
             ),
+            "exact_history_current_fusion": policy.exact_history_current_fusion,
             "elide_explicit_rollout_sync": policy.elide_explicit_rollout_sync,
             "elide_critic_scalar_logs": policy.elide_critic_scalar_logs,
             "elide_official_generator_free_memory": (

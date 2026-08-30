@@ -138,6 +138,11 @@ def main() -> int:
         required=True,
     )
     parser.add_argument(
+        "--exact-history-current-fusion",
+        choices=("on", "off"),
+        default="off",
+    )
+    parser.add_argument(
         "--elide-explicit-rollout-sync",
         choices=("on", "off"),
         default="off",
@@ -217,6 +222,9 @@ def main() -> int:
         "exact_modulated_norm_fused_backward": (
             args.exact_modulated_norm_fused_backward == "on"
         ),
+        "exact_history_current_fusion": (
+            args.exact_history_current_fusion == "on"
+        ),
         "elide_explicit_rollout_sync": (
             args.elide_explicit_rollout_sync == "on"
         ),
@@ -252,6 +260,7 @@ def main() -> int:
     optimizer_warmups: list[dict[str, Any] | None] = []
     residual_fusions: list[dict[str, Any] | None] = []
     modulated_norm_fusions: list[dict[str, Any] | None] = []
+    history_current_fusions: list[dict[str, Any] | None] = []
     attention_backends: list[dict[str, Any] | None] = []
     modulation_chunks: list[dict[str, Any] | None] = []
     checkpoint_policies: list[dict[str, Any] | None] = []
@@ -967,6 +976,39 @@ def main() -> int:
                         errors.append(f"{prefix} fused backward ran while disabled")
             elif modulated_norm_fusion.get("enabled"):
                 errors.append(f"{prefix} enabled outside requested policy")
+            history_current_fusion = (
+                value.get("build", {})
+                .get("generator", {})
+                .get("exact_history_current_fusion", {})
+            )
+            history_current_fusions.append(history_current_fusion)
+            prefix = f"rank{rank} exact history/current fusion"
+            if expected_policy["exact_history_current_fusion"]:
+                if not history_current_fusion.get("enabled"):
+                    errors.append(f"{prefix} was not enabled")
+                if history_current_fusion.get("scope") != (
+                    "ALL_ROLE_NON_NAVIT_GUIDANCE_CROSS_ATTENTION_BLOCKS"
+                ):
+                    errors.append(f"{prefix} scope changed")
+                if history_current_fusion.get("transformer_sha256") != (
+                    "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886"
+                ):
+                    errors.append(f"{prefix} source identity changed")
+                if history_current_fusion.get("shared_source_modified") is not False:
+                    errors.append(f"{prefix} modified shared source")
+                if int(history_current_fusion.get("call_count", 0)) <= 0:
+                    errors.append(f"{prefix} executed no calls")
+                if int(
+                    history_current_fusion.get("reference_fallback_count", -1)
+                ) != 0:
+                    errors.append(f"{prefix} used a fallback")
+                batches = set(history_current_fusion.get("batch_counts", {}))
+                if not batches or not batches.issubset({"1", "3"}):
+                    errors.append(f"{prefix} unexpected batches={sorted(batches)}")
+                if not history_current_fusion.get("shape_counts"):
+                    errors.append(f"{prefix} recorded no live shapes")
+            elif history_current_fusion.get("enabled"):
+                errors.append(f"{prefix} enabled outside requested policy")
             cross_kv_cache = (
                 value.get("build", {})
                 .get("generator", {})
@@ -1359,6 +1401,7 @@ def main() -> int:
             optimizer_warmups.append(None)
             residual_fusions.append(None)
             modulated_norm_fusions.append(None)
+            history_current_fusions.append(None)
             cross_kv_caches.append(None)
             persistent_unshard_receipts.append(None)
 
@@ -1402,6 +1445,7 @@ def main() -> int:
         "rank_optimizer_dispatch_warmup": optimizer_warmups,
         "rank_generator_nograd_residual_fusion": residual_fusions,
         "rank_exact_modulated_norm_epilogue": modulated_norm_fusions,
+        "rank_exact_history_current_fusion": history_current_fusions,
         "rank_generator_nograd_cross_kv_cache": cross_kv_caches,
         "rank_generator_nograd_static_context_cache": static_context_caches,
         "rank_generator_nograd_persistent_unshard": (

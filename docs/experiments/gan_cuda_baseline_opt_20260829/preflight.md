@@ -913,3 +913,39 @@
   negative result for allocator-cache no-flush: one arm OOMs and the supported
   fragmentation recovery is slower.  Do not retry or escalate allocator
   changes without materially new evidence.
+
+## C25 iteration preflight
+
+- **Current gate:** post-C24 return to C21; one kernel canary is authorized,
+  while world16 is not yet authorized.
+- **Authorized hypothesis:** fuse only the non-NaViT guidance-cross-attention
+  suffix BF16 add and history concatenation into one exact custom autograd
+  operation, including direct full-hidden gradient routing.
+- **Frozen baseline and contracts:** C21 GAN steps1000--1004, world16 FSDP2,
+  B1/global-B16, local FA2, exact trace/RNG/loss/call/update/version/timer,
+  complete C15/C17/C18 fusions and Generator 41-unit rollout persistence.
+- **Matching evidence:** C22 node0 device0 records 15,860 cat-copy launches
+  (`1.4589 GPU-s`) and 1,320 split-copy launches (`1.5597 GPU-s`), while the
+  pinned Helios transformer SHA is
+  `5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886`.
+  These are selection evidence, not a wall-time claim.
+- **Rejected/superseded paths:** allocator no-flush C23/C24, B2/B5, HSDP,
+  explicit FSDP prefetch, forced NCCL protocols, static-context cache,
+  restrict-self-attention history K/V, simple LoRA beta-add, stride-1 Flash
+  checkpoint retention, and direct attention replacement remain closed.
+- **New falsifiable question:** can the exact B1/B3 output and gradients be
+  preserved while warm forward-plus-backward improves by at least `1.15x`,
+  before one independently gated world16 run?
+- **Decision:** **GO_CANARY_ONLY**.  Any parity failure, unsupported layout,
+  source mismatch, fallback, or sub-threshold shape rejects C25 before world16.
+
+### C25 canary gate result
+
+- `iter380_gan_cuda_c25_history_current_canary_r1_20260830` passes on one
+  owned A100: B1/B3 output, full-hidden gradient and attention gradient are
+  bitwise equal; forward-plus-backward improves `1.5882x`/`2.0946x`.
+- The exact pinned Helios block method rewrites successfully and 116 focused
+  tests pass in the recorded Torch 2.10 environment.
+- **Decision:** **GO_WORLD16_GATES** for this candidate only.  Validate-only
+  and fresh 16/16 correctness/capacity must pass with live calls, registered
+  B1/B3 shapes and zero fallback before one unprofiled timing.

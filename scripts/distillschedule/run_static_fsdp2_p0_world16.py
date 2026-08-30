@@ -201,6 +201,11 @@ def parser() -> argparse.ArgumentParser:
         default="off",
     )
     value.add_argument(
+        "--exact-history-current-fusion",
+        choices=("on", "off"),
+        default="off",
+    )
+    value.add_argument(
         "--elide-explicit-rollout-sync",
         choices=("on", "off"),
         default="off",
@@ -329,6 +334,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.exact_modulated_norm_layernorm),
         "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_FUSED_BACKWARD="
         + shlex.quote(args.exact_modulated_norm_fused_backward),
+        "DISTILLSCHEDULE_HELIOS_EXACT_HISTORY_CURRENT_FUSION="
+        + shlex.quote(args.exact_history_current_fusion),
         "DISTILLSCHEDULE_ELIDE_EXPLICIT_ROLLOUT_SYNC="
         + shlex.quote(args.elide_explicit_rollout_sync),
         "DISTILLSCHEDULE_ELIDE_CRITIC_SCALAR_LOGS="
@@ -479,6 +486,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         + f"{shlex.quote(args.exact_modulated_norm_layernorm)} "
         + "--exact-modulated-norm-fused-backward "
         + f"{shlex.quote(args.exact_modulated_norm_fused_backward)} "
+        + "--exact-history-current-fusion "
+        + f"{shlex.quote(args.exact_history_current_fusion)} "
         + "--elide-explicit-rollout-sync "
         + f"{shlex.quote(args.elide_explicit_rollout_sync)} "
         + "--elide-critic-scalar-logs "
