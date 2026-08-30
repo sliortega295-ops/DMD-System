@@ -431,3 +431,8 @@ computes the same FP32 LayerNorm and modulation formula, and writes the final
 BF16 tile. It is not admitted to the workload until a real locked-A100 B1/B3
 canary passes the unchanged P0 output contract and improves both warm shapes by
 at least `1.15x`. The already-validated C11 explicit backward remains unchanged.
+
+The real A100 canary passes decisively. B1 and B3 remain inside the unchanged
+P0 numerical contract and improve from `0.231240` to `0.041779 ms` and from
+`0.661422` to `0.106926 ms`. This authorizes a default-off runtime integration;
+it does not yet establish a Full5 benefit.

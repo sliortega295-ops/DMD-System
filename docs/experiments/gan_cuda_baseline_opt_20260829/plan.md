@@ -231,3 +231,9 @@
     A100 for real B1/B3 chunk layouts. Require unchanged P0 output thresholds
     and at least `1.15x` warm forward speed on both shapes; otherwise reject it
     before policy plumbing or a world16 launch.
+47. Locked-A100 canary `iter367_gan_cuda_c14_fusedln_canary_r2_20260830`
+    passes. B1/B3 output normalized-L2 is `9.78e-6`/`1.12e-5` under the
+    unchanged P0 gate, while warm forward improves `5.535x`/`6.186x`. The r1
+    harness failed before kernel launch on a wrong function alias and remains
+    preserved as environment-only evidence. C14 is now authorized for one
+    independently gated, default-off integration and the normal world16 gates.

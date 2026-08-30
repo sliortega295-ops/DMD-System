@@ -650,3 +650,19 @@
   unchanged P0 multi-metric thresholds and warm forward latency must improve by
   at least `1.15x` for both. Failure rejects C14 before world16.
 - Decision: **GO for the bounded C14 canary only**.
+
+### C14 canary result
+
+- `iter367_gan_cuda_c14_fusedln_canary_r2_20260830` runs on one locked A100 in
+  the validated Torch 2.10/Triton 3.6 environment and passes without OOM.
+  Report SHA-256:
+  `91ffb5704ec76069ed5215785eeb57aaf0e3804085f342de1fdd663a7207a72e`.
+- B1/B3 output normalized-L2 is `9.7813e-6`/`1.1158e-5`, cosine is
+  `1.0`/`1.000000119`, and both pass the unchanged P0 thresholds.
+- Warm source/candidate latency is `0.231240/0.041779 ms` for B1 and
+  `0.661422/0.106926 ms` for B3: `5.5348x` and `6.1858x`.
+- The retained r1 run failed before kernel launch because the canary imported a
+  nonexistent parity alias. The minimal harness fix did not change the kernel
+  or test contract.
+- Decision: **GO** for default-off C14 runtime integration, focused tests,
+  validate-only, correctness/capacity and one timing only after all gates pass.
