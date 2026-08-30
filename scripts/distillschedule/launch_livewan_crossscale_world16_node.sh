@@ -27,9 +27,14 @@ NODE_LOG="${RUN_ROOT}/launcher/node_${NODE_RANK}"
 LOCK_FILE="${DISTILLSCHEDULE_NODE_LOCK:-/tmp/distillschedule_gpu_node.lock}"
 SOURCE_ROOT="${LIVEWAN_WAN21_SOURCE:?set LIVEWAN_WAN21_SOURCE}"
 SOURCE_RECEIPT="${LIVEWAN_SOURCE_RECEIPT:?set LIVEWAN_SOURCE_RECEIPT}"
+PIPELINE_VARIANT="${LIVEWAN_PIPELINE_VARIANT:-b1}"
+[[ "${PIPELINE_VARIANT}" == b1 || "${PIPELINE_VARIANT}" == score-b2 ]] || exit 2
 
 if [[ "${EXECUTION_MODE}" == baseline ]]; then
+  [[ "${PIPELINE_VARIANT}" == b1 ]] || { echo baseline_pipeline_variant_mismatch >&2; exit 2; }
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_fsdp2.json"
+elif [[ "${PIPELINE_VARIANT}" == score-b2 ]]; then
+  PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
 else
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8.json"
 fi
@@ -120,6 +125,8 @@ export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
   echo "node_rank=${NODE_RANK}"
   echo "host=$(hostname)"
   echo "head=${EXPECTED_HEAD}"
+  echo "pipeline_variant=${PIPELINE_VARIANT}"
+  echo "plan=${PLAN}"
   echo "livewan=$(git -C "${ROOT}/third_party/livewan" rev-parse HEAD)"
   echo "wan21=$(git -C "${ROOT}/third_party/wan21" rev-parse HEAD)"
   echo "python=$(${PYTHON} --version 2>&1)"

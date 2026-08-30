@@ -78,8 +78,10 @@ def main() -> int:
         errors.append("source/bootstrap/trace identity differs")
     if baseline["workload"] != pipeline["workload"]:
         errors.append("logical workload contract differs")
-    if baseline["call_inventory"] != pipeline["call_inventory"]:
-        errors.append("physical application call inventory differs")
+    baseline_logical_calls = baseline.get("logical_call_inventory", baseline["call_inventory"])
+    pipeline_logical_calls = pipeline.get("logical_call_inventory", pipeline["call_inventory"])
+    if baseline_logical_calls != pipeline_logical_calls:
+        errors.append("logical application call inventory differs")
 
     reference = _rollouts(args.baseline_run_root)
     candidate = _rollouts(args.pipeline_run_root)
@@ -114,6 +116,14 @@ def main() -> int:
         "candidate": {"mode": "pipeline", "summary": str(args.pipeline_summary)},
         "identity": baseline.get("identity"),
         "heads": {"baseline": baseline.get("head"), "pipeline": pipeline.get("head")},
+        "call_inventory": {
+            "logical_equal": baseline_logical_calls == pipeline_logical_calls,
+            "baseline_logical": baseline_logical_calls,
+            "pipeline_logical": pipeline_logical_calls,
+            "baseline_physical": baseline.get("physical_call_inventory", baseline["call_inventory"]),
+            "pipeline_physical": pipeline.get("physical_call_inventory", pipeline["call_inventory"]),
+            "pipeline_score_physical_batch_size": pipeline.get("score_physical_batch_size", 1),
+        },
         "thresholds": {
             "mean_relative": DEFAULT_P0_PARITY.mean_relative,
             "normalized_l2": DEFAULT_P0_PARITY.normalized_l2,

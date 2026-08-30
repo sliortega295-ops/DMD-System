@@ -49,6 +49,18 @@ python scripts/distillschedule/build_livewan_crossscale_bootstrap.py \
 2. Run controller `--run-kind validate` for baseline and pipeline. The node
    launcher holds an atomic GPU lock and runs the model-free world16 topology
    probe; pipeline also runs the exact two-wave P2P probe.
+
+The default pipeline remains physical Score B1. The preregistered exact-batch
+capacity candidate is selected explicitly with:
+
+```text
+--execution-mode pipeline --pipeline-variant score-b2
+```
+
+It uses the same 8G+8Score ranks and trace. It must emit logical call inventory
+equal to the B1 control while separately reporting the expected reduced
+physical Teacher/Fake/Critic inventory. Do not use `score-b2` for the sequential
+denominator or silently replace the default B1 plan.
 3. Run one baseline correctness/capacity trial.
 4. Run one 8G+8Score correctness/capacity trial.
 5. Generate the paired correctness receipt. Only a PASS receipt unlocks timing.

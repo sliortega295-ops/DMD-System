@@ -19,11 +19,17 @@ from distillschedule.workloads.livewan_crossscale import (
     speedup_receipt,
     trace_sha256,
 )
+from distillschedule.runtime.livewan_crossscale_worker import (
+    OperationTraceRow,
+    _batch_seeded_flow_inputs,
+    _per_sample_mse,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
 BASELINE = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_fsdp2.json"
 PIPELINE = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8.json"
+PIPELINE_SCORE_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
 
 
 @pytest.fixture(autouse=True)
@@ -57,6 +63,83 @@ def test_livewan_plans_compile_and_freeze_only_placement() -> None:
     assert pipeline.metadata["execution_mode"] == "pipeline"
     assert baseline.rank_groups[0].ranks == tuple(range(16))
     assert pipeline.rank_groups[0].ranks == tuple(range(8))
+
+
+def test_score_b2_plan_changes_only_physical_score_batching() -> None:
+    b1 = load_plan(PIPELINE).plan
+    b2 = load_plan(PIPELINE_SCORE_B2).plan
+    adapter = LiveWanSFDMDAdapter()
+    adapter.validate(b2)
+    assert b1.workload.to_dict() == b2.workload.to_dict()
+    assert b1.hardware.to_dict() == b2.hardware.to_dict()
+    assert b1.rank_groups == b2.rank_groups
+    assert b2.metadata["execution_mode"] == "pipeline"
+    assert b2.metadata["score_physical_batch_size"] == 2
+    assert b2.metadata["logical_batch_preserved"] is True
+    assert b2.metadata["per_sample_rng_preserved"] is True
+
+
+def _trace_row(slot: int, offset: int) -> OperationTraceRow:
+    return OperationTraceRow(
+        logical_step=0,
+        logical_slot=slot,
+        dataset_index=slot,
+        sample_path=f"sample-{slot}.pt",
+        sample_sha256=None,
+        operation_key=f"step=0/slot={slot}",
+        world_frames=3,
+        rope_gap=0,
+        seeds={
+            "rollout": offset + 1,
+            "generator_dmd_t": offset + 2,
+            "generator_dmd_noise": offset + 3,
+            "generator_grad_blocks": offset + 4,
+            "critic_t": offset + 5,
+            "critic_noise": offset + 6,
+        },
+        generator_update=True,
+        critic_update=True,
+    )
+
+
+def test_score_b2_random_inputs_are_two_exact_b1_streams() -> None:
+    torch = pytest.importorskip("torch")
+    rows = (_trace_row(0, 100), _trace_row(8, 200))
+    x0 = torch.zeros((2, 2, 3), dtype=torch.float32)
+    times, noises = _batch_seeded_flow_inputs(
+        torch,
+        rows=rows,
+        x0=x0,
+        t_seed_key="generator_dmd_t",
+        noise_seed_key="generator_dmd_noise",
+    )
+    for index, row in enumerate(rows):
+        one_t, one_noise = _batch_seeded_flow_inputs(
+            torch,
+            rows=(row,),
+            x0=x0[index : index + 1],
+            t_seed_key="generator_dmd_t",
+            noise_seed_key="generator_dmd_noise",
+        )
+        assert torch.equal(times[index : index + 1], one_t)
+        assert torch.equal(noises[index : index + 1], one_noise)
+
+
+def test_score_b2_mean_loss_matches_two_weighted_b1_losses() -> None:
+    torch = pytest.importorskip("torch")
+    prediction_b2 = torch.tensor([[1.0, 2.0], [4.0, 8.0]], requires_grad=True)
+    target = torch.tensor([[0.0, 1.0], [2.0, 3.0]])
+    losses = _per_sample_mse(torch, prediction_b2, target)
+    losses.mean().backward()
+    batched_gradient = prediction_b2.grad.detach().clone()
+
+    prediction_b1 = prediction_b2.detach().clone().requires_grad_(True)
+    for index in range(2):
+        _per_sample_mse(
+            torch, prediction_b1[index : index + 1], target[index : index + 1]
+        ).mul(0.5).backward()
+    assert torch.equal(losses.detach(), torch.tensor([1.0, 14.5]))
+    assert torch.equal(batched_gradient, prediction_b1.grad)
 
 
 def test_livewan_adapter_fails_closed_on_semantic_drift() -> None:
@@ -133,6 +216,21 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert '"--remote-output-root", required=True' in controller
     assert 'args.remote_output_root / args.run_id' in controller
     assert 'args.remote_root / "artifacts/runs"' not in controller
+    assert 'choices=("b1", "score-b2")' in controller
+    assert '"LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant' in controller
+    assert 'resolved_plan.node0.json' in controller
+
+    launcher = (
+        ROOT / "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh"
+    ).read_text()
+    assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json" in launcher
+    assert "baseline_pipeline_variant_mismatch" in launcher
+    summarizer = (
+        ROOT / "scripts/distillschedule/summarize_livewan_crossscale_world16.py"
+    ).read_text()
+    assert 'value.add_argument("--plan", required=True' in summarizer
+    assert '"physical_call_inventory"' in summarizer
+    assert '"logical_call_inventory"' in summarizer
 
 
 def test_cold_loader_avoids_redundant_full_fp32_copies() -> None:

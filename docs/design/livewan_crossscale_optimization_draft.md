@@ -44,6 +44,26 @@
   is algebraically identical, but the floating-point reduction tree differs.
   This is a diagnosis target, not permission to relax the gate.
 
+## C1 result and C2 exact batching candidate
+
+- C1 score-priority ordering passed 16/16 at HEAD `b723aaf3` and reduced the
+  correctness-path diagnostic wall from `101.190363 s` to `95.696809 s`
+  (`-5.4%`). It removes a real dependency but does not beat the sequential
+  diagnostic control (`81.272988 s`). Formal timing remains locked by the
+  unchanged strict numerical parity failure.
+- C2 keeps the same 8G+8Score ownership and two logical B1 rows per rank, while
+  batching those rows only at the Score model boundary. The Teacher executes
+  one physical CFG B4 call, Fake Score one physical B2 call, and the Critic one
+  physical B2 call per step. Per-row RNG, per-row DMD normalizers, per-row loss
+  evidence, logical batch16, and one mean Critic update are preserved.
+- The expected world physical inventory changes from Teacher/Fake/Critic
+  `16/16/80` calls to `8/8/40`; the logical sample inventory remains
+  `16/16/80`. Receipts and comparison code report these separately rather than
+  rejecting exact physical batching as workload drift.
+- C2 is capacity-sensitive: Teacher CFG grows from physical B2 to B4 and
+  Critic training from B1 to B2. One correctness/capacity run is authorized;
+  OOM is a bounded negative result and must not trigger a workload reduction.
+
 ## Ranked next candidates
 
 1. **C0 correctness evidence repair**: make final parameter fingerprints

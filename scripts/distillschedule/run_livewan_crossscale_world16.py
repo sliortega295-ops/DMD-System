@@ -84,6 +84,12 @@ def parser() -> argparse.ArgumentParser:
         required=True,
     )
     value.add_argument("--execution-mode", choices=("baseline", "pipeline"), required=True)
+    value.add_argument(
+        "--pipeline-variant",
+        choices=("b1", "score-b2"),
+        default="b1",
+        help="physical pipeline policy; logical workload remains frozen",
+    )
     value.add_argument("--expected-head", required=True)
     value.add_argument("--remote-root", required=True, type=Path)
     value.add_argument(
@@ -133,6 +139,7 @@ def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "LIVEWAN_SYSTEMS_BOOTSTRAP": args.bootstrap,
         "LIVEWAN_WAN21_SOURCE": args.source_root,
         "LIVEWAN_SOURCE_RECEIPT": args.source_receipt,
+        "LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant,
     }
     if args.run_kind in {"timing", "profile"}:
         if args.correctness_receipt is None or not args.correctness_sha256:
@@ -185,6 +192,7 @@ def summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         f"--execution-mode {shlex.quote(args.execution_mode)} "
         f"--run-kind {shlex.quote(args.run_kind)} "
         f"--trace {shlex.quote(str(args.trace))} "
+        f"--plan {shlex.quote(str(run_root / 'resolved_plan.node0.json'))} "
         f"--expected-head {shlex.quote(args.expected_head)} "
         f"--output {shlex.quote(str(summary))}"
     )
@@ -211,6 +219,8 @@ def main() -> int:
         raise ValueError("unsafe run id")
     if len(args.expected_head) != 40:
         raise ValueError("--expected-head must be a full Git SHA")
+    if args.execution_mode == "baseline" and args.pipeline_variant != "b1":
+        raise ValueError("sequential baseline cannot select a pipeline variant")
     local = args.local_evidence_root / args.run_id
     if local.exists():
         raise FileExistsError(local)

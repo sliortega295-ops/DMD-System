@@ -25,6 +25,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--execution-mode", required=True, choices=("baseline", "pipeline"))
     value.add_argument("--run-kind", required=True, choices=("validate", "correctness", "timing", "profile"))
     value.add_argument("--trace", required=True, type=Path)
+    value.add_argument("--plan", required=True, type=Path)
     value.add_argument("--expected-head", required=True)
     value.add_argument("--output", required=True, type=Path)
     return value
@@ -60,6 +61,12 @@ def main() -> int:
         return 0 if not errors else 1
 
     trace = FormalTrace.load(args.trace)
+    plan = json.loads(args.plan.read_text(encoding="utf-8"))
+    score_physical_batch_size = int(plan.get("metadata", {}).get("score_physical_batch_size", 1))
+    if score_physical_batch_size not in {1, 2}:
+        errors.append(f"unsupported Score physical batch size={score_physical_batch_size}")
+    if args.execution_mode == "baseline" and score_physical_batch_size != 1:
+        errors.append("baseline physical Score batch must remain B1")
     rows: list[dict[str, Any]] = []
     for rank in range(WORLD_SIZE):
         path = args.run_root / "receipts" / f"rank_{rank:03d}.json"
@@ -106,7 +113,7 @@ def main() -> int:
         if actual != expected_physical[rank]:
             errors.append(f"rank{rank}: physical commit inventory={actual}, expected={expected_physical[rank]}")
 
-    expected_inventory = {
+    expected_logical_inventory = {
         # Each sample first runs one clean world-prefix DiT to prime the
         # deployment K/V cache, then five calls per generated block (four
         # denoising evaluations plus the clean commit pass).
@@ -116,14 +123,41 @@ def main() -> int:
         "critic/nograd/plain": 16,
         "critic/grad/checkpoint": 80,
     }
-    actual_inventory: dict[str, int] = {}
+    expected_physical_inventory = dict(expected_logical_inventory)
+    if args.execution_mode == "pipeline" and score_physical_batch_size == 2:
+        expected_physical_inventory.update(
+            {
+                "teacher/nograd/plain": 8,
+                "critic/nograd/plain": 8,
+                "critic/grad/checkpoint": 40,
+            }
+        )
+    actual_logical_inventory: dict[str, int] = {}
+    actual_physical_inventory: dict[str, int] = {}
     for row in rows:
-        for key, count in row.get("call_inventory", {}).items():
-            actual_inventory[key] = actual_inventory.get(key, 0) + int(count)
-    for key, expected in expected_inventory.items():
-        if actual_inventory.get(key, 0) != expected:
-            errors.append(f"call inventory {key}={actual_inventory.get(key, 0)}, expected={expected}")
-    if any(count for key, count in actual_inventory.items() if key == "unknown" or key.startswith("unknown/")):
+        logical = row.get("logical_call_inventory", row.get("call_inventory", {}))
+        physical = row.get("physical_call_inventory", row.get("call_inventory", {}))
+        for key, count in logical.items():
+            actual_logical_inventory[key] = actual_logical_inventory.get(key, 0) + int(count)
+        for key, count in physical.items():
+            actual_physical_inventory[key] = actual_physical_inventory.get(key, 0) + int(count)
+        if int(row.get("score_physical_batch_size", score_physical_batch_size)) != score_physical_batch_size:
+            errors.append(f"rank{row['rank']}: Score physical batch receipt differs from plan")
+    for key, expected in expected_logical_inventory.items():
+        if actual_logical_inventory.get(key, 0) != expected:
+            errors.append(
+                f"logical call inventory {key}={actual_logical_inventory.get(key, 0)}, expected={expected}"
+            )
+    for key, expected in expected_physical_inventory.items():
+        if actual_physical_inventory.get(key, 0) != expected:
+            errors.append(
+                f"physical call inventory {key}={actual_physical_inventory.get(key, 0)}, expected={expected}"
+            )
+    if any(
+        count
+        for key, count in actual_physical_inventory.items()
+        if key == "unknown" or key.startswith("unknown/")
+    ):
         errors.append("unknown model calls were observed")
 
     output_keys: list[str] = []
@@ -184,8 +218,14 @@ def main() -> int:
             "source_shape": "B1x16x21x46x80@368x640",
             "attention": "LiveWan pinned source",
         },
-        "call_inventory": actual_inventory,
-        "expected_call_inventory": expected_inventory,
+        # ``call_inventory`` remains the logical workload inventory for paired
+        # compatibility. Exact physical batching is reported separately.
+        "call_inventory": actual_logical_inventory,
+        "logical_call_inventory": actual_logical_inventory,
+        "expected_logical_call_inventory": expected_logical_inventory,
+        "physical_call_inventory": actual_physical_inventory,
+        "expected_physical_call_inventory": expected_physical_inventory,
+        "score_physical_batch_size": score_physical_batch_size,
         "full5_seconds": max(walls) if walls else None,
         "rank_wall_min_seconds": min(walls) if walls else None,
         "rank_wall_max_seconds": max(walls) if walls else None,

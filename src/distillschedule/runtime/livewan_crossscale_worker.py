@@ -809,6 +809,124 @@ def dmd_gradient_for_sample(
     return gradient
 
 
+def _batch_seeded_flow_inputs(
+    torch: Any,
+    *,
+    rows: Sequence[OperationTraceRow],
+    x0: Any,
+    t_seed_key: str,
+    noise_seed_key: str,
+) -> tuple[Any, Any]:
+    """Build one RNG-identical flow input per logical sample, then batch it.
+
+    A single B2 generator would consume a different random stream from two B1
+    calls.  The physical batching candidate is allowed to change model launch
+    granularity, not random values, so every row keeps its own trace-qualified
+    generator and the resulting tensors are concatenated afterwards.
+    """
+
+    _require(x0.shape[0] == len(rows), "batched latent/trace row count mismatch")
+    times = [
+        _sample_flow_t(torch, seed=row.seeds[t_seed_key], device=x0.device)
+        for row in rows
+    ]
+    noises = [
+        _randn(
+            torch,
+            x0[index : index + 1].shape,
+            seed=row.seeds[noise_seed_key],
+            device=x0.device,
+        )
+        for index, row in enumerate(rows)
+    ]
+    return torch.cat(times, dim=0), torch.cat(noises, dim=0)
+
+
+def _per_sample_mse(torch: Any, prediction: Any, target: Any) -> Any:
+    _require(prediction.shape == target.shape, "per-sample MSE shape mismatch")
+    _require(prediction.dim() >= 2, "per-sample MSE needs a batch dimension")
+    return (prediction.float() - target.float()).square().flatten(1).mean(1)
+
+
+def dmd_gradient_for_batch(
+    torch: Any,
+    *,
+    bundle: ModelBundle,
+    score_context: ScoreContext,
+    rows: Sequence[OperationTraceRow],
+    x0: Any,
+    sample_context: ScoreSampleContext,
+    context_lens: Any,
+) -> Any:
+    """One exact physical Score call for multiple independent logical rows.
+
+    RNG is constructed per trace row and DMD normalization remains per sample.
+    Teacher CFG is physically B(2*N): all positive rows followed by all
+    negative rows.  This is the batched analogue of N independent B2 CFG calls;
+    it does not average samples together.
+    """
+
+    from wanstreamer import dmd as D
+    from wanstreamer.lora import lora_enabled
+
+    batch = len(rows)
+    _require(batch == x0.shape[0] == context_lens.numel(), "DMD B2 identity mismatch")
+    _require(sample_context.teacher.shape[0] == batch, "Teacher context batch mismatch")
+    _require(sample_context.critic.shape[0] == batch, "Critic context batch mismatch")
+    t, noise = _batch_seeded_flow_inputs(
+        torch,
+        rows=rows,
+        x0=x0,
+        t_seed_key="generator_dmd_t",
+        noise_seed_key="generator_dmd_noise",
+    )
+    t_view = t
+    while t_view.dim() < x0.dim():
+        t_view = t_view.unsqueeze(-1)
+    z_t = (1.0 - t_view) * x0 + t_view * noise
+    negative = score_context.negative_teacher_context
+    _require(negative.shape[0] == 1, "negative Teacher context must be canonical B1")
+    negative = negative.expand(batch, -1, -1)
+    with torch.no_grad():
+        with lora_enabled(bundle.teacher, False):
+            teacher_input = torch.cat([z_t, z_t], dim=0).to(torch.bfloat16)
+            teacher_context = torch.cat([sample_context.teacher, negative], dim=0)
+            teacher_lens = torch.cat([context_lens, context_lens], dim=0)
+            teacher_t = torch.cat([t, t], dim=0)
+            teacher_velocity = D.bidirectional_velocity(
+                bundle.teacher,
+                teacher_input,
+                teacher_t,
+                score_context.rope,
+                teacher_context,
+                teacher_lens,
+                torch.bfloat16,
+                TIME_SCALE,
+            )
+            conditional = teacher_velocity[:batch]
+            unconditional = teacher_velocity[batch:]
+            v_real = (unconditional + 5.0 * (conditional - unconditional)).float()
+        with lora_enabled(bundle.critic, True):
+            v_fake = D.bidirectional_velocity(
+                bundle.critic,
+                z_t.to(torch.bfloat16),
+                t,
+                score_context.rope,
+                sample_context.critic,
+                context_lens,
+                torch.bfloat16,
+                TIME_SCALE,
+            ).float()
+        x0_real = (z_t - t_view * v_real).float()
+        x0_fake = (z_t - t_view * v_fake).float()
+        reduce_dims = tuple(range(1, x0.dim()))
+        normalizer = (x0.float() - x0_real).abs().mean(
+            dim=reduce_dims, keepdim=True
+        ).clamp_min(1e-4)
+        gradient = torch.nan_to_num((x0_fake - x0_real) / normalizer)
+    return gradient
+
+
 def critic_backward_for_sample(
     torch: Any,
     *,
@@ -833,6 +951,49 @@ def critic_backward_for_sample(
         )
     (loss * sample_weight).backward()
     return loss.detach()
+
+
+def critic_backward_for_batch(
+    torch: Any,
+    *,
+    bundle: ModelBundle,
+    score_context: ScoreContext,
+    rows: Sequence[OperationTraceRow],
+    x0: Any,
+    sample_context: ScoreSampleContext,
+    context_lens: Any,
+) -> tuple[Any, ...]:
+    """Backpropagate the mean of exact per-sample Critic losses in one B2 call."""
+
+    from wanstreamer import dmd as D
+    from wanstreamer.data import add_noise
+    from wanstreamer.lora import lora_enabled
+
+    batch = len(rows)
+    _require(batch == x0.shape[0] == context_lens.numel(), "Critic B2 identity mismatch")
+    t, noise = _batch_seeded_flow_inputs(
+        torch,
+        rows=rows,
+        x0=x0,
+        t_seed_key="critic_t",
+        noise_seed_key="critic_noise",
+    )
+    z_t, target, _ = add_noise(x0, t, noise)
+    with lora_enabled(bundle.critic, True):
+        velocity = D.bidirectional_velocity(
+            bundle.critic,
+            z_t,
+            t,
+            score_context.rope,
+            sample_context.critic,
+            context_lens,
+            torch.bfloat16,
+            TIME_SCALE,
+            grad_checkpoint=True,
+        )
+    losses = _per_sample_mse(torch, velocity, target)
+    losses.mean().backward()
+    return tuple(value.detach() for value in losses.unbind(0))
 
 
 def generator_backward_for_sample(
@@ -889,6 +1050,16 @@ class RunEvidence:
     transport_bytes: int = 0
     gradient_sync: list[dict[str, Any]] = field(default_factory=list)
     optimizer_diagnostics: list[dict[str, Any]] = field(default_factory=list)
+    logical_score_calls: dict[str, int] = field(default_factory=dict)
+
+    def add_logical_score_calls(self, key: str, count: int) -> None:
+        _require(count > 0, "logical Score call count must be positive")
+        parts = key.split("/")
+        _require(len(parts) == 3, "logical Score call key must include role/kind/replay")
+        for logical_key in (parts[0], "/".join(parts[:2]), key):
+            self.logical_score_calls[logical_key] = (
+                self.logical_score_calls.get(logical_key, 0) + count
+            )
 
 
 def _record_optimizer_diagnostics(
@@ -928,6 +1099,21 @@ def _write_rank_receipt(
     return path
 
 
+def _score_physical_batch_size(plan: Mapping[str, Any], *, mode: str) -> int:
+    value = int(plan.get("metadata", {}).get("score_physical_batch_size", 1))
+    _require(value in {1, 2}, "unsupported Score physical batch size")
+    if mode == "baseline":
+        _require(value == 1, "sequential denominator must remain physical B1")
+    if value == 2:
+        _require(mode == "pipeline", "Score B2 is a pipeline-only candidate")
+        _require(
+            plan.get("metadata", {}).get("pool_policy")
+            == "persistent_8g_8score_teacher_fsdp8_score_b2",
+            "Score B2 plan policy identity mismatch",
+        )
+    return value
+
+
 def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _require(int(plan["hardware"]["world_size"]) == WORLD_SIZE, "plan is not world16")
     _require(int(plan["workload"]["shape"]["batch_size"]) == GLOBAL_BATCH, "plan is not global-B16")
@@ -935,6 +1121,7 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _require(plan["workload"]["metadata"]["livewan_commit"] == LIVEWAN_COMMIT, "plan LiveWan mismatch")
     _require(plan["workload"]["metadata"]["wan21_commit"] == WAN21_COMMIT, "plan Wan2.1 mismatch")
     _require(not plan["workload"]["branches"]["ema"], "EMA must be outside Full5")
+    _score_physical_batch_size(plan, mode=mode)
 
 
 def _validate_only(
@@ -1069,8 +1256,14 @@ def run_worker(
                     streamers=generator_streamers, score_context=score_context,
                     run_kind=run_kind, evidence=evidence, versions=versions, device=device,
                 )
-            else:
+            elif _score_physical_batch_size(plan, mode=mode) == 1:
                 _run_pipeline_8x8(
+                    torch=torch, rank=rank, trace=trace, loader=loader, bundle=bundle,
+                    streamers=generator_streamers, score_context=score_context,
+                    run_kind=run_kind, evidence=evidence, versions=versions, device=device,
+                )
+            else:
+                _run_pipeline_8x8_score_b2(
                     torch=torch, rank=rank, trace=trace, loader=loader, bundle=bundle,
                     streamers=generator_streamers, score_context=score_context,
                     run_kind=run_kind, evidence=evidence, versions=versions, device=device,
@@ -1115,6 +1308,8 @@ def run_worker(
         # Critic is replicated in both paths.  One local metric is sufficient;
         # the summarizer checks equality across owners.
         critic_metrics = _state_metrics(torch, bundle.critic_lora_params)
+    logical_call_inventory = dict(inventory.counts)
+    logical_call_inventory.update(evidence.logical_score_calls)
     receipt = {
         "status": "PASS",
         "rank": rank,
@@ -1131,6 +1326,9 @@ def run_worker(
         "initial_versions": bootstrap.versions,
         "final_versions": versions,
         "call_inventory": inventory.counts,
+        "physical_call_inventory": inventory.counts,
+        "logical_call_inventory": logical_call_inventory,
+        "score_physical_batch_size": _score_physical_batch_size(plan, mode=mode),
         "full5_wall_seconds": full5_wall,
         "construction_wall_seconds": build_wall,
         "setup_memory": setup_memory,
@@ -1222,6 +1420,8 @@ def _run_baseline(
                         x0=prepared.x0, sample_context=sample_context,
                         context_lens=prepared.context_lens,
                     )
+                    evidence.add_logical_score_calls("teacher/nograd/plain", 1)
+                    evidence.add_logical_score_calls("critic/nograd/plain", 1)
                 with _profile_range(
                     torch, run_kind=run_kind,
                     label="livewan/baseline/step_0/generator_backward",
@@ -1243,6 +1443,7 @@ def _run_baseline(
                     x0=prepared.x0, sample_context=sample_context,
                     context_lens=prepared.context_lens, sample_weight=1.0,
                 )
+                evidence.add_logical_score_calls("critic/grad/checkpoint", 1)
             if run_kind == "correctness":
                 evidence.loss_fingerprints.append(
                     {"operation_key": row.operation_key, "kind": "critic", **_tensor_fingerprint(torch, critic_loss)}
@@ -1458,6 +1659,8 @@ def _run_pipeline_8x8(
                         torch, bundle=bundle, score_context=score_context, row=rows[0],
                         x0=first_x0, sample_context=first_sample_context, context_lens=context_lens,
                     )
+                    evidence.add_logical_score_calls("teacher/nograd/plain", 1)
+                    evidence.add_logical_score_calls("critic/nograd/plain", 1)
                     dist.send(grad0.contiguous(), dst=peer)
                 evidence.transport_bytes += grad0.numel() * grad0.element_size()
             with _profile_range(
@@ -1488,6 +1691,8 @@ def _run_pipeline_8x8(
                         torch, bundle=bundle, score_context=score_context, row=rows[1],
                         x0=second_x0, sample_context=second_sample_context, context_lens=context_lens,
                     )
+                    evidence.add_logical_score_calls("teacher/nograd/plain", 1)
+                    evidence.add_logical_score_calls("critic/nograd/plain", 1)
                     grad1_send = grad1.contiguous()
                     grad1_work = dist.isend(grad1_send, dst=peer)
                 evidence.transport_bytes += grad1.numel() * grad1.element_size()
@@ -1500,6 +1705,7 @@ def _run_pipeline_8x8(
                     x0=first_x0, sample_context=first_sample_context, context_lens=context_lens,
                     sample_weight=0.5,
                 )
+                evidence.add_logical_score_calls("critic/grad/checkpoint", 1)
             with _profile_range(
                 torch, run_kind=run_kind,
                 label=f"livewan/pipeline/score/step_{step}/critic_backward_wave_1",
@@ -1509,6 +1715,7 @@ def _run_pipeline_8x8(
                     x0=second_x0, sample_context=second_sample_context, context_lens=context_lens,
                     sample_weight=0.5,
                 )
+                evidence.add_logical_score_calls("critic/grad/checkpoint", 1)
             if grad1_work is not None:
                 with _profile_range(
                     torch, run_kind=run_kind,
@@ -1543,6 +1750,271 @@ def _run_pipeline_8x8(
                 _record_optimizer_diagnostics(
                     torch, evidence, run_kind=run_kind, role="critic", step=step,
                     parameters=bundle.critic_lora_params, clip_norm=critic_clip_norm,
+                    gradient_before_clip=critic_pre_clip,
+                )
+                bundle.critic_optimizer.step()
+                versions["critic"] += 1
+
+
+def _run_pipeline_8x8_score_b2(
+    *,
+    torch: Any,
+    rank: int,
+    trace: FormalTrace,
+    loader: InputLoader,
+    bundle: ModelBundle,
+    streamers: Sequence[Any],
+    score_context: ScoreContext | None,
+    run_kind: str,
+    evidence: RunEvidence,
+    versions: dict[str, int],
+    device: Any,
+) -> None:
+    """Persistent 8G+8Score with two logical B1 rows per physical Score call.
+
+    The Generator still produces and records two independent trace-qualified B1
+    samples.  Only the Score-side model launch granularity changes: Teacher CFG
+    is one physical B4 call, Fake Score is one B2 call, and Critic training is
+    one B2 call whose loss is the mean of the two original per-sample losses.
+    """
+
+    import torch.distributed as dist
+
+    is_generator = rank < 8
+    peer = rank + 8 if is_generator else rank - 8
+    pair_bytes = (math.prod(LATENT_SHAPE) + math.prod(TEXT_SHAPE)) * 4
+    if is_generator:
+        _require(bundle.student is not None and len(streamers) == 2, "pipeline G role is incomplete")
+    else:
+        _require(
+            bundle.critic is not None and bundle.teacher is not None and score_context is not None,
+            "pipeline Score role is incomplete",
+        )
+
+    for step in range(FULL5_STEPS):
+        if is_generator:
+            bundle.generator_optimizer.zero_grad(set_to_none=True)
+            rows = (trace.row(step, rank), trace.row(step, rank + 8))
+            with _profile_range(
+                torch,
+                run_kind=run_kind,
+                label=f"livewan/pipeline_score_b2/g/step_{step}/rollout_wave_0",
+            ):
+                first = prepare_rollout(
+                    torch,
+                    row=rows[0],
+                    streamer=streamers[0],
+                    student=bundle.student,
+                    loader=loader,
+                    device=device,
+                )
+            _record_output(torch, evidence, row=rows[0], x0=first.x0, run_kind=run_kind)
+            with _profile_range(
+                torch,
+                run_kind=run_kind,
+                label=f"livewan/pipeline_score_b2/g/step_{step}/send_wave_0",
+            ):
+                _send_pair(destination=peer, prepared=first, asynchronous=False)
+            evidence.transport_bytes += pair_bytes
+
+            with _profile_range(
+                torch,
+                run_kind=run_kind,
+                label=f"livewan/pipeline_score_b2/g/step_{step}/rollout_wave_1",
+            ):
+                second = prepare_rollout(
+                    torch,
+                    row=rows[1],
+                    streamer=streamers[1],
+                    student=bundle.student,
+                    loader=loader,
+                    device=device,
+                )
+            _record_output(torch, evidence, row=rows[1], x0=second.x0, run_kind=run_kind)
+            with _profile_range(
+                torch,
+                run_kind=run_kind,
+                label=f"livewan/pipeline_score_b2/g/step_{step}/send_wave_1",
+            ):
+                _send_pair(destination=peer, prepared=second, asynchronous=False)
+            evidence.transport_bytes += pair_bytes
+
+            if step == 0:
+                gradient_batch = torch.empty(
+                    (2, *LATENT_SHAPE[1:]), device=device, dtype=torch.float32
+                )
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label="livewan/pipeline_score_b2/g/step_0/recv_gradient_b2",
+                ):
+                    dist.recv(gradient_batch, src=peer)
+                evidence.transport_bytes += gradient_batch.numel() * gradient_batch.element_size()
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label="livewan/pipeline_score_b2/g/step_0/backward_wave_0",
+                ):
+                    losses0 = generator_backward_for_sample(
+                        torch,
+                        prepared=first,
+                        dmd_gradient=gradient_batch[0:1],
+                        sample_weight=0.5,
+                    )
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label="livewan/pipeline_score_b2/g/step_0/backward_wave_1",
+                ):
+                    losses1 = generator_backward_for_sample(
+                        torch,
+                        prepared=second,
+                        dmd_gradient=gradient_batch[1:2],
+                        sample_weight=0.5,
+                    )
+                if run_kind == "correctness":
+                    for row, losses in zip(rows, (losses0, losses1)):
+                        evidence.loss_fingerprints.extend(
+                            {
+                                "operation_key": row.operation_key,
+                                "kind": "generator",
+                                **_tensor_fingerprint(torch, value),
+                            }
+                            for value in losses
+                        )
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label="livewan/pipeline_score_b2/g/step_0/generator_commit",
+                ):
+                    sync = _mean_replicated_gradients(
+                        torch,
+                        list(bundle.student.parameters()),
+                        group=bundle.generator_group,
+                        group_size=bundle.generator_group_size,
+                        bucket_mib=256,
+                    )
+                    evidence.gradient_sync.append({"step": step, "role": "generator", **sync})
+                    generator_parameters = list(bundle.student.parameters())
+                    generator_pre_clip = (
+                        _state_metrics(torch, [parameter.grad for parameter in generator_parameters])
+                        if run_kind == "correctness"
+                        else None
+                    )
+                    generator_clip_norm = torch.nn.utils.clip_grad_norm_(
+                        generator_parameters, 1.0, foreach=True
+                    )
+                    _record_optimizer_diagnostics(
+                        torch,
+                        evidence,
+                        run_kind=run_kind,
+                        role="generator",
+                        step=step,
+                        parameters=generator_parameters,
+                        clip_norm=generator_clip_norm,
+                        gradient_before_clip=generator_pre_clip,
+                    )
+                    bundle.generator_optimizer.step()
+                    versions["generator"] += 1
+        else:
+            bundle.critic_optimizer.zero_grad(set_to_none=True)
+            rows = (trace.row(step, peer), trace.row(step, peer + 8))
+            with _profile_range(
+                torch,
+                run_kind=run_kind,
+                label=f"livewan/pipeline_score_b2/score/step_{step}/recv_wave_0",
+            ):
+                first_x0, first_context = _recv_pair(torch, source=peer, device=device)
+            evidence.transport_bytes += pair_bytes
+            with _profile_range(
+                torch,
+                run_kind=run_kind,
+                label=f"livewan/pipeline_score_b2/score/step_{step}/recv_wave_1",
+            ):
+                second_x0, second_context = _recv_pair(torch, source=peer, device=device)
+            evidence.transport_bytes += pair_bytes
+
+            x0_batch = torch.cat([first_x0, second_x0], dim=0)
+            raw_context_batch = torch.cat([first_context, second_context], dim=0)
+            context_lens = torch.full(
+                (2,), TEXT_SHAPE[1], device=device, dtype=torch.long
+            )
+            sample_context = prepare_score_sample_context(
+                torch, bundle=bundle, raw_context=raw_context_batch
+            )
+            if step == 0:
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label="livewan/pipeline_score_b2/score/step_0/dmd_b2",
+                ):
+                    gradient_batch = dmd_gradient_for_batch(
+                        torch,
+                        bundle=bundle,
+                        score_context=score_context,
+                        rows=rows,
+                        x0=x0_batch,
+                        sample_context=sample_context,
+                        context_lens=context_lens,
+                    )
+                    evidence.add_logical_score_calls("teacher/nograd/plain", 2)
+                    evidence.add_logical_score_calls("critic/nograd/plain", 2)
+                    dist.send(gradient_batch.contiguous(), dst=peer)
+                evidence.transport_bytes += gradient_batch.numel() * gradient_batch.element_size()
+
+            with _profile_range(
+                torch,
+                run_kind=run_kind,
+                label=f"livewan/pipeline_score_b2/score/step_{step}/critic_backward_b2",
+            ):
+                losses = critic_backward_for_batch(
+                    torch,
+                    bundle=bundle,
+                    score_context=score_context,
+                    rows=rows,
+                    x0=x0_batch,
+                    sample_context=sample_context,
+                    context_lens=context_lens,
+                )
+                evidence.add_logical_score_calls("critic/grad/checkpoint", 2)
+            if run_kind == "correctness":
+                for row, loss in zip(rows, losses):
+                    evidence.loss_fingerprints.append(
+                        {
+                            "operation_key": row.operation_key,
+                            "kind": "critic",
+                            **_tensor_fingerprint(torch, loss),
+                        }
+                    )
+            with _profile_range(
+                torch,
+                run_kind=run_kind,
+                label=f"livewan/pipeline_score_b2/score/step_{step}/critic_commit",
+            ):
+                sync = _mean_replicated_gradients(
+                    torch,
+                    bundle.critic_lora_params,
+                    group=bundle.score_group,
+                    group_size=bundle.score_group_size,
+                    bucket_mib=128,
+                )
+                evidence.gradient_sync.append({"step": step, "role": "critic", **sync})
+                critic_pre_clip = (
+                    _state_metrics(torch, [parameter.grad for parameter in bundle.critic_lora_params])
+                    if run_kind == "correctness"
+                    else None
+                )
+                critic_clip_norm = torch.nn.utils.clip_grad_norm_(
+                    bundle.critic_lora_params, 1.0, foreach=True
+                )
+                _record_optimizer_diagnostics(
+                    torch,
+                    evidence,
+                    run_kind=run_kind,
+                    role="critic",
+                    step=step,
+                    parameters=bundle.critic_lora_params,
+                    clip_norm=critic_clip_norm,
                     gradient_before_clip=critic_pre_clip,
                 )
                 bundle.critic_optimizer.step()
