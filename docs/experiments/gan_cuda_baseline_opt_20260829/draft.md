@@ -532,3 +532,21 @@ one production forward instance inside a source-qualified Critic block with
 NCU, then require hardware evidence before designing another kernel or backend
 candidate.  Projection fusion is not admitted because the official helper
 copies base Q/K/V weights into new modules and would omit active PEFT LoRA.
+
+## C19 NCU result
+
+C19 profiles exactly one production dense FA2 forward at `f4f0054`. It takes
+`11.581504 ms`, reaches `70.363613%` SM/Tensor-pipeline throughput and only
+`2.865665%` DRAM throughput. Occupancy is `12.359914%`, limited by 255
+registers/thread and 65.536 KiB dynamic shared memory, while the main scheduler
+stalls are fixed-latency wait and math-pipe throttle. The kernel therefore has
+some theoretical headroom but is neither DRAM-bound nor a safe standalone
+source-edit candidate. Its kernel-sum upper bound also cannot be converted to
+critical-path wall time.
+
+Direct attention replacement is closed for the current source: SDPA was
+already slower, A100 cannot use the Hopper FA3 path, and the available QKV
+fusion drops active LoRA computation. Before selecting another optimization,
+the next bounded action is a post-C17/C18 diagnostic Nsight capture so the
+remaining host gap and phase budgets are not inferred from the older C15
+timeline.

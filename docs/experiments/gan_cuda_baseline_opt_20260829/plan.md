@@ -324,3 +324,18 @@
     frozen workload.  Use SM/Tensor, roofline, occupancy, warp-stall and memory
     metrics to choose one source-compatible candidate; do not infer a Full5
     speedup from kernel-sum time or modify the workload during this diagnostic.
+59. C19 passes its diagnostic gates at `f4f0054`. One production dense FA2
+    forward takes `11.581504 ms`, reaches `70.363613%` SM/Tensor-pipeline
+    throughput, only `2.865665%` DRAM throughput, `12.359914%` achieved
+    occupancy, and uses 255 registers/thread plus 65.536 KiB dynamic shared
+    memory. The dominant stalls are fixed-latency wait and math-pipe throttle,
+    not DRAM. Close direct attention-kernel replacement unless a separately
+    isolated, source-compatible implementation beats the real shape and parity
+    gates; the pinned dispatcher has no equivalent tuning flag, SDPA already
+    lost the matched C2/C3 comparison, and naive fused projections omit LoRA.
+60. The C15 profile predates the two source-qualified C17/C18 host-gap fixes.
+    Because C19 closes the largest obvious kernel replacement and the
+    remaining target gap is only `8.331241364 s`, collect one exact C18
+    diagnostic-only Nsight profile before choosing C20. Its sole purpose is to
+    remeasure the post-fix no-traced, exposed-NCCL, compute and phase budgets;
+    it may not update the `129.441379467 s` formal denominator.

@@ -778,3 +778,29 @@
 - **Decision:** **GO_DIAGNOSTIC_ONLY** after focused tests and a locked NCU
   permission canary.  Missing 16-rank receipts, a wrong range/kernel, empty
   report, replay error, OOM or contract mismatch invalidates C19.
+
+### C19 result and C20 profile-only GO decision
+
+- Run `iter374_gan_cuda_c18_ncu_flashfwd_p1_20260830` completes at exact HEAD
+  `f4f005435d49228eccd2238166edee1fdbc77366`. All 16 range receipts exist;
+  the one-kernel NCU report and details CSV are nonempty and hash-pinned; both
+  nodes have zero new CUDA/cgroup OOM and no residual worker/profiler process.
+- The target dense FA2 kernel reports `11.581504 ms`, `70.363613%` SM/Tensor
+  elapsed throughput, `2.865665%` DRAM throughput, `12.359914%` achieved
+  occupancy, 255 registers/thread and 65.536 KiB dynamic shared memory. It is
+  compute/tensor constrained with fixed-latency/math-pipe stalls; memory-
+  bandwidth tuning is rejected.
+- The pinned source exposes no equivalent launch-tuning flag. SDPA, B2/B5,
+  Score packing, HSDP, FSDP prefetch, forced NCCL protocols, static-context
+  caching, simple LoRA beta-add and stride-1 retained Flash state remain
+  rejected or superseded paths. No attention implementation change is
+  authorized by C19.
+- **New falsifiable question:** after C17 removed 20 scalar fences/rank and C18
+  removed four official Generator allocator/GC flushes/rank, what exact
+  compute, exposed-NCCL, copy and no-traced budgets remain in each C18 phase?
+- **Authorized scope:** one exact C18 node-outer Nsight capture and remote-only
+  analysis. No workload, kernel, topology, trace, update, timing boundary or
+  formal result may change. Missing node report, rank range, kernel device or
+  parser health makes the diagnostic fail closed.
+- **Decision:** **GO_DIAGNOSTIC_ONLY for the C18 post-fix profile**. Choose at
+  most one C20 optimization only after that evidence exists.
