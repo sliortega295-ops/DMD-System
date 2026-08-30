@@ -455,3 +455,34 @@
   history cache without materially new evidence.  The next iteration must ask
   a new falsifiable question capable of addressing the remaining
   `17.352002109 s` gap.
+
+## C11 post-fix diagnostic profile preflight
+
+- Current gate: C11 is the fastest correctness-qualified arm at
+  `138.462140212 s`; the requested threshold remains `121.110138103 s`.
+- Live substrate (2026-08-30 UTC): both owned A100 nodes are clean at exact
+  workload HEAD `f3c5ed480001fb0007914de25264edd8439e9f50`; all 16 GPUs have
+  no compute process, both cgroups remain at `oom=0`, `oom_kill=0`, the pinned
+  Torch 2.10/CUDA 12.8 environment imports successfully, and the Helios source
+  SHA remains `5d3ffe37...65a886` on both nodes.
+- Authorized action: one diagnostic-only node-outer Nsight Systems capture of
+  the exact C11 GAN-on workload, followed by in-place remote `nsys-ai`
+  analysis. Raw reports and SQLite remain on the remote evidence filesystem;
+  only compact derived results may be committed.
+- Frozen contract: GAN-on steps 1000--1004, world16 FSDP2, B1/global-B16,
+  Score packing off, CUDA residuals and EMA, local FA2, chunk2048, Critic
+  selective Flash replay stride2, Generator no-grad cross-KV reuse, exact
+  modulated-norm backward, trace/RNG/loss/physical inventory, G1/C5/EMA1 and
+  final G201/C1005/EMA801. The profiled wall is not a formal denominator.
+- Matching evidence and rejected paths: C5's valid profile predates C8/C11 and
+  therefore cannot quantify the post-fix kernel mix. It already bounds exposed
+  NCCL and copy-only work; HSDP, explicit FSDP prefetch, B2/B5, packing,
+  checkpoint stride1, history-KV reuse, and LoRA beta-add remain rejected.
+- New falsifiable question: after C8 and C11 removed cross-attention projection
+  work and modulated-norm autograd reconstruction, which source-qualified
+  compute or host-launch family owns enough post-fix critical-path time to
+  justify the next exact-semantics candidate?
+- Decision: **GO** for run
+  `iter364_gan_cuda_c11_profile_p1_20260830`; implementation and formal timing
+  of a new candidate remain `NOT_RUN` until the profile identifies a new
+  bounded mechanism.
