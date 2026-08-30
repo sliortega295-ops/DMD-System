@@ -81,6 +81,39 @@ def _intersection(left: Iterable[tuple[int, int]], right: Iterable[tuple[int, in
     return total
 
 
+def _clip_unioned(
+    intervals: list[tuple[int, int]], window: tuple[int, int]
+) -> list[tuple[int, int]]:
+    """Clip an already sorted, disjoint interval list without re-sorting it."""
+
+    result: list[tuple[int, int]] = []
+    for start, end in intervals:
+        if end <= window[0]:
+            continue
+        if start >= window[1]:
+            break
+        result.append((max(start, window[0]), min(end, window[1])))
+    return result
+
+
+def _intersection_unioned(
+    left: list[tuple[int, int]], right: list[tuple[int, int]]
+) -> int:
+    """Intersect sorted, disjoint intervals in linear time."""
+
+    i = j = total = 0
+    while i < len(left) and j < len(right):
+        total += max(
+            0,
+            min(left[i][1], right[j][1]) - max(left[i][0], right[j][0]),
+        )
+        if left[i][1] <= right[j][1]:
+            i += 1
+        else:
+            j += 1
+    return total
+
+
 def _collective(name: str) -> str:
     lowered = name.lower()
     if "allgather" in lowered or "all_gather" in lowered:
@@ -142,18 +175,12 @@ def _collective_metric(
     kernels intersecting the range; duration fields remain interval unions.
     """
 
-    clipped_compute = [
-        part for value in compute_intervals if (part := _clip(value, window))
-    ]
+    clipped_compute = _clip_unioned(compute_intervals, window)
     result: dict[str, dict[str, int]] = {}
     for kind in COLLECTIVES:
-        clipped = [
-            part
-            for value in collective_intervals[kind]
-            if (part := _clip(value, window))
-        ]
-        union_ns = _duration(clipped)
-        hidden_ns = _intersection(clipped, clipped_compute)
+        clipped = _clip_unioned(collective_intervals[kind], window)
+        union_ns = sum(end - start for start, end in clipped)
+        hidden_ns = _intersection_unioned(clipped, clipped_compute)
         result[kind] = {
             "events": len(clipped),
             "union_ns": union_ns,
@@ -302,6 +329,10 @@ def analyze_node(path: Path, node: int) -> dict:
             intervals = {
                 name: _union(values) for name, values in state["intervals"].items()
             }
+            collective_intervals = {
+                kind: _union(values)
+                for kind, values in state["collective_intervals"].items()
+            }
             phases = []
             role_prefixes = (
                 ("livewan/pipeline/g/", "livewan/pipeline_runahead/g/")
@@ -320,7 +351,7 @@ def analyze_node(path: Path, node: int) -> dict:
                         **_metric(window, intervals),
                         "collectives": _collective_metric(
                             window,
-                            state["collective_intervals"],
+                            collective_intervals,
                             intervals["compute"],
                         ),
                     })
@@ -328,9 +359,9 @@ def analyze_node(path: Path, node: int) -> dict:
 
             collectives = {}
             for kind in COLLECTIVES:
-                union_ns = _duration(state["collective_intervals"][kind])
+                union_ns = _duration(collective_intervals[kind])
                 hidden_ns = _intersection(
-                    state["collective_intervals"][kind], intervals["compute"]
+                    collective_intervals[kind], intervals["compute"]
                 )
                 collectives[kind] = {
                     "events": state["collective_events"][kind],
