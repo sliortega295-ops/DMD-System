@@ -363,3 +363,29 @@ run `iter363_gan_cuda_c11_modnormbackward_timing_r1_20260830` is
 `138.462140212 s`: `2.773626923 s` (`1.963828%`) faster than C8 and
 `34.552342792 s` (`19.970781%`) below C0.  C11 is promoted, but remains
 `17.352002109 s` above the requested threshold.
+
+## C11 post-fix profile and C12 selected hypothesis
+
+The valid Iteration 364 profile confirms that the current GAN workload is
+primarily repeated 14B compute rather than removable transfers.  Across the 16
+rank-local exact ranges, median compute union is `126.112 s`; NCCL occupies
+`61.524 s` but overlaps compute for `54.422 s`, leaving `7.121 s` exposed.
+Copies expose only `0.501 s`.  The median no-traced complement is `5.903 s`.
+Because Nsight did not export the GPU model, these are timeline occupancy
+measurements, not SM utilization or MFU.
+
+The profile plus source audit nevertheless identifies one clean launch-gap
+candidate.  The measured P0 path executes a Generator-update
+`torch.cuda.empty_cache()` and post-rollout synchronization, then executes an
+additional post-rollout synchronization after each of five no-grad B1
+rollouts.  None of the immediately following shape/dtype/autograd checks need
+completed GPU data, the downstream PyTorch work carries its own dependencies,
+and the exact timer already synchronizes at the outer boundaries.
+
+C12 therefore adds a default-off policy that skips only those six in-window
+host-blocking synchronizations and the allocator flush.  It does not remove
+framework/FSDP synchronization, alter streams, prefetch parameters, or change
+model math.  Correctness must prove exact policy propagation and all existing
+16-rank semantic receipts before one unprofiled timing.  The experiment does
+not assume the full `10.416 s` rank0 synchronization API wall is recoverable;
+the question is intentionally bounded and falsifiable.

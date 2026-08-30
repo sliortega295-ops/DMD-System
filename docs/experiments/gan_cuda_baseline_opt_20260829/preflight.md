@@ -486,3 +486,36 @@
   `iter364_gan_cuda_c11_profile_p1_20260830`; implementation and formal timing
   of a new candidate remain `NOT_RUN` until the profile identifies a new
   bounded mechanism.
+
+## C11 profile result and C12 GO decision
+
+- `iter364_gan_cuda_c11_profile_p1_20260830` is a valid diagnostic capture:
+  16/16 exact range receipts, two non-empty node reports/SQLite exports, and
+  `nsys-ai doctor` PASS on both nodes.  The median rank-local range contains
+  `126.112 s` compute union, `61.524 s` NCCL union with `54.422 s` hidden by
+  compute, only `7.121 s` exposed NCCL, `0.501 s` exposed copies, and
+  `5.903 s` with no traced GPU activity.  The GPU model was not exported, so
+  there is no MFU claim.
+- Source-qualified evidence: rank0 has `10.416 s` of synchronization API wall,
+  but that includes required FSDP/framework synchronization.  The bounded
+  application-owned subset is one Generator-update `empty_cache`, one
+  Generator-update post-rollout `cuda.synchronize`, and five no-grad rollout
+  post-rollout `cuda.synchronize` calls.  Generator update alone contains a
+  median `4.500 s` no-traced complement.
+- Current gate: C11 remains the formal denominator at `138.462140212 s`;
+  profiled timing does not update it.  Repeated model compute is still the
+  dominant cost, and exposed NCCL/copy alone cannot close the remaining
+  `17.352002109 s` gap.
+- Authorized C12 hypothesis: behind one explicit default-off P0 policy, omit
+  exactly those six in-window rollout synchronizations and the one
+  Generator-update allocator flush.  Keep the outer Full5 start/end
+  synchronization, PyTorch dependency ordering, every tensor/call check, and
+  all frozen workload semantics.
+- Falsifiable question: does this isolated host-launch cleanup retain 16-rank
+  G1/C5/EMA1, final G201/C1005/EMA801, trace/inventory/parity and zero OOM,
+  while reducing one unprofiled Full5 below C11?
+- Rejected/superseded paths remain unchanged: no B2/B5, Score packing, HSDP,
+  explicit FSDP prefetch, stride1 retained state, history-KV, beta-add, or
+  semantic relaxation may be combined.
+- Decision: **GO** for C12 focused tests, validate-only, correctness/capacity,
+  and then one timing only if every preceding gate passes.

@@ -182,3 +182,15 @@
     Formal Full5 is `138.462140212 s`, `2.773626923 s` faster than C8 and
     `19.970781%` below C0.  Promote C11 as the new substrate; the 30% target is
     still `17.352002109 s` away.
+40. Iteration 364 profiles exact C11 without changing the formal denominator.
+    It passes 16/16 range and two-node parser gates.  Median compute union is
+    `126.112 s`; exposed NCCL is `7.121 s`, exposed copy `0.501 s`, and
+    no-traced activity `5.903 s`.  Source correlation finds one bounded
+    application-owned gap: one allocator flush and six explicit post-rollout
+    device synchronizations inside the measured path.
+41. C12 adds only a default-off policy to omit those six synchronizations and
+    one `empty_cache`, retaining Full5 boundary synchronization and every
+    dependency/semantic gate.  Run focused tests, validate-only, 16-rank
+    correctness/capacity and, only on PASS, one unprofiled formal timing.  Do
+    not combine finite-check removal, state-machine changes, prefetch, or a
+    second optimization.
