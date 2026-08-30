@@ -101,6 +101,12 @@ def test_profile_launcher_is_node_outer_and_fail_closed() -> None:
     assert "missing_nsys_sqlite" in launcher
     assert '--format=csv "${PROFILE_SQLITE}"' in launcher
     assert "nsys_profile_validation_failed" in launcher
+    assert "incomplete_nvtx_rank_ranges" in launcher
+    assert "incomplete_kernel_device_coverage" in launcher
+    gate = (
+        ROOT / "scripts/distillschedule/build_livewan_crossscale_profile_gate.py"
+    ).read_text(encoding="utf-8")
+    assert '"scripts/distillschedule/analyze_livewan_crossscale_nsys.py"' in gate
 
 
 def test_profile_markers_and_capture_are_absent_from_formal_timing_path() -> None:
@@ -114,6 +120,8 @@ def test_profile_markers_and_capture_are_absent_from_formal_timing_path() -> Non
     assert "torch.cuda.nvtx.range(label)" in helper
     assert "cudaProfilerStart" in worker
     assert "cudaProfilerStop" in worker
+    assert "time.sleep(10.0)" in worker
+    assert worker.index("time.sleep(10.0)") < worker.index("start = time.perf_counter()")
     assert worker.index("dist.destroy_process_group()") > worker.index(
         "_write_rank_receipt(output_dir=output_dir, rank=rank, value=receipt)"
     )

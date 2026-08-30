@@ -255,10 +255,40 @@ else
     if [[ ${status} -eq 0 ]]; then
       "${PYTHON}" - "${PROFILE_RECEIPT}" "${NODE_RANK}" "${EXPECTED_HEAD}" \
         "${NSYS_BIN}" "${PROFILE_REPORT}" "${PROFILE_SQLITE}" "${PROFILE_STATS}" <<'PY'
-import hashlib, json, os, pathlib, subprocess, sys, tempfile
+import hashlib, json, os, pathlib, sqlite3, subprocess, sys, tempfile
 
 destination = pathlib.Path(sys.argv[1])
 paths = [pathlib.Path(value) for value in sys.argv[5:8]]
+node_rank = int(sys.argv[2])
+
+sqlite_path = paths[1]
+database = sqlite3.connect(f"file:{sqlite_path}?mode=ro", uri=True)
+try:
+    outer_rows = database.execute(
+        "SELECT text FROM NVTX_EVENTS "
+        "WHERE text LIKE 'livewan/full5/%/rank_%' "
+        "AND start IS NOT NULL AND end IS NOT NULL AND end > start"
+    ).fetchall()
+    observed_ranks = sorted(
+        int(str(text).rsplit("rank_", 1)[1]) for (text,) in outer_rows
+    )
+    expected_ranks = list(range(node_rank * 8, node_rank * 8 + 8))
+    device_rows = database.execute(
+        "SELECT deviceId, COUNT(*) FROM CUPTI_ACTIVITY_KIND_KERNEL "
+        "GROUP BY deviceId ORDER BY deviceId"
+    ).fetchall()
+    observed_devices = [int(device) for device, count in device_rows if int(count) > 0]
+finally:
+    database.close()
+
+if observed_ranks != expected_ranks:
+    raise SystemExit(
+        f"incomplete_nvtx_rank_ranges: observed={observed_ranks} expected={expected_ranks}"
+    )
+if observed_devices != list(range(8)):
+    raise SystemExit(
+        f"incomplete_kernel_device_coverage: observed={observed_devices} expected={list(range(8))}"
+    )
 
 def sha256(path):
     digest = hashlib.sha256()
@@ -272,7 +302,7 @@ value = {
     "status": "PASS_CAPTURE_CONTAINER",
     "diagnostic_only": True,
     "formal_timing_eligible": False,
-    "node_rank": int(sys.argv[2]),
+    "node_rank": node_rank,
     "head": sys.argv[3],
     "nsys_bin": sys.argv[4],
     "nsys_version": subprocess.check_output([sys.argv[4], "--version"], text=True).strip(),
@@ -282,6 +312,8 @@ value = {
         }
         for path in paths
     },
+    "nvtx_rank_ranges": observed_ranks,
+    "kernel_devices": observed_devices,
 }
 destination.parent.mkdir(parents=True, exist_ok=True)
 fd, temporary = tempfile.mkstemp(prefix=destination.name + ".", dir=destination.parent)

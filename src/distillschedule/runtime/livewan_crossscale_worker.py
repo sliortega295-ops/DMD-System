@@ -1047,6 +1047,16 @@ def run_worker(
         # Make sure all eight workers on both nodes enter the workload after
         # their node-local profiler session has started.
         dist.barrier()
+        # Nsight attaches to the eight child workers asynchronously after the
+        # node-local rank calls cudaProfilerStart().  A world barrier proves
+        # application readiness, but it does not prove that the profiler has
+        # finished attaching to every child.  The previous diagnostic lost the
+        # opening NVTX ranges from one rank even though its CUDA kernels were
+        # present.  A bounded profile-only arm delay was validated with an
+        # eight-rank canary and remains outside both the Full5 timer and outer
+        # NVTX range.  Formal/correctness runs never execute this delay.
+        time.sleep(10.0)
+        dist.barrier()
     torch.cuda.synchronize(device)
     start = time.perf_counter()
     with _profile_range(
