@@ -10,6 +10,7 @@ RUN_ID="${2:?immutable run id}"
 
 ROOT="${DMD_SYSTEM_ROOT:?set DMD_SYSTEM_ROOT}"
 PYENV="${DISTILLSCHEDULE_PYENV:-/tmp/distillschedule-helios-official-torch210}"
+PYTHON_OVERLAY="${LIVEWAN_PYTHON_OVERLAY:?set isolated LIVEWAN_PYTHON_OVERLAY}"
 PYTHON="${PYENV}/bin/python"
 SOURCE="${LIVEWAN_WAN21_SOURCE:?set LIVEWAN_WAN21_SOURCE}"
 PROMPTS="${LIVEWAN_PROMPTS:?set LIVEWAN_PROMPTS}"
@@ -33,7 +34,8 @@ flock -n 9 || { echo gpu_lock_busy >&2; exit 73; }
 }
 
 export PATH="${PYENV}/bin:${PATH}"
-export PYTHONPATH="${ROOT}/third_party/livewan:${SOURCE}"
+[[ -f "${PYTHON_OVERLAY}/.complete.json" ]] || exit 3
+export PYTHONPATH="${PYTHON_OVERLAY}:${ROOT}/third_party/livewan:${SOURCE}"
 export PYTHONDONTWRITEBYTECODE=1
 export OMP_NUM_THREADS=4
 

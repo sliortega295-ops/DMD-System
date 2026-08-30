@@ -10,6 +10,9 @@ another checkout, Python archive, trace, or checkpoint.
 - Wan2.1 submodule: `9737cba9c1c3c4d04b33fcad41c111989865d315`.
 - Python: validated Torch-2.10 archive extracted at
   `/tmp/distillschedule-helios-official-torch210` on both nodes.
+- Python overlay: immutable user-owned dependency directory with a PASS receipt;
+  it supplies only missing LiveWan Python packages (currently EasyDict 1.13)
+  through `PYTHONPATH` and never edits the validated Torch environment.
 - Student/Critic base: pinned Wan2.1-T2V-1.3B model root.
 - Teacher: pinned Wan2.1-T2V-14B model root.
 - Inputs: at least 80 source-compatible 21-latent-frame samples and the exact

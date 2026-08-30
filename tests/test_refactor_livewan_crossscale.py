@@ -118,6 +118,12 @@ def test_submodules_are_pinned_and_source_prepare_is_non_installing() -> None:
     assert "archive --format=tar" in script
     assert "1eabf43c777bc5b2816926ca998cd4e4c2dfa3d5" in script
     assert "9737cba9c1c3c4d04b33fcad41c111989865d315" in script
+    overlay = (
+        ROOT / "scripts/distillschedule/prepare_livewan_crossscale_python_overlay.sh"
+    ).read_text()
+    assert "easydict==1.13" in overlay
+    assert "--target" in overlay
+    assert "pip install" not in overlay.replace('"$(dirname "${PYTHON}")/pip" install', "")
 
 
 def test_trace_builder_requires_80_distinct_source_samples(tmp_path: Path) -> None:

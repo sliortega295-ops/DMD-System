@@ -91,6 +91,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--source-root", required=True, type=Path)
     value.add_argument("--source-receipt", required=True, type=Path)
     value.add_argument("--pyenv", type=Path, default=Path("/tmp/distillschedule-helios-official-torch210"))
+    value.add_argument("--python-overlay", required=True, type=Path)
     value.add_argument("--correctness-receipt", type=Path)
     value.add_argument("--correctness-sha256")
     value.add_argument("--master-addr")
@@ -115,6 +116,7 @@ def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
     exports = {
         "DMD_SYSTEM_ROOT": args.remote_root,
         "DISTILLSCHEDULE_PYENV": args.pyenv,
+        "LIVEWAN_PYTHON_OVERLAY": args.python_overlay,
         "DISTILLSCHEDULE_OUTPUT_DIR": run_root,
         "LIVEWAN_STUDENT_CHECKPOINT": args.student_checkpoint,
         "LIVEWAN_CRITIC_CHECKPOINT": args.critic_checkpoint,

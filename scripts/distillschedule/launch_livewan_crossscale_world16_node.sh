@@ -19,6 +19,7 @@ MASTER_PORT="${7:?rendezvous port}"
 
 ROOT="${DMD_SYSTEM_ROOT:?set DMD_SYSTEM_ROOT}"
 PYENV="${DISTILLSCHEDULE_PYENV:-/tmp/distillschedule-helios-official-torch210}"
+PYTHON_OVERLAY="${LIVEWAN_PYTHON_OVERLAY:?set isolated LIVEWAN_PYTHON_OVERLAY}"
 PYTHON="${PYENV}/bin/python"
 TORCHRUN="${PYENV}/bin/torchrun"
 RUN_ROOT="${DISTILLSCHEDULE_OUTPUT_DIR:?set DISTILLSCHEDULE_OUTPUT_DIR}"
@@ -36,6 +37,9 @@ fi
 for executable in "${PYTHON}" "${TORCHRUN}"; do
   [[ -x "${executable}" ]] || { echo "missing_executable=${executable}" >&2; exit 3; }
 done
+[[ -f "${PYTHON_OVERLAY}/.complete.json" ]] || {
+  echo "missing_python_overlay_receipt=${PYTHON_OVERLAY}/.complete.json" >&2; exit 3;
+}
 for path in "${ROOT}" "${PLAN}" "${LIVEWAN_STUDENT_CHECKPOINT:?}" \
   "${LIVEWAN_CRITIC_CHECKPOINT:?}" "${LIVEWAN_TEACHER_CHECKPOINT:?}" \
   "${LIVEWAN_OPERATION_TRACE:?}" "${LIVEWAN_SYSTEMS_BOOTSTRAP:?}"; do
@@ -85,7 +89,7 @@ flock 8
 flock -u 8
 
 export PATH="${PYENV}/bin:${PATH}"
-export PYTHONPATH="${ROOT}/src:${ROOT}:${ROOT}/third_party/livewan:${SOURCE_ROOT}"
+export PYTHONPATH="${PYTHON_OVERLAY}:${ROOT}/src:${ROOT}:${ROOT}/third_party/livewan:${SOURCE_ROOT}"
 export PYTHONDONTWRITEBYTECODE=1
 export DISTILLSCHEDULE_NODE_RANK="${NODE_RANK}"
 export DISTILLSCHEDULE_RUN_ID="${RUN_ID}"
@@ -105,6 +109,8 @@ export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
   echo "livewan=$(git -C "${ROOT}/third_party/livewan" rev-parse HEAD)"
   echo "wan21=$(git -C "${ROOT}/third_party/wan21" rev-parse HEAD)"
   echo "python=$(${PYTHON} --version 2>&1)"
+  echo "python_overlay=${PYTHON_OVERLAY}"
+  echo "python_overlay_sha256=$(sha256sum "${PYTHON_OVERLAY}/.complete.json" | awk '{print $1}')"
   "${PYTHON}" - <<'PY'
 import torch
 print("torch=" + torch.__version__)
