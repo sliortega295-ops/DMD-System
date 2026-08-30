@@ -47,3 +47,39 @@ The `2.630651 s` profile complement is not a promised speedup.  Runtime
 categories may overlap, CPU garbage collection is not directly traced, and
 retaining allocator cache can trade latency for HBM fragmentation.  Only the
 unprofiled Full5 result may establish a gain.
+
+## Results
+
+| Gate | Run | Result |
+|---|---|---:|
+| focused tests | 24 focused tests plus compile/shell gates | PASS |
+| validate-only | `iter373_gan_cuda_c18_nofreememory_validate_r1_20260830` | 16/16 PASS |
+| correctness attempt 1 | `iter373_gan_cuda_c18_nofreememory_correctness_r1_20260830` | ENVIRONMENT FAIL |
+| correctness | `iter373_gan_cuda_c18_nofreememory_correctness_r2_20260830` | 16/16 PASS |
+| formal unprofiled Full5 | `iter373_gan_cuda_c18_nofreememory_timing_r1_20260830` | **129.441379467 s** |
+
+The first correctness attempt was cancelled before construction completed
+after both platform SSH transports broke at approximately two minutes.  The
+remote wrappers propagated `SIGTERM`, released both locks, left no GPU process
+and recorded no OOM.  This is preserved as launcher/environment evidence, not
+as a workload failure.  Adding task-local SSH keepalives passed a 135-second
+two-host transport canary; the fresh `r2` run then passed without code changes.
+
+Correctness records `(scope=1, calls=4, executed=4, elided=0, restored=1)` on
+all 16 ranks.  Timing records `(1,4,0,4,1)`.  Both retain the C17 Critic scalar
+receipts, G1/C5/EMA1 and final G201/C1005/EMA801.  Timing maximum allocated and
+reserved HBM are `24.962112904 GiB` and `38.009765625 GiB`; minimum final
+driver free is `5.053100586 GiB`.  CUDA and cgroup OOM deltas are zero.
+
+Summary SHA256 values:
+
+- validate: `99ba4c189732ce1365bdfcaebb04774fd36a81b875a0d733c89a8d6c7e8b35a5`;
+- correctness: `4e30847ada714f90031ced0970c77c0974ec96e1c5ce1a014bdfed8ad03c4a3d`;
+- timing: `1242f40f9a41767e4f0be8b34fe24c1af8967cca1685d09519e6ca6eea6599a4`.
+
+## Decision
+
+C18 improves C17 by `1.189091585 s` (`0.910271222%`) and C0 by
+`43.573103537 s` (`25.184656672%`, `1.336624221x`).  Promote C18 as the current
+fastest exact substrate.  It is still `8.331241364 s` above the 30%-faster
+threshold and needs another `6.436304525%` reduction; the goal remains active.

@@ -503,3 +503,14 @@ The wrapper is restored in `finally`, cannot affect Critic work, and fails on
 source drift or an unexpected call count.  Because retained allocator blocks
 can reduce driver-free HBM, capacity remains a first-class gate and no gain is
 assumed from profile-time API duration.
+
+## C18 measured result
+
+C18 passes the full gate and reduces formal Full5 from `130.630471052 s` to
+`129.441379467 s`, a `1.189091585 s` (`0.9103%`) gain.  Every correctness rank
+executes all four official calls; every timing rank elides exactly four, and
+the module global is restored once.  Maximum allocated HBM is unchanged while
+maximum reserved falls to `38.009765625 GiB`; there is no CUDA/cgroup OOM.
+This validates the allocator/GC source attribution, but the remaining
+`8.331241364 s` still requires compute/launch work rather than more broad
+allocator cleanup.

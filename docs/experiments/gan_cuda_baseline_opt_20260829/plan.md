@@ -307,3 +307,12 @@
     16/16 receipts, unchanged G1/C5/EMA1 and G201/C1005/EMA801, zero OOM, and
     one formal result below C17.  Because C17 ended with only `0.231 GiB`
     driver free on the slowest rank, any capacity regression fails closed.
+57. C18 passes all gates at `823a999`.  Its first correctness attempt is an
+    immutable SSH broken-pipe failure before model construction; task-local
+    keepalives pass a two-host 135-second canary and the fresh correctness run
+    then passes 16/16.  Correctness executes exactly four official calls/rank;
+    timing elides exactly four and restores the global.  Formal Full5 is
+    `129.441379467 s`, improving C17 by `1.189091585 s` (`0.9103%`) with zero
+    OOM and lower maximum reserved HBM.  Promote C18, but retain the goal: it
+    remains `8.331241364 s` above target.  Re-profile only if the old C15
+    timeline cannot source-qualify the next compute/launch candidate.
