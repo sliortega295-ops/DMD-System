@@ -13,6 +13,9 @@ from distillschedule.core.config import load_plan
 from distillschedule.core.contracts import ContractViolation
 from distillschedule.workloads.livewan_crossscale import (
     PIPELINE_6G10S_LAYOUT,
+    PIPELINE_6G10S_NODE_LOCAL_LAYOUT,
+    PIPELINE_6G10S_SCORE_LEADERS,
+    PIPELINE_6G10S_SCORE_NODE_GROUPS,
     PIPELINE_8G8S_LAYOUT,
     balanced_slots,
     compile_trace_identities,
@@ -33,6 +36,7 @@ BASELINE = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_
 PIPELINE = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8.json"
 PIPELINE_SCORE_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
 PIPELINE_6G10S = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json"
+PIPELINE_6G10S_NODE_LOCAL = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score_node_local.json"
 
 
 @pytest.fixture(autouse=True)
@@ -95,6 +99,40 @@ def test_6g10score_plan_changes_only_placement_and_exact_physical_batching() -> 
     assert candidate.metadata["score_physical_batch_size"] == 2
     assert candidate.metadata["logical_batch_preserved"] is True
     assert candidate.metadata["per_sample_rng_preserved"] is True
+
+
+def test_6g10score_node_local_plan_changes_only_collective_substrate() -> None:
+    flat = load_plan(PIPELINE_6G10S).plan
+    candidate = load_plan(PIPELINE_6G10S_NODE_LOCAL).plan
+    LiveWanSFDMDAdapter().validate(candidate)
+    assert flat.workload.to_dict() == candidate.workload.to_dict()
+    assert flat.hardware.to_dict() == candidate.hardware.to_dict()
+    assert flat.rank_groups == candidate.rank_groups
+    assert candidate.metadata["pool_policy"] == (
+        "persistent_6g_10score_teacher_node_local_hierarchical"
+    )
+    assert candidate.metadata["large_score10_collectives"] is False
+    assert candidate.training_backends["teacher"].options["mesh_ranks_by_node"] == [
+        list(ranks) for ranks in PIPELINE_6G10S_SCORE_NODE_GROUPS
+    ]
+    assert candidate.training_backends["score"].options["leader_ranks"] == list(
+        PIPELINE_6G10S_SCORE_LEADERS
+    )
+
+
+def test_hierarchical_score_reduction_recovers_same_global_mean() -> None:
+    PIPELINE_6G10S_NODE_LOCAL_LAYOUT.validate()
+    per_rank = {rank: float(rank - 5) for rank in range(6, 16)}
+    local_totals = [
+        sum(per_rank[rank] for rank in ranks)
+        for ranks in PIPELINE_6G10S_SCORE_NODE_GROUPS
+    ]
+    hierarchical = sum(local_totals) / len(per_rank)
+    flat = sum(per_rank.values()) / len(per_rank)
+    assert hierarchical == flat
+    assert PIPELINE_6G10S_SCORE_LEADERS == tuple(
+        ranks[0] for ranks in PIPELINE_6G10S_SCORE_NODE_GROUPS
+    )
 
 
 def _trace_row(slot: int, offset: int) -> OperationTraceRow:
@@ -291,6 +329,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     ).read_text()
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json" in launcher
+    assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score_node_local.json" in launcher
     assert "baseline_pipeline_variant_mismatch" in launcher
     summarizer = (
         ROOT / "scripts/distillschedule/summarize_livewan_crossscale_world16.py"
@@ -299,6 +338,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert '"physical_call_inventory"' in summarizer
     assert '"logical_call_inventory"' in summarizer
     assert '"persistent_6g_10score_teacher_fsdp10"' in summarizer
+    assert '"persistent_6g_10score_teacher_node_local_hierarchical"' in summarizer
 
 
 def test_cold_loader_avoids_redundant_full_fp32_copies() -> None:
@@ -426,5 +466,7 @@ def test_launcher_fails_before_model_load_on_world16_and_p2p_drift() -> None:
         "deferred_gradient_work.wait()"
     )
     assert '"observed_gradients"' in probe
-    assert 'choices=("b1", "score-b2", "6g10score")' in probe
+    assert 'choices=("b1", "score-b2", "6g10score", "6g10score-node-local")' in probe
+    assert "node-local Teacher all-gather payload mismatch" in probe
+    assert "hierarchical Score mean mismatch" in probe
     assert "dist.batch_isend_irecv" in probe

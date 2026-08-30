@@ -22,6 +22,8 @@ GENERATOR_RANKS = tuple(range(8))
 SCORE_RANKS = tuple(range(8, 16))
 GENERATOR_RANKS_6G10S = tuple(range(6))
 SCORE_RANKS_6G10S = tuple(range(6, 16))
+SCORE_NODE_GROUPS_6G10S = ((6, 7), tuple(range(8, 16)))
+SCORE_LEADERS_6G10S = (6, 8)
 
 
 def atomic_json(path: Path, value: object) -> None:
@@ -37,7 +39,7 @@ def main() -> int:
     parser.add_argument("--timeout-seconds", type=int, default=180)
     parser.add_argument(
         "--pipeline-variant",
-        choices=("b1", "score-b2", "6g10score"),
+        choices=("b1", "score-b2", "6g10score", "6g10score-node-local"),
         default="b1",
     )
     args = parser.parse_args()
@@ -54,11 +56,21 @@ def main() -> int:
     dist.init_process_group("nccl", timeout=timedelta(seconds=args.timeout_seconds))
     generator_ranks, score_ranks = (
         (GENERATOR_RANKS_6G10S, SCORE_RANKS_6G10S)
-        if args.pipeline_variant == "6g10score"
+        if args.pipeline_variant in {"6g10score", "6g10score-node-local"}
         else (GENERATOR_RANKS, SCORE_RANKS)
     )
     generator_group = dist.new_group(ranks=list(generator_ranks), backend="nccl")
     score_group = dist.new_group(ranks=list(score_ranks), backend="nccl")
+    score_node_groups = []
+    score_leader_group = None
+    if args.pipeline_variant == "6g10score-node-local":
+        score_node_groups = [
+            dist.new_group(ranks=list(ranks), backend="nccl")
+            for ranks in SCORE_NODE_GROUPS_6G10S
+        ]
+        score_leader_group = dist.new_group(
+            ranks=list(SCORE_LEADERS_6G10S), backend="nccl"
+        )
 
     # Collectively initialize default world before asymmetric default-group P2P.
     dist.barrier()
@@ -71,7 +83,57 @@ def main() -> int:
     if int(subgroup_token.cpu()) != expected_subgroup:
         raise RuntimeError("role subgroup all-reduce mismatch")
 
-    if args.pipeline_variant == "6g10score":
+    node_local_collective = None
+    if args.pipeline_variant == "6g10score-node-local" and rank in score_ranks:
+        group_index = next(
+            index for index, ranks in enumerate(SCORE_NODE_GROUPS_6G10S) if rank in ranks
+        )
+        local_ranks = SCORE_NODE_GROUPS_6G10S[group_index]
+        local_group = score_node_groups[group_index]
+        # Exercise a real FSDP-like 8 MiB shard all-gather, but only inside the
+        # node-local Teacher mesh.  The failed Score10 path is never invoked.
+        local_shard = torch.full(
+            (4 * 1024 * 1024,), float(rank), dtype=torch.bfloat16, device=device
+        )
+        gathered = torch.empty(
+            (len(local_ranks) * local_shard.numel(),),
+            dtype=local_shard.dtype,
+            device=device,
+        )
+        dist.all_gather_into_tensor(gathered, local_shard, group=local_group)
+        for index, member in enumerate(local_ranks):
+            observed = gathered[
+                index * local_shard.numel() : (index + 1) * local_shard.numel()
+            ]
+            if not torch.equal(observed, torch.full_like(local_shard, float(member))):
+                raise RuntimeError("node-local Teacher all-gather payload mismatch")
+
+        # Exercise the exact Critic gradient tree: local SUM, two-leader SUM,
+        # local broadcast, divide by ten.
+        reduced = torch.full(
+            (2 * 1024 * 1024,), float(rank + 1), dtype=torch.float32, device=device
+        )
+        dist.all_reduce(reduced, op=dist.ReduceOp.SUM, group=local_group)
+        if rank in SCORE_LEADERS_6G10S:
+            if score_leader_group is None:
+                raise RuntimeError("Score leader group is missing")
+            dist.all_reduce(reduced, op=dist.ReduceOp.SUM, group=score_leader_group)
+        dist.broadcast(reduced, src=local_ranks[0], group=local_group)
+        reduced.mul_(1.0 / len(score_ranks))
+        expected_mean = sum(member + 1 for member in score_ranks) / len(score_ranks)
+        if not torch.equal(reduced, torch.full_like(reduced, expected_mean)):
+            raise RuntimeError("hierarchical Score mean mismatch")
+        node_local_collective = {
+            "teacher_mesh_ranks": list(local_ranks),
+            "teacher_allgather_local_bytes": local_shard.numel() * local_shard.element_size(),
+            "teacher_allgather_output_bytes": gathered.numel() * gathered.element_size(),
+            "critic_sync_local_ranks": list(local_ranks),
+            "critic_sync_leader_ranks": list(SCORE_LEADERS_6G10S),
+            "critic_sync_buffer_bytes": reduced.numel() * reduced.element_size(),
+            "large_score10_collective": False,
+        }
+
+    if args.pipeline_variant in {"6g10score", "6g10score-node-local"}:
         generator_by_slot = {
             slot: generator_ranks[slot % len(generator_ranks)] for slot in range(WORLD_SIZE)
         }
@@ -154,6 +216,7 @@ def main() -> int:
             "subgroup_size": len(generator_ranks) if rank in generator_ranks else len(score_ranks),
             "default_world_initialized_collectively": True,
             "routed_batch_p2p": True,
+            "node_local_collective": node_local_collective,
         }
         atomic_json(args.output_dir / f"rank_{rank:03d}.json", receipt)
         dist.barrier()
@@ -171,6 +234,9 @@ def main() -> int:
                     "generator_ranks": list(generator_ranks),
                     "score_ranks": list(score_ranks),
                     "slot_count": sum(len(row["local_slots"]) for row in rows) // 2,
+                    "node_local_collective_ranks": sum(
+                        row.get("node_local_collective") is not None for row in rows
+                    ),
                 },
             )
         dist.barrier()

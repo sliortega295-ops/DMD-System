@@ -28,6 +28,9 @@ from distillschedule.workloads.livewan_crossscale import (
     LIVEWAN_COMMIT,
     LORA_RANK,
     PIPELINE_6G10S_LAYOUT,
+    PIPELINE_6G10S_NODE_LOCAL_LAYOUT,
+    PIPELINE_6G10S_SCORE_LEADERS,
+    PIPELINE_6G10S_SCORE_NODE_GROUPS,
     PIPELINE_8G8S_LAYOUT,
     WAN21_COMMIT,
     WORLD_SIZE,
@@ -401,6 +404,10 @@ class ModelBundle:
     critic_lora_params: list[Any]
     generator_group: Any | None
     score_group: Any | None
+    score_local_group: Any | None
+    score_leader_group: Any | None
+    score_local_ranks: tuple[int, ...]
+    score_leader_ranks: tuple[int, ...]
     generator_group_size: int
     score_group_size: int
     metadata: dict[str, Any]
@@ -434,6 +441,7 @@ def _plan_role_ranks(plan: Mapping[str, Any], *, mode: str) -> tuple[tuple[int, 
         "persistent_8g_8score_teacher_fsdp8": PIPELINE_8G8S_LAYOUT,
         "persistent_8g_8score_teacher_fsdp8_score_b2": PIPELINE_8G8S_LAYOUT,
         "persistent_6g_10score_teacher_fsdp10": PIPELINE_6G10S_LAYOUT,
+        "persistent_6g_10score_teacher_node_local_hierarchical": PIPELINE_6G10S_NODE_LOCAL_LAYOUT,
     }.get(policy)
     _require(expected is not None, "unknown pipeline pool policy")
     _require(generator_ranks == expected.generator_ranks, "Generator rank policy mismatch")
@@ -463,6 +471,22 @@ def build_models(
     # Every rank calls new_group in the same global order.
     generator_group = dist.new_group(ranks=list(generator_ranks))
     score_group = dist.new_group(ranks=list(score_ranks))
+    pool_policy = str(plan.get("metadata", {}).get("pool_policy", ""))
+    node_local_score = (
+        mode == "pipeline"
+        and pool_policy == "persistent_6g_10score_teacher_node_local_hierarchical"
+    )
+    score_node_groups: list[Any] = []
+    score_leader_group = None
+    if node_local_score:
+        # Every world rank creates every group in this exact global order.
+        score_node_groups = [
+            dist.new_group(ranks=list(ranks))
+            for ranks in PIPELINE_6G10S_SCORE_NODE_GROUPS
+        ]
+        score_leader_group = dist.new_group(
+            ranks=list(PIPELINE_6G10S_SCORE_LEADERS)
+        )
     owns_generator = rank in generator_ranks
     owns_score = rank in score_ranks
     workload = dict(plan["workload"])
@@ -547,17 +571,44 @@ def build_models(
         _require(teacher_root == Path(bootstrap.value["teacher_base"]["root"]), "plan/bootstrap Teacher root mismatch")
         teacher.load_state_dict(_load_checkpoint(load_file, teacher_root), strict=True)
         teacher.eval().requires_grad_(False)
-        teacher_mesh = _make_mesh(torch, score_ranks, score_group)
+        teacher_ranks = score_ranks
+        teacher_group = score_group
+        if node_local_score:
+            group_index = next(
+                index
+                for index, ranks in enumerate(PIPELINE_6G10S_SCORE_NODE_GROUPS)
+                if rank in ranks
+            )
+            teacher_ranks = PIPELINE_6G10S_SCORE_NODE_GROUPS[group_index]
+            teacher_group = score_node_groups[group_index]
+        teacher_mesh = _make_mesh(torch, teacher_ranks, teacher_group)
         shard_model(teacher, mesh=teacher_mesh, reshard_after_forward=True)
         teacher.to(device)
-        fsdp_groups = _configure_fsdp_reduction(teacher, group_size=len(score_ranks))
+        fsdp_groups = _configure_fsdp_reduction(teacher, group_size=len(teacher_ranks))
         metadata["teacher"] = {
-            "placement": f"fsdp2_group{len(score_ranks)}_reshard",
+            "placement": f"fsdp2_group{len(teacher_ranks)}_reshard",
+            "mesh_ranks": list(teacher_ranks),
             "fsdp_group_count": fsdp_groups,
         }
         gc.collect()
 
     torch.cuda.synchronize(device)
+    score_local_group = None
+    score_local_ranks: tuple[int, ...] = ()
+    if node_local_score and owns_score:
+        group_index = next(
+            index
+            for index, ranks in enumerate(PIPELINE_6G10S_SCORE_NODE_GROUPS)
+            if rank in ranks
+        )
+        score_local_group = score_node_groups[group_index]
+        score_local_ranks = PIPELINE_6G10S_SCORE_NODE_GROUPS[group_index]
+        metadata["critic_gradient_sync"] = {
+            "policy": "hierarchical_node_local_sum_leader_sum_broadcast_divide",
+            "local_ranks": list(score_local_ranks),
+            "leader_ranks": list(PIPELINE_6G10S_SCORE_LEADERS),
+            "global_divide_factor": len(score_ranks),
+        }
     return ModelBundle(
         student=student,
         critic=critic,
@@ -567,6 +618,16 @@ def build_models(
         critic_lora_params=lora_params,
         generator_group=generator_group if owns_generator else None,
         score_group=score_group if owns_score else None,
+        score_local_group=score_local_group,
+        score_leader_group=(
+            score_leader_group
+            if node_local_score and rank in PIPELINE_6G10S_SCORE_LEADERS
+            else None
+        ),
+        score_local_ranks=score_local_ranks,
+        score_leader_ranks=(
+            PIPELINE_6G10S_SCORE_LEADERS if node_local_score else ()
+        ),
         generator_group_size=len(generator_ranks),
         score_group_size=len(score_ranks),
         metadata=metadata,
@@ -600,6 +661,68 @@ def _mean_replicated_gradients(
         dist.all_reduce_coalesced(bucket, op=dist.ReduceOp.SUM, group=group)
         torch._foreach_mul_(bucket, 1.0 / group_size)
     return {"gradient_tensors": len(gradients), "buckets": len(buckets)}
+
+
+def _mean_replicated_gradients_hierarchical(
+    torch: Any,
+    parameters: Sequence[Any],
+    *,
+    local_group: Any,
+    local_ranks: Sequence[int],
+    leader_group: Any | None,
+    leader_ranks: Sequence[int],
+    rank: int,
+    group_size: int,
+    bucket_mib: int,
+) -> dict[str, Any]:
+    """Exact global mean without a large asymmetric Score10 collective.
+
+    Each node first sums its resident Critic gradients.  The two leaders then
+    sum those node totals, after which the result is broadcast inside each
+    node-local Score group and divided by the unchanged global Score pool size.
+    The reduction tree changes, but the sample mean and optimizer mathematics
+    are identical to the flat Score10 SUM-then-divide contract.
+    """
+
+    import torch.distributed as dist
+
+    gradients = [parameter.grad for parameter in parameters if parameter.grad is not None]
+    buckets: list[list[Any]] = []
+    current: list[Any] = []
+    current_bytes = 0
+    limit = bucket_mib * 1024 * 1024
+    for gradient in gradients:
+        size = gradient.numel() * gradient.element_size()
+        if current and current_bytes + size > limit:
+            buckets.append(current)
+            current, current_bytes = [], 0
+        current.append(gradient)
+        current_bytes += size
+    if current:
+        buckets.append(current)
+
+    local_leader = int(local_ranks[0])
+    leader_set = set(int(value) for value in leader_ranks)
+    for bucket in buckets:
+        flat = torch._utils._flatten_dense_tensors(bucket)
+        dist.all_reduce(flat, op=dist.ReduceOp.SUM, group=local_group)
+        if rank in leader_set:
+            _require(leader_group is not None, "Score leader is missing its cross-node group")
+            dist.all_reduce(flat, op=dist.ReduceOp.SUM, group=leader_group)
+        dist.broadcast(flat, src=local_leader, group=local_group)
+        flat.mul_(1.0 / group_size)
+        for gradient, synced in zip(
+            bucket, torch._utils._unflatten_dense_tensors(flat, bucket)
+        ):
+            gradient.copy_(synced)
+    return {
+        "gradient_tensors": len(gradients),
+        "buckets": len(buckets),
+        "policy": "hierarchical_node_local_sum_leader_sum_broadcast_divide",
+        "local_ranks": list(local_ranks),
+        "leader_ranks": list(leader_ranks),
+        "global_divide_factor": group_size,
+    }
 
 
 def _pipeline_slot_routes(
@@ -661,6 +784,23 @@ def _warm_communicators(
             "Score communicator warm-up failed",
         )
         warmed_groups.append("score")
+    if bundle.score_local_group is not None:
+        token = torch.ones(1, dtype=torch.int64, device=device)
+        dist.all_reduce(token, group=bundle.score_local_group)
+        _require(
+            int(token.cpu()) == len(bundle.score_local_ranks),
+            "node-local Score communicator warm-up failed",
+        )
+        warmed_groups.append("score_node_local")
+    if rank in bundle.score_leader_ranks:
+        _require(bundle.score_leader_group is not None, "Score leader group is missing")
+        token = torch.ones(1, dtype=torch.int64, device=device)
+        dist.all_reduce(token, group=bundle.score_leader_group)
+        _require(
+            int(token.cpu()) == len(bundle.score_leader_ranks),
+            "Score leader communicator warm-up failed",
+        )
+        warmed_groups.append("score_leaders")
 
     pair_peer = None
     routed_slots: list[int] = []
@@ -1203,6 +1343,7 @@ def _score_physical_batch_size(plan: Mapping[str, Any], *, mode: str) -> int:
             in {
                 "persistent_8g_8score_teacher_fsdp8_score_b2",
                 "persistent_6g_10score_teacher_fsdp10",
+                "persistent_6g_10score_teacher_node_local_hierarchical",
             },
             "Score B2 plan policy identity mismatch",
         )
@@ -1369,12 +1510,17 @@ def run_worker(
                     streamers=generator_streamers, score_context=score_context,
                     run_kind=run_kind, evidence=evidence, versions=versions, device=device,
                 )
-            else:
+            elif plan.get("metadata", {}).get("pool_policy") in {
+                "persistent_6g_10score_teacher_fsdp10",
+                "persistent_6g_10score_teacher_node_local_hierarchical",
+            }:
                 _run_pipeline_6g10score(
                     torch=torch, rank=rank, trace=trace, loader=loader, bundle=bundle,
                     streamers=generator_streamers, score_context=score_context,
                     run_kind=run_kind, evidence=evidence, versions=versions, device=device,
                 )
+            else:
+                raise RuntimeError("unsupported LiveWan pipeline pool policy")
     torch.cuda.synchronize(device)
     dist.barrier()
     full5_wall = time.perf_counter() - start
@@ -2501,13 +2647,26 @@ def _run_pipeline_6g10score(
                 run_kind=run_kind,
                 label=f"livewan/pipeline_6g10/score/step_{step}/critic_commit",
             ):
-                sync = _mean_replicated_gradients(
-                    torch,
-                    bundle.critic_lora_params,
-                    group=bundle.score_group,
-                    group_size=bundle.score_group_size,
-                    bucket_mib=128,
-                )
+                if bundle.score_local_group is not None:
+                    sync = _mean_replicated_gradients_hierarchical(
+                        torch,
+                        bundle.critic_lora_params,
+                        local_group=bundle.score_local_group,
+                        local_ranks=bundle.score_local_ranks,
+                        leader_group=bundle.score_leader_group,
+                        leader_ranks=bundle.score_leader_ranks,
+                        rank=rank,
+                        group_size=bundle.score_group_size,
+                        bucket_mib=128,
+                    )
+                else:
+                    sync = _mean_replicated_gradients(
+                        torch,
+                        bundle.critic_lora_params,
+                        group=bundle.score_group,
+                        group_size=bundle.score_group_size,
+                        bucket_mib=128,
+                    )
                 evidence.gradient_sync.append(
                     {"step": step, "role": "critic", **sync}
                 )

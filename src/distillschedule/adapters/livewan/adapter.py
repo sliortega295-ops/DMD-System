@@ -18,6 +18,9 @@ from distillschedule.workloads.livewan_crossscale import (
     LIVEWAN_COMMIT,
     LORA_RANK,
     PIPELINE_6G10S_LAYOUT,
+    PIPELINE_6G10S_NODE_LOCAL_LAYOUT,
+    PIPELINE_6G10S_SCORE_LEADERS,
+    PIPELINE_6G10S_SCORE_NODE_GROUPS,
     PIPELINE_8G8S_LAYOUT,
     TEACHER_SIZE,
     WAN21_COMMIT,
@@ -132,6 +135,7 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                 "persistent_8g_8score_teacher_fsdp8": PIPELINE_8G8S_LAYOUT,
                 "persistent_8g_8score_teacher_fsdp8_score_b2": PIPELINE_8G8S_LAYOUT,
                 "persistent_6g_10score_teacher_fsdp10": PIPELINE_6G10S_LAYOUT,
+                "persistent_6g_10score_teacher_node_local_hierarchical": PIPELINE_6G10S_NODE_LOCAL_LAYOUT,
             }.get(pool_policy)
             if layout is None:
                 self._fail("pipeline pool policy is not registered", "metadata.pool_policy")
@@ -146,6 +150,31 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                 self._fail("pipeline Student must be GPU-resident", "training_backends.generator.kind")
             if plan.training_backends["teacher"].kind != TrainingBackendKind.FSDP:
                 self._fail("pipeline Teacher must use its score-pool FSDP2 mesh", "training_backends.teacher.kind")
+            if pool_policy == "persistent_6g_10score_teacher_node_local_hierarchical":
+                teacher_options = dict(plan.training_backends["teacher"].options)
+                score_options = dict(plan.training_backends["score"].options)
+                if teacher_options.get("mesh_ranks_by_node") != [
+                    list(ranks) for ranks in PIPELINE_6G10S_SCORE_NODE_GROUPS
+                ]:
+                    self._fail(
+                        "node-local Teacher shard groups differ from the registered topology",
+                        "training_backends.teacher.options.mesh_ranks_by_node",
+                    )
+                if teacher_options.get("mesh_ranks") not in (None, (), []):
+                    self._fail(
+                        "node-local Teacher candidate must disable the flat Score10 mesh",
+                        "training_backends.teacher.options.mesh_ranks",
+                    )
+                if score_options.get("gradient_sync") != "hierarchical_node_local_sum_leader_sum_broadcast_divide":
+                    self._fail(
+                        "node-local candidate requires exact hierarchical Critic gradient synchronization",
+                        "training_backends.score.options.gradient_sync",
+                    )
+                if score_options.get("leader_ranks") != list(PIPELINE_6G10S_SCORE_LEADERS):
+                    self._fail(
+                        "hierarchical Critic leader ranks differ from the registered topology",
+                        "training_backends.score.options.leader_ranks",
+                    )
         else:
             self._fail("execution_mode must be baseline or pipeline", "metadata.execution_mode")
 

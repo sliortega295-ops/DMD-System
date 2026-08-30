@@ -151,7 +151,10 @@ def main() -> int:
                 "critic/grad/checkpoint": 40,
             }
         )
-    elif pool_policy == "persistent_6g_10score_teacher_fsdp10":
+    elif pool_policy in {
+        "persistent_6g_10score_teacher_fsdp10",
+        "persistent_6g_10score_teacher_node_local_hierarchical",
+    }:
         expected_physical_inventory.update(
             {
                 "teacher/nograd/plain": 10,

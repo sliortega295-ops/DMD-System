@@ -121,6 +121,24 @@ PIPELINE_6G10S_LAYOUT = PoolLayout(
     overlap=False,
 )
 
+# The logical 6G+10Score layout is unchanged, but the current two-node
+# substrate cannot execute large collectives on the asymmetric cross-node
+# ranks[6:16] group.  This placement keeps Teacher materialization and the
+# first/last legs of Critic gradient synchronization node-local.  Only the two
+# leaders exchange the already reduced Critic gradient buckets.
+PIPELINE_6G10S_NODE_LOCAL_LAYOUT = PoolLayout(
+    name="persistent_6g_10score_teacher_node_local_hierarchical",
+    generator_ranks=tuple(range(6)),
+    score_ranks=tuple(range(6, 16)),
+    teacher_ranks=tuple(range(6, 16)),
+    overlap=False,
+)
+PIPELINE_6G10S_SCORE_NODE_GROUPS = (
+    (6, 7),
+    tuple(range(8, 16)),
+)
+PIPELINE_6G10S_SCORE_LEADERS = (6, 8)
+
 
 def balanced_slots(ranks: Sequence[int], *, batch: int = GLOBAL_BATCH) -> dict[int, tuple[int, ...]]:
     """Assign every logical sample once with rank-local counts differing by <=1."""

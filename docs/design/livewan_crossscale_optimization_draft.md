@@ -81,6 +81,19 @@
 4. **C3 exact hot kernels/transport**: profile the promoted schedule with
    node-outer Nsight, then use kernel work only for a demonstrated hotspot.
 
+## C3 substrate result and C3B recovery
+
+- The flat 6G+10Score FSDP10 candidate fit model residency but hung before the
+  workload on the asymmetric cross-node Score10 process group. A model-free
+  8 MiB/rank to 80 MiB all-gather reproduced the same failure. This path is a
+  bounded negative and must not be retried under the current substrate.
+- C3B preserves the exact 6G+10Score logical schedule and loss scaling. Teacher
+  FSDP uses node-local meshes `[6,7]` and `[8..15]`. Critic gradients use an
+  exact hierarchical tree: node-local SUM, ranks 6/8 leader SUM, node-local
+  broadcast, then divide by ten. No parameter/offload/math change is present.
+- C3B must first pass its large-collective preflight and one correctness/capacity
+  run. Formal timing remains locked by the existing paired numerical gate.
+
 ## Evidence required
 
 - Per role and step: compute, NCCL, P2P, H2D/D2H, host-gap, and exposed overlap.

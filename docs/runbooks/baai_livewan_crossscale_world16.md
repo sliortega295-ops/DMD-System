@@ -75,6 +75,20 @@ and make exactly one heterogeneous B1/B2 physical call per phase. Treat this as
 a capacity/correctness candidate until its individual receipt passes; it is not
 a formal timing arm while paired numerical parity remains locked.
 
+The flat cross-node FSDP10 substrate is now a bounded negative: Iterations 034
+and 035 reproduced a large-collective hang in both model construction and a
+model-free 8 MiB/rank all-gather. Do not retry it or raise the timeout. The
+materially changed recovery keeps the same exact slot/loss/update contract but
+uses node-local Teacher shards and hierarchical Critic gradient synchronization:
+
+```text
+--execution-mode pipeline --pipeline-variant 6g10score-node-local
+```
+
+Its preflight runs a node-local FSDP-like large all-gather plus node-local SUM,
+leader SUM, node-local broadcast, and divide-by-10 before model construction.
+It never issues a large collective on the failed ranks-6-through-15 group.
+
 3. Run one baseline correctness/capacity trial.
 4. Run one 8G+8Score correctness/capacity trial.
 5. Generate the paired correctness receipt. Only a PASS receipt unlocks timing.
