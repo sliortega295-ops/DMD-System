@@ -320,7 +320,10 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert '"--remote-output-root", required=True' in controller
     assert 'args.remote_output_root / args.run_id' in controller
     assert 'args.remote_root / "artifacts/runs"' not in controller
-    assert 'choices=("b1", "score-b2", "6g10score")' in controller
+    assert (
+        'choices=("b1", "score-b2", "6g10score", "6g10score-node-local")'
+        in controller
+    )
     assert '"LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant' in controller
     assert 'resolved_plan.node0.json' in controller
 
