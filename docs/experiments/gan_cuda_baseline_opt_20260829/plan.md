@@ -339,3 +339,15 @@
     diagnostic-only Nsight profile before choosing C20. Its sole purpose is to
     remeasure the post-fix no-traced, exposed-NCCL, compute and phase budgets;
     it may not update the `129.441379467 s` formal denominator.
+61. C21 passes and reduces formal Full5 to `125.814004444 s` by retaining all
+    41 Generator FSDP units across the five no-grad B1 rollouts. C22 profiles
+    that exact path: rollout NCCL union falls by `19.362796 s` versus C20 and
+    only rollout 0 still communicates. The profile is diagnostic-only and the
+    C21 denominator remains authoritative.
+62. C22 also finds two application-owned allocator flushes introduced only as
+    conservative C21 capacity guards. On representative rank 0 they occupy
+    `1.258138 s` before materialization and `0.327522 s` after reshard;
+    all-rank node0 median `cudaFree` overlap with GPU-inactive intervals is
+    `2.1232 s`. C23 may only elide these two cache releases while preserving
+    the 41 explicit reshard operations and all model/collective semantics.
+    Run correctness/capacity before one formal timing; OOM rejects C23.

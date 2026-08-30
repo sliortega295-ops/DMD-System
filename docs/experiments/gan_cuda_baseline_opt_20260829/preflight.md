@@ -850,3 +850,30 @@
 - **Decision:** **GO_DIAGNOSTIC_ONLY for one exact C21 Nsight capture**. Keep
   the C21 formal denominator frozen; select no next optimization until the new
   phase attribution exists.
+
+## C22 result and C23 allocator-cache GO decision
+
+- C22 run `iter377_gan_cuda_c21_profile_p1_20260830` passes: 16/16 exact
+  range receipts, two nonempty reports/SQLite, devices 0--7 on both nodes,
+  zero unresolved kernel names/parser errors/OOM, and no GPU worker residue.
+- The formal denominator remains `125.814004444 s`. The diagnostic exact-range
+  median is `127.053260181 s`, with `116.565187 s` non-NCCL compute union,
+  `38.595025 s` NCCL union, `33.228303 s` overlap, `5.337442 s` NCCL exposed,
+  `0.352561 s` copy exposed and `4.899652 s` no traced GPU activity.
+- C21 achieved its intended mechanism: the no-grad rollout NCCL union drops
+  from `20.466938 s` to `1.104142 s`; rollouts 1--4 contain zero NCCL.
+- A new source-qualified allocator cost remains. Median `cudaFree` overlap
+  with GPU-inactive intervals is `2.1232 s`. Representative rank 0 shows the
+  persistence pre-flush as a `1.258138 s` envelope and the post-reshard flush
+  as `0.327522 s`. These are the two calls in
+  `fsdp2_nograd_persistence.py`, not an inferred model operation.
+- **Authorized hypothesis:** retain the already-freed Generator parameter
+  storage in PyTorch's allocator cache across the bounded persistence entry
+  and exit. Do not retain an unsharded parameter, skip explicit reshard, or
+  change a model/collective call.
+- **Falsifiable question:** can the same C21 workload reuse cached blocks for
+  Generator materialization and subsequent Critic work, keep all 41 units
+  restored, pass 16/16 correctness without OOM, and reduce one formal Full5?
+- **Decision:** **GO_CAPACITY_FIRST for C23**. Any CUDA/cgroup OOM, missing
+  reshard receipt, or inventory drift rejects no-flush mode and returns to
+  C21. Timing is allowed only after correctness/capacity passes.
