@@ -804,3 +804,26 @@
   parser health makes the diagnostic fail closed.
 - **Decision:** **GO_DIAGNOSTIC_ONLY for the C18 post-fix profile**. Choose at
   most one C20 optimization only after that evidence exists.
+
+## C20 result and C21 GO decision
+
+- C20 run `iter375_gan_cuda_c18_profile_p1_20260830` is valid diagnostic
+  evidence: 16/16 range receipts, two nonempty reports/SQLite, no parser error,
+  no OOM, and an exact-range median of `130.093331865 s`.
+- The formal denominator remains C18 `129.441379467 s`.  C20 reports Full5
+  medians of `119.306060 s` compute union, `57.804130 s` NCCL union,
+  `50.703842 s` compute/NCCL overlap, `6.947460 s` NCCL exposed vs compute,
+  `0.376638 s` copy exposed and `3.470532 s` no traced GPU activity.
+- C17/C18 achieved their registered mechanism: Score/DMD/GAN-G wall is
+  `2.691273 s` lower than C15 while its compute union is unchanged.  Reopening
+  scalar-log/free-memory repair is rejected.
+- The five exact no-grad Generator rollouts remain `30.986322 s`, including
+  `20.466938 s` NCCL union and `2.543321 s` exposed NCCL.  B2/B5, HSDP,
+  explicit prefetch and protocol forcing are prior bounded negatives.
+- **New falsifiable question:** can the already-supported FSDP2 eval behavior
+  retain all Generator full parameters after the first B1 rollout, reuse them
+  for the other four, and explicitly restore all 41 FSDP units before Critic
+  without exceeding 40-GiB HBM or changing any logical/physical call?
+- **Decision:** **GO for C21 capacity/correctness first**.  Full persistence is
+  one bounded candidate.  OOM, a non-restored module, or any inventory drift
+  rejects it; there is no automatic partial-block fallback in this iteration.
