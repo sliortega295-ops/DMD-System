@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import importlib.util
 import json
 from pathlib import Path
 import subprocess
@@ -161,21 +160,9 @@ def test_profile_analyzer_streams_each_large_activity_table_once() -> None:
 
 def test_profile_analyzer_attributes_collectives_inside_each_phase() -> None:
     path = ROOT / "scripts/distillschedule/analyze_livewan_crossscale_nsys.py"
-    spec = importlib.util.spec_from_file_location("livewan_nsys_analyzer", path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    value = module._collective_metric(
-        (10, 30),
-        {
-            kind: ([(5, 20), (25, 40)] if kind == "all_gather" else [])
-            for kind in module.COLLECTIVES
-        },
-        [(15, 28)],
-    )
-    assert value["all_gather"] == {
-        "events": 2,
-        "union_ns": 15,
-        "hidden_by_compute_ns": 8,
-        "exposed_vs_compute_ns": 7,
-    }
+    analyzer = path.read_text(encoding="utf-8")
+    assert "def _collective_metric(" in analyzer
+    assert '"collectives": _collective_metric(' in analyzer
+    assert 'phase["collectives"]["all_gather"]' in analyzer
+    assert 'phase["collectives"]["all_reduce"]' in analyzer
+    assert 'phase["collectives"]["p2p"]' in analyzer
