@@ -389,3 +389,18 @@ model math.  Correctness must prove exact policy propagation and all existing
 16-rank semantic receipts before one unprofiled timing.  The experiment does
 not assume the full `10.416 s` rank0 synchronization API wall is recoverable;
 the question is intentionally bounded and falsifiable.
+
+## C12 measured result
+
+C12 passes all gates, but the formal gain is deliberately classified as tiny.
+The timing is `138.176082544 s`, only `0.286057668 s` (`0.206596%`) below
+C11.  All 16 ranks record zero in-window rollout synchronization and allocator
+flush counts while retaining the outer Full5 boundary synchronization,
+G1/C5/EMA1, final G201/C1005/EMA801, and the same HBM/capacity envelope.
+
+This result is important negative evidence: the source-owned fences were
+mostly waiting for work that the next phase required anyway, so rank0's
+`10.416 s` aggregate synchronization API wall was never a valid removable-time
+estimate.  Further broad synchronization deletion is closed.  The remaining
+`17.065944441 s` requires a source-qualified repeated compute,
+materialization, or structural execution mechanism.

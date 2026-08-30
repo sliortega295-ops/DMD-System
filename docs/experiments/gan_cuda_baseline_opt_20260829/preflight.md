@@ -519,3 +519,27 @@
   semantic relaxation may be combined.
 - Decision: **GO** for C12 focused tests, validate-only, correctness/capacity,
   and then one timing only if every preceding gate passes.
+
+## C12 iteration-end handoff
+
+- Code `7811b20e967d0807987094f22ab3f8647357d8f1` passes focused static tests,
+  controller dry-run, world16 validate-only, correctness/capacity and one
+  unprofiled timing.  The initial system-Python test invocation exposed only a
+  mismatched historical Triton CUDA package; rerunning the same focused suite
+  without that non-training CUDA environment gives `33 passed, 36 skipped`.
+  Real correctness then exercises the pinned Torch 2.10/Triton runtime.
+- All 16 correctness and timing receipts report exactly zero Generator
+  allocator flushes, zero Generator post-rollout synchronizations, zero Critic
+  rollout synchronizations, and preserved outer Full5 boundary
+  synchronization.  Updates and final versions remain G1/C5/EMA1 and
+  G201/C1005/EMA801; maximum allocated/reserved are `24.9634/38.3125 GiB`,
+  with zero CUDA/cgroup OOM delta.
+- Formal result: `138.176082544 s`, only `0.286057668 s` (`0.206596%`) faster
+  than C11.  This proves the source-owned explicit fences were mostly waiting
+  on work that was already required, rather than creating a large recoverable
+  critical-path bubble.  Do not extrapolate rank0's total synchronization API
+  wall into removable time.
+- C12 becomes the fastest valid substrate, but remains `17.065944441 s` above
+  the 30% target.  The next candidate must target repeated compute or a larger
+  source-qualified launch/materialization family; no further broad sync
+  removal is authorized without new evidence.

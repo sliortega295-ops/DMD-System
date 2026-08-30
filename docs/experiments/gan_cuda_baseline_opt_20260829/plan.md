@@ -194,3 +194,9 @@
     correctness/capacity and, only on PASS, one unprofiled formal timing.  Do
     not combine finite-check removal, state-machine changes, prefetch, or a
     second optimization.
+42. C12 passes all gates at `7811b20`: 16/16 ranks report zero in-window
+    rollout fences/allocator flushes with outer boundary sync preserved.  Its
+    formal Full5 is `138.176082544 s`, a real but tiny `0.206596%` gain over
+    C11.  Promote the code as the fastest substrate, close broad sync removal
+    as a major hypothesis, and return to profile-qualified compute/kernel
+    ownership for the remaining `17.065944441 s` gap.
