@@ -86,6 +86,15 @@ def main() -> int:
         errors.append(f"unsupported Score physical batch size={score_physical_batch_size}")
     if args.execution_mode == "baseline" and score_physical_batch_size != 1:
         errors.append("baseline physical Score batch must remain B1")
+    critic_physical_batch_size = int(
+        plan.get("metadata", {}).get("critic_physical_batch_size", 1)
+    )
+    if critic_physical_batch_size not in {1, 2}:
+        errors.append(
+            f"unsupported Critic physical batch size={critic_physical_batch_size}"
+        )
+    if args.execution_mode == "baseline" and critic_physical_batch_size != 1:
+        errors.append("baseline physical Critic batch must remain B1")
     rows: list[dict[str, Any]] = []
     for rank in range(WORLD_SIZE):
         path = args.run_root / "receipts" / f"rank_{rank:03d}.json"
@@ -151,6 +160,16 @@ def main() -> int:
                 "critic/grad/checkpoint": 40,
             }
         )
+    elif pool_policy == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2":
+        expected_physical_inventory.update(
+            {
+                # Step0 DMD/Teacher remains two physical B1 calls per Score
+                # rank; only the two Critic training samples are exact B2.
+                "teacher/nograd/plain": 16,
+                "critic/nograd/plain": 16,
+                "critic/grad/checkpoint": 40,
+            }
+        )
     elif pool_policy in {
         "persistent_6g_10score_teacher_fsdp10",
         "persistent_6g_10score_teacher_node_local_hierarchical",
@@ -173,6 +192,12 @@ def main() -> int:
             actual_physical_inventory[key] = actual_physical_inventory.get(key, 0) + int(count)
         if int(row.get("score_physical_batch_size", score_physical_batch_size)) != score_physical_batch_size:
             errors.append(f"rank{row['rank']}: Score physical batch receipt differs from plan")
+        if int(
+            row.get("critic_physical_batch_size", critic_physical_batch_size)
+        ) != critic_physical_batch_size:
+            errors.append(
+                f"rank{row['rank']}: Critic physical batch receipt differs from plan"
+            )
         if row.get("pool_policy") != pool_policy:
             errors.append(f"rank{row['rank']}: pool policy receipt differs from plan")
     for key, expected in expected_logical_inventory.items():
@@ -258,6 +283,7 @@ def main() -> int:
         "physical_call_inventory": actual_physical_inventory,
         "expected_physical_call_inventory": expected_physical_inventory,
         "score_physical_batch_size": score_physical_batch_size,
+        "critic_physical_batch_size": critic_physical_batch_size,
         "pool_policy": pool_policy,
         "generator_ranks": list(generator_ranks),
         "score_ranks": list(score_ranks),

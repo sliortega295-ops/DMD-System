@@ -134,6 +134,7 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
             layout = {
                 "persistent_8g_8score_teacher_fsdp8": PIPELINE_8G8S_LAYOUT,
                 "persistent_8g_8score_teacher_fsdp8_runahead": PIPELINE_8G8S_LAYOUT,
+                "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2": PIPELINE_8G8S_LAYOUT,
                 "persistent_8g_8score_teacher_fsdp8_score_b2": PIPELINE_8G8S_LAYOUT,
                 "persistent_6g_10score_teacher_fsdp10": PIPELINE_6G10S_LAYOUT,
                 "persistent_6g_10score_teacher_node_local_hierarchical": PIPELINE_6G10S_NODE_LOCAL_LAYOUT,
@@ -151,7 +152,10 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                 self._fail("pipeline Student must be GPU-resident", "training_backends.generator.kind")
             if plan.training_backends["teacher"].kind != TrainingBackendKind.FSDP:
                 self._fail("pipeline Teacher must use its score-pool FSDP2 mesh", "training_backends.teacher.kind")
-            if pool_policy == "persistent_8g_8score_teacher_fsdp8_runahead":
+            if pool_policy in {
+                "persistent_8g_8score_teacher_fsdp8_runahead",
+                "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
+            }:
                 if plan.metadata.get("generator_nograd_runahead") is not True:
                     self._fail(
                         "run-ahead policy must explicitly enable Generator no-grad run-ahead",
@@ -161,6 +165,27 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                     self._fail(
                         "run-ahead policy requires exactly the two existing B1 streamers",
                         "metadata.runahead_buffers_per_generator_rank",
+                    )
+            if pool_policy == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2":
+                if plan.metadata.get("score_physical_batch_size") != 1:
+                    self._fail(
+                        "Critic-only B2 must preserve B1 DMD",
+                        "metadata.score_physical_batch_size",
+                    )
+                if plan.metadata.get("critic_physical_batch_size") != 2:
+                    self._fail(
+                        "Critic-only B2 plan must explicitly register B2",
+                        "metadata.critic_physical_batch_size",
+                    )
+                if (
+                    plan.training_backends["score"].options.get(
+                        "critic_physical_batch_policy"
+                    )
+                    != "exact_b2_after_b1_dmd"
+                ):
+                    self._fail(
+                        "Critic-only B2 backend policy mismatch",
+                        "training_backends.score.options.critic_physical_batch_policy",
                     )
             if pool_policy == "persistent_6g_10score_teacher_node_local_hierarchical":
                 generator_options = dict(plan.training_backends["generator"].options)

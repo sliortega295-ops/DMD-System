@@ -447,6 +447,7 @@ def _plan_role_ranks(plan: Mapping[str, Any], *, mode: str) -> tuple[tuple[int, 
     expected = {
         "persistent_8g_8score_teacher_fsdp8": PIPELINE_8G8S_LAYOUT,
         "persistent_8g_8score_teacher_fsdp8_runahead": PIPELINE_8G8S_LAYOUT,
+        "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2": PIPELINE_8G8S_LAYOUT,
         "persistent_8g_8score_teacher_fsdp8_score_b2": PIPELINE_8G8S_LAYOUT,
         "persistent_6g_10score_teacher_fsdp10": PIPELINE_6G10S_LAYOUT,
         "persistent_6g_10score_teacher_node_local_hierarchical": PIPELINE_6G10S_NODE_LOCAL_LAYOUT,
@@ -1370,6 +1371,24 @@ def _score_physical_batch_size(plan: Mapping[str, Any], *, mode: str) -> int:
     return value
 
 
+def _critic_physical_batch_size(plan: Mapping[str, Any], *, mode: str) -> int:
+    value = int(plan.get("metadata", {}).get("critic_physical_batch_size", 1))
+    _require(value in {1, 2}, "unsupported Critic physical batch size")
+    if mode == "baseline":
+        _require(value == 1, "sequential denominator must remain Critic B1")
+    if value == 2:
+        _require(
+            plan.get("metadata", {}).get("pool_policy")
+            == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
+            "Critic B2 is registered only for the run-ahead B1-DMD candidate",
+        )
+        _require(
+            int(plan.get("metadata", {}).get("score_physical_batch_size", 1)) == 1,
+            "Critic-only B2 must preserve the step0 DMD B1 path",
+        )
+    return value
+
+
 def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _require(int(plan["hardware"]["world_size"]) == WORLD_SIZE, "plan is not world16")
     _require(int(plan["workload"]["shape"]["batch_size"]) == GLOBAL_BATCH, "plan is not global-B16")
@@ -1378,6 +1397,7 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _require(plan["workload"]["metadata"]["wan21_commit"] == WAN21_COMMIT, "plan Wan2.1 mismatch")
     _require(not plan["workload"]["branches"]["ema"], "EMA must be outside Full5")
     _score_physical_batch_size(plan, mode=mode)
+    _critic_physical_batch_size(plan, mode=mode)
 
 
 def _validate_only(
@@ -1521,6 +1541,7 @@ def run_worker(
             elif plan.get("metadata", {}).get("pool_policy") in {
                 "persistent_8g_8score_teacher_fsdp8",
                 "persistent_8g_8score_teacher_fsdp8_runahead",
+                "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
             }:
                 _run_pipeline_8x8(
                     torch=torch, rank=rank, trace=trace, loader=loader, bundle=bundle,
@@ -1528,7 +1549,14 @@ def run_worker(
                     run_kind=run_kind, evidence=evidence, versions=versions, device=device,
                     rollout_runahead=(
                         plan.get("metadata", {}).get("pool_policy")
-                        == "persistent_8g_8score_teacher_fsdp8_runahead"
+                        in {
+                            "persistent_8g_8score_teacher_fsdp8_runahead",
+                            "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
+                        }
+                    ),
+                    critic_b2_only=(
+                        plan.get("metadata", {}).get("pool_policy")
+                        == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2"
                     ),
                 )
             elif plan.get("metadata", {}).get("pool_policy") == "persistent_8g_8score_teacher_fsdp8_score_b2":
@@ -1609,6 +1637,7 @@ def run_worker(
         "physical_call_inventory": inventory.counts,
         "logical_call_inventory": logical_call_inventory,
         "score_physical_batch_size": _score_physical_batch_size(plan, mode=mode),
+        "critic_physical_batch_size": _critic_physical_batch_size(plan, mode=mode),
         "pool_policy": plan.get("metadata", {}).get("pool_policy", "world16_fsdp2_sequential"),
         "full5_wall_seconds": full5_wall,
         "construction_wall_seconds": build_wall,
@@ -1913,6 +1942,7 @@ def _run_pipeline_8x8(
     versions: dict[str, int],
     device: Any,
     rollout_runahead: bool = False,
+    critic_b2_only: bool = False,
 ) -> None:
     import torch.distributed as dist
 
@@ -2165,26 +2195,57 @@ def _run_pipeline_8x8(
                     grad1_send = grad1.contiguous()
                     grad1_work = dist.isend(grad1_send, dst=peer)
                 evidence.transport_bytes += grad1.numel() * grad1.element_size()
-            with _profile_range(
-                torch, run_kind=run_kind,
-                label=f"livewan/pipeline/score/step_{step}/critic_backward_wave_0",
-            ):
-                loss0 = critic_backward_for_sample(
-                    torch, bundle=bundle, score_context=score_context, row=rows[0],
-                    x0=first_x0, sample_context=first_sample_context, context_lens=context_lens,
-                    sample_weight=0.5,
-                )
-                evidence.add_logical_score_calls("critic/grad/checkpoint", 1)
-            with _profile_range(
-                torch, run_kind=run_kind,
-                label=f"livewan/pipeline/score/step_{step}/critic_backward_wave_1",
-            ):
-                loss1 = critic_backward_for_sample(
-                    torch, bundle=bundle, score_context=score_context, row=rows[1],
-                    x0=second_x0, sample_context=second_sample_context, context_lens=context_lens,
-                    sample_weight=0.5,
-                )
-                evidence.add_logical_score_calls("critic/grad/checkpoint", 1)
+            if critic_b2_only:
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label=f"livewan/pipeline_runahead/score/step_{step}/critic_backward_b2",
+                ):
+                    batched_context = ScoreSampleContext(
+                        teacher=torch.cat(
+                            (first_sample_context.teacher, second_sample_context.teacher),
+                            dim=0,
+                        ),
+                        critic=torch.cat(
+                            (first_sample_context.critic, second_sample_context.critic),
+                            dim=0,
+                        ),
+                    )
+                    losses = critic_backward_for_batch(
+                        torch,
+                        bundle=bundle,
+                        score_context=score_context,
+                        rows=rows,
+                        x0=torch.cat((first_x0, second_x0), dim=0),
+                        sample_context=batched_context,
+                        context_lens=torch.full(
+                            (2,), TEXT_SHAPE[1], device=device, dtype=torch.long
+                        ),
+                        loss_scale=1.0,
+                    )
+                    loss0, loss1 = losses
+                    evidence.add_logical_score_calls("critic/grad/checkpoint", 2)
+            else:
+                with _profile_range(
+                    torch, run_kind=run_kind,
+                    label=f"livewan/pipeline/score/step_{step}/critic_backward_wave_0",
+                ):
+                    loss0 = critic_backward_for_sample(
+                        torch, bundle=bundle, score_context=score_context, row=rows[0],
+                        x0=first_x0, sample_context=first_sample_context, context_lens=context_lens,
+                        sample_weight=0.5,
+                    )
+                    evidence.add_logical_score_calls("critic/grad/checkpoint", 1)
+                with _profile_range(
+                    torch, run_kind=run_kind,
+                    label=f"livewan/pipeline/score/step_{step}/critic_backward_wave_1",
+                ):
+                    loss1 = critic_backward_for_sample(
+                        torch, bundle=bundle, score_context=score_context, row=rows[1],
+                        x0=second_x0, sample_context=second_sample_context, context_lens=context_lens,
+                        sample_weight=0.5,
+                    )
+                    evidence.add_logical_score_calls("critic/grad/checkpoint", 1)
             if grad1_work is not None:
                 with _profile_range(
                     torch, run_kind=run_kind,
