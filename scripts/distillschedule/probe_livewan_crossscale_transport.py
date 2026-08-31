@@ -40,7 +40,8 @@ def main() -> int:
     parser.add_argument(
         "--pipeline-variant",
         choices=(
-            "b1", "b1-runahead", "b1-runahead-critic-b2", "score-b2",
+            "b1", "b1-runahead", "b1-runahead-critic-b2",
+            "b1-runahead-critic-b2-local-context", "score-b2",
             "6g10score", "6g10score-node-local",
             "6g10score-node-local-fused",
         ),
@@ -317,6 +318,11 @@ def main() -> int:
         "default_world_initialized_collectively": True,
         "score_gradient_1_async": True,
         "pipeline_variant": args.pipeline_variant,
+        "score_context_transport": (
+            "trace_local_replay"
+            if args.pipeline_variant == "b1-runahead-critic-b2-local-context"
+            else "cuda_p2p_float32"
+        ),
         "observed": observed,
         "observed_gradients": observed_gradients,
     }

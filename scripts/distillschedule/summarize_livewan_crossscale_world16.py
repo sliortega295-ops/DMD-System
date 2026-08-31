@@ -160,7 +160,10 @@ def main() -> int:
                 "critic/grad/checkpoint": 40,
             }
         )
-    elif pool_policy == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2":
+    elif pool_policy in {
+        "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
+        "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
+    }:
         expected_physical_inventory.update(
             {
                 # Step0 DMD/Teacher remains two physical B1 calls per Score

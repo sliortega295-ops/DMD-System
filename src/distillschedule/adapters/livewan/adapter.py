@@ -135,6 +135,7 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                 "persistent_8g_8score_teacher_fsdp8": PIPELINE_8G8S_LAYOUT,
                 "persistent_8g_8score_teacher_fsdp8_runahead": PIPELINE_8G8S_LAYOUT,
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2": PIPELINE_8G8S_LAYOUT,
+                "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context": PIPELINE_8G8S_LAYOUT,
                 "persistent_8g_8score_teacher_fsdp8_score_b2": PIPELINE_8G8S_LAYOUT,
                 "persistent_6g_10score_teacher_fsdp10": PIPELINE_6G10S_LAYOUT,
                 "persistent_6g_10score_teacher_node_local_hierarchical": PIPELINE_6G10S_NODE_LOCAL_LAYOUT,
@@ -155,6 +156,7 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
             if pool_policy in {
                 "persistent_8g_8score_teacher_fsdp8_runahead",
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
+                "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
             }:
                 if plan.metadata.get("generator_nograd_runahead") is not True:
                     self._fail(
@@ -166,7 +168,10 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                         "run-ahead policy requires exactly the two existing B1 streamers",
                         "metadata.runahead_buffers_per_generator_rank",
                     )
-            if pool_policy == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2":
+            if pool_policy in {
+                "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
+                "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
+            }:
                 if plan.metadata.get("score_physical_batch_size") != 1:
                     self._fail(
                         "Critic-only B2 must preserve B1 DMD",
@@ -186,6 +191,28 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                     self._fail(
                         "Critic-only B2 backend policy mismatch",
                         "training_backends.score.options.critic_physical_batch_policy",
+                    )
+            if (
+                pool_policy
+                == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context"
+            ):
+                if plan.metadata.get("score_context_transport") != "trace_local_replay":
+                    self._fail(
+                        "local-context policy must replay context from the immutable trace",
+                        "metadata.score_context_transport",
+                    )
+                if (
+                    plan.metadata.get("context_value_contract")
+                    != "same_fp32_prompt_selected_by_immutable_dataset_index"
+                ):
+                    self._fail(
+                        "local-context value contract is not exact FP32 trace replay",
+                        "metadata.context_value_contract",
+                    )
+                if plan.lifecycle.metadata.get("context_p2p") is not False:
+                    self._fail(
+                        "local-context policy must disable only context P2P",
+                        "lifecycle.metadata.context_p2p",
                     )
             if pool_policy == "persistent_6g_10score_teacher_node_local_hierarchical":
                 generator_options = dict(plan.training_backends["generator"].options)

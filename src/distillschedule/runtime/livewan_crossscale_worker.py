@@ -448,6 +448,7 @@ def _plan_role_ranks(plan: Mapping[str, Any], *, mode: str) -> tuple[tuple[int, 
         "persistent_8g_8score_teacher_fsdp8": PIPELINE_8G8S_LAYOUT,
         "persistent_8g_8score_teacher_fsdp8_runahead": PIPELINE_8G8S_LAYOUT,
         "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2": PIPELINE_8G8S_LAYOUT,
+        "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context": PIPELINE_8G8S_LAYOUT,
         "persistent_8g_8score_teacher_fsdp8_score_b2": PIPELINE_8G8S_LAYOUT,
         "persistent_6g_10score_teacher_fsdp10": PIPELINE_6G10S_LAYOUT,
         "persistent_6g_10score_teacher_node_local_hierarchical": PIPELINE_6G10S_NODE_LOCAL_LAYOUT,
@@ -927,10 +928,24 @@ class InputLoader:
         value = self.torch.load(row.sample_path, map_location="cpu", weights_only=False)
         latent = value["latents"].float()[:, : LATENT_SHAPE[2]]
         prompt_index = int(value["prompt_idx"])
+        _require(
+            prompt_index == row.dataset_index,
+            f"trace/sample prompt identity mismatch for {row.operation_key}",
+        )
         context = self.prompts["pos"][prompt_index].float()
         _require(tuple(latent.shape) == LATENT_SHAPE[1:], f"latent shape mismatch for {row.operation_key}")
         _require(tuple(context.shape) == TEXT_SHAPE[1:], f"text shape mismatch for {row.operation_key}")
         return latent, context, prompt_index
+
+    def context_from_trace(self, row: OperationTraceRow, *, device: Any) -> Any:
+        """Replay the exact prompt tensor without cross-node context P2P."""
+
+        context = self.prompts["pos"][row.dataset_index].float()
+        _require(
+            tuple(context.shape) == TEXT_SHAPE[1:],
+            f"trace-local text shape mismatch for {row.operation_key}",
+        )
+        return context.to(device, non_blocking=True).unsqueeze(0)
 
 
 def _build_streamers(torch: Any, *, student: Any, count: int, device: Any):
@@ -1400,7 +1415,10 @@ def _critic_physical_batch_size(plan: Mapping[str, Any], *, mode: str) -> int:
     if value == 2:
         _require(
             plan.get("metadata", {}).get("pool_policy")
-            == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
+            in {
+                "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
+                "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
+            },
             "Critic B2 is registered only for the run-ahead B1-DMD candidate",
         )
         _require(
@@ -1566,6 +1584,7 @@ def run_worker(
                 "persistent_8g_8score_teacher_fsdp8",
                 "persistent_8g_8score_teacher_fsdp8_runahead",
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
+                "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
             }:
                 _run_pipeline_8x8(
                     torch=torch, rank=rank, trace=trace, loader=loader, bundle=bundle,
@@ -1576,11 +1595,19 @@ def run_worker(
                         in {
                             "persistent_8g_8score_teacher_fsdp8_runahead",
                             "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
+                            "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
                         }
                     ),
                     critic_b2_only=(
                         plan.get("metadata", {}).get("pool_policy")
-                        == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2"
+                        in {
+                            "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
+                            "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
+                        }
+                    ),
+                    score_context_from_trace=(
+                        plan.get("metadata", {}).get("pool_policy")
+                        == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context"
                     ),
                 )
             elif plan.get("metadata", {}).get("pool_policy") == "persistent_8g_8score_teacher_fsdp8_score_b2":
@@ -1825,24 +1852,37 @@ def _run_baseline(
                 versions["critic"] += 1
 
 
-def _recv_pair(torch: Any, *, source: int, device: Any) -> tuple[Any, Any]:
+def _recv_pair(
+    torch: Any, *, source: int, device: Any, receive_context: bool = True
+) -> tuple[Any, Any | None]:
     import torch.distributed as dist
     x0 = torch.empty(LATENT_SHAPE, device=device, dtype=torch.float32)
-    context = torch.empty(TEXT_SHAPE, device=device, dtype=torch.float32)
     dist.recv(x0, src=source)
-    dist.recv(context, src=source)
+    context = None
+    if receive_context:
+        context = torch.empty(TEXT_SHAPE, device=device, dtype=torch.float32)
+        dist.recv(context, src=source)
     return x0, context
 
 
-def _send_pair(*, destination: int, prepared: PreparedRollout, asynchronous: bool):
+def _send_pair(
+    *,
+    destination: int,
+    prepared: PreparedRollout,
+    asynchronous: bool,
+    send_context: bool = True,
+):
     import torch.distributed as dist
     if asynchronous:
-        return (
-            dist.isend(prepared.x0.contiguous(), dst=destination),
-            dist.isend(prepared.raw_context.contiguous(), dst=destination),
-        )
+        requests = [dist.isend(prepared.x0.contiguous(), dst=destination)]
+        if send_context:
+            requests.append(
+                dist.isend(prepared.raw_context.contiguous(), dst=destination)
+            )
+        return tuple(requests)
     dist.send(prepared.x0.contiguous(), dst=destination)
-    dist.send(prepared.raw_context.contiguous(), dst=destination)
+    if send_context:
+        dist.send(prepared.raw_context.contiguous(), dst=destination)
     return ()
 
 
@@ -1969,12 +2009,15 @@ def _run_pipeline_8x8(
     device: Any,
     rollout_runahead: bool = False,
     critic_b2_only: bool = False,
+    score_context_from_trace: bool = False,
 ) -> None:
     import torch.distributed as dist
 
     is_generator = rank < 8
     peer = rank + 8 if is_generator else rank - 8
-    pair_bytes = (math.prod(LATENT_SHAPE) + math.prod(TEXT_SHAPE)) * 4
+    pair_bytes = math.prod(LATENT_SHAPE) * 4
+    if not score_context_from_trace:
+        pair_bytes += math.prod(TEXT_SHAPE) * 4
     if is_generator:
         _require(bundle.student is not None and len(streamers) == 2, "pipeline G role is incomplete")
     else:
@@ -2046,6 +2089,7 @@ def _run_pipeline_8x8(
                             destination=peer,
                             prepared=prepared,
                             asynchronous=True,
+                            send_context=not score_context_from_trace,
                         )
                     evidence.transport_bytes += pair_bytes
                     # Retain payload tensors until NCCL reports completion.
@@ -2076,7 +2120,12 @@ def _run_pipeline_8x8(
                 torch, run_kind=run_kind,
                 label=f"livewan/pipeline/g/step_{step}/send_wave_0",
             ):
-                _send_pair(destination=peer, prepared=first, asynchronous=False)
+                _send_pair(
+                    destination=peer,
+                    prepared=first,
+                    asynchronous=False,
+                    send_context=not score_context_from_trace,
+                )
             evidence.transport_bytes += pair_bytes
             with _profile_range(
                 torch, run_kind=run_kind,
@@ -2102,7 +2151,12 @@ def _run_pipeline_8x8(
                 ):
                     dist.recv(grad0, src=peer)
                 evidence.transport_bytes += grad0.numel() * grad0.element_size()
-                sends = _send_pair(destination=peer, prepared=second, asynchronous=True)
+                sends = _send_pair(
+                    destination=peer,
+                    prepared=second,
+                    asynchronous=True,
+                    send_context=not score_context_from_trace,
+                )
                 evidence.transport_bytes += pair_bytes
                 with _profile_range(
                     torch, run_kind=run_kind,
@@ -2158,7 +2212,12 @@ def _run_pipeline_8x8(
                     bundle.generator_optimizer.step()
                     versions["generator"] += 1
             else:
-                sends = _send_pair(destination=peer, prepared=second, asynchronous=True)
+                sends = _send_pair(
+                    destination=peer,
+                    prepared=second,
+                    asynchronous=True,
+                    send_context=not score_context_from_trace,
+                )
                 evidence.transport_bytes += pair_bytes
                 for request in sends:
                     request.wait()
@@ -2169,8 +2228,21 @@ def _run_pipeline_8x8(
                 torch, run_kind=run_kind,
                 label=f"livewan/pipeline/score/step_{step}/recv_wave_0",
             ):
-                first_x0, first_context = _recv_pair(torch, source=peer, device=device)
+                first_x0, first_context = _recv_pair(
+                    torch,
+                    source=peer,
+                    device=device,
+                    receive_context=not score_context_from_trace,
+                )
             evidence.transport_bytes += pair_bytes
+            if score_context_from_trace:
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label=f"livewan/pipeline/score/step_{step}/local_context_0",
+                ):
+                    first_context = loader.context_from_trace(rows[0], device=device)
+            _require(first_context is not None, "first Score context is missing")
             context_lens = torch.tensor([TEXT_SHAPE[1]], device=device, dtype=torch.long)
             first_sample_context = prepare_score_sample_context(
                 torch,
@@ -2195,8 +2267,21 @@ def _run_pipeline_8x8(
                 torch, run_kind=run_kind,
                 label=f"livewan/pipeline/score/step_{step}/recv_wave_1",
             ):
-                second_x0, second_context = _recv_pair(torch, source=peer, device=device)
+                second_x0, second_context = _recv_pair(
+                    torch,
+                    source=peer,
+                    device=device,
+                    receive_context=not score_context_from_trace,
+                )
             evidence.transport_bytes += pair_bytes
+            if score_context_from_trace:
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label=f"livewan/pipeline/score/step_{step}/local_context_1",
+                ):
+                    second_context = loader.context_from_trace(rows[1], device=device)
+            _require(second_context is not None, "second Score context is missing")
             second_sample_context = prepare_score_sample_context(
                 torch,
                 bundle=bundle,

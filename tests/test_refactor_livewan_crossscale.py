@@ -26,6 +26,7 @@ from distillschedule.workloads.livewan_crossscale import (
 )
 from distillschedule.runtime.livewan_crossscale_worker import (
     OperationTraceRow,
+    InputLoader,
     _batch_seeded_flow_inputs,
     _per_sample_mse,
     _pipeline_slot_routes,
@@ -38,6 +39,7 @@ BASELINE = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_
 PIPELINE = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8.json"
 PIPELINE_RUNAHEAD = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead.json"
 PIPELINE_RUNAHEAD_CRITIC_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2.json"
+PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context.json"
 PIPELINE_SCORE_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
 PIPELINE_6G10S = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json"
 PIPELINE_6G10S_NODE_LOCAL = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score_node_local.json"
@@ -116,6 +118,38 @@ def test_runahead_critic_b2_preserves_b1_dmd_and_single_commit() -> None:
     assert candidate.metadata["critic_physical_batch_size"] == 2
     assert candidate.metadata["critic_b2_preserves_per_sample_rng"] is True
     assert candidate.metadata["critic_b2_preserves_single_commit_per_step"] is True
+
+
+def test_local_score_context_changes_only_transport_residency() -> None:
+    reference = load_plan(PIPELINE_RUNAHEAD_CRITIC_B2).plan
+    candidate = load_plan(PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT).plan
+    LiveWanSFDMDAdapter().validate(candidate)
+    assert reference.workload.to_dict() == candidate.workload.to_dict()
+    assert reference.hardware.to_dict() == candidate.hardware.to_dict()
+    assert reference.rank_groups == candidate.rank_groups
+    assert reference.training_backends == candidate.training_backends
+    assert candidate.metadata["score_context_transport"] == "trace_local_replay"
+    assert candidate.lifecycle.metadata["context_p2p"] is False
+
+    drifted = replace(
+        candidate,
+        metadata={**candidate.metadata, "score_context_transport": "cuda_p2p_float32"},
+    )
+    with pytest.raises(ContractViolation, match="immutable trace"):
+        LiveWanSFDMDAdapter().validate(drifted)
+
+
+def test_trace_local_score_context_selects_exact_fp32_prompt() -> None:
+    torch = pytest.importorskip("torch")
+    loader = object.__new__(InputLoader)
+    loader.prompts = {"pos": torch.zeros((4, 512, 4096), dtype=torch.float32)}
+    loader.prompts["pos"][2].fill_(2.0)
+    row = _trace_row(0, 100)
+    row = replace(row, dataset_index=2)
+    context = loader.context_from_trace(row, device=torch.device("cpu"))
+    assert context.dtype == torch.float32
+    assert context.shape == (1, 512, 4096)
+    assert torch.equal(context[0], loader.prompts["pos"][2])
 
 
 def test_6g10score_plan_changes_only_placement_and_exact_physical_batching() -> None:
@@ -410,6 +444,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     )
     assert '"b1-runahead"' in controller
     assert '"b1-runahead-critic-b2"' in controller
+    assert '"b1-runahead-critic-b2-local-context"' in controller
     assert '"LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant' in controller
     assert 'resolved_plan.node0.json' in controller
 
@@ -419,6 +454,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score_node_local.json" in launcher
+    assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context.json" in launcher
     assert "baseline_pipeline_variant_mismatch" in launcher
     summarizer = (
         ROOT / "scripts/distillschedule/summarize_livewan_crossscale_world16.py"
@@ -558,6 +594,7 @@ def test_launcher_fails_before_model_load_on_world16_and_p2p_drift() -> None:
     assert '"6g10score-node-local-fused",' in probe
     assert '"b1-runahead"' in probe
     assert '"b1-runahead-critic-b2"' in probe
+    assert '"b1-runahead-critic-b2-local-context"' in probe
     assert "node-local Teacher all-gather payload mismatch" in probe
     assert "hierarchical Score mean mismatch" in probe
     assert "dist.batch_isend_irecv" in probe
