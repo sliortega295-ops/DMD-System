@@ -493,6 +493,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert '"logical_call_inventory"' in summarizer
     assert '"persistent_6g_10score_teacher_fsdp10"' in summarizer
     assert '"persistent_6g_10score_teacher_node_local_hierarchical"' in summarizer
+    assert '!= "gpu_resident_replica"' in summarizer
 
 
 def test_cold_loader_avoids_redundant_full_fp32_copies() -> None:

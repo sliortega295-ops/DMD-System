@@ -155,7 +155,7 @@ def main() -> int:
                 if rank in generator_ranks:
                     if (
                         (build.get("student") or {}).get("placement")
-                        != "generator8_fsdp2_keep_unsharded"
+                        != "gpu_resident_replica"
                         or build.get("critic") is None
                         or build.get("teacher") is not None
                     ):
