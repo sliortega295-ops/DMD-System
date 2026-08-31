@@ -30,6 +30,12 @@ from distillschedule.workloads.livewan_crossscale import (
 from distillschedule.workloads.dmd import DMDProtocolCompiler
 
 
+PHASE_EXPANDED_CRITIC16_POOL_POLICY = (
+    "persistent_8g_8score_teacher_fsdp8_trace_balanced_"
+    "phase_expanded_critic16_fsdp16"
+)
+
+
 class LiveWanSFDMDAdapter(DMDModelAdapter):
     """Compile one source-pinned workload into the DMD-System worker."""
 
@@ -139,6 +145,7 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context": PIPELINE_8G8S_LAYOUT,
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32": PIPELINE_8G8S_LAYOUT,
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced": PIPELINE_8G8S_LAYOUT,
+                PHASE_EXPANDED_CRITIC16_POOL_POLICY: PIPELINE_8G8S_LAYOUT,
                 "persistent_8g_8score_teacher_fsdp8_score_b2": PIPELINE_8G8S_LAYOUT,
                 "persistent_6g_10score_teacher_fsdp10": PIPELINE_6G10S_LAYOUT,
                 "persistent_6g_10score_teacher_node_local_hierarchical": PIPELINE_6G10S_NODE_LOCAL_LAYOUT,
@@ -152,8 +159,30 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                 or groups.get("teacher") != layout.teacher_ranks
             ):
                 self._fail("pipeline Score/Teacher pool differs from policy", "rank_groups")
-            if plan.training_backends["generator"].kind != TrainingBackendKind.NATIVE:
-                self._fail("pipeline Student must be GPU-resident", "training_backends.generator.kind")
+            phase_expanded = pool_policy == PHASE_EXPANDED_CRITIC16_POOL_POLICY
+            expected_generator_backend = TrainingBackendKind.NATIVE
+            if plan.training_backends["generator"].kind != expected_generator_backend:
+                self._fail(
+                    "pipeline Student backend differs from its registered placement",
+                    "training_backends.generator.kind",
+                )
+            if phase_expanded:
+                expected_world = tuple(range(WORLD_SIZE))
+                if groups.get("critic") != expected_world:
+                    self._fail(
+                        "phase-expanded Critic pool must cover world16",
+                        "rank_groups.critic",
+                    )
+                if plan.training_backends["score"].kind != TrainingBackendKind.FSDP:
+                    self._fail(
+                        "phase-expanded Critic must use world16 FSDP2",
+                        "training_backends.score.kind",
+                    )
+            elif plan.training_backends["score"].kind != TrainingBackendKind.NATIVE:
+                self._fail(
+                    "legacy pipeline Critic must remain a resident replica",
+                    "training_backends.score.kind",
+                )
             if plan.training_backends["teacher"].kind != TrainingBackendKind.FSDP:
                 self._fail("pipeline Teacher must use its score-pool FSDP2 mesh", "training_backends.teacher.kind")
             if pool_policy in {
@@ -203,6 +232,7 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32",
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced",
+                PHASE_EXPANDED_CRITIC16_POOL_POLICY,
             }:
                 if plan.metadata.get("score_context_transport") != "trace_local_replay":
                     self._fail(
@@ -238,10 +268,10 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                         "Critic async32 gradient policy mismatch",
                         "metadata.critic_gradient_sync",
                     )
-            if (
-                pool_policy
-                == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced"
-            ):
+            if pool_policy in {
+                "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced",
+                PHASE_EXPANDED_CRITIC16_POOL_POLICY,
+            }:
                 if plan.metadata.get("slot_pair_policy") != "trace_balanced_fixed_rank_pairs_v1":
                     self._fail(
                         "trace-balanced candidate has an unknown slot policy",
@@ -259,7 +289,10 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
             if plan.metadata.get("full_context_lens_elision", False):
                 if (
                     pool_policy
-                    != "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced"
+                    not in {
+                        "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced",
+                        PHASE_EXPANDED_CRITIC16_POOL_POLICY,
+                    }
                 ):
                     self._fail(
                         "full-context lens elision requires the trace-balanced substrate",
@@ -281,7 +314,10 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
             if plan.metadata.get("score_context_prefetch", False):
                 if (
                     pool_policy
-                    != "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced"
+                    not in {
+                        "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced",
+                        PHASE_EXPANDED_CRITIC16_POOL_POLICY,
+                    }
                     or plan.metadata.get("full_context_lens_elision") is not True
                 ):
                     self._fail(
@@ -306,7 +342,10 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
             if critic_lora_kernel is not None:
                 if (
                     pool_policy
-                    != "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced"
+                    not in {
+                        "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced",
+                        PHASE_EXPANDED_CRITIC16_POOL_POLICY,
+                    }
                     or plan.metadata.get("full_context_lens_elision") is not True
                 ):
                     self._fail(
@@ -346,6 +385,69 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                     self._fail(
                         "Critic LoRA kernel contract changed",
                         "metadata.critic_lora_kernel",
+                    )
+            if phase_expanded:
+                expected_phase_contract = {
+                    "generator_nograd_runahead": False,
+                    "runahead_buffers_per_generator_rank": 0,
+                    "runahead_steps": [],
+                    "score_physical_batch_size": 1,
+                    "critic_physical_batch_size": 1,
+                    "critic_b2_preserves_per_sample_rng": False,
+                    "critic_b2_preserves_single_commit_per_step": False,
+                    "critic_phase_topology": "world16_b1_one_sample_per_rank",
+                    "critic_slot_policy": "generator_keeps_second_score_keeps_first",
+                    "phase_a_generator_global_batch": 16,
+                    "phase_b_critic_global_batch": 16,
+                    "phase_b_critic_rank_batch": 1,
+                    "variable_rollout_call_counts_require_resident_generator": True,
+                    "critic_collective_call_alignment": (
+                        "one_fsdp_forward_backward_per_rank_per_step"
+                    ),
+                    "schedule_change_only": True,
+                    "frozen_math_contract_preserved": True,
+                }
+                for key, expected_value in expected_phase_contract.items():
+                    if plan.metadata.get(key) != expected_value:
+                        self._fail(
+                            f"phase-expanded contract mismatch for {key}",
+                            f"metadata.{key}",
+                        )
+                if plan.metadata.get("critic_gradient_sync") != {
+                    "policy": "fsdp2_reduce_scatter",
+                    "bucket_mib": 0,
+                    "group_size": WORLD_SIZE,
+                    "reduction": "sum_then_divide_group_size",
+                    "overlap_with_backward": True,
+                }:
+                    self._fail(
+                        "phase-expanded Critic FSDP reduction contract mismatch",
+                        "metadata.critic_gradient_sync",
+                    )
+                score_options = dict(plan.training_backends["score"].options)
+                if (
+                    score_options.get("critic_physical_batch_policy")
+                    != "exact_b1_world16_phase_expanded"
+                    or score_options.get("mesh_ranks")
+                    != list(range(WORLD_SIZE))
+                    or score_options.get("reshard_after_forward") is not False
+                    or score_options.get("explicit_pre_dmd_unshard") is not True
+                ):
+                    self._fail(
+                        "phase-expanded Critic backend contract mismatch",
+                        "training_backends.score.options",
+                    )
+                if (
+                    plan.lifecycle.metadata.get("cross_step_overlap")
+                    != "none_phase_local_only"
+                    or plan.lifecycle.metadata.get(
+                        "bounded_pending_p2p_per_generator_rank"
+                    )
+                    != 1
+                ):
+                    self._fail(
+                        "phase-expanded lifecycle still advertises legacy run-ahead",
+                        "lifecycle.metadata",
                     )
             if pool_policy == "persistent_6g_10score_teacher_node_local_hierarchical":
                 generator_options = dict(plan.training_backends["generator"].options)

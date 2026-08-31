@@ -1,0 +1,103 @@
+{
+  "include": [
+    "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1.json"
+  ],
+  "id": "livewan-wan13b-14b-sfdmd-g1c5-world16-pipeline8x8-phase-expanded-critic16",
+  "rank_groups": [
+    {
+      "name": "generator",
+      "ranks": [0, 1, 2, 3, 4, 5, 6, 7],
+      "components": ["generator", "rollout"]
+    },
+    {
+      "name": "score",
+      "ranks": [8, 9, 10, 11, 12, 13, 14, 15],
+      "components": ["score"]
+    },
+    {
+      "name": "teacher",
+      "ranks": [8, 9, 10, 11, 12, 13, 14, 15],
+      "components": ["teacher"]
+    },
+    {
+      "name": "critic",
+      "ranks": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "components": ["critic"]
+    }
+  ],
+  "training_backends": {
+    "generator": {
+      "kind": "native",
+      "parameter_offload": "none",
+      "optimizer_offload": "none",
+      "gradient_checkpointing": true,
+      "options": {
+        "resident": true,
+        "gradient_sync": "group_all_reduce_sum_then_divide"
+      }
+    },
+    "score": {
+      "kind": "fsdp",
+      "parameter_offload": "none",
+      "optimizer_offload": "none",
+      "gradient_checkpointing": true,
+      "options": {
+        "resident": true,
+        "critic_physical_batch_policy": "exact_b1_world16_phase_expanded",
+        "gradient_sync": "fsdp2_reduce_scatter_sum_then_divide",
+        "mesh_ranks": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+        "reshard_after_forward": false,
+        "explicit_pre_dmd_unshard": true
+      }
+    },
+    "teacher": {
+      "kind": "fsdp",
+      "parameter_offload": "none",
+      "optimizer_offload": "none",
+      "gradient_checkpointing": false,
+      "options": {
+        "reshard_after_forward": true,
+        "mesh_ranks": [8, 9, 10, 11, 12, 13, 14, 15]
+      }
+    }
+  },
+  "lifecycle": {
+    "phase_resident_critic_generator": true,
+    "metadata": {
+      "model_redistribution": false,
+      "transport": "cuda_p2p_remote_slot_plus_generator_local_critic_slot",
+      "context_p2p": false,
+      "waves_per_step": 2,
+      "ack": false,
+      "cross_step_overlap": "none_phase_local_only",
+      "bounded_pending_p2p_per_generator_rank": 1,
+      "global_barrier_inside_full5": false
+    }
+  },
+  "metadata": {
+    "pool_policy": "persistent_8g_8score_teacher_fsdp8_trace_balanced_phase_expanded_critic16_fsdp16",
+    "generator_nograd_runahead": false,
+    "runahead_buffers_per_generator_rank": 0,
+    "runahead_steps": [],
+    "score_physical_batch_size": 1,
+    "critic_physical_batch_size": 1,
+    "critic_b2_preserves_per_sample_rng": false,
+    "critic_b2_preserves_single_commit_per_step": false,
+    "critic_phase_topology": "world16_b1_one_sample_per_rank",
+    "critic_slot_policy": "generator_keeps_second_score_keeps_first",
+    "phase_a_generator_global_batch": 16,
+    "phase_b_critic_global_batch": 16,
+    "phase_b_critic_rank_batch": 1,
+    "variable_rollout_call_counts_require_resident_generator": true,
+    "critic_collective_call_alignment": "one_fsdp_forward_backward_per_rank_per_step",
+    "critic_gradient_sync": {
+      "policy": "fsdp2_reduce_scatter",
+      "bucket_mib": 0,
+      "group_size": 16,
+      "reduction": "sum_then_divide_group_size",
+      "overlap_with_backward": true
+    },
+    "schedule_change_only": true,
+    "frozen_math_contract_preserved": true
+  }
+}

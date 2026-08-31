@@ -4,14 +4,15 @@ set -Eeuo pipefail
 
 NODE_RANK="${1:?node rank 0 or 1}"
 RUN_ID="${2:?immutable run id}"
-RUN_KIND="${3:?validate, correctness, timing, or profile}"
+RUN_KIND="${3:?validate, capacity, correctness, timing, or profile}"
 EXECUTION_MODE="${4:?baseline or pipeline}"
 EXPECTED_HEAD="${5:?exact DMD-System HEAD}"
 MASTER_ADDR="${6:?node0 address}"
 MASTER_PORT="${7:?rendezvous port}"
 
 [[ "${NODE_RANK}" == 0 || "${NODE_RANK}" == 1 ]] || exit 2
-[[ "${RUN_KIND}" == validate || "${RUN_KIND}" == correctness || \
+[[ "${RUN_KIND}" == validate || "${RUN_KIND}" == capacity || \
+   "${RUN_KIND}" == correctness || \
    "${RUN_KIND}" == timing || "${RUN_KIND}" == profile ]] || exit 2
 [[ "${EXECUTION_MODE}" == baseline || "${EXECUTION_MODE}" == pipeline ]] || exit 2
 [[ "${RUN_ID}" =~ ^[A-Za-z0-9._-]+$ ]] || exit 2
@@ -38,6 +39,7 @@ PIPELINE_VARIANT="${LIVEWAN_PIPELINE_VARIANT:-b1}"
    "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1 || \
    "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation || \
    "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add || \
+   "${PIPELINE_VARIANT}" == phase-expanded-critic16 || \
    "${PIPELINE_VARIANT}" == score-b2 || \
    "${PIPELINE_VARIANT}" == 6g10score || \
    "${PIPELINE_VARIANT}" == 6g10score-node-local || \
@@ -68,6 +70,8 @@ elif [[ "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-tra
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1_modulation.json"
 elif [[ "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add ]]; then
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_fused_cast_add.json"
+elif [[ "${PIPELINE_VARIANT}" == phase-expanded-critic16 ]]; then
+  PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16.json"
 elif [[ "${PIPELINE_VARIANT}" == 6g10score ]]; then
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json"
 elif [[ "${PIPELINE_VARIANT}" == 6g10score-node-local ]]; then

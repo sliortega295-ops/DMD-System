@@ -57,6 +57,10 @@ ASYNC_CRITIC_POOL_POLICY = (
     "local_context_critic_async32"
 )
 TRACE_BALANCED_POOL_POLICY = ASYNC_CRITIC_POOL_POLICY + "_trace_balanced"
+PHASE_EXPANDED_CRITIC16_POOL_POLICY = (
+    "persistent_8g_8score_teacher_fsdp8_trace_balanced_"
+    "phase_expanded_critic16_fsdp16"
+)
 
 
 def _pipeline_8x8_slot_pairs(
@@ -65,7 +69,7 @@ def _pipeline_8x8_slot_pairs(
     """Resolve the registered physical lane assignment without touching trace rows."""
 
     policy = str(plan.get("metadata", {}).get("pool_policy", ""))
-    if policy == TRACE_BALANCED_POOL_POLICY:
+    if policy in {TRACE_BALANCED_POOL_POLICY, PHASE_EXPANDED_CRITIC16_POOL_POLICY}:
         pairs = validate_slot_pairs(
             plan.get("metadata", {}).get("slot_pairs_by_lane", ())
         )
@@ -195,7 +199,10 @@ def _validate_trace_balanced_pairing(
 ) -> None:
     """Fail closed if the registered routing no longer balances this trace."""
 
-    if str(plan.get("metadata", {}).get("pool_policy", "")) != TRACE_BALANCED_POOL_POLICY:
+    if str(plan.get("metadata", {}).get("pool_policy", "")) not in {
+        TRACE_BALANCED_POOL_POLICY,
+        PHASE_EXPANDED_CRITIC16_POOL_POLICY,
+    }:
         return
     pairs = _pipeline_8x8_slot_pairs(plan)
     current = tuple((lane, lane + 8) for lane in range(8))
@@ -476,12 +483,14 @@ class ModelBundle:
     critic_gradient_reducer: GradReadyAsyncGroupReducer | None
     generator_group: Any | None
     score_group: Any | None
+    critic_group: Any | None
     score_local_group: Any | None
     score_leader_group: Any | None
     score_local_ranks: tuple[int, ...]
     score_leader_ranks: tuple[int, ...]
     generator_group_size: int
     score_group_size: int
+    critic_group_size: int
     metadata: dict[str, Any]
 
 
@@ -491,6 +500,23 @@ def _make_mesh(torch: Any, ranks: Sequence[int], group: Any) -> Any:
         return DeviceMesh.from_group(group, "cuda", mesh_dim_names=("fsdp",))
     except (AttributeError, TypeError):
         return DeviceMesh("cuda", list(ranks), mesh_dim_names=("fsdp",))
+
+
+def _materialize_fsdp_units(model: Any) -> int:
+    """Synchronously unshard every composable-FSDP unit in module order.
+
+    This is placement setup, not an extra model forward.  It is needed for the
+    phase-expanded Critic because only Score ranks execute the two step-0 DMD
+    Critic calls, while all sixteen ranks execute each later trainable Critic
+    call.  Keeping the parameters gathered makes those asymmetric no-grad calls
+    collective-free without changing their math or call inventory.
+    """
+
+    units = [module for module in model.modules() if hasattr(module, "unshard")]
+    _require(bool(units), "FSDP materialization found no shard units")
+    for module in units:
+        module.unshard(async_op=False)
+    return len(units)
 
 
 def _plan_role_ranks(plan: Mapping[str, Any], *, mode: str) -> tuple[tuple[int, ...], tuple[int, ...]]:
@@ -516,6 +542,7 @@ def _plan_role_ranks(plan: Mapping[str, Any], *, mode: str) -> tuple[tuple[int, 
         "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context": PIPELINE_8G8S_LAYOUT,
         ASYNC_CRITIC_POOL_POLICY: PIPELINE_8G8S_LAYOUT,
         TRACE_BALANCED_POOL_POLICY: PIPELINE_8G8S_LAYOUT,
+        PHASE_EXPANDED_CRITIC16_POOL_POLICY: PIPELINE_8G8S_LAYOUT,
         "persistent_8g_8score_teacher_fsdp8_score_b2": PIPELINE_8G8S_LAYOUT,
         "persistent_6g_10score_teacher_fsdp10": PIPELINE_6G10S_LAYOUT,
         "persistent_6g_10score_teacher_node_local_hierarchical": PIPELINE_6G10S_NODE_LOCAL_LAYOUT,
@@ -524,6 +551,30 @@ def _plan_role_ranks(plan: Mapping[str, Any], *, mode: str) -> tuple[tuple[int, 
     _require(generator_ranks == expected.generator_ranks, "Generator rank policy mismatch")
     _require(score_ranks == expected.score_ranks, "Score rank policy mismatch")
     return generator_ranks, score_ranks
+
+
+def _plan_critic_ranks(
+    plan: Mapping[str, Any], *, mode: str, score_ranks: Sequence[int]
+) -> tuple[int, ...]:
+    if mode == "baseline":
+        return tuple(range(WORLD_SIZE))
+    policy = str(plan.get("metadata", {}).get("pool_policy", ""))
+    groups = {
+        str(row["name"]): tuple(int(rank) for rank in row["ranks"])
+        for row in plan["rank_groups"]
+    }
+    critic_ranks = groups.get("critic", tuple(score_ranks))
+    if policy == PHASE_EXPANDED_CRITIC16_POOL_POLICY:
+        _require(
+            critic_ranks == tuple(range(WORLD_SIZE)),
+            "phase-expanded Critic ranks must cover world16",
+        )
+    else:
+        _require(
+            critic_ranks == tuple(score_ranks),
+            "legacy pipeline Critic ranks must equal Score ranks",
+        )
+    return critic_ranks
 
 
 def build_models(
@@ -545,10 +596,16 @@ def build_models(
     _require(mode in {"baseline", "pipeline"}, "unknown execution mode")
     config = WAN_CONFIGS["t2v-1.3B"]
     generator_ranks, score_ranks = _plan_role_ranks(plan, mode=mode)
+    critic_ranks = _plan_critic_ranks(plan, mode=mode, score_ranks=score_ranks)
     # Every rank calls new_group in the same global order.
     generator_group = dist.new_group(ranks=list(generator_ranks))
     score_group = dist.new_group(ranks=list(score_ranks))
     pool_policy = str(plan.get("metadata", {}).get("pool_policy", ""))
+    critic_group = (
+        dist.new_group(ranks=list(critic_ranks))
+        if critic_ranks != score_ranks
+        else score_group
+    )
     node_local_score = (
         mode == "pipeline"
         and pool_policy == "persistent_6g_10score_teacher_node_local_hierarchical"
@@ -566,10 +623,12 @@ def build_models(
         )
     owns_generator = rank in generator_ranks
     owns_score = rank in score_ranks
+    owns_critic = rank in critic_ranks
     workload = dict(plan["workload"])
     metadata: dict[str, Any] = {
         "generator_ranks": list(generator_ranks),
         "score_ranks": list(score_ranks),
+        "critic_ranks": list(critic_ranks),
         "student": None,
         "critic": None,
         "teacher": None,
@@ -597,6 +656,7 @@ def build_models(
             state_receipt = _load_student_state(torch, student, bootstrap)
             state_receipt["load_policy"] = "complete_stage1_direct_mmap"
         fsdp_groups = 0
+        phase_expanded = pool_policy == PHASE_EXPANDED_CRITIC16_POOL_POLICY
         if mode == "baseline":
             mesh = _make_mesh(torch, generator_ranks, generator_group)
             shard_model(student, mesh=mesh, reshard_after_forward=False)
@@ -621,7 +681,11 @@ def build_models(
             weight_decay=0.0, eps=1e-8, **optimizer_kwargs,
         )
         metadata["student"] = {
-            "placement": "world16_fsdp2_keep_unsharded" if mode == "baseline" else "gpu_resident_replica",
+            "placement": (
+                "world16_fsdp2_keep_unsharded"
+                if mode == "baseline"
+                else "gpu_resident_replica"
+            ),
             "state": state_receipt,
             "fsdp_group_count": fsdp_groups,
             "optimizer_impl": optimizer_impl,
@@ -629,7 +693,7 @@ def build_models(
         }
         gc.collect()
 
-    if owns_score:
+    if owns_critic:
         torch.manual_seed(0)
         # Match LiveWan's final BF16 value exactly while avoiding a transient
         # full FP32 model plus full BF16 conversion copy on every rank.
@@ -641,20 +705,50 @@ def build_models(
         with torch.random.fork_rng(devices=[]):
             torch.manual_seed(int(bootstrap.value["critic_lora"]["seed"]))
             lora_params, lora_modules, lora_numel = inject_lora(critic, rank=LORA_RANK)
+        phase_expanded = pool_policy == PHASE_EXPANDED_CRITIC16_POOL_POLICY
+        critic_fsdp_groups = 0
+        if phase_expanded:
+            critic_mesh = _make_mesh(torch, critic_ranks, critic_group)
+            shard_model(critic, mesh=critic_mesh, reshard_after_forward=False)
         critic.to(device)
+        if phase_expanded:
+            critic_fsdp_groups = _configure_fsdp_reduction(
+                critic, group_size=len(critic_ranks)
+            )
         opt_c = torch.optim.AdamW(
             lora_params, lr=4e-5, betas=(0.0, 0.99),
             weight_decay=0.0, eps=1e-8, foreach=True,
         )
+        critic_optimizer_receipt = materialize_adam_state(
+            torch, opt_c, step=int(bootstrap.value["optimizer"]["critic_step"])
+        )
+        critic_materialized_units = 0
+        if phase_expanded:
+            critic_materialized_units = _materialize_fsdp_units(critic)
+            torch.cuda.synchronize(device)
         metadata["critic"] = {
-            "placement": "gpu_resident_replica",
+            "placement": (
+                "world16_fsdp2_keep_unsharded"
+                if phase_expanded
+                else "gpu_resident_replica"
+            ),
+            "fsdp_group_count": critic_fsdp_groups,
+            "explicit_pre_dmd_unshard_units": critic_materialized_units,
             "lora_rank": LORA_RANK,
             "lora_modules": int(lora_modules),
             "lora_numel": int(lora_numel),
-            "optimizer": materialize_adam_state(torch, opt_c, step=int(bootstrap.value["optimizer"]["critic_step"])),
+            "optimizer": critic_optimizer_receipt,
         }
+        if phase_expanded:
+            metadata["critic_gradient_sync"] = {
+                "policy": "fsdp2_reduce_scatter",
+                "group_ranks": list(critic_ranks),
+                "group_size": len(critic_ranks),
+                "reduction": "SUM_THEN_DIVIDE_GROUP_SIZE",
+            }
         gc.collect()
 
+    if owns_score:
         torch.manual_seed(0)
         teacher = _wan_model(WanModel, size="14B", config=config).to(torch.bfloat16)
         teacher_root = Path(workload["teacher"]["checkpoint"]).expanduser().resolve()
@@ -682,32 +776,35 @@ def build_models(
         }
         gc.collect()
 
-        if pool_policy in {ASYNC_CRITIC_POOL_POLICY, TRACE_BALANCED_POOL_POLICY}:
-            lora_ids = {id(parameter) for parameter in lora_params}
-            named_lora = [
-                (name, parameter)
-                for name, parameter in critic.named_parameters()
-                if id(parameter) in lora_ids
-            ]
-            _require(
-                len(named_lora) == len(lora_params)
-                and {id(parameter) for _name, parameter in named_lora} == lora_ids,
-                "Critic async reducer lost the LoRA parameter inventory",
-            )
-            critic_gradient_reducer = GradReadyAsyncGroupReducer(
-                torch,
-                named_lora,
-                group=score_group,
-                group_size=len(score_ranks),
-                bucket_bytes=32 * 1024 * 1024,
-            )
-            metadata["critic_gradient_sync"] = {
-                "policy": "grad_ready_async_flat_all_reduce",
-                "group_ranks": list(score_ranks),
-                "group_size": len(score_ranks),
-                "bucket_bytes_limit": 32 * 1024 * 1024,
-                "reduction": "SUM_THEN_DIVIDE_GROUP_SIZE",
-            }
+    if owns_critic and pool_policy in {
+        ASYNC_CRITIC_POOL_POLICY,
+        TRACE_BALANCED_POOL_POLICY,
+    }:
+        lora_ids = {id(parameter) for parameter in lora_params}
+        named_lora = [
+            (name, parameter)
+            for name, parameter in critic.named_parameters()
+            if id(parameter) in lora_ids
+        ]
+        _require(
+            len(named_lora) == len(lora_params)
+            and {id(parameter) for _name, parameter in named_lora} == lora_ids,
+            "Critic async reducer lost the LoRA parameter inventory",
+        )
+        critic_gradient_reducer = GradReadyAsyncGroupReducer(
+            torch,
+            named_lora,
+            group=critic_group,
+            group_size=len(critic_ranks),
+            bucket_bytes=32 * 1024 * 1024,
+        )
+        metadata["critic_gradient_sync"] = {
+            "policy": "grad_ready_async_flat_all_reduce",
+            "group_ranks": list(critic_ranks),
+            "group_size": len(critic_ranks),
+            "bucket_bytes_limit": 32 * 1024 * 1024,
+            "reduction": "SUM_THEN_DIVIDE_GROUP_SIZE",
+        }
 
     torch.cuda.synchronize(device)
     score_local_group = None
@@ -736,6 +833,7 @@ def build_models(
         critic_gradient_reducer=critic_gradient_reducer,
         generator_group=generator_group if owns_generator else None,
         score_group=score_group if owns_score else None,
+        critic_group=critic_group if owns_critic else None,
         score_local_group=score_local_group,
         score_leader_group=(
             score_leader_group
@@ -748,6 +846,7 @@ def build_models(
         ),
         generator_group_size=len(generator_ranks),
         score_group_size=len(score_ranks),
+        critic_group_size=len(critic_ranks),
         metadata=metadata,
     )
 
@@ -902,6 +1001,17 @@ def _warm_communicators(
             "Score communicator warm-up failed",
         )
         warmed_groups.append("score")
+    if (
+        bundle.critic_group is not None
+        and bundle.critic_group is not bundle.score_group
+    ):
+        token = torch.ones(1, dtype=torch.int64, device=device)
+        dist.all_reduce(token, group=bundle.critic_group)
+        _require(
+            int(token.cpu()) == bundle.critic_group_size,
+            "Critic communicator warm-up failed",
+        )
+        warmed_groups.append("critic")
     if bundle.score_local_group is not None:
         token = torch.ones(1, dtype=torch.int64, device=device)
         dist.all_reduce(token, group=bundle.score_local_group)
@@ -1127,11 +1237,15 @@ class ScoreSampleContext:
 
 def build_score_context(torch: Any, *, bundle: ModelBundle, loader: InputLoader, device: Any) -> ScoreContext:
     from wanstreamer.core import latent_geometry, make_rope_table
-    _require(bundle.teacher is not None and bundle.critic is not None, "Score model bundle is incomplete")
+    _require(bundle.critic is not None, "Critic model bundle is incomplete")
     _, _, hp, wp = latent_geometry(640, 368)
     rope = make_rope_table(bundle.critic, hp, wp, LATENT_SHAPE[2] + 8, device)
-    with torch.no_grad():
-        negative = bundle.teacher.text_embedding(loader.negative.to(device).to(torch.bfloat16))
+    negative = None
+    if bundle.teacher is not None:
+        with torch.no_grad():
+            negative = bundle.teacher.text_embedding(
+                loader.negative.to(device).to(torch.bfloat16)
+            )
     return ScoreContext(rope=rope, negative_teacher_context=negative)
 
 
@@ -1214,6 +1328,10 @@ def dmd_gradient_for_sample(
     from wanstreamer.lora import lora_enabled
 
     _require(sample_context.teacher is not None, "DMD requires Teacher context")
+    _require(
+        score_context.negative_teacher_context is not None,
+        "DMD requires negative Teacher context",
+    )
 
     t = _sample_flow_t(torch, seed=row.seeds["generator_dmd_t"], device=x0.device)
     noise = _randn(torch, x0.shape, seed=row.seeds["generator_dmd_noise"], device=x0.device)
@@ -1623,7 +1741,8 @@ def _full_context_lens_elision(plan: Mapping[str, Any], *, mode: str) -> bool:
         return False
     _require(mode == "pipeline", "full-context lens elision is candidate-only")
     _require(
-        metadata.get("pool_policy") == TRACE_BALANCED_POOL_POLICY,
+        metadata.get("pool_policy")
+        in {TRACE_BALANCED_POOL_POLICY, PHASE_EXPANDED_CRITIC16_POOL_POLICY},
         "full-context lens elision requires the validated C10 substrate",
     )
     _require(
@@ -1682,7 +1801,8 @@ def _critic_lora_scale_one_enabled(plan: Mapping[str, Any], *, mode: str) -> boo
     _require(isinstance(kernel, Mapping), "Critic LoRA kernel contract must be a mapping")
     _require(mode == "pipeline", "Critic LoRA kernel is candidate-only")
     _require(
-        metadata.get("pool_policy") == TRACE_BALANCED_POOL_POLICY
+        metadata.get("pool_policy")
+        in {TRACE_BALANCED_POOL_POLICY, PHASE_EXPANDED_CRITIC16_POOL_POLICY}
         and metadata.get("full_context_lens_elision") is True,
         "Critic LoRA kernel requires the validated C11 substrate",
     )
@@ -1839,6 +1959,33 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _score_context_prefetch_enabled(plan, mode=mode)
     _critic_lora_scale_one_enabled(plan, mode=mode)
     _score_modulation_kernel_enabled(plan, mode=mode)
+    if (
+        str(plan.get("metadata", {}).get("pool_policy", ""))
+        == PHASE_EXPANDED_CRITIC16_POOL_POLICY
+    ):
+        groups = {
+            str(row["name"]): tuple(int(rank) for rank in row["ranks"])
+            for row in plan["rank_groups"]
+        }
+        _require(
+            plan["training_backends"]["generator"]["kind"] == "native",
+            "variable-count phase-expanded Generator must remain resident",
+        )
+        _require(
+            plan["training_backends"]["score"]["kind"] == "fsdp",
+            "phase-expanded Critic must use FSDP2",
+        )
+        _require(
+            groups.get("critic") == tuple(range(WORLD_SIZE)),
+            "phase-expanded Critic group must cover world16",
+        )
+        _require(
+            plan["metadata"].get(
+                "variable_rollout_call_counts_require_resident_generator"
+            )
+            is True,
+            "phase-expanded variable rollout-count guard is missing",
+        )
 
 
 def _validate_only(
@@ -1897,7 +2044,10 @@ def run_worker(
         result["node_rank"] = node_rank
         atomic_json(output_dir / f"validate_only.node{node_rank}.json", result)
         return result
-    _require(run_kind in {"correctness", "timing", "profile"}, "invalid run kind")
+    _require(
+        run_kind in {"capacity", "correctness", "timing", "profile"},
+        "invalid run kind",
+    )
 
     import torch
     import torch.distributed as dist
@@ -1990,7 +2140,12 @@ def run_worker(
                 "Critic LoRA scale-one specialization saw a non-unit scale",
             )
             critic_lora_kernel.update(
-                role="score",
+                role=(
+                    "critic"
+                    if plan.get("metadata", {}).get("pool_policy")
+                    == PHASE_EXPANDED_CRITIC16_POOL_POLICY
+                    else "score"
+                ),
                 execution_status="PASS",
                 module_count=len(lora_modules),
                 all_scales_one=True,
@@ -2016,6 +2171,38 @@ def run_worker(
     )
     build_wall = time.perf_counter() - build_started
     setup_memory = memory_snapshot(torch, device)
+    if run_kind == "capacity":
+        torch.cuda.synchronize(device)
+        dist.barrier()
+        after_oom = cgroup_oom_counts()
+        receipt = {
+            "status": "PASS",
+            "stage": "construction_capacity",
+            "rank": rank,
+            "local_rank": local_rank,
+            "mode": mode,
+            "run_kind": run_kind,
+            "trace_sha256": trace.sha256,
+            "bootstrap_sha256": bootstrap.sha256,
+            "source_receipt_sha256": source_receipt["source_receipt_sha256"],
+            "pool_policy": plan.get("metadata", {}).get(
+                "pool_policy", "world16_fsdp2_sequential"
+            ),
+            "construction_wall_seconds": build_wall,
+            "setup_memory": setup_memory,
+            "peak_memory": memory_snapshot(torch, device),
+            "host_memory": host_memory_snapshot(),
+            "cgroup_oom_before": before_oom,
+            "cgroup_oom_after": after_oom,
+            "critic_lora_kernel": critic_lora_kernel,
+            "score_modulation_kernel": score_modulation_kernel,
+            "build": bundle.metadata,
+            "gpu_training_workload": "NOT_RUN",
+        }
+        _write_rank_receipt(output_dir=output_dir, rank=rank, value=receipt)
+        dist.barrier()
+        dist.destroy_process_group()
+        return receipt
     versions = bootstrap.versions
     evidence = RunEvidence()
     inventory = CallInventory()
@@ -2060,6 +2247,24 @@ def run_worker(
                     torch=torch, rank=rank, trace=trace, loader=loader, bundle=bundle,
                     streamers=generator_streamers, score_context=score_context,
                     run_kind=run_kind, evidence=evidence, versions=versions, device=device,
+                )
+            elif (
+                plan.get("metadata", {}).get("pool_policy")
+                == PHASE_EXPANDED_CRITIC16_POOL_POLICY
+            ):
+                _run_pipeline_phase_expanded_critic16(
+                    torch=torch,
+                    rank=rank,
+                    trace=trace,
+                    loader=loader,
+                    bundle=bundle,
+                    streamers=generator_streamers,
+                    score_context=score_context,
+                    run_kind=run_kind,
+                    evidence=evidence,
+                    versions=versions,
+                    device=device,
+                    slot_pairs_by_lane=_pipeline_8x8_slot_pairs(plan),
                 )
             elif plan.get("metadata", {}).get("pool_policy") in {
                 "persistent_8g_8score_teacher_fsdp8",
@@ -2167,16 +2372,28 @@ def run_worker(
     logical_call_inventory = dict(inventory.counts)
     logical_call_inventory.update(evidence.logical_score_calls)
     slot_routing = None
-    if str(plan.get("metadata", {}).get("pool_policy", "")) == TRACE_BALANCED_POOL_POLICY:
+    receipt_pool_policy = str(plan.get("metadata", {}).get("pool_policy", ""))
+    if receipt_pool_policy in {
+        TRACE_BALANCED_POOL_POLICY,
+        PHASE_EXPANDED_CRITIC16_POOL_POLICY,
+    }:
         slot_pairs = _pipeline_8x8_slot_pairs(plan)
         lane = rank if rank < 8 else rank - 8
         slot_routing = {
-            "policy": "trace_balanced_fixed_rank_pairs_v1",
+            "policy": (
+                "trace_balanced_phase_expanded_critic16_v1"
+                if receipt_pool_policy == PHASE_EXPANDED_CRITIC16_POOL_POLICY
+                else "trace_balanced_fixed_rank_pairs_v1"
+            ),
             "lane": lane,
             "logical_slots": list(slot_pairs[lane]),
             "peer_rank": rank + 8 if rank < 8 else rank - 8,
             "all_pairs": [list(pair) for pair in slot_pairs],
         }
+        if receipt_pool_policy == PHASE_EXPANDED_CRITIC16_POOL_POLICY:
+            slot_routing["critic_slot"] = int(
+                slot_pairs[lane][1] if rank < 8 else slot_pairs[lane][0]
+            )
     receipt = {
         "status": "PASS",
         "rank": rank,
@@ -3011,6 +3228,392 @@ def _run_pipeline_8x8(
             not prefetched_contexts,
             "Score context prefetch left unconsumed lane contexts",
         )
+
+
+def _run_pipeline_phase_expanded_critic16(
+    *,
+    torch: Any,
+    rank: int,
+    trace: FormalTrace,
+    loader: InputLoader,
+    bundle: ModelBundle,
+    streamers: Sequence[Any],
+    score_context: ScoreContext | None,
+    run_kind: str,
+    evidence: RunEvidence,
+    versions: dict[str, int],
+    device: Any,
+    slot_pairs_by_lane: Sequence[Sequence[int]],
+) -> None:
+    """8G+8Score DMD followed by five exact world16 Critic-B1 updates.
+
+    Each fixed lane retains one of its two rollout latents on the Generator
+    rank and sends the other to the paired Score rank.  Step 0 still sends both
+    latents to Score for the unchanged Teacher/Fake DMD calls.  The Critic is a
+    persistent identical replica on all sixteen ranks, so each update sees one
+    logical B1 sample per rank and performs one world16 SUM-then-divide commit.
+    """
+
+    import torch.distributed as dist
+
+    is_generator = rank < 8
+    peer = rank + 8 if is_generator else rank - 8
+    lane = rank if is_generator else peer
+    lane_slots = validate_slot_pairs(slot_pairs_by_lane)[lane]
+    remote_slot, generator_local_slot = lane_slots
+    latent_bytes = math.prod(LATENT_SHAPE) * 4
+    _require(
+        bundle.critic is not None
+        and bundle.critic_optimizer is not None
+        and bundle.critic_gradient_reducer is None
+        and bundle.critic_group_size == WORLD_SIZE
+        and score_context is not None,
+        "phase-expanded world16 Critic role is incomplete",
+    )
+    _require(
+        bundle.metadata["critic"]["placement"]
+        == "world16_fsdp2_keep_unsharded"
+        and bundle.metadata["critic"]["explicit_pre_dmd_unshard_units"]
+        == bundle.metadata["critic"]["fsdp_group_count"],
+        "phase-expanded Critic is not fully materialized before asymmetric DMD",
+    )
+    if is_generator:
+        _require(
+            bundle.student is not None
+            and bundle.generator_optimizer is not None
+            and len(streamers) == 2,
+            "phase-expanded Generator role is incomplete",
+        )
+        _require(
+            bundle.metadata["student"]["placement"] == "gpu_resident_replica",
+            "phase-expanded Student is not a resident replica",
+        )
+    else:
+        _require(bundle.teacher is not None, "phase-expanded Score rank lacks Teacher")
+
+    for step in range(FULL5_STEPS):
+        rows = tuple(trace.row(step, slot) for slot in lane_slots)
+        remote_row, generator_local_row = rows
+        bundle.critic_optimizer.zero_grad(set_to_none=True)
+        deferred_gradient_work = None
+        deferred_gradient_tensor = None
+
+        if is_generator:
+            if step == 0:
+                bundle.generator_optimizer.zero_grad(set_to_none=True)
+            with _profile_range(
+                torch,
+                run_kind=run_kind,
+                label=f"livewan/phase_expanded/g/step_{step}/rollout_remote",
+            ):
+                remote_prepared = prepare_rollout(
+                    torch,
+                    row=remote_row,
+                    streamer=streamers[0],
+                    student=bundle.student,
+                    loader=loader,
+                    device=device,
+                    elide_full_context_lens=True,
+                )
+            _record_output(
+                torch,
+                evidence,
+                row=remote_row,
+                x0=remote_prepared.x0,
+                run_kind=run_kind,
+            )
+            with _profile_range(
+                torch,
+                run_kind=run_kind,
+                label=f"livewan/phase_expanded/g/step_{step}/send_remote",
+            ):
+                remote_send = dist.isend(remote_prepared.x0.contiguous(), dst=peer)
+            evidence.transport_bytes += latent_bytes
+
+            with _profile_range(
+                torch,
+                run_kind=run_kind,
+                label=f"livewan/phase_expanded/g/step_{step}/rollout_local",
+            ):
+                local_prepared = prepare_rollout(
+                    torch,
+                    row=generator_local_row,
+                    streamer=streamers[1],
+                    student=bundle.student,
+                    loader=loader,
+                    device=device,
+                    elide_full_context_lens=True,
+                )
+            _record_output(
+                torch,
+                evidence,
+                row=generator_local_row,
+                x0=local_prepared.x0,
+                run_kind=run_kind,
+            )
+            remote_send.wait()
+
+            if step == 0:
+                grad_remote = torch.empty_like(remote_prepared.x0)
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label="livewan/phase_expanded/g/step_0/recv_gradient_remote",
+                ):
+                    dist.recv(grad_remote, src=peer)
+                evidence.transport_bytes += grad_remote.numel() * grad_remote.element_size()
+                local_send = dist.isend(local_prepared.x0.contiguous(), dst=peer)
+                evidence.transport_bytes += latent_bytes
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label="livewan/phase_expanded/g/step_0/backward_remote",
+                ):
+                    remote_losses = generator_backward_for_sample(
+                        torch,
+                        prepared=remote_prepared,
+                        dmd_gradient=grad_remote,
+                        sample_weight=0.5,
+                    )
+                local_send.wait()
+                grad_local = torch.empty_like(local_prepared.x0)
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label="livewan/phase_expanded/g/step_0/recv_gradient_local",
+                ):
+                    dist.recv(grad_local, src=peer)
+                evidence.transport_bytes += grad_local.numel() * grad_local.element_size()
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label="livewan/phase_expanded/g/step_0/backward_local",
+                ):
+                    local_losses = generator_backward_for_sample(
+                        torch,
+                        prepared=local_prepared,
+                        dmd_gradient=grad_local,
+                        sample_weight=0.5,
+                    )
+                if run_kind == "correctness":
+                    for row, losses in zip(
+                        rows, (remote_losses, local_losses)
+                    ):
+                        evidence.loss_fingerprints.extend(
+                            {
+                                "operation_key": row.operation_key,
+                                "kind": "generator",
+                                **_tensor_fingerprint(torch, value),
+                            }
+                            for value in losses
+                        )
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label="livewan/phase_expanded/g/step_0/generator_commit",
+                ):
+                    generator_parameters = list(bundle.student.parameters())
+                    generator_sync = _mean_replicated_gradients(
+                        torch,
+                        generator_parameters,
+                        group=bundle.generator_group,
+                        group_size=bundle.generator_group_size,
+                        bucket_mib=128,
+                    )
+                    generator_pre_clip = (
+                        _state_metrics(
+                            torch,
+                            [
+                                parameter.grad
+                                for parameter in generator_parameters
+                                if parameter.grad is not None
+                            ],
+                        )
+                        if run_kind == "correctness"
+                        else None
+                    )
+                    generator_clip_norm = torch.nn.utils.clip_grad_norm_(
+                        generator_parameters, 1.0
+                    )
+                    _record_optimizer_diagnostics(
+                        torch,
+                        evidence,
+                        run_kind=run_kind,
+                        role="generator",
+                        step=step,
+                        parameters=generator_parameters,
+                        clip_norm=generator_clip_norm,
+                        gradient_before_clip=generator_pre_clip,
+                    )
+                    bundle.generator_optimizer.step()
+                    evidence.gradient_sync.append(
+                        {"step": step, "role": "generator", **generator_sync}
+                    )
+                    versions["generator"] += 1
+
+            critic_row = generator_local_row
+            critic_x0 = local_prepared.x0
+            critic_raw_context = loader.context_from_trace(critic_row, device=device)
+            critic_sample_context = prepare_score_sample_context(
+                torch,
+                bundle=bundle,
+                raw_context=critic_raw_context,
+                include_teacher=False,
+            )
+        else:
+            with _profile_range(
+                torch,
+                run_kind=run_kind,
+                label=f"livewan/phase_expanded/score/step_{step}/recv_remote",
+            ):
+                remote_x0 = torch.empty(
+                    LATENT_SHAPE, device=device, dtype=torch.float32
+                )
+                dist.recv(remote_x0, src=peer)
+            evidence.transport_bytes += latent_bytes
+            remote_context = loader.context_from_trace(remote_row, device=device)
+            remote_sample_context = prepare_score_sample_context(
+                torch,
+                bundle=bundle,
+                raw_context=remote_context,
+                include_teacher=step == 0,
+            )
+            if step == 0:
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label="livewan/phase_expanded/score/step_0/dmd_remote",
+                ):
+                    grad_remote = dmd_gradient_for_sample(
+                        torch,
+                        bundle=bundle,
+                        score_context=score_context,
+                        row=remote_row,
+                        x0=remote_x0,
+                        sample_context=remote_sample_context,
+                        context_lens=None,
+                    )
+                    evidence.add_logical_score_calls("teacher/nograd/plain", 1)
+                    evidence.add_logical_score_calls("critic/nograd/plain", 1)
+                    dist.send(grad_remote.contiguous(), dst=peer)
+                evidence.transport_bytes += grad_remote.numel() * grad_remote.element_size()
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label="livewan/phase_expanded/score/step_0/recv_local_for_dmd",
+                ):
+                    local_x0 = torch.empty(
+                        LATENT_SHAPE, device=device, dtype=torch.float32
+                    )
+                    dist.recv(local_x0, src=peer)
+                evidence.transport_bytes += latent_bytes
+                local_context = loader.context_from_trace(
+                    generator_local_row, device=device
+                )
+                local_sample_context = prepare_score_sample_context(
+                    torch,
+                    bundle=bundle,
+                    raw_context=local_context,
+                    include_teacher=True,
+                )
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label="livewan/phase_expanded/score/step_0/dmd_local",
+                ):
+                    grad_local = dmd_gradient_for_sample(
+                        torch,
+                        bundle=bundle,
+                        score_context=score_context,
+                        row=generator_local_row,
+                        x0=local_x0,
+                        sample_context=local_sample_context,
+                        context_lens=None,
+                    )
+                    evidence.add_logical_score_calls("teacher/nograd/plain", 1)
+                    evidence.add_logical_score_calls("critic/nograd/plain", 1)
+                    deferred_gradient_tensor = grad_local.contiguous()
+                    deferred_gradient_work = dist.isend(
+                        deferred_gradient_tensor, dst=peer
+                    )
+                evidence.transport_bytes += grad_local.numel() * grad_local.element_size()
+
+            critic_row = remote_row
+            critic_x0 = remote_x0
+            critic_sample_context = ScoreSampleContext(
+                teacher=None,
+                critic=remote_sample_context.critic,
+            )
+
+        with _profile_range(
+            torch,
+            run_kind=run_kind,
+            label=f"livewan/phase_expanded/critic/step_{step}/backward_b1",
+        ):
+            critic_loss = critic_backward_for_sample(
+                torch,
+                bundle=bundle,
+                score_context=score_context,
+                row=critic_row,
+                x0=critic_x0,
+                sample_context=critic_sample_context,
+                context_lens=None,
+                sample_weight=1.0,
+            )
+            evidence.add_logical_score_calls("critic/grad/checkpoint", 1)
+        if deferred_gradient_work is not None:
+            deferred_gradient_work.wait()
+            del deferred_gradient_tensor
+        if run_kind == "correctness":
+            evidence.loss_fingerprints.append(
+                {
+                    "operation_key": critic_row.operation_key,
+                    "kind": "critic",
+                    **_tensor_fingerprint(torch, critic_loss),
+                }
+            )
+        with _profile_range(
+            torch,
+            run_kind=run_kind,
+            label=f"livewan/phase_expanded/critic/step_{step}/commit",
+        ):
+            evidence.gradient_sync.append(
+                {
+                    "step": step,
+                    "role": "critic",
+                    "backend": "FSDP2_REDUCE_SCATTER",
+                    "group_size": WORLD_SIZE,
+                    "reduction": "SUM_THEN_DIVIDE_GROUP_SIZE",
+                    "overlap_with_backward": True,
+                }
+            )
+            critic_pre_clip = (
+                _state_metrics(
+                    torch,
+                    [
+                        parameter.grad
+                        for parameter in bundle.critic_lora_params
+                        if parameter.grad is not None
+                    ],
+                )
+                if run_kind == "correctness"
+                else None
+            )
+            critic_clip_norm = torch.nn.utils.clip_grad_norm_(
+                bundle.critic_lora_params, 1.0, foreach=False
+            )
+            _record_optimizer_diagnostics(
+                torch,
+                evidence,
+                run_kind=run_kind,
+                role="critic",
+                step=step,
+                parameters=bundle.critic_lora_params,
+                clip_norm=critic_clip_norm,
+                gradient_before_clip=critic_pre_clip,
+            )
+            bundle.critic_optimizer.step()
+            versions["critic"] += 1
 
 
 def _run_pipeline_8x8_score_b2(

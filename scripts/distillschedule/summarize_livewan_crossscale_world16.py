@@ -21,14 +21,22 @@ from distillschedule.workloads.livewan_crossscale import (
     TRACE_BALANCED_8G8S_SLOT_PAIRS,
     WORLD_SIZE,
 )
-from distillschedule.runtime.livewan_crossscale_worker import FormalTrace, atomic_json
+from distillschedule.runtime.livewan_crossscale_worker import (
+    FormalTrace,
+    PHASE_EXPANDED_CRITIC16_POOL_POLICY,
+    atomic_json,
+)
 
 
 def parser() -> argparse.ArgumentParser:
     value = argparse.ArgumentParser()
     value.add_argument("--run-root", required=True, type=Path)
     value.add_argument("--execution-mode", required=True, choices=("baseline", "pipeline"))
-    value.add_argument("--run-kind", required=True, choices=("validate", "correctness", "timing", "profile"))
+    value.add_argument(
+        "--run-kind",
+        required=True,
+        choices=("validate", "capacity", "correctness", "timing", "profile"),
+    )
     value.add_argument("--trace", required=True, type=Path)
     value.add_argument("--plan", required=True, type=Path)
     value.add_argument("--expected-head", required=True)
@@ -104,6 +112,115 @@ def main() -> int:
     )
     if not generator_ranks or not score_ranks:
         errors.append("plan role ranks are missing")
+    critic_ranks = (
+        tuple(range(WORLD_SIZE))
+        if args.execution_mode == "baseline"
+        else rank_groups.get("critic", score_ranks)
+    )
+
+    if args.run_kind == "capacity":
+        capacity_rows: list[dict[str, Any]] = []
+        for rank in range(WORLD_SIZE):
+            path = args.run_root / "receipts" / f"rank_{rank:03d}.json"
+            if not path.is_file():
+                errors.append(f"rank{rank}: capacity receipt missing")
+                continue
+            row = json.loads(path.read_text(encoding="utf-8"))
+            capacity_rows.append(row)
+            if (
+                row.get("status") != "PASS"
+                or row.get("stage") != "construction_capacity"
+                or int(row.get("rank", -1)) != rank
+                or row.get("mode") != args.execution_mode
+                or row.get("run_kind") != "capacity"
+            ):
+                errors.append(f"rank{rank}: capacity receipt identity mismatch")
+            if row.get("trace_sha256") != trace.sha256:
+                errors.append(f"rank{rank}: capacity trace SHA mismatch")
+            if row.get("pool_policy") != pool_policy:
+                errors.append(f"rank{rank}: capacity pool policy mismatch")
+            before = row.get("cgroup_oom_before", {})
+            after = row.get("cgroup_oom_after", {})
+            for key in ("oom", "oom_kill"):
+                if int(after.get(key, 0)) != int(before.get(key, 0)):
+                    errors.append(f"rank{rank}: cgroup {key} changed")
+            build = row.get("build", {})
+            if build.get("generator_ranks") != list(generator_ranks):
+                errors.append(f"rank{rank}: capacity Generator rank map mismatch")
+            if build.get("score_ranks") != list(score_ranks):
+                errors.append(f"rank{rank}: capacity Score rank map mismatch")
+            if build.get("critic_ranks") != list(critic_ranks):
+                errors.append(f"rank{rank}: capacity Critic rank map mismatch")
+            if pool_policy == PHASE_EXPANDED_CRITIC16_POOL_POLICY:
+                if rank in generator_ranks:
+                    if (
+                        (build.get("student") or {}).get("placement")
+                        != "generator8_fsdp2_keep_unsharded"
+                        or build.get("critic") is None
+                        or build.get("teacher") is not None
+                    ):
+                        errors.append(f"rank{rank}: invalid phase-expanded G residency")
+                elif (
+                    build.get("student") is not None
+                    or build.get("critic") is None
+                    or (build.get("teacher") or {}).get("placement")
+                    != "fsdp2_group8_reshard"
+                ):
+                    errors.append(f"rank{rank}: invalid phase-expanded Score residency")
+                sync = build.get("critic_gradient_sync", {})
+                if (
+                    sync.get("group_ranks") != list(range(WORLD_SIZE))
+                    or sync.get("group_size") != WORLD_SIZE
+                    or sync.get("reduction") != "SUM_THEN_DIVIDE_GROUP_SIZE"
+                ):
+                    errors.append(f"rank{rank}: invalid world16 Critic reducer residency")
+        identities = {
+            (
+                row.get("trace_sha256"),
+                row.get("bootstrap_sha256"),
+                row.get("source_receipt_sha256"),
+            )
+            for row in capacity_rows
+        }
+        if len(capacity_rows) != WORLD_SIZE:
+            errors.append(
+                f"capacity rank receipt count={len(capacity_rows)}, expected={WORLD_SIZE}"
+            )
+        if len(identities) != 1:
+            errors.append("capacity source/bootstrap/trace identity differs by rank")
+        allocated = [
+            int(row.get("peak_memory", {}).get("max_allocated_bytes", 0))
+            for row in capacity_rows
+        ]
+        reserved = [
+            int(row.get("peak_memory", {}).get("max_reserved_bytes", 0))
+            for row in capacity_rows
+        ]
+        free = [
+            int(row.get("peak_memory", {}).get("driver_free_bytes", 0))
+            for row in capacity_rows
+        ]
+        value = {
+            "status": "PASS" if not errors else "FAIL",
+            "errors": errors,
+            "run_kind": "capacity",
+            "execution_mode": args.execution_mode,
+            "rank_count": len(capacity_rows),
+            "trace_sha256": trace.sha256,
+            "identity": next(iter(identities)) if len(identities) == 1 else None,
+            "pool_policy": pool_policy,
+            "generator_ranks": list(generator_ranks),
+            "score_ranks": list(score_ranks),
+            "critic_ranks": list(critic_ranks),
+            "peak_allocated_gib": max(allocated) / 2**30 if allocated else None,
+            "peak_reserved_gib": max(reserved) / 2**30 if reserved else None,
+            "minimum_driver_free_gib": min(free) / 2**30 if free else None,
+            "gpu_training_workload": "NOT_RUN",
+            "formal_timing_eligible": False,
+            "head": args.expected_head,
+        }
+        atomic_json(args.output, value)
+        return 0 if not errors else 1
     score_physical_batch_size = int(plan.get("metadata", {}).get("score_physical_batch_size", 1))
     if score_physical_batch_size not in {1, 2}:
         errors.append(f"unsupported Score physical batch size={score_physical_batch_size}")
@@ -154,7 +271,7 @@ def main() -> int:
     expected_physical = {
         rank: (
             1 if rank in generator_ranks else 0,
-            5 if rank in score_ranks else 0,
+            5 if rank in critic_ranks else 0,
         )
         for rank in range(WORLD_SIZE)
     }
@@ -238,6 +355,31 @@ def main() -> int:
                         f"rank{row['rank']}: invalid async Critic sync receipt at "
                         f"step {value.get('step')}"
                     )
+    elif pool_policy == PHASE_EXPANDED_CRITIC16_POOL_POLICY:
+        for row in rows:
+            receipts = [
+                value
+                for value in row.get("gradient_sync", [])
+                if value.get("role") == "critic"
+            ]
+            if len(receipts) != FULL5_STEPS:
+                errors.append(
+                    f"rank{row['rank']}: FSDP2 Critic sync receipt count={len(receipts)}"
+                )
+                continue
+            for value in receipts:
+                if value != {
+                    "step": value.get("step"),
+                    "role": "critic",
+                    "backend": "FSDP2_REDUCE_SCATTER",
+                    "group_size": WORLD_SIZE,
+                    "reduction": "SUM_THEN_DIVIDE_GROUP_SIZE",
+                    "overlap_with_backward": True,
+                } or value.get("step") not in range(FULL5_STEPS):
+                    errors.append(
+                        f"rank{row['rank']}: invalid FSDP2 Critic sync receipt at "
+                        f"step {value.get('step')}"
+                    )
     elif pool_policy in {
         "persistent_6g_10score_teacher_fsdp10",
         "persistent_6g_10score_teacher_node_local_hierarchical",
@@ -316,6 +458,7 @@ def main() -> int:
         lora_kernel_receipt = row.get("critic_lora_kernel", {})
         if critic_lora_kernel_enabled:
             rank = int(row["rank"])
+            phase_expanded = pool_policy == PHASE_EXPANDED_CRITIC16_POOL_POLICY
             expected_lora_kernel = {
                 "enabled": True,
                 "name": critic_lora_kernel_contract.get("name"),
@@ -323,11 +466,21 @@ def main() -> int:
                     "70d00d496aa2bd8ea06d64e6b04af873644eff52539396f74ec586a4cbbe97a3"
                 ),
                 "class_forward_patched": True,
-                "role": "generator" if rank in generator_ranks else "score",
-                "execution_status": (
-                    "NOT_APPLICABLE" if rank in generator_ranks else "PASS"
+                "role": (
+                    "critic"
+                    if phase_expanded
+                    else ("generator" if rank in generator_ranks else "score")
                 ),
-                "module_count": 0 if rank in generator_ranks else 180,
+                "execution_status": (
+                    "PASS"
+                    if phase_expanded
+                    else ("NOT_APPLICABLE" if rank in generator_ranks else "PASS")
+                ),
+                "module_count": (
+                    180
+                    if phase_expanded or rank not in generator_ranks
+                    else 0
+                ),
                 "all_scales_one": True,
             }
             for key, expected_value in expected_lora_kernel.items():
@@ -405,19 +558,27 @@ def main() -> int:
                     errors.append(f"rank{rank}: Score modulation executed no elements")
         elif modulation_receipt.get("enabled") not in {False, None}:
             errors.append(f"rank{row['rank']}: unregistered Score modulation kernel")
-        if (
-            pool_policy
-            == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced"
-        ):
+        if pool_policy in {
+            "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced",
+            PHASE_EXPANDED_CRITIC16_POOL_POLICY,
+        }:
             rank = int(row["rank"])
             lane = rank if rank < 8 else rank - 8
             expected_routing = {
-                "policy": "trace_balanced_fixed_rank_pairs_v1",
+                "policy": (
+                    "trace_balanced_phase_expanded_critic16_v1"
+                    if pool_policy == PHASE_EXPANDED_CRITIC16_POOL_POLICY
+                    else "trace_balanced_fixed_rank_pairs_v1"
+                ),
                 "lane": lane,
                 "logical_slots": list(TRACE_BALANCED_8G8S_SLOT_PAIRS[lane]),
                 "peer_rank": rank + 8 if rank < 8 else rank - 8,
                 "all_pairs": [list(pair) for pair in TRACE_BALANCED_8G8S_SLOT_PAIRS],
             }
+            if pool_policy == PHASE_EXPANDED_CRITIC16_POOL_POLICY:
+                expected_routing["critic_slot"] = int(
+                    TRACE_BALANCED_8G8S_SLOT_PAIRS[lane][1 if rank < 8 else 0]
+                )
             if row.get("slot_routing") != expected_routing:
                 errors.append(f"rank{rank}: trace-balanced slot-routing receipt mismatch")
     for key, expected in expected_logical_inventory.items():
@@ -511,6 +672,7 @@ def main() -> int:
         "score_modulation_kernel": score_modulation_kernel_enabled,
         "generator_ranks": list(generator_ranks),
         "score_ranks": list(score_ranks),
+        "critic_ranks": list(critic_ranks),
         "full5_seconds": max(walls) if walls else None,
         "rank_wall_min_seconds": min(walls) if walls else None,
         "rank_wall_max_seconds": max(walls) if walls else None,

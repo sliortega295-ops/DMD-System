@@ -80,7 +80,8 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--ssh-port", type=int, default=2222)
     value.add_argument("--run-id", required=True)
     value.add_argument(
-        "--run-kind", choices=("validate", "correctness", "timing", "profile"),
+        "--run-kind",
+        choices=("validate", "capacity", "correctness", "timing", "profile"),
         required=True,
     )
     value.add_argument("--execution-mode", choices=("baseline", "pipeline"), required=True)
@@ -96,6 +97,7 @@ def parser() -> argparse.ArgumentParser:
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
+            "phase-expanded-critic16",
             "score-b2",
             "6g10score", "6g10score-node-local",
             "6g10score-node-local-fused",

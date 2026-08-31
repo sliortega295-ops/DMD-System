@@ -53,6 +53,7 @@ def main() -> int:
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
+            "phase-expanded-critic16",
             "score-b2",
             "6g10score", "6g10score-node-local",
             "6g10score-node-local-fused",
@@ -80,6 +81,13 @@ def main() -> int:
     )
     generator_group = dist.new_group(ranks=list(generator_ranks), backend="nccl")
     score_group = dist.new_group(ranks=list(score_ranks), backend="nccl")
+    phase_expanded_critic16 = args.pipeline_variant == "phase-expanded-critic16"
+    critic_ranks = tuple(range(WORLD_SIZE)) if phase_expanded_critic16 else score_ranks
+    critic_group = (
+        dist.new_group(ranks=list(critic_ranks), backend="nccl")
+        if phase_expanded_critic16
+        else score_group
+    )
     score_node_groups = []
     score_leader_group = None
     node_local_variant = args.pipeline_variant in {
@@ -116,7 +124,7 @@ def main() -> int:
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
         }
-        and rank in score_ranks
+        and rank in critic_ranks
     ):
         from distillschedule.runtime.livewan_grad_reducer import (
             GradReadyAsyncGroupReducer,
@@ -131,17 +139,17 @@ def main() -> int:
         reducer = GradReadyAsyncGroupReducer(
             torch,
             [(f"canary_{index}", parameter) for index, parameter in enumerate(parameters)],
-            group=score_group,
-            group_size=len(score_ranks),
+            group=critic_group,
+            group_size=len(critic_ranks),
             bucket_bytes=16 * 1024,
         )
         reducer.zero_grad()
-        local_value = float(rank - score_ranks[0] + 1)
+        local_value = float(critic_ranks.index(rank) + 1)
         reducer.backward(
             sum(parameter.sum() * local_value for parameter in parameters)
         )
         async_reducer_canary = reducer.finish()
-        expected_mean = sum(range(1, len(score_ranks) + 1)) / len(score_ranks)
+        expected_mean = sum(range(1, len(critic_ranks) + 1)) / len(critic_ranks)
         if any(
             not torch.equal(
                 parameter.grad,
@@ -154,6 +162,32 @@ def main() -> int:
             raise RuntimeError("async Score gradient bucket inventory mismatch")
         async_reducer_canary["expected_mean"] = expected_mean
         del reducer, parameters
+
+    critic_fsdp_canary = None
+    if phase_expanded_critic16:
+        # Match the new Critic placement semantics without constructing a model:
+        # one world16 reduce-scatter SUM followed by the registered /16 mean.
+        local = torch.full(
+            (WORLD_SIZE * 4096,),
+            float(rank + 1),
+            dtype=torch.float32,
+            device=device,
+        )
+        reduced = torch.empty(4096, dtype=torch.float32, device=device)
+        dist.reduce_scatter_tensor(
+            reduced, local, op=dist.ReduceOp.SUM, group=critic_group
+        )
+        reduced.mul_(1.0 / WORLD_SIZE)
+        expected_mean = sum(range(1, WORLD_SIZE + 1)) / WORLD_SIZE
+        if not torch.equal(reduced, torch.full_like(reduced, expected_mean)):
+            raise RuntimeError("world16 FSDP-like Critic reduce-scatter mean mismatch")
+        critic_fsdp_canary = {
+            "backend": "FSDP2_REDUCE_SCATTER",
+            "group_size": WORLD_SIZE,
+            "reduction": "SUM_THEN_DIVIDE_GROUP_SIZE",
+            "expected_mean": expected_mean,
+            "output_bytes": reduced.numel() * reduced.element_size(),
+        }
 
     node_local_collective = None
     if node_local_variant and rank in score_ranks:
@@ -328,6 +362,7 @@ def main() -> int:
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
+            "phase-expanded-critic16",
         }
         else (lane, lane + 8)
     )
@@ -406,10 +441,14 @@ def main() -> int:
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
+                "phase-expanded-critic16",
             }
             else "cuda_p2p_float32"
         ),
         "async_reducer_canary": async_reducer_canary,
+        "critic_fsdp_canary": critic_fsdp_canary,
+        "critic_group_size": len(critic_ranks) if rank in critic_ranks else 0,
+        "phase_expanded_critic16": phase_expanded_critic16,
         "observed": observed,
         "observed_gradients": observed_gradients,
     }
@@ -433,6 +472,7 @@ def main() -> int:
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
+                "phase-expanded-critic16",
             }
             else tuple((lane, lane + 8) for lane in range(8))
         )
@@ -446,6 +486,14 @@ def main() -> int:
                     and all(
                         tuple(rows[lane + 8]["slot_pair"]) == observed_pairs[lane]
                         for lane in range(8)
+                    )
+                    and (
+                        not phase_expanded_critic16
+                        or all(
+                            row.get("critic_group_size") == WORLD_SIZE
+                            and row.get("critic_fsdp_canary") is not None
+                            for row in rows
+                        )
                     )
                     else "FAIL"
                 ),

@@ -51,6 +51,7 @@ PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_CO
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_SCALE1 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_SCALE1_MODULATION = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1_modulation.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_FUSED_CAST_ADD = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_fused_cast_add.json"
+PIPELINE_PHASE_EXPANDED_CRITIC16 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16.json"
 PIPELINE_SCORE_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
 PIPELINE_6G10S = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json"
 PIPELINE_6G10S_NODE_LOCAL = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score_node_local.json"
@@ -463,6 +464,8 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1"' in controller
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation"' in controller
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add"' in controller
+    assert '"phase-expanded-critic16"' in controller
+    assert '"capacity", "correctness", "timing", "profile"' in controller
     assert '"LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant' in controller
     assert 'resolved_plan.node0.json' in controller
 
@@ -479,6 +482,8 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_context_prefetch.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1_modulation.json" in launcher
+    assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16.json" in launcher
+    assert '"${RUN_KIND}" == capacity' in launcher
     assert "baseline_pipeline_variant_mismatch" in launcher
     summarizer = (
         ROOT / "scripts/distillschedule/summarize_livewan_crossscale_world16.py"
@@ -672,6 +677,55 @@ def test_trace_balanced_plan_changes_only_fixed_slot_pairing() -> None:
     assert _pipeline_8x8_slot_pairs(candidate.to_dict()) == TRACE_BALANCED_8G8S_SLOT_PAIRS
     routed = [slot for pair in TRACE_BALANCED_8G8S_SLOT_PAIRS for slot in pair]
     assert sorted(routed) == list(range(16))
+
+
+def test_phase_expanded_critic16_changes_only_registered_schedule_and_placement() -> None:
+    reference = load_plan(
+        PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_SCALE1
+    ).plan
+    candidate = load_plan(PIPELINE_PHASE_EXPANDED_CRITIC16).plan
+    LiveWanSFDMDAdapter().validate(candidate)
+    assert reference.workload.to_dict() == candidate.workload.to_dict()
+    assert reference.hardware.to_dict() == candidate.hardware.to_dict()
+    groups = {group.name: tuple(group.ranks) for group in candidate.rank_groups}
+    assert groups["generator"] == tuple(range(8))
+    assert groups["score"] == tuple(range(8, 16))
+    assert groups["teacher"] == tuple(range(8, 16))
+    assert groups["critic"] == tuple(range(16))
+    assert candidate.training_backends["generator"].kind.value == "native"
+    assert candidate.training_backends["generator"].options == {
+        "resident": True,
+        "reshard_after_forward": False,
+        "gradient_sync": "group_all_reduce_sum_then_divide",
+    }
+    assert candidate.training_backends["score"].kind.value == "fsdp"
+    assert candidate.training_backends["score"].options["mesh_ranks"] == list(
+        range(16)
+    )
+    assert candidate.training_backends["score"].options["reshard_after_forward"] is False
+    assert candidate.training_backends["score"].options["explicit_pre_dmd_unshard"] is True
+    assert candidate.metadata["score_physical_batch_size"] == 1
+    assert candidate.metadata["critic_physical_batch_size"] == 1
+    assert candidate.metadata["phase_a_generator_global_batch"] == 16
+    assert candidate.metadata["phase_b_critic_global_batch"] == 16
+    assert candidate.metadata["phase_b_critic_rank_batch"] == 1
+    assert candidate.metadata["variable_rollout_call_counts_require_resident_generator"] is True
+    assert candidate.metadata["critic_collective_call_alignment"] == (
+        "one_fsdp_forward_backward_per_rank_per_step"
+    )
+    assert candidate.metadata["generator_nograd_runahead"] is False
+    assert candidate.metadata["runahead_buffers_per_generator_rank"] == 0
+    assert _pipeline_8x8_slot_pairs(candidate.to_dict()) == (
+        TRACE_BALANCED_8G8S_SLOT_PAIRS
+    )
+    worker = (
+        ROOT / "src/distillschedule/runtime/livewan_crossscale_worker.py"
+    ).read_text()
+    assert "def _run_pipeline_phase_expanded_critic16(" in worker
+    assert "world16_fsdp2_keep_unsharded" in worker
+    assert "_materialize_fsdp_units" in worker
+    assert "bundle.critic_group_size == WORLD_SIZE" in worker
+    assert 'run_kind in {"capacity", "correctness", "timing", "profile"}' in worker
 
 
 def test_full_context_plan_changes_only_mask_discovery_metadata() -> None:
