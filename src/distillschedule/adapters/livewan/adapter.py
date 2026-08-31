@@ -315,15 +315,33 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                     )
                 expected_lora_kernel = {
                     "enabled": True,
-                    "name": "scale_one_identity_epilogue_v1",
                     "scale": 1.0,
-                    "math_change": "remove_identity_multiply_only",
                     "base_input_output_dtype": "bfloat16",
                     "lora_parameter_compute_dtype": "float32",
                     "source_forward_sha256": (
                         "70d00d496aa2bd8ea06d64e6b04af873644eff52539396f74ec586a4cbbe97a3"
                     ),
                 }
+                lora_kernel_name = critic_lora_kernel.get("name")
+                if lora_kernel_name == "scale_one_identity_epilogue_v1":
+                    expected_lora_kernel.update(
+                        name=lora_kernel_name,
+                        math_change="remove_identity_multiply_only",
+                    )
+                elif lora_kernel_name == "scale_one_fused_cast_add_v1":
+                    expected_lora_kernel.update(
+                        name=lora_kernel_name,
+                        math_change=(
+                            "remove_identity_multiply_and_fuse_fp32_to_bf16_cast_with_bf16_add"
+                        ),
+                        fused_min_numel=8_000_000,
+                        triton_block_size=256,
+                    )
+                else:
+                    self._fail(
+                        "Unknown Critic LoRA kernel candidate",
+                        "metadata.critic_lora_kernel.name",
+                    )
                 if dict(critic_lora_kernel) != expected_lora_kernel:
                     self._fail(
                         "Critic LoRA kernel contract changed",

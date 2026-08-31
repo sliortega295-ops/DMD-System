@@ -1688,15 +1688,30 @@ def _critic_lora_scale_one_enabled(plan: Mapping[str, Any], *, mode: str) -> boo
     )
     expected = {
         "enabled": True,
-        "name": "scale_one_identity_epilogue_v1",
         "scale": 1.0,
-        "math_change": "remove_identity_multiply_only",
         "base_input_output_dtype": "bfloat16",
         "lora_parameter_compute_dtype": "float32",
         "source_forward_sha256": (
             "70d00d496aa2bd8ea06d64e6b04af873644eff52539396f74ec586a4cbbe97a3"
         ),
     }
+    name = kernel.get("name")
+    if name == "scale_one_identity_epilogue_v1":
+        expected.update(
+            name=name,
+            math_change="remove_identity_multiply_only",
+        )
+    elif name == "scale_one_fused_cast_add_v1":
+        expected.update(
+            name=name,
+            math_change=(
+                "remove_identity_multiply_and_fuse_fp32_to_bf16_cast_with_bf16_add"
+            ),
+            fused_min_numel=8_000_000,
+            triton_block_size=256,
+        )
+    else:
+        _require(False, "Unknown Critic LoRA kernel candidate")
     _require(dict(kernel) == expected, "Critic LoRA kernel contract changed")
     return True
 
@@ -1874,7 +1889,12 @@ def run_worker(
             install_scale_one_lora_epilogue,
         )
 
-        critic_lora_kernel = install_scale_one_lora_epilogue(torch)
+        kernel_name = plan["metadata"]["critic_lora_kernel"]["name"]
+        critic_lora_kernel = install_scale_one_lora_epilogue(
+            torch,
+            fused_cast_add=(kernel_name == "scale_one_fused_cast_add_v1"),
+            fused_min_numel=8_000_000,
+        )
     before_oom = cgroup_oom_counts()
     torch.cuda.reset_peak_memory_stats(device)
     build_started = time.perf_counter()

@@ -76,8 +76,11 @@ def main() -> int:
     score_context_prefetch = bool(
         plan.get("metadata", {}).get("score_context_prefetch", False)
     )
+    critic_lora_kernel_contract = dict(
+        plan.get("metadata", {}).get("critic_lora_kernel", {})
+    )
     critic_lora_kernel_enabled = bool(
-        plan.get("metadata", {}).get("critic_lora_kernel", {}).get("enabled", False)
+        critic_lora_kernel_contract.get("enabled", False)
     )
     rank_groups = {
         str(row["name"]): tuple(int(rank) for rank in row["ranks"])
@@ -309,7 +312,7 @@ def main() -> int:
             rank = int(row["rank"])
             expected_lora_kernel = {
                 "enabled": True,
-                "name": "scale_one_identity_epilogue_v1",
+                "name": critic_lora_kernel_contract.get("name"),
                 "source_forward_sha256": (
                     "70d00d496aa2bd8ea06d64e6b04af873644eff52539396f74ec586a4cbbe97a3"
                 ),
@@ -330,6 +333,18 @@ def main() -> int:
                 "PASS", "ALREADY_INSTALLED"
             }:
                 errors.append(f"rank{rank}: Critic LoRA kernel installation failed")
+            fused_expected = (
+                critic_lora_kernel_contract.get("name")
+                == "scale_one_fused_cast_add_v1"
+            )
+            if lora_kernel_receipt.get("fused_cast_add") is not fused_expected:
+                errors.append(f"rank{rank}: Critic LoRA fused-epilogue mode mismatch")
+            if fused_expected and (
+                lora_kernel_receipt.get("fused_min_numel") != 8_000_000
+                or lora_kernel_receipt.get("triton_block_size") != 256
+                or not lora_kernel_receipt.get("triton_version")
+            ):
+                errors.append(f"rank{rank}: Critic LoRA fused-kernel receipt invalid")
         elif lora_kernel_receipt.get("enabled") not in {False, None}:
             errors.append(f"rank{row['rank']}: unregistered Critic LoRA kernel")
         if (
