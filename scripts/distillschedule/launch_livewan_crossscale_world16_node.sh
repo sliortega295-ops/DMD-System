@@ -47,6 +47,7 @@ PIPELINE_VARIANT="${LIVEWAN_PIPELINE_VARIANT:-b1}"
    "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add || \
    "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision || \
    "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow || \
+   "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow-fused-adam || \
    "${PIPELINE_VARIANT}" == phase-expanded-critic16 || \
    "${PIPELINE_VARIANT}" == phase-expanded-critic16-fused-lora-elision || \
    "${PIPELINE_VARIANT}" == score-b2 || \
@@ -83,6 +84,8 @@ elif [[ "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-tra
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision.json"
 elif [[ "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow ]]; then
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow.json"
+elif [[ "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow-fused-adam ]]; then
+  PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam.json"
 elif [[ "${PIPELINE_VARIANT}" == phase-expanded-critic16 ]]; then
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16.json"
 elif [[ "${PIPELINE_VARIANT}" == phase-expanded-critic16-fused-lora-elision ]]; then

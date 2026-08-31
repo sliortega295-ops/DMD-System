@@ -55,6 +55,7 @@ PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LO
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_FUSED_CAST_ADD = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_fused_cast_add.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow.json"
+PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW_FUSED_ADAM = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam.json"
 PIPELINE_PHASE_EXPANDED_CRITIC16 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16.json"
 PIPELINE_PHASE_EXPANDED_CRITIC16_FUSED_LORA_ELISION = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16_fused_lora_elision.json"
 PIPELINE_SCORE_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
@@ -471,6 +472,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add"' in controller
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision"' in controller
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow"' in controller
+    assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow-fused-adam"' in controller
     assert '"phase-expanded-critic16"' in controller
     assert '"capacity", "correctness", "timing", "profile"' in controller
     assert '"LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant' in controller
@@ -491,6 +493,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1_modulation.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow.json" in launcher
+    assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam.json" in launcher
     assert '"${RUN_KIND}" == capacity' in launcher
     assert "baseline_pipeline_variant_mismatch" in launcher
     summarizer = (
@@ -1039,6 +1042,30 @@ def test_split_dmd_replays_identical_flow_inputs_and_gradient_combine() -> None:
     normalizer = (x0.float() - x0_real).abs().mean().clamp_min(1e-4)
     expected = torch.nan_to_num((x0_fake - x0_real) / normalizer)
     assert torch.equal(actual, expected)
+
+
+def test_split_dmd_fused_adam_reuses_only_validated_capacity_recovery() -> None:
+    reference = load_plan(
+        PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW
+    ).plan
+    candidate = load_plan(
+        PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW_FUSED_ADAM
+    ).plan
+    LiveWanSFDMDAdapter().validate(candidate)
+    assert reference.workload.to_dict() == candidate.workload.to_dict()
+    assert reference.hardware.to_dict() == candidate.hardware.to_dict()
+    assert reference.rank_groups == candidate.rank_groups
+    assert reference.lifecycle.to_dict() == candidate.lifecycle.to_dict()
+    assert candidate.metadata["split_dmd_shadow"] == reference.metadata["split_dmd_shadow"]
+    assert candidate.metadata["critic_lora_kernel"] == reference.metadata["critic_lora_kernel"]
+    assert candidate.metadata["generator_optimizer_impl"] == "fused_adamw"
+    assert candidate.metadata["capacity_recovery"] == (
+        "reuse_validated_foreach_sqrt_transient_recovery"
+    )
+    assert candidate.training_backends["generator"].options == {
+        **reference.training_backends["generator"].options,
+        "optimizer_impl": "fused_adamw",
+    }
 
 
 def test_score_modulation_plan_changes_only_exact_kernel_metadata() -> None:

@@ -55,6 +55,7 @@ def main() -> int:
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow",
+            "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow-fused-adam",
             "phase-expanded-critic16",
             "phase-expanded-critic16-fused-lora-elision",
             "score-b2",
@@ -131,6 +132,7 @@ def main() -> int:
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow",
+            "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow-fused-adam",
         }
         and rank in critic_ranks
     ):
@@ -372,6 +374,7 @@ def main() -> int:
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow",
+            "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow-fused-adam",
             "phase-expanded-critic16",
         }
         else (lane, lane + 8)
@@ -440,8 +443,10 @@ def main() -> int:
         "score_gradient_1_async": True,
         "return_payload_semantics": (
             "teacher_velocity_float32"
-            if args.pipeline_variant
-            == "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow"
+            if args.pipeline_variant in {
+                "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow",
+                "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow-fused-adam",
+            }
             else "final_dmd_gradient_float32"
         ),
         "pipeline_variant": args.pipeline_variant,
@@ -458,7 +463,8 @@ def main() -> int:
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision",
-            "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow",
+                "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow",
+                "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow-fused-adam",
                 "phase-expanded-critic16",
                 "phase-expanded-critic16-fused-lora-elision",
             }
@@ -492,7 +498,8 @@ def main() -> int:
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision",
-            "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow",
+                "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow",
+                "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow-fused-adam",
                 "phase-expanded-critic16",
                 "phase-expanded-critic16-fused-lora-elision",
             }
