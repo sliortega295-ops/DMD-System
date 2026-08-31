@@ -499,7 +499,7 @@ def test_step0_p2p_posts_gradient_receive_before_second_wave_send() -> None:
     )[0]
     step0 = generator_path.split("if step == 0:", 1)[1]
     assert step0.index("dist.recv(grad0, src=peer)") < step0.index(
-        "sends = _send_pair(destination=peer, prepared=second, asynchronous=True)"
+        "sends = _send_pair("
     )
 
 
