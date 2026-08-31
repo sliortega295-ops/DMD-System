@@ -98,6 +98,7 @@ def parser() -> argparse.ArgumentParser:
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision",
+            "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow",
             "phase-expanded-critic16",
             "phase-expanded-critic16-fused-lora-elision",
             "score-b2",

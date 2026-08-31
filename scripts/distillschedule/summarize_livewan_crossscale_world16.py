@@ -96,6 +96,12 @@ def main() -> int:
     score_modulation_kernel_enabled = bool(
         score_modulation_kernel_contract.get("enabled", False)
     )
+    split_dmd_shadow_contract = dict(
+        plan.get("metadata", {}).get("split_dmd_shadow", {})
+    )
+    split_dmd_shadow_enabled = bool(
+        split_dmd_shadow_contract.get("enabled", False)
+    )
     rank_groups = {
         str(row["name"]): tuple(int(rank) for rank in row["ranks"])
         for row in plan.get("rank_groups", [])
@@ -174,6 +180,29 @@ def main() -> int:
                     or sync.get("reduction") != "SUM_THEN_DIVIDE_GROUP_SIZE"
                 ):
                     errors.append(f"rank{rank}: invalid world16 Critic reducer residency")
+            if split_dmd_shadow_enabled:
+                shadow = build.get("critic_shadow")
+                critic = build.get("critic")
+                if rank in generator_ranks:
+                    if (
+                        build.get("student") is None
+                        or critic is not None
+                        or build.get("teacher") is not None
+                        or (shadow or {}).get("placement")
+                        != "generator_rank_frozen_replica"
+                        or (shadow or {}).get("scope") != "step0_fake_score_only"
+                        or (shadow or {}).get("trainable_parameter_count") != 0
+                        or (shadow or {}).get("optimizer") is not None
+                    ):
+                        errors.append(f"rank{rank}: invalid split-DMD Generator residency")
+                elif (
+                    build.get("student") is not None
+                    or shadow is not None
+                    or (critic or {}).get("placement") != "gpu_resident_replica"
+                    or (build.get("teacher") or {}).get("placement")
+                    != "fsdp2_group8_reshard"
+                ):
+                    errors.append(f"rank{rank}: invalid split-DMD Score residency")
         identities = {
             (
                 row.get("trace_sha256"),
@@ -188,6 +217,15 @@ def main() -> int:
             )
         if len(identities) != 1:
             errors.append("capacity source/bootstrap/trace identity differs by rank")
+        if split_dmd_shadow_enabled:
+            initial_lora_shas = {
+                (row.get("build", {}).get("critic_shadow") or row.get("build", {}).get("critic") or {}).get(
+                    "initial_lora_sha256"
+                )
+                for row in capacity_rows
+            }
+            if len(initial_lora_shas) != 1 or None in initial_lora_shas:
+                errors.append("split-DMD C0 Critic/Shadow initial LoRA SHA mismatch")
         allocated = [
             int(row.get("peak_memory", {}).get("max_allocated_bytes", 0))
             for row in capacity_rows
@@ -212,6 +250,7 @@ def main() -> int:
             "generator_ranks": list(generator_ranks),
             "score_ranks": list(score_ranks),
             "critic_ranks": list(critic_ranks),
+            "split_dmd_shadow": split_dmd_shadow_contract,
             "peak_allocated_gib": max(allocated) / 2**30 if allocated else None,
             "peak_reserved_gib": max(reserved) / 2**30 if reserved else None,
             "minimum_driver_free_gib": min(free) / 2**30 if free else None,
@@ -469,16 +508,20 @@ def main() -> int:
                 "role": (
                     "critic"
                     if phase_expanded
-                    else ("generator" if rank in generator_ranks else "score")
+                    else (
+                        "generator_shadow"
+                        if split_dmd_shadow_enabled and rank in generator_ranks
+                        else ("generator" if rank in generator_ranks else "score")
+                    )
                 ),
                 "execution_status": (
                     "PASS"
-                    if phase_expanded
+                    if phase_expanded or (split_dmd_shadow_enabled and rank in generator_ranks)
                     else ("NOT_APPLICABLE" if rank in generator_ranks else "PASS")
                 ),
                 "module_count": (
                     180
-                    if phase_expanded or rank not in generator_ranks
+                    if phase_expanded or split_dmd_shadow_enabled or rank not in generator_ranks
                     else 0
                 ),
                 "all_scales_one": True,
@@ -508,7 +551,11 @@ def main() -> int:
             ):
                 errors.append(f"rank{rank}: Critic LoRA autocast-elision mode mismatch")
             if autocast_elision_expected:
-                expected_invocations = phase_expanded or rank not in generator_ranks
+                expected_invocations = (
+                    phase_expanded
+                    or split_dmd_shadow_enabled
+                    or rank not in generator_ranks
+                )
                 invocation_count = int(
                     lora_kernel_receipt.get(
                         "autocast_input_elision_invocation_count", -1
@@ -580,6 +627,29 @@ def main() -> int:
                     errors.append(f"rank{rank}: Score modulation executed no elements")
         elif modulation_receipt.get("enabled") not in {False, None}:
             errors.append(f"rank{row['rank']}: unregistered Score modulation kernel")
+        split_receipt = row.get("split_dmd_shadow", {})
+        if split_dmd_shadow_enabled:
+            rank = int(row["rank"])
+            expected_split_receipt = {
+                "enabled": True,
+                "role": "generator" if rank in generator_ranks else "score",
+                "execution_status": "PASS",
+                "fake_velocity_calls": 2 if rank in generator_ranks else 0,
+                "teacher_velocity_calls": 0 if rank in generator_ranks else 2,
+                "received_teacher_velocities": 2 if rank in generator_ranks else 0,
+                "received_final_gradients": 0,
+            }
+            if split_receipt != expected_split_receipt:
+                errors.append(f"rank{rank}: split-DMD execution receipt mismatch")
+            build = row.get("build", {})
+            identity = build.get("critic_shadow") if rank in generator_ranks else build.get("critic")
+            if (
+                (identity or {}).get("initial_version") != 0
+                or not (identity or {}).get("initial_lora_sha256")
+            ):
+                errors.append(f"rank{rank}: split-DMD C0 identity receipt missing")
+        elif split_receipt.get("enabled") not in {False, None}:
+            errors.append(f"rank{row['rank']}: unregistered split-DMD execution")
         if pool_policy in {
             "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced",
             PHASE_EXPANDED_CRITIC16_POOL_POLICY,
@@ -603,6 +673,17 @@ def main() -> int:
                 )
             if row.get("slot_routing") != expected_routing:
                 errors.append(f"rank{rank}: trace-balanced slot-routing receipt mismatch")
+    if split_dmd_shadow_enabled:
+        split_initial_lora_shas = {
+            (
+                row.get("build", {}).get("critic_shadow")
+                or row.get("build", {}).get("critic")
+                or {}
+            ).get("initial_lora_sha256")
+            for row in rows
+        }
+        if len(split_initial_lora_shas) != 1 or None in split_initial_lora_shas:
+            errors.append("split-DMD C0 Critic/Shadow initial LoRA SHA mismatch")
     for key, expected in expected_logical_inventory.items():
         if actual_logical_inventory.get(key, 0) != expected:
             errors.append(
@@ -692,6 +773,7 @@ def main() -> int:
         "score_context_prefetch": score_context_prefetch,
         "critic_lora_kernel": critic_lora_kernel_enabled,
         "score_modulation_kernel": score_modulation_kernel_enabled,
+        "split_dmd_shadow": split_dmd_shadow_contract,
         "generator_ranks": list(generator_ranks),
         "score_ranks": list(score_ranks),
         "critic_ranks": list(critic_ranks),

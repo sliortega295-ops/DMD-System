@@ -476,6 +476,7 @@ def _state_metrics(torch: Any, parameters: Sequence[Any]) -> dict[str, float | i
 class ModelBundle:
     student: Any | None
     critic: Any | None
+    critic_shadow: Any | None
     teacher: Any | None
     generator_optimizer: Any | None
     critic_optimizer: Any | None
@@ -492,6 +493,21 @@ class ModelBundle:
     score_group_size: int
     critic_group_size: int
     metadata: dict[str, Any]
+
+
+def _parameter_sequence_sha256(torch: Any, parameters: Sequence[Any]) -> str:
+    """Hash an ordered CPU parameter sequence before any optimizer mutation."""
+
+    digest = hashlib.sha256()
+    count = 0
+    for parameter in parameters:
+        value = parameter.detach().cpu().contiguous()
+        digest.update(str(value.dtype).encode("utf-8"))
+        digest.update(json.dumps(list(value.shape), separators=(",", ":")).encode("utf-8"))
+        digest.update(value.view(torch.uint8).numpy().tobytes())
+        count += 1
+    _require(count > 0, "parameter identity requires a non-empty sequence")
+    return digest.hexdigest()
 
 
 def _make_mesh(torch: Any, ranks: Sequence[int], group: Any) -> Any:
@@ -577,6 +593,36 @@ def _plan_critic_ranks(
     return critic_ranks
 
 
+def _split_dmd_shadow_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    """Validate the exact C14 split-DMD execution-graph contract."""
+
+    metadata = plan.get("metadata", {})
+    contract = metadata.get("split_dmd_shadow")
+    if contract is None:
+        return False
+    _require(mode == "pipeline", "split-DMD shadow is pipeline-only")
+    _require(
+        metadata.get("pool_policy") == TRACE_BALANCED_POOL_POLICY,
+        "split-DMD shadow requires the validated K5b pool substrate",
+    )
+    _require(
+        metadata.get("full_context_lens_elision") is True,
+        "split-DMD shadow requires full-context elision",
+    )
+    expected = {
+        "enabled": True,
+        "version": "C0",
+        "placement": "generator_rank_frozen_replica",
+        "scope": "step0_fake_score_only",
+        "teacher_velocity_transport": "cuda_p2p_float32",
+        "critic_training_placement": "score_ranks_only",
+        "source_trainable_sha_matches_score_c0": True,
+        "logical_calls_preserved": True,
+    }
+    _require(dict(contract) == expected, "split-DMD shadow contract changed")
+    return True
+
+
 def build_models(
     *,
     torch: Any,
@@ -601,6 +647,7 @@ def build_models(
     generator_group = dist.new_group(ranks=list(generator_ranks))
     score_group = dist.new_group(ranks=list(score_ranks))
     pool_policy = str(plan.get("metadata", {}).get("pool_policy", ""))
+    split_dmd_shadow = _split_dmd_shadow_enabled(plan, mode=mode)
     critic_group = (
         dist.new_group(ranks=list(critic_ranks))
         if critic_ranks != score_ranks
@@ -631,9 +678,10 @@ def build_models(
         "critic_ranks": list(critic_ranks),
         "student": None,
         "critic": None,
+        "critic_shadow": None,
         "teacher": None,
     }
-    student = critic = teacher = None
+    student = critic = critic_shadow = teacher = None
     opt_g = opt_c = None
     lora_params: list[Any] = []
     critic_gradient_reducer = None
@@ -705,6 +753,11 @@ def build_models(
         with torch.random.fork_rng(devices=[]):
             torch.manual_seed(int(bootstrap.value["critic_lora"]["seed"]))
             lora_params, lora_modules, lora_numel = inject_lora(critic, rank=LORA_RANK)
+        initial_lora_sha256 = (
+            _parameter_sequence_sha256(torch, lora_params)
+            if split_dmd_shadow
+            else None
+        )
         phase_expanded = pool_policy == PHASE_EXPANDED_CRITIC16_POOL_POLICY
         critic_fsdp_groups = 0
         if phase_expanded:
@@ -737,6 +790,9 @@ def build_models(
             "lora_rank": LORA_RANK,
             "lora_modules": int(lora_modules),
             "lora_numel": int(lora_numel),
+            "base_sha256": bootstrap.value["critic_base"]["sha256"],
+            "initial_lora_sha256": initial_lora_sha256,
+            "initial_version": int(bootstrap.versions["critic"]),
             "optimizer": critic_optimizer_receipt,
         }
         if phase_expanded:
@@ -746,6 +802,42 @@ def build_models(
                 "group_size": len(critic_ranks),
                 "reduction": "SUM_THEN_DIVIDE_GROUP_SIZE",
             }
+        gc.collect()
+
+    if split_dmd_shadow and owns_generator:
+        torch.manual_seed(0)
+        critic_shadow = _wan_model(WanModel, size="1.3B", config=config).to(torch.bfloat16)
+        critic_root = Path(workload["score"]["checkpoint"]).expanduser().resolve()
+        _require(
+            critic_root == Path(bootstrap.value["critic_base"]["root"]),
+            "plan/bootstrap Critic-shadow root mismatch",
+        )
+        critic_shadow.load_state_dict(_load_checkpoint(load_file, critic_root), strict=True)
+        critic_shadow.eval().requires_grad_(False)
+        with torch.random.fork_rng(devices=[]):
+            torch.manual_seed(int(bootstrap.value["critic_lora"]["seed"]))
+            shadow_lora_params, shadow_lora_modules, shadow_lora_numel = inject_lora(
+                critic_shadow, rank=LORA_RANK
+            )
+        shadow_lora_sha256 = _parameter_sequence_sha256(torch, shadow_lora_params)
+        critic_shadow.requires_grad_(False)
+        _require(
+            not any(parameter.requires_grad for parameter in critic_shadow.parameters()),
+            "Critic shadow unexpectedly owns trainable parameters",
+        )
+        critic_shadow.to(device)
+        metadata["critic_shadow"] = {
+            "placement": "generator_rank_frozen_replica",
+            "scope": "step0_fake_score_only",
+            "base_sha256": bootstrap.value["critic_base"]["sha256"],
+            "initial_lora_sha256": shadow_lora_sha256,
+            "initial_version": int(bootstrap.versions["critic"]),
+            "lora_rank": LORA_RANK,
+            "lora_modules": int(shadow_lora_modules),
+            "lora_numel": int(shadow_lora_numel),
+            "trainable_parameter_count": 0,
+            "optimizer": None,
+        }
         gc.collect()
 
     if owns_score:
@@ -826,6 +918,7 @@ def build_models(
     return ModelBundle(
         student=student,
         critic=critic,
+        critic_shadow=critic_shadow,
         teacher=teacher,
         generator_optimizer=opt_g,
         critic_optimizer=opt_c,
@@ -1232,14 +1325,17 @@ class ScoreContext:
 @dataclass
 class ScoreSampleContext:
     teacher: Any | None
-    critic: Any
+    critic: Any | None
 
 
 def build_score_context(torch: Any, *, bundle: ModelBundle, loader: InputLoader, device: Any) -> ScoreContext:
     from wanstreamer.core import latent_geometry, make_rope_table
-    _require(bundle.critic is not None, "Critic model bundle is incomplete")
+    critic_model = (
+        bundle.critic if bundle.critic is not None else bundle.critic_shadow
+    )
+    _require(critic_model is not None, "Critic model bundle is incomplete")
     _, _, hp, wp = latent_geometry(640, 368)
-    rope = make_rope_table(bundle.critic, hp, wp, LATENT_SHAPE[2] + 8, device)
+    rope = make_rope_table(critic_model, hp, wp, LATENT_SHAPE[2] + 8, device)
     negative = None
     if bundle.teacher is not None:
         with torch.no_grad():
@@ -1255,6 +1351,7 @@ def prepare_score_sample_context(
     bundle: ModelBundle,
     raw_context: Any,
     include_teacher: bool,
+    critic_model: Any | None = None,
 ) -> ScoreSampleContext:
     """Project only the context tensors consumed by this logical step.
 
@@ -1270,8 +1367,128 @@ def prepare_score_sample_context(
             if include_teacher
             else None
         )
-        critic_context = bundle.critic.text_embedding(raw_context.to(torch.bfloat16))
+        selected_critic = critic_model if critic_model is not None else bundle.critic
+        critic_context = (
+            selected_critic.text_embedding(raw_context.to(torch.bfloat16))
+            if selected_critic is not None
+            else None
+        )
     return ScoreSampleContext(teacher=teacher_context, critic=critic_context)
+
+
+@dataclass
+class DMDFlowInputs:
+    t: Any
+    t_view: Any
+    z_t: Any
+
+
+def _dmd_flow_inputs(
+    torch: Any, *, row: OperationTraceRow, x0: Any
+) -> DMDFlowInputs:
+    t = _sample_flow_t(torch, seed=row.seeds["generator_dmd_t"], device=x0.device)
+    noise = _randn(
+        torch,
+        x0.shape,
+        seed=row.seeds["generator_dmd_noise"],
+        device=x0.device,
+    )
+    t_view = t
+    while t_view.dim() < x0.dim():
+        t_view = t_view.unsqueeze(-1)
+    return DMDFlowInputs(t=t, t_view=t_view, z_t=(1.0 - t_view) * x0 + t_view * noise)
+
+
+def _dmd_teacher_velocity(
+    torch: Any,
+    *,
+    bundle: ModelBundle,
+    score_context: ScoreContext,
+    flow: DMDFlowInputs,
+    sample_context: ScoreSampleContext,
+    context_lens: Any,
+) -> Any:
+    from wanstreamer import dmd as D
+    from wanstreamer.lora import lora_enabled
+
+    _require(bundle.teacher is not None, "DMD Teacher model is missing")
+    _require(sample_context.teacher is not None, "DMD requires Teacher context")
+    _require(
+        score_context.negative_teacher_context is not None,
+        "DMD requires negative Teacher context",
+    )
+    with torch.no_grad(), lora_enabled(bundle.teacher, False):
+        if context_lens is None:
+            velocity = _cfg_velocity_full_context(
+                torch,
+                D,
+                model=bundle.teacher,
+                z=flow.z_t.to(torch.bfloat16),
+                t=flow.t,
+                rope=score_context.rope,
+                context_positive=sample_context.teacher,
+                context_negative=score_context.negative_teacher_context,
+                dtype=torch.bfloat16,
+                guidance=5.0,
+                time_scale=TIME_SCALE,
+            )
+        else:
+            velocity = D.cfg_velocity(
+                bundle.teacher,
+                flow.z_t.to(torch.bfloat16),
+                flow.t,
+                score_context.rope,
+                sample_context.teacher,
+                score_context.negative_teacher_context,
+                context_lens,
+                torch.bfloat16,
+                5.0,
+                TIME_SCALE,
+            )
+    return velocity.float()
+
+
+def _dmd_fake_velocity(
+    torch: Any,
+    *,
+    critic_model: Any,
+    score_context: ScoreContext,
+    flow: DMDFlowInputs,
+    critic_context: Any,
+    context_lens: Any,
+) -> Any:
+    from wanstreamer import dmd as D
+    from wanstreamer.lora import lora_enabled
+
+    _require(critic_model is not None, "DMD Fake-Score model is missing")
+    _require(critic_context is not None, "DMD Fake-Score context is missing")
+    with torch.no_grad(), lora_enabled(critic_model, True):
+        velocity = D.bidirectional_velocity(
+            critic_model,
+            flow.z_t.to(torch.bfloat16),
+            flow.t,
+            score_context.rope,
+            critic_context,
+            context_lens,
+            torch.bfloat16,
+            TIME_SCALE,
+        )
+    return velocity.float()
+
+
+def _combine_dmd_gradient(
+    torch: Any,
+    *,
+    x0: Any,
+    flow: DMDFlowInputs,
+    v_real: Any,
+    v_fake: Any,
+) -> Any:
+    with torch.no_grad():
+        x0_real = (flow.z_t - flow.t_view * v_real).float()
+        x0_fake = (flow.z_t - flow.t_view * v_fake).float()
+        normalizer = (x0.float() - x0_real).abs().mean().clamp_min(1e-4)
+        return torch.nan_to_num((x0_fake - x0_real) / normalizer)
 
 
 def _cfg_velocity_full_context(
@@ -1324,60 +1541,26 @@ def dmd_gradient_for_sample(
     sample_context: ScoreSampleContext,
     context_lens: Any,
 ) -> Any:
-    from wanstreamer import dmd as D
-    from wanstreamer.lora import lora_enabled
-
-    _require(sample_context.teacher is not None, "DMD requires Teacher context")
-    _require(
-        score_context.negative_teacher_context is not None,
-        "DMD requires negative Teacher context",
+    flow = _dmd_flow_inputs(torch, row=row, x0=x0)
+    v_real = _dmd_teacher_velocity(
+        torch,
+        bundle=bundle,
+        score_context=score_context,
+        flow=flow,
+        sample_context=sample_context,
+        context_lens=context_lens,
     )
-
-    t = _sample_flow_t(torch, seed=row.seeds["generator_dmd_t"], device=x0.device)
-    noise = _randn(torch, x0.shape, seed=row.seeds["generator_dmd_noise"], device=x0.device)
-    t_view = t
-    while t_view.dim() < x0.dim():
-        t_view = t_view.unsqueeze(-1)
-    z_t = (1.0 - t_view) * x0 + t_view * noise
-    with torch.no_grad():
-        with lora_enabled(bundle.teacher, False):
-            if context_lens is None:
-                # Exact full-context analogue of LiveWan cfg_velocity().  The
-                # immutable prompt bundle contains 512 valid tokens for every
-                # row, so no padding mask is needed.  Avoiding a CUDA lens
-                # tensor also avoids attention.py discovering that fact via
-                # lens.min().item() in every Transformer block.
-                v_real = _cfg_velocity_full_context(
-                    torch,
-                    D,
-                    model=bundle.teacher,
-                    z=z_t.to(torch.bfloat16),
-                    t=t,
-                    rope=score_context.rope,
-                    context_positive=sample_context.teacher,
-                    context_negative=score_context.negative_teacher_context,
-                    dtype=torch.bfloat16,
-                    guidance=5.0,
-                    time_scale=TIME_SCALE,
-                )
-                v_real = v_real.float()
-            else:
-                v_real = D.cfg_velocity(
-                    bundle.teacher, z_t.to(torch.bfloat16), t,
-                    score_context.rope, sample_context.teacher, score_context.negative_teacher_context,
-                    context_lens, torch.bfloat16, 5.0, TIME_SCALE,
-                ).float()
-        with lora_enabled(bundle.critic, True):
-            v_fake = D.bidirectional_velocity(
-                bundle.critic, z_t.to(torch.bfloat16), t,
-                score_context.rope, sample_context.critic, context_lens,
-                torch.bfloat16, TIME_SCALE,
-            ).float()
-        x0_real = (z_t - t_view * v_real).float()
-        x0_fake = (z_t - t_view * v_fake).float()
-        normalizer = (x0.float() - x0_real).abs().mean().clamp_min(1e-4)
-        gradient = torch.nan_to_num((x0_fake - x0_real) / normalizer)
-    return gradient
+    v_fake = _dmd_fake_velocity(
+        torch,
+        critic_model=bundle.critic,
+        score_context=score_context,
+        flow=flow,
+        critic_context=sample_context.critic,
+        context_lens=context_lens,
+    )
+    return _combine_dmd_gradient(
+        torch, x0=x0, flow=flow, v_real=v_real, v_fake=v_fake
+    )
 
 
 def _batch_seeded_flow_inputs(
@@ -1641,6 +1824,7 @@ class RunEvidence:
     optimizer_diagnostics: list[dict[str, Any]] = field(default_factory=list)
     logical_score_calls: dict[str, int] = field(default_factory=dict)
     score_context_prefetch: dict[str, Any] = field(default_factory=dict)
+    split_dmd_shadow: dict[str, Any] = field(default_factory=dict)
 
     def add_logical_score_calls(self, key: str, count: int) -> None:
         _require(count > 0, "logical Score call count must be positive")
@@ -2131,7 +2315,10 @@ def run_worker(
         torch=torch, plan=plan, bootstrap=bootstrap, mode=mode, rank=rank, device=device,
     )
     if _critic_lora_scale_one_enabled(plan, mode=mode):
-        if bundle.critic is None:
+        lora_model = (
+            bundle.critic if bundle.critic is not None else bundle.critic_shadow
+        )
+        if lora_model is None:
             critic_lora_kernel.update(
                 role="generator",
                 execution_status="NOT_APPLICABLE",
@@ -2143,7 +2330,7 @@ def run_worker(
 
             lora_modules = [
                 module
-                for module in bundle.critic.modules()
+                for module in lora_model.modules()
                 if isinstance(module, LoRALinear)
             ]
             _require(len(lora_modules) == 180, "Critic LoRA module count changed")
@@ -2156,7 +2343,11 @@ def run_worker(
                     "critic"
                     if plan.get("metadata", {}).get("pool_policy")
                     == PHASE_EXPANDED_CRITIC16_POOL_POLICY
-                    else "score"
+                    else (
+                        "generator_shadow"
+                        if bundle.critic_shadow is not None
+                        else "score"
+                    )
                 ),
                 execution_status="PASS",
                 module_count=len(lora_modules),
@@ -2176,7 +2367,7 @@ def run_worker(
         )
     score_context = (
         build_score_context(torch, bundle=bundle, loader=loader, device=device)
-        if bundle.critic is not None else None
+        if bundle.critic is not None or bundle.critic_shadow is not None else None
     )
     bundle.metadata["communicator_warmup"] = _warm_communicators(
         torch, bundle=bundle, mode=mode, rank=rank, device=device,
@@ -2223,6 +2414,7 @@ def run_worker(
         for model, role in (
             (bundle.student, "student"),
             (bundle.critic, "critic"),
+            (bundle.critic_shadow, "critic"),
             (bundle.teacher, "teacher"),
         )
         if model is not None
@@ -2324,6 +2516,7 @@ def run_worker(
                     score_context_prefetch=_score_context_prefetch_enabled(
                         plan, mode=mode
                     ),
+                    split_dmd_shadow=_split_dmd_shadow_enabled(plan, mode=mode),
                 )
             elif plan.get("metadata", {}).get("pool_policy") == "persistent_8g_8score_teacher_fsdp8_score_b2":
                 _run_pipeline_8x8_score_b2(
@@ -2442,6 +2635,7 @@ def run_worker(
             ),
         },
         "score_context_prefetch": evidence.score_context_prefetch,
+        "split_dmd_shadow": evidence.split_dmd_shadow,
         "critic_lora_kernel": critic_lora_kernel,
         "score_modulation_kernel": score_modulation_kernel,
         "slot_routing": slot_routing,
@@ -2769,6 +2963,7 @@ def _run_pipeline_8x8(
     slot_pairs_by_lane: Sequence[Sequence[int]] | None = None,
     full_context_lens_elision: bool = False,
     score_context_prefetch: bool = False,
+    split_dmd_shadow: bool = False,
 ) -> None:
     import torch.distributed as dist
 
@@ -2786,8 +2981,23 @@ def _run_pipeline_8x8(
         pair_bytes += math.prod(TEXT_SHAPE) * 4
     if is_generator:
         _require(bundle.student is not None and len(streamers) == 2, "pipeline G role is incomplete")
+        if split_dmd_shadow:
+            _require(
+                bundle.critic_shadow is not None and score_context is not None,
+                "split-DMD Generator shadow is incomplete",
+            )
     else:
         _require(bundle.critic is not None and bundle.teacher is not None and score_context is not None, "pipeline Score role is incomplete")
+
+    evidence.split_dmd_shadow = {
+        "enabled": split_dmd_shadow,
+        "role": "generator" if is_generator else "score",
+        "execution_status": "PASS" if split_dmd_shadow else "DISABLED",
+        "fake_velocity_calls": 0,
+        "teacher_velocity_calls": 0,
+        "received_teacher_velocities": 0,
+        "received_final_gradients": 0,
+    }
 
     prefetched_contexts: dict[tuple[int, int], ScoreSampleContext] = {}
     if score_context_prefetch:
@@ -2942,27 +3152,89 @@ def _run_pipeline_8x8(
                 )
             _record_output(torch, evidence, row=rows[1], x0=second.x0, run_kind=run_kind)
             if step == 0:
-                # The rank-pair traffic shares the default NCCL process group.
-                # Posting wave1 SEND before wave0-gradient RECV makes both peers
-                # enqueue SEND as the next P2P operation (G sends wave1 while
-                # Score sends grad0), so neither has a matching receive.  Keep
-                # the useful G-wave1/Score-wave0 compute overlap, but receive
-                # grad0 before posting wave1.  The wave1 transfer can still
-                # overlap G backward0 with Score's receive/critic0 work.
-                grad0 = torch.empty_like(first.x0)
-                with _profile_range(
-                    torch, run_kind=run_kind,
-                    label="livewan/pipeline/g/step_0/recv_gradient_0",
-                ):
-                    dist.recv(grad0, src=peer)
-                evidence.transport_bytes += grad0.numel() * grad0.element_size()
-                sends = _send_pair(
-                    destination=peer,
-                    prepared=second,
-                    asynchronous=True,
-                    send_context=not score_context_from_trace,
-                )
-                evidence.transport_bytes += pair_bytes
+                if split_dmd_shadow:
+                    with _profile_range(
+                        torch,
+                        run_kind=run_kind,
+                        label="livewan/pipeline/g/step_0/fake_velocity_wave_0",
+                    ):
+                        shadow_context0 = prepare_score_sample_context(
+                            torch,
+                            bundle=bundle,
+                            raw_context=first.raw_context,
+                            include_teacher=False,
+                            critic_model=bundle.critic_shadow,
+                        )
+                        flow0 = _dmd_flow_inputs(torch, row=rows[0], x0=first.x0)
+                        fake0 = _dmd_fake_velocity(
+                            torch,
+                            critic_model=bundle.critic_shadow,
+                            score_context=score_context,
+                            flow=flow0,
+                            critic_context=shadow_context0.critic,
+                            context_lens=first.context_lens,
+                        )
+                    evidence.add_logical_score_calls("critic/nograd/plain", 1)
+                    evidence.split_dmd_shadow["fake_velocity_calls"] += 1
+                    real0 = torch.empty_like(first.x0)
+                    with _profile_range(
+                        torch,
+                        run_kind=run_kind,
+                        label="livewan/pipeline/g/step_0/recv_teacher_velocity_0",
+                    ):
+                        dist.recv(real0, src=peer)
+                    evidence.transport_bytes += real0.numel() * real0.element_size()
+                    evidence.split_dmd_shadow["received_teacher_velocities"] += 1
+                    grad0 = _combine_dmd_gradient(
+                        torch, x0=first.x0, flow=flow0, v_real=real0, v_fake=fake0
+                    )
+                    sends = _send_pair(
+                        destination=peer,
+                        prepared=second,
+                        asynchronous=True,
+                        send_context=not score_context_from_trace,
+                    )
+                    evidence.transport_bytes += pair_bytes
+                    with _profile_range(
+                        torch,
+                        run_kind=run_kind,
+                        label="livewan/pipeline/g/step_0/fake_velocity_wave_1",
+                    ):
+                        shadow_context1 = prepare_score_sample_context(
+                            torch,
+                            bundle=bundle,
+                            raw_context=second.raw_context,
+                            include_teacher=False,
+                            critic_model=bundle.critic_shadow,
+                        )
+                        flow1 = _dmd_flow_inputs(torch, row=rows[1], x0=second.x0)
+                        fake1 = _dmd_fake_velocity(
+                            torch,
+                            critic_model=bundle.critic_shadow,
+                            score_context=score_context,
+                            flow=flow1,
+                            critic_context=shadow_context1.critic,
+                            context_lens=second.context_lens,
+                        )
+                    evidence.add_logical_score_calls("critic/nograd/plain", 1)
+                    evidence.split_dmd_shadow["fake_velocity_calls"] += 1
+                else:
+                    # The peers must enqueue matching default-group P2P calls.
+                    grad0 = torch.empty_like(first.x0)
+                    with _profile_range(
+                        torch, run_kind=run_kind,
+                        label="livewan/pipeline/g/step_0/recv_gradient_0",
+                    ):
+                        dist.recv(grad0, src=peer)
+                    evidence.transport_bytes += grad0.numel() * grad0.element_size()
+                    evidence.split_dmd_shadow["received_final_gradients"] += 1
+                    sends = _send_pair(
+                        destination=peer,
+                        prepared=second,
+                        asynchronous=True,
+                        send_context=not score_context_from_trace,
+                    )
+                    evidence.transport_bytes += pair_bytes
                 with _profile_range(
                     torch, run_kind=run_kind,
                     label="livewan/pipeline/g/step_0/backward_wave_0",
@@ -2972,13 +3244,30 @@ def _run_pipeline_8x8(
                     )
                 for request in sends:
                     request.wait()
-                grad1 = torch.empty_like(second.x0)
+                returned1 = torch.empty_like(second.x0)
                 with _profile_range(
-                    torch, run_kind=run_kind,
-                    label="livewan/pipeline/g/step_0/recv_gradient_1",
+                    torch,
+                    run_kind=run_kind,
+                    label=(
+                        "livewan/pipeline/g/step_0/recv_teacher_velocity_1"
+                        if split_dmd_shadow
+                        else "livewan/pipeline/g/step_0/recv_gradient_1"
+                    ),
                 ):
-                    dist.recv(grad1, src=peer)
-                evidence.transport_bytes += grad1.numel() * grad1.element_size()
+                    dist.recv(returned1, src=peer)
+                evidence.transport_bytes += returned1.numel() * returned1.element_size()
+                if split_dmd_shadow:
+                    evidence.split_dmd_shadow["received_teacher_velocities"] += 1
+                    grad1 = _combine_dmd_gradient(
+                        torch,
+                        x0=second.x0,
+                        flow=flow1,
+                        v_real=returned1,
+                        v_fake=fake1,
+                    )
+                else:
+                    evidence.split_dmd_shadow["received_final_gradients"] += 1
+                    grad1 = returned1
                 with _profile_range(
                     torch, run_kind=run_kind,
                     label="livewan/pipeline/g/step_0/backward_wave_1",
@@ -3069,16 +3358,33 @@ def _run_pipeline_8x8(
             if step == 0:
                 with _profile_range(
                     torch, run_kind=run_kind,
-                    label="livewan/pipeline/score/step_0/dmd_wave_0",
+                    label=(
+                        "livewan/pipeline/score/step_0/teacher_velocity_wave_0"
+                        if split_dmd_shadow
+                        else "livewan/pipeline/score/step_0/dmd_wave_0"
+                    ),
                 ):
-                    grad0 = dmd_gradient_for_sample(
-                        torch, bundle=bundle, score_context=score_context, row=rows[0],
-                        x0=first_x0, sample_context=first_sample_context, context_lens=context_lens,
-                    )
+                    if split_dmd_shadow:
+                        flow0 = _dmd_flow_inputs(torch, row=rows[0], x0=first_x0)
+                        returned0 = _dmd_teacher_velocity(
+                            torch,
+                            bundle=bundle,
+                            score_context=score_context,
+                            flow=flow0,
+                            sample_context=first_sample_context,
+                            context_lens=context_lens,
+                        )
+                        evidence.split_dmd_shadow["teacher_velocity_calls"] += 1
+                    else:
+                        returned0 = dmd_gradient_for_sample(
+                            torch, bundle=bundle, score_context=score_context, row=rows[0],
+                            x0=first_x0, sample_context=first_sample_context, context_lens=context_lens,
+                        )
                     evidence.add_logical_score_calls("teacher/nograd/plain", 1)
-                    evidence.add_logical_score_calls("critic/nograd/plain", 1)
-                    dist.send(grad0.contiguous(), dst=peer)
-                evidence.transport_bytes += grad0.numel() * grad0.element_size()
+                    if not split_dmd_shadow:
+                        evidence.add_logical_score_calls("critic/nograd/plain", 1)
+                    dist.send(returned0.contiguous(), dst=peer)
+                evidence.transport_bytes += returned0.numel() * returned0.element_size()
             with _profile_range(
                 torch, run_kind=run_kind,
                 label=f"livewan/pipeline/score/step_{step}/recv_wave_1",
@@ -3121,17 +3427,34 @@ def _run_pipeline_8x8(
                 # immediately enter Critic backward while G consumes grad0.
                 with _profile_range(
                     torch, run_kind=run_kind,
-                    label="livewan/pipeline/score/step_0/dmd_wave_1",
+                    label=(
+                        "livewan/pipeline/score/step_0/teacher_velocity_wave_1"
+                        if split_dmd_shadow
+                        else "livewan/pipeline/score/step_0/dmd_wave_1"
+                    ),
                 ):
-                    grad1 = dmd_gradient_for_sample(
-                        torch, bundle=bundle, score_context=score_context, row=rows[1],
-                        x0=second_x0, sample_context=second_sample_context, context_lens=context_lens,
-                    )
+                    if split_dmd_shadow:
+                        flow1 = _dmd_flow_inputs(torch, row=rows[1], x0=second_x0)
+                        returned1 = _dmd_teacher_velocity(
+                            torch,
+                            bundle=bundle,
+                            score_context=score_context,
+                            flow=flow1,
+                            sample_context=second_sample_context,
+                            context_lens=context_lens,
+                        )
+                        evidence.split_dmd_shadow["teacher_velocity_calls"] += 1
+                    else:
+                        returned1 = dmd_gradient_for_sample(
+                            torch, bundle=bundle, score_context=score_context, row=rows[1],
+                            x0=second_x0, sample_context=second_sample_context, context_lens=context_lens,
+                        )
                     evidence.add_logical_score_calls("teacher/nograd/plain", 1)
-                    evidence.add_logical_score_calls("critic/nograd/plain", 1)
-                    grad1_send = grad1.contiguous()
+                    if not split_dmd_shadow:
+                        evidence.add_logical_score_calls("critic/nograd/plain", 1)
+                    grad1_send = returned1.contiguous()
                     grad1_work = dist.isend(grad1_send, dst=peer)
-                evidence.transport_bytes += grad1.numel() * grad1.element_size()
+                evidence.transport_bytes += returned1.numel() * returned1.element_size()
             if critic_b2_only:
                 with _profile_range(
                     torch,

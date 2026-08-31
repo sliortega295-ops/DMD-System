@@ -395,6 +395,35 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                         "Critic LoRA kernel contract changed",
                         "metadata.critic_lora_kernel",
                     )
+            split_dmd_shadow = plan.metadata.get("split_dmd_shadow")
+            if split_dmd_shadow is not None:
+                if (
+                    pool_policy
+                    != "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced"
+                    or plan.metadata.get("full_context_lens_elision") is not True
+                    or critic_lora_kernel is None
+                    or critic_lora_kernel.get("name")
+                    != "scale_one_autocast_bf16_input_elision_v1"
+                ):
+                    self._fail(
+                        "split-DMD shadow requires the validated K5b substrate",
+                        "metadata.split_dmd_shadow",
+                    )
+                expected_split_dmd_shadow = {
+                    "enabled": True,
+                    "version": "C0",
+                    "placement": "generator_rank_frozen_replica",
+                    "scope": "step0_fake_score_only",
+                    "teacher_velocity_transport": "cuda_p2p_float32",
+                    "critic_training_placement": "score_ranks_only",
+                    "source_trainable_sha_matches_score_c0": True,
+                    "logical_calls_preserved": True,
+                }
+                if dict(split_dmd_shadow) != expected_split_dmd_shadow:
+                    self._fail(
+                        "split-DMD shadow contract changed",
+                        "metadata.split_dmd_shadow",
+                    )
             if phase_expanded:
                 expected_phase_contract = {
                     "generator_nograd_runahead": False,

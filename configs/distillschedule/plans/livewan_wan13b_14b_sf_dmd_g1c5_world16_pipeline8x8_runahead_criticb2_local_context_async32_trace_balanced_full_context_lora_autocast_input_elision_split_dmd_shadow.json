@@ -1,0 +1,16 @@
+{
+  "include": ["livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision.json"],
+  "id": "livewan-wan13b-14b-sfdmd-g1c5-world16-pipeline8x8-runahead-criticb2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow",
+  "metadata": {
+    "split_dmd_shadow": {
+      "enabled": true,
+      "version": "C0",
+      "placement": "generator_rank_frozen_replica",
+      "scope": "step0_fake_score_only",
+      "teacher_velocity_transport": "cuda_p2p_float32",
+      "critic_training_placement": "score_ranks_only",
+      "source_trainable_sha_matches_score_c0": true,
+      "logical_calls_preserved": true
+    }
+  }
+}

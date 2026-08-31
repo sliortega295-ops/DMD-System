@@ -29,6 +29,8 @@ from distillschedule.runtime.livewan_crossscale_worker import (
     OperationTraceRow,
     InputLoader,
     _cfg_velocity_full_context,
+    _combine_dmd_gradient,
+    _dmd_flow_inputs,
     _batch_seeded_flow_inputs,
     _per_sample_mse,
     _pipeline_slot_routes,
@@ -52,6 +54,7 @@ PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LO
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_SCALE1_MODULATION = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1_modulation.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_FUSED_CAST_ADD = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_fused_cast_add.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision.json"
+PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow.json"
 PIPELINE_PHASE_EXPANDED_CRITIC16 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16.json"
 PIPELINE_PHASE_EXPANDED_CRITIC16_FUSED_LORA_ELISION = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16_fused_lora_elision.json"
 PIPELINE_SCORE_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
@@ -467,6 +470,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation"' in controller
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add"' in controller
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision"' in controller
+    assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow"' in controller
     assert '"phase-expanded-critic16"' in controller
     assert '"capacity", "correctness", "timing", "profile"' in controller
     assert '"LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant' in controller
@@ -486,6 +490,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1_modulation.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16.json" in launcher
+    assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow.json" in launcher
     assert '"${RUN_KIND}" == capacity' in launcher
     assert "baseline_pipeline_variant_mismatch" in launcher
     summarizer = (
@@ -531,7 +536,11 @@ def test_step0_p2p_posts_gradient_receive_before_second_wave_send() -> None:
         "else:\n            bundle.critic_optimizer.zero_grad", 1
     )[0]
     step0 = generator_path.split("if step == 0:", 1)[1]
-    assert step0.index("dist.recv(grad0, src=peer)") < step0.index(
+    assert step0.index("dist.recv(real0, src=peer)") < step0.index(
+        "sends = _send_pair("
+    )
+    legacy = step0.split("# The peers must enqueue matching default-group P2P calls.", 1)[1]
+    assert legacy.index("dist.recv(grad0, src=peer)") < legacy.index(
         "sends = _send_pair("
     )
 
@@ -637,6 +646,7 @@ def test_launcher_fails_before_model_load_on_world16_and_p2p_drift() -> None:
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation"' in probe
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add"' in probe
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision"' in probe
+    assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow"' in probe
     assert "async Score gradient mean mismatch" in probe
     assert '"async_reducer_canary"' in probe
     assert "node-local Teacher all-gather payload mismatch" in probe
@@ -968,6 +978,64 @@ def test_lora_autocast_input_elision_plan_changes_only_exact_kernel_metadata() -
     base["id"] = candidate["id"]
     base["metadata"] = dict(candidate["metadata"])
     assert candidate == base
+
+
+def test_split_dmd_shadow_plan_changes_only_registered_execution_graph() -> None:
+    base = load_plan(
+        PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION
+    ).plan.to_dict()
+    candidate_plan = load_plan(
+        PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW
+    ).plan
+    LiveWanSFDMDAdapter().validate(candidate_plan)
+    candidate = candidate_plan.to_dict()
+    metadata = dict(candidate["metadata"])
+    assert metadata.pop("split_dmd_shadow") == {
+        "enabled": True,
+        "version": "C0",
+        "placement": "generator_rank_frozen_replica",
+        "scope": "step0_fake_score_only",
+        "teacher_velocity_transport": "cuda_p2p_float32",
+        "critic_training_placement": "score_ranks_only",
+        "source_trainable_sha_matches_score_c0": True,
+        "logical_calls_preserved": True,
+    }
+    assert metadata == base["metadata"]
+    base["id"] = candidate["id"]
+    base["metadata"] = dict(candidate["metadata"])
+    assert candidate == base
+
+
+def test_split_dmd_replays_identical_flow_inputs_and_gradient_combine() -> None:
+    torch = pytest.importorskip("torch")
+    row = _trace_row(0, 0)
+    row = replace(
+        row,
+        seeds={
+            **row.seeds,
+            "generator_dmd_t": 12345,
+            "generator_dmd_noise": 67890,
+        },
+    )
+    x0 = torch.randn(1, 2, 3, 4, 5)
+    score_flow = _dmd_flow_inputs(torch, row=row, x0=x0)
+    generator_flow = _dmd_flow_inputs(torch, row=row, x0=x0)
+    assert torch.equal(score_flow.t, generator_flow.t)
+    assert torch.equal(score_flow.z_t, generator_flow.z_t)
+    v_real = torch.randn_like(x0)
+    v_fake = torch.randn_like(x0)
+    actual = _combine_dmd_gradient(
+        torch,
+        x0=x0,
+        flow=generator_flow,
+        v_real=v_real,
+        v_fake=v_fake,
+    )
+    x0_real = (score_flow.z_t - score_flow.t_view * v_real).float()
+    x0_fake = (score_flow.z_t - score_flow.t_view * v_fake).float()
+    normalizer = (x0.float() - x0_real).abs().mean().clamp_min(1e-4)
+    expected = torch.nan_to_num((x0_fake - x0_real) / normalizer)
+    assert torch.equal(actual, expected)
 
 
 def test_score_modulation_plan_changes_only_exact_kernel_metadata() -> None:
