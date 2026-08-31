@@ -256,6 +256,28 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                         "trace-balanced candidate differs from its preregistered slot pairs",
                         "metadata.slot_pairs_by_lane",
                     )
+            if plan.metadata.get("full_context_lens_elision", False):
+                if (
+                    pool_policy
+                    != "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced"
+                ):
+                    self._fail(
+                        "full-context lens elision requires the trace-balanced substrate",
+                        "metadata.full_context_lens_elision",
+                    )
+                expected_context_contract = {
+                    "context_length": 512,
+                    "context_padding_policy": "all_512_tokens_valid_no_padding",
+                    "attention_mask_equivalence": (
+                        "ctx_lens_512_equivalent_to_none_at_exact_tensor_length"
+                    ),
+                }
+                for key, expected_value in expected_context_contract.items():
+                    if plan.metadata.get(key) != expected_value:
+                        self._fail(
+                            f"full-context lens contract mismatch for {key}",
+                            f"metadata.{key}",
+                        )
             if pool_policy == "persistent_6g_10score_teacher_node_local_hierarchical":
                 generator_options = dict(plan.training_backends["generator"].options)
                 teacher_options = dict(plan.training_backends["teacher"].options)

@@ -70,6 +70,9 @@ def main() -> int:
     pool_policy = plan.get("metadata", {}).get(
         "pool_policy", "world16_fsdp2_sequential"
     )
+    full_context_lens_elision = bool(
+        plan.get("metadata", {}).get("full_context_lens_elision", False)
+    )
     rank_groups = {
         str(row["name"]): tuple(int(rank) for rank in row["ranks"])
         for row in plan.get("rank_groups", [])
@@ -250,6 +253,24 @@ def main() -> int:
             )
         if row.get("pool_policy") != pool_policy:
             errors.append(f"rank{row['rank']}: pool policy receipt differs from plan")
+        expected_lens_receipt = {
+            "enabled": full_context_lens_elision,
+            "context_length": 512,
+            "padding_policy": (
+                "all_512_tokens_valid_no_padding"
+                if full_context_lens_elision
+                else "explicit_context_lens"
+            ),
+            "attention_mask_equivalence": (
+                "ctx_lens_512_equivalent_to_none_at_exact_tensor_length"
+                if full_context_lens_elision
+                else "not_applied"
+            ),
+        }
+        if row.get("full_context_lens_elision") != expected_lens_receipt:
+            errors.append(
+                f"rank{row['rank']}: full-context lens-elision receipt mismatch"
+            )
         if (
             pool_policy
             == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced"
@@ -350,6 +371,7 @@ def main() -> int:
         "score_physical_batch_size": score_physical_batch_size,
         "critic_physical_batch_size": critic_physical_batch_size,
         "pool_policy": pool_policy,
+        "full_context_lens_elision": full_context_lens_elision,
         "generator_ranks": list(generator_ranks),
         "score_ranks": list(score_ranks),
         "full5_seconds": max(walls) if walls else None,

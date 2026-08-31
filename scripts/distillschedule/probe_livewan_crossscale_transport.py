@@ -48,6 +48,7 @@ def main() -> int:
             "b1-runahead-critic-b2-local-context",
             "b1-runahead-critic-b2-local-context-async32",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced",
+            "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context",
             "score-b2",
             "6g10score", "6g10score-node-local",
             "6g10score-node-local-fused",
@@ -105,6 +106,7 @@ def main() -> int:
         args.pipeline_variant in {
             "b1-runahead-critic-b2-local-context-async32",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced",
+            "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context",
         }
         and rank in score_ranks
     ):
@@ -311,8 +313,10 @@ def main() -> int:
     lane = rank if rank < 8 else peer
     slot_pair = (
         TRACE_BALANCED_SLOT_PAIRS[lane]
-        if args.pipeline_variant
-        == "b1-runahead-critic-b2-local-context-async32-trace-balanced"
+        if args.pipeline_variant in {
+            "b1-runahead-critic-b2-local-context-async32-trace-balanced",
+            "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context",
+        }
         else (lane, lane + 8)
     )
     observed: list[int] = []
@@ -385,6 +389,7 @@ def main() -> int:
                 "b1-runahead-critic-b2-local-context",
                 "b1-runahead-critic-b2-local-context-async32",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced",
+                "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context",
             }
             else "cuda_p2p_float32"
         ),
@@ -405,8 +410,10 @@ def main() -> int:
         )
         expected_pairs = (
             TRACE_BALANCED_SLOT_PAIRS
-            if args.pipeline_variant
-            == "b1-runahead-critic-b2-local-context-async32-trace-balanced"
+            if args.pipeline_variant in {
+                "b1-runahead-critic-b2-local-context-async32-trace-balanced",
+                "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context",
+            }
             else tuple((lane, lane + 8) for lane in range(8))
         )
         atomic_json(

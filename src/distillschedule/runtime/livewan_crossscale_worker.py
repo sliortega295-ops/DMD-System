@@ -1077,11 +1077,20 @@ def prepare_rollout(
     student: Any,
     loader: InputLoader,
     device: Any,
+    elide_full_context_lens: bool = False,
 ) -> PreparedRollout:
     latent, context, _ = loader.load(row)
     z_teacher = latent.to(device, non_blocking=True).unsqueeze(0)
     raw_context = context.to(device, non_blocking=True).unsqueeze(0)
-    context_lens = torch.tensor([raw_context.shape[1]], device=device, dtype=torch.long)
+    _require(
+        int(raw_context.shape[1]) == TEXT_SHAPE[1],
+        "rollout prompt length differs from the immutable full-context contract",
+    )
+    context_lens = (
+        None
+        if elide_full_context_lens
+        else torch.tensor([raw_context.shape[1]], device=device, dtype=torch.long)
+    )
     with torch.no_grad():
         student_context = student.text_embedding(raw_context)
         streamer.set_text(student_context, context_lens)
@@ -1151,6 +1160,46 @@ def prepare_score_sample_context(
     return ScoreSampleContext(teacher=teacher_context, critic=critic_context)
 
 
+def _cfg_velocity_full_context(
+    torch: Any,
+    D: Any,
+    *,
+    model: Any,
+    z: Any,
+    t: Any,
+    rope: Any,
+    context_positive: Any,
+    context_negative: Any,
+    dtype: Any,
+    guidance: float,
+    time_scale: float,
+) -> Any:
+    """Run LiveWan CFG with the exact no-padding context contract.
+
+    This mirrors ``wanstreamer.dmd.cfg_velocity`` except that ``ctx_lens`` is
+    deliberately ``None``.  Keep ``t`` unexpanded: the pinned helper passes
+    the original B1 timestep into the B2 conditional/unconditional call and
+    relies on broadcasting inside the model.
+    """
+
+    if not guidance or guidance == 1.0:
+        return D.bidirectional_velocity(
+            model, z, t, rope, context_positive, None, dtype, time_scale
+        )
+    velocity = D.bidirectional_velocity(
+        model,
+        torch.cat((z, z), dim=0),
+        t,
+        rope,
+        torch.cat((context_positive, context_negative), dim=0),
+        None,
+        dtype,
+        time_scale,
+    )
+    conditional, unconditional = velocity[0:1], velocity[1:2]
+    return unconditional + guidance * (conditional - unconditional)
+
+
 def dmd_gradient_for_sample(
     torch: Any,
     *,
@@ -1174,11 +1223,32 @@ def dmd_gradient_for_sample(
     z_t = (1.0 - t_view) * x0 + t_view * noise
     with torch.no_grad():
         with lora_enabled(bundle.teacher, False):
-            v_real = D.cfg_velocity(
-                bundle.teacher, z_t.to(torch.bfloat16), t,
-                score_context.rope, sample_context.teacher, score_context.negative_teacher_context,
-                context_lens, torch.bfloat16, 5.0, TIME_SCALE,
-            ).float()
+            if context_lens is None:
+                # Exact full-context analogue of LiveWan cfg_velocity().  The
+                # immutable prompt bundle contains 512 valid tokens for every
+                # row, so no padding mask is needed.  Avoiding a CUDA lens
+                # tensor also avoids attention.py discovering that fact via
+                # lens.min().item() in every Transformer block.
+                v_real = _cfg_velocity_full_context(
+                    torch,
+                    D,
+                    model=bundle.teacher,
+                    z=z_t.to(torch.bfloat16),
+                    t=t,
+                    rope=score_context.rope,
+                    context_positive=sample_context.teacher,
+                    context_negative=score_context.negative_teacher_context,
+                    dtype=torch.bfloat16,
+                    guidance=5.0,
+                    time_scale=TIME_SCALE,
+                )
+                v_real = v_real.float()
+            else:
+                v_real = D.cfg_velocity(
+                    bundle.teacher, z_t.to(torch.bfloat16), t,
+                    score_context.rope, sample_context.teacher, score_context.negative_teacher_context,
+                    context_lens, torch.bfloat16, 5.0, TIME_SCALE,
+                ).float()
         with lora_enabled(bundle.critic, True):
             v_fake = D.bidirectional_velocity(
                 bundle.critic, z_t.to(torch.bfloat16), t,
@@ -1254,7 +1324,9 @@ def dmd_gradient_for_batch(
 
     _require(sample_context.teacher is not None, "DMD requires Teacher context")
     batch = len(rows)
-    _require(batch == x0.shape[0] == context_lens.numel(), "DMD B2 identity mismatch")
+    _require(batch == x0.shape[0], "DMD B2 identity mismatch")
+    if context_lens is not None:
+        _require(batch == context_lens.numel(), "DMD B2 context-lens identity mismatch")
     _require(sample_context.teacher.shape[0] == batch, "Teacher context batch mismatch")
     _require(sample_context.critic.shape[0] == batch, "Critic context batch mismatch")
     t, noise = _batch_seeded_flow_inputs(
@@ -1275,7 +1347,11 @@ def dmd_gradient_for_batch(
         with lora_enabled(bundle.teacher, False):
             teacher_input = torch.cat([z_t, z_t], dim=0).to(torch.bfloat16)
             teacher_context = torch.cat([sample_context.teacher, negative], dim=0)
-            teacher_lens = torch.cat([context_lens, context_lens], dim=0)
+            teacher_lens = (
+                torch.cat([context_lens, context_lens], dim=0)
+                if context_lens is not None
+                else None
+            )
             teacher_t = torch.cat([t, t], dim=0)
             teacher_velocity = D.bidirectional_velocity(
                 bundle.teacher,
@@ -1359,7 +1435,9 @@ def critic_backward_for_batch(
     from wanstreamer.lora import lora_enabled
 
     batch = len(rows)
-    _require(batch == x0.shape[0] == context_lens.numel(), "Critic B2 identity mismatch")
+    _require(batch == x0.shape[0], "Critic B2 identity mismatch")
+    if context_lens is not None:
+        _require(batch == context_lens.numel(), "Critic B2 context-lens identity mismatch")
     t, noise = _batch_seeded_flow_inputs(
         torch,
         rows=rows,
@@ -1534,6 +1612,35 @@ def _critic_physical_batch_size(plan: Mapping[str, Any], *, mode: str) -> int:
     return value
 
 
+def _full_context_lens_elision(plan: Mapping[str, Any], *, mode: str) -> bool:
+    """Validate the exact full-text mask elision candidate."""
+
+    metadata = plan.get("metadata", {})
+    enabled = metadata.get("full_context_lens_elision", False)
+    _require(isinstance(enabled, bool), "full-context lens elision must be boolean")
+    if not enabled:
+        return False
+    _require(mode == "pipeline", "full-context lens elision is candidate-only")
+    _require(
+        metadata.get("pool_policy") == TRACE_BALANCED_POOL_POLICY,
+        "full-context lens elision requires the validated C10 substrate",
+    )
+    _require(
+        metadata.get("context_length") == TEXT_SHAPE[1],
+        "full-context lens length differs from the immutable prompt bundle",
+    )
+    _require(
+        metadata.get("context_padding_policy") == "all_512_tokens_valid_no_padding",
+        "full-context lens elision lacks its no-padding proof contract",
+    )
+    _require(
+        metadata.get("attention_mask_equivalence")
+        == "ctx_lens_512_equivalent_to_none_at_exact_tensor_length",
+        "full-context attention-mask equivalence contract changed",
+    )
+    return True
+
+
 def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _require(int(plan["hardware"]["world_size"]) == WORLD_SIZE, "plan is not world16")
     _require(int(plan["workload"]["shape"]["batch_size"]) == GLOBAL_BATCH, "plan is not global-B16")
@@ -1543,6 +1650,7 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _require(not plan["workload"]["branches"]["ema"], "EMA must be outside Full5")
     _score_physical_batch_size(plan, mode=mode)
     _critic_physical_batch_size(plan, mode=mode)
+    _full_context_lens_elision(plan, mode=mode)
 
 
 def _validate_only(
@@ -1727,6 +1835,9 @@ def run_worker(
                         }
                     ),
                     slot_pairs_by_lane=_pipeline_8x8_slot_pairs(plan),
+                    full_context_lens_elision=_full_context_lens_elision(
+                        plan, mode=mode
+                    ),
                 )
             elif plan.get("metadata", {}).get("pool_policy") == "persistent_8g_8score_teacher_fsdp8_score_b2":
                 _run_pipeline_8x8_score_b2(
@@ -1818,6 +1929,20 @@ def run_worker(
         "score_physical_batch_size": _score_physical_batch_size(plan, mode=mode),
         "critic_physical_batch_size": _critic_physical_batch_size(plan, mode=mode),
         "pool_policy": plan.get("metadata", {}).get("pool_policy", "world16_fsdp2_sequential"),
+        "full_context_lens_elision": {
+            "enabled": _full_context_lens_elision(plan, mode=mode),
+            "context_length": TEXT_SHAPE[1],
+            "padding_policy": (
+                "all_512_tokens_valid_no_padding"
+                if _full_context_lens_elision(plan, mode=mode)
+                else "explicit_context_lens"
+            ),
+            "attention_mask_equivalence": (
+                "ctx_lens_512_equivalent_to_none_at_exact_tensor_length"
+                if _full_context_lens_elision(plan, mode=mode)
+                else "not_applied"
+            ),
+        },
         "slot_routing": slot_routing,
         "full5_wall_seconds": full5_wall,
         "construction_wall_seconds": build_wall,
@@ -2141,6 +2266,7 @@ def _run_pipeline_8x8(
     critic_b2_only: bool = False,
     score_context_from_trace: bool = False,
     slot_pairs_by_lane: Sequence[Sequence[int]] | None = None,
+    full_context_lens_elision: bool = False,
 ) -> None:
     import torch.distributed as dist
 
@@ -2206,6 +2332,7 @@ def _run_pipeline_8x8(
                             student=bundle.student,
                             loader=loader,
                             device=device,
+                            elide_full_context_lens=full_context_lens_elision,
                         )
                     _record_output(
                         torch,
@@ -2251,6 +2378,7 @@ def _run_pipeline_8x8(
                 first = prepare_rollout(
                     torch, row=rows[0], streamer=streamers[0], student=bundle.student,
                     loader=loader, device=device,
+                    elide_full_context_lens=full_context_lens_elision,
                 )
             _record_output(torch, evidence, row=rows[0], x0=first.x0, run_kind=run_kind)
             with _profile_range(
@@ -2271,6 +2399,7 @@ def _run_pipeline_8x8(
                 second = prepare_rollout(
                     torch, row=rows[1], streamer=streamers[1], student=bundle.student,
                     loader=loader, device=device,
+                    elide_full_context_lens=full_context_lens_elision,
                 )
             _record_output(torch, evidence, row=rows[1], x0=second.x0, run_kind=run_kind)
             if step == 0:
@@ -2383,7 +2512,11 @@ def _run_pipeline_8x8(
                 ):
                     first_context = loader.context_from_trace(rows[0], device=device)
             _require(first_context is not None, "first Score context is missing")
-            context_lens = torch.tensor([TEXT_SHAPE[1]], device=device, dtype=torch.long)
+            context_lens = (
+                None
+                if full_context_lens_elision
+                else torch.tensor([TEXT_SHAPE[1]], device=device, dtype=torch.long)
+            )
             first_sample_context = prepare_score_sample_context(
                 torch,
                 bundle=bundle,
@@ -2482,8 +2615,12 @@ def _run_pipeline_8x8(
                         rows=rows,
                         x0=torch.cat((first_x0, second_x0), dim=0),
                         sample_context=batched_context,
-                        context_lens=torch.full(
-                            (2,), TEXT_SHAPE[1], device=device, dtype=torch.long
+                        context_lens=(
+                            None
+                            if full_context_lens_elision
+                            else torch.full(
+                                (2,), TEXT_SHAPE[1], device=device, dtype=torch.long
+                            )
                         ),
                         loss_scale=1.0,
                     )
