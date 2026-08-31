@@ -19,6 +19,12 @@ MASTER_PORT="${7:?rendezvous port}"
 [[ "${EXPECTED_HEAD}" =~ ^[0-9a-f]{40}$ ]] || exit 2
 
 ROOT="${DMD_SYSTEM_ROOT:?set DMD_SYSTEM_ROOT}"
+# These job containers enter as root while the persistent shared worktree is
+# owned by its original uid.  Tell Git about that exact owner for this launcher
+# process only; do not mutate /root/.gitconfig or the shared checkout owner.
+if [[ "$(id -u)" == 0 && -z "${SUDO_UID:-}" ]]; then
+  export SUDO_UID="$(stat -c '%u' "${ROOT}")"
+fi
 PYENV="${DISTILLSCHEDULE_PYENV:-/tmp/distillschedule-helios-official-torch210}"
 PYTHON_OVERLAY="${LIVEWAN_PYTHON_OVERLAY:?set isolated LIVEWAN_PYTHON_OVERLAY}"
 PYTHON="${PYENV}/bin/python"

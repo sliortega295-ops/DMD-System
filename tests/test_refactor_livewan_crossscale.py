@@ -759,6 +759,14 @@ def test_phase_expanded_fused_lora_elision_reuses_validated_capacity_recovery() 
         assert candidate_dict[key] == reference_dict[key]
 
 
+def test_livewan_launcher_scopes_shared_worktree_git_ownership() -> None:
+    launcher = (
+        ROOT / "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh"
+    ).read_text()
+    assert 'export SUDO_UID="$(stat -c \'%u\' "${ROOT}")"' in launcher
+    assert "git config --global" not in launcher
+
+
 def test_full_context_plan_changes_only_mask_discovery_metadata() -> None:
     base = load_plan(
         PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED
