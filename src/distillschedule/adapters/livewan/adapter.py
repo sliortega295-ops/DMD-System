@@ -302,6 +302,33 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                             f"Score context prefetch contract mismatch for {key}",
                             f"metadata.{key}",
                         )
+            critic_lora_kernel = plan.metadata.get("critic_lora_kernel")
+            if critic_lora_kernel is not None:
+                if (
+                    pool_policy
+                    != "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced"
+                    or plan.metadata.get("full_context_lens_elision") is not True
+                ):
+                    self._fail(
+                        "Critic LoRA kernel requires the validated C11 substrate",
+                        "metadata.critic_lora_kernel",
+                    )
+                expected_lora_kernel = {
+                    "enabled": True,
+                    "name": "scale_one_identity_epilogue_v1",
+                    "scale": 1.0,
+                    "math_change": "remove_identity_multiply_only",
+                    "base_input_output_dtype": "bfloat16",
+                    "lora_parameter_compute_dtype": "float32",
+                    "source_forward_sha256": (
+                        "70d00d496aa2bd8ea06d64e6b04af873644eff52539396f74ec586a4cbbe97a3"
+                    ),
+                }
+                if dict(critic_lora_kernel) != expected_lora_kernel:
+                    self._fail(
+                        "Critic LoRA kernel contract changed",
+                        "metadata.critic_lora_kernel",
+                    )
             if pool_policy == "persistent_6g_10score_teacher_node_local_hierarchical":
                 generator_options = dict(plan.training_backends["generator"].options)
                 teacher_options = dict(plan.training_backends["teacher"].options)

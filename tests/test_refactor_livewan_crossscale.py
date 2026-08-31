@@ -48,6 +48,7 @@ PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32 = ROOT / "configs/distillsched
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_CONTEXT_PREFETCH = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_context_prefetch.json"
+PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_SCALE1 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1.json"
 PIPELINE_SCORE_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
 PIPELINE_6G10S = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json"
 PIPELINE_6G10S_NODE_LOCAL = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score_node_local.json"
@@ -457,6 +458,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced"' in controller
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context"' in controller
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-context-prefetch"' in controller
+    assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1"' in controller
     assert '"LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant' in controller
     assert 'resolved_plan.node0.json' in controller
 
@@ -471,6 +473,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_context_prefetch.json" in launcher
+    assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1.json" in launcher
     assert "baseline_pipeline_variant_mismatch" in launcher
     summarizer = (
         ROOT / "scripts/distillschedule/summarize_livewan_crossscale_world16.py"
@@ -616,6 +619,7 @@ def test_launcher_fails_before_model_load_on_world16_and_p2p_drift() -> None:
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced"' in probe
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context"' in probe
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-context-prefetch"' in probe
+    assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1"' in probe
     assert "async Score gradient mean mismatch" in probe
     assert '"async_reducer_canary"' in probe
     assert "node-local Teacher all-gather payload mismatch" in probe
@@ -775,6 +779,92 @@ def test_context_prefetch_builds_exact_frozen_call_inventory() -> None:
     assert receipt["teacher_context_count"] == 2
     assert receipt["critic_context_count"] == 10
     assert receipt["gpu_resident_bytes"] > 0
+
+
+def test_lora_scale_one_plan_changes_only_exact_kernel_metadata() -> None:
+    base = load_plan(
+        PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT
+    ).plan.to_dict()
+    candidate_plan = load_plan(
+        PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_SCALE1
+    ).plan
+    LiveWanSFDMDAdapter().validate(candidate_plan)
+    candidate = candidate_plan.to_dict()
+    metadata = dict(candidate["metadata"])
+    assert metadata.pop("critic_lora_kernel") == {
+        "enabled": True,
+        "name": "scale_one_identity_epilogue_v1",
+        "scale": 1.0,
+        "math_change": "remove_identity_multiply_only",
+        "base_input_output_dtype": "bfloat16",
+        "lora_parameter_compute_dtype": "float32",
+        "source_forward_sha256": (
+            "70d00d496aa2bd8ea06d64e6b04af873644eff52539396f74ec586a4cbbe97a3"
+        ),
+    }
+    assert metadata == base["metadata"]
+    base["id"] = candidate["id"]
+    base["metadata"] = dict(candidate["metadata"])
+    assert candidate == base
+
+
+def test_lora_scale_one_runtime_is_bitwise_exact() -> None:
+    import importlib.util
+    import torch
+    import types
+
+    # Load the pinned, self-contained LoRA module without executing
+    # ``wanstreamer.__init__``.  The latter imports the full Wan runtime, which
+    # is intentionally absent from the source-only unit-test environment.
+    package = types.ModuleType("wanstreamer")
+    package.__path__ = [str(ROOT / "third_party/livewan/wanstreamer")]
+    sys.modules["wanstreamer"] = package
+    spec = importlib.util.spec_from_file_location(
+        "wanstreamer.lora", ROOT / "third_party/livewan/wanstreamer/lora.py"
+    )
+    assert spec is not None and spec.loader is not None
+    lora_module = importlib.util.module_from_spec(spec)
+    sys.modules["wanstreamer.lora"] = lora_module
+    spec.loader.exec_module(lora_module)
+    LoRALinear = lora_module.LoRALinear
+    from distillschedule.runtime.livewan_lora_kernel import (
+        install_scale_one_lora_epilogue,
+        uninstall_scale_one_lora_epilogue,
+    )
+
+    torch.manual_seed(20260831)
+    original = LoRALinear(
+        torch.nn.Linear(16, 24, bias=False).to(torch.bfloat16), rank=4
+    )
+    reference = LoRALinear(
+        torch.nn.Linear(16, 24, bias=False).to(torch.bfloat16), rank=4
+    )
+    reference.load_state_dict(original.state_dict())
+    x0 = torch.randn(7, 16, dtype=torch.bfloat16)
+    grad = torch.randn(7, 24, dtype=torch.bfloat16)
+
+    x_reference = x0.clone().requires_grad_(True)
+    output_reference = reference(x_reference)
+    output_reference.backward(grad)
+    reference_gradients = (
+        x_reference.grad.clone(),
+        reference.a.grad.clone(),
+        reference.b.grad.clone(),
+    )
+    try:
+        receipt = install_scale_one_lora_epilogue(torch)
+        x_candidate = x0.clone().requires_grad_(True)
+        output_candidate = original(x_candidate)
+        output_candidate.backward(grad)
+        assert receipt["class_forward_patched"] is True
+        assert torch.equal(output_reference, output_candidate)
+        assert torch.equal(reference_gradients[0], x_candidate.grad)
+        assert torch.equal(reference_gradients[1], original.a.grad)
+        assert torch.equal(reference_gradients[2], original.b.grad)
+    finally:
+        uninstall_scale_one_lora_epilogue()
+        sys.modules.pop("wanstreamer.lora", None)
+        sys.modules.pop("wanstreamer", None)
 
 
 def test_full_context_cfg_preserves_pinned_b1_timestep_broadcast() -> None:

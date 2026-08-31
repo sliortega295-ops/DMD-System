@@ -1672,6 +1672,35 @@ def _score_context_prefetch_enabled(plan: Mapping[str, Any], *, mode: str) -> bo
     return True
 
 
+def _critic_lora_scale_one_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    """Validate the exact scale-one LoRA epilogue specialization."""
+
+    metadata = plan.get("metadata", {})
+    kernel = metadata.get("critic_lora_kernel")
+    if kernel is None:
+        return False
+    _require(isinstance(kernel, Mapping), "Critic LoRA kernel contract must be a mapping")
+    _require(mode == "pipeline", "Critic LoRA kernel is candidate-only")
+    _require(
+        metadata.get("pool_policy") == TRACE_BALANCED_POOL_POLICY
+        and metadata.get("full_context_lens_elision") is True,
+        "Critic LoRA kernel requires the validated C11 substrate",
+    )
+    expected = {
+        "enabled": True,
+        "name": "scale_one_identity_epilogue_v1",
+        "scale": 1.0,
+        "math_change": "remove_identity_multiply_only",
+        "base_input_output_dtype": "bfloat16",
+        "lora_parameter_compute_dtype": "float32",
+        "source_forward_sha256": (
+            "70d00d496aa2bd8ea06d64e6b04af873644eff52539396f74ec586a4cbbe97a3"
+        ),
+    }
+    _require(dict(kernel) == expected, "Critic LoRA kernel contract changed")
+    return True
+
+
 def _prefetch_score_sample_contexts(
     torch: Any,
     *,
@@ -1762,6 +1791,7 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _critic_physical_batch_size(plan, mode=mode)
     _full_context_lens_elision(plan, mode=mode)
     _score_context_prefetch_enabled(plan, mode=mode)
+    _critic_lora_scale_one_enabled(plan, mode=mode)
 
 
 def _validate_only(
@@ -1834,12 +1864,50 @@ def run_worker(
         dist.init_process_group("nccl")
     torch.cuda.set_device(local_rank)
     device = torch.device(f"cuda:{local_rank}")
+    critic_lora_kernel = {
+        "enabled": False,
+        "name": "native_livewan_lora",
+        "execution_status": "DISABLED",
+    }
+    if _critic_lora_scale_one_enabled(plan, mode=mode):
+        from distillschedule.runtime.livewan_lora_kernel import (
+            install_scale_one_lora_epilogue,
+        )
+
+        critic_lora_kernel = install_scale_one_lora_epilogue(torch)
     before_oom = cgroup_oom_counts()
     torch.cuda.reset_peak_memory_stats(device)
     build_started = time.perf_counter()
     bundle = build_models(
         torch=torch, plan=plan, bootstrap=bootstrap, mode=mode, rank=rank, device=device,
     )
+    if _critic_lora_scale_one_enabled(plan, mode=mode):
+        if bundle.critic is None:
+            critic_lora_kernel.update(
+                role="generator",
+                execution_status="NOT_APPLICABLE",
+                module_count=0,
+                all_scales_one=True,
+            )
+        else:
+            from wanstreamer.lora import LoRALinear
+
+            lora_modules = [
+                module
+                for module in bundle.critic.modules()
+                if isinstance(module, LoRALinear)
+            ]
+            _require(len(lora_modules) == 180, "Critic LoRA module count changed")
+            _require(
+                all(module.scale == 1.0 for module in lora_modules),
+                "Critic LoRA scale-one specialization saw a non-unit scale",
+            )
+            critic_lora_kernel.update(
+                role="score",
+                execution_status="PASS",
+                module_count=len(lora_modules),
+                all_scales_one=True,
+            )
     loader = InputLoader(torch=torch, trace=trace)
     generator_streamers = []
     if bundle.student is not None:
@@ -2058,6 +2126,7 @@ def run_worker(
             ),
         },
         "score_context_prefetch": evidence.score_context_prefetch,
+        "critic_lora_kernel": critic_lora_kernel,
         "slot_routing": slot_routing,
         "full5_wall_seconds": full5_wall,
         "construction_wall_seconds": build_wall,

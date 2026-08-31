@@ -76,6 +76,9 @@ def main() -> int:
     score_context_prefetch = bool(
         plan.get("metadata", {}).get("score_context_prefetch", False)
     )
+    critic_lora_kernel_enabled = bool(
+        plan.get("metadata", {}).get("critic_lora_kernel", {}).get("enabled", False)
+    )
     rank_groups = {
         str(row["name"]): tuple(int(rank) for rank in row["ranks"])
         for row in plan.get("rank_groups", [])
@@ -301,6 +304,34 @@ def main() -> int:
                 errors.append(f"rank{rank}: Score prefetched-context bytes missing")
         elif prefetch_receipt.get("enabled") not in {False, None}:
             errors.append(f"rank{row['rank']}: unregistered Score context prefetch")
+        lora_kernel_receipt = row.get("critic_lora_kernel", {})
+        if critic_lora_kernel_enabled:
+            rank = int(row["rank"])
+            expected_lora_kernel = {
+                "enabled": True,
+                "name": "scale_one_identity_epilogue_v1",
+                "source_forward_sha256": (
+                    "70d00d496aa2bd8ea06d64e6b04af873644eff52539396f74ec586a4cbbe97a3"
+                ),
+                "class_forward_patched": True,
+                "role": "generator" if rank in generator_ranks else "score",
+                "execution_status": (
+                    "NOT_APPLICABLE" if rank in generator_ranks else "PASS"
+                ),
+                "module_count": 0 if rank in generator_ranks else 180,
+                "all_scales_one": True,
+            }
+            for key, expected_value in expected_lora_kernel.items():
+                if lora_kernel_receipt.get(key) != expected_value:
+                    errors.append(
+                        f"rank{rank}: Critic LoRA kernel receipt mismatch for {key}"
+                    )
+            if lora_kernel_receipt.get("install_status") not in {
+                "PASS", "ALREADY_INSTALLED"
+            }:
+                errors.append(f"rank{rank}: Critic LoRA kernel installation failed")
+        elif lora_kernel_receipt.get("enabled") not in {False, None}:
+            errors.append(f"rank{row['rank']}: unregistered Critic LoRA kernel")
         if (
             pool_policy
             == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced"
@@ -403,6 +434,7 @@ def main() -> int:
         "pool_policy": pool_policy,
         "full_context_lens_elision": full_context_lens_elision,
         "score_context_prefetch": score_context_prefetch,
+        "critic_lora_kernel": critic_lora_kernel_enabled,
         "generator_ranks": list(generator_ranks),
         "score_ranks": list(score_ranks),
         "full5_seconds": max(walls) if walls else None,
