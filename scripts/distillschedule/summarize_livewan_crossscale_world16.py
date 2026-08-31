@@ -498,6 +498,28 @@ def main() -> int:
             )
             if lora_kernel_receipt.get("fused_cast_add") is not fused_expected:
                 errors.append(f"rank{rank}: Critic LoRA fused-epilogue mode mismatch")
+            autocast_elision_expected = (
+                critic_lora_kernel_contract.get("name")
+                == "scale_one_autocast_bf16_input_elision_v1"
+            )
+            if (
+                lora_kernel_receipt.get("autocast_input_elision")
+                is not autocast_elision_expected
+            ):
+                errors.append(f"rank{rank}: Critic LoRA autocast-elision mode mismatch")
+            if autocast_elision_expected:
+                expected_invocations = phase_expanded or rank not in generator_ranks
+                invocation_count = int(
+                    lora_kernel_receipt.get(
+                        "autocast_input_elision_invocation_count", -1
+                    )
+                )
+                if (invocation_count > 0) is not expected_invocations:
+                    errors.append(
+                        f"rank{rank}: Critic LoRA autocast-elision invocation mismatch"
+                    )
+                if int(lora_kernel_receipt.get("autocast_contract_failure_count", -1)) != 0:
+                    errors.append(f"rank{rank}: Critic LoRA autocast contract failed")
             if fused_expected and (
                 lora_kernel_receipt.get("fused_min_numel") != 8_000_000
                 or lora_kernel_receipt.get("triton_block_size") != 256

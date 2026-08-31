@@ -53,6 +53,7 @@ def main() -> int:
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
+            "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision",
             "phase-expanded-critic16",
             "score-b2",
             "6g10score", "6g10score-node-local",
@@ -123,6 +124,7 @@ def main() -> int:
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
+            "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision",
         }
         and rank in critic_ranks
     ):
@@ -362,6 +364,7 @@ def main() -> int:
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
+            "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision",
             "phase-expanded-critic16",
         }
         else (lane, lane + 8)
@@ -441,6 +444,7 @@ def main() -> int:
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
+            "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision",
                 "phase-expanded-critic16",
             }
             else "cuda_p2p_float32"
@@ -472,6 +476,7 @@ def main() -> int:
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
+            "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision",
                 "phase-expanded-critic16",
             }
             else tuple((lane, lane + 8) for lane in range(8))

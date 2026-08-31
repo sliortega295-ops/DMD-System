@@ -39,6 +39,7 @@ PIPELINE_VARIANT="${LIVEWAN_PIPELINE_VARIANT:-b1}"
    "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1 || \
    "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation || \
    "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add || \
+   "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision || \
    "${PIPELINE_VARIANT}" == phase-expanded-critic16 || \
    "${PIPELINE_VARIANT}" == score-b2 || \
    "${PIPELINE_VARIANT}" == 6g10score || \
@@ -70,6 +71,8 @@ elif [[ "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-tra
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1_modulation.json"
 elif [[ "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add ]]; then
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_fused_cast_add.json"
+elif [[ "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision ]]; then
+  PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision.json"
 elif [[ "${PIPELINE_VARIANT}" == phase-expanded-critic16 ]]; then
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16.json"
 elif [[ "${PIPELINE_VARIANT}" == 6g10score ]]; then

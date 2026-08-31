@@ -96,19 +96,28 @@ def install_scale_one_lora_epilogue(
     torch: Any,
     *,
     fused_cast_add: bool = False,
+    autocast_input_elision: bool = False,
     fused_min_numel: int = 8_000_000,
 ) -> dict[str, Any]:
-    """Remove only the identity multiply in the pinned scale-one LoRA path.
+    """Install a pinned scale-one LoRA specialization.
 
-    The FP32 LoRA GEMMs, FP32-to-BF16 cast, and BF16 residual add remain in the
-    same order.  Unknown or already-modified upstream code fails closed.
+    The default keeps the FP32 LoRA operations in source order.  The optional
+    input-elision mode is valid only when CUDA BF16 autocast immediately casts
+    the nominal FP32 LoRA operands back to BF16; it fails closed otherwise.
     """
 
     from wanstreamer.lora import LoRALinear
 
+    if fused_cast_add and autocast_input_elision:
+        raise RuntimeError("LiveWan LoRA kernel candidates are mutually exclusive")
     requested_name = (
         "scale_one_fused_cast_add_v1"
-        if fused_cast_add else "scale_one_identity_epilogue_v1"
+        if fused_cast_add
+        else (
+            "scale_one_autocast_bf16_input_elision_v1"
+            if autocast_input_elision
+            else "scale_one_identity_epilogue_v1"
+        )
     )
     if getattr(LoRALinear, "_distillschedule_scale_one_epilogue", False):
         installed_name = getattr(LoRALinear, "_distillschedule_kernel_name", None)
@@ -138,12 +147,60 @@ def install_scale_one_lora_epilogue(
             raise RuntimeError("LiveWan fused LoRA epilogue threshold changed")
         fused_epilogue, fused_receipt = _build_fused_cast_add(torch)
 
+    runtime_receipt = {
+        "autocast_input_elision": autocast_input_elision,
+        "autocast_input_elision_invocation_count": 0,
+        "autocast_input_dtype_histogram": {},
+        "autocast_contract_failure_count": 0,
+    }
+
     def scale_one_forward(self: Any, x: Any) -> Any:
         y = self.base(x)
         if not self.enabled:
             return y
-        h = torch.nn.functional.linear(x.to(self.a.dtype), self.a)
+        lora_input = x
+        if autocast_input_elision:
+            try:
+                cuda_autocast_enabled = torch.is_autocast_enabled("cuda")
+            except TypeError:  # PyTorch before the device-qualified API.
+                cuda_autocast_enabled = torch.is_autocast_enabled()
+            if hasattr(torch, "get_autocast_dtype"):
+                autocast_dtype = torch.get_autocast_dtype("cuda")
+            else:
+                autocast_dtype = torch.get_autocast_gpu_dtype()
+            input_dtype = str(x.dtype)
+            runtime_receipt["autocast_input_elision_invocation_count"] += 1
+            histogram = runtime_receipt["autocast_input_dtype_histogram"]
+            histogram[input_dtype] = int(histogram.get(input_dtype, 0)) + 1
+            contract_ok = (
+                x.is_cuda
+                and x.dtype in {torch.bfloat16, torch.float32}
+                and self.a.dtype == torch.float32
+                and self.b.dtype == torch.float32
+                and cuda_autocast_enabled
+                and autocast_dtype == torch.bfloat16
+            )
+            if not contract_ok:
+                runtime_receipt["autocast_contract_failure_count"] += 1
+                raise RuntimeError(
+                    "LiveWan autocast input-elision contract changed: "
+                    f"input_device={x.device}, input_dtype={x.dtype}, "
+                    f"a_dtype={self.a.dtype}, b_dtype={self.b.dtype}, "
+                    f"cuda_autocast={cuda_autocast_enabled}, "
+                    f"autocast_dtype={autocast_dtype}"
+                )
+        else:
+            lora_input = x.to(self.a.dtype)
+        h = torch.nn.functional.linear(lora_input, self.a)
         update_fp32 = torch.nn.functional.linear(h, self.b)
+        if autocast_input_elision and (
+            h.dtype != torch.bfloat16 or update_fp32.dtype != torch.bfloat16
+        ):
+            runtime_receipt["autocast_contract_failure_count"] += 1
+            raise RuntimeError(
+                "LiveWan autocast input-elision output contract changed: "
+                f"h_dtype={h.dtype}, update_dtype={update_fp32.dtype}"
+            )
         if fused_epilogue is not None and update_fp32.numel() >= fused_min_numel:
             return fused_epilogue(y, update_fp32)
         update = update_fp32.to(y.dtype)
@@ -155,7 +212,7 @@ def install_scale_one_lora_epilogue(
     LoRALinear.forward = scale_one_forward
     LoRALinear._distillschedule_scale_one_epilogue = True
     LoRALinear._distillschedule_kernel_name = requested_name
-    return {
+    runtime_receipt.update({
         "enabled": True,
         "name": requested_name,
         "source_forward_sha256": actual,
@@ -164,7 +221,8 @@ def install_scale_one_lora_epilogue(
         "fused_cast_add": fused_cast_add,
         "fused_min_numel": fused_min_numel if fused_cast_add else None,
         **fused_receipt,
-    }
+    })
+    return runtime_receipt
 
 
 def uninstall_scale_one_lora_epilogue() -> None:

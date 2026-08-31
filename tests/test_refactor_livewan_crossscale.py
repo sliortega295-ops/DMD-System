@@ -51,6 +51,7 @@ PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_CO
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_SCALE1 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_SCALE1_MODULATION = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1_modulation.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_FUSED_CAST_ADD = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_fused_cast_add.json"
+PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision.json"
 PIPELINE_PHASE_EXPANDED_CRITIC16 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16.json"
 PIPELINE_SCORE_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
 PIPELINE_6G10S = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json"
@@ -464,6 +465,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1"' in controller
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation"' in controller
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add"' in controller
+    assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision"' in controller
     assert '"phase-expanded-critic16"' in controller
     assert '"capacity", "correctness", "timing", "profile"' in controller
     assert '"LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant' in controller
@@ -633,6 +635,7 @@ def test_launcher_fails_before_model_load_on_world16_and_p2p_drift() -> None:
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1"' in probe
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation"' in probe
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add"' in probe
+    assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision"' in probe
     assert "async Score gradient mean mismatch" in probe
     assert '"async_reducer_canary"' in probe
     assert "node-local Teacher all-gather payload mismatch" in probe
@@ -901,6 +904,37 @@ def test_lora_fused_cast_add_plan_changes_only_exact_kernel_metadata() -> None:
     assert candidate == base
 
 
+def test_lora_autocast_input_elision_plan_changes_only_exact_kernel_metadata() -> None:
+    base = load_plan(
+        PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT
+    ).plan.to_dict()
+    candidate_plan = load_plan(
+        PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION
+    ).plan
+    LiveWanSFDMDAdapter().validate(candidate_plan)
+    candidate = candidate_plan.to_dict()
+    metadata = dict(candidate["metadata"])
+    assert metadata.pop("critic_lora_kernel") == {
+        "enabled": True,
+        "name": "scale_one_autocast_bf16_input_elision_v1",
+        "scale": 1.0,
+        "math_change": (
+            "remove_identity_multiply_and_redundant_pre_autocast_fp32_input_cast"
+        ),
+        "base_input_output_dtype": "bfloat16",
+        "lora_parameter_compute_dtype": "float32",
+        "source_forward_sha256": (
+            "70d00d496aa2bd8ea06d64e6b04af873644eff52539396f74ec586a4cbbe97a3"
+        ),
+        "autocast_dtype": "bfloat16",
+        "required_lora_output_dtype": "bfloat16",
+    }
+    assert metadata == base["metadata"]
+    base["id"] = candidate["id"]
+    base["metadata"] = dict(candidate["metadata"])
+    assert candidate == base
+
+
 def test_score_modulation_plan_changes_only_exact_kernel_metadata() -> None:
     base = load_plan(
         PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_SCALE1
@@ -996,6 +1030,44 @@ def test_lora_scale_one_runtime_is_bitwise_exact() -> None:
         assert torch.equal(reference_gradients[0], x_candidate.grad)
         assert torch.equal(reference_gradients[1], original.a.grad)
         assert torch.equal(reference_gradients[2], original.b.grad)
+    finally:
+        uninstall_scale_one_lora_epilogue()
+        sys.modules.pop("wanstreamer.lora", None)
+        sys.modules.pop("wanstreamer", None)
+
+
+def test_lora_autocast_input_elision_fails_closed_without_cuda_bf16_autocast() -> None:
+    import importlib.util
+    import torch
+    import types
+
+    package = types.ModuleType("wanstreamer")
+    package.__path__ = [str(ROOT / "third_party/livewan/wanstreamer")]
+    sys.modules["wanstreamer"] = package
+    spec = importlib.util.spec_from_file_location(
+        "wanstreamer.lora", ROOT / "third_party/livewan/wanstreamer/lora.py"
+    )
+    assert spec is not None and spec.loader is not None
+    lora_module = importlib.util.module_from_spec(spec)
+    sys.modules["wanstreamer.lora"] = lora_module
+    spec.loader.exec_module(lora_module)
+    from distillschedule.runtime.livewan_lora_kernel import (
+        install_scale_one_lora_epilogue,
+        uninstall_scale_one_lora_epilogue,
+    )
+
+    module = lora_module.LoRALinear(
+        torch.nn.Linear(16, 24, bias=False).to(torch.bfloat16), rank=4
+    )
+    try:
+        receipt = install_scale_one_lora_epilogue(
+            torch, autocast_input_elision=True
+        )
+        with pytest.raises(RuntimeError, match="autocast input-elision contract"):
+            module(torch.randn(7, 16, dtype=torch.bfloat16))
+        assert receipt["autocast_input_elision"] is True
+        assert receipt["autocast_input_elision_invocation_count"] == 1
+        assert receipt["autocast_contract_failure_count"] == 1
     finally:
         uninstall_scale_one_lora_epilogue()
         sys.modules.pop("wanstreamer.lora", None)

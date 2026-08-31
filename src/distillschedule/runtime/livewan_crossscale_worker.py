@@ -1830,6 +1830,15 @@ def _critic_lora_scale_one_enabled(plan: Mapping[str, Any], *, mode: str) -> boo
             fused_min_numel=8_000_000,
             triton_block_size=256,
         )
+    elif name == "scale_one_autocast_bf16_input_elision_v1":
+        expected.update(
+            name=name,
+            math_change=(
+                "remove_identity_multiply_and_redundant_pre_autocast_fp32_input_cast"
+            ),
+            autocast_dtype="bfloat16",
+            required_lora_output_dtype="bfloat16",
+        )
     else:
         _require(False, "Unknown Critic LoRA kernel candidate")
     _require(dict(kernel) == expected, "Critic LoRA kernel contract changed")
@@ -2075,6 +2084,9 @@ def run_worker(
         critic_lora_kernel = install_scale_one_lora_epilogue(
             torch,
             fused_cast_add=(kernel_name == "scale_one_fused_cast_add_v1"),
+            autocast_input_elision=(
+                kernel_name == "scale_one_autocast_bf16_input_elision_v1"
+            ),
             fused_min_numel=8_000_000,
         )
     score_modulation_kernel = {

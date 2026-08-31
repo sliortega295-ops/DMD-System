@@ -376,6 +376,15 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                         fused_min_numel=8_000_000,
                         triton_block_size=256,
                     )
+                elif lora_kernel_name == "scale_one_autocast_bf16_input_elision_v1":
+                    expected_lora_kernel.update(
+                        name=lora_kernel_name,
+                        math_change=(
+                            "remove_identity_multiply_and_redundant_pre_autocast_fp32_input_cast"
+                        ),
+                        autocast_dtype="bfloat16",
+                        required_lora_output_dtype="bfloat16",
+                    )
                 else:
                     self._fail(
                         "Unknown Critic LoRA kernel candidate",
