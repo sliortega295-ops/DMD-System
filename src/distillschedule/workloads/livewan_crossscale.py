@@ -113,6 +113,45 @@ PIPELINE_8G8S_LAYOUT = PoolLayout(
     overlap=False,
 )
 
+# C10 changes only which two immutable trace rows each already-existing
+# Generator/Score rank pair executes.  The rank-pair communication graph and
+# two B1 samples per lane remain unchanged.  This fixed permutation was
+# preregistered from the immutable trace's public ``world_frames`` field; it
+# reduces the per-step maximum generated-block load from [12,11,10,12,11] to
+# [11,10,10,11,11] without changing total work or any trace row.
+TRACE_BALANCED_8G8S_SLOT_PAIRS = (
+    (0, 4),
+    (1, 9),
+    (2, 8),
+    (3, 10),
+    (5, 12),
+    (6, 11),
+    (7, 15),
+    (13, 14),
+)
+
+
+def validate_slot_pairs(
+    pairs: Sequence[Sequence[int]], *, lanes: int = 8, batch: int = GLOBAL_BATCH
+) -> tuple[tuple[int, int], ...]:
+    """Return one deterministic two-slot assignment for every fixed lane."""
+
+    normalized = tuple(tuple(int(slot) for slot in pair) for pair in pairs)
+    _require(len(normalized) == lanes, "slot-pair policy must cover every lane")
+    _require(
+        all(len(pair) == 2 for pair in normalized),
+        "every fixed lane must own exactly two logical slots",
+    )
+    routed = [slot for pair in normalized for slot in pair]
+    _require(
+        sorted(routed) == list(range(batch)),
+        "slot-pair policy is not a global-batch bijection",
+    )
+    return normalized  # type: ignore[return-value]
+
+
+validate_slot_pairs(TRACE_BALANCED_8G8S_SLOT_PAIRS)
+
 PIPELINE_6G10S_LAYOUT = PoolLayout(
     name="persistent_6g_10score_teacher_fsdp10",
     generator_ranks=tuple(range(6)),

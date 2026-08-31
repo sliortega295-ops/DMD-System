@@ -18,6 +18,7 @@ from distillschedule.workloads.livewan_crossscale import (
     PIPELINE_6G10S_SCORE_LEADERS,
     PIPELINE_6G10S_SCORE_NODE_GROUPS,
     PIPELINE_8G8S_LAYOUT,
+    TRACE_BALANCED_8G8S_SLOT_PAIRS,
     balanced_slots,
     compile_trace_identities,
     full5_routes,
@@ -30,6 +31,7 @@ from distillschedule.runtime.livewan_crossscale_worker import (
     _batch_seeded_flow_inputs,
     _per_sample_mse,
     _pipeline_slot_routes,
+    _pipeline_8x8_slot_pairs,
     prepare_score_sample_context,
 )
 
@@ -41,6 +43,7 @@ PIPELINE_RUNAHEAD = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_
 PIPELINE_RUNAHEAD_CRITIC_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32.json"
+PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced.json"
 PIPELINE_SCORE_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
 PIPELINE_6G10S = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json"
 PIPELINE_6G10S_NODE_LOCAL = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score_node_local.json"
@@ -447,6 +450,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert '"b1-runahead-critic-b2"' in controller
     assert '"b1-runahead-critic-b2-local-context"' in controller
     assert '"b1-runahead-critic-b2-local-context-async32"' in controller
+    assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced"' in controller
     assert '"LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant' in controller
     assert 'resolved_plan.node0.json' in controller
 
@@ -458,6 +462,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score_node_local.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32.json" in launcher
+    assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced.json" in launcher
     assert "baseline_pipeline_variant_mismatch" in launcher
     summarizer = (
         ROOT / "scripts/distillschedule/summarize_livewan_crossscale_world16.py"
@@ -514,9 +519,7 @@ def test_score_prioritizes_both_dmd_gradients_before_critic_backward() -> None:
     pipeline = worker.split("def _run_pipeline_8x8(", 1)[1].split(
         "def _run_pipeline_8x8_score_b2(", 1
     )[0]
-    score_path = pipeline.split(
-        "rows = (trace.row(step, peer), trace.row(step, peer + 8))", 1
-    )[1]
+    score_path = pipeline
     dmd1 = score_path.index('label="livewan/pipeline/score/step_0/dmd_wave_1"')
     async_send = score_path.index("grad1_work = dist.isend(grad1_send, dst=peer)")
     critic0 = score_path.index(
@@ -602,6 +605,7 @@ def test_launcher_fails_before_model_load_on_world16_and_p2p_drift() -> None:
     assert '"b1-runahead-critic-b2"' in probe
     assert '"b1-runahead-critic-b2-local-context"' in probe
     assert '"b1-runahead-critic-b2-local-context-async32"' in probe
+    assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced"' in probe
     assert "async Score gradient mean mismatch" in probe
     assert '"async_reducer_canary"' in probe
     assert "node-local Teacher all-gather payload mismatch" in probe
@@ -627,6 +631,26 @@ def test_critic_async32_plan_changes_only_gradient_sync_policy() -> None:
     base["metadata"] = base_metadata
     candidate["metadata"] = candidate_metadata
     assert candidate == base
+
+
+def test_trace_balanced_plan_changes_only_fixed_slot_pairing() -> None:
+    base = load_plan(PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32).plan
+    candidate = load_plan(
+        PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED
+    ).plan
+    LiveWanSFDMDAdapter().validate(candidate)
+    assert base.workload.to_dict() == candidate.workload.to_dict()
+    assert base.hardware.to_dict() == candidate.hardware.to_dict()
+    assert base.rank_groups == candidate.rank_groups
+    assert base.training_backends == candidate.training_backends
+    assert base.lifecycle == candidate.lifecycle
+    assert tuple(
+        tuple(pair) for pair in candidate.metadata["slot_pairs_by_lane"]
+    ) == TRACE_BALANCED_8G8S_SLOT_PAIRS
+    assert candidate.metadata["slot_pair_policy"] == "trace_balanced_fixed_rank_pairs_v1"
+    assert _pipeline_8x8_slot_pairs(candidate.to_dict()) == TRACE_BALANCED_8G8S_SLOT_PAIRS
+    routed = [slot for pair in TRACE_BALANCED_8G8S_SLOT_PAIRS for slot in pair]
+    assert sorted(routed) == list(range(16))
 
 
 def test_async_reducer_bucket_plan_is_reverse_deterministic() -> None:

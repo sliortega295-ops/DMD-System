@@ -15,7 +15,12 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from distillschedule.workloads.livewan_crossscale import FULL5_STEPS, GLOBAL_BATCH, WORLD_SIZE
+from distillschedule.workloads.livewan_crossscale import (
+    FULL5_STEPS,
+    GLOBAL_BATCH,
+    TRACE_BALANCED_8G8S_SLOT_PAIRS,
+    WORLD_SIZE,
+)
 from distillschedule.runtime.livewan_crossscale_worker import FormalTrace, atomic_json
 
 
@@ -164,6 +169,7 @@ def main() -> int:
         "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
         "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
         "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32",
+        "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced",
     }:
         expected_physical_inventory.update(
             {
@@ -176,7 +182,10 @@ def main() -> int:
         )
     if (
         pool_policy
-        == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32"
+        in {
+            "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32",
+            "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced",
+        }
     ):
         for row in rows:
             if int(row["rank"]) not in score_ranks:
@@ -241,6 +250,21 @@ def main() -> int:
             )
         if row.get("pool_policy") != pool_policy:
             errors.append(f"rank{row['rank']}: pool policy receipt differs from plan")
+        if (
+            pool_policy
+            == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced"
+        ):
+            rank = int(row["rank"])
+            lane = rank if rank < 8 else rank - 8
+            expected_routing = {
+                "policy": "trace_balanced_fixed_rank_pairs_v1",
+                "lane": lane,
+                "logical_slots": list(TRACE_BALANCED_8G8S_SLOT_PAIRS[lane]),
+                "peer_rank": rank + 8 if rank < 8 else rank - 8,
+                "all_pairs": [list(pair) for pair in TRACE_BALANCED_8G8S_SLOT_PAIRS],
+            }
+            if row.get("slot_routing") != expected_routing:
+                errors.append(f"rank{rank}: trace-balanced slot-routing receipt mismatch")
     for key, expected in expected_logical_inventory.items():
         if actual_logical_inventory.get(key, 0) != expected:
             errors.append(

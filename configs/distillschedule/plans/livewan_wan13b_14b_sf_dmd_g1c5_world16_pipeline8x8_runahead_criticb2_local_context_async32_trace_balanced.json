@@ -1,0 +1,23 @@
+{
+  "include": ["livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32.json"],
+  "id": "livewan-wan13b-14b-sfdmd-g1c5-world16-pipeline8x8-runahead-criticb2-local-context-async32-trace-balanced",
+  "metadata": {
+    "pool_policy": "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced",
+    "slot_pair_policy": "trace_balanced_fixed_rank_pairs_v1",
+    "slot_pairs_by_lane": [
+      [0, 4],
+      [1, 9],
+      [2, 8],
+      [3, 10],
+      [5, 12],
+      [6, 11],
+      [7, 15],
+      [13, 14]
+    ],
+    "slot_pairing_source": "immutable_operation_trace_world_frames",
+    "total_trace_work_preserved": true,
+    "rank_pair_edges_preserved": true,
+    "current_step_max_new_blocks": [12, 11, 10, 12, 11],
+    "candidate_step_max_new_blocks": [11, 10, 10, 11, 11]
+  }
+}

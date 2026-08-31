@@ -22,6 +22,7 @@ from distillschedule.workloads.livewan_crossscale import (
     PIPELINE_6G10S_SCORE_LEADERS,
     PIPELINE_6G10S_SCORE_NODE_GROUPS,
     PIPELINE_8G8S_LAYOUT,
+    TRACE_BALANCED_8G8S_SLOT_PAIRS,
     TEACHER_SIZE,
     WAN21_COMMIT,
     WORLD_SIZE,
@@ -137,6 +138,7 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2": PIPELINE_8G8S_LAYOUT,
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context": PIPELINE_8G8S_LAYOUT,
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32": PIPELINE_8G8S_LAYOUT,
+                "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced": PIPELINE_8G8S_LAYOUT,
                 "persistent_8g_8score_teacher_fsdp8_score_b2": PIPELINE_8G8S_LAYOUT,
                 "persistent_6g_10score_teacher_fsdp10": PIPELINE_6G10S_LAYOUT,
                 "persistent_6g_10score_teacher_node_local_hierarchical": PIPELINE_6G10S_NODE_LOCAL_LAYOUT,
@@ -159,6 +161,7 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32",
+                "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced",
             }:
                 if plan.metadata.get("generator_nograd_runahead") is not True:
                     self._fail(
@@ -174,6 +177,7 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32",
+                "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced",
             }:
                 if plan.metadata.get("score_physical_batch_size") != 1:
                     self._fail(
@@ -198,6 +202,7 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
             if pool_policy in {
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32",
+                "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced",
             }:
                 if plan.metadata.get("score_context_transport") != "trace_local_replay":
                     self._fail(
@@ -217,10 +222,10 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                         "local-context policy must disable only context P2P",
                         "lifecycle.metadata.context_p2p",
                     )
-            if (
-                pool_policy
-                == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32"
-            ):
+            if pool_policy in {
+                "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32",
+                "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced",
+            }:
                 expected_gradient_sync = {
                     "policy": "grad_ready_async_flat_all_reduce",
                     "bucket_mib": 32,
@@ -232,6 +237,24 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                     self._fail(
                         "Critic async32 gradient policy mismatch",
                         "metadata.critic_gradient_sync",
+                    )
+            if (
+                pool_policy
+                == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced"
+            ):
+                if plan.metadata.get("slot_pair_policy") != "trace_balanced_fixed_rank_pairs_v1":
+                    self._fail(
+                        "trace-balanced candidate has an unknown slot policy",
+                        "metadata.slot_pair_policy",
+                    )
+                observed_pairs = tuple(
+                    tuple(int(slot) for slot in pair)
+                    for pair in plan.metadata.get("slot_pairs_by_lane", ())
+                )
+                if observed_pairs != TRACE_BALANCED_8G8S_SLOT_PAIRS:
+                    self._fail(
+                        "trace-balanced candidate differs from its preregistered slot pairs",
+                        "metadata.slot_pairs_by_lane",
                     )
             if pool_policy == "persistent_6g_10score_teacher_node_local_hierarchical":
                 generator_options = dict(plan.training_backends["generator"].options)

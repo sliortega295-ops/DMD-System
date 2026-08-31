@@ -35,10 +35,12 @@ from distillschedule.workloads.livewan_crossscale import (
     PIPELINE_6G10S_SCORE_LEADERS,
     PIPELINE_6G10S_SCORE_NODE_GROUPS,
     PIPELINE_8G8S_LAYOUT,
+    TRACE_BALANCED_8G8S_SLOT_PAIRS,
     WAN21_COMMIT,
     WORLD_SIZE,
     balanced_slots,
     sha256_file,
+    validate_slot_pairs,
 )
 
 
@@ -54,6 +56,25 @@ ASYNC_CRITIC_POOL_POLICY = (
     "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_"
     "local_context_critic_async32"
 )
+TRACE_BALANCED_POOL_POLICY = ASYNC_CRITIC_POOL_POLICY + "_trace_balanced"
+
+
+def _pipeline_8x8_slot_pairs(
+    plan: Mapping[str, Any],
+) -> tuple[tuple[int, int], ...]:
+    """Resolve the registered physical lane assignment without touching trace rows."""
+
+    policy = str(plan.get("metadata", {}).get("pool_policy", ""))
+    if policy == TRACE_BALANCED_POOL_POLICY:
+        pairs = validate_slot_pairs(
+            plan.get("metadata", {}).get("slot_pairs_by_lane", ())
+        )
+        _require(
+            pairs == TRACE_BALANCED_8G8S_SLOT_PAIRS,
+            "trace-balanced slot-pair policy differs from its preregistration",
+        )
+        return pairs
+    return tuple((lane, lane + 8) for lane in range(8))
 
 
 def _require(condition: bool, message: str) -> None:
@@ -167,6 +188,42 @@ class FormalTrace:
 
     def row(self, step: int, slot: int) -> OperationTraceRow:
         return self.rows[step * GLOBAL_BATCH + slot]
+
+
+def _validate_trace_balanced_pairing(
+    plan: Mapping[str, Any], trace: FormalTrace
+) -> None:
+    """Fail closed if the registered routing no longer balances this trace."""
+
+    if str(plan.get("metadata", {}).get("pool_policy", "")) != TRACE_BALANCED_POOL_POLICY:
+        return
+    pairs = _pipeline_8x8_slot_pairs(plan)
+    current = tuple((lane, lane + 8) for lane in range(8))
+
+    def step_max(candidate: Sequence[Sequence[int]]) -> list[int]:
+        return [
+            max(
+                sum(trace.row(step, slot).new_blocks for slot in pair)
+                for pair in candidate
+            )
+            for step in range(FULL5_STEPS)
+        ]
+
+    current_max = step_max(current)
+    candidate_max = step_max(pairs)
+    metadata = plan.get("metadata", {})
+    _require(
+        current_max == list(metadata.get("current_step_max_new_blocks", ())),
+        "trace-balanced current-load receipt differs from the immutable trace",
+    )
+    _require(
+        candidate_max == list(metadata.get("candidate_step_max_new_blocks", ())),
+        "trace-balanced candidate-load receipt differs from the immutable trace",
+    )
+    _require(
+        sum(candidate_max) < sum(current_max),
+        "trace-balanced routing no longer lowers the registered critical load",
+    )
 
 
 @dataclass(frozen=True)
@@ -458,6 +515,7 @@ def _plan_role_ranks(plan: Mapping[str, Any], *, mode: str) -> tuple[tuple[int, 
         "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2": PIPELINE_8G8S_LAYOUT,
         "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context": PIPELINE_8G8S_LAYOUT,
         ASYNC_CRITIC_POOL_POLICY: PIPELINE_8G8S_LAYOUT,
+        TRACE_BALANCED_POOL_POLICY: PIPELINE_8G8S_LAYOUT,
         "persistent_8g_8score_teacher_fsdp8_score_b2": PIPELINE_8G8S_LAYOUT,
         "persistent_6g_10score_teacher_fsdp10": PIPELINE_6G10S_LAYOUT,
         "persistent_6g_10score_teacher_node_local_hierarchical": PIPELINE_6G10S_NODE_LOCAL_LAYOUT,
@@ -624,7 +682,7 @@ def build_models(
         }
         gc.collect()
 
-        if pool_policy == ASYNC_CRITIC_POOL_POLICY:
+        if pool_policy in {ASYNC_CRITIC_POOL_POLICY, TRACE_BALANCED_POOL_POLICY}:
             lora_ids = {id(parameter) for parameter in lora_params}
             named_lora = [
                 (name, parameter)
@@ -1465,6 +1523,7 @@ def _critic_physical_batch_size(plan: Mapping[str, Any], *, mode: str) -> int:
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
                 ASYNC_CRITIC_POOL_POLICY,
+                TRACE_BALANCED_POOL_POLICY,
             },
             "Critic B2 is registered only for the run-ahead B1-DMD candidate",
         )
@@ -1527,6 +1586,7 @@ def run_worker(
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
     _validate_plan_identity(plan, mode=mode)
     trace = FormalTrace.load(plan["evidence"]["operation_trace"])
+    _validate_trace_balanced_pairing(plan, trace)
     bootstrap = Bootstrap.load(plan["evidence"]["checkpoint"], trace=trace)
     root = Path(repo_root).expanduser().resolve()
     source_receipt = validate_source_receipt(bootstrap, repo_root=root)
@@ -1633,6 +1693,7 @@ def run_worker(
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
                 ASYNC_CRITIC_POOL_POLICY,
+                TRACE_BALANCED_POOL_POLICY,
             }:
                 _run_pipeline_8x8(
                     torch=torch, rank=rank, trace=trace, loader=loader, bundle=bundle,
@@ -1645,6 +1706,7 @@ def run_worker(
                             "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
                             "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
                             ASYNC_CRITIC_POOL_POLICY,
+                            TRACE_BALANCED_POOL_POLICY,
                         }
                     ),
                     critic_b2_only=(
@@ -1653,6 +1715,7 @@ def run_worker(
                             "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
                             "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
                             ASYNC_CRITIC_POOL_POLICY,
+                            TRACE_BALANCED_POOL_POLICY,
                         }
                     ),
                     score_context_from_trace=(
@@ -1660,8 +1723,10 @@ def run_worker(
                         in {
                             "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
                             ASYNC_CRITIC_POOL_POLICY,
+                            TRACE_BALANCED_POOL_POLICY,
                         }
                     ),
+                    slot_pairs_by_lane=_pipeline_8x8_slot_pairs(plan),
                 )
             elif plan.get("metadata", {}).get("pool_policy") == "persistent_8g_8score_teacher_fsdp8_score_b2":
                 _run_pipeline_8x8_score_b2(
@@ -1721,6 +1786,17 @@ def run_worker(
         critic_metrics = _state_metrics(torch, bundle.critic_lora_params)
     logical_call_inventory = dict(inventory.counts)
     logical_call_inventory.update(evidence.logical_score_calls)
+    slot_routing = None
+    if str(plan.get("metadata", {}).get("pool_policy", "")) == TRACE_BALANCED_POOL_POLICY:
+        slot_pairs = _pipeline_8x8_slot_pairs(plan)
+        lane = rank if rank < 8 else rank - 8
+        slot_routing = {
+            "policy": "trace_balanced_fixed_rank_pairs_v1",
+            "lane": lane,
+            "logical_slots": list(slot_pairs[lane]),
+            "peer_rank": rank + 8 if rank < 8 else rank - 8,
+            "all_pairs": [list(pair) for pair in slot_pairs],
+        }
     receipt = {
         "status": "PASS",
         "rank": rank,
@@ -1742,6 +1818,7 @@ def run_worker(
         "score_physical_batch_size": _score_physical_batch_size(plan, mode=mode),
         "critic_physical_batch_size": _critic_physical_batch_size(plan, mode=mode),
         "pool_policy": plan.get("metadata", {}).get("pool_policy", "world16_fsdp2_sequential"),
+        "slot_routing": slot_routing,
         "full5_wall_seconds": full5_wall,
         "construction_wall_seconds": build_wall,
         "setup_memory": setup_memory,
@@ -2063,11 +2140,19 @@ def _run_pipeline_8x8(
     rollout_runahead: bool = False,
     critic_b2_only: bool = False,
     score_context_from_trace: bool = False,
+    slot_pairs_by_lane: Sequence[Sequence[int]] | None = None,
 ) -> None:
     import torch.distributed as dist
 
     is_generator = rank < 8
     peer = rank + 8 if is_generator else rank - 8
+    lane = rank if is_generator else peer
+    slot_pairs = validate_slot_pairs(
+        slot_pairs_by_lane
+        if slot_pairs_by_lane is not None
+        else tuple((index, index + 8) for index in range(8))
+    )
+    lane_slots = slot_pairs[lane]
     pair_bytes = math.prod(LATENT_SHAPE) * 4
     if not score_context_from_trace:
         pair_bytes += math.prod(TEXT_SHAPE) * 4
@@ -2089,9 +2174,8 @@ def _run_pipeline_8x8(
                 None,
             ]
             for ahead_step in range(1, FULL5_STEPS):
-                ahead_rows = (
-                    trace.row(ahead_step, rank),
-                    trace.row(ahead_step, rank + 8),
+                ahead_rows = tuple(
+                    trace.row(ahead_step, slot) for slot in lane_slots
                 )
                 for wave in (0, 1):
                     previous = pending[wave]
@@ -2159,7 +2243,7 @@ def _run_pipeline_8x8(
             break
         if is_generator:
             bundle.generator_optimizer.zero_grad(set_to_none=True)
-            rows = (trace.row(step, rank), trace.row(step, rank + 8))
+            rows = tuple(trace.row(step, slot) for slot in lane_slots)
             with _profile_range(
                 torch, run_kind=run_kind,
                 label=f"livewan/pipeline/g/step_{step}/rollout_wave_0",
@@ -2279,7 +2363,7 @@ def _run_pipeline_8x8(
                 bundle.critic_gradient_reducer.zero_grad()
             else:
                 bundle.critic_optimizer.zero_grad(set_to_none=True)
-            rows = (trace.row(step, peer), trace.row(step, peer + 8))
+            rows = tuple(trace.row(step, slot) for slot in lane_slots)
             with _profile_range(
                 torch, run_kind=run_kind,
                 label=f"livewan/pipeline/score/step_{step}/recv_wave_0",

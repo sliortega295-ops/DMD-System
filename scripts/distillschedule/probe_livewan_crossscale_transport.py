@@ -24,6 +24,10 @@ GENERATOR_RANKS_6G10S = tuple(range(6))
 SCORE_RANKS_6G10S = tuple(range(6, 16))
 SCORE_NODE_GROUPS_6G10S = ((6, 7), tuple(range(8, 16)))
 SCORE_LEADERS_6G10S = (6, 8)
+TRACE_BALANCED_SLOT_PAIRS = (
+    (0, 4), (1, 9), (2, 8), (3, 10),
+    (5, 12), (6, 11), (7, 15), (13, 14),
+)
 
 
 def atomic_json(path: Path, value: object) -> None:
@@ -42,7 +46,9 @@ def main() -> int:
         choices=(
             "b1", "b1-runahead", "b1-runahead-critic-b2",
             "b1-runahead-critic-b2-local-context",
-            "b1-runahead-critic-b2-local-context-async32", "score-b2",
+            "b1-runahead-critic-b2-local-context-async32",
+            "b1-runahead-critic-b2-local-context-async32-trace-balanced",
+            "score-b2",
             "6g10score", "6g10score-node-local",
             "6g10score-node-local-fused",
         ),
@@ -96,8 +102,10 @@ def main() -> int:
 
     async_reducer_canary = None
     if (
-        args.pipeline_variant
-        == "b1-runahead-critic-b2-local-context-async32"
+        args.pipeline_variant in {
+            "b1-runahead-critic-b2-local-context-async32",
+            "b1-runahead-critic-b2-local-context-async32-trace-balanced",
+        }
         and rank in score_ranks
     ):
         from distillschedule.runtime.livewan_grad_reducer import (
@@ -300,14 +308,22 @@ def main() -> int:
         return 0
 
     peer = rank + 8 if rank < 8 else rank - 8
+    lane = rank if rank < 8 else peer
+    slot_pair = (
+        TRACE_BALANCED_SLOT_PAIRS[lane]
+        if args.pipeline_variant
+        == "b1-runahead-critic-b2-local-context-async32-trace-balanced"
+        else (lane, lane + 8)
+    )
     observed: list[int] = []
     observed_gradients: list[int] = []
     retained: list[torch.Tensor] = []
     deferred_gradient_work = None
     if rank < 8:
         for wave in range(2):
-            header = torch.tensor([rank, peer, wave, rank + 100 * wave], device=device)
-            payload = torch.full((256,), float(rank + 100 * wave), dtype=torch.bfloat16, device=device)
+            slot = slot_pair[wave]
+            header = torch.tensor([rank, peer, wave, slot], device=device)
+            payload = torch.full((256,), float(slot), dtype=torch.bfloat16, device=device)
             retained.extend((header, payload))
             if wave == 0:
                 dist.send(header, dst=peer)
@@ -330,7 +346,7 @@ def main() -> int:
             payload = torch.empty(256, dtype=torch.bfloat16, device=device)
             dist.recv(header, src=peer)
             dist.recv(payload, src=peer)
-            expected = peer + 100 * wave
+            expected = slot_pair[wave]
             if [int(value) for value in header.cpu()] != [peer, rank, wave, expected]:
                 raise RuntimeError("P2P identity header mismatch")
             if not torch.equal(payload, torch.full_like(payload, float(expected))):
@@ -362,11 +378,13 @@ def main() -> int:
         "default_world_initialized_collectively": True,
         "score_gradient_1_async": True,
         "pipeline_variant": args.pipeline_variant,
+        "slot_pair": list(slot_pair),
         "score_context_transport": (
             "trace_local_replay"
             if args.pipeline_variant in {
                 "b1-runahead-critic-b2-local-context",
                 "b1-runahead-critic-b2-local-context-async32",
+                "b1-runahead-critic-b2-local-context-async32-trace-balanced",
             }
             else "cuda_p2p_float32"
         ),
@@ -381,18 +399,38 @@ def main() -> int:
             json.loads((args.output_dir / f"rank_{member:03d}.json").read_text())
             for member in range(WORLD_SIZE)
         ]
+        observed_pairs = tuple(
+            tuple(int(slot) for slot in rows[lane]["slot_pair"])
+            for lane in range(8)
+        )
+        expected_pairs = (
+            TRACE_BALANCED_SLOT_PAIRS
+            if args.pipeline_variant
+            == "b1-runahead-critic-b2-local-context-async32-trace-balanced"
+            else tuple((lane, lane + 8) for lane in range(8))
+        )
         atomic_json(
             args.output_dir / "summary.json",
             {
-                "status": "PASS" if all(row["status"] == "PASS" for row in rows) else "FAIL",
+                "status": (
+                    "PASS"
+                    if all(row["status"] == "PASS" for row in rows)
+                    and observed_pairs == expected_pairs
+                    and all(
+                        tuple(rows[lane + 8]["slot_pair"]) == observed_pairs[lane]
+                        for lane in range(8)
+                    )
+                    else "FAIL"
+                ),
                 "rank_count": len(rows),
                 "generator_ranks": list(generator_ranks),
-                    "score_ranks": list(score_ranks),
-                    "waves": 2,
-                    "async_reducer_canary_ranks": sum(
-                        row.get("async_reducer_canary") is not None for row in rows
-                    ),
-                },
+                "score_ranks": list(score_ranks),
+                "waves": 2,
+                "slot_pairs_by_lane": [list(pair) for pair in observed_pairs],
+                "async_reducer_canary_ranks": sum(
+                    row.get("async_reducer_canary") is not None for row in rows
+                ),
+            },
         )
     dist.barrier()
     dist.destroy_process_group()
