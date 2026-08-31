@@ -511,8 +511,11 @@ def test_score_prioritizes_both_dmd_gradients_before_critic_backward() -> None:
     worker = (
         ROOT / "src/distillschedule/runtime/livewan_crossscale_worker.py"
     ).read_text()
-    score_path = worker.split("def _run_pipeline_8x8(", 1)[1].split(
-        "else:\n            bundle.critic_optimizer.zero_grad", 1
+    pipeline = worker.split("def _run_pipeline_8x8(", 1)[1].split(
+        "def _run_pipeline_8x8_score_b2(", 1
+    )[0]
+    score_path = pipeline.split(
+        "rows = (trace.row(step, peer), trace.row(step, peer + 8))", 1
     )[1]
     dmd1 = score_path.index('label="livewan/pipeline/score/step_0/dmd_wave_1"')
     async_send = score_path.index("grad1_work = dist.isend(grad1_send, dst=peer)")
@@ -607,8 +610,8 @@ def test_launcher_fails_before_model_load_on_world16_and_p2p_drift() -> None:
 
 
 def test_critic_async32_plan_changes_only_gradient_sync_policy() -> None:
-    base = load_plan(PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT).plan
-    candidate = load_plan(PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32).plan
+    base = load_plan(PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT).plan.to_dict()
+    candidate = load_plan(PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32).plan.to_dict()
     base_metadata = dict(base["metadata"])
     candidate_metadata = dict(candidate["metadata"])
     assert candidate_metadata.pop("critic_gradient_sync") == {
@@ -620,9 +623,10 @@ def test_critic_async32_plan_changes_only_gradient_sync_policy() -> None:
     }
     base_metadata["pool_policy"] = candidate_metadata["pool_policy"]
     assert candidate_metadata == base_metadata
-    for key in candidate:
-        if key not in {"id", "metadata"}:
-            assert candidate[key] == base[key]
+    base["id"] = candidate["id"]
+    base["metadata"] = base_metadata
+    candidate["metadata"] = candidate_metadata
+    assert candidate == base
 
 
 def test_async_reducer_bucket_plan_is_reverse_deterministic() -> None:
