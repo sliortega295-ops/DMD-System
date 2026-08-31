@@ -1,0 +1,14 @@
+{
+  "include": ["livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context.json"],
+  "id": "livewan-wan13b-14b-sfdmd-g1c5-world16-pipeline8x8-runahead-criticb2-local-context-async32",
+  "metadata": {
+    "pool_policy": "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32",
+    "critic_gradient_sync": {
+      "policy": "grad_ready_async_flat_all_reduce",
+      "bucket_mib": 32,
+      "group_size": 8,
+      "reduction": "sum_then_divide_group_size",
+      "overlap_with_backward": true
+    }
+  }
+}

@@ -163,6 +163,7 @@ def main() -> int:
     elif pool_policy in {
         "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
         "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
+        "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32",
     }:
         expected_physical_inventory.update(
             {
@@ -173,6 +174,43 @@ def main() -> int:
                 "critic/grad/checkpoint": 40,
             }
         )
+    if (
+        pool_policy
+        == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32"
+    ):
+        for row in rows:
+            if int(row["rank"]) not in score_ranks:
+                continue
+            receipts = [
+                value
+                for value in row.get("gradient_sync", [])
+                if value.get("role") == "critic"
+            ]
+            if len(receipts) != 5:
+                errors.append(f"rank{row['rank']}: async Critic sync receipt count={len(receipts)}")
+                continue
+            for value in receipts:
+                if (
+                    value.get("backend") != "GRAD_READY_ASYNC_FLAT_ALL_REDUCE"
+                    or value.get("reduction") != "SUM_THEN_DIVIDE_GROUP_SIZE"
+                    or value.get("group_size") != 8
+                    or value.get("gradient_tensors") != 360
+                    or value.get("gradient_bytes") != 127795200
+                    or not isinstance(value.get("buckets"), int)
+                    or value.get("buckets") < 4
+                    or value.get("bucket_issue_order")
+                    != list(range(value.get("buckets", 0)))
+                    or sum(value.get("bucket_bytes_observed", [])) != 127795200
+                    or max(value.get("bucket_bytes_observed", [2**63]))
+                    > 32 * 1024 * 1024
+                    or value.get("hook_count_min") != 1
+                    or value.get("hook_count_max") != 1
+                    or value.get("overlap_with_backward") is not True
+                ):
+                    errors.append(
+                        f"rank{row['rank']}: invalid async Critic sync receipt at "
+                        f"step {value.get('step')}"
+                    )
     elif pool_policy in {
         "persistent_6g_10score_teacher_fsdp10",
         "persistent_6g_10score_teacher_node_local_hierarchical",

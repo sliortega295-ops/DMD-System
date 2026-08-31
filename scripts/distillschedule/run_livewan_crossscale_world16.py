@@ -88,7 +88,8 @@ def parser() -> argparse.ArgumentParser:
         "--pipeline-variant",
         choices=(
             "b1", "b1-runahead", "b1-runahead-critic-b2",
-            "b1-runahead-critic-b2-local-context", "score-b2",
+            "b1-runahead-critic-b2-local-context",
+            "b1-runahead-critic-b2-local-context-async32", "score-b2",
             "6g10score", "6g10score-node-local",
             "6g10score-node-local-fused",
         ),

@@ -41,7 +41,8 @@ def main() -> int:
         "--pipeline-variant",
         choices=(
             "b1", "b1-runahead", "b1-runahead-critic-b2",
-            "b1-runahead-critic-b2-local-context", "score-b2",
+            "b1-runahead-critic-b2-local-context",
+            "b1-runahead-critic-b2-local-context-async32", "score-b2",
             "6g10score", "6g10score-node-local",
             "6g10score-node-local-fused",
         ),
@@ -92,6 +93,49 @@ def main() -> int:
     )
     if int(subgroup_token.cpu()) != expected_subgroup:
         raise RuntimeError("role subgroup all-reduce mismatch")
+
+    async_reducer_canary = None
+    if (
+        args.pipeline_variant
+        == "b1-runahead-critic-b2-local-context-async32"
+        and rank in score_ranks
+    ):
+        from distillschedule.runtime.livewan_grad_reducer import (
+            GradReadyAsyncGroupReducer,
+        )
+
+        parameters = [
+            torch.nn.Parameter(
+                torch.zeros(4096, dtype=torch.float32, device=device)
+            )
+            for _index in range(4)
+        ]
+        reducer = GradReadyAsyncGroupReducer(
+            torch,
+            [(f"canary_{index}", parameter) for index, parameter in enumerate(parameters)],
+            group=score_group,
+            group_size=len(score_ranks),
+            bucket_bytes=16 * 1024,
+        )
+        reducer.zero_grad()
+        local_value = float(rank - score_ranks[0] + 1)
+        reducer.backward(
+            sum(parameter.sum() * local_value for parameter in parameters)
+        )
+        async_reducer_canary = reducer.finish()
+        expected_mean = sum(range(1, len(score_ranks) + 1)) / len(score_ranks)
+        if any(
+            not torch.equal(
+                parameter.grad,
+                torch.full_like(parameter.grad, expected_mean),
+            )
+            for parameter in parameters
+        ):
+            raise RuntimeError("async Score gradient mean mismatch")
+        if async_reducer_canary["buckets"] != 4:
+            raise RuntimeError("async Score gradient bucket inventory mismatch")
+        async_reducer_canary["expected_mean"] = expected_mean
+        del reducer, parameters
 
     node_local_collective = None
     if node_local_variant and rank in score_ranks:
@@ -320,9 +364,13 @@ def main() -> int:
         "pipeline_variant": args.pipeline_variant,
         "score_context_transport": (
             "trace_local_replay"
-            if args.pipeline_variant == "b1-runahead-critic-b2-local-context"
+            if args.pipeline_variant in {
+                "b1-runahead-critic-b2-local-context",
+                "b1-runahead-critic-b2-local-context-async32",
+            }
             else "cuda_p2p_float32"
         ),
+        "async_reducer_canary": async_reducer_canary,
         "observed": observed,
         "observed_gradients": observed_gradients,
     }
@@ -339,9 +387,12 @@ def main() -> int:
                 "status": "PASS" if all(row["status"] == "PASS" for row in rows) else "FAIL",
                 "rank_count": len(rows),
                 "generator_ranks": list(generator_ranks),
-                "score_ranks": list(score_ranks),
-                "waves": 2,
-            },
+                    "score_ranks": list(score_ranks),
+                    "waves": 2,
+                    "async_reducer_canary_ranks": sum(
+                        row.get("async_reducer_canary") is not None for row in rows
+                    ),
+                },
         )
     dist.barrier()
     dist.destroy_process_group()

@@ -20,6 +20,9 @@ import sys
 import time
 from typing import Any, Iterable, Mapping, Sequence
 
+from distillschedule.runtime.livewan_grad_reducer import (
+    GradReadyAsyncGroupReducer,
+)
 from distillschedule.workloads.livewan_crossscale import (
     CRITIC_UPDATES,
     FULL5_STEPS,
@@ -47,6 +50,10 @@ BLOCK_FRAMES = 3
 STEPS_PER_BLOCK = 4
 GRAD_BLOCKS = 3
 TIME_SCALE = 1000.0
+ASYNC_CRITIC_POOL_POLICY = (
+    "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_"
+    "local_context_critic_async32"
+)
 
 
 def _require(condition: bool, message: str) -> None:
@@ -409,6 +416,7 @@ class ModelBundle:
     generator_optimizer: Any | None
     critic_optimizer: Any | None
     critic_lora_params: list[Any]
+    critic_gradient_reducer: GradReadyAsyncGroupReducer | None
     generator_group: Any | None
     score_group: Any | None
     score_local_group: Any | None
@@ -449,6 +457,7 @@ def _plan_role_ranks(plan: Mapping[str, Any], *, mode: str) -> tuple[tuple[int, 
         "persistent_8g_8score_teacher_fsdp8_runahead": PIPELINE_8G8S_LAYOUT,
         "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2": PIPELINE_8G8S_LAYOUT,
         "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context": PIPELINE_8G8S_LAYOUT,
+        ASYNC_CRITIC_POOL_POLICY: PIPELINE_8G8S_LAYOUT,
         "persistent_8g_8score_teacher_fsdp8_score_b2": PIPELINE_8G8S_LAYOUT,
         "persistent_6g_10score_teacher_fsdp10": PIPELINE_6G10S_LAYOUT,
         "persistent_6g_10score_teacher_node_local_hierarchical": PIPELINE_6G10S_NODE_LOCAL_LAYOUT,
@@ -510,6 +519,7 @@ def build_models(
     student = critic = teacher = None
     opt_g = opt_c = None
     lora_params: list[Any] = []
+    critic_gradient_reducer = None
 
     if owns_generator:
         torch.manual_seed(0)
@@ -614,6 +624,33 @@ def build_models(
         }
         gc.collect()
 
+        if pool_policy == ASYNC_CRITIC_POOL_POLICY:
+            lora_ids = {id(parameter) for parameter in lora_params}
+            named_lora = [
+                (name, parameter)
+                for name, parameter in critic.named_parameters()
+                if id(parameter) in lora_ids
+            ]
+            _require(
+                len(named_lora) == len(lora_params)
+                and {id(parameter) for _name, parameter in named_lora} == lora_ids,
+                "Critic async reducer lost the LoRA parameter inventory",
+            )
+            critic_gradient_reducer = GradReadyAsyncGroupReducer(
+                torch,
+                named_lora,
+                group=score_group,
+                group_size=len(score_ranks),
+                bucket_bytes=32 * 1024 * 1024,
+            )
+            metadata["critic_gradient_sync"] = {
+                "policy": "grad_ready_async_flat_all_reduce",
+                "group_ranks": list(score_ranks),
+                "group_size": len(score_ranks),
+                "bucket_bytes_limit": 32 * 1024 * 1024,
+                "reduction": "SUM_THEN_DIVIDE_GROUP_SIZE",
+            }
+
     torch.cuda.synchronize(device)
     score_local_group = None
     score_local_ranks: tuple[int, ...] = ()
@@ -638,6 +675,7 @@ def build_models(
         generator_optimizer=opt_g,
         critic_optimizer=opt_c,
         critic_lora_params=lora_params,
+        critic_gradient_reducer=critic_gradient_reducer,
         generator_group=generator_group if owns_generator else None,
         score_group=score_group if owns_score else None,
         score_local_group=score_local_group,
@@ -1237,7 +1275,11 @@ def critic_backward_for_sample(
             score_context.rope, sample_context.critic, context_lens,
             torch.bfloat16, TIME_SCALE, grad_checkpoint=True, noise=noise,
         )
-    (loss * sample_weight).backward()
+    scaled_loss = loss * sample_weight
+    if bundle.critic_gradient_reducer is None:
+        scaled_loss.backward()
+    else:
+        bundle.critic_gradient_reducer.backward(scaled_loss)
     return loss.detach()
 
 
@@ -1281,7 +1323,11 @@ def critic_backward_for_batch(
             grad_checkpoint=True,
         )
     losses = _per_sample_mse(torch, velocity, target)
-    losses.mean().mul(loss_scale).backward()
+    scaled_loss = losses.mean().mul(loss_scale)
+    if bundle.critic_gradient_reducer is None:
+        scaled_loss.backward()
+    else:
+        bundle.critic_gradient_reducer.backward(scaled_loss)
     return tuple(value.detach() for value in losses.unbind(0))
 
 
@@ -1418,6 +1464,7 @@ def _critic_physical_batch_size(plan: Mapping[str, Any], *, mode: str) -> int:
             in {
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
+                ASYNC_CRITIC_POOL_POLICY,
             },
             "Critic B2 is registered only for the run-ahead B1-DMD candidate",
         )
@@ -1585,6 +1632,7 @@ def run_worker(
                 "persistent_8g_8score_teacher_fsdp8_runahead",
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
+                ASYNC_CRITIC_POOL_POLICY,
             }:
                 _run_pipeline_8x8(
                     torch=torch, rank=rank, trace=trace, loader=loader, bundle=bundle,
@@ -1596,6 +1644,7 @@ def run_worker(
                             "persistent_8g_8score_teacher_fsdp8_runahead",
                             "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
                             "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
+                            ASYNC_CRITIC_POOL_POLICY,
                         }
                     ),
                     critic_b2_only=(
@@ -1603,11 +1652,15 @@ def run_worker(
                         in {
                             "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
                             "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
+                            ASYNC_CRITIC_POOL_POLICY,
                         }
                     ),
                     score_context_from_trace=(
                         plan.get("metadata", {}).get("pool_policy")
-                        == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context"
+                        in {
+                            "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
+                            ASYNC_CRITIC_POOL_POLICY,
+                        }
                     ),
                 )
             elif plan.get("metadata", {}).get("pool_policy") == "persistent_8g_8score_teacher_fsdp8_score_b2":
@@ -2222,7 +2275,10 @@ def _run_pipeline_8x8(
                 for request in sends:
                     request.wait()
         else:
-            bundle.critic_optimizer.zero_grad(set_to_none=True)
+            if bundle.critic_gradient_reducer is not None:
+                bundle.critic_gradient_reducer.zero_grad()
+            else:
+                bundle.critic_optimizer.zero_grad(set_to_none=True)
             rows = (trace.row(step, peer), trace.row(step, peer + 8))
             with _profile_range(
                 torch, run_kind=run_kind,
@@ -2389,10 +2445,13 @@ def _run_pipeline_8x8(
                 torch, run_kind=run_kind,
                 label=f"livewan/pipeline/score/step_{step}/critic_commit",
             ):
-                sync = _mean_replicated_gradients(
-                    torch, bundle.critic_lora_params, group=bundle.score_group,
-                    group_size=bundle.score_group_size, bucket_mib=128,
-                )
+                if bundle.critic_gradient_reducer is None:
+                    sync = _mean_replicated_gradients(
+                        torch, bundle.critic_lora_params, group=bundle.score_group,
+                        group_size=bundle.score_group_size, bucket_mib=128,
+                    )
+                else:
+                    sync = bundle.critic_gradient_reducer.finish()
                 evidence.gradient_sync.append({"step": step, "role": "critic", **sync})
                 critic_pre_clip = (
                     _state_metrics(torch, [parameter.grad for parameter in bundle.critic_lora_params])

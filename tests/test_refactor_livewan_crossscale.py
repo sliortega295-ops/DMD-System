@@ -40,6 +40,7 @@ PIPELINE = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_
 PIPELINE_RUNAHEAD = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead.json"
 PIPELINE_RUNAHEAD_CRITIC_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context.json"
+PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32.json"
 PIPELINE_SCORE_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
 PIPELINE_6G10S = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json"
 PIPELINE_6G10S_NODE_LOCAL = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score_node_local.json"
@@ -445,6 +446,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert '"b1-runahead"' in controller
     assert '"b1-runahead-critic-b2"' in controller
     assert '"b1-runahead-critic-b2-local-context"' in controller
+    assert '"b1-runahead-critic-b2-local-context-async32"' in controller
     assert '"LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant' in controller
     assert 'resolved_plan.node0.json' in controller
 
@@ -455,6 +457,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score_node_local.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context.json" in launcher
+    assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32.json" in launcher
     assert "baseline_pipeline_variant_mismatch" in launcher
     summarizer = (
         ROOT / "scripts/distillschedule/summarize_livewan_crossscale_world16.py"
@@ -595,6 +598,50 @@ def test_launcher_fails_before_model_load_on_world16_and_p2p_drift() -> None:
     assert '"b1-runahead"' in probe
     assert '"b1-runahead-critic-b2"' in probe
     assert '"b1-runahead-critic-b2-local-context"' in probe
+    assert '"b1-runahead-critic-b2-local-context-async32"' in probe
+    assert "async Score gradient mean mismatch" in probe
+    assert '"async_reducer_canary"' in probe
     assert "node-local Teacher all-gather payload mismatch" in probe
     assert "hierarchical Score mean mismatch" in probe
     assert "dist.batch_isend_irecv" in probe
+
+
+def test_critic_async32_plan_changes_only_gradient_sync_policy() -> None:
+    base = load_plan(PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT).plan
+    candidate = load_plan(PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32).plan
+    base_metadata = dict(base["metadata"])
+    candidate_metadata = dict(candidate["metadata"])
+    assert candidate_metadata.pop("critic_gradient_sync") == {
+        "policy": "grad_ready_async_flat_all_reduce",
+        "bucket_mib": 32,
+        "group_size": 8,
+        "reduction": "sum_then_divide_group_size",
+        "overlap_with_backward": True,
+    }
+    base_metadata["pool_policy"] = candidate_metadata["pool_policy"]
+    assert candidate_metadata == base_metadata
+    for key in candidate:
+        if key not in {"id", "metadata"}:
+            assert candidate[key] == base[key]
+
+
+def test_async_reducer_bucket_plan_is_reverse_deterministic() -> None:
+    from distillschedule.runtime.livewan_grad_reducer import bucket_named_parameters
+
+    class Parameter:
+        def __init__(self, elements: int) -> None:
+            self.elements = elements
+
+        def numel(self) -> int:
+            return self.elements
+
+        def element_size(self) -> int:
+            return 4
+
+    rows = [(f"p{index}", Parameter(elements)) for index, elements in enumerate((2, 3, 4, 5))]
+    buckets = bucket_named_parameters(rows, bucket_bytes=24)
+    assert [[name for name, _parameter in bucket] for bucket in buckets] == [
+        ["p3"],
+        ["p2"],
+        ["p1", "p0"],
+    ]

@@ -31,6 +31,7 @@ PIPELINE_VARIANT="${LIVEWAN_PIPELINE_VARIANT:-b1}"
 [[ "${PIPELINE_VARIANT}" == b1 || "${PIPELINE_VARIANT}" == b1-runahead || \
    "${PIPELINE_VARIANT}" == b1-runahead-critic-b2 || \
    "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context || \
+   "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32 || \
    "${PIPELINE_VARIANT}" == score-b2 || \
    "${PIPELINE_VARIANT}" == 6g10score || \
    "${PIPELINE_VARIANT}" == 6g10score-node-local || \
@@ -47,6 +48,8 @@ elif [[ "${PIPELINE_VARIANT}" == b1-runahead-critic-b2 ]]; then
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2.json"
 elif [[ "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context ]]; then
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context.json"
+elif [[ "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32 ]]; then
+  PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32.json"
 elif [[ "${PIPELINE_VARIANT}" == 6g10score ]]; then
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json"
 elif [[ "${PIPELINE_VARIANT}" == 6g10score-node-local ]]; then
