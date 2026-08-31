@@ -369,8 +369,12 @@ def main() -> int:
                     "PASS" if rank in score_ranks else "NOT_APPLICABLE"
                 ),
                 "invocation_count": 889 if rank in score_ranks else 0,
-                "backward_invocation_count": 305 if rank in score_ranks else 0,
-                "batch_histogram": {"1": 284, "2": 605} if rank in score_ranks else {},
+                # Teacher real-score is one physical B2 call per Score rank;
+                # Critic no-grad remains two B1 calls.  Only the 2*30 block
+                # modulation functions per Critic update replay in backward;
+                # the frozen output head does not request an input gradient.
+                "backward_invocation_count": 300 if rank in score_ranks else 0,
+                "batch_histogram": {"1": 122, "2": 767} if rank in score_ranks else {},
                 "dimension_histogram": (
                     {"1536": 727, "5120": 162} if rank in score_ranks else {}
                 ),
