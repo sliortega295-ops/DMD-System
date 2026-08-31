@@ -59,7 +59,15 @@ def _build_fused_cast_add(torch: Any) -> tuple[Any, dict[str, Any]]:
                 or not residual.is_contiguous()
                 or not update.is_contiguous()
             ):
-                raise RuntimeError("LiveWan fused LoRA epilogue contract changed")
+                raise RuntimeError(
+                    "LiveWan fused LoRA epilogue contract changed: "
+                    f"residual_device={residual.device}, update_device={update.device}, "
+                    f"residual_dtype={residual.dtype}, update_dtype={update.dtype}, "
+                    f"residual_shape={tuple(residual.shape)}, "
+                    f"update_shape={tuple(update.shape)}, "
+                    f"residual_contiguous={residual.is_contiguous()}, "
+                    f"update_contiguous={update.is_contiguous()}"
+                )
             output = torch.empty_like(residual)
             count = residual.numel()
             cast_add_kernel[(triton.cdiv(count, 256),)](
