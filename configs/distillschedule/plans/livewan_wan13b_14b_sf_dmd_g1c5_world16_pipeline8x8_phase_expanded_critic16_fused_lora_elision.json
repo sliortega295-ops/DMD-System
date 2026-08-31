@@ -1,0 +1,28 @@
+{
+  "include": [
+    "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16.json"
+  ],
+  "id": "livewan-wan13b-14b-sfdmd-g1c5-world16-pipeline8x8-phase-expanded-critic16-fused-lora-elision",
+  "training_backends": {
+    "generator": {
+      "options": {
+        "optimizer_impl": "fused_adamw"
+      }
+    }
+  },
+  "metadata": {
+    "generator_optimizer_impl": "fused_adamw",
+    "capacity_recovery": "reuse_validated_foreach_sqrt_transient_recovery",
+    "critic_lora_kernel": {
+      "enabled": true,
+      "name": "scale_one_autocast_bf16_input_elision_v1",
+      "scale": 1.0,
+      "math_change": "remove_identity_multiply_and_redundant_pre_autocast_fp32_input_cast",
+      "base_input_output_dtype": "bfloat16",
+      "lora_parameter_compute_dtype": "float32",
+      "source_forward_sha256": "70d00d496aa2bd8ea06d64e6b04af873644eff52539396f74ec586a4cbbe97a3",
+      "autocast_dtype": "bfloat16",
+      "required_lora_output_dtype": "bfloat16"
+    }
+  }
+}

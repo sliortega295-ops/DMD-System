@@ -55,6 +55,7 @@ def main() -> int:
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision",
             "phase-expanded-critic16",
+            "phase-expanded-critic16-fused-lora-elision",
             "score-b2",
             "6g10score", "6g10score-node-local",
             "6g10score-node-local-fused",
@@ -82,7 +83,10 @@ def main() -> int:
     )
     generator_group = dist.new_group(ranks=list(generator_ranks), backend="nccl")
     score_group = dist.new_group(ranks=list(score_ranks), backend="nccl")
-    phase_expanded_critic16 = args.pipeline_variant == "phase-expanded-critic16"
+    phase_expanded_critic16 = args.pipeline_variant in {
+        "phase-expanded-critic16",
+        "phase-expanded-critic16-fused-lora-elision",
+    }
     critic_ranks = tuple(range(WORLD_SIZE)) if phase_expanded_critic16 else score_ranks
     critic_group = (
         dist.new_group(ranks=list(critic_ranks), backend="nccl")
@@ -444,8 +448,9 @@ def main() -> int:
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
-            "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision",
+                "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision",
                 "phase-expanded-critic16",
+                "phase-expanded-critic16-fused-lora-elision",
             }
             else "cuda_p2p_float32"
         ),
@@ -476,8 +481,9 @@ def main() -> int:
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
-            "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision",
+                "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision",
                 "phase-expanded-critic16",
+                "phase-expanded-critic16-fused-lora-elision",
             }
             else tuple((lane, lane + 8) for lane in range(8))
         )

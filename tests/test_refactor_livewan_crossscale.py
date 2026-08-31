@@ -53,6 +53,7 @@ PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LO
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_FUSED_CAST_ADD = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_fused_cast_add.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision.json"
 PIPELINE_PHASE_EXPANDED_CRITIC16 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16.json"
+PIPELINE_PHASE_EXPANDED_CRITIC16_FUSED_LORA_ELISION = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16_fused_lora_elision.json"
 PIPELINE_SCORE_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
 PIPELINE_6G10S = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json"
 PIPELINE_6G10S_NODE_LOCAL = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score_node_local.json"
@@ -730,6 +731,32 @@ def test_phase_expanded_critic16_changes_only_registered_schedule_and_placement(
     assert "_materialize_fsdp_units" in worker
     assert "bundle.critic_group_size == WORLD_SIZE" in worker
     assert 'run_kind in {"capacity", "correctness", "timing", "profile"}' in worker
+
+
+def test_phase_expanded_fused_lora_elision_reuses_validated_capacity_recovery() -> None:
+    reference = load_plan(PIPELINE_PHASE_EXPANDED_CRITIC16).plan
+    candidate = load_plan(PIPELINE_PHASE_EXPANDED_CRITIC16_FUSED_LORA_ELISION).plan
+    LiveWanSFDMDAdapter().validate(candidate)
+    reference_dict = reference.to_dict()
+    candidate_dict = candidate.to_dict()
+    assert reference.workload.to_dict() == candidate.workload.to_dict()
+    assert reference.hardware.to_dict() == candidate.hardware.to_dict()
+    assert reference.rank_groups == candidate.rank_groups
+    assert reference.lifecycle.to_dict() == candidate.lifecycle.to_dict()
+    assert candidate.training_backends["generator"].options == {
+        **reference.training_backends["generator"].options,
+        "optimizer_impl": "fused_adamw",
+    }
+    assert (
+        candidate.metadata["capacity_recovery"]
+        == "reuse_validated_foreach_sqrt_transient_recovery"
+    )
+    assert candidate.metadata["generator_optimizer_impl"] == "fused_adamw"
+    assert candidate.metadata["critic_lora_kernel"]["name"] == (
+        "scale_one_autocast_bf16_input_elision_v1"
+    )
+    for key in ("workload", "hardware", "rank_groups", "lifecycle"):
+        assert candidate_dict[key] == reference_dict[key]
 
 
 def test_full_context_plan_changes_only_mask_discovery_metadata() -> None:
