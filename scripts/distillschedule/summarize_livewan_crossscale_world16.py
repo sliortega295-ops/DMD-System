@@ -82,6 +82,12 @@ def main() -> int:
     critic_lora_kernel_enabled = bool(
         critic_lora_kernel_contract.get("enabled", False)
     )
+    score_modulation_kernel_contract = dict(
+        plan.get("metadata", {}).get("score_modulation_kernel", {})
+    )
+    score_modulation_kernel_enabled = bool(
+        score_modulation_kernel_contract.get("enabled", False)
+    )
     rank_groups = {
         str(row["name"]): tuple(int(rank) for rank in row["ranks"])
         for row in plan.get("rank_groups", [])
@@ -347,6 +353,54 @@ def main() -> int:
                 errors.append(f"rank{rank}: Critic LoRA fused-kernel receipt invalid")
         elif lora_kernel_receipt.get("enabled") not in {False, None}:
             errors.append(f"rank{row['rank']}: unregistered Critic LoRA kernel")
+        modulation_receipt = row.get("score_modulation_kernel", {})
+        if score_modulation_kernel_enabled:
+            rank = int(row["rank"])
+            expected_modulation = {
+                "enabled": True,
+                "name": "score_bf16_modulation_fusion_v1",
+                "source_modulate_sha256": (
+                    "f244152360d40d6745e28bed4add081604312d04fe2f342842a32432f4bd20ad"
+                ),
+                "function_patched": rank in score_ranks,
+                "install_status": "PASS" if rank in score_ranks else "NOT_APPLICABLE",
+                "role": "score" if rank in score_ranks else "generator",
+                "execution_status": (
+                    "PASS" if rank in score_ranks else "NOT_APPLICABLE"
+                ),
+                "invocation_count": 889 if rank in score_ranks else 0,
+                "backward_invocation_count": 305 if rank in score_ranks else 0,
+                "batch_histogram": {"1": 284, "2": 605} if rank in score_ranks else {},
+                "dimension_histogram": (
+                    {"1536": 727, "5120": 162} if rank in score_ranks else {}
+                ),
+                "observed_contract": (
+                    {
+                        "normalized_dtype": "torch.bfloat16",
+                        "shift_dtype": "torch.bfloat16",
+                        "scale_dtype": "torch.bfloat16",
+                        "output_dtype": "torch.float32",
+                        "per_frame": False,
+                    }
+                    if rank in score_ranks else None
+                ),
+            }
+            for key, expected_value in expected_modulation.items():
+                if modulation_receipt.get(key) != expected_value:
+                    errors.append(
+                        f"rank{rank}: Score modulation receipt mismatch for {key}: "
+                        f"observed={modulation_receipt.get(key)!r}, "
+                        f"expected={expected_value!r}"
+                    )
+            if rank in score_ranks:
+                if modulation_receipt.get("triton_block_size") != 256:
+                    errors.append(f"rank{rank}: Score modulation block size changed")
+                if not modulation_receipt.get("triton_version"):
+                    errors.append(f"rank{rank}: Score modulation Triton identity missing")
+                if int(modulation_receipt.get("element_count", 0)) <= 0:
+                    errors.append(f"rank{rank}: Score modulation executed no elements")
+        elif modulation_receipt.get("enabled") not in {False, None}:
+            errors.append(f"rank{row['rank']}: unregistered Score modulation kernel")
         if (
             pool_policy
             == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced"
@@ -450,6 +504,7 @@ def main() -> int:
         "full_context_lens_elision": full_context_lens_elision,
         "score_context_prefetch": score_context_prefetch,
         "critic_lora_kernel": critic_lora_kernel_enabled,
+        "score_modulation_kernel": score_modulation_kernel_enabled,
         "generator_ranks": list(generator_ranks),
         "score_ranks": list(score_ranks),
         "full5_seconds": max(walls) if walls else None,

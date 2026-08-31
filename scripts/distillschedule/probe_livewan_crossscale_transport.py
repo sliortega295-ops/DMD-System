@@ -51,6 +51,7 @@ def main() -> int:
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-context-prefetch",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1",
+            "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
             "score-b2",
             "6g10score", "6g10score-node-local",
@@ -112,6 +113,7 @@ def main() -> int:
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-context-prefetch",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1",
+            "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
         }
         and rank in score_ranks
@@ -324,6 +326,7 @@ def main() -> int:
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-context-prefetch",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1",
+            "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
         }
         else (lane, lane + 8)
@@ -401,6 +404,7 @@ def main() -> int:
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-context-prefetch",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1",
+                "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
             }
             else "cuda_p2p_float32"
@@ -427,6 +431,7 @@ def main() -> int:
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-context-prefetch",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1",
+                "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add",
             }
             else tuple((lane, lane + 8) for lane in range(8))

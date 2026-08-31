@@ -49,6 +49,7 @@ PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED = ROOT / "confi
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_CONTEXT_PREFETCH = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_context_prefetch.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_SCALE1 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1.json"
+PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_SCALE1_MODULATION = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1_modulation.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_FUSED_CAST_ADD = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_fused_cast_add.json"
 PIPELINE_SCORE_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
 PIPELINE_6G10S = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json"
@@ -460,6 +461,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context"' in controller
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-context-prefetch"' in controller
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1"' in controller
+    assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation"' in controller
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add"' in controller
     assert '"LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant' in controller
     assert 'resolved_plan.node0.json' in controller
@@ -476,6 +478,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_context_prefetch.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1.json" in launcher
+    assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1_modulation.json" in launcher
     assert "baseline_pipeline_variant_mismatch" in launcher
     summarizer = (
         ROOT / "scripts/distillschedule/summarize_livewan_crossscale_world16.py"
@@ -622,6 +625,7 @@ def test_launcher_fails_before_model_load_on_world16_and_p2p_drift() -> None:
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context"' in probe
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-context-prefetch"' in probe
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1"' in probe
+    assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-scale1-modulation"' in probe
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-fused-cast-add"' in probe
     assert "async Score gradient mean mismatch" in probe
     assert '"async_reducer_canary"' in probe
@@ -840,6 +844,48 @@ def test_lora_fused_cast_add_plan_changes_only_exact_kernel_metadata() -> None:
     base["id"] = candidate["id"]
     base["metadata"] = dict(candidate["metadata"])
     assert candidate == base
+
+
+def test_score_modulation_plan_changes_only_exact_kernel_metadata() -> None:
+    base = load_plan(
+        PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_SCALE1
+    ).plan.to_dict()
+    candidate_plan = load_plan(
+        PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_SCALE1_MODULATION
+    ).plan
+    LiveWanSFDMDAdapter().validate(candidate_plan)
+    candidate = candidate_plan.to_dict()
+    metadata = dict(candidate["metadata"])
+    assert metadata.pop("score_modulation_kernel") == {
+        "enabled": True,
+        "name": "score_bf16_modulation_fusion_v1",
+        "scope": "score_ranks_only_critic_and_teacher",
+        "source_modulate_sha256": (
+            "f244152360d40d6745e28bed4add081604312d04fe2f342842a32432f4bd20ad"
+        ),
+        "math_change": "fuse_exact_bf16_to_fp32_modulation_pointwise_chain",
+        "normalized_shift_scale_dtype": "bfloat16",
+        "output_dtype": "float32",
+        "per_frame": False,
+        "triton_block_size": 256,
+    }
+    assert metadata == base["metadata"]
+    base["id"] = candidate["id"]
+    base["metadata"] = dict(candidate["metadata"])
+    assert candidate == base
+
+
+def test_score_modulation_kernel_is_source_pinned_and_fail_closed() -> None:
+    source = (
+        ROOT / "src/distillschedule/runtime/livewan_modulation_kernel.py"
+    ).read_text()
+    assert "EXPECTED_MODULATE_SHA256" in source
+    assert "f244152360d40d6745e28bed4add081604312d04fe2f342842a32432f4bd20ad" in source
+    assert "normalized.dtype != torch.bfloat16" in source
+    assert "shift.requires_grad" in source
+    assert "scale.requires_grad" in source
+    assert "if per_frame:" in source
+    assert "raise RuntimeError" in source
 
 
 def test_lora_scale_one_runtime_is_bitwise_exact() -> None:

@@ -1716,6 +1716,37 @@ def _critic_lora_scale_one_enabled(plan: Mapping[str, Any], *, mode: str) -> boo
     return True
 
 
+def _score_modulation_kernel_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    """Validate the exact Score-rank-only LiveWan modulation fusion."""
+
+    metadata = plan.get("metadata", {})
+    kernel = metadata.get("score_modulation_kernel")
+    if kernel is None:
+        return False
+    _require(isinstance(kernel, Mapping), "Score modulation kernel must be a mapping")
+    _require(mode == "pipeline", "Score modulation kernel is candidate-only")
+    _require(
+        metadata.get("pool_policy") == TRACE_BALANCED_POOL_POLICY
+        and metadata.get("full_context_lens_elision") is True,
+        "Score modulation kernel requires the validated C11 substrate",
+    )
+    expected = {
+        "enabled": True,
+        "name": "score_bf16_modulation_fusion_v1",
+        "scope": "score_ranks_only_critic_and_teacher",
+        "source_modulate_sha256": (
+            "f244152360d40d6745e28bed4add081604312d04fe2f342842a32432f4bd20ad"
+        ),
+        "math_change": "fuse_exact_bf16_to_fp32_modulation_pointwise_chain",
+        "normalized_shift_scale_dtype": "bfloat16",
+        "output_dtype": "float32",
+        "per_frame": False,
+        "triton_block_size": 256,
+    }
+    _require(dict(kernel) == expected, "Score modulation kernel contract changed")
+    return True
+
+
 def _prefetch_score_sample_contexts(
     torch: Any,
     *,
@@ -1807,6 +1838,7 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _full_context_lens_elision(plan, mode=mode)
     _score_context_prefetch_enabled(plan, mode=mode)
     _critic_lora_scale_one_enabled(plan, mode=mode)
+    _score_modulation_kernel_enabled(plan, mode=mode)
 
 
 def _validate_only(
@@ -1895,6 +1927,41 @@ def run_worker(
             fused_cast_add=(kernel_name == "scale_one_fused_cast_add_v1"),
             fused_min_numel=8_000_000,
         )
+    score_modulation_kernel = {
+        "enabled": False,
+        "name": "native_livewan_modulation",
+        "execution_status": "DISABLED",
+    }
+    if _score_modulation_kernel_enabled(plan, mode=mode):
+        _, score_ranks = _plan_role_ranks(plan, mode=mode)
+        if rank in score_ranks:
+            from distillschedule.runtime.livewan_modulation_kernel import (
+                install_score_modulation_kernel,
+            )
+
+            score_modulation_kernel = install_score_modulation_kernel(torch)
+            score_modulation_kernel.update(
+                role="score",
+                execution_status="PASS",
+            )
+        else:
+            score_modulation_kernel = {
+                "enabled": True,
+                "name": "score_bf16_modulation_fusion_v1",
+                "source_modulate_sha256": (
+                    "f244152360d40d6745e28bed4add081604312d04fe2f342842a32432f4bd20ad"
+                ),
+                "function_patched": False,
+                "install_status": "NOT_APPLICABLE",
+                "role": "generator",
+                "execution_status": "NOT_APPLICABLE",
+                "invocation_count": 0,
+                "backward_invocation_count": 0,
+                "element_count": 0,
+                "batch_histogram": {},
+                "dimension_histogram": {},
+                "observed_contract": None,
+            }
     before_oom = cgroup_oom_counts()
     torch.cuda.reset_peak_memory_stats(device)
     build_started = time.perf_counter()
@@ -2147,6 +2214,7 @@ def run_worker(
         },
         "score_context_prefetch": evidence.score_context_prefetch,
         "critic_lora_kernel": critic_lora_kernel,
+        "score_modulation_kernel": score_modulation_kernel,
         "slot_routing": slot_routing,
         "full5_wall_seconds": full5_wall,
         "construction_wall_seconds": build_wall,
