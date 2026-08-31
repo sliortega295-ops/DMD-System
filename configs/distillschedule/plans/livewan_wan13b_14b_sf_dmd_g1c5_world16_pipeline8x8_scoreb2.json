@@ -1,0 +1,40 @@
+{
+  "include": ["livewan_wan13b_14b_sf_dmd_g1c5_world16_fsdp2.json"],
+  "id": "livewan-wan13b-14b-sfdmd-g1c5-world16-pipeline8x8-scoreb2",
+  "rank_groups": [
+    {"name": "generator", "ranks": [0,1,2,3,4,5,6,7], "components": ["generator", "rollout"]},
+    {"name": "score", "ranks": [8,9,10,11,12,13,14,15], "components": ["score", "critic"]},
+    {"name": "teacher", "ranks": [8,9,10,11,12,13,14,15], "components": ["teacher"]}
+  ],
+  "training_backends": {
+    "generator": {"kind": "native", "parameter_offload": "none", "optimizer_offload": "none", "gradient_checkpointing": true, "options": {"resident": true, "gradient_sync": "group_all_reduce_sum_then_divide"}},
+    "score": {"kind": "native", "parameter_offload": "none", "optimizer_offload": "none", "gradient_checkpointing": true, "options": {"resident": true, "gradient_sync": "group_all_reduce_sum_then_divide", "physical_batch_size": 2}},
+    "teacher": {"kind": "fsdp", "parameter_offload": "none", "optimizer_offload": "none", "gradient_checkpointing": false, "options": {"reshard_after_forward": true, "mesh_ranks": [8,9,10,11,12,13,14,15], "physical_cfg_batch_size": 4}}
+  },
+  "lifecycle": {
+    "phase_resident_critic_generator": true,
+    "metadata": {
+      "model_redistribution": false,
+      "transport": "cuda_p2p_two_b1_inputs_one_b2_gradient",
+      "waves_per_step": 2,
+      "score_physical_batch_size": 2,
+      "logical_samples_per_score_rank": 2,
+      "ack": false,
+      "global_barrier_inside_full5": false
+    }
+  },
+  "evidence": {
+    "run_id": "${ENV:DISTILLSCHEDULE_RUN_ID:-livewan-crossscale-pipeline8x8-scoreb2}",
+    "output_dir": "${ENV:DISTILLSCHEDULE_OUTPUT_DIR:-../../../artifacts/runs/livewan-crossscale-pipeline8x8-scoreb2}"
+  },
+  "metadata": {
+    "execution_mode": "pipeline",
+    "pool_policy": "persistent_8g_8score_teacher_fsdp8_score_b2",
+    "score_physical_batch_size": 2,
+    "logical_batch_preserved": true,
+    "per_sample_rng_preserved": true,
+    "per_sample_dmd_normalizer_preserved": true,
+    "target_speedup": 1.30,
+    "formal_speedup_denominator": false
+  }
+}

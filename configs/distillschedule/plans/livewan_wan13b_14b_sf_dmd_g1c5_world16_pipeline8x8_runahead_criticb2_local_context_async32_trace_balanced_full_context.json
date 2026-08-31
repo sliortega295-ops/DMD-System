@@ -1,0 +1,10 @@
+{
+  "include": ["livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced.json"],
+  "id": "livewan-wan13b-14b-sfdmd-g1c5-world16-pipeline8x8-runahead-criticb2-local-context-async32-trace-balanced-full-context",
+  "metadata": {
+    "full_context_lens_elision": true,
+    "context_length": 512,
+    "context_padding_policy": "all_512_tokens_valid_no_padding",
+    "attention_mask_equivalence": "ctx_lens_512_equivalent_to_none_at_exact_tensor_length"
+  }
+}
