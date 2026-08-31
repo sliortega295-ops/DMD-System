@@ -1,0 +1,13 @@
+{
+  "include": ["livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context.json"],
+  "id": "livewan-wan13b-14b-sfdmd-g1c5-world16-pipeline8x8-runahead-criticb2-local-context-async32-trace-balanced-full-context-context-prefetch",
+  "metadata": {
+    "score_context_prefetch": true,
+    "score_context_prefetch_scope": "all_10_lane_rows_before_first_latent_receive",
+    "score_context_invariance": "frozen_teacher_and_critic_text_embeddings_across_full5",
+    "score_context_calls_preserved": true,
+    "score_context_prefetch_timing_position": "inside_full5_before_first_latent_receive",
+    "score_context_prefetch_rows_per_lane": 10,
+    "score_context_teacher_rows_per_lane": 2
+  }
+}

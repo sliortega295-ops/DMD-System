@@ -92,6 +92,7 @@ def parser() -> argparse.ArgumentParser:
             "b1-runahead-critic-b2-local-context-async32",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context",
+            "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-context-prefetch",
             "score-b2",
             "6g10score", "6g10score-node-local",
             "6g10score-node-local-fused",

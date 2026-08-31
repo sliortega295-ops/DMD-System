@@ -1522,6 +1522,7 @@ class RunEvidence:
     gradient_sync: list[dict[str, Any]] = field(default_factory=list)
     optimizer_diagnostics: list[dict[str, Any]] = field(default_factory=list)
     logical_score_calls: dict[str, int] = field(default_factory=dict)
+    score_context_prefetch: dict[str, Any] = field(default_factory=dict)
 
     def add_logical_score_calls(self, key: str, count: int) -> None:
         _require(count > 0, "logical Score call count must be positive")
@@ -1641,6 +1642,115 @@ def _full_context_lens_elision(plan: Mapping[str, Any], *, mode: str) -> bool:
     return True
 
 
+def _score_context_prefetch_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    """Validate the frozen-context head-bubble overlap candidate."""
+
+    metadata = plan.get("metadata", {})
+    enabled = metadata.get("score_context_prefetch", False)
+    _require(isinstance(enabled, bool), "Score context prefetch must be boolean")
+    if not enabled:
+        return False
+    _require(mode == "pipeline", "Score context prefetch is candidate-only")
+    _require(
+        metadata.get("pool_policy") == TRACE_BALANCED_POOL_POLICY,
+        "Score context prefetch requires the validated C11 substrate",
+    )
+    _require(
+        metadata.get("full_context_lens_elision") is True,
+        "Score context prefetch requires the exact full-context contract",
+    )
+    expected = {
+        "score_context_prefetch_scope": "all_10_lane_rows_before_first_latent_receive",
+        "score_context_invariance": "frozen_teacher_and_critic_text_embeddings_across_full5",
+        "score_context_calls_preserved": True,
+        "score_context_prefetch_timing_position": "inside_full5_before_first_latent_receive",
+        "score_context_prefetch_rows_per_lane": 10,
+        "score_context_teacher_rows_per_lane": 2,
+    }
+    for key, value in expected.items():
+        _require(metadata.get(key) == value, f"Score context prefetch contract mismatch: {key}")
+    return True
+
+
+def _prefetch_score_sample_contexts(
+    torch: Any,
+    *,
+    trace: FormalTrace,
+    loader: InputLoader,
+    bundle: ModelBundle,
+    lane_slots: Sequence[int],
+    device: Any,
+    run_kind: str,
+) -> tuple[dict[tuple[int, int], ScoreSampleContext], dict[str, Any]]:
+    """Project the ten immutable lane contexts inside the initial Score bubble.
+
+    Only the frozen text-embedding modules participate.  The helper launches no
+    synchronization and preserves the original two Teacher plus ten Critic
+    projection calls; it merely moves them before the first latent receive.
+    """
+
+    _require(len(lane_slots) == 2, "Score context prefetch requires two lane slots")
+    for role, model in (("teacher", bundle.teacher), ("critic", bundle.critic)):
+        _require(model is not None, f"Score context prefetch is missing {role}")
+        _require(
+            all(not parameter.requires_grad for parameter in model.text_embedding.parameters()),
+            f"Score context prefetch requires frozen {role} text embedding",
+        )
+        _require(
+            not any(
+                "dropout" in type(module).__name__.lower()
+                for module in model.text_embedding.modules()
+            ),
+            f"Score context prefetch forbids stochastic {role} text embedding",
+        )
+
+    contexts: dict[tuple[int, int], ScoreSampleContext] = {}
+    teacher_contexts = 0
+    critic_contexts = 0
+    resident_bytes = 0
+    with _profile_range(
+        torch,
+        run_kind=run_kind,
+        label="livewan/pipeline/score/context_prefetch_all",
+    ):
+        for step in range(FULL5_STEPS):
+            rows = tuple(trace.row(step, slot) for slot in lane_slots)
+            for wave, row in enumerate(rows):
+                raw_context = loader.context_from_trace(row, device=device)
+                sample_context = prepare_score_sample_context(
+                    torch,
+                    bundle=bundle,
+                    raw_context=raw_context,
+                    include_teacher=step == 0,
+                )
+                contexts[(step, wave)] = sample_context
+                critic_contexts += 1
+                resident_bytes += (
+                    sample_context.critic.numel()
+                    * sample_context.critic.element_size()
+                )
+                if sample_context.teacher is not None:
+                    teacher_contexts += 1
+                    resident_bytes += (
+                        sample_context.teacher.numel()
+                        * sample_context.teacher.element_size()
+                    )
+    _require(len(contexts) == 10, "Score context prefetch did not build ten lane rows")
+    _require(critic_contexts == 10, "Score context prefetch Critic call count changed")
+    _require(teacher_contexts == 2, "Score context prefetch Teacher call count changed")
+    return contexts, {
+        "enabled": True,
+        "role": "score",
+        "execution_status": "PASS",
+        "logical_context_count": len(contexts),
+        "critic_context_count": critic_contexts,
+        "teacher_context_count": teacher_contexts,
+        "gpu_resident_bytes": resident_bytes,
+        "timing_position": "inside_full5_before_first_latent_receive",
+        "calls_preserved": True,
+    }
+
+
 def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _require(int(plan["hardware"]["world_size"]) == WORLD_SIZE, "plan is not world16")
     _require(int(plan["workload"]["shape"]["batch_size"]) == GLOBAL_BATCH, "plan is not global-B16")
@@ -1651,6 +1761,7 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _score_physical_batch_size(plan, mode=mode)
     _critic_physical_batch_size(plan, mode=mode)
     _full_context_lens_elision(plan, mode=mode)
+    _score_context_prefetch_enabled(plan, mode=mode)
 
 
 def _validate_only(
@@ -1838,6 +1949,9 @@ def run_worker(
                     full_context_lens_elision=_full_context_lens_elision(
                         plan, mode=mode
                     ),
+                    score_context_prefetch=_score_context_prefetch_enabled(
+                        plan, mode=mode
+                    ),
                 )
             elif plan.get("metadata", {}).get("pool_policy") == "persistent_8g_8score_teacher_fsdp8_score_b2":
                 _run_pipeline_8x8_score_b2(
@@ -1943,6 +2057,7 @@ def run_worker(
                 else "not_applied"
             ),
         },
+        "score_context_prefetch": evidence.score_context_prefetch,
         "slot_routing": slot_routing,
         "full5_wall_seconds": full5_wall,
         "construction_wall_seconds": build_wall,
@@ -2267,6 +2382,7 @@ def _run_pipeline_8x8(
     score_context_from_trace: bool = False,
     slot_pairs_by_lane: Sequence[Sequence[int]] | None = None,
     full_context_lens_elision: bool = False,
+    score_context_prefetch: bool = False,
 ) -> None:
     import torch.distributed as dist
 
@@ -2286,6 +2402,43 @@ def _run_pipeline_8x8(
         _require(bundle.student is not None and len(streamers) == 2, "pipeline G role is incomplete")
     else:
         _require(bundle.critic is not None and bundle.teacher is not None and score_context is not None, "pipeline Score role is incomplete")
+
+    prefetched_contexts: dict[tuple[int, int], ScoreSampleContext] = {}
+    if score_context_prefetch:
+        _require(
+            score_context_from_trace and full_context_lens_elision,
+            "Score context prefetch requires trace-local full contexts",
+        )
+        if is_generator:
+            evidence.score_context_prefetch = {
+                "enabled": True,
+                "role": "generator",
+                "execution_status": "NOT_APPLICABLE",
+                "logical_context_count": 0,
+                "critic_context_count": 0,
+                "teacher_context_count": 0,
+                "gpu_resident_bytes": 0,
+                "timing_position": "inside_full5_before_first_latent_receive",
+                "calls_preserved": True,
+            }
+        else:
+            prefetched_contexts, evidence.score_context_prefetch = (
+                _prefetch_score_sample_contexts(
+                    torch,
+                    trace=trace,
+                    loader=loader,
+                    bundle=bundle,
+                    lane_slots=lane_slots,
+                    device=device,
+                    run_kind=run_kind,
+                )
+            )
+    else:
+        evidence.score_context_prefetch = {
+            "enabled": False,
+            "role": "generator" if is_generator else "score",
+            "execution_status": "DISABLED",
+        }
 
     for step in range(FULL5_STEPS):
         if is_generator and rollout_runahead and step == 1:
@@ -2505,24 +2658,28 @@ def _run_pipeline_8x8(
                 )
             evidence.transport_bytes += pair_bytes
             if score_context_from_trace:
-                with _profile_range(
-                    torch,
-                    run_kind=run_kind,
-                    label=f"livewan/pipeline/score/step_{step}/local_context_0",
-                ):
-                    first_context = loader.context_from_trace(rows[0], device=device)
-            _require(first_context is not None, "first Score context is missing")
+                if not score_context_prefetch:
+                    with _profile_range(
+                        torch,
+                        run_kind=run_kind,
+                        label=f"livewan/pipeline/score/step_{step}/local_context_0",
+                    ):
+                        first_context = loader.context_from_trace(rows[0], device=device)
             context_lens = (
                 None
                 if full_context_lens_elision
                 else torch.tensor([TEXT_SHAPE[1]], device=device, dtype=torch.long)
             )
-            first_sample_context = prepare_score_sample_context(
-                torch,
-                bundle=bundle,
-                raw_context=first_context,
-                include_teacher=step == 0,
-            )
+            if score_context_prefetch:
+                first_sample_context = prefetched_contexts.pop((step, 0))
+            else:
+                _require(first_context is not None, "first Score context is missing")
+                first_sample_context = prepare_score_sample_context(
+                    torch,
+                    bundle=bundle,
+                    raw_context=first_context,
+                    include_teacher=step == 0,
+                )
             if step == 0:
                 with _profile_range(
                     torch, run_kind=run_kind,
@@ -2548,19 +2705,23 @@ def _run_pipeline_8x8(
                 )
             evidence.transport_bytes += pair_bytes
             if score_context_from_trace:
-                with _profile_range(
+                if not score_context_prefetch:
+                    with _profile_range(
+                        torch,
+                        run_kind=run_kind,
+                        label=f"livewan/pipeline/score/step_{step}/local_context_1",
+                    ):
+                        second_context = loader.context_from_trace(rows[1], device=device)
+            if score_context_prefetch:
+                second_sample_context = prefetched_contexts.pop((step, 1))
+            else:
+                _require(second_context is not None, "second Score context is missing")
+                second_sample_context = prepare_score_sample_context(
                     torch,
-                    run_kind=run_kind,
-                    label=f"livewan/pipeline/score/step_{step}/local_context_1",
-                ):
-                    second_context = loader.context_from_trace(rows[1], device=device)
-            _require(second_context is not None, "second Score context is missing")
-            second_sample_context = prepare_score_sample_context(
-                torch,
-                bundle=bundle,
-                raw_context=second_context,
-                include_teacher=step == 0,
-            )
+                    bundle=bundle,
+                    raw_context=second_context,
+                    include_teacher=step == 0,
+                )
             grad1_work = None
             grad1_send = None
             if step == 0:
@@ -2688,6 +2849,11 @@ def _run_pipeline_8x8(
                 )
                 bundle.critic_optimizer.step()
                 versions["critic"] += 1
+    if score_context_prefetch and not is_generator:
+        _require(
+            not prefetched_contexts,
+            "Score context prefetch left unconsumed lane contexts",
+        )
 
 
 def _run_pipeline_8x8_score_b2(

@@ -278,6 +278,30 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                             f"full-context lens contract mismatch for {key}",
                             f"metadata.{key}",
                         )
+            if plan.metadata.get("score_context_prefetch", False):
+                if (
+                    pool_policy
+                    != "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced"
+                    or plan.metadata.get("full_context_lens_elision") is not True
+                ):
+                    self._fail(
+                        "Score context prefetch requires the validated C11 substrate",
+                        "metadata.score_context_prefetch",
+                    )
+                expected_prefetch_contract = {
+                    "score_context_prefetch_scope": "all_10_lane_rows_before_first_latent_receive",
+                    "score_context_invariance": "frozen_teacher_and_critic_text_embeddings_across_full5",
+                    "score_context_calls_preserved": True,
+                    "score_context_prefetch_timing_position": "inside_full5_before_first_latent_receive",
+                    "score_context_prefetch_rows_per_lane": 10,
+                    "score_context_teacher_rows_per_lane": 2,
+                }
+                for key, expected_value in expected_prefetch_contract.items():
+                    if plan.metadata.get(key) != expected_value:
+                        self._fail(
+                            f"Score context prefetch contract mismatch for {key}",
+                            f"metadata.{key}",
+                        )
             if pool_policy == "persistent_6g_10score_teacher_node_local_hierarchical":
                 generator_options = dict(plan.training_backends["generator"].options)
                 teacher_options = dict(plan.training_backends["teacher"].options)

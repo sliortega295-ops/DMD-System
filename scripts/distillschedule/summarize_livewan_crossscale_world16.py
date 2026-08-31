@@ -73,6 +73,9 @@ def main() -> int:
     full_context_lens_elision = bool(
         plan.get("metadata", {}).get("full_context_lens_elision", False)
     )
+    score_context_prefetch = bool(
+        plan.get("metadata", {}).get("score_context_prefetch", False)
+    )
     rank_groups = {
         str(row["name"]): tuple(int(rank) for rank in row["ranks"])
         for row in plan.get("rank_groups", [])
@@ -271,6 +274,33 @@ def main() -> int:
             errors.append(
                 f"rank{row['rank']}: full-context lens-elision receipt mismatch"
             )
+        prefetch_receipt = row.get("score_context_prefetch", {})
+        if score_context_prefetch:
+            rank = int(row["rank"])
+            expected_prefetch = {
+                "enabled": True,
+                "role": "generator" if rank in generator_ranks else "score",
+                "execution_status": (
+                    "NOT_APPLICABLE" if rank in generator_ranks else "PASS"
+                ),
+                "logical_context_count": 0 if rank in generator_ranks else 10,
+                "critic_context_count": 0 if rank in generator_ranks else 10,
+                "teacher_context_count": 0 if rank in generator_ranks else 2,
+                "timing_position": "inside_full5_before_first_latent_receive",
+                "calls_preserved": True,
+            }
+            for key, expected_value in expected_prefetch.items():
+                if prefetch_receipt.get(key) != expected_value:
+                    errors.append(
+                        f"rank{rank}: Score context prefetch receipt mismatch for {key}"
+                    )
+            resident_bytes = int(prefetch_receipt.get("gpu_resident_bytes", -1))
+            if rank in generator_ranks and resident_bytes != 0:
+                errors.append(f"rank{rank}: Generator unexpectedly owns prefetched contexts")
+            if rank in score_ranks and resident_bytes <= 0:
+                errors.append(f"rank{rank}: Score prefetched-context bytes missing")
+        elif prefetch_receipt.get("enabled") not in {False, None}:
+            errors.append(f"rank{row['rank']}: unregistered Score context prefetch")
         if (
             pool_policy
             == "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced"
@@ -372,6 +402,7 @@ def main() -> int:
         "critic_physical_batch_size": critic_physical_batch_size,
         "pool_policy": pool_policy,
         "full_context_lens_elision": full_context_lens_elision,
+        "score_context_prefetch": score_context_prefetch,
         "generator_ranks": list(generator_ranks),
         "score_ranks": list(score_ranks),
         "full5_seconds": max(walls) if walls else None,

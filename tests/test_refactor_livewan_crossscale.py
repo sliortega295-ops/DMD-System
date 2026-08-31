@@ -33,6 +33,7 @@ from distillschedule.runtime.livewan_crossscale_worker import (
     _per_sample_mse,
     _pipeline_slot_routes,
     _pipeline_8x8_slot_pairs,
+    _prefetch_score_sample_contexts,
     prepare_score_sample_context,
 )
 
@@ -46,6 +47,7 @@ PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT = ROOT / "configs/distillschedule/plan
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context.json"
+PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_CONTEXT_PREFETCH = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_context_prefetch.json"
 PIPELINE_SCORE_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
 PIPELINE_6G10S = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score.json"
 PIPELINE_6G10S_NODE_LOCAL = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline6g10score_node_local.json"
@@ -454,6 +456,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert '"b1-runahead-critic-b2-local-context-async32"' in controller
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced"' in controller
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context"' in controller
+    assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-context-prefetch"' in controller
     assert '"LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant' in controller
     assert 'resolved_plan.node0.json' in controller
 
@@ -467,6 +470,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context.json" in launcher
+    assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_context_prefetch.json" in launcher
     assert "baseline_pipeline_variant_mismatch" in launcher
     summarizer = (
         ROOT / "scripts/distillschedule/summarize_livewan_crossscale_world16.py"
@@ -611,6 +615,7 @@ def test_launcher_fails_before_model_load_on_world16_and_p2p_drift() -> None:
     assert '"b1-runahead-critic-b2-local-context-async32"' in probe
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced"' in probe
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context"' in probe
+    assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-context-prefetch"' in probe
     assert "async Score gradient mean mismatch" in probe
     assert '"async_reducer_canary"' in probe
     assert "node-local Teacher all-gather payload mismatch" in probe
@@ -682,6 +687,94 @@ def test_full_context_plan_changes_only_mask_discovery_metadata() -> None:
     base["id"] = candidate["id"]
     base["metadata"] = dict(candidate["metadata"])
     assert candidate == base
+
+
+def test_context_prefetch_plan_changes_only_frozen_projection_schedule() -> None:
+    base = load_plan(
+        PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT
+    ).plan.to_dict()
+    candidate_plan = load_plan(
+        PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_CONTEXT_PREFETCH
+    ).plan
+    LiveWanSFDMDAdapter().validate(candidate_plan)
+    candidate = candidate_plan.to_dict()
+    metadata = dict(candidate["metadata"])
+    assert metadata.pop("score_context_prefetch") is True
+    assert metadata.pop("score_context_prefetch_scope") == (
+        "all_10_lane_rows_before_first_latent_receive"
+    )
+    assert metadata.pop("score_context_invariance") == (
+        "frozen_teacher_and_critic_text_embeddings_across_full5"
+    )
+    assert metadata.pop("score_context_calls_preserved") is True
+    assert metadata.pop("score_context_prefetch_timing_position") == (
+        "inside_full5_before_first_latent_receive"
+    )
+    assert metadata.pop("score_context_prefetch_rows_per_lane") == 10
+    assert metadata.pop("score_context_teacher_rows_per_lane") == 2
+    assert metadata == base["metadata"]
+    base["id"] = candidate["id"]
+    base["metadata"] = dict(candidate["metadata"])
+    assert candidate == base
+
+
+def test_context_prefetch_builds_exact_frozen_call_inventory() -> None:
+    import torch
+
+    class CountingEmbedding(torch.nn.Module):
+        def __init__(self, width: int) -> None:
+            super().__init__()
+            self.weight = torch.nn.Parameter(
+                torch.eye(width, dtype=torch.bfloat16), requires_grad=False
+            )
+            self.calls = 0
+
+        def forward(self, value):
+            self.calls += 1
+            return torch.nn.functional.linear(value, self.weight)
+
+    class Trace:
+        @staticmethod
+        def row(step, slot):
+            return SimpleNamespace(logical_step=step, logical_slot=slot)
+
+    class Loader:
+        def __init__(self) -> None:
+            self.rows = []
+
+        def context_from_trace(self, row, *, device):
+            self.rows.append((row.logical_step, row.logical_slot))
+            return torch.full(
+                (1, 3, 4),
+                float(row.logical_step * 10 + row.logical_slot),
+                dtype=torch.float32,
+                device=device,
+            )
+
+    teacher_embedding = CountingEmbedding(4)
+    critic_embedding = CountingEmbedding(4)
+    bundle = SimpleNamespace(
+        teacher=SimpleNamespace(text_embedding=teacher_embedding),
+        critic=SimpleNamespace(text_embedding=critic_embedding),
+    )
+    loader = Loader()
+    contexts, receipt = _prefetch_score_sample_contexts(
+        torch,
+        trace=Trace(),
+        loader=loader,
+        bundle=bundle,
+        lane_slots=(2, 9),
+        device=torch.device("cpu"),
+        run_kind="correctness",
+    )
+    assert set(contexts) == {(step, wave) for step in range(5) for wave in range(2)}
+    assert teacher_embedding.calls == 2
+    assert critic_embedding.calls == 10
+    assert len(loader.rows) == 10
+    assert receipt["logical_context_count"] == 10
+    assert receipt["teacher_context_count"] == 2
+    assert receipt["critic_context_count"] == 10
+    assert receipt["gpu_resident_bytes"] > 0
 
 
 def test_full_context_cfg_preserves_pinned_b1_timestep_broadcast() -> None:
