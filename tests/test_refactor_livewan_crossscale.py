@@ -554,7 +554,10 @@ def test_score_prioritizes_both_dmd_gradients_before_critic_backward() -> None:
         "def _run_pipeline_8x8_score_b2(", 1
     )[0]
     score_path = pipeline
-    dmd1 = score_path.index('label="livewan/pipeline/score/step_0/dmd_wave_1"')
+    dmd1 = score_path.index('"livewan/pipeline/score/step_0/dmd_wave_1"')
+    teacher1 = score_path.index(
+        '"livewan/pipeline/score/step_0/teacher_velocity_wave_1"'
+    )
     async_send = score_path.index("grad1_work = dist.isend(grad1_send, dst=peer)")
     critic0 = score_path.index(
         'label=f"livewan/pipeline/score/step_{step}/critic_backward_wave_0"'
@@ -565,7 +568,7 @@ def test_score_prioritizes_both_dmd_gradients_before_critic_backward() -> None:
     send_wait = score_path.index(
         'label="livewan/pipeline/score/step_0/send_gradient_1_wait"'
     )
-    assert dmd1 < async_send < critic0 < critic1 < send_wait
+    assert teacher1 < dmd1 < async_send < critic0 < critic1 < send_wait
 
 
 def test_trace_builder_requires_80_distinct_source_samples(tmp_path: Path) -> None:
