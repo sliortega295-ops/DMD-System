@@ -24,7 +24,11 @@ def hosts(value: str) -> tuple[str, str]:
 
 def ssh(host: str, command: str, *, port: int) -> list[str]:
     return [
-        "ssh", "-4", "-p", str(port),
+        # This cluster's multi-tenant SSH gateway currently closes non-PTY
+        # controller channels even though the same job endpoint is healthy.
+        # A strong PTY is transport-only; the remote launcher still writes all
+        # evidence to immutable files and owns the atomic GPU lock.
+        "ssh", "-CAXY", "-tt", "-4", "-p", str(port),
         "-o", "ControlMaster=no", "-o", "ControlPath=none",
         "-o", "BatchMode=yes", "-o", "UpdateHostKeys=no", host,
         "bash", "-lc", shlex.quote(command),
