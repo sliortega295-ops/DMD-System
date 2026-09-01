@@ -139,6 +139,7 @@ def parser() -> argparse.ArgumentParser:
             "c19-host-runahead",
             "c20-generator-flash-attn2",
             "c21-continuous-b16",
+            "c21-c1-continuous-b16",
             "phase-expanded-critic16",
             "phase-expanded-critic16-fused-lora-elision",
             "score-b2",
@@ -244,7 +245,9 @@ def summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
     summary = run_root / "summary.json"
     summary_name = (
         "summarize_livewan_continuous_world16.py"
-        if args.pipeline_variant == "c21-continuous-b16"
+        if args.pipeline_variant in {
+            "c21-continuous-b16", "c21-c1-continuous-b16"
+        }
         else "summarize_livewan_crossscale_world16.py"
     )
     script = args.remote_root / "scripts/distillschedule" / summary_name

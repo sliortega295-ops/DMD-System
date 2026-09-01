@@ -132,6 +132,7 @@ class GradReadyAsyncGroupReducer:
         self._comm_stream = torch.cuda.Stream(device=next(iter(devices)))
         self._active_backward = False
         self._pending_sync = False
+        self._expected_backward_calls = 1
         self._next_bucket_to_issue = 0
         self._issue_order: list[int] = []
         self._issue_times_ns: list[int] = []
@@ -148,10 +149,11 @@ class GradReadyAsyncGroupReducer:
                 raise RuntimeError("persistent gradient view was replaced")
             count = self._hook_counts[parameter_id] + 1
             self._hook_counts[parameter_id] = count
-            if count != 1:
-                raise RuntimeError("gradient-ready hook fired more than once")
-            bucket.ready_parameter_ids.add(parameter_id)
-            self._drain_ready_buckets()
+            if count > self._expected_backward_calls:
+                raise RuntimeError("gradient-ready hook fired too many times")
+            if count == self._expected_backward_calls:
+                bucket.ready_parameter_ids.add(parameter_id)
+                self._drain_ready_buckets()
 
         return hook
 
@@ -180,6 +182,7 @@ class GradReadyAsyncGroupReducer:
         if self._pending_sync:
             raise RuntimeError("previous gradient synchronization was not finished")
         self._next_bucket_to_issue = 0
+        self._expected_backward_calls = 1
         self._issue_order.clear()
         self._issue_times_ns.clear()
         for parameter_id in self._hook_counts:
@@ -197,19 +200,66 @@ class GradReadyAsyncGroupReducer:
                 parameter.grad = view
 
     def backward(self, loss: Any) -> None:
-        self._reset_backward_state()
+        self.backward_accumulate(
+            loss, accumulation_index=0, accumulation_count=1
+        )
+
+    def backward_accumulate(
+        self,
+        loss: Any,
+        *,
+        accumulation_index: int,
+        accumulation_count: int,
+    ) -> None:
+        """Accumulate exact microbatch gradients and reduce only after the last.
+
+        This retains one optimizer commit and one group mean.  Earlier
+        microbatches remain local; the final backward issues each persistent
+        flat bucket when its last contribution becomes ready.
+        """
+
+        if accumulation_count <= 0 or not 0 <= accumulation_index < accumulation_count:
+            raise ValueError("invalid gradient accumulation position")
+        if accumulation_index == 0:
+            self._reset_backward_state()
+            self._expected_backward_calls = int(accumulation_count)
+        else:
+            if self._active_backward or self._pending_sync:
+                raise RuntimeError("gradient accumulation state is already active")
+            if self._expected_backward_calls != accumulation_count:
+                raise RuntimeError("gradient accumulation count changed")
+            if set(self._hook_counts.values()) != {accumulation_index}:
+                raise RuntimeError("previous gradient accumulation is incomplete")
+            if self._issue_order:
+                raise RuntimeError("gradient reduction started before final accumulation")
         self._active_backward = True
         try:
             loss.backward()
         finally:
             self._active_backward = False
+        expected_hook_count = accumulation_index + 1
+        if set(self._hook_counts.values()) != {expected_hook_count}:
+            missing = [
+                name
+                for bucket in self._buckets
+                for name, parameter in zip(bucket.names, bucket.parameters, strict=True)
+                if self._hook_counts[id(parameter)] != expected_hook_count
+            ]
+            raise RuntimeError(
+                f"gradient accumulation {expected_hook_count}/{accumulation_count} "
+                f"is incomplete; missing={missing[:8]}"
+            )
+        if expected_hook_count < accumulation_count:
+            if self._issue_order:
+                raise RuntimeError("gradient reduction issued before final accumulation")
+            return
         expected = list(range(len(self._buckets)))
         if self._issue_order != expected:
             missing = [
                 name
                 for bucket in self._buckets
                 for name, parameter in zip(bucket.names, bucket.parameters, strict=True)
-                if self._hook_counts[id(parameter)] != 1
+                if self._hook_counts[id(parameter)] != accumulation_count
             ]
             raise RuntimeError(
                 f"gradient-ready collective order incomplete: {self._issue_order}; "
@@ -248,6 +298,7 @@ class GradReadyAsyncGroupReducer:
             "bucket_issue_order": list(self._issue_order),
             "hook_count_min": min(self._hook_counts.values()),
             "hook_count_max": max(self._hook_counts.values()),
+            "backward_accumulation_count": self._expected_backward_calls,
             "overlap_with_backward": True,
             "persistent": True,
             "dedicated_comm_stream": True,

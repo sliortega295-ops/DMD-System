@@ -62,6 +62,7 @@ def main() -> int:
             "c19-host-runahead",
             "c20-generator-flash-attn2",
             "c21-continuous-b16",
+            "c21-c1-continuous-b16",
             "phase-expanded-critic16",
             "phase-expanded-critic16-fused-lora-elision",
             "score-b2",
@@ -121,11 +122,14 @@ def main() -> int:
             "c19-host-runahead",
             "c20-generator-flash-attn2",
             "c21-continuous-b16",
+            "c21-c1-continuous-b16",
         }
         else None
     )
     critic_shadow_pair_group = None
-    if args.pipeline_variant == "c21-continuous-b16":
+    if args.pipeline_variant in {
+        "c21-continuous-b16", "c21-c1-continuous-b16"
+    }:
         pair_groups = [
             dist.new_group(ranks=[lane, lane + 8], backend="nccl")
             for lane in range(8)
@@ -190,6 +194,7 @@ def main() -> int:
             "c19-host-runahead",
             "c20-generator-flash-attn2",
             "c21-continuous-b16",
+            "c21-c1-continuous-b16",
         }
         and rank in critic_ranks
     ):
@@ -212,9 +217,20 @@ def main() -> int:
         )
         reducer.zero_grad()
         local_value = float(critic_ranks.index(rank) + 1)
-        reducer.backward(
-            sum(parameter.sum() * local_value for parameter in parameters)
-        )
+        canary_loss = sum(parameter.sum() * local_value for parameter in parameters)
+        if args.pipeline_variant == "c21-c1-continuous-b16":
+            reducer.backward_accumulate(
+                canary_loss * 0.5,
+                accumulation_index=0,
+                accumulation_count=2,
+            )
+            reducer.backward_accumulate(
+                sum(parameter.sum() * local_value for parameter in parameters) * 0.5,
+                accumulation_index=1,
+                accumulation_count=2,
+            )
+        else:
+            reducer.backward(canary_loss)
         async_reducer_canary = reducer.finish()
         expected_mean = sum(range(1, len(critic_ranks) + 1)) / len(critic_ranks)
         if any(
@@ -438,6 +454,7 @@ def main() -> int:
             "c19-host-runahead",
             "c20-generator-flash-attn2",
             "c21-continuous-b16",
+            "c21-c1-continuous-b16",
             "phase-expanded-critic16",
         }
         else (lane, lane + 8)
@@ -560,6 +577,7 @@ def main() -> int:
                 "c19-host-runahead",
                 "c20-generator-flash-attn2",
             "c21-continuous-b16",
+            "c21-c1-continuous-b16",
             }
             else "final_dmd_gradient_float32"
         ),
@@ -585,6 +603,7 @@ def main() -> int:
                 "c19-host-runahead",
                 "c20-generator-flash-attn2",
             "c21-continuous-b16",
+            "c21-c1-continuous-b16",
                 "phase-expanded-critic16",
                 "phase-expanded-critic16-fused-lora-elision",
             }
@@ -628,6 +647,7 @@ def main() -> int:
                 "c19-host-runahead",
                 "c20-generator-flash-attn2",
             "c21-continuous-b16",
+            "c21-c1-continuous-b16",
                 "phase-expanded-critic16",
                 "phase-expanded-critic16-fused-lora-elision",
             }
@@ -658,6 +678,7 @@ def main() -> int:
                             "c19-host-runahead",
                             "c20-generator-flash-attn2",
             "c21-continuous-b16",
+            "c21-c1-continuous-b16",
                         }
                         or all(
                             row.get("host_runahead_canary", {}).get("status") == "PASS"
@@ -667,7 +688,9 @@ def main() -> int:
                         )
                     )
                     and (
-                        args.pipeline_variant != "c21-continuous-b16"
+                        args.pipeline_variant not in {
+                            "c21-continuous-b16", "c21-c1-continuous-b16"
+                        }
                         or all(
                             row.get("critic_shadow_sync_canary", {}).get("status")
                             == "PASS"

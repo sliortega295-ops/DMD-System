@@ -29,6 +29,7 @@ def _load_controller():
     return module
 C20 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c20_generator_flash_attn2.json"
 C21 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c21_continuous_b16.json"
+C21_C1 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c21_c1_continuous_b16.json"
 
 
 def test_c21_changes_only_registered_continuous_schedule_metadata(monkeypatch) -> None:
@@ -72,6 +73,30 @@ def test_continuous_host_transport_has_bounded_exact_key_inventory() -> None:
     assert (0, 0) not in keys
 
 
+def test_c21_c1_changes_only_registered_step1_physical_schedule(monkeypatch) -> None:
+    for key in (
+        "LIVEWAN_STUDENT_CHECKPOINT", "LIVEWAN_CRITIC_CHECKPOINT",
+        "LIVEWAN_TEACHER_CHECKPOINT", "LIVEWAN_OPERATION_TRACE",
+        "LIVEWAN_SYSTEMS_BOOTSTRAP", "DISTILLSCHEDULE_OUTPUT_DIR",
+    ):
+        monkeypatch.setenv(key, f"/tmp/{key.lower()}")
+    reference = load_plan(C21).plan.to_dict()
+    candidate_plan = load_plan(C21_C1).plan
+    LiveWanSFDMDAdapter().validate(candidate_plan)
+    candidate = candidate_plan.to_dict()
+    reference_contract = dict(reference["metadata"]["continuous_pipeline"])
+    candidate_contract = dict(candidate["metadata"]["continuous_pipeline"])
+    assert candidate_contract.pop("critic_step1_physical_schedule") == (
+        "wave0_b1_backward_then_wave1_b1_backward_single_commit"
+    )
+    assert candidate_contract.pop("critic_step1_loss_weights") == [0.5, 0.5]
+    assert candidate_contract.pop("critic_step1_physical_calls_per_rank") == 2
+    candidate_contract["name"] = reference_contract["name"]
+    assert candidate_contract == reference_contract
+    for key in ("workload", "hardware", "rank_groups", "lifecycle", "training_backends"):
+        assert candidate[key] == reference[key]
+
+
 def test_critic_shadow_layout_hash_is_order_and_shape_sensitive() -> None:
     class Parameter:
         def __init__(self, shape, dtype="torch.float32") -> None:
@@ -105,13 +130,35 @@ def test_depth_one_wait_precedes_next_cycle_wave_one() -> None:
     assert "finalize_host_transport=False" in source
 
 
+def test_c21_c1_wave0_backward_precedes_wave1_receive_and_commits_once() -> None:
+    source = (
+        ROOT / "src/distillschedule/runtime/livewan_crossscale_worker.py"
+    ).read_text(encoding="utf-8")
+    wave0 = source.index("critic_backward_wave_0_overlap")
+    receive_wave1 = source.index(
+        'label=f"livewan/pipeline/score/step_{step}/recv_wave_1"', wave0
+    )
+    wave1 = source.index("critic_backward_wave_1", receive_wave1)
+    commit = source.index(
+        'label=f"livewan/pipeline/score/step_{step}/critic_commit"', wave1
+    )
+    assert wave0 < receive_wave1 < wave1 < commit
+    reducer = (
+        ROOT / "src/distillschedule/runtime/livewan_grad_reducer.py"
+    ).read_text(encoding="utf-8")
+    assert "def backward_accumulate(" in reducer
+    assert "gradient reduction issued before final accumulation" in reducer
+
+
 def test_controller_launcher_and_probe_register_c21() -> None:
     controller = (ROOT / "scripts/distillschedule/run_livewan_crossscale_world16.py").read_text()
     launcher = (ROOT / "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh").read_text()
     probe = (ROOT / "scripts/distillschedule/probe_livewan_crossscale_transport.py").read_text()
     assert '"c21-continuous-b16"' in controller
     assert "livewan_wan13b_14b_sf_dmd_c21_continuous_b16.json" in launcher
-    assert 'args.pipeline_variant == "c21-continuous-b16"' in probe
+    assert '"c21-continuous-b16", "c21-c1-continuous-b16"' in probe
+    assert '"c21-c1-continuous-b16"' in controller
+    assert "livewan_wan13b_14b_sf_dmd_c21_c1_continuous_b16.json" in launcher
     assert "paired Critic-shadow broadcast mismatch" in probe
 
 

@@ -736,7 +736,19 @@ def _continuous_pipeline_contract(
         "five_critic_commits_per_cycle": True,
         "math_and_call_inventory_preserved": True,
     }
-    _require(dict(value) == expected, "continuous pipeline contract changed")
+    expected_c1 = dict(
+        expected,
+        name="continuous_full5_b16_depth1_step1_b1_overlap_v1",
+        critic_step1_physical_schedule=(
+            "wave0_b1_backward_then_wave1_b1_backward_single_commit"
+        ),
+        critic_step1_loss_weights=[0.5, 0.5],
+        critic_step1_physical_calls_per_rank=2,
+    )
+    _require(
+        dict(value) in (expected, expected_c1),
+        "continuous pipeline contract changed",
+    )
     _require(_split_dmd_shadow_enabled(plan, mode=mode), "continuous pipeline needs split-DMD shadow")
     _require(
         _generator_runahead_transport_enabled(plan, mode=mode),
@@ -1915,6 +1927,7 @@ def critic_backward_for_sample(
     sample_context: ScoreSampleContext,
     context_lens: Any,
     sample_weight: float,
+    reducer_accumulation: tuple[int, int] | None = None,
 ) -> Any:
     from wanstreamer import dmd as D
     from wanstreamer.lora import lora_enabled
@@ -1929,7 +1942,18 @@ def critic_backward_for_sample(
         )
     scaled_loss = loss * sample_weight
     if bundle.critic_gradient_reducer is None:
+        _require(
+            reducer_accumulation is None,
+            "Critic reducer accumulation requested without the registered reducer",
+        )
         scaled_loss.backward()
+    elif reducer_accumulation is not None:
+        accumulation_index, accumulation_count = reducer_accumulation
+        bundle.critic_gradient_reducer.backward_accumulate(
+            scaled_loss,
+            accumulation_index=accumulation_index,
+            accumulation_count=accumulation_count,
+        )
     else:
         bundle.critic_gradient_reducer.backward(scaled_loss)
     return loss.detach()
@@ -3128,6 +3152,10 @@ def run_worker(
                     full_context_lens_elision=_full_context_lens_elision(
                         plan, mode=mode
                     ),
+                    critic_step1_split_overlap=(
+                        continuous_contract.get("name")
+                        == "continuous_full5_b16_depth1_step1_b1_overlap_v1"
+                    ),
                 )
             elif (
                 plan.get("metadata", {}).get("pool_policy")
@@ -3651,6 +3679,7 @@ def _run_pipeline_8x8(
     device: Any,
     rollout_runahead: bool = False,
     critic_b2_only: bool = False,
+    critic_step1_split_overlap: bool = False,
     score_context_from_trace: bool = False,
     slot_pairs_by_lane: Sequence[Sequence[int]] | None = None,
     full_context_lens_elision: bool = False,
@@ -3715,6 +3744,14 @@ def _run_pipeline_8x8(
             and score_context_from_trace
             and full_context_lens_elision,
             "host run-ahead transport requires the exact run-ahead/local-context graph",
+        )
+    if critic_step1_split_overlap and not is_generator:
+        _require(
+            critic_b2_only
+            and rollout_runahead
+            and runahead_host_transport is not None
+            and bundle.critic_gradient_reducer is not None,
+            "step1 split overlap requires C21 B2 run-ahead and its async reducer",
         )
 
     prefetched_contexts: dict[tuple[int, int], ScoreSampleContext] = {}
@@ -4172,6 +4209,34 @@ def _run_pipeline_8x8(
                     raw_context=first_context,
                     include_teacher=step == 0,
                 )
+            split_step1 = critic_step1_split_overlap and step == 1
+            loss0 = None
+            if split_step1:
+                # Start the first B1 backward as soon as wave0 arrives.  The G
+                # pool keeps producing/staging wave1 concurrently.  Both B1
+                # contributions retain 0.5 weight and the reducer launches
+                # collectives only on the second backward, so this remains one
+                # exact B2-mean Critic commit.
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label=(
+                        "livewan/continuous_c1/score/step_1/"
+                        "critic_backward_wave_0_overlap"
+                    ),
+                ):
+                    loss0 = critic_backward_for_sample(
+                        torch,
+                        bundle=bundle,
+                        score_context=score_context,
+                        row=rows[0],
+                        x0=first_x0,
+                        sample_context=first_sample_context,
+                        context_lens=context_lens,
+                        sample_weight=0.5,
+                        reducer_accumulation=(0, 2),
+                    )
+                    evidence.add_logical_score_calls("critic/grad/checkpoint", 1)
             if step == 0:
                 with _profile_range(
                     torch, run_kind=run_kind,
@@ -4296,7 +4361,29 @@ def _run_pipeline_8x8(
                     grad1_send = returned1.contiguous()
                     grad1_work = dist.isend(grad1_send, dst=peer)
                 evidence.transport_bytes += returned1.numel() * returned1.element_size()
-            if critic_b2_only:
+            if split_step1:
+                _require(loss0 is not None, "step1 wave0 Critic loss is missing")
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label=(
+                        "livewan/continuous_c1/score/step_1/"
+                        "critic_backward_wave_1"
+                    ),
+                ):
+                    loss1 = critic_backward_for_sample(
+                        torch,
+                        bundle=bundle,
+                        score_context=score_context,
+                        row=rows[1],
+                        x0=second_x0,
+                        sample_context=second_sample_context,
+                        context_lens=context_lens,
+                        sample_weight=0.5,
+                        reducer_accumulation=(1, 2),
+                    )
+                    evidence.add_logical_score_calls("critic/grad/checkpoint", 1)
+            elif critic_b2_only:
                 with _profile_range(
                     torch,
                     run_kind=run_kind,
@@ -4426,6 +4513,7 @@ def _run_pipeline_8x8_continuous(
     critic_shadow_hot_sync: Any,
     slot_pairs_by_lane: Sequence[Sequence[int]],
     full_context_lens_elision: bool,
+    critic_step1_split_overlap: bool,
 ) -> None:
     """Run three exact Full5 cycles with one next-cycle rollout wave in flight."""
 
@@ -4463,6 +4551,7 @@ def _run_pipeline_8x8_continuous(
                 device=device,
                 rollout_runahead=True,
                 critic_b2_only=True,
+                critic_step1_split_overlap=critic_step1_split_overlap,
                 score_context_from_trace=True,
                 slot_pairs_by_lane=slot_pairs_by_lane,
                 full_context_lens_elision=full_context_lens_elision,
@@ -4562,11 +4651,21 @@ def _run_pipeline_8x8_continuous(
     evidence.critic_shadow_hot_sync = dict(critic_shadow_hot_sync.receipt())
     evidence.continuous_pipeline = {
         "enabled": True,
-        "name": "continuous_full5_b16_depth1_v1",
+        "name": (
+            "continuous_full5_b16_depth1_step1_b1_overlap_v1"
+            if critic_step1_split_overlap
+            else "continuous_full5_b16_depth1_v1"
+        ),
         "cycles": trace.cycles,
         "cycle_length": FULL5_STEPS,
         "lookahead_depth": 1,
         "lookahead_scope": "next_cycle_step0_wave0_rollout_only",
+        "critic_step1_physical_schedule": (
+            "wave0_b1_backward_then_wave1_b1_backward_single_commit"
+            if critic_step1_split_overlap
+            else "single_b2_backward"
+        ),
+        "critic_step1_single_commit": True,
         "source_reuse_across_cycles": trace.source_reuse_across_cycles,
         "events": cycle_events,
         "role_total_wall_seconds": time.perf_counter() - started,

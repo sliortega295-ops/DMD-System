@@ -28,7 +28,12 @@ EXPECTED_LOGICAL = {
     "critic/grad/checkpoint": 240,
     "teacher/nograd/plain": 48,
 }
-EXPECTED_PHYSICAL = dict(EXPECTED_LOGICAL, **{"critic/grad/checkpoint": 120})
+C21_C0_NAME = "continuous_full5_b16_depth1_v1"
+C21_C1_NAME = "continuous_full5_b16_depth1_step1_b1_overlap_v1"
+EXPECTED_PHYSICAL_BY_CONTRACT = {
+    C21_C0_NAME: dict(EXPECTED_LOGICAL, **{"critic/grad/checkpoint": 120}),
+    C21_C1_NAME: dict(EXPECTED_LOGICAL, **{"critic/grad/checkpoint": 144}),
+}
 
 
 def _aggregate(rows: list[dict[str, Any]], key: str) -> dict[str, int]:
@@ -68,8 +73,12 @@ def main() -> int:
     trace = FormalTrace.load(args.trace, expected_cycles=3)
     plan = json.loads(args.plan.read_text(encoding="utf-8"))
     contract = dict(plan.get("metadata", {}).get("continuous_pipeline", {}))
-    if contract.get("name") != "continuous_full5_b16_depth1_v1":
+    contract_name = str(contract.get("name", ""))
+    if contract_name not in EXPECTED_PHYSICAL_BY_CONTRACT:
         errors.append("resolved plan lacks the registered C21 contract")
+    expected_physical = EXPECTED_PHYSICAL_BY_CONTRACT.get(
+        contract_name, EXPECTED_PHYSICAL_BY_CONTRACT[C21_C0_NAME]
+    )
 
     if args.run_kind == "validate":
         values = []
@@ -92,6 +101,8 @@ def main() -> int:
             "gpu_workload": "NOT_RUN",
             "trace_sha256": trace.sha256,
             "head": args.expected_head,
+            "heads": {"pipeline": args.expected_head},
+            "continuous_contract_name": contract_name,
             "errors": errors,
         }
         atomic_json(args.output, result)
@@ -130,10 +141,22 @@ def main() -> int:
         continuous = dict(row.get("continuous_pipeline", {}))
         if (
             continuous.get("execution_status") != "PASS"
+            or continuous.get("name") != contract_name
             or continuous.get("cycles") != 3
             or len(continuous.get("events", ())) != 3
         ):
             errors.append(f"rank{rank}: continuous execution receipt incomplete")
+        expected_step1_schedule = (
+            "wave0_b1_backward_then_wave1_b1_backward_single_commit"
+            if contract_name == C21_C1_NAME
+            else "single_b2_backward"
+        )
+        if (
+            continuous.get("critic_step1_physical_schedule")
+            != expected_step1_schedule
+            or continuous.get("critic_step1_single_commit") is not True
+        ):
+            errors.append(f"rank{rank}: step1 physical schedule changed")
         transport = dict(row.get("generator_runahead_transport", {}))
         expected_transport_role = "generator" if rank in GENERATOR_RANKS else "score"
         if (
@@ -174,7 +197,7 @@ def main() -> int:
     physical = _aggregate(rows, "physical_call_inventory")
     if _core_inventory(logical) != EXPECTED_LOGICAL:
         errors.append(f"logical call inventory changed: {_core_inventory(logical)}")
-    if _core_inventory(physical) != EXPECTED_PHYSICAL:
+    if _core_inventory(physical) != expected_physical:
         errors.append(f"physical call inventory changed: {_core_inventory(physical)}")
 
     for lane in range(8):
@@ -243,6 +266,8 @@ def main() -> int:
             "or sequential-equivalence claim."
         ),
         "head": args.expected_head,
+        "heads": {"pipeline": args.expected_head},
+        "continuous_contract_name": contract_name,
         "rank_count": len(rows),
         "trace_sha256": trace.sha256,
         "trace_file_sha256": _sha256(args.trace),
@@ -251,7 +276,7 @@ def main() -> int:
         "logical_call_inventory": logical,
         "physical_call_inventory": physical,
         "expected_logical_call_inventory": EXPECTED_LOGICAL,
-        "expected_physical_call_inventory": EXPECTED_PHYSICAL,
+        "expected_physical_call_inventory": expected_physical,
         "final_versions": {"generator": 3, "critic": 15, "ema": 0},
         "world_wall_seconds": max(rank_walls) if rank_walls else None,
         "world_wall_per_cycle_seconds": max(rank_walls) / 3 if rank_walls else None,

@@ -1,0 +1,14 @@
+{
+  "include": [
+    "livewan_wan13b_14b_sf_dmd_c21_continuous_b16.json"
+  ],
+  "id": "livewan-wan13b-14b-sfdmd-c21-c1-continuous-b16",
+  "metadata": {
+    "continuous_pipeline": {
+      "name": "continuous_full5_b16_depth1_step1_b1_overlap_v1",
+      "critic_step1_physical_schedule": "wave0_b1_backward_then_wave1_b1_backward_single_commit",
+      "critic_step1_loss_weights": [0.5, 0.5],
+      "critic_step1_physical_calls_per_rank": 2
+    }
+  }
+}
