@@ -59,6 +59,7 @@ PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LO
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW_FUSED_ADAM_SCORE_ROPE = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW_FUSED_ADAM_SCORE_ROPE_FLASH_ATTN2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW_FUSED_ADAM_SCORE_ROPE_FLASH_ATTN2_GENERATOR_CROSS_KV = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2_generator_cross_kv_cache.json"
+PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW_FUSED_ADAM_SCORE_ROPE_FLASH_ATTN2_GENERATOR_CROSS_KV_HOST_RUNAHEAD = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2_generator_cross_kv_cache_host_runahead.json"
 PIPELINE_PHASE_EXPANDED_CRITIC16 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16.json"
 PIPELINE_PHASE_EXPANDED_CRITIC16_FUSED_LORA_ELISION = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16_fused_lora_elision.json"
 PIPELINE_SCORE_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
@@ -479,6 +480,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert '"c15-score-rope"' in controller
     assert '"c16-score-flash-attn2"' in controller
     assert '"c18-generator-cross-kv-cache"' in controller
+    assert '"c19-host-runahead"' in controller
     assert '"phase-expanded-critic16"' in controller
     assert '"capacity", "correctness", "timing", "profile"' in controller
     assert '"LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant' in controller
@@ -492,6 +494,9 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     # different slot/reducer/payload contract than the real worker.
     assert transport_probe.count('"c16-score-flash-attn2"') == 6
     assert transport_probe.count('"c18-generator-cross-kv-cache"') == 6
+    # C19 inherits the six C18 memberships and adds two explicit Gloo-specific
+    # gates (group construction and summary acceptance).
+    assert transport_probe.count('"c19-host-runahead"') == 8
 
     launcher = (
         ROOT / "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh"
@@ -512,6 +517,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2_generator_cross_kv_cache.json" in launcher
+    assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2_generator_cross_kv_cache_host_runahead.json" in launcher
     assert '"${RUN_KIND}" == capacity' in launcher
     assert "baseline_pipeline_variant_mismatch" in launcher
     summarizer = (
@@ -1263,6 +1269,62 @@ def test_generator_cross_kv_cache_is_source_pinned_and_grad_bypassed() -> None:
         "_parameter_versions(self) != entry",
         "total_bytes != 141_557_760",
         "contract_failure_count",
+    ):
+        assert value in source
+
+
+def test_host_runahead_plan_changes_only_transport_metadata() -> None:
+    reference = load_plan(
+        PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW_FUSED_ADAM_SCORE_ROPE_FLASH_ATTN2_GENERATOR_CROSS_KV
+    ).plan.to_dict()
+    candidate_plan = load_plan(
+        PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW_FUSED_ADAM_SCORE_ROPE_FLASH_ATTN2_GENERATOR_CROSS_KV_HOST_RUNAHEAD
+    ).plan
+    LiveWanSFDMDAdapter().validate(candidate_plan)
+    candidate = candidate_plan.to_dict()
+    metadata = dict(candidate["metadata"])
+    assert metadata.pop("generator_runahead_transport") == {
+        "enabled": True,
+        "name": "pinned_cpu_gloo_latent_v1",
+        "scope": "critic_only_steps_1_4_latent_only",
+        "logical_steps": [1, 2, 3, 4],
+        "waves_per_step": 2,
+        "payload_dtype": "float32",
+        "payload_shape": [1, 16, 21, 46, 80],
+        "pinned_host": True,
+        "background_sender_threads_per_rank": 1,
+        "preposted_receives": True,
+        "step0_transport": "cuda_nccl_p2p_unchanged",
+        "context_transport": "trace_local_replay_unchanged",
+        "calls_preserved": True,
+    }
+    assert metadata == reference["metadata"]
+    for key in ("workload", "hardware", "rank_groups", "lifecycle", "training_backends"):
+        assert candidate[key] == reference[key]
+
+
+def test_host_runahead_tags_and_worker_path_are_fail_closed() -> None:
+    from distillschedule.runtime.livewan_host_runahead import runahead_tag
+
+    assert [
+        runahead_tag(step, wave)
+        for step in range(1, 5)
+        for wave in range(2)
+    ] == list(range(27102, 27110))
+    with pytest.raises(ValueError):
+        runahead_tag(0, 0)
+    with pytest.raises(ValueError):
+        runahead_tag(1, 2)
+    source = (
+        ROOT / "src/distillschedule/runtime/livewan_host_runahead.py"
+    ).read_text()
+    for value in (
+        "ThreadPoolExecutor",
+        "pin_memory=True",
+        "event.synchronize()",
+        "preposted run-ahead receive is missing",
+        "Generator run-ahead send inventory is incomplete",
+        "step0_transport",
     ):
         assert value in source
 

@@ -59,6 +59,7 @@ def main() -> int:
             "c15-score-rope",
             "c16-score-flash-attn2",
             "c18-generator-cross-kv-cache",
+            "c19-host-runahead",
             "phase-expanded-critic16",
             "phase-expanded-critic16-fused-lora-elision",
             "score-b2",
@@ -111,6 +112,11 @@ def main() -> int:
         score_leader_group = dist.new_group(
             ranks=list(SCORE_LEADERS_6G10S), backend="nccl"
         )
+    host_runahead_group = (
+        dist.new_group(ranks=list(range(WORLD_SIZE)), backend="gloo")
+        if args.pipeline_variant == "c19-host-runahead"
+        else None
+    )
 
     # Collectively initialize default world before asymmetric default-group P2P.
     dist.barrier()
@@ -122,6 +128,11 @@ def main() -> int:
     )
     if int(subgroup_token.cpu()) != expected_subgroup:
         raise RuntimeError("role subgroup all-reduce mismatch")
+    if host_runahead_group is not None:
+        host_token = torch.ones(1, dtype=torch.int64, device="cpu")
+        dist.all_reduce(host_token, group=host_runahead_group)
+        if int(host_token.item()) != WORLD_SIZE:
+            raise RuntimeError("host run-ahead Gloo all-reduce mismatch")
 
     async_reducer_canary = None
     if (
@@ -139,6 +150,7 @@ def main() -> int:
             "c15-score-rope",
             "c16-score-flash-attn2",
             "c18-generator-cross-kv-cache",
+            "c19-host-runahead",
         }
         and rank in critic_ranks
     ):
@@ -384,6 +396,7 @@ def main() -> int:
             "c15-score-rope",
             "c16-score-flash-attn2",
             "c18-generator-cross-kv-cache",
+            "c19-host-runahead",
             "phase-expanded-critic16",
         }
         else (lane, lane + 8)
@@ -438,6 +451,51 @@ def main() -> int:
     if deferred_gradient_work is not None:
         deferred_gradient_work.wait()
 
+    host_runahead_canary = None
+    if host_runahead_group is not None:
+        from distillschedule.runtime.livewan_host_runahead import runahead_tag
+
+        host_buffers = {
+            (step, wave): torch.empty(
+                256, dtype=torch.float32, device="cpu", pin_memory=True
+            )
+            for step in range(1, 5)
+            for wave in range(2)
+        }
+        if rank < 8:
+            for (step, wave), buffer in host_buffers.items():
+                buffer.fill_(float(rank * 100 + step * 10 + wave))
+                dist.isend(
+                    buffer,
+                    dst=peer,
+                    group=host_runahead_group,
+                    tag=runahead_tag(step, wave),
+                ).wait()
+        else:
+            works = {
+                key: dist.irecv(
+                    buffer,
+                    src=peer,
+                    group=host_runahead_group,
+                    tag=runahead_tag(*key),
+                )
+                for key, buffer in host_buffers.items()
+            }
+            for key, work in works.items():
+                work.wait()
+                expected_value = float(peer * 100 + key[0] * 10 + key[1])
+                if not torch.equal(
+                    host_buffers[key], torch.full_like(host_buffers[key], expected_value)
+                ):
+                    raise RuntimeError(f"host run-ahead payload mismatch: {key}")
+        host_runahead_canary = {
+            "status": "PASS",
+            "backend": "gloo",
+            "messages": 8,
+            "pinned_buffers": sum(int(value.is_pinned()) for value in host_buffers.values()),
+            "payload_dtype": "torch.float32",
+        }
+
     torch.cuda.synchronize(device)
     dist.barrier()
     receipt = {
@@ -458,6 +516,7 @@ def main() -> int:
                 "c15-score-rope",
                 "c16-score-flash-attn2",
             "c18-generator-cross-kv-cache",
+            "c19-host-runahead",
             }
             else "final_dmd_gradient_float32"
         ),
@@ -480,6 +539,7 @@ def main() -> int:
                 "c15-score-rope",
                 "c16-score-flash-attn2",
             "c18-generator-cross-kv-cache",
+            "c19-host-runahead",
                 "phase-expanded-critic16",
                 "phase-expanded-critic16-fused-lora-elision",
             }
@@ -489,6 +549,7 @@ def main() -> int:
         "critic_fsdp_canary": critic_fsdp_canary,
         "critic_group_size": len(critic_ranks) if rank in critic_ranks else 0,
         "phase_expanded_critic16": phase_expanded_critic16,
+        "host_runahead_canary": host_runahead_canary,
         "observed": observed,
         "observed_gradients": observed_gradients,
     }
@@ -518,6 +579,7 @@ def main() -> int:
                 "c15-score-rope",
                 "c16-score-flash-attn2",
             "c18-generator-cross-kv-cache",
+            "c19-host-runahead",
                 "phase-expanded-critic16",
                 "phase-expanded-critic16-fused-lora-elision",
             }
@@ -542,6 +604,15 @@ def main() -> int:
                             for row in rows
                         )
                     )
+                    and (
+                        args.pipeline_variant != "c19-host-runahead"
+                        or all(
+                            row.get("host_runahead_canary", {}).get("status") == "PASS"
+                            and row.get("host_runahead_canary", {}).get("messages") == 8
+                            and row.get("host_runahead_canary", {}).get("pinned_buffers") == 8
+                            for row in rows
+                        )
+                    )
                     else "FAIL"
                 ),
                 "rank_count": len(rows),
@@ -551,6 +622,10 @@ def main() -> int:
                 "slot_pairs_by_lane": [list(pair) for pair in observed_pairs],
                 "async_reducer_canary_ranks": sum(
                     row.get("async_reducer_canary") is not None for row in rows
+                ),
+                "host_runahead_canary_ranks": sum(
+                    row.get("host_runahead_canary", {}).get("status") == "PASS"
+                    for row in rows
                 ),
             },
         )

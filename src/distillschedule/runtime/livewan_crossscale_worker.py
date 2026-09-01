@@ -487,6 +487,7 @@ class ModelBundle:
     critic_group: Any | None
     score_local_group: Any | None
     score_leader_group: Any | None
+    runahead_host_group: Any | None
     score_local_ranks: tuple[int, ...]
     score_leader_ranks: tuple[int, ...]
     generator_group_size: int
@@ -623,6 +624,51 @@ def _split_dmd_shadow_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
     return True
 
 
+def _generator_runahead_transport_enabled(
+    plan: Mapping[str, Any], *, mode: str
+) -> bool:
+    """Validate the exact C19 Critic-only latent transport contract."""
+
+    metadata = plan.get("metadata", {})
+    contract = metadata.get("generator_runahead_transport")
+    if contract is None:
+        return False
+    _require(mode == "pipeline", "host run-ahead transport is pipeline-only")
+    _require(
+        metadata.get("pool_policy") == TRACE_BALANCED_POOL_POLICY,
+        "host run-ahead transport requires the validated C16/C18 substrate",
+    )
+    _require(
+        metadata.get("generator_nograd_runahead") is True,
+        "host transport requires Generator run-ahead",
+    )
+    _require(
+        metadata.get("full_context_lens_elision") is True,
+        "host transport requires trace-local Score context replay",
+    )
+    _require(
+        bool(metadata.get("generator_cross_attention_kv_cache", {}).get("enabled")),
+        "C19 must inherit the passing C18 Generator K/V cache",
+    )
+    expected = {
+        "enabled": True,
+        "name": "pinned_cpu_gloo_latent_v1",
+        "scope": "critic_only_steps_1_4_latent_only",
+        "logical_steps": [1, 2, 3, 4],
+        "waves_per_step": 2,
+        "payload_dtype": "float32",
+        "payload_shape": list(LATENT_SHAPE),
+        "pinned_host": True,
+        "background_sender_threads_per_rank": 1,
+        "preposted_receives": True,
+        "step0_transport": "cuda_nccl_p2p_unchanged",
+        "context_transport": "trace_local_replay_unchanged",
+        "calls_preserved": True,
+    }
+    _require(dict(contract) == expected, "host run-ahead transport contract changed")
+    return True
+
+
 def build_models(
     *,
     torch: Any,
@@ -652,6 +698,11 @@ def build_models(
         dist.new_group(ranks=list(critic_ranks))
         if critic_ranks != score_ranks
         else score_group
+    )
+    runahead_host_group = (
+        dist.new_group(ranks=list(range(WORLD_SIZE)), backend="gloo")
+        if _generator_runahead_transport_enabled(plan, mode=mode)
+        else None
     )
     node_local_score = (
         mode == "pipeline"
@@ -933,6 +984,7 @@ def build_models(
             if node_local_score and rank in PIPELINE_6G10S_SCORE_LEADERS
             else None
         ),
+        runahead_host_group=runahead_host_group,
         score_local_ranks=score_local_ranks,
         score_leader_ranks=(
             PIPELINE_6G10S_SCORE_LEADERS if node_local_score else ()
@@ -1122,6 +1174,17 @@ def _warm_communicators(
             "Score leader communicator warm-up failed",
         )
         warmed_groups.append("score_leaders")
+    if bundle.runahead_host_group is not None:
+        # C19 uses a dedicated CPU/Gloo communicator only for the already
+        # produced Critic-only latents.  Warm it before the Full5 timer so lazy
+        # socket/process-group setup is not charged to the candidate.
+        token = torch.ones(1, dtype=torch.int64, device="cpu")
+        dist.all_reduce(token, group=bundle.runahead_host_group)
+        _require(
+            int(token.item()) == WORLD_SIZE,
+            "run-ahead host communicator warm-up failed",
+        )
+        warmed_groups.append("runahead_host_gloo")
 
     pair_peer = None
     routed_slots: list[int] = []
@@ -1825,6 +1888,7 @@ class RunEvidence:
     logical_score_calls: dict[str, int] = field(default_factory=dict)
     score_context_prefetch: dict[str, Any] = field(default_factory=dict)
     split_dmd_shadow: dict[str, Any] = field(default_factory=dict)
+    generator_runahead_transport: dict[str, Any] = field(default_factory=dict)
 
     def add_logical_score_calls(self, key: str, count: int) -> None:
         _require(count > 0, "logical Score call count must be positive")
@@ -2618,6 +2682,39 @@ def run_worker(
     bundle.metadata["communicator_warmup"] = _warm_communicators(
         torch, bundle=bundle, mode=mode, rank=rank, device=device,
     )
+    runahead_host_transport = None
+    runahead_host_enabled = _generator_runahead_transport_enabled(plan, mode=mode)
+    if runahead_host_enabled and run_kind != "capacity":
+        from distillschedule.runtime.livewan_host_runahead import (
+            PinnedHostRunaheadTransport,
+        )
+
+        _require(
+            bundle.runahead_host_group is not None,
+            "C19 Gloo process group is missing",
+        )
+        runahead_host_transport = PinnedHostRunaheadTransport(
+            torch=torch,
+            dist=dist,
+            group=bundle.runahead_host_group,
+            rank=rank,
+            peer=rank + 8 if rank < 8 else rank - 8,
+            device=device,
+            is_generator=rank < 8,
+            shape=LATENT_SHAPE,
+            dtype=torch.float32,
+        )
+        bundle.metadata["generator_runahead_transport_setup"] = {
+            "enabled": True,
+            "name": "pinned_cpu_gloo_latent_v1",
+            "buffer_count": len(runahead_host_transport.buffers),
+            "pinned_buffer_count": sum(
+                int(bool(value.is_pinned()))
+                for value in runahead_host_transport.buffers.values()
+            ),
+            "payload_bytes": int(runahead_host_transport.payload_bytes),
+            "setup_position": "after_communicator_warmup_before_full5_timer",
+        }
     build_wall = time.perf_counter() - build_started
     setup_memory = memory_snapshot(torch, device)
     if run_kind == "capacity":
@@ -2648,6 +2745,16 @@ def run_worker(
             "score_rope_kernel": score_rope_kernel,
             "score_attention_backend": score_attention_backend,
             "generator_cross_attention_kv_cache": generator_cross_kv_cache,
+            "generator_runahead_transport": (
+                runahead_host_transport.receipt()
+                if runahead_host_transport is not None
+                else {
+                    "enabled": runahead_host_enabled,
+                    "execution_status": (
+                        "NOT_RUN_CAPACITY_ONLY" if runahead_host_enabled else "DISABLED"
+                    ),
+                }
+            ),
             "build": bundle.metadata,
             "gpu_training_workload": "NOT_RUN",
         }
@@ -2766,6 +2873,7 @@ def run_worker(
                         plan, mode=mode
                     ),
                     split_dmd_shadow=_split_dmd_shadow_enabled(plan, mode=mode),
+                    runahead_host_transport=runahead_host_transport,
                 )
             elif plan.get("metadata", {}).get("pool_policy") == "persistent_8g_8score_teacher_fsdp8_score_b2":
                 _run_pipeline_8x8_score_b2(
@@ -2890,6 +2998,7 @@ def run_worker(
         "score_rope_kernel": score_rope_kernel,
         "score_attention_backend": score_attention_backend,
         "generator_cross_attention_kv_cache": generator_cross_kv_cache,
+        "generator_runahead_transport": evidence.generator_runahead_transport,
         "slot_routing": slot_routing,
         "full5_wall_seconds": full5_wall,
         "construction_wall_seconds": build_wall,
@@ -3216,6 +3325,7 @@ def _run_pipeline_8x8(
     full_context_lens_elision: bool = False,
     score_context_prefetch: bool = False,
     split_dmd_shadow: bool = False,
+    runahead_host_transport: Any | None = None,
 ) -> None:
     import torch.distributed as dist
 
@@ -3250,6 +3360,18 @@ def _run_pipeline_8x8(
         "received_teacher_velocities": 0,
         "received_final_gradients": 0,
     }
+    evidence.generator_runahead_transport = (
+        runahead_host_transport.receipt()
+        if runahead_host_transport is not None
+        else {"enabled": False, "execution_status": "DISABLED"}
+    )
+    if runahead_host_transport is not None:
+        _require(
+            rollout_runahead
+            and score_context_from_trace
+            and full_context_lens_elision,
+            "host run-ahead transport requires the exact run-ahead/local-context graph",
+        )
 
     prefetched_contexts: dict[tuple[int, int], ScoreSampleContext] = {}
     if score_context_prefetch:
@@ -3300,13 +3422,28 @@ def _run_pipeline_8x8(
                 None,
                 None,
             ]
+            staged_keys: list[tuple[int, int] | None] = [None, None]
             for ahead_step in range(1, FULL5_STEPS):
                 ahead_rows = tuple(
                     trace.row(ahead_step, slot) for slot in lane_slots
                 )
                 for wave in (0, 1):
                     previous = pending[wave]
-                    if previous is not None:
+                    staged_key = staged_keys[wave]
+                    if runahead_host_transport is not None and staged_key is not None:
+                        with _profile_range(
+                            torch,
+                            run_kind=run_kind,
+                            label=(
+                                "livewan/pipeline_runahead/g/"
+                                f"step_{ahead_step}/host_stage_wait_wave_{wave}"
+                            ),
+                        ):
+                            runahead_host_transport.wait_staged(
+                                step=staged_key[0], wave=staged_key[1]
+                            )
+                        staged_keys[wave] = None
+                    elif previous is not None:
                         with _profile_range(
                             torch,
                             run_kind=run_kind,
@@ -3347,27 +3484,49 @@ def _run_pipeline_8x8(
                         run_kind=run_kind,
                         label=(
                             "livewan/pipeline_runahead/g/"
-                            f"step_{ahead_step}/isend_wave_{wave}"
+                            f"step_{ahead_step}/"
+                            f"{'host_stage' if runahead_host_transport is not None else 'isend'}_wave_{wave}"
                         ),
                     ):
-                        works = _send_pair(
-                            destination=peer,
-                            prepared=prepared,
-                            asynchronous=True,
-                            send_context=not score_context_from_trace,
-                        )
+                        if runahead_host_transport is not None:
+                            runahead_host_transport.enqueue_send(
+                                step=ahead_step, wave=wave, tensor=prepared.x0
+                            )
+                            works = ()
+                        else:
+                            works = _send_pair(
+                                destination=peer,
+                                prepared=prepared,
+                                asynchronous=True,
+                                send_context=not score_context_from_trace,
+                            )
                     evidence.transport_bytes += pair_bytes
-                    # Retain payload tensors until NCCL reports completion.
-                    pending[wave] = (prepared, tuple(works))
-            for wave, previous in enumerate(pending):
-                _require(previous is not None, "missing final run-ahead send")
+                    if runahead_host_transport is not None:
+                        staged_keys[wave] = (ahead_step, wave)
+                        pending[wave] = None
+                    else:
+                        # Retain payload tensors until NCCL reports completion.
+                        pending[wave] = (prepared, tuple(works))
+            if runahead_host_transport is not None:
                 with _profile_range(
                     torch,
                     run_kind=run_kind,
-                    label=f"livewan/pipeline_runahead/g/final_wait_wave_{wave}",
+                    label="livewan/pipeline_runahead/g/final_host_send_wait",
                 ):
-                    for request in previous[1]:
-                        request.wait()
+                    runahead_host_transport.finish()
+                evidence.generator_runahead_transport = (
+                    runahead_host_transport.receipt()
+                )
+            else:
+                for wave, previous in enumerate(pending):
+                    _require(previous is not None, "missing final run-ahead send")
+                    with _profile_range(
+                        torch,
+                        run_kind=run_kind,
+                        label=f"livewan/pipeline_runahead/g/final_wait_wave_{wave}",
+                    ):
+                        for request in previous[1]:
+                            request.wait()
             break
         if is_generator:
             bundle.generator_optimizer.zero_grad(set_to_none=True)
@@ -3577,12 +3736,18 @@ def _run_pipeline_8x8(
                 torch, run_kind=run_kind,
                 label=f"livewan/pipeline/score/step_{step}/recv_wave_0",
             ):
-                first_x0, first_context = _recv_pair(
-                    torch,
-                    source=peer,
-                    device=device,
-                    receive_context=not score_context_from_trace,
-                )
+                if runahead_host_transport is not None and step > 0:
+                    first_x0 = runahead_host_transport.receive_to_device(
+                        step=step, wave=0
+                    )
+                    first_context = None
+                else:
+                    first_x0, first_context = _recv_pair(
+                        torch,
+                        source=peer,
+                        device=device,
+                        receive_context=not score_context_from_trace,
+                    )
             evidence.transport_bytes += pair_bytes
             if score_context_from_trace:
                 if not score_context_prefetch:
@@ -3641,12 +3806,18 @@ def _run_pipeline_8x8(
                 torch, run_kind=run_kind,
                 label=f"livewan/pipeline/score/step_{step}/recv_wave_1",
             ):
-                second_x0, second_context = _recv_pair(
-                    torch,
-                    source=peer,
-                    device=device,
-                    receive_context=not score_context_from_trace,
-                )
+                if runahead_host_transport is not None and step > 0:
+                    second_x0 = runahead_host_transport.receive_to_device(
+                        step=step, wave=1
+                    )
+                    second_context = None
+                else:
+                    second_x0, second_context = _recv_pair(
+                        torch,
+                        source=peer,
+                        device=device,
+                        receive_context=not score_context_from_trace,
+                    )
             evidence.transport_bytes += pair_bytes
             if score_context_from_trace:
                 if not score_context_prefetch:
@@ -3810,6 +3981,9 @@ def _run_pipeline_8x8(
                 )
                 bundle.critic_optimizer.step()
                 versions["critic"] += 1
+    if runahead_host_transport is not None and not is_generator:
+        runahead_host_transport.finish()
+        evidence.generator_runahead_transport = runahead_host_transport.receipt()
     if score_context_prefetch and not is_generator:
         _require(
             not prefetched_contexts,

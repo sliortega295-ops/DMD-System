@@ -114,6 +114,12 @@ def main() -> int:
     generator_cross_kv_cache_enabled = bool(
         generator_cross_kv_cache_contract.get("enabled", False)
     )
+    generator_runahead_transport_contract = dict(
+        plan.get("metadata", {}).get("generator_runahead_transport", {})
+    )
+    generator_runahead_transport_enabled = bool(
+        generator_runahead_transport_contract.get("enabled", False)
+    )
     split_dmd_shadow_contract = dict(
         plan.get("metadata", {}).get("split_dmd_shadow", {})
     )
@@ -806,6 +812,40 @@ def main() -> int:
             errors.append(
                 f"rank{row['rank']}: unregistered Generator cross K/V cache"
             )
+        runahead_transport_receipt = row.get("generator_runahead_transport", {})
+        if generator_runahead_transport_enabled:
+            rank = int(row["rank"])
+            is_generator = rank in generator_ranks
+            expected_runahead_transport = {
+                "enabled": True,
+                "name": "pinned_cpu_gloo_latent_v1",
+                "role": "generator" if is_generator else "score",
+                "execution_status": "PASS",
+                "backend": "gloo",
+                "scope": "critic_only_steps_1_4_latent_only",
+                "step0_transport": "cuda_nccl_p2p_unchanged",
+                "context_transport": "trace_local_replay_unchanged",
+                "payload_shape": [1, 16, 21, 46, 80],
+                "payload_dtype": "torch.float32",
+                "payload_bytes": 4_945_920,
+                "buffer_count": 8,
+                "pinned_buffer_count": 8,
+                "send_event_count": 8 if is_generator else 0,
+                "receive_event_count": 0 if is_generator else 8,
+                "d2h_bytes": 39_567_360 if is_generator else 0,
+                "h2d_bytes": 0 if is_generator else 39_567_360,
+                "tags": [27102, 27103, 27104, 27105, 27106, 27107, 27108, 27109],
+                "sender_threads": 1 if is_generator else 0,
+                "preposted_receives": not is_generator,
+            }
+            if runahead_transport_receipt != expected_runahead_transport:
+                errors.append(
+                    f"rank{rank}: Generator run-ahead host transport receipt mismatch"
+                )
+        elif runahead_transport_receipt.get("enabled") not in {False, None}:
+            errors.append(
+                f"rank{row['rank']}: unregistered Generator run-ahead transport"
+            )
         split_receipt = row.get("split_dmd_shadow", {})
         if split_dmd_shadow_enabled:
             rank = int(row["rank"])
@@ -955,6 +995,7 @@ def main() -> int:
         "score_rope_kernel": score_rope_kernel_enabled,
         "score_attention_backend": score_attention_backend_enabled,
         "generator_cross_attention_kv_cache": generator_cross_kv_cache_enabled,
+        "generator_runahead_transport": generator_runahead_transport_contract,
         "split_dmd_shadow": split_dmd_shadow_contract,
         "generator_ranks": list(generator_ranks),
         "score_ranks": list(score_ranks),
