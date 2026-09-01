@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import shlex
@@ -33,6 +34,34 @@ def ssh(host: str, command: str, *, port: int) -> list[str]:
         "-o", "BatchMode=yes", "-o", "UpdateHostKeys=no", host,
         "bash", "-lc", shlex.quote(command),
     ]
+
+
+_PAYLOAD_BEGIN = b"__DISTILLSCHEDULE_PAYLOAD_BEGIN__"
+_PAYLOAD_END = b"__DISTILLSCHEDULE_PAYLOAD_END__"
+
+
+def decode_remote_payload(raw: bytes) -> bytes:
+    """Extract one file payload from a noisy mandatory-PTY SSH channel."""
+
+    try:
+        start = raw.index(_PAYLOAD_BEGIN) + len(_PAYLOAD_BEGIN)
+        end = raw.index(_PAYLOAD_END, start)
+    except ValueError as error:
+        raise RuntimeError("remote payload markers are missing") from error
+    return base64.b64decode(raw[start:end].strip(), validate=True)
+
+
+def read_remote_file(host: str, path: Path, *, port: int) -> bytes:
+    # The platform banner and connection epilogue are emitted on every PTY.
+    # Mark and base64 the actual file so those transport bytes never corrupt
+    # JSON receipts copied into the local evidence directory.
+    command = (
+        f"printf '{_PAYLOAD_BEGIN.decode()}\\n'; "
+        f"base64 -w0 {shlex.quote(str(path))}; "
+        f"printf '\\n{_PAYLOAD_END.decode()}\\n'"
+    )
+    raw = subprocess.check_output(ssh(host, command, port=port), timeout=60)
+    return decode_remote_payload(raw)
 
 
 def resolve_master(host: str, *, port: int) -> str:
@@ -233,12 +262,7 @@ def summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
     completed = subprocess.run(
         ssh(args.hosts[0], remote, port=args.ssh_port), check=False, timeout=900
     )
-    raw = subprocess.check_output(
-        ssh(
-            args.hosts[0], f"cat {shlex.quote(str(summary))}", port=args.ssh_port
-        ),
-        timeout=60,
-    )
+    raw = read_remote_file(args.hosts[0], summary, port=args.ssh_port)
     local.mkdir(parents=True, exist_ok=True)
     (local / "summary.json").write_bytes(raw)
     value = json.loads(raw)

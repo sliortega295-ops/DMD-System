@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import base64
+import importlib.util
 import json
 from pathlib import Path
+import sys
 from types import SimpleNamespace
 
 from distillschedule.core.config import load_plan
@@ -14,6 +17,16 @@ from distillschedule.runtime.livewan_host_runahead import PinnedHostRunaheadTran
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _load_controller():
+    path = ROOT / "scripts/distillschedule/run_livewan_crossscale_world16.py"
+    spec = importlib.util.spec_from_file_location("livewan_c21_controller", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 C20 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c20_generator_flash_attn2.json"
 C21 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c21_continuous_b16.json"
 
@@ -100,3 +113,18 @@ def test_controller_launcher_and_probe_register_c21() -> None:
     assert "livewan_wan13b_14b_sf_dmd_c21_continuous_b16.json" in launcher
     assert 'args.pipeline_variant == "c21-continuous-b16"' in probe
     assert "paired Critic-shadow broadcast mismatch" in probe
+
+
+def test_controller_extracts_json_from_mandatory_pty_banner() -> None:
+    controller = _load_controller()
+    payload = b'{"status":"PASS"}\n'
+    raw = (
+        b"platform banner\r\n"
+        + controller._PAYLOAD_BEGIN
+        + b"\r\n"
+        + base64.b64encode(payload)
+        + b"\r\n"
+        + controller._PAYLOAD_END
+        + b"\r\nConnection closed\r\n"
+    )
+    assert controller.decode_remote_payload(raw) == payload
