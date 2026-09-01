@@ -650,19 +650,21 @@ def main() -> int:
                 ),
                 "triton_block_size": 512,
                 "fp32_rounding_order": "mul_then_first_product_fma_rn",
-                "invocation_count": 880 if rank in score_ranks else 0,
+                # Five B2 Critic forward/replay pairs contribute 600 Q/K
+                # rotations.  The two logical Teacher rows are executed as the
+                # pinned B2 CFG path and contribute another 160 rotations.
+                "invocation_count": 760 if rank in score_ranks else 0,
                 "backward_invocation_count": 300 if rank in score_ranks else 0,
-                "element_count": 54_998_630_400 if rank in score_ranks else 0,
+                "element_count": 67_264_512_000 if rank in score_ranks else 0,
                 "backward_element_count": 17_805_312_000 if rank in score_ranks else 0,
                 "shape_histogram": (
                     {
-                        "1x19320x12x128": 120,
                         "2x19320x12x128": 600,
-                        "1x19320x40x128": 160,
+                        "2x19320x40x128": 160,
                     }
                     if rank in score_ranks else {}
                 ),
-                "table_rank_histogram": {"3": 880} if rank in score_ranks else {},
+                "table_rank_histogram": {"3": 760} if rank in score_ranks else {},
                 "contract_failure_count": 0,
             }
             for key, expected_value in expected_rope.items():
