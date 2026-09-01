@@ -61,6 +61,7 @@ def main() -> int:
             "c18-generator-cross-kv-cache",
             "c19-host-runahead",
             "c20-generator-flash-attn2",
+            "c21-continuous-b16",
             "phase-expanded-critic16",
             "phase-expanded-critic16-fused-lora-elision",
             "score-b2",
@@ -119,9 +120,17 @@ def main() -> int:
         in {
             "c19-host-runahead",
             "c20-generator-flash-attn2",
+            "c21-continuous-b16",
         }
         else None
     )
+    critic_shadow_pair_group = None
+    if args.pipeline_variant == "c21-continuous-b16":
+        pair_groups = [
+            dist.new_group(ranks=[lane, lane + 8], backend="nccl")
+            for lane in range(8)
+        ]
+        critic_shadow_pair_group = pair_groups[rank if rank < 8 else rank - 8]
 
     # Collectively initialize default world before asymmetric default-group P2P.
     dist.barrier()
@@ -138,6 +147,29 @@ def main() -> int:
         dist.all_reduce(host_token, group=host_runahead_group)
         if int(host_token.item()) != WORLD_SIZE:
             raise RuntimeError("host run-ahead Gloo all-reduce mismatch")
+    critic_shadow_sync_canary = None
+    if critic_shadow_pair_group is not None:
+        lane = rank if rank < 8 else rank - 8
+        source_rank = lane + 8
+        value = torch.full(
+            (4096,), float(source_rank + 1), dtype=torch.float32, device=device
+        )
+        if rank < 8:
+            value.zero_()
+        dist.broadcast(
+            value, src=source_rank, group=critic_shadow_pair_group
+        )
+        if not torch.equal(
+            value, torch.full_like(value, float(source_rank + 1))
+        ):
+            raise RuntimeError("paired Critic-shadow broadcast mismatch")
+        critic_shadow_sync_canary = {
+            "pair_ranks": [lane, lane + 8],
+            "source_rank": source_rank,
+            "dtype": "torch.float32",
+            "elements": value.numel(),
+            "status": "PASS",
+        }
 
     async_reducer_canary = None
     if (
@@ -157,6 +189,7 @@ def main() -> int:
             "c18-generator-cross-kv-cache",
             "c19-host-runahead",
             "c20-generator-flash-attn2",
+            "c21-continuous-b16",
         }
         and rank in critic_ranks
     ):
@@ -404,6 +437,7 @@ def main() -> int:
             "c18-generator-cross-kv-cache",
             "c19-host-runahead",
             "c20-generator-flash-attn2",
+            "c21-continuous-b16",
             "phase-expanded-critic16",
         }
         else (lane, lane + 8)
@@ -525,6 +559,7 @@ def main() -> int:
                 "c18-generator-cross-kv-cache",
                 "c19-host-runahead",
                 "c20-generator-flash-attn2",
+            "c21-continuous-b16",
             }
             else "final_dmd_gradient_float32"
         ),
@@ -549,6 +584,7 @@ def main() -> int:
                 "c18-generator-cross-kv-cache",
                 "c19-host-runahead",
                 "c20-generator-flash-attn2",
+            "c21-continuous-b16",
                 "phase-expanded-critic16",
                 "phase-expanded-critic16-fused-lora-elision",
             }
@@ -559,6 +595,7 @@ def main() -> int:
         "critic_group_size": len(critic_ranks) if rank in critic_ranks else 0,
         "phase_expanded_critic16": phase_expanded_critic16,
         "host_runahead_canary": host_runahead_canary,
+        "critic_shadow_sync_canary": critic_shadow_sync_canary,
         "observed": observed,
         "observed_gradients": observed_gradients,
     }
@@ -590,6 +627,7 @@ def main() -> int:
                 "c18-generator-cross-kv-cache",
                 "c19-host-runahead",
                 "c20-generator-flash-attn2",
+            "c21-continuous-b16",
                 "phase-expanded-critic16",
                 "phase-expanded-critic16-fused-lora-elision",
             }
@@ -619,11 +657,20 @@ def main() -> int:
                         not in {
                             "c19-host-runahead",
                             "c20-generator-flash-attn2",
+            "c21-continuous-b16",
                         }
                         or all(
                             row.get("host_runahead_canary", {}).get("status") == "PASS"
                             and row.get("host_runahead_canary", {}).get("messages") == 8
                             and row.get("host_runahead_canary", {}).get("pinned_buffers") == 8
+                            for row in rows
+                        )
+                    )
+                    and (
+                        args.pipeline_variant != "c21-continuous-b16"
+                        or all(
+                            row.get("critic_shadow_sync_canary", {}).get("status")
+                            == "PASS"
                             for row in rows
                         )
                     )

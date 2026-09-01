@@ -25,7 +25,7 @@ RUNAHEAD_TAG_BASE = 27100
 
 
 def runahead_tag(step: int, wave: int) -> int:
-    if step not in RUNAHEAD_STEPS:
+    if step <= 0:
         raise ValueError(f"invalid run-ahead step: {step}")
     if wave not in RUNAHEAD_WAVES:
         raise ValueError(f"invalid run-ahead wave: {wave}")
@@ -43,6 +43,8 @@ class PinnedHostRunaheadTransport:
     is_generator: bool
     shape: Sequence[int]
     dtype: Any
+    cycles: int = 1
+    cross_cycle_lookahead: bool = False
     buffers: dict[tuple[int, int], Any] = field(default_factory=dict)
     receive_works: dict[tuple[int, int], Any] = field(default_factory=dict)
     copy_events: dict[tuple[int, int], Any] = field(default_factory=dict)
@@ -51,6 +53,10 @@ class PinnedHostRunaheadTransport:
     received_keys: set[tuple[int, int]] = field(default_factory=set)
 
     def __post_init__(self) -> None:
+        if self.cycles < 1:
+            raise RuntimeError("run-ahead transport cycle count is invalid")
+        if self.cycles > 1 and not self.cross_cycle_lookahead:
+            raise RuntimeError("continuous run-ahead requires the registered lookahead")
         self.shape = tuple(int(value) for value in self.shape)
         if not self.shape or any(value <= 0 for value in self.shape):
             raise RuntimeError("run-ahead transport shape is invalid")
@@ -69,33 +75,33 @@ class PinnedHostRunaheadTransport:
             if self.is_generator
             else None
         )
-        for step in RUNAHEAD_STEPS:
-            for wave in RUNAHEAD_WAVES:
-                key = (step, wave)
-                self.buffers[key] = self.torch.empty(
-                    self.shape,
-                    dtype=self.dtype,
-                    device="cpu",
-                    pin_memory=True,
-                )
+        for key in sorted(self.expected_keys):
+            self.buffers[key] = self.torch.empty(
+                self.shape,
+                dtype=self.dtype,
+                device="cpu",
+                pin_memory=True,
+            )
         if not self.is_generator:
-            for step in RUNAHEAD_STEPS:
-                for wave in RUNAHEAD_WAVES:
-                    key = (step, wave)
-                    self.receive_works[key] = self.dist.irecv(
-                        self.buffers[key],
-                        src=self.peer,
-                        group=self.group,
-                        tag=runahead_tag(step, wave),
-                    )
+            for key in sorted(self.expected_keys):
+                self.receive_works[key] = self.dist.irecv(
+                    self.buffers[key],
+                    src=self.peer,
+                    group=self.group,
+                    tag=runahead_tag(*key),
+                )
 
     @property
     def expected_keys(self) -> set[tuple[int, int]]:
-        return {
-            (step, wave)
+        keys = {
+            (cycle * 5 + step, wave)
+            for cycle in range(self.cycles)
             for step in RUNAHEAD_STEPS
             for wave in RUNAHEAD_WAVES
         }
+        if self.cross_cycle_lookahead:
+            keys.update((cycle * 5, 0) for cycle in range(1, self.cycles))
+        return keys
 
     def _send_after_copy(self, key: tuple[int, int], event: Any, source: Any) -> None:
         self.torch.cuda.set_device(self.device)
@@ -178,9 +184,17 @@ class PinnedHostRunaheadTransport:
             "enabled": True,
             "name": "pinned_cpu_gloo_latent_v1",
             "role": "generator" if self.is_generator else "score",
-            "execution_status": "PASS" if event_count == 8 else "INCOMPLETE",
+            "execution_status": (
+                "PASS" if event_count == len(self.expected_keys) else "INCOMPLETE"
+            ),
             "backend": "gloo",
-            "scope": "critic_only_steps_1_4_latent_only",
+            "scope": (
+                "continuous_critic_only_steps_1_4_plus_next_cycle_step0_wave0"
+                if self.cycles > 1
+                else "critic_only_steps_1_4_latent_only"
+            ),
+            "cycles": int(self.cycles),
+            "cross_cycle_lookahead": bool(self.cross_cycle_lookahead),
             "step0_transport": "cuda_nccl_p2p_unchanged",
             "context_transport": "trace_local_replay_unchanged",
             "payload_shape": list(self.shape),

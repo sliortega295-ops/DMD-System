@@ -124,7 +124,13 @@ class OperationTraceRow:
     critic_update: bool
 
     @classmethod
-    def from_mapping(cls, value: Mapping[str, Any]) -> "OperationTraceRow":
+    def from_mapping(
+        cls,
+        value: Mapping[str, Any],
+        *,
+        total_steps: int = FULL5_STEPS,
+        cycle_length: int = FULL5_STEPS,
+    ) -> "OperationTraceRow":
         required_seeds = {
             "rollout",
             "generator_dmd_t",
@@ -148,13 +154,40 @@ class OperationTraceRow:
             generator_update=bool(value["generator_update"]),
             critic_update=bool(value["critic_update"]),
         )
-        _require(row.operation_key == f"step={row.logical_step}/slot={row.logical_slot}", "operation key mismatch")
+        cycle_index = row.logical_step // cycle_length
+        cycle_step = row.logical_step % cycle_length
+        if total_steps == FULL5_STEPS:
+            expected_operation_key = (
+                f"step={row.logical_step}/slot={row.logical_slot}"
+            )
+        else:
+            _require(
+                int(value.get("cycle_index", -1)) == cycle_index
+                and int(value.get("cycle_step", -1)) == cycle_step,
+                "continuous trace cycle address mismatch",
+            )
+            expected_operation_key = (
+                f"cycle={cycle_index}/step={cycle_step}/"
+                f"global_step={row.logical_step}/slot={row.logical_slot}"
+            )
+        _require(row.operation_key == expected_operation_key, "operation key mismatch")
         _require(row.world_frames in WORLD_CHOICES, "world choice is outside source contract")
-        _require(0 <= row.logical_step < FULL5_STEPS, "logical step outside Full5")
+        _require(0 <= row.logical_step < total_steps, "logical step outside trace")
         _require(0 <= row.logical_slot < GLOBAL_BATCH, "logical slot outside global batch")
-        _require(row.generator_update == (row.logical_step == 0), "G1/C5 trace predicate changed")
+        _require(
+            row.generator_update == (cycle_step == 0),
+            "G1/C5 per-cycle trace predicate changed",
+        )
         _require(row.critic_update, "every Full5 step requires a Critic update")
         return row
+
+    @property
+    def cycle_index(self) -> int:
+        return self.logical_step // FULL5_STEPS
+
+    @property
+    def cycle_step(self) -> int:
+        return self.logical_step % FULL5_STEPS
 
     @property
     def new_blocks(self) -> int:
@@ -168,27 +201,62 @@ class FormalTrace:
     prompts_path: Path
     prompts_sha256: str
     rows: tuple[OperationTraceRow, ...]
+    steps: int = FULL5_STEPS
+    cycles: int = 1
+    source_reuse_across_cycles: bool = False
 
     @classmethod
-    def load(cls, path: str | Path) -> "FormalTrace":
+    def load(
+        cls, path: str | Path, *, expected_cycles: int = 1
+    ) -> "FormalTrace":
         resolved = Path(path).expanduser().resolve()
         value = json.loads(resolved.read_text(encoding="utf-8"))
         _require(value.get("livewan_commit") == LIVEWAN_COMMIT, "trace LiveWan revision mismatch")
         _require(value.get("wan21_commit") == WAN21_COMMIT, "trace Wan2.1 revision mismatch")
         _require(int(value.get("world_size", -1)) == WORLD_SIZE, "trace is not world16")
-        _require(int(value.get("steps", -1)) == FULL5_STEPS, "trace is not Full5")
+        _require(expected_cycles >= 1, "trace cycle count must be positive")
+        steps = int(value.get("steps", -1))
+        cycles = int(value.get("cycles", 1))
+        cycle_length = int(value.get("cycle_length", FULL5_STEPS))
+        _require(cycle_length == FULL5_STEPS, "trace cycle length is not Full5")
+        _require(cycles == expected_cycles, "trace cycle count differs from plan")
+        _require(steps == cycles * FULL5_STEPS, "trace step count is not cycles x Full5")
+        source_reuse = bool(value.get("source_reuse_across_cycles", False))
+        if cycles == 1:
+            _require(not source_reuse, "single-cycle trace unexpectedly declares source reuse")
+        else:
+            _require(source_reuse, "continuous trace must disclose source reuse")
         recorded = str(value.get("trace_sha256", ""))
         actual = hashlib.sha256(_canonical_without_sha(value, "trace_sha256")).hexdigest()
         _require(recorded == actual, "trace payload SHA mismatch")
-        rows = tuple(OperationTraceRow.from_mapping(row) for row in value["rows"])
+        rows = tuple(
+            OperationTraceRow.from_mapping(
+                row, total_steps=steps, cycle_length=cycle_length
+            )
+            for row in value["rows"]
+        )
         pairs = {(row.logical_step, row.logical_slot) for row in rows}
-        expected = {(step, slot) for step in range(FULL5_STEPS) for slot in range(GLOBAL_BATCH)}
-        _require(len(rows) == FULL5_STEPS * GLOBAL_BATCH and pairs == expected, "trace is not a 5x16 bijection")
+        expected = {
+            (step, slot) for step in range(steps) for slot in range(GLOBAL_BATCH)
+        }
+        _require(
+            len(rows) == steps * GLOBAL_BATCH and pairs == expected,
+            "trace is not a steps x global-batch bijection",
+        )
         prompts = dict(value["prompts"])
         prompts_path = Path(prompts["path"]).expanduser().resolve()
         _require(prompts_path.is_file(), "trace prompt bundle is missing")
         _require(sha256_file(prompts_path) == prompts["sha256"], "prompt bundle SHA mismatch")
-        return cls(resolved, actual, prompts_path, str(prompts["sha256"]), rows)
+        return cls(
+            resolved,
+            actual,
+            prompts_path,
+            str(prompts["sha256"]),
+            rows,
+            steps,
+            cycles,
+            source_reuse,
+        )
 
     def row(self, step: int, slot: int) -> OperationTraceRow:
         return self.rows[step * GLOBAL_BATCH + slot]
@@ -207,17 +275,26 @@ def _validate_trace_balanced_pairing(
     pairs = _pipeline_8x8_slot_pairs(plan)
     current = tuple((lane, lane + 8) for lane in range(8))
 
-    def step_max(candidate: Sequence[Sequence[int]]) -> list[int]:
+    def cycle_step_max(
+        candidate: Sequence[Sequence[int]], cycle_index: int
+    ) -> list[int]:
+        offset = cycle_index * FULL5_STEPS
         return [
             max(
-                sum(trace.row(step, slot).new_blocks for slot in pair)
+                sum(trace.row(offset + step, slot).new_blocks for slot in pair)
                 for pair in candidate
             )
             for step in range(FULL5_STEPS)
         ]
 
-    current_max = step_max(current)
-    candidate_max = step_max(pairs)
+    current_by_cycle = [
+        cycle_step_max(current, cycle) for cycle in range(trace.cycles)
+    ]
+    candidate_by_cycle = [
+        cycle_step_max(pairs, cycle) for cycle in range(trace.cycles)
+    ]
+    current_max = current_by_cycle[0]
+    candidate_max = candidate_by_cycle[0]
     metadata = plan.get("metadata", {})
     _require(
         current_max == list(metadata.get("current_step_max_new_blocks", ())),
@@ -230,6 +307,11 @@ def _validate_trace_balanced_pairing(
     _require(
         sum(candidate_max) < sum(current_max),
         "trace-balanced routing no longer lowers the registered critical load",
+    )
+    _require(
+        all(value == current_max for value in current_by_cycle)
+        and all(value == candidate_max for value in candidate_by_cycle),
+        "continuous trace changed the registered per-cycle routing load",
     )
 
 
@@ -481,6 +563,7 @@ class ModelBundle:
     generator_optimizer: Any | None
     critic_optimizer: Any | None
     critic_lora_params: list[Any]
+    critic_shadow_lora_params: list[Any]
     critic_gradient_reducer: GradReadyAsyncGroupReducer | None
     generator_group: Any | None
     score_group: Any | None
@@ -488,6 +571,7 @@ class ModelBundle:
     score_local_group: Any | None
     score_leader_group: Any | None
     runahead_host_group: Any | None
+    critic_shadow_sync_group: Any | None
     score_local_ranks: tuple[int, ...]
     score_leader_ranks: tuple[int, ...]
     generator_group_size: int
@@ -624,6 +708,43 @@ def _split_dmd_shadow_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
     return True
 
 
+def _continuous_pipeline_contract(
+    plan: Mapping[str, Any], *, mode: str
+) -> Mapping[str, Any] | None:
+    """Validate the C21 continuous-B16 execution contract."""
+
+    value = plan.get("metadata", {}).get("continuous_pipeline")
+    if value is None:
+        return None
+    _require(mode == "pipeline", "continuous execution is pipeline-only")
+    _require(
+        plan.get("metadata", {}).get("pool_policy") == TRACE_BALANCED_POOL_POLICY,
+        "continuous execution requires the exact C20 pool substrate",
+    )
+    expected = {
+        "enabled": True,
+        "name": "continuous_full5_b16_depth1_v1",
+        "cycles": 3,
+        "cycle_length": FULL5_STEPS,
+        "lookahead_depth": 1,
+        "lookahead_scope": "next_cycle_step0_wave0_rollout_only",
+        "source_reuse_across_cycles": True,
+        "fresh_rank_qualified_rng_per_cycle": True,
+        "critic_shadow_hot_sync": "paired_score_to_generator_fp32_lora_after_c5",
+        "critic_shadow_sync_versions": [5, 10],
+        "single_generator_commit_per_cycle": True,
+        "five_critic_commits_per_cycle": True,
+        "math_and_call_inventory_preserved": True,
+    }
+    _require(dict(value) == expected, "continuous pipeline contract changed")
+    _require(_split_dmd_shadow_enabled(plan, mode=mode), "continuous pipeline needs split-DMD shadow")
+    _require(
+        _generator_runahead_transport_enabled(plan, mode=mode),
+        "continuous pipeline needs the C19 pinned-host transport",
+    )
+    return value
+
+
 def _generator_runahead_transport_enabled(
     plan: Mapping[str, Any], *, mode: str
 ) -> bool:
@@ -694,6 +815,7 @@ def build_models(
     score_group = dist.new_group(ranks=list(score_ranks))
     pool_policy = str(plan.get("metadata", {}).get("pool_policy", ""))
     split_dmd_shadow = _split_dmd_shadow_enabled(plan, mode=mode)
+    continuous_contract = _continuous_pipeline_contract(plan, mode=mode)
     critic_group = (
         dist.new_group(ranks=list(critic_ranks))
         if critic_ranks != score_ranks
@@ -704,6 +826,12 @@ def build_models(
         if _generator_runahead_transport_enabled(plan, mode=mode)
         else None
     )
+    critic_shadow_sync_group = None
+    if continuous_contract is not None:
+        pair_groups = [
+            dist.new_group(ranks=[lane, lane + 8]) for lane in range(8)
+        ]
+        critic_shadow_sync_group = pair_groups[rank if rank < 8 else rank - 8]
     node_local_score = (
         mode == "pipeline"
         and pool_policy == "persistent_6g_10score_teacher_node_local_hierarchical"
@@ -735,6 +863,7 @@ def build_models(
     student = critic = critic_shadow = teacher = None
     opt_g = opt_c = None
     lora_params: list[Any] = []
+    shadow_lora_params: list[Any] = []
     critic_gradient_reducer = None
 
     if owns_generator:
@@ -949,6 +1078,21 @@ def build_models(
             "reduction": "SUM_THEN_DIVIDE_GROUP_SIZE",
         }
 
+    if continuous_contract is not None:
+        metadata["continuous_pipeline"] = {
+            "enabled": True,
+            "cycles": int(continuous_contract["cycles"]),
+            "lookahead_depth": int(continuous_contract["lookahead_depth"]),
+            "critic_shadow_sync_group_ranks": [
+                rank if rank < 8 else rank - 8,
+                (rank if rank < 8 else rank - 8) + 8,
+            ],
+            "critic_shadow_sync_dtype": "torch.float32",
+            "critic_shadow_sync_parameter_count": len(
+                shadow_lora_params if owns_generator else lora_params
+            ),
+        }
+
     torch.cuda.synchronize(device)
     score_local_group = None
     score_local_ranks: tuple[int, ...] = ()
@@ -974,6 +1118,7 @@ def build_models(
         generator_optimizer=opt_g,
         critic_optimizer=opt_c,
         critic_lora_params=lora_params,
+        critic_shadow_lora_params=shadow_lora_params,
         critic_gradient_reducer=critic_gradient_reducer,
         generator_group=generator_group if owns_generator else None,
         score_group=score_group if owns_score else None,
@@ -985,6 +1130,7 @@ def build_models(
             else None
         ),
         runahead_host_group=runahead_host_group,
+        critic_shadow_sync_group=critic_shadow_sync_group,
         score_local_ranks=score_local_ranks,
         score_leader_ranks=(
             PIPELINE_6G10S_SCORE_LEADERS if node_local_score else ()
@@ -1185,6 +1331,14 @@ def _warm_communicators(
             "run-ahead host communicator warm-up failed",
         )
         warmed_groups.append("runahead_host_gloo")
+    if bundle.critic_shadow_sync_group is not None:
+        token = torch.ones(1, dtype=torch.int64, device=device)
+        dist.all_reduce(token, group=bundle.critic_shadow_sync_group)
+        _require(
+            int(token.cpu()) == 2,
+            "Critic-shadow paired communicator warm-up failed",
+        )
+        warmed_groups.append("critic_shadow_pair")
 
     pair_peer = None
     routed_slots: list[int] = []
@@ -1889,6 +2043,10 @@ class RunEvidence:
     score_context_prefetch: dict[str, Any] = field(default_factory=dict)
     split_dmd_shadow: dict[str, Any] = field(default_factory=dict)
     generator_runahead_transport: dict[str, Any] = field(default_factory=dict)
+    continuous_pipeline: dict[str, Any] = field(default_factory=dict)
+    critic_shadow_hot_sync: dict[str, Any] = field(default_factory=dict)
+    score_receive_waits: list[dict[str, Any]] = field(default_factory=list)
+    generator_backpressure: list[dict[str, Any]] = field(default_factory=list)
 
     def add_logical_score_calls(self, key: str, count: int) -> None:
         _require(count > 0, "logical Score call count must be positive")
@@ -2459,7 +2617,15 @@ def run_worker(
     plan_path = Path(plan_path).expanduser().resolve()
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
     _validate_plan_identity(plan, mode=mode)
-    trace = FormalTrace.load(plan["evidence"]["operation_trace"])
+    continuous_contract = _continuous_pipeline_contract(plan, mode=mode)
+    continuous_cycles = (
+        int(continuous_contract["cycles"])
+        if continuous_contract is not None
+        else 1
+    )
+    trace = FormalTrace.load(
+        plan["evidence"]["operation_trace"], expected_cycles=continuous_cycles
+    )
     _validate_trace_balanced_pairing(plan, trace)
     bootstrap = Bootstrap.load(plan["evidence"]["checkpoint"], trace=trace)
     root = Path(repo_root).expanduser().resolve()
@@ -2808,6 +2974,8 @@ def run_worker(
             is_generator=rank < 8,
             shape=LATENT_SHAPE,
             dtype=torch.float32,
+            cycles=continuous_cycles,
+            cross_cycle_lookahead=continuous_cycles > 1,
         )
         bundle.metadata["generator_runahead_transport_setup"] = {
             "enabled": True,
@@ -2820,6 +2988,33 @@ def run_worker(
             "payload_bytes": int(runahead_host_transport.payload_bytes),
             "setup_position": "after_communicator_warmup_before_full5_timer",
         }
+    critic_shadow_hot_sync = None
+    if continuous_contract is not None and run_kind != "capacity":
+        from distillschedule.runtime.livewan_critic_shadow_sync import (
+            PairedCriticShadowSync,
+        )
+
+        is_generator_rank = rank < 8
+        parameters = (
+            bundle.critic_shadow_lora_params
+            if is_generator_rank
+            else bundle.critic_lora_params
+        )
+        critic_shadow_hot_sync = PairedCriticShadowSync(
+            torch=torch,
+            dist=dist,
+            group=bundle.critic_shadow_sync_group,
+            rank=rank,
+            peer=rank + 8 if is_generator_rank else rank - 8,
+            score_rank=rank + 8 if is_generator_rank else rank,
+            device=device,
+            parameters=parameters,
+            is_generator=is_generator_rank,
+            run_kind=run_kind,
+        )
+        bundle.metadata["critic_shadow_hot_sync_setup"] = dict(
+            critic_shadow_hot_sync.validate_pair_contract()
+        )
     build_wall = time.perf_counter() - build_started
     setup_memory = memory_snapshot(torch, device)
     if run_kind == "capacity":
@@ -2913,6 +3108,26 @@ def run_worker(
                     torch=torch, rank=rank, trace=trace, loader=loader, bundle=bundle,
                     streamers=generator_streamers, score_context=score_context,
                     run_kind=run_kind, evidence=evidence, versions=versions, device=device,
+                )
+            elif continuous_contract is not None:
+                _run_pipeline_8x8_continuous(
+                    torch=torch,
+                    rank=rank,
+                    trace=trace,
+                    loader=loader,
+                    bundle=bundle,
+                    streamers=generator_streamers,
+                    score_context=score_context,
+                    run_kind=run_kind,
+                    evidence=evidence,
+                    versions=versions,
+                    device=device,
+                    runahead_host_transport=runahead_host_transport,
+                    critic_shadow_hot_sync=critic_shadow_hot_sync,
+                    slot_pairs_by_lane=_pipeline_8x8_slot_pairs(plan),
+                    full_context_lens_elision=_full_context_lens_elision(
+                        plan, mode=mode
+                    ),
                 )
             elif (
                 plan.get("metadata", {}).get("pool_policy")
@@ -3062,6 +3277,7 @@ def run_worker(
             slot_routing["critic_slot"] = int(
                 slot_pairs[lane][1] if rank < 8 else slot_pairs[lane][0]
             )
+    workload_cycles = int(trace.cycles)
     receipt = {
         "status": "PASS",
         "rank": rank,
@@ -3071,10 +3287,14 @@ def run_worker(
         "trace_sha256": trace.sha256,
         "bootstrap_sha256": bootstrap.sha256,
         "source_receipt_sha256": source_receipt["source_receipt_sha256"],
-        "logical_generator_updates": GENERATOR_UPDATES,
-        "logical_critic_updates": CRITIC_UPDATES,
-        "physical_generator_commits": GENERATOR_UPDATES if bundle.student is not None else 0,
-        "physical_critic_commits": CRITIC_UPDATES if bundle.critic is not None else 0,
+        "logical_generator_updates": GENERATOR_UPDATES * workload_cycles,
+        "logical_critic_updates": CRITIC_UPDATES * workload_cycles,
+        "physical_generator_commits": (
+            GENERATOR_UPDATES * workload_cycles if bundle.student is not None else 0
+        ),
+        "physical_critic_commits": (
+            CRITIC_UPDATES * workload_cycles if bundle.critic is not None else 0
+        ),
         "initial_versions": bootstrap.versions,
         "final_versions": versions,
         "call_inventory": inventory.counts,
@@ -3106,6 +3326,10 @@ def run_worker(
         "generator_cross_attention_kv_cache": generator_cross_kv_cache,
         "generator_attention_backend": generator_attention_backend,
         "generator_runahead_transport": evidence.generator_runahead_transport,
+        "continuous_pipeline": evidence.continuous_pipeline,
+        "critic_shadow_hot_sync": evidence.critic_shadow_hot_sync,
+        "score_receive_waits": evidence.score_receive_waits,
+        "generator_backpressure": evidence.generator_backpressure,
         "slot_routing": slot_routing,
         "full5_wall_seconds": full5_wall,
         "construction_wall_seconds": build_wall,
@@ -3433,6 +3657,11 @@ def _run_pipeline_8x8(
     score_context_prefetch: bool = False,
     split_dmd_shadow: bool = False,
     runahead_host_transport: Any | None = None,
+    step_offset: int = 0,
+    cycle_index: int = 0,
+    precomputed_first: PreparedRollout | None = None,
+    critic_shadow_hot_sync: Any | None = None,
+    finalize_host_transport: bool = True,
 ) -> None:
     import torch.distributed as dist
 
@@ -3458,15 +3687,23 @@ def _run_pipeline_8x8(
     else:
         _require(bundle.critic is not None and bundle.teacher is not None and score_context is not None, "pipeline Score role is incomplete")
 
-    evidence.split_dmd_shadow = {
-        "enabled": split_dmd_shadow,
-        "role": "generator" if is_generator else "score",
-        "execution_status": "PASS" if split_dmd_shadow else "DISABLED",
-        "fake_velocity_calls": 0,
-        "teacher_velocity_calls": 0,
-        "received_teacher_velocities": 0,
-        "received_final_gradients": 0,
-    }
+    if not evidence.split_dmd_shadow:
+        evidence.split_dmd_shadow = {
+            "enabled": split_dmd_shadow,
+            "role": "generator" if is_generator else "score",
+            "execution_status": "PASS" if split_dmd_shadow else "DISABLED",
+            "fake_velocity_calls": 0,
+            "teacher_velocity_calls": 0,
+            "received_teacher_velocities": 0,
+            "received_final_gradients": 0,
+        }
+    else:
+        _require(
+            evidence.split_dmd_shadow.get("enabled") == split_dmd_shadow
+            and evidence.split_dmd_shadow.get("role")
+            == ("generator" if is_generator else "score"),
+            "split-DMD evidence role changed across cycles",
+        )
     evidence.generator_runahead_transport = (
         runahead_host_transport.receipt()
         if runahead_host_transport is not None
@@ -3517,7 +3754,9 @@ def _run_pipeline_8x8(
             "execution_status": "DISABLED",
         }
 
+    _require(step_offset == cycle_index * FULL5_STEPS, "cycle step offset changed")
     for step in range(FULL5_STEPS):
+        global_step = step_offset + step
         if is_generator and rollout_runahead and step == 1:
             # Critic steps 1--4 do not feed a gradient back into Generator.
             # Keep exactly two persistent streamers and two pending P2P
@@ -3531,8 +3770,9 @@ def _run_pipeline_8x8(
             ]
             staged_keys: list[tuple[int, int] | None] = [None, None]
             for ahead_step in range(1, FULL5_STEPS):
+                ahead_global_step = step_offset + ahead_step
                 ahead_rows = tuple(
-                    trace.row(ahead_step, slot) for slot in lane_slots
+                    trace.row(ahead_global_step, slot) for slot in lane_slots
                 )
                 for wave in (0, 1):
                     previous = pending[wave]
@@ -3597,7 +3837,7 @@ def _run_pipeline_8x8(
                     ):
                         if runahead_host_transport is not None:
                             runahead_host_transport.enqueue_send(
-                                step=ahead_step, wave=wave, tensor=prepared.x0
+                                step=ahead_global_step, wave=wave, tensor=prepared.x0
                             )
                             works = ()
                         else:
@@ -3609,21 +3849,22 @@ def _run_pipeline_8x8(
                             )
                     evidence.transport_bytes += pair_bytes
                     if runahead_host_transport is not None:
-                        staged_keys[wave] = (ahead_step, wave)
+                        staged_keys[wave] = (ahead_global_step, wave)
                         pending[wave] = None
                     else:
                         # Retain payload tensors until NCCL reports completion.
                         pending[wave] = (prepared, tuple(works))
             if runahead_host_transport is not None:
-                with _profile_range(
-                    torch,
-                    run_kind=run_kind,
-                    label="livewan/pipeline_runahead/g/final_host_send_wait",
-                ):
-                    runahead_host_transport.finish()
-                evidence.generator_runahead_transport = (
-                    runahead_host_transport.receipt()
-                )
+                if finalize_host_transport:
+                    with _profile_range(
+                        torch,
+                        run_kind=run_kind,
+                        label="livewan/pipeline_runahead/g/final_host_send_wait",
+                    ):
+                        runahead_host_transport.finish()
+                    evidence.generator_runahead_transport = (
+                        runahead_host_transport.receipt()
+                    )
             else:
                 for wave, previous in enumerate(pending):
                     _require(previous is not None, "missing final run-ahead send")
@@ -3637,28 +3878,68 @@ def _run_pipeline_8x8(
             break
         if is_generator:
             bundle.generator_optimizer.zero_grad(set_to_none=True)
-            rows = tuple(trace.row(step, slot) for slot in lane_slots)
-            with _profile_range(
-                torch, run_kind=run_kind,
-                label=f"livewan/pipeline/g/step_{step}/rollout_wave_0",
-            ):
-                first = prepare_rollout(
-                    torch, row=rows[0], streamer=streamers[0], student=bundle.student,
-                    loader=loader, device=device,
-                    elide_full_context_lens=full_context_lens_elision,
+            rows = tuple(trace.row(global_step, slot) for slot in lane_slots)
+            if step == 0 and precomputed_first is not None:
+                _require(
+                    precomputed_first.row.operation_key == rows[0].operation_key,
+                    "cross-cycle lookahead row differs from the next trace row",
                 )
-            _record_output(torch, evidence, row=rows[0], x0=first.x0, run_kind=run_kind)
-            with _profile_range(
-                torch, run_kind=run_kind,
-                label=f"livewan/pipeline/g/step_{step}/send_wave_0",
-            ):
-                _send_pair(
-                    destination=peer,
-                    prepared=first,
-                    asynchronous=False,
-                    send_context=not score_context_from_trace,
+                _require(
+                    runahead_host_transport is not None and cycle_index > 0,
+                    "cross-cycle lookahead requires the continuous host transport",
                 )
-            evidence.transport_bytes += pair_bytes
+                first = precomputed_first
+            else:
+                with _profile_range(
+                    torch, run_kind=run_kind,
+                    label=f"livewan/pipeline/g/step_{step}/rollout_wave_0",
+                ):
+                    first = prepare_rollout(
+                        torch, row=rows[0], streamer=streamers[0], student=bundle.student,
+                        loader=loader, device=device,
+                        elide_full_context_lens=full_context_lens_elision,
+                    )
+                _record_output(torch, evidence, row=rows[0], x0=first.x0, run_kind=run_kind)
+                with _profile_range(
+                    torch, run_kind=run_kind,
+                    label=f"livewan/pipeline/g/step_{step}/send_wave_0",
+                ):
+                    _send_pair(
+                        destination=peer,
+                        prepared=first,
+                        asynchronous=False,
+                        send_context=not score_context_from_trace,
+                    )
+                evidence.transport_bytes += pair_bytes
+            # C21-0 is deliberately depth-1: only next-cycle wave0 may be
+            # produced before the previous C5 boundary.  Waiting for the exact
+            # Critic-shadow version here prevents wave1 from silently becoming
+            # a second cross-cycle lookahead sample.  Once the sync arrives,
+            # wave1 can overlap the Score pool's Teacher work on wave0.
+            if step == 0 and split_dmd_shadow and cycle_index > 0:
+                _require(
+                    critic_shadow_hot_sync is not None,
+                    "continuous Generator lacks Critic-shadow hot sync",
+                )
+                sync_started = time.perf_counter()
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label=(
+                        "livewan/continuous/"
+                        f"cycle_{cycle_index}/critic_shadow_receive_C{cycle_index * 5}"
+                    ),
+                ):
+                    critic_shadow_hot_sync.receive_and_load(
+                        version=cycle_index * CRITIC_UPDATES
+                    )
+                evidence.generator_backpressure.append(
+                    {
+                        "cycle": cycle_index,
+                        "kind": "critic_shadow_receive_wait_before_wave1",
+                        "wall_seconds": time.perf_counter() - sync_started,
+                    }
+                )
             with _profile_range(
                 torch, run_kind=run_kind,
                 label=f"livewan/pipeline/g/step_{step}/rollout_wave_1",
@@ -3807,7 +4088,7 @@ def _run_pipeline_8x8(
                         torch, list(bundle.student.parameters()), group=bundle.generator_group,
                         group_size=bundle.generator_group_size, bucket_mib=256,
                     )
-                    evidence.gradient_sync.append({"step": step, "role": "generator", **sync})
+                    evidence.gradient_sync.append({"step": global_step, "role": "generator", **sync})
                     generator_parameters = list(bundle.student.parameters())
                     generator_pre_clip = (
                         _state_metrics(torch, [parameter.grad for parameter in generator_parameters])
@@ -3817,7 +4098,7 @@ def _run_pipeline_8x8(
                         generator_parameters, 1.0, foreach=True,
                     )
                     _record_optimizer_diagnostics(
-                        torch, evidence, run_kind=run_kind, role="generator", step=step,
+                        torch, evidence, run_kind=run_kind, role="generator", step=global_step,
                         parameters=generator_parameters, clip_norm=generator_clip_norm,
                         gradient_before_clip=generator_pre_clip,
                     )
@@ -3838,14 +4119,17 @@ def _run_pipeline_8x8(
                 bundle.critic_gradient_reducer.zero_grad()
             else:
                 bundle.critic_optimizer.zero_grad(set_to_none=True)
-            rows = tuple(trace.row(step, slot) for slot in lane_slots)
+            rows = tuple(trace.row(global_step, slot) for slot in lane_slots)
+            receive_started = time.perf_counter()
             with _profile_range(
                 torch, run_kind=run_kind,
                 label=f"livewan/pipeline/score/step_{step}/recv_wave_0",
             ):
-                if runahead_host_transport is not None and step > 0:
+                if runahead_host_transport is not None and (
+                    step > 0 or (cycle_index > 0 and step == 0)
+                ):
                     first_x0 = runahead_host_transport.receive_to_device(
-                        step=step, wave=0
+                        step=global_step, wave=0
                     )
                     first_context = None
                 else:
@@ -3855,6 +4139,15 @@ def _run_pipeline_8x8(
                         device=device,
                         receive_context=not score_context_from_trace,
                     )
+            evidence.score_receive_waits.append(
+                {
+                    "cycle": cycle_index,
+                    "step": step,
+                    "global_step": global_step,
+                    "wave": 0,
+                    "wall_seconds": time.perf_counter() - receive_started,
+                }
+            )
             evidence.transport_bytes += pair_bytes
             if score_context_from_trace:
                 if not score_context_prefetch:
@@ -3909,13 +4202,22 @@ def _run_pipeline_8x8(
                         evidence.add_logical_score_calls("critic/nograd/plain", 1)
                     dist.send(returned0.contiguous(), dst=peer)
                 evidence.transport_bytes += returned0.numel() * returned0.element_size()
+            if cycle_index > 0 and step == 0:
+                _require(
+                    critic_shadow_hot_sync is not None,
+                    "continuous Score lacks Critic-shadow hot sync",
+                )
+                critic_shadow_hot_sync.wait_source(
+                    expected_version=cycle_index * CRITIC_UPDATES
+                )
+            receive_started = time.perf_counter()
             with _profile_range(
                 torch, run_kind=run_kind,
                 label=f"livewan/pipeline/score/step_{step}/recv_wave_1",
             ):
                 if runahead_host_transport is not None and step > 0:
                     second_x0 = runahead_host_transport.receive_to_device(
-                        step=step, wave=1
+                        step=global_step, wave=1
                     )
                     second_context = None
                 else:
@@ -3925,6 +4227,15 @@ def _run_pipeline_8x8(
                         device=device,
                         receive_context=not score_context_from_trace,
                     )
+            evidence.score_receive_waits.append(
+                {
+                    "cycle": cycle_index,
+                    "step": step,
+                    "global_step": global_step,
+                    "wave": 1,
+                    "wall_seconds": time.perf_counter() - receive_started,
+                }
+            )
             evidence.transport_bytes += pair_bytes
             if score_context_from_trace:
                 if not score_context_prefetch:
@@ -4073,7 +4384,7 @@ def _run_pipeline_8x8(
                     )
                 else:
                     sync = bundle.critic_gradient_reducer.finish()
-                evidence.gradient_sync.append({"step": step, "role": "critic", **sync})
+                evidence.gradient_sync.append({"step": global_step, "role": "critic", **sync})
                 critic_pre_clip = (
                     _state_metrics(torch, [parameter.grad for parameter in bundle.critic_lora_params])
                     if run_kind == "correctness" else None
@@ -4082,13 +4393,13 @@ def _run_pipeline_8x8(
                     bundle.critic_lora_params, 1.0, foreach=True,
                 )
                 _record_optimizer_diagnostics(
-                    torch, evidence, run_kind=run_kind, role="critic", step=step,
+                    torch, evidence, run_kind=run_kind, role="critic", step=global_step,
                     parameters=bundle.critic_lora_params, clip_norm=critic_clip_norm,
                     gradient_before_clip=critic_pre_clip,
                 )
                 bundle.critic_optimizer.step()
                 versions["critic"] += 1
-    if runahead_host_transport is not None and not is_generator:
+    if runahead_host_transport is not None and not is_generator and finalize_host_transport:
         runahead_host_transport.finish()
         evidence.generator_runahead_transport = runahead_host_transport.receipt()
     if score_context_prefetch and not is_generator:
@@ -4096,6 +4407,171 @@ def _run_pipeline_8x8(
             not prefetched_contexts,
             "Score context prefetch left unconsumed lane contexts",
         )
+
+
+def _run_pipeline_8x8_continuous(
+    *,
+    torch: Any,
+    rank: int,
+    trace: FormalTrace,
+    loader: InputLoader,
+    bundle: ModelBundle,
+    streamers: Sequence[Any],
+    score_context: ScoreContext | None,
+    run_kind: str,
+    evidence: RunEvidence,
+    versions: dict[str, int],
+    device: Any,
+    runahead_host_transport: Any,
+    critic_shadow_hot_sync: Any,
+    slot_pairs_by_lane: Sequence[Sequence[int]],
+    full_context_lens_elision: bool,
+) -> None:
+    """Run three exact Full5 cycles with one next-cycle rollout wave in flight."""
+
+    _require(trace.cycles == 3, "C21 continuous trace must contain three cycles")
+    _require(
+        runahead_host_transport is not None and critic_shadow_hot_sync is not None,
+        "C21 continuous transports are incomplete",
+    )
+    is_generator = rank < 8
+    lane = rank if is_generator else rank - 8
+    lane_slots = validate_slot_pairs(slot_pairs_by_lane)[lane]
+    latent_bytes = math.prod(LATENT_SHAPE) * 4
+    started = time.perf_counter()
+    cycle_events: list[dict[str, Any]] = []
+    precomputed_first: PreparedRollout | None = None
+
+    for cycle in range(trace.cycles):
+        cycle_started = time.perf_counter()
+        with _profile_range(
+            torch,
+            run_kind=run_kind,
+            label=f"livewan/continuous/cycle_{cycle}/rank_{rank}",
+        ):
+            _run_pipeline_8x8(
+                torch=torch,
+                rank=rank,
+                trace=trace,
+                loader=loader,
+                bundle=bundle,
+                streamers=streamers,
+                score_context=score_context,
+                run_kind=run_kind,
+                evidence=evidence,
+                versions=versions,
+                device=device,
+                rollout_runahead=True,
+                critic_b2_only=True,
+                score_context_from_trace=True,
+                slot_pairs_by_lane=slot_pairs_by_lane,
+                full_context_lens_elision=full_context_lens_elision,
+                score_context_prefetch=False,
+                split_dmd_shadow=True,
+                runahead_host_transport=runahead_host_transport,
+                step_offset=cycle * FULL5_STEPS,
+                cycle_index=cycle,
+                precomputed_first=precomputed_first,
+                critic_shadow_hot_sync=critic_shadow_hot_sync,
+                finalize_host_transport=False,
+            )
+        role_returned = time.perf_counter()
+        event: dict[str, Any] = {
+            "cycle": cycle,
+            "role": "generator" if is_generator else "score",
+            "cycle_local_wall_seconds": role_returned - cycle_started,
+            "role_return_offset_seconds": role_returned - started,
+            "generator_version": int(versions["generator"]),
+            "critic_version": int(versions["critic"]),
+        }
+        precomputed_first = None
+        if cycle + 1 < trace.cycles:
+            next_global_step = (cycle + 1) * FULL5_STEPS
+            if is_generator:
+                # The final current-cycle run-ahead value in streamer0 must have
+                # completed its D2H stage before the same persistent streamer is
+                # reused for the next cycle's first logical sample.
+                wait_started = time.perf_counter()
+                runahead_host_transport.wait_staged(
+                    step=cycle * FULL5_STEPS + 4, wave=0
+                )
+                evidence.generator_backpressure.append(
+                    {
+                        "cycle": cycle,
+                        "kind": "lookahead_streamer_reuse_wait",
+                        "wall_seconds": time.perf_counter() - wait_started,
+                    }
+                )
+                next_row = trace.row(next_global_step, lane_slots[0])
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label=(
+                        "livewan/continuous/"
+                        f"cycle_{cycle}/lookahead_next_cycle_wave0"
+                    ),
+                ):
+                    precomputed_first = prepare_rollout(
+                        torch,
+                        row=next_row,
+                        streamer=streamers[0],
+                        student=bundle.student,
+                        loader=loader,
+                        device=device,
+                        elide_full_context_lens=full_context_lens_elision,
+                    )
+                    _record_output(
+                        torch,
+                        evidence,
+                        row=next_row,
+                        x0=precomputed_first.x0,
+                        run_kind=run_kind,
+                    )
+                    runahead_host_transport.enqueue_send(
+                        step=next_global_step,
+                        wave=0,
+                        tensor=precomputed_first.x0,
+                    )
+                    evidence.transport_bytes += latent_bytes
+                event["next_cycle_wave0_ready_offset_seconds"] = (
+                    time.perf_counter() - started
+                )
+            else:
+                expected_version = (cycle + 1) * CRITIC_UPDATES
+                _require(
+                    int(versions["critic"]) == expected_version,
+                    "Score reached cross-cycle sync with the wrong Critic version",
+                )
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label=(
+                        "livewan/continuous/"
+                        f"cycle_{cycle}/critic_shadow_source_C{expected_version}"
+                    ),
+                ):
+                    critic_shadow_hot_sync.begin_source(version=expected_version)
+                event["critic_shadow_sync_submit_offset_seconds"] = (
+                    time.perf_counter() - started
+                )
+        cycle_events.append(event)
+
+    runahead_host_transport.finish()
+    evidence.generator_runahead_transport = runahead_host_transport.receipt()
+    critic_shadow_hot_sync.finish()
+    evidence.critic_shadow_hot_sync = dict(critic_shadow_hot_sync.receipt())
+    evidence.continuous_pipeline = {
+        "enabled": True,
+        "name": "continuous_full5_b16_depth1_v1",
+        "cycles": trace.cycles,
+        "cycle_length": FULL5_STEPS,
+        "lookahead_depth": 1,
+        "lookahead_scope": "next_cycle_step0_wave0_rollout_only",
+        "source_reuse_across_cycles": trace.source_reuse_across_cycles,
+        "events": cycle_events,
+        "role_total_wall_seconds": time.perf_counter() - started,
+        "execution_status": "PASS",
+    }
 
 
 def _run_pipeline_phase_expanded_critic16(

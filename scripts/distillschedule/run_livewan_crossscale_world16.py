@@ -105,6 +105,7 @@ def parser() -> argparse.ArgumentParser:
             "c18-generator-cross-kv-cache",
             "c19-host-runahead",
             "c20-generator-flash-attn2",
+            "c21-continuous-b16",
             "phase-expanded-critic16",
             "phase-expanded-critic16-fused-lora-elision",
             "score-b2",
@@ -208,7 +209,12 @@ def cancel(args: argparse.Namespace, node: int) -> None:
 def summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
     run_root = args.remote_output_root / args.run_id
     summary = run_root / "summary.json"
-    script = args.remote_root / "scripts/distillschedule/summarize_livewan_crossscale_world16.py"
+    summary_name = (
+        "summarize_livewan_continuous_world16.py"
+        if args.pipeline_variant == "c21-continuous-b16"
+        else "summarize_livewan_crossscale_world16.py"
+    )
+    script = args.remote_root / "scripts/distillschedule" / summary_name
     remote = (
         f"export PYTHONPATH={shlex.quote(str(args.remote_root / 'src'))}:{shlex.quote(str(args.remote_root))}; "
         f"{shlex.quote(str(args.pyenv / 'bin/python'))} {shlex.quote(str(script))} "
