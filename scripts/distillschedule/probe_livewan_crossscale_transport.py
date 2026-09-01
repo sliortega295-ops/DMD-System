@@ -60,6 +60,7 @@ def main() -> int:
             "c16-score-flash-attn2",
             "c18-generator-cross-kv-cache",
             "c19-host-runahead",
+            "c20-generator-flash-attn2",
             "phase-expanded-critic16",
             "phase-expanded-critic16-fused-lora-elision",
             "score-b2",
@@ -114,7 +115,11 @@ def main() -> int:
         )
     host_runahead_group = (
         dist.new_group(ranks=list(range(WORLD_SIZE)), backend="gloo")
-        if args.pipeline_variant == "c19-host-runahead"
+        if args.pipeline_variant
+        in {
+            "c19-host-runahead",
+            "c20-generator-flash-attn2",
+        }
         else None
     )
 
@@ -151,6 +156,7 @@ def main() -> int:
             "c16-score-flash-attn2",
             "c18-generator-cross-kv-cache",
             "c19-host-runahead",
+            "c20-generator-flash-attn2",
         }
         and rank in critic_ranks
     ):
@@ -397,6 +403,7 @@ def main() -> int:
             "c16-score-flash-attn2",
             "c18-generator-cross-kv-cache",
             "c19-host-runahead",
+            "c20-generator-flash-attn2",
             "phase-expanded-critic16",
         }
         else (lane, lane + 8)
@@ -515,8 +522,9 @@ def main() -> int:
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow-fused-adam",
                 "c15-score-rope",
                 "c16-score-flash-attn2",
-            "c18-generator-cross-kv-cache",
-            "c19-host-runahead",
+                "c18-generator-cross-kv-cache",
+                "c19-host-runahead",
+                "c20-generator-flash-attn2",
             }
             else "final_dmd_gradient_float32"
         ),
@@ -538,8 +546,9 @@ def main() -> int:
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow-fused-adam",
                 "c15-score-rope",
                 "c16-score-flash-attn2",
-            "c18-generator-cross-kv-cache",
-            "c19-host-runahead",
+                "c18-generator-cross-kv-cache",
+                "c19-host-runahead",
+                "c20-generator-flash-attn2",
                 "phase-expanded-critic16",
                 "phase-expanded-critic16-fused-lora-elision",
             }
@@ -578,8 +587,9 @@ def main() -> int:
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow-fused-adam",
                 "c15-score-rope",
                 "c16-score-flash-attn2",
-            "c18-generator-cross-kv-cache",
-            "c19-host-runahead",
+                "c18-generator-cross-kv-cache",
+                "c19-host-runahead",
+                "c20-generator-flash-attn2",
                 "phase-expanded-critic16",
                 "phase-expanded-critic16-fused-lora-elision",
             }
@@ -605,7 +615,11 @@ def main() -> int:
                         )
                     )
                     and (
-                        args.pipeline_variant != "c19-host-runahead"
+                        args.pipeline_variant
+                        not in {
+                            "c19-host-runahead",
+                            "c20-generator-flash-attn2",
+                        }
                         or all(
                             row.get("host_runahead_canary", {}).get("status") == "PASS"
                             and row.get("host_runahead_canary", {}).get("messages") == 8

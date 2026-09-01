@@ -2197,6 +2197,60 @@ def _score_attention_backend_enabled(plan: Mapping[str, Any], *, mode: str) -> b
     return True
 
 
+def _generator_attention_backend_enabled(
+    plan: Mapping[str, Any], *, mode: str
+) -> bool:
+    """Validate the C20 pinned Generator-rank FlashAttention-2 backend."""
+
+    metadata = plan.get("metadata", {})
+    backend = metadata.get("generator_attention_backend")
+    if backend is None:
+        return False
+    _require(
+        isinstance(backend, Mapping),
+        "Generator attention backend must be a mapping",
+    )
+    _require(mode == "pipeline", "Generator attention backend is candidate-only")
+    _require(
+        metadata.get("pool_policy") == TRACE_BALANCED_POOL_POLICY
+        and metadata.get("full_context_lens_elision") is True
+        and metadata.get("generator_cross_attention_kv_cache", {}).get("enabled")
+        is True
+        and metadata.get("generator_runahead_transport", {}).get("enabled") is True,
+        "Generator attention backend requires the validated C19 substrate",
+    )
+    expected = {
+        "enabled": True,
+        "name": "generator_flash_attn2_unmasked_exact_cast_v1",
+        "scope": "generator_ranks_student_and_frozen_critic_shadow",
+        "source_flash_attention_sha256": (
+            "c59c125fd92234d2ddec63f3ae3bd2a2479862faba44fa955fdedad2b8203a59"
+        ),
+        "artifact_metadata_sha256": (
+            "7749dd68b81a544c1973d68c30be5aa316ee1a718ae0228e0368c2cd04365516"
+        ),
+        "artifact_package_sha256": (
+            "0c560f96b857c188c4a8297ff27d1299619957c3459a5e433e132329fbfdf066"
+        ),
+        "artifact_extension_sha256": (
+            "c2acd487c5d1d77b7f6721eabc0fee4f8c5c8f9e682aadf43bfa99b394eecba7"
+        ),
+        "math_change": (
+            "replace_cudnn_sdpa_with_pinned_flash_attn2_under_fixed_parity_gate"
+        ),
+        "mask_contract": "full_length_unmasked_only",
+        "raw_input_dtype_contract": [
+            "bfloat16/bfloat16/bfloat16",
+            "float32/float32/bfloat16",
+        ],
+        "kernel_compute_dtype": "bfloat16",
+        "output_dtype": "preserve_query_dtype",
+        "head_dimension": 128,
+    }
+    _require(dict(backend) == expected, "Generator attention backend contract changed")
+    return True
+
+
 def _generator_cross_kv_cache_enabled(
     plan: Mapping[str, Any], *, mode: str
 ) -> bool:
@@ -2335,6 +2389,7 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _score_rope_kernel_enabled(plan, mode=mode)
     _score_attention_backend_enabled(plan, mode=mode)
     _generator_cross_kv_cache_enabled(plan, mode=mode)
+    _generator_attention_backend_enabled(plan, mode=mode)
     if (
         str(plan.get("metadata", {}).get("pool_policy", ""))
         == PHASE_EXPANDED_CRITIC16_POOL_POLICY
@@ -2618,6 +2673,56 @@ def run_worker(
                 "contract_failure_count": 0,
                 "query_shape_histogram": {},
             }
+    generator_attention_backend = {
+        "enabled": False,
+        "name": "native_livewan_generator_attention",
+        "execution_status": "DISABLED",
+    }
+    if _generator_attention_backend_enabled(plan, mode=mode):
+        generator_ranks, _ = _plan_role_ranks(plan, mode=mode)
+        if rank in generator_ranks:
+            # Install after the C18 K/V cache.  That cache source-pins the native
+            # helper and preserves FP32 normalized keys; the backend reproduces
+            # the helper's exact FP32->BF16 kernel casts.
+            from distillschedule.runtime.livewan_attention_backend import (
+                install_generator_flash_attn2,
+            )
+
+            generator_attention_backend = install_generator_flash_attn2(torch)
+            generator_attention_backend.update(
+                role="generator",
+                execution_status="PASS",
+            )
+        else:
+            generator_attention_backend = {
+                "enabled": True,
+                "name": "generator_flash_attn2_unmasked_exact_cast_v1",
+                "source_flash_attention_sha256": (
+                    "c59c125fd92234d2ddec63f3ae3bd2a2479862faba44fa955fdedad2b8203a59"
+                ),
+                "artifact_metadata_sha256": (
+                    "7749dd68b81a544c1973d68c30be5aa316ee1a718ae0228e0368c2cd04365516"
+                ),
+                "artifact_package_sha256": (
+                    "0c560f96b857c188c4a8297ff27d1299619957c3459a5e433e132329fbfdf066"
+                ),
+                "artifact_extension_sha256": (
+                    "c2acd487c5d1d77b7f6721eabc0fee4f8c5c8f9e682aadf43bfa99b394eecba7"
+                ),
+                "function_patched": False,
+                "install_status": "NOT_APPLICABLE",
+                "role": "score",
+                "execution_status": "NOT_APPLICABLE",
+                "invocation_count": 0,
+                "backward_invocation_count": 0,
+                "element_count": 0,
+                "backward_element_count": 0,
+                "shape_histogram": {},
+                "raw_dtype_histogram": {},
+                "input_cast_count": 0,
+                "output_cast_count": 0,
+                "contract_failure_count": 0,
+            }
     before_oom = cgroup_oom_counts()
     torch.cuda.reset_peak_memory_stats(device)
     build_started = time.perf_counter()
@@ -2745,6 +2850,7 @@ def run_worker(
             "score_rope_kernel": score_rope_kernel,
             "score_attention_backend": score_attention_backend,
             "generator_cross_attention_kv_cache": generator_cross_kv_cache,
+            "generator_attention_backend": generator_attention_backend,
             "generator_runahead_transport": (
                 runahead_host_transport.receipt()
                 if runahead_host_transport is not None
@@ -2998,6 +3104,7 @@ def run_worker(
         "score_rope_kernel": score_rope_kernel,
         "score_attention_backend": score_attention_backend,
         "generator_cross_attention_kv_cache": generator_cross_kv_cache,
+        "generator_attention_backend": generator_attention_backend,
         "generator_runahead_transport": evidence.generator_runahead_transport,
         "slot_routing": slot_routing,
         "full5_wall_seconds": full5_wall,

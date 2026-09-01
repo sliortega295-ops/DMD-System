@@ -104,6 +104,7 @@ def parser() -> argparse.ArgumentParser:
             "c16-score-flash-attn2",
             "c18-generator-cross-kv-cache",
             "c19-host-runahead",
+            "c20-generator-flash-attn2",
             "phase-expanded-critic16",
             "phase-expanded-critic16-fused-lora-elision",
             "score-b2",

@@ -81,20 +81,28 @@ def _load_flash_attn2() -> tuple[Any, Path]:
     return module, root
 
 
-def install_score_flash_attn2(torch: Any) -> dict[str, Any]:
-    """Replace only Score-rank unmasked BF16 attention with pinned FA2.
+def _install_flash_attn2(
+    torch: Any,
+    *,
+    requested_name: str,
+    role_label: str,
+    allowed_input_dtypes: set[tuple[Any, Any, Any]],
+) -> dict[str, Any]:
+    """Install the pinned dense FA2 kernel under an exact per-role contract.
 
-    The validated C11 substrate elides full-length context masks, so all Score
-    self- and cross-attention calls are dense, non-causal BF16 attention with
-    head dimension 128.  Any deviation fails closed rather than falling back to
-    a different kernel or silently changing mask semantics.
+    The upstream helper casts non-half query/key/value inputs to ``dtype`` and
+    finally casts query/key to the value dtype before invoking attention.  The
+    Generator C18 text-K/V cache intentionally preserves normalized keys in
+    FP32, so its registered input contract contains both all-BF16 self
+    attention and FP32-query/key + BF16-value cross attention.  Reproducing
+    those exact casts here is necessary to preserve the pinned helper's dtype
+    semantics while bypassing its cuDNN-SDPA frontend.
     """
 
     from wan.modules import attention as attention_module
     from wan.modules import model as model_module
     from wanstreamer import blockcausal
 
-    requested_name = "score_flash_attn2_unmasked_bf16_v1"
     if getattr(blockcausal, "_distillschedule_attention_backend", False):
         installed = getattr(
             blockcausal, "_distillschedule_attention_backend_name", None
@@ -134,6 +142,9 @@ def install_score_flash_attn2(torch: Any) -> dict[str, Any]:
         "element_count": 0,
         "backward_element_count": 0,
         "shape_histogram": {},
+        "raw_dtype_histogram": {},
+        "input_cast_count": 0,
+        "output_cast_count": 0,
         "contract_failure_count": 0,
     }
 
@@ -156,9 +167,7 @@ def install_score_flash_attn2(torch: Any) -> dict[str, Any]:
                 not q.is_cuda
                 or not k.is_cuda
                 or not v.is_cuda
-                or q.dtype != torch.bfloat16
-                or k.dtype != torch.bfloat16
-                or v.dtype != torch.bfloat16
+                or (q.dtype, k.dtype, v.dtype) not in allowed_input_dtypes
                 or q.ndim != 4
                 or k.ndim != 4
                 or v.ndim != 4
@@ -185,7 +194,7 @@ def install_score_flash_attn2(torch: Any) -> dict[str, Any]:
         except Exception as error:
             receipt["contract_failure_count"] += 1
             raise RuntimeError(
-                "LiveWan Score FlashAttention-2 contract changed: "
+                f"LiveWan {role_label} FlashAttention-2 contract changed: "
                 f"q={q.device}/{q.dtype}/{tuple(q.shape)}/{tuple(q.stride())}, "
                 f"k={k.device}/{k.dtype}/{tuple(k.shape)}/{tuple(k.stride())}, "
                 f"v={v.device}/{v.dtype}/{tuple(v.shape)}/{tuple(v.stride())}, "
@@ -222,16 +231,33 @@ def install_score_flash_attn2(torch: Any) -> dict[str, Any]:
             dtype=dtype,
             version=version,
         )
+        raw_dtypes = (q.dtype, k.dtype, v.dtype)
+        output_dtype = q.dtype
+        # Match the pinned upstream helper: non-half inputs are first converted
+        # to ``dtype`` and query/key are then converted to the value dtype.  The
+        # registered contracts always use BF16 values, so FA2 receives one
+        # homogeneous BF16 triplet.
+        q_kernel = q if q.dtype == torch.bfloat16 else q.to(dtype)
+        k_kernel = k if k.dtype == torch.bfloat16 else k.to(dtype)
+        v_kernel = v if v.dtype == torch.bfloat16 else v.to(dtype)
+        q_kernel = q_kernel.to(v_kernel.dtype)
+        k_kernel = k_kernel.to(v_kernel.dtype)
+        receipt["input_cast_count"] += int(q_kernel is not q)
+        receipt["input_cast_count"] += int(k_kernel is not k)
+        receipt["input_cast_count"] += int(v_kernel is not v)
         output = flash_attn2.flash_attn_func(
-            q,
-            k,
-            v,
+            q_kernel,
+            k_kernel,
+            v_kernel,
             dropout_p=dropout_p,
             softmax_scale=softmax_scale,
             causal=causal,
             window_size=window_size,
             deterministic=deterministic,
         )
+        if output.dtype != output_dtype:
+            output = output.to(output_dtype)
+            receipt["output_cast_count"] += 1
         receipt["invocation_count"] += 1
         receipt["element_count"] += int(output.numel())
         shape_key = (
@@ -240,6 +266,10 @@ def install_score_flash_attn2(torch: Any) -> dict[str, Any]:
         )
         receipt["shape_histogram"][shape_key] = (
             int(receipt["shape_histogram"].get(shape_key, 0)) + 1
+        )
+        dtype_key = "/".join(str(value).removeprefix("torch.") for value in raw_dtypes)
+        receipt["raw_dtype_histogram"][dtype_key] = (
+            int(receipt["raw_dtype_histogram"].get(dtype_key, 0)) + 1
         )
         if output.requires_grad:
             elements = int(output.numel())
@@ -262,6 +292,37 @@ def install_score_flash_attn2(torch: Any) -> dict[str, Any]:
     blockcausal._distillschedule_attention_backend_name = requested_name
     blockcausal._distillschedule_attention_receipt = receipt
     return receipt
+
+
+def install_score_flash_attn2(torch: Any) -> dict[str, Any]:
+    """Replace only Score-rank unmasked BF16 attention with pinned FA2."""
+
+    return _install_flash_attn2(
+        torch,
+        requested_name="score_flash_attn2_unmasked_bf16_v1",
+        role_label="Score",
+        allowed_input_dtypes={(torch.bfloat16, torch.bfloat16, torch.bfloat16)},
+    )
+
+
+def install_generator_flash_attn2(torch: Any) -> dict[str, Any]:
+    """Replace Generator-rank dense attention after installing the C18 K/V cache.
+
+    Self attention arrives as BF16/BF16/BF16.  Wan cross attention normalizes
+    query/key in FP32 and projects value in BF16; the pinned upstream helper
+    casts that triplet to BF16 for the kernel and casts its output back to the
+    query dtype.  No other dtype combination is registered.
+    """
+
+    return _install_flash_attn2(
+        torch,
+        requested_name="generator_flash_attn2_unmasked_exact_cast_v1",
+        role_label="Generator",
+        allowed_input_dtypes={
+            (torch.bfloat16, torch.bfloat16, torch.bfloat16),
+            (torch.float32, torch.float32, torch.bfloat16),
+        },
+    )
 
 
 def uninstall_score_flash_attn2() -> None:
@@ -290,7 +351,15 @@ def uninstall_score_flash_attn2() -> None:
             delattr(blockcausal, name)
 
 
+def uninstall_generator_flash_attn2() -> None:
+    """Test-only alias for restoring the globally patched Wan helper."""
+
+    uninstall_score_flash_attn2()
+
+
 __all__ = [
     "install_score_flash_attn2",
+    "install_generator_flash_attn2",
     "uninstall_score_flash_attn2",
+    "uninstall_generator_flash_attn2",
 ]

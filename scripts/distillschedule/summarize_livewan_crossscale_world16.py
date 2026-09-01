@@ -114,6 +114,12 @@ def main() -> int:
     generator_cross_kv_cache_enabled = bool(
         generator_cross_kv_cache_contract.get("enabled", False)
     )
+    generator_attention_backend_contract = dict(
+        plan.get("metadata", {}).get("generator_attention_backend", {})
+    )
+    generator_attention_backend_enabled = bool(
+        generator_attention_backend_contract.get("enabled", False)
+    )
     generator_runahead_transport_contract = dict(
         plan.get("metadata", {}).get("generator_runahead_transport", {})
     )
@@ -812,6 +818,110 @@ def main() -> int:
             errors.append(
                 f"rank{row['rank']}: unregistered Generator cross K/V cache"
             )
+        generator_attention_receipt = row.get("generator_attention_backend", {})
+        if generator_attention_backend_enabled:
+            rank = int(row["rank"])
+            is_generator = rank in generator_ranks
+            expected_generator_attention = {
+                "enabled": True,
+                "name": "generator_flash_attn2_unmasked_exact_cast_v1",
+                "source_flash_attention_sha256": (
+                    "c59c125fd92234d2ddec63f3ae3bd2a2479862faba44fa955fdedad2b8203a59"
+                ),
+                "artifact_metadata_sha256": (
+                    "7749dd68b81a544c1973d68c30be5aa316ee1a718ae0228e0368c2cd04365516"
+                ),
+                "artifact_package_sha256": (
+                    "0c560f96b857c188c4a8297ff27d1299619957c3459a5e433e132329fbfdf066"
+                ),
+                "artifact_extension_sha256": (
+                    "c2acd487c5d1d77b7f6721eabc0fee4f8c5c8f9e682aadf43bfa99b394eecba7"
+                ),
+                "function_patched": is_generator,
+                "install_status": "PASS" if is_generator else "NOT_APPLICABLE",
+                "role": "generator" if is_generator else "score",
+                "execution_status": "PASS" if is_generator else "NOT_APPLICABLE",
+                "contract_failure_count": 0,
+            }
+            for key, expected_value in expected_generator_attention.items():
+                if generator_attention_receipt.get(key) != expected_value:
+                    errors.append(
+                        f"rank{rank}: Generator attention receipt mismatch for {key}: "
+                        f"observed={generator_attention_receipt.get(key)!r}, "
+                        f"expected={expected_value!r}"
+                    )
+            invocation_count = int(
+                generator_attention_receipt.get("invocation_count", -1)
+            )
+            backward_count = int(
+                generator_attention_receipt.get("backward_invocation_count", -1)
+            )
+            shape_histogram = dict(
+                generator_attention_receipt.get("shape_histogram", {})
+            )
+            dtype_histogram = dict(
+                generator_attention_receipt.get("raw_dtype_histogram", {})
+            )
+            if is_generator:
+                if invocation_count <= 0 or sum(shape_histogram.values()) != invocation_count:
+                    errors.append(
+                        f"rank{rank}: Generator attention invocation/shape inventory invalid"
+                    )
+                if sum(dtype_histogram.values()) != invocation_count:
+                    errors.append(
+                        f"rank{rank}: Generator attention dtype inventory invalid"
+                    )
+                allowed_dtypes = {
+                    "bfloat16/bfloat16/bfloat16",
+                    "float32/float32/bfloat16",
+                }
+                if not dtype_histogram or not set(dtype_histogram).issubset(allowed_dtypes):
+                    errors.append(
+                        f"rank{rank}: Generator attention raw dtype contract changed: "
+                        f"{dtype_histogram}"
+                    )
+                fp32_cross_count = int(
+                    dtype_histogram.get("float32/float32/bfloat16", 0)
+                )
+                if int(generator_attention_receipt.get("input_cast_count", -1)) != (
+                    2 * fp32_cross_count
+                ):
+                    errors.append(
+                        f"rank{rank}: Generator attention input cast inventory invalid"
+                    )
+                if int(generator_attention_receipt.get("output_cast_count", -1)) != (
+                    fp32_cross_count
+                ):
+                    errors.append(
+                        f"rank{rank}: Generator attention output cast inventory invalid"
+                    )
+                if backward_count <= 0 or backward_count > invocation_count:
+                    errors.append(
+                        f"rank{rank}: Generator attention backward inventory invalid"
+                    )
+                if int(generator_attention_receipt.get("element_count", 0)) <= 0:
+                    errors.append(f"rank{rank}: Generator attention element inventory empty")
+                if not generator_attention_receipt.get("artifact_root"):
+                    errors.append(f"rank{rank}: Generator attention artifact root missing")
+            else:
+                for key, expected_value in {
+                    "invocation_count": 0,
+                    "backward_invocation_count": 0,
+                    "element_count": 0,
+                    "backward_element_count": 0,
+                    "shape_histogram": {},
+                    "raw_dtype_histogram": {},
+                    "input_cast_count": 0,
+                    "output_cast_count": 0,
+                }.items():
+                    if generator_attention_receipt.get(key) != expected_value:
+                        errors.append(
+                            f"rank{rank}: non-Generator attention receipt mismatch for {key}"
+                        )
+        elif generator_attention_receipt.get("enabled") not in {False, None}:
+            errors.append(
+                f"rank{row['rank']}: unregistered Generator attention backend"
+            )
         runahead_transport_receipt = row.get("generator_runahead_transport", {})
         if generator_runahead_transport_enabled:
             rank = int(row["rank"])
@@ -995,6 +1105,7 @@ def main() -> int:
         "score_rope_kernel": score_rope_kernel_enabled,
         "score_attention_backend": score_attention_backend_enabled,
         "generator_cross_attention_kv_cache": generator_cross_kv_cache_enabled,
+        "generator_attention_backend": generator_attention_backend_enabled,
         "generator_runahead_transport": generator_runahead_transport_contract,
         "split_dmd_shadow": split_dmd_shadow_contract,
         "generator_ranks": list(generator_ranks),
