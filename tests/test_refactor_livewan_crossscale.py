@@ -482,6 +482,14 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert '"LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant' in controller
     assert 'resolved_plan.node0.json' in controller
 
+    transport_probe = (
+        ROOT / "scripts/distillschedule/probe_livewan_crossscale_transport.py"
+    ).read_text()
+    # The C16 variant inherits every transport contract from C15; keeping all
+    # six memberships explicit prevents validate-only from silently probing a
+    # different slot/reducer/payload contract than the real worker.
+    assert transport_probe.count('"c16-score-flash-attn2"') == 6
+
     launcher = (
         ROOT / "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh"
     ).read_text()
