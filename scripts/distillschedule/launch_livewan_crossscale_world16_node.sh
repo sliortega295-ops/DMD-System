@@ -308,12 +308,55 @@ if [[ "${RUN_KIND}" == validate ]]; then
     --repo-root "${ROOT}" >"${NODE_LOG}/console.log" 2>&1
   status=$?
 else
-  workload=(
-    "${TORCHRUN}" --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}"
-    --master-addr="${MASTER_ADDR}" --master-port="$((MASTER_PORT + 2))"
+  entrypoint=(
     "${ROOT}/scripts/distillschedule/livewan_crossscale_entrypoint.py"
     --plan "${RESOLVED}" --mode "${EXECUTION_MODE}" --run-kind "${RUN_KIND}"
     --repo-root "${ROOT}"
+  )
+  if [[ -n "${DISTILLSCHEDULE_NCU_BIN:-}" ]]; then
+    [[ "${RUN_KIND}" == correctness ]] || {
+      echo ncu_capture_requires_correctness_run >&2; exit 2;
+    }
+    NCU_BIN="${DISTILLSCHEDULE_NCU_BIN}"
+    [[ -x "${NCU_BIN}" ]] || { echo "missing_ncu=${NCU_BIN}" >&2; exit 3; }
+    NCU_NODE_RANK="${DISTILLSCHEDULE_NCU_NODE_RANK:?}"
+    NCU_LOCAL_RANK="${DISTILLSCHEDULE_NCU_LOCAL_RANK:?}"
+    NCU_KERNEL_REGEX="${DISTILLSCHEDULE_NCU_KERNEL_REGEX:?}"
+    NCU_LAUNCH_SKIP="${DISTILLSCHEDULE_NCU_LAUNCH_SKIP_BEFORE_MATCH:?}"
+    NCU_LAUNCH_COUNT="${DISTILLSCHEDULE_NCU_LAUNCH_COUNT:-1}"
+    NCU_SET="${DISTILLSCHEDULE_NCU_SET:-full}"
+    NCU_OUTPUT_NAME="${DISTILLSCHEDULE_NCU_OUTPUT_NAME:-bounded_kernel}"
+    [[ "${NCU_NODE_RANK}" == 0 || "${NCU_NODE_RANK}" == 1 ]] || exit 2
+    [[ "${NCU_LOCAL_RANK}" =~ ^[0-7]$ ]] || exit 2
+    [[ "${NCU_LAUNCH_SKIP}" =~ ^[0-9]+$ ]] || exit 2
+    [[ "${NCU_LAUNCH_COUNT}" == 1 ]] || exit 2
+    [[ "${NCU_OUTPUT_NAME}" =~ ^[A-Za-z0-9_-]+$ ]] || exit 2
+    NCU_GLOBAL_RANK="$((NCU_NODE_RANK * 8 + NCU_LOCAL_RANK))"
+    NCU_DIR="${RUN_ROOT}/ncu"
+    NCU_OUTPUT_BASE="${NCU_DIR}/node_${NCU_NODE_RANK}_rank_${NCU_GLOBAL_RANK}_${NCU_OUTPUT_NAME}"
+    NCU_MANIFEST="${NCU_OUTPUT_BASE}.manifest.json"
+    mkdir -p "${NCU_DIR}"
+    entrypoint=(
+      "${ROOT}/scripts/distillschedule/livewan_ncu_rank_wrapper.py"
+      --target-script "${ROOT}/scripts/distillschedule/livewan_crossscale_entrypoint.py"
+      --ncu-bin "${NCU_BIN}"
+      --output-base "${NCU_OUTPUT_BASE}"
+      --manifest "${NCU_MANIFEST}"
+      --target-node-rank "${NCU_NODE_RANK}"
+      --target-local-rank "${NCU_LOCAL_RANK}"
+      --kernel-regex "${NCU_KERNEL_REGEX}"
+      --launch-skip-before-match "${NCU_LAUNCH_SKIP}"
+      --launch-count "${NCU_LAUNCH_COUNT}"
+      --metric-set "${NCU_SET}"
+      --
+      --plan "${RESOLVED}" --mode "${EXECUTION_MODE}" --run-kind "${RUN_KIND}"
+      --repo-root "${ROOT}"
+    )
+  fi
+  workload=(
+    "${TORCHRUN}" --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}"
+    --master-addr="${MASTER_ADDR}" --master-port="$((MASTER_PORT + 2))"
+    "${entrypoint[@]}"
   )
   if [[ "${RUN_KIND}" == profile ]]; then
     NSYS_BIN="${DISTILLSCHEDULE_NSYS_BIN:?profile requires DISTILLSCHEDULE_NSYS_BIN}"
@@ -437,6 +480,57 @@ PY
   else
     "${workload[@]}" >"${NODE_LOG}/console.log" 2>&1
     status=$?
+  fi
+  if [[ ${status} -eq 0 && -n "${DISTILLSCHEDULE_NCU_BIN:-}" && \
+        "${NODE_RANK}" == "${NCU_NODE_RANK}" ]]; then
+    NCU_REPORT="${NCU_OUTPUT_BASE}.ncu-rep"
+    NCU_DETAILS="${NCU_OUTPUT_BASE}.details.csv"
+    NCU_IMPORT_LOG="${NCU_OUTPUT_BASE}.import.log"
+    NCU_RECEIPT="${NCU_OUTPUT_BASE}.receipt.json"
+    [[ -s "${NCU_REPORT}" ]] || { echo "missing_ncu_report=${NCU_REPORT}" >&2; status=90; }
+    if [[ ${status} -eq 0 ]]; then
+      "${NCU_BIN}" --import "${NCU_REPORT}" --page details --csv \
+        >"${NCU_DETAILS}" 2>"${NCU_IMPORT_LOG}"
+      status=$?
+    fi
+    if [[ ${status} -eq 0 && ! -s "${NCU_DETAILS}" ]]; then
+      echo "missing_ncu_details=${NCU_DETAILS}" >&2
+      status=91
+    fi
+    if [[ ${status} -eq 0 ]]; then
+      "${PYTHON}" - "${NCU_RECEIPT}" "${NCU_MANIFEST}" "${NCU_REPORT}" \
+        "${NCU_DETAILS}" "${NCU_IMPORT_LOG}" "${EXPECTED_HEAD}" <<'PY'
+import hashlib, json, os, pathlib, tempfile, sys
+
+destination = pathlib.Path(sys.argv[1])
+manifest = json.loads(pathlib.Path(sys.argv[2]).read_text())
+paths = [pathlib.Path(value) for value in sys.argv[2:6]]
+
+def sha256(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+value = {
+    **manifest,
+    "status": "PASS_BOUNDED_CAPTURE",
+    "head": sys.argv[6],
+    "artifacts": {
+        path.name: {"path": str(path), "bytes": path.stat().st_size, "sha256": sha256(path)}
+        for path in paths
+    },
+}
+destination.parent.mkdir(parents=True, exist_ok=True)
+fd, temporary = tempfile.mkstemp(prefix=destination.name + ".", dir=destination.parent)
+with os.fdopen(fd, "w", encoding="utf-8") as handle:
+    json.dump(value, handle, indent=2, sort_keys=True)
+    handle.write("\n")
+os.replace(temporary, destination)
+PY
+      status=$?
+    fi
   fi
 fi
 set -e

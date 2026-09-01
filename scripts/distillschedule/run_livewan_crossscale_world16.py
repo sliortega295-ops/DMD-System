@@ -167,6 +167,14 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--correctness-receipt", type=Path)
     value.add_argument("--correctness-sha256")
     value.add_argument("--nsys-bin", type=Path)
+    value.add_argument("--ncu-bin", type=Path)
+    value.add_argument("--ncu-node-rank", type=int, choices=(0, 1), default=1)
+    value.add_argument("--ncu-local-rank", type=int, choices=range(8), default=0)
+    value.add_argument("--ncu-kernel-regex", default="flash_fwd_kernel")
+    value.add_argument("--ncu-launch-skip-before-match", type=int, default=0)
+    value.add_argument("--ncu-launch-count", type=int, default=1)
+    value.add_argument("--ncu-set", default="full")
+    value.add_argument("--ncu-output-name", default="bounded_kernel")
     value.add_argument("--master-addr")
     value.add_argument("--master-port", type=int, default=29930)
     value.add_argument("--timeout-seconds", type=int, default=21600)
@@ -209,6 +217,25 @@ def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         if args.nsys_bin is None:
             raise ValueError("profile requires --nsys-bin")
         exports["DISTILLSCHEDULE_NSYS_BIN"] = args.nsys_bin
+    if args.ncu_bin is not None:
+        if args.run_kind != "correctness":
+            raise ValueError("bounded NCU capture is allowed only on a correctness run")
+        if args.ncu_launch_skip_before_match < 0 or args.ncu_launch_count != 1:
+            raise ValueError("bounded NCU capture requires non-negative skip and launch-count=1")
+        if not args.ncu_output_name.replace("-", "").replace("_", "").isalnum():
+            raise ValueError("unsafe --ncu-output-name")
+        exports.update({
+            "DISTILLSCHEDULE_NCU_BIN": args.ncu_bin,
+            "DISTILLSCHEDULE_NCU_NODE_RANK": args.ncu_node_rank,
+            "DISTILLSCHEDULE_NCU_LOCAL_RANK": args.ncu_local_rank,
+            "DISTILLSCHEDULE_NCU_KERNEL_REGEX": args.ncu_kernel_regex,
+            "DISTILLSCHEDULE_NCU_LAUNCH_SKIP_BEFORE_MATCH": (
+                args.ncu_launch_skip_before_match
+            ),
+            "DISTILLSCHEDULE_NCU_LAUNCH_COUNT": args.ncu_launch_count,
+            "DISTILLSCHEDULE_NCU_SET": args.ncu_set,
+            "DISTILLSCHEDULE_NCU_OUTPUT_NAME": args.ncu_output_name,
+        })
     export_text = " ".join(f"{key}={shlex.quote(str(value))}" for key, value in exports.items())
     launch = " ".join(
         shlex.quote(str(value))
