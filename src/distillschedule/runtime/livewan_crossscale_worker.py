@@ -2060,6 +2060,37 @@ def _score_modulation_kernel_enabled(plan: Mapping[str, Any], *, mode: str) -> b
     return True
 
 
+def _score_rope_kernel_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    """Validate the exact Score-rank-only LiveWan RoPE fusion."""
+
+    metadata = plan.get("metadata", {})
+    kernel = metadata.get("score_rope_kernel")
+    if kernel is None:
+        return False
+    _require(isinstance(kernel, Mapping), "Score RoPE kernel must be a mapping")
+    _require(mode == "pipeline", "Score RoPE kernel is candidate-only")
+    _require(
+        metadata.get("pool_policy") == TRACE_BALANCED_POOL_POLICY
+        and metadata.get("full_context_lens_elision") is True,
+        "Score RoPE kernel requires the validated C11 substrate",
+    )
+    expected = {
+        "enabled": True,
+        "name": "score_bf16_rope_fusion_v1",
+        "scope": "score_ranks_only_critic_and_teacher",
+        "source_apply_rope_sha256": (
+            "8ab587e9f15cc969659609ec2f9cc79f4d4cf6fba468ae8c54267dc949224482"
+        ),
+        "math_change": "fuse_exact_fp32_complex_rope_and_immediate_bf16_conversion",
+        "input_output_dtype": "bfloat16",
+        "table_dtype": "complex64",
+        "fp32_rounding_order": "mul_then_first_product_fma_rn",
+        "triton_block_size": 512,
+    }
+    _require(dict(kernel) == expected, "Score RoPE kernel contract changed")
+    return True
+
+
 def _prefetch_score_sample_contexts(
     torch: Any,
     *,
@@ -2152,6 +2183,7 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _score_context_prefetch_enabled(plan, mode=mode)
     _critic_lora_scale_one_enabled(plan, mode=mode)
     _score_modulation_kernel_enabled(plan, mode=mode)
+    _score_rope_kernel_enabled(plan, mode=mode)
     if (
         str(plan.get("metadata", {}).get("pool_policy", ""))
         == PHASE_EXPANDED_CRITIC16_POOL_POLICY
@@ -2308,6 +2340,45 @@ def run_worker(
                 "dimension_histogram": {},
                 "observed_contract": None,
             }
+    score_rope_kernel = {
+        "enabled": False,
+        "name": "native_livewan_score_rope",
+        "execution_status": "DISABLED",
+    }
+    if _score_rope_kernel_enabled(plan, mode=mode):
+        _, score_ranks = _plan_role_ranks(plan, mode=mode)
+        if rank in score_ranks:
+            from distillschedule.runtime.livewan_rope_kernel import (
+                install_score_rope_kernel,
+            )
+
+            score_rope_kernel = install_score_rope_kernel(torch)
+            score_rope_kernel.update(
+                role="score",
+                execution_status="PASS",
+            )
+        else:
+            score_rope_kernel = {
+                "enabled": True,
+                "name": "score_bf16_rope_fusion_v1",
+                "source_apply_rope_sha256": (
+                    "8ab587e9f15cc969659609ec2f9cc79f4d4cf6fba468ae8c54267dc949224482"
+                ),
+                "function_patched": False,
+                "install_status": "NOT_APPLICABLE",
+                "role": "generator",
+                "execution_status": "NOT_APPLICABLE",
+                "triton_block_size": 512,
+                "fp32_rounding_order": "mul_then_first_product_fma_rn",
+                "invocation_count": 0,
+                "backward_invocation_count": 0,
+                "element_count": 0,
+                "backward_element_count": 0,
+                "shape_histogram": {},
+                "table_rank_histogram": {},
+                "gradient_contiguous_copy_count": 0,
+                "contract_failure_count": 0,
+            }
     before_oom = cgroup_oom_counts()
     torch.cuda.reset_peak_memory_stats(device)
     build_started = time.perf_counter()
@@ -2399,6 +2470,7 @@ def run_worker(
             "cgroup_oom_after": after_oom,
             "critic_lora_kernel": critic_lora_kernel,
             "score_modulation_kernel": score_modulation_kernel,
+            "score_rope_kernel": score_rope_kernel,
             "build": bundle.metadata,
             "gpu_training_workload": "NOT_RUN",
         }
@@ -2638,6 +2710,7 @@ def run_worker(
         "split_dmd_shadow": evidence.split_dmd_shadow,
         "critic_lora_kernel": critic_lora_kernel,
         "score_modulation_kernel": score_modulation_kernel,
+        "score_rope_kernel": score_rope_kernel,
         "slot_routing": slot_routing,
         "full5_wall_seconds": full5_wall,
         "construction_wall_seconds": build_wall,

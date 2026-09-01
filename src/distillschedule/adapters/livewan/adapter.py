@@ -395,6 +395,37 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                         "Critic LoRA kernel contract changed",
                         "metadata.critic_lora_kernel",
                     )
+            score_rope_kernel = plan.metadata.get("score_rope_kernel")
+            if score_rope_kernel is not None:
+                if (
+                    pool_policy
+                    != "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context_critic_async32_trace_balanced"
+                    or plan.metadata.get("full_context_lens_elision") is not True
+                ):
+                    self._fail(
+                        "Score RoPE kernel requires the validated C11 substrate",
+                        "metadata.score_rope_kernel",
+                    )
+                expected_score_rope_kernel = {
+                    "enabled": True,
+                    "name": "score_bf16_rope_fusion_v1",
+                    "scope": "score_ranks_only_critic_and_teacher",
+                    "source_apply_rope_sha256": (
+                        "8ab587e9f15cc969659609ec2f9cc79f4d4cf6fba468ae8c54267dc949224482"
+                    ),
+                    "math_change": (
+                        "fuse_exact_fp32_complex_rope_and_immediate_bf16_conversion"
+                    ),
+                    "input_output_dtype": "bfloat16",
+                    "table_dtype": "complex64",
+                    "fp32_rounding_order": "mul_then_first_product_fma_rn",
+                    "triton_block_size": 512,
+                }
+                if dict(score_rope_kernel) != expected_score_rope_kernel:
+                    self._fail(
+                        "Score RoPE kernel contract changed",
+                        "metadata.score_rope_kernel",
+                    )
             split_dmd_shadow = plan.metadata.get("split_dmd_shadow")
             if split_dmd_shadow is not None:
                 if (

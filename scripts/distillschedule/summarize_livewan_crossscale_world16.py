@@ -96,6 +96,12 @@ def main() -> int:
     score_modulation_kernel_enabled = bool(
         score_modulation_kernel_contract.get("enabled", False)
     )
+    score_rope_kernel_contract = dict(
+        plan.get("metadata", {}).get("score_rope_kernel", {})
+    )
+    score_rope_kernel_enabled = bool(
+        score_rope_kernel_contract.get("enabled", False)
+    )
     split_dmd_shadow_contract = dict(
         plan.get("metadata", {}).get("split_dmd_shadow", {})
     )
@@ -627,6 +633,52 @@ def main() -> int:
                     errors.append(f"rank{rank}: Score modulation executed no elements")
         elif modulation_receipt.get("enabled") not in {False, None}:
             errors.append(f"rank{row['rank']}: unregistered Score modulation kernel")
+        rope_receipt = row.get("score_rope_kernel", {})
+        if score_rope_kernel_enabled:
+            rank = int(row["rank"])
+            expected_rope = {
+                "enabled": True,
+                "name": "score_bf16_rope_fusion_v1",
+                "source_apply_rope_sha256": (
+                    "8ab587e9f15cc969659609ec2f9cc79f4d4cf6fba468ae8c54267dc949224482"
+                ),
+                "function_patched": rank in score_ranks,
+                "install_status": "PASS" if rank in score_ranks else "NOT_APPLICABLE",
+                "role": "score" if rank in score_ranks else "generator",
+                "execution_status": (
+                    "PASS" if rank in score_ranks else "NOT_APPLICABLE"
+                ),
+                "triton_block_size": 512,
+                "fp32_rounding_order": "mul_then_first_product_fma_rn",
+                "invocation_count": 880 if rank in score_ranks else 0,
+                "backward_invocation_count": 300 if rank in score_ranks else 0,
+                "element_count": 54_998_630_400 if rank in score_ranks else 0,
+                "backward_element_count": 17_805_312_000 if rank in score_ranks else 0,
+                "shape_histogram": (
+                    {
+                        "1x19320x12x128": 120,
+                        "2x19320x12x128": 600,
+                        "1x19320x40x128": 160,
+                    }
+                    if rank in score_ranks else {}
+                ),
+                "table_rank_histogram": {"3": 880} if rank in score_ranks else {},
+                "contract_failure_count": 0,
+            }
+            for key, expected_value in expected_rope.items():
+                if rope_receipt.get(key) != expected_value:
+                    errors.append(
+                        f"rank{rank}: Score RoPE receipt mismatch for {key}: "
+                        f"observed={rope_receipt.get(key)!r}, "
+                        f"expected={expected_value!r}"
+                    )
+            if rank in score_ranks:
+                if not rope_receipt.get("triton_version"):
+                    errors.append(f"rank{rank}: Score RoPE Triton identity missing")
+                if int(rope_receipt.get("gradient_contiguous_copy_count", -1)) < 0:
+                    errors.append(f"rank{rank}: Score RoPE gradient-copy receipt invalid")
+        elif rope_receipt.get("enabled") not in {False, None}:
+            errors.append(f"rank{row['rank']}: unregistered Score RoPE kernel")
         split_receipt = row.get("split_dmd_shadow", {})
         if split_dmd_shadow_enabled:
             rank = int(row["rank"])
@@ -773,6 +825,7 @@ def main() -> int:
         "score_context_prefetch": score_context_prefetch,
         "critic_lora_kernel": critic_lora_kernel_enabled,
         "score_modulation_kernel": score_modulation_kernel_enabled,
+        "score_rope_kernel": score_rope_kernel_enabled,
         "split_dmd_shadow": split_dmd_shadow_contract,
         "generator_ranks": list(generator_ranks),
         "score_ranks": list(score_ranks),
