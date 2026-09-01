@@ -58,6 +58,7 @@ PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LO
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW_FUSED_ADAM = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW_FUSED_ADAM_SCORE_ROPE = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW_FUSED_ADAM_SCORE_ROPE_FLASH_ATTN2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2.json"
+PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW_FUSED_ADAM_SCORE_ROPE_FLASH_ATTN2_GENERATOR_CROSS_KV = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2_generator_cross_kv_cache.json"
 PIPELINE_PHASE_EXPANDED_CRITIC16 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16.json"
 PIPELINE_PHASE_EXPANDED_CRITIC16_FUSED_LORA_ELISION = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16_fused_lora_elision.json"
 PIPELINE_SCORE_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
@@ -477,6 +478,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow-fused-adam"' in controller
     assert '"c15-score-rope"' in controller
     assert '"c16-score-flash-attn2"' in controller
+    assert '"c18-generator-cross-kv-cache"' in controller
     assert '"phase-expanded-critic16"' in controller
     assert '"capacity", "correctness", "timing", "profile"' in controller
     assert '"LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant' in controller
@@ -489,6 +491,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     # six memberships explicit prevents validate-only from silently probing a
     # different slot/reducer/payload contract than the real worker.
     assert transport_probe.count('"c16-score-flash-attn2"') == 6
+    assert transport_probe.count('"c18-generator-cross-kv-cache"') == 6
 
     launcher = (
         ROOT / "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh"
@@ -508,6 +511,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2.json" in launcher
+    assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2_generator_cross_kv_cache.json" in launcher
     assert '"${RUN_KIND}" == capacity' in launcher
     assert "baseline_pipeline_variant_mismatch" in launcher
     summarizer = (
@@ -1204,6 +1208,60 @@ def test_score_flash_attn2_backend_is_source_and_artifact_pinned() -> None:
         "c2acd487c5d1d77b7f6721eabc0fee4f8c5c8f9e682aadf43bfa99b394eecba7",
         "masked or variable-length attention is not registered",
         "q.shape[-1] != 128",
+        "contract_failure_count",
+    ):
+        assert value in source
+
+
+def test_generator_cross_kv_plan_changes_only_cache_metadata() -> None:
+    reference = load_plan(
+        PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW_FUSED_ADAM_SCORE_ROPE_FLASH_ATTN2
+    ).plan.to_dict()
+    candidate_plan = load_plan(
+        PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW_FUSED_ADAM_SCORE_ROPE_FLASH_ATTN2_GENERATOR_CROSS_KV
+    ).plan
+    LiveWanSFDMDAdapter().validate(candidate_plan)
+    candidate = candidate_plan.to_dict()
+    metadata = dict(candidate["metadata"])
+    assert metadata.pop("generator_cross_attention_kv_cache") == {
+        "enabled": True,
+        "name": "generator_nograd_text_kv_cache_v1",
+        "scope": "generator_ranks_streamer_nograd_only",
+        "source_set_text_sha256": (
+            "def2452ea9528abb9af2aa166d78afdf9b8b7c5daa52c0fc87bfd63bc9832386"
+        ),
+        "source_cross_forward_sha256": (
+            "0df9365afb37bb8a876d8c8659ca95d1caaffb89bf3e64918b782eb86b0a8253"
+        ),
+        "source_flash_attention_sha256": (
+            "c59c125fd92234d2ddec63f3ae3bd2a2479862faba44fa955fdedad2b8203a59"
+        ),
+        "math_change": (
+            "reuse_exact_cross_kv_projection_within_fixed_weight_no_grad_rollout"
+        ),
+        "context_contract": "b1_full_512_token_fp32_projected_context",
+        "grad_contract": "grad_enabled_checkpoint_forward_and_replay_bypass_cache",
+        "block_count": 30,
+        "cache_bytes_per_streamer": 141_557_760,
+        "max_streamers_per_generator_rank": 2,
+    }
+    assert metadata == reference["metadata"]
+    for key in ("workload", "hardware", "rank_groups", "lifecycle", "training_backends"):
+        assert candidate[key] == reference[key]
+
+
+def test_generator_cross_kv_cache_is_source_pinned_and_grad_bypassed() -> None:
+    source = (
+        ROOT / "src/distillschedule/runtime/livewan_cross_kv_cache.py"
+    ).read_text()
+    for value in (
+        "EXPECTED_SET_TEXT_SHA256",
+        "EXPECTED_CROSS_FORWARD_SHA256",
+        "EXPECTED_FLASH_ATTENTION_SHA256",
+        "if torch.is_grad_enabled():",
+        "return original_forward(self, x, context, context_lens)",
+        "_parameter_versions(self) != entry",
+        "total_bytes != 141_557_760",
         "contract_failure_count",
     ):
         assert value in source

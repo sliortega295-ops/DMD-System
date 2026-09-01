@@ -108,6 +108,12 @@ def main() -> int:
     score_attention_backend_enabled = bool(
         score_attention_backend_contract.get("enabled", False)
     )
+    generator_cross_kv_cache_contract = dict(
+        plan.get("metadata", {}).get("generator_cross_attention_kv_cache", {})
+    )
+    generator_cross_kv_cache_enabled = bool(
+        generator_cross_kv_cache_contract.get("enabled", False)
+    )
     split_dmd_shadow_contract = dict(
         plan.get("metadata", {}).get("split_dmd_shadow", {})
     )
@@ -737,6 +743,69 @@ def main() -> int:
                 errors.append(f"rank{rank}: Score attention artifact root missing")
         elif attention_receipt.get("enabled") not in {False, None}:
             errors.append(f"rank{row['rank']}: unregistered Score attention backend")
+        cross_kv_receipt = row.get("generator_cross_attention_kv_cache", {})
+        if generator_cross_kv_cache_enabled:
+            rank = int(row["rank"])
+            is_generator = rank in generator_ranks
+            expected_cross_kv = {
+                "enabled": True,
+                "name": "generator_nograd_text_kv_cache_v1",
+                "source_set_text_sha256": (
+                    "def2452ea9528abb9af2aa166d78afdf9b8b7c5daa52c0fc87bfd63bc9832386"
+                ),
+                "source_cross_forward_sha256": (
+                    "0df9365afb37bb8a876d8c8659ca95d1caaffb89bf3e64918b782eb86b0a8253"
+                ),
+                "source_flash_attention_sha256": (
+                    "c59c125fd92234d2ddec63f3ae3bd2a2479862faba44fa955fdedad2b8203a59"
+                ),
+                "function_patched": is_generator,
+                "install_status": "PASS" if is_generator else "NOT_APPLICABLE",
+                "role": "generator" if is_generator else "score",
+                "execution_status": "PASS" if is_generator else "NOT_APPLICABLE",
+                "cache_build_context_count": 10 if is_generator else 0,
+                "cache_build_block_count": 300 if is_generator else 0,
+                "cache_build_bytes": 1_415_577_600 if is_generator else 0,
+                "cache_invalidation_count": 8 if is_generator else 0,
+                "grad_bypass_count": 360 if is_generator else 0,
+                "uncached_fallback_count": 60 if is_generator else 0,
+                "contract_failure_count": 0,
+            }
+            if is_generator:
+                lane = generator_ranks.index(rank)
+                slots = TRACE_BALANCED_8G8S_SLOT_PAIRS[lane]
+                lane_rows = [
+                    trace.row(step, slot)
+                    for step in range(FULL5_STEPS)
+                    for slot in slots
+                ]
+                expected_cross_kv["cache_hit_count"] = sum(
+                    (1 + trace_row.new_blocks * 5) * 30
+                    for trace_row in lane_rows
+                )
+                shape_histogram: dict[str, int] = {}
+                for trace_row in lane_rows:
+                    world_key = f"1x{trace_row.world_frames * 920}x1536"
+                    shape_histogram[world_key] = shape_histogram.get(world_key, 0) + 30
+                    event_key = "1x2760x1536"
+                    shape_histogram[event_key] = shape_histogram.get(event_key, 0) + (
+                        trace_row.new_blocks * 5 * 30
+                    )
+                expected_cross_kv["query_shape_histogram"] = shape_histogram
+            else:
+                expected_cross_kv["cache_hit_count"] = 0
+                expected_cross_kv["query_shape_histogram"] = {}
+            for key, expected_value in expected_cross_kv.items():
+                if cross_kv_receipt.get(key) != expected_value:
+                    errors.append(
+                        f"rank{rank}: Generator cross K/V receipt mismatch for {key}: "
+                        f"observed={cross_kv_receipt.get(key)!r}, "
+                        f"expected={expected_value!r}"
+                    )
+        elif cross_kv_receipt.get("enabled") not in {False, None}:
+            errors.append(
+                f"rank{row['rank']}: unregistered Generator cross K/V cache"
+            )
         split_receipt = row.get("split_dmd_shadow", {})
         if split_dmd_shadow_enabled:
             rank = int(row["rank"])
@@ -885,6 +954,7 @@ def main() -> int:
         "score_modulation_kernel": score_modulation_kernel_enabled,
         "score_rope_kernel": score_rope_kernel_enabled,
         "score_attention_backend": score_attention_backend_enabled,
+        "generator_cross_attention_kv_cache": generator_cross_kv_cache_enabled,
         "split_dmd_shadow": split_dmd_shadow_contract,
         "generator_ranks": list(generator_ranks),
         "score_ranks": list(score_ranks),

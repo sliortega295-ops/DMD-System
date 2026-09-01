@@ -2133,6 +2133,49 @@ def _score_attention_backend_enabled(plan: Mapping[str, Any], *, mode: str) -> b
     return True
 
 
+def _generator_cross_kv_cache_enabled(
+    plan: Mapping[str, Any], *, mode: str
+) -> bool:
+    """Validate exact no-grad text K/V reuse on Generator streamers."""
+
+    metadata = plan.get("metadata", {})
+    cache = metadata.get("generator_cross_attention_kv_cache")
+    if cache is None:
+        return False
+    _require(isinstance(cache, Mapping), "Generator cross K/V cache must be a mapping")
+    _require(mode == "pipeline", "Generator cross K/V cache is candidate-only")
+    _require(
+        metadata.get("pool_policy") == TRACE_BALANCED_POOL_POLICY
+        and metadata.get("full_context_lens_elision") is True
+        and metadata.get("score_attention_backend", {}).get("enabled") is True,
+        "Generator cross K/V cache requires the validated C16 substrate",
+    )
+    expected = {
+        "enabled": True,
+        "name": "generator_nograd_text_kv_cache_v1",
+        "scope": "generator_ranks_streamer_nograd_only",
+        "source_set_text_sha256": (
+            "def2452ea9528abb9af2aa166d78afdf9b8b7c5daa52c0fc87bfd63bc9832386"
+        ),
+        "source_cross_forward_sha256": (
+            "0df9365afb37bb8a876d8c8659ca95d1caaffb89bf3e64918b782eb86b0a8253"
+        ),
+        "source_flash_attention_sha256": (
+            "c59c125fd92234d2ddec63f3ae3bd2a2479862faba44fa955fdedad2b8203a59"
+        ),
+        "math_change": (
+            "reuse_exact_cross_kv_projection_within_fixed_weight_no_grad_rollout"
+        ),
+        "context_contract": "b1_full_512_token_fp32_projected_context",
+        "grad_contract": "grad_enabled_checkpoint_forward_and_replay_bypass_cache",
+        "block_count": 30,
+        "cache_bytes_per_streamer": 141_557_760,
+        "max_streamers_per_generator_rank": 2,
+    }
+    _require(dict(cache) == expected, "Generator cross K/V cache contract changed")
+    return True
+
+
 def _prefetch_score_sample_contexts(
     torch: Any,
     *,
@@ -2227,6 +2270,7 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _score_modulation_kernel_enabled(plan, mode=mode)
     _score_rope_kernel_enabled(plan, mode=mode)
     _score_attention_backend_enabled(plan, mode=mode)
+    _generator_cross_kv_cache_enabled(plan, mode=mode)
     if (
         str(plan.get("metadata", {}).get("pool_policy", ""))
         == PHASE_EXPANDED_CRITIC16_POOL_POLICY
@@ -2466,6 +2510,50 @@ def run_worker(
                 "shape_histogram": {},
                 "contract_failure_count": 0,
             }
+    generator_cross_kv_cache = {
+        "enabled": False,
+        "name": "native_livewan_generator_cross_kv",
+        "execution_status": "DISABLED",
+    }
+    if _generator_cross_kv_cache_enabled(plan, mode=mode):
+        generator_ranks, _ = _plan_role_ranks(plan, mode=mode)
+        if rank in generator_ranks:
+            from distillschedule.runtime.livewan_cross_kv_cache import (
+                install_generator_cross_kv_cache,
+            )
+
+            generator_cross_kv_cache = install_generator_cross_kv_cache(torch)
+            generator_cross_kv_cache.update(
+                role="generator",
+                execution_status="PASS",
+            )
+        else:
+            generator_cross_kv_cache = {
+                "enabled": True,
+                "name": "generator_nograd_text_kv_cache_v1",
+                "source_set_text_sha256": (
+                    "def2452ea9528abb9af2aa166d78afdf9b8b7c5daa52c0fc87bfd63bc9832386"
+                ),
+                "source_cross_forward_sha256": (
+                    "0df9365afb37bb8a876d8c8659ca95d1caaffb89bf3e64918b782eb86b0a8253"
+                ),
+                "source_flash_attention_sha256": (
+                    "c59c125fd92234d2ddec63f3ae3bd2a2479862faba44fa955fdedad2b8203a59"
+                ),
+                "function_patched": False,
+                "install_status": "NOT_APPLICABLE",
+                "role": "score",
+                "execution_status": "NOT_APPLICABLE",
+                "cache_build_context_count": 0,
+                "cache_build_block_count": 0,
+                "cache_build_bytes": 0,
+                "cache_invalidation_count": 0,
+                "cache_hit_count": 0,
+                "grad_bypass_count": 0,
+                "uncached_fallback_count": 0,
+                "contract_failure_count": 0,
+                "query_shape_histogram": {},
+            }
     before_oom = cgroup_oom_counts()
     torch.cuda.reset_peak_memory_stats(device)
     build_started = time.perf_counter()
@@ -2559,6 +2647,7 @@ def run_worker(
             "score_modulation_kernel": score_modulation_kernel,
             "score_rope_kernel": score_rope_kernel,
             "score_attention_backend": score_attention_backend,
+            "generator_cross_attention_kv_cache": generator_cross_kv_cache,
             "build": bundle.metadata,
             "gpu_training_workload": "NOT_RUN",
         }
@@ -2800,6 +2889,7 @@ def run_worker(
         "score_modulation_kernel": score_modulation_kernel,
         "score_rope_kernel": score_rope_kernel,
         "score_attention_backend": score_attention_backend,
+        "generator_cross_attention_kv_cache": generator_cross_kv_cache,
         "slot_routing": slot_routing,
         "full5_wall_seconds": full5_wall,
         "construction_wall_seconds": build_wall,

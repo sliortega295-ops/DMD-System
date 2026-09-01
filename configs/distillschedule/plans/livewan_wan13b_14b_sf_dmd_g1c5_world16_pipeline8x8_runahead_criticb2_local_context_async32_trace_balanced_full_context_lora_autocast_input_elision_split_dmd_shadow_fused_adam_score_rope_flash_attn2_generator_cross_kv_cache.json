@@ -1,0 +1,22 @@
+{
+  "include": [
+    "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2.json"
+  ],
+  "id": "livewan-wan13b-14b-sfdmd-g1c5-world16-pipeline8x8-runahead-criticb2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow-fused-adam-score-rope-flash-attn2-generator-cross-kv-cache",
+  "metadata": {
+    "generator_cross_attention_kv_cache": {
+      "enabled": true,
+      "name": "generator_nograd_text_kv_cache_v1",
+      "scope": "generator_ranks_streamer_nograd_only",
+      "source_set_text_sha256": "def2452ea9528abb9af2aa166d78afdf9b8b7c5daa52c0fc87bfd63bc9832386",
+      "source_cross_forward_sha256": "0df9365afb37bb8a876d8c8659ca95d1caaffb89bf3e64918b782eb86b0a8253",
+      "source_flash_attention_sha256": "c59c125fd92234d2ddec63f3ae3bd2a2479862faba44fa955fdedad2b8203a59",
+      "math_change": "reuse_exact_cross_kv_projection_within_fixed_weight_no_grad_rollout",
+      "context_contract": "b1_full_512_token_fp32_projected_context",
+      "grad_contract": "grad_enabled_checkpoint_forward_and_replay_bypass_cache",
+      "block_count": 30,
+      "cache_bytes_per_streamer": 141557760,
+      "max_streamers_per_generator_rank": 2
+    }
+  }
+}
