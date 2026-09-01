@@ -140,6 +140,7 @@ def parser() -> argparse.ArgumentParser:
             "c20-generator-flash-attn2",
             "c21-continuous-b16",
             "c21-c1-continuous-b16",
+            "c22-critic-checkpoint-rng",
             "phase-expanded-critic16",
             "phase-expanded-critic16-fused-lora-elision",
             "score-b2",
@@ -273,7 +274,8 @@ def summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
     summary_name = (
         "summarize_livewan_continuous_world16.py"
         if args.pipeline_variant in {
-            "c21-continuous-b16", "c21-c1-continuous-b16"
+            "c21-continuous-b16", "c21-c1-continuous-b16",
+            "c22-critic-checkpoint-rng",
         }
         else "summarize_livewan_crossscale_world16.py"
     )

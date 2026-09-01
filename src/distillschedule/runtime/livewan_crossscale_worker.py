@@ -757,6 +757,89 @@ def _continuous_pipeline_contract(
     return value
 
 
+def _critic_checkpoint_rng_elision_enabled(
+    plan: Mapping[str, Any], *, mode: str
+) -> bool:
+    """Validate the exact C22 Critic checkpoint RNG-state contract.
+
+    Wan's block-causal Transformer block contains no stochastic operator.  C22
+    therefore removes only PyTorch's per-checkpoint CUDA RNG save/restore on
+    Score ranks; Generator and frozen Teacher execution remain untouched.
+    """
+
+    contract = plan.get("metadata", {}).get("critic_checkpoint_rng")
+    if contract is None:
+        return False
+    _require(mode == "pipeline", "Critic checkpoint RNG elision is pipeline-only")
+    _require(
+        _continuous_pipeline_contract(plan, mode=mode) is not None,
+        "Critic checkpoint RNG elision requires the C21 continuous substrate",
+    )
+    expected = {
+        "enabled": True,
+        "name": "critic_checkpoint_rng_state_elision_v1",
+        "scope": "score_rank_critic_grad_checkpoint_only",
+        "use_reentrant": False,
+        "preserve_rng_state": False,
+        "checkpoint_block_stochastic_ops": False,
+        "generator_checkpoint_unchanged": True,
+        "teacher_checkpoint_unchanged": True,
+        "math_and_call_inventory_preserved": True,
+    }
+    _require(dict(contract) == expected, "Critic checkpoint RNG contract changed")
+    return True
+
+
+class _CheckpointRngElisionProxy:
+    """Process-local proxy for ``wanstreamer.blockcausal.ckpt``.
+
+    Replacing the module attribute rather than the global
+    ``torch.utils.checkpoint.checkpoint`` function limits the change to the
+    pinned block-causal call site.  The proxy is installed only in Score-rank
+    processes and fails closed if upstream starts supplying either checkpoint
+    option explicitly.
+    """
+
+    def __init__(self, checkpoint_module: Any) -> None:
+        self._checkpoint_module = checkpoint_module
+        self.call_count = 0
+
+    def checkpoint(self, function: Any, *args: Any, **kwargs: Any) -> Any:
+        _require(
+            "preserve_rng_state" not in kwargs,
+            "upstream checkpoint now controls RNG preservation explicitly",
+        )
+        _require(
+            kwargs.get("use_reentrant") is False,
+            "Critic checkpoint is no longer non-reentrant",
+        )
+        self.call_count += 1
+        return self._checkpoint_module.checkpoint(
+            function,
+            *args,
+            preserve_rng_state=False,
+            **kwargs,
+        )
+
+    def receipt(self, *, expected_calls: int) -> dict[str, Any]:
+        _require(expected_calls > 0, "Critic checkpoint expected-call count is empty")
+        _require(
+            self.call_count == expected_calls,
+            "Critic checkpoint RNG proxy call inventory changed",
+        )
+        return {
+            "enabled": True,
+            "name": "critic_checkpoint_rng_state_elision_v1",
+            "role": "score",
+            "scope": "score_rank_critic_grad_checkpoint_only",
+            "use_reentrant": False,
+            "preserve_rng_state": False,
+            "checkpoint_calls": self.call_count,
+            "expected_checkpoint_calls": expected_calls,
+            "execution_status": "PASS",
+        }
+
+
 def _generator_runahead_transport_enabled(
     plan: Mapping[str, Any], *, mode: str
 ) -> bool:
@@ -2071,6 +2154,7 @@ class RunEvidence:
     critic_shadow_hot_sync: dict[str, Any] = field(default_factory=dict)
     score_receive_waits: list[dict[str, Any]] = field(default_factory=list)
     generator_backpressure: list[dict[str, Any]] = field(default_factory=list)
+    critic_checkpoint_rng: dict[str, Any] = field(default_factory=dict)
 
     def add_logical_score_calls(self, key: str, count: int) -> None:
         _require(count > 0, "logical Score call count must be positive")
@@ -2572,6 +2656,7 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _score_attention_backend_enabled(plan, mode=mode)
     _generator_cross_kv_cache_enabled(plan, mode=mode)
     _generator_attention_backend_enabled(plan, mode=mode)
+    _critic_checkpoint_rng_elision_enabled(plan, mode=mode)
     if (
         str(plan.get("metadata", {}).get("pool_policy", ""))
         == PHASE_EXPANDED_CRITIC16_POOL_POLICY
@@ -3070,6 +3155,10 @@ def run_worker(
             "score_attention_backend": score_attention_backend,
             "generator_cross_attention_kv_cache": generator_cross_kv_cache,
             "generator_attention_backend": generator_attention_backend,
+            "critic_checkpoint_rng": {
+                "enabled": _critic_checkpoint_rng_elision_enabled(plan, mode=mode),
+                "execution_status": "NOT_RUN_CAPACITY_ONLY",
+            },
             "generator_runahead_transport": (
                 runahead_host_transport.receipt()
                 if runahead_host_transport is not None
@@ -3089,6 +3178,38 @@ def run_worker(
         return receipt
     versions = bootstrap.versions
     evidence = RunEvidence()
+    critic_checkpoint_proxy = None
+    critic_checkpoint_enabled = _critic_checkpoint_rng_elision_enabled(
+        plan, mode=mode
+    )
+    if critic_checkpoint_enabled:
+        _, score_ranks = _plan_role_ranks(plan, mode=mode)
+        critic_ranks = _plan_critic_ranks(
+            plan, mode=mode, score_ranks=score_ranks
+        )
+        if rank in critic_ranks:
+            critic_checkpoint_proxy = _CheckpointRngElisionProxy(bc.ckpt)
+            bc.ckpt = critic_checkpoint_proxy
+            evidence.critic_checkpoint_rng = {
+                "enabled": True,
+                "name": "critic_checkpoint_rng_state_elision_v1",
+                "role": "score",
+                "execution_status": "PENDING",
+            }
+        else:
+            evidence.critic_checkpoint_rng = {
+                "enabled": True,
+                "name": "critic_checkpoint_rng_state_elision_v1",
+                "role": "generator",
+                "execution_status": "NOT_APPLICABLE",
+                "checkpoint_calls": 0,
+            }
+    else:
+        evidence.critic_checkpoint_rng = {
+            "enabled": False,
+            "execution_status": "DISABLED",
+            "checkpoint_calls": 0,
+        }
     inventory = CallInventory()
     roles = {
         id(model): role
@@ -3282,6 +3403,14 @@ def run_worker(
         critic_metrics = _state_metrics(torch, bundle.critic_lora_params)
     logical_call_inventory = dict(inventory.counts)
     logical_call_inventory.update(evidence.logical_score_calls)
+    if critic_checkpoint_proxy is not None:
+        _require(bundle.critic is not None, "Score checkpoint proxy lacks Critic")
+        expected_checkpoint_calls = int(
+            inventory.counts.get("critic/grad/checkpoint", 0)
+        ) * len(bundle.critic.blocks)
+        evidence.critic_checkpoint_rng = critic_checkpoint_proxy.receipt(
+            expected_calls=expected_checkpoint_calls
+        )
     slot_routing = None
     receipt_pool_policy = str(plan.get("metadata", {}).get("pool_policy", ""))
     if receipt_pool_policy in {
@@ -3358,6 +3487,7 @@ def run_worker(
         "critic_shadow_hot_sync": evidence.critic_shadow_hot_sync,
         "score_receive_waits": evidence.score_receive_waits,
         "generator_backpressure": evidence.generator_backpressure,
+        "critic_checkpoint_rng": evidence.critic_checkpoint_rng,
         "slot_routing": slot_routing,
         "full5_wall_seconds": full5_wall,
         "construction_wall_seconds": build_wall,

@@ -73,6 +73,10 @@ def main() -> int:
     trace = FormalTrace.load(args.trace, expected_cycles=3)
     plan = json.loads(args.plan.read_text(encoding="utf-8"))
     contract = dict(plan.get("metadata", {}).get("continuous_pipeline", {}))
+    checkpoint_rng_contract = dict(
+        plan.get("metadata", {}).get("critic_checkpoint_rng", {})
+    )
+    checkpoint_rng_enabled = checkpoint_rng_contract.get("enabled") is True
     contract_name = str(contract.get("name", ""))
     if contract_name not in EXPECTED_PHYSICAL_BY_CONTRACT:
         errors.append("resolved plan lacks the registered C21 contract")
@@ -183,6 +187,31 @@ def main() -> int:
                     errors.append(f"rank{rank}: rollout artifact count changed")
             elif row.get("output_tensor_artifact") is not None:
                 errors.append(f"rank{rank}: Score unexpectedly saved rollout tensors")
+        checkpoint_rng = dict(row.get("critic_checkpoint_rng", {}))
+        if checkpoint_rng_enabled:
+            if rank in GENERATOR_RANKS:
+                if (
+                    checkpoint_rng.get("execution_status") != "NOT_APPLICABLE"
+                    or int(checkpoint_rng.get("checkpoint_calls", -1)) != 0
+                ):
+                    errors.append(f"rank{rank}: Generator checkpoint RNG scope changed")
+            else:
+                expected_checkpoint_calls = int(
+                    row.get("physical_call_inventory", {}).get(
+                        "critic/grad/checkpoint", 0
+                    )
+                ) * 30
+                if (
+                    checkpoint_rng.get("execution_status") != "PASS"
+                    or checkpoint_rng.get("preserve_rng_state") is not False
+                    or int(checkpoint_rng.get("checkpoint_calls", -1))
+                    != expected_checkpoint_calls
+                    or int(checkpoint_rng.get("expected_checkpoint_calls", -1))
+                    != expected_checkpoint_calls
+                ):
+                    errors.append(f"rank{rank}: Critic checkpoint RNG receipt changed")
+        elif checkpoint_rng.get("execution_status") != "DISABLED":
+            errors.append(f"rank{rank}: unregistered checkpoint RNG policy active")
 
     if len(rows) != WORLD_SIZE:
         errors.append(f"rank receipt count={len(rows)}, expected=16")
@@ -268,6 +297,19 @@ def main() -> int:
         "head": args.expected_head,
         "heads": {"pipeline": args.expected_head},
         "continuous_contract_name": contract_name,
+        "critic_checkpoint_rng": {
+            "enabled": checkpoint_rng_enabled,
+            "name": checkpoint_rng_contract.get("name"),
+            "score_rank_checkpoint_calls": {
+                str(row["rank"]): int(
+                    row.get("critic_checkpoint_rng", {}).get(
+                        "checkpoint_calls", 0
+                    )
+                )
+                for row in rows
+                if int(row["rank"]) in SCORE_RANKS
+            },
+        },
         "rank_count": len(rows),
         "trace_sha256": trace.sha256,
         "trace_file_sha256": _sha256(args.trace),
