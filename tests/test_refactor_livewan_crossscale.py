@@ -57,6 +57,7 @@ PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LO
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW_FUSED_ADAM = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam.json"
 PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW_FUSED_ADAM_SCORE_ROPE = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope.json"
+PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW_FUSED_ADAM_SCORE_ROPE_FLASH_ATTN2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2.json"
 PIPELINE_PHASE_EXPANDED_CRITIC16 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16.json"
 PIPELINE_PHASE_EXPANDED_CRITIC16_FUSED_LORA_ELISION = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16_fused_lora_elision.json"
 PIPELINE_SCORE_B2 = ROOT / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_scoreb2.json"
@@ -475,6 +476,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow"' in controller
     assert '"b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow-fused-adam"' in controller
     assert '"c15-score-rope"' in controller
+    assert '"c16-score-flash-attn2"' in controller
     assert '"phase-expanded-critic16"' in controller
     assert '"capacity", "correctness", "timing", "profile"' in controller
     assert '"LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant' in controller
@@ -497,6 +499,7 @@ def test_controller_keeps_remote_evidence_outside_source_checkout() -> None:
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam.json" in launcher
     assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope.json" in launcher
+    assert "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2.json" in launcher
     assert '"${RUN_KIND}" == capacity' in launcher
     assert "baseline_pipeline_variant_mismatch" in launcher
     summarizer = (
@@ -1141,6 +1144,61 @@ def test_score_rope_kernel_is_source_pinned_and_fail_closed() -> None:
     assert "contract_failure_count" in source
     assert "fma.rn.f32" in source
     assert "There is no eager" in source
+
+
+def test_score_flash_attn2_plan_changes_only_backend_metadata() -> None:
+    reference = load_plan(
+        PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW_FUSED_ADAM_SCORE_ROPE
+    ).plan.to_dict()
+    candidate_plan = load_plan(
+        PIPELINE_RUNAHEAD_CRITIC_B2_LOCAL_CONTEXT_ASYNC32_TRACE_BALANCED_FULL_CONTEXT_LORA_AUTOCAST_INPUT_ELISION_SPLIT_DMD_SHADOW_FUSED_ADAM_SCORE_ROPE_FLASH_ATTN2
+    ).plan
+    LiveWanSFDMDAdapter().validate(candidate_plan)
+    candidate = candidate_plan.to_dict()
+    metadata = dict(candidate["metadata"])
+    assert metadata.pop("score_attention_backend") == {
+        "enabled": True,
+        "name": "score_flash_attn2_unmasked_bf16_v1",
+        "scope": "score_ranks_only_critic_and_teacher",
+        "source_flash_attention_sha256": (
+            "c59c125fd92234d2ddec63f3ae3bd2a2479862faba44fa955fdedad2b8203a59"
+        ),
+        "artifact_metadata_sha256": (
+            "7749dd68b81a544c1973d68c30be5aa316ee1a718ae0228e0368c2cd04365516"
+        ),
+        "artifact_package_sha256": (
+            "0c560f96b857c188c4a8297ff27d1299619957c3459a5e433e132329fbfdf066"
+        ),
+        "artifact_extension_sha256": (
+            "c2acd487c5d1d77b7f6721eabc0fee4f8c5c8f9e682aadf43bfa99b394eecba7"
+        ),
+        "math_change": (
+            "replace_cudnn_sdpa_with_pinned_flash_attn2_under_fixed_parity_gate"
+        ),
+        "mask_contract": "full_length_unmasked_only",
+        "input_output_dtype": "bfloat16",
+        "head_dimension": 128,
+    }
+    assert metadata == reference["metadata"]
+    for key in ("workload", "hardware", "rank_groups", "lifecycle", "training_backends"):
+        assert candidate[key] == reference[key]
+
+
+def test_score_flash_attn2_backend_is_source_and_artifact_pinned() -> None:
+    source = (
+        ROOT / "src/distillschedule/runtime/livewan_attention_backend.py"
+    ).read_text()
+    for value in (
+        "EXPECTED_FLASH_ATTENTION_SHA256",
+        "c59c125fd92234d2ddec63f3ae3bd2a2479862faba44fa955fdedad2b8203a59",
+        "7749dd68b81a544c1973d68c30be5aa316ee1a718ae0228e0368c2cd04365516",
+        "0c560f96b857c188c4a8297ff27d1299619957c3459a5e433e132329fbfdf066",
+        "c2acd487c5d1d77b7f6721eabc0fee4f8c5c8f9e682aadf43bfa99b394eecba7",
+        "masked or variable-length attention is not registered",
+        "q.shape[-1] != 128",
+        "contract_failure_count",
+    ):
+        assert value in source
 
 
 def test_score_modulation_kernel_is_source_pinned_and_fail_closed() -> None:

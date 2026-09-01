@@ -102,6 +102,12 @@ def main() -> int:
     score_rope_kernel_enabled = bool(
         score_rope_kernel_contract.get("enabled", False)
     )
+    score_attention_backend_contract = dict(
+        plan.get("metadata", {}).get("score_attention_backend", {})
+    )
+    score_attention_backend_enabled = bool(
+        score_attention_backend_contract.get("enabled", False)
+    )
     split_dmd_shadow_contract = dict(
         plan.get("metadata", {}).get("split_dmd_shadow", {})
     )
@@ -681,6 +687,56 @@ def main() -> int:
                     errors.append(f"rank{rank}: Score RoPE gradient-copy receipt invalid")
         elif rope_receipt.get("enabled") not in {False, None}:
             errors.append(f"rank{row['rank']}: unregistered Score RoPE kernel")
+        attention_receipt = row.get("score_attention_backend", {})
+        if score_attention_backend_enabled:
+            rank = int(row["rank"])
+            expected_attention = {
+                "enabled": True,
+                "name": "score_flash_attn2_unmasked_bf16_v1",
+                "source_flash_attention_sha256": (
+                    "c59c125fd92234d2ddec63f3ae3bd2a2479862faba44fa955fdedad2b8203a59"
+                ),
+                "artifact_metadata_sha256": (
+                    "7749dd68b81a544c1973d68c30be5aa316ee1a718ae0228e0368c2cd04365516"
+                ),
+                "artifact_package_sha256": (
+                    "0c560f96b857c188c4a8297ff27d1299619957c3459a5e433e132329fbfdf066"
+                ),
+                "artifact_extension_sha256": (
+                    "c2acd487c5d1d77b7f6721eabc0fee4f8c5c8f9e682aadf43bfa99b394eecba7"
+                ),
+                "function_patched": rank in score_ranks,
+                "install_status": "PASS" if rank in score_ranks else "NOT_APPLICABLE",
+                "role": "score" if rank in score_ranks else "generator",
+                "execution_status": (
+                    "PASS" if rank in score_ranks else "NOT_APPLICABLE"
+                ),
+                "invocation_count": 760 if rank in score_ranks else 0,
+                "backward_invocation_count": 300 if rank in score_ranks else 0,
+                "element_count": 67_264_512_000 if rank in score_ranks else 0,
+                "backward_element_count": 17_805_312_000 if rank in score_ranks else 0,
+                "shape_histogram": (
+                    {
+                        "q=2x19320x12x128|k=2x19320x12x128": 300,
+                        "q=2x19320x12x128|k=2x512x12x128": 300,
+                        "q=2x19320x40x128|k=2x19320x40x128": 80,
+                        "q=2x19320x40x128|k=2x512x40x128": 80,
+                    }
+                    if rank in score_ranks else {}
+                ),
+                "contract_failure_count": 0,
+            }
+            for key, expected_value in expected_attention.items():
+                if attention_receipt.get(key) != expected_value:
+                    errors.append(
+                        f"rank{rank}: Score attention receipt mismatch for {key}: "
+                        f"observed={attention_receipt.get(key)!r}, "
+                        f"expected={expected_value!r}"
+                    )
+            if rank in score_ranks and not attention_receipt.get("artifact_root"):
+                errors.append(f"rank{rank}: Score attention artifact root missing")
+        elif attention_receipt.get("enabled") not in {False, None}:
+            errors.append(f"rank{row['rank']}: unregistered Score attention backend")
         split_receipt = row.get("split_dmd_shadow", {})
         if split_dmd_shadow_enabled:
             rank = int(row["rank"])
@@ -828,6 +884,7 @@ def main() -> int:
         "critic_lora_kernel": critic_lora_kernel_enabled,
         "score_modulation_kernel": score_modulation_kernel_enabled,
         "score_rope_kernel": score_rope_kernel_enabled,
+        "score_attention_backend": score_attention_backend_enabled,
         "split_dmd_shadow": split_dmd_shadow_contract,
         "generator_ranks": list(generator_ranks),
         "score_ranks": list(score_ranks),

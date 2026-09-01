@@ -2091,6 +2091,48 @@ def _score_rope_kernel_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
     return True
 
 
+def _score_attention_backend_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    """Validate the pinned Score-rank-only FlashAttention-2 backend."""
+
+    metadata = plan.get("metadata", {})
+    backend = metadata.get("score_attention_backend")
+    if backend is None:
+        return False
+    _require(isinstance(backend, Mapping), "Score attention backend must be a mapping")
+    _require(mode == "pipeline", "Score attention backend is candidate-only")
+    _require(
+        metadata.get("pool_policy") == TRACE_BALANCED_POOL_POLICY
+        and metadata.get("full_context_lens_elision") is True
+        and metadata.get("score_rope_kernel", {}).get("enabled") is True,
+        "Score attention backend requires the validated C15 substrate",
+    )
+    expected = {
+        "enabled": True,
+        "name": "score_flash_attn2_unmasked_bf16_v1",
+        "scope": "score_ranks_only_critic_and_teacher",
+        "source_flash_attention_sha256": (
+            "c59c125fd92234d2ddec63f3ae3bd2a2479862faba44fa955fdedad2b8203a59"
+        ),
+        "artifact_metadata_sha256": (
+            "7749dd68b81a544c1973d68c30be5aa316ee1a718ae0228e0368c2cd04365516"
+        ),
+        "artifact_package_sha256": (
+            "0c560f96b857c188c4a8297ff27d1299619957c3459a5e433e132329fbfdf066"
+        ),
+        "artifact_extension_sha256": (
+            "c2acd487c5d1d77b7f6721eabc0fee4f8c5c8f9e682aadf43bfa99b394eecba7"
+        ),
+        "math_change": (
+            "replace_cudnn_sdpa_with_pinned_flash_attn2_under_fixed_parity_gate"
+        ),
+        "mask_contract": "full_length_unmasked_only",
+        "input_output_dtype": "bfloat16",
+        "head_dimension": 128,
+    }
+    _require(dict(backend) == expected, "Score attention backend contract changed")
+    return True
+
+
 def _prefetch_score_sample_contexts(
     torch: Any,
     *,
@@ -2184,6 +2226,7 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _critic_lora_scale_one_enabled(plan, mode=mode)
     _score_modulation_kernel_enabled(plan, mode=mode)
     _score_rope_kernel_enabled(plan, mode=mode)
+    _score_attention_backend_enabled(plan, mode=mode)
     if (
         str(plan.get("metadata", {}).get("pool_policy", ""))
         == PHASE_EXPANDED_CRITIC16_POOL_POLICY
@@ -2379,6 +2422,50 @@ def run_worker(
                 "gradient_contiguous_copy_count": 0,
                 "contract_failure_count": 0,
             }
+    score_attention_backend = {
+        "enabled": False,
+        "name": "native_livewan_score_attention",
+        "execution_status": "DISABLED",
+    }
+    if _score_attention_backend_enabled(plan, mode=mode):
+        _, score_ranks = _plan_role_ranks(plan, mode=mode)
+        if rank in score_ranks:
+            from distillschedule.runtime.livewan_attention_backend import (
+                install_score_flash_attn2,
+            )
+
+            score_attention_backend = install_score_flash_attn2(torch)
+            score_attention_backend.update(
+                role="score",
+                execution_status="PASS",
+            )
+        else:
+            score_attention_backend = {
+                "enabled": True,
+                "name": "score_flash_attn2_unmasked_bf16_v1",
+                "source_flash_attention_sha256": (
+                    "c59c125fd92234d2ddec63f3ae3bd2a2479862faba44fa955fdedad2b8203a59"
+                ),
+                "artifact_metadata_sha256": (
+                    "7749dd68b81a544c1973d68c30be5aa316ee1a718ae0228e0368c2cd04365516"
+                ),
+                "artifact_package_sha256": (
+                    "0c560f96b857c188c4a8297ff27d1299619957c3459a5e433e132329fbfdf066"
+                ),
+                "artifact_extension_sha256": (
+                    "c2acd487c5d1d77b7f6721eabc0fee4f8c5c8f9e682aadf43bfa99b394eecba7"
+                ),
+                "function_patched": False,
+                "install_status": "NOT_APPLICABLE",
+                "role": "generator",
+                "execution_status": "NOT_APPLICABLE",
+                "invocation_count": 0,
+                "backward_invocation_count": 0,
+                "element_count": 0,
+                "backward_element_count": 0,
+                "shape_histogram": {},
+                "contract_failure_count": 0,
+            }
     before_oom = cgroup_oom_counts()
     torch.cuda.reset_peak_memory_stats(device)
     build_started = time.perf_counter()
@@ -2471,6 +2558,7 @@ def run_worker(
             "critic_lora_kernel": critic_lora_kernel,
             "score_modulation_kernel": score_modulation_kernel,
             "score_rope_kernel": score_rope_kernel,
+            "score_attention_backend": score_attention_backend,
             "build": bundle.metadata,
             "gpu_training_workload": "NOT_RUN",
         }
@@ -2711,6 +2799,7 @@ def run_worker(
         "critic_lora_kernel": critic_lora_kernel,
         "score_modulation_kernel": score_modulation_kernel,
         "score_rope_kernel": score_rope_kernel,
+        "score_attention_backend": score_attention_backend,
         "slot_routing": slot_routing,
         "full5_wall_seconds": full5_wall,
         "construction_wall_seconds": build_wall,

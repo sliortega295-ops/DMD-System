@@ -49,6 +49,7 @@ PIPELINE_VARIANT="${LIVEWAN_PIPELINE_VARIANT:-b1}"
    "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow || \
    "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow-fused-adam || \
    "${PIPELINE_VARIANT}" == c15-score-rope || \
+   "${PIPELINE_VARIANT}" == c16-score-flash-attn2 || \
    "${PIPELINE_VARIANT}" == phase-expanded-critic16 || \
    "${PIPELINE_VARIANT}" == phase-expanded-critic16-fused-lora-elision || \
    "${PIPELINE_VARIANT}" == score-b2 || \
@@ -89,6 +90,12 @@ elif [[ "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context-async32-tra
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam.json"
 elif [[ "${PIPELINE_VARIANT}" == c15-score-rope ]]; then
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope.json"
+elif [[ "${PIPELINE_VARIANT}" == c16-score-flash-attn2 ]]; then
+  PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2.json"
+  export DISTILLSCHEDULE_FLASH_ATTN_KERNEL="${DISTILLSCHEDULE_FLASH_ATTN_KERNEL:-/share/project/shuchenweng/DistillSchedule_assets/hf_home_official_torch210/hub/models--kernels-community--flash-attn2/snapshots/6a810a7a010ba2aad6613f1f0f7b226fb8bdee3c/build/torch210-cxx11-cu128-x86_64-linux}"
+  [[ -f "${DISTILLSCHEDULE_FLASH_ATTN_KERNEL}/_flash_attn2_cuda_a511a4c.abi3.so" ]] || {
+    echo "missing_flash_attn2_artifact=${DISTILLSCHEDULE_FLASH_ATTN_KERNEL}" >&2; exit 3;
+  }
 elif [[ "${PIPELINE_VARIANT}" == phase-expanded-critic16 ]]; then
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_phase_expanded_critic16.json"
 elif [[ "${PIPELINE_VARIANT}" == phase-expanded-critic16-fused-lora-elision ]]; then
