@@ -156,7 +156,8 @@ def test_controller_launcher_and_probe_register_c21() -> None:
     probe = (ROOT / "scripts/distillschedule/probe_livewan_crossscale_transport.py").read_text()
     assert '"c21-continuous-b16"' in controller
     assert "livewan_wan13b_14b_sf_dmd_c21_continuous_b16.json" in launcher
-    assert '"c21-continuous-b16", "c21-c1-continuous-b16"' in probe
+    assert '"c21-continuous-b16"' in probe
+    assert '"c21-c1-continuous-b16"' in probe
     assert '"c21-c1-continuous-b16"' in controller
     assert "livewan_wan13b_14b_sf_dmd_c21_c1_continuous_b16.json" in launcher
     assert "paired Critic-shadow broadcast mismatch" in probe
