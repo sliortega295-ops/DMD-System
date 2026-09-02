@@ -65,8 +65,26 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
         workload = plan.workload
         if plan.hardware.world_size != WORLD_SIZE:
             self._fail("cross-scale formal workload requires world16", "hardware.world_size")
-        if workload.shape.batch_size != GLOBAL_BATCH:
-            self._fail("cross-scale formal workload requires global batch16", "workload.shape.batch_size")
+        batch32 = workload.shape.batch_size == 32
+        if workload.shape.batch_size not in {GLOBAL_BATCH, 32}:
+            self._fail(
+                "cross-scale workload requires registered global batch16 or B32 diagnostic",
+                "workload.shape.batch_size",
+            )
+        if batch32:
+            expected_b32 = {
+                "enabled": True,
+                "name": "matched_b32_source_reuse_systems_v1",
+                "source_reuse_within_step": True,
+                "unique_source_samples_per_cycle": 80,
+                "rank_qualified_samples_per_cycle": 160,
+                "training_quality_claimable": False,
+            }
+            if plan.metadata.get("batch32_diagnostic") != expected_b32:
+                self._fail(
+                    "global-B32 lacks its explicit source-reuse claim boundary",
+                    "metadata.batch32_diagnostic",
+                )
         if plan.evidence.start_step != 0 or plan.evidence.steps != FULL5_STEPS:
             self._fail("formal unit is logical steps 0..4", "evidence")
         if workload.schedule.generator_update_every != 5:
@@ -286,6 +304,20 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                         "trace-balanced candidate differs from its preregistered slot pairs",
                         "metadata.slot_pairs_by_lane",
                     )
+                if batch32:
+                    expected_groups = tuple(
+                        (first, second, first + 16, second + 16)
+                        for first, second in TRACE_BALANCED_8G8S_SLOT_PAIRS
+                    )
+                    observed_groups = tuple(
+                        tuple(int(slot) for slot in group)
+                        for group in plan.metadata.get("slot_groups_by_lane", ())
+                    )
+                    if observed_groups != expected_groups:
+                        self._fail(
+                            "B32 lane groups differ from preregistration",
+                            "metadata.slot_groups_by_lane",
+                        )
             if plan.metadata.get("full_context_lens_elision", False):
                 if (
                     pool_policy

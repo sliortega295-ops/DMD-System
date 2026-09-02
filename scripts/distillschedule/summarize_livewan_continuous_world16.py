@@ -30,9 +30,16 @@ EXPECTED_LOGICAL = {
 }
 C21_C0_NAME = "continuous_full5_b16_depth1_v1"
 C21_C1_NAME = "continuous_full5_b16_depth1_step1_b1_overlap_v1"
+C23_B32_NAME = "continuous_full5_b32_depth1_systems_v1"
+EXPECTED_LOGICAL_B32 = {
+    key: value * 2 for key, value in EXPECTED_LOGICAL.items()
+}
 EXPECTED_PHYSICAL_BY_CONTRACT = {
     C21_C0_NAME: dict(EXPECTED_LOGICAL, **{"critic/grad/checkpoint": 120}),
     C21_C1_NAME: dict(EXPECTED_LOGICAL, **{"critic/grad/checkpoint": 144}),
+    C23_B32_NAME: dict(
+        EXPECTED_LOGICAL_B32, **{"critic/grad/checkpoint": 240}
+    ),
 }
 
 
@@ -70,7 +77,6 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     errors: list[str] = []
-    trace = FormalTrace.load(args.trace, expected_cycles=3)
     plan = json.loads(args.plan.read_text(encoding="utf-8"))
     contract = dict(plan.get("metadata", {}).get("continuous_pipeline", {}))
     checkpoint_rng_contract = dict(
@@ -78,11 +84,23 @@ def main() -> int:
     )
     checkpoint_rng_enabled = checkpoint_rng_contract.get("enabled") is True
     contract_name = str(contract.get("name", ""))
+    global_batch = int(plan["workload"]["shape"]["batch_size"])
+    trace = FormalTrace.load(
+        args.trace,
+        expected_cycles=3,
+        expected_global_batch=global_batch,
+    )
     if contract_name not in EXPECTED_PHYSICAL_BY_CONTRACT:
         errors.append("resolved plan lacks the registered C21 contract")
     expected_physical = EXPECTED_PHYSICAL_BY_CONTRACT.get(
         contract_name, EXPECTED_PHYSICAL_BY_CONTRACT[C21_C0_NAME]
     )
+    expected_logical = (
+        EXPECTED_LOGICAL_B32 if contract_name == C23_B32_NAME else EXPECTED_LOGICAL
+    )
+    expected_transport_buffers = 50 if contract_name == C23_B32_NAME else 26
+    expected_transport_waves = 4 if contract_name == C23_B32_NAME else 2
+    expected_rollout_tensors = 60 if contract_name == C23_B32_NAME else 30
 
     if args.run_kind == "validate":
         values = []
@@ -151,9 +169,13 @@ def main() -> int:
         ):
             errors.append(f"rank{rank}: continuous execution receipt incomplete")
         expected_step1_schedule = (
-            "wave0_b1_backward_then_wave1_b1_backward_single_commit"
-            if contract_name == C21_C1_NAME
-            else "single_b2_backward"
+            "two_b2_backward_accumulations_single_commit"
+            if contract_name == C23_B32_NAME
+            else (
+                "wave0_b1_backward_then_wave1_b1_backward_single_commit"
+                if contract_name == C21_C1_NAME
+                else "single_b2_backward"
+            )
         )
         if (
             continuous.get("critic_step1_physical_schedule")
@@ -167,7 +189,8 @@ def main() -> int:
             transport.get("execution_status") != "PASS"
             or transport.get("role") != expected_transport_role
             or transport.get("cycles") != 3
-            or transport.get("buffer_count") != 26
+            or transport.get("buffer_count") != expected_transport_buffers
+            or transport.get("waves_per_step") != expected_transport_waves
             or transport.get("cross_cycle_lookahead") is not True
         ):
             errors.append(f"rank{rank}: continuous host transport incomplete")
@@ -183,7 +206,7 @@ def main() -> int:
         if args.run_kind == "correctness":
             if rank in GENERATOR_RANKS:
                 artifact = row.get("output_tensor_artifact") or {}
-                if int(artifact.get("tensor_count", -1)) != 30:
+                if int(artifact.get("tensor_count", -1)) != expected_rollout_tensors:
                     errors.append(f"rank{rank}: rollout artifact count changed")
             elif row.get("output_tensor_artifact") is not None:
                 errors.append(f"rank{rank}: Score unexpectedly saved rollout tensors")
@@ -224,7 +247,7 @@ def main() -> int:
 
     logical = _aggregate(rows, "logical_call_inventory")
     physical = _aggregate(rows, "physical_call_inventory")
-    if _core_inventory(logical) != EXPECTED_LOGICAL:
+    if _core_inventory(logical) != expected_logical:
         errors.append(f"logical call inventory changed: {_core_inventory(logical)}")
     if _core_inventory(physical) != expected_physical:
         errors.append(f"physical call inventory changed: {_core_inventory(physical)}")
@@ -291,8 +314,11 @@ def main() -> int:
         "diagnostic_only": True,
         "formal_speedup_claimable": False,
         "claim_boundary": (
-            "Continuous source-reuse steady-state systems diagnostic; not a training-quality "
-            "or sequential-equivalence claim."
+            "Continuous B32 source-reuse-within-step throughput diagnostic; not a "
+            "training-quality or convergence claim."
+            if contract_name == C23_B32_NAME
+            else "Continuous source-reuse steady-state systems diagnostic; not a "
+            "training-quality or sequential-equivalence claim."
         ),
         "head": args.expected_head,
         "heads": {"pipeline": args.expected_head},
@@ -315,9 +341,12 @@ def main() -> int:
         "trace_file_sha256": _sha256(args.trace),
         "identity": next(iter(identities)) if len(identities) == 1 else None,
         "cycles": 3,
+        "global_batch": global_batch,
+        "source_reuse_within_step": contract_name == C23_B32_NAME,
+        "training_quality_claimable": False,
         "logical_call_inventory": logical,
         "physical_call_inventory": physical,
-        "expected_logical_call_inventory": EXPECTED_LOGICAL,
+        "expected_logical_call_inventory": expected_logical,
         "expected_physical_call_inventory": expected_physical,
         "final_versions": {"generator": 3, "critic": 15, "ema": 0},
         "world_wall_seconds": max(rank_walls) if rank_walls else None,
@@ -326,6 +355,17 @@ def main() -> int:
         "score_steady_intervals_seconds": score_intervals,
         "score_steady_interval_median_seconds": (
             statistics.median(score_intervals) if score_intervals else None
+        ),
+        "logical_samples_per_cycle": global_batch * 5,
+        "steady_samples_per_second": (
+            (global_batch * 5) / statistics.median(score_intervals)
+            if score_intervals
+            else None
+        ),
+        "b16_equivalent_steady_interval_seconds": (
+            statistics.median(score_intervals) * 16 / global_batch
+            if score_intervals
+            else None
         ),
         "score_receive_wait_sum_seconds_per_rank": {
             str(row["rank"]): sum(

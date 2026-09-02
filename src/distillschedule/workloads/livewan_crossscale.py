@@ -131,23 +131,41 @@ TRACE_BALANCED_8G8S_SLOT_PAIRS = (
 )
 
 
+def validate_slot_groups(
+    groups: Sequence[Sequence[int]],
+    *,
+    lanes: int = 8,
+    batch: int = GLOBAL_BATCH,
+    slots_per_lane: int | None = None,
+) -> tuple[tuple[int, ...], ...]:
+    """Return one deterministic global-batch slot assignment per fixed lane."""
+
+    expected = slots_per_lane if slots_per_lane is not None else batch // lanes
+    _require(batch % lanes == 0, "global batch is not divisible by fixed lanes")
+    _require(expected == batch // lanes, "slot-group width differs from global batch")
+    normalized = tuple(tuple(int(slot) for slot in group) for group in groups)
+    _require(len(normalized) == lanes, "slot-group policy must cover every lane")
+    _require(
+        all(len(group) == expected for group in normalized),
+        "fixed lane owns the wrong number of logical slots",
+    )
+    routed = [slot for group in normalized for slot in group]
+    _require(
+        sorted(routed) == list(range(batch)),
+        "slot-group policy is not a global-batch bijection",
+    )
+    return normalized
+
+
 def validate_slot_pairs(
     pairs: Sequence[Sequence[int]], *, lanes: int = 8, batch: int = GLOBAL_BATCH
 ) -> tuple[tuple[int, int], ...]:
-    """Return one deterministic two-slot assignment for every fixed lane."""
+    """Return the legacy deterministic two-slot assignment for every lane."""
 
-    normalized = tuple(tuple(int(slot) for slot in pair) for pair in pairs)
-    _require(len(normalized) == lanes, "slot-pair policy must cover every lane")
-    _require(
-        all(len(pair) == 2 for pair in normalized),
-        "every fixed lane must own exactly two logical slots",
+    normalized = validate_slot_groups(
+        pairs, lanes=lanes, batch=batch, slots_per_lane=2
     )
-    routed = [slot for pair in normalized for slot in pair]
-    _require(
-        sorted(routed) == list(range(batch)),
-        "slot-pair policy is not a global-batch bijection",
-    )
-    return normalized  # type: ignore[return-value]
+    return tuple((group[0], group[1]) for group in normalized)
 
 
 validate_slot_pairs(TRACE_BALANCED_8G8S_SLOT_PAIRS)

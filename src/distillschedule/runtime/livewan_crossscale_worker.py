@@ -40,6 +40,7 @@ from distillschedule.workloads.livewan_crossscale import (
     WORLD_SIZE,
     balanced_slots,
     sha256_file,
+    validate_slot_groups,
     validate_slot_pairs,
 )
 
@@ -61,6 +62,7 @@ PHASE_EXPANDED_CRITIC16_POOL_POLICY = (
     "persistent_8g_8score_teacher_fsdp8_trace_balanced_"
     "phase_expanded_critic16_fsdp16"
 )
+B32_CONTINUOUS_NAME = "continuous_full5_b32_depth1_systems_v1"
 
 
 def _pipeline_8x8_slot_pairs(
@@ -79,6 +81,41 @@ def _pipeline_8x8_slot_pairs(
         )
         return pairs
     return tuple((lane, lane + 8) for lane in range(8))
+
+
+def _pipeline_8x8_slot_groups(
+    plan: Mapping[str, Any],
+) -> tuple[tuple[int, ...], ...]:
+    """Resolve the exact B16 pair or registered B32 four-slot lane mapping."""
+
+    batch = int(plan["workload"]["shape"]["batch_size"])
+    if batch == GLOBAL_BATCH:
+        return tuple(_pipeline_8x8_slot_pairs(plan))
+    _require(batch == 32, "registered continuous lane mapping supports only B16/B32")
+    contract = dict(plan.get("metadata", {}).get("batch32_diagnostic", {}))
+    _require(
+        contract
+        == {
+            "enabled": True,
+            "name": "matched_b32_source_reuse_systems_v1",
+            "source_reuse_within_step": True,
+            "unique_source_samples_per_cycle": 80,
+            "rank_qualified_samples_per_cycle": 160,
+            "training_quality_claimable": False,
+        },
+        "B32 source-reuse diagnostic contract changed",
+    )
+    groups = validate_slot_groups(
+        plan.get("metadata", {}).get("slot_groups_by_lane", ()),
+        batch=32,
+        slots_per_lane=4,
+    )
+    expected = tuple(
+        (first, second, first + 16, second + 16)
+        for first, second in TRACE_BALANCED_8G8S_SLOT_PAIRS
+    )
+    _require(groups == expected, "B32 slot groups differ from preregistration")
+    return groups
 
 
 def _require(condition: bool, message: str) -> None:
@@ -130,6 +167,7 @@ class OperationTraceRow:
         *,
         total_steps: int = FULL5_STEPS,
         cycle_length: int = FULL5_STEPS,
+        global_batch: int = GLOBAL_BATCH,
     ) -> "OperationTraceRow":
         required_seeds = {
             "rollout",
@@ -173,7 +211,7 @@ class OperationTraceRow:
         _require(row.operation_key == expected_operation_key, "operation key mismatch")
         _require(row.world_frames in WORLD_CHOICES, "world choice is outside source contract")
         _require(0 <= row.logical_step < total_steps, "logical step outside trace")
-        _require(0 <= row.logical_slot < GLOBAL_BATCH, "logical slot outside global batch")
+        _require(0 <= row.logical_slot < global_batch, "logical slot outside global batch")
         _require(
             row.generator_update == (cycle_step == 0),
             "G1/C5 per-cycle trace predicate changed",
@@ -201,19 +239,30 @@ class FormalTrace:
     prompts_path: Path
     prompts_sha256: str
     rows: tuple[OperationTraceRow, ...]
+    global_batch: int = GLOBAL_BATCH
     steps: int = FULL5_STEPS
     cycles: int = 1
     source_reuse_across_cycles: bool = False
 
     @classmethod
     def load(
-        cls, path: str | Path, *, expected_cycles: int = 1
+        cls,
+        path: str | Path,
+        *,
+        expected_cycles: int = 1,
+        expected_global_batch: int = GLOBAL_BATCH,
     ) -> "FormalTrace":
         resolved = Path(path).expanduser().resolve()
         value = json.loads(resolved.read_text(encoding="utf-8"))
         _require(value.get("livewan_commit") == LIVEWAN_COMMIT, "trace LiveWan revision mismatch")
         _require(value.get("wan21_commit") == WAN21_COMMIT, "trace Wan2.1 revision mismatch")
         _require(int(value.get("world_size", -1)) == WORLD_SIZE, "trace is not world16")
+        global_batch = int(value.get("global_batch", -1))
+        _require(
+            global_batch == expected_global_batch,
+            "trace global batch differs from the registered plan",
+        )
+        _require(global_batch in {GLOBAL_BATCH, 32}, "trace batch is not B16/B32")
         _require(expected_cycles >= 1, "trace cycle count must be positive")
         steps = int(value.get("steps", -1))
         cycles = int(value.get("cycles", 1))
@@ -231,16 +280,19 @@ class FormalTrace:
         _require(recorded == actual, "trace payload SHA mismatch")
         rows = tuple(
             OperationTraceRow.from_mapping(
-                row, total_steps=steps, cycle_length=cycle_length
+                row,
+                total_steps=steps,
+                cycle_length=cycle_length,
+                global_batch=global_batch,
             )
             for row in value["rows"]
         )
         pairs = {(row.logical_step, row.logical_slot) for row in rows}
         expected = {
-            (step, slot) for step in range(steps) for slot in range(GLOBAL_BATCH)
+            (step, slot) for step in range(steps) for slot in range(global_batch)
         }
         _require(
-            len(rows) == steps * GLOBAL_BATCH and pairs == expected,
+            len(rows) == steps * global_batch and pairs == expected,
             "trace is not a steps x global-batch bijection",
         )
         prompts = dict(value["prompts"])
@@ -253,13 +305,14 @@ class FormalTrace:
             prompts_path,
             str(prompts["sha256"]),
             rows,
+            global_batch,
             steps,
             cycles,
             source_reuse,
         )
 
     def row(self, step: int, slot: int) -> OperationTraceRow:
-        return self.rows[step * GLOBAL_BATCH + slot]
+        return self.rows[step * self.global_batch + slot]
 
 
 def _validate_trace_balanced_pairing(
@@ -272,8 +325,12 @@ def _validate_trace_balanced_pairing(
         PHASE_EXPANDED_CRITIC16_POOL_POLICY,
     }:
         return
-    pairs = _pipeline_8x8_slot_pairs(plan)
-    current = tuple((lane, lane + 8) for lane in range(8))
+    groups = _pipeline_8x8_slot_groups(plan)
+    current = (
+        tuple((lane, lane + 8) for lane in range(8))
+        if trace.global_batch == GLOBAL_BATCH
+        else tuple((lane, lane + 8, lane + 16, lane + 24) for lane in range(8))
+    )
 
     def cycle_step_max(
         candidate: Sequence[Sequence[int]], cycle_index: int
@@ -291,7 +348,7 @@ def _validate_trace_balanced_pairing(
         cycle_step_max(current, cycle) for cycle in range(trace.cycles)
     ]
     candidate_by_cycle = [
-        cycle_step_max(pairs, cycle) for cycle in range(trace.cycles)
+        cycle_step_max(groups, cycle) for cycle in range(trace.cycles)
     ]
     current_max = current_by_cycle[0]
     candidate_max = candidate_by_cycle[0]
@@ -745,8 +802,18 @@ def _continuous_pipeline_contract(
         critic_step1_loss_weights=[0.5, 0.5],
         critic_step1_physical_calls_per_rank=2,
     )
+    expected_b32 = dict(
+        expected,
+        name=B32_CONTINUOUS_NAME,
+        waves_per_step=4,
+        critic_physical_microbatches_per_step=2,
+        critic_microbatch_size=2,
+        critic_loss_scales=[0.5, 0.5],
+        source_reuse_within_step=True,
+        training_quality_claimable=False,
+    )
     _require(
-        dict(value) in (expected, expected_c1),
+        dict(value) in (expected, expected_c1, expected_b32),
         "continuous pipeline contract changed",
     )
     _require(_split_dmd_shadow_enabled(plan, mode=mode), "continuous pipeline needs split-DMD shadow")
@@ -866,12 +933,18 @@ def _generator_runahead_transport_enabled(
         bool(metadata.get("generator_cross_attention_kv_cache", {}).get("enabled")),
         "C19 must inherit the passing C18 Generator K/V cache",
     )
+    waves_per_step = (
+        4
+        if dict(metadata.get("continuous_pipeline", {})).get("name")
+        == B32_CONTINUOUS_NAME
+        else 2
+    )
     expected = {
         "enabled": True,
         "name": "pinned_cpu_gloo_latent_v1",
         "scope": "critic_only_steps_1_4_latent_only",
         "logical_steps": [1, 2, 3, 4],
-        "waves_per_step": 2,
+        "waves_per_step": waves_per_step,
         "payload_dtype": "float32",
         "payload_shape": list(LATENT_SHAPE),
         "pinned_host": True,
@@ -2052,6 +2125,7 @@ def critic_backward_for_batch(
     sample_context: ScoreSampleContext,
     context_lens: Any,
     loss_scale: float = 1.0,
+    reducer_accumulation: tuple[int, int] | None = None,
 ) -> tuple[Any, ...]:
     """Backpropagate a scaled local mean of exact per-sample Critic losses."""
 
@@ -2086,7 +2160,18 @@ def critic_backward_for_batch(
     losses = _per_sample_mse(torch, velocity, target)
     scaled_loss = losses.mean().mul(loss_scale)
     if bundle.critic_gradient_reducer is None:
+        _require(
+            reducer_accumulation is None,
+            "Critic B2 accumulation requested without the registered reducer",
+        )
         scaled_loss.backward()
+    elif reducer_accumulation is not None:
+        accumulation_index, accumulation_count = reducer_accumulation
+        bundle.critic_gradient_reducer.backward_accumulate(
+            scaled_loss,
+            accumulation_index=accumulation_index,
+            accumulation_count=accumulation_count,
+        )
     else:
         bundle.critic_gradient_reducer.backward(scaled_loss)
     return tuple(value.detach() for value in losses.unbind(0))
@@ -2641,7 +2726,15 @@ def _prefetch_score_sample_contexts(
 
 def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _require(int(plan["hardware"]["world_size"]) == WORLD_SIZE, "plan is not world16")
-    _require(int(plan["workload"]["shape"]["batch_size"]) == GLOBAL_BATCH, "plan is not global-B16")
+    batch = int(plan["workload"]["shape"]["batch_size"])
+    _require(batch in {GLOBAL_BATCH, 32}, "plan is not registered global-B16/B32")
+    if batch == 32:
+        _require(
+            dict(plan.get("metadata", {}).get("continuous_pipeline", {})).get("name")
+            == B32_CONTINUOUS_NAME,
+            "global-B32 is registered only for the continuous systems diagnostic",
+        )
+        _pipeline_8x8_slot_groups(plan)
     _require(plan["metadata"]["execution_mode"] == mode, "plan execution mode mismatch")
     _require(plan["workload"]["metadata"]["livewan_commit"] == LIVEWAN_COMMIT, "plan LiveWan mismatch")
     _require(plan["workload"]["metadata"]["wan21_commit"] == WAN21_COMMIT, "plan Wan2.1 mismatch")
@@ -2732,8 +2825,11 @@ def run_worker(
         if continuous_contract is not None
         else 1
     )
+    registered_batch = int(plan["workload"]["shape"]["batch_size"])
     trace = FormalTrace.load(
-        plan["evidence"]["operation_trace"], expected_cycles=continuous_cycles
+        plan["evidence"]["operation_trace"],
+        expected_cycles=continuous_cycles,
+        expected_global_batch=registered_batch,
     )
     _validate_trace_balanced_pairing(plan, trace)
     bootstrap = Bootstrap.load(plan["evidence"]["checkpoint"], trace=trace)
@@ -3085,6 +3181,9 @@ def run_worker(
             dtype=torch.float32,
             cycles=continuous_cycles,
             cross_cycle_lookahead=continuous_cycles > 1,
+            waves_per_step=int(
+                plan["metadata"]["generator_runahead_transport"]["waves_per_step"]
+            ),
         )
         bundle.metadata["generator_runahead_transport_setup"] = {
             "enabled": True,
@@ -3269,7 +3368,7 @@ def run_worker(
                     device=device,
                     runahead_host_transport=runahead_host_transport,
                     critic_shadow_hot_sync=critic_shadow_hot_sync,
-                    slot_pairs_by_lane=_pipeline_8x8_slot_pairs(plan),
+                    slot_pairs_by_lane=_pipeline_8x8_slot_groups(plan),
                     full_context_lens_elision=_full_context_lens_elision(
                         plan, mode=mode
                     ),
@@ -3417,13 +3516,17 @@ def run_worker(
         TRACE_BALANCED_POOL_POLICY,
         PHASE_EXPANDED_CRITIC16_POOL_POLICY,
     }:
-        slot_pairs = _pipeline_8x8_slot_pairs(plan)
+        slot_pairs = _pipeline_8x8_slot_groups(plan)
         lane = rank if rank < 8 else rank - 8
         slot_routing = {
             "policy": (
                 "trace_balanced_phase_expanded_critic16_v1"
                 if receipt_pool_policy == PHASE_EXPANDED_CRITIC16_POOL_POLICY
-                else "trace_balanced_fixed_rank_pairs_v1"
+                else (
+                    "trace_balanced_fixed_rank_groups_b32_v1"
+                    if trace.global_batch == 32
+                    else "trace_balanced_fixed_rank_pairs_v1"
+                )
             ),
             "lane": lane,
             "logical_slots": list(slot_pairs[lane]),
@@ -4626,6 +4729,477 @@ def _run_pipeline_8x8(
         )
 
 
+def _run_pipeline_8x8_b32(
+    *,
+    torch: Any,
+    rank: int,
+    trace: FormalTrace,
+    loader: InputLoader,
+    bundle: ModelBundle,
+    streamers: Sequence[Any],
+    score_context: ScoreContext | None,
+    run_kind: str,
+    evidence: RunEvidence,
+    versions: dict[str, int],
+    device: Any,
+    slot_groups_by_lane: Sequence[Sequence[int]],
+    runahead_host_transport: Any,
+    step_offset: int,
+    cycle_index: int,
+    precomputed_first: PreparedRollout | None,
+    critic_shadow_hot_sync: Any,
+) -> None:
+    """Run one exact global-B32 cycle as two bounded B2 microbatches/lane.
+
+    Four rank-qualified samples are consumed per fixed G/Score lane.  Only two
+    persistent rollout streamers and one B2 Critic activation set are live at a
+    time.  Generator gradients use four 0.25 contributions; Critic gradients
+    use two B2 means scaled by 0.5 and are reduced only after the second B2.
+    Both roles therefore retain one optimizer commit per logical update.
+    """
+
+    import torch.distributed as dist
+
+    _require(trace.global_batch == 32, "B32 worker received a non-B32 trace")
+    _require(
+        runahead_host_transport is not None
+        and critic_shadow_hot_sync is not None,
+        "B32 continuous transports are incomplete",
+    )
+    _require(
+        int(runahead_host_transport.waves_per_step) == 4,
+        "B32 host transport does not own four waves",
+    )
+    is_generator = rank < 8
+    peer = rank + 8 if is_generator else rank - 8
+    lane = rank if is_generator else rank - 8
+    lane_slots = validate_slot_groups(
+        slot_groups_by_lane, batch=32, slots_per_lane=4
+    )[lane]
+    _require(len(streamers) == 2 if is_generator else not streamers, "B32 streamer residency changed")
+    _require(step_offset == cycle_index * FULL5_STEPS, "B32 cycle offset changed")
+    pair_bytes = math.prod(LATENT_SHAPE) * 4
+
+    if not evidence.split_dmd_shadow:
+        evidence.split_dmd_shadow = {
+            "enabled": True,
+            "role": "generator" if is_generator else "score",
+            "execution_status": "PASS",
+            "fake_velocity_calls": 0,
+            "teacher_velocity_calls": 0,
+            "received_teacher_velocities": 0,
+            "received_final_gradients": 0,
+        }
+    evidence.generator_runahead_transport = runahead_host_transport.receipt()
+    evidence.score_context_prefetch = {
+        "enabled": False,
+        "role": "generator" if is_generator else "score",
+        "execution_status": "DISABLED",
+    }
+
+    def score_sample(row: OperationTraceRow, *, include_teacher: bool) -> ScoreSampleContext:
+        raw_context = loader.context_from_trace(row, device=device)
+        return prepare_score_sample_context(
+            torch,
+            bundle=bundle,
+            raw_context=raw_context,
+            include_teacher=include_teacher,
+        )
+
+    for step in range(FULL5_STEPS):
+        global_step = step_offset + step
+        rows = tuple(trace.row(global_step, slot) for slot in lane_slots)
+
+        if is_generator and step == 1:
+            # Produce all four B1 waves for Critic-only steps with two reusable
+            # streamers.  Reuse waits only for the prior D2H staging event.
+            bundle.generator_optimizer.zero_grad(set_to_none=True)
+            staged_keys: list[tuple[int, int] | None] = [None, None]
+            for ahead_step in range(1, FULL5_STEPS):
+                ahead_global_step = step_offset + ahead_step
+                ahead_rows = tuple(
+                    trace.row(ahead_global_step, slot) for slot in lane_slots
+                )
+                for wave in range(4):
+                    streamer_index = wave % 2
+                    staged_key = staged_keys[streamer_index]
+                    if staged_key is not None:
+                        with _profile_range(
+                            torch,
+                            run_kind=run_kind,
+                            label=(
+                                "livewan/pipeline_b32/g/"
+                                f"step_{ahead_step}/host_stage_wait_wave_{wave}"
+                            ),
+                        ):
+                            runahead_host_transport.wait_staged(
+                                step=staged_key[0], wave=staged_key[1]
+                            )
+                    with _profile_range(
+                        torch,
+                        run_kind=run_kind,
+                        label=(
+                            "livewan/pipeline_b32/g/"
+                            f"step_{ahead_step}/rollout_wave_{wave}"
+                        ),
+                    ):
+                        prepared = prepare_rollout(
+                            torch,
+                            row=ahead_rows[wave],
+                            streamer=streamers[streamer_index],
+                            student=bundle.student,
+                            loader=loader,
+                            device=device,
+                            elide_full_context_lens=True,
+                        )
+                    _record_output(
+                        torch,
+                        evidence,
+                        row=ahead_rows[wave],
+                        x0=prepared.x0,
+                        run_kind=run_kind,
+                    )
+                    runahead_host_transport.enqueue_send(
+                        step=ahead_global_step, wave=wave, tensor=prepared.x0
+                    )
+                    evidence.transport_bytes += pair_bytes
+                    staged_keys[streamer_index] = (ahead_global_step, wave)
+            break
+
+        if is_generator:
+            _require(step == 0, "B32 Generator reached an unexpected logical step")
+            _require(bundle.student is not None and bundle.critic_shadow is not None, "B32 G role is incomplete")
+            _require(score_context is not None, "B32 G lacks Score context")
+            bundle.generator_optimizer.zero_grad(set_to_none=True)
+            generator_loss_rows: list[tuple[OperationTraceRow, list[Any]]] = []
+            for microbatch in range(2):
+                first_wave = microbatch * 2
+                second_wave = first_wave + 1
+                first_row, second_row = rows[first_wave], rows[second_wave]
+                if first_wave == 0 and precomputed_first is not None:
+                    _require(
+                        precomputed_first.row.operation_key == first_row.operation_key,
+                        "B32 cross-cycle lookahead row changed",
+                    )
+                    first = precomputed_first
+                else:
+                    with _profile_range(
+                        torch,
+                        run_kind=run_kind,
+                        label=f"livewan/pipeline_b32/g/step_0/rollout_wave_{first_wave}",
+                    ):
+                        first = prepare_rollout(
+                            torch,
+                            row=first_row,
+                            streamer=streamers[0],
+                            student=bundle.student,
+                            loader=loader,
+                            device=device,
+                            elide_full_context_lens=True,
+                        )
+                    _record_output(
+                        torch, evidence, row=first_row, x0=first.x0, run_kind=run_kind
+                    )
+                    _send_pair(
+                        destination=peer,
+                        prepared=first,
+                        asynchronous=False,
+                        send_context=False,
+                    )
+                    evidence.transport_bytes += pair_bytes
+
+                if first_wave == 0 and cycle_index > 0:
+                    sync_started = time.perf_counter()
+                    critic_shadow_hot_sync.receive_and_load(
+                        version=cycle_index * CRITIC_UPDATES
+                    )
+                    evidence.generator_backpressure.append(
+                        {
+                            "cycle": cycle_index,
+                            "kind": "critic_shadow_receive_wait_before_wave1",
+                            "wall_seconds": time.perf_counter() - sync_started,
+                        }
+                    )
+
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label=f"livewan/pipeline_b32/g/step_0/rollout_wave_{second_wave}",
+                ):
+                    second = prepare_rollout(
+                        torch,
+                        row=second_row,
+                        streamer=streamers[1],
+                        student=bundle.student,
+                        loader=loader,
+                        device=device,
+                        elide_full_context_lens=True,
+                    )
+                _record_output(
+                    torch, evidence, row=second_row, x0=second.x0, run_kind=run_kind
+                )
+
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label=f"livewan/pipeline_b32/g/step_0/fake_velocity_wave_{first_wave}",
+                ):
+                    shadow0 = prepare_score_sample_context(
+                        torch,
+                        bundle=bundle,
+                        raw_context=first.raw_context,
+                        include_teacher=False,
+                        critic_model=bundle.critic_shadow,
+                    )
+                    flow0 = _dmd_flow_inputs(torch, row=first_row, x0=first.x0)
+                    fake0 = _dmd_fake_velocity(
+                        torch,
+                        critic_model=bundle.critic_shadow,
+                        score_context=score_context,
+                        flow=flow0,
+                        critic_context=shadow0.critic,
+                        context_lens=first.context_lens,
+                    )
+                evidence.add_logical_score_calls("critic/nograd/plain", 1)
+                evidence.split_dmd_shadow["fake_velocity_calls"] += 1
+                real0 = torch.empty_like(first.x0)
+                dist.recv(real0, src=peer)
+                evidence.transport_bytes += real0.numel() * real0.element_size()
+                evidence.split_dmd_shadow["received_teacher_velocities"] += 1
+                grad0 = _combine_dmd_gradient(
+                    torch, x0=first.x0, flow=flow0, v_real=real0, v_fake=fake0
+                )
+
+                sends = _send_pair(
+                    destination=peer,
+                    prepared=second,
+                    asynchronous=True,
+                    send_context=False,
+                )
+                evidence.transport_bytes += pair_bytes
+                with _profile_range(
+                    torch,
+                    run_kind=run_kind,
+                    label=f"livewan/pipeline_b32/g/step_0/fake_velocity_wave_{second_wave}",
+                ):
+                    shadow1 = prepare_score_sample_context(
+                        torch,
+                        bundle=bundle,
+                        raw_context=second.raw_context,
+                        include_teacher=False,
+                        critic_model=bundle.critic_shadow,
+                    )
+                    flow1 = _dmd_flow_inputs(torch, row=second_row, x0=second.x0)
+                    fake1 = _dmd_fake_velocity(
+                        torch,
+                        critic_model=bundle.critic_shadow,
+                        score_context=score_context,
+                        flow=flow1,
+                        critic_context=shadow1.critic,
+                        context_lens=second.context_lens,
+                    )
+                evidence.add_logical_score_calls("critic/nograd/plain", 1)
+                evidence.split_dmd_shadow["fake_velocity_calls"] += 1
+                losses0 = generator_backward_for_sample(
+                    torch, prepared=first, dmd_gradient=grad0, sample_weight=0.25
+                )
+                for request in sends:
+                    request.wait()
+                real1 = torch.empty_like(second.x0)
+                dist.recv(real1, src=peer)
+                evidence.transport_bytes += real1.numel() * real1.element_size()
+                evidence.split_dmd_shadow["received_teacher_velocities"] += 1
+                grad1 = _combine_dmd_gradient(
+                    torch, x0=second.x0, flow=flow1, v_real=real1, v_fake=fake1
+                )
+                losses1 = generator_backward_for_sample(
+                    torch, prepared=second, dmd_gradient=grad1, sample_weight=0.25
+                )
+                generator_loss_rows.extend(
+                    ((first_row, losses0), (second_row, losses1))
+                )
+                del first, second, shadow0, shadow1, fake0, fake1, real0, real1, grad0, grad1
+
+            if run_kind == "correctness":
+                for row, losses in generator_loss_rows:
+                    evidence.loss_fingerprints.extend(
+                        {
+                            "operation_key": row.operation_key,
+                            "kind": "generator",
+                            **_tensor_fingerprint(torch, value),
+                        }
+                        for value in losses
+                    )
+            with _profile_range(
+                torch,
+                run_kind=run_kind,
+                label="livewan/pipeline_b32/g/step_0/generator_commit",
+            ):
+                generator_parameters = list(bundle.student.parameters())
+                sync = _mean_replicated_gradients(
+                    torch,
+                    generator_parameters,
+                    group=bundle.generator_group,
+                    group_size=bundle.generator_group_size,
+                    bucket_mib=256,
+                )
+                evidence.gradient_sync.append(
+                    {"step": global_step, "role": "generator", **sync}
+                )
+                generator_pre_clip = (
+                    _state_metrics(
+                        torch,
+                        [parameter.grad for parameter in generator_parameters],
+                    )
+                    if run_kind == "correctness"
+                    else None
+                )
+                generator_clip_norm = torch.nn.utils.clip_grad_norm_(
+                    generator_parameters, 1.0, foreach=True
+                )
+                _record_optimizer_diagnostics(
+                    torch,
+                    evidence,
+                    run_kind=run_kind,
+                    role="generator",
+                    step=global_step,
+                    parameters=generator_parameters,
+                    clip_norm=generator_clip_norm,
+                    gradient_before_clip=generator_pre_clip,
+                )
+                bundle.generator_optimizer.step()
+                versions["generator"] += 1
+            continue
+
+        _require(bundle.critic is not None and bundle.teacher is not None, "B32 Score role is incomplete")
+        _require(score_context is not None, "B32 Score context is missing")
+        _require(bundle.critic_gradient_reducer is not None, "B32 Critic needs async accumulation")
+        bundle.critic_gradient_reducer.zero_grad()
+        critic_losses: list[tuple[OperationTraceRow, Any]] = []
+        for microbatch in range(2):
+            pair_rows = rows[microbatch * 2 : microbatch * 2 + 2]
+            values: list[Any] = []
+            contexts: list[ScoreSampleContext] = []
+            teacher_send = None
+            teacher_payload = None
+            for local_wave, row in enumerate(pair_rows):
+                wave = microbatch * 2 + local_wave
+                receive_started = time.perf_counter()
+                if runahead_host_transport is not None and (
+                    step > 0 or (cycle_index > 0 and step == 0 and wave == 0)
+                ):
+                    x0 = runahead_host_transport.receive_to_device(
+                        step=global_step, wave=wave
+                    )
+                else:
+                    x0, _unused_context = _recv_pair(
+                        torch, source=peer, device=device, receive_context=False
+                    )
+                evidence.score_receive_waits.append(
+                    {
+                        "cycle": cycle_index,
+                        "step": step,
+                        "global_step": global_step,
+                        "wave": wave,
+                        "wall_seconds": time.perf_counter() - receive_started,
+                    }
+                )
+                evidence.transport_bytes += pair_bytes
+                sample_context = score_sample(row, include_teacher=step == 0)
+                values.append(x0)
+                contexts.append(sample_context)
+                if step == 0:
+                    flow = _dmd_flow_inputs(torch, row=row, x0=x0)
+                    teacher = _dmd_teacher_velocity(
+                        torch,
+                        bundle=bundle,
+                        score_context=score_context,
+                        flow=flow,
+                        sample_context=sample_context,
+                        context_lens=None,
+                    )
+                    evidence.add_logical_score_calls("teacher/nograd/plain", 1)
+                    evidence.split_dmd_shadow["teacher_velocity_calls"] += 1
+                    if local_wave == 0:
+                        dist.send(teacher.contiguous(), dst=peer)
+                    else:
+                        teacher_payload = teacher.contiguous()
+                        teacher_send = dist.isend(teacher_payload, dst=peer)
+                    evidence.transport_bytes += teacher.numel() * teacher.element_size()
+                    if microbatch == 0 and local_wave == 0 and cycle_index > 0:
+                        critic_shadow_hot_sync.wait_source(
+                            expected_version=cycle_index * CRITIC_UPDATES
+                        )
+
+            batched_context = ScoreSampleContext(
+                teacher=(
+                    torch.cat((contexts[0].teacher, contexts[1].teacher), dim=0)
+                    if step == 0
+                    else None
+                ),
+                critic=torch.cat((contexts[0].critic, contexts[1].critic), dim=0),
+            )
+            losses = critic_backward_for_batch(
+                torch,
+                bundle=bundle,
+                score_context=score_context,
+                rows=pair_rows,
+                x0=torch.cat((values[0], values[1]), dim=0),
+                sample_context=batched_context,
+                context_lens=None,
+                loss_scale=0.5,
+                reducer_accumulation=(microbatch, 2),
+            )
+            evidence.add_logical_score_calls("critic/grad/checkpoint", 2)
+            critic_losses.extend(zip(pair_rows, losses))
+            if teacher_send is not None:
+                teacher_send.wait()
+                del teacher_payload
+            del values, contexts, batched_context
+
+        if run_kind == "correctness":
+            for row, loss in critic_losses:
+                evidence.loss_fingerprints.append(
+                    {
+                        "operation_key": row.operation_key,
+                        "kind": "critic",
+                        **_tensor_fingerprint(torch, loss),
+                    }
+                )
+        with _profile_range(
+            torch,
+            run_kind=run_kind,
+            label=f"livewan/pipeline_b32/score/step_{step}/critic_commit",
+        ):
+            sync = bundle.critic_gradient_reducer.finish()
+            evidence.gradient_sync.append(
+                {"step": global_step, "role": "critic", **sync}
+            )
+            critic_pre_clip = (
+                _state_metrics(
+                    torch,
+                    [parameter.grad for parameter in bundle.critic_lora_params],
+                )
+                if run_kind == "correctness"
+                else None
+            )
+            critic_clip_norm = torch.nn.utils.clip_grad_norm_(
+                bundle.critic_lora_params, 1.0, foreach=True
+            )
+            _record_optimizer_diagnostics(
+                torch,
+                evidence,
+                run_kind=run_kind,
+                role="critic",
+                step=global_step,
+                parameters=bundle.critic_lora_params,
+                clip_norm=critic_clip_norm,
+                gradient_before_clip=critic_pre_clip,
+            )
+            bundle.critic_optimizer.step()
+            versions["critic"] += 1
+
+
 def _run_pipeline_8x8_continuous(
     *,
     torch: Any,
@@ -4645,7 +5219,7 @@ def _run_pipeline_8x8_continuous(
     full_context_lens_elision: bool,
     critic_step1_split_overlap: bool,
 ) -> None:
-    """Run three exact Full5 cycles with one next-cycle rollout wave in flight."""
+    """Run three exact cycles with one next-cycle rollout wave in flight."""
 
     _require(trace.cycles == 3, "C21 continuous trace must contain three cycles")
     _require(
@@ -4654,7 +5228,12 @@ def _run_pipeline_8x8_continuous(
     )
     is_generator = rank < 8
     lane = rank if is_generator else rank - 8
-    lane_slots = validate_slot_pairs(slot_pairs_by_lane)[lane]
+    lane_slots = validate_slot_groups(
+        slot_pairs_by_lane,
+        batch=trace.global_batch,
+        slots_per_lane=trace.global_batch // 8,
+    )[lane]
+    batch32 = trace.global_batch == 32
     latent_bytes = math.prod(LATENT_SHAPE) * 4
     started = time.perf_counter()
     cycle_events: list[dict[str, Any]] = []
@@ -4667,33 +5246,58 @@ def _run_pipeline_8x8_continuous(
             run_kind=run_kind,
             label=f"livewan/continuous/cycle_{cycle}/rank_{rank}",
         ):
-            _run_pipeline_8x8(
-                torch=torch,
-                rank=rank,
-                trace=trace,
-                loader=loader,
-                bundle=bundle,
-                streamers=streamers,
-                score_context=score_context,
-                run_kind=run_kind,
-                evidence=evidence,
-                versions=versions,
-                device=device,
-                rollout_runahead=True,
-                critic_b2_only=True,
-                critic_step1_split_overlap=critic_step1_split_overlap,
-                score_context_from_trace=True,
-                slot_pairs_by_lane=slot_pairs_by_lane,
-                full_context_lens_elision=full_context_lens_elision,
-                score_context_prefetch=False,
-                split_dmd_shadow=True,
-                runahead_host_transport=runahead_host_transport,
-                step_offset=cycle * FULL5_STEPS,
-                cycle_index=cycle,
-                precomputed_first=precomputed_first,
-                critic_shadow_hot_sync=critic_shadow_hot_sync,
-                finalize_host_transport=False,
-            )
+            if batch32:
+                _require(
+                    not critic_step1_split_overlap,
+                    "B32 cannot select the rejected C21-C1 schedule",
+                )
+                _run_pipeline_8x8_b32(
+                    torch=torch,
+                    rank=rank,
+                    trace=trace,
+                    loader=loader,
+                    bundle=bundle,
+                    streamers=streamers,
+                    score_context=score_context,
+                    run_kind=run_kind,
+                    evidence=evidence,
+                    versions=versions,
+                    device=device,
+                    slot_groups_by_lane=slot_pairs_by_lane,
+                    runahead_host_transport=runahead_host_transport,
+                    step_offset=cycle * FULL5_STEPS,
+                    cycle_index=cycle,
+                    precomputed_first=precomputed_first,
+                    critic_shadow_hot_sync=critic_shadow_hot_sync,
+                )
+            else:
+                _run_pipeline_8x8(
+                    torch=torch,
+                    rank=rank,
+                    trace=trace,
+                    loader=loader,
+                    bundle=bundle,
+                    streamers=streamers,
+                    score_context=score_context,
+                    run_kind=run_kind,
+                    evidence=evidence,
+                    versions=versions,
+                    device=device,
+                    rollout_runahead=True,
+                    critic_b2_only=True,
+                    critic_step1_split_overlap=critic_step1_split_overlap,
+                    score_context_from_trace=True,
+                    slot_pairs_by_lane=slot_pairs_by_lane,
+                    full_context_lens_elision=full_context_lens_elision,
+                    score_context_prefetch=False,
+                    split_dmd_shadow=True,
+                    runahead_host_transport=runahead_host_transport,
+                    step_offset=cycle * FULL5_STEPS,
+                    cycle_index=cycle,
+                    precomputed_first=precomputed_first,
+                    critic_shadow_hot_sync=critic_shadow_hot_sync,
+                    finalize_host_transport=False,
+                )
         role_returned = time.perf_counter()
         event: dict[str, Any] = {
             "cycle": cycle,
@@ -4712,7 +5316,8 @@ def _run_pipeline_8x8_continuous(
                 # reused for the next cycle's first logical sample.
                 wait_started = time.perf_counter()
                 runahead_host_transport.wait_staged(
-                    step=cycle * FULL5_STEPS + 4, wave=0
+                    step=cycle * FULL5_STEPS + 4,
+                    wave=2 if batch32 else 0,
                 )
                 evidence.generator_backpressure.append(
                     {
@@ -4782,19 +5387,31 @@ def _run_pipeline_8x8_continuous(
     evidence.continuous_pipeline = {
         "enabled": True,
         "name": (
-            "continuous_full5_b16_depth1_step1_b1_overlap_v1"
-            if critic_step1_split_overlap
-            else "continuous_full5_b16_depth1_v1"
+            B32_CONTINUOUS_NAME
+            if batch32
+            else (
+                "continuous_full5_b16_depth1_step1_b1_overlap_v1"
+                if critic_step1_split_overlap
+                else "continuous_full5_b16_depth1_v1"
+            )
         ),
         "cycles": trace.cycles,
         "cycle_length": FULL5_STEPS,
         "lookahead_depth": 1,
         "lookahead_scope": "next_cycle_step0_wave0_rollout_only",
         "critic_step1_physical_schedule": (
-            "wave0_b1_backward_then_wave1_b1_backward_single_commit"
-            if critic_step1_split_overlap
-            else "single_b2_backward"
+            "two_b2_backward_accumulations_single_commit"
+            if batch32
+            else (
+                "wave0_b1_backward_then_wave1_b1_backward_single_commit"
+                if critic_step1_split_overlap
+                else "single_b2_backward"
+            )
         ),
+        "global_batch": trace.global_batch,
+        "waves_per_step": len(lane_slots),
+        "source_reuse_within_step": batch32,
+        "training_quality_claimable": not batch32,
         "critic_step1_single_commit": True,
         "source_reuse_across_cycles": trace.source_reuse_across_cycles,
         "events": cycle_events,

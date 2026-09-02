@@ -1,0 +1,58 @@
+{
+  "include": [
+    "livewan_wan13b_14b_sf_dmd_c21_continuous_b16.json"
+  ],
+  "id": "livewan-wan13b-14b-sfdmd-c23-continuous-b32-systems",
+  "workload": {
+    "shape": {
+      "batch_size": 32
+    }
+  },
+  "metadata": {
+    "generator_runahead_transport": {
+      "waves_per_step": 4
+    },
+    "slot_group_policy": "trace_balanced_fixed_rank_groups_b32_v1",
+    "slot_groups_by_lane": [
+      [0, 4, 16, 20],
+      [1, 9, 17, 25],
+      [2, 8, 18, 24],
+      [3, 10, 19, 26],
+      [5, 12, 21, 28],
+      [6, 11, 22, 27],
+      [7, 15, 23, 31],
+      [13, 14, 29, 30]
+    ],
+    "current_step_max_new_blocks": [36, 34, 32, 36, 34],
+    "candidate_step_max_new_blocks": [34, 32, 32, 34, 34],
+    "batch32_diagnostic": {
+      "enabled": true,
+      "name": "matched_b32_source_reuse_systems_v1",
+      "source_reuse_within_step": true,
+      "unique_source_samples_per_cycle": 80,
+      "rank_qualified_samples_per_cycle": 160,
+      "training_quality_claimable": false
+    },
+    "continuous_pipeline": {
+      "enabled": true,
+      "name": "continuous_full5_b32_depth1_systems_v1",
+      "cycles": 3,
+      "cycle_length": 5,
+      "lookahead_depth": 1,
+      "lookahead_scope": "next_cycle_step0_wave0_rollout_only",
+      "source_reuse_across_cycles": true,
+      "fresh_rank_qualified_rng_per_cycle": true,
+      "critic_shadow_hot_sync": "paired_score_to_generator_fp32_lora_after_c5",
+      "critic_shadow_sync_versions": [5, 10],
+      "single_generator_commit_per_cycle": true,
+      "five_critic_commits_per_cycle": true,
+      "math_and_call_inventory_preserved": true,
+      "waves_per_step": 4,
+      "critic_physical_microbatches_per_step": 2,
+      "critic_microbatch_size": 2,
+      "critic_loss_scales": [0.5, 0.5],
+      "source_reuse_within_step": true,
+      "training_quality_claimable": false
+    }
+  }
+}

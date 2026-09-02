@@ -56,6 +56,7 @@ PIPELINE_VARIANT="${LIVEWAN_PIPELINE_VARIANT:-b1}"
 	   "${PIPELINE_VARIANT}" == c21-continuous-b16 || \
 	   "${PIPELINE_VARIANT}" == c21-c1-continuous-b16 || \
 	   "${PIPELINE_VARIANT}" == c22-critic-checkpoint-rng || \
+	   "${PIPELINE_VARIANT}" == c23-continuous-b32 || \
    "${PIPELINE_VARIANT}" == phase-expanded-critic16 || \
    "${PIPELINE_VARIANT}" == phase-expanded-critic16-fused-lora-elision || \
    "${PIPELINE_VARIANT}" == score-b2 || \
@@ -131,6 +132,12 @@ elif [[ "${PIPELINE_VARIANT}" == c21-c1-continuous-b16 ]]; then
 elif [[ "${PIPELINE_VARIANT}" == c22-critic-checkpoint-rng ]]; then
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c22_critic_checkpoint_rng_elision_continuous_b16.json"
   export DISTILLSCHEDULE_FLASH_ATTN_KERNEL="${DISTILLSCHEDULE_FLASH_ATTN_KERNEL:-/share/project/shuchenweng/DistillSchedule_assets/hf_home_official_torch210/hub/models--kernels-community--flash-attn2/snapshots/6a810a7a010ba2aad661f1f0f7b226fb8bdee3c/build/torch210-cxx11-cu128-x86_64-linux}"
+  [[ -f "${DISTILLSCHEDULE_FLASH_ATTN_KERNEL}/_flash_attn2_cuda_a511a4c.abi3.so" ]] || {
+    echo "missing_flash_attn2_artifact=${DISTILLSCHEDULE_FLASH_ATTN_KERNEL}" >&2; exit 3;
+  }
+elif [[ "${PIPELINE_VARIANT}" == c23-continuous-b32 ]]; then
+  PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c23_continuous_b32.json"
+  export DISTILLSCHEDULE_FLASH_ATTN_KERNEL="${DISTILLSCHEDULE_FLASH_ATTN_KERNEL:-/share/project/shuchenweng/DistillSchedule_assets/hf_home_official_torch210/hub/models--kernels-community--flash-attn2/snapshots/6a810a7a010ba2aad6613f1f0f7b226fb8bdee3c/build/torch210-cxx11-cu128-x86_64-linux}"
   [[ -f "${DISTILLSCHEDULE_FLASH_ATTN_KERNEL}/_flash_attn2_cuda_a511a4c.abi3.so" ]] || {
     echo "missing_flash_attn2_artifact=${DISTILLSCHEDULE_FLASH_ATTN_KERNEL}" >&2; exit 3;
   }

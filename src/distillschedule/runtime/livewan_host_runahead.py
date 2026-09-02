@@ -20,16 +20,17 @@ from typing import Any, Mapping, Sequence
 
 
 RUNAHEAD_STEPS = (1, 2, 3, 4)
-RUNAHEAD_WAVES = (0, 1)
 RUNAHEAD_TAG_BASE = 27100
 
 
-def runahead_tag(step: int, wave: int) -> int:
+def runahead_tag(step: int, wave: int, *, waves_per_step: int = 2) -> int:
     if step <= 0:
         raise ValueError(f"invalid run-ahead step: {step}")
-    if wave not in RUNAHEAD_WAVES:
+    if waves_per_step not in {2, 4}:
+        raise ValueError(f"invalid run-ahead wave count: {waves_per_step}")
+    if not 0 <= wave < waves_per_step:
         raise ValueError(f"invalid run-ahead wave: {wave}")
-    return RUNAHEAD_TAG_BASE + step * len(RUNAHEAD_WAVES) + wave
+    return RUNAHEAD_TAG_BASE + step * waves_per_step + wave
 
 
 @dataclass
@@ -45,6 +46,7 @@ class PinnedHostRunaheadTransport:
     dtype: Any
     cycles: int = 1
     cross_cycle_lookahead: bool = False
+    waves_per_step: int = 2
     buffers: dict[tuple[int, int], Any] = field(default_factory=dict)
     receive_works: dict[tuple[int, int], Any] = field(default_factory=dict)
     copy_events: dict[tuple[int, int], Any] = field(default_factory=dict)
@@ -57,6 +59,8 @@ class PinnedHostRunaheadTransport:
             raise RuntimeError("run-ahead transport cycle count is invalid")
         if self.cycles > 1 and not self.cross_cycle_lookahead:
             raise RuntimeError("continuous run-ahead requires the registered lookahead")
+        if self.waves_per_step not in {2, 4}:
+            raise RuntimeError("run-ahead transport wave count is not registered")
         self.shape = tuple(int(value) for value in self.shape)
         if not self.shape or any(value <= 0 for value in self.shape):
             raise RuntimeError("run-ahead transport shape is invalid")
@@ -88,7 +92,7 @@ class PinnedHostRunaheadTransport:
                     self.buffers[key],
                     src=self.peer,
                     group=self.group,
-                    tag=runahead_tag(*key),
+                    tag=runahead_tag(*key, waves_per_step=self.waves_per_step),
                 )
 
     @property
@@ -97,7 +101,7 @@ class PinnedHostRunaheadTransport:
             (cycle * 5 + step, wave)
             for cycle in range(self.cycles)
             for step in RUNAHEAD_STEPS
-            for wave in RUNAHEAD_WAVES
+            for wave in range(self.waves_per_step)
         }
         if self.cross_cycle_lookahead:
             keys.update((cycle * 5, 0) for cycle in range(1, self.cycles))
@@ -110,7 +114,7 @@ class PinnedHostRunaheadTransport:
             self.buffers[key],
             dst=self.peer,
             group=self.group,
-            tag=runahead_tag(*key),
+            tag=runahead_tag(*key, waves_per_step=self.waves_per_step),
         )
         work.wait()
         # ``source`` deliberately remains captured until the D2H copy and Gloo
@@ -195,6 +199,7 @@ class PinnedHostRunaheadTransport:
             ),
             "cycles": int(self.cycles),
             "cross_cycle_lookahead": bool(self.cross_cycle_lookahead),
+            "waves_per_step": int(self.waves_per_step),
             "step0_transport": "cuda_nccl_p2p_unchanged",
             "context_transport": "trace_local_replay_unchanged",
             "payload_shape": list(self.shape),
@@ -208,7 +213,10 @@ class PinnedHostRunaheadTransport:
             "receive_event_count": len(self.received_keys),
             "d2h_bytes": int(len(self.sent_keys) * self.payload_bytes),
             "h2d_bytes": int(len(self.received_keys) * self.payload_bytes),
-            "tags": [runahead_tag(step, wave) for step, wave in sorted(self.expected_keys)],
+            "tags": [
+                runahead_tag(step, wave, waves_per_step=self.waves_per_step)
+                for step, wave in sorted(self.expected_keys)
+            ],
             "sender_threads": 1 if self.is_generator else 0,
             "preposted_receives": not self.is_generator,
         }

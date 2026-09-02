@@ -28,6 +28,10 @@ TRACE_BALANCED_SLOT_PAIRS = (
     (0, 4), (1, 9), (2, 8), (3, 10),
     (5, 12), (6, 11), (7, 15), (13, 14),
 )
+TRACE_BALANCED_SLOT_GROUPS_B32 = tuple(
+    (first, second, first + 16, second + 16)
+    for first, second in TRACE_BALANCED_SLOT_PAIRS
+)
 
 
 def atomic_json(path: Path, value: object) -> None:
@@ -64,6 +68,7 @@ def main() -> int:
             "c21-continuous-b16",
             "c21-c1-continuous-b16",
             "c22-critic-checkpoint-rng",
+            "c23-continuous-b32",
             "phase-expanded-critic16",
             "phase-expanded-critic16-fused-lora-elision",
             "score-b2",
@@ -73,6 +78,7 @@ def main() -> int:
         default="b1",
     )
     args = parser.parse_args()
+    waves = 4 if args.pipeline_variant == "c23-continuous-b32" else 2
 
     import torch
     import torch.distributed as dist
@@ -125,6 +131,7 @@ def main() -> int:
             "c21-continuous-b16",
             "c21-c1-continuous-b16",
             "c22-critic-checkpoint-rng",
+            "c23-continuous-b32",
         }
         else None
     )
@@ -133,6 +140,7 @@ def main() -> int:
         "c21-continuous-b16",
         "c21-c1-continuous-b16",
         "c22-critic-checkpoint-rng",
+        "c23-continuous-b32",
     }:
         pair_groups = [
             dist.new_group(ranks=[lane, lane + 8], backend="nccl")
@@ -200,6 +208,7 @@ def main() -> int:
             "c21-continuous-b16",
             "c21-c1-continuous-b16",
             "c22-critic-checkpoint-rng",
+            "c23-continuous-b32",
         }
         and rank in critic_ranks
     ):
@@ -223,7 +232,10 @@ def main() -> int:
         reducer.zero_grad()
         local_value = float(critic_ranks.index(rank) + 1)
         canary_loss = sum(parameter.sum() * local_value for parameter in parameters)
-        if args.pipeline_variant == "c21-c1-continuous-b16":
+        if args.pipeline_variant in {
+            "c21-c1-continuous-b16",
+            "c23-continuous-b32",
+        }:
             reducer.backward_accumulate(
                 canary_loss * 0.5,
                 accumulation_index=0,
@@ -442,7 +454,11 @@ def main() -> int:
     peer = rank + 8 if rank < 8 else rank - 8
     lane = rank if rank < 8 else peer
     slot_pair = (
-        TRACE_BALANCED_SLOT_PAIRS[lane]
+        (
+            TRACE_BALANCED_SLOT_GROUPS_B32[lane]
+            if args.pipeline_variant == "c23-continuous-b32"
+            else TRACE_BALANCED_SLOT_PAIRS[lane]
+        )
         if args.pipeline_variant in {
             "b1-runahead-critic-b2-local-context-async32-trace-balanced",
             "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context",
@@ -461,6 +477,7 @@ def main() -> int:
             "c21-continuous-b16",
             "c21-c1-continuous-b16",
             "c22-critic-checkpoint-rng",
+            "c23-continuous-b32",
             "phase-expanded-critic16",
         }
         else (lane, lane + 8)
@@ -470,7 +487,7 @@ def main() -> int:
     retained: list[torch.Tensor] = []
     deferred_gradient_work = None
     if rank < 8:
-        for wave in range(2):
+        for wave in range(waves):
             slot = slot_pair[wave]
             header = torch.tensor([rank, peer, wave, slot], device=device)
             payload = torch.full((256,), float(slot), dtype=torch.bfloat16, device=device)
@@ -488,10 +505,10 @@ def main() -> int:
                 gradient = torch.empty(1, dtype=torch.int64, device=device)
                 dist.recv(gradient, src=peer)
                 observed_gradients.append(int(gradient.cpu()))
-        if observed_gradients != [peer + 1000, peer + 1001]:
+        if observed_gradients != [peer + 1000 + wave for wave in range(waves)]:
             raise RuntimeError("P2P returned-gradient identity mismatch")
     else:
-        for wave in range(2):
+        for wave in range(waves):
             header = torch.empty(4, dtype=torch.int64, device=device)
             payload = torch.empty(256, dtype=torch.bfloat16, device=device)
             dist.recv(header, src=peer)
@@ -504,13 +521,15 @@ def main() -> int:
             observed.append(expected)
             gradient = torch.tensor([rank + 1000 + wave], dtype=torch.int64, device=device)
             retained.append(gradient)
-            if wave == 0:
+            if wave % 2 == 0:
                 dist.send(gradient, dst=peer)
             else:
                 # Match the production score-priority DAG: return gradient1
                 # asynchronously, then allow independent Critic work to run
                 # before waiting for the transport at the commit boundary.
                 deferred_gradient_work = dist.isend(gradient, dst=peer)
+                deferred_gradient_work.wait()
+                deferred_gradient_work = None
 
     if deferred_gradient_work is not None:
         deferred_gradient_work.wait()
@@ -524,7 +543,7 @@ def main() -> int:
                 256, dtype=torch.float32, device="cpu", pin_memory=True
             )
             for step in range(1, 5)
-            for wave in range(2)
+            for wave in range(waves)
         }
         if rank < 8:
             for (step, wave), buffer in host_buffers.items():
@@ -533,7 +552,7 @@ def main() -> int:
                     buffer,
                     dst=peer,
                     group=host_runahead_group,
-                    tag=runahead_tag(step, wave),
+                    tag=runahead_tag(step, wave, waves_per_step=waves),
                 ).wait()
         else:
             works = {
@@ -541,7 +560,7 @@ def main() -> int:
                     buffer,
                     src=peer,
                     group=host_runahead_group,
-                    tag=runahead_tag(*key),
+                    tag=runahead_tag(*key, waves_per_step=waves),
                 )
                 for key, buffer in host_buffers.items()
             }
@@ -555,7 +574,7 @@ def main() -> int:
         host_runahead_canary = {
             "status": "PASS",
             "backend": "gloo",
-            "messages": 8,
+            "messages": 4 * waves,
             "pinned_buffers": sum(int(value.is_pinned()) for value in host_buffers.values()),
             "payload_dtype": "torch.float32",
         }
@@ -568,7 +587,7 @@ def main() -> int:
         "local_rank": local_rank,
         "hostname": socket.gethostname(),
         "peer": peer,
-        "waves": 2,
+        "waves": waves,
         "subgroup_size": 8,
         "default_world_initialized_collectively": True,
         "score_gradient_1_async": True,
@@ -585,6 +604,7 @@ def main() -> int:
                 "c21-continuous-b16",
                 "c21-c1-continuous-b16",
                 "c22-critic-checkpoint-rng",
+                "c23-continuous-b32",
             }
             else "final_dmd_gradient_float32"
         ),
@@ -612,6 +632,7 @@ def main() -> int:
                 "c21-continuous-b16",
                 "c21-c1-continuous-b16",
                 "c22-critic-checkpoint-rng",
+                "c23-continuous-b32",
                 "phase-expanded-critic16",
                 "phase-expanded-critic16-fused-lora-elision",
             }
@@ -638,7 +659,11 @@ def main() -> int:
             for lane in range(8)
         )
         expected_pairs = (
-            TRACE_BALANCED_SLOT_PAIRS
+            (
+                TRACE_BALANCED_SLOT_GROUPS_B32
+                if args.pipeline_variant == "c23-continuous-b32"
+                else TRACE_BALANCED_SLOT_PAIRS
+            )
             if args.pipeline_variant in {
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced",
                 "b1-runahead-critic-b2-local-context-async32-trace-balanced-full-context",
@@ -657,6 +682,7 @@ def main() -> int:
                 "c21-continuous-b16",
                 "c21-c1-continuous-b16",
                 "c22-critic-checkpoint-rng",
+                "c23-continuous-b32",
                 "phase-expanded-critic16",
                 "phase-expanded-critic16-fused-lora-elision",
             }
@@ -689,11 +715,14 @@ def main() -> int:
                             "c21-continuous-b16",
                             "c21-c1-continuous-b16",
                             "c22-critic-checkpoint-rng",
+                            "c23-continuous-b32",
                         }
                         or all(
                             row.get("host_runahead_canary", {}).get("status") == "PASS"
-                            and row.get("host_runahead_canary", {}).get("messages") == 8
-                            and row.get("host_runahead_canary", {}).get("pinned_buffers") == 8
+                            and row.get("host_runahead_canary", {}).get("messages")
+                            == 4 * waves
+                            and row.get("host_runahead_canary", {}).get("pinned_buffers")
+                            == 4 * waves
                             for row in rows
                         )
                     )
@@ -702,6 +731,7 @@ def main() -> int:
                             "c21-continuous-b16",
                             "c21-c1-continuous-b16",
                             "c22-critic-checkpoint-rng",
+                            "c23-continuous-b32",
                         }
                         or all(
                             row.get("critic_shadow_sync_canary", {}).get("status")
@@ -714,7 +744,7 @@ def main() -> int:
                 "rank_count": len(rows),
                 "generator_ranks": list(generator_ranks),
                 "score_ranks": list(score_ranks),
-                "waves": 2,
+                "waves": waves,
                 "slot_pairs_by_lane": [list(pair) for pair in observed_pairs],
                 "async_reducer_canary_ranks": sum(
                     row.get("async_reducer_canary") is not None for row in rows
