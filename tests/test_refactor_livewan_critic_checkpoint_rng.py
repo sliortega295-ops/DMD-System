@@ -93,11 +93,15 @@ def test_c22_is_wired_to_controller_launcher_and_continuous_summarizer() -> None
     launcher = (
         ROOT / "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh"
     ).read_text(encoding="utf-8")
+    transport_probe = (
+        ROOT / "scripts/distillschedule/probe_livewan_crossscale_transport.py"
+    ).read_text(encoding="utf-8")
     summarizer = (
         ROOT / "scripts/distillschedule/summarize_livewan_continuous_world16.py"
     ).read_text(encoding="utf-8")
-    for source in (controller, launcher):
+    for source in (controller, launcher, transport_probe):
         assert "c22-critic-checkpoint-rng" in source
+    assert transport_probe.count('"c22-critic-checkpoint-rng"') == 10
     assert '"--flash-attn-kernel"' in controller
     assert 'exports["DISTILLSCHEDULE_FLASH_ATTN_KERNEL"]' in controller
     assert "critic_checkpoint_rng" in summarizer

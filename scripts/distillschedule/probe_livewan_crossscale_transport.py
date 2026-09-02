@@ -63,6 +63,7 @@ def main() -> int:
             "c20-generator-flash-attn2",
             "c21-continuous-b16",
             "c21-c1-continuous-b16",
+            "c22-critic-checkpoint-rng",
             "phase-expanded-critic16",
             "phase-expanded-critic16-fused-lora-elision",
             "score-b2",
@@ -123,12 +124,15 @@ def main() -> int:
             "c20-generator-flash-attn2",
             "c21-continuous-b16",
             "c21-c1-continuous-b16",
+            "c22-critic-checkpoint-rng",
         }
         else None
     )
     critic_shadow_pair_group = None
     if args.pipeline_variant in {
-        "c21-continuous-b16", "c21-c1-continuous-b16"
+        "c21-continuous-b16",
+        "c21-c1-continuous-b16",
+        "c22-critic-checkpoint-rng",
     }:
         pair_groups = [
             dist.new_group(ranks=[lane, lane + 8], backend="nccl")
@@ -195,6 +199,7 @@ def main() -> int:
             "c20-generator-flash-attn2",
             "c21-continuous-b16",
             "c21-c1-continuous-b16",
+            "c22-critic-checkpoint-rng",
         }
         and rank in critic_ranks
     ):
@@ -455,6 +460,7 @@ def main() -> int:
             "c20-generator-flash-attn2",
             "c21-continuous-b16",
             "c21-c1-continuous-b16",
+            "c22-critic-checkpoint-rng",
             "phase-expanded-critic16",
         }
         else (lane, lane + 8)
@@ -576,8 +582,9 @@ def main() -> int:
                 "c18-generator-cross-kv-cache",
                 "c19-host-runahead",
                 "c20-generator-flash-attn2",
-            "c21-continuous-b16",
-            "c21-c1-continuous-b16",
+                "c21-continuous-b16",
+                "c21-c1-continuous-b16",
+                "c22-critic-checkpoint-rng",
             }
             else "final_dmd_gradient_float32"
         ),
@@ -602,8 +609,9 @@ def main() -> int:
                 "c18-generator-cross-kv-cache",
                 "c19-host-runahead",
                 "c20-generator-flash-attn2",
-            "c21-continuous-b16",
-            "c21-c1-continuous-b16",
+                "c21-continuous-b16",
+                "c21-c1-continuous-b16",
+                "c22-critic-checkpoint-rng",
                 "phase-expanded-critic16",
                 "phase-expanded-critic16-fused-lora-elision",
             }
@@ -646,8 +654,9 @@ def main() -> int:
                 "c18-generator-cross-kv-cache",
                 "c19-host-runahead",
                 "c20-generator-flash-attn2",
-            "c21-continuous-b16",
-            "c21-c1-continuous-b16",
+                "c21-continuous-b16",
+                "c21-c1-continuous-b16",
+                "c22-critic-checkpoint-rng",
                 "phase-expanded-critic16",
                 "phase-expanded-critic16-fused-lora-elision",
             }
@@ -677,8 +686,9 @@ def main() -> int:
                         not in {
                             "c19-host-runahead",
                             "c20-generator-flash-attn2",
-            "c21-continuous-b16",
-            "c21-c1-continuous-b16",
+                            "c21-continuous-b16",
+                            "c21-c1-continuous-b16",
+                            "c22-critic-checkpoint-rng",
                         }
                         or all(
                             row.get("host_runahead_canary", {}).get("status") == "PASS"
@@ -689,7 +699,9 @@ def main() -> int:
                     )
                     and (
                         args.pipeline_variant not in {
-                            "c21-continuous-b16", "c21-c1-continuous-b16"
+                            "c21-continuous-b16",
+                            "c21-c1-continuous-b16",
+                            "c22-critic-checkpoint-rng",
                         }
                         or all(
                             row.get("critic_shadow_sync_canary", {}).get("status")
