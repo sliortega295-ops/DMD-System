@@ -1,12 +1,30 @@
 {
-  "schema_version": "distillschedule.livewan.continuous_b16_b32.v1",
-  "status": "PASS_DIAGNOSTIC",
-  "publication_head_parent": "f8bbbac6c18872883dd7ed1bace9339784d8c51e",
+  "schema_version": "distillschedule.livewan.continuous_b16_b32.v2",
+  "status": "PASS_DIAGNOSTIC_ACTUAL_B16_TARGET_MET",
+  "publication_head_parent": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
   "hardware": "2x8 A100-SXM4-40GB",
   "topology": {
     "world_size": 16,
-    "generator_ranks": [0, 1, 2, 3, 4, 5, 6, 7],
-    "score_ranks": [8, 9, 10, 11, 12, 13, 14, 15],
+    "generator_ranks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "score_ranks": [
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
     "persistent_pools": true
   },
   "observations": [
@@ -15,7 +33,10 @@
       "candidate": "c21_continuous_b16",
       "runtime_head": "e8283999274b0e6ba5a93cc322e79823a6b8cc80",
       "global_batch": 16,
-      "steady_intervals_seconds": [55.22656179708429, 54.96386073692702],
+      "steady_intervals_seconds": [
+        55.22656179708429,
+        54.96386073692702
+      ],
       "steady_median_seconds": 55.09521126700565,
       "samples_per_second": 1.4520318220089818,
       "status": "PASS_DIAGNOSTIC_B16_WINNER"
@@ -42,17 +63,39 @@
       "runtime_head": "f8bbbac6c18872883dd7ed1bace9339784d8c51e",
       "global_batch": 32,
       "logical_samples_per_full5": 160,
-      "steady_intervals_seconds": [108.69736031407956, 108.4699083029991],
+      "steady_intervals_seconds": [
+        108.69736031407956,
+        108.4699083029991
+      ],
       "steady_median_seconds": 108.58363430853933,
       "b16_equivalent_seconds": 54.291817154269665,
       "samples_per_second": 1.473518555709432,
       "throughput_gain_over_c21_b16_fraction": 0.014797701658302298,
       "status": "PASS_SYSTEMS_THROUGHPUT_DIAGNOSTIC"
+    },
+    {
+      "run_id": "iteration_178_c24_continuous_modulation_timing_20260901",
+      "candidate": "c24_continuous_b16_exact_score_modulation",
+      "runtime_head": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "global_batch": 16,
+      "steady_intervals_seconds": [
+        54.49314553302247,
+        54.39006175997201
+      ],
+      "steady_median_seconds": 54.44160364649724,
+      "samples_per_second": 1.469464428701618,
+      "speedup_over_c21_b16": 1.0120056643583177,
+      "reduction_over_c21_b16_fraction": 0.011863238301072273,
+      "status": "PASS_DIAGNOSTIC_ACTUAL_B16_WINNER_TARGET_MET"
     }
   ],
   "final_b32_receipts": {
     "rank_count": 16,
-    "final_versions": {"generator": 3, "critic": 15, "ema": 0},
+    "final_versions": {
+      "generator": 3,
+      "critic": 15,
+      "ema": 0
+    },
     "generator_backpressure_median_seconds": 0.008949755516368896,
     "score_receive_wait_median_seconds": 0.00014280504547059536,
     "peak_allocated_gib": 35.17542552947998,
@@ -65,19 +108,44 @@
     "b32_trace_sha256": "51705edb7a31519010b9741bd35786be6d31edded99c8b644142d67eda807ec1",
     "b32_trace_file_sha256": "5e5906bb1a04ea314b5bf18ef76dcd41f7223d8d90f3d47b6bf41cf8f56e69d2",
     "b32_bootstrap_sha256": "f30bbc6be8c902099ee29ba402fe1c5170f238b97a5b5f80fd0abec4e81b6da0",
-    "b32_bootstrap_file_sha256": "956d8f0b68c5e5aca0af629cd679df58e1efb91a08ef3a5afddde21dc705dc39"
+    "b32_bootstrap_file_sha256": "956d8f0b68c5e5aca0af629cd679df58e1efb91a08ef3a5afddde21dc705dc39",
+    "c24_correctness_summary_sha256": "222f3dd961e7315b6cc2f8fdc9101689b4741ac7a1005268aa46cd7e6d9f2d1d",
+    "c24_timing_summary_sha256": "e421dd42af96081b238e5e94d5039e74b1aacc2704c96e8ad45ca3f38f9db3b2"
   },
   "validation": {
-    "focused_tests": "71 passed, 1 deselected",
+    "focused_tests": "75 passed",
     "compileall": "PASS",
     "shell_syntax": "PASS",
-    "deselection_reason": "system Python lacks the validated Torch 2.10 BF16 torch.eye path; training environment is unchanged"
+    "environment": "validated Torch 2.10.0+cu128 remote substrate"
   },
   "claim_boundary": {
     "formal_speedup": "NOT_CLAIMABLE",
     "b32_training_quality": "NOT_CLAIMABLE_SOURCE_REUSE_WITHIN_STEP",
     "actual_b32_wall_seconds": 108.58363430853933,
     "normalized_b16_equivalent_seconds": 54.291817154269665,
-    "profiled_wall_used_for_speedup": false
+    "profiled_wall_used_for_speedup": false,
+    "actual_b16_winner_seconds": 54.44160364649724,
+    "actual_b16_target_band_seconds": [
+      50.0,
+      55.0
+    ],
+    "actual_b16_target_met": true,
+    "actual_b16_winner_run_id": "iteration_178_c24_continuous_modulation_timing_20260901"
+  },
+  "final_c24_b16_receipts": {
+    "rank_count": 16,
+    "final_versions": {
+      "generator": 3,
+      "critic": 15,
+      "ema": 0
+    },
+    "generator_backpressure_median_seconds": 0.008564439020119607,
+    "score_receive_wait_median_seconds": 0.00014806550461798906,
+    "score_modulation_forward_invocations_per_score_rank": 2301,
+    "score_modulation_backward_invocations_per_score_rank": 900,
+    "score_modulation_contract_failures": 0,
+    "peak_allocated_gib": 35.15971374511719,
+    "minimum_driver_free_gib": 0.2425537109375,
+    "cuda_or_cgroup_oom_delta": 0
   }
 }

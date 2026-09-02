@@ -1,22 +1,26 @@
-# LiveWan continuous B16/B32 diagnostics (Iterations 143-174)
+# LiveWan continuous B16/B32 diagnostics (Iterations 143-178)
 
 ## Result
 
 The persistent 8G + 8Score LiveWan cross-scale pipeline now reaches an actual
-continuous B16 Full5 steady interval of `55.095211267 s`. Doubling the logical
+continuous B16 Full5 steady interval of `54.441603646 s`. This meets the
+registered 50-55 second target at the same global batch. Doubling the logical
 global batch to B32 gives a real interval of `108.583634309 s` for twice the
-work, or `54.291817154 s` per B16-equivalent 80 samples. This is a `1.48%`
-throughput gain, not a 54-second B32 wall.
+work, or `54.291817154 s` per B16-equivalent 80 samples. That B32 number remains
+a throughput normalization, not a 54-second B32 wall.
 
 | Candidate | Runtime HEAD | Actual steady interval | Samples/s | B16-equivalent | Decision |
 |---|---|---:|---:|---:|---|
-| C21-0 continuous B16 | `e8283999274b0e6ba5a93cc322e79823a6b8cc80` | `55.095211267 s` | `1.452031822` | `55.095211267 s` | B16 winner |
+| C21-0 continuous B16 | `e8283999274b0e6ba5a93cc322e79823a6b8cc80` | `55.095211267 s` | `1.452031822` | `55.095211267 s` | superseded B16 control |
 | C21-C1 wave0 B1 overlap | `ad0b303356f05e5d1a812f01f1aacada06fb39e3` | `55.150482594 s` | - | `55.150482594 s` | reject, `+0.10%` |
 | C22 checkpoint RNG elision | `e8283999274b0e6ba5a93cc322e79823a6b8cc80` | `55.153462575 s` | - | `55.153462575 s` | reject, `+0.11%` |
 | C23 continuous B32 | `f8bbbac6c18872883dd7ed1bace9339784d8c51e` | `108.583634309 s` | `1.473518556` | `54.291817154 s` | throughput diagnostic |
+| C24 continuous B16 + exact Score modulation fusion | `c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b` | `54.441603646 s` | `1.469464429` | `54.441603646 s` | **actual B16 winner; target met** |
 
 Relative to C21 B16, C23 processes twice the samples with a normalized saving
 of `0.803394113 s` per 80 samples (`1.458%`, `1.01480x`).
+C24 instead preserves the exact B16 workload and saves `0.653607621 s`
+(`1.186%`, `1.01201x`) over C21.
 
 ## Frozen systems contract
 
@@ -93,15 +97,48 @@ because each lane performs two B2 microbatches per step. Peak allocated was
 `35.175426 GiB/rank`, minimum driver free `1.006226 GiB`, with no CUDA/cgroup
 OOM increment.
 
+### C24: exact Score modulation fusion on continuous B16
+
+C24 returns to the exact C21 B16 contract and changes only the already
+source-pinned Score-side pointwise chain
+`norm(x).float() * (1 + scale) + shift` into its exact fused implementation.
+The plan, trace, persistent 8G+8Score pools, physical/logical calls, losses,
+commit order, and B1/global-B16 semantics are unchanged.
+
+Focused source tests passed `75/75`. Validate-only iteration 176 passed without
+loading the workload. Correctness iteration 177 then passed 16/16 ranks,
+finished at `G3/C15/EMA0`, and reported on every Score rank:
+
+```text
+modulation forward invocations: 2301
+modulation backward invocations: 900
+install/execution status:       PASS/PASS
+source or dtype fallback:       none
+```
+
+The gated unprofiled timing run
+`iteration_178_c24_continuous_modulation_timing_20260901` produced:
+
+```text
+steady intervals: 54.493145533 s, 54.390061760 s
+median:           54.441603646 s
+throughput:        1.469464429 samples/s
+world 3-cycle:   168.451222241 s
+```
+
+Peak allocated remained `35.159714 GiB/rank`, minimum driver free remained
+`0.242554 GiB/rank`, and both nodes had zero CUDA/cgroup OOM increments. This
+is the first actual same-B16 result inside the 50-55 second target band.
+
 ## Why B32 helps only slightly
 
 The timing receipts directly show the pipeline is no longer dominated by an
 empty transport bubble:
 
-| Metric | C21 B16 | C23 B32 |
-|---|---:|---:|
-| Generator backpressure median | `0.008812 s` | `0.008950 s` |
-| Score receive-wait median | `0.000152 s` | `0.000143 s` |
+| Metric | C21 B16 | C23 B32 | C24 B16 |
+|---|---:|---:|---:|
+| Generator backpressure median | `0.008812 s` | `0.008950 s` | `0.008564 s` |
+| Score receive-wait median | `0.000152 s` | `0.000143 s` | `0.000148 s` |
 
 Additional waves can only amortize the fixed fill/drain edges, hence the
 observed `1.48%` throughput gain. The remaining critical work is the dense
@@ -117,9 +154,8 @@ this implementation.
 - B32 trace file SHA256: `5e5906bb1a04ea314b5bf18ef76dcd41f7223d8d90f3d47b6bf41cf8f56e69d2`
 - B32 bootstrap SHA256: `f30bbc6be8c902099ee29ba402fe1c5170f238b97a5b5f80fd0abec4e81b6da0`
 - B32 bootstrap file SHA256: `956d8f0b68c5e5aca0af629cd679df58e1efb91a08ef3a5afddde21dc705dc39`
-- Source-focused test gate: `71 passed, 1 deselected`; compile and shell syntax
-  checks passed. The deselection is the known system-Python BF16 `torch.eye`
-  limitation, not the validated Torch 2.10 training environment.
+- Final C24 source-focused test gate: `75 passed`; compile and shell syntax
+  checks passed in the validated Torch 2.10 environment.
 
 Only 80 source samples are present in the current asset bundle. C23 therefore
 maps slots 16-31 to the same source rows as slots 0-15 while using distinct

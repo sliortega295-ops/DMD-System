@@ -2,7 +2,7 @@
 
 ## Current gate
 
-`CONTINUOUS_B16_COMPLETE_B32_SYSTEMS_DIAGNOSTIC_COMPLETE`
+`CONTINUOUS_B16_50_55_TARGET_MET_C24`
 
 ## Authorized hypothesis
 
@@ -33,6 +33,15 @@ is persistent: ranks 0-7 are Generator ranks and ranks 8-15 are Score ranks.
 - C23 reuses the 16 available B16 source rows for slots 16-31 within each step,
   while preserving distinct operation keys and RNG. It is therefore a bounded
   systems throughput diagnostic, not a convergence or training-quality result.
+- C24 restores the exact B16 arm and adds only the source-pinned exact Score
+  modulation fusion. Validate, correctness, and timing all passed at
+  `c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b` with 16/16 ranks and final
+  `G3/C15/EMA0`. Its actual B16 steady intervals are `54.493145533 s` and
+  `54.390061760 s`, median `54.441603646 s` (`1.469464429 samples/s`).
+- C24 improves the C21 B16 control by `0.653607621 s` (`1.186%`, `1.01201x`)
+  without changing global batch, pools, trace, logical/physical calls, losses,
+  or update order. Every Score rank reports 2301 fused forward and 900 fused
+  backward invocations with zero contract failure.
 - Generator backpressure and Score receive wait are already negligible in the
   final B32 run (`0.008950 s` and `0.000143 s` medians respectively). More
   waves produce only a `1.48%` throughput gain; remaining improvement requires
@@ -45,14 +54,12 @@ is persistent: ranks 0-7 are Generator ranks and ranks 8-15 are Score ranks.
 The B16 and B32 observations are diagnostic-only. Historical strict
 sequential/pipeline numerical parity remains outside the preregistered gate,
 and C23 source reuse is not a training-quality contract. The actual B16 Full5
-wall is `55.095211267 s`; `54.291817154 s` is only the B32 result normalized to
+winner is C24 at `54.441603646 s`; `54.291817154 s` is only the B32 result normalized to
 the amount of work in B16 and must not be described as the actual B32 wall.
 
 ## Current decision
 
-`STOP_PIPELINE_BUBBLE_SEARCH`. The 50-55 second target is reached only in the
-B32 per-sample/B16-equivalent sense, while the actual same-B16 winner is just
-above the band at `55.095 s`. C21-C1 and C22 are rejected. Do not continue
-last-step NCCL or wave-count tuning without new evidence; the next independent
-hypothesis would have to target the dense Critic backward and step0 Teacher
-compute.
+`TARGET_MET_STOP`. C24 proves the 50-55 second objective on an actual same-B16
+run. C21-C1 and C22 remain rejected, while C23 remains a separate B32 throughput
+diagnostic. Do not continue last-step NCCL, wave-count, or unrelated kernel
+search under this completed objective.
