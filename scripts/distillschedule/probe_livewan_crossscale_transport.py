@@ -78,7 +78,12 @@ def main() -> int:
         default="b1",
     )
     args = parser.parse_args()
-    waves = 4 if args.pipeline_variant == "c23-continuous-b32" else 2
+    wave_indices = (
+        tuple(range(4))
+        if args.pipeline_variant == "c23-continuous-b32"
+        else tuple(range(2))
+    )
+    waves = len(wave_indices)
 
     import torch
     import torch.distributed as dist
@@ -487,7 +492,7 @@ def main() -> int:
     retained: list[torch.Tensor] = []
     deferred_gradient_work = None
     if rank < 8:
-        for wave in range(waves):
+        for wave in wave_indices:
             slot = slot_pair[wave]
             header = torch.tensor([rank, peer, wave, slot], device=device)
             payload = torch.full((256,), float(slot), dtype=torch.bfloat16, device=device)
@@ -508,7 +513,7 @@ def main() -> int:
         if observed_gradients != [peer + 1000 + wave for wave in range(waves)]:
             raise RuntimeError("P2P returned-gradient identity mismatch")
     else:
-        for wave in range(waves):
+        for wave in wave_indices:
             header = torch.empty(4, dtype=torch.int64, device=device)
             payload = torch.empty(256, dtype=torch.bfloat16, device=device)
             dist.recv(header, src=peer)
@@ -543,7 +548,7 @@ def main() -> int:
                 256, dtype=torch.float32, device="cpu", pin_memory=True
             )
             for step in range(1, 5)
-            for wave in range(waves)
+            for wave in wave_indices
         }
         if rank < 8:
             for (step, wave), buffer in host_buffers.items():

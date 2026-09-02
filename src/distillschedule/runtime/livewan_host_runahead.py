@@ -97,11 +97,14 @@ class PinnedHostRunaheadTransport:
 
     @property
     def expected_keys(self) -> set[tuple[int, int]]:
+        # ``getattr`` keeps the legacy contract test (and old serialized
+        # construction receipts) equivalent to the original two-wave path.
+        waves_per_step = int(getattr(self, "waves_per_step", 2))
         keys = {
             (cycle * 5 + step, wave)
             for cycle in range(self.cycles)
             for step in RUNAHEAD_STEPS
-            for wave in range(self.waves_per_step)
+            for wave in range(waves_per_step)
         }
         if self.cross_cycle_lookahead:
             keys.update((cycle * 5, 0) for cycle in range(1, self.cycles))
