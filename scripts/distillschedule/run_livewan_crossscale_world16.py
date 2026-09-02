@@ -142,6 +142,7 @@ def parser() -> argparse.ArgumentParser:
             "c21-c1-continuous-b16",
             "c22-critic-checkpoint-rng",
             "c23-continuous-b32",
+            "c24-continuous-b16-score-modulation",
             "phase-expanded-critic16",
             "phase-expanded-critic16-fused-lora-elision",
             "score-b2",
@@ -288,6 +289,7 @@ def summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
             "c21-continuous-b16", "c21-c1-continuous-b16",
             "c22-critic-checkpoint-rng",
             "c23-continuous-b32",
+            "c24-continuous-b16-score-modulation",
         }
         else "summarize_livewan_crossscale_world16.py"
     )

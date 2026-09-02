@@ -1,0 +1,19 @@
+{
+  "include": [
+    "livewan_wan13b_14b_sf_dmd_c21_continuous_b16.json"
+  ],
+  "id": "livewan-wan13b-14b-sfdmd-c24-continuous-b16-score-modulation",
+  "metadata": {
+    "score_modulation_kernel": {
+      "enabled": true,
+      "name": "score_bf16_modulation_fusion_v1",
+      "scope": "score_ranks_only_critic_and_teacher",
+      "source_modulate_sha256": "f244152360d40d6745e28bed4add081604312d04fe2f342842a32432f4bd20ad",
+      "math_change": "fuse_exact_bf16_to_fp32_modulation_pointwise_chain",
+      "normalized_shift_scale_dtype": "bfloat16",
+      "output_dtype": "float32",
+      "per_frame": false,
+      "triton_block_size": 256
+    }
+  }
+}
