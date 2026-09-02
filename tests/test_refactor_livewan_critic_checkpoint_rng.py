@@ -98,5 +98,7 @@ def test_c22_is_wired_to_controller_launcher_and_continuous_summarizer() -> None
     ).read_text(encoding="utf-8")
     for source in (controller, launcher):
         assert "c22-critic-checkpoint-rng" in source
+    assert '"--flash-attn-kernel"' in controller
+    assert 'exports["DISTILLSCHEDULE_FLASH_ATTN_KERNEL"]' in controller
     assert "critic_checkpoint_rng" in summarizer
     assert "expected_checkpoint_calls" in summarizer

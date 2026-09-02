@@ -165,6 +165,14 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--source-receipt", required=True, type=Path)
     value.add_argument("--pyenv", type=Path, default=Path("/tmp/distillschedule-helios-official-torch210"))
     value.add_argument("--python-overlay", required=True, type=Path)
+    value.add_argument(
+        "--flash-attn-kernel",
+        type=Path,
+        help=(
+            "optional node-local copy of the pinned FlashAttention-2 build; "
+            "the launcher and runtime still verify the frozen artifact hashes"
+        ),
+    )
     value.add_argument("--correctness-receipt", type=Path)
     value.add_argument("--correctness-sha256")
     value.add_argument("--nsys-bin", type=Path)
@@ -209,6 +217,8 @@ def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "LIVEWAN_SOURCE_RECEIPT": args.source_receipt,
         "LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant,
     }
+    if args.flash_attn_kernel is not None:
+        exports["DISTILLSCHEDULE_FLASH_ATTN_KERNEL"] = args.flash_attn_kernel
     if args.run_kind in {"timing", "profile"}:
         if args.correctness_receipt is None or not args.correctness_sha256:
             raise ValueError(f"{args.run_kind} requires a correctness/diagnostic receipt and SHA256")
