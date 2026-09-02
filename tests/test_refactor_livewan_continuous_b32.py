@@ -32,6 +32,7 @@ def test_c23_is_explicit_source_reuse_b32_only(monkeypatch) -> None:
     LiveWanSFDMDAdapter().validate(plan)
     value = plan.to_dict()
     assert value["workload"]["shape"]["batch_size"] == 32
+    assert value["workload"]["metadata"]["global_batch"] == 32
     assert value["metadata"]["batch32_diagnostic"] == {
         "enabled": True,
         "name": "matched_b32_source_reuse_systems_v1",
