@@ -254,6 +254,8 @@ def test_fair_launcher_is_fail_closed_and_never_profiles_as_timing() -> None:
     assert "DIAGNOSTIC_ONLY" in source
     assert "correctness receipt uses a different Helios residual runtime" in source
     assert "helios_transformer_sha256=${EXPECTED_HELIOS_TRANSFORMER_SHA256}" in source
+    assert 'export LD_LIBRARY_PATH="${PYENV}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"' in source
+    assert "python_runtime_lib_path=${PYENV}/lib" in source
     assert "lora_operator_attribution_requires_profile_mode" in source
     assert "lora_operator_attribution=${LORA_OPERATOR_ATTRIBUTION}" in source
     assert "generator_nograd_lora_cast_cache=${GENERATOR_NOGRAD_LORA_CAST_CACHE}" in source

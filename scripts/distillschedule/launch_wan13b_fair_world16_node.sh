@@ -33,6 +33,12 @@ HELIOS="${HELIOS_RUNTIME_ROOT:-/share/project/shuchenweng/yongyan_liu/DistillSch
 PYENV="${DISTILLSCHEDULE_PYENV:-/tmp/distillschedule-helios-official-torch210}"
 PYTHON="${PYENV}/bin/python"
 TORCHRUN="${PYENV}/bin/torchrun"
+# The packed Torch 2.10 environment ships a newer libstdc++ alongside its
+# Python/ICU libraries.  Without putting that directory first, importing
+# torch before sqlite3 leaves the process bound to the host libstdc++ and the
+# later sqlite3 import fails on CXXABI_1.3.15.  Keep the packaged environment
+# self-consistent rather than relying on import order.
+export LD_LIBRARY_PATH="${PYENV}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 ASSETS="${DISTILLSCHEDULE_ASSETS:-/share/project/shuchenweng/DistillSchedule_assets}"
 MODEL_ROOT="${DISTILLSCHEDULE_WAN13B_MODEL_ROOT:?set DISTILLSCHEDULE_WAN13B_MODEL_ROOT}"
 BOOTSTRAP="${DISTILLSCHEDULE_WAN13B_BOOTSTRAP:?set DISTILLSCHEDULE_WAN13B_BOOTSTRAP}"
@@ -240,6 +246,7 @@ activation_offload=false
 optimizer_offload=false
 parameter_streaming=false
 model_swap=false
+python_runtime_lib_path=${PYENV}/lib
 claim_boundary=$( [[ "${MODE}" == diagnostic-timing || "${MODE}" == profile || "${MODE}" == trajectory ]] && echo DIAGNOSTIC_ONLY || echo FORMAL_GATE_BOUND )
 EOF
 if [[ "${MODE}" == trajectory ]]; then
