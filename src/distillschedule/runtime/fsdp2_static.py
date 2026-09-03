@@ -13,7 +13,7 @@ import json
 import math
 import time
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Callable, Mapping
 
 
 @dataclasses.dataclass(frozen=True)
@@ -68,6 +68,74 @@ def contract_for_variant(variant: str) -> StaticFSDP2Full5Contract:
     if variant == "gan":
         return GAN_CONTRACT
     raise ValueError(f"unknown static FSDP2 variant: {variant}")
+
+
+@dataclasses.dataclass(frozen=True)
+class StaticFSDP2TrajectoryContract:
+    """A continuous sequence of exact five-step static-FSDP2 cycles.
+
+    This is intentionally a distinct contract rather than weakening
+    :class:`StaticFSDP2Full5Contract`.  The historical Full5 launch therefore
+    remains fail-closed on exactly one G1/C5 window, while trajectory runs can
+    advance the same optimizer/scheduler/EMA state for N consecutive cycles.
+    """
+
+    variant: str
+    logical_steps: tuple[int, ...]
+    global_batch: int
+    generator_updates: int
+    critic_updates: int
+    ema_update_steps: tuple[int, ...]
+    initial_versions: Mapping[str, int]
+    final_versions: Mapping[str, int]
+    gan_enabled: bool
+    cycles: int
+
+    def __post_init__(self) -> None:
+        if self.variant not in {"no-gan", "gan"}:
+            raise ValueError(f"unsupported static FSDP2 trajectory: {self.variant}")
+        if self.cycles <= 0 or self.global_batch != 16:
+            raise ValueError("static FSDP2 trajectory requires positive world16/B16 cycles")
+        if len(self.logical_steps) != 5 * self.cycles:
+            raise ValueError("trajectory must contain five logical steps per cycle")
+        if self.generator_updates != self.cycles or self.critic_updates != 5 * self.cycles:
+            raise ValueError("trajectory update inventory must remain G1/C5 per cycle")
+
+
+def contract_for_trajectory(
+    variant: str, cycles: int
+) -> StaticFSDP2Full5Contract | StaticFSDP2TrajectoryContract:
+    """Return the immutable Full5 contract or an explicitly longer trajectory."""
+
+    if isinstance(cycles, bool) or not isinstance(cycles, int) or cycles <= 0:
+        raise ValueError("trajectory cycles must be a positive integer")
+    if cycles == 1:
+        return contract_for_variant(variant)
+    base = contract_for_variant(variant)
+    start = base.logical_steps[0]
+    logical_steps = tuple(range(start, start + 5 * cycles))
+    ema_steps = (
+        logical_steps
+        if variant == "no-gan"
+        else tuple(logical_steps[index] for index in range(0, len(logical_steps), 5))
+    )
+    final_versions = {
+        "generator": int(base.initial_versions["generator"]) + cycles,
+        "critic": int(base.initial_versions["critic"]) + 5 * cycles,
+        "ema": int(base.initial_versions["ema"]) + len(ema_steps),
+    }
+    return StaticFSDP2TrajectoryContract(
+        variant=variant,
+        logical_steps=logical_steps,
+        global_batch=base.global_batch,
+        generator_updates=cycles,
+        critic_updates=5 * cycles,
+        ema_update_steps=ema_steps,
+        initial_versions=base.initial_versions,
+        final_versions=final_versions,
+        gan_enabled=base.gan_enabled,
+        cycles=cycles,
+    )
 
 
 def _torch() -> Any:
@@ -462,6 +530,14 @@ class FSDP2EngineAdapter:
         self._gradient_clip = float(gradient_clip)
         self._step_calls = 0
         self._gradient_accumulation_boundary = True
+        self.last_gradient_norm = None
+        # Diagnostic-only, one-shot callback used by long-trajectory evidence
+        # capture. It runs after the existing global clip and immediately
+        # before the unchanged optimizer/scheduler commit. Formal workloads
+        # never install it.
+        self._pre_optimizer_step_observer: (
+            Callable[["FSDP2EngineAdapter"], None] | None
+        ) = None
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         return self.module(*args, **kwargs)
@@ -476,7 +552,13 @@ class FSDP2EngineAdapter:
         ]
         if not trainables:
             raise RuntimeError("FSDP2 engine has no trainable parameters")
-        torch.nn.utils.clip_grad_norm_(trainables, self._gradient_clip)
+        self.last_gradient_norm = torch.nn.utils.clip_grad_norm_(
+            trainables, self._gradient_clip
+        )
+        observer = self._pre_optimizer_step_observer
+        self._pre_optimizer_step_observer = None
+        if observer is not None:
+            observer(self)
         self.optimizer.step()
         self.lr_scheduler.step()
         self.optimizer.zero_grad(set_to_none=True)
@@ -486,6 +568,21 @@ class FSDP2EngineAdapter:
 
     def zero_grad(self) -> None:
         self.optimizer.zero_grad(set_to_none=True)
+
+    def set_pre_optimizer_step_observer(
+        self, observer: Callable[["FSDP2EngineAdapter"], None]
+    ) -> None:
+        """Install one diagnostic callback for the next optimizer commit.
+
+        The callback is deliberately one-shot so a failed or unexpected call
+        inventory cannot silently attach one cycle's evidence to another.
+        """
+
+        if not callable(observer):
+            raise TypeError("pre-optimizer observer must be callable")
+        if self._pre_optimizer_step_observer is not None:
+            raise RuntimeError("a pre-optimizer observer is already pending")
+        self._pre_optimizer_step_observer = observer
 
     def set_gradient_accumulation_boundary(self, *, is_boundary: bool) -> None:
         """Expose the DeepSpeed-shaped boundary hook used by official GAN loss.
@@ -975,9 +1072,11 @@ __all__ = [
     "GAN_CONTRACT",
     "NO_GAN_CONTRACT",
     "StaticFSDP2Full5Contract",
+    "StaticFSDP2TrajectoryContract",
     "apply_blockwise_fsdp2",
     "build_fsdp2_engine",
     "contract_for_variant",
+    "contract_for_trajectory",
     "restore_fsdp2_optimizer_from_logical",
     "_optimizer_dispatch_warmup",
 ]

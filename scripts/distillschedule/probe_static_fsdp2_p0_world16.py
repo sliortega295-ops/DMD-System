@@ -14,8 +14,9 @@ from __future__ import annotations
 import gc
 import hashlib
 import importlib.util
-import json
+import math
 import os
+import random
 import socket
 import sys
 import time
@@ -119,7 +120,20 @@ from distillschedule.runtime.fsdp2_p0 import (
 from distillschedule.runtime.fsdp2_nograd_persistence import (
     generator_nograd_persistent_unshard_scope,
 )
-from distillschedule.runtime.fsdp2_static import FSDP2ShardEMA, build_fsdp2_engine, configure_fsdp2_checkpointing, contract_for_variant
+from distillschedule.evidence import AppendOnlyTrajectoryWriter, TrajectoryCycleReceipt
+from distillschedule.evidence.distributed_state_sketch import (
+    ema_sketch,
+    module_gradient_sketch,
+    module_parameter_sketch,
+    optimizer_sketch,
+    write_rank_state_anchor,
+)
+from distillschedule.runtime.fsdp2_static import (
+    FSDP2ShardEMA,
+    build_fsdp2_engine,
+    configure_fsdp2_checkpointing,
+    contract_for_trajectory,
+)
 from distillschedule.runtime.helios_cross_kv_cache import (
     install_generator_nograd_cross_kv_cache,
 )
@@ -437,9 +451,14 @@ def _run_nogan_generator_update_p0(
     diagnostics: StaticProfileDiagnostics,
     policy: StaticFSDP2P0Policy,
     score_pack_parity_check: bool,
+    logical_step: int | None = None,
+    collect_scalars: bool = False,
 ) -> dict[str, Any]:
     with diagnostics.scope("INPUT_H2D/generator_entry"):
-        entry = trace.load_generator_entry(rank=rank, device=device)
+        entry = trace.load_generator_entry(
+            rank=rank, device=device, step=logical_step
+        )
+    observed_logical_step = int(entry.logical_step)
     diagnostics.add_tensor_tree("generator_entry", entry, direction="H2D")
     before = (
         TIMING_OMITTED
@@ -546,6 +565,7 @@ def _run_nogan_generator_update_p0(
         generator_engine.backward(loss)
     with diagnostics.scope("OPTIMIZER_STEP/generator"):
         generator_engine.step()
+    gradient_norm = generator_engine.last_gradient_norm
     after = (
         TIMING_OMITTED
         if not collect_diagnostics
@@ -557,21 +577,30 @@ def _run_nogan_generator_update_p0(
         raise AssertionError("No-GAN P0 Generator trainables did not update")
     del entry, x0, gradient_mask, batch, fake, real_cond, real_uncond, gradient, auxiliary
     return {
-        "logical_step": 10,
+        "logical_step": observed_logical_step,
         "source_rank": rank,
         "physical_generator_step_after": int(generator_engine.global_steps),
         "local_trainable_before": before,
         "local_trainable_after": after,
         "rollout": rollout,
         "surrogate_loss": (
-            diagnostics.diagnostic_scalar("generator_surrogate", loss)
-            if collect_diagnostics
-            else TIMING_OMITTED
+            float(loss.detach().float().cpu())
+            if collect_scalars
+            else (
+                diagnostics.diagnostic_scalar("generator_surrogate", loss)
+                if collect_diagnostics
+                else TIMING_OMITTED
+            )
         ),
         "logical_score_requests": 3,
         "physical_score_forwards": physical_score_forwards,
         "real_score_pair_packed": bool(policy.pack_real_score_pair),
         "score_pack_parity": parity,
+        "gradient_norm": (
+            _scalar_tensor_value(gradient_norm)
+            if collect_scalars
+            else TIMING_OMITTED
+        ),
     }
 
 
@@ -738,6 +767,7 @@ def _run_nogan_critic_precomputed(
     trace: StaticWorld16Trace,
     collect_diagnostics: bool,
     diagnostics: StaticProfileDiagnostics,
+    collect_scalars: bool = False,
 ) -> dict[str, Any]:
     with diagnostics.scope(f"INPUT_H2D/critic_entry_update/step{step}"):
         entry = trace.load_critic_entry(rank=rank, step=step, device=device)
@@ -749,17 +779,27 @@ def _run_nogan_critic_precomputed(
         critic_engine.backward(loss)
     with diagnostics.scope("OPTIMIZER_STEP/critic"):
         critic_engine.step()
+    gradient_norm = critic_engine.last_gradient_norm
     return {
         "logical_step": step,
         "source_rank": rank,
         "physical_critic_step_after": int(critic_engine.global_steps),
         "loss": (
-            diagnostics.diagnostic_scalar(f"critic_step{step}", loss)
-            if collect_diagnostics
-            else TIMING_OMITTED
+            float(loss.detach().float().cpu())
+            if collect_scalars
+            else (
+                diagnostics.diagnostic_scalar(f"critic_step{step}", loss)
+                if collect_diagnostics
+                else TIMING_OMITTED
+            )
         ),
         "score_forwards": 1,
         "generator_rollout_precomputed": True,
+        "gradient_norm": (
+            _scalar_tensor_value(gradient_norm)
+            if collect_scalars
+            else TIMING_OMITTED
+        ),
     }
 
 
@@ -775,6 +815,7 @@ def _run_gan_critic_precomputed(
     collect_diagnostics: bool,
     collect_official_scalar_logs: bool,
     diagnostics: StaticProfileDiagnostics,
+    collect_scalars: bool = False,
 ) -> dict[str, Any]:
     from helios.utils.utils_helios_post import _critic_loss
 
@@ -799,19 +840,295 @@ def _run_gan_critic_precomputed(
         raise AssertionError("GAN P0 Critic did not commit")
     if int(critic_engine.global_steps) != before + 1:
         raise AssertionError("GAN P0 Critic optimizer step drift")
+    gradient_norm = critic_engine.last_gradient_norm
     return {
         "logical_step": step,
         "source_rank": rank,
         "physical_critic_step_after": int(critic_engine.global_steps),
         "loss": (
-            diagnostics.diagnostic_scalar(f"gan_critic_step{step}", loss)
-            if collect_diagnostics
-            else TIMING_OMITTED
+            float(loss.detach().float().cpu())
+            if collect_scalars
+            else (
+                diagnostics.diagnostic_scalar(f"gan_critic_step{step}", loss)
+                if collect_diagnostics
+                else TIMING_OMITTED
+            )
         ),
         "score_forwards": 2,
         "critic_optimizer_committed": True,
         "generator_rollout_precomputed": True,
+        "gradient_norm": (
+            _scalar_tensor_value(gradient_norm)
+            if collect_scalars
+            else TIMING_OMITTED
+        ),
+        "official_logs": (
+            {
+                str(key): (
+                    float(value.detach().cpu())
+                    if isinstance(value, torch.Tensor) and value.numel() == 1
+                    else float(value)
+                )
+                for key, value in logs.items()
+                if (
+                    isinstance(value, (int, float))
+                    or (isinstance(value, torch.Tensor) and value.numel() == 1)
+                )
+            }
+            if collect_scalars
+            else TIMING_OMITTED
+        ),
     }
+
+
+def _arm_gradient_sketch(
+    *,
+    engine: Any,
+    global_rank: int,
+    target: dict[str, Any],
+    name: str,
+) -> None:
+    """Capture clipped gradients at the unchanged optimizer boundary once."""
+
+    if name in target:
+        raise RuntimeError(f"duplicate trajectory gradient sketch: {name}")
+
+    def capture(observed_engine: Any) -> None:
+        if observed_engine is not engine:
+            raise AssertionError("trajectory gradient observer saw a different engine")
+        target[name] = module_gradient_sketch(
+            observed_engine.module,
+            global_rank=global_rank,
+        )
+
+    engine.set_pre_optimizer_step_observer(capture)
+
+
+def _write_trajectory_state_anchor(
+    *,
+    args: Any,
+    rank: int,
+    cycle_index: int,
+    generator_engine: Any,
+    critic_engine: Any,
+    ema: FSDP2ShardEMA,
+    gradient_sketches: dict[str, Any],
+) -> dict[str, str]:
+    expected_gradients = {
+        "generator_gradient",
+        *{f"critic_{index}_gradient" for index in range(5)},
+    }
+    if set(gradient_sketches) != expected_gradients:
+        raise AssertionError(
+            "trajectory gradient sketch inventory changed: "
+            f"{sorted(gradient_sketches)} != {sorted(expected_gradients)}"
+        )
+    relative_path = (
+        Path("trajectory")
+        / "state"
+        / f"rank_{rank:02d}_cycle_{cycle_index:03d}.json"
+    )
+    return write_rank_state_anchor(
+        args.output_dir / relative_path,
+        run_id=str(args.run_id),
+        workload="helios14b_static_fsdp2",
+        variant=str(args.variant),
+        cycle=cycle_index,
+        rank=rank,
+        world_size=16,
+        states={
+            "generator_parameter": module_parameter_sketch(
+                generator_engine.module, global_rank=rank
+            ),
+            "critic_parameter": module_parameter_sketch(
+                critic_engine.module, global_rank=rank
+            ),
+            "generator_adam": optimizer_sketch(
+                generator_engine.optimizer,
+                generator_engine.module,
+                global_rank=rank,
+            ),
+            "critic_adam": optimizer_sketch(
+                critic_engine.optimizer,
+                critic_engine.module,
+                global_rank=rank,
+            ),
+            "generator_ema": ema_sketch(
+                ema,
+                generator_engine.module,
+                global_rank=rank,
+            ),
+            **gradient_sketches,
+        },
+    )
+
+
+def _finite_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and math.isfinite(float(value))
+
+
+def _scalar_tensor_value(value: Any) -> float | None:
+    if not isinstance(value, torch.Tensor):
+        return None
+    local = value.detach().to_local() if hasattr(value, "to_local") else value.detach()
+    if local.numel() != 1:
+        raise ValueError("trajectory scalar tensor is not scalar")
+    return float(local.float().cpu())
+
+
+def _trajectory_receipt(
+    *,
+    args: Any,
+    rank: int,
+    world: int,
+    cycle_index: int,
+    cycle_steps: tuple[int, ...],
+    generator_record: dict[str, Any],
+    rollout_records: list[dict[str, Any]],
+    critic_records: list[dict[str, Any]],
+    ema_records: list[dict[str, Any]],
+    generator_engine: Any,
+    critic_engine: Any,
+    ema: FSDP2ShardEMA,
+    logical_hash: str,
+    trace_hash: str,
+    policy: StaticFSDP2P0Policy,
+    trace: StaticWorld16Trace,
+    state_fingerprints: dict[str, str],
+) -> TrajectoryCycleReceipt:
+    critic_losses = [float(record["loss"]) for record in critic_records]
+    if args.variant == "gan":
+        generator_losses = dict(generator_record["losses"])
+        losses = {
+            "generator_total": float(generator_losses["total"]),
+            "generator_dmd": float(generator_losses["dmd"]),
+            "generator_gan_g_raw": float(generator_losses["gan_g_raw"]),
+            **{
+                f"critic_total_{index}": value
+                for index, value in enumerate(critic_losses)
+            },
+            "critic_total_mean": sum(critic_losses) / len(critic_losses),
+        }
+    else:
+        losses = {
+            "generator_surrogate": float(generator_record["surrogate_loss"]),
+            **{
+                f"critic_total_{index}": value
+                for index, value in enumerate(critic_losses)
+            },
+            "critic_total_mean": sum(critic_losses) / len(critic_losses),
+        }
+    generator_norm = generator_engine.last_gradient_norm
+    critic_norms = [record.get("gradient_norm") for record in critic_records]
+    gradient_norms: dict[str, float | None] = {
+        "generator": (
+            float(generator_record["gradient_norm"])
+            if _finite_number(generator_record.get("gradient_norm"))
+            else (
+                _scalar_tensor_value(generator_norm)
+            )
+        )
+    }
+    gradient_norms.update(
+        {
+            f"critic_{index}": float(value) if _finite_number(value) else None
+            for index, value in enumerate(critic_norms)
+        }
+    )
+    identities = [
+        str(generator_record["rollout"]["trace_identity_sha256"]),
+        *[
+            str(identity)
+            for record in rollout_records
+            for identity in record["member_trace_identities"]
+        ],
+    ]
+    rng_identities = {
+        "generator": (
+            f"rank={rank}/phase=generator/logical_step={cycle_steps[0]}/"
+            f"source_step={trace.source_step(cycle_steps[0])}/trace={trace_hash}"
+        )
+    }
+    rng_identities.update(
+        {
+            f"critic_{index}": (
+                f"rank={rank}/phase=critic/logical_step={step}/"
+                f"source_step={trace.source_step(step)}/trace={trace_hash}"
+            )
+            for index, step in enumerate(cycle_steps)
+        }
+    )
+    generator_dit_calls = int(generator_record["rollout"].get("call_count", 0))
+    rollout_physical_calls = sum(int(record["call_count"]) for record in rollout_records)
+    rollout_logical_calls = sum(
+        int(record["call_count"]) * len(record["member_trace_identities"])
+        for record in rollout_records
+    )
+    finite = all(_finite_number(value) for value in losses.values()) and all(
+        _finite_number(value) for value in gradient_norms.values()
+    )
+    return TrajectoryCycleReceipt(
+        run_id=args.run_id,
+        workload="helios14b_static_fsdp2",
+        variant=args.variant,
+        rank=rank,
+        world_size=world,
+        seed=int(args.trajectory_seed),
+        cycle=cycle_index,
+        expected_total_cycles=int(args.trajectory_cycles),
+        logical_step=int(cycle_steps[0]),
+        matched_contract={
+            "semantic_contract": "G1_C5_B16_PER_CYCLE",
+            "trace_bundle_hash": trace_hash,
+            "logical_checkpoint_hash": logical_hash,
+            "trace_cohort": "FIXED_FIVE_STEP_COHORT_REPLAY",
+            "dtype": "bfloat16",
+            "resolution": "384x640",
+        },
+        implementation={
+            "arm_id": str(args.trajectory_arm_id),
+            "policy_id": str(policy.id),
+            "mesh_policy": str(policy.mesh_policy),
+            "rollout_batch_size": str(policy.rollout_batch_size),
+            "score_packing": str(bool(policy.pack_real_score_pair)).lower(),
+        },
+        sample_identities=identities,
+        rng_identities=rng_identities,
+        versions={
+            "generator": int(generator_engine.global_steps),
+            "critic": int(critic_engine.global_steps),
+            "ema": int(ema.optimization_step),
+        },
+        cycle_updates={
+            "generator": 1,
+            "critic": 5,
+            "ema": len(ema_records),
+        },
+        cumulative_updates={
+            "generator": cycle_index,
+            "critic": 5 * cycle_index,
+            "ema": (5 if args.variant == "no-gan" else 1) * cycle_index,
+        },
+        call_census={
+            "generator_update_dit": generator_dit_calls,
+            "generator_critic_rollout_logical_dit": rollout_logical_calls,
+            "generator_critic_rollout_physical_dit": rollout_physical_calls,
+            "generator_critic_rollout_physical_batches": len(rollout_records),
+            "generator_score_forwards": int(
+                generator_record["physical_score_forwards"]
+            ),
+            "critic_score_forwards": sum(
+                int(record["score_forwards"]) for record in critic_records
+            ),
+        },
+        losses=losses,
+        gradient_norms=gradient_norms,
+        tensor_contracts={
+            "rollout_latent": {"shape": [1, 16, 9, 48, 80], "dtype": "torch.bfloat16"}
+        },
+        state_fingerprints=state_fingerprints,
+        finite=finite,
+    )
 
 
 def _parser() -> Any:
@@ -1071,11 +1388,40 @@ def _parser() -> Any:
         default=DEFAULT_TARGET_BYTES,
     )
     value.add_argument("--operation-source-max-events", type=int, default=256)
+    value.add_argument(
+        "--trajectory-mode",
+        action="store_true",
+        help="Emit append-only cycle receipts; separate from legacy Full5 correctness.",
+    )
+    value.add_argument(
+        "--trajectory-cycles",
+        type=int,
+        default=1,
+        help=(
+            "Run N consecutive G1/C5 cycles in one process. Values above one "
+            "are diagnostic trajectory evidence, never formal timing."
+        ),
+    )
+    value.add_argument("--trajectory-seed", type=int, default=20260903)
+    value.add_argument(
+        "--trajectory-arm-id",
+        default="single-full5",
+        help="Stable implementation identity recorded in every trajectory row",
+    )
     return value
 
 
 def main() -> int:
     args = _parser().parse_args()
+    if args.trajectory_cycles <= 0:
+        raise ValueError("--trajectory-cycles must be positive")
+    trajectory_mode = bool(args.trajectory_mode)
+    if not trajectory_mode and args.trajectory_cycles != 1:
+        raise ValueError("--trajectory-cycles > 1 requires --trajectory-mode")
+    if trajectory_mode and (args.timing_mode or args.profile_mode):
+        raise ValueError("trajectory runs cannot be timing/profile runs")
+    if trajectory_mode and args.critic_only_step is not None:
+        raise ValueError("trajectory runs cannot be critic-only canaries")
     if args.timing_mode and args.profile_mode:
         raise ValueError("profiled runs are diagnostic and cannot be formal timing runs")
     diagnostic_single_critic = args.critic_only_step is not None
@@ -1299,6 +1645,17 @@ def main() -> int:
         },
     }
     try:
+        if trajectory_mode:
+            rank_seed = int(args.trajectory_seed) + rank
+            random.seed(rank_seed)
+            torch.manual_seed(rank_seed)
+            torch.cuda.manual_seed_all(rank_seed)
+            result["trajectory_rng_seed"] = {
+                "base_seed": int(args.trajectory_seed),
+                "rank_seed": rank_seed,
+                "scope": "PYTHON_TORCH_CPU_CUDA_BEFORE_MODEL_CONSTRUCTION",
+                "trace_replay_authoritative_for_registered_random_inputs": True,
+            }
         critic_scalar_logs = install_critic_scalar_log_elision(
             enabled=bool(policy.elide_critic_scalar_logs and args.variant == "gan")
         )
@@ -1313,7 +1670,7 @@ def main() -> int:
         result["attention_backend"] = _attention_backend_receipt(
             args.attention_backend
         )
-        contract = contract_for_variant(args.variant)
+        contract = contract_for_trajectory(args.variant, args.trajectory_cycles)
         nsys_range = StaticFSDP2Full5NsightRange.from_env(
             variant=args.variant,
             logical_window=(args.critic_only_step, args.critic_only_step)
@@ -1339,12 +1696,16 @@ def main() -> int:
         )
         if args.expected_logical_hash and logical.manifest_hash != args.expected_logical_hash:
             raise ValueError("logical checkpoint identity changed")
-        trace = StaticWorld16Trace(args.trace_bundle, variant=args.variant)
+        trace = StaticWorld16Trace(
+            args.trace_bundle,
+            variant=args.variant,
+            cycles=args.trajectory_cycles,
+        )
         if args.expected_trace_hash and trace.bundle_hash != args.expected_trace_hash:
             raise ValueError("trace bundle identity changed")
         control_entries = [
             trace.load_critic_entry(rank=rank, step=step, device="cpu")
-            for step in contract.logical_steps
+            for step in trace.source_steps
         ]
         from distillschedule.runtime.fsdp2_p0 import validate_rollout_entries
 
@@ -1358,6 +1719,8 @@ def main() -> int:
             "trace_binding_hash": trace.binding_hash,
             "rank_control_validation": trace.rank_control_validation,
             "cross_step_rollout_batchability": "PASS",
+            "trajectory_cycle_count": int(args.trajectory_cycles),
+            "trajectory_cohort_policy": "FIXED_FIVE_STEP_COHORT_REPLAY",
         }
         if args.validate_only:
             result.update(status="PASS", validate_only=True)
@@ -1392,8 +1755,16 @@ def main() -> int:
             ),
             collect_cpu_diagnostics=(not args.profile_mode) or args.profile_diagnostics,
         )
-        collect_diagnostics = (not args.timing_mode) and args.profile_diagnostics
-        score_pack_parity_check = (not args.timing_mode) and (not args.profile_mode)
+        collect_diagnostics = (
+            (not args.timing_mode)
+            and args.profile_diagnostics
+            and (not trajectory_mode)
+        )
+        score_pack_parity_check = (
+            (not args.timing_mode)
+            and (not args.profile_mode)
+            and (not trajectory_mode)
+        )
         result["build"] = build
         result["profile_diagnostics"] = bool(args.profile_diagnostics)
         result["ema_device"] = args.ema_device
@@ -1423,11 +1794,97 @@ def main() -> int:
             )
             dist.barrier()
 
-        if args.variant == "gan":
-            if policy.pack_real_score_pair:
-                with packed_gan_real_score_pair(
-                    parity_check=score_pack_parity_check
-                ) as gan_pack_state:
+        execution_steps = (
+            (int(args.critic_only_step),)
+            if diagnostic_single_critic
+            else contract.logical_steps
+        )
+        trajectory_writer = None
+        trajectory_path = args.output_dir / "trajectory" / f"rank_{rank:02d}.jsonl"
+        if trajectory_mode:
+            if trajectory_path.exists():
+                raise FileExistsError(
+                    f"refusing to overwrite trajectory evidence: {trajectory_path}"
+                )
+            trajectory_writer = AppendOnlyTrajectoryWriter(
+                trajectory_path,
+                run_id=args.run_id,
+                rank=rank,
+            )
+
+        generator_records: list[dict[str, Any]] = []
+        all_rollout_records: list[dict[str, Any]] = []
+        all_persistence_records: list[dict[str, Any]] = []
+        critic_records: list[dict[str, Any]] = []
+        ema_records: list[dict[str, Any]] = []
+        operation_source_records: list[dict[str, Any]] = []
+        cycle_summaries: list[dict[str, Any]] = []
+
+        for cycle_offset in range(args.trajectory_cycles):
+            cycle_index = cycle_offset + 1
+            state_anchor_cycles = {
+                value
+                for value in (1, 10, 25, 50, int(args.trajectory_cycles))
+                if value <= int(args.trajectory_cycles)
+            }
+            capture_state_anchor = bool(
+                trajectory_mode and cycle_index in state_anchor_cycles
+            )
+            cycle_gradient_sketches: dict[str, Any] = {}
+            if diagnostic_single_critic:
+                cycle_steps = execution_steps
+            else:
+                start_index = cycle_offset * 5
+                cycle_steps = tuple(execution_steps[start_index : start_index + 5])
+            if len(cycle_steps) != (1 if diagnostic_single_critic else 5):
+                raise AssertionError("trajectory cycle does not contain the required steps")
+            cycle_started = time.perf_counter()
+
+            if capture_state_anchor:
+                _arm_gradient_sketch(
+                    engine=generator_engine,
+                    global_rank=rank,
+                    target=cycle_gradient_sketches,
+                    name="generator_gradient",
+                )
+
+            if args.variant == "gan":
+                if policy.pack_real_score_pair:
+                    with packed_gan_real_score_pair(
+                        parity_check=score_pack_parity_check
+                    ) as gan_pack_state:
+                        generator_record = base._run_gan_generator_update(
+                            args=args,
+                            rank=rank,
+                            device=device,
+                            generator_engine=generator_engine,
+                            critic_engine=critic_engine,
+                            trace=trace,
+                            cfg=cfg,
+                            negative=negative,
+                            collect_diagnostics=collect_diagnostics,
+                            collect_scalars=trajectory_mode,
+                            logical_step=cycle_steps[0],
+                            diagnostics=diagnostics,
+                            generator_free_memory_receipt=generator_free_memory,
+                            elide_official_generator_free_memory=bool(
+                                policy.elide_official_generator_free_memory
+                                and (args.timing_mode or args.profile_mode)
+                            ),
+                        )
+                    generator_record.update(
+                        logical_score_requests=4,
+                        physical_score_forwards=(
+                            gan_pack_state.physical_dmd_score_forwards + 1
+                        ),
+                        real_score_pair_packed=True,
+                        score_pack_parity=(
+                            gan_pack_state.parity
+                            if gan_pack_state.parity is not None
+                            else {"enabled": False, "status": "NOT_RUN"}
+                        ),
+                    )
+                else:
                     generator_record = base._run_gan_generator_update(
                         args=args,
                         rank=rank,
@@ -1438,6 +1895,8 @@ def main() -> int:
                         cfg=cfg,
                         negative=negative,
                         collect_diagnostics=collect_diagnostics,
+                        collect_scalars=trajectory_mode,
+                        logical_step=cycle_steps[0],
                         diagnostics=diagnostics,
                         generator_free_memory_receipt=generator_free_memory,
                         elide_official_generator_free_memory=bool(
@@ -1445,167 +1904,200 @@ def main() -> int:
                             and (args.timing_mode or args.profile_mode)
                         ),
                     )
-                generator_record.update(
-                    logical_score_requests=4,
-                    physical_score_forwards=(
-                        gan_pack_state.physical_dmd_score_forwards + 1
-                    ),
-                    real_score_pair_packed=True,
-                    score_pack_parity=(
-                        gan_pack_state.parity
-                        if gan_pack_state.parity is not None
-                        else {"enabled": False, "status": "NOT_RUN"}
-                    ),
-                )
+                    generator_record.update(
+                        logical_score_requests=4,
+                        physical_score_forwards=4,
+                        real_score_pair_packed=False,
+                        score_pack_parity={"enabled": False, "status": "DISABLED"},
+                    )
             else:
-                generator_record = base._run_gan_generator_update(
-                    args=args,
+                generator_record = _run_nogan_generator_update_p0(
                     rank=rank,
                     device=device,
                     generator_engine=generator_engine,
                     critic_engine=critic_engine,
                     trace=trace,
-                    cfg=cfg,
                     negative=negative,
                     collect_diagnostics=collect_diagnostics,
                     diagnostics=diagnostics,
-                    generator_free_memory_receipt=generator_free_memory,
-                    elide_official_generator_free_memory=bool(
-                        policy.elide_official_generator_free_memory
-                        and (args.timing_mode or args.profile_mode)
-                    ),
+                    policy=policy,
+                    score_pack_parity_check=score_pack_parity_check,
+                    logical_step=cycle_steps[0],
+                    collect_scalars=trajectory_mode,
                 )
-                generator_record.update(
-                    logical_score_requests=4,
-                    physical_score_forwards=4,
-                    real_score_pair_packed=False,
-                    score_pack_parity={"enabled": False, "status": "DISABLED"},
-                )
-        else:
-            generator_record = _run_nogan_generator_update_p0(
+
+            (
+                rollout_outputs,
+                rollout_records,
+                generator_nograd_persistent_unshard,
+            ) = _precompute_critic_rollouts(
                 rank=rank,
+                steps=cycle_steps,
                 device=device,
                 generator_engine=generator_engine,
-                critic_engine=critic_engine,
                 trace=trace,
-                negative=negative,
+                policy=policy,
                 collect_diagnostics=collect_diagnostics,
                 diagnostics=diagnostics,
-                policy=policy,
-                score_pack_parity_check=score_pack_parity_check,
+                rollout_parity_check=(
+                    (not args.timing_mode)
+                    and (not args.profile_mode)
+                    and (not trajectory_mode)
+                ),
             )
+            if args.profile_mode and diagnostic_single_critic:
+                torch.cuda.synchronize(device)
+                dist.barrier()
+                nsys_range.before_model_compute(cycle_steps[0])
+                torch.cuda.nvtx.range_push(
+                    f"STATIC_FSDP2_P0_CRITIC_CANARY/no-gan/step{cycle_steps[0]}"
+                )
+                dist.barrier()
 
-        execution_steps = (
-            (int(args.critic_only_step),)
-            if diagnostic_single_critic
-            else contract.logical_steps
-        )
-        (
-            rollout_outputs,
-            rollout_records,
-            generator_nograd_persistent_unshard,
-        ) = _precompute_critic_rollouts(
-            rank=rank,
-            steps=execution_steps,
-            device=device,
-            generator_engine=generator_engine,
-            trace=trace,
-            policy=policy,
-            collect_diagnostics=collect_diagnostics,
-            diagnostics=diagnostics,
-            rollout_parity_check=(
-                (not args.timing_mode) and (not args.profile_mode)
-            ),
-        )
-        if args.profile_mode and diagnostic_single_critic:
-            torch.cuda.synchronize(device)
-            dist.barrier()
-            nsys_range.before_model_compute(execution_steps[0])
-            torch.cuda.nvtx.range_push(
-                f"STATIC_FSDP2_P0_CRITIC_CANARY/no-gan/step{execution_steps[0]}"
-            )
-            dist.barrier()
-        critic_records: list[dict[str, Any]] = []
-        ema_records: list[dict[str, Any]] = []
-        operation_source_records: list[dict[str, Any]] = []
-        for step in execution_steps:
-            record_this_rank = bool(
-                args.operation_source and rank == args.operation_source_rank
-            )
-            with OperationSourceCapture(
-                enabled=record_this_rank,
-                rank=rank,
-                target_bytes=args.operation_source_target_bytes,
-                max_events=args.operation_source_max_events,
-            ) as operation_source:
-                critic_record = (
-                    _run_gan_critic_precomputed(
-                        rank=rank,
-                        step=step,
-                        x0=rollout_outputs[step],
-                        device=device,
-                        critic_engine=critic_engine,
-                        trace=trace,
-                        cfg=cfg,
-                        collect_diagnostics=collect_diagnostics,
-                        collect_official_scalar_logs=not (
-                            policy.elide_critic_scalar_logs
-                            and (args.timing_mode or args.profile_mode)
-                        ),
-                        diagnostics=diagnostics,
+            cycle_critic_records: list[dict[str, Any]] = []
+            cycle_ema_records: list[dict[str, Any]] = []
+            for critic_index, step in enumerate(cycle_steps):
+                if capture_state_anchor:
+                    _arm_gradient_sketch(
+                        engine=critic_engine,
+                        global_rank=rank,
+                        target=cycle_gradient_sketches,
+                        name=f"critic_{critic_index}_gradient",
                     )
-                    if args.variant == "gan"
-                    else _run_nogan_critic_precomputed(
-                        rank=rank,
-                        step=step,
-                        x0=rollout_outputs[step],
-                        device=device,
-                        critic_engine=critic_engine,
-                        trace=trace,
-                        collect_diagnostics=collect_diagnostics,
-                        diagnostics=diagnostics,
+                record_this_rank = bool(
+                    args.operation_source and rank == args.operation_source_rank
+                )
+                with OperationSourceCapture(
+                    enabled=record_this_rank,
+                    rank=rank,
+                    target_bytes=args.operation_source_target_bytes,
+                    max_events=args.operation_source_max_events,
+                ) as operation_source:
+                    critic_record = (
+                        _run_gan_critic_precomputed(
+                            rank=rank,
+                            step=step,
+                            x0=rollout_outputs[step],
+                            device=device,
+                            critic_engine=critic_engine,
+                            trace=trace,
+                            cfg=cfg,
+                            collect_diagnostics=collect_diagnostics,
+                            collect_official_scalar_logs=not (
+                                policy.elide_critic_scalar_logs
+                                and (args.timing_mode or args.profile_mode)
+                            ),
+                            diagnostics=diagnostics,
+                            collect_scalars=trajectory_mode,
+                        )
+                        if args.variant == "gan"
+                        else _run_nogan_critic_precomputed(
+                            rank=rank,
+                            step=step,
+                            x0=rollout_outputs[step],
+                            device=device,
+                            critic_engine=critic_engine,
+                            trace=trace,
+                            collect_diagnostics=collect_diagnostics,
+                            diagnostics=diagnostics,
+                            collect_scalars=trajectory_mode,
+                        )
                     )
-                )
-            if record_this_rank:
-                source_path = (
-                    args.output_dir
-                    / "operation_source"
-                    / f"rank_{rank:02d}_step_{int(step)}.json"
-                )
-                operation_source.trace.dump(
-                    source_path,
-                    metadata={
-                        "logical_step": int(step),
-                        "variant": args.variant,
-                        "critic_only": bool(diagnostic_single_critic),
-                        "saved_tensors_hooks_installed_by_tracer": False,
-                    },
-                )
-                operation_source_records.append(
-                    {
-                        "logical_step": int(step),
-                        "matched_events": operation_source.trace.matched_events,
-                        "recorded_events": len(operation_source.trace.events),
-                        "dropped_events": operation_source.trace.dropped_events,
-                        "path": str(source_path),
-                    }
-                )
-            critic_records.append(critic_record)
-            if not diagnostic_single_critic and step in contract.ema_update_steps:
-                decay = ema.step()
-                diagnostics.add_bytes(
-                    "ema_shadow",
-                    int(getattr(ema, "last_transfer_bytes", 0)),
-                    direction="D2H" if args.ema_device == "cpu" else "GPU",
-                    source="fsdp2_ema_local_shard",
-                )
-                ema_records.append(
-                    {
+                if record_this_rank:
+                    source_path = (
+                        args.output_dir
+                        / "operation_source"
+                        / f"rank_{rank:02d}_step_{int(step)}.json"
+                    )
+                    operation_source.trace.dump(
+                        source_path,
+                        metadata={
+                            "logical_step": int(step),
+                            "variant": args.variant,
+                            "critic_only": bool(diagnostic_single_critic),
+                            "saved_tensors_hooks_installed_by_tracer": False,
+                        },
+                    )
+                    operation_source_records.append(
+                        {
+                            "logical_step": int(step),
+                            "matched_events": operation_source.trace.matched_events,
+                            "recorded_events": len(operation_source.trace.events),
+                            "dropped_events": operation_source.trace.dropped_events,
+                            "path": str(source_path),
+                        }
+                    )
+                cycle_critic_records.append(critic_record)
+                critic_records.append(critic_record)
+                if not diagnostic_single_critic and step in contract.ema_update_steps:
+                    decay = ema.step()
+                    diagnostics.add_bytes(
+                        "ema_shadow",
+                        int(getattr(ema, "last_transfer_bytes", 0)),
+                        direction="D2H" if args.ema_device == "cpu" else "GPU",
+                        source="fsdp2_ema_local_shard",
+                    )
+                    ema_record = {
                         "logical_step": step,
                         "decay": decay,
                         "optimization_step": int(ema.optimization_step),
                     }
+                    cycle_ema_records.append(ema_record)
+                    ema_records.append(ema_record)
+
+            state_fingerprints: dict[str, str] = {}
+            if capture_state_anchor:
+                state_fingerprints = _write_trajectory_state_anchor(
+                    args=args,
+                    rank=rank,
+                    cycle_index=cycle_index,
+                    generator_engine=generator_engine,
+                    critic_engine=critic_engine,
+                    ema=ema,
+                    gradient_sketches=cycle_gradient_sketches,
                 )
+
+            if trajectory_writer is not None:
+                receipt = _trajectory_receipt(
+                    args=args,
+                    rank=rank,
+                    world=world,
+                    cycle_index=cycle_index,
+                    cycle_steps=cycle_steps,
+                    generator_record=generator_record,
+                    rollout_records=rollout_records,
+                    critic_records=cycle_critic_records,
+                    ema_records=cycle_ema_records,
+                    generator_engine=generator_engine,
+                    critic_engine=critic_engine,
+                    ema=ema,
+                    logical_hash=logical.manifest_hash,
+                    trace_hash=trace.bundle_hash,
+                    policy=policy,
+                    trace=trace,
+                    state_fingerprints=state_fingerprints,
+                )
+                trajectory_writer.append(receipt)
+                if not receipt.finite:
+                    raise FloatingPointError(
+                        f"non-finite trajectory loss at cycle {cycle_index}"
+                    )
+                cycle_summaries.append(
+                    {
+                        "cycle": cycle_index,
+                        "logical_steps": list(cycle_steps),
+                        "wall_seconds": time.perf_counter() - cycle_started,
+                        "losses": dict(receipt.losses),
+                        "gradient_norms": dict(receipt.gradient_norms),
+                        "versions": dict(receipt.versions),
+                        "state_fingerprints": dict(receipt.state_fingerprints),
+                        "memory": base._memory(device),
+                    }
+                )
+            generator_records.append(generator_record)
+            all_rollout_records.extend(rollout_records)
+            all_persistence_records.append(generator_nograd_persistent_unshard)
+            del rollout_outputs
 
         if args.profile_mode:
             torch.cuda.synchronize(device)
@@ -1617,9 +2109,14 @@ def main() -> int:
             diagnostics.dump_after_capture()
         torch.cuda.synchronize(device)
         result["timing_stop_unix_ns"] = time.time_ns()
-        result["full5_seconds"] = time.perf_counter() - started_perf
+        elapsed = time.perf_counter() - started_perf
+        result["full5_seconds"] = elapsed if not trajectory_mode else TIMING_OMITTED
+        result["trajectory_seconds"] = elapsed if trajectory_mode else TIMING_OMITTED
 
-        expected_g = int(logical.component("generator")["optimizer_step"]) + 1
+        expected_g = (
+            int(logical.component("generator")["optimizer_step"])
+            + int(args.trajectory_cycles)
+        )
         expected_c = int(logical.component("critic")["optimizer_step"]) + len(
             execution_steps
         )
@@ -1642,10 +2139,13 @@ def main() -> int:
         )
         result.update(
             status="PASS",
-            generator=generator_record,
-            rollout_batches=rollout_records,
+            generator=generator_records[-1],
+            generator_cycles=generator_records if trajectory_mode else [],
+            rollout_batches=(all_rollout_records if trajectory_mode else rollout_records),
             generator_nograd_persistent_unshard=(
-                generator_nograd_persistent_unshard
+                all_persistence_records
+                if trajectory_mode
+                else generator_nograd_persistent_unshard
             ),
             rollout_fence_policy={
                 "elide_explicit_rollout_sync": policy.elide_explicit_rollout_sync,
@@ -1657,7 +2157,7 @@ def main() -> int:
                 ),
                 "critic_rollout_sync_count": sum(
                     int(bool(record.get("synchronize_after_rollout")))
-                    for record in rollout_records
+                    for record in all_rollout_records
                 ),
                 "outer_full5_boundary_sync_preserved": True,
             },
@@ -1667,11 +2167,21 @@ def main() -> int:
             critic=critic_records,
             ema=ema_records,
             updates={
-                "generator": 1,
+                "generator": int(args.trajectory_cycles),
                 "critic": len(execution_steps),
                 "ema": len(ema_records),
             },
             operation_source_records=operation_source_records,
+            trajectory={
+                "enabled": trajectory_mode,
+                "cycles": int(args.trajectory_cycles),
+                "seed": int(args.trajectory_seed),
+                "arm_id": str(args.trajectory_arm_id),
+                "cohort_policy": "FIXED_FIVE_STEP_COHORT_REPLAY",
+                "rank_jsonl": str(trajectory_path) if trajectory_mode else None,
+                "cycle_summaries": cycle_summaries,
+                "ordinary_numerical_mismatch_is_early_stop": False,
+            },
             final={
                 "generator_physical_step": int(generator_engine.global_steps),
                 "critic_physical_step": int(critic_engine.global_steps),
@@ -1690,8 +2200,13 @@ def main() -> int:
             formal_timer_scope=(
                 "diagnostic prelude plus one profiled Critic commit; not comparable to Full5"
                 if diagnostic_single_critic
-                else "Generator update; all five batched G201 critic rollouts; "
-                "five ordered Critic commits and required EMA"
+                else (
+                    f"diagnostic trajectory: {args.trajectory_cycles} consecutive "
+                    "G1/C5 cycles; not a formal speed denominator"
+                    if trajectory_mode
+                    else "Generator update; all five batched G201 critic rollouts; "
+                    "five ordered Critic commits and required EMA"
+                )
             ),
             transition_count=0,
             model_swap_count=0,

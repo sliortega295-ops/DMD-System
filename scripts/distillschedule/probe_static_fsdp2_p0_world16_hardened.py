@@ -243,6 +243,21 @@ def _training_state_audit(component: str, engine: Any) -> dict[str, Any]:
 
 
 def _correctness_audit_enabled() -> bool:
+    if "--trajectory-mode" in sys.argv:
+        # Trajectory mode has its own bounded scalar/census/state receipts.  Do
+        # not produce the legacy full tensor/gradient dumps even for its
+        # one-cycle instrumentation canary.
+        return False
+    if "--trajectory-cycles" in sys.argv:
+        index = sys.argv.index("--trajectory-cycles")
+        if index + 1 >= len(sys.argv):
+            raise ValueError("--trajectory-cycles is missing its value")
+        if int(sys.argv[index + 1]) > 1:
+            # Full tensor/gradient dumps on all 300 updates would dominate the
+            # 50-cycle diagnostic and can consume hundreds of GiB. The
+            # trajectory worker records scalar losses every cycle and compact
+            # state fingerprints only at registered anchors instead.
+            return False
     return not any(
         flag in sys.argv
         for flag in ("--timing-mode", "--profile-mode", "--validate-only")

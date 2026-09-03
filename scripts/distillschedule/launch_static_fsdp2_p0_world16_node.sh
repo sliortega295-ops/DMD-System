@@ -5,7 +5,7 @@ set -Eeuo pipefail
 NODE_RANK="${1:?node rank 0 or 1}"
 RUN_ID="${2:?immutable run id}"
 VARIANT="${3:?no-gan or gan}"
-MODE="${4:?validate, correctness, timing, or profile}"
+MODE="${4:?validate, correctness, timing, profile, or trajectory}"
 EXPECTED_HEAD="${5:?expected DMD-System HEAD}"
 MASTER_ADDR="${6:?node0 routable address}"
 MASTER_PORT="${7:?world16 rendezvous port}"
@@ -15,7 +15,7 @@ PACK_REAL_SCORE_PAIR="${10:?on or off}"
 
 [[ "${NODE_RANK}" == 0 || "${NODE_RANK}" == 1 ]] || exit 2
 [[ "${VARIANT}" == no-gan || "${VARIANT}" == gan ]] || exit 2
-[[ "${MODE}" == validate || "${MODE}" == correctness || "${MODE}" == timing || "${MODE}" == profile ]] || exit 2
+[[ "${MODE}" == validate || "${MODE}" == correctness || "${MODE}" == timing || "${MODE}" == profile || "${MODE}" == trajectory ]] || exit 2
 [[ "${MESH_POLICY}" == world16-fsdp || "${MESH_POLICY}" == node-hsdp ]] || exit 2
 [[ "${ROLLOUT_BATCH_SIZE}" == 1 || "${ROLLOUT_BATCH_SIZE}" == 2 || "${ROLLOUT_BATCH_SIZE}" == 5 ]] || exit 2
 [[ "${PACK_REAL_SCORE_PAIR}" == on || "${PACK_REAL_SCORE_PAIR}" == off ]] || exit 2
@@ -91,6 +91,9 @@ GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE="${DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD
 GENERATOR_NOGRAD_PERSISTENT_UNSHARD="${DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_PERSISTENT_UNSHARD:-off}"
 GENERATOR_NOGRAD_PERSISTENT_UNSHARD_FLUSH_ALLOCATOR_CACHE="${DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_PERSISTENT_UNSHARD_FLUSH_ALLOCATOR_CACHE:-on}"
 CUDA_ALLOCATOR_EXPANDABLE_SEGMENTS="${DISTILLSCHEDULE_CUDA_ALLOCATOR_EXPANDABLE_SEGMENTS:-off}"
+TRAJECTORY_CYCLES="${DISTILLSCHEDULE_TRAJECTORY_CYCLES:-1}"
+TRAJECTORY_SEED="${DISTILLSCHEDULE_TRAJECTORY_SEED:-20260903}"
+TRAJECTORY_ARM_ID="${DISTILLSCHEDULE_TRAJECTORY_ARM_ID:-single-full5}"
 FLASH_ATTN_KERNEL="${DISTILLSCHEDULE_FLASH_ATTN_KERNEL:-${ASSETS}/hf_home_official_torch210/hub/models--kernels-community--flash-attn2/snapshots/6a810a7a010ba2aad6613f1f0f7b226fb8bdee3c/build/torch210-cxx11-cu128-x86_64-linux}"
 FLASH_ATTN_EXTENSION="${FLASH_ATTN_KERNEL}/_flash_attn2_cuda_a511a4c.abi3.so"
 FLASH_ATTN_EXTENSION_SHA256="c2acd487c5d1d77b7f6721eabc0fee4f8c5c8f9e682aadf43bfa99b394eecba7"
@@ -156,6 +159,14 @@ EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORME
 # runtime warmup validates the exact mesh names/placements and fails closed;
 # do not reject the validated world16 FULL_SHARD topology in the launcher.
 [[ "${EXPECTED_HELIOS_TRANSFORMER_SHA256}" =~ ^[0-9a-f]{64}$ ]] || exit 2
+[[ "${TRAJECTORY_CYCLES}" =~ ^[1-9][0-9]*$ ]] || exit 2
+[[ "${TRAJECTORY_SEED}" =~ ^[0-9]+$ ]] || exit 2
+[[ "${TRAJECTORY_ARM_ID}" =~ ^[A-Za-z0-9._-]+$ ]] || exit 2
+if [[ "${MODE}" == trajectory ]]; then
+  (( TRAJECTORY_CYCLES >= 1 )) || { echo trajectory_requires_positive_cycles >&2; exit 2; }
+else
+  [[ "${TRAJECTORY_CYCLES}" == 1 ]] || { echo nontrajectory_cycle_drift >&2; exit 2; }
+fi
 if [[ "${ATTENTION_BACKEND}" == local-fa2 ]]; then
   [[ -d "${FLASH_ATTN_KERNEL}" ]] || { echo flash_attn_kernel_missing="${FLASH_ATTN_KERNEL}" >&2; exit 3; }
   [[ -f "${FLASH_ATTN_EXTENSION}" ]] || { echo flash_attn_extension_missing="${FLASH_ATTN_EXTENSION}" >&2; exit 3; }
@@ -282,6 +293,9 @@ generator_nograd_static_context_cache=${GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE}
 generator_nograd_persistent_unshard=${GENERATOR_NOGRAD_PERSISTENT_UNSHARD}
 generator_nograd_persistent_unshard_flush_allocator_cache=${GENERATOR_NOGRAD_PERSISTENT_UNSHARD_FLUSH_ALLOCATOR_CACHE}
 cuda_allocator_expandable_segments=${CUDA_ALLOCATOR_EXPANDABLE_SEGMENTS}
+trajectory_cycles=${TRAJECTORY_CYCLES}
+trajectory_seed=${TRAJECTORY_SEED}
+trajectory_arm_id=${TRAJECTORY_ARM_ID}
 pytorch_cuda_alloc_conf=${PYTORCH_CUDA_ALLOC_CONF:-}
 flash_attn_kernel=$([[ "${ATTENTION_BACKEND}" == local-fa2 ]] && printf '%s' "${FLASH_ATTN_KERNEL}" || printf 'none')
 flash_attn_extension_sha256=$([[ "${ATTENTION_BACKEND}" == local-fa2 ]] && printf '%s' "${FLASH_ATTN_EXTENSION_SHA256}" || printf 'none')
@@ -302,6 +316,9 @@ WORKER=(
   --selective-flash-checkpoint-stride "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}"
   --generator-residual-storage "${GENERATOR_RESIDUAL_STORAGE}"
   --critic-residual-storage "${CRITIC_RESIDUAL_STORAGE}"
+  --trajectory-cycles "${TRAJECTORY_CYCLES}"
+  --trajectory-seed "${TRAJECTORY_SEED}"
+  --trajectory-arm-id "${TRAJECTORY_ARM_ID}"
 )
 [[ "${VARIANT}" == gan ]] && WORKER+=(--gan-config "${GAN_CONFIG}")
 if [[ "${PACK_REAL_SCORE_PAIR}" == on ]]; then
@@ -411,6 +428,7 @@ fi
 [[ "${MODE}" == validate ]] && WORKER+=(--validate-only)
 [[ "${MODE}" == timing ]] && WORKER+=(--timing-mode)
 [[ "${MODE}" == profile ]] && WORKER+=(--profile-mode)
+[[ "${MODE}" == trajectory ]] && WORKER+=(--trajectory-mode)
 [[ "${PROFILE_DIAGNOSTICS}" == off ]] && WORKER+=(--no-profile-diagnostics)
 if [[ -n "${CRITIC_ONLY_STEP}" ]]; then
   WORKER+=(--critic-only-step "${CRITIC_ONLY_STEP}")

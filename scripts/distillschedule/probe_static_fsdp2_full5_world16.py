@@ -302,6 +302,7 @@ def _gan_score_boundary_gradient(
     gan_g_weight: float,
     official_kwargs: dict[str, Any],
     collect_diagnostics: bool,
+    collect_scalars: bool = False,
     diagnostics: StaticProfileDiagnostics,
     generator_free_memory_receipt: dict[str, Any] | None = None,
     elide_official_generator_free_memory: bool = False,
@@ -341,10 +342,18 @@ def _gan_score_boundary_gradient(
             continue
         if name not in preexisting or id(parameter.grad) != preexisting[name]:
             raise AssertionError("GAN-G/DMD read-only FSDP2 Score produced parameter gradients")
+    capture = collect_diagnostics or collect_scalars
+    def scalar(label: str, value: torch.Tensor) -> Any:
+        if collect_scalars:
+            return float(value.detach().float().cpu())
+        if collect_diagnostics:
+            return diagnostics.diagnostic_scalar(label, value)
+        return TIMING_OMITTED
+
     return gradient.to(dtype=generated_latent.dtype), {
-        "total": diagnostics.diagnostic_scalar("gan_total", total) if collect_diagnostics else TIMING_OMITTED,
-        "dmd": diagnostics.diagnostic_scalar("gan_dmd", dmd_loss) if collect_diagnostics else TIMING_OMITTED,
-        "gan_g_raw": diagnostics.diagnostic_scalar("gan_g_raw", gan_g_loss) if collect_diagnostics else TIMING_OMITTED,
+        "total": scalar("gan_total", total) if capture else TIMING_OMITTED,
+        "dmd": scalar("gan_dmd", dmd_loss) if capture else TIMING_OMITTED,
+        "gan_g_raw": scalar("gan_g_raw", gan_g_loss) if capture else TIMING_OMITTED,
     }
 
 
@@ -359,12 +368,16 @@ def _run_gan_generator_update(
     cfg: Any,
     negative: torch.Tensor,
     collect_diagnostics: bool,
+    collect_scalars: bool = False,
+    logical_step: int | None = None,
     diagnostics: StaticProfileDiagnostics,
     generator_free_memory_receipt: dict[str, Any] | None = None,
     elide_official_generator_free_memory: bool = False,
 ) -> dict[str, Any]:
     with diagnostics.scope("INPUT_H2D/generator_entry"):
-        entry = trace.load_generator_entry(rank=rank, device=device)
+        entry = trace.load_generator_entry(
+            rank=rank, device=device, step=logical_step
+        )
     diagnostics.add_tensor_tree("generator_entry", entry, direction="H2D")
     source = trace.source(rank=rank, device=device)
     diagnostics.add_tensor_tree("generator_source", source, direction="H2D")
@@ -397,11 +410,12 @@ def _run_gan_generator_update(
             cfg,
             entry.operation_trace,
             source,
-            1000,
+            int(entry.logical_step),
             negative,
             device,
         ),
         collect_diagnostics=collect_diagnostics,
+        collect_scalars=collect_scalars,
         diagnostics=diagnostics,
         generator_free_memory_receipt=generator_free_memory_receipt,
         elide_official_generator_free_memory=(
@@ -417,6 +431,7 @@ def _run_gan_generator_update(
         pass
     with diagnostics.scope("OPTIMIZER_STEP/generator"):
         generator_engine.step()
+    gradient_norm = getattr(generator_engine, "last_gradient_norm", None)
     after = (
         TIMING_OMITTED
         if not collect_diagnostics
@@ -424,15 +439,26 @@ def _run_gan_generator_update(
     )
     if collect_diagnostics and before == after:
         raise AssertionError("GAN FSDP2 Generator trainables did not update")
+    gradient_norm_value: Any = TIMING_OMITTED
+    if collect_scalars and isinstance(gradient_norm, torch.Tensor):
+        gradient_norm_local = (
+            gradient_norm.detach().to_local()
+            if hasattr(gradient_norm, "to_local")
+            else gradient_norm.detach()
+        )
+        if gradient_norm_local.numel() != 1:
+            raise ValueError("GAN Generator gradient norm is not scalar")
+        gradient_norm_value = float(gradient_norm_local.float().cpu())
     return {
-        "logical_step": 1000,
+        "logical_step": int(entry.logical_step),
         "source_rank": rank,
         "physical_generator_step_after": int(generator_engine.global_steps),
         "local_trainable_before": before,
         "local_trainable_after": after,
         "rollout": rollout,
         "score_forwards": 4,
-        "losses": losses if collect_diagnostics else TIMING_OMITTED,
+        "losses": losses if (collect_diagnostics or collect_scalars) else TIMING_OMITTED,
+        "gradient_norm": gradient_norm_value,
     }
 
 

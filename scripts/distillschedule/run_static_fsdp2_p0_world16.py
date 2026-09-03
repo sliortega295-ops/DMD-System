@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
 import os
 import shlex
@@ -21,10 +22,15 @@ def _hosts(value: str) -> tuple[str, str]:
     return items  # type: ignore[return-value]
 
 
-def _ssh(host: str, command: str) -> list[str]:
-    return [
+def _ssh(
+    host: str, command: str, *, port: int = 22, allocate_tty: bool = False
+) -> list[str]:
+    result = [
         "ssh",
+        *(["-tt"] if allocate_tty else []),
         "-4",
+        "-p",
+        str(port),
         "-o",
         "BatchMode=yes",
         "-o",
@@ -34,13 +40,21 @@ def _ssh(host: str, command: str) -> list[str]:
         "-lc",
         shlex.quote(command),
     ]
+    return result
 
 
-def _resolve_master(host: str) -> str:
+def _resolve_master(host: str, *, port: int, allocate_tty: bool) -> str:
     values = subprocess.check_output(
-        _ssh(host, "hostname -I"), text=True, timeout=30
+        _ssh(host, "hostname -I", port=port, allocate_tty=allocate_tty),
+        text=True,
+        timeout=30,
     ).split()
-    ipv4 = [value for value in values if ":" not in value]
+    ipv4: list[str] = []
+    for value in values:
+        try:
+            ipv4.append(str(ipaddress.IPv4Address(value)))
+        except ipaddress.AddressValueError:
+            continue
     if not ipv4:
         raise RuntimeError("node0 has no routable IPv4 address")
     return ipv4[0]
@@ -89,10 +103,18 @@ def parser() -> argparse.ArgumentParser:
         type=_hosts,
         default=("baai-helios-node0", "baai-helios-node1"),
     )
+    value.add_argument("--ssh-port", type=int, default=22)
+    value.add_argument(
+        "--ssh-tty",
+        action="store_true",
+        help="Allocate the PTY required by managed platform SSH endpoints.",
+    )
     value.add_argument("--run-id", required=True)
     value.add_argument("--variant", choices=("no-gan", "gan"), required=True)
     value.add_argument(
-        "--mode", choices=("validate", "correctness", "timing", "profile"), required=True
+        "--mode",
+        choices=("validate", "correctness", "timing", "profile", "trajectory"),
+        required=True,
     )
     value.add_argument("--expected-head", required=True)
     value.add_argument("--mesh-policy", choices=("world16-fsdp", "node-hsdp"), required=True)
@@ -267,6 +289,9 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--operation-source-rank", type=int, default=0)
     value.add_argument("--operation-source-target-bytes", type=int, default=113049600)
     value.add_argument("--operation-source-max-events", type=int, default=256)
+    value.add_argument("--trajectory-cycles", type=int, default=1)
+    value.add_argument("--trajectory-seed", type=int, default=20260903)
+    value.add_argument("--trajectory-arm-id", default="single-full5")
     value.add_argument(
         "--local-evidence-root",
         type=Path,
@@ -363,6 +388,10 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         f"DISTILLSCHEDULE_EMA_DEVICE={shlex.quote(args.ema_device)}",
         "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS="
         + shlex.quote(args.profile_diagnostics),
+        f"DISTILLSCHEDULE_TRAJECTORY_CYCLES={args.trajectory_cycles}",
+        f"DISTILLSCHEDULE_TRAJECTORY_SEED={args.trajectory_seed}",
+        "DISTILLSCHEDULE_TRAJECTORY_ARM_ID="
+        + shlex.quote(args.trajectory_arm_id),
     ]
     if args.nsys_bin is not None:
         exports.append("NSYS_BIN=" + shlex.quote(str(args.nsys_bin)))
@@ -421,7 +450,12 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + " "
         + launch
     )
-    return _ssh(args.hosts[node], remote)
+    return _ssh(
+        args.hosts[node],
+        remote,
+        port=args.ssh_port,
+        allocate_tty=args.ssh_tty,
+    )
 
 
 def _cancel(args: argparse.Namespace, node: int) -> None:
@@ -430,6 +464,8 @@ def _cancel(args: argparse.Namespace, node: int) -> None:
         _ssh(
             args.hosts[node],
             f"{shlex.quote(str(script))} {shlex.quote(str(_pid_file(args, node)))}",
+            port=args.ssh_port,
+            allocate_tty=args.ssh_tty,
         ),
         check=False,
         stdout=subprocess.DEVNULL,
@@ -521,7 +557,14 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
     if args.summary_transport == "compact":
         command += " >/dev/null"
     completed = subprocess.run(
-        _ssh(args.hosts[0], command), check=False, timeout=300
+        _ssh(
+            args.hosts[0],
+            command,
+            port=args.ssh_port,
+            allocate_tty=args.ssh_tty,
+        ),
+        check=False,
+        timeout=300,
     )
     local.mkdir(parents=True, exist_ok=True)
     if args.summary_transport == "compact":
@@ -544,18 +587,93 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
                 + shlex.quote(compact_code)
                 + " "
                 + shlex.quote(str(summary)),
+                port=args.ssh_port,
+                allocate_tty=args.ssh_tty,
             ),
             timeout=60,
         )
         (local / "summary_pointer.json").write_bytes(raw)
     else:
         raw = subprocess.check_output(
-            _ssh(args.hosts[0], f"cat {shlex.quote(str(summary))}"), timeout=60
+            _ssh(
+                args.hosts[0],
+                f"cat {shlex.quote(str(summary))}",
+                port=args.ssh_port,
+                allocate_tty=args.ssh_tty,
+            ),
+            timeout=60,
         )
         (local / "summary.json").write_bytes(raw)
     value = json.loads(raw)
     if completed.returncode != 0 or value.get("status") != "PASS":
         raise RuntimeError(f"P0 summary failed: {value.get('errors')}")
+    return value
+
+
+def _summarize_trajectory(args: argparse.Namespace, local: Path) -> dict[str, Any]:
+    """Validate the persistent rank JSONL and transport only a compact summary."""
+
+    run_root = args.remote_root / "artifacts/runs" / args.run_id
+    summary = run_root / "trajectory_summary.json"
+    summarizer = args.remote_root / "scripts/distillschedule/summarize_trajectory_run.py"
+    pythonpath = f"{args.remote_root}/src:{args.remote_root}"
+    pyenv = Path("/tmp/distillschedule-helios-official-torch210")
+    initial = {"no-gan": (2, 10, 10), "gan": (200, 1000, 800)}[args.variant]
+    final = (
+        initial[0] + args.trajectory_cycles,
+        initial[1] + 5 * args.trajectory_cycles,
+        initial[2]
+        + (5 * args.trajectory_cycles if args.variant == "no-gan" else args.trajectory_cycles),
+    )
+    command = (
+        f"export PYTHONPATH={shlex.quote(pythonpath)}; "
+        + shlex.quote(str(pyenv / "bin/python"))
+        + " "
+        + shlex.quote(str(summarizer))
+        + f" --run-root {shlex.quote(str(run_root))}"
+        + f" --run-id {shlex.quote(args.run_id)}"
+        + " --workload helios14b_static_fsdp2"
+        + f" --variant {shlex.quote(args.variant)}"
+        + f" --cycles {args.trajectory_cycles} --world-size 16"
+        + f" --expected-final-generator {final[0]}"
+        + f" --expected-final-critic {final[1]}"
+        + f" --expected-final-ema {final[2]}"
+        + f" --output {shlex.quote(str(summary))}"
+    )
+    completed = subprocess.run(
+        _ssh(
+            args.hosts[0],
+            command,
+            port=args.ssh_port,
+            allocate_tty=args.ssh_tty,
+        ),
+        check=False,
+        capture_output=True,
+        timeout=300,
+    )
+    local.mkdir(parents=True, exist_ok=True)
+    raw = subprocess.check_output(
+        _ssh(
+            args.hosts[0],
+            f"cat {shlex.quote(str(summary))}",
+            port=args.ssh_port,
+            allocate_tty=args.ssh_tty,
+        ),
+        timeout=60,
+    )
+    # Managed PTYs may append a CRLF/connection-close line.  Parse the object
+    # after trimming terminal whitespace rather than treating terminal text as evidence.
+    decoded = raw.decode()
+    if args.ssh_tty:
+        decoded = decoded[decoded.index("{") : decoded.rindex("}") + 1]
+    value = json.loads(decoded)
+    (local / "trajectory_summary.json").write_text(
+        json.dumps(value, indent=2, sort_keys=True) + "\n"
+    )
+    (local / "summarizer.stdout.log").write_bytes(completed.stdout)
+    (local / "summarizer.stderr.log").write_bytes(completed.stderr)
+    if completed.returncode != 0 or value.get("status") != "PASS":
+        raise RuntimeError(f"trajectory summary failed: {value.get('errors')}")
     return value
 
 
@@ -675,10 +793,21 @@ def main() -> int:
         raise ValueError("--operation-source-rank must be in [0, 15]")
     if args.operation_source_target_bytes <= 0 or args.operation_source_max_events <= 0:
         raise ValueError("operation-source byte/event limits must be positive")
+    if not 1 <= args.ssh_port <= 65535:
+        raise ValueError("--ssh-port must be in [1, 65535]")
+    if args.trajectory_cycles <= 0:
+        raise ValueError("--trajectory-cycles must be positive")
+    if args.mode == "trajectory":
+        if not args.trajectory_arm_id.replace("-", "").replace("_", "").replace(".", "").isalnum():
+            raise ValueError("unsafe trajectory arm id")
+    elif args.trajectory_cycles != 1:
+        raise ValueError("non-trajectory modes require --trajectory-cycles 1")
     local = args.local_evidence_root / args.run_id
     if local.exists():
         raise FileExistsError(local)
-    master = args.master_addr or _resolve_master(args.hosts[0])
+    master = args.master_addr or _resolve_master(
+        args.hosts[0], port=args.ssh_port, allocate_tty=args.ssh_tty
+    )
     commands = [_command(args, node, master) for node in (0, 1)]
     if args.dry_run:
         print(json.dumps({"master": master, "commands": commands}, indent=2))
@@ -710,7 +839,11 @@ def main() -> int:
                 _cancel(args, worker.node)
                 worker.terminate_transport()
             raise RuntimeError(f"P0 remote run failed or timed out: returncodes={codes}")
-        value = _summarize(args, local)
+        value = (
+            _summarize_trajectory(args, local)
+            if args.mode == "trajectory"
+            else _summarize(args, local)
+        )
         print(json.dumps(value, indent=2, sort_keys=True))
         return 0
     finally:
