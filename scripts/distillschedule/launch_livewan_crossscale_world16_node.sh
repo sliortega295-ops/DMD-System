@@ -4,7 +4,7 @@ set -Eeuo pipefail
 
 NODE_RANK="${1:?node rank 0 or 1}"
 RUN_ID="${2:?immutable run id}"
-RUN_KIND="${3:?validate, capacity, correctness, timing, or profile}"
+RUN_KIND="${3:?validate, capacity, correctness, timing, profile, or trajectory}"
 EXECUTION_MODE="${4:?baseline or pipeline}"
 EXPECTED_HEAD="${5:?exact DMD-System HEAD}"
 MASTER_ADDR="${6:?node0 address}"
@@ -13,7 +13,8 @@ MASTER_PORT="${7:?rendezvous port}"
 [[ "${NODE_RANK}" == 0 || "${NODE_RANK}" == 1 ]] || exit 2
 [[ "${RUN_KIND}" == validate || "${RUN_KIND}" == capacity || \
    "${RUN_KIND}" == correctness || \
-   "${RUN_KIND}" == timing || "${RUN_KIND}" == profile ]] || exit 2
+   "${RUN_KIND}" == timing || "${RUN_KIND}" == profile || \
+   "${RUN_KIND}" == trajectory ]] || exit 2
 [[ "${EXECUTION_MODE}" == baseline || "${EXECUTION_MODE}" == pipeline ]] || exit 2
 [[ "${RUN_ID}" =~ ^[A-Za-z0-9._-]+$ ]] || exit 2
 [[ "${EXPECTED_HEAD}" =~ ^[0-9a-f]{40}$ ]] || exit 2
@@ -35,6 +36,9 @@ LOCK_FILE="${DISTILLSCHEDULE_NODE_LOCK:-/tmp/distillschedule_gpu_node.lock}"
 SOURCE_ROOT="${LIVEWAN_WAN21_SOURCE:?set LIVEWAN_WAN21_SOURCE}"
 SOURCE_RECEIPT="${LIVEWAN_SOURCE_RECEIPT:?set LIVEWAN_SOURCE_RECEIPT}"
 PIPELINE_VARIANT="${LIVEWAN_PIPELINE_VARIANT:-b1}"
+TRAJECTORY_CYCLES="${LIVEWAN_TRAJECTORY_CYCLES:-0}"
+TRAJECTORY_SEED="${LIVEWAN_TRAJECTORY_SEED:-0}"
+TRAJECTORY_ARM_ID="${LIVEWAN_TRAJECTORY_ARM_ID:-}"
 [[ "${PIPELINE_VARIANT}" == b1 || "${PIPELINE_VARIANT}" == b1-runahead || \
    "${PIPELINE_VARIANT}" == b1-runahead-critic-b2 || \
    "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context || \
@@ -64,6 +68,21 @@ PIPELINE_VARIANT="${LIVEWAN_PIPELINE_VARIANT:-b1}"
    "${PIPELINE_VARIANT}" == 6g10score || \
    "${PIPELINE_VARIANT}" == 6g10score-node-local || \
    "${PIPELINE_VARIANT}" == 6g10score-node-local-fused ]] || exit 2
+
+if [[ "${RUN_KIND}" == trajectory ]]; then
+  if [[ "${EXECUTION_MODE}" == baseline ]]; then
+    [[ "${PIPELINE_VARIANT}" == b1 ]] || {
+      echo trajectory_baseline_requires_b1 >&2; exit 2;
+    }
+  else
+    [[ "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation ]] || {
+      echo trajectory_pipeline_requires_exact_c24 >&2; exit 2;
+    }
+  fi
+  [[ "${TRAJECTORY_CYCLES}" == 1 || "${TRAJECTORY_CYCLES}" == 5 || \
+     "${TRAJECTORY_CYCLES}" == 50 ]] || exit 2
+  [[ "${TRAJECTORY_SEED}" =~ ^[0-9]+$ && -n "${TRAJECTORY_ARM_ID}" ]] || exit 2
+fi
 
 if [[ "${EXECUTION_MODE}" == baseline ]]; then
   [[ "${PIPELINE_VARIANT}" == b1 ]] || { echo baseline_pipeline_variant_mismatch >&2; exit 2; }
@@ -248,7 +267,14 @@ export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
   echo "node_rank=${NODE_RANK}"
   echo "host=$(hostname)"
   echo "head=${EXPECTED_HEAD}"
+  echo "execution_mode=${EXECUTION_MODE}"
   echo "pipeline_variant=${PIPELINE_VARIANT}"
+  if [[ "${RUN_KIND}" == trajectory ]]; then
+    echo "trajectory_cycles=${TRAJECTORY_CYCLES}"
+    echo "trajectory_seed=${TRAJECTORY_SEED}"
+    echo "trajectory_arm_id=${TRAJECTORY_ARM_ID}"
+    echo "claim_boundary=DIAGNOSTIC_ONLY"
+  fi
   echo "plan=${PLAN}"
   echo "livewan=$(git -C "${ROOT}/third_party/livewan" rev-parse HEAD)"
   echo "wan21=$(git -C "${ROOT}/third_party/wan21" rev-parse HEAD)"

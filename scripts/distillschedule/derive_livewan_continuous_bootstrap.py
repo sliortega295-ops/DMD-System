@@ -21,7 +21,8 @@ def main() -> int:
     trace = json.loads(args.trace.resolve().read_text(encoding="utf-8"))
     if value.get("kind") != "systems_only_livewan_crossscale_bootstrap":
         raise SystemExit("source bootstrap kind changed")
-    if int(trace.get("cycles", -1)) != 3 or not trace.get("trace_sha256"):
+    cycles = int(trace.get("cycles", -1))
+    if not 1 <= cycles <= 50 or not trace.get("trace_sha256"):
         raise SystemExit("continuous trace is incomplete")
     value.pop("bootstrap_sha256", None)
     value["trace"] = {
@@ -29,10 +30,14 @@ def main() -> int:
         "sha256": trace["trace_sha256"],
     }
     value["continuous_diagnostic"] = {
-        "cycles": 3,
-        "source_reuse_across_cycles": True,
+        "cycles": cycles,
+        "source_reuse_across_cycles": cycles > 1,
         "initial_versions": dict(value["initial_versions"]),
-        "expected_final_versions": {"generator": 3, "critic": 15, "ema": 0},
+        "expected_final_versions": {
+            "generator": cycles,
+            "critic": cycles * 5,
+            "ema": 0,
+        },
     }
     canonical = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
     value["bootstrap_sha256"] = hashlib.sha256(canonical).hexdigest()

@@ -114,7 +114,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--run-id", required=True)
     value.add_argument(
         "--run-kind",
-        choices=("validate", "capacity", "correctness", "timing", "profile"),
+        choices=("validate", "capacity", "correctness", "timing", "profile", "trajectory"),
         required=True,
     )
     value.add_argument("--execution-mode", choices=("baseline", "pipeline"), required=True)
@@ -186,6 +186,9 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--ncu-launch-count", type=int, default=1)
     value.add_argument("--ncu-set", default="full")
     value.add_argument("--ncu-output-name", default="bounded_kernel")
+    value.add_argument("--trajectory-cycles", type=int, default=0)
+    value.add_argument("--trajectory-seed", type=int, default=20260903)
+    value.add_argument("--trajectory-arm-id")
     value.add_argument("--master-addr")
     value.add_argument("--master-port", type=int, default=29930)
     value.add_argument("--timeout-seconds", type=int, default=21600)
@@ -230,6 +233,21 @@ def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         if args.nsys_bin is None:
             raise ValueError("profile requires --nsys-bin")
         exports["DISTILLSCHEDULE_NSYS_BIN"] = args.nsys_bin
+    if args.run_kind == "trajectory":
+        if args.execution_mode == "baseline":
+            if args.pipeline_variant != "b1":
+                raise ValueError("trajectory baseline requires sequential B1")
+        elif args.pipeline_variant != "c24-continuous-b16-score-modulation":
+            raise ValueError("trajectory pipeline requires exact C24")
+        if args.trajectory_cycles not in {1, 5, 50}:
+            raise ValueError("trajectory cycles must be one of 1, 5, or 50")
+        if not args.trajectory_arm_id:
+            raise ValueError("trajectory mode requires --trajectory-arm-id")
+        exports.update(
+            LIVEWAN_TRAJECTORY_CYCLES=args.trajectory_cycles,
+            LIVEWAN_TRAJECTORY_SEED=args.trajectory_seed,
+            LIVEWAN_TRAJECTORY_ARM_ID=args.trajectory_arm_id,
+        )
     if args.ncu_bin is not None:
         if args.run_kind != "correctness":
             raise ValueError("bounded NCU capture is allowed only on a correctness run")
@@ -284,6 +302,9 @@ def summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
     run_root = args.remote_output_root / args.run_id
     summary = run_root / "summary.json"
     summary_name = (
+        "summarize_livewan_trajectory_world16.py"
+        if args.run_kind == "trajectory"
+        else (
         "summarize_livewan_continuous_world16.py"
         if args.pipeline_variant in {
             "c21-continuous-b16", "c21-c1-continuous-b16",
@@ -292,18 +313,30 @@ def summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
             "c24-continuous-b16-score-modulation",
         }
         else "summarize_livewan_crossscale_world16.py"
+        )
     )
     script = args.remote_root / "scripts/distillschedule" / summary_name
+    if args.run_kind == "trajectory":
+        summary_arguments = (
+            f"--run-root {shlex.quote(str(run_root))} "
+            f"--cycles {args.trajectory_cycles} "
+            f"--expected-head {shlex.quote(args.expected_head)} "
+            f"--output {shlex.quote(str(summary))}"
+        )
+    else:
+        summary_arguments = (
+            f"--run-root {shlex.quote(str(run_root))} "
+            f"--execution-mode {shlex.quote(args.execution_mode)} "
+            f"--run-kind {shlex.quote(args.run_kind)} "
+            f"--trace {shlex.quote(str(args.trace))} "
+            f"--plan {shlex.quote(str(run_root / 'resolved_plan.node0.json'))} "
+            f"--expected-head {shlex.quote(args.expected_head)} "
+            f"--output {shlex.quote(str(summary))}"
+        )
     remote = (
         f"export PYTHONPATH={shlex.quote(str(args.remote_root / 'src'))}:{shlex.quote(str(args.remote_root))}; "
         f"{shlex.quote(str(args.pyenv / 'bin/python'))} {shlex.quote(str(script))} "
-        f"--run-root {shlex.quote(str(run_root))} "
-        f"--execution-mode {shlex.quote(args.execution_mode)} "
-        f"--run-kind {shlex.quote(args.run_kind)} "
-        f"--trace {shlex.quote(str(args.trace))} "
-        f"--plan {shlex.quote(str(run_root / 'resolved_plan.node0.json'))} "
-        f"--expected-head {shlex.quote(args.expected_head)} "
-        f"--output {shlex.quote(str(summary))}"
+        f"{summary_arguments}"
     )
     completed = subprocess.run(
         ssh(args.hosts[0], remote, port=args.ssh_port), check=False, timeout=900
@@ -325,6 +358,14 @@ def main() -> int:
         raise ValueError("--expected-head must be a full Git SHA")
     if args.execution_mode == "baseline" and args.pipeline_variant != "b1":
         raise ValueError("sequential baseline cannot select a pipeline variant")
+    if args.run_kind == "trajectory":
+        if args.execution_mode == "baseline" and args.pipeline_variant != "b1":
+            raise ValueError("trajectory baseline requires sequential B1")
+        if (
+            args.execution_mode == "pipeline"
+            and args.pipeline_variant != "c24-continuous-b16-score-modulation"
+        ):
+            raise ValueError("trajectory pipeline requires exact C24")
     local = args.local_evidence_root / args.run_id
     if local.exists():
         raise FileExistsError(local)

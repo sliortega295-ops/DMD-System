@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Derive an immutable three-cycle trace from the validated Full5 trace.
+"""Derive an immutable N-cycle trace from the validated Full5 trace.
 
 Cycle zero preserves every registered random stream from the input trace.
-Cycles one and two intentionally reuse the same 80 source samples and control
-shapes, but receive fresh operation-keyed RNG streams.  Reuse is explicit in
-the schema so this diagnostic cannot be mistaken for a 240-sample training run.
+Every cycle after cycle zero intentionally reuses the same 80 source samples
+and control shapes, but receives fresh operation-keyed RNG streams.  Reuse is
+explicit in the schema so this diagnostic cannot be mistaken for a convergence
+run over new data.
 """
 
 from __future__ import annotations
@@ -42,8 +43,8 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--cycles", type=int, default=3)
     args = parser.parse_args()
-    if args.cycles != 3:
-        raise SystemExit("C21 is preregistered for exactly three continuous cycles")
+    if not 1 <= args.cycles <= 50:
+        raise SystemExit("continuous trace cycles must be in [1, 50]")
     source = json.loads(args.source_trace.resolve().read_text(encoding="utf-8"))
     if int(source.get("steps", -1)) != 5 or len(source.get("rows", ())) != 80:
         raise SystemExit("source is not the validated world16 Full5 trace")
@@ -88,20 +89,27 @@ def main() -> int:
             "global_batch", "prompts", "source_sample_count",
         )
     }
+    claim_boundary = (
+        "Three continuous Full5 cycles for pipeline steady-state diagnosis; "
+        "cycle0 preserves the validated trace RNG, later cycles reuse source "
+        "samples with fresh operation-keyed RNG; not a convergence result."
+        if args.cycles == 3
+        else (
+            f"{args.cycles} continuous G1/C5 cycles for pipeline trajectory diagnosis; "
+            "cycle0 preserves the validated trace RNG, later cycles reuse source "
+            "samples with fresh operation-keyed RNG; not a convergence result."
+        )
+    )
     value.update(
         schema_version=2,
         kind="systems_only_continuous_operation_keyed_livewan_sfdmd",
-        claim_boundary=(
-            "Three continuous Full5 cycles for pipeline steady-state diagnosis; "
-            "cycle0 preserves the validated trace RNG, later cycles reuse source "
-            "samples with fresh operation-keyed RNG; not a convergence result."
-        ),
+        claim_boundary=claim_boundary,
         steps=args.cycles * 5,
         cycles=args.cycles,
         cycle_length=5,
         generator_updates=args.cycles,
         critic_updates=args.cycles * 5,
-        source_reuse_across_cycles=True,
+        source_reuse_across_cycles=args.cycles > 1,
         unique_samples_consumed=80,
         rank_qualified_row_count=len(rows),
         rows=rows,
