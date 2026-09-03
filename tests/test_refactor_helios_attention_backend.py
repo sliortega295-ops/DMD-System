@@ -145,8 +145,8 @@ def test_launcher_and_controller_pin_attention_backend() -> None:
     ).read_text()
     for source in (launcher, controller, worker):
         assert "attention-backend" in source or "ATTENTION_BACKEND" in source
-    assert "unset LOCAL_KERNELS" in launcher
-    assert "kernels-community/flash-attn2=" in launcher
+    assert 'export LOCAL_KERNELS="kernels-community/flash-attn2=${FLASH_ATTN_KERNEL}"' in launcher
+    assert "flash_attn2_import_source=${FLASH_ATTN_KERNEL}" in launcher
     assert PINNED_EXTENSION_SHA256 in launcher
     assert PINNED_EXTENSION_SHA256 in worker
     assert "flash_attn_extension_hash_mismatch" in launcher

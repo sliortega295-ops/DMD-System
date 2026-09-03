@@ -167,14 +167,15 @@ if [[ "${MODE}" == trajectory ]]; then
 else
   [[ "${TRAJECTORY_CYCLES}" == 1 ]] || { echo nontrajectory_cycle_drift >&2; exit 2; }
 fi
-if [[ "${ATTENTION_BACKEND}" == local-fa2 ]]; then
-  [[ -d "${FLASH_ATTN_KERNEL}" ]] || { echo flash_attn_kernel_missing="${FLASH_ATTN_KERNEL}" >&2; exit 3; }
-  [[ -f "${FLASH_ATTN_EXTENSION}" ]] || { echo flash_attn_extension_missing="${FLASH_ATTN_EXTENSION}" >&2; exit 3; }
-  [[ "$(sha256sum "${FLASH_ATTN_EXTENSION}" | awk '{print $1}')" == "${FLASH_ATTN_EXTENSION_SHA256}" ]] || {
-    echo flash_attn_extension_hash_mismatch >&2
-    exit 4
-  }
-fi
+# attention_dispatch imports the FA2 fallback eagerly on these A100 nodes,
+# including for an SDPA workload, so its offline local source is a required
+# environment asset for every backend selection.
+[[ -d "${FLASH_ATTN_KERNEL}" ]] || { echo flash_attn_kernel_missing="${FLASH_ATTN_KERNEL}" >&2; exit 3; }
+[[ -f "${FLASH_ATTN_EXTENSION}" ]] || { echo flash_attn_extension_missing="${FLASH_ATTN_EXTENSION}" >&2; exit 3; }
+[[ "$(sha256sum "${FLASH_ATTN_EXTENSION}" | awk '{print $1}')" == "${FLASH_ATTN_EXTENSION_SHA256}" ]] || {
+  echo flash_attn_extension_hash_mismatch >&2
+  exit 4
+}
 if [[ "${CUDA_ALLOCATOR_EXPANDABLE_SEGMENTS}" == on ]]; then
   export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 else
@@ -235,11 +236,12 @@ export HF_HOME="${ASSETS}/hf_home_official_torch210"
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TOKENIZERS_PARALLELISM=false
 export OMP_NUM_THREADS=8 NCCL_ASYNC_ERROR_HANDLING=1
 export DISTILLSCHEDULE_NODE_RANK="${NODE_RANK}"
-if [[ "${ATTENTION_BACKEND}" == local-fa2 ]]; then
-  export LOCAL_KERNELS="kernels-community/flash-attn2=${FLASH_ATTN_KERNEL}"
-else
-  unset LOCAL_KERNELS
-fi
+# Helios imports its FA2 fallback while constructing attention_dispatch even
+# when the selected workload backend is SDPA.  These cluster nodes run with
+# HF_HUB_OFFLINE=1, so always resolve that unconditional import from the pinned
+# local kernel checkout.  The requested ATTENTION_BACKEND still controls the
+# executed attention implementation and is independently receipted below.
+export LOCAL_KERNELS="kernels-community/flash-attn2=${FLASH_ATTN_KERNEL}"
 
 cat >"${NODE_LOG}/launch_manifest.txt" <<EOF
 schema_version=distillschedule.static_fsdp2_p0_launch.v2
@@ -286,6 +288,7 @@ elide_explicit_rollout_sync=${ELIDE_EXPLICIT_ROLLOUT_SYNC}
 elide_critic_scalar_logs=${ELIDE_CRITIC_SCALAR_LOGS}
 elide_official_generator_free_memory=${ELIDE_OFFICIAL_GENERATOR_FREE_MEMORY}
 attention_backend=${ATTENTION_BACKEND}
+flash_attn2_import_source=${FLASH_ATTN_KERNEL}
 modulation_chunk_tokens=${MODULATION_CHUNK_TOKENS}
 selective_flash_checkpoint_stride=${SELECTIVE_FLASH_CHECKPOINT_STRIDE}
 generator_nograd_cross_kv_cache=${GENERATOR_NOGRAD_CROSS_KV_CACHE}
