@@ -25,6 +25,17 @@ def test_trajectory_is_an_explicit_nonlegacy_mode() -> None:
     assert "probe_wan13b_fair_world16.py" in launcher
 
 
+def test_controller_supports_managed_platform_ssh_transport() -> None:
+    controller = (
+        ROOT / "scripts/distillschedule/run_wan13b_fair_world16.py"
+    ).read_text()
+    assert 'value.add_argument("--ssh-port", type=int, default=22)' in controller
+    assert '"--ssh-tty"' in controller
+    assert 'result.append("-tt")' in controller
+    assert '"-p",' in controller
+    assert "port=args.ssh_port" in controller
+
+
 def test_trajectory_worker_preserves_g1_c5_ema5_and_append_only_receipts() -> None:
     path = ROOT / "scripts/distillschedule/probe_wan13b_trajectory_world16.py"
     source = path.read_text()

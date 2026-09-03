@@ -23,8 +23,14 @@ def _hosts(value: str) -> tuple[str, str]:
     return items  # type: ignore[return-value]
 
 
-def _ssh(host: str, command: str) -> list[str]:
-    return [
+def _ssh(
+    host: str,
+    command: str,
+    *,
+    port: int = 22,
+    allocate_tty: bool = False,
+) -> list[str]:
+    result = [
         "ssh",
         "-4",
         "-o",
@@ -35,16 +41,27 @@ def _ssh(host: str, command: str) -> list[str]:
         "BatchMode=yes",
         "-o",
         "UpdateHostKeys=no",
-        host,
-        "bash",
-        "-lc",
-        shlex.quote(command),
+        "-p",
+        str(port),
     ]
+    if allocate_tty:
+        result.append("-tt")
+    result.extend(
+        [
+            host,
+            "bash",
+            "-lc",
+            shlex.quote(command),
+        ]
+    )
+    return result
 
 
-def _resolve_master(host: str) -> str:
+def _resolve_master(host: str, *, port: int, allocate_tty: bool) -> str:
     values = subprocess.check_output(
-        _ssh(host, "hostname -I"), text=True, timeout=30
+        _ssh(host, "hostname -I", port=port, allocate_tty=allocate_tty),
+        text=True,
+        timeout=30,
     ).split()
     ipv4 = [value for value in values if ":" not in value]
     if not ipv4:
@@ -94,6 +111,12 @@ def parser() -> argparse.ArgumentParser:
         "--hosts",
         type=_hosts,
         default=("baai-helios-node0", "baai-helios-node1"),
+    )
+    value.add_argument("--ssh-port", type=int, default=22)
+    value.add_argument(
+        "--ssh-tty",
+        action="store_true",
+        help="Allocate the PTY required by managed platform SSH endpoints.",
     )
     value.add_argument("--run-id", required=True)
     value.add_argument(
@@ -253,7 +276,12 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + " "
         + launch
     )
-    return _ssh(args.hosts[node], remote)
+    return _ssh(
+        args.hosts[node],
+        remote,
+        port=args.ssh_port,
+        allocate_tty=args.ssh_tty,
+    )
 
 
 def _cancel(args: argparse.Namespace, node: int) -> None:
@@ -264,6 +292,8 @@ def _cancel(args: argparse.Namespace, node: int) -> None:
                 args.hosts[node],
                 f"{shlex.quote(str(script))} "
                 f"{shlex.quote(str(_pid_file(args, node)))}",
+                port=args.ssh_port,
+                allocate_tty=args.ssh_tty,
             ),
             check=False,
             stdout=subprocess.DEVNULL,
@@ -298,9 +328,24 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         f"{mode_args}"
         f"--output {shlex.quote(str(summary))}"
     )
-    completed = subprocess.run(_ssh(args.hosts[0], command), check=False, timeout=300)
+    completed = subprocess.run(
+        _ssh(
+            args.hosts[0],
+            command,
+            port=args.ssh_port,
+            allocate_tty=args.ssh_tty,
+        ),
+        check=False,
+        timeout=300,
+    )
     raw = subprocess.check_output(
-        _ssh(args.hosts[0], f"cat {shlex.quote(str(summary))}"), timeout=60
+        _ssh(
+            args.hosts[0],
+            f"cat {shlex.quote(str(summary))}",
+            port=args.ssh_port,
+            allocate_tty=args.ssh_tty,
+        ),
+        timeout=60,
     )
     local.mkdir(parents=True, exist_ok=True)
     (local / "summary.json").write_bytes(raw)
@@ -318,6 +363,8 @@ def main() -> int:
         raise ValueError("--expected-head must be a full Git SHA")
     if len(args.bootstrap_hash) != 64:
         raise ValueError("--bootstrap-hash must be SHA256")
+    if not 1 <= args.ssh_port <= 65535:
+        raise ValueError("--ssh-port must be in [1, 65535]")
     if args.mode == "trajectory":
         allowed = {"resident-async128-tree-chunk2048", "world16-fsdp"}
         if args.placement not in allowed:
@@ -340,7 +387,9 @@ def main() -> int:
     local = args.local_evidence_root / args.run_id
     if local.exists():
         raise FileExistsError(local)
-    master = args.master_addr or _resolve_master(args.hosts[0])
+    master = args.master_addr or _resolve_master(
+        args.hosts[0], port=args.ssh_port, allocate_tty=args.ssh_tty
+    )
     commands = [_command(args, node, master) for node in (0, 1)]
     if args.dry_run:
         print(json.dumps({"master": master, "commands": commands}, indent=2))
