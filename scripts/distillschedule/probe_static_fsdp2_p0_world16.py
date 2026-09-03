@@ -55,7 +55,32 @@ def _file_sha256(path: Path) -> str:
 def _attention_backend_receipt(expected: str) -> dict[str, Any]:
     """Fail closed on the attention implementation imported by this worker."""
 
-    from helios.modules.helios_kernels import attention_dispatch
+    if expected == "sdpa":
+        # Helios eagerly probes FA3/FA2 while importing attention_dispatch. On
+        # an offline A100, the installed `kernels` package otherwise attempts
+        # a Hub lookup before the code can fall back to SDPA. Disable only the
+        # two eager FlashAttention probes during this first import; restoring
+        # get_kernel immediately afterwards keeps the process-global API
+        # untouched while guaranteeing that the SDPA control really executes
+        # SDPA rather than a locally available FA2 implementation.
+        import kernels
+
+        original_get_kernel = kernels.get_kernel
+
+        def _reject_flash_attention_probe(
+            repo_id: str, *args: Any, **kwargs: Any
+        ) -> Any:
+            if str(repo_id).startswith("kernels-community/flash-attn"):
+                raise ImportError("FlashAttention disabled for pinned SDPA control")
+            return original_get_kernel(repo_id, *args, **kwargs)
+
+        kernels.get_kernel = _reject_flash_attention_probe
+        try:
+            from helios.modules.helios_kernels import attention_dispatch
+        finally:
+            kernels.get_kernel = original_get_kernel
+    else:
+        from helios.modules.helios_kernels import attention_dispatch
 
     local_kernels = os.environ.get("LOCAL_KERNELS", "")
     function = attention_dispatch.flash_attn_func
@@ -68,6 +93,11 @@ def _attention_backend_receipt(expected: str) -> dict[str, Any]:
         "flash_attn_func_module": function_module,
         "extension_path": None,
         "extension_sha256": None,
+        "import_policy": (
+            "FLASH_PROBES_DISABLED_DURING_IMPORT"
+            if expected == "sdpa"
+            else "PINNED_LOCAL_FA2"
+        ),
     }
     if expected == "sdpa":
         if local_kernels:
