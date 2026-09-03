@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://distillschedule.local/schemas/trajectory_run_matrix_record.v1.json",
+  "title": "DistillSchedule 50-cycle trajectory run-matrix record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite_id",
+    "workload_id",
+    "comparison_kind",
+    "attempt",
+    "recorded_at_utc",
+    "execution_status",
+    "reason",
+    "expected_world_size",
+    "expected_cycles",
+    "baseline",
+    "candidate",
+    "shared_assets",
+    "state_comparison_paths",
+    "required_state_cycles",
+    "curve_noise_floor"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "distillschedule.trajectory_run_matrix_record.v1"
+    },
+    "suite_id": {"type": "string", "minLength": 1},
+    "workload_id": {
+      "enum": [
+        "wan1_3b_nogan",
+        "helios14b_nogan",
+        "helios14b_gan_on",
+        "livewan_crossscale",
+        "minimax_h3_exact_vs_grid1000"
+      ]
+    },
+    "comparison_kind": {"enum": ["semantic", "approximation"]},
+    "attempt": {"type": "integer", "minimum": 1},
+    "recorded_at_utc": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "execution_status": {"enum": ["PASS", "FAIL", "NOT_RUN"]},
+    "reason": {"type": "string", "minLength": 1},
+    "expected_world_size": {"const": 16},
+    "expected_cycles": {"const": 50},
+    "baseline": {"$ref": "#/$defs/arm"},
+    "candidate": {"$ref": "#/$defs/arm"},
+    "shared_assets": {"$ref": "#/$defs/stringMap"},
+    "state_comparison_paths": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^/"},
+      "uniqueItems": true
+    },
+    "required_state_cycles": {
+      "type": "array",
+      "items": {"enum": [1, 10, 25, 50]},
+      "uniqueItems": true
+    },
+    "curve_noise_floor": {
+      "type": "object",
+      "additionalProperties": {"type": "number", "minimum": 0}
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "workload_id": {"const": "minimax_h3_exact_vs_grid1000"}
+        }
+      },
+      "then": {
+        "properties": {"comparison_kind": {"const": "approximation"}}
+      },
+      "else": {
+        "properties": {"comparison_kind": {"const": "semantic"}}
+      }
+    },
+    {
+      "if": {"properties": {"execution_status": {"const": "PASS"}}},
+      "then": {
+        "properties": {
+          "baseline": {
+            "properties": {
+              "rank_jsonl_root": {"type": "string", "pattern": "^/"}
+            }
+          },
+          "candidate": {
+            "properties": {
+              "rank_jsonl_root": {"type": "string", "pattern": "^/"}
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "stringMap": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"type": "string", "minLength": 1}
+    },
+    "arm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "variant",
+        "source_head",
+        "assets",
+        "rank_jsonl_root",
+        "implementation_expectations"
+      ],
+      "properties": {
+        "run_id": {"type": "string", "minLength": 1},
+        "variant": {"type": "string", "minLength": 1},
+        "source_head": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "assets": {"$ref": "#/$defs/stringMap"},
+        "rank_jsonl_root": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "string", "pattern": "^/"}
+          ]
+        },
+        "implementation_expectations": {
+          "type": "object",
+          "additionalProperties": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}
