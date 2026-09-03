@@ -34,6 +34,8 @@ def test_controller_supports_managed_platform_ssh_transport() -> None:
     assert 'result.append("-tt")' in controller
     assert '"-p",' in controller
     assert "port=args.ssh_port" in controller
+    assert 'decoded.index("{")' in controller
+    assert 'decoded.rindex("}")' in controller
 
 
 def test_trajectory_worker_preserves_g1_c5_ema5_and_append_only_receipts() -> None:

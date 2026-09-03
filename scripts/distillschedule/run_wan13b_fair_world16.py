@@ -348,8 +348,13 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         timeout=60,
     )
     local.mkdir(parents=True, exist_ok=True)
-    (local / "summary.json").write_bytes(raw)
-    value = json.loads(raw)
+    decoded = raw.decode()
+    if args.ssh_tty:
+        decoded = decoded[decoded.index("{") : decoded.rindex("}") + 1]
+    value = json.loads(decoded)
+    (local / "summary.json").write_text(
+        json.dumps(value, indent=2, sort_keys=True) + "\n"
+    )
     if completed.returncode != 0 or value.get("status") != "PASS":
         raise RuntimeError(f"fair Wan1.3B summary failed: {value.get('errors')}")
     return value
