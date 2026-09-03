@@ -220,6 +220,77 @@ def estimate_rollout_collective_groups(
     }
 
 
+def validate_exact_rollout_call_inventory(
+    row: Mapping[str, Any], *, label: str
+) -> dict[str, Any]:
+    """Validate the shared exact-rollout receipt schema.
+
+    Generator-update and B1 no-grad rollout producers use the same physical
+    and logical DiT census.  Keep that equality explicit in the receipt rather
+    than treating an absent logical count as if it matched the physical one.
+    """
+
+    required = (
+        "call_count",
+        "stage_call_count",
+        "logical_call_count",
+        "logical_stage_call_count",
+        "dummy_call_count",
+    )
+    missing = [key for key in required if key not in row]
+    if missing:
+        raise ValueError(f"{label} is missing call-inventory fields: {missing}")
+
+    def count(key: str) -> int:
+        value = row[key]
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise TypeError(f"{label}.{key} must be an integer")
+        if value < 0:
+            raise ValueError(f"{label}.{key} must be non-negative")
+        return int(value)
+
+    def stage_counts(key: str) -> dict[int, int]:
+        raw = row[key]
+        if not isinstance(raw, Mapping) or not raw:
+            raise TypeError(f"{label}.{key} must be a non-empty mapping")
+        result: dict[int, int] = {}
+        for raw_stage, raw_count in raw.items():
+            if isinstance(raw_count, bool) or not isinstance(raw_count, int):
+                raise TypeError(f"{label}.{key}[{raw_stage!r}] must be an integer")
+            stage = int(raw_stage)
+            if stage in result:
+                raise ValueError(f"{label}.{key} has duplicate stage {stage}")
+            if raw_count < 0:
+                raise ValueError(
+                    f"{label}.{key}[{raw_stage!r}] must be non-negative"
+                )
+            result[stage] = int(raw_count)
+        return result
+
+    physical = count("call_count")
+    logical = count("logical_call_count")
+    dummy = count("dummy_call_count")
+    physical_stages = stage_counts("stage_call_count")
+    logical_stages = stage_counts("logical_stage_call_count")
+    if sum(physical_stages.values()) != physical:
+        raise AssertionError(f"{label} physical stage-call census does not add up")
+    if sum(logical_stages.values()) != logical:
+        raise AssertionError(f"{label} logical stage-call census does not add up")
+    if dummy != 0 or physical != logical or physical_stages != logical_stages:
+        raise AssertionError(
+            f"{label} changed exact physical/logical DiT census: "
+            f"physical={physical}/{physical_stages}, "
+            f"logical={logical}/{logical_stages}, dummy={dummy}"
+        )
+    return {
+        "call_count": physical,
+        "stage_call_count": physical_stages,
+        "logical_call_count": logical,
+        "logical_stage_call_count": logical_stages,
+        "dummy_call_count": dummy,
+    }
+
+
 def _canonical(value: Any) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
 
@@ -571,5 +642,6 @@ __all__ = [
     "pack_score_conditions",
     "score_forward_real_pair",
     "split_packed_prediction",
+    "validate_exact_rollout_call_inventory",
     "validate_rollout_entries",
 ]

@@ -56,7 +56,10 @@ from distillschedule.evidence.trajectory_state_sketch import (  # noqa: E402
 from distillschedule.profiling.static_profile_diagnostics import (  # noqa: E402
     StaticProfileDiagnostics,
 )
-from distillschedule.runtime.fsdp2_p0 import StaticFSDP2P0Policy  # noqa: E402
+from distillschedule.runtime.fsdp2_p0 import (  # noqa: E402
+    StaticFSDP2P0Policy,
+    validate_exact_rollout_call_inventory,
+)
 from runtime.gst_pool_contract import NegativePromptAsset  # noqa: E402
 from runtime.static_world16_trace import StaticWorld16Trace  # noqa: E402
 
@@ -523,12 +526,10 @@ def main() -> int:
             if int(generator_record["physical_score_forwards"]) != 3:
                 raise AssertionError("continuous trajectory changed no-GAN Score forward inventory")
             rollout_inventory = [generator_record["rollout"], *rollout_records]
-            if any(
-                int(row["call_count"]) != int(row["logical_call_count"])
-                or int(row.get("dummy_call_count", 0)) != 0
-                for row in rollout_inventory
-            ):
-                raise AssertionError("continuous trajectory changed physical/logical DiT census")
+            for inventory_index, row in enumerate(rollout_inventory):
+                validate_exact_rollout_call_inventory(
+                    row, label=f"cycle{cycle}.rollout{inventory_index}"
+                )
 
             state_fingerprints: dict[str, str] = {}
             anchor_artifact = None

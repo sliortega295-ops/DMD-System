@@ -4,11 +4,14 @@ import ast
 import inspect
 from pathlib import Path
 
+import pytest
+
 from distillschedule.evidence.trajectory_state_sketch import (
     canonical_state_name,
     deterministic_flat_indices,
 )
 from distillschedule.runtime import fsdp2_static, wan13b_fair
+from distillschedule.runtime.fsdp2_p0 import validate_exact_rollout_call_inventory
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -51,6 +54,48 @@ def test_trajectory_worker_preserves_g1_c5_ema5_and_append_only_receipts() -> No
     assert "WORLD16_FSDP_BASELINE" in source
     assert "if not finite:" in source
     assert "trajectory cycles must be one of 1, 5, or 50" in source
+
+
+def test_realistic_b1_rollout_inventory_schema_is_executed_fail_closed() -> None:
+    generator_update = {
+        "call_count": 6,
+        "stage_call_count": {0: 2, 1: 1, 2: 3},
+        "logical_call_count": 6,
+        "logical_stage_call_count": {0: 2, 1: 1, 2: 3},
+        "dummy_call_count": 0,
+    }
+    critic_rollout_b1 = {
+        "batch_size": 1,
+        "call_count": 6,
+        "stage_call_count": {0: 2, 1: 1, 2: 3},
+        "logical_call_count": 6,
+        "logical_stage_call_count": {0: 2, 1: 1, 2: 3},
+        "dummy_call_count": 0,
+    }
+    rows = [generator_update, *(critic_rollout_b1.copy() for _ in range(5))]
+    normalized = [
+        validate_exact_rollout_call_inventory(row, label=f"rollout{index}")
+        for index, row in enumerate(rows)
+    ]
+    assert len(normalized) == 6
+    assert all(
+        row["call_count"] == row["logical_call_count"] == 6
+        for row in normalized
+    )
+
+    missing_logical = dict(critic_rollout_b1)
+    missing_logical.pop("logical_call_count")
+    with pytest.raises(ValueError, match="missing.*logical_call_count"):
+        validate_exact_rollout_call_inventory(missing_logical, label="critic B1")
+
+    drifted = dict(critic_rollout_b1, logical_call_count=7)
+    with pytest.raises(AssertionError, match="logical stage-call census"):
+        validate_exact_rollout_call_inventory(drifted, label="critic B1")
+
+    producer = (ROOT / "runtime/static_fsdp2_p0_helios.py").read_text()
+    assert '"logical_call_count": expected_call_count' in producer
+    assert '"logical_stage_call_count": expected_stage_calls' in producer
+    assert "validate_exact_rollout_call_inventory(" in producer
 
 
 def test_scalar_and_gradient_instrumentation_is_opt_in() -> None:

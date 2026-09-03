@@ -9,6 +9,7 @@ import torch
 from distillschedule.runtime.fsdp2_p0 import (
     estimate_rollout_collective_groups,
     make_batched_loaded_entry,
+    validate_exact_rollout_call_inventory,
 )
 from runtime.operation_trace import tensor_sha256
 from runtime.rollout_trace import ForceNoGradCalls, LightweightNestedCallAudit, NestedCallTracer
@@ -192,6 +193,16 @@ def run_generator_trace_rollout_batch(
     outputs = tuple(
         generated_x0.narrow(0, index, 1).detach() for index in range(batch_size)
     )
+    call_inventory = {
+        "call_count": len(tracer.calls),
+        "stage_call_count": stage_calls,
+        "logical_call_count": expected_call_count,
+        "logical_stage_call_count": expected_stage_calls,
+        "dummy_call_count": 0,
+    }
+    validate_exact_rollout_call_inventory(
+        call_inventory, label="batched Generator rollout"
+    )
     details: dict[str, Any] = {
         "trace_key": loaded.pool_entry.trace_key,
         "trace_identity_sha256": loaded.pool_entry.identity_sha256,
@@ -200,8 +211,7 @@ def run_generator_trace_rollout_batch(
         ],
         "logical_steps": [int(value.pool_entry.logical_step) for value in loaded.members],
         "batch_size": batch_size,
-        "call_count": len(tracer.calls),
-        "stage_call_count": stage_calls,
+        **call_inventory,
         "calls": tracer.calls,
         "output_shape": list(generated_x0.shape),
         "output_dtype": str(generated_x0.dtype),
