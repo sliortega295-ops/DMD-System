@@ -62,8 +62,12 @@ def main() -> int:
                 source_row = dict(rows_by_address[(cycle_step, slot)])
                 global_step = cycle * 5 + cycle_step
                 operation_key = (
-                    f"cycle={cycle}/step={cycle_step}/"
-                    f"global_step={global_step}/slot={slot}"
+                    f"step={global_step}/slot={slot}"
+                    if args.cycles == 1
+                    else (
+                        f"cycle={cycle}/step={cycle_step}/"
+                        f"global_step={global_step}/slot={slot}"
+                    )
                 )
                 if cycle == 0:
                     seeds = dict(source_row["seeds"])

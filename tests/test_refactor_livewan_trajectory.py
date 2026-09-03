@@ -17,6 +17,7 @@ from distillschedule.evidence.trajectory_coarse import (
 )
 from distillschedule.core.config import load_plan
 from distillschedule.runtime.livewan_crossscale_worker import (
+    OperationTraceRow,
     TRAJECTORY_CONTINUOUS_NAME,
     _apply_trajectory_contract,
     _trajectory_normalized_cycle_evidence,
@@ -155,6 +156,18 @@ def test_trace_builder_supports_registered_canary_lengths(tmp_path: Path) -> Non
         assert value["cycles"] == cycles
         assert value["steps"] == cycles * 5
         assert value["source_reuse_across_cycles"] is (cycles > 1)
+        parsed = [
+            OperationTraceRow.from_mapping(
+                row,
+                total_steps=cycles * 5,
+                cycle_length=5,
+                global_batch=16,
+            )
+            for row in value["rows"]
+        ]
+        assert len(parsed) == cycles * 5 * 16
+        if cycles == 1:
+            assert parsed[0].operation_key == "step=0/slot=0"
 
 
 def test_continuous_bootstrap_tracks_each_registered_trajectory_length(
