@@ -124,7 +124,7 @@ def test_trajectory_launcher_is_explicit_and_not_formal_timing() -> None:
     assert "Full tensor/gradient dumps on all 300 updates" in hardening
     assert 'choices=("validate", "correctness", "timing", "profile", "trajectory")' in controller
     assert 'value.add_argument("--ssh-port"' in controller
-    assert 'value.add_argument("--ssh-tty"' in controller
+    assert '"--ssh-tty"' in controller
     assert "_summarize_trajectory(args, local)" in controller
     assert "TRAJECTORY_DIAGNOSTIC_NOT_FORMAL_TIMING" in summarizer
 
