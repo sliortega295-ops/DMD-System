@@ -210,6 +210,7 @@ def _run_nogan_generator_update_p0(
     clean_runtime: bool = False,
     runtime_cache: dict[str, Any] | None = None,
     deferred_finite_checks: list[torch.Tensor] | None = None,
+    collect_scalars: bool = False,
 ) -> dict[str, Any]:
     with diagnostics.scope("INPUT_H2D/generator_entry"):
         entry = trace.load_generator_entry(rank=rank, device=device)
@@ -350,9 +351,13 @@ def _run_nogan_generator_update_p0(
         "local_trainable_after": after,
         "rollout": rollout,
         "surrogate_loss": (
-            diagnostics.diagnostic_scalar("generator_surrogate", loss)
-            if collect_diagnostics
-            else TIMING_OMITTED
+            float(loss.detach().float().cpu())
+            if collect_scalars
+            else (
+                diagnostics.diagnostic_scalar("generator_surrogate", loss)
+                if collect_diagnostics
+                else TIMING_OMITTED
+            )
         ),
         "logical_score_requests": 3,
         "physical_score_forwards": physical_score_forwards,
@@ -476,6 +481,7 @@ def _run_nogan_critic_precomputed(
     entry: Any | None = None,
     runtime_cache: dict[str, Any] | None = None,
     deferred_finite_checks: list[torch.Tensor] | None = None,
+    collect_scalars: bool = False,
 ) -> dict[str, Any]:
     if entry is None:
         with diagnostics.scope(f"INPUT_H2D/critic_entry_update/step{step}"):
@@ -503,9 +509,13 @@ def _run_nogan_critic_precomputed(
         "source_rank": rank,
         "physical_critic_step_after": int(critic_engine.global_steps),
         "loss": (
-            diagnostics.diagnostic_scalar(f"critic_step{step}", loss)
-            if collect_diagnostics
-            else TIMING_OMITTED
+            float(loss.detach().float().cpu())
+            if collect_scalars
+            else (
+                diagnostics.diagnostic_scalar(f"critic_step{step}", loss)
+                if collect_diagnostics
+                else TIMING_OMITTED
+            )
         ),
         "score_forwards": 1,
         "generator_rollout_precomputed": True,

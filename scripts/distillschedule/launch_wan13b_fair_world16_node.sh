@@ -4,7 +4,7 @@ set -Eeuo pipefail
 
 NODE_RANK="${1:?node rank 0 or 1}"
 RUN_ID="${2:?immutable run id}"
-MODE="${3:?validate, correctness, timing, diagnostic-timing, or profile}"
+MODE="${3:?validate, correctness, timing, diagnostic-timing, profile, or trajectory}"
 EXPECTED_HEAD="${4:?expected DMD-System HEAD}"
 MASTER_ADDR="${5:?node0 routable address}"
 MASTER_PORT="${6:?world16 rendezvous port}"
@@ -12,7 +12,8 @@ PLACEMENT="${7:?resident, resident-clean, resident-async128, resident-async128-t
 
 [[ "${NODE_RANK}" == 0 || "${NODE_RANK}" == 1 ]] || exit 2
 [[ "${MODE}" == validate || "${MODE}" == correctness || "${MODE}" == timing || \
-   "${MODE}" == diagnostic-timing || "${MODE}" == profile ]] || exit 2
+   "${MODE}" == diagnostic-timing || "${MODE}" == profile || \
+   "${MODE}" == trajectory ]] || exit 2
 [[ "${PLACEMENT}" == resident || "${PLACEMENT}" == resident-ddp || \
    "${PLACEMENT}" == resident-clean || "${PLACEMENT}" == resident-async128 || \
    "${PLACEMENT}" == resident-async128-tree || \
@@ -44,6 +45,15 @@ EXECUTION="${RUN_ROOT}/execution"
 NODE_LOG="${RUN_ROOT}/launcher/node_${NODE_RANK}"
 LOCK_FILE="${DISTILLSCHEDULE_NODE_LOCK:-/tmp/distillschedule_gpu_node.lock}"
 WORKER="${ROOT}/scripts/distillschedule/probe_wan13b_fair_world16.py"
+TRAJECTORY_CYCLES="${DISTILLSCHEDULE_TRAJECTORY_CYCLES:-0}"
+TRAJECTORY_SEED="${DISTILLSCHEDULE_TRAJECTORY_SEED:-0}"
+TRAJECTORY_ARM_ID="${DISTILLSCHEDULE_TRAJECTORY_ARM_ID:-}"
+if [[ "${MODE}" == trajectory ]]; then
+  WORKER="${ROOT}/scripts/distillschedule/probe_wan13b_trajectory_world16.py"
+  [[ "${TRAJECTORY_CYCLES}" == 1 || "${TRAJECTORY_CYCLES}" == 5 || \
+     "${TRAJECTORY_CYCLES}" == 50 ]] || exit 2
+  [[ "${TRAJECTORY_SEED}" =~ ^[0-9]+$ && -n "${TRAJECTORY_ARM_ID}" ]] || exit 2
+fi
 EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256:-5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886}"
 CORRECTNESS_RECEIPT="${DISTILLSCHEDULE_WAN13B_FAIR_CORRECTNESS_RECEIPT:-}"
 CORRECTNESS_SHA256="${DISTILLSCHEDULE_WAN13B_FAIR_CORRECTNESS_SHA256:-}"
@@ -52,6 +62,23 @@ LORA_ATTRIBUTION_TARGET_RANK="${DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_TARGET_R
 LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS="${DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS:-3}"
 GENERATOR_NOGRAD_LORA_CAST_CACHE="${DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE:-0}"
 GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE="${DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE:-0}"
+
+if [[ "${MODE}" == trajectory ]]; then
+  if [[ "${PLACEMENT}" == resident-async128-tree-chunk2048 ]]; then
+    [[ "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" == 1 && \
+       "${GENERATOR_NOGRAD_LORA_CAST_CACHE}" == 0 ]] || {
+      echo trajectory_resident_winner_contract_mismatch >&2; exit 2;
+    }
+  elif [[ "${PLACEMENT}" == world16-fsdp ]]; then
+    [[ "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" == 0 && \
+       "${GENERATOR_NOGRAD_LORA_CAST_CACHE}" == 0 ]] || {
+      echo trajectory_fsdp_baseline_contract_mismatch >&2; exit 2;
+    }
+  else
+    echo trajectory_placement_not_registered >&2
+    exit 2
+  fi
+fi
 
 if [[ "${LORA_OPERATOR_ATTRIBUTION}" == 1 && "${MODE}" != profile ]]; then
   echo lora_operator_attribution_requires_profile_mode >&2
@@ -213,8 +240,15 @@ activation_offload=false
 optimizer_offload=false
 parameter_streaming=false
 model_swap=false
-claim_boundary=$( [[ "${MODE}" == diagnostic-timing || "${MODE}" == profile ]] && echo DIAGNOSTIC_ONLY || echo FORMAL_GATE_BOUND )
+claim_boundary=$( [[ "${MODE}" == diagnostic-timing || "${MODE}" == profile || "${MODE}" == trajectory ]] && echo DIAGNOSTIC_ONLY || echo FORMAL_GATE_BOUND )
 EOF
+if [[ "${MODE}" == trajectory ]]; then
+  cat >>"${NODE_LOG}/launch_manifest.txt" <<EOF
+trajectory_cycles=${TRAJECTORY_CYCLES}
+trajectory_seed=${TRAJECTORY_SEED}
+trajectory_arm_id=${TRAJECTORY_ARM_ID}
+EOF
+fi
 
 WORKER_ARGS=(
   "${WORKER}"
@@ -231,6 +265,13 @@ WORKER_ARGS=(
 [[ "${MODE}" == validate ]] && WORKER_ARGS+=(--validate-only)
 [[ "${MODE}" == timing || "${MODE}" == diagnostic-timing ]] && WORKER_ARGS+=(--timing-mode)
 [[ "${MODE}" == profile ]] && WORKER_ARGS+=(--profile-mode)
+if [[ "${MODE}" == trajectory ]]; then
+  WORKER_ARGS+=(
+    --trajectory-cycles "${TRAJECTORY_CYCLES}"
+    --trajectory-seed "${TRAJECTORY_SEED}"
+    --trajectory-arm-id "${TRAJECTORY_ARM_ID}"
+  )
+fi
 
 set +e
 if [[ "${MODE}" == profile ]]; then

@@ -735,6 +735,8 @@ class GradReadyAsyncResidentEngine(ReferenceResidentEngine):
             if parameter.requires_grad
         ]
         clip_norm = torch.nn.utils.clip_grad_norm_(trainables, self._gradient_clip)
+        if getattr(self, "_trajectory_capture_grad_norm", False):
+            self.last_gradient_norm = float(clip_norm.detach().float().cpu())
         if self._audit_gradients:
             receipt["gradient_clip_input_norm"] = float(clip_norm)
         self.optimizer.step()

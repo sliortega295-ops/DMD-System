@@ -339,7 +339,14 @@ class FSDP2EngineAdapter:
         ]
         if not trainables:
             raise RuntimeError("FSDP2 engine has no trainable parameters")
-        torch.nn.utils.clip_grad_norm_(trainables, self._gradient_clip)
+        clip_norm = torch.nn.utils.clip_grad_norm_(trainables, self._gradient_clip)
+        if getattr(self, "_trajectory_capture_grad_norm", False):
+            norm = (
+                clip_norm.full_tensor()
+                if hasattr(clip_norm, "full_tensor")
+                else clip_norm
+            )
+            self.last_gradient_norm = float(norm.detach().float().cpu())
         self.optimizer.step()
         self.lr_scheduler.step()
         self.optimizer.zero_grad(set_to_none=True)

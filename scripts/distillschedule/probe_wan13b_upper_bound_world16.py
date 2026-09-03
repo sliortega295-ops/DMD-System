@@ -280,7 +280,11 @@ def _build_engines(
         betas=(0.0, 0.999),
         eps=1e-8,
         weight_decay=1e-3,
-        audit_gradients=not (args.timing_mode or args.profile_mode),
+        audit_gradients=not (
+            args.timing_mode
+            or args.profile_mode
+            or getattr(args, "trajectory_mode", False)
+        ),
     )
     critic_engine, critic_engine_build = build_fresh_engine(
         module=critic,
@@ -290,7 +294,11 @@ def _build_engines(
         betas=(0.0, 0.999),
         eps=1e-8,
         weight_decay=1e-3,
-        audit_gradients=not (args.timing_mode or args.profile_mode),
+        audit_gradients=not (
+            args.timing_mode
+            or args.profile_mode
+            or getattr(args, "trajectory_mode", False)
+        ),
     )
     ema = FreshTrainableEMA(
         generator,

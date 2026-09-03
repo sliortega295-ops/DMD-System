@@ -237,7 +237,11 @@ def _build_model_fair(
     metadata["lora_operator_attribution"] = lora_operator_attribution
 
     audit_records: list[dict[str, Any]] | str = "OMITTED_IN_LOW_OVERHEAD_MODE"
-    if not (args.timing_mode or args.profile_mode):
+    if not (
+        args.timing_mode
+        or args.profile_mode
+        or getattr(args, "trajectory_mode", False)
+    ):
         audit = LoRAComputeDtypeAudit(model)
         audit_records = audit.records
         # Keep the hooks alive through the run without serializing the object.
