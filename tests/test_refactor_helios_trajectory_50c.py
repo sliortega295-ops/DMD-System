@@ -115,7 +115,7 @@ def test_trajectory_launcher_is_explicit_and_not_formal_timing() -> None:
         ROOT / "scripts/distillschedule/summarize_trajectory_run.py"
     ).read_text()
 
-    assert "MODE} == trajectory" in launcher
+    assert '[[ "${MODE}" == trajectory ]]' in launcher
     assert "DISTILLSCHEDULE_TRAJECTORY_CYCLES" in launcher
     assert '--trajectory-cycles "${TRAJECTORY_CYCLES}"' in launcher
     assert 'WORKER+=(--trajectory-mode)' in launcher
