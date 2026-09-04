@@ -48,6 +48,7 @@ from distillschedule.profiling.static_profile_diagnostics import (  # noqa: E402
 )
 from distillschedule.runtime.fsdp2_p0 import (  # noqa: E402
     StaticFSDP2P0Policy,
+    expected_trace_rollout_call_inventory,
     validate_exact_rollout_call_inventory,
 )
 from runtime.gst_pool_contract import NegativePromptAsset  # noqa: E402
@@ -62,6 +63,27 @@ FSDP_BASELINE = "world16-fsdp"
 REGISTERED_PLACEMENTS = frozenset({RESIDENT_WINNER, FSDP_BASELINE})
 RESIDENT_ARM_CONTRACT = "RESIDENT_ASYNC128_TREE_CHUNK2048_FUSED_EPILOGUE"
 FSDP_ARM_CONTRACT = "WORLD16_FSDP_BASELINE"
+
+
+def _rollout_operations() -> tuple[str, ...]:
+    return (
+        "step/10/generator/rollout",
+        *(f"step/{step}/critic/rollout" for step in SOURCE_STEPS),
+    )
+
+
+def _trace_rollout_contract(trace: StaticWorld16Trace) -> list[dict[str, Any]]:
+    return [
+        {
+            "operation": operation,
+            "inventory": expected_trace_rollout_call_inventory(
+                trace.rank_control_validation,
+                operation=operation,
+                expected_rank_count=WORLD_SIZE,
+            ),
+        }
+        for operation in _rollout_operations()
+    ]
 
 
 def parser() -> argparse.ArgumentParser:
@@ -347,7 +369,12 @@ def _run_workload_cycle(
     }
 
 
-def _cycle_census(raw: dict[str, Any], *, cycle: int) -> dict[str, Any]:
+def _cycle_census(
+    raw: dict[str, Any],
+    *,
+    cycle: int,
+    trace_rollout_contract: list[dict[str, Any]],
+) -> dict[str, Any]:
     generator = raw["generator"]
     rollouts = list(raw["rollouts"])
     if len(rollouts) != 5 or any(
@@ -370,19 +397,18 @@ def _cycle_census(raw: dict[str, Any], *, cycle: int) -> dict[str, Any]:
         )
         for index, row in enumerate(inventories)
     ]
-    expected_calls = {
-        "call_count": 6,
-        "logical_call_count": 6,
-        "stage_call_count": {0: 2, 1: 1, 2: 3},
-        "logical_stage_call_count": {0: 2, 1: 1, 2: 3},
-        "dummy_call_count": 0,
-    }
-    for index, inventory in enumerate(normalized):
-        for key, expected in expected_calls.items():
-            if inventory.get(key) != expected:
-                raise AssertionError(
-                    f"cycle{cycle}/rollout{index}: exact DiT census changed: {key}"
-                )
+    if len(trace_rollout_contract) != len(normalized):
+        raise AssertionError(f"cycle{cycle}: trace rollout operation count changed")
+    for index, (inventory, expected) in enumerate(
+        zip(normalized, trace_rollout_contract, strict=True)
+    ):
+        operation = expected.get("operation")
+        if operation != _rollout_operations()[index]:
+            raise AssertionError(f"cycle{cycle}: rollout operation order changed")
+        if inventory != expected.get("inventory"):
+            raise AssertionError(
+                f"cycle{cycle}/{operation}: exact trace-derived DiT census changed"
+            )
     generator_trace = str(generator["rollout"].get("trace_identity_sha256", ""))
     critic_traces = [
         str(row.get("member_trace_identities", [""])[0]) for row in rollouts
@@ -398,6 +424,9 @@ def _cycle_census(raw: dict[str, Any], *, cycle: int) -> dict[str, Any]:
         "critic_score_forwards": 5,
         "physical_rollout_batches": 5,
         "rollout_batch_size": 1,
+        "rollout_operation_keys": [
+            str(row["operation"]) for row in trace_rollout_contract
+        ],
         "rollout_call_inventory": normalized,
         "generator_trace_payload_identity": generator_trace,
         "critic_trace_payload_identities": critic_traces,
@@ -608,6 +637,8 @@ def main() -> int:
             raise ValueError("trace bundle identity changed")
         if Path(bootstrap.manifest["model_root"]).resolve() != args.model_root.resolve():
             raise ValueError("bootstrap/model-root path identity changed")
+        trace_rollout_contract = _trace_rollout_contract(trace)
+        trace_rollout_contract_sha256 = _canonical_hash(trace_rollout_contract)
         negative_asset = NegativePromptAsset.load(args.negative_prompt)
         matched_contract = {
             "bootstrap_hash": bootstrap.manifest_hash,
@@ -621,7 +652,10 @@ def main() -> int:
             "updates": "G1_C5_EMA5",
             "rollout_batch_size": 1,
             "score_packing": False,
+            "trace_rollout_contract_sha256": trace_rollout_contract_sha256,
         }
+        result["trace_rollout_contract"] = trace_rollout_contract
+        result["trace_rollout_contract_sha256"] = trace_rollout_contract_sha256
         result["matched_contract"] = matched_contract
         result["workload_fingerprint"] = _canonical_hash(matched_contract)
         result["implementation_fingerprint"] = _canonical_hash(arm)
@@ -737,7 +771,11 @@ def main() -> int:
         if tuple(version_rows) != expected_versions:
             raise AssertionError(f"two-cycle version inventory changed: {version_rows}")
         cycle_census = [
-            _cycle_census(raw, cycle=index)
+            _cycle_census(
+                raw,
+                cycle=index,
+                trace_rollout_contract=trace_rollout_contract,
+            )
             for index, raw in enumerate(raw_cycles, start=1)
         ]
         fused_receipt = _validate_fused_receipt(build, placement=args.placement)

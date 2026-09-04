@@ -21,6 +21,40 @@ LAUNCHER = ROOT / "scripts/distillschedule/launch_wan13b_fair_world16_node.sh"
 CONTROLLER = ROOT / "scripts/distillschedule/run_wan13b_fair_world16.py"
 HEAD = "2" * 40
 SHA = "a" * 64
+ROLLOUT_OPERATIONS = (
+    "step/10/generator/rollout",
+    *(f"step/{step}/critic/rollout" for step in range(10, 15)),
+)
+ROLLOUT_STAGE_CALLS = (
+    (2, 1, 1),
+    (2, 2, 2),
+    (2, 2, 2),
+    (2, 2, 1),
+    (2, 1, 1),
+    (2, 2, 2),
+)
+
+
+def _rollout_contract() -> list[dict[str, object]]:
+    result = []
+    for operation, stage_values in zip(
+        ROLLOUT_OPERATIONS, ROLLOUT_STAGE_CALLS, strict=True
+    ):
+        stages = dict(enumerate(stage_values))
+        total = sum(stage_values)
+        result.append(
+            {
+                "operation": operation,
+                "inventory": {
+                    "call_count": total,
+                    "logical_call_count": total,
+                    "stage_call_count": stages,
+                    "logical_stage_call_count": dict(stages),
+                    "dummy_call_count": 0,
+                },
+            }
+        )
+    return result
 
 
 def _function(path: Path, name: str) -> ast.FunctionDef:
@@ -44,8 +78,8 @@ def test_two_cycle_worker_is_a_dedicated_timing_path() -> None:
     assert '"generator": 3, "critic": 15, "ema": 15' in source
     assert '"generator": 4, "critic": 20, "ema": 20' in source
     assert '"FIXED_FIVE_STEP_COHORT_REPLAY"' in source
-    assert '"call_count": 6' in source
-    assert '"stage_call_count": {0: 2, 1: 1, 2: 3}' in source
+    assert "expected_trace_rollout_call_inventory(" in source
+    assert '"trace_rollout_contract_sha256"' in source
     assert '"model_call_count", -1)) != 56' in source
     assert '"fused_invocation_count", -1)) != 17_080' in source
     assert '"reference_fallback_count", -1)) != 224' in source
@@ -122,6 +156,7 @@ def test_two_cycle_correctness_receipt_schema_accepts_only_scalar_census() -> No
             "negative_prompt_manifest_hash": "e", "seed": "1",
             "global_batch": "16", "updates": "G1_C5_EMA5",
             "score_packing": "false", "rollout_batch_size": "1",
+            "trace_rollout_contract_sha256": "f" * 64,
         },
         implementation={"placement": "world16-fsdp", "arm_contract": "baseline"},
         sample_identities=("g", "c0", "c1", "c2", "c3", "c4"),
@@ -130,13 +165,9 @@ def test_two_cycle_correctness_receipt_schema_accepts_only_scalar_census() -> No
         cycle_updates={"generator": 1, "critic": 5, "ema": 5},
         cumulative_updates={"generator": 1, "critic": 5, "ema": 5},
         call_census={
-            "generator_update_rollout_dit": 6,
-            "generator_critic_rollout_dit": 30,
+            "generator_update_rollout_dit": 4,
+            "generator_critic_rollout_dit": 27,
             "rollout_inventory_count": 6,
-            "rollout_call_count_each": 6,
-            "rollout_stage0_calls_each": 2,
-            "rollout_stage1_calls_each": 1,
-            "rollout_stage2_calls_each": 3,
             "rollout_dummy_calls_total": 0,
         },
         losses={"generator": 1.0}, gradient_norms={},
@@ -187,6 +218,7 @@ def test_two_cycle_worker_binds_arm_correctness_and_cross_arm_comparison(
         "updates": "G1_C5_EMA5",
         "rollout_batch_size": 1,
         "score_packing": False,
+        "trace_rollout_contract_sha256": _digest(_rollout_contract()),
     }
     implementation = dict(arm, trajectory_arm_id="fsdp-two-cycle")
     correctness = {
@@ -311,6 +343,7 @@ def _manifest(run_root: Path, node: int, placement: str, run_id: str) -> None:
 
 
 def _rank_receipt(rank: int, run_id: str) -> dict[str, object]:
+    trace_rollout_contract = _rollout_contract()
     matched = {
         "bootstrap_hash": "b" * 64,
         "model_identity_sha256": "e" * 64,
@@ -323,18 +356,12 @@ def _rank_receipt(rank: int, run_id: str) -> dict[str, object]:
         "updates": "G1_C5_EMA5",
         "rollout_batch_size": 1,
         "score_packing": False,
+        "trace_rollout_contract_sha256": _digest(trace_rollout_contract),
     }
     arm = {
         "arm_contract": "WORLD16_FSDP_BASELINE",
         "generator_nograd_lora_fused_epilogue": False,
         "generator_nograd_lora_cast_cache": False,
-    }
-    inventory = {
-        "call_count": 6,
-        "logical_call_count": 6,
-        "stage_call_count": {0: 2, 1: 1, 2: 3},
-        "logical_stage_call_count": {0: 2, 1: 1, 2: 3},
-        "dummy_call_count": 0,
     }
     census = []
     for cycle in (1, 2):
@@ -350,7 +377,10 @@ def _rank_receipt(rank: int, run_id: str) -> dict[str, object]:
             "critic_score_forwards": 5,
             "physical_rollout_batches": 5,
             "rollout_batch_size": 1,
-            "rollout_call_inventory": [dict(inventory) for _ in range(6)],
+            "rollout_operation_keys": list(ROLLOUT_OPERATIONS),
+            "rollout_call_inventory": [
+                dict(row["inventory"]) for row in trace_rollout_contract
+            ],
             "generator_trace_payload_identity": payloads[0],
             "critic_trace_payload_identities": payloads[1:],
             "sample_payload_identities": payloads,
@@ -392,6 +422,8 @@ def _rank_receipt(rank: int, run_id: str) -> dict[str, object]:
         "profiler_status": "NOT_RUN",
         "profiler_environment": {"exact_range": None, "lora_operator_attribution": "0"},
         "matched_contract": matched,
+        "trace_rollout_contract": trace_rollout_contract,
+        "trace_rollout_contract_sha256": _digest(trace_rollout_contract),
         "workload_fingerprint": _digest(matched),
         "implementation_fingerprint": _digest(arm),
         "configuration_fingerprint": _digest({
@@ -533,6 +565,85 @@ def test_two_cycle_summarizer_rejects_rank_slot_payload_permutation(
     assert completed.returncode == 1
     summary = json.loads(output.read_text())
     assert any("rank-slot mapping" in error for error in summary["errors"])
+
+
+def test_two_cycle_summarizer_rejects_trace_specific_c12_inventory_drift(
+    tmp_path: Path,
+) -> None:
+    run_root, output = _synthetic_run(tmp_path)
+    path = run_root / "execution" / "ranks" / "rank_00.json"
+    value = json.loads(path.read_text())
+    # This remains an internally consistent exact receipt, but it is not the
+    # C12 schedule frozen in the trace.
+    drifted = {
+        "call_count": 6,
+        "logical_call_count": 6,
+        "stage_call_count": {"0": 2, "1": 2, "2": 2},
+        "logical_stage_call_count": {"0": 2, "1": 2, "2": 2},
+        "dummy_call_count": 0,
+    }
+    value["cycle_census"][0]["rollout_call_inventory"][3] = drifted
+    path.write_text(json.dumps(value) + "\n")
+    completed = subprocess.run(
+        [sys.executable, str(SUMMARIZER), "--run-root", str(run_root),
+         "--placement", "world16-fsdp", "--expected-head", HEAD,
+         "--output", str(output)],
+        check=False,
+        stdout=subprocess.DEVNULL,
+    )
+    assert completed.returncode == 1
+    summary = json.loads(output.read_text())
+    assert any(
+        "step/12/critic/rollout" in error for error in summary["errors"]
+    )
+
+
+def test_two_cycle_summarizer_rejects_same_total_operation_swap(
+    tmp_path: Path,
+) -> None:
+    run_root, output = _synthetic_run(tmp_path)
+    path = run_root / "execution" / "ranks" / "rank_00.json"
+    value = json.loads(path.read_text())
+    calls = value["cycle_census"][0]["rollout_call_inventory"]
+    calls[3], calls[4] = calls[4], calls[3]
+    path.write_text(json.dumps(value) + "\n")
+    completed = subprocess.run(
+        [sys.executable, str(SUMMARIZER), "--run-root", str(run_root),
+         "--placement", "world16-fsdp", "--expected-head", HEAD,
+         "--output", str(output)],
+        check=False,
+        stdout=subprocess.DEVNULL,
+    )
+    assert completed.returncode == 1
+    summary = json.loads(output.read_text())
+    assert any(
+        "trace-derived DiT census changed" in error for error in summary["errors"]
+    )
+
+
+def test_two_cycle_summarizer_rejects_cycle2_inventory_mutation(
+    tmp_path: Path,
+) -> None:
+    run_root, output = _synthetic_run(tmp_path)
+    path = run_root / "execution" / "ranks" / "rank_00.json"
+    value = json.loads(path.read_text())
+    value["cycle_census"][1]["rollout_call_inventory"][5] = dict(
+        value["cycle_census"][1]["rollout_call_inventory"][3]
+    )
+    path.write_text(json.dumps(value) + "\n")
+    completed = subprocess.run(
+        [sys.executable, str(SUMMARIZER), "--run-root", str(run_root),
+         "--placement", "world16-fsdp", "--expected-head", HEAD,
+         "--output", str(output)],
+        check=False,
+        stdout=subprocess.DEVNULL,
+    )
+    assert completed.returncode == 1
+    summary = json.loads(output.read_text())
+    assert any(
+        "rank0/cycle2" in error and "step/14/critic/rollout" in error
+        for error in summary["errors"]
+    )
 
 
 def test_two_cycle_comparator_claims_only_matched_cycle2(tmp_path: Path) -> None:

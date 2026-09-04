@@ -59,6 +59,7 @@ from distillschedule.profiling.static_profile_diagnostics import (  # noqa: E402
 )
 from distillschedule.runtime.fsdp2_p0 import (  # noqa: E402
     StaticFSDP2P0Policy,
+    expected_trace_rollout_call_inventory,
     validate_exact_rollout_call_inventory,
 )
 from runtime.gst_pool_contract import NegativePromptAsset  # noqa: E402
@@ -71,6 +72,55 @@ ANCHOR_CYCLES = frozenset({1, 10, 25, 50})
 REGISTERED_CYCLE_COUNTS = frozenset({1, 2, 5, 50})
 RESIDENT_WINNER = "resident-async128-tree-chunk2048"
 FSDP_BASELINE = "world16-fsdp"
+
+
+def _rollout_operations() -> tuple[str, ...]:
+    return (
+        "step/10/generator/rollout",
+        *(f"step/{step}/critic/rollout" for step in SOURCE_STEPS),
+    )
+
+
+def _trace_rollout_contract(trace: StaticWorld16Trace) -> list[dict[str, Any]]:
+    return [
+        {
+            "operation": operation,
+            "inventory": expected_trace_rollout_call_inventory(
+                trace.rank_control_validation,
+                operation=operation,
+                expected_rank_count=WORLD_SIZE,
+            ),
+        }
+        for operation in _rollout_operations()
+    ]
+
+
+def _rollout_call_census(
+    inventories: list[dict[str, Any]],
+) -> dict[str, int]:
+    if len(inventories) != 6:
+        raise ValueError("trajectory requires one Generator and five Critic rollouts")
+    generator, *critics = inventories
+    result = {
+        "generator_update_rollout_dit": int(generator["call_count"]),
+        "generator_critic_rollout_dit": sum(
+            int(inventory["call_count"]) for inventory in critics
+        ),
+        "generator_score_forwards": 3,
+        "critic_score_forwards": 5,
+        "physical_rollout_batches": 5,
+        "rollout_batch_size": 1,
+        "rollout_inventory_count": 6,
+        "rollout_dummy_calls_total": sum(
+            int(inventory["dummy_call_count"]) for inventory in inventories
+        ),
+    }
+    role_names = ("generator_update", *(f"critic_step_{step}" for step in SOURCE_STEPS))
+    for role, inventory in zip(role_names, inventories, strict=True):
+        result[f"{role}_rollout_dit"] = int(inventory["call_count"])
+        for stage, count in sorted(inventory["stage_call_count"].items()):
+            result[f"{role}_rollout_stage{stage}_dit"] = int(count)
+    return result
 
 
 def parser() -> argparse.ArgumentParser:
@@ -394,6 +444,10 @@ def main() -> int:
             raise ValueError("trace bundle identity changed")
         if Path(bootstrap.manifest["model_root"]).resolve() != args.model_root.resolve():
             raise ValueError("bootstrap/model-root path identity changed")
+        trace_rollout_contract = _trace_rollout_contract(trace)
+        trace_rollout_contract_sha256 = _canonical_hash(trace_rollout_contract)
+        result["trace_rollout_contract"] = trace_rollout_contract
+        result["trace_rollout_contract_sha256"] = trace_rollout_contract_sha256
         negative_asset = NegativePromptAsset.load(args.negative_prompt)
         result["identities"] = {
             "bootstrap_hash": bootstrap.manifest_hash,
@@ -552,21 +606,23 @@ def main() -> int:
             if int(generator_record["physical_score_forwards"]) != 3:
                 raise AssertionError("continuous trajectory changed no-GAN Score forward inventory")
             rollout_inventory = [generator_record["rollout"], *rollout_records]
-            for inventory_index, row in enumerate(rollout_inventory):
+            normalized_rollout_inventory: list[dict[str, Any]] = []
+            for inventory_index, (row, expected) in enumerate(
+                zip(rollout_inventory, trace_rollout_contract, strict=True)
+            ):
                 inventory = validate_exact_rollout_call_inventory(
                     row, label=f"cycle{cycle}.rollout{inventory_index}"
                 )
-                expected_inventory = {
-                    "call_count": 6,
-                    "logical_call_count": 6,
-                    "stage_call_count": {0: 2, 1: 1, 2: 3},
-                    "logical_stage_call_count": {0: 2, 1: 1, 2: 3},
-                    "dummy_call_count": 0,
-                }
-                if inventory != expected_inventory:
+                if expected.get("operation") != _rollout_operations()[inventory_index]:
                     raise AssertionError(
-                        f"cycle{cycle}.rollout{inventory_index} exact DiT census changed"
+                        f"cycle{cycle}.rollout{inventory_index} operation order changed"
                     )
+                if inventory != expected.get("inventory"):
+                    raise AssertionError(
+                        f"cycle{cycle}.{expected['operation']} exact trace-derived "
+                        "DiT census changed"
+                    )
+                normalized_rollout_inventory.append(inventory)
             critic_steps = [int(row.get("logical_step", -1)) for row in critic_records]
             if critic_steps != list(SOURCE_STEPS) or any(
                 int(row.get("score_forwards", -1)) != 1 for row in critic_records
@@ -600,10 +656,6 @@ def main() -> int:
                     device=device,
                     evidence_group=evidence_group,
                 )
-            generator_rollout_calls = int(generator_record["rollout"]["call_count"])
-            critic_rollout_calls = sum(
-                int(row["call_count"]) for row in rollout_records
-            )
             cycle_receipt = TrajectoryCycleReceipt(
                 run_id=args.run_id,
                 workload="wan1.3b_nogan_world16",
@@ -626,6 +678,7 @@ def main() -> int:
                     "updates": "G1_C5_EMA5",
                     "score_packing": "false",
                     "rollout_batch_size": "1",
+                    "trace_rollout_contract_sha256": trace_rollout_contract_sha256,
                 },
                 implementation={
                     "placement": args.placement,
@@ -650,20 +703,7 @@ def main() -> int:
                 versions={"generator": expected_g, "critic": expected_c, "ema": expected_ema},
                 cycle_updates={"generator": 1, "critic": 5, "ema": 5},
                 cumulative_updates={"generator": cycle, "critic": 5 * cycle, "ema": 5 * cycle},
-                call_census={
-                    "generator_update_rollout_dit": generator_rollout_calls,
-                    "generator_critic_rollout_dit": critic_rollout_calls,
-                    "generator_score_forwards": int(generator_record["physical_score_forwards"]),
-                    "critic_score_forwards": 5,
-                    "physical_rollout_batches": 5,
-                    "rollout_batch_size": 1,
-                    "rollout_inventory_count": len(rollout_inventory),
-                    "rollout_call_count_each": 6,
-                    "rollout_stage0_calls_each": 2,
-                    "rollout_stage1_calls_each": 1,
-                    "rollout_stage2_calls_each": 3,
-                    "rollout_dummy_calls_total": 0,
-                },
+                call_census=_rollout_call_census(normalized_rollout_inventory),
                 losses={
                     "generator": generator_loss if finite else None,
                     "critic_mean": _mean(critic_losses) if finite else None,

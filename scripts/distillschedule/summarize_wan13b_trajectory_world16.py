@@ -21,13 +21,10 @@ REGISTERED_CYCLE_COUNTS = frozenset({1, 2, 5, 50})
 RESIDENT_WINNER = "resident-async128-tree-chunk2048"
 FSDP_BASELINE = "world16-fsdp"
 REGISTERED_PLACEMENTS = frozenset({RESIDENT_WINNER, FSDP_BASELINE})
-EXPECTED_ROLLOUT = {
-    "call_count": 6,
-    "logical_call_count": 6,
-    "stage_call_count": {0: 2, 1: 1, 2: 3},
-    "logical_stage_call_count": {0: 2, 1: 1, 2: 3},
-    "dummy_call_count": 0,
-}
+EXPECTED_ROLLOUT_OPERATIONS = (
+    "step/10/generator/rollout",
+    *(f"step/{step}/critic/rollout" for step in range(10, 15)),
+)
 
 
 def _atomic_json(path: Path, value: Any) -> None:
@@ -41,6 +38,97 @@ def _canonical_hash(value: Any) -> str:
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
+
+
+def _normalize_rollout_contract(
+    value: Any, *, label: str, errors: list[str]
+) -> list[dict[str, Any]] | None:
+    if not isinstance(value, list) or len(value) != len(EXPECTED_ROLLOUT_OPERATIONS):
+        errors.append(f"{label}: trace rollout contract has the wrong operation count")
+        return None
+    result: list[dict[str, Any]] = []
+    for index, (row, expected_operation) in enumerate(
+        zip(value, EXPECTED_ROLLOUT_OPERATIONS, strict=True)
+    ):
+        if not isinstance(row, dict) or row.get("operation") != expected_operation:
+            errors.append(f"{label}: trace rollout operation {index} changed")
+            return None
+        raw = row.get("inventory")
+        if not isinstance(raw, dict):
+            errors.append(f"{label}: {expected_operation} inventory is missing")
+            return None
+        try:
+            required = {
+                "call_count",
+                "logical_call_count",
+                "stage_call_count",
+                "logical_stage_call_count",
+                "dummy_call_count",
+            }
+            if set(raw) != required:
+                raise ValueError("inventory fields changed")
+            normalized = dict(raw)
+            for key in ("stage_call_count", "logical_stage_call_count"):
+                stages = normalized[key]
+                if not isinstance(stages, dict) or not stages:
+                    raise TypeError(key)
+                converted: dict[int, int] = {}
+                for stage, count in stages.items():
+                    if isinstance(count, bool) or not isinstance(count, int) or count <= 0:
+                        raise TypeError(key)
+                    stage_index = int(stage)
+                    if stage_index in converted:
+                        raise ValueError(f"duplicate stage {stage_index}")
+                    converted[stage_index] = count
+                if sorted(converted) != list(range(len(converted))):
+                    raise ValueError("stage indices are not contiguous from zero")
+                normalized[key] = converted
+            for key in ("call_count", "logical_call_count", "dummy_call_count"):
+                if isinstance(normalized[key], bool) or not isinstance(normalized[key], int):
+                    raise TypeError(key)
+            if (
+                normalized["call_count"] <= 0
+                or normalized["call_count"] != normalized["logical_call_count"]
+                or normalized["stage_call_count"]
+                != normalized["logical_stage_call_count"]
+                or sum(normalized["stage_call_count"].values())
+                != normalized["call_count"]
+                or normalized["dummy_call_count"] != 0
+            ):
+                raise ValueError("inconsistent call inventory")
+        except (KeyError, TypeError, ValueError) as error:
+            errors.append(f"{label}: invalid {expected_operation} inventory: {error}")
+            return None
+        result.append({"operation": expected_operation, "inventory": normalized})
+    return result
+
+
+def _expected_call_census(contract: list[dict[str, Any]]) -> dict[str, int]:
+    inventories = [row["inventory"] for row in contract]
+    generator, *critics = inventories
+    result = {
+        "generator_update_rollout_dit": int(generator["call_count"]),
+        "generator_critic_rollout_dit": sum(
+            int(inventory["call_count"]) for inventory in critics
+        ),
+        "generator_score_forwards": 3,
+        "critic_score_forwards": 5,
+        "physical_rollout_batches": 5,
+        "rollout_batch_size": 1,
+        "rollout_inventory_count": 6,
+        "rollout_dummy_calls_total": sum(
+            int(inventory["dummy_call_count"]) for inventory in inventories
+        ),
+    }
+    role_names = (
+        "generator_update",
+        *(f"critic_step_{step}" for step in range(10, 15)),
+    )
+    for role, inventory in zip(role_names, inventories, strict=True):
+        result[f"{role}_rollout_dit"] = int(inventory["call_count"])
+        for stage, count in sorted(inventory["stage_call_count"].items()):
+            result[f"{role}_rollout_stage{stage}_dit"] = int(count)
+    return result
 
 
 def _read_manifest(path: Path, *, node: int, errors: list[str]) -> dict[str, str]:
@@ -243,6 +331,7 @@ def main() -> int:
     occurrences: list[str] = []
     matched_contracts: list[dict[str, Any]] = []
     implementations: list[dict[str, Any]] = []
+    trace_rollout_contracts: list[list[dict[str, Any]]] = []
     hosts: dict[str, list[int]] = defaultdict(list)
     runtime_receipts: list[dict[str, Any]] = []
     for rank in range(WORLD_SIZE):
@@ -282,23 +371,6 @@ def main() -> int:
                 f"cycle={cycle}/rank={rank}/slot={slot}/payload={payload}"
                 for slot, payload in enumerate(row.sample_identities)
             )
-            required_census = {
-                "generator_update_rollout_dit": 6,
-                "generator_critic_rollout_dit": 30,
-                "generator_score_forwards": 3,
-                "critic_score_forwards": 5,
-                "physical_rollout_batches": 5,
-                "rollout_batch_size": 1,
-                "rollout_inventory_count": 6,
-                "rollout_call_count_each": 6,
-                "rollout_stage0_calls_each": 2,
-                "rollout_stage1_calls_each": 1,
-                "rollout_stage2_calls_each": 3,
-                "rollout_dummy_calls_total": 0,
-            }
-            for key, expected in required_census.items():
-                if row.call_census.get(key) != expected:
-                    errors.append(f"rank{rank}: cycle{cycle} {key} changed")
             matched_contracts.append(dict(row.matched_contract))
             implementations.append(dict(row.implementation))
 
@@ -320,6 +392,17 @@ def main() -> int:
             errors.append(f"rank{rank}: final versions changed")
         if final.get("updates") != {"generator": args.cycles, "critic": 5 * args.cycles, "ema": 5 * args.cycles}:
             errors.append(f"rank{rank}: final update inventory changed")
+        trace_rollout_contract = _normalize_rollout_contract(
+            final.get("trace_rollout_contract"),
+            label=f"rank{rank}",
+            errors=errors,
+        )
+        if trace_rollout_contract is not None:
+            trace_rollout_contracts.append(trace_rollout_contract)
+            observed_hash = final.get("trace_rollout_contract_sha256")
+            expected_hash = _canonical_hash(trace_rollout_contract)
+            if observed_hash != expected_hash:
+                errors.append(f"rank{rank}: trace rollout contract SHA changed")
         local_rank = final.get("local_rank")
         hostname = final.get("hostname")
         if not isinstance(hostname, str) or not isinstance(local_rank, int):
@@ -353,6 +436,26 @@ def main() -> int:
     if len(occurrences) != 96 * args.cycles or len(set(occurrences)) != 96 * args.cycles:
         errors.append("cycle-qualified sample occurrence inventory changed")
 
+    rollout_contract_hashes = {
+        _canonical_hash(contract) for contract in trace_rollout_contracts
+    }
+    trace_rollout_contract = (
+        trace_rollout_contracts[0]
+        if len(trace_rollout_contracts) == WORLD_SIZE
+        and len(rollout_contract_hashes) == 1
+        else None
+    )
+    if trace_rollout_contract is None:
+        errors.append("rank trace-derived rollout contracts differ or are incomplete")
+    else:
+        required_census = _expected_call_census(trace_rollout_contract)
+        for rank, rows in rank_rows.items():
+            for row in rows:
+                if dict(row.call_census) != required_census:
+                    errors.append(
+                        f"rank{rank}: cycle{row.cycle} trace-derived call census changed"
+                    )
+
     contract_hashes = {_canonical_hash(value) for value in matched_contracts}
     raw_matched = matched_contracts[0] if len(contract_hashes) == 1 and matched_contracts else None
     matched_contract = (
@@ -361,6 +464,9 @@ def main() -> int:
             "model_identity_sha256": raw_matched.get("model_identity_sha256"),
             "trace_bundle_hash": raw_matched.get("trace_bundle_hash"),
             "trace_binding_hash": raw_matched.get("trace_binding_hash"),
+            "trace_rollout_contract_sha256": raw_matched.get(
+                "trace_rollout_contract_sha256"
+            ),
             "trace_replay_policy": raw_matched.get("trace_replay_policy"),
             "negative_prompt_manifest_hash": raw_matched.get("negative_prompt_manifest_hash"),
             "seed": int(raw_matched.get("seed", -1)),
@@ -388,9 +494,16 @@ def main() -> int:
         for key in (
             "bootstrap_hash", "model_identity_sha256", "trace_bundle_hash",
             "trace_binding_hash", "negative_prompt_manifest_hash",
+            "trace_rollout_contract_sha256",
         ):
             if len(str(matched_contract.get(key, ""))) != 64:
                 errors.append(f"matched workload identity missing: {key}")
+        if (
+            trace_rollout_contract is not None
+            and matched_contract.get("trace_rollout_contract_sha256")
+            != _canonical_hash(trace_rollout_contract)
+        ):
+            errors.append("matched workload trace rollout contract SHA changed")
 
     implementation_hashes = {_canonical_hash(value) for value in implementations}
     raw_implementation = implementations[0] if len(implementation_hashes) == 1 and implementations else None
@@ -504,6 +617,7 @@ def main() -> int:
         "expected_rank_cycle_receipts": WORLD_SIZE * args.cycles,
         "matched_contract": matched_contract,
         "workload_fingerprint": _canonical_hash(matched_contract) if matched_contract else None,
+        "trace_rollout_contract": trace_rollout_contract,
         "implementation_contract": implementation_contract,
         "implementation_fingerprint": _canonical_hash(implementation_contract) if implementation_contract else None,
         "sample_identity_contract": {

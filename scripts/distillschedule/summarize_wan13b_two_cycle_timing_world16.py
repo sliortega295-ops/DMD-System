@@ -20,13 +20,10 @@ EXPECTED_VERSIONS = (
     {"generator": 3, "critic": 15, "ema": 15},
     {"generator": 4, "critic": 20, "ema": 20},
 )
-EXPECTED_ROLLOUT = {
-    "call_count": 6,
-    "logical_call_count": 6,
-    "stage_call_count": {0: 2, 1: 1, 2: 3},
-    "logical_stage_call_count": {0: 2, 1: 1, 2: 3},
-    "dummy_call_count": 0,
-}
+EXPECTED_ROLLOUT_OPERATIONS = (
+    "step/10/generator/rollout",
+    *(f"step/{step}/critic/rollout" for step in range(10, 15)),
+)
 
 
 def _atomic_json(path: Path, value: Any) -> None:
@@ -40,6 +37,69 @@ def _canonical_hash(value: Any) -> str:
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
+
+
+def _normalize_rollout_contract(
+    value: Any, *, label: str, errors: list[str]
+) -> list[dict[str, Any]] | None:
+    if not isinstance(value, list) or len(value) != len(EXPECTED_ROLLOUT_OPERATIONS):
+        errors.append(f"{label}: trace rollout contract has the wrong operation count")
+        return None
+    result: list[dict[str, Any]] = []
+    for index, (row, expected_operation) in enumerate(
+        zip(value, EXPECTED_ROLLOUT_OPERATIONS, strict=True)
+    ):
+        if not isinstance(row, dict) or row.get("operation") != expected_operation:
+            errors.append(f"{label}: trace rollout operation {index} changed")
+            return None
+        raw = row.get("inventory")
+        if not isinstance(raw, dict):
+            errors.append(f"{label}: {expected_operation} inventory is missing")
+            return None
+        try:
+            required = {
+                "call_count",
+                "logical_call_count",
+                "stage_call_count",
+                "logical_stage_call_count",
+                "dummy_call_count",
+            }
+            if set(raw) != required:
+                raise ValueError("inventory fields changed")
+            normalized = dict(raw)
+            for key in ("stage_call_count", "logical_stage_call_count"):
+                stages = normalized[key]
+                if not isinstance(stages, dict) or not stages:
+                    raise TypeError(key)
+                converted: dict[int, int] = {}
+                for stage, count in stages.items():
+                    if isinstance(count, bool) or not isinstance(count, int) or count <= 0:
+                        raise TypeError(key)
+                    stage_index = int(stage)
+                    if stage_index in converted:
+                        raise ValueError(f"duplicate stage {stage_index}")
+                    converted[stage_index] = count
+                if sorted(converted) != list(range(len(converted))):
+                    raise ValueError("stage indices are not contiguous from zero")
+                normalized[key] = converted
+            for key in ("call_count", "logical_call_count", "dummy_call_count"):
+                if isinstance(normalized[key], bool) or not isinstance(normalized[key], int):
+                    raise TypeError(key)
+            if (
+                normalized["call_count"] <= 0
+                or normalized["call_count"] != normalized["logical_call_count"]
+                or normalized["stage_call_count"]
+                != normalized["logical_stage_call_count"]
+                or sum(normalized["stage_call_count"].values())
+                != normalized["call_count"]
+                or normalized["dummy_call_count"] != 0
+            ):
+                raise ValueError("inconsistent call inventory")
+        except (KeyError, TypeError, ValueError) as error:
+            errors.append(f"{label}: invalid {expected_operation} inventory: {error}")
+            return None
+        result.append({"operation": expected_operation, "inventory": normalized})
+    return result
 
 
 def _parse_manifest(path: Path, *, node: int, errors: list[str]) -> dict[str, str]:
@@ -242,6 +302,7 @@ def main() -> int:
     occurrences: list[str] = []
     cycle_values: dict[int, list[float]] = {1: [], 2: []}
     trajectory_comparison_hashes: set[str | None] = set()
+    trace_rollout_contracts: list[list[dict[str, Any]]] = []
     for rank in range(WORLD_SIZE):
         path = args.run_root / "execution" / "ranks" / f"rank_{rank:02d}.json"
         try:
@@ -303,6 +364,23 @@ def main() -> int:
             errors.append(f"rank{rank}: two-cycle update inventory changed")
         if row.get("finite_status") != [True, True]:
             errors.append(f"rank{rank}: finite gate failed")
+        trace_rollout_contract = _normalize_rollout_contract(
+            row.get("trace_rollout_contract"),
+            label=f"rank{rank}",
+            errors=errors,
+        )
+        if trace_rollout_contract is not None:
+            trace_rollout_contracts.append(trace_rollout_contract)
+            contract_hash = _canonical_hash(trace_rollout_contract)
+            if row.get("trace_rollout_contract_sha256") != contract_hash:
+                errors.append(f"rank{rank}: trace rollout contract SHA changed")
+            if (
+                row.get("matched_contract", {}).get(
+                    "trace_rollout_contract_sha256"
+                )
+                != contract_hash
+            ):
+                errors.append(f"rank{rank}: matched rollout contract SHA changed")
 
         cycles = row.get("cycles", [])
         if len(cycles) != 2:
@@ -335,16 +413,27 @@ def main() -> int:
                 if cycle.get(key) != expected:
                     errors.append(f"rank{rank}/cycle{index}: {key} changed")
             inventory = cycle.get("rollout_call_inventory", [])
+            operation_keys = cycle.get("rollout_operation_keys", [])
             if len(inventory) != 6:
                 errors.append(f"rank{rank}/cycle{index}: rollout inventory changed")
+            elif operation_keys != list(EXPECTED_ROLLOUT_OPERATIONS):
+                errors.append(f"rank{rank}/cycle{index}: rollout operation order changed")
+            elif trace_rollout_contract is None:
+                errors.append(
+                    f"rank{rank}/cycle{index}: trace rollout contract unavailable"
+                )
             else:
-                for call in inventory:
+                for call, expected in zip(
+                    inventory, trace_rollout_contract, strict=True
+                ):
                     normalized = dict(call)
                     for key in ("stage_call_count", "logical_stage_call_count"):
                         normalized[key] = {int(k): int(v) for k, v in normalized.get(key, {}).items()}
-                    for key, expected in EXPECTED_ROLLOUT.items():
-                        if normalized.get(key) != expected:
-                            errors.append(f"rank{rank}/cycle{index}: exact DiT {key} changed")
+                    if normalized != expected["inventory"]:
+                        errors.append(
+                            f"rank{rank}/cycle{index}: {expected['operation']} "
+                            "trace-derived DiT census changed"
+                        )
             payloads = cycle.get("sample_payload_identities", [])
             generator_payload = cycle.get("generator_trace_payload_identity")
             critic_payloads = cycle.get("critic_trace_payload_identities", [])
@@ -406,6 +495,18 @@ def main() -> int:
     if len(occurrences) != 192 or len(set(occurrences)) != 192:
         errors.append("expected 192 distinct cycle-qualified sample occurrences")
 
+    rollout_contract_hashes = {
+        _canonical_hash(contract) for contract in trace_rollout_contracts
+    }
+    trace_rollout_contract = (
+        trace_rollout_contracts[0]
+        if len(trace_rollout_contracts) == WORLD_SIZE
+        and len(rollout_contract_hashes) == 1
+        else None
+    )
+    if trace_rollout_contract is None:
+        errors.append("rank trace-derived rollout contracts differ or are incomplete")
+
     matched_hashes = {row.get("workload_fingerprint") for row in rows}
     matched_contract_hashes = {
         _canonical_hash(row.get("matched_contract", {})) for row in rows
@@ -415,6 +516,13 @@ def main() -> int:
     elif next(iter(matched_hashes)) != next(iter(matched_contract_hashes)):
         errors.append("workload fingerprint does not match matched contract")
     matched_contract = rows[0].get("matched_contract") if rows else None
+    if (
+        trace_rollout_contract is not None
+        and isinstance(matched_contract, dict)
+        and matched_contract.get("trace_rollout_contract_sha256")
+        != _canonical_hash(trace_rollout_contract)
+    ):
+        errors.append("world matched rollout contract SHA changed")
 
     implementation_hashes = {row.get("implementation_fingerprint") for row in rows}
     arm_hashes = {_canonical_hash(row.get("arm_contract", {})) for row in rows}
@@ -471,6 +579,7 @@ def main() -> int:
         "host_topology": {host: sorted(values) for host, values in sorted(hosts.items())},
         "cycles_in_same_process": 2,
         "matched_contract": matched_contract,
+        "trace_rollout_contract": trace_rollout_contract,
         "workload_fingerprint": next(iter(matched_hashes)) if len(matched_hashes) == 1 else None,
         "implementation_contract": implementation_contract,
         "implementation_fingerprint": next(iter(implementation_hashes)) if len(implementation_hashes) == 1 else None,

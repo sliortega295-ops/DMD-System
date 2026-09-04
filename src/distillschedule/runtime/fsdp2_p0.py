@@ -291,6 +291,114 @@ def validate_exact_rollout_call_inventory(
     }
 
 
+def expected_trace_rollout_call_inventory(
+    rank_control_validation: Mapping[str, Any],
+    *,
+    operation: str,
+    expected_rank_count: int | None = None,
+) -> dict[str, Any]:
+    """Return one rollout's exact census from the validated rank trace.
+
+    Helios samples a separate synchronized pyramid exit schedule for every
+    rollout operation.  Consequently, different steps can execute different
+    numbers of DiT forwards.  This helper deliberately derives the expected
+    receipt from ``StaticWorld16Trace.rank_control_validation`` instead of
+    imposing one uniform call inventory on all operations.
+    """
+
+    if rank_control_validation.get("status") != "PASS":
+        raise ValueError("rank trace schedule validation is not PASS")
+    if (
+        rank_control_validation.get("semantics")
+        != "official_helios_normal_rank0_broadcast_strict"
+    ):
+        raise ValueError("rank trace schedule uses unsupported semantics")
+    if rank_control_validation.get("cross_rank_call_count_parity") is not True:
+        raise ValueError("rank trace schedule lacks strict cross-rank parity")
+    local_exceptions = rank_control_validation.get("local_exception_entry_count")
+    if (
+        isinstance(local_exceptions, bool)
+        or not isinstance(local_exceptions, int)
+        or local_exceptions != 0
+    ):
+        raise ValueError("rank trace schedule contains local call-count exceptions")
+
+    rank_count = rank_control_validation.get("rank_count")
+    if isinstance(rank_count, bool) or not isinstance(rank_count, int) or rank_count <= 0:
+        raise TypeError("rank trace schedule has an invalid rank_count")
+    if expected_rank_count is not None and rank_count != expected_rank_count:
+        raise ValueError(
+            f"rank trace schedule rank_count {rank_count} != {expected_rank_count}"
+        )
+
+    rows = rank_control_validation.get("operations")
+    if not isinstance(rows, list) or not rows:
+        raise TypeError("rank trace schedule has no operation rows")
+    if rank_control_validation.get("operation_count") != len(rows):
+        raise ValueError("rank trace schedule operation_count is inconsistent")
+    if rank_control_validation.get("global_entry_count") != rank_count * len(rows):
+        raise ValueError("rank trace schedule global_entry_count is inconsistent")
+    matches = [
+        row
+        for row in rows
+        if isinstance(row, Mapping) and row.get("operation") == operation
+    ]
+    if len(matches) != 1:
+        raise ValueError(
+            f"rank trace schedule operation {operation!r} matched {len(matches)} rows"
+        )
+    row = matches[0]
+    if row.get("rank_count") != rank_count:
+        raise ValueError(f"{operation} rank-count receipt is inconsistent")
+
+    exits = row.get("synchronized_exit")
+    stage_calls = row.get("per_stage_call_counts")
+    if (
+        not isinstance(exits, list)
+        or not exits
+        or not isinstance(stage_calls, list)
+        or len(stage_calls) != len(exits)
+    ):
+        raise TypeError(f"{operation} has a malformed synchronized stage schedule")
+
+    normalized_stages: dict[int, int] = {}
+    for stage, (raw_exit, raw_calls) in enumerate(zip(exits, stage_calls, strict=True)):
+        if (
+            isinstance(raw_exit, bool)
+            or not isinstance(raw_exit, int)
+            or raw_exit < 0
+            or isinstance(raw_calls, bool)
+            or not isinstance(raw_calls, int)
+            or raw_calls <= 0
+        ):
+            raise TypeError(f"{operation} stage {stage} has an invalid exit/call count")
+        if raw_calls != raw_exit + 1:
+            raise ValueError(
+                f"{operation} stage {stage} call count does not equal exit + 1"
+            )
+        normalized_stages[stage] = int(raw_calls)
+
+    logical = row.get("logical_call_count")
+    physical = row.get("physical_call_count")
+    if (
+        isinstance(logical, bool)
+        or not isinstance(logical, int)
+        or isinstance(physical, bool)
+        or not isinstance(physical, int)
+    ):
+        raise TypeError(f"{operation} has invalid logical/physical call counts")
+    if logical <= 0 or physical != logical or logical != sum(normalized_stages.values()):
+        raise ValueError(f"{operation} has an inconsistent exact call census")
+
+    return {
+        "call_count": physical,
+        "stage_call_count": normalized_stages,
+        "logical_call_count": logical,
+        "logical_stage_call_count": dict(normalized_stages),
+        "dummy_call_count": 0,
+    }
+
+
 def _canonical(value: Any) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
 
@@ -637,6 +745,7 @@ __all__ = [
     "chunked",
     "create_device_mesh",
     "estimate_rollout_collective_groups",
+    "expected_trace_rollout_call_inventory",
     "make_batched_loaded_entry",
     "mesh_shape_for_policy",
     "pack_score_conditions",
