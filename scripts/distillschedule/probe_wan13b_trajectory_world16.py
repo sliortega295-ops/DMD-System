@@ -68,7 +68,7 @@ from runtime.static_world16_trace import StaticWorld16Trace  # noqa: E402
 WORLD_SIZE = 16
 SOURCE_STEPS = tuple(range(10, 15))
 ANCHOR_CYCLES = frozenset({1, 10, 25, 50})
-REGISTERED_CYCLE_COUNTS = frozenset({1, 5, 50})
+REGISTERED_CYCLE_COUNTS = frozenset({1, 2, 5, 50})
 RESIDENT_WINNER = "resident-async128-tree-chunk2048"
 FSDP_BASELINE = "world16-fsdp"
 
@@ -303,7 +303,7 @@ def main() -> int:
     args.profile_mode = False
     args.trajectory_mode = True
     if args.trajectory_cycles not in REGISTERED_CYCLE_COUNTS:
-        raise ValueError("trajectory cycles must be one of 1, 5, or 50")
+        raise ValueError("trajectory cycles must be one of 1, 2, 5, or 50")
     if args.trajectory_seed < 0:
         raise ValueError("trajectory seed must be non-negative")
     if args.placement not in {RESIDENT_WINNER, FSDP_BASELINE}:
@@ -394,11 +394,14 @@ def main() -> int:
             raise ValueError("trace bundle identity changed")
         if Path(bootstrap.manifest["model_root"]).resolve() != args.model_root.resolve():
             raise ValueError("bootstrap/model-root path identity changed")
+        negative_asset = NegativePromptAsset.load(args.negative_prompt)
         result["identities"] = {
             "bootstrap_hash": bootstrap.manifest_hash,
+            "model_identity_sha256": bootstrap.manifest["model_identity_sha256"],
             "trace_bundle_hash": trace.bundle_hash,
             "trace_binding_hash": trace.binding_hash,
             "trace_replay_policy": "FIXED_FIVE_STEP_COHORT_REPLAY",
+            "negative_prompt_manifest_hash": negative_asset.manifest["manifest_hash"],
         }
         result["contract"] = {
             "source_logical_steps": list(SOURCE_STEPS),
@@ -420,7 +423,7 @@ def main() -> int:
             dist.barrier()
             return 0
 
-        negative = NegativePromptAsset.load(args.negative_prompt).embedding.to(
+        negative = negative_asset.embedding.to(
             device=device, dtype=torch.bfloat16
         )
         generator_engine, critic_engine, ema, build = base._build_engines(
@@ -550,9 +553,38 @@ def main() -> int:
                 raise AssertionError("continuous trajectory changed no-GAN Score forward inventory")
             rollout_inventory = [generator_record["rollout"], *rollout_records]
             for inventory_index, row in enumerate(rollout_inventory):
-                validate_exact_rollout_call_inventory(
+                inventory = validate_exact_rollout_call_inventory(
                     row, label=f"cycle{cycle}.rollout{inventory_index}"
                 )
+                expected_inventory = {
+                    "call_count": 6,
+                    "logical_call_count": 6,
+                    "stage_call_count": {0: 2, 1: 1, 2: 3},
+                    "logical_stage_call_count": {0: 2, 1: 1, 2: 3},
+                    "dummy_call_count": 0,
+                }
+                if inventory != expected_inventory:
+                    raise AssertionError(
+                        f"cycle{cycle}.rollout{inventory_index} exact DiT census changed"
+                    )
+            critic_steps = [int(row.get("logical_step", -1)) for row in critic_records]
+            if critic_steps != list(SOURCE_STEPS) or any(
+                int(row.get("score_forwards", -1)) != 1 for row in critic_records
+            ):
+                raise AssertionError("continuous trajectory changed Critic Score/step census")
+
+            generator_payload = str(
+                generator_record["rollout"].get("trace_identity_sha256", "")
+            )
+            critic_payloads = tuple(
+                str(row.get("member_trace_identities", [""])[0])
+                for row in rollout_records
+            )
+            if len(generator_payload) != 64 or any(
+                len(value) != 64 for value in critic_payloads
+            ):
+                raise AssertionError("trajectory is missing consumed trace payload identity")
+            sample_payloads = (generator_payload, *critic_payloads)
 
             state_fingerprints: dict[str, str] = {}
             anchor_artifact = None
@@ -583,24 +615,28 @@ def main() -> int:
                 expected_total_cycles=args.trajectory_cycles,
                 logical_step=10 + (cycle - 1) * 5,
                 matched_contract={
+                    "bootstrap_hash": bootstrap.manifest_hash,
+                    "model_identity_sha256": bootstrap.manifest["model_identity_sha256"],
                     "trace_bundle_hash": trace.bundle_hash,
                     "trace_binding_hash": trace.binding_hash,
                     "trace_replay_policy": "FIXED_FIVE_STEP_COHORT_REPLAY",
+                    "negative_prompt_manifest_hash": negative_asset.manifest["manifest_hash"],
+                    "seed": str(args.trajectory_seed),
                     "global_batch": "16",
                     "updates": "G1_C5_EMA5",
-                    "score_packing": "off",
-                    "rollout_batch": "B1",
+                    "score_packing": "false",
+                    "rollout_batch_size": "1",
                 },
                 implementation={
                     "placement": args.placement,
                     "arm_id": args.trajectory_arm_id,
+                    "trajectory_arm_id": args.trajectory_arm_id,
                     "arm_contract": result["arm_contract"],
+                    "generator_nograd_lora_fused_epilogue": str(fused_epilogue).lower(),
+                    "generator_nograd_lora_cast_cache": str(cast_cache).lower(),
                     "worker": "probe_wan13b_trajectory_world16.py",
                 },
-                sample_identities=(
-                    f"cycle={cycle}/generator/source_step=10/rank={rank}",
-                    *(f"cycle={cycle}/critic/source_step={step}/rank={rank}" for step in SOURCE_STEPS),
-                ),
+                sample_identities=sample_payloads,
                 rng_identities={
                     "runtime_seed": str(runtime_seed),
                     "generator": f"{trace.binding_hash}/rank={rank}/generator/step=10",
@@ -620,6 +656,13 @@ def main() -> int:
                     "generator_score_forwards": int(generator_record["physical_score_forwards"]),
                     "critic_score_forwards": 5,
                     "physical_rollout_batches": 5,
+                    "rollout_batch_size": 1,
+                    "rollout_inventory_count": len(rollout_inventory),
+                    "rollout_call_count_each": 6,
+                    "rollout_stage0_calls_each": 2,
+                    "rollout_stage1_calls_each": 1,
+                    "rollout_stage2_calls_each": 3,
+                    "rollout_dummy_calls_total": 0,
                 },
                 losses={
                     "generator": generator_loss if finite else None,

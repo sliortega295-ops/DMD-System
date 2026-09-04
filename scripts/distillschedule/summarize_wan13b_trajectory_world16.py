@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import os
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +16,18 @@ from distillschedule.evidence.trajectory_state_sketch import (
 )
 
 
-REGISTERED_CYCLE_COUNTS = frozenset({1, 5, 50})
+WORLD_SIZE = 16
+REGISTERED_CYCLE_COUNTS = frozenset({1, 2, 5, 50})
+RESIDENT_WINNER = "resident-async128-tree-chunk2048"
+FSDP_BASELINE = "world16-fsdp"
+REGISTERED_PLACEMENTS = frozenset({RESIDENT_WINNER, FSDP_BASELINE})
+EXPECTED_ROLLOUT = {
+    "call_count": 6,
+    "logical_call_count": 6,
+    "stage_call_count": {0: 2, 1: 1, 2: 3},
+    "logical_stage_call_count": {0: 2, 1: 1, 2: 3},
+    "dummy_call_count": 0,
+}
 
 
 def _atomic_json(path: Path, value: Any) -> None:
@@ -23,6 +35,163 @@ def _atomic_json(path: Path, value: Any) -> None:
     temporary = path.with_suffix(path.suffix + f".tmp-{os.getpid()}")
     temporary.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
     os.replace(temporary, path)
+
+
+def _canonical_hash(value: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
+def _read_manifest(path: Path, *, node: int, errors: list[str]) -> dict[str, str]:
+    try:
+        value = {
+            key: item
+            for line in path.read_text().splitlines()
+            if "=" in line
+            for key, item in (line.split("=", 1),)
+        }
+    except OSError as error:
+        errors.append(f"node{node}: invalid launch manifest: {error}")
+        return {}
+    required = {
+        "mode": "trajectory",
+        "world_size": "16",
+        "global_batch": "16",
+        "rollout_batch_size": "1",
+        "score_packing": "false",
+        "parameter_offload": "false",
+        "activation_offload": "false",
+        "optimizer_offload": "false",
+        "parameter_streaming": "false",
+        "model_swap": "false",
+        "claim_boundary": "DIAGNOSTIC_ONLY",
+    }
+    for key, expected in required.items():
+        if value.get(key) != expected:
+            errors.append(f"node{node}: launch manifest {key} changed")
+    return value
+
+
+def _cgroup_counts(path: Path) -> dict[str, int]:
+    try:
+        return {
+            key: int(value)
+            for line in path.read_text().splitlines()
+            if len(parts := line.split()) == 2
+            for key, value in (parts,)
+        }
+    except (OSError, ValueError):
+        return {}
+
+
+def _cgroup_delta(run_root: Path, *, node: int, errors: list[str]) -> dict[str, Any]:
+    root = run_root / "launcher" / f"node_{node}"
+    before = _cgroup_counts(root / "cgroup_memory_events_before.txt")
+    after = _cgroup_counts(root / "cgroup_memory_events_after.txt")
+    if not before or not after:
+        errors.append(f"node{node}: cgroup before/after receipt missing")
+        return {"status": "MISSING"}
+    missing = [key for key in ("oom", "oom_kill") if key not in before or key not in after]
+    if missing:
+        errors.append(f"node{node}: cgroup counters missing: {missing}")
+        return {"status": "MISSING", "missing": missing}
+    deltas = {
+        key: int(after.get(key, 0) - before.get(key, 0))
+        for key in sorted(set(before) | set(after))
+    }
+    if any(value < 0 for value in deltas.values()):
+        errors.append(f"node{node}: cgroup counters moved backwards")
+    for key in ("oom", "oom_kill"):
+        if deltas.get(key, 0) != 0:
+            errors.append(f"node{node}: cgroup {key} delta is nonzero")
+    return {"status": "PASS", **{f"{key}_delta": value for key, value in deltas.items()}}
+
+
+def _validate_runtime_build(
+    final: dict[str, Any], *, placement: str, cycles: int, rank: int, errors: list[str]
+) -> dict[str, Any]:
+    build = final.get("build", {})
+    static = build.get("static_residency", {})
+    required_static = {
+        "parameter_offload": False,
+        "activation_offload": False,
+        "optimizer_offload": False,
+        "frozen_parameter_streaming": False,
+        "role_transition": False,
+        "model_swap": False,
+        "residual_storage": "cuda_out_of_place",
+        "ema_device": "cuda",
+    }
+    for key, expected in required_static.items():
+        if static.get(key) != expected:
+            errors.append(f"rank{rank}: static residency {key} changed")
+    runtime_hashes: set[str] = set()
+    for role in ("generator", "critic"):
+        component = build.get(role, {})
+        metadata = component.get("metadata", {})
+        placement_receipt = component.get("placement", {})
+        residual = metadata.get("chunked_residual_runtime", {})
+        if metadata.get("chunked_residual_storage") != "cuda_out_of_place":
+            errors.append(f"rank{rank}/{role}: residual storage is not CUDA")
+        if residual.get("requested_storage") != "cuda_out_of_place" or residual.get("storage_capable") is not True:
+            errors.append(f"rank{rank}/{role}: CUDA residual runtime contract changed")
+        source = residual.get("transformer_source_sha256")
+        if isinstance(source, str) and len(source) == 64:
+            runtime_hashes.add(source)
+        else:
+            errors.append(f"rank{rank}/{role}: residual runtime identity missing")
+        if placement_receipt.get("trainable_parameter_dtypes") != ["torch.float32"]:
+            errors.append(f"rank{rank}/{role}: LoRA dtype changed")
+        if "torch.bfloat16" not in placement_receipt.get("frozen_parameter_dtypes", []):
+            errors.append(f"rank{rank}/{role}: frozen dtype changed")
+        if placement_receipt.get("gradient_reduction") != "SUM_THEN_DIVIDE_WORLD_SIZE":
+            errors.append(f"rank{rank}/{role}: gradient mean convention changed")
+        if component.get("engine", {}).get("optimizer_implementation") != "PYTORCH_DEFAULT":
+            errors.append(f"rank{rank}/{role}: optimizer implementation changed")
+        dtype = component.get("lora_compute_dtype_contract", {})
+        if dtype.get("frozen_base") != "torch.bfloat16" or dtype.get("trainable_lora") != "torch.float32":
+            errors.append(f"rank{rank}/{role}: runtime compute dtype contract changed")
+        if placement == RESIDENT_WINNER:
+            modulation = metadata.get("modulation_chunk_runtime", {})
+            if modulation.get("effective_tokens") != [2048] or modulation.get("block_count") != 30 or modulation.get("all_blocks_match") is not True:
+                errors.append(f"rank{rank}/{role}: modulation chunk2048 contract changed")
+    if len(runtime_hashes) != 1:
+        errors.append(f"rank{rank}: Generator/Critic residual runtime identities differ")
+
+    generator = (
+        build.get("generator", {})
+        .get("metadata", {})
+        .get("generator_nograd_lora_fused_epilogue", {})
+    )
+    critic = (
+        build.get("critic", {})
+        .get("metadata", {})
+        .get("generator_nograd_lora_fused_epilogue", {})
+    )
+    if placement == RESIDENT_WINNER:
+        expected_counts = {
+            "model_call_count": 28 * cycles,
+            "fused_invocation_count": 8_540 * cycles,
+            "reference_fallback_count": 112 * cycles,
+        }
+        if generator.get("requested") is not True or generator.get("enabled") is not True:
+            errors.append(f"rank{rank}: fused epilogue is not enabled")
+        for key, expected in expected_counts.items():
+            if int(generator.get(key, -1)) != expected:
+                errors.append(f"rank{rank}: fused epilogue {key} changed")
+        if generator.get("reference_fallback_reasons") != {
+            "BASE_DTYPE_torch.float32": 112 * cycles
+        }:
+            errors.append(f"rank{rank}: fused epilogue fallback reason changed")
+        if critic.get("enabled") is not False or critic.get("disabled_reason") != "GENERATOR_ONLY":
+            errors.append(f"rank{rank}: Critic entered Generator fused epilogue")
+    elif generator.get("requested") or generator.get("enabled") or critic.get("enabled"):
+        errors.append(f"rank{rank}: FSDP correctness run enabled Resident-only epilogue")
+    return {
+        "helios_transformer_sha256": next(iter(runtime_hashes)) if len(runtime_hashes) == 1 else None,
+        "fused_epilogue": generator,
+    }
 
 
 def main() -> int:
@@ -35,54 +204,57 @@ def main() -> int:
     args = parser.parse_args()
     errors: list[str] = []
     if args.cycles not in REGISTERED_CYCLE_COUNTS:
-        errors.append("trajectory cycles must be one of 1, 5, or 50")
-    rank_rows: dict[int, list[Any]] = {}
-    launch_identities: list[tuple[str | None, ...]] = []
-    for node in range(2):
-        path = args.run_root / "launcher" / f"node_{node}" / "launch_manifest.txt"
-        try:
-            manifest = {
-                key: value
-                for line in path.read_text().splitlines()
-                if "=" in line
-                for key, value in (line.split("=", 1),)
-            }
-        except OSError as error:
-            errors.append(f"node{node}: invalid launch manifest: {error}")
-            continue
+        errors.append("trajectory cycles must be one of 1, 2, 5, or 50")
+    if args.placement not in REGISTERED_PLACEMENTS:
+        errors.append("trajectory placement is not a registered comparison arm")
+
+    manifests = [
+        _read_manifest(
+            args.run_root / "launcher" / f"node_{node}" / "launch_manifest.txt",
+            node=node,
+            errors=errors,
+        )
+        for node in range(2)
+    ]
+    for node, manifest in enumerate(manifests):
         if manifest.get("dmd_system_head") != args.expected_head:
             errors.append(f"node{node}: launch HEAD differs from expected HEAD")
         if manifest.get("trajectory_cycles") != str(args.cycles):
             errors.append(f"node{node}: launch trajectory cycle count changed")
-        if manifest.get("claim_boundary") != "DIAGNOSTIC_ONLY":
-            errors.append(f"node{node}: trajectory claim boundary changed")
         if manifest.get("placement") != args.placement:
             errors.append(f"node{node}: launch placement changed")
-        launch_identities.append(
-            (
-                manifest.get("run_id"),
-                manifest.get("trajectory_seed"),
-                manifest.get("trajectory_arm_id"),
-                manifest.get("trace_hash"),
-                manifest.get("bootstrap_hash"),
-            )
-        )
-    if launch_identities and len(set(launch_identities)) != 1:
+    identity_keys = (
+        "run_id", "dmd_system_head", "trajectory_seed", "trajectory_arm_id",
+        "trace_hash", "bootstrap_hash", "generator_nograd_lora_fused_epilogue",
+        "generator_nograd_lora_cast_cache", "nccl_algo",
+    )
+    manifest_identities = {
+        tuple(manifest.get(key) for key in identity_keys) for manifest in manifests if manifest
+    }
+    if len(manifest_identities) != 1:
         errors.append("node launch identities differ")
-    for rank in range(16):
-        path = args.run_root / "execution" / "trajectory" / f"rank_{rank:02d}.jsonl"
-        if not path.is_file():
-            errors.append(f"rank{rank}: missing trajectory JSONL")
-            continue
+
+    rank_rows: dict[int, list[Any]] = {}
+    finals: dict[int, dict[str, Any]] = {}
+    payloads_by_cycle: dict[int, list[str]] = defaultdict(list)
+    generator_payloads_by_cycle: dict[int, list[str]] = defaultdict(list)
+    critic_payloads_by_cycle: dict[int, list[str]] = defaultdict(list)
+    payload_mapping_by_cycle: dict[int, dict[tuple[int, int], str]] = defaultdict(dict)
+    occurrences: list[str] = []
+    matched_contracts: list[dict[str, Any]] = []
+    implementations: list[dict[str, Any]] = []
+    hosts: dict[str, list[int]] = defaultdict(list)
+    runtime_receipts: list[dict[str, Any]] = []
+    for rank in range(WORLD_SIZE):
+        trajectory_path = args.run_root / "execution" / "trajectory" / f"rank_{rank:02d}.jsonl"
         try:
-            rows = load_trajectory_jsonl(path)
+            rows = load_trajectory_jsonl(trajectory_path)
         except (TypeError, ValueError, OSError) as error:
             errors.append(f"rank{rank}: invalid trajectory JSONL: {error}")
             continue
         rank_rows[rank] = rows
         if len(rows) != args.cycles:
             errors.append(f"rank{rank}: cycles {len(rows)} != {args.cycles}")
-            continue
         for cycle, row in enumerate(rows, 1):
             if row.rank != rank or row.cycle != cycle:
                 errors.append(f"rank{rank}: non-contiguous cycle identity")
@@ -90,88 +262,190 @@ def main() -> int:
                 errors.append(f"rank{rank}: placement changed")
             if dict(row.cycle_updates) != {"generator": 1, "critic": 5, "ema": 5}:
                 errors.append(f"rank{rank}: cycle{cycle} update inventory changed")
-            if dict(row.cumulative_updates) != {
-                "generator": cycle,
-                "critic": cycle * 5,
-                "ema": cycle * 5,
-            }:
+            if dict(row.cumulative_updates) != {"generator": cycle, "critic": 5 * cycle, "ema": 5 * cycle}:
                 errors.append(f"rank{rank}: cycle{cycle} cumulative inventory changed")
-            expected_versions = {
-                "generator": 2 + cycle,
-                "critic": 10 + cycle * 5,
-                "ema": 10 + cycle * 5,
-            }
-            if dict(row.versions) != expected_versions:
+            if dict(row.versions) != {"generator": 2 + cycle, "critic": 10 + 5 * cycle, "ema": 10 + 5 * cycle}:
                 errors.append(f"rank{rank}: cycle{cycle} versions changed")
             if not row.finite or row.runtime_status != "PASS":
                 errors.append(f"rank{rank}: cycle{cycle} is non-finite/failed")
-            if len(row.sample_identities) != 6:
-                errors.append(f"rank{rank}: cycle{cycle} sample inventory changed")
-            if row.call_census.get("generator_score_forwards") != 3:
-                errors.append(f"rank{rank}: cycle{cycle} Generator Score census changed")
-            if row.call_census.get("critic_score_forwards") != 5:
-                errors.append(f"rank{rank}: cycle{cycle} Critic Score census changed")
-            if row.call_census.get("physical_rollout_batches") != 5:
-                errors.append(f"rank{rank}: cycle{cycle} physical rollout census changed")
+            if len(row.sample_identities) != 6 or any(len(str(item)) != 64 for item in row.sample_identities):
+                errors.append(f"rank{rank}: cycle{cycle} trace payload inventory changed")
+            payloads_by_cycle[cycle].extend(str(item) for item in row.sample_identities)
+            for slot, item in enumerate(row.sample_identities):
+                payload_mapping_by_cycle[cycle][(rank, slot)] = str(item)
+            if row.sample_identities:
+                generator_payloads_by_cycle[cycle].append(str(row.sample_identities[0]))
+                critic_payloads_by_cycle[cycle].extend(
+                    str(item) for item in row.sample_identities[1:]
+                )
+            occurrences.extend(
+                f"cycle={cycle}/rank={rank}/slot={slot}/payload={payload}"
+                for slot, payload in enumerate(row.sample_identities)
+            )
+            required_census = {
+                "generator_update_rollout_dit": 6,
+                "generator_critic_rollout_dit": 30,
+                "generator_score_forwards": 3,
+                "critic_score_forwards": 5,
+                "physical_rollout_batches": 5,
+                "rollout_batch_size": 1,
+                "rollout_inventory_count": 6,
+                "rollout_call_count_each": 6,
+                "rollout_stage0_calls_each": 2,
+                "rollout_stage1_calls_each": 1,
+                "rollout_stage2_calls_each": 3,
+                "rollout_dummy_calls_total": 0,
+            }
+            for key, expected in required_census.items():
+                if row.call_census.get(key) != expected:
+                    errors.append(f"rank{rank}: cycle{cycle} {key} changed")
+            matched_contracts.append(dict(row.matched_contract))
+            implementations.append(dict(row.implementation))
+
         final_path = args.run_root / "execution" / "ranks" / f"rank_{rank:02d}.json"
         try:
             final = json.loads(final_path.read_text())
-        except (FileNotFoundError, json.JSONDecodeError) as error:
+        except (OSError, json.JSONDecodeError) as error:
             errors.append(f"rank{rank}: invalid final rank receipt: {error}")
             continue
-        expected_final_versions = {
-            "generator": 2 + args.cycles,
-            "critic": 10 + 5 * args.cycles,
-            "ema": 10 + 5 * args.cycles,
-        }
+        finals[rank] = final
         if final.get("status") != "PASS" or final.get("rank") != rank:
             errors.append(f"rank{rank}: final rank receipt is not PASS")
-        if final.get("placement") != args.placement:
-            errors.append(f"rank{rank}: final rank placement changed")
+        if final.get("placement") != args.placement or final.get("world_size") != WORLD_SIZE:
+            errors.append(f"rank{rank}: final placement/world changed")
         if final.get("completed_cycles") != args.cycles:
             errors.append(f"rank{rank}: final completed-cycle count changed")
-        if final.get("updates") != {
-            "generator": args.cycles,
-            "critic": 5 * args.cycles,
-            "ema": 5 * args.cycles,
-        }:
-            errors.append(f"rank{rank}: final update inventory changed")
-        if final.get("final_versions") != expected_final_versions:
+        expected_final = {"generator": 2 + args.cycles, "critic": 10 + 5 * args.cycles, "ema": 10 + 5 * args.cycles}
+        if final.get("final_versions") != expected_final:
             errors.append(f"rank{rank}: final versions changed")
-    fingerprints = {
-        (
-            row.matched_contract.get("trace_bundle_hash"),
-            row.matched_contract.get("trace_binding_hash"),
-            row.seed,
+        if final.get("updates") != {"generator": args.cycles, "critic": 5 * args.cycles, "ema": 5 * args.cycles}:
+            errors.append(f"rank{rank}: final update inventory changed")
+        local_rank = final.get("local_rank")
+        hostname = final.get("hostname")
+        if not isinstance(hostname, str) or not isinstance(local_rank, int):
+            errors.append(f"rank{rank}: host/local-rank identity missing")
+        else:
+            hosts[hostname].append(local_rank)
+        runtime_receipts.append(
+            _validate_runtime_build(final, placement=args.placement, cycles=args.cycles, rank=rank, errors=errors)
         )
-        for rows in rank_rows.values()
-        for row in rows
+
+    if len(rank_rows) != WORLD_SIZE or len(finals) != WORLD_SIZE:
+        errors.append("trajectory requires 16/16 rank receipts")
+    if len(hosts) != 2 or any(sorted(local_ranks) != list(range(8)) for local_ranks in hosts.values()):
+        errors.append(f"trajectory topology is not two hosts x local-rank0..7: {dict(hosts)}")
+    for cycle in range(1, args.cycles + 1):
+        values = payloads_by_cycle.get(cycle, [])
+        if len(values) != 96 or len(set(values)) != 96:
+            errors.append(f"cycle{cycle}: expected 96 unique rank-qualified sample payloads")
+        if len(set(generator_payloads_by_cycle[cycle])) != 16:
+            errors.append(f"cycle{cycle}: expected 16 unique Generator payloads")
+        critic_values = critic_payloads_by_cycle[cycle]
+        if len(critic_values) != 80 or len(set(critic_values)) != 80:
+            errors.append(f"cycle{cycle}: expected 80 unique Critic payloads")
+    if args.cycles >= 2 and any(
+        payload_mapping_by_cycle[cycle] != payload_mapping_by_cycle[1]
+        for cycle in range(2, args.cycles + 1)
+    ):
+        errors.append(
+            "fixed five-step payload rank-slot mapping was not replayed across cycles"
+        )
+    if len(occurrences) != 96 * args.cycles or len(set(occurrences)) != 96 * args.cycles:
+        errors.append("cycle-qualified sample occurrence inventory changed")
+
+    contract_hashes = {_canonical_hash(value) for value in matched_contracts}
+    raw_matched = matched_contracts[0] if len(contract_hashes) == 1 and matched_contracts else None
+    matched_contract = (
+        {
+            "bootstrap_hash": raw_matched.get("bootstrap_hash"),
+            "model_identity_sha256": raw_matched.get("model_identity_sha256"),
+            "trace_bundle_hash": raw_matched.get("trace_bundle_hash"),
+            "trace_binding_hash": raw_matched.get("trace_binding_hash"),
+            "trace_replay_policy": raw_matched.get("trace_replay_policy"),
+            "negative_prompt_manifest_hash": raw_matched.get("negative_prompt_manifest_hash"),
+            "seed": int(raw_matched.get("seed", -1)),
+            "global_batch": int(raw_matched.get("global_batch", -1)),
+            "updates": raw_matched.get("updates"),
+            "score_packing": raw_matched.get("score_packing", "").lower() == "true",
+            "rollout_batch_size": int(raw_matched.get("rollout_batch_size", -1)),
+        }
+        if raw_matched is not None
+        else None
+    )
+    if len(contract_hashes) != 1:
+        errors.append("rank/cycle matched workload identities differ")
+    expected_matched = {
+        "trace_replay_policy": "FIXED_FIVE_STEP_COHORT_REPLAY",
+        "global_batch": 16,
+        "updates": "G1_C5_EMA5",
+        "score_packing": False,
+        "rollout_batch_size": 1,
     }
-    if len(fingerprints) != 1:
-        errors.append(f"mixed matched identities: {sorted(fingerprints)}")
+    if matched_contract is not None:
+        for key, expected in expected_matched.items():
+            if matched_contract.get(key) != expected:
+                errors.append(f"matched workload contract changed: {key}")
+        for key in (
+            "bootstrap_hash", "model_identity_sha256", "trace_bundle_hash",
+            "trace_binding_hash", "negative_prompt_manifest_hash",
+        ):
+            if len(str(matched_contract.get(key, ""))) != 64:
+                errors.append(f"matched workload identity missing: {key}")
+
+    implementation_hashes = {_canonical_hash(value) for value in implementations}
+    raw_implementation = implementations[0] if len(implementation_hashes) == 1 and implementations else None
+    implementation_contract = (
+        {
+            "placement": raw_implementation.get("placement"),
+            "arm_id": raw_implementation.get("arm_id"),
+            "trajectory_arm_id": raw_implementation.get("trajectory_arm_id"),
+            "arm_contract": raw_implementation.get("arm_contract"),
+            "generator_nograd_lora_fused_epilogue": (
+                raw_implementation.get("generator_nograd_lora_fused_epilogue", "").lower() == "true"
+            ),
+            "generator_nograd_lora_cast_cache": (
+                raw_implementation.get("generator_nograd_lora_cast_cache", "").lower() == "true"
+            ),
+            "worker": raw_implementation.get("worker"),
+        }
+        if raw_implementation is not None
+        else None
+    )
+    if len(implementation_hashes) != 1:
+        errors.append("rank/cycle implementation identities differ")
+    expected_arm = (
+        "RESIDENT_ASYNC128_TREE_CHUNK2048_FUSED_EPILOGUE"
+        if args.placement == RESIDENT_WINNER
+        else "WORLD16_FSDP_BASELINE"
+    )
+    if implementation_contract is not None and implementation_contract.get("arm_contract") != expected_arm:
+        errors.append("trajectory implementation arm contract changed")
+    if implementation_contract is not None:
+        if implementation_contract.get("placement") != args.placement:
+            errors.append("trajectory implementation placement changed")
+        if not implementation_contract.get("trajectory_arm_id"):
+            errors.append("trajectory implementation arm id is missing")
+        expected_fused = args.placement == RESIDENT_WINNER
+        if implementation_contract.get("generator_nograd_lora_fused_epilogue") is not expected_fused:
+            errors.append("trajectory fused-epilogue arm flag changed")
+        if implementation_contract.get("generator_nograd_lora_cast_cache") is not False:
+            errors.append("trajectory unexpectedly enabled rejected cast cache")
+
     expected_anchor_cycles = sorted(
         {cycle for cycle in (1, 10, 25, 50, args.cycles) if cycle <= args.cycles}
     )
     anchors: list[dict[str, Any]] = []
     for cycle in expected_anchor_cycles:
-        path = (
-            args.run_root
-            / "execution"
-            / "trajectory"
-            / "anchors"
-            / f"cycle_{cycle:02d}_global.json"
-        )
+        path = args.run_root / "execution" / "trajectory" / "anchors" / f"cycle_{cycle:02d}_global.json"
         try:
             anchor = json.loads(path.read_text())
-        except (FileNotFoundError, json.JSONDecodeError) as error:
+        except (OSError, json.JSONDecodeError) as error:
             errors.append(f"cycle{cycle}: invalid numeric state anchor: {error}")
             continue
         recorded = anchor.get("anchor_sha256")
         canonical = dict(anchor)
         canonical.pop("anchor_sha256", None)
-        actual = hashlib.sha256(
-            json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode()
-        ).hexdigest()
+        actual = _canonical_hash(canonical)
         if recorded != actual:
             errors.append(f"cycle{cycle}: state anchor SHA mismatch")
         if anchor.get("schema_version") != "distillschedule.wan13b_trajectory_state_anchor.v2":
@@ -180,11 +454,8 @@ def main() -> int:
             errors.append(f"cycle{cycle}: state anchor identity changed")
         components = dict(anchor.get("components", {}))
         expected_components = {
-            "generator_trainable",
-            "generator_adam",
-            "generator_ema",
-            "critic_trainable",
-            "critic_adam",
+            "generator_trainable", "generator_adam", "generator_ema",
+            "critic_trainable", "critic_adam",
         }
         if set(components) != expected_components:
             errors.append(f"cycle{cycle}: numeric state component inventory changed")
@@ -192,33 +463,66 @@ def main() -> int:
             sketch = dict(evidence.get("numeric_sketch", {}))
             if sketch.get("schema_version") != STATE_SKETCH_SCHEMA_VERSION:
                 errors.append(f"cycle{cycle}: {component} numeric sketch schema changed")
-            if sketch.get("world_size") != 16:
-                errors.append(f"cycle{cycle}: {component} sketch world size changed")
-            if sketch.get("replica_validation") != (
-                "ALL_RANKS_CONTRIBUTE_SAMPLED_COORDINATES_MUST_MATCH"
-            ):
+            if sketch.get("world_size") != WORLD_SIZE or int(sketch.get("coordinate_count", 0)) <= 0:
+                errors.append(f"cycle{cycle}: {component} numeric sketch is incomplete")
+            if sketch.get("replica_validation") != "ALL_RANKS_CONTRIBUTE_SAMPLED_COORDINATES_MUST_MATCH":
                 errors.append(f"cycle{cycle}: {component} replica agreement is unverified")
-            if int(sketch.get("coordinate_count", 0)) <= 0:
-                errors.append(f"cycle{cycle}: {component} has no numeric coordinates")
-            if not sketch.get("coordinates"):
-                errors.append(f"cycle{cycle}: {component} coordinate values are missing")
-            if evidence.get("global_moments", {}).get("status") != "PASS":
-                errors.append(f"cycle{cycle}: {component} global moments are invalid")
+            if not sketch.get("coordinates") or evidence.get("global_moments", {}).get("status") != "PASS":
+                errors.append(f"cycle{cycle}: {component} numeric evidence is incomplete")
         anchors.append({"cycle": cycle, "path": str(path), "sha256": recorded})
+
+    cgroup = [_cgroup_delta(args.run_root, node=node, errors=errors) for node in range(2)]
+    run_id = manifests[0].get("run_id") if manifests else None
+    teardown: list[dict[str, Any]] = []
+    for node in range(2):
+        path = args.run_root / "launcher" / f"node_{node}" / "teardown_status.txt"
+        try:
+            receipt = {
+                key: value for line in path.read_text().splitlines() if "=" in line
+                for key, value in (line.split("=", 1),)
+            }
+        except OSError as error:
+            errors.append(f"node{node}: teardown receipt missing: {error}")
+            receipt = {}
+        if receipt.get("status") != "PASS" or receipt.get("gpu_process_count") != "0":
+            errors.append(f"node{node}: teardown cleanup is not PASS")
+        if receipt.get("owner_run_id") != run_id:
+            errors.append(f"node{node}: teardown run identity changed")
+        teardown.append(receipt)
+
     value = {
         "schema_version": "distillschedule.wan13b_trajectory_summary.v1",
-        "status": "PASS" if not errors and len(rank_rows) == 16 else "FAIL",
+        "status": "PASS" if not errors and len(rank_rows) == WORLD_SIZE else "FAIL",
         "errors": errors,
+        "run_id": run_id,
         "run_root": str(args.run_root.resolve()),
         "placement": args.placement,
         "expected_head": args.expected_head,
         "cycles": args.cycles,
         "rank_count": len(rank_rows),
         "rank_cycle_receipts": sum(len(rows) for rows in rank_rows.values()),
-        "expected_rank_cycle_receipts": 16 * args.cycles,
-        "matched_identity": list(next(iter(fingerprints))) if len(fingerprints) == 1 else None,
+        "expected_rank_cycle_receipts": WORLD_SIZE * args.cycles,
+        "matched_contract": matched_contract,
+        "workload_fingerprint": _canonical_hash(matched_contract) if matched_contract else None,
+        "implementation_contract": implementation_contract,
+        "implementation_fingerprint": _canonical_hash(implementation_contract) if implementation_contract else None,
+        "sample_identity_contract": {
+            "rank_qualified_payloads_per_cycle": 96,
+            "critic_payloads_per_cycle": 80,
+            "cycle_qualified_occurrences": len(occurrences),
+            "payload_cohort_replayed": args.cycles < 2 or not any(
+                payload_mapping_by_cycle[cycle] != payload_mapping_by_cycle[1]
+                for cycle in range(2, args.cycles + 1)
+            ),
+            "ordered_rank_slot_mapping_replayed": args.cycles < 2 or not any(
+                payload_mapping_by_cycle[cycle] != payload_mapping_by_cycle[1]
+                for cycle in range(2, args.cycles + 1)
+            ),
+        },
         "final_versions": {"generator": 2 + args.cycles, "critic": 10 + 5 * args.cycles, "ema": 10 + 5 * args.cycles},
         "numeric_state_anchors": anchors,
+        "runtime_receipts": runtime_receipts,
+        "resource_status": {"cgroup_memory_events": cgroup, "teardown": teardown},
         "diagnostic_only": True,
         "formal_timing_eligible": False,
     }

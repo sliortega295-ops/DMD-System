@@ -4,7 +4,7 @@ set -Eeuo pipefail
 
 NODE_RANK="${1:?node rank 0 or 1}"
 RUN_ID="${2:?immutable run id}"
-MODE="${3:?validate, correctness, timing, diagnostic-timing, profile, or trajectory}"
+MODE="${3:?validate, correctness, timing, diagnostic-timing, profile, trajectory, or two-cycle-timing}"
 EXPECTED_HEAD="${4:?expected DMD-System HEAD}"
 MASTER_ADDR="${5:?node0 routable address}"
 MASTER_PORT="${6:?world16 rendezvous port}"
@@ -13,7 +13,7 @@ PLACEMENT="${7:?resident, resident-clean, resident-async128, resident-async128-t
 [[ "${NODE_RANK}" == 0 || "${NODE_RANK}" == 1 ]] || exit 2
 [[ "${MODE}" == validate || "${MODE}" == correctness || "${MODE}" == timing || \
    "${MODE}" == diagnostic-timing || "${MODE}" == profile || \
-   "${MODE}" == trajectory ]] || exit 2
+   "${MODE}" == trajectory || "${MODE}" == two-cycle-timing ]] || exit 2
 [[ "${PLACEMENT}" == resident || "${PLACEMENT}" == resident-ddp || \
    "${PLACEMENT}" == resident-clean || "${PLACEMENT}" == resident-async128 || \
    "${PLACEMENT}" == resident-async128-tree || \
@@ -54,36 +54,87 @@ WORKER="${ROOT}/scripts/distillschedule/probe_wan13b_fair_world16.py"
 TRAJECTORY_CYCLES="${DISTILLSCHEDULE_TRAJECTORY_CYCLES:-0}"
 TRAJECTORY_SEED="${DISTILLSCHEDULE_TRAJECTORY_SEED:-0}"
 TRAJECTORY_ARM_ID="${DISTILLSCHEDULE_TRAJECTORY_ARM_ID:-}"
+TWO_CYCLE_SEED="${DISTILLSCHEDULE_TWO_CYCLE_SEED:-0}"
+TWO_CYCLE_ARM_ID="${DISTILLSCHEDULE_TWO_CYCLE_ARM_ID:-}"
 if [[ "${MODE}" == trajectory ]]; then
   WORKER="${ROOT}/scripts/distillschedule/probe_wan13b_trajectory_world16.py"
-  [[ "${TRAJECTORY_CYCLES}" == 1 || "${TRAJECTORY_CYCLES}" == 5 || \
+  [[ "${TRAJECTORY_CYCLES}" == 1 || "${TRAJECTORY_CYCLES}" == 2 || \
+     "${TRAJECTORY_CYCLES}" == 5 || \
      "${TRAJECTORY_CYCLES}" == 50 ]] || exit 2
   [[ "${TRAJECTORY_SEED}" =~ ^[0-9]+$ && -n "${TRAJECTORY_ARM_ID}" ]] || exit 2
+fi
+if [[ "${MODE}" == two-cycle-timing ]]; then
+  WORKER="${ROOT}/scripts/distillschedule/probe_wan13b_two_cycle_timing_world16.py"
+  [[ "${TWO_CYCLE_SEED}" =~ ^[0-9]+$ && -n "${TWO_CYCLE_ARM_ID}" ]] || exit 2
 fi
 EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256:-5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886}"
 CORRECTNESS_RECEIPT="${DISTILLSCHEDULE_WAN13B_FAIR_CORRECTNESS_RECEIPT:-}"
 CORRECTNESS_SHA256="${DISTILLSCHEDULE_WAN13B_FAIR_CORRECTNESS_SHA256:-}"
+TRAJECTORY_COMPARISON_RECEIPT="${DISTILLSCHEDULE_WAN13B_TRAJECTORY_COMPARISON_RECEIPT:-}"
+TRAJECTORY_COMPARISON_SHA256="${DISTILLSCHEDULE_WAN13B_TRAJECTORY_COMPARISON_SHA256:-}"
 LORA_OPERATOR_ATTRIBUTION="${DISTILLSCHEDULE_WAN13B_LORA_OPERATOR_ATTRIBUTION:-0}"
 LORA_ATTRIBUTION_TARGET_RANK="${DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_TARGET_RANK:-0}"
 LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS="${DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS:-3}"
 GENERATOR_NOGRAD_LORA_CAST_CACHE="${DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE:-0}"
 GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE="${DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE:-0}"
 
-if [[ "${MODE}" == trajectory ]]; then
+if [[ "${MODE}" == trajectory || "${MODE}" == two-cycle-timing ]]; then
   if [[ "${PLACEMENT}" == resident-async128-tree-chunk2048 ]]; then
     [[ "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" == 1 && \
        "${GENERATOR_NOGRAD_LORA_CAST_CACHE}" == 0 ]] || {
-      echo trajectory_resident_winner_contract_mismatch >&2; exit 2;
+      echo registered_resident_winner_contract_mismatch >&2; exit 2;
     }
   elif [[ "${PLACEMENT}" == world16-fsdp ]]; then
     [[ "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" == 0 && \
        "${GENERATOR_NOGRAD_LORA_CAST_CACHE}" == 0 ]] || {
-      echo trajectory_fsdp_baseline_contract_mismatch >&2; exit 2;
+      echo registered_fsdp_baseline_contract_mismatch >&2; exit 2;
     }
   else
-    echo trajectory_placement_not_registered >&2
+    echo registered_placement_not_supported >&2
     exit 2
   fi
+fi
+
+if [[ "${MODE}" == two-cycle-timing ]]; then
+  [[ -f "${TRAJECTORY_COMPARISON_RECEIPT}" ]] || {
+    echo trajectory_comparison_receipt_missing >&2; exit 3;
+  }
+  [[ "${TRAJECTORY_COMPARISON_SHA256}" =~ ^[0-9a-f]{64}$ ]] || {
+    echo trajectory_comparison_hash_missing >&2; exit 3;
+  }
+  [[ "$(sha256sum "${TRAJECTORY_COMPARISON_RECEIPT}" | awk '{print $1}')" == \
+      "${TRAJECTORY_COMPARISON_SHA256}" ]] || {
+    echo trajectory_comparison_receipt_hash_changed >&2; exit 3;
+  }
+  "${PYTHON}" - "${TRAJECTORY_COMPARISON_RECEIPT}" "${TWO_CYCLE_ARM_ID}" \
+    "${CORRECTNESS_RECEIPT}" <<'PY'
+import json, pathlib, sys
+value = json.loads(pathlib.Path(sys.argv[1]).read_text())
+arm_id = sys.argv[2]
+correctness = json.loads(pathlib.Path(sys.argv[3]).read_text())
+required = {
+    "schema_version": "distillschedule.trajectory_coarse_comparison.v1",
+    "comparison_kind": "semantic",
+    "expected_cycles": 2,
+    "expected_world_size": 16,
+    "complete": True,
+}
+for key, expected in required.items():
+    if value.get(key) != expected:
+        raise SystemExit(f"trajectory comparison changed: {key}")
+contract = value.get("contract", {})
+if contract.get("status") != "PASS" or contract.get("mismatches"):
+    raise SystemExit("trajectory comparison semantic contract is not PASS")
+matches = []
+for side_name in ("reference", "candidate"):
+    side = value.get(side_name, {})
+    if arm_id in side.get("variants", []):
+        matches.append((side_name, side))
+if len(matches) != 1:
+    raise SystemExit("two-cycle arm must identify exactly one comparison side")
+if matches[0][1].get("run_ids", []) != [correctness.get("run_id")]:
+    raise SystemExit("trajectory comparison does not bind this correctness run")
+PY
 fi
 
 if [[ "${LORA_OPERATOR_ATTRIBUTION}" == 1 && "${MODE}" != profile ]]; then
@@ -106,20 +157,58 @@ HELIOS_TRANSFORMER="${HELIOS}/helios/modules/transformer_helios.py"
   exit 4
 }
 
-if [[ "${MODE}" == timing || "${MODE}" == diagnostic-timing || "${MODE}" == profile ]]; then
+if [[ "${MODE}" == timing || "${MODE}" == diagnostic-timing || \
+      "${MODE}" == profile || "${MODE}" == two-cycle-timing ]]; then
   [[ -f "${CORRECTNESS_RECEIPT}" ]] || { echo correctness_receipt_missing >&2; exit 3; }
   [[ "${CORRECTNESS_SHA256}" =~ ^[0-9a-f]{64}$ ]] || { echo correctness_hash_missing >&2; exit 3; }
   [[ "$(sha256sum "${CORRECTNESS_RECEIPT}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || {
     echo correctness_receipt_hash_changed >&2
     exit 3
   }
-  "${PYTHON}" - "${CORRECTNESS_RECEIPT}" "${PLACEMENT}" "${MODE}" "${EXPECTED_HELIOS_TRANSFORMER_SHA256}" <<'PY'
+  "${PYTHON}" - "${CORRECTNESS_RECEIPT}" "${PLACEMENT}" "${MODE}" \
+    "${EXPECTED_HELIOS_TRANSFORMER_SHA256}" "${EXPECTED_HEAD}" \
+    "${BOOTSTRAP_HASH}" "${TRACE_HASH}" "${TWO_CYCLE_SEED}" \
+    "${TWO_CYCLE_ARM_ID}" <<'PY'
 import json, pathlib, sys
 value = json.loads(pathlib.Path(sys.argv[1]).read_text())
 placement = sys.argv[2]
 mode = sys.argv[3]
 expected_helios_sha256 = sys.argv[4]
-if value.get("identities", {}).get("helios_transformer_sha256") != expected_helios_sha256:
+expected_head, bootstrap_hash, trace_hash = sys.argv[5:8]
+two_cycle_seed, two_cycle_arm_id = int(sys.argv[8]), sys.argv[9]
+if mode == "two-cycle-timing":
+    if value.get("schema_version") != "distillschedule.wan13b_trajectory_summary.v1":
+        raise SystemExit("two-cycle timing requires a trajectory correctness summary")
+    required = {
+        "status": "PASS", "placement": placement, "cycles": 2,
+        "rank_count": 16, "expected_head": expected_head,
+        "diagnostic_only": True, "formal_timing_eligible": False,
+        "final_versions": {"generator": 4, "critic": 20, "ema": 20},
+    }
+    for key, expected in required.items():
+        if value.get(key) != expected:
+            raise SystemExit(f"two-cycle correctness binding changed: {key}")
+    matched = value.get("matched_contract", {})
+    expected_matched = {
+        "bootstrap_hash": bootstrap_hash, "trace_bundle_hash": trace_hash,
+        "trace_replay_policy": "FIXED_FIVE_STEP_COHORT_REPLAY",
+        "seed": two_cycle_seed, "global_batch": 16,
+        "updates": "G1_C5_EMA5",
+        "rollout_batch_size": 1, "score_packing": False,
+    }
+    for key, expected in expected_matched.items():
+        if matched.get(key) != expected:
+            raise SystemExit(f"two-cycle matched workload changed: {key}")
+    implementation = value.get("implementation_contract", {})
+    if implementation.get("trajectory_arm_id") != two_cycle_arm_id:
+        raise SystemExit("two-cycle arm differs from correctness arm")
+    runtime = value.get("runtime_receipts", [])
+    if len(runtime) != 16 or any(
+        item.get("helios_transformer_sha256") != expected_helios_sha256
+        for item in runtime
+    ):
+        raise SystemExit("two-cycle correctness uses a different Helios runtime")
+elif value.get("identities", {}).get("helios_transformer_sha256") != expected_helios_sha256:
     raise SystemExit("correctness receipt uses a different Helios residual runtime")
 if mode == "timing":
     if value.get("status") != "PASS" or not value.get("claimable_for_paired_timing"):
@@ -132,7 +221,7 @@ if mode == "timing":
         raise SystemExit(
             f"correctness receipt does not cover requested placement {placement}: {placements}"
         )
-else:
+elif mode != "two-cycle-timing":
     if value.get("status") != "PASS" or value.get("mode") != "correctness":
         raise SystemExit("diagnostic timing requires a PASS semantic correctness summary")
     if value.get("placement") != placement or value.get("rank_count") != 16:
@@ -247,13 +336,26 @@ optimizer_offload=false
 parameter_streaming=false
 model_swap=false
 python_runtime_lib_path=${PYENV}/lib
-claim_boundary=$( [[ "${MODE}" == diagnostic-timing || "${MODE}" == profile || "${MODE}" == trajectory ]] && echo DIAGNOSTIC_ONLY || echo FORMAL_GATE_BOUND )
+claim_boundary=$( if [[ "${MODE}" == two-cycle-timing ]]; then echo STEADY_STATE_CYCLE2_UNPROFILED; elif [[ "${MODE}" == diagnostic-timing || "${MODE}" == profile || "${MODE}" == trajectory ]]; then echo DIAGNOSTIC_ONLY; else echo FORMAL_GATE_BOUND; fi )
 EOF
 if [[ "${MODE}" == trajectory ]]; then
   cat >>"${NODE_LOG}/launch_manifest.txt" <<EOF
 trajectory_cycles=${TRAJECTORY_CYCLES}
 trajectory_seed=${TRAJECTORY_SEED}
 trajectory_arm_id=${TRAJECTORY_ARM_ID}
+EOF
+fi
+if [[ "${MODE}" == two-cycle-timing ]]; then
+  cat >>"${NODE_LOG}/launch_manifest.txt" <<EOF
+two_cycle_count=2
+two_cycle_claimable_cycle=2
+two_cycle_trace_replay_policy=FIXED_FIVE_STEP_COHORT_REPLAY
+two_cycle_seed=${TWO_CYCLE_SEED}
+two_cycle_arm_id=${TWO_CYCLE_ARM_ID}
+two_cycle_correctness_receipt=${CORRECTNESS_RECEIPT}
+two_cycle_correctness_sha256=${CORRECTNESS_SHA256}
+two_cycle_trajectory_comparison_receipt=${TRAJECTORY_COMPARISON_RECEIPT}
+two_cycle_trajectory_comparison_sha256=${TRAJECTORY_COMPARISON_SHA256}
 EOF
 fi
 
@@ -277,6 +379,17 @@ if [[ "${MODE}" == trajectory ]]; then
     --trajectory-cycles "${TRAJECTORY_CYCLES}"
     --trajectory-seed "${TRAJECTORY_SEED}"
     --trajectory-arm-id "${TRAJECTORY_ARM_ID}"
+  )
+fi
+if [[ "${MODE}" == two-cycle-timing ]]; then
+  WORKER_ARGS+=(
+    --timing-seed "${TWO_CYCLE_SEED}"
+    --timing-arm-id "${TWO_CYCLE_ARM_ID}"
+    --expected-head "${EXPECTED_HEAD}"
+    --correctness-receipt "${CORRECTNESS_RECEIPT}"
+    --expected-correctness-hash "${CORRECTNESS_SHA256}"
+    --trajectory-comparison-receipt "${TRAJECTORY_COMPARISON_RECEIPT}"
+    --expected-trajectory-comparison-hash "${TRAJECTORY_COMPARISON_SHA256}"
   )
 fi
 
@@ -367,3 +480,8 @@ nvidia-smi --query-gpu=index,name,memory.total,memory.free --format=csv,noheader
   echo gpu_processes_remain >&2
   exit 88
 }
+cat >"${NODE_LOG}/teardown_status.txt" <<EOF
+status=PASS
+gpu_process_count=0
+owner_run_id=${RUN_ID}
+EOF

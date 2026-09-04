@@ -121,7 +121,15 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--run-id", required=True)
     value.add_argument(
         "--mode",
-        choices=("validate", "correctness", "timing", "diagnostic-timing", "profile", "trajectory"),
+        choices=(
+            "validate",
+            "correctness",
+            "timing",
+            "diagnostic-timing",
+            "profile",
+            "trajectory",
+            "two-cycle-timing",
+        ),
         required=True,
     )
     value.add_argument("--placement", choices=FAIR_PLACEMENTS, required=True)
@@ -171,9 +179,13 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--lora-attribution-target-nograd-calls", type=int, default=3)
     value.add_argument("--generator-nograd-lora-cast-cache", action="store_true")
     value.add_argument("--generator-nograd-lora-fused-epilogue", action="store_true")
-    value.add_argument("--trajectory-cycles", type=int, choices=(1, 5, 50))
+    value.add_argument("--trajectory-cycles", type=int, choices=(1, 2, 5, 50))
     value.add_argument("--trajectory-seed", type=int, default=20260903)
     value.add_argument("--trajectory-arm-id")
+    value.add_argument("--two-cycle-seed", type=int, default=20260903)
+    value.add_argument("--two-cycle-arm-id")
+    value.add_argument("--trajectory-comparison-receipt", type=Path)
+    value.add_argument("--trajectory-comparison-sha256")
     value.add_argument("--timeout-seconds", type=int, default=18000)
     value.add_argument("--dry-run", action="store_true")
     return value
@@ -204,7 +216,7 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256="
         + shlex.quote(args.expected_helios_transformer_sha256),
     ]
-    if args.mode in {"timing", "diagnostic-timing", "profile"}:
+    if args.mode in {"timing", "diagnostic-timing", "profile", "two-cycle-timing"}:
         if args.correctness_receipt is None or not args.correctness_sha256:
             raise ValueError("low-overhead execution requires a pinned correctness receipt")
         exports.extend(
@@ -240,8 +252,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
             "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE=1"
         )
     if args.mode == "trajectory":
-        if args.trajectory_cycles not in {1, 5, 50}:
-            raise ValueError("trajectory cycles must be one of 1, 5, or 50")
+        if args.trajectory_cycles not in {1, 2, 5, 50}:
+            raise ValueError("trajectory cycles must be one of 1, 2, 5, or 50")
         if not args.trajectory_arm_id:
             raise ValueError("trajectory mode requires --trajectory-arm-id")
         exports.extend(
@@ -250,6 +262,31 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
                 f"DISTILLSCHEDULE_TRAJECTORY_SEED={args.trajectory_seed}",
                 "DISTILLSCHEDULE_TRAJECTORY_ARM_ID="
                 + shlex.quote(args.trajectory_arm_id),
+            )
+        )
+    if args.mode == "two-cycle-timing":
+        if args.two_cycle_seed < 0:
+            raise ValueError("two-cycle seed must be non-negative")
+        if not args.two_cycle_arm_id:
+            raise ValueError("two-cycle timing requires --two-cycle-arm-id")
+        if (
+            args.trajectory_comparison_receipt is None
+            or not args.trajectory_comparison_sha256
+        ):
+            raise ValueError(
+                "two-cycle timing requires a pinned cross-arm trajectory comparison"
+            )
+        if len(args.trajectory_comparison_sha256) != 64:
+            raise ValueError("trajectory comparison hash must be SHA-256")
+        exports.extend(
+            (
+                f"DISTILLSCHEDULE_TWO_CYCLE_SEED={args.two_cycle_seed}",
+                "DISTILLSCHEDULE_TWO_CYCLE_ARM_ID="
+                + shlex.quote(args.two_cycle_arm_id),
+                "DISTILLSCHEDULE_WAN13B_TRAJECTORY_COMPARISON_RECEIPT="
+                + shlex.quote(str(args.trajectory_comparison_receipt)),
+                "DISTILLSCHEDULE_WAN13B_TRAJECTORY_COMPARISON_SHA256="
+                + shlex.quote(args.trajectory_comparison_sha256),
             )
         )
     launch = " ".join(
@@ -307,16 +344,25 @@ def _cancel(args: argparse.Namespace, node: int) -> None:
 def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
     run_root = args.remote_root / "artifacts/runs" / args.run_id
     summary = run_root / "summary.json"
-    summarizer = args.remote_root / "scripts/distillschedule" / (
+    summarizer_name = (
         "summarize_wan13b_trajectory_world16.py"
         if args.mode == "trajectory"
-        else "summarize_wan13b_fair_world16.py"
+        else (
+            "summarize_wan13b_two_cycle_timing_world16.py"
+            if args.mode == "two-cycle-timing"
+            else "summarize_wan13b_fair_world16.py"
+        )
     )
+    summarizer = args.remote_root / "scripts/distillschedule" / summarizer_name
     mode_args = (
         f"--cycles {args.trajectory_cycles} "
         f"--expected-head {shlex.quote(args.expected_head)} "
         if args.mode == "trajectory"
-        else f"--mode {shlex.quote(args.mode)} "
+        else (
+            f"--expected-head {shlex.quote(args.expected_head)} "
+            if args.mode == "two-cycle-timing"
+            else f"--mode {shlex.quote(args.mode)} "
+        )
     )
     command = (
         f"export PYTHONPATH={shlex.quote(str(args.remote_root / 'src'))}:"
@@ -370,17 +416,17 @@ def main() -> int:
         raise ValueError("--bootstrap-hash must be SHA256")
     if not 1 <= args.ssh_port <= 65535:
         raise ValueError("--ssh-port must be in [1, 65535]")
-    if args.mode == "trajectory":
+    if args.mode in {"trajectory", "two-cycle-timing"}:
         allowed = {"resident-async128-tree-chunk2048", "world16-fsdp"}
         if args.placement not in allowed:
             raise ValueError(
-                "trajectory supports only the registered Resident winner and "
+                f"{args.mode} supports only the registered Resident winner and "
                 "world16-FSDP baseline"
             )
         if args.placement == "resident-async128-tree-chunk2048":
             if not args.generator_nograd_lora_fused_epilogue:
                 raise ValueError(
-                    "Resident trajectory requires the registered fused-epilogue winner"
+                    f"Resident {args.mode} requires the registered fused-epilogue winner"
                 )
             if args.generator_nograd_lora_cast_cache:
                 raise ValueError("Resident winner does not include the rejected cast cache")
@@ -388,7 +434,9 @@ def main() -> int:
             args.generator_nograd_lora_fused_epilogue
             or args.generator_nograd_lora_cast_cache
         ):
-            raise ValueError("world16-FSDP trajectory cannot enable Resident-only LoRA arms")
+            raise ValueError(
+                f"world16-FSDP {args.mode} cannot enable Resident-only LoRA arms"
+            )
     local = args.local_evidence_root / args.run_id
     if local.exists():
         raise FileExistsError(local)

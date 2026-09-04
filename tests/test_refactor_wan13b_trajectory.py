@@ -24,7 +24,7 @@ def test_trajectory_is_an_explicit_nonlegacy_mode() -> None:
     assert '"${MODE}" == trajectory' in launcher
     assert "probe_wan13b_trajectory_world16.py" in launcher
     assert "DISTILLSCHEDULE_TRAJECTORY_CYCLES" in launcher
-    assert '"--trajectory-cycles", type=int, choices=(1, 5, 50)' in controller
+    assert '"--trajectory-cycles", type=int, choices=(1, 2, 5, 50)' in controller
     assert "probe_wan13b_fair_world16.py" in launcher
 
 
@@ -53,7 +53,7 @@ def test_trajectory_worker_preserves_g1_c5_ema5_and_append_only_receipts() -> No
     assert 'FSDP_BASELINE = "world16-fsdp"' in source
     assert "WORLD16_FSDP_BASELINE" in source
     assert "if not finite:" in source
-    assert "trajectory cycles must be one of 1, 5, or 50" in source
+    assert "trajectory cycles must be one of 1, 2, 5, or 50" in source
 
 
 def test_realistic_b1_rollout_inventory_schema_is_executed_fail_closed() -> None:
@@ -156,8 +156,8 @@ def test_trajectory_summarizer_requires_all_16_rank_cycles() -> None:
     source = (
         ROOT / "scripts/distillschedule/summarize_wan13b_trajectory_world16.py"
     ).read_text()
-    assert "for rank in range(16)" in source
-    assert "16 * args.cycles" in source
+    assert "for rank in range(WORLD_SIZE)" in source
+    assert "WORLD_SIZE * args.cycles" in source
     assert '"generator": 2 + args.cycles' in source
     assert '"critic": 10 + 5 * args.cycles' in source
     assert '"ema": 10 + 5 * args.cycles' in source
@@ -166,6 +166,7 @@ def test_trajectory_summarizer_requires_all_16_rank_cycles() -> None:
     assert 'sketch.get("coordinates")' in source
     assert '/ "execution"' in source
     assert 'final_path = args.run_root / "execution" / "ranks"' in source
+    assert "payload_mapping_by_cycle[cycle] != payload_mapping_by_cycle[1]" in source
 
 
 def test_trajectory_comparator_is_tied_to_numeric_sketch_schema() -> None:
@@ -175,6 +176,6 @@ def test_trajectory_comparator_is_tied_to_numeric_sketch_schema() -> None:
     ast.parse(source)
     assert "STATE_SKETCH_SCHEMA_VERSION" in source
     assert "compare_numeric_state_sketches" in source
-    assert 'choices=(1, 5, 50)' in source
+    assert 'choices=(1, 2, 5, 50)' in source
     assert 'return (1, 10, 25, 50)' in source
     assert 'required_state_cycles=anchors' in source
