@@ -72,6 +72,8 @@ PHASE_EXPANDED_CRITIC16_POOL_POLICY = (
 )
 B32_CONTINUOUS_NAME = "continuous_full5_b32_depth1_systems_v1"
 TRAJECTORY_CONTINUOUS_NAME = "trajectory_coarse_c24_b16_depth1_v1"
+TWO_CYCLE_TIMING_CONTINUOUS_NAME = "two_cycle_timing_c24_b16_depth1_v1"
+TWO_CYCLE_TIMING_CYCLES = 2
 TRAJECTORY_ANCHOR_CYCLES = frozenset({1, 10, 25, 50})
 TRAJECTORY_ALLOWED_CYCLES = frozenset({1, 2, 5, 50})
 TRAJECTORY_CRITIC_B1_ATTRIBUTION_NAME = (
@@ -850,6 +852,20 @@ def _continuous_pipeline_contract(
             dict(value) == expected_trajectory,
             "trajectory continuous pipeline contract changed",
         )
+    elif value.get("name") == TWO_CYCLE_TIMING_CONTINUOUS_NAME:
+        expected_timing = dict(
+            expected,
+            name=TWO_CYCLE_TIMING_CONTINUOUS_NAME,
+            cycles=TWO_CYCLE_TIMING_CYCLES,
+            critic_shadow_sync_versions=[CRITIC_UPDATES],
+            timing_schema="livewan_two_cycle_timing_v1",
+            profiled=False,
+            formal_timing_eligible=True,
+        )
+        _require(
+            dict(value) == expected_timing,
+            "two-cycle timing continuous pipeline contract changed",
+        )
     else:
         _require(
             dict(value) in (expected, expected_c1, expected_b32),
@@ -923,6 +939,179 @@ def _apply_trajectory_contract(
     )
     metadata["continuous_pipeline"] = current
     plan["metadata"] = metadata
+
+
+def _apply_two_cycle_timing_contract(plan: dict[str, Any], *, mode: str) -> None:
+    """Bind the immutable two-cycle trace to the exact sequential/C24 arms.
+
+    This is a timing-only in-memory plan adaptation.  It changes only the
+    number of consecutive cycles represented by the immutable trace; the
+    checked-in plans and every per-cycle workload operation remain unchanged.
+    """
+
+    metadata = dict(plan.get("metadata", {}))
+    evidence = dict(plan.get("evidence", {}))
+    _require(int(evidence.get("steps", -1)) == FULL5_STEPS, "source plan is not Full5")
+    evidence["steps"] = TWO_CYCLE_TIMING_CYCLES * FULL5_STEPS
+    plan["evidence"] = evidence
+    if mode == "baseline":
+        _require(
+            metadata.get("execution_mode") == "baseline"
+            and metadata.get("pool_policy") in {None, "world16_fsdp2_sequential"},
+            "two-cycle timing baseline must start from the exact sequential plan",
+        )
+        _require(
+            "continuous_pipeline" not in metadata,
+            "two-cycle timing baseline unexpectedly contains a pipeline contract",
+        )
+        metadata["two_cycle_timing"] = {
+            "schema": "livewan_two_cycle_timing_v1",
+            "cycles": TWO_CYCLE_TIMING_CYCLES,
+            "schedule": "world16_fsdp2_sequential",
+            "source_reuse_across_cycles": True,
+            "profiled": False,
+            "formal_timing_eligible": True,
+        }
+        plan["metadata"] = metadata
+        return
+
+    _require(mode == "pipeline", "unknown two-cycle timing execution mode")
+    current = dict(metadata.get("continuous_pipeline", {}))
+    _require(
+        current.get("name") == "continuous_full5_b16_depth1_v1"
+        and int(current.get("cycles", -1)) == 3,
+        "two-cycle timing must start from the exact C24 continuous-B16 plan",
+    )
+    score_modulation = dict(metadata.get("score_modulation_kernel", {}))
+    _require(
+        score_modulation.get("enabled") is True
+        and score_modulation.get("name") == "score_bf16_modulation_fusion_v1",
+        "two-cycle timing requires the exact C24 Score modulation kernel",
+    )
+    current.update(
+        name=TWO_CYCLE_TIMING_CONTINUOUS_NAME,
+        cycles=TWO_CYCLE_TIMING_CYCLES,
+        critic_shadow_sync_versions=[CRITIC_UPDATES],
+        timing_schema="livewan_two_cycle_timing_v1",
+        profiled=False,
+        formal_timing_eligible=True,
+    )
+    metadata["continuous_pipeline"] = current
+    plan["metadata"] = metadata
+
+
+def _effective_plan_sha256(plan: Mapping[str, Any]) -> str:
+    return hashlib.sha256(
+        json.dumps(plan, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
+def _record_two_cycle_endpoint(
+    torch: Any,
+    *,
+    records: list[dict[str, Any]],
+    versions: Mapping[str, int],
+    inventory: "CallInventory",
+    evidence: "RunEvidence",
+) -> None:
+    """Enqueue a completion marker without synchronizing the host or world.
+
+    The event is recorded on the current compute stream after the terminal
+    optimizer commit.  Any helper stream used by the runtime must already be
+    joined by its ``finish``/``wait`` contract before that commit can return.
+    Event elapsed times are read only after the single post-cycle2 device sync.
+    """
+
+    event = torch.cuda.Event(enable_timing=True)
+    event.record(torch.cuda.current_stream())
+    logical = dict(inventory.counts)
+    logical.update(evidence.logical_score_calls)
+    records.append(
+        {
+            "event": event,
+            "host_completion_ns": time.perf_counter_ns(),
+            "local_versions": {key: int(value) for key, value in versions.items()},
+            "physical_call_inventory": dict(inventory.counts),
+            "logical_call_inventory": logical,
+        }
+    )
+
+
+def _load_two_cycle_timing_gate(
+    *,
+    path: str | Path,
+    expected_sha256: str,
+    expected_head: str,
+    mode: str,
+    pipeline_variant: str,
+    arm_id: str,
+    seed: int,
+    trace: FormalTrace,
+    bootstrap: Bootstrap,
+    source_receipt: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate the exact-head correctness evidence authorizing native timing."""
+
+    resolved = Path(path).expanduser().resolve()
+    _require(resolved.is_file(), "two-cycle timing correctness gate is missing")
+    _require(
+        len(expected_sha256) == 64 and sha256_file(resolved) == expected_sha256,
+        "two-cycle timing correctness gate SHA256 changed",
+    )
+    value = json.loads(resolved.read_text(encoding="utf-8"))
+    required = {
+        "schema_version": "distillschedule.livewan_two_cycle_timing_gate.v1",
+        "status": "PASS",
+        "claimable_for_two_cycle_timing": True,
+        "expected_head": expected_head,
+        "cycles": TWO_CYCLE_TIMING_CYCLES,
+        "final_versions": {"generator": 2, "critic": 10, "ema": 0},
+    }
+    for key, expected in required.items():
+        _require(value.get(key) == expected, f"two-cycle timing gate changed {key}")
+    _require(
+        set(dict(value.get("heads", {})).values()) == {expected_head},
+        "two-cycle timing gate uses a different source HEAD",
+    )
+    identity = dict(value.get("identity", {}))
+    expected_identity = {
+        "trace_sha256": trace.sha256,
+        "bootstrap_sha256": bootstrap.sha256,
+        "source_receipt_sha256": source_receipt["source_receipt_sha256"],
+    }
+    _require(identity == expected_identity, "two-cycle timing gate asset identity changed")
+    _require(int(value.get("seed", -1)) == seed, "two-cycle timing seed changed")
+    arm = dict(dict(value.get("arms", {})).get(mode, {}))
+    _require(arm.get("arm_id") == arm_id, "two-cycle timing arm identity changed")
+    _require(
+        arm.get("pipeline_variant") == pipeline_variant,
+        "two-cycle timing physical implementation changed",
+    )
+    _require(
+        isinstance(arm.get("trajectory_summary_sha256"), str)
+        and len(str(arm["trajectory_summary_sha256"])) == 64,
+        "two-cycle timing trajectory summary SHA is missing",
+    )
+    comparison = dict(value.get("trajectory_comparison", {}))
+    _require(
+        comparison.get("schema_version")
+        == "distillschedule.trajectory_coarse_comparison.v1"
+        and comparison.get("contract_status") == "PASS"
+        and comparison.get("complete") is True
+        and isinstance(comparison.get("sha256"), str)
+        and len(str(comparison["sha256"])) == 64,
+        "two-cycle cross-arm trajectory comparison is not PASS",
+    )
+    return {
+        "path": str(resolved),
+        "sha256": expected_sha256,
+        "schema_version": value["schema_version"],
+        "trajectory_summary_sha256": arm.get("trajectory_summary_sha256"),
+        "trajectory_comparison_sha256": comparison["sha256"],
+        "arm_id": arm_id,
+        "pipeline_variant": pipeline_variant,
+        "status": value["status"],
+    }
 
 
 def _trajectory_critic_batch_ablation_enabled(
@@ -3466,12 +3655,26 @@ def run_worker(
     trajectory_cycles = 0
     trajectory_seed = 0
     trajectory_arm_id = ""
+    two_cycle_timing = run_kind == "two-cycle-timing"
+    two_cycle_seed = 0
+    two_cycle_arm_id = ""
     if run_kind == "trajectory":
         trajectory_cycles = int(os.environ.get("LIVEWAN_TRAJECTORY_CYCLES", "0"))
         trajectory_seed = int(os.environ.get("LIVEWAN_TRAJECTORY_SEED", "0"))
         trajectory_arm_id = os.environ.get("LIVEWAN_TRAJECTORY_ARM_ID", "")
         _require(trajectory_arm_id != "", "trajectory arm identity is missing")
         _apply_trajectory_contract(plan, cycles=trajectory_cycles, mode=mode)
+    elif two_cycle_timing:
+        two_cycle_seed = int(os.environ.get("LIVEWAN_TWO_CYCLE_SEED", "-1"))
+        two_cycle_arm_id = os.environ.get("LIVEWAN_TWO_CYCLE_ARM_ID", "")
+        _require(two_cycle_seed >= 0, "two-cycle timing seed is missing")
+        _require(two_cycle_arm_id != "", "two-cycle timing arm identity is missing")
+        _require(
+            not os.environ.get("DISTILLSCHEDULE_NSYS_BIN")
+            and not os.environ.get("DISTILLSCHEDULE_NCU_BIN"),
+            "two-cycle native timing cannot run under a profiler",
+        )
+        _apply_two_cycle_timing_contract(plan, mode=mode)
     _validate_plan_identity(plan, mode=mode)
     continuous_contract = _continuous_pipeline_contract(plan, mode=mode)
     continuous_cycles = (
@@ -3479,7 +3682,11 @@ def run_worker(
         if continuous_contract is not None
         else 1
     )
-    trace_cycles = trajectory_cycles if run_kind == "trajectory" else continuous_cycles
+    trace_cycles = (
+        trajectory_cycles
+        if run_kind == "trajectory"
+        else (TWO_CYCLE_TIMING_CYCLES if two_cycle_timing else continuous_cycles)
+    )
     registered_batch = int(plan["workload"]["shape"]["batch_size"])
     trace = FormalTrace.load(
         plan["evidence"]["operation_trace"],
@@ -3488,27 +3695,42 @@ def run_worker(
     )
     _validate_trace_balanced_pairing(plan, trace)
     bootstrap = Bootstrap.load(plan["evidence"]["checkpoint"], trace=trace)
-    if run_kind == "trajectory":
+    if run_kind == "trajectory" or two_cycle_timing:
         trace_payload = json.loads(trace.path.read_text(encoding="utf-8"))
         _require(
-            int(trace_payload.get("seed", -1)) == trajectory_seed,
-            "trajectory receipt seed differs from the immutable trace seed",
+            int(trace_payload.get("seed", -1))
+            == (two_cycle_seed if two_cycle_timing else trajectory_seed),
+            "run seed differs from the immutable trace seed",
         )
         diagnostic = dict(bootstrap.value.get("continuous_diagnostic", {}))
         _require(
-            int(diagnostic.get("cycles", -1)) == trajectory_cycles
+            int(diagnostic.get("cycles", -1)) == trace_cycles
             and diagnostic.get("source_reuse_across_cycles")
-            is (trajectory_cycles > 1)
+            is (trace_cycles > 1)
             and dict(diagnostic.get("expected_final_versions", {}))
             == {
-                "generator": trajectory_cycles,
-                "critic": trajectory_cycles * CRITIC_UPDATES,
+                "generator": trace_cycles,
+                "critic": trace_cycles * CRITIC_UPDATES,
                 "ema": 0,
             },
-            "trajectory bootstrap contract differs from the requested cycle count",
+            "bootstrap contract differs from the requested cycle count",
         )
     root = Path(repo_root).expanduser().resolve()
     source_receipt = validate_source_receipt(bootstrap, repo_root=root)
+    two_cycle_gate = None
+    if two_cycle_timing:
+        two_cycle_gate = _load_two_cycle_timing_gate(
+            path=os.environ.get("LIVEWAN_PAIR_CORRECTNESS_RECEIPT", ""),
+            expected_sha256=os.environ.get("LIVEWAN_PAIR_CORRECTNESS_SHA256", ""),
+            expected_head=os.environ.get("LIVEWAN_EXPECTED_HEAD", ""),
+            mode=mode,
+            pipeline_variant=os.environ.get("LIVEWAN_PIPELINE_VARIANT", ""),
+            arm_id=two_cycle_arm_id,
+            seed=two_cycle_seed,
+            trace=trace,
+            bootstrap=bootstrap,
+            source_receipt=source_receipt,
+        )
     configure_python_sources(repo_root=root, source_receipt=source_receipt)
     output_dir = Path(plan["evidence"]["output_dir"]).expanduser().resolve()
     if run_kind == "validate":
@@ -3522,7 +3744,7 @@ def run_worker(
         return result
     _require(
         run_kind in {"capacity", "correctness", "timing", "profile"}
-        or run_kind == "trajectory",
+        or run_kind in {"trajectory", "two-cycle-timing"},
         "invalid run kind",
     )
 
@@ -3538,6 +3760,14 @@ def run_worker(
         dist.init_process_group("nccl")
     torch.cuda.set_device(local_rank)
     device = torch.device(f"cuda:{local_rank}")
+    effective_plan_sha256 = _effective_plan_sha256(plan)
+    if two_cycle_timing and local_rank == 0:
+        node_rank = int(os.environ.get("DISTILLSCHEDULE_NODE_RANK", "-1"))
+        _require(node_rank in {0, 1}, "two-cycle timing node rank is missing")
+        atomic_json(
+            output_dir / f"effective_plan.node{node_rank}.json",
+            {**plan, "effective_plan_sha256": effective_plan_sha256},
+        )
     critic_lora_kernel = {
         "enabled": False,
         "name": "native_livewan_lora",
@@ -4005,6 +4235,7 @@ def run_worker(
         if model is not None
     }
     is_profile = run_kind == "profile"
+    cycle_endpoint_records: list[dict[str, Any]] = []
     dist.barrier()
     if is_profile:
         # cudaProfilerApi capture state is process-scoped under the node-outer
@@ -4026,6 +4257,10 @@ def run_worker(
         time.sleep(10.0)
         dist.barrier()
     torch.cuda.synchronize(device)
+    timing_start_event = torch.cuda.Event(enable_timing=True) if two_cycle_timing else None
+    if timing_start_event is not None:
+        timing_start_event.record(torch.cuda.current_stream(device))
+    timing_start_ns = time.perf_counter_ns()
     start = time.perf_counter()
     with _profile_range(
         torch, run_kind=run_kind, label=f"livewan/full5/{mode}/rank_{rank}"
@@ -4053,6 +4288,22 @@ def run_worker(
                         seed=trajectory_seed,
                         arm_id=trajectory_arm_id,
                         output_dir=output_dir,
+                    )
+                elif two_cycle_timing:
+                    _require(score_context is not None, "baseline timing lacks Score context")
+                    _run_baseline_two_cycle_timing(
+                        torch=torch,
+                        rank=rank,
+                        trace=trace,
+                        loader=loader,
+                        bundle=bundle,
+                        streamers=generator_streamers,
+                        score_context=score_context,
+                        evidence=evidence,
+                        versions=versions,
+                        device=device,
+                        cycle_endpoint_records=cycle_endpoint_records,
+                        inventory=inventory,
                     )
                 else:
                     _run_baseline(
@@ -4094,6 +4345,9 @@ def run_worker(
                     ),
                     trajectory_output_dir=(
                         output_dir if run_kind == "trajectory" else None
+                    ),
+                    cycle_endpoint_records=(
+                        cycle_endpoint_records if two_cycle_timing else None
                     ),
                 )
             elif (
@@ -4182,10 +4436,12 @@ def run_worker(
                 raise RuntimeError("unsupported LiveWan pipeline pool policy")
     torch.cuda.synchronize(device)
     dist.barrier()
+    timing_stop_ns = time.perf_counter_ns()
     full5_wall = time.perf_counter() - start
     if is_profile:
         dist.barrier()
         torch.cuda.cudart().cudaProfilerStop()
+    local_final_versions = dict(versions)
     version_tensor = torch.tensor(
         [versions["generator"], versions["critic"], versions["ema"]],
         device=device,
@@ -4198,6 +4454,105 @@ def run_worker(
         ema=int(version_tensor[2].cpu()),
     )
     after_oom = cgroup_oom_counts()
+
+    two_cycle_timing_receipt = None
+    if two_cycle_timing:
+        _require(
+            timing_start_event is not None
+            and len(cycle_endpoint_records) == TWO_CYCLE_TIMING_CYCLES
+            and timing_start_ns
+            < int(cycle_endpoint_records[0]["host_completion_ns"])
+            < int(cycle_endpoint_records[1]["host_completion_ns"])
+            <= timing_stop_ns,
+            "two-cycle timing endpoints are missing or out of order",
+        )
+        host_completion_offsets = [
+            (int(value["host_completion_ns"]) - timing_start_ns) / 1e9
+            for value in cycle_endpoint_records
+        ]
+        gpu_completion_offsets = [
+            float(timing_start_event.elapsed_time(value["event"])) / 1000.0
+            for value in cycle_endpoint_records
+        ]
+        _require(
+            0.0 < gpu_completion_offsets[0] < gpu_completion_offsets[1],
+            "two-cycle CUDA completion events are missing or out of order",
+        )
+        cycle_rows = []
+        for index, value in enumerate(cycle_endpoint_records):
+            previous_physical = (
+                cycle_endpoint_records[index - 1]["physical_call_inventory"]
+                if index else {}
+            )
+            previous_logical = (
+                cycle_endpoint_records[index - 1]["logical_call_inventory"]
+                if index else {}
+            )
+            cycle_rows.append(
+                {
+                    "cycle": index + 1,
+                    "local_versions": value["local_versions"],
+                    "physical_call_inventory_cumulative": value[
+                        "physical_call_inventory"
+                    ],
+                    "logical_call_inventory_cumulative": value[
+                        "logical_call_inventory"
+                    ],
+                    "physical_call_inventory_delta": {
+                        key: int(count) - int(previous_physical.get(key, 0))
+                        for key, count in value["physical_call_inventory"].items()
+                        if int(count) - int(previous_physical.get(key, 0))
+                    },
+                    "logical_call_inventory_delta": {
+                        key: int(count) - int(previous_logical.get(key, 0))
+                        for key, count in value["logical_call_inventory"].items()
+                        if int(count) - int(previous_logical.get(key, 0))
+                    },
+                }
+            )
+        two_cycle_timing_receipt = {
+            "schema_version": "distillschedule.livewan_two_cycle_timing_rank.v1",
+            "cycles_in_same_process": TWO_CYCLE_TIMING_CYCLES,
+            "cycle_1": {
+                "role": "WARMUP_DIAGNOSTIC",
+                "completion_offset_seconds": gpu_completion_offsets[0],
+                "host_enqueue_offset_seconds": host_completion_offsets[0],
+                "local_endpoint_delta_seconds": gpu_completion_offsets[0],
+                "claimable": False,
+            },
+            "cycle_2": {
+                "role": "STEADY_STATE_CLAIMABLE",
+                "completion_offset_seconds": gpu_completion_offsets[1],
+                "host_enqueue_offset_seconds": host_completion_offsets[1],
+                "local_endpoint_delta_seconds": (
+                    gpu_completion_offsets[1] - gpu_completion_offsets[0]
+                ),
+                "claimable": True,
+            },
+            "final_sync_barrier_tail_seconds": (
+                timing_stop_ns - int(cycle_endpoint_records[1]["host_completion_ns"])
+            )
+            / 1e9,
+            "total_outer_wall_seconds": (timing_stop_ns - timing_start_ns) / 1e9,
+            "endpoint_definition": (
+                "rank terminal CUDA-event completion on the current compute stream; "
+                "cycle2 is completion2-completion1; "
+                "C24 cycle2 therefore includes inter-cycle lookahead and Critic-shadow "
+                "hot-sync; no midpoint synchronize or barrier"
+            ),
+            "world_aggregation": (
+                "baseline=max_all_rank_completion_offsets; "
+                "pipeline=max_score_rank_completion_offsets"
+            ),
+            "profiled": False,
+            "profiler_status": "NOT_RUN",
+            "state_anchors": "NOT_COLLECTED_IN_TIMING_MODE",
+            "evidence_extraction": "AFTER_BOTH_TIMED_CYCLE_ENDPOINTS",
+            "per_cycle_contract": cycle_rows,
+            "local_final_versions_before_world_max": local_final_versions,
+            "effective_plan_sha256": effective_plan_sha256,
+            "correctness_binding": two_cycle_gate,
+        }
 
     output_tensor_artifact = None
     if run_kind == "correctness" and evidence.output_tensors:
@@ -4266,6 +4621,7 @@ def run_worker(
         "trace_sha256": trace.sha256,
         "bootstrap_sha256": bootstrap.sha256,
         "source_receipt_sha256": source_receipt["source_receipt_sha256"],
+        "effective_plan_sha256": effective_plan_sha256,
         "logical_generator_updates": GENERATOR_UPDATES * workload_cycles,
         "logical_critic_updates": CRITIC_UPDATES * workload_cycles,
         "physical_generator_commits": (
@@ -4312,6 +4668,8 @@ def run_worker(
         "critic_checkpoint_rng": evidence.critic_checkpoint_rng,
         "slot_routing": slot_routing,
         "full5_wall_seconds": full5_wall,
+        "two_cycle_timing": two_cycle_timing_receipt,
+        "profiled": False if two_cycle_timing else is_profile,
         "construction_wall_seconds": build_wall,
         "setup_memory": setup_memory,
         "peak_memory": memory_snapshot(torch, device),
@@ -4601,6 +4959,53 @@ def _run_baseline_trajectory(
             raise FloatingPointError(
                 f"non-finite LiveWan baseline trajectory evidence at cycle {cycle_number}"
             )
+
+
+def _run_baseline_two_cycle_timing(
+    *,
+    torch: Any,
+    rank: int,
+    trace: FormalTrace,
+    loader: InputLoader,
+    bundle: ModelBundle,
+    streamers: Sequence[Any],
+    score_context: ScoreContext,
+    evidence: RunEvidence,
+    versions: dict[str, int],
+    device: Any,
+    cycle_endpoint_records: list[dict[str, Any]],
+    inventory: CallInventory,
+) -> None:
+    """Run two uninterrupted sequential cycles with timestamp-only boundaries."""
+
+    _require(
+        trace.cycles == TWO_CYCLE_TIMING_CYCLES,
+        "sequential timing trace must contain exactly two cycles",
+    )
+    for cycle in range(TWO_CYCLE_TIMING_CYCLES):
+        _run_baseline(
+            torch=torch,
+            rank=rank,
+            trace=trace,
+            loader=loader,
+            bundle=bundle,
+            streamers=streamers,
+            score_context=score_context,
+            run_kind="two-cycle-timing",
+            evidence=evidence,
+            versions=versions,
+            device=device,
+            step_offset=cycle * FULL5_STEPS,
+        )
+        # A nonblocking event only: deliberately no host synchronize or
+        # distributed collective at the cycle boundary.
+        _record_two_cycle_endpoint(
+            torch,
+            records=cycle_endpoint_records,
+            versions=versions,
+            inventory=inventory,
+            evidence=evidence,
+        )
 
 
 def _recv_pair(
@@ -6104,10 +6509,12 @@ def _run_pipeline_8x8_continuous(
     trajectory_seed: int | None = None,
     trajectory_arm_id: str | None = None,
     trajectory_output_dir: Path | None = None,
+    cycle_endpoint_records: list[dict[str, Any]] | None = None,
 ) -> None:
     """Run exact C24 cycles with one next-cycle rollout wave in flight."""
 
     trajectory_mode = run_kind == "trajectory"
+    two_cycle_timing = run_kind == "two-cycle-timing"
     if trajectory_mode:
         _require(
             trace.cycles in TRAJECTORY_ALLOWED_CYCLES,
@@ -6119,6 +6526,12 @@ def _run_pipeline_8x8_continuous(
             and trajectory_arm_id is not None
             and trajectory_output_dir is not None,
             "trajectory evidence configuration is incomplete",
+        )
+    elif two_cycle_timing:
+        _require(
+            trace.cycles == TWO_CYCLE_TIMING_CYCLES
+            and cycle_endpoint_records is not None,
+            "C24 two-cycle timing trace/endpoint recorder is incomplete",
         )
     else:
         _require(trace.cycles == 3, "C21 continuous trace must contain three cycles")
@@ -6220,6 +6633,19 @@ def _run_pipeline_8x8_continuous(
                     finalize_host_transport=False,
                 )
         role_returned = time.perf_counter()
+        if two_cycle_timing:
+            # The endpoint is immediately after this rank's terminal work for
+            # the logical cycle.  For cycle 1 it is intentionally before the
+            # next-cycle lookahead/hot-sync below, so the cycle-2 endpoint delta
+            # includes all of that attributable cross-cycle work.  This is a
+            # timestamp only: no midpoint synchronization or barrier is added.
+            _record_two_cycle_endpoint(
+                torch,
+                records=cycle_endpoint_records,
+                versions=versions,
+                inventory=inventory,
+                evidence=evidence,
+            )
         if trajectory_mode:
             cycle_losses = list(evidence.loss_fingerprints[loss_start:])
             cycle_optimizer = list(evidence.optimizer_diagnostics[optimizer_start:])
@@ -6431,12 +6857,16 @@ def _run_pipeline_8x8_continuous(
             TRAJECTORY_CONTINUOUS_NAME
             if trajectory_mode
             else (
-                B32_CONTINUOUS_NAME
-                if batch32
+                TWO_CYCLE_TIMING_CONTINUOUS_NAME
+                if two_cycle_timing
                 else (
-                    "continuous_full5_b16_depth1_step1_b1_overlap_v1"
-                    if critic_step1_split_overlap
-                    else "continuous_full5_b16_depth1_v1"
+                    B32_CONTINUOUS_NAME
+                    if batch32
+                    else (
+                        "continuous_full5_b16_depth1_step1_b1_overlap_v1"
+                        if critic_step1_split_overlap
+                        else "continuous_full5_b16_depth1_v1"
+                    )
                 )
             )
         ),

@@ -114,7 +114,10 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--run-id", required=True)
     value.add_argument(
         "--run-kind",
-        choices=("validate", "capacity", "correctness", "timing", "profile", "trajectory"),
+        choices=(
+            "validate", "capacity", "correctness", "timing", "profile",
+            "trajectory", "two-cycle-timing",
+        ),
         required=True,
     )
     value.add_argument("--execution-mode", choices=("baseline", "pipeline"), required=True)
@@ -190,6 +193,8 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--trajectory-cycles", type=int, default=0)
     value.add_argument("--trajectory-seed", type=int, default=20260903)
     value.add_argument("--trajectory-arm-id")
+    value.add_argument("--two-cycle-seed", type=int)
+    value.add_argument("--two-cycle-arm-id")
     value.add_argument("--master-addr")
     value.add_argument("--master-port", type=int, default=29930)
     value.add_argument("--timeout-seconds", type=int, default=21600)
@@ -222,10 +227,11 @@ def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "LIVEWAN_WAN21_SOURCE": args.source_root,
         "LIVEWAN_SOURCE_RECEIPT": args.source_receipt,
         "LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant,
+        "LIVEWAN_EXPECTED_HEAD": args.expected_head,
     }
     if args.flash_attn_kernel is not None:
         exports["DISTILLSCHEDULE_FLASH_ATTN_KERNEL"] = args.flash_attn_kernel
-    if args.run_kind in {"timing", "profile"}:
+    if args.run_kind in {"timing", "profile", "two-cycle-timing"}:
         if args.correctness_receipt is None or not args.correctness_sha256:
             raise ValueError(f"{args.run_kind} requires a correctness/diagnostic receipt and SHA256")
         exports["LIVEWAN_PAIR_CORRECTNESS_RECEIPT"] = args.correctness_receipt
@@ -251,6 +257,20 @@ def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
             LIVEWAN_TRAJECTORY_CYCLES=args.trajectory_cycles,
             LIVEWAN_TRAJECTORY_SEED=args.trajectory_seed,
             LIVEWAN_TRAJECTORY_ARM_ID=args.trajectory_arm_id,
+        )
+    if args.run_kind == "two-cycle-timing":
+        if args.execution_mode == "baseline":
+            if args.pipeline_variant != "b1":
+                raise ValueError("two-cycle baseline requires sequential B1")
+        elif args.pipeline_variant != "c24-continuous-b16-score-modulation":
+            raise ValueError("two-cycle pipeline requires production C24 physical B2")
+        if args.two_cycle_seed is None or args.two_cycle_seed < 0:
+            raise ValueError("two-cycle timing requires --two-cycle-seed")
+        if not args.two_cycle_arm_id:
+            raise ValueError("two-cycle timing requires --two-cycle-arm-id")
+        exports.update(
+            LIVEWAN_TWO_CYCLE_SEED=args.two_cycle_seed,
+            LIVEWAN_TWO_CYCLE_ARM_ID=args.two_cycle_arm_id,
         )
     if args.ncu_bin is not None:
         if args.run_kind != "correctness":
@@ -306,18 +326,22 @@ def summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
     run_root = args.remote_output_root / args.run_id
     summary = run_root / "summary.json"
     summary_name = (
-        "summarize_livewan_trajectory_world16.py"
-        if args.run_kind == "trajectory"
+        "summarize_livewan_two_cycle_timing_world16.py"
+        if args.run_kind == "two-cycle-timing"
         else (
-        "summarize_livewan_continuous_world16.py"
-        if args.pipeline_variant in {
-            "c21-continuous-b16", "c21-c1-continuous-b16",
-            "c22-critic-checkpoint-rng",
-            "c23-continuous-b32",
-            "c24-continuous-b16-score-modulation",
-            "c24-continuous-b16-score-modulation-b1-attribution",
-        }
-        else "summarize_livewan_crossscale_world16.py"
+            "summarize_livewan_trajectory_world16.py"
+            if args.run_kind == "trajectory"
+            else (
+                "summarize_livewan_continuous_world16.py"
+                if args.pipeline_variant in {
+                    "c21-continuous-b16", "c21-c1-continuous-b16",
+                    "c22-critic-checkpoint-rng",
+                    "c23-continuous-b32",
+                    "c24-continuous-b16-score-modulation",
+                    "c24-continuous-b16-score-modulation-b1-attribution",
+                }
+                else "summarize_livewan_crossscale_world16.py"
+            )
         )
     )
     script = args.remote_root / "scripts/distillschedule" / summary_name
@@ -325,6 +349,15 @@ def summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         summary_arguments = (
             f"--run-root {shlex.quote(str(run_root))} "
             f"--cycles {args.trajectory_cycles} "
+            f"--expected-head {shlex.quote(args.expected_head)} "
+            f"--output {shlex.quote(str(summary))}"
+        )
+    elif args.run_kind == "two-cycle-timing":
+        summary_arguments = (
+            f"--run-root {shlex.quote(str(run_root))} "
+            f"--execution-mode {shlex.quote(args.execution_mode)} "
+            f"--pipeline-variant {shlex.quote(args.pipeline_variant)} "
+            f"--trace {shlex.quote(str(args.trace))} "
             f"--expected-head {shlex.quote(args.expected_head)} "
             f"--output {shlex.quote(str(summary))}"
         )
@@ -369,6 +402,14 @@ def main() -> int:
         and args.run_kind != "trajectory"
     ):
         raise ValueError("C24 Critic-B1 attribution is trajectory-only")
+    if args.run_kind == "two-cycle-timing":
+        if args.execution_mode == "baseline" and args.pipeline_variant != "b1":
+            raise ValueError("two-cycle baseline requires sequential B1")
+        if (
+            args.execution_mode == "pipeline"
+            and args.pipeline_variant != "c24-continuous-b16-score-modulation"
+        ):
+            raise ValueError("two-cycle pipeline requires production C24 physical B2")
     if args.run_kind == "trajectory":
         if args.execution_mode == "baseline" and args.pipeline_variant != "b1":
             raise ValueError("trajectory baseline requires sequential B1")

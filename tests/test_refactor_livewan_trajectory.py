@@ -737,8 +737,9 @@ def test_trajectory_summarizer_accepts_baseline_and_pipeline_receipts(
             manifest = run_root / "launcher" / f"node_{node}" / "launch_manifest.txt"
             manifest.parent.mkdir(parents=True, exist_ok=True)
             manifest.write_text(
-                f"head={head}\nexecution_mode={mode}\n"
+                f"run_id={mode}\nhead={head}\nexecution_mode={mode}\n"
                 f"pipeline_variant={pipeline_variant}\ntrajectory_cycles=1\n"
+                "trajectory_seed=20260903\n"
                 f"trajectory_arm_id={mode}_arm\nclaim_boundary=DIAGNOSTIC_ONLY\n"
             )
         anchor_path = run_root / "trajectory/anchors/cycle_01_global.json"
@@ -802,6 +803,9 @@ def test_trajectory_summarizer_accepts_baseline_and_pipeline_receipts(
                     {
                         "status": "PASS",
                         "run_kind": "trajectory",
+                        "trace_sha256": "1" * 64,
+                        "bootstrap_sha256": "2" * 64,
+                        "source_receipt_sha256": "3" * 64,
                         "final_versions": {"generator": 1, "critic": 5, "ema": 0},
                         "physical_generator_commits": commits[0],
                         "physical_critic_commits": commits[1],

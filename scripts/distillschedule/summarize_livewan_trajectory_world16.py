@@ -47,6 +47,9 @@ def main() -> int:
     launch_modes: set[str] = set()
     launch_arm_ids: set[str] = set()
     launch_variants: set[str] = set()
+    launch_run_ids: set[str] = set()
+    launch_heads: set[str] = set()
+    launch_seeds: set[int] = set()
     for node in range(2):
         path = args.run_root / "launcher" / f"node_{node}" / "launch_manifest.txt"
         try:
@@ -63,6 +66,12 @@ def main() -> int:
         launch_modes.add(str(manifest.get("execution_mode", "")))
         launch_arm_ids.add(str(manifest.get("trajectory_arm_id", "")))
         launch_variants.add(str(manifest.get("pipeline_variant", "")))
+        launch_run_ids.add(str(manifest.get("run_id", "")))
+        launch_heads.add(str(manifest.get("head", "")))
+        try:
+            launch_seeds.add(int(manifest.get("trajectory_seed", "-1")))
+        except ValueError:
+            errors.append(f"node{node}: trajectory seed is invalid")
     if len(launch_modes) != 1 or next(iter(launch_modes), "") not in {
         "baseline",
         "pipeline",
@@ -73,6 +82,14 @@ def main() -> int:
     execution_mode = next(iter(launch_modes), "")
     arm_id = next(iter(launch_arm_ids), "")
     pipeline_variant = next(iter(launch_variants), "")
+    run_id = next(iter(launch_run_ids), "")
+    seed = next(iter(launch_seeds), -1)
+    if len(launch_run_ids) != 1 or not run_id:
+        errors.append("two-node trajectory run identity is missing or inconsistent")
+    if launch_heads != {args.expected_head}:
+        errors.append("two-node trajectory source HEAD is missing or inconsistent")
+    if len(launch_seeds) != 1 or seed < 0:
+        errors.append("two-node trajectory seed is missing or inconsistent")
     allowed_variants = (
         {"b1"}
         if execution_mode == "baseline"
@@ -127,6 +144,25 @@ def main() -> int:
         if final.get("trajectory", {}).get("arm_id") != arm_id:
             errors.append(f"rank{rank}: trajectory arm identity changed")
         final_receipts[rank] = final
+
+    identities = {
+        (
+            row.get("trace_sha256"),
+            row.get("bootstrap_sha256"),
+            row.get("source_receipt_sha256"),
+        )
+        for row in final_receipts.values()
+    }
+    if len(identities) != 1 or None in next(iter(identities), (None,)):
+        errors.append("rank trace/bootstrap/source-receipt identity differs")
+        identity: dict[str, str] | None = None
+    else:
+        trace_sha256, bootstrap_sha256, source_receipt_sha256 = next(iter(identities))
+        identity = {
+            "trace_sha256": str(trace_sha256),
+            "bootstrap_sha256": str(bootstrap_sha256),
+            "source_receipt_sha256": str(source_receipt_sha256),
+        }
 
     expected_anchor_cycles = sorted(
         {cycle for cycle in (1, 10, 25, 50, args.cycles) if cycle <= args.cycles}
@@ -250,10 +286,15 @@ def main() -> int:
         "schema_version": "distillschedule.livewan_trajectory_summary.v1",
         "status": "PASS" if not errors else "FAIL",
         "run_root": str(args.run_root),
+        "run_id": run_id,
         "expected_head": args.expected_head,
+        "head": args.expected_head,
+        "heads": {execution_mode: args.expected_head} if execution_mode else {},
         "execution_mode": execution_mode,
         "arm_id": arm_id,
         "pipeline_variant": pipeline_variant,
+        "seed": seed,
+        "identity": identity,
         "cycles": args.cycles,
         "rank_cycle_receipts": sum(len(rows) for rows in rank_rows.values()),
         "expected_rank_cycle_receipts": 16 * args.cycles,

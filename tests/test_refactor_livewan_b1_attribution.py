@@ -194,8 +194,10 @@ def test_trajectory_summarizer_accepts_two_cycle_b1_and_b2_receipts(
             manifest = run_root / "launcher" / f"node_{node}" / "launch_manifest.txt"
             manifest.parent.mkdir(parents=True, exist_ok=True)
             manifest.write_text(
-                f"head={head}\nexecution_mode={mode}\npipeline_variant={variant}\n"
+                f"run_id={label}\nhead={head}\nexecution_mode={mode}\n"
+                f"pipeline_variant={variant}\n"
                 "trajectory_cycles=2\n"
+                "trajectory_seed=20260903\n"
                 f"trajectory_arm_id={label}_arm\nclaim_boundary=DIAGNOSTIC_ONLY\n"
             )
         for cycle, (anchor, _digest) in anchors.items():
@@ -285,6 +287,9 @@ def test_trajectory_summarizer_accepts_two_cycle_b1_and_b2_receipts(
                     {
                         "status": "PASS",
                         "run_kind": "trajectory",
+                        "trace_sha256": "1" * 64,
+                        "bootstrap_sha256": "2" * 64,
+                        "source_receipt_sha256": "3" * 64,
                         "final_versions": {"generator": 2, "critic": 10, "ema": 0},
                         "physical_generator_commits": commits[0],
                         "physical_critic_commits": commits[1],
@@ -318,4 +323,11 @@ def test_trajectory_summarizer_accepts_two_cycle_b1_and_b2_receipts(
         assert summary["status"] == "PASS"
         assert summary["cycles"] == 2
         assert summary["pipeline_variant"] == variant
+        assert summary["run_id"] == label
+        assert summary["seed"] == 20260903
+        assert summary["identity"] == {
+            "trace_sha256": "1" * 64,
+            "bootstrap_sha256": "2" * 64,
+            "source_receipt_sha256": "3" * 64,
+        }
         assert [row["cycle"] for row in summary["numeric_state_anchors"]] == [1, 2]

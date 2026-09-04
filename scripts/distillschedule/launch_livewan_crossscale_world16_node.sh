@@ -4,7 +4,7 @@ set -Eeuo pipefail
 
 NODE_RANK="${1:?node rank 0 or 1}"
 RUN_ID="${2:?immutable run id}"
-RUN_KIND="${3:?validate, capacity, correctness, timing, profile, or trajectory}"
+RUN_KIND="${3:?validate, capacity, correctness, timing, profile, trajectory, or two-cycle-timing}"
 EXECUTION_MODE="${4:?baseline or pipeline}"
 EXPECTED_HEAD="${5:?exact DMD-System HEAD}"
 MASTER_ADDR="${6:?node0 address}"
@@ -14,12 +14,14 @@ MASTER_PORT="${7:?rendezvous port}"
 [[ "${RUN_KIND}" == validate || "${RUN_KIND}" == capacity || \
    "${RUN_KIND}" == correctness || \
    "${RUN_KIND}" == timing || "${RUN_KIND}" == profile || \
-   "${RUN_KIND}" == trajectory ]] || exit 2
+   "${RUN_KIND}" == trajectory || \
+   "${RUN_KIND}" == two-cycle-timing ]] || exit 2
 [[ "${EXECUTION_MODE}" == baseline || "${EXECUTION_MODE}" == pipeline ]] || exit 2
 [[ "${RUN_ID}" =~ ^[A-Za-z0-9._-]+$ ]] || exit 2
 [[ "${EXPECTED_HEAD}" =~ ^[0-9a-f]{40}$ ]] || exit 2
 
 ROOT="${DMD_SYSTEM_ROOT:?set DMD_SYSTEM_ROOT}"
+export LIVEWAN_EXPECTED_HEAD="${EXPECTED_HEAD}"
 # These job containers enter as root while the persistent shared worktree is
 # owned by its original uid.  Tell Git about that exact owner for this launcher
 # process only; do not mutate /root/.gitconfig or the shared checkout owner.
@@ -39,6 +41,8 @@ PIPELINE_VARIANT="${LIVEWAN_PIPELINE_VARIANT:-b1}"
 TRAJECTORY_CYCLES="${LIVEWAN_TRAJECTORY_CYCLES:-0}"
 TRAJECTORY_SEED="${LIVEWAN_TRAJECTORY_SEED:-0}"
 TRAJECTORY_ARM_ID="${LIVEWAN_TRAJECTORY_ARM_ID:-}"
+TWO_CYCLE_SEED="${LIVEWAN_TWO_CYCLE_SEED:--1}"
+TWO_CYCLE_ARM_ID="${LIVEWAN_TWO_CYCLE_ARM_ID:-}"
 [[ "${PIPELINE_VARIANT}" == b1 || "${PIPELINE_VARIANT}" == b1-runahead || \
    "${PIPELINE_VARIANT}" == b1-runahead-critic-b2 || \
    "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context || \
@@ -85,6 +89,17 @@ if [[ "${RUN_KIND}" == trajectory ]]; then
      "${TRAJECTORY_CYCLES}" == 5 || \
      "${TRAJECTORY_CYCLES}" == 50 ]] || exit 2
   [[ "${TRAJECTORY_SEED}" =~ ^[0-9]+$ && -n "${TRAJECTORY_ARM_ID}" ]] || exit 2
+elif [[ "${RUN_KIND}" == two-cycle-timing ]]; then
+  if [[ "${EXECUTION_MODE}" == baseline ]]; then
+    [[ "${PIPELINE_VARIANT}" == b1 ]] || {
+      echo two_cycle_baseline_requires_b1 >&2; exit 2;
+    }
+  else
+    [[ "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation ]] || {
+      echo two_cycle_pipeline_requires_production_c24_b2 >&2; exit 2;
+    }
+  fi
+  [[ "${TWO_CYCLE_SEED}" =~ ^[0-9]+$ && -n "${TWO_CYCLE_ARM_ID}" ]] || exit 2
 elif [[ "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation-b1-attribution ]]; then
   echo c24_critic_b1_attribution_requires_trajectory >&2; exit 2
 fi
@@ -214,7 +229,8 @@ git -C "${ROOT}" diff --quiet && git -C "${ROOT}" diff --cached --quiet || {
 [[ "$(git -C "${ROOT}/third_party/wan21" rev-parse HEAD)" == \
   9737cba9c1c3c4d04b33fcad41c111989865d315 ]] || exit 4
 
-if [[ "${RUN_KIND}" == timing || "${RUN_KIND}" == profile ]]; then
+if [[ "${RUN_KIND}" == timing || "${RUN_KIND}" == profile || \
+      "${RUN_KIND}" == two-cycle-timing ]]; then
   CORRECTNESS_RECEIPT="${LIVEWAN_PAIR_CORRECTNESS_RECEIPT:?run requires LIVEWAN_PAIR_CORRECTNESS_RECEIPT}"
   CORRECTNESS_SHA256="${LIVEWAN_PAIR_CORRECTNESS_SHA256:?run requires LIVEWAN_PAIR_CORRECTNESS_SHA256}"
   [[ -f "${CORRECTNESS_RECEIPT}" && "${CORRECTNESS_SHA256}" =~ ^[0-9a-f]{64}$ ]] || exit 3
@@ -229,6 +245,23 @@ if run_kind == "timing":
         raise SystemExit("paired correctness gate is not PASS")
     if set(value.get("heads", {}).values()) != {expected_head}:
         raise SystemExit("paired correctness gate uses a different source HEAD")
+elif run_kind == "two-cycle-timing":
+    required = {
+        "schema_version": "distillschedule.livewan_two_cycle_timing_gate.v1",
+        "status": "PASS",
+        "claimable_for_two_cycle_timing": True,
+        "expected_head": expected_head,
+        "cycles": 2,
+        "final_versions": {"generator": 2, "critic": 10, "ema": 0},
+    }
+    for key, expected in required.items():
+        if value.get(key) != expected:
+            raise SystemExit(f"two-cycle timing gate changed {key}")
+    if set(value.get("heads", {}).values()) != {expected_head}:
+        raise SystemExit("two-cycle timing gate uses a different source HEAD")
+    comparison = value.get("trajectory_comparison", {})
+    if comparison.get("contract_status") != "PASS" or comparison.get("complete") is not True:
+        raise SystemExit("two-cycle trajectory comparison is not PASS")
 else:
     if value.get("profile_authorized") is not True or value.get("formal_timing_authorized") is not False:
         raise SystemExit("diagnostic profile gate is not PASS")
@@ -293,6 +326,7 @@ export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
   echo "node_rank=${NODE_RANK}"
   echo "host=$(hostname)"
   echo "head=${EXPECTED_HEAD}"
+  echo "run_kind=${RUN_KIND}"
   echo "execution_mode=${EXECUTION_MODE}"
   echo "pipeline_variant=${PIPELINE_VARIANT}"
   if [[ "${RUN_KIND}" == trajectory ]]; then
@@ -300,8 +334,17 @@ export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
     echo "trajectory_seed=${TRAJECTORY_SEED}"
     echo "trajectory_arm_id=${TRAJECTORY_ARM_ID}"
     echo "claim_boundary=DIAGNOSTIC_ONLY"
+  elif [[ "${RUN_KIND}" == two-cycle-timing ]]; then
+    echo "two_cycle_count=2"
+    echo "two_cycle_seed=${TWO_CYCLE_SEED}"
+    echo "two_cycle_arm_id=${TWO_CYCLE_ARM_ID}"
+    echo "two_cycle_correctness_sha256=${CORRECTNESS_SHA256}"
+    echo "profiled=false"
+    echo "profiler_status=NOT_RUN"
+    echo "claim_boundary=STEADY_STATE_CYCLE2_SCORE_COMPLETION_ENDPOINT_DELTA"
   fi
   echo "plan=${PLAN}"
+  echo "plan_source_sha256=$(sha256sum "${PLAN}" | awk '{print $1}')"
   echo "livewan=$(git -C "${ROOT}/third_party/livewan" rev-parse HEAD)"
   echo "wan21=$(git -C "${ROOT}/third_party/wan21" rev-parse HEAD)"
   echo "python=$(${PYTHON} --version 2>&1)"
@@ -615,3 +658,10 @@ nvidia-smi --query-gpu=index,name,memory.total,memory.free --format=csv,noheader
 [[ -z "$(nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | sed '/^[[:space:]]*$/d')" ]] || {
   echo gpu_processes_remain >&2; exit 88;
 }
+if [[ "${RUN_KIND}" == two-cycle-timing ]]; then
+  {
+    echo "status=PASS"
+    echo "gpu_process_count=0"
+    echo "owner_run_id=${RUN_ID}"
+  } >"${NODE_LOG}/teardown_status.txt"
+fi

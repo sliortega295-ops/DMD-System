@@ -22,7 +22,10 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--mode", required=True, choices=("baseline", "pipeline"))
     value.add_argument(
         "--run-kind",
-        choices=("validate", "capacity", "correctness", "timing", "profile", "trajectory"),
+        choices=(
+            "validate", "capacity", "correctness", "timing", "profile",
+            "trajectory", "two-cycle-timing",
+        ),
         default=os.environ.get("DISTILLSCHEDULE_RUN_KIND", "validate"),
     )
     value.add_argument("--repo-root", type=Path, default=ROOT)
