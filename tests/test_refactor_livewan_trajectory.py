@@ -7,6 +7,8 @@ import subprocess
 import sys
 from types import SimpleNamespace
 
+import pytest
+
 from distillschedule.evidence.trajectory_state_sketch import (
     canonical_state_name,
     deterministic_flat_indices,
@@ -20,7 +22,9 @@ from distillschedule.runtime.livewan_crossscale_worker import (
     OperationTraceRow,
     TRAJECTORY_CONTINUOUS_NAME,
     _apply_trajectory_contract,
+    _bind_trajectory_optimizer_parameter_names,
     _trajectory_normalized_cycle_evidence,
+    _trajectory_optimizer_named_values,
 )
 
 
@@ -368,6 +372,84 @@ def test_numeric_state_coordinates_are_stable_and_wrapper_independent() -> None:
     assert first == second
     assert len(first) == len(set(first)) == 16
     assert first[0] == 0 and first[-1] == 123_456
+
+
+def test_optimizer_state_names_survive_fsdp_parameter_view_swap() -> None:
+    """FSDP may expose an unsharded view while Adam owns the sharded one."""
+
+    class Parameter:
+        pass
+
+    sharded_weight = Parameter()
+    sharded_bias = Parameter()
+    optimizer = SimpleNamespace(
+        param_groups=[{"params": [sharded_weight, sharded_bias]}],
+        state={
+            sharded_weight: {"exp_avg": "weight-m1", "exp_avg_sq": "weight-m2"},
+            sharded_bias: {"exp_avg": "bias-m1", "exp_avg_sq": "bias-m2"},
+        },
+    )
+    names = _bind_trajectory_optimizer_parameter_names(
+        named_parameters=[
+            ("module.blocks.0.weight", sharded_weight),
+            ("module.blocks.0.bias", sharded_bias),
+        ],
+        optimizer=optimizer,
+    )
+
+    # These represent the temporary full Parameters installed on the module by
+    # FSDPParam.to_unsharded(). They deliberately do not share object identity
+    # with the optimizer parameters.
+    exposed_unsharded_parameters = {
+        "blocks.0.weight": Parameter(),
+        "blocks.0.bias": Parameter(),
+    }
+    assert set(map(id, exposed_unsharded_parameters.values())).isdisjoint(names)
+
+    values = _trajectory_optimizer_named_values(
+        optimizer,
+        parameter_names=names,
+    )
+    assert [(name, value) for name, value, _layout in values] == [
+        ("blocks.0.weight/exp_avg", "weight-m1"),
+        ("blocks.0.weight/exp_avg_sq", "weight-m2"),
+        ("blocks.0.bias/exp_avg", "bias-m1"),
+        ("blocks.0.bias/exp_avg_sq", "bias-m2"),
+    ]
+    assert all(
+        layout in (sharded_weight, sharded_bias)
+        for _name, _value, layout in values
+    )
+
+
+def test_optimizer_name_binding_is_fail_closed_for_pipeline_lora_inventory() -> None:
+    class Parameter:
+        pass
+
+    frozen = Parameter()
+    lora_a = Parameter()
+    lora_b = Parameter()
+    optimizer = SimpleNamespace(
+        param_groups=[{"params": [lora_a, lora_b]}],
+        state={lora_a: {}, lora_b: {}},
+    )
+    names = _bind_trajectory_optimizer_parameter_names(
+        named_parameters=[
+            ("blocks.0.weight", frozen),
+            ("blocks.0.lora_A", lora_a),
+            ("blocks.0.lora_B", lora_b),
+        ],
+        optimizer=optimizer,
+        expected_parameter_ids={id(lora_a), id(lora_b)},
+    )
+    assert set(names.values()) == {"blocks.0.lora_A", "blocks.0.lora_B"}
+
+    optimizer.param_groups[0]["params"].append(frozen)
+    with pytest.raises(
+        AssertionError,
+        match="absent from its construction-time name binding",
+    ):
+        _trajectory_optimizer_named_values(optimizer, parameter_names=names)
 
 
 def test_controller_and_launcher_make_trajectory_opt_in() -> None:

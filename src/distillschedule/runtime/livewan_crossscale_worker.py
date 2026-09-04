@@ -630,6 +630,8 @@ class ModelBundle:
     teacher: Any | None
     generator_optimizer: Any | None
     critic_optimizer: Any | None
+    generator_optimizer_parameter_names: dict[int, str]
+    critic_optimizer_parameter_names: dict[int, str]
     critic_lora_params: list[Any]
     critic_shadow_lora_params: list[Any]
     critic_gradient_reducer: GradReadyAsyncGroupReducer | None
@@ -1126,6 +1128,8 @@ def build_models(
     }
     student = critic = critic_shadow = teacher = None
     opt_g = opt_c = None
+    generator_optimizer_parameter_names: dict[int, str] = {}
+    critic_optimizer_parameter_names: dict[int, str] = {}
     lora_params: list[Any] = []
     shadow_lora_params: list[Any] = []
     critic_gradient_reducer = None
@@ -1168,9 +1172,17 @@ def build_models(
         optimizer_kwargs = (
             {"fused": True} if optimizer_impl == "fused_adamw" else {"foreach": True}
         )
+        generator_named_parameters = list(student.named_parameters())
         opt_g = torch.optim.AdamW(
-            list(student.parameters()), lr=2e-6, betas=(0.0, 0.99),
+            [parameter for _name, parameter in generator_named_parameters],
+            lr=2e-6, betas=(0.0, 0.99),
             weight_decay=0.0, eps=1e-8, **optimizer_kwargs,
+        )
+        generator_optimizer_parameter_names = (
+            _bind_trajectory_optimizer_parameter_names(
+                named_parameters=generator_named_parameters,
+                optimizer=opt_g,
+            )
         )
         metadata["student"] = {
             "placement": (
@@ -1215,6 +1227,11 @@ def build_models(
         opt_c = torch.optim.AdamW(
             lora_params, lr=4e-5, betas=(0.0, 0.99),
             weight_decay=0.0, eps=1e-8, foreach=True,
+        )
+        critic_optimizer_parameter_names = _bind_trajectory_optimizer_parameter_names(
+            named_parameters=list(critic.named_parameters()),
+            optimizer=opt_c,
+            expected_parameter_ids={id(parameter) for parameter in lora_params},
         )
         critic_optimizer_receipt = materialize_adam_state(
             torch, opt_c, step=int(bootstrap.value["optimizer"]["critic_step"])
@@ -1381,6 +1398,8 @@ def build_models(
         teacher=teacher,
         generator_optimizer=opt_g,
         critic_optimizer=opt_c,
+        generator_optimizer_parameter_names=generator_optimizer_parameter_names,
+        critic_optimizer_parameter_names=critic_optimizer_parameter_names,
         critic_lora_params=lora_params,
         critic_shadow_lora_params=shadow_lora_params,
         critic_gradient_reducer=critic_gradient_reducer,
@@ -2334,33 +2353,104 @@ def _trajectory_model_named_values(
     ]
 
 
-def _trajectory_optimizer_named_values(
-    model: Any | None,
-    optimizer: Any | None,
+def _bind_trajectory_optimizer_parameter_names(
     *,
-    parameter_ids: set[int] | None = None,
-) -> list[tuple[str, Any, Any | None]]:
-    if model is None or optimizer is None:
-        return []
-    names = {
-        id(parameter): canonical_state_name(name)
-        for name, parameter in model.named_parameters()
-        if parameter_ids is None or id(parameter) in parameter_ids
-    }
-    result: list[tuple[str, Any, Any | None]] = []
+    named_parameters: Sequence[tuple[str, Any]],
+    optimizer: Any,
+    expected_parameter_ids: set[int] | None = None,
+) -> dict[int, str]:
+    """Bind optimizer parameters to stable model names before FSDP execution.
+
+    Composable FSDP2 temporarily exposes unsharded ``Parameter`` objects from
+    ``module.named_parameters()`` while the optimizer continues to own the
+    original sharded DTensor parameters.  Looking names up by object identity
+    after a forward therefore fails even though the optimizer inventory is
+    unchanged.  Capture the identity-to-name relation once, at optimizer
+    construction, while both views are guaranteed to agree.
+
+    The binding is diagnostics-only and does not mutate the model, optimizer,
+    parameter groups, or training state.
+    """
+
+    names: dict[int, str] = {}
+    canonical_ids: dict[str, int] = {}
+    for raw_name, parameter in named_parameters:
+        parameter_id = id(parameter)
+        name = canonical_state_name(raw_name)
+        previous_id = canonical_ids.get(name)
+        if previous_id is not None and previous_id != parameter_id:
+            raise AssertionError(
+                f"trajectory model has duplicate canonical parameter name: {name}"
+            )
+        previous_name = names.get(parameter_id)
+        if previous_name is not None and previous_name != name:
+            raise AssertionError(
+                "trajectory model parameter has multiple canonical names: "
+                f"{previous_name} vs {name}"
+            )
+        names[parameter_id] = name
+        canonical_ids[name] = parameter_id
+
+    optimizer_ids: list[int] = []
+    optimizer_id_set: set[int] = set()
     for group in optimizer.param_groups:
         for parameter in group["params"]:
-            if parameter_ids is not None and id(parameter) not in parameter_ids:
-                continue
-            name = names.get(id(parameter))
+            parameter_id = id(parameter)
+            if parameter_id in optimizer_id_set:
+                raise AssertionError(
+                    "trajectory optimizer parameter appears in multiple parameter groups"
+                )
+            optimizer_ids.append(parameter_id)
+            optimizer_id_set.add(parameter_id)
+            if parameter_id not in names:
+                raise AssertionError(
+                    "trajectory optimizer parameter has no model name at construction"
+                )
+
+    if expected_parameter_ids is not None and optimizer_id_set != expected_parameter_ids:
+        missing = sorted(expected_parameter_ids - optimizer_id_set)
+        unexpected = sorted(optimizer_id_set - expected_parameter_ids)
+        raise AssertionError(
+            "trajectory optimizer parameter inventory differs from the registered "
+            f"trainable inventory: missing={len(missing)} unexpected={len(unexpected)}"
+        )
+    return {parameter_id: names[parameter_id] for parameter_id in optimizer_ids}
+
+
+def _trajectory_optimizer_named_values(
+    optimizer: Any | None,
+    *,
+    parameter_names: Mapping[int, str],
+) -> list[tuple[str, Any, Any | None]]:
+    if optimizer is None:
+        _require(not parameter_names, "missing optimizer has a trajectory name binding")
+        return []
+    result: list[tuple[str, Any, Any | None]] = []
+    observed_ids: set[int] = set()
+    for group in optimizer.param_groups:
+        for parameter in group["params"]:
+            parameter_id = id(parameter)
+            if parameter_id in observed_ids:
+                raise AssertionError(
+                    "trajectory optimizer parameter appears in multiple parameter groups"
+                )
+            observed_ids.add(parameter_id)
+            name = parameter_names.get(parameter_id)
             if name is None:
-                raise AssertionError("trajectory optimizer parameter has no model name")
+                raise AssertionError(
+                    "trajectory optimizer parameter is absent from its construction-time "
+                    "name binding"
+                )
             state = optimizer.state.get(parameter, {})
             for key in ("exp_avg", "exp_avg_sq"):
                 if key in state:
                     value = state[key]
                     layout_source = None if hasattr(value, "placements") else parameter
                     result.append((f"{name}/{key}", value, layout_source))
+    if observed_ids != set(parameter_names):
+        raise AssertionError(
+            "trajectory optimizer parameter groups changed after name binding"
+        )
     return result
 
 
@@ -2390,7 +2480,8 @@ def _trajectory_state_anchor(
         "generator_adam": collect_numeric_state_sketch(
             torch=torch,
             named_values=_trajectory_optimizer_named_values(
-                bundle.student, bundle.generator_optimizer
+                bundle.generator_optimizer,
+                parameter_names=bundle.generator_optimizer_parameter_names,
             ),
             samples_per_tensor=16,
             primary_rank=generator_primary,
@@ -2406,9 +2497,8 @@ def _trajectory_state_anchor(
         "critic_adam": collect_numeric_state_sketch(
             torch=torch,
             named_values=_trajectory_optimizer_named_values(
-                bundle.critic,
                 bundle.critic_optimizer,
-                parameter_ids=critic_ids,
+                parameter_names=bundle.critic_optimizer_parameter_names,
             ),
             samples_per_tensor=16,
             primary_rank=critic_primary,
