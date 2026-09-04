@@ -168,6 +168,7 @@ from distillschedule.runtime.helios_cross_kv_cache import (
     install_generator_nograd_cross_kv_cache,
 )
 from distillschedule.runtime.helios_critic_scalar_logs import (
+    critic_scalar_log_call_kwargs,
     install_critic_scalar_log_elision,
 )
 from distillschedule.runtime.helios_generator_free_memory import (
@@ -847,7 +848,7 @@ def _run_gan_critic_precomputed(
     diagnostics: StaticProfileDiagnostics,
     collect_scalars: bool = False,
 ) -> dict[str, Any]:
-    from helios.utils.utils_helios_post import _critic_loss
+    from helios.utils import utils_helios_post
 
     with diagnostics.scope(f"INPUT_H2D/critic_entry_update/step{step}"):
         entry = trace.load_critic_entry(rank=rank, step=step, device=device)
@@ -862,10 +863,18 @@ def _run_gan_critic_precomputed(
         x0,
         critic_engine,
     )
-    kwargs["collect_scalar_logs"] = bool(collect_official_scalar_logs)
+    kwargs.update(
+        critic_scalar_log_call_kwargs(
+            collect_scalar_logs=collect_official_scalar_logs,
+            module=utils_helios_post,
+        )
+    )
     before = int(critic_engine.global_steps)
     with diagnostics.scope("FSDP_PRE_FORWARD_ALL_GATHER/critic"):
-        loss, logs = _critic_loss(fake_score_model=critic_engine.module, **kwargs)
+        loss, logs = utils_helios_post._critic_loss(
+            fake_score_model=critic_engine.module,
+            **kwargs,
+        )
     if not bool(logs.get("critic_optimizer_committed")):
         raise AssertionError("GAN P0 Critic did not commit")
     if int(critic_engine.global_steps) != before + 1:

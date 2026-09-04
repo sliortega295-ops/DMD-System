@@ -27,6 +27,42 @@ _SIGNATURE_NEEDLE = "    pipeline_micro_wave: int = None,\n):"
 _SCALAR_NAMES = ("denoising_loss", "gan_D_loss", "r1_loss", "r2_loss")
 
 
+def critic_scalar_log_call_kwargs(
+    *,
+    collect_scalar_logs: bool,
+    module: Any,
+) -> dict[str, bool]:
+    """Return the optional scalar-log keyword for the live Helios helper.
+
+    The pinned official ``_critic_loss`` predates ``collect_scalar_logs``.  A
+    correctness/trajectory call wants that helper's default behavior, so it
+    must *omit* the newer keyword rather than passing ``True``.  Low-overhead
+    timing calls request ``False`` only after the source-pinned in-process
+    elision patch has been installed (or if a future helper explicitly exposes
+    the keyword).
+
+    This is deliberately capability-checked instead of catching ``TypeError``:
+    retrying a training helper after it has started could duplicate backward or
+    optimizer side effects.
+    """
+
+    if collect_scalar_logs:
+        return {}
+
+    function = module._critic_loss
+    signature = inspect.signature(function, follow_wrapped=False)
+    explicitly_supported = "collect_scalar_logs" in signature.parameters
+    installed_patch = bool(
+        getattr(module, "_distillschedule_critic_scalar_log_elision", False)
+    )
+    if not (explicitly_supported or installed_patch):
+        raise RuntimeError(
+            "collect_scalar_logs=False requires the source-pinned Helios "
+            "Critic scalar-log elision patch or an explicit live API"
+        )
+    return {"collect_scalar_logs": False}
+
+
 def source_sha256(function: Any) -> str:
     return hashlib.sha256(inspect.getsource(function).encode()).hexdigest()
 
@@ -123,5 +159,6 @@ def install_critic_scalar_log_elision(
 __all__ = [
     "HELIOS_CRITIC_LOSS_SHA256",
     "TIMING_OMITTED",
+    "critic_scalar_log_call_kwargs",
     "install_critic_scalar_log_elision",
 ]

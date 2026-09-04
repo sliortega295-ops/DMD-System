@@ -3,8 +3,11 @@ from __future__ import annotations
 import hashlib
 import types
 
+import pytest
+
 from distillschedule.runtime.helios_critic_scalar_logs import (
     TIMING_OMITTED,
+    critic_scalar_log_call_kwargs,
     install_critic_scalar_log_elision,
 )
 
@@ -80,3 +83,56 @@ def test_correctness_collects_and_timing_elides_only_four_scalars() -> None:
     assert receipt["collected_scalar_count"] == 4
     assert receipt["elided_scalar_count"] == 4
     assert receipt["shared_source_modified"] is False
+
+
+@pytest.mark.parametrize("arm", ["baseline", "c25"])
+def test_old_official_api_collecting_paths_omit_new_keyword(arm: str) -> None:
+    del arm  # Both policies retain official scalar collection in trajectory mode.
+    module, _sha = _module()
+    kwargs = critic_scalar_log_call_kwargs(
+        collect_scalar_logs=True,
+        module=module,
+    )
+    assert kwargs == {}
+    values = [Scalar(i + 1.0) for i in range(4)]
+    total, logs = module._critic_loss(*values, **kwargs)
+    assert total == 10.0
+    assert list(logs.values()) == [1.0, 2.0, 3.0, 4.0]
+
+
+def test_old_official_api_fails_closed_if_elision_was_not_installed() -> None:
+    module, _sha = _module()
+    with pytest.raises(RuntimeError, match="source-pinned"):
+        critic_scalar_log_call_kwargs(
+            collect_scalar_logs=False,
+            module=module,
+        )
+
+
+def test_c25_low_overhead_path_uses_patched_keyword() -> None:
+    module, sha = _module()
+    install_critic_scalar_log_elision(
+        enabled=True,
+        module=module,
+        expected_source_sha256=sha,
+    )
+    kwargs = critic_scalar_log_call_kwargs(
+        collect_scalar_logs=False,
+        module=module,
+    )
+    assert kwargs == {"collect_scalar_logs": False}
+    values = [Scalar(i + 1.0) for i in range(4)]
+    total, logs = module._critic_loss(*values, **kwargs)
+    assert total == 10.0
+    assert set(logs.values()) == {TIMING_OMITTED}
+
+
+def test_future_explicit_api_accepts_elision_without_local_patch() -> None:
+    def explicit_critic_loss(*, collect_scalar_logs: bool = True):
+        return collect_scalar_logs
+
+    module = types.SimpleNamespace(_critic_loss=explicit_critic_loss)
+    assert critic_scalar_log_call_kwargs(
+        collect_scalar_logs=False,
+        module=module,
+    ) == {"collect_scalar_logs": False}
