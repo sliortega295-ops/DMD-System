@@ -476,7 +476,7 @@ def test_controller_and_launcher_make_trajectory_opt_in() -> None:
     assert '"trajectory"' in entrypoint
 
 
-def test_pipeline_physical_b2_is_normalized_to_logical_rank_census() -> None:
+def test_pipeline_physical_b2_is_preserved_as_exact_global_census() -> None:
     contributions = []
     for rank in range(16):
         lane = rank if rank < 8 else rank - 8
@@ -541,14 +541,97 @@ def test_pipeline_physical_b2_is_normalized_to_logical_rank_census() -> None:
     samples, _rng, census, losses, gradients, finite = result
     assert samples == tuple(f"cycle=0/step={step}/slot=0" for step in range(5))
     assert census == {
-        "application/student": 1,
-        "logical_score/critic/grad/checkpoint": 5,
-        "logical_score/critic/nograd/plain": 1,
-        "logical_score/teacher/nograd/plain": 1,
+        "application/student": 16,
+        "logical_score/critic/grad/checkpoint": 80,
+        "logical_score/critic/nograd/plain": 16,
+        "logical_score/teacher/nograd/plain": 16,
     }
     assert losses == {"generator_mean": 1.0, "critic_mean": 3.0}
     assert gradients == {"generator_mean": 2.0, "critic_mean": 3.0}
     assert finite is True
+
+
+def test_rank_qualified_student_counts_need_not_divide_by_global_batch() -> None:
+    # These are the exact per-rank Student block-forward counts produced by the
+    # immutable cycles1 trace.  Its rank-qualified world_frames values make the
+    # logical slots perform different amounts of work.
+    student_counts = (
+        118,
+        133,
+        138,
+        138,
+        148,
+        138,
+        148,
+        148,
+        133,
+        138,
+        128,
+        118,
+        118,
+        118,
+        128,
+        118,
+    )
+    assert sum(student_counts) == 2108
+    assert sum(student_counts) % 16 == 12
+
+    contributions = []
+    for rank, student_count in enumerate(student_counts):
+        losses = [
+            {
+                "kind": "generator",
+                "operation_key": f"cycle=0/step=0/slot={rank}",
+                "mean": float(rank + 1),
+            },
+            *(
+                {
+                    "kind": "critic",
+                    "operation_key": f"cycle=0/step={step}/slot={rank}",
+                    "mean": float(step + rank + 1),
+                }
+                for step in range(5)
+            ),
+        ]
+        contributions.append(
+            {
+                "losses": losses,
+                "optimizer": [
+                    {"role": "generator", "clip_input_norm": 2.0},
+                    *(
+                        {"role": "critic", "clip_input_norm": 3.0}
+                        for _ in range(5)
+                    ),
+                ],
+                "call_census": {"application/student": student_count},
+            }
+        )
+
+    class FakeDistributed:
+        @staticmethod
+        def all_gather_object(output, _local):
+            output[:] = contributions
+
+    class FakeTrace:
+        global_batch = 16
+
+        @staticmethod
+        def row(global_step, rank):
+            return SimpleNamespace(
+                operation_key=f"cycle=0/step={global_step}/slot={rank}",
+                seeds={"rollout": global_step * 100 + rank},
+            )
+
+    result = _trajectory_normalized_cycle_evidence(
+        torch=SimpleNamespace(distributed=FakeDistributed()),
+        rank=0,
+        cycle=0,
+        trace=FakeTrace(),
+        local_losses=(),
+        local_optimizer=(),
+        local_call_census={},
+    )
+    assert result[2] == {"application/student": 2108}
 
 
 def test_trajectory_summarizer_accepts_baseline_and_pipeline_receipts(

@@ -2556,7 +2556,7 @@ def _trajectory_normalized_cycle_evidence(
     dict[str, float | None],
     bool,
 ]:
-    """Normalize physical role-pool evidence to one logical rank/sample lane.
+    """Normalize physical role-pool evidence to one logical world16 view.
 
     The sequential denominator executes one sample on every world rank.  C24
     executes two samples on each of eight Generator ranks and the matching two
@@ -2565,6 +2565,13 @@ def _trajectory_normalized_cycle_evidence(
     its observed counters/losses and then receives the same global view.  Rank
     ``r`` writes only slot ``r``.  This makes sample/RNG/loss/call receipts
     directly comparable without pretending the two physical topologies match.
+
+    Call counts are exact global totals, not a per-rank mean.  The immutable
+    operation trace assigns rank-qualified history lengths, so the number of
+    Student block evaluations legitimately differs between logical slots.  A
+    global total therefore need not be divisible by ``trace.global_batch``;
+    retaining the integer total also makes the baseline and C24 comparison
+    lossless.
     """
 
     gathered: list[dict[str, Any] | None] = [None] * WORLD_SIZE
@@ -2593,14 +2600,8 @@ def _trajectory_normalized_cycle_evidence(
         for key, value in contributor["call_census"].items():
             global_call_census[str(key)] = global_call_census.get(str(key), 0) + int(value)
 
-    normalized_call_census: dict[str, int] = {}
-    for key, total in sorted(global_call_census.items()):
-        _require(
-            total % trace.global_batch == 0,
-            f"trajectory call census {key} is not divisible by global batch",
-        )
-        normalized_call_census[key] = total // trace.global_batch
-    _require(bool(normalized_call_census), "trajectory call census is empty")
+    exact_global_call_census = dict(sorted(global_call_census.items()))
+    _require(bool(exact_global_call_census), "trajectory call census is empty")
 
     rows = tuple(
         trace.row(cycle * FULL5_STEPS + step, rank)
@@ -2646,7 +2647,7 @@ def _trajectory_normalized_cycle_evidence(
             ).hexdigest()
             for row in rows
         },
-        normalized_call_census,
+        exact_global_call_census,
         losses,
         gradient_norms,
         finite,
@@ -2712,6 +2713,7 @@ def _append_trajectory_cycle_receipt(
                 "updates": "G1_C5_EMA0",
                 "sample_policy": "80_SOURCE_ROWS_REUSED_FRESH_OPERATION_KEYED_RNG",
                 "trajectory_schema": "trajectory_coarse_v1",
+                "call_census_scope": "EXACT_GLOBAL_WORLD16_TOTALS",
             },
             implementation={
                 "execution_mode": execution_mode,
