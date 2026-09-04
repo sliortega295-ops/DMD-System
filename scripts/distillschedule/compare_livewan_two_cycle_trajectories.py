@@ -35,6 +35,12 @@ STATE_COMPONENTS = (
     "critic_trainable",
     "critic_adam",
 )
+EXTREME_NUMERIC_THRESHOLDS = {
+    "minimum_cosine": 0.9,
+    "maximum_normalized_l2": 0.5,
+    "minimum_norm_ratio": 0.5,
+    "maximum_norm_ratio": 2.0,
+}
 
 
 def _launch_manifest(path: Path) -> dict[str, str]:
@@ -46,13 +52,69 @@ def _launch_manifest(path: Path) -> dict[str, str]:
     return rows
 
 
-def _validate_arm(
-    root: Path,
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _load_summary(
+    path: Path,
     *,
+    root: Path,
     mode: str,
     variant: str,
     expected_head: str,
 ) -> dict[str, Any]:
+    resolved_path = path.resolve(strict=True)
+    root = root.resolve(strict=True)
+    value = json.loads(resolved_path.read_text(encoding="utf-8"))
+    required = {
+        "schema_version": "distillschedule.livewan_trajectory_summary.v1",
+        "status": "PASS",
+        "expected_head": expected_head,
+        "head": expected_head,
+        "heads": {mode: expected_head},
+        "execution_mode": mode,
+        "pipeline_variant": variant,
+        "cycles": 2,
+        "rank_cycle_receipts": 32,
+        "expected_rank_cycle_receipts": 32,
+        "final_versions": {"generator": 2, "critic": 10, "ema": 0},
+        "formal_timing_eligible": False,
+    }
+    for key, expected in required.items():
+        if value.get(key) != expected:
+            raise ValueError(f"{mode} trajectory summary changed {key}")
+    if Path(str(value.get("run_root", ""))).resolve(strict=True) != root:
+        raise ValueError(f"{mode} trajectory summary run_root is stale")
+    if resolved_path.parent != root:
+        raise ValueError(f"{mode} trajectory summary is outside its canonical run_root")
+    return {
+        "value": value,
+        "path": str(resolved_path),
+        "sha256": _sha256(resolved_path),
+    }
+
+
+def _validate_arm(
+    root: Path,
+    *,
+    summary_path: Path,
+    mode: str,
+    variant: str,
+    expected_head: str,
+) -> dict[str, Any]:
+    root = root.resolve(strict=True)
+    summary = _load_summary(
+        summary_path,
+        root=root,
+        mode=mode,
+        variant=variant,
+        expected_head=expected_head,
+    )
     manifests = [
         _launch_manifest(root / "launcher" / f"node_{node}" / "launch_manifest.txt")
         for node in range(2)
@@ -73,6 +135,14 @@ def _validate_arm(
         values = {manifest.get(key) for manifest in manifests}
         if len(values) != 1 or None in values or "" in values:
             raise ValueError(f"{mode} two-node launch manifest disagrees on {key}")
+    summary_value = summary["value"]
+    if (
+        summary_value.get("run_id") != manifests[0]["run_id"]
+        or summary_value.get("arm_id") != manifests[0]["trajectory_arm_id"]
+        or int(summary_value.get("seed", -1))
+        != int(manifests[0]["trajectory_seed"])
+    ):
+        raise ValueError(f"{mode} trajectory summary identity differs from launch")
 
     rows = []
     for rank in range(16):
@@ -86,7 +156,8 @@ def _validate_arm(
         "run_id": manifests[0]["run_id"],
         "arm_id": manifests[0]["trajectory_arm_id"],
         "seed": int(manifests[0]["trajectory_seed"]),
-        "run_root": str(root.resolve()),
+        "run_root": str(root),
+        "summary": summary,
     }
 
 
@@ -117,7 +188,32 @@ def _load_anchor(root: Path, cycle: int) -> dict[str, Any]:
         or set(dict(value.get("components", {}))) != set(STATE_COMPONENTS)
     ):
         raise ValueError(f"invalid LiveWan state anchor: {path}")
-    return value
+    return {
+        "value": value,
+        "binding": {
+            "cycle": cycle,
+            "path": str(path.resolve()),
+            "payload_sha256": recorded,
+            "file_sha256": _sha256(path.resolve()),
+        },
+    }
+
+
+def _validate_summary_anchor_binding(
+    summary: dict[str, Any], anchor: dict[str, Any], *, cycle: int, mode: str
+) -> None:
+    rows = list(summary.get("numeric_state_anchors", ()))
+    matching = [row for row in rows if int(row.get("cycle", -1)) == cycle]
+    if len(matching) != 1:
+        raise ValueError(f"{mode} summary does not bind exactly one cycle{cycle} anchor")
+    row = matching[0]
+    binding = anchor["binding"]
+    if (
+        Path(str(row.get("path", ""))).resolve(strict=True)
+        != Path(binding["path"])
+        or row.get("sha256") != binding["payload_sha256"]
+    ):
+        raise ValueError(f"{mode} summary cycle{cycle} anchor binding is stale")
 
 
 def _vector_metrics(reference: list[float], candidate: list[float]) -> tuple[float, float, float]:
@@ -209,6 +305,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline-run-root", type=Path, required=True)
     parser.add_argument("--pipeline-run-root", type=Path, required=True)
+    parser.add_argument("--baseline-summary", type=Path, required=True)
+    parser.add_argument("--pipeline-summary", type=Path, required=True)
     parser.add_argument("--expected-head", required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -217,28 +315,53 @@ def main() -> int:
 
     baseline = _validate_arm(
         args.baseline_run_root,
+        summary_path=args.baseline_summary,
         mode="baseline",
         variant=BASELINE_VARIANT,
         expected_head=args.expected_head,
     )
     pipeline = _validate_arm(
         args.pipeline_run_root,
+        summary_path=args.pipeline_summary,
         mode="pipeline",
         variant=PIPELINE_VARIANT,
         expected_head=args.expected_head,
     )
     if baseline["seed"] != pipeline["seed"]:
         raise ValueError("trajectory arm seeds differ")
+    if (
+        baseline["summary"]["value"].get("identity")
+        != pipeline["summary"]["value"].get("identity")
+    ):
+        raise ValueError("trajectory trace/bootstrap/source identity differs")
 
     state_comparisons = []
+    anchor_bindings: dict[str, list[dict[str, Any]]] = {
+        "baseline": [],
+        "pipeline": [],
+    }
     for cycle in (1, 2):
         baseline_anchor = _load_anchor(args.baseline_run_root, cycle)
         pipeline_anchor = _load_anchor(args.pipeline_run_root, cycle)
+        _validate_summary_anchor_binding(
+            baseline["summary"]["value"],
+            baseline_anchor,
+            cycle=cycle,
+            mode="baseline",
+        )
+        _validate_summary_anchor_binding(
+            pipeline["summary"]["value"],
+            pipeline_anchor,
+            cycle=cycle,
+            mode="pipeline",
+        )
+        anchor_bindings["baseline"].append(baseline_anchor["binding"])
+        anchor_bindings["pipeline"].append(pipeline_anchor["binding"])
         for component in STATE_COMPONENTS:
             state_comparisons.append(
                 _compare_state(
-                    baseline_anchor["components"][component],
-                    pipeline_anchor["components"][component],
+                    baseline_anchor["value"]["components"][component],
+                    pipeline_anchor["value"]["components"][component],
                     cycle=cycle,
                     component=component,
                 )
@@ -253,22 +376,78 @@ def main() -> int:
         comparison_kind="semantic",
         required_state_cycles=(1, 2),
     )
+    violations: list[dict[str, Any]] = []
+    for row in result.get("state_comparisons", ()):
+        checks = (
+            ("cosine", float(row.get("cosine", float("nan"))), ">=", 0.9),
+            (
+                "normalized_l2",
+                float(row.get("normalized_l2", float("nan"))),
+                "<=",
+                0.5,
+            ),
+            ("norm_ratio", float(row.get("norm_ratio", float("nan"))), ">=", 0.5),
+            ("norm_ratio", float(row.get("norm_ratio", float("nan"))), "<=", 2.0),
+        )
+        for metric, value, operator, threshold in checks:
+            failed = (
+                not math.isfinite(value)
+                or (operator == ">=" and value < threshold)
+                or (operator == "<=" and value > threshold)
+            )
+            if failed:
+                violations.append(
+                    {
+                        "cycle": int(row.get("cycle", -1)),
+                        "component": str(row.get("component", "")),
+                        "metric": metric,
+                        "value": value if math.isfinite(value) else None,
+                        "required": f"{operator}{threshold}",
+                    }
+                )
+    result["numeric_eligibility"] = {
+        "schema_version": "distillschedule.livewan_two_cycle_numeric_eligibility.v1",
+        "status": "PASS" if not violations else "FAIL_EXTREME_DRIFT",
+        "policy": "REJECT_EXTREME_ONLY_RECORD_ORDINARY_REVIEW",
+        "thresholds": EXTREME_NUMERIC_THRESHOLDS,
+        "violations": violations,
+    }
     result["source_binding"] = {
         "expected_head": args.expected_head,
         "baseline": {
             "run_id": baseline["run_id"],
             "arm_id": baseline["arm_id"],
             "run_root": baseline["run_root"],
+            "seed": baseline["seed"],
+            "identity": baseline["summary"]["value"]["identity"],
+            "summary": {
+                "path": baseline["summary"]["path"],
+                "sha256": baseline["summary"]["sha256"],
+            },
+            "anchors": anchor_bindings["baseline"],
         },
         "pipeline": {
             "run_id": pipeline["run_id"],
             "arm_id": pipeline["arm_id"],
             "run_root": pipeline["run_root"],
+            "seed": pipeline["seed"],
+            "identity": pipeline["summary"]["value"]["identity"],
+            "summary": {
+                "path": pipeline["summary"]["path"],
+                "sha256": pipeline["summary"]["sha256"],
+            },
+            "anchors": anchor_bindings["pipeline"],
         },
     }
     _atomic_json(args.output, result)
     print(json.dumps(result, indent=2, sort_keys=True))
-    return 0 if result.get("complete") and result.get("contract", {}).get("status") == "PASS" else 1
+    return (
+        0
+        if result.get("complete")
+        and result.get("contract", {}).get("status") == "PASS"
+        and result["numeric_eligibility"]["status"] == "PASS"
+        else 1
+    )
 
 
 if __name__ == "__main__":

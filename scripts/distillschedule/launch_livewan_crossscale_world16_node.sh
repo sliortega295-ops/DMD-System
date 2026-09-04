@@ -247,7 +247,7 @@ if run_kind == "timing":
         raise SystemExit("paired correctness gate uses a different source HEAD")
 elif run_kind == "two-cycle-timing":
     required = {
-        "schema_version": "distillschedule.livewan_two_cycle_timing_gate.v1",
+        "schema_version": "distillschedule.livewan_two_cycle_timing_gate.v2",
         "status": "PASS",
         "claimable_for_two_cycle_timing": True,
         "expected_head": expected_head,
@@ -257,6 +257,13 @@ elif run_kind == "two-cycle-timing":
     for key, expected in required.items():
         if value.get(key) != expected:
             raise SystemExit(f"two-cycle timing gate changed {key}")
+    numerical_review = value.get("numerical_review", {})
+    if not (
+        numerical_review.get("policy")
+        == "REJECT_EXTREME_ONLY_RECORD_ORDINARY_REVIEW"
+        and numerical_review.get("extreme_failure_count") == 0
+    ):
+        raise SystemExit("two-cycle timing gate lost its extreme-drift policy")
     if set(value.get("heads", {}).values()) != {expected_head}:
         raise SystemExit("two-cycle timing gate uses a different source HEAD")
     comparison = value.get("trajectory_comparison", {})

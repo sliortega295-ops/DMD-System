@@ -1060,7 +1060,7 @@ def _load_two_cycle_timing_gate(
     )
     value = json.loads(resolved.read_text(encoding="utf-8"))
     required = {
-        "schema_version": "distillschedule.livewan_two_cycle_timing_gate.v1",
+        "schema_version": "distillschedule.livewan_two_cycle_timing_gate.v2",
         "status": "PASS",
         "claimable_for_two_cycle_timing": True,
         "expected_head": expected_head,
@@ -1069,6 +1069,13 @@ def _load_two_cycle_timing_gate(
     }
     for key, expected in required.items():
         _require(value.get(key) == expected, f"two-cycle timing gate changed {key}")
+    numerical_review = dict(value.get("numerical_review", {}))
+    _require(
+        numerical_review.get("policy")
+        == "REJECT_EXTREME_ONLY_RECORD_ORDINARY_REVIEW"
+        and numerical_review.get("extreme_failure_count") == 0,
+        "two-cycle timing gate lost its extreme-drift policy",
+    )
     _require(
         set(dict(value.get("heads", {})).values()) == {expected_head},
         "two-cycle timing gate uses a different source HEAD",

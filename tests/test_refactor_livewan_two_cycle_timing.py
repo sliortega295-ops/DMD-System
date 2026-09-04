@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -40,7 +41,36 @@ def plan_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         monkeypatch.setenv(key, str(tmp_path / key.lower()))
 
 
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def _trajectory(path: Path, *, mode: str, variant: str, run_id: str) -> None:
+    root = path.parent.resolve()
+    anchor_rows = []
+    for cycle in (1, 2):
+        anchor_path = root / "trajectory/anchors" / f"cycle_{cycle:02d}_global.json"
+        anchor_path.parent.mkdir(parents=True, exist_ok=True)
+        body = {
+            "schema_version": "distillschedule.livewan_trajectory_state_anchor.v1",
+            "cycle": cycle,
+            "components": {
+                component: {"test": True}
+                for component in (
+                    "generator_trainable",
+                    "generator_adam",
+                    "critic_trainable",
+                    "critic_adam",
+                )
+            },
+        }
+        digest = hashlib.sha256(
+            json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        anchor_path.write_text(json.dumps({**body, "anchor_sha256": digest}))
+        anchor_rows.append(
+            {"cycle": cycle, "path": str(anchor_path.resolve()), "sha256": digest}
+        )
     path.write_text(
         json.dumps(
             {
@@ -56,16 +86,42 @@ def _trajectory(path: Path, *, mode: str, variant: str, run_id: str) -> None:
                 "expected_rank_cycle_receipts": 32,
                 "final_versions": {"generator": 2, "critic": 10, "ema": 0},
                 "formal_timing_eligible": False,
+                "run_root": str(root),
                 "run_id": run_id,
                 "arm_id": f"{mode}-arm",
                 "seed": 17,
                 "identity": IDENTITY,
+                "numeric_state_anchors": anchor_rows,
             }
         )
     )
 
 
-def _comparison(path: Path) -> None:
+def _artifact_binding(summary_path: Path) -> dict[str, object]:
+    summary = json.loads(summary_path.read_text())
+    anchors = []
+    for row in summary["numeric_state_anchors"]:
+        anchor_path = Path(row["path"]).resolve()
+        anchors.append(
+            {
+                "cycle": row["cycle"],
+                "path": str(anchor_path),
+                "payload_sha256": row["sha256"],
+                "file_sha256": _sha256(anchor_path),
+            }
+        )
+    return {
+        "run_id": summary["run_id"],
+        "arm_id": summary["arm_id"],
+        "run_root": str(Path(summary["run_root"]).resolve()),
+        "seed": summary["seed"],
+        "identity": summary["identity"],
+        "summary": {"path": str(summary_path.resolve()), "sha256": _sha256(summary_path)},
+        "anchors": anchors,
+    }
+
+
+def _comparison(path: Path, baseline: Path, pipeline: Path) -> None:
     path.write_text(
         json.dumps(
             {
@@ -77,11 +133,30 @@ def _comparison(path: Path) -> None:
                 "status": "TRAJECTORY_REVIEW_50C_COMPLETED",
                 "contract": {"status": "PASS", "mismatches": []},
                 "summary": {"state_comparison_count": 8},
+                "curves": {
+                    "student_loss": {
+                        "status": "REVIEW",
+                        "reference": [1.0, 0.9],
+                        "candidate": [1.1, 1.0],
+                    }
+                },
+                "gradient_norm_curves": {
+                    "student": {
+                        "status": "REVIEW",
+                        "reference": [1.0, 0.9],
+                        "candidate": [1.1, 1.0],
+                    }
+                },
                 "state_comparisons": [
                     {
                         "cycle": cycle,
                         "component": component,
                         "finite": True,
+                        "status": "REVIEW",
+                        "cosine": 0.95,
+                        "normalized_l2": 0.1,
+                        "norm_ratio": 1.2,
+                        "min_named_tensor_cosine": 0.8,
                     }
                     for cycle in (1, 2)
                     for component in (
@@ -103,14 +178,20 @@ def _comparison(path: Path) -> None:
                 },
                 "source_binding": {
                     "expected_head": HEAD,
-                    "baseline": {
-                        "run_id": "baseline-run",
-                        "arm_id": "baseline-arm",
+                    "baseline": _artifact_binding(baseline),
+                    "pipeline": _artifact_binding(pipeline),
+                },
+                "numeric_eligibility": {
+                    "schema_version": "distillschedule.livewan_two_cycle_numeric_eligibility.v1",
+                    "status": "PASS",
+                    "policy": "REJECT_EXTREME_ONLY_RECORD_ORDINARY_REVIEW",
+                    "thresholds": {
+                        "minimum_cosine": 0.9,
+                        "maximum_normalized_l2": 0.5,
+                        "minimum_norm_ratio": 0.5,
+                        "maximum_norm_ratio": 2.0,
                     },
-                    "pipeline": {
-                        "run_id": "pipeline-run",
-                        "arm_id": "pipeline-arm",
-                    },
+                    "violations": [],
                 },
             }
         )
@@ -154,8 +235,10 @@ def test_two_cycle_contract_is_exact_and_does_not_add_midpoint_sync() -> None:
 def test_gate_binds_exact_two_cycle_trajectories_and_cross_arm_sha(
     tmp_path: Path,
 ) -> None:
-    baseline = tmp_path / "baseline.json"
-    pipeline = tmp_path / "pipeline.json"
+    baseline = tmp_path / "baseline" / "summary.json"
+    pipeline = tmp_path / "pipeline" / "summary.json"
+    baseline.parent.mkdir()
+    pipeline.parent.mkdir()
     comparison = tmp_path / "comparison.json"
     output = tmp_path / "gate.json"
     _trajectory(baseline, mode="baseline", variant="b1", run_id="baseline-run")
@@ -165,7 +248,7 @@ def test_gate_binds_exact_two_cycle_trajectories_and_cross_arm_sha(
         variant="c24-continuous-b16-score-modulation",
         run_id="pipeline-run",
     )
-    _comparison(comparison)
+    _comparison(comparison, baseline, pipeline)
     command = [
         sys.executable,
         str(ROOT / "scripts/distillschedule/build_livewan_two_cycle_timing_gate.py"),
@@ -185,6 +268,9 @@ def test_gate_binds_exact_two_cycle_trajectories_and_cross_arm_sha(
     assert gate["status"] == "PASS"
     assert gate["claimable_for_two_cycle_timing"] is True
     assert len(gate["trajectory_comparison"]["sha256"]) == 64
+    assert gate["numerical_review"]["extreme_failure_count"] == 0
+    assert len(gate["numerical_review"]["state_comparisons"]) == 8
+    assert "student_loss" in gate["numerical_review"]["loss_curves"]
 
     broken = json.loads(comparison.read_text())
     broken["contract"]["status"] = "FAIL"
@@ -192,6 +278,56 @@ def test_gate_binds_exact_two_cycle_trajectories_and_cross_arm_sha(
     failed = subprocess.run(command, capture_output=True, text=True)
     assert failed.returncode != 0
     assert "not complete/PASS" in failed.stderr
+
+
+def test_gate_rejects_finite_but_extreme_drift_and_stale_run_root(
+    tmp_path: Path,
+) -> None:
+    baseline = tmp_path / "baseline" / "summary.json"
+    pipeline = tmp_path / "pipeline" / "summary.json"
+    baseline.parent.mkdir()
+    pipeline.parent.mkdir()
+    comparison = tmp_path / "comparison.json"
+    output = tmp_path / "gate.json"
+    _trajectory(baseline, mode="baseline", variant="b1", run_id="baseline-run")
+    _trajectory(
+        pipeline,
+        mode="pipeline",
+        variant="c24-continuous-b16-score-modulation",
+        run_id="pipeline-run",
+    )
+    _comparison(comparison, baseline, pipeline)
+    command = [
+        sys.executable,
+        str(ROOT / "scripts/distillschedule/build_livewan_two_cycle_timing_gate.py"),
+        "--baseline-trajectory-summary",
+        str(baseline),
+        "--pipeline-trajectory-summary",
+        str(pipeline),
+        "--trajectory-comparison",
+        str(comparison),
+        "--expected-head",
+        HEAD,
+        "--output",
+        str(output),
+    ]
+
+    extreme = json.loads(comparison.read_text())
+    extreme["state_comparisons"][0]["cosine"] = 0.89
+    comparison.write_text(json.dumps(extreme))
+    failed = subprocess.run(command, capture_output=True, text=True)
+    assert failed.returncode != 0
+    assert "extreme numerical drift" in failed.stderr
+
+    _comparison(comparison, baseline, pipeline)
+    stale = json.loads(comparison.read_text())
+    stale["source_binding"]["baseline"]["run_root"] = str(
+        (tmp_path / "different-root").resolve()
+    )
+    comparison.write_text(json.dumps(stale))
+    failed = subprocess.run(command, capture_output=True, text=True)
+    assert failed.returncode != 0
+    assert "source binding is not exact" in failed.stderr
 
 
 def _timing_summary(path: Path, *, mode: str, seconds: float) -> None:

@@ -14,6 +14,18 @@ from typing import Any
 BASELINE_VARIANT = "b1"
 PIPELINE_VARIANT = "c24-continuous-b16-score-modulation"
 FINAL_VERSIONS = {"generator": 2, "critic": 10, "ema": 0}
+STATE_COMPONENTS = (
+    "generator_trainable",
+    "generator_adam",
+    "critic_trainable",
+    "critic_adam",
+)
+EXTREME_NUMERIC_THRESHOLDS = {
+    "minimum_cosine": 0.9,
+    "maximum_normalized_l2": 0.5,
+    "minimum_norm_ratio": 0.5,
+    "maximum_norm_ratio": 2.0,
+}
 
 
 def _sha256(path: Path) -> str:
@@ -51,7 +63,8 @@ def _trajectory(
     variant: str,
     expected_head: str,
 ) -> dict[str, Any]:
-    value = _load(path)
+    resolved_path = path.resolve(strict=True)
+    value = _load(resolved_path)
     required = {
         "schema_version": "distillschedule.livewan_trajectory_summary.v1",
         "status": "PASS",
@@ -83,6 +96,47 @@ def _trajectory(
         raise ValueError(f"{mode} trajectory asset identity is incomplete")
     if any(not isinstance(item, str) or len(item) != 64 for item in identity.values()):
         raise ValueError(f"{mode} trajectory asset SHA is invalid")
+    run_root = Path(str(value.get("run_root", ""))).resolve(strict=True)
+    if resolved_path.parent != run_root:
+        raise ValueError(f"{mode} trajectory summary is outside its canonical run_root")
+    anchor_rows = list(value.get("numeric_state_anchors", ()))
+    anchor_bindings = []
+    for cycle in (1, 2):
+        matches = [row for row in anchor_rows if int(row.get("cycle", -1)) == cycle]
+        if len(matches) != 1:
+            raise ValueError(f"{mode} summary does not bind exactly one cycle{cycle} anchor")
+        expected_path = (
+            run_root / "trajectory" / "anchors" / f"cycle_{cycle:02d}_global.json"
+        ).resolve(strict=True)
+        if Path(str(matches[0].get("path", ""))).resolve(strict=True) != expected_path:
+            raise ValueError(f"{mode} summary cycle{cycle} anchor path is stale")
+        anchor = _load(expected_path)
+        canonical = dict(anchor)
+        recorded = str(canonical.pop("anchor_sha256", ""))
+        actual = hashlib.sha256(
+            json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        if (
+            anchor.get("schema_version")
+            != "distillschedule.livewan_trajectory_state_anchor.v1"
+            or int(anchor.get("cycle", -1)) != cycle
+            or recorded != actual
+            or matches[0].get("sha256") != actual
+        ):
+            raise ValueError(f"{mode} cycle{cycle} anchor digest is stale")
+        anchor_bindings.append(
+            {
+                "cycle": cycle,
+                "path": str(expected_path),
+                "payload_sha256": actual,
+                "file_sha256": _sha256(expected_path),
+            }
+        )
+    value["_artifact_binding"] = {
+        "run_root": str(run_root),
+        "summary": {"path": str(resolved_path), "sha256": _sha256(resolved_path)},
+        "anchors": anchor_bindings,
+    }
     return value
 
 
@@ -119,12 +173,7 @@ def main() -> int:
     expected_state_rows = {
         (cycle, component)
         for cycle in (1, 2)
-        for component in (
-            "generator_trainable",
-            "generator_adam",
-            "critic_trainable",
-            "critic_adam",
-        )
+        for component in STATE_COMPONENTS
     }
     observed_state_rows = {
         (int(row.get("cycle", -1)), str(row.get("component", "")))
@@ -141,6 +190,7 @@ def main() -> int:
         or dict(comparison.get("contract", {})).get("mismatches") != []
         or int(dict(comparison.get("summary", {})).get("state_comparison_count", -1))
         != 8
+        or len(state_rows) != 8
         or observed_state_rows != expected_state_rows
         or any(row.get("finite") is not True for row in state_rows)
     ):
@@ -152,6 +202,62 @@ def main() -> int:
     source_binding = dict(comparison.get("source_binding", {}))
     source_baseline = dict(source_binding.get("baseline", {}))
     source_pipeline = dict(source_binding.get("pipeline", {}))
+    numeric_eligibility = dict(comparison.get("numeric_eligibility", {}))
+    extreme_violations = []
+    for row in state_rows:
+        cycle = int(row.get("cycle", -1))
+        component = str(row.get("component", ""))
+        for metric, value, operator, threshold in (
+            ("cosine", float(row.get("cosine", float("nan"))), ">=", 0.9),
+            (
+                "normalized_l2",
+                float(row.get("normalized_l2", float("nan"))),
+                "<=",
+                0.5,
+            ),
+            ("norm_ratio", float(row.get("norm_ratio", float("nan"))), ">=", 0.5),
+            ("norm_ratio", float(row.get("norm_ratio", float("nan"))), "<=", 2.0),
+        ):
+            failed = (
+                not isinstance(value, float)
+                or value != value
+                or value in (float("inf"), float("-inf"))
+                or (operator == ">=" and value < threshold)
+                or (operator == "<=" and value > threshold)
+            )
+            if failed:
+                extreme_violations.append(
+                    {
+                        "cycle": cycle,
+                        "component": component,
+                        "metric": metric,
+                        "value": value,
+                    }
+                )
+    if (
+        numeric_eligibility.get("schema_version")
+        != "distillschedule.livewan_two_cycle_numeric_eligibility.v1"
+        or numeric_eligibility.get("status") != "PASS"
+        or numeric_eligibility.get("policy")
+        != "REJECT_EXTREME_ONLY_RECORD_ORDINARY_REVIEW"
+        or numeric_eligibility.get("thresholds") != EXTREME_NUMERIC_THRESHOLDS
+        or numeric_eligibility.get("violations") != []
+        or extreme_violations
+    ):
+        raise ValueError("cross-arm trajectory has extreme numerical drift")
+
+    def expected_binding(value: dict[str, Any]) -> dict[str, Any]:
+        artifact = dict(value["_artifact_binding"])
+        return {
+            "run_id": value["run_id"],
+            "arm_id": value["arm_id"],
+            "run_root": artifact["run_root"],
+            "seed": value["seed"],
+            "identity": value["identity"],
+            "summary": artifact["summary"],
+            "anchors": artifact["anchors"],
+        }
+
     if (
         _single(reference.get("run_ids"), label="reference run_ids")
         != baseline["run_id"]
@@ -167,17 +273,33 @@ def main() -> int:
         != pipeline["seed"]
     ):
         raise ValueError("trajectory comparison is not bound to these exact arms")
-    if (
-        source_binding.get("expected_head") != args.expected_head
-        or source_baseline.get("run_id") != baseline["run_id"]
-        or source_baseline.get("arm_id") != baseline["arm_id"]
-        or source_pipeline.get("run_id") != pipeline["run_id"]
-        or source_pipeline.get("arm_id") != pipeline["arm_id"]
+    if source_binding.get("expected_head") != args.expected_head or (
+        source_baseline != expected_binding(baseline)
+        or source_pipeline != expected_binding(pipeline)
     ):
         raise ValueError("trajectory comparison source binding is not exact")
 
+    numerical_review = {
+        "policy": numeric_eligibility["policy"],
+        "extreme_thresholds": numeric_eligibility["thresholds"],
+        "extreme_failure_count": 0,
+        "state_comparisons": [
+            row for row in state_rows if row.get("status") != "PASS"
+        ],
+        "loss_curves": {
+            key: row
+            for key, row in dict(comparison.get("curves", {})).items()
+            if row.get("status") != "PASS"
+        },
+        "gradient_norm_curves": {
+            key: row
+            for key, row in dict(comparison.get("gradient_norm_curves", {})).items()
+            if row.get("status") != "PASS"
+        },
+    }
+
     result = {
-        "schema_version": "distillschedule.livewan_two_cycle_timing_gate.v1",
+        "schema_version": "distillschedule.livewan_two_cycle_timing_gate.v2",
         "status": "PASS",
         "claimable_for_two_cycle_timing": True,
         "claim_boundary": (
@@ -189,6 +311,7 @@ def main() -> int:
         "final_versions": FINAL_VERSIONS,
         "seed": baseline["seed"],
         "identity": baseline["identity"],
+        "numerical_review": numerical_review,
         "trajectory_comparison": {
             "path": str(args.trajectory_comparison.resolve()),
             "sha256": _sha256(args.trajectory_comparison),
@@ -208,6 +331,7 @@ def main() -> int:
                 "trajectory_summary_sha256": _sha256(
                     args.baseline_trajectory_summary
                 ),
+                "artifact_binding": baseline["_artifact_binding"],
             },
             "pipeline": {
                 "run_id": pipeline["run_id"],
@@ -219,6 +343,7 @@ def main() -> int:
                 "trajectory_summary_sha256": _sha256(
                     args.pipeline_trajectory_summary
                 ),
+                "artifact_binding": pipeline["_artifact_binding"],
             },
         },
     }
