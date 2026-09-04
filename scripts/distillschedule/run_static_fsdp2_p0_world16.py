@@ -614,6 +614,11 @@ def _summarize_trajectory(args: argparse.Namespace, local: Path) -> dict[str, An
     """Validate the persistent rank JSONL and transport only a compact summary."""
 
     run_root = args.remote_root / "artifacts/runs" / args.run_id
+    # The launcher passes ``RUN_ROOT/execution`` to the worker as --output-dir,
+    # so its rank JSONL and state anchors live below that exact directory.
+    # Keep the controller summary beside the launcher evidence, but validate the
+    # worker-owned execution tree rather than a nonexistent sibling trajectory.
+    execution_root = run_root / "execution"
     summary = run_root / "trajectory_summary.json"
     summarizer = args.remote_root / "scripts/distillschedule/summarize_trajectory_run.py"
     pythonpath = f"{args.remote_root}/src:{args.remote_root}"
@@ -630,7 +635,7 @@ def _summarize_trajectory(args: argparse.Namespace, local: Path) -> dict[str, An
         + shlex.quote(str(pyenv / "bin/python"))
         + " "
         + shlex.quote(str(summarizer))
-        + f" --run-root {shlex.quote(str(run_root))}"
+        + f" --run-root {shlex.quote(str(execution_root))}"
         + f" --run-id {shlex.quote(args.run_id)}"
         + " --workload helios14b_static_fsdp2"
         + f" --variant {shlex.quote(args.variant)}"

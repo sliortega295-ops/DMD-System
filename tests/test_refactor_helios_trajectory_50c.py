@@ -39,6 +39,16 @@ def _load_probe_module():
     return module
 
 
+def _load_controller_module():
+    path = ROOT / "scripts/distillschedule/run_static_fsdp2_p0_world16.py"
+    spec = importlib.util.spec_from_file_location("trajectory_helios_controller", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def test_50_cycle_contract_advances_versions_without_weakening_full5() -> None:
     module = _load_contract_module()
     assert len(module.contract_for_variant("no-gan").logical_steps) == 5
@@ -127,6 +137,41 @@ def test_trajectory_launcher_is_explicit_and_not_formal_timing() -> None:
     assert '"--ssh-tty"' in controller
     assert "_summarize_trajectory(args, local)" in controller
     assert "TRAJECTORY_DIAGNOSTIC_NOT_FORMAL_TIMING" in summarizer
+
+
+def test_controller_summarizes_the_worker_execution_tree(tmp_path, monkeypatch) -> None:
+    module = _load_controller_module()
+    commands: list[list[str]] = []
+
+    def fake_run(command, **_kwargs):
+        commands.append(command)
+        return subprocess.CompletedProcess(command, 0, stdout=b"", stderr=b"")
+
+    def fake_check_output(command, **_kwargs):
+        commands.append(command)
+        return json.dumps({"status": "PASS", "errors": []}).encode()
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    monkeypatch.setattr(module.subprocess, "check_output", fake_check_output)
+    remote_root = Path("/share/project/test/DMD-System")
+    run_id = "trajectory-path-smoke"
+    args = SimpleNamespace(
+        remote_root=remote_root,
+        run_id=run_id,
+        variant="no-gan",
+        trajectory_cycles=1,
+        hosts=("node0", "node1"),
+        ssh_port=22,
+        ssh_tty=False,
+    )
+    value = module._summarize_trajectory(args, tmp_path / "local")
+    assert value["status"] == "PASS"
+    summarize_command = " ".join(commands[0])
+    execution_root = remote_root / "artifacts/runs" / run_id / "execution"
+    assert f"--run-root {execution_root}" in summarize_command
+    assert f"--output {execution_root.parent / 'trajectory_summary.json'}" in (
+        summarize_command
+    )
 
 
 class _FakeTrace:
