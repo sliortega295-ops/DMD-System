@@ -42,27 +42,46 @@ class _FakeTensor:
 
 
 class _FakeDistributed:
+    def __init__(self) -> None:
+        self.observed_group = None
+
     def is_initialized(self) -> bool:
         return True
 
-    def get_rank(self) -> int:
+    def get_rank(self, group: object | None = None) -> int:
+        self.observed_group = group
         return 0
 
-    def get_world_size(self) -> int:
+    def get_world_size(self, group: object | None = None) -> int:
+        self.observed_group = group
         return 1
 
-    def all_gather_object(self, output: list[object], value: object) -> None:
+    def all_gather_object(
+        self,
+        output: list[object],
+        value: object,
+        group: object | None = None,
+    ) -> None:
+        self.observed_group = group
         output[0] = value
 
 
 class _TwoReplicaDistributed(_FakeDistributed):
     def __init__(self, *, disagree: bool = False) -> None:
+        super().__init__()
         self.disagree = disagree
 
-    def get_world_size(self) -> int:
+    def get_world_size(self, group: object | None = None) -> int:
+        self.observed_group = group
         return 2
 
-    def all_gather_object(self, output: list[object], value: object) -> None:
+    def all_gather_object(
+        self,
+        output: list[object],
+        value: object,
+        group: object | None = None,
+    ) -> None:
+        self.observed_group = group
         replica = copy.deepcopy(value)
         for row in replica["rows"]:
             row["contributor_rank"] = 1
@@ -95,6 +114,22 @@ def test_full_replica_sketch_exposes_numeric_coordinate_values() -> None:
         {"tensor": "layer.weight", "flat_index": 1, "value_fp32": 2.0},
         {"tensor": "layer.weight", "flat_index": 2, "value_fp32": 3.0},
     ]
+
+
+def test_numeric_sketch_uses_explicit_object_collective_group() -> None:
+    distributed = _FakeDistributed()
+    torch = SimpleNamespace(
+        distributed=distributed,
+        int64="torch.int64",
+        tensor=lambda values, **_kwargs: _FakeTensor(list(values)),
+    )
+    evidence_group = object()
+    collect_numeric_state_sketch(
+        torch=torch,
+        named_values=[("layer.weight", _FakeTensor([1.0]), None)],
+        object_collective_group=evidence_group,
+    )
+    assert distributed.observed_group is evidence_group
 
 
 def test_schema_pinned_comparator_aligns_global_numeric_coordinates() -> None:

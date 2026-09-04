@@ -24,6 +24,7 @@ import socket
 import sys
 import time
 import traceback
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -231,6 +232,7 @@ def _state_anchor(
     critic_engine: Any,
     ema: Any,
     device: torch.device,
+    evidence_group: Any,
 ) -> tuple[dict[str, str], dict[str, Any]]:
     sharded = placement == fair.FSDP_PLACEMENT
     named = {
@@ -250,6 +252,7 @@ def _state_anchor(
                 torch=torch,
                 named_values=rows,
                 samples_per_tensor=16,
+                object_collective_group=evidence_group,
             ),
         }
     anchor = {
@@ -326,6 +329,7 @@ def main() -> int:
     if not args.run_id.replace("-", "").replace("_", "").replace(".", "").isalnum():
         raise ValueError("unsafe run id")
     dist.init_process_group("nccl")
+    evidence_group = None
     rank = dist.get_rank()
     world = dist.get_world_size()
     local_rank = int(os.environ["LOCAL_RANK"])
@@ -360,6 +364,25 @@ def main() -> int:
         ),
     }
     try:
+        # NCCL_ALGO=Tree is part of the registered Resident winner, but NCCL
+        # Tree does not implement the byte AllGather used by
+        # ``all_gather_object``.  Keep workload collectives on the default NCCL
+        # group and isolate bounded trajectory evidence envelopes on Gloo.
+        evidence_group = dist.new_group(
+            ranks=list(range(world)),
+            backend="gloo",
+            timeout=timedelta(hours=2),
+        )
+        evidence_backend = str(dist.get_backend(evidence_group))
+        if evidence_backend != "gloo":
+            raise AssertionError(
+                f"trajectory evidence group must use gloo, got {evidence_backend}"
+            )
+        result.update(
+            state_anchor_collective_backend=evidence_backend,
+            workload_collective_backend=str(dist.get_backend()),
+            workload_nccl_algo=os.environ.get("NCCL_ALGO", "AUTO"),
+        )
         contract = base.contract_for_variant("no-gan")
         bootstrap = base.Wan13BBootstrap.load(
             args.bootstrap,
@@ -543,6 +566,7 @@ def main() -> int:
                     critic_engine=critic_engine,
                     ema=ema,
                     device=device,
+                    evidence_group=evidence_group,
                 )
             generator_rollout_calls = int(generator_record["rollout"]["call_count"])
             critic_rollout_calls = sum(
@@ -676,6 +700,8 @@ def main() -> int:
     finally:
         if dist.is_initialized():
             try:
+                if evidence_group is not None:
+                    dist.destroy_process_group(evidence_group)
                 dist.destroy_process_group()
             except Exception:
                 pass

@@ -197,6 +197,7 @@ def collect_numeric_state_sketch(
     samples_per_tensor: int = 16,
     max_tensors: int = 96,
     primary_rank: int = 0,
+    object_collective_group: Any | None = None,
 ) -> dict[str, Any]:
     """Collect a canonical numeric sketch on every rank.
 
@@ -209,8 +210,8 @@ def collect_numeric_state_sketch(
     dist = torch.distributed
     if not dist.is_initialized():
         raise RuntimeError("numeric trajectory state sketch requires distributed")
-    rank = int(dist.get_rank())
-    world_size = int(dist.get_world_size())
+    rank = int(dist.get_rank(group=object_collective_group))
+    world_size = int(dist.get_world_size(group=object_collective_group))
     if not 0 <= primary_rank < world_size:
         raise ValueError("numeric sketch primary rank is outside the process group")
     local_items = sorted(
@@ -238,7 +239,11 @@ def collect_numeric_state_sketch(
     ]
     local_envelope = {"inventory_names": inventory_names, "rows": local_rows}
     gathered: list[dict[str, Any] | None] = [None] * world_size
-    dist.all_gather_object(gathered, local_envelope)
+    dist.all_gather_object(
+        gathered,
+        local_envelope,
+        group=object_collective_group,
+    )
     inventories = {
         tuple(str(name) for name in contributor["inventory_names"])
         for contributor in gathered

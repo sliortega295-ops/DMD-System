@@ -132,6 +132,13 @@ def test_state_anchors_expose_canonical_numeric_coordinates() -> None:
     ).read_text()
     assert "trajectory_state_sketch" in source
     assert "collect_numeric_state_sketch" in source
+    assert 'backend="gloo"' in source
+    assert "object_collective_group=evidence_group" in source
+    assert "workload_nccl_algo=os.environ.get" in source
+    launcher = (
+        ROOT / "scripts/distillschedule/launch_wan13b_fair_world16_node.sh"
+    ).read_text()
+    assert "export NCCL_ALGO=Tree" in launcher
     assert "cycle_{cycle:02d}_global.json" in source
     assert "(tensor, flat_index)" in source
     assert canonical_state_name("module._orig_mod.blocks.0.lora_A") == (
