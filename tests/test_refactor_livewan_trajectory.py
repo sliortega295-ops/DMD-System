@@ -76,6 +76,21 @@ def _source_trace(path: Path) -> None:
     )
 
 
+def _source_receipt(path: Path) -> str:
+    value = {
+        "status": "PASS",
+        "livewan_commit": LIVEWAN,
+        "wan21_commit": WAN21,
+        "source_root": "/immutable/source",
+        "files": {},
+    }
+    canonical = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+    digest = hashlib.sha256(canonical).hexdigest()
+    value["source_receipt_sha256"] = digest
+    path.write_text(json.dumps(value))
+    return digest
+
+
 def test_trace_builder_defaults_to_legacy_three_cycles(tmp_path: Path) -> None:
     source = tmp_path / "source.json"
     output = tmp_path / "derived.json"
@@ -175,12 +190,18 @@ def test_continuous_bootstrap_tracks_each_registered_trajectory_length(
 ) -> None:
     source_trace = tmp_path / "source_trace.json"
     source_bootstrap = tmp_path / "source_bootstrap.json"
+    source_receipt = tmp_path / "source_receipt.json"
     _source_trace(source_trace)
+    source_receipt_sha = _source_receipt(source_receipt)
     source_bootstrap.write_text(
         json.dumps(
             {
                 "kind": "systems_only_livewan_crossscale_bootstrap",
                 "initial_versions": {"generator": 0, "critic": 0, "ema": 0},
+                "source_receipt": {
+                    "path": str(source_receipt),
+                    "sha256": source_receipt_sha,
+                },
                 "bootstrap_sha256": "source-placeholder",
             }
         )
@@ -207,6 +228,8 @@ def test_continuous_bootstrap_tracks_each_registered_trajectory_length(
                 str(ROOT / "scripts/distillschedule/derive_livewan_continuous_bootstrap.py"),
                 "--source-bootstrap",
                 str(source_bootstrap),
+                "--source-receipt",
+                str(source_receipt),
                 "--trace",
                 str(trace),
                 "--output",
@@ -228,6 +251,51 @@ def test_continuous_bootstrap_tracks_each_registered_trajectory_length(
         assert value["trace"]["sha256"] == json.loads(trace.read_text())[
             "trace_sha256"
         ]
+        assert value["source_receipt"] == {
+            "path": str(source_receipt.resolve()),
+            "sha256": source_receipt_sha,
+        }
+
+
+def test_continuous_bootstrap_rejects_stale_embedded_source_receipt(
+    tmp_path: Path,
+) -> None:
+    source_trace = tmp_path / "source_trace.json"
+    source_receipt = tmp_path / "source_receipt.json"
+    source_bootstrap = tmp_path / "source_bootstrap.json"
+    output = tmp_path / "derived.json"
+    _source_trace(source_trace)
+    source_receipt_sha = _source_receipt(source_receipt)
+    source_bootstrap.write_text(
+        json.dumps(
+            {
+                "kind": "systems_only_livewan_crossscale_bootstrap",
+                "initial_versions": {"generator": 0, "critic": 0, "ema": 0},
+                "source_receipt": {
+                    "path": str(source_receipt),
+                    "sha256": "0" * 64,
+                },
+            }
+        )
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts/distillschedule/derive_livewan_continuous_bootstrap.py"),
+            "--source-bootstrap",
+            str(source_bootstrap),
+            "--trace",
+            str(source_trace),
+            "--output",
+            str(output),
+        ],
+        text=True,
+        capture_output=True,
+    )
+    assert result.returncode != 0
+    assert "stale source receipt SHA" in result.stderr
+    assert not output.exists()
+    assert source_receipt_sha != "0" * 64
 
 
 def test_trajectory_worker_keeps_legacy_c24_and_adds_explicit_mode() -> None:
