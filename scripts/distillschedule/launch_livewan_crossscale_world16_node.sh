@@ -244,9 +244,24 @@ flock -n 9 || { echo gpu_lock_busy >&2; exit 73; }
 
 exec 8>"${SOURCE_ROOT}.prepare.lock"
 flock 8
+GENERATED_SOURCE_RECEIPT="${NODE_LOG}/source_receipt.generated.json"
 "${ROOT}/scripts/distillschedule/prepare_livewan_crossscale_source.sh" \
-  --output "${SOURCE_ROOT}" --receipt "${SOURCE_RECEIPT}" \
+  --output "${SOURCE_ROOT}" --receipt "${GENERATED_SOURCE_RECEIPT}" \
   >"${NODE_LOG}/source_prepare.log" 2>&1
+python3 - "${SOURCE_RECEIPT}" "${GENERATED_SOURCE_RECEIPT}" <<'PY'
+import json
+import sys
+
+registered_path, generated_path = sys.argv[1:]
+registered = json.load(open(registered_path, encoding="utf-8"))
+generated = json.load(open(generated_path, encoding="utf-8"))
+if registered.get("status") != "PASS" or generated.get("status") != "PASS":
+    raise SystemExit("source receipt is not PASS")
+if registered != generated:
+    raise SystemExit(
+        "generated source receipt differs from immutable registered receipt"
+    )
+PY
 flock -u 8
 
 export PATH="${PYENV}/bin:${PATH}"

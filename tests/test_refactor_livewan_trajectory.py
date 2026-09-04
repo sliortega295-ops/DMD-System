@@ -388,6 +388,9 @@ def test_controller_and_launcher_make_trajectory_opt_in() -> None:
     assert "trajectory_baseline_requires_b1" in launcher
     assert "trajectory_pipeline_requires_exact_c24" in launcher
     assert 'if [[ "${RUN_KIND}" == trajectory ]]; then' in launcher
+    assert '--receipt "${GENERATED_SOURCE_RECEIPT}"' in launcher
+    assert '--receipt "${SOURCE_RECEIPT}"' not in launcher
+    assert "generated source receipt differs from immutable registered receipt" in launcher
     assert '"trajectory"' in entrypoint
 
 
