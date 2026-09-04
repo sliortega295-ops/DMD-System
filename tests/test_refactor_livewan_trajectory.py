@@ -728,11 +728,17 @@ def test_trajectory_summarizer_accepts_baseline_and_pipeline_receipts(
 
     for mode in ("baseline", "pipeline"):
         run_root = tmp_path / mode
+        pipeline_variant = (
+            "b1"
+            if mode == "baseline"
+            else "c24-continuous-b16-score-modulation"
+        )
         for node in range(2):
             manifest = run_root / "launcher" / f"node_{node}" / "launch_manifest.txt"
             manifest.parent.mkdir(parents=True, exist_ok=True)
             manifest.write_text(
-                f"head={head}\nexecution_mode={mode}\ntrajectory_cycles=1\n"
+                f"head={head}\nexecution_mode={mode}\n"
+                f"pipeline_variant={pipeline_variant}\ntrajectory_cycles=1\n"
                 f"trajectory_arm_id={mode}_arm\nclaim_boundary=DIAGNOSTIC_ONLY\n"
             )
         anchor_path = run_root / "trajectory/anchors/cycle_01_global.json"
@@ -759,7 +765,18 @@ def test_trajectory_summarizer_accepts_baseline_and_pipeline_receipts(
                     expected_total_cycles=1,
                     logical_step=0,
                     matched_contract={"contract": "same"},
-                    implementation={"execution_mode": mode},
+                    implementation={
+                        "execution_mode": mode,
+                        "critic_physical_batch_size": (
+                            "1" if mode == "baseline" else "2"
+                        ),
+                        "critic_physical_backward_calls": (
+                            "5" if mode == "baseline" or rank >= 8 else "0"
+                        ),
+                        "critic_optimizer_commits": (
+                            "5" if mode == "baseline" or rank >= 8 else "0"
+                        ),
+                    },
                     sample_identities=samples,
                     rng_identities={sample: "b" * 64 for sample in samples},
                     versions={"generator": 1, "critic": 5, "ema": 0},

@@ -73,7 +73,10 @@ PHASE_EXPANDED_CRITIC16_POOL_POLICY = (
 B32_CONTINUOUS_NAME = "continuous_full5_b32_depth1_systems_v1"
 TRAJECTORY_CONTINUOUS_NAME = "trajectory_coarse_c24_b16_depth1_v1"
 TRAJECTORY_ANCHOR_CYCLES = frozenset({1, 10, 25, 50})
-TRAJECTORY_ALLOWED_CYCLES = frozenset({1, 5, 50})
+TRAJECTORY_ALLOWED_CYCLES = frozenset({1, 2, 5, 50})
+TRAJECTORY_CRITIC_B1_ATTRIBUTION_NAME = (
+    "c24_critic_b1_two_backward_single_commit_attribution_v1"
+)
 
 
 def _pipeline_8x8_slot_pairs(
@@ -829,7 +832,7 @@ def _continuous_pipeline_contract(
         cycles = int(value.get("cycles", -1))
         _require(
             cycles in TRAJECTORY_ALLOWED_CYCLES,
-            "trajectory cycle count must be one of 1, 5, or 50",
+            "trajectory cycle count must be one of 1, 2, 5, or 50",
         )
         expected_trajectory = dict(
             expected,
@@ -872,7 +875,7 @@ def _apply_trajectory_contract(
 
     _require(
         cycles in TRAJECTORY_ALLOWED_CYCLES,
-        "trajectory cycles must be one of 1, 5, or 50",
+        "trajectory cycles must be one of 1, 2, 5, or 50",
     )
     metadata = dict(plan.get("metadata", {}))
     if mode == "baseline":
@@ -920,6 +923,47 @@ def _apply_trajectory_contract(
     )
     metadata["continuous_pipeline"] = current
     plan["metadata"] = metadata
+
+
+def _trajectory_critic_batch_ablation_enabled(
+    plan: Mapping[str, Any], *, mode: str
+) -> bool:
+    """Validate the diagnostic-only C24 physical-B1 Critic contract.
+
+    The ordinary C24 plan has no such contract and remains on its existing
+    physical-B2 path.  The ablation changes only how each Score rank executes
+    its two logical Critic samples: two weighted B1 backwards accumulate into
+    the same asynchronous reducer and retain one optimizer commit.
+    """
+
+    metadata = plan.get("metadata", {})
+    value = metadata.get("trajectory_critic_batch_ablation")
+    if value is None:
+        return False
+    expected = {
+        "enabled": True,
+        "name": TRAJECTORY_CRITIC_B1_ATTRIBUTION_NAME,
+        "scope": "trajectory_diagnostic_only",
+        "critic_physical_batch_size": 1,
+        "physical_backward_calls_per_step": 2,
+        "loss_weights": [0.5, 0.5],
+        "reducer_accumulation": [[0, 2], [1, 2]],
+        "optimizer_commits_per_step": 1,
+        "all_other_c24_execution_unchanged": True,
+        "formal_timing_eligible": False,
+    }
+    _require(mode == "pipeline", "C24 Critic-B1 attribution is pipeline-only")
+    _require(dict(value) == expected, "C24 Critic-B1 attribution contract changed")
+    _require(
+        int(metadata.get("critic_physical_batch_size", -1)) == 1,
+        "C24 Critic-B1 attribution did not select physical B1",
+    )
+    _require(
+        dict(metadata.get("score_modulation_kernel", {})).get("name")
+        == "score_bf16_modulation_fusion_v1",
+        "C24 Critic-B1 attribution lost the exact C24 Score kernel",
+    )
+    return True
 
 
 def _critic_checkpoint_rng_elision_enabled(
@@ -2292,6 +2336,21 @@ def critic_backward_for_batch(
     return tuple(value.detach() for value in losses.unbind(0))
 
 
+def _critic_b1_attribution_reducer_accumulation(wave: int) -> tuple[int, int]:
+    """Return the exact two-backward/single-reduction C24-B1 boundary."""
+
+    _require(wave in {0, 1}, "C24 Critic-B1 attribution wave must be 0 or 1")
+    return wave, 2
+
+
+def _physical_critic_backward_calls_for_step(
+    *, critic_b2_only: bool, split_step1: bool
+) -> int:
+    """Return physical backward invocations for the branch that completed."""
+
+    return 2 if split_step1 or not critic_b2_only else 1
+
+
 def generator_backward_for_sample(
     torch: Any,
     *,
@@ -2791,6 +2850,7 @@ class RunEvidence:
     score_receive_waits: list[dict[str, Any]] = field(default_factory=list)
     generator_backpressure: list[dict[str, Any]] = field(default_factory=list)
     critic_checkpoint_rng: dict[str, Any] = field(default_factory=dict)
+    physical_critic_backward_calls: int = 0
 
     def add_logical_score_calls(self, key: str, count: int) -> None:
         _require(count > 0, "logical Score call count must be positive")
@@ -2800,6 +2860,18 @@ class RunEvidence:
             self.logical_score_calls[logical_key] = (
                 self.logical_score_calls.get(logical_key, 0) + count
             )
+
+    def add_physical_critic_backward_calls(self, count: int) -> None:
+        """Record completed physical Critic backward invocations.
+
+        This counter is intentionally independent of the logical Score-call
+        inventory: a physical B2 backward represents two logical samples,
+        whereas the attribution arm executes those samples as two physical B1
+        backwards before the same single optimizer commit.
+        """
+
+        _require(count > 0, "physical Critic backward count must be positive")
+        self.physical_critic_backward_calls += count
 
 
 def _record_optimizer_diagnostics(
@@ -3384,6 +3456,13 @@ def run_worker(
 ) -> dict[str, Any]:
     plan_path = Path(plan_path).expanduser().resolve()
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    critic_b1_attribution = _trajectory_critic_batch_ablation_enabled(
+        plan, mode=mode
+    )
+    _require(
+        not critic_b1_attribution or run_kind == "trajectory",
+        "C24 Critic-B1 attribution is diagnostic trajectory-only",
+    )
     trajectory_cycles = 0
     trajectory_seed = 0
     trajectory_arm_id = ""
@@ -4004,6 +4083,7 @@ def run_worker(
                         continuous_contract.get("name")
                         == "continuous_full5_b16_depth1_step1_b1_overlap_v1"
                     ),
+                    critic_b1_attribution=critic_b1_attribution,
                     inventory=inventory,
                     trajectory_writer=trajectory_writer,
                     trajectory_seed=(
@@ -4498,6 +4578,9 @@ def _run_baseline_trajectory(
             implementation={
                 "pool_topology": "WORLD16_SEQUENTIAL_FSDP2",
                 "physical_role": "all_roles",
+                "critic_physical_batch_size": "1",
+                "critic_physical_backward_calls": "5",
+                "critic_optimizer_commits": "5",
             },
             versions=versions,
             initial_versions=initial_versions,
@@ -4677,6 +4760,7 @@ def _run_pipeline_8x8(
     device: Any,
     rollout_runahead: bool = False,
     critic_b2_only: bool = False,
+    critic_b1_accumulate: bool = False,
     critic_step1_split_overlap: bool = False,
     score_context_from_trace: bool = False,
     slot_pairs_by_lane: Sequence[Sequence[int]] | None = None,
@@ -4750,6 +4834,15 @@ def _run_pipeline_8x8(
             and runahead_host_transport is not None
             and bundle.critic_gradient_reducer is not None,
             "step1 split overlap requires C21 B2 run-ahead and its async reducer",
+        )
+    if critic_b1_accumulate and not is_generator:
+        _require(
+            not critic_b2_only
+            and not critic_step1_split_overlap
+            and rollout_runahead
+            and runahead_host_transport is not None
+            and bundle.critic_gradient_reducer is not None,
+            "C24 Critic-B1 attribution requires two accumulated B1 backwards",
         )
 
     prefetched_contexts: dict[tuple[int, int], ScoreSampleContext] = {}
@@ -5431,6 +5524,11 @@ def _run_pipeline_8x8(
                         torch, bundle=bundle, score_context=score_context, row=rows[0],
                         x0=first_x0, sample_context=first_sample_context, context_lens=context_lens,
                         sample_weight=0.5,
+                        reducer_accumulation=(
+                            _critic_b1_attribution_reducer_accumulation(0)
+                            if critic_b1_accumulate
+                            else None
+                        ),
                     )
                     evidence.add_logical_score_calls("critic/grad/checkpoint", 1)
                 with _profile_range(
@@ -5441,8 +5539,25 @@ def _run_pipeline_8x8(
                         torch, bundle=bundle, score_context=score_context, row=rows[1],
                         x0=second_x0, sample_context=second_sample_context, context_lens=context_lens,
                         sample_weight=0.5,
+                        reducer_accumulation=(
+                            _critic_b1_attribution_reducer_accumulation(1)
+                            if critic_b1_accumulate
+                            else None
+                        ),
                     )
                     evidence.add_logical_score_calls("critic/grad/checkpoint", 1)
+            if run_kind == "trajectory":
+                # Count completed physical backward invocations from the
+                # branch that actually ran.  Do not infer this from logical
+                # sample inventory: B2 contributes two logical calls but one
+                # physical backward, while the B1 attribution arm contributes
+                # two physical backwards before the same commit.
+                evidence.add_physical_critic_backward_calls(
+                    _physical_critic_backward_calls_for_step(
+                        critic_b2_only=critic_b2_only,
+                        split_step1=split_step1,
+                    )
+                )
             if grad1_work is not None:
                 with _profile_range(
                     torch, run_kind=run_kind,
@@ -5983,6 +6098,7 @@ def _run_pipeline_8x8_continuous(
     slot_pairs_by_lane: Sequence[Sequence[int]],
     full_context_lens_elision: bool,
     critic_step1_split_overlap: bool,
+    critic_b1_attribution: bool,
     inventory: CallInventory,
     trajectory_writer: AppendOnlyTrajectoryWriter | None = None,
     trajectory_seed: int | None = None,
@@ -5995,7 +6111,7 @@ def _run_pipeline_8x8_continuous(
     if trajectory_mode:
         _require(
             trace.cycles in TRAJECTORY_ALLOWED_CYCLES,
-            "trajectory trace cycles must be one of 1, 5, or 50",
+            "trajectory trace cycles must be one of 1, 2, 5, or 50",
         )
         _require(
             trajectory_writer is not None
@@ -6018,6 +6134,10 @@ def _run_pipeline_8x8_continuous(
         slots_per_lane=trace.global_batch // 8,
     )[lane]
     batch32 = trace.global_batch == 32
+    _require(
+        not critic_b1_attribution or (trajectory_mode and not batch32),
+        "C24 Critic-B1 attribution is restricted to trajectory B16",
+    )
     latent_bytes = math.prod(LATENT_SHAPE) * 4
     started = time.perf_counter()
     cycle_events: list[dict[str, Any]] = []
@@ -6038,6 +6158,9 @@ def _run_pipeline_8x8_continuous(
             optimizer_start = len(evidence.optimizer_diagnostics)
             inventory_before = dict(inventory.counts)
             logical_score_before = dict(evidence.logical_score_calls)
+            physical_critic_backward_before = (
+                evidence.physical_critic_backward_calls
+            )
         with _profile_range(
             torch,
             run_kind=run_kind,
@@ -6081,7 +6204,8 @@ def _run_pipeline_8x8_continuous(
                     versions=versions,
                     device=device,
                     rollout_runahead=True,
-                    critic_b2_only=True,
+                    critic_b2_only=not critic_b1_attribution,
+                    critic_b1_accumulate=critic_b1_attribution,
                     critic_step1_split_overlap=critic_step1_split_overlap,
                     score_context_from_trace=True,
                     slot_pairs_by_lane=slot_pairs_by_lane,
@@ -6258,6 +6382,14 @@ def _run_pipeline_8x8_continuous(
                     "pool_topology": "8G_8SCORE",
                     "physical_role": "generator" if is_generator else "score",
                     "schedule": "C24_CONTINUOUS_B16_DEPTH1",
+                    "critic_physical_batch_size": (
+                        "1" if critic_b1_attribution else "2"
+                    ),
+                    "critic_physical_backward_calls": str(
+                        evidence.physical_critic_backward_calls
+                        - physical_critic_backward_before
+                    ),
+                    "critic_optimizer_commits": "0" if is_generator else "5",
                 },
                 versions=versions,
                 initial_versions=initial_versions,
@@ -6318,8 +6450,16 @@ def _run_pipeline_8x8_continuous(
             else (
                 "wave0_b1_backward_then_wave1_b1_backward_single_commit"
                 if critic_step1_split_overlap
-                else "single_b2_backward"
+                else (
+                    "two_b1_backwards_accumulated_single_commit_every_step"
+                    if critic_b1_attribution
+                    else "single_b2_backward"
+                )
             )
+        ),
+        "critic_physical_batch_size": 1 if critic_b1_attribution else 2,
+        "critic_physical_backward_calls_per_step": (
+            2 if critic_b1_attribution else 1
         ),
         "global_batch": trace.global_batch,
         "waves_per_step": len(lane_slots),

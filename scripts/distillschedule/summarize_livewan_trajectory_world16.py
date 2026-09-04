@@ -39,13 +39,14 @@ def launch_manifest(path: Path) -> dict[str, str]:
 
 def main() -> int:
     args = parser().parse_args()
-    if args.cycles not in {1, 5, 50}:
-        raise ValueError("trajectory cycles must be one of 1, 5, or 50")
+    if args.cycles not in {1, 2, 5, 50}:
+        raise ValueError("trajectory cycles must be one of 1, 2, 5, or 50")
     errors: list[str] = []
     rank_rows: dict[int, list[Any]] = {}
     final_receipts: dict[int, dict[str, Any]] = {}
     launch_modes: set[str] = set()
     launch_arm_ids: set[str] = set()
+    launch_variants: set[str] = set()
     for node in range(2):
         path = args.run_root / "launcher" / f"node_{node}" / "launch_manifest.txt"
         try:
@@ -61,6 +62,7 @@ def main() -> int:
             errors.append(f"node{node}: trajectory claim boundary changed")
         launch_modes.add(str(manifest.get("execution_mode", "")))
         launch_arm_ids.add(str(manifest.get("trajectory_arm_id", "")))
+        launch_variants.add(str(manifest.get("pipeline_variant", "")))
     if len(launch_modes) != 1 or next(iter(launch_modes), "") not in {
         "baseline",
         "pipeline",
@@ -70,6 +72,17 @@ def main() -> int:
         errors.append("two-node trajectory arm identity is missing or inconsistent")
     execution_mode = next(iter(launch_modes), "")
     arm_id = next(iter(launch_arm_ids), "")
+    pipeline_variant = next(iter(launch_variants), "")
+    allowed_variants = (
+        {"b1"}
+        if execution_mode == "baseline"
+        else {
+            "c24-continuous-b16-score-modulation",
+            "c24-continuous-b16-score-modulation-b1-attribution",
+        }
+    )
+    if len(launch_variants) != 1 or pipeline_variant not in allowed_variants:
+        errors.append("two-node trajectory physical-batch variant is invalid")
     for rank in range(16):
         path = args.run_root / "trajectory" / f"rank_{rank:03d}.jsonl"
         try:
@@ -178,6 +191,28 @@ def main() -> int:
                     errors.append(f"rank{rank}/cycle{cycle}: arm identity changed")
                 if row.implementation.get("execution_mode") != execution_mode:
                     errors.append(f"rank{rank}/cycle{cycle}: execution mode changed")
+                expected_physical = (
+                    ("1", "5", "5")
+                    if execution_mode == "baseline"
+                    else (
+                        ("1", "0" if rank < 8 else "10", "0" if rank < 8 else "5")
+                        if pipeline_variant
+                        == "c24-continuous-b16-score-modulation-b1-attribution"
+                        else ("2", "0" if rank < 8 else "5", "0" if rank < 8 else "5")
+                    )
+                )
+                observed_physical = tuple(
+                    row.implementation.get(key)
+                    for key in (
+                        "critic_physical_batch_size",
+                        "critic_physical_backward_calls",
+                        "critic_optimizer_commits",
+                    )
+                )
+                if observed_physical != expected_physical:
+                    errors.append(
+                        f"rank{rank}/cycle{cycle}: physical Critic B/call/commit inventory changed"
+                    )
                 if row.call_census != reference_call_census:
                     errors.append(f"rank{rank}/cycle{cycle}: normalized call census changed")
                 cycle_samples.extend(row.sample_identities)
@@ -218,6 +253,7 @@ def main() -> int:
         "expected_head": args.expected_head,
         "execution_mode": execution_mode,
         "arm_id": arm_id,
+        "pipeline_variant": pipeline_variant,
         "cycles": args.cycles,
         "rank_cycle_receipts": sum(len(rows) for rows in rank_rows.values()),
         "expected_rank_cycle_receipts": 16 * args.cycles,

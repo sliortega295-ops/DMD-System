@@ -1,0 +1,28 @@
+{
+  "include": [
+    "livewan_wan13b_14b_sf_dmd_c24_continuous_b16_score_modulation.json"
+  ],
+  "id": "livewan-wan13b-14b-sfdmd-c24-continuous-b16-score-modulation-b1-attribution",
+  "training_backends": {
+    "score": {
+      "options": {
+        "critic_physical_batch_policy": "two_b1_accumulated_single_commit_attribution"
+      }
+    }
+  },
+  "metadata": {
+    "critic_physical_batch_size": 1,
+    "trajectory_critic_batch_ablation": {
+      "enabled": true,
+      "name": "c24_critic_b1_two_backward_single_commit_attribution_v1",
+      "scope": "trajectory_diagnostic_only",
+      "critic_physical_batch_size": 1,
+      "physical_backward_calls_per_step": 2,
+      "loss_weights": [0.5, 0.5],
+      "reducer_accumulation": [[0, 2], [1, 2]],
+      "optimizer_commits_per_step": 1,
+      "all_other_c24_execution_unchanged": true,
+      "formal_timing_eligible": false
+    }
+  }
+}

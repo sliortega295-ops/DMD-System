@@ -143,6 +143,7 @@ def parser() -> argparse.ArgumentParser:
             "c22-critic-checkpoint-rng",
             "c23-continuous-b32",
             "c24-continuous-b16-score-modulation",
+            "c24-continuous-b16-score-modulation-b1-attribution",
             "phase-expanded-critic16",
             "phase-expanded-critic16-fused-lora-elision",
             "score-b2",
@@ -237,10 +238,13 @@ def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         if args.execution_mode == "baseline":
             if args.pipeline_variant != "b1":
                 raise ValueError("trajectory baseline requires sequential B1")
-        elif args.pipeline_variant != "c24-continuous-b16-score-modulation":
-            raise ValueError("trajectory pipeline requires exact C24")
-        if args.trajectory_cycles not in {1, 5, 50}:
-            raise ValueError("trajectory cycles must be one of 1, 5, or 50")
+        elif args.pipeline_variant not in {
+            "c24-continuous-b16-score-modulation",
+            "c24-continuous-b16-score-modulation-b1-attribution",
+        }:
+            raise ValueError("trajectory pipeline requires exact C24 B2/B1 attribution")
+        if args.trajectory_cycles not in {1, 2, 5, 50}:
+            raise ValueError("trajectory cycles must be one of 1, 2, 5, or 50")
         if not args.trajectory_arm_id:
             raise ValueError("trajectory mode requires --trajectory-arm-id")
         exports.update(
@@ -311,6 +315,7 @@ def summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
             "c22-critic-checkpoint-rng",
             "c23-continuous-b32",
             "c24-continuous-b16-score-modulation",
+            "c24-continuous-b16-score-modulation-b1-attribution",
         }
         else "summarize_livewan_crossscale_world16.py"
         )
@@ -358,14 +363,23 @@ def main() -> int:
         raise ValueError("--expected-head must be a full Git SHA")
     if args.execution_mode == "baseline" and args.pipeline_variant != "b1":
         raise ValueError("sequential baseline cannot select a pipeline variant")
+    if (
+        args.pipeline_variant
+        == "c24-continuous-b16-score-modulation-b1-attribution"
+        and args.run_kind != "trajectory"
+    ):
+        raise ValueError("C24 Critic-B1 attribution is trajectory-only")
     if args.run_kind == "trajectory":
         if args.execution_mode == "baseline" and args.pipeline_variant != "b1":
             raise ValueError("trajectory baseline requires sequential B1")
         if (
             args.execution_mode == "pipeline"
-            and args.pipeline_variant != "c24-continuous-b16-score-modulation"
+            and args.pipeline_variant not in {
+                "c24-continuous-b16-score-modulation",
+                "c24-continuous-b16-score-modulation-b1-attribution",
+            }
         ):
-            raise ValueError("trajectory pipeline requires exact C24")
+            raise ValueError("trajectory pipeline requires exact C24 B2/B1 attribution")
     local = args.local_evidence_root / args.run_id
     if local.exists():
         raise FileExistsError(local)
