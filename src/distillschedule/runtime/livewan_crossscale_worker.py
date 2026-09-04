@@ -2344,13 +2344,41 @@ def _trajectory_model_named_values(
     if model is None:
         return []
     return [
-        (canonical_state_name(name), parameter, None)
+        (_trajectory_livewan_state_name(name), parameter, None)
         for name, parameter in model.named_parameters()
         if (
             (parameter_ids is None and parameter.requires_grad)
             or (parameter_ids is not None and id(parameter) in parameter_ids)
         )
     ]
+
+
+def _trajectory_livewan_state_name(name: str) -> str:
+    """Map LiveWan's FSDP-only wrapper paths back to plain Wan names.
+
+    ``wanstreamer.fsdp.attach_causal_modules`` re-registers ``blocks`` and
+    ``head`` below ``CausalBlock.blk`` and ``CausalHead.head`` so composable
+    FSDP hooks wrap the functions entered by the custom forward.  It does not
+    create or replace parameters, but it changes their ``named_parameters()``
+    paths.  State evidence must use the underlying Wan identity so FSDP and
+    resident placements select the same deterministic tensor coordinates.
+    """
+
+    value = canonical_state_name(name)
+    layer_prefix = "causal_layers."
+    if value.startswith(layer_prefix):
+        layer_and_name = value[len(layer_prefix) :]
+        layer, separator, remainder = layer_and_name.partition(".blk.")
+        if not separator or not layer.isdigit() or not remainder:
+            raise ValueError(f"unsupported LiveWan CausalBlock parameter path: {value}")
+        return f"blocks.{layer}.{remainder}"
+    head_prefix = "causal_head.head."
+    if value.startswith(head_prefix):
+        remainder = value[len(head_prefix) :]
+        if not remainder:
+            raise ValueError(f"unsupported LiveWan CausalHead parameter path: {value}")
+        return f"head.{remainder}"
+    return value
 
 
 def _bind_trajectory_optimizer_parameter_names(
@@ -2376,7 +2404,7 @@ def _bind_trajectory_optimizer_parameter_names(
     canonical_ids: dict[str, int] = {}
     for raw_name, parameter in named_parameters:
         parameter_id = id(parameter)
-        name = canonical_state_name(raw_name)
+        name = _trajectory_livewan_state_name(raw_name)
         previous_id = canonical_ids.get(name)
         if previous_id is not None and previous_id != parameter_id:
             raise AssertionError(

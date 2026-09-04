@@ -23,6 +23,8 @@ from distillschedule.runtime.livewan_crossscale_worker import (
     TRAJECTORY_CONTINUOUS_NAME,
     _apply_trajectory_contract,
     _bind_trajectory_optimizer_parameter_names,
+    _trajectory_livewan_state_name,
+    _trajectory_model_named_values,
     _trajectory_normalized_cycle_evidence,
     _trajectory_optimizer_named_values,
 )
@@ -420,6 +422,68 @@ def test_optimizer_state_names_survive_fsdp_parameter_view_swap() -> None:
         layout in (sharded_weight, sharded_bias)
         for _name, _value, layout in values
     )
+
+
+def test_livewan_fsdp_wrapper_names_match_plain_wan_inventory() -> None:
+    assert _trajectory_livewan_state_name(
+        "module._orig_mod.causal_layers.12.blk.cross_attn.q.weight"
+    ) == "blocks.12.cross_attn.q.weight"
+    assert _trajectory_livewan_state_name(
+        "causal_head.head.head.bias"
+    ) == "head.head.bias"
+    assert _trajectory_livewan_state_name(
+        "patch_embedding.weight"
+    ) == "patch_embedding.weight"
+
+    class Parameter:
+        requires_grad = True
+
+    wrapped = SimpleNamespace(
+        named_parameters=lambda: iter(
+            (
+                ("causal_layers.0.blk.self_attn.q.weight", Parameter()),
+                ("causal_head.head.head.bias", Parameter()),
+                ("patch_embedding.weight", Parameter()),
+            )
+        )
+    )
+    plain = SimpleNamespace(
+        named_parameters=lambda: iter(
+            (
+                ("blocks.0.self_attn.q.weight", Parameter()),
+                ("head.head.bias", Parameter()),
+                ("patch_embedding.weight", Parameter()),
+            )
+        )
+    )
+    assert [name for name, _value, _layout in _trajectory_model_named_values(wrapped)] == [
+        name for name, _value, _layout in _trajectory_model_named_values(plain)
+    ]
+
+    optimizer_parameter = Parameter()
+    optimizer = SimpleNamespace(
+        param_groups=[{"params": [optimizer_parameter]}],
+        state={optimizer_parameter: {"exp_avg": "m1", "exp_avg_sq": "m2"}},
+    )
+    names = _bind_trajectory_optimizer_parameter_names(
+        named_parameters=[
+            ("causal_layers.0.blk.self_attn.q.weight", optimizer_parameter)
+        ],
+        optimizer=optimizer,
+    )
+    assert names[id(optimizer_parameter)] == "blocks.0.self_attn.q.weight"
+    assert [
+        name
+        for name, _value, _layout in _trajectory_optimizer_named_values(
+            optimizer, parameter_names=names
+        )
+    ] == [
+        "blocks.0.self_attn.q.weight/exp_avg",
+        "blocks.0.self_attn.q.weight/exp_avg_sq",
+    ]
+
+    with pytest.raises(ValueError, match="unsupported LiveWan CausalBlock"):
+        _trajectory_livewan_state_name("causal_layers.not-a-wrapper.weight")
 
 
 def test_optimizer_name_binding_is_fail_closed_for_pipeline_lora_inventory() -> None:
