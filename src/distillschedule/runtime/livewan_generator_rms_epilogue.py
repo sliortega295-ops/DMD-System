@@ -1,7 +1,7 @@
-"""C29 standalone-only Generator RMSNorm epilogue experiment.
+"""C29 opt-in Generator no-grad RMSNorm epilogue experiment.
 
 Keep native pow/mean reduction, BF16 intermediate rounding and FP32 affine/output.
-Nothing is installed by production plans. No CUDA import/allocation on import.
+Nothing is installed by default plans. No CUDA import/allocation on import.
 """
 from __future__ import annotations
 
@@ -12,6 +12,12 @@ import types
 from typing import Any
 
 REFERENCE_CLASS_SHA256 = '31bf960deb2ee55c33ed4656a0ca3e9e4e9632cd41fd04a8677e70e86edbff2e'
+ATTRIBUTE = '_distillschedule_generator_rms_epilogue'
+PLAN_CONTRACT = dict(enabled=True, name='generator_nograd_rms_epilogue_v1',
+    scope='single_prepare_rollout_generator_only', native_pow_mean_preserved=True,
+    input_dtype='bfloat16', affine_dtype='float32', output_dtype='float32',
+    intermediate_bf16_rounding=True, grad_path_changed=False,
+    source_class_sha256=REFERENCE_CLASS_SHA256)
 
 
 def validate_inputs(torch: Any, x: Any, weight: Any, eps: float) -> None:
@@ -95,3 +101,79 @@ def model_epilogue_canary_scope(torch: Any, student: Any, op: Any, *, enabled: b
     finally:
         for m in installed:
             del m.forward
+
+
+class GeneratorRMSEpilogue:
+    def __init__(self, torch: Any, student: Any):
+        self.student = student
+        self.op, self.kernel_receipt = build_nograd_generator_rms_epilogue(torch)
+        self.entries = self.exits = self.failures = 0
+        self.active = False
+        self.scope_calls: list[int] = []
+
+    @contextmanager
+    def scope(self, torch: Any):
+        if self.active:
+            self.failures += 1
+            raise RuntimeError('recursive Generator RMS epilogue scope')
+        self.active = True
+        self.entries += 1
+        before = self.kernel_receipt['calls']
+        try:
+            with model_epilogue_canary_scope(torch, self.student, self.op, enabled=True):
+                yield
+        except BaseException:
+            self.failures += 1
+            raise
+        finally:
+            self.scope_calls.append(self.kernel_receipt['calls'] - before)
+            self.active = False
+            self.exits += 1
+
+    def receipt(self):
+        return dict(self.kernel_receipt, enabled=True, status='INSTALLED', execution_status='PASS',
+            source_class_sha256=REFERENCE_CLASS_SHA256,
+            scope_entries=self.entries, scope_exits=self.exits,
+            scope_forward_calls=self.scope_calls, active=self.active,
+            scope_failures=self.failures)
+
+
+def install(torch: Any, student: Any):
+    if (str(torch.__version__) != '2.10.0+cu128' or hasattr(student, ATTRIBUTE)
+        or hasattr(student, 'causal_layers') or len(student.blocks) != 30):
+        raise RuntimeError('C29 requires validated unwrapped resident 30-block Generator')
+    if not all(p.is_cuda and p.dtype == torch.float32 and p.requires_grad
+               and not hasattr(p, 'to_local') for p in student.parameters()):
+        raise RuntimeError('C29 Generator dtype/trainability/placement changed')
+    helper = GeneratorRMSEpilogue(torch, student)
+    setattr(student, ATTRIBUTE, helper)
+    return helper
+
+
+@contextmanager
+def model_runtime_scope(torch: Any, student: Any):
+    helper = getattr(student, ATTRIBUTE, None)
+    if helper is None:
+        yield
+    else:
+        with helper.scope(torch):
+            yield
+
+
+def runtime_receipt_errors(r: dict[str, Any], *, rank: int, cycles: int) -> list[str]:
+    if rank >= 8:
+        return [] if r.get('execution_status') == 'NOT_APPLICABLE' else ['C29 changed Score scope']
+    scope_calls = r.get('scope_forward_calls', [])
+    if (r.get('name') != PLAN_CONTRACT['name'] or r.get('execution_status') != 'PASS'
+        or r.get('source_class_sha256') != REFERENCE_CLASS_SHA256
+        or r.get('scope_entries') != 10 * cycles or r.get('scope_exits') != 10 * cycles
+        or r.get('active') is not False or r.get('scope_failures') != 0
+        or r.get('contract_failures') != 0 or r.get('grad_path_changed') is not False
+        or r.get('native_pow_mean_preserved') is not True
+        or r.get('input_dtype') != 'bfloat16' or r.get('affine_dtype') != 'float32'
+        or r.get('output_dtype') != 'float32' or r.get('intermediate_bf16_rounding') is not True
+        or len(scope_calls) != 10 * cycles
+        or any(v not in (1920, 2370, 2820) for v in scope_calls)
+        or r.get('calls') != sum(scope_calls)):
+        return ['C29 actual norm call/scope/precision contract failed']
+    return []

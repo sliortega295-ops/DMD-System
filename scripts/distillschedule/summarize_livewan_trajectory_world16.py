@@ -95,7 +95,7 @@ def main() -> int:
         if execution_mode == "baseline"
         else {
             "c24-continuous-b16-score-modulation",
-            "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache",
+            "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue",
             "c24-continuous-b16-score-modulation-b1-attribution",
         }
     )
@@ -124,12 +124,17 @@ def main() -> int:
             continue
         if final.get("status") != "PASS" or final.get("run_kind") != "trajectory":
             errors.append(f"rank{rank}: final trajectory receipt is not PASS")
-        if pipeline_variant in {"c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache"}:
+        if pipeline_variant in {"c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue"}:
             from distillschedule.runtime.livewan_score_rmsnorm import runtime_receipt_errors
 
             errors.extend(f"rank{rank}: {error}" for error in runtime_receipt_errors(
                 dict(final.get("score_rmsnorm_kernel", {})), rank=rank))
-        if pipeline_variant == "c28-continuous-b16-rollout-cast-cache":
+        if pipeline_variant == "c29-continuous-b16-generator-rms-epilogue":
+            from distillschedule.runtime.livewan_generator_rms_epilogue import runtime_receipt_errors as rms_epilogue_errors
+
+            errors.extend(f"rank{rank}: {error}" for error in rms_epilogue_errors(
+                dict(final.get("generator_rms_epilogue", {})), rank=rank, cycles=args.cycles))
+        if pipeline_variant in {"c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue"}:
             from distillschedule.runtime.livewan_rollout_cast_cache import runtime_receipt_errors as cast_errors
 
             errors.extend(f"rank{rank}: {error}" for error in cast_errors(
