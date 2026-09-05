@@ -87,9 +87,13 @@ def test_c29_plan_changes_only_epilogue(monkeypatch):
         with pytest.raises(RuntimeError): _generator_rms_epilogue_enabled(d,mode='pipeline')
 
 
-def test_cpu_temporary_scope_restores_grad_math_even_on_exception():
+def test_cpu_temporary_scope_restores_grad_math_even_on_exception(monkeypatch):
     torch=pytest.importorskip('torch')
-    model=pytest.importorskip('wan.modules.model')
+    # Upstream's unrelated T5 class evaluates current_device() as a default
+    # argument during package import. This CPU test constructs no T5/CUDA model.
+    with monkeypatch.context() as metadata_import:
+        metadata_import.setattr(torch.cuda, 'current_device', lambda: 0)
+        model=pytest.importorskip('wan.modules.model')
     class Block(torch.nn.Module):
         def __init__(self):
             super().__init__()
