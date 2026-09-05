@@ -22,6 +22,7 @@ ALLOWED={
     'scripts/distillschedule/launch_livewan_crossscale_world16_node.sh',
     'scripts/distillschedule/summarize_livewan_continuous_world16.py',
     'tests/test_refactor_livewan_two_cycle_profile.py',
+    'tests/test_refactor_livewan_crossscale_profile.py',
 }
 WORKER='src/distillschedule/runtime/livewan_crossscale_worker.py'
 CHANGED_FUNCTIONS={'_continuous_pipeline_contract','run_worker','_run_pipeline_8x8_continuous'}

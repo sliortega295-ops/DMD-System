@@ -86,7 +86,14 @@ def test_profile_launcher_is_node_outer_and_fail_closed() -> None:
     controller = (
         ROOT / "scripts/distillschedule/run_livewan_crossscale_world16.py"
     ).read_text(encoding="utf-8")
-    assert 'choices=("validate", "correctness", "timing", "profile")' in controller
+    import ast
+    run_kinds = [node for node in ast.walk(ast.parse(controller))
+                 if isinstance(node, ast.Call) and node.args
+                 and isinstance(node.args[0], ast.Constant)
+                 and node.args[0].value == '--run-kind']
+    assert len(run_kinds) == 1
+    choices = ast.literal_eval(next(k.value for k in run_kinds[0].keywords if k.arg == 'choices'))
+    assert {'validate','correctness','timing','profile','trajectory','two-cycle-timing'} <= set(choices)
     assert "profile requires --nsys-bin" in controller
     assert "profile_authorized" in launcher
     assert "formal_timing_authorized" in launcher
@@ -129,7 +136,9 @@ def test_profile_markers_and_capture_are_absent_from_formal_timing_path() -> Non
         "_write_rank_receipt(output_dir=output_dir, rank=rank, value=receipt)"
     )
     assert worker.index("os._exit(0)") > worker.index("cudaProfilerStop")
-    assert worker.index("os._exit(0)") < worker.index("dist.destroy_process_group()")
+    # Capacity now has an earlier exit. The profile teardown must still bypass
+    # the ordinary FINAL process-group destruction, not the capacity branch.
+    assert worker.index("os._exit(0)") < worker.rindex("dist.destroy_process_group()")
     for label in (
         "rollout_wave_0",
         "rollout_wave_1",
