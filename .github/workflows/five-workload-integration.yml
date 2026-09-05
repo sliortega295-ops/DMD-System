@@ -1,0 +1,47 @@
+name: five-workload-integration
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  integration:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'agent/integrate-five-workload-winners-20260905'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Verify recovered source
+        run: |
+          python scripts/distillschedule/verify_helios_compat_source.py
+          python -m unittest discover -s tests -p test_refactor_helios_compat_source.py -v
+      - name: Run integration acceptance when present
+        run: |
+          if test -f scripts/distillschedule/check_best_known_integration.py; then
+            python scripts/distillschedule/check_best_known_integration.py
+          else
+            echo 'Registry/CLI integration is pending; source recovery is not completion.'
+          fi
+      - name: Export exact tracked integration source for offline audit
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p /tmp/integration-source
+          git archive --format=zip HEAD > /tmp/integration-source/source.zip
+          git ls-tree -r -l HEAD > /tmp/integration-source/tree.txt
+          git rev-parse HEAD > /tmp/integration-source/head.txt
+      - uses: actions/upload-artifact@v4
+        if: matrix.python-version == '3.11'
+        with:
+          name: integration-source-${{ github.event.pull_request.head.sha }}
+          path: /tmp/integration-source/
+          retention-days: 7
+          if-no-files-found: error
