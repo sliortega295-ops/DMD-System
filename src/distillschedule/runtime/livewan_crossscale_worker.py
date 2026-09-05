@@ -3326,6 +3326,27 @@ def _score_rmsnorm_kernel_enabled(plan: Mapping[str, Any], *, mode: str) -> bool
     return True
 
 
+def _c30_checkpoint_composition_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_c30_contract import PLAN_CONTRACT
+    from distillschedule.runtime.livewan_attention_checkpoint import PLAN_CONTRACT as SAC
+    from distillschedule.runtime.livewan_generator_rms_epilogue import PLAN_CONTRACT as RMS
+    from distillschedule.runtime.livewan_rollout_cast_cache import PLAN_CONTRACT as CAST
+
+    metadata = plan.get("metadata", {})
+    value = metadata.get("checkpoint_composition")
+    if value is None:
+        return False
+    _require(mode == "pipeline" and value == PLAN_CONTRACT,
+             "C30 explicit composition contract changed")
+    _require(metadata.get("critic_attention_checkpoint") == SAC
+             and metadata.get("generator_rms_epilogue") == RMS
+             and metadata.get("generator_rollout_cast_cache") == CAST
+             and metadata.get("score_prompt_staging") is None
+             and not metadata.get("score_context_prefetch"),
+             "C30 requires exact C29 parent plus unchanged C26 policy")
+    return True
+
+
 def _generator_rollout_cast_cache_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
     from distillschedule.runtime.livewan_rollout_cast_cache import PLAN_CONTRACT
 
@@ -3339,9 +3360,10 @@ def _generator_rollout_cast_cache_enabled(plan: Mapping[str, Any], *, mode: str)
              and _generator_cross_kv_cache_enabled(plan, mode=mode)
              and _generator_attention_backend_enabled(plan, mode=mode)
              and metadata.get("score_prompt_staging") is None
-             and metadata.get("critic_attention_checkpoint") is None
+             and (metadata.get("critic_attention_checkpoint") is None
+                  or _c30_checkpoint_composition_enabled(plan, mode=mode))
              and not metadata.get("score_context_prefetch"),
-             "C28 requires unchanged C25 parent, no combined experiment")
+             "C28 requires unchanged C25 parent or explicitly registered C30")
     return True
 
 
@@ -3660,6 +3682,7 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _critic_lora_scale_one_enabled(plan, mode=mode)
     _score_modulation_kernel_enabled(plan, mode=mode)
     _score_rmsnorm_kernel_enabled(plan, mode=mode)
+    _c30_checkpoint_composition_enabled(plan, mode=mode)
     _critic_attention_checkpoint_enabled(plan, mode=mode)
     _score_prompt_staging_enabled(plan, mode=mode)
     _generator_rollout_cast_cache_enabled(plan, mode=mode)
@@ -4863,6 +4886,7 @@ def run_worker(
         "score_receive_waits": evidence.score_receive_waits,
         "generator_backpressure": evidence.generator_backpressure,
         "critic_checkpoint_rng": evidence.critic_checkpoint_rng,
+        "checkpoint_composition": plan.get("metadata", {}).get("checkpoint_composition"),
         "critic_attention_checkpoint": critic_attention_receipt,
         "score_prompt_staging": score_prompt_staging_receipt,
         "generator_rollout_cast_cache": rollout_cast_cache_receipt,

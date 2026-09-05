@@ -212,6 +212,8 @@ elif [[ "${PIPELINE_VARIANT}" == c26-continuous-b16-critic-attention-checkpoint 
   [[ -f "${DISTILLSCHEDULE_FLASH_ATTN_KERNEL}/_flash_attn2_cuda_a511a4c.abi3.so" ]] || {
     echo "missing_flash_attn2_artifact=${DISTILLSCHEDULE_FLASH_ATTN_KERNEL}" >&2; exit 3;
   }
+elif [[ "${PIPELINE_VARIANT}" == c30-continuous-b16-generator-rms-critic-checkpoint ]]; then
+  PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c30_continuous_b16_generator_rms_critic_checkpoint.json"
 elif [[ "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue ]]; then
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c29_continuous_b16_generator_rms_epilogue.json"
 elif [[ "${PIPELINE_VARIANT}" == c28-continuous-b16-rollout-cast-cache ]]; then
