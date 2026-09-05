@@ -70,6 +70,7 @@ def main() -> int:
             "c22-critic-checkpoint-rng",
             "c23-continuous-b32",
             "c24-continuous-b16-score-modulation",
+            "c25-continuous-b16-score-rmsnorm",
             "c24-continuous-b16-score-modulation-b1-attribution",
             "phase-expanded-critic16",
             "phase-expanded-critic16-fused-lora-elision",
@@ -140,6 +141,7 @@ def main() -> int:
             "c22-critic-checkpoint-rng",
             "c23-continuous-b32",
             "c24-continuous-b16-score-modulation",
+            "c25-continuous-b16-score-rmsnorm",
             "c24-continuous-b16-score-modulation-b1-attribution",
         }
         else None
@@ -151,6 +153,7 @@ def main() -> int:
         "c22-critic-checkpoint-rng",
         "c23-continuous-b32",
         "c24-continuous-b16-score-modulation",
+        "c25-continuous-b16-score-rmsnorm",
         "c24-continuous-b16-score-modulation-b1-attribution",
     }:
         pair_groups = [
@@ -221,6 +224,7 @@ def main() -> int:
             "c22-critic-checkpoint-rng",
             "c23-continuous-b32",
             "c24-continuous-b16-score-modulation",
+            "c25-continuous-b16-score-rmsnorm",
             "c24-continuous-b16-score-modulation-b1-attribution",
         }
         and rank in critic_ranks
@@ -249,6 +253,7 @@ def main() -> int:
             "c21-c1-continuous-b16",
             "c23-continuous-b32",
             "c24-continuous-b16-score-modulation",
+            "c25-continuous-b16-score-rmsnorm",
             "c24-continuous-b16-score-modulation-b1-attribution",
         }:
             reducer.backward_accumulate(
@@ -494,6 +499,7 @@ def main() -> int:
             "c22-critic-checkpoint-rng",
             "c23-continuous-b32",
             "c24-continuous-b16-score-modulation",
+            "c25-continuous-b16-score-rmsnorm",
             "c24-continuous-b16-score-modulation-b1-attribution",
             "phase-expanded-critic16",
         }
@@ -623,6 +629,7 @@ def main() -> int:
                 "c22-critic-checkpoint-rng",
                 "c23-continuous-b32",
                 "c24-continuous-b16-score-modulation",
+                "c25-continuous-b16-score-rmsnorm",
                 "c24-continuous-b16-score-modulation-b1-attribution",
             }
             else "final_dmd_gradient_float32"
@@ -653,6 +660,7 @@ def main() -> int:
                 "c22-critic-checkpoint-rng",
                 "c23-continuous-b32",
                 "c24-continuous-b16-score-modulation",
+                "c25-continuous-b16-score-rmsnorm",
                 "c24-continuous-b16-score-modulation-b1-attribution",
                 "phase-expanded-critic16",
                 "phase-expanded-critic16-fused-lora-elision",
@@ -705,6 +713,7 @@ def main() -> int:
                 "c22-critic-checkpoint-rng",
                 "c23-continuous-b32",
                 "c24-continuous-b16-score-modulation",
+                "c25-continuous-b16-score-rmsnorm",
                 "c24-continuous-b16-score-modulation-b1-attribution",
                 "phase-expanded-critic16",
                 "phase-expanded-critic16-fused-lora-elision",
@@ -740,6 +749,7 @@ def main() -> int:
                             "c22-critic-checkpoint-rng",
                             "c23-continuous-b32",
                             "c24-continuous-b16-score-modulation",
+                            "c25-continuous-b16-score-rmsnorm",
                             "c24-continuous-b16-score-modulation-b1-attribution",
                         }
                         or all(
@@ -758,6 +768,7 @@ def main() -> int:
                             "c22-critic-checkpoint-rng",
                             "c23-continuous-b32",
                             "c24-continuous-b16-score-modulation",
+                            "c25-continuous-b16-score-rmsnorm",
                             "c24-continuous-b16-score-modulation-b1-attribution",
                         }
                         or all(

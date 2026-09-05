@@ -3309,6 +3309,18 @@ def _score_modulation_kernel_enabled(plan: Mapping[str, Any], *, mode: str) -> b
     return True
 
 
+def _score_rmsnorm_kernel_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_score_rmsnorm import PLAN_CONTRACT
+
+    value = plan.get("metadata", {}).get("score_rmsnorm_kernel")
+    if value is None:
+        return False
+    _require(mode == "pipeline", "Score RMSNorm is pipeline-only")
+    _require(value == PLAN_CONTRACT, "Score RMSNorm contract changed")
+    _require(_score_modulation_kernel_enabled(plan, mode=mode), "Score RMSNorm requires C24")
+    return True
+
+
 def _score_rope_kernel_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
     """Validate the exact Score-rank-only LiveWan RoPE fusion."""
 
@@ -3579,6 +3591,7 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _score_context_prefetch_enabled(plan, mode=mode)
     _critic_lora_scale_one_enabled(plan, mode=mode)
     _score_modulation_kernel_enabled(plan, mode=mode)
+    _score_rmsnorm_kernel_enabled(plan, mode=mode)
     _score_rope_kernel_enabled(plan, mode=mode)
     _score_attention_backend_enabled(plan, mode=mode)
     _generator_cross_kv_cache_enabled(plan, mode=mode)
@@ -3829,6 +3842,16 @@ def run_worker(
                 "dimension_histogram": {},
                 "observed_contract": None,
             }
+    score_rmsnorm_kernel = {"enabled": False, "execution_status": "DISABLED"}
+    if _score_rmsnorm_kernel_enabled(plan, mode=mode):
+        _, score_ranks = _plan_role_ranks(plan, mode=mode)
+        if rank in score_ranks:
+            from distillschedule.runtime.livewan_score_rmsnorm import install_frozen_score_rmsnorm
+
+            score_rmsnorm_kernel = install_frozen_score_rmsnorm(torch)
+        else:
+            score_rmsnorm_kernel = {"enabled": True, "role": "generator",
+                "execution_status": "NOT_APPLICABLE", "forward_calls": 0, "backward_calls": 0}
     score_rope_kernel = {
         "enabled": False,
         "name": "native_livewan_score_rope",
@@ -4162,6 +4185,7 @@ def run_worker(
             "cgroup_oom_after": after_oom,
             "critic_lora_kernel": critic_lora_kernel,
             "score_modulation_kernel": score_modulation_kernel,
+            "score_rmsnorm_kernel": score_rmsnorm_kernel,
             "score_rope_kernel": score_rope_kernel,
             "score_attention_backend": score_attention_backend,
             "generator_cross_attention_kv_cache": generator_cross_kv_cache,
@@ -4448,6 +4472,11 @@ def run_worker(
     if is_profile:
         dist.barrier()
         torch.cuda.cudart().cudaProfilerStop()
+    if _score_rmsnorm_kernel_enabled(plan, mode=mode):
+        from distillschedule.runtime.livewan_score_rmsnorm import runtime_receipt_errors
+
+        _require(not runtime_receipt_errors(score_rmsnorm_kernel, rank=rank),
+                 "Score RMSNorm runtime contract/counters incomplete")
     local_final_versions = dict(versions)
     version_tensor = torch.tensor(
         [versions["generator"], versions["critic"], versions["ema"]],
@@ -4663,6 +4692,7 @@ def run_worker(
         "split_dmd_shadow": evidence.split_dmd_shadow,
         "critic_lora_kernel": critic_lora_kernel,
         "score_modulation_kernel": score_modulation_kernel,
+        "score_rmsnorm_kernel": score_rmsnorm_kernel,
         "score_rope_kernel": score_rope_kernel,
         "score_attention_backend": score_attention_backend,
         "generator_cross_attention_kv_cache": generator_cross_kv_cache,

@@ -43,3 +43,50 @@ def test_not_installed_by_default():
     assert "CANARY_ONLY_NOT_PRODUCTION_INSTALLED" in source
     assert "torch.cuda.synchronize" not in source
     assert ".cpu()" not in source
+
+
+def test_c25_has_exactly_one_plan_difference():
+    import json
+    from pathlib import Path
+    from distillschedule.runtime.livewan_score_rmsnorm import PLAN_CONTRACT
+
+    root = Path(__file__).resolve().parents[1] / "configs/distillschedule/plans"
+    parent = json.loads((root / "livewan_wan13b_14b_sf_dmd_c24_continuous_b16_score_modulation.json").read_text())
+    candidate = json.loads((root / "livewan_wan13b_14b_sf_dmd_c25_continuous_b16_score_rmsnorm.json").read_text())
+    assert candidate["metadata"].pop("score_rmsnorm_kernel") == PLAN_CONTRACT
+    assert candidate == parent
+
+
+def test_plan_contract_cannot_change_epsilon_or_precision(monkeypatch):
+    from distillschedule.runtime.livewan_score_rmsnorm import PLAN_CONTRACT
+    from distillschedule.runtime.livewan_crossscale_worker import _score_rmsnorm_kernel_enabled
+    import copy
+    import json
+    from pathlib import Path
+    from distillschedule.core.config import load_plan
+    for key in ("LIVEWAN_STUDENT_CHECKPOINT", "LIVEWAN_CRITIC_CHECKPOINT", "LIVEWAN_TEACHER_CHECKPOINT",
+                "LIVEWAN_OPERATION_TRACE", "LIVEWAN_SYSTEMS_BOOTSTRAP", "DISTILLSCHEDULE_OUTPUT_DIR"):
+        monkeypatch.setenv(key, f"/tmp/{key.lower()}")
+    path = Path(__file__).resolve().parents[1] / "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c25_continuous_b16_score_rmsnorm.json"
+    plan = load_plan(path).plan.to_dict()
+    assert _score_rmsnorm_kernel_enabled(plan, mode="pipeline")
+    with pytest.raises(RuntimeError):
+        _score_rmsnorm_kernel_enabled(plan, mode="baseline")
+    for key, value in [("epsilon", 1e-5), ("input_output_affine_dtype", "float32"), ("enabled", False)]:
+        changed = copy.deepcopy(plan)
+        changed["metadata"]["score_rmsnorm_kernel"][key] = value
+        with pytest.raises(RuntimeError):
+            _score_rmsnorm_kernel_enabled(changed, mode="pipeline")
+
+
+def test_runtime_receipt_fail_closed():
+    from distillschedule.runtime.livewan_score_rmsnorm import runtime_receipt_errors, PLAN_CONTRACT, REFERENCE_CLASS_SHA256
+    good = {"name": PLAN_CONTRACT["name"], "source_class_sha256": REFERENCE_CLASS_SHA256,
+            "install_status": "PASS", "contract_failures": 0, "forward_calls": 100,
+            "backward_calls": 50, "shape_histogram": {"2x19320x1536": 80, "2x19320x5120": 20}}
+    assert runtime_receipt_errors(good, rank=8) == []
+    assert runtime_receipt_errors({}, rank=8)
+    assert runtime_receipt_errors(dict(good, contract_failures=1), rank=8)
+    assert runtime_receipt_errors(dict(good, backward_calls=0), rank=8)
+    assert runtime_receipt_errors({"execution_status": "NOT_APPLICABLE", "forward_calls": 0, "backward_calls": 0}, rank=0) == []
+    assert runtime_receipt_errors(good, rank=0)

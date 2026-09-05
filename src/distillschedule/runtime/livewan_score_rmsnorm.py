@@ -7,6 +7,59 @@ bitwise identical. No monkeypatch, CUDA import, or allocation occurs on import.
 from __future__ import annotations
 
 from typing import Any
+import hashlib
+import inspect
+
+
+REFERENCE_CLASS_SHA256 = "31bf960deb2ee55c33ed4656a0ca3e9e4e9632cd41fd04a8677e70e86edbff2e"
+PLAN_CONTRACT = {
+    "enabled": True,
+    "name": "score_frozen_bf16_rmsnorm_v1",
+    "scope": "score_ranks_only_critic_and_teacher",
+    "source_class_sha256": REFERENCE_CLASS_SHA256,
+    "affine_requires_grad": False,
+    "input_output_affine_dtype": "bfloat16",
+    "accumulation_dtype": "float32",
+    "intermediate_bf16_rounding": True,
+    "epsilon": 1e-6,
+}
+
+
+def runtime_receipt_errors(receipt: dict[str, Any], *, rank: int) -> list[str]:
+    if rank < 8:
+        return [] if (receipt.get("execution_status") == "NOT_APPLICABLE"
+            and receipt.get("forward_calls") == receipt.get("backward_calls") == 0) else ["Generator RMSNorm was changed"]
+    widths = {int(s.split("x")[-1]) for s in receipt.get("shape_histogram", {})}
+    if (receipt.get("name") != PLAN_CONTRACT["name"]
+        or receipt.get("source_class_sha256") != REFERENCE_CLASS_SHA256
+        or receipt.get("install_status") != "PASS"
+        or receipt.get("contract_failures") != 0
+        or int(receipt.get("forward_calls", 0)) <= 0
+        or int(receipt.get("backward_calls", 0)) <= 0
+        or widths != {1536, 5120}):
+        return ["Score RMSNorm runtime contract/counters incomplete"]
+    return []
+
+
+def install_frozen_score_rmsnorm(torch: Any) -> dict[str, Any]:
+    """Install only in an explicitly selected Score-rank worker process."""
+    from wan.modules.model import WanRMSNorm
+
+    if hasattr(WanRMSNorm, "_distillschedule_rmsnorm_receipt"):
+        raise RuntimeError("Score RMSNorm was already patched in this process")
+    observed = hashlib.sha256(inspect.getsource(WanRMSNorm).encode()).hexdigest()
+    if observed != REFERENCE_CLASS_SHA256:
+        raise RuntimeError(f"WanRMSNorm source changed: {observed}")
+    op, receipt = build_frozen_score_rmsnorm(torch)
+
+    def forward(module: Any, x: Any) -> Any:
+        return op(x, module.weight, module.eps)
+
+    WanRMSNorm.forward = forward
+    receipt.update(enabled=True, status="INSTALLED", source_class_sha256=observed,
+                   role="score", install_status="PASS", execution_status="PASS")
+    WanRMSNorm._distillschedule_rmsnorm_receipt = receipt
+    return receipt
 
 
 def validate_frozen_rms_inputs(torch: Any, x: Any, weight: Any, eps: float) -> None:

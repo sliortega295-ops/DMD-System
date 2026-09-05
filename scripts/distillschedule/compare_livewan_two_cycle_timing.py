@@ -52,13 +52,14 @@ def main() -> int:
     parser.add_argument("--baseline-summary", type=Path, required=True)
     parser.add_argument("--pipeline-summary", type=Path, required=True)
     parser.add_argument("--expected-head", required=True)
+    parser.add_argument("--pipeline-variant", choices=("c24-continuous-b16-score-modulation", "c25-continuous-b16-score-rmsnorm"), default="c24-continuous-b16-score-modulation")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     baseline = _load(args.baseline_summary, mode="baseline", variant="b1")
     pipeline = _load(
         args.pipeline_summary,
         mode="pipeline",
-        variant="c24-continuous-b16-score-modulation",
+        variant=args.pipeline_variant,
     )
     errors: list[str] = []
     for label, value in (("baseline", baseline), ("pipeline", pipeline)):

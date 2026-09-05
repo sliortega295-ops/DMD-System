@@ -117,15 +117,15 @@ def main() -> int:
     parser.add_argument("--run-root", type=Path, required=True)
     parser.add_argument("--execution-mode", choices=("baseline", "pipeline"), required=True)
     parser.add_argument(
-        "--pipeline-variant", choices=(BASELINE_VARIANT, PIPELINE_VARIANT), required=True
+        "--pipeline-variant", choices=(BASELINE_VARIANT, PIPELINE_VARIANT, "c25-continuous-b16-score-rmsnorm"), required=True
     )
     parser.add_argument("--trace", type=Path, required=True)
     parser.add_argument("--expected-head", required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     errors: list[str] = []
-    expected_variant = BASELINE_VARIANT if args.execution_mode == "baseline" else PIPELINE_VARIANT
-    if args.pipeline_variant != expected_variant:
+    allowed_variants = {BASELINE_VARIANT} if args.execution_mode == "baseline" else {PIPELINE_VARIANT, "c25-continuous-b16-score-rmsnorm"}
+    if args.pipeline_variant not in allowed_variants:
         errors.append("execution mode/physical implementation pair changed")
     if len(args.expected_head) != 40:
         errors.append("expected HEAD is not a full Git SHA")
@@ -238,6 +238,11 @@ def main() -> int:
                 errors.append(f"rank{rank}: cgroup {key} changed")
 
         timing = dict(row.get("two_cycle_timing", {}))
+        if args.pipeline_variant == "c25-continuous-b16-score-rmsnorm":
+            from distillschedule.runtime.livewan_score_rmsnorm import runtime_receipt_errors
+
+            errors.extend(f"rank{rank}: {error}" for error in runtime_receipt_errors(
+                dict(row.get("score_rmsnorm_kernel", {})), rank=rank))
         cycle1 = dict(timing.get("cycle_1", {}))
         cycle2 = dict(timing.get("cycle_2", {}))
         if (

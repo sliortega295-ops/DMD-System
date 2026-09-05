@@ -146,6 +146,7 @@ def main() -> int:
     parser.add_argument("--pipeline-trajectory-summary", type=Path, required=True)
     parser.add_argument("--trajectory-comparison", type=Path, required=True)
     parser.add_argument("--expected-head", required=True)
+    parser.add_argument("--pipeline-variant", choices=("c24-continuous-b16-score-modulation", "c25-continuous-b16-score-rmsnorm"), default="c24-continuous-b16-score-modulation")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if len(args.expected_head) != 40:
@@ -160,7 +161,7 @@ def main() -> int:
     pipeline = _trajectory(
         args.pipeline_trajectory_summary,
         mode="pipeline",
-        variant=PIPELINE_VARIANT,
+        variant=args.pipeline_variant,
         expected_head=args.expected_head,
     )
     if baseline["seed"] != pipeline["seed"]:
@@ -336,7 +337,7 @@ def main() -> int:
             "pipeline": {
                 "run_id": pipeline["run_id"],
                 "arm_id": pipeline["arm_id"],
-                "pipeline_variant": PIPELINE_VARIANT,
+                "pipeline_variant": args.pipeline_variant,
                 "trajectory_summary": str(
                     args.pipeline_trajectory_summary.resolve()
                 ),
