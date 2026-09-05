@@ -86,6 +86,10 @@ def test_cpu_rejects_grad_and_restores_exception_state():
             with pytest.raises(RuntimeError, match='outer autocast disabled'):
                 with rollout_cast_cache_scope(torch, enabled=True, device_type='cpu'):
                     pass
+        with torch.autocast('cpu', enabled=False, cache_enabled=False):
+            with pytest.raises(RuntimeError, match='original cache enabled'):
+                with rollout_cast_cache_scope(torch, enabled=True, device_type='cpu'):
+                    pass
 
 
 def test_c28_plan_changes_only_rollout_cast_cache(monkeypatch):
@@ -144,7 +148,3 @@ def test_scope_surrounds_only_native_nograd_rollout():
     assert ast.unparse(scopes[0].items[1].context_expr) == 'model_rollout_cast_cache_scope(torch, student)'
     assert 'cast_cache_scope' not in inspect.getsource(generator_backward_for_sample)
     assert '.step(' not in source
-        with torch.autocast('cpu', enabled=False, cache_enabled=False):
-            with pytest.raises(RuntimeError, match='original cache enabled'):
-                with rollout_cast_cache_scope(torch, enabled=True, device_type='cpu'):
-                    pass
