@@ -70,3 +70,25 @@ def test_receipt_summarizers_require_both_g_and_score_checks():
         s=(ROOT/'scripts/distillschedule'/p).read_text()
         assert '"c29-continuous-b16-generator-rms-epilogue", "'+name+'"}' in s
         assert '"c26-continuous-b16-critic-attention-checkpoint", "'+name+'"}' in s
+
+@pytest.mark.parametrize('kind',['trajectory','two-cycle-timing'])
+@pytest.mark.parametrize('variant,expected',[
+    ('c29-continuous-b16-generator-rms-epilogue',0),
+    ('c30-continuous-b16-generator-rms-critic-checkpoint',0),
+    ('unregistered-combination',2)])
+def test_actual_shell_argument_gate_no_gpu(tmp_path,kind,variant,expected):
+    import os,subprocess
+    source=(ROOT/'scripts/distillschedule/launch_livewan_crossscale_world16_node.sh').read_text()
+    # Execute real validation prefix; never model/asset/process/lock setup.
+    prefix=source.split('\nif [[ "${EXECUTION_MODE}" == baseline ]]; then\n')[0]
+    env=dict(os.environ, DMD_SYSTEM_ROOT=str(tmp_path),LIVEWAN_PYTHON_OVERLAY='/unused',
+        DISTILLSCHEDULE_OUTPUT_DIR='/unused',LIVEWAN_WAN21_SOURCE='/unused',
+        LIVEWAN_SOURCE_RECEIPT='/unused',LIVEWAN_PIPELINE_VARIANT=variant,
+        LIVEWAN_PROFILE_TWO_CYCLES='0',LIVEWAN_TRAJECTORY_CYCLES='2',
+        LIVEWAN_TRAJECTORY_SEED='20260830',LIVEWAN_TRAJECTORY_ARM_ID='test',
+        LIVEWAN_TWO_CYCLE_SEED='20260830',LIVEWAN_TWO_CYCLE_ARM_ID='test')
+    cmd=['bash','-c',prefix+'\necho ARGUMENT_GATE_PASS\n','launcher-gate',
+         '0','canary-validate',kind,'pipeline','a'*40,'127.0.0.1','31811']
+    p=subprocess.run(cmd,env=env,text=True,capture_output=True,timeout=10)
+    assert p.returncode==expected,(p.returncode,p.stdout,p.stderr)
+    assert ('ARGUMENT_GATE_PASS' in p.stdout)==(expected==0)

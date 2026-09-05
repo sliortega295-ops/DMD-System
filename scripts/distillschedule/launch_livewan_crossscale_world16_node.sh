@@ -75,7 +75,7 @@ TWO_CYCLE_ARM_ID="${LIVEWAN_TWO_CYCLE_ARM_ID:-}"
 	   "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation || \
        "${PIPELINE_VARIANT}" == c25-continuous-b16-score-rmsnorm || \
        "${PIPELINE_VARIANT}" == c26-continuous-b16-critic-attention-checkpoint || \
-       "${PIPELINE_VARIANT}" == c27-continuous-b16-pinned-prompt-staging || "${PIPELINE_VARIANT}" == c28-continuous-b16-rollout-cast-cache || "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue || \
+       "${PIPELINE_VARIANT}" == c27-continuous-b16-pinned-prompt-staging || "${PIPELINE_VARIANT}" == c28-continuous-b16-rollout-cast-cache || "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue || "${PIPELINE_VARIANT}" == c30-continuous-b16-generator-rms-critic-checkpoint || \
 	   "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation-b1-attribution || \
    "${PIPELINE_VARIANT}" == phase-expanded-critic16 || \
    "${PIPELINE_VARIANT}" == phase-expanded-critic16-fused-lora-elision || \
@@ -93,7 +93,7 @@ if [[ "${RUN_KIND}" == trajectory ]]; then
     [[ "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation || \
        "${PIPELINE_VARIANT}" == c25-continuous-b16-score-rmsnorm || \
        "${PIPELINE_VARIANT}" == c26-continuous-b16-critic-attention-checkpoint || \
-       "${PIPELINE_VARIANT}" == c27-continuous-b16-pinned-prompt-staging || "${PIPELINE_VARIANT}" == c28-continuous-b16-rollout-cast-cache || "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue || \
+       "${PIPELINE_VARIANT}" == c27-continuous-b16-pinned-prompt-staging || "${PIPELINE_VARIANT}" == c28-continuous-b16-rollout-cast-cache || "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue || "${PIPELINE_VARIANT}" == c30-continuous-b16-generator-rms-critic-checkpoint || \
        "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation-b1-attribution ]] || {
       echo trajectory_pipeline_requires_exact_c24 >&2; exit 2;
     }
@@ -108,7 +108,7 @@ elif [[ "${RUN_KIND}" == two-cycle-timing ]]; then
       echo two_cycle_baseline_requires_b1 >&2; exit 2;
     }
   else
-    [[ "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation || "${PIPELINE_VARIANT}" == c25-continuous-b16-score-rmsnorm || "${PIPELINE_VARIANT}" == c26-continuous-b16-critic-attention-checkpoint || "${PIPELINE_VARIANT}" == c27-continuous-b16-pinned-prompt-staging || "${PIPELINE_VARIANT}" == c28-continuous-b16-rollout-cast-cache || "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue ]] || {
+    [[ "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation || "${PIPELINE_VARIANT}" == c25-continuous-b16-score-rmsnorm || "${PIPELINE_VARIANT}" == c26-continuous-b16-critic-attention-checkpoint || "${PIPELINE_VARIANT}" == c27-continuous-b16-pinned-prompt-staging || "${PIPELINE_VARIANT}" == c28-continuous-b16-rollout-cast-cache || "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue || "${PIPELINE_VARIANT}" == c30-continuous-b16-generator-rms-critic-checkpoint ]] || {
       echo two_cycle_pipeline_requires_production_c24_b2 >&2; exit 2;
     }
   fi
