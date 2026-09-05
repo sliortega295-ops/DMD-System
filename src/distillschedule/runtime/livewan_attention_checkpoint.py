@@ -14,6 +14,20 @@ from typing import Any
 
 INTERFACE_SHA256 = "a49ae75310beeea12a161d42d586e3620802f457e81b775b954f97970689904b"
 OP_NAME = "_flash_attn2_cuda_a511a4c::_flash_attn_forward"
+PLAN_CONTRACT = {
+    "enabled": True,
+    "name": "critic_fa2_exact_gpu_checkpoint_outputs_v1",
+    "scope": "score_rank_critic_grad_self_attention_only",
+    "interface_sha256": INTERFACE_SHA256,
+    "operator": OP_NAME,
+    "cache_location": "cuda_per_checkpoint",
+    "query_tokens": 19320,
+    "key_tokens": 19320,
+    "allow_cache_entry_mutation": False,
+    "preserve_rng_state": True,
+    "application_calls_unchanged": True,
+    "cross_attention_recomputed": True,
+}
 
 
 def discover_flash_forward(flash_module: Any) -> tuple[Any, dict[str, Any]]:
@@ -67,10 +81,11 @@ class AttentionCheckpointContexts:
     Our ledger additionally verifies operation metadata at each replay position.
     It stores no tensors. Production installation is intentionally separate.
     """
-    def __init__(self, torch: Any, op: Any, identity: dict[str, Any]):
+    def __init__(self, torch: Any, op: Any, identity: dict[str, Any], *, self_attention_only: bool = False):
         self.torch = torch
         self.op = op
         self.identity = identity
+        self.self_attention_only = self_attention_only
         self.checkpoints: list[dict[str, Any]] = []
 
     def __call__(self):
@@ -84,6 +99,12 @@ class AttentionCheckpointContexts:
                 return CheckpointPolicy.PREFER_RECOMPUTE
             try:
                 metadata = attention_metadata(self.torch, args, kwargs)
+                if self.self_attention_only:
+                    q_shape, k_shape = metadata[0][0], metadata[1][0]
+                    if q_shape[1] != 19320 or k_shape[1] not in (19320, 512):
+                        raise RuntimeError("C26 unregistered Critic attention sequence shape")
+                    if k_shape[1] == 512:
+                        return CheckpointPolicy.PREFER_RECOMPUTE
                 if ctx.is_recompute:
                     i = ledger["replay_calls"]
                     if i >= len(ledger["original"]) or metadata != ledger["original"][i]:
@@ -106,4 +127,44 @@ class AttentionCheckpointContexts:
                 "contract_failures": sum(x["failures"] for x in self.checkpoints),
                 "allow_cache_entry_mutation": False, "cpu_offload": False,
                 "rng_preservation": "UNCHANGED_CHECKPOINT_DEFAULT_TRUE",
+                "self_attention_only": self.self_attention_only,
                 "production_installed": False}
+
+
+class CriticAttentionCheckpointProxy:
+    """Opt-in process-local blockcausal.ckpt proxy; never patch global Torch."""
+    def __init__(self, checkpoint_module: Any, torch: Any, flash_module: Any):
+        self.module = checkpoint_module
+        op, identity = discover_flash_forward(flash_module)
+        self.contexts = AttentionCheckpointContexts(torch, op, identity, self_attention_only=True)
+
+    def checkpoint(self, function: Any, *args: Any, **kwargs: Any):
+        if (kwargs.get("use_reentrant") is not False or "context_fn" in kwargs
+            or "preserve_rng_state" in kwargs):
+            raise RuntimeError("C26 checkpoint call site/RNG/context changed")
+        return self.module.checkpoint(function, *args, context_fn=self.contexts, **kwargs)
+
+    def receipt(self, *, expected_calls: int):
+        r = self.contexts.receipt()
+        r.update(enabled=True, execution_status="PASS", production_installed=True,
+                 expected_checkpoint_calls=expected_calls)
+        if runtime_receipt_errors(r, rank=8, expected_calls=expected_calls):
+            raise RuntimeError(f"C26 checkpoint replay census failed: {r}")
+        return r
+
+
+def runtime_receipt_errors(r: dict[str, Any], *, rank: int, expected_calls: int) -> list[str]:
+    if rank < 8:
+        return [] if r.get("execution_status") == "NOT_APPLICABLE" and r.get("checkpoint_calls") == 0 else ["Generator SAC changed"]
+    if (expected_calls <= 0 or r.get("name") != PLAN_CONTRACT["name"]
+        or r.get("source", {}).get("interface_sha256") != INTERFACE_SHA256
+        or r.get("execution_status") != "PASS" or r.get("production_installed") is not True
+        or r.get("self_attention_only") is not True or r.get("contract_failures") != 0
+        or r.get("checkpoint_calls") != expected_calls
+        or r.get("original_fa_calls") != expected_calls
+        or r.get("replay_fa_cache_reads") != expected_calls
+        or r.get("expected_checkpoint_calls") != expected_calls
+        or r.get("allow_cache_entry_mutation") is not False
+        or r.get("cpu_offload") is not False):
+        return ["C26 selective-checkpoint source/replay/census contract failed"]
+    return []

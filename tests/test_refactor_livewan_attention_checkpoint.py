@@ -54,3 +54,44 @@ def test_plan_only_has_no_cuda_import(tmp_path):
                       '--plan-only','--output',str(tmp_path/'canary.json')],check=True,capture_output=True,text=True)
     d=json.loads(p.stdout)
     assert d['world16']=='NOT_RUN' and not (tmp_path/'canary.json').exists()
+
+
+def test_c26_plan_is_one_factor_and_fail_closed(monkeypatch):
+    import copy
+    import json
+    from pathlib import Path
+    from distillschedule.core.config import load_plan
+    from distillschedule.runtime.livewan_attention_checkpoint import PLAN_CONTRACT
+    from distillschedule.runtime.livewan_crossscale_worker import _critic_attention_checkpoint_enabled
+    root=Path(__file__).resolve().parents[1]/'configs/distillschedule/plans'
+    a=root/'livewan_wan13b_14b_sf_dmd_c25_continuous_b16_score_rmsnorm.json'
+    b=root/'livewan_wan13b_14b_sf_dmd_c26_continuous_b16_critic_attention_checkpoint.json'
+    da,db=json.loads(a.read_text()),json.loads(b.read_text())
+    assert db['metadata'].pop('critic_attention_checkpoint')==PLAN_CONTRACT
+    assert da==db
+    for key in ('LIVEWAN_STUDENT_CHECKPOINT','LIVEWAN_CRITIC_CHECKPOINT','LIVEWAN_TEACHER_CHECKPOINT',
+                'LIVEWAN_OPERATION_TRACE','LIVEWAN_SYSTEMS_BOOTSTRAP','DISTILLSCHEDULE_OUTPUT_DIR'):
+        monkeypatch.setenv(key,'/unread/'+key)
+    plan=load_plan(b).plan.to_dict()
+    assert _critic_attention_checkpoint_enabled(plan,mode='pipeline')
+    assert not _critic_attention_checkpoint_enabled(load_plan(a).plan.to_dict(),mode='pipeline')
+    with pytest.raises(RuntimeError):
+        _critic_attention_checkpoint_enabled(plan,mode='baseline')
+    for key,value in [('preserve_rng_state',False),('cache_location','cpu'),('query_tokens',512)]:
+        changed=copy.deepcopy(plan);changed['metadata']['critic_attention_checkpoint'][key]=value
+        with pytest.raises(RuntimeError):
+            _critic_attention_checkpoint_enabled(changed,mode='pipeline')
+
+
+def test_runtime_sac_census_cannot_be_inferred_only_from_config():
+    from distillschedule.runtime.livewan_attention_checkpoint import runtime_receipt_errors,PLAN_CONTRACT,INTERFACE_SHA256
+    r={'name':PLAN_CONTRACT['name'],'source':{'interface_sha256':INTERFACE_SHA256},
+       'execution_status':'PASS','production_installed':True,'self_attention_only':True,
+       'contract_failures':0,'checkpoint_calls':300,'expected_checkpoint_calls':300,
+       'original_fa_calls':300,'replay_fa_cache_reads':300,'cpu_offload':False,
+       'allow_cache_entry_mutation':False}
+    assert not runtime_receipt_errors(r,rank=8,expected_calls=300)
+    for k,v in [('replay_fa_cache_reads',0),('checkpoint_calls',299),('cpu_offload',True),('contract_failures',1)]:
+        assert runtime_receipt_errors(dict(r,**{k:v}),rank=8,expected_calls=300)
+    assert runtime_receipt_errors(r,rank=0,expected_calls=300)
+    assert not runtime_receipt_errors({'execution_status':'NOT_APPLICABLE','checkpoint_calls':0},rank=0,expected_calls=300)

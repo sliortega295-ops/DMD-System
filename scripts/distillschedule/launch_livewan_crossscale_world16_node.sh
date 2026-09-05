@@ -67,6 +67,7 @@ TWO_CYCLE_ARM_ID="${LIVEWAN_TWO_CYCLE_ARM_ID:-}"
 	   "${PIPELINE_VARIANT}" == c23-continuous-b32 || \
 	   "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation || \
        "${PIPELINE_VARIANT}" == c25-continuous-b16-score-rmsnorm || \
+       "${PIPELINE_VARIANT}" == c26-continuous-b16-critic-attention-checkpoint || \
 	   "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation-b1-attribution || \
    "${PIPELINE_VARIANT}" == phase-expanded-critic16 || \
    "${PIPELINE_VARIANT}" == phase-expanded-critic16-fused-lora-elision || \
@@ -83,6 +84,7 @@ if [[ "${RUN_KIND}" == trajectory ]]; then
   else
     [[ "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation || \
        "${PIPELINE_VARIANT}" == c25-continuous-b16-score-rmsnorm || \
+       "${PIPELINE_VARIANT}" == c26-continuous-b16-critic-attention-checkpoint || \
        "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation-b1-attribution ]] || {
       echo trajectory_pipeline_requires_exact_c24 >&2; exit 2;
     }
@@ -97,7 +99,7 @@ elif [[ "${RUN_KIND}" == two-cycle-timing ]]; then
       echo two_cycle_baseline_requires_b1 >&2; exit 2;
     }
   else
-    [[ "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation || "${PIPELINE_VARIANT}" == c25-continuous-b16-score-rmsnorm ]] || {
+    [[ "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation || "${PIPELINE_VARIANT}" == c25-continuous-b16-score-rmsnorm || "${PIPELINE_VARIANT}" == c26-continuous-b16-critic-attention-checkpoint ]] || {
       echo two_cycle_pipeline_requires_production_c24_b2 >&2; exit 2;
     }
   fi
@@ -191,6 +193,12 @@ elif [[ "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation ]]; then
   }
 elif [[ "${PIPELINE_VARIANT}" == c25-continuous-b16-score-rmsnorm ]]; then
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c25_continuous_b16_score_rmsnorm.json"
+  export DISTILLSCHEDULE_FLASH_ATTN_KERNEL="${DISTILLSCHEDULE_FLASH_ATTN_KERNEL:-/share/project/shuchenweng/DistillSchedule_assets/hf_home_official_torch210/hub/models--kernels-community--flash-attn2/snapshots/6a810a7a010ba2aad6613f1f0f7b226fb8bdee3c/build/torch210-cxx11-cu128-x86_64-linux}"
+  [[ -f "${DISTILLSCHEDULE_FLASH_ATTN_KERNEL}/_flash_attn2_cuda_a511a4c.abi3.so" ]] || {
+    echo "missing_flash_attn2_artifact=${DISTILLSCHEDULE_FLASH_ATTN_KERNEL}" >&2; exit 3;
+  }
+elif [[ "${PIPELINE_VARIANT}" == c26-continuous-b16-critic-attention-checkpoint ]]; then
+  PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c26_continuous_b16_critic_attention_checkpoint.json"
   export DISTILLSCHEDULE_FLASH_ATTN_KERNEL="${DISTILLSCHEDULE_FLASH_ATTN_KERNEL:-/share/project/shuchenweng/DistillSchedule_assets/hf_home_official_torch210/hub/models--kernels-community--flash-attn2/snapshots/6a810a7a010ba2aad6613f1f0f7b226fb8bdee3c/build/torch210-cxx11-cu128-x86_64-linux}"
   [[ -f "${DISTILLSCHEDULE_FLASH_ATTN_KERNEL}/_flash_attn2_cuda_a511a4c.abi3.so" ]] || {
     echo "missing_flash_attn2_artifact=${DISTILLSCHEDULE_FLASH_ATTN_KERNEL}" >&2; exit 3;

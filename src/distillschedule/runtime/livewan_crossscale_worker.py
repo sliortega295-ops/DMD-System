@@ -3321,6 +3321,20 @@ def _score_rmsnorm_kernel_enabled(plan: Mapping[str, Any], *, mode: str) -> bool
     return True
 
 
+def _critic_attention_checkpoint_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_attention_checkpoint import PLAN_CONTRACT
+
+    value = plan.get("metadata", {}).get("critic_attention_checkpoint")
+    if value is None:
+        return False
+    _require(mode == "pipeline" and value == PLAN_CONTRACT, "C26 SAC contract changed")
+    _require(_score_rmsnorm_kernel_enabled(plan, mode=mode), "C26 requires C25 parent")
+    _require(_continuous_pipeline_contract(plan, mode=mode) is not None, "C26 requires continuous B16")
+    _require(_critic_physical_batch_size(plan, mode=mode) == 2, "C26 Critic B2 changed")
+    _require(not _critic_checkpoint_rng_elision_enabled(plan, mode=mode), "C26 cannot change checkpoint RNG")
+    return True
+
+
 def _score_rope_kernel_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
     """Validate the exact Score-rank-only LiveWan RoPE fusion."""
 
@@ -3592,6 +3606,7 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _critic_lora_scale_one_enabled(plan, mode=mode)
     _score_modulation_kernel_enabled(plan, mode=mode)
     _score_rmsnorm_kernel_enabled(plan, mode=mode)
+    _critic_attention_checkpoint_enabled(plan, mode=mode)
     _score_rope_kernel_enabled(plan, mode=mode)
     _score_attention_backend_enabled(plan, mode=mode)
     _generator_cross_kv_cache_enabled(plan, mode=mode)
@@ -4250,6 +4265,18 @@ def run_worker(
             "execution_status": "DISABLED",
             "checkpoint_calls": 0,
         }
+    critic_attention_proxy = None
+    critic_attention_receipt = {"enabled": False, "execution_status": "DISABLED"}
+    if _critic_attention_checkpoint_enabled(plan, mode=mode):
+        if rank in _plan_role_ranks(plan, mode=mode)[1]:
+            from distillschedule.runtime.livewan_attention_backend import _load_flash_attn2
+            from distillschedule.runtime.livewan_attention_checkpoint import CriticAttentionCheckpointProxy
+
+            flash_module, _ = _load_flash_attn2()
+            critic_attention_proxy = CriticAttentionCheckpointProxy(bc.ckpt, torch, flash_module)
+            bc.ckpt = critic_attention_proxy
+        else:
+            critic_attention_receipt = {"enabled": True, "execution_status": "NOT_APPLICABLE", "checkpoint_calls": 0}
     inventory = CallInventory()
     trajectory_writer = (
         AppendOnlyTrajectoryWriter(
@@ -4617,6 +4644,10 @@ def run_worker(
         critic_metrics = _state_metrics(torch, bundle.critic_lora_params)
     logical_call_inventory = dict(inventory.counts)
     logical_call_inventory.update(evidence.logical_score_calls)
+    if critic_attention_proxy is not None:
+        _require(bundle.critic is not None, "C26 Score checkpoint lacks Critic")
+        critic_attention_receipt = critic_attention_proxy.receipt(
+            expected_calls=int(inventory.counts.get("critic/grad/checkpoint", 0)) * len(bundle.critic.blocks))
     if critic_checkpoint_proxy is not None:
         _require(bundle.critic is not None, "Score checkpoint proxy lacks Critic")
         expected_checkpoint_calls = int(
@@ -4708,6 +4739,7 @@ def run_worker(
         "score_receive_waits": evidence.score_receive_waits,
         "generator_backpressure": evidence.generator_backpressure,
         "critic_checkpoint_rng": evidence.critic_checkpoint_rng,
+        "critic_attention_checkpoint": critic_attention_receipt,
         "slot_routing": slot_routing,
         "full5_wall_seconds": full5_wall,
         "two_cycle_timing": two_cycle_timing_receipt,
