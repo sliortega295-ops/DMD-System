@@ -73,6 +73,7 @@ PHASE_EXPANDED_CRITIC16_POOL_POLICY = (
 B32_CONTINUOUS_NAME = "continuous_full5_b32_depth1_systems_v1"
 TRAJECTORY_CONTINUOUS_NAME = "trajectory_coarse_c24_b16_depth1_v1"
 TWO_CYCLE_TIMING_CONTINUOUS_NAME = "two_cycle_timing_c24_b16_depth1_v1"
+TWO_CYCLE_PROFILE_CONTINUOUS_NAME = "two_cycle_profile_c29_b16_depth1_v1"
 TWO_CYCLE_TIMING_CYCLES = 2
 TRAJECTORY_ANCHOR_CYCLES = frozenset({1, 10, 25, 50})
 TRAJECTORY_ALLOWED_CYCLES = frozenset({1, 2, 5, 50})
@@ -852,15 +853,16 @@ def _continuous_pipeline_contract(
             dict(value) == expected_trajectory,
             "trajectory continuous pipeline contract changed",
         )
-    elif value.get("name") == TWO_CYCLE_TIMING_CONTINUOUS_NAME:
+    elif value.get("name") in {TWO_CYCLE_TIMING_CONTINUOUS_NAME, TWO_CYCLE_PROFILE_CONTINUOUS_NAME}:
+        diagnostic_profile = value.get("name") == TWO_CYCLE_PROFILE_CONTINUOUS_NAME
         expected_timing = dict(
             expected,
-            name=TWO_CYCLE_TIMING_CONTINUOUS_NAME,
+            name=TWO_CYCLE_PROFILE_CONTINUOUS_NAME if diagnostic_profile else TWO_CYCLE_TIMING_CONTINUOUS_NAME,
             cycles=TWO_CYCLE_TIMING_CYCLES,
             critic_shadow_sync_versions=[CRITIC_UPDATES],
             timing_schema="livewan_two_cycle_timing_v1",
-            profiled=False,
-            formal_timing_eligible=True,
+            profiled=diagnostic_profile,
+            formal_timing_eligible=not diagnostic_profile,
         )
         _require(
             dict(value) == expected_timing,
@@ -3735,6 +3737,8 @@ def run_worker(
 ) -> dict[str, Any]:
     plan_path = Path(plan_path).expanduser().resolve()
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    from distillschedule.runtime.livewan_two_cycle_profile import enabled as profile_two_enabled
+    profile_two_cycles = profile_two_enabled(run_kind)
     critic_b1_attribution = _trajectory_critic_batch_ablation_enabled(
         plan, mode=mode
     )
@@ -3765,6 +3769,12 @@ def run_worker(
             "two-cycle native timing cannot run under a profiler",
         )
         _apply_two_cycle_timing_contract(plan, mode=mode)
+    elif profile_two_cycles:
+        from distillschedule.runtime.livewan_two_cycle_profile import apply_contract
+        two_cycle_seed = int(os.environ.get("LIVEWAN_TWO_CYCLE_SEED", "-1"))
+        two_cycle_arm_id = os.environ.get("LIVEWAN_TWO_CYCLE_ARM_ID", "")
+        _require(two_cycle_seed >= 0 and two_cycle_arm_id != "", "two-cycle profile identity missing")
+        apply_contract(plan, mode=mode)
     _validate_plan_identity(plan, mode=mode)
     continuous_contract = _continuous_pipeline_contract(plan, mode=mode)
     continuous_cycles = (
@@ -3785,11 +3795,11 @@ def run_worker(
     )
     _validate_trace_balanced_pairing(plan, trace)
     bootstrap = Bootstrap.load(plan["evidence"]["checkpoint"], trace=trace)
-    if run_kind == "trajectory" or two_cycle_timing:
+    if run_kind == "trajectory" or two_cycle_timing or profile_two_cycles:
         trace_payload = json.loads(trace.path.read_text(encoding="utf-8"))
         _require(
             int(trace_payload.get("seed", -1))
-            == (two_cycle_seed if two_cycle_timing else trajectory_seed),
+            == (two_cycle_seed if two_cycle_timing or profile_two_cycles else trajectory_seed),
             "run seed differs from the immutable trace seed",
         )
         diagnostic = dict(bootstrap.value.get("continuous_diagnostic", {}))
@@ -3808,6 +3818,7 @@ def run_worker(
     root = Path(repo_root).expanduser().resolve()
     source_receipt = validate_source_receipt(bootstrap, repo_root=root)
     two_cycle_gate = None
+    two_cycle_profile_gate = None
     if two_cycle_timing:
         two_cycle_gate = _load_two_cycle_timing_gate(
             path=os.environ.get("LIVEWAN_PAIR_CORRECTNESS_RECEIPT", ""),
@@ -3821,6 +3832,15 @@ def run_worker(
             bootstrap=bootstrap,
             source_receipt=source_receipt,
         )
+    if profile_two_cycles:
+        from distillschedule.runtime.livewan_two_cycle_profile import load_gate
+        two_cycle_profile_gate = load_gate(
+            path=os.environ.get("LIVEWAN_PAIR_CORRECTNESS_RECEIPT", ""),
+            expected_sha256=os.environ.get("LIVEWAN_PAIR_CORRECTNESS_SHA256", ""),
+            expected_head=os.environ.get("LIVEWAN_EXPECTED_HEAD", ""), mode=mode,
+            pipeline_variant=os.environ.get("LIVEWAN_PIPELINE_VARIANT", ""),
+            arm_id=two_cycle_arm_id, seed=two_cycle_seed, trace=trace,
+            bootstrap=bootstrap, source_receipt=source_receipt)
     configure_python_sources(repo_root=root, source_receipt=source_receipt)
     output_dir = Path(plan["evidence"]["output_dir"]).expanduser().resolve()
     if run_kind == "validate":
@@ -3855,7 +3875,7 @@ def run_worker(
     # Shared hardware compatibility, before any model construction/timer.
     cuda_library_setup = materialize_blas_handles(torch, device)
     effective_plan_sha256 = _effective_plan_sha256(plan)
-    if two_cycle_timing and local_rank == 0:
+    if (two_cycle_timing or profile_two_cycles) and local_rank == 0:
         node_rank = int(os.environ.get("DISTILLSCHEDULE_NODE_RANK", "-1"))
         _require(node_rank in {0, 1}, "two-cycle timing node rank is missing")
         atomic_json(
@@ -4850,6 +4870,7 @@ def run_worker(
         "slot_routing": slot_routing,
         "full5_wall_seconds": full5_wall,
         "two_cycle_timing": two_cycle_timing_receipt,
+        "two_cycle_profile": two_cycle_profile_gate,
         "profiled": False if two_cycle_timing else is_profile,
         "construction_wall_seconds": build_wall,
         "setup_memory": setup_memory,
@@ -6715,7 +6736,9 @@ def _run_pipeline_8x8_continuous(
             "C24 two-cycle timing trace/endpoint recorder is incomplete",
         )
     else:
-        _require(trace.cycles == 3, "C21 continuous trace must contain three cycles")
+        from distillschedule.runtime.livewan_two_cycle_profile import enabled as profile_two_enabled
+        _require(trace.cycles == (2 if profile_two_enabled(run_kind) else 3),
+                 "continuous diagnostic trace cycle count changed")
     _require(
         runahead_host_transport is not None and critic_shadow_hot_sync is not None,
         "C21 continuous transports are incomplete",
@@ -7082,6 +7105,9 @@ def _run_pipeline_8x8_continuous(
         "role_total_wall_seconds": time.perf_counter() - started,
         "execution_status": "PASS",
     }
+    if run_kind == "profile" and os.environ.get("LIVEWAN_PROFILE_TWO_CYCLES", "0") == "1":
+        evidence.continuous_pipeline["name"] = TWO_CYCLE_PROFILE_CONTINUOUS_NAME
+        evidence.continuous_pipeline["training_quality_claimable"] = False
 
 
 def _run_pipeline_phase_expanded_critic16(

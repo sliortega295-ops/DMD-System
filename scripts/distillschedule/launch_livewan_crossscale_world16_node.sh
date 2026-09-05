@@ -38,6 +38,13 @@ LOCK_FILE="${DISTILLSCHEDULE_NODE_LOCK:-/tmp/distillschedule_gpu_node.lock}"
 SOURCE_ROOT="${LIVEWAN_WAN21_SOURCE:?set LIVEWAN_WAN21_SOURCE}"
 SOURCE_RECEIPT="${LIVEWAN_SOURCE_RECEIPT:?set LIVEWAN_SOURCE_RECEIPT}"
 PIPELINE_VARIANT="${LIVEWAN_PIPELINE_VARIANT:-b1}"
+PROFILE_TWO_CYCLES="${LIVEWAN_PROFILE_TWO_CYCLES:-0}"
+[[ "${PROFILE_TWO_CYCLES}" == 0 || "${PROFILE_TWO_CYCLES}" == 1 ]] || exit 2
+if [[ "${PROFILE_TWO_CYCLES}" == 1 ]]; then
+  [[ "${RUN_KIND}" == profile && "${EXECUTION_MODE}" == pipeline && \
+     "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue && \
+     "${LIVEWAN_TWO_CYCLE_SEED:-}" =~ ^[0-9]+$ && -n "${LIVEWAN_TWO_CYCLE_ARM_ID:-}" ]] || exit 2
+fi
 TRAJECTORY_CYCLES="${LIVEWAN_TRAJECTORY_CYCLES:-0}"
 TRAJECTORY_SEED="${LIVEWAN_TRAJECTORY_SEED:-0}"
 TRAJECTORY_ARM_ID="${LIVEWAN_TRAJECTORY_ARM_ID:-}"
@@ -313,6 +320,12 @@ else:
         and heads.get("profile") == expected_head
     ):
         raise SystemExit("diagnostic gate lost its correctness workload identity")
+    import os
+    if os.environ.get("LIVEWAN_PROFILE_TWO_CYCLES", "0") == "1":
+        if (value.get("schema_version") != "distillschedule.livewan_two_cycle_profile_gate.v1"
+            or value.get("cycles") != 2
+            or value.get("pipeline_variant") != "c29-continuous-b16-generator-rms-epilogue"):
+            raise SystemExit("two-cycle diagnostic gate changed")
 PY
 fi
 
@@ -368,6 +381,14 @@ export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
   echo "run_kind=${RUN_KIND}"
   echo "execution_mode=${EXECUTION_MODE}"
   echo "pipeline_variant=${PIPELINE_VARIANT}"
+  if [[ "${PROFILE_TWO_CYCLES}" == 1 ]]; then
+    echo "profiled=true"
+    echo "profile_cycles=2"
+    echo "formal_timing_eligible=false"
+    echo "two_cycle_seed=${LIVEWAN_TWO_CYCLE_SEED}"
+    echo "two_cycle_arm_id=${LIVEWAN_TWO_CYCLE_ARM_ID}"
+    echo "profile_gate_sha256=${CORRECTNESS_SHA256}"
+  fi
   if [[ "${RUN_KIND}" == trajectory ]]; then
     echo "trajectory_cycles=${TRAJECTORY_CYCLES}"
     echo "trajectory_seed=${TRAJECTORY_SEED}"
@@ -697,7 +718,7 @@ nvidia-smi --query-gpu=index,name,memory.total,memory.free --format=csv,noheader
 [[ -z "$(nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | sed '/^[[:space:]]*$/d')" ]] || {
   echo gpu_processes_remain >&2; exit 88;
 }
-if [[ "${RUN_KIND}" == two-cycle-timing ]]; then
+if [[ "${RUN_KIND}" == two-cycle-timing || "${PROFILE_TWO_CYCLES}" == 1 ]]; then
   teardown_tmp="${NODE_LOG}/teardown_status.txt.$$.tmp"
   {
     echo "status=PASS"

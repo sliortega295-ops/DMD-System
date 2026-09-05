@@ -183,6 +183,8 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--correctness-receipt", type=Path)
     value.add_argument("--correctness-sha256")
     value.add_argument("--nsys-bin", type=Path)
+    value.add_argument("--profile-two-cycles", action="store_true",
+                       help="C29 diagnostic only, source-bound to an existing two-cycle gate")
     value.add_argument("--ncu-bin", type=Path)
     value.add_argument("--ncu-node-rank", type=int, choices=(0, 1), default=1)
     value.add_argument("--ncu-local-rank", type=int, choices=range(8), default=0)
@@ -241,6 +243,15 @@ def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         if args.nsys_bin is None:
             raise ValueError("profile requires --nsys-bin")
         exports["DISTILLSCHEDULE_NSYS_BIN"] = args.nsys_bin
+    if args.profile_two_cycles:
+        if (args.run_kind != "profile" or args.execution_mode != "pipeline"
+            or args.pipeline_variant != "c29-continuous-b16-generator-rms-epilogue"
+            or args.two_cycle_seed is None or args.two_cycle_seed < 0
+            or not args.two_cycle_arm_id):
+            raise ValueError("two-cycle profile requires C29 pipeline and bound seed/arm")
+        exports.update(LIVEWAN_PROFILE_TWO_CYCLES=1,
+                       LIVEWAN_TWO_CYCLE_SEED=args.two_cycle_seed,
+                       LIVEWAN_TWO_CYCLE_ARM_ID=args.two_cycle_arm_id)
     if args.run_kind == "trajectory":
         if args.execution_mode == "baseline":
             if args.pipeline_variant != "b1":
@@ -374,6 +385,8 @@ def summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
             f"--expected-head {shlex.quote(args.expected_head)} "
             f"--output {shlex.quote(str(summary))}"
         )
+        if args.profile_two_cycles:
+            summary_arguments += " --diagnostic-two-cycle"
     remote = (
         f"export PYTHONPATH={shlex.quote(str(args.remote_root / 'src'))}:{shlex.quote(str(args.remote_root))}; "
         f"{shlex.quote(str(args.pyenv / 'bin/python'))} {shlex.quote(str(script))} "
