@@ -33,6 +33,9 @@ jobs:
             return p.stdout
           heads=sorted({s for pair in sources.values() for s in pair})
           git('fetch','--no-tags','--unshallow','origin',*heads)
+          git('remote','add','h3-audit','https://github.com/sliortega295-ops/H3-DMD-for-A100.git')
+          git('fetch','--no-tags','h3-audit','9100ec51cf741e9f01a836a8428a28a3d81838ec')
+          sources['h3']=('9100ec51cf741e9f01a836a8428a28a3d81838ec','cfecbb4188e1f3820451657f744aa2c823e24da4')
           out=pathlib.Path('source-audit');out.mkdir()
           summaries={}
           with zipfile.ZipFile(out/'pinned-sources.zip','w',zipfile.ZIP_DEFLATED) as z:
@@ -50,14 +53,15 @@ jobs:
               with tarfile.open(fileobj=io.BytesIO(archive)) as t:
                 for m in t:
                   if m.isfile():z.writestr(name+'/'+m.name,t.extractfile(m).read())
-              mb=git('merge-base',main,head).decode().strip()
-              summaries[name]={'head':head,'tested':tested,'merge_base':mb,'text_files':len(paths)}
+              mb=git('merge-base',main,head,check=False).decode().strip()
+              summaries[name]={'head':head,'tested':tested,'merge_base':mb or 'UNRELATED_REPOSITORY','text_files':len(paths)}
               z.writestr('audit/'+name+'-tree.txt',tree)
               z.writestr('audit/'+name+'-log.txt',git('log','--reverse','--format=%H %s',main+'..'+head))
               z.writestr('audit/'+name+'-tested-diff.patch',git('diff',tested,head))
               z.writestr('audit/'+name+'-main-diff-stat.txt',git('diff','--stat',main,head))
-              z.writestr('audit/'+name+'-range-diff.txt',git('range-diff',mb+'..'+tested,mb+'..'+head,check=False))
-              z.writestr('audit/'+name+'-main-code.patch',git('diff',main,head,'--','src','runtime','scripts','configs','tests','pyproject.toml','.gitmodules'))
+              if mb:
+                z.writestr('audit/'+name+'-range-diff.txt',git('range-diff',mb+'..'+tested,mb+'..'+head,check=False))
+                z.writestr('audit/'+name+'-main-code.patch',git('diff',main,head,'--','src','runtime','scripts','configs','tests','pyproject.toml','.gitmodules'))
             z.writestr('audit/identities.json',json.dumps(summaries,indent=2))
           print(json.dumps(summaries,indent=2))
           print('GPU/server execution: NOT_RUN_ON_INTEGRATION_BRANCH')
