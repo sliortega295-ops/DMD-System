@@ -5,9 +5,16 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from types import SimpleNamespace
 import statistics
 import time
+
+
+def select_prompt_rows(rows):
+    """Retain real operation identities when deduplicating prompt indices."""
+    selected = {}
+    for row in rows:
+        selected.setdefault(row.dataset_index, row)
+    return list(selected.values())[:3]
 
 
 def main():
@@ -40,14 +47,14 @@ def main():
         torch.cuda.set_device(0)
         trace = FormalTrace.load(a.trace, expected_cycles=2)
         loader = InputLoader(torch=torch, trace=trace)
-        selected = list(dict.fromkeys(row.dataset_index for row in trace.rows))[:3]
-        helper = PinnedScoreContextStager(torch, loader.prompts, allowed_indices=set(selected))
+        selected = select_prompt_rows(trace.rows)
+        helper = PinnedScoreContextStager(torch, loader.prompts, allowed_indices={r.dataset_index for r in selected})
         out.update(torch=torch.__version__, cuda=torch.version.cuda, gpu=torch.cuda.get_device_name(0),
                    trace_sha256=trace.sha256, prompts_sha256=trace.prompts_sha256)
         device = torch.device("cuda:0")
         rng_cpu, rng_cuda = torch.get_rng_state().clone(), torch.cuda.get_rng_state().clone()
-        for index in selected:
-            row = SimpleNamespace(dataset_index=index)
+        for row in selected:
+            index = row.dataset_index
             ref = loader.context_from_trace(row, device=device)
             got = helper.context_from_trace(row, device=device)
             assert torch.equal(ref, got) and ref.dtype == got.dtype == torch.float32
