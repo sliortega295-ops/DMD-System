@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import statistics
 import sys
+import time
 from typing import Any
 
 
@@ -48,8 +49,25 @@ def _manifest(path: Path) -> dict[str, str]:
     return result
 
 
-def _status(path: Path) -> dict[str, str]:
-    return _manifest(path)
+def _status(path: Path, *, owner_run_id: str, wait_seconds: float = 30.0) -> dict[str, str]:
+    """Wait only for missing/partial shared-FS publication, outside all timers.
+
+    Explicit FAIL, nonzero GPU count, or a different owner is never retried or
+    repaired. Timeout returns the observed failure for the ordinary gate.
+    """
+    deadline = time.monotonic() + wait_seconds
+    while True:
+        try:
+            observed = _manifest(path)
+        except FileNotFoundError:
+            observed = {}
+        if (observed.get("status") not in {None, "PASS"}
+            or observed.get("gpu_process_count") not in {None, "0"}
+            or observed.get("owner_run_id") not in {None, owner_run_id}
+            or set(observed) >= {"status", "gpu_process_count", "owner_run_id"}
+            or time.monotonic() >= deadline):
+            return observed
+        time.sleep(min(0.5, max(0.0, deadline - time.monotonic())))
 
 
 def _memory_events(path: Path) -> dict[str, int]:
@@ -143,7 +161,7 @@ def main() -> int:
         launch_root = args.run_root / "launcher" / f"node_{node}"
         try:
             manifest = _manifest(launch_root / "launch_manifest.txt")
-            teardown = _status(launch_root / "teardown_status.txt")
+            teardown = _status(launch_root / "teardown_status.txt", owner_run_id=manifest.get("run_id", ""))
             before = _memory_events(launch_root / "cgroup_memory_events_before.txt")
             after = _memory_events(launch_root / "cgroup_memory_events_after.txt")
             effective_plan, effective_plan_sha = _effective_plan(

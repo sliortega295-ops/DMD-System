@@ -674,9 +674,11 @@ nvidia-smi --query-gpu=index,name,memory.total,memory.free --format=csv,noheader
   echo gpu_processes_remain >&2; exit 88;
 }
 if [[ "${RUN_KIND}" == two-cycle-timing ]]; then
+  teardown_tmp="${NODE_LOG}/teardown_status.txt.$$.tmp"
   {
     echo "status=PASS"
     echo "gpu_process_count=0"
     echo "owner_run_id=${RUN_ID}"
-  } >"${NODE_LOG}/teardown_status.txt"
+  } >"${teardown_tmp}"
+  mv "${teardown_tmp}" "${NODE_LOG}/teardown_status.txt"
 fi
