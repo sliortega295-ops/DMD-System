@@ -95,7 +95,7 @@ def main() -> int:
         if execution_mode == "baseline"
         else {
             "c24-continuous-b16-score-modulation",
-            "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint",
+            "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging",
             "c24-continuous-b16-score-modulation-b1-attribution",
         }
     )
@@ -124,11 +124,16 @@ def main() -> int:
             continue
         if final.get("status") != "PASS" or final.get("run_kind") != "trajectory":
             errors.append(f"rank{rank}: final trajectory receipt is not PASS")
-        if pipeline_variant in {"c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint"}:
+        if pipeline_variant in {"c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging"}:
             from distillschedule.runtime.livewan_score_rmsnorm import runtime_receipt_errors
 
             errors.extend(f"rank{rank}: {error}" for error in runtime_receipt_errors(
                 dict(final.get("score_rmsnorm_kernel", {})), rank=rank))
+        if pipeline_variant == "c27-continuous-b16-pinned-prompt-staging":
+            from distillschedule.runtime.livewan_context_staging import runtime_receipt_errors as staging_errors
+
+            errors.extend(f"rank{rank}: {error}" for error in staging_errors(
+                dict(final.get("score_prompt_staging", {})), rank=rank, cycles=args.cycles))
         if pipeline_variant == "c26-continuous-b16-critic-attention-checkpoint":
             from distillschedule.runtime.livewan_attention_checkpoint import runtime_receipt_errors as sac_errors
 

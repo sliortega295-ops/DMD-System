@@ -5,12 +5,19 @@ on the caller's current stream. Keep the pinned source alive until teardown.
 """
 from __future__ import annotations
 
+import hashlib
+import inspect
 from typing import Any
 
 
 NAME = "score_immutable_pinned_prompt_h2d_v1"
 SHAPE = (512, 4096)
 BYTES_PER_REQUEST = 512 * 4096 * 4
+SOURCE_SHA256 = "13bf037518f10dbf1b020edd5fefebfdaed6938ed011125a88dd113a09365c02"
+PLAN_CONTRACT = {"enabled": True, "name": NAME, "scope": "score_ranks_only",
+                 "source_context_method_sha256": SOURCE_SHA256,
+                 "cpu_cache_dtype": "float32", "gpu_input_cache": False,
+                 "h2d_per_request": True, "pin_position": "first_consumption_inside_cycle"}
 
 
 class PinnedScoreContextStager:
@@ -56,3 +63,27 @@ class PinnedScoreContextStager:
                 "gpu_input_cache": False, "h2d_per_request": True,
                 "pin_position": "FIRST_CONSUMPTION_INSIDE_CYCLE",
                 "dtype": "torch.float32", "shape": [1, *SHAPE]}
+
+
+def install(torch: Any, loader: Any, *, allowed_indices: set[int]):
+    observed = hashlib.sha256(inspect.getsource(loader.context_from_trace).encode()).hexdigest()
+    if observed != SOURCE_SHA256:
+        raise RuntimeError(f"C27 original context source changed: {observed}")
+    helper = PinnedScoreContextStager(torch, loader.prompts, allowed_indices=allowed_indices)
+    loader.context_from_trace = helper.context_from_trace
+    return helper
+
+
+def runtime_receipt_errors(r: dict[str, Any], *, rank: int, cycles: int) -> list[str]:
+    if rank < 8:
+        return [] if r.get("execution_status") == "NOT_APPLICABLE" else ["C27 Generator input path changed"]
+    count = cycles * 10
+    if (r.get("name") != NAME or r.get("execution_status") != "PASS"
+        or r.get("source_context_method_sha256") != SOURCE_SHA256
+        or r.get("requests") != count or r.get("h2d_bytes") != count * BYTES_PER_REQUEST
+        or r.get("cache_entries") != 10 or r.get("cache_hits") != count - 10
+        or r.get("pinned_cpu_bytes") != 10 * BYTES_PER_REQUEST
+        or r.get("contract_failures") != 0 or r.get("gpu_input_cache") is not False
+        or r.get("h2d_per_request") is not True):
+        return ["C27 input staging source/count/bytes contract failed"]
+    return []

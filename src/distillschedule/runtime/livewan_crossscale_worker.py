@@ -3321,6 +3321,23 @@ def _score_rmsnorm_kernel_enabled(plan: Mapping[str, Any], *, mode: str) -> bool
     return True
 
 
+def _score_prompt_staging_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_context_staging import PLAN_CONTRACT
+
+    metadata = plan.get("metadata", {})
+    value = metadata.get("score_prompt_staging")
+    if value is None:
+        return False
+    _require(mode == "pipeline" and dict(value) == PLAN_CONTRACT,
+             "C27 Score input staging contract changed")
+    _require(_score_rmsnorm_kernel_enabled(plan, mode=mode)
+             and _critic_physical_batch_size(plan, mode=mode) == 2
+             and metadata.get("critic_attention_checkpoint") is None
+             and metadata.get("score_context_prefetch", False) is False,
+             "C27 requires C25 parent without SAC/projected context prefetch")
+    return True
+
+
 def _critic_attention_checkpoint_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
     from distillschedule.runtime.livewan_attention_checkpoint import PLAN_CONTRACT
 
@@ -3607,6 +3624,7 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _score_modulation_kernel_enabled(plan, mode=mode)
     _score_rmsnorm_kernel_enabled(plan, mode=mode)
     _critic_attention_checkpoint_enabled(plan, mode=mode)
+    _score_prompt_staging_enabled(plan, mode=mode)
     _score_rope_kernel_enabled(plan, mode=mode)
     _score_attention_backend_enabled(plan, mode=mode)
     _generator_cross_kv_cache_enabled(plan, mode=mode)
@@ -4095,6 +4113,13 @@ def run_worker(
                 all_scales_one=True,
             )
     loader = InputLoader(torch=torch, trace=trace)
+    pinned_score_context = None
+    if _score_prompt_staging_enabled(plan, mode=mode) and rank >= 8:
+        from distillschedule.runtime.livewan_context_staging import install as install_context_staging
+
+        pinned_score_context = install_context_staging(
+            torch, loader, allowed_indices={row.dataset_index for row in trace.rows},
+        )
     generator_streamers = []
     if bundle.student is not None:
         generator_ranks = tuple(int(value) for value in bundle.metadata["generator_ranks"])
@@ -4510,6 +4535,18 @@ def run_worker(
         _require(not runtime_receipt_errors(score_rmsnorm_kernel, rank=rank),
                  "Score RMSNorm runtime contract/counters incomplete")
     local_final_versions = dict(versions)
+    score_prompt_staging_receipt = {"enabled": False, "execution_status": "DISABLED"}
+    if _score_prompt_staging_enabled(plan, mode=mode):
+        from distillschedule.runtime.livewan_context_staging import SOURCE_SHA256, runtime_receipt_errors as staging_errors
+
+        score_prompt_staging_receipt = (
+            {**pinned_score_context.receipt(), "enabled": True, "execution_status": "PASS",
+             "source_context_method_sha256": SOURCE_SHA256}
+            if pinned_score_context is not None
+            else {"enabled": True, "execution_status": "NOT_APPLICABLE"}
+        )
+        _require(not staging_errors(score_prompt_staging_receipt, rank=rank, cycles=continuous_cycles),
+                 "C27 actual input staging census failed")
     version_tensor = torch.tensor(
         [versions["generator"], versions["critic"], versions["ema"]],
         device=device,
@@ -4740,6 +4777,7 @@ def run_worker(
         "generator_backpressure": evidence.generator_backpressure,
         "critic_checkpoint_rng": evidence.critic_checkpoint_rng,
         "critic_attention_checkpoint": critic_attention_receipt,
+        "score_prompt_staging": score_prompt_staging_receipt,
         "slot_routing": slot_routing,
         "full5_wall_seconds": full5_wall,
         "two_cycle_timing": two_cycle_timing_receipt,
