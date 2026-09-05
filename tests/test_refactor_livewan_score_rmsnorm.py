@@ -90,3 +90,29 @@ def test_runtime_receipt_fail_closed():
     assert runtime_receipt_errors(dict(good, backward_calls=0), rank=8)
     assert runtime_receipt_errors({"execution_status": "NOT_APPLICABLE", "forward_calls": 0, "backward_calls": 0}, rank=0) == []
     assert runtime_receipt_errors(good, rank=0)
+
+
+@pytest.mark.parametrize("kind", ["trajectory", "two-cycle-timing"])
+def test_c25_controller_dry_run_reaches_exact_launcher(tmp_path, kind):
+    import json
+    import subprocess
+    import sys
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    args = [sys.executable, str(root / "scripts/distillschedule/run_livewan_crossscale_world16.py"),
+        "--hosts", "node0,node1", "--run-id", "test-c25", "--run-kind", kind,
+        "--execution-mode", "pipeline", "--pipeline-variant", "c25-continuous-b16-score-rmsnorm",
+        "--expected-head", "a" * 40, "--master-addr", "127.0.0.1", "--dry-run",
+        "--local-evidence-root", str(tmp_path)]
+    for key in ["remote-root", "remote-output-root", "student-checkpoint", "critic-checkpoint",
+                "teacher-checkpoint", "trace", "bootstrap", "source-root", "source-receipt", "python-overlay"]:
+        args += ["--" + key, str(tmp_path / key)]
+    if kind == "trajectory":
+        args += ["--trajectory-cycles", "2", "--trajectory-arm-id", "c25", "--trajectory-seed", "17"]
+    else:
+        args += ["--two-cycle-arm-id", "c25", "--two-cycle-seed", "17",
+                 "--correctness-receipt", str(tmp_path / "gate.json"), "--correctness-sha256", "b" * 64]
+    p = subprocess.run(args, check=True, text=True, capture_output=True)
+    value = json.loads(p.stdout)
+    assert len(value["commands"]) == 2
+    assert all("c25-continuous-b16-score-rmsnorm" in " ".join(c) for c in value["commands"])

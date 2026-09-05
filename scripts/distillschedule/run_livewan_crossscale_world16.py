@@ -264,7 +264,7 @@ def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         if args.execution_mode == "baseline":
             if args.pipeline_variant != "b1":
                 raise ValueError("two-cycle baseline requires sequential B1")
-        elif args.pipeline_variant != "c24-continuous-b16-score-modulation":
+        elif args.pipeline_variant not in {"c24-continuous-b16-score-modulation", "c25-continuous-b16-score-rmsnorm"}:
             raise ValueError("two-cycle pipeline requires production C24 physical B2")
         if args.two_cycle_seed is None or args.two_cycle_seed < 0:
             raise ValueError("two-cycle timing requires --two-cycle-seed")

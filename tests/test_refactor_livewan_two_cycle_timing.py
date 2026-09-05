@@ -232,8 +232,10 @@ def test_two_cycle_contract_is_exact_and_does_not_add_midpoint_sync() -> None:
     assert endpoint < lookahead
 
 
+@pytest.mark.parametrize("pipeline_variant", ["c24-continuous-b16-score-modulation", "c25-continuous-b16-score-rmsnorm"])
 def test_gate_binds_exact_two_cycle_trajectories_and_cross_arm_sha(
     tmp_path: Path,
+    pipeline_variant: str,
 ) -> None:
     baseline = tmp_path / "baseline" / "summary.json"
     pipeline = tmp_path / "pipeline" / "summary.json"
@@ -245,7 +247,7 @@ def test_gate_binds_exact_two_cycle_trajectories_and_cross_arm_sha(
     _trajectory(
         pipeline,
         mode="pipeline",
-        variant="c24-continuous-b16-score-modulation",
+        variant=pipeline_variant,
         run_id="pipeline-run",
     )
     _comparison(comparison, baseline, pipeline)
@@ -263,6 +265,7 @@ def test_gate_binds_exact_two_cycle_trajectories_and_cross_arm_sha(
         "--output",
         str(output),
     ]
+    command += ["--pipeline-variant", pipeline_variant]
     subprocess.run(command, check=True)
     gate = json.loads(output.read_text())
     assert gate["status"] == "PASS"

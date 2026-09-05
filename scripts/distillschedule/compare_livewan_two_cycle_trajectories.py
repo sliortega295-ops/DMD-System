@@ -308,6 +308,7 @@ def main() -> int:
     parser.add_argument("--baseline-summary", type=Path, required=True)
     parser.add_argument("--pipeline-summary", type=Path, required=True)
     parser.add_argument("--expected-head", required=True)
+    parser.add_argument("--pipeline-variant", choices=(PIPELINE_VARIANT, "c25-continuous-b16-score-rmsnorm"), default=PIPELINE_VARIANT)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if len(args.expected_head) != 40:
@@ -324,7 +325,7 @@ def main() -> int:
         args.pipeline_run_root,
         summary_path=args.pipeline_summary,
         mode="pipeline",
-        variant=PIPELINE_VARIANT,
+        variant=args.pipeline_variant,
         expected_head=args.expected_head,
     )
     if baseline["seed"] != pipeline["seed"]:
