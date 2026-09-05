@@ -1,0 +1,45 @@
+name: five-workload-dependency-audit
+on:
+  pull_request:
+    branches: [main]
+    paths: [.github/workflows/five-workload-dependency-audit.yml]
+permissions:
+  contents: read
+jobs:
+  dependency-audit:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'agent/integrate-five-workload-winners-20260905'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+      - name: Inspect reachable model source objects and exact C25 receipts
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,pathlib,subprocess,zipfile
+          refs=['631bc082c819d0728059e96663cdf31cd66d5b0b','9c53d8e75b0981a3a9299e4f3bec2819ea105013','a78827099c89795416f9ac6c77284dd5bacb0383','54351707288c8d8a8d2efd789ece708852a07033']
+          def git(*args):return subprocess.check_output(['git',*args])
+          git('fetch','--no-tags','--unshallow','origin',*refs)
+          rows=[]
+          with zipfile.ZipFile('dependency-audit.zip','w',zipfile.ZIP_DEFLATED) as z:
+            for row in git('rev-list','--objects',*refs).decode().splitlines():
+              sha,_,path=row.partition(' ')
+              if path.endswith(('transformer_helios.py','utils_helios_post.py','helios_kernels.py','scheduling_helios.py')):
+                content=git('cat-file','blob',sha)
+                rows.append({'git_blob':sha,'path':path,'sha256':hashlib.sha256(content).hexdigest()})
+                z.writestr('historical/'+sha+'/'+path,content)
+            gan='a78827099c89795416f9ac6c77284dd5bacb0383'
+            for path in git('ls-tree','-r','--name-only',gan).decode().splitlines():
+              if path.startswith('docs/experiments/gan_cuda_baseline_opt_20260829/') and path.endswith(('.jsonl','.csv')):
+                z.writestr('gan/'+path,git('show',gan+':'+path))
+            z.writestr('source-object-index.json',json.dumps(rows,indent=2))
+          print(json.dumps(rows,indent=2))
+          print('No GPU/model code executed')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: five-workload-dependency-audit
+          path: dependency-audit.zip
+          retention-days: 7
