@@ -135,14 +135,14 @@ def main() -> int:
     parser.add_argument("--run-root", type=Path, required=True)
     parser.add_argument("--execution-mode", choices=("baseline", "pipeline"), required=True)
     parser.add_argument(
-        "--pipeline-variant", choices=(BASELINE_VARIANT, PIPELINE_VARIANT, "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging"), required=True
+        "--pipeline-variant", choices=(BASELINE_VARIANT, PIPELINE_VARIANT, "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache"), required=True
     )
     parser.add_argument("--trace", type=Path, required=True)
     parser.add_argument("--expected-head", required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     errors: list[str] = []
-    allowed_variants = {BASELINE_VARIANT} if args.execution_mode == "baseline" else {PIPELINE_VARIANT, "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging"}
+    allowed_variants = {BASELINE_VARIANT} if args.execution_mode == "baseline" else {PIPELINE_VARIANT, "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache"}
     if args.pipeline_variant not in allowed_variants:
         errors.append("execution mode/physical implementation pair changed")
     if len(args.expected_head) != 40:
@@ -256,11 +256,16 @@ def main() -> int:
                 errors.append(f"rank{rank}: cgroup {key} changed")
 
         timing = dict(row.get("two_cycle_timing", {}))
-        if args.pipeline_variant in {"c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging"}:
+        if args.pipeline_variant in {"c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache"}:
             from distillschedule.runtime.livewan_score_rmsnorm import runtime_receipt_errors
 
             errors.extend(f"rank{rank}: {error}" for error in runtime_receipt_errors(
                 dict(row.get("score_rmsnorm_kernel", {})), rank=rank))
+        if args.pipeline_variant == "c28-continuous-b16-rollout-cast-cache":
+            from distillschedule.runtime.livewan_rollout_cast_cache import runtime_receipt_errors as cast_errors
+
+            errors.extend(f"rank{rank}: {error}" for error in cast_errors(
+                dict(row.get("generator_rollout_cast_cache", {})), rank=rank, cycles=2))
         if args.pipeline_variant == "c27-continuous-b16-pinned-prompt-staging":
             from distillschedule.runtime.livewan_context_staging import runtime_receipt_errors as staging_errors
 

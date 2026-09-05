@@ -86,6 +86,64 @@ def test_cpu_rejects_grad_and_restores_exception_state():
             with pytest.raises(RuntimeError, match='outer autocast disabled'):
                 with rollout_cast_cache_scope(torch, enabled=True, device_type='cpu'):
                     pass
+
+
+def test_c28_plan_changes_only_rollout_cast_cache(monkeypatch):
+    import copy
+    from distillschedule.core.config import load_plan
+    from distillschedule.runtime.livewan_rollout_cast_cache import PLAN_CONTRACT
+    from distillschedule.runtime.livewan_crossscale_worker import _generator_rollout_cast_cache_enabled
+    root = Path(__file__).resolve().parents[1] / 'configs/distillschedule/plans'
+    parent = root/'livewan_wan13b_14b_sf_dmd_c25_continuous_b16_score_rmsnorm.json'
+    candidate = root/'livewan_wan13b_14b_sf_dmd_c28_continuous_b16_rollout_cast_cache.json'
+    a, b = json.loads(parent.read_text()), json.loads(candidate.read_text())
+    assert b['metadata'].pop('generator_rollout_cast_cache') == PLAN_CONTRACT
+    assert a == b
+    for key in ('LIVEWAN_STUDENT_CHECKPOINT','LIVEWAN_CRITIC_CHECKPOINT','LIVEWAN_TEACHER_CHECKPOINT',
+                'LIVEWAN_OPERATION_TRACE','LIVEWAN_SYSTEMS_BOOTSTRAP','DISTILLSCHEDULE_OUTPUT_DIR'):
+        monkeypatch.setenv(key, '/unread/'+key)
+    plan = load_plan(candidate).plan.to_dict()
+    assert _generator_rollout_cast_cache_enabled(plan, mode='pipeline')
+    assert not _generator_rollout_cast_cache_enabled(load_plan(parent).plan.to_dict(), mode='pipeline')
+    with pytest.raises(RuntimeError):
+        _generator_rollout_cast_cache_enabled(plan, mode='baseline')
+    for key in ('outer_autocast_enabled','changes_effective_dtype','cache_cross_optimizer'):
+        changed = copy.deepcopy(plan)
+        changed['metadata']['generator_rollout_cast_cache'][key] = True
+        with pytest.raises(RuntimeError):
+            _generator_rollout_cast_cache_enabled(changed, mode='pipeline')
+    for key in ('score_prompt_staging','critic_attention_checkpoint'):
+        changed = copy.deepcopy(plan)
+        changed['metadata'][key] = {}
+        with pytest.raises(RuntimeError):
+            _generator_rollout_cast_cache_enabled(changed, mode='pipeline')
+
+
+def test_default_model_scope_and_actual_receipt_gate():
+    from types import SimpleNamespace
+    from distillschedule.runtime.livewan_rollout_cast_cache import model_rollout_cast_cache_scope, runtime_receipt_errors, NAME
+    with model_rollout_cast_cache_scope(None, SimpleNamespace()):
+        pass
+    receipt = dict(name=NAME, execution_status='PASS', scope_entries=20, scope_exits=20,
+                   active=False, contract_failures=0, effective_dtype_changed=False, cache_cross_optimizer=False)
+    assert not runtime_receipt_errors(receipt, rank=0, cycles=2)
+    for key, value in [('scope_entries',19),('scope_exits',19),('active',True),('contract_failures',1),('cache_cross_optimizer',True)]:
+        assert runtime_receipt_errors(dict(receipt, **{key:value}), rank=0, cycles=2)
+    assert runtime_receipt_errors(receipt, rank=8, cycles=2)
+    assert not runtime_receipt_errors({'execution_status':'NOT_APPLICABLE'}, rank=8, cycles=2)
+
+
+def test_scope_surrounds_only_native_nograd_rollout():
+    import ast
+    from distillschedule.runtime.livewan_crossscale_worker import prepare_rollout, generator_backward_for_sample
+    source = inspect.getsource(prepare_rollout)
+    tree = ast.parse(source)
+    scopes = [n for n in ast.walk(tree) if isinstance(n, ast.With)]
+    assert len(scopes) == 1
+    assert ast.unparse(scopes[0].items[0].context_expr) == 'torch.no_grad()'
+    assert ast.unparse(scopes[0].items[1].context_expr) == 'model_rollout_cast_cache_scope(torch, student)'
+    assert 'cast_cache_scope' not in inspect.getsource(generator_backward_for_sample)
+    assert '.step(' not in source
         with torch.autocast('cpu', enabled=False, cache_enabled=False):
             with pytest.raises(RuntimeError, match='original cache enabled'):
                 with rollout_cast_cache_scope(torch, enabled=True, device_type='cpu'):

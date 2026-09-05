@@ -308,7 +308,7 @@ def main() -> int:
     parser.add_argument("--baseline-summary", type=Path, required=True)
     parser.add_argument("--pipeline-summary", type=Path, required=True)
     parser.add_argument("--expected-head", required=True)
-    parser.add_argument("--pipeline-variant", choices=(PIPELINE_VARIANT, "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging"), default=PIPELINE_VARIANT)
+    parser.add_argument("--pipeline-variant", choices=(PIPELINE_VARIANT, "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache"), default=PIPELINE_VARIANT)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if len(args.expected_head) != 40:
