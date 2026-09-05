@@ -3780,6 +3780,10 @@ def run_worker(
         dist.init_process_group("nccl")
     torch.cuda.set_device(local_rank)
     device = torch.device(f"cuda:{local_rank}")
+    from distillschedule.runtime.livewan_cuda_setup import materialize_blas_handles
+
+    # Shared hardware compatibility, before any model construction/timer.
+    cuda_library_setup = materialize_blas_handles(torch, device)
     effective_plan_sha256 = _effective_plan_sha256(plan)
     if two_cycle_timing and local_rank == 0:
         node_rank = int(os.environ.get("DISTILLSCHEDULE_NODE_RANK", "-1"))
@@ -4035,6 +4039,7 @@ def run_worker(
     bundle = build_models(
         torch=torch, plan=plan, bootstrap=bootstrap, mode=mode, rank=rank, device=device,
     )
+    bundle.metadata["cuda_library_setup"] = cuda_library_setup
     if _critic_lora_scale_one_enabled(plan, mode=mode):
         lora_model = (
             bundle.critic if bundle.critic is not None else bundle.critic_shadow
