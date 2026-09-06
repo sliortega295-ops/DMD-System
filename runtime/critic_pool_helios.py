@@ -21,6 +21,8 @@ from typing import Any, Literal
 
 import torch
 
+from distillschedule.runtime.helios_residual_runtime import validate_chunked_residual_runtime
+
 from .critic_pool_trace import CriticPoolTrace, CriticPoolTraceEntry
 from .dmd_boundary import add_noise, critic_denoising_loss
 from .operation_trace import OperationTrace, tensor_sha256
@@ -75,6 +77,45 @@ def _all_linear_targets(model: torch.nn.Module) -> list[str]:
     )
 
 
+def _materialize_missing_pyramid_patches(
+    model: torch.nn.Module, seed: int | None,
+) -> list[str]:
+    """Restore the audited Wan-only, CPU construction compatibility path.
+
+    Public Wan checkpoints lack the three Helios pyramid convolutions. Preserve
+    the seeded initialization from 7fa5b866, including RNG isolation and BF16
+    conversion. Never initialize arbitrary missing weights or replace weights
+    already supplied by a checkpoint. The ordinary Helios path stays opt-out.
+    """
+    materialized: list[str] = []
+    if seed is not None:
+        with torch.random.fork_rng(devices=[]):
+            torch.manual_seed(int(seed))
+            for name in ("patch_short", "patch_mid", "patch_long"):
+                module = getattr(model, name, None)
+                if module is None:
+                    raise AssertionError(f"missing Helios pyramid module: {name}")
+                parameters = list(module.parameters())
+                meta = [parameter.device.type == "meta" for parameter in parameters]
+                if not parameters or not all(meta):
+                    if any(meta):
+                        raise AssertionError(f"partially materialized pyramid module: {name}")
+                    continue
+                module.to_empty(device="cpu")
+                reset = getattr(module, "reset_parameters", None)
+                if reset is None:
+                    raise AssertionError(f"pyramid module has no reset_parameters: {name}")
+                reset()
+                module.to(dtype=torch.bfloat16)
+                materialized.append(name)
+    remaining_meta = [name for name, value in model.named_parameters() if value.device.type == "meta"]
+    if remaining_meta:
+        raise RuntimeError(
+            "pretrained Transformer left meta parameters: " + ",".join(remaining_meta[:20])
+        )
+    return materialized
+
+
 def build_helios_pool_model(
     *,
     role: PoolRole,
@@ -85,6 +126,7 @@ def build_helios_pool_model(
     max_workers: int = 4,
     enable_gan: bool = False,
     chunked_residual_storage: str = "cpu_inplace",
+    missing_pyramid_patch_seed: int | None = None,
 ) -> tuple[torch.nn.Module, dict[str, Any]]:
     """Build the official BF16 backbone plus the Stage-3 FP32 LoRA inventory."""
 
@@ -102,8 +144,13 @@ def build_helios_pool_model(
         replace_rmsnorm_with_fp32,
         replace_rope_with_flash_rope,
     )
+    from helios.modules import transformer_helios
     from helios.modules.transformer_helios import HeliosTransformer3DModel
     from peft import LoraConfig
+
+    residual_runtime = validate_chunked_residual_runtime(
+        transformer_helios, requested_storage=chunked_residual_storage,
+    )
 
     extra = dict(TRANSFORMER_ADDITIONAL_KWARGS)
     if role in ("critic", "teacher"):
@@ -154,6 +201,9 @@ def build_helios_pool_model(
         subfolder=load_subfolder,
         transformer_additional_kwargs=extra,
         **load_kwargs,
+    )
+    materialized_pyramid_patches = _materialize_missing_pyramid_patches(
+        model, missing_pyramid_patch_seed,
     )
     model = replace_rmsnorm_with_fp32(model)
     model = replace_all_norms_with_flash_norms(model)
@@ -251,7 +301,10 @@ def build_helios_pool_model(
         ),
         "split_modulation": True,
         "chunked_residual_storage": chunked_residual_storage,
+        "chunked_residual_runtime": residual_runtime,
         "gradient_checkpointing": role != "teacher",
+        "missing_pyramid_patch_seed": missing_pyramid_patch_seed,
+        "materialized_pyramid_patches": materialized_pyramid_patches,
         "mode": "train",
         "has_adapter": role != "teacher",
     }

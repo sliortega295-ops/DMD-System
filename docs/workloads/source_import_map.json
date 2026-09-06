@@ -297,9 +297,16 @@
           "new_integrated_sha256": "d75cced808b92adc8b775e3e19f2a8797dc53a2b00775563b7dc13b24bd62572",
           "previous_integrated_sha256": "a4e1cfbd31c426af8523eca8d6aee459a455ede52558977e8c1a4feb117e9a40",
           "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        },
+        {
+          "base_integration_head": "0758b35951df01f4654a5f7c50548b4d818ebb9f",
+          "new_integrated_sha256": "04ef09b7b3bf9935a3d1f2218803623e76f1f08cc7c90715b6c9cf000b5186dc",
+          "previous_integrated_sha256": "d75cced808b92adc8b775e3e19f2a8797dc53a2b00775563b7dc13b24bd62572",
+          "reason": "Restore audited opt-in Wan pyramid meta initialization and residual capability check omitted by shared-helper integration. CPU construction only; seed and existing checkpoint values preserved.",
+          "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206"
         }
       ],
-      "integrated_sha256": "d75cced808b92adc8b775e3e19f2a8797dc53a2b00775563b7dc13b24bd62572",
+      "integrated_sha256": "04ef09b7b3bf9935a3d1f2218803623e76f1f08cc7c90715b6c9cf000b5186dc",
       "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
       "source_path": "runtime/critic_pool_helios.py",
       "source_repository": "sliortega295-ops/DMD-System",
