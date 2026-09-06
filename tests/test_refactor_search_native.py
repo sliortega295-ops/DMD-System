@@ -87,6 +87,18 @@ def test_cpu_api_gate_catches_drift_without_executing_model_functions(tmp_path):
     assert "missing_option" in errors[0]["error"]
 
 
+def test_generic_block_sharding_keeps_helios40_default_and_wan30_opt_in():
+    import inspect
+    from distillschedule.runtime.fsdp2_p0 import apply_blockwise_fsdp2_policy
+    signature = inspect.signature(apply_blockwise_fsdp2_policy)
+    assert signature.parameters["expected_block_count"].default == 40
+    bound = signature.bind(None, mesh_policy="world16-fsdp", expected_block_count=30)
+    assert bound.arguments["expected_block_count"] == 30
+    source = inspect.getsource(apply_blockwise_fsdp2_policy)
+    assert 'f"{expected_block_count}_BLOCKS_BOTTOM_UP_THEN_ROOT"' in source
+    assert 'len(blocks) != expected_block_count' in source
+
+
 def test_preparation_is_serial_and_once_per_selected_candidate(tmp_path):
     assets = {"assets": {"test": "UNIT_TEST_NOT_ASSETS"}, "nodes": []}
     identity = {"source_head": "a" * 40, "asset_fingerprint": fingerprint(assets["assets"])}

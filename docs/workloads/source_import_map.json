@@ -441,9 +441,16 @@
           "new_integrated_sha256": "3177c56c11aa82341c0437ef4f8aef1ed9b69811475eb1e1846690d340af012f",
           "previous_integrated_sha256": "033e8cd15ab947ede069fb0fbc739c0345d2e35bdeb99a149913f360a9786429",
           "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        },
+        {
+          "base_integration_head": "c9572fcda5864655eaf685b36d5c265a0a940e7a",
+          "new_integrated_sha256": "c64cc37b27539817c44b7d73d4fe94579479402b8f24039a96362f5dd0748183",
+          "previous_integrated_sha256": "3177c56c11aa82341c0437ef4f8aef1ed9b69811475eb1e1846690d340af012f",
+          "reason": "Restore the audited expected_block_count=40 default and explicit Wan30 compatibility found by CPU native API gate; no shard/dtype/placement policy changed.",
+          "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206"
         }
       ],
-      "integrated_sha256": "3177c56c11aa82341c0437ef4f8aef1ed9b69811475eb1e1846690d340af012f",
+      "integrated_sha256": "c64cc37b27539817c44b7d73d4fe94579479402b8f24039a96362f5dd0748183",
       "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
       "source_path": "src/distillschedule/runtime/fsdp2_p0.py",
       "source_repository": "sliortega295-ops/DMD-System",
