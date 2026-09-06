@@ -1,24 +1,23 @@
 name: pr26-source-materialize
 on:
-  push:
-    branches: [agent/integrate-five-workload-winners-20260905]
+  pull_request:
+    branches: [main]
 permissions:
   contents: write
 jobs:
   materialize:
-    if: github.actor != 'github-actions[bot]'
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'agent/integrate-five-workload-winners-20260905'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: agent/integrate-five-workload-winners-20260905
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
       - name: Rebuild exact final integration tree
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse --abbrev-ref HEAD)" = "agent/integrate-five-workload-winners-20260905"
 
           cat tools/pr26-owned-payload.part* > /tmp/owned.b64
           base64 -d /tmp/owned.b64 > /tmp/owned.tar.gz
@@ -111,4 +110,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'Complete five-workload canonical integration'
           test "$(git show -s --format=%T HEAD)" = '98b2092b382f52a3ab2c5eb7b74d441b29e67b23'
-          git push origin HEAD:agent/integrate-five-workload-winners-20260905
+          build_branch='agent/pr26-built-${{ github.event.pull_request.head.sha }}'
+          git push origin "HEAD:refs/heads/${build_branch}"
