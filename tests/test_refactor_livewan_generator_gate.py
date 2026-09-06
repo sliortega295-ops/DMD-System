@@ -52,3 +52,20 @@ def test_only_explicit_production_install():
     root = Path(__file__).resolve().parents[1]
     worker = (root/'src/distillschedule/runtime/livewan_crossscale_worker.py').read_text()
     assert 'if _generator_gate_enabled(plan, mode=mode) and rank < 8:' in worker
+
+
+def test_layout_ablation_default_preserved_and_invalid_rejected():
+    assert inspect.signature(build).parameters['output_layout'].default == 'native'
+    with pytest.raises(ValueError, match='output layout'):
+        build(None, output_layout='channels_last')
+
+
+def test_c34_plan_only_remains_canary(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    p = subprocess.run([sys.executable,
+        str(root/'scripts/distillschedule/canary_livewan_generator_gate.py'),
+        '--trace','/unread','--bootstrap','/unread','--output',str(tmp_path/'unused.json'),
+        '--row-major-ablation','--plan-only'], text=True,capture_output=True,check=True,timeout=20)
+    v = json.loads(p.stdout)
+    assert v['status'] == v['world16'] == 'NOT_RUN' and v['parent'] == 'C33'
+    assert not v['production_installed'] and 'public bitwise/stride' in v['factor']

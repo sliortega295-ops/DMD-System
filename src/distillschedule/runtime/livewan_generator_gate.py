@@ -17,7 +17,11 @@ PLAN_CONTRACT = dict(
 )
 
 
-def build(torch: Any):
+def build(torch: Any, *, output_layout: str = 'native'):
+    # C34 is an explicit canary-only layout ablation until separately admitted.
+    # Default C33 and the Generator grad path preserve their existing layout.
+    if output_layout not in ('native', 'row_major'):
+        raise ValueError('unsupported Generator gate output layout')
     import triton
     import triton.language as tl
 
@@ -44,7 +48,7 @@ def build(torch: Any):
             dtype=tl.float32, is_pure=True, pack=1)
         tl.store(OUT + row * OS + col * OD, result, i < N)
 
-    receipt = dict(PLAN_CONTRACT, calls=0, contract_failures=0,
+    receipt = dict(PLAN_CONTRACT, output_layout=output_layout, calls=0, contract_failures=0,
                    shape_dtype_stride_histogram={}, triton=triton.__version__)
 
     def dense_b1(t):
@@ -59,7 +63,8 @@ def build(torch: Any):
             or g.shape != (1, 1, 1536) or g.stride(-1) != 1):
             receipt['contract_failures'] += 1
             raise RuntimeError('C33 source dtype/shape/stride/grad contract changed')
-        out = torch.empty_like(x, dtype=torch.float32)
+        out = (torch.empty_like(x, dtype=torch.float32) if output_layout == 'native'
+               else torch.empty(x.shape, device=x.device, dtype=torch.float32))
         gate[(triton.cdiv(x.numel(), 1024),)](
             x, y, g, out, N=x.numel(), D=1536,
             XS=x.stride(1), XD=x.stride(2), YS=y.stride(1), YD=y.stride(2),

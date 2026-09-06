@@ -14,11 +14,16 @@ def main():
     for name in ('trace', 'bootstrap', 'output'):
         p.add_argument('--'+name, type=Path, required=True)
     p.add_argument('--plan-only', action='store_true')
+    p.add_argument('--row-major-ablation', action='store_true',
+        help='C34: C33 parent versus row-major residual layout; no production install')
     args = p.parse_args()
     out = dict(status='NOT_RUN', candidate='C33_GENERATOR_FP32_RESIDUAL_GATE', parent='C32',
         production_installed=False, world16='NOT_RUN', kernel_cases=[], rollout_cases=[],
         correctness='BITWISE_ALL_RECORDED_LATENTS_AND_OPERATOR_OUTPUTS',
         factor='no-grad G residual gate only; FP32 separate-round multiply/add')
+    if args.row_major_ablation:
+        out.update(candidate='C34_GENERATOR_ROW_MAJOR_RESIDUAL', parent='C33',
+            factor='only internal gate output layout; public bitwise/stride contract retained')
     if args.plan_only:
         print(json.dumps(out)); return 0
     if args.output.exists(): raise FileExistsError(args.output)
@@ -54,7 +59,8 @@ def main():
         loader = worker.InputLoader(torch=torch, trace=trace)
         rms_op, _ = build_nograd_generator_rms_epilogue(torch, fuse_cast_square=True)
         modulation_op, _ = build_modulation(torch)
-        op, receipt = build(torch)
+        op, receipt = build(torch, output_layout='row_major' if args.row_major_ablation else 'native')
+        parent_op, _ = build(torch)
         out.update(torch=torch.__version__, cuda=torch.version.cuda, gpu=torch.cuda.get_device_name(0),
             trace_sha256=trace.sha256, bootstrap_sha256=bootstrap.sha256, student_state=state,
             startup_wall_s=time.perf_counter()-start, kernel_receipt=receipt)
@@ -63,11 +69,13 @@ def main():
         original = bc._gate
         rows = sorted({r.new_blocks:r for r in reversed(trace.rows) if r.cycle_index==0}.values(), key=lambda r:r.new_blocks)
         rows = [rows[0], rows[-1]]
+        audit_native_gate = False
         def run(row, enabled):
             with torch.no_grad(), rollout_cast_cache_scope(torch, enabled=True), \
                  model_epilogue_canary_scope(torch, student, rms_op, enabled=True), \
                  modulation_scope(torch, student, modulation_op, enabled=True), \
-                 canary_scope(torch, student, op, enabled=enabled):
+                 canary_scope(torch, student, op if enabled else parent_op,
+                    enabled=(enabled or args.row_major_ablation) and not audit_native_gate):
                 return worker.prepare_rollout(torch, row=row, streamer=streamer, student=student,
                     loader=loader, device=device, elide_full_context_lens=True)
         def pack(v):
@@ -75,7 +83,7 @@ def main():
                 for k,t in r.items()} for r in group] for group in v.recs]
         def equal(a,b):
             assert torch.equal(a[0],b[0]) and a[0].shape==b[0].shape==worker.LATENT_SHAPE
-            assert a[0].dtype==b[0].dtype and len(a[1])==len(b[1])
+            assert a[0].dtype==b[0].dtype and a[0].stride()==b[0].stride() and len(a[1])==len(b[1])
             for ag,bg in zip(a[1],b[1]):
                 assert len(ag)==len(bg)==worker.STEPS_PER_BLOCK
                 for ar,br in zip(ag,bg):
@@ -100,9 +108,12 @@ def main():
                                 g.detach().clone(),result.detach().clone())
             return result
         bc._gate=observe
+        audit_native_gate = True
         try:
             with GateOps(): ref=pack(run(rows[0],False))
-        finally: bc._gate=original
+        finally:
+            bc._gate=original
+            audit_native_gate = False
         assert not active
         out['source_scoped_operator_evidence']=dict(calls=len(calls), shape_dtype_histogram=dict(Counter(calls)),
                                                    issuing_thread_ops=dict(ops))
@@ -115,9 +126,59 @@ def main():
                 bitwise_equal=torch.equal(actual,reference),max_abs=float((actual-reference).abs().max()))
             out['kernel_cases'].append(row);save()
             assert row['bitwise_equal'] and actual.dtype==reference.dtype==torch.float32
-            assert actual.stride()==reference.stride()
+            if args.row_major_ablation:
+                assert actual.is_contiguous()
+            else:
+                assert actual.stride()==reference.stride()
         cases.clear()
         torch.cuda.synchronize()
+        if args.row_major_ablation:
+            # Diagnostic-only: preserve the actual LayerNorm calls, capture metadata
+            # on the real rollout, then profile a few captured norm inputs outside
+            # all timed rollouts. No synthetic shapes or whole-world heavy capture.
+            norm_evidence = []
+            for enabled in (False, True):
+                norm_cases = {}; hist = Counter(); hooks = []
+                def observe_norm(name):
+                    def hook(module, positional, output):
+                        x = positional[0]
+                        key = (name.rsplit('.', 1)[-1], str(x.dtype), tuple(x.stride()))
+                        hist[str(key)] += 1
+                        if key not in norm_cases and len(norm_cases) < 6:
+                            norm_cases[key] = (name, module, x.detach().clone(), output.detach().clone())
+                    return hook
+                for name, module in student.named_modules():
+                    if name.rsplit('.', 1)[-1] in ('norm1', 'norm2', 'norm3'):
+                        hooks.append(module.register_forward_hook(observe_norm(name)))
+                try:
+                    v = run(rows[0], enabled); equal(ref, pack(v)); del v
+                finally:
+                    for hook in hooks: hook.remove()
+                evidence = dict(arm='c34' if enabled else 'c33', actual_norm_call_histogram=dict(hist), cases=[])
+                with torch.no_grad(), torch.profiler.profile(
+                    activities=[torch.profiler.ProfilerActivity.CPU, torch.profiler.ProfilerActivity.CUDA],
+                    record_shapes=True) as prof:
+                    for key, (name, module, x, expected) in norm_cases.items():
+                        with torch.profiler.record_function('C34_SOURCE_NORM/'+name):
+                            actual = module(x)
+                        evidence['cases'].append(dict(source_module=name, shape=list(x.shape),
+                            dtype=str(x.dtype), stride=list(x.stride()), contiguous=x.is_contiguous(),
+                            input_bytes=x.numel()*x.element_size(), bitwise=torch.equal(actual, expected)))
+                        assert evidence['cases'][-1]['bitwise']
+                prof.export_chrome_trace(str(args.output.parent / (evidence['arm']+'_norm_source_trace.json')))
+                evidence['nested_copy_events'] = []
+                for event in prof.events():
+                    if event.name not in ('aten::contiguous','aten::clone','aten::copy_','aten::_to_copy'):
+                        continue
+                    chain=[]; parent=event.cpu_parent
+                    while parent is not None:
+                        chain.append(parent.name); parent=parent.cpu_parent
+                    if any(n.startswith('C34_SOURCE_NORM/') for n in chain):
+                        evidence['nested_copy_events'].append(dict(name=event.name, parents=chain,
+                            shapes=event.input_shapes, cpu_time_us=event.cpu_time_total,
+                            device_time_us=event.device_time_total, thread=event.thread))
+                norm_evidence.append(evidence); norm_cases.clear()
+            out['normalization_source_evidence'] = norm_evidence; save()
         for row in rows:
             ref=pack(run(row,False)); equal(ref,pack(run(row,True)))
             result=dict(operation_key=row.operation_key,new_blocks=row.new_blocks,arms={})
@@ -127,7 +188,8 @@ def main():
                     torch.cuda.synchronize();torch.cuda.reset_peak_memory_stats()
                     start=time.perf_counter();v=run(row,enabled);torch.cuda.synchronize()
                     dt=time.perf_counter()-start
-                    result['arms'].setdefault('c33' if enabled else 'c32',[]).append(dict(
+                    arm = ('c34' if enabled else 'c33') if args.row_major_ablation else ('c33' if enabled else 'c32')
+                    result['arms'].setdefault(arm,[]).append(dict(
                         repeat=repeat,wall_s=dt,peak_allocated_bytes=torch.cuda.max_memory_allocated(),
                         peak_reserved_bytes=torch.cuda.max_memory_reserved(),driver_free_bytes=torch.cuda.mem_get_info()[0]))
                     equal(ref,pack(v));del v
