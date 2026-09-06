@@ -95,7 +95,7 @@ def main() -> int:
         if execution_mode == "baseline"
         else {
             "c24-continuous-b16-score-modulation",
-            "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square",
+            "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation",
             "c24-continuous-b16-score-modulation-b1-attribution",
         }
     )
@@ -124,28 +124,33 @@ def main() -> int:
             continue
         if final.get("status") != "PASS" or final.get("run_kind") != "trajectory":
             errors.append(f"rank{rank}: final trajectory receipt is not PASS")
-        if pipeline_variant in {"c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square"}:
+        if pipeline_variant in {"c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation"}:
             from distillschedule.runtime.livewan_score_rmsnorm import runtime_receipt_errors
 
             errors.extend(f"rank{rank}: {error}" for error in runtime_receipt_errors(
                 dict(final.get("score_rmsnorm_kernel", {})), rank=rank))
-        if pipeline_variant in {"c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square"}:
+        if pipeline_variant in {"c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation"}:
             from distillschedule.runtime.livewan_generator_rms_epilogue import runtime_receipt_errors as rms_epilogue_errors
 
             errors.extend(f"rank{rank}: {error}" for error in rms_epilogue_errors(
                 dict(final.get("generator_rms_epilogue", {})), rank=rank, cycles=args.cycles,
-                fuse_cast_square=pipeline_variant == "c31-continuous-b16-generator-rms-cast-square"))
-        if pipeline_variant in {"c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square"}:
+                fuse_cast_square=pipeline_variant in {"c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation"}))
+        if pipeline_variant in {"c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation"}:
             from distillschedule.runtime.livewan_rollout_cast_cache import runtime_receipt_errors as cast_errors
 
             errors.extend(f"rank{rank}: {error}" for error in cast_errors(
                 dict(final.get("generator_rollout_cast_cache", {})), rank=rank, cycles=args.cycles))
+        if pipeline_variant == "c32-continuous-b16-generator-modulation":
+            from distillschedule.runtime.livewan_generator_modulation import runtime_receipt_errors as modulation_errors
+
+            errors.extend(f"rank{rank}: {error}" for error in modulation_errors(
+                dict(final.get("generator_modulation", {})), rank=rank, cycles=args.cycles))
         if pipeline_variant == "c27-continuous-b16-pinned-prompt-staging":
             from distillschedule.runtime.livewan_context_staging import runtime_receipt_errors as staging_errors
 
             errors.extend(f"rank{rank}: {error}" for error in staging_errors(
                 dict(final.get("score_prompt_staging", {})), rank=rank, cycles=args.cycles))
-        if pipeline_variant in {"c26-continuous-b16-critic-attention-checkpoint", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square"}:
+        if pipeline_variant in {"c26-continuous-b16-critic-attention-checkpoint", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation"}:
             from distillschedule.runtime.livewan_attention_checkpoint import runtime_receipt_errors as sac_errors
 
             errors.extend(f"rank{rank}: {error}" for error in sac_errors(

@@ -17,3 +17,12 @@ C31_PLAN_CONTRACT = {
     "application_calls_unchanged": True,
     "numeric_policy_unchanged": True,
 }
+
+C32_PLAN_CONTRACT = {
+    "name": "c31_plus_generator_fp32_modulation_v1",
+    "parent": "c31-continuous-b16-generator-rms-cast-square",
+    "added_factor": "generator_nograd_fp32_modulation_v1",
+    "critic_path_unchanged": True,
+    "application_calls_unchanged": True,
+    "numeric_policy_unchanged": True,
+}

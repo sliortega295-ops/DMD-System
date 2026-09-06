@@ -146,7 +146,7 @@ def main() -> int:
     parser.add_argument("--pipeline-trajectory-summary", type=Path, required=True)
     parser.add_argument("--trajectory-comparison", type=Path, required=True)
     parser.add_argument("--expected-head", required=True)
-    parser.add_argument("--pipeline-variant", choices=("c24-continuous-b16-score-modulation", "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square"), default="c24-continuous-b16-score-modulation")
+    parser.add_argument("--pipeline-variant", choices=("c24-continuous-b16-score-modulation", "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation"), default="c24-continuous-b16-score-modulation")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if len(args.expected_head) != 40:

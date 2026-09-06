@@ -2026,6 +2026,7 @@ def prepare_rollout(
 ) -> PreparedRollout:
     from distillschedule.runtime.livewan_rollout_cast_cache import model_rollout_cast_cache_scope
     from distillschedule.runtime.livewan_generator_rms_epilogue import model_runtime_scope as generator_rms_scope
+    from distillschedule.runtime.livewan_generator_modulation import model_runtime_scope as generator_modulation_scope
 
     latent, context, _ = loader.load(row)
     z_teacher = latent.to(device, non_blocking=True).unsqueeze(0)
@@ -2039,7 +2040,7 @@ def prepare_rollout(
         if elide_full_context_lens
         else torch.tensor([raw_context.shape[1]], device=device, dtype=torch.long)
     )
-    with torch.no_grad(), model_rollout_cast_cache_scope(torch, student), generator_rms_scope(torch, student):
+    with torch.no_grad(), model_rollout_cast_cache_scope(torch, student), generator_rms_scope(torch, student), generator_modulation_scope(torch, student):
         student_context = student.text_embedding(raw_context)
         streamer.set_text(student_context, context_lens)
         streamer.rope_gap = row.rope_gap
@@ -3327,22 +3328,24 @@ def _score_rmsnorm_kernel_enabled(plan: Mapping[str, Any], *, mode: str) -> bool
 
 
 def _c30_checkpoint_composition_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
-    from distillschedule.runtime.livewan_c30_contract import PLAN_CONTRACT, C31_PLAN_CONTRACT
+    from distillschedule.runtime.livewan_c30_contract import PLAN_CONTRACT, C31_PLAN_CONTRACT, C32_PLAN_CONTRACT
     from distillschedule.runtime.livewan_attention_checkpoint import PLAN_CONTRACT as SAC
     from distillschedule.runtime.livewan_generator_rms_epilogue import PLAN_CONTRACT as RMS
     from distillschedule.runtime.livewan_generator_rms_epilogue import CAST_SQUARE_PLAN_CONTRACT
     from distillschedule.runtime.livewan_rollout_cast_cache import PLAN_CONTRACT as CAST
+    from distillschedule.runtime.livewan_generator_modulation import PLAN_CONTRACT as MOD
 
     metadata = plan.get("metadata", {})
     value = metadata.get("checkpoint_composition")
     if value is None:
         return False
-    _require(mode == "pipeline" and value in (PLAN_CONTRACT, C31_PLAN_CONTRACT),
+    _require(mode == "pipeline" and value in (PLAN_CONTRACT, C31_PLAN_CONTRACT, C32_PLAN_CONTRACT),
              "C30 explicit composition contract changed")
-    expected_rms = CAST_SQUARE_PLAN_CONTRACT if value == C31_PLAN_CONTRACT else RMS
+    expected_rms = RMS if value == PLAN_CONTRACT else CAST_SQUARE_PLAN_CONTRACT
     _require(metadata.get("critic_attention_checkpoint") == SAC
              and metadata.get("generator_rms_epilogue") == expected_rms
              and metadata.get("generator_rollout_cast_cache") == CAST
+             and metadata.get("generator_modulation") == (MOD if value == C32_PLAN_CONTRACT else None)
              and metadata.get("score_prompt_staging") is None
              and not metadata.get("score_context_prefetch"),
              "C30 requires exact C29 parent plus unchanged C26 policy")
@@ -3391,6 +3394,20 @@ def _generator_rms_cast_square_enabled(plan: Mapping[str, Any], *, mode: str) ->
 
     return (_generator_rms_epilogue_enabled(plan, mode=mode)
             and plan["metadata"]["generator_rms_epilogue"] == CAST_SQUARE_PLAN_CONTRACT)
+
+
+def _generator_modulation_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_generator_modulation import PLAN_CONTRACT
+
+    value = plan.get("metadata", {}).get("generator_modulation")
+    if value is None:
+        return False
+    _require(mode == "pipeline" and value == PLAN_CONTRACT,
+             "C32 Generator modulation contract changed")
+    _require(_c30_checkpoint_composition_enabled(plan, mode=mode)
+             and _generator_rms_cast_square_enabled(plan, mode=mode),
+             "C32 requires explicit unchanged C31 parent")
+    return True
 
 
 def _score_prompt_staging_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
@@ -3700,6 +3717,7 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _score_prompt_staging_enabled(plan, mode=mode)
     _generator_rollout_cast_cache_enabled(plan, mode=mode)
     _generator_rms_epilogue_enabled(plan, mode=mode)
+    _generator_modulation_enabled(plan, mode=mode)
     _score_rope_kernel_enabled(plan, mode=mode)
     _score_attention_backend_enabled(plan, mode=mode)
     _generator_cross_kv_cache_enabled(plan, mode=mode)
@@ -4216,6 +4234,11 @@ def run_worker(
 
         generator_rms_epilogue = install_generator_rms(torch, bundle.student,
             fuse_cast_square=_generator_rms_cast_square_enabled(plan, mode=mode))
+    generator_modulation = None
+    if _generator_modulation_enabled(plan, mode=mode) and rank < 8:
+        from distillschedule.runtime.livewan_generator_modulation import install as install_g_modulation
+
+        generator_modulation = install_g_modulation(torch, bundle.student)
     loader = InputLoader(torch=torch, trace=trace)
     pinned_score_context = None
     if _score_prompt_staging_enabled(plan, mode=mode) and rank >= 8:
@@ -4661,6 +4684,14 @@ def run_worker(
                      fuse_cast_square=_generator_rms_cast_square_enabled(plan, mode=mode)),
                  "C29 Generator no-grad RMS epilogue scope/call contract failed")
     score_prompt_staging_receipt = {"enabled": False, "execution_status": "DISABLED"}
+    generator_modulation_receipt = {"enabled": False, "execution_status": "DISABLED"}
+    if _generator_modulation_enabled(plan, mode=mode):
+        from distillschedule.runtime.livewan_generator_modulation import runtime_receipt_errors as modulation_errors
+
+        generator_modulation_receipt = (generator_modulation.receipt() if generator_modulation is not None
+            else {"enabled": True, "execution_status": "NOT_APPLICABLE"})
+        _require(not modulation_errors(generator_modulation_receipt, rank=rank, cycles=continuous_cycles),
+                 "C32 Generator no-grad modulation scope/call contract failed")
     if _score_prompt_staging_enabled(plan, mode=mode):
         from distillschedule.runtime.livewan_context_staging import SOURCE_SHA256, runtime_receipt_errors as staging_errors
 
@@ -4906,6 +4937,7 @@ def run_worker(
         "score_prompt_staging": score_prompt_staging_receipt,
         "generator_rollout_cast_cache": rollout_cast_cache_receipt,
         "generator_rms_epilogue": generator_rms_epilogue_receipt,
+        "generator_modulation": generator_modulation_receipt,
         "slot_routing": slot_routing,
         "full5_wall_seconds": full5_wall,
         "two_cycle_timing": two_cycle_timing_receipt,

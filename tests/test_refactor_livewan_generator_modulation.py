@@ -32,10 +32,11 @@ def test_exact_fp32_rounding_and_no_norm_replacement():
     assert 'finally:' in scope and 'bc._modulate = original' in scope
 
 
-def test_not_installed_in_runtime():
+def test_only_installed_on_explicit_validated_g_scope():
     root=Path(__file__).resolve().parents[1]
     worker=(root/'src/distillschedule/runtime/livewan_crossscale_worker.py').read_text()
-    assert 'livewan_generator_modulation' not in worker
+    assert 'if _generator_modulation_enabled(plan, mode=mode) and rank < 8:' in worker
+    assert 'generator_modulation_scope(torch, student)' in worker
 
 
 def test_plan_only_no_assets_or_cuda(tmp_path):
