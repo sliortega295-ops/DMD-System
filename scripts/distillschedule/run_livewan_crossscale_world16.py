@@ -146,7 +146,7 @@ def parser() -> argparse.ArgumentParser:
             "c22-critic-checkpoint-rng",
             "c23-continuous-b32",
             "c24-continuous-b16-score-modulation",
-            "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint",
+            "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square",
             "c24-continuous-b16-score-modulation-b1-attribution",
             "phase-expanded-critic16",
             "phase-expanded-critic16-fused-lora-elision",
@@ -258,7 +258,7 @@ def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
                 raise ValueError("trajectory baseline requires sequential B1")
         elif args.pipeline_variant not in {
             "c24-continuous-b16-score-modulation",
-            "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint",
+            "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square",
             "c24-continuous-b16-score-modulation-b1-attribution",
         }:
             raise ValueError("trajectory pipeline requires exact C24 B2/B1 attribution")
@@ -275,7 +275,7 @@ def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         if args.execution_mode == "baseline":
             if args.pipeline_variant != "b1":
                 raise ValueError("two-cycle baseline requires sequential B1")
-        elif args.pipeline_variant not in {"c24-continuous-b16-score-modulation", "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint"}:
+        elif args.pipeline_variant not in {"c24-continuous-b16-score-modulation", "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square"}:
             raise ValueError("two-cycle pipeline requires production C24 physical B2")
         if args.two_cycle_seed is None or args.two_cycle_seed < 0:
             raise ValueError("two-cycle timing requires --two-cycle-seed")
@@ -351,7 +351,7 @@ def summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
                     "c22-critic-checkpoint-rng",
                     "c23-continuous-b32",
                     "c24-continuous-b16-score-modulation",
-                    "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint",
+                    "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square",
                     "c24-continuous-b16-score-modulation-b1-attribution",
                 }
                 else "summarize_livewan_crossscale_world16.py"
@@ -423,7 +423,7 @@ def main() -> int:
             raise ValueError("two-cycle baseline requires sequential B1")
         if (
             args.execution_mode == "pipeline"
-            and args.pipeline_variant not in {"c24-continuous-b16-score-modulation", "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint"}
+            and args.pipeline_variant not in {"c24-continuous-b16-score-modulation", "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square"}
         ):
             raise ValueError("two-cycle pipeline requires production C24 physical B2")
     if args.run_kind == "trajectory":
@@ -433,7 +433,7 @@ def main() -> int:
             args.execution_mode == "pipeline"
             and args.pipeline_variant not in {
                 "c24-continuous-b16-score-modulation",
-                "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint",
+                "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square",
                 "c24-continuous-b16-score-modulation-b1-attribution",
             }
         ):

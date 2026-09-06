@@ -18,6 +18,9 @@ PLAN_CONTRACT = dict(enabled=True, name='generator_nograd_rms_epilogue_v1',
     input_dtype='bfloat16', affine_dtype='float32', output_dtype='float32',
     intermediate_bf16_rounding=True, grad_path_changed=False,
     source_class_sha256=REFERENCE_CLASS_SHA256)
+CAST_SQUARE_PLAN_CONTRACT = dict(PLAN_CONTRACT,
+    name='generator_nograd_rms_cast_square_v1', native_pow_mean_preserved=False,
+    native_mean_preserved=True, fp32_square_preserved=True, fused_cast_square=True)
 
 
 def validate_inputs(torch: Any, x: Any, weight: Any, eps: float) -> None:
@@ -137,9 +140,10 @@ def model_epilogue_canary_scope(torch: Any, student: Any, op: Any, *, enabled: b
 
 
 class GeneratorRMSEpilogue:
-    def __init__(self, torch: Any, student: Any):
+    def __init__(self, torch: Any, student: Any, *, fuse_cast_square: bool = False):
         self.student = student
-        self.op, self.kernel_receipt = build_nograd_generator_rms_epilogue(torch)
+        self.op, self.kernel_receipt = build_nograd_generator_rms_epilogue(
+            torch, fuse_cast_square=fuse_cast_square)
         self.entries = self.exits = self.failures = 0
         self.active = False
         self.scope_calls: list[int] = []
@@ -171,14 +175,14 @@ class GeneratorRMSEpilogue:
             scope_failures=self.failures)
 
 
-def install(torch: Any, student: Any):
+def install(torch: Any, student: Any, *, fuse_cast_square: bool = False):
     if (str(torch.__version__) != '2.10.0+cu128' or hasattr(student, ATTRIBUTE)
         or hasattr(student, 'causal_layers') or len(student.blocks) != 30):
         raise RuntimeError('C29 requires validated unwrapped resident 30-block Generator')
     if not all(p.is_cuda and p.dtype == torch.float32 and p.requires_grad
                and not hasattr(p, 'to_local') for p in student.parameters()):
         raise RuntimeError('C29 Generator dtype/trainability/placement changed')
-    helper = GeneratorRMSEpilogue(torch, student)
+    helper = GeneratorRMSEpilogue(torch, student, fuse_cast_square=fuse_cast_square)
     setattr(student, ATTRIBUTE, helper)
     return helper
 
@@ -193,16 +197,25 @@ def model_runtime_scope(torch: Any, student: Any):
             yield
 
 
-def runtime_receipt_errors(r: dict[str, Any], *, rank: int, cycles: int) -> list[str]:
+def runtime_receipt_errors(r: dict[str, Any], *, rank: int, cycles: int,
+                           fuse_cast_square: bool = False) -> list[str]:
     if rank >= 8:
         return [] if r.get('execution_status') == 'NOT_APPLICABLE' else ['C29 changed Score scope']
     scope_calls = r.get('scope_forward_calls', [])
-    if (r.get('name') != PLAN_CONTRACT['name'] or r.get('execution_status') != 'PASS'
+    expected = CAST_SQUARE_PLAN_CONTRACT if fuse_cast_square else PLAN_CONTRACT
+    if fuse_cast_square and (r.get('square_calls') != r.get('calls')
+        or r.get('native_mean_preserved') is not True
+        or r.get('fp32_square_preserved') is not True
+        or r.get('fused_cast_square') is not True):
+        return ['C31 actual cast-square/native-mean contract failed']
+    if not fuse_cast_square and r.get('fused_cast_square', False):
+        return ['C29/C30 cannot silently enable C31']
+    if (r.get('name') != expected['name'] or r.get('execution_status') != 'PASS'
         or r.get('source_class_sha256') != REFERENCE_CLASS_SHA256
         or r.get('scope_entries') != 10 * cycles or r.get('scope_exits') != 10 * cycles
         or r.get('active') is not False or r.get('scope_failures') != 0
         or r.get('contract_failures') != 0 or r.get('grad_path_changed') is not False
-        or r.get('native_pow_mean_preserved') is not True
+        or r.get('native_pow_mean_preserved') is not expected['native_pow_mean_preserved']
         or r.get('input_dtype') != 'bfloat16' or r.get('affine_dtype') != 'float32'
         or r.get('output_dtype') != 'float32' or r.get('intermediate_bf16_rounding') is not True
         or len(scope_calls) != 10 * cycles

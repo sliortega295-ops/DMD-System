@@ -7,3 +7,13 @@ PLAN_CONTRACT = {
     "application_calls_unchanged": True,
     "numeric_policy_unchanged": True,
 }
+
+# A separate registered composition, not a silent mutation of C30's G path.
+C31_PLAN_CONTRACT = {
+    "name": "c30_plus_generator_cast_square_v1",
+    "parent": "c30-continuous-b16-generator-rms-critic-checkpoint",
+    "added_factor": "generator_nograd_rms_cast_square_v1",
+    "critic_path_unchanged": True,
+    "application_calls_unchanged": True,
+    "numeric_policy_unchanged": True,
+}

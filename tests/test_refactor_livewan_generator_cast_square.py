@@ -10,12 +10,12 @@ from distillschedule.runtime.livewan_generator_rms_epilogue import (
 )
 
 
-def test_explicit_default_off_and_no_runtime_call_site():
+def test_explicit_default_off_and_registered_runtime_call_site():
     parameter = inspect.signature(build_nograd_generator_rms_epilogue).parameters['fuse_cast_square']
     assert parameter.default is False
     root = Path(__file__).resolve().parents[1]
     worker = (root/'src/distillschedule/runtime/livewan_crossscale_worker.py').read_text()
-    assert 'fuse_cast_square' not in worker
+    assert 'fuse_cast_square=_generator_rms_cast_square_enabled(plan, mode=mode)' in worker
     assert PLAN_CONTRACT['native_pow_mean_preserved'] is True
 
 

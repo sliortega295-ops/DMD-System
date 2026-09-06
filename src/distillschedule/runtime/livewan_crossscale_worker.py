@@ -3327,19 +3327,21 @@ def _score_rmsnorm_kernel_enabled(plan: Mapping[str, Any], *, mode: str) -> bool
 
 
 def _c30_checkpoint_composition_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
-    from distillschedule.runtime.livewan_c30_contract import PLAN_CONTRACT
+    from distillschedule.runtime.livewan_c30_contract import PLAN_CONTRACT, C31_PLAN_CONTRACT
     from distillschedule.runtime.livewan_attention_checkpoint import PLAN_CONTRACT as SAC
     from distillschedule.runtime.livewan_generator_rms_epilogue import PLAN_CONTRACT as RMS
+    from distillschedule.runtime.livewan_generator_rms_epilogue import CAST_SQUARE_PLAN_CONTRACT
     from distillschedule.runtime.livewan_rollout_cast_cache import PLAN_CONTRACT as CAST
 
     metadata = plan.get("metadata", {})
     value = metadata.get("checkpoint_composition")
     if value is None:
         return False
-    _require(mode == "pipeline" and value == PLAN_CONTRACT,
+    _require(mode == "pipeline" and value in (PLAN_CONTRACT, C31_PLAN_CONTRACT),
              "C30 explicit composition contract changed")
+    expected_rms = CAST_SQUARE_PLAN_CONTRACT if value == C31_PLAN_CONTRACT else RMS
     _require(metadata.get("critic_attention_checkpoint") == SAC
-             and metadata.get("generator_rms_epilogue") == RMS
+             and metadata.get("generator_rms_epilogue") == expected_rms
              and metadata.get("generator_rollout_cast_cache") == CAST
              and metadata.get("score_prompt_staging") is None
              and not metadata.get("score_context_prefetch"),
@@ -3368,16 +3370,27 @@ def _generator_rollout_cast_cache_enabled(plan: Mapping[str, Any], *, mode: str)
 
 
 def _generator_rms_epilogue_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
-    from distillschedule.runtime.livewan_generator_rms_epilogue import PLAN_CONTRACT
+    from distillschedule.runtime.livewan_generator_rms_epilogue import (
+        PLAN_CONTRACT, CAST_SQUARE_PLAN_CONTRACT)
 
     value = plan.get("metadata", {}).get("generator_rms_epilogue")
     if value is None:
         return False
-    _require(mode == "pipeline" and dict(value) == PLAN_CONTRACT,
+    _require(mode == "pipeline" and dict(value) in (PLAN_CONTRACT, CAST_SQUARE_PLAN_CONTRACT),
              "C29 Generator RMS epilogue contract changed")
+    if value == CAST_SQUARE_PLAN_CONTRACT:
+        _require(_c30_checkpoint_composition_enabled(plan, mode=mode),
+                 "C31 requires explicit C30 plus cast-square composition")
     _require(_generator_rollout_cast_cache_enabled(plan, mode=mode),
              "C29 requires unchanged C28 parent")
     return True
+
+
+def _generator_rms_cast_square_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_generator_rms_epilogue import CAST_SQUARE_PLAN_CONTRACT
+
+    return (_generator_rms_epilogue_enabled(plan, mode=mode)
+            and plan["metadata"]["generator_rms_epilogue"] == CAST_SQUARE_PLAN_CONTRACT)
 
 
 def _score_prompt_staging_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
@@ -4201,7 +4214,8 @@ def run_worker(
     if _generator_rms_epilogue_enabled(plan, mode=mode) and rank < 8:
         from distillschedule.runtime.livewan_generator_rms_epilogue import install as install_generator_rms
 
-        generator_rms_epilogue = install_generator_rms(torch, bundle.student)
+        generator_rms_epilogue = install_generator_rms(torch, bundle.student,
+            fuse_cast_square=_generator_rms_cast_square_enabled(plan, mode=mode))
     loader = InputLoader(torch=torch, trace=trace)
     pinned_score_context = None
     if _score_prompt_staging_enabled(plan, mode=mode) and rank >= 8:
@@ -4643,7 +4657,8 @@ def run_worker(
             generator_rms_epilogue.receipt() if generator_rms_epilogue is not None
             else {"enabled": True, "execution_status": "NOT_APPLICABLE"}
         )
-        _require(not rms_epilogue_errors(generator_rms_epilogue_receipt, rank=rank, cycles=continuous_cycles),
+        _require(not rms_epilogue_errors(generator_rms_epilogue_receipt, rank=rank, cycles=continuous_cycles,
+                     fuse_cast_square=_generator_rms_cast_square_enabled(plan, mode=mode)),
                  "C29 Generator no-grad RMS epilogue scope/call contract failed")
     score_prompt_staging_receipt = {"enabled": False, "execution_status": "DISABLED"}
     if _score_prompt_staging_enabled(plan, mode=mode):
