@@ -1,0 +1,21 @@
+name: bootstrap-final-five-workload-integration
+on:
+  push:
+    branches: [agent/integrate-five-workload-winners-20260905]
+permissions:
+  contents: write
+jobs:
+  bootstrap:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Materialize and validate final integration tree
+        run: python .integration/bootstrap_final.py
