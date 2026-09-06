@@ -1,0 +1,1002 @@
+{
+  "files": [
+    {
+      "integrated_sha256": "78ca0d2ad9ab6f08bdd3a666065d5af91d39f079f35a3244d8daff1e412361ae",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/__init__.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/__init__.py"
+    },
+    {
+      "integrated_sha256": "56387a83007d789592869a656a6bd14a99d88a73e27c56bd9363bb5d8303f5ed",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/__main__.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/__main__.py"
+    },
+    {
+      "integrated_sha256": "f64ae903bb886e594ec8394855fb7286a6b51e37ced26882e3548cdae1efec16",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/activation_offload.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/activation_offload.py"
+    },
+    {
+      "integrated_sha256": "8207cfcc584c7c0d30e1538bf7ee5d06a1c53503a38a54eb11a55f357ebf6bf3",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/adaln_cache.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/adaln_cache.py"
+    },
+    {
+      "integrated_sha256": "4fe7f377e1f244750695f27a874b86d06e85cff7b2f601530c852c9b424adfcd",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/checkpoint_boundary_offload.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/checkpoint_boundary_offload.py"
+    },
+    {
+      "integrated_sha256": "b94e7d58b1539d0b34b165c0b2c0aa58fbb11b63757e651c657e92ab5267d417",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/checkpointing.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/checkpointing.py"
+    },
+    {
+      "integrated_sha256": "722a8b68784d5eee4610f137f1a6f7e22099249d6dec03a1c3816f9176dc0536",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/distributed.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/distributed.py"
+    },
+    {
+      "integrated_sha256": "a245397c45c992db79d663b0376e6f96f89a5e8d46969f282a00ec36d311f667",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/entrypoint.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/entrypoint.py"
+    },
+    {
+      "integrated_sha256": "f49a687b40a4944ab6a87b27a79b44139f8cb92d9e9100989e98cf66b23a14f3",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/fa3_nograd_splits.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/fa3_nograd_splits.py"
+    },
+    {
+      "integrated_sha256": "701298c250a6db3d615126b06fefb7fcc68dc60bd1da1523442619cb740d2ce2",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/fa3_replay_cache.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py"
+    },
+    {
+      "integrated_sha256": "8939965dccfc54120103ba860eba09761f9a2e14267b35e4134cd1814a8cc66d",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/fused_block_pointwise.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/fused_block_pointwise.py"
+    },
+    {
+      "integrated_sha256": "323916df22ffbddb297da9ab8bbb3c58c80accbe07102c7c597b4a1896e074a8",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/fused_qk_rmsnorm_rotary.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/fused_qk_rmsnorm_rotary.py"
+    },
+    {
+      "integrated_sha256": "28479a8e6b3b80f0c101f2329a3796818ecaf35ff39fdcddf746a1f1f107a044",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/fused_rotary.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/fused_rotary.py"
+    },
+    {
+      "integrated_sha256": "641d463dfa2940c18bb3708f445b57f651ebe41b62ba142dad8cf410af10cbf6",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/fused_swiglu.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/fused_swiglu.py"
+    },
+    {
+      "integrated_sha256": "e9506e32e261049e3ae4ede4b5baca52e62ea0ca3dcdd8b7907e3076787c318c",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/grid_adaln.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/grid_adaln.py"
+    },
+    {
+      "integrated_sha256": "16021e76fe4d2fd1c23e3a56d5183708d77c2ab4e62d5f6d2a18d1b7d3db3783",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/grid_contract.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/grid_contract.py"
+    },
+    {
+      "integrated_sha256": "d566f71ad1270aeb470fd3073b86339809085c9a49ab217aa712e44362a633c8",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/grid_entrypoint.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/grid_entrypoint.py"
+    },
+    {
+      "integrated_sha256": "feae7afa47a52b7bded6adfbce27fe6b531d05c5ebe9f1c7cf81a005d1c22878",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/grid_timestep_compat.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/grid_timestep_compat.py"
+    },
+    {
+      "integrated_sha256": "1324db24773e213ecf5c84a7e3599222f139af395218998901e2e11ca2a7ab18",
+      "note": "DMD-System integration adapter around the imported H3 backend",
+      "source_commit": "integration-pr26",
+      "source_path": "src/distillschedule/backends/training/minimax_h3/integrated_entrypoint.py",
+      "source_repository": "integration-pr26",
+      "target": "src/distillschedule/backends/training/minimax_h3/integrated_entrypoint.py"
+    },
+    {
+      "integrated_sha256": "29518d97c37fac0f9a58fe99e48058fa979ed0195d21077b5354b25c637e9391",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/lora_scale1_elision.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/lora_scale1_elision.py"
+    },
+    {
+      "integrated_sha256": "c2f0d47b29515ac51f2922be3f03d49775c3498125ce0d02065dd050931ba9c7",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/matched_contract.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/matched_contract.py"
+    },
+    {
+      "integrated_sha256": "096e4597b7178e16ba322af6964a9cf98863c3ccc061e43a4ae576025e4a44b6",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/model.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/model.py"
+    },
+    {
+      "integrated_sha256": "bdb3c01653fa6a15bd6578407d7aed8710c4857ff3ba6a6e99b315b1c05f7431",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/trainer.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/trainer.py"
+    },
+    {
+      "integrated_sha256": "ebe457b06a85cebd20199e4e57f8150b2e7f2e1d7801cff327ecaa6d57b27c03",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/trainer_loop.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/trainer_loop.py"
+    },
+    {
+      "integrated_sha256": "59e8c3301f4701bd3577d51377e573ef38fd3a81e2f79ad2939050d262ec929d",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/trainer_runtime.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/trainer_runtime.py"
+    },
+    {
+      "integrated_sha256": "7d9763f875e4cad67542be9187776aed8962af4059eba058a6c1953cf02ec8a7",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/triton_fused_pointwise.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/triton_fused_pointwise.py"
+    },
+    {
+      "integrated_sha256": "d6e04b2620cff29dd3061f88130ccfc8af35ec710133c67faacd459489deae7c",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/triton_fused_rotary.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/triton_fused_rotary.py"
+    },
+    {
+      "integrated_sha256": "b1a9d4b3ba15c5a010eebe667ac4a9e9ac44b8134b7a03ffd6f815d46d116354",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/triton_fused_swiglu.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/triton_fused_swiglu.py"
+    },
+    {
+      "integrated_sha256": "6dc17c0cd0f324742dd03705424deb8d75e9667d91847528dc07ba4dae73a0e0",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "h3_a100/triton_lora_epilogue.py",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "src/distillschedule/backends/training/minimax_h3/triton_lora_epilogue.py"
+    },
+    {
+      "integrated_sha256": "ef5dc286188f40073d466b3ad5c3a9b7728a7874766850d29d74d6b58c704115",
+      "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
+      "source_path": "LICENSE",
+      "source_repository": "sliortega295-ops/H3-DMD-for-A100",
+      "target": "third_party/licenses/H3-DMD-for-A100-LICENSE"
+    },
+    {
+      "integrated_sha256": "6db1c3f7d6321ae251aaee65dbde3ca51ad00e1df64da4bcdb6c552201b7518e",
+      "source_commit": "67b2880901abece947732ba5de45a5c2685ab274",
+      "source_path": "scripts/distillschedule/launch_wan13b_fair_world16_node.sh",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "scripts/distillschedule/launch_wan13b_fair_world16_node.sh"
+    },
+    {
+      "integrated_sha256": "87f4564b55f403b670a9cd38000eea7f409ecf6e63726a4aa5844c888468d2b8",
+      "source_commit": "67b2880901abece947732ba5de45a5c2685ab274",
+      "source_path": "scripts/distillschedule/probe_wan13b_fair_world16.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "scripts/distillschedule/probe_wan13b_fair_world16.py"
+    },
+    {
+      "integrated_sha256": "851785cd5fad4561d84171aa4d8be3f13ab5588c44472a579eaa5966a5369efb",
+      "source_commit": "67b2880901abece947732ba5de45a5c2685ab274",
+      "source_path": "scripts/distillschedule/probe_wan13b_upper_bound_world16.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "scripts/distillschedule/probe_wan13b_upper_bound_world16.py"
+    },
+    {
+      "integrated_sha256": "4c05f8200fc83601c57fa354ffab20e8d1363372bdb9b03457d13b17d3b15f8c",
+      "source_commit": "67b2880901abece947732ba5de45a5c2685ab274",
+      "source_path": "scripts/distillschedule/summarize_wan13b_fair_world16.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "scripts/distillschedule/summarize_wan13b_fair_world16.py"
+    },
+    {
+      "integrated_sha256": "85157718f4be78a1480f9d3063e06feab64723b03ba8f8e3f7f60ef735f0895e",
+      "source_commit": "67b2880901abece947732ba5de45a5c2685ab274",
+      "source_path": "src/distillschedule/runtime/wan13b_fair.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/wan13b_fair.py"
+    },
+    {
+      "integrated_sha256": "82f43c793b34c3b532ff37f434b08a8581aa1b447d5156e0c259c6429bde26ba",
+      "source_commit": "67b2880901abece947732ba5de45a5c2685ab274",
+      "source_path": "src/distillschedule/runtime/wan13b_lora_cast.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/wan13b_lora_cast.py"
+    },
+    {
+      "integrated_sha256": "aaa8f8209e75b6f27342aebe4f2d16ef679fb9fd1f5f75c2936bf52e9fa99b47",
+      "source_commit": "67b2880901abece947732ba5de45a5c2685ab274",
+      "source_path": "src/distillschedule/runtime/wan13b_lora_epilogue.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/wan13b_lora_epilogue.py"
+    },
+    {
+      "integrated_sha256": "b9e702919d19d6d4da88ca87394891887508d9f644dbcaa17f854478ebc4f872",
+      "source_commit": "67b2880901abece947732ba5de45a5c2685ab274",
+      "source_path": "src/distillschedule/runtime/wan13b_upper_bound.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/wan13b_upper_bound.py"
+    },
+    {
+      "integrated_sha256": "d226448e0a52ba98cab2e59925fd18ee0b034f11604dae10dc034e76a0069c71",
+      "source_commit": "67b2880901abece947732ba5de45a5c2685ab274",
+      "source_path": "src/distillschedule/runtime/helios_residual_runtime.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/helios_residual_runtime.py"
+    },
+    {
+      "integrated_sha256": "a4e1cfbd31c426af8523eca8d6aee459a455ede52558977e8c1a4feb117e9a40",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "runtime/critic_pool_helios.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "runtime/critic_pool_helios.py"
+    },
+    {
+      "integrated_sha256": "fbc9afbe985a67c0f3942c8623abb8c94c70c481599dce3202bbda3ecd2cd887",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "runtime/gan_score_packing.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "runtime/gan_score_packing.py"
+    },
+    {
+      "integrated_sha256": "2699577d50df586579ad652c7b30f107424808273ccfe11445d43adac05938b3",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "runtime/gst_pool_helios.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "runtime/gst_pool_helios.py"
+    },
+    {
+      "integrated_sha256": "2e9338ca864c519d87dab5bcabf2ccac51a359a180923d5af4a2ff4e08875614",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "runtime/static_fsdp2_p0_helios.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "runtime/static_fsdp2_p0_helios.py"
+    },
+    {
+      "integrated_sha256": "4f99c2b20466f06fd2d34ef48276e2c8e4a6ba5e0d47b10ffc1c0bfc6cc18a04",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "runtime/static_world16_trace.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "runtime/static_world16_trace.py"
+    },
+    {
+      "integrated_sha256": "8fe6a1d5cad43bd021d43c26b740b245bd00de7224f0991062693d7524035fa6",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "scripts/distillschedule/compare_static_fsdp2_p0_correctness.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "scripts/distillschedule/compare_static_fsdp2_p0_correctness.py"
+    },
+    {
+      "integrated_sha256": "4103bab06079e57bd8ed1f294370bf300c292778338e0f02ee79b1ea2a1226f0",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "scripts/distillschedule/launch_static_fsdp2_p0_world16_node.sh",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "scripts/distillschedule/launch_static_fsdp2_p0_world16_node.sh"
+    },
+    {
+      "integrated_sha256": "f7a5451847814a2639d927fc57a58856ab36cd0b03ed71c4e16df92d5dd372f3",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "scripts/distillschedule/probe_static_fsdp2_p0_world16.py"
+    },
+    {
+      "integrated_sha256": "3700a46b8aaf4981728272db1686b42727c2d9c5060368c5f26e6597b52f097f",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "scripts/distillschedule/probe_static_fsdp2_p0_world16_hardened.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "scripts/distillschedule/probe_static_fsdp2_p0_world16_hardened.py"
+    },
+    {
+      "integrated_sha256": "a0c4468241ab143b3e023d8263248fb5c5f6fd2a21cb04b5389f276291ecc0f9",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "scripts/distillschedule/run_static_fsdp2_p0_world16.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "scripts/distillschedule/run_static_fsdp2_p0_world16.py"
+    },
+    {
+      "integrated_sha256": "5cee530a296b5266203e718a4f3b5637c9b61a3e9684a4e81f1c02c3e27386b3",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "scripts/distillschedule/summarize_static_fsdp2_p0_world16.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "scripts/distillschedule/summarize_static_fsdp2_p0_world16.py"
+    },
+    {
+      "integrated_sha256": "7c797cacac47df870817e97d4f20e36c8b93a6cf7cc42ab2d1c4edf81d7b81a5",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/profiling/fsdp2_operation_markers.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/profiling/fsdp2_operation_markers.py"
+    },
+    {
+      "integrated_sha256": "6b1f6049b2c9d946605ad303b560159bfa3e3a0381e022a925ea53e26ac3f41d",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/profiling/fsdp2_operation_source.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/profiling/fsdp2_operation_source.py"
+    },
+    {
+      "integrated_sha256": "ae24bb2cb73db9b7ed8a18695d2c6e9089a6c7a95379e2832542fb205cd37e37",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/profiling/static_profile_diagnostics.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/profiling/static_profile_diagnostics.py"
+    },
+    {
+      "integrated_sha256": "4a57f7accad40542f8a9f42aa0b6c763b58127f8cadd691c15803cef8d1a6c51",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/runtime/fsdp2_nograd_persistence.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/fsdp2_nograd_persistence.py"
+    },
+    {
+      "integrated_sha256": "033e8cd15ab947ede069fb0fbc739c0345d2e35bdeb99a149913f360a9786429",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/runtime/fsdp2_p0.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/fsdp2_p0.py"
+    },
+    {
+      "integrated_sha256": "5f1ccf775ec63cf2107ff544628f1e8fd1cc7d20e2f4737924eb13eb732e9d6a",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/runtime/fsdp2_static.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/fsdp2_static.py"
+    },
+    {
+      "integrated_sha256": "a88f17702b3319fb73b024b756218d70d5cd9748c1b09ec2ada1e52e990e4c38",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/runtime/helios_critic_scalar_logs.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/helios_critic_scalar_logs.py"
+    },
+    {
+      "integrated_sha256": "b0e4ce53c2ab76f0aa1285e12199aaaeab04f801e8b3321938266075015b4b08",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/runtime/helios_cross_kv_cache.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/helios_cross_kv_cache.py"
+    },
+    {
+      "integrated_sha256": "c89fb0500061f1f420480821ca74d89ba6368e6f36df355c03e736cfe984d8a9",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/runtime/helios_fused_layernorm_backward_kernel.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/helios_fused_layernorm_backward_kernel.py"
+    },
+    {
+      "integrated_sha256": "b91dfce7f143497fcce7d1f89f5b30956ed0e8f4e5aa303205b6df300cb6bafa",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/runtime/helios_fused_layernorm_kernel.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/helios_fused_layernorm_kernel.py"
+    },
+    {
+      "integrated_sha256": "fd287dcb548da529519d5aee850d24c90308ccd722dc2ccdfc8bc190e0e738e8",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/runtime/helios_generator_free_memory.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/helios_generator_free_memory.py"
+    },
+    {
+      "integrated_sha256": "360d7c1dea7b4a5b8b8bdbedcd42542fd196014fba8d8c900cd4bff7a39c7bda",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/runtime/helios_history_current_fusion.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/helios_history_current_fusion.py"
+    },
+    {
+      "integrated_sha256": "341ac258b542791107b443de3720b4953b44f97a9143b2f9d6f72bb3d4794183",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/runtime/helios_history_current_kernel.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/helios_history_current_kernel.py"
+    },
+    {
+      "integrated_sha256": "5a2ae2eda5a5c8a35b1465212a518de7aeb53da4ab553ab52e7d1129523252fe",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/runtime/helios_lora_epilogue.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/helios_lora_epilogue.py"
+    },
+    {
+      "integrated_sha256": "133b732c99f94650b0e5ddfc7e7105de593412823ade17b2cffba492541a299f",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/runtime/helios_lora_epilogue_kernel.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/helios_lora_epilogue_kernel.py"
+    },
+    {
+      "integrated_sha256": "4c5325d564df54b1f9e024076a3176f5a4e10e9fd4e60c764e4231fe213d56e6",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/runtime/helios_modulated_norm_fusion.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/helios_modulated_norm_fusion.py"
+    },
+    {
+      "integrated_sha256": "38f615574bd0031058c81d3ad8e13287625a944a39028093789f72f0616fe493",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/runtime/helios_modulated_norm_kernel.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/helios_modulated_norm_kernel.py"
+    },
+    {
+      "integrated_sha256": "a99a7429eedfceccbb0f983927d53e804abbb71c238f0aa0c2117ab6308c3b25",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/runtime/helios_modulation_chunks.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/helios_modulation_chunks.py"
+    },
+    {
+      "integrated_sha256": "b42facb12a06d4df35167ac1b1adf7891ed4c1a436ba89b8d06d64e03edec666",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/runtime/helios_residual_fusion.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/helios_residual_fusion.py"
+    },
+    {
+      "integrated_sha256": "59fc72203e879218df35152cfa00379527e3949f9dbd124866ec4670fe77b6d9",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/runtime/helios_residual_kernel.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/helios_residual_kernel.py"
+    },
+    {
+      "integrated_sha256": "e03ef5e96d4ec12ee3160ac1daded93f64ecd2a11d88dcb1c16a37305d96f327",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/runtime/helios_rollout_context_cache.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/helios_rollout_context_cache.py"
+    },
+    {
+      "integrated_sha256": "15edb1b786f0df862d8b99d77deb502face44472561bd5be82db4bfb2d798a9a",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/runtime/p0_parity.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/p0_parity.py"
+    },
+    {
+      "integrated_sha256": "c354d7f91d1161e995e3c24a86debf70cc5403a20b956cefef9907ddb18b3507",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh"
+    },
+    {
+      "integrated_sha256": "2f399aed0dafa14efabfe7601ac45cd7fa3c39f1ecd148f2cff62dec35576ebb",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "scripts/distillschedule/livewan_crossscale_entrypoint.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "scripts/distillschedule/livewan_crossscale_entrypoint.py"
+    },
+    {
+      "integrated_sha256": "643e4fa3e7591f8dcf6908329223b60af1a411301ac331e3daa513f02eae8a7c",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "scripts/distillschedule/probe_livewan_crossscale_transport.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "scripts/distillschedule/probe_livewan_crossscale_transport.py"
+    },
+    {
+      "integrated_sha256": "11fe9ac23ee3c7d63f95bd9317cfeff9e68499713dbe1edc296407050ff98e01",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "scripts/distillschedule/run_livewan_crossscale_world16.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "scripts/distillschedule/run_livewan_crossscale_world16.py"
+    },
+    {
+      "integrated_sha256": "5872428e2d8aa3a010450fa60ca468bca43fe94aedb92a029b164f3b25d27feb",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "scripts/distillschedule/summarize_livewan_crossscale_world16.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "scripts/distillschedule/summarize_livewan_crossscale_world16.py"
+    },
+    {
+      "integrated_sha256": "5ba99905fd6afac962634d5c11949a050f64e07fe8aefe403f47a25464b58ab6",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "src/distillschedule/adapters/__init__.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/adapters/__init__.py"
+    },
+    {
+      "integrated_sha256": "96a07248355b91438a0ed14f15bec31fab201ad80dab3d3cee47234a3305b7a9",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "src/distillschedule/adapters/livewan/__init__.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/adapters/livewan/__init__.py"
+    },
+    {
+      "integrated_sha256": "7bb5a793c1020bad0a745898c077b79aec8356bb42102009981d135554af8bfe",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "src/distillschedule/adapters/livewan/adapter.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/adapters/livewan/adapter.py"
+    },
+    {
+      "integrated_sha256": "014fcebb5683f47fc3280663b27e9ffa842bcf8f02514b7bee7efef3d5e51e02",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "src/distillschedule/core/specs.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/core/specs.py"
+    },
+    {
+      "integrated_sha256": "0ff6c9eb7b4d364434bc77d0e4a11caebff375954ac0ffb3b908d404084729a0",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "src/distillschedule/runtime/livewan_attention_backend.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/livewan_attention_backend.py"
+    },
+    {
+      "integrated_sha256": "58b71bea15729d0dc81f5fc2f91f51c7629c8a5cc7d6714290b874d4b89957d5",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "src/distillschedule/runtime/livewan_critic_shadow_sync.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/livewan_critic_shadow_sync.py"
+    },
+    {
+      "integrated_sha256": "f9bf1e4cb841a80648105c2b327b3d5a3322b9a209a35b9300d64093fdb0812a",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "src/distillschedule/runtime/livewan_cross_kv_cache.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/livewan_cross_kv_cache.py"
+    },
+    {
+      "integrated_sha256": "a8a6f0ad670e9120fbad3d785deb3016b350aac1d49f22847a1bd79e5da96e44",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "src/distillschedule/runtime/livewan_crossscale_worker.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/livewan_crossscale_worker.py"
+    },
+    {
+      "integrated_sha256": "3b9adba03c5f05645759d968bf1f9186bc6d6049433f9e638e91697adae484e6",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "src/distillschedule/runtime/livewan_grad_reducer.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/livewan_grad_reducer.py"
+    },
+    {
+      "integrated_sha256": "7b219ed51896053ed04d41240a53a39e13724aa196e6387a9028592fbe09bc2a",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "src/distillschedule/runtime/livewan_host_runahead.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/livewan_host_runahead.py"
+    },
+    {
+      "integrated_sha256": "e59e7bd97c8d6d7a8e4c369506d51ad8aff6a2ec8ee82d36fcd2f1046e009932",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "src/distillschedule/runtime/livewan_lora_kernel.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/livewan_lora_kernel.py"
+    },
+    {
+      "integrated_sha256": "05bcafedbe9ee0a1a19e43165d08e2f34f64ec9815a9ac19ea6f2a5f1cb253b4",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "src/distillschedule/runtime/livewan_modulation_kernel.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/livewan_modulation_kernel.py"
+    },
+    {
+      "integrated_sha256": "4cd52fcc4860934b838d3a0ed80eef87acdafe6e4c7b16e94984638e5fff1525",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "src/distillschedule/runtime/livewan_rope_kernel.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/runtime/livewan_rope_kernel.py"
+    },
+    {
+      "integrated_sha256": "5893c0e6aedeea944cd83cef0634aab5035c4aa2114440c0b182b854c4641b07",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "src/distillschedule/workloads/livewan_crossscale.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "src/distillschedule/workloads/livewan_crossscale.py"
+    },
+    {
+      "integrated_sha256": "31c22a0ee50674832c787630ef347cb72fba48c0ed6b516ec9bef6be70598f49",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c20_generator_flash_attn2.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c20_generator_flash_attn2.json"
+    },
+    {
+      "integrated_sha256": "81aaeac7174d240856d8866ea842ade52a4886e780f162dbe453802817c28735",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c21_continuous_b16.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c21_continuous_b16.json"
+    },
+    {
+      "integrated_sha256": "516a33a0d073de0f838a664f97a596bc1a1dcbb4a46d985e524ce7c383f81e3e",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c24_continuous_b16_score_modulation.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c24_continuous_b16_score_modulation.json"
+    },
+    {
+      "integrated_sha256": "24abf1f1cd10d798e807f8c5584dd84d24170e3e3fe8bab6f39f4b6e39b3d3b4",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_fsdp2.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_fsdp2.json"
+    },
+    {
+      "integrated_sha256": "ee49f488ee8cc7d9fe6e01165ca48819bb8aca83b640d7ce1fd9d2f6df38fee9",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8.json"
+    },
+    {
+      "integrated_sha256": "776fba8462168458ffad4ef6fe51e6654d354cb0e3515e780ac1c545c71ac45d",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead.json"
+    },
+    {
+      "integrated_sha256": "3775f2d136661864803a0f64cb5e0501bec2f44d7dfcc104e5abcf9121e63c0a",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2.json"
+    },
+    {
+      "integrated_sha256": "0dc43de42a1adf1b220f753c4cfeb27ba643135c931b75975934fea5119ec868",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context.json"
+    },
+    {
+      "integrated_sha256": "71783c8217f6791f4999a1b01d1ca4261a14b501552b60ad1ec5e8833f639400",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32.json"
+    },
+    {
+      "integrated_sha256": "4643f703dbbe5a1ff34b1b5a7ccd98178239372fb7294b3bd176898c5f6722a1",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced.json"
+    },
+    {
+      "integrated_sha256": "2cdf323f64b3649c6f26f460a29edfd58ae191c155f1b530ce894d38cdf996c3",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context.json"
+    },
+    {
+      "integrated_sha256": "302902f92debf761da9a97ed69e6abd1438cc1672f9caf9282d6f9e76029dbed",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision.json"
+    },
+    {
+      "integrated_sha256": "e3ac7971409ecda5b3ceb34b5be8a97f4ebd4946d739030a8c8006e49cf307e4",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow.json"
+    },
+    {
+      "integrated_sha256": "b2364db7145793519744c82bc9e15e11311d6d5cc1e6b0d120f57644e16d632b",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam.json"
+    },
+    {
+      "integrated_sha256": "81fabe3235f5f580d84cda5b6e6727f7a1ef3977ac313e13053be355f09367e1",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope.json"
+    },
+    {
+      "integrated_sha256": "4b15cb7c137bc595d42024ce57b919c22ecd374f6a639344b7b4fb77d40a3e71",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2.json"
+    },
+    {
+      "integrated_sha256": "c1e9baec3604e325035bd78af1b778659aead23dfa7be976b243d7f252681c93",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2_generator_cross_kv_cache.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2_generator_cross_kv_cache.json"
+    },
+    {
+      "integrated_sha256": "d1fdb2963e3e45fdf96fe89970810e2a057cf68da56a5078816b00daa768a9ed",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2_generator_cross_kv_cache_host_runahead.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2_generator_cross_kv_cache_host_runahead.json"
+    },
+    {
+      "integrated_sha256": "9f7ce00a39db9abf87af0f5a09415eafac12feea0bb4734e0e02d348edf05f1f",
+      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_scale1.json"
+    },
+    {
+      "integrated_sha256": "d3a296a3d6add3301c610b524a8167c21dfbca99276fcaa5bf5f3a57c48e3992",
+      "source_commit": "integration-pr26",
+      "source_path": "scripts/distillctl.py",
+      "source_repository": "integration-pr26",
+      "target": "scripts/distillctl.py"
+    },
+    {
+      "integrated_sha256": "c6851609f4dab97fef11efa481e510446ada30064a0a261796264d882d873155",
+      "source_commit": "integration-pr26",
+      "source_path": "scripts/distillschedule/run_best_known_workload.py",
+      "source_repository": "integration-pr26",
+      "target": "scripts/distillschedule/run_best_known_workload.py"
+    },
+    {
+      "integrated_sha256": "69c65ca69e3d53f72bf3cb1f67760d08acd11b1397a647a8ff141a52abbe5887",
+      "source_commit": "integration-pr26",
+      "source_path": "scripts/distillschedule/check_best_known_integration.py",
+      "source_repository": "integration-pr26",
+      "target": "scripts/distillschedule/check_best_known_integration.py"
+    },
+    {
+      "integrated_sha256": "ea9b6a9030c21aadcdeb8bad036feff8c495106a053aa6a7e05684298ea25557",
+      "source_commit": "integration-pr26",
+      "source_path": "scripts/distillschedule/launch_minimax_h3_best_node.sh",
+      "source_repository": "integration-pr26",
+      "target": "scripts/distillschedule/launch_minimax_h3_best_node.sh"
+    },
+    {
+      "integrated_sha256": "9b3270037e4efe17337ca099422a48e37ae07e660ca6a9f6fc7db7261184364a",
+      "source_commit": "integration-pr26",
+      "source_path": "src/distillschedule/cli.py",
+      "source_repository": "integration-pr26",
+      "target": "src/distillschedule/cli.py"
+    },
+    {
+      "integrated_sha256": "5e06a3e5cb3e38a4a77871cee0ce0e34a3ed9b1ca4a0fa8c627e3cedf5cf4278",
+      "source_commit": "integration-pr26",
+      "source_path": "src/distillschedule/workloads/best_known/__init__.py",
+      "source_repository": "integration-pr26",
+      "target": "src/distillschedule/workloads/best_known/__init__.py"
+    },
+    {
+      "integrated_sha256": "601cea3e2f1eccc171463b57f8dc079eb1b8bd36ef0bb5e792ddb333f049c182",
+      "source_commit": "integration-pr26",
+      "source_path": "src/distillschedule/workloads/best_known/cli.py",
+      "source_repository": "integration-pr26",
+      "target": "src/distillschedule/workloads/best_known/cli.py"
+    },
+    {
+      "integrated_sha256": "9ab4e0d84122dbb5cee1296a2eaa4b79a580897efac78cbff2199097819beb2a",
+      "source_commit": "integration-pr26",
+      "source_path": "src/distillschedule/workloads/best_known/dispatch.py",
+      "source_repository": "integration-pr26",
+      "target": "src/distillschedule/workloads/best_known/dispatch.py"
+    },
+    {
+      "integrated_sha256": "159ed22abbe301e2f6f8afd9921714aa0ccc1228987d912996cce4c3390c24e1",
+      "source_commit": "integration-pr26",
+      "source_path": "src/distillschedule/workloads/best_known/evidence.py",
+      "source_repository": "integration-pr26",
+      "target": "src/distillschedule/workloads/best_known/evidence.py"
+    },
+    {
+      "integrated_sha256": "f55c50520324e7ba21c4946bee4f3fdb6f69a9fc53a33c5f430c31a3ca2735b0",
+      "source_commit": "integration-pr26",
+      "source_path": "src/distillschedule/workloads/best_known/registry.py",
+      "source_repository": "integration-pr26",
+      "target": "src/distillschedule/workloads/best_known/registry.py"
+    },
+    {
+      "integrated_sha256": "f746e8fb36d4b38d17b45721337218e15fe3e2eba6ed33680a2c03a32db360e1",
+      "source_commit": "integration-pr26",
+      "source_path": "tests/test_refactor_best_known.py",
+      "source_repository": "integration-pr26",
+      "target": "tests/test_refactor_best_known.py"
+    },
+    {
+      "integrated_sha256": "8978a1d8a24bbdfcfaefad05caa027a950bb31a041b7736a654bfecc3cf92d6e",
+      "source_commit": "integration-pr26",
+      "source_path": ".gitmodules",
+      "source_repository": "integration-pr26",
+      "target": ".gitmodules"
+    },
+    {
+      "integrated_sha256": "143896a4c51a062fba49ab223290e023f137ba3718941d7649954d2872a89e4b",
+      "source_commit": "integration-pr26",
+      "source_path": "configs/distillschedule/best_known/helios14b_gan_best.json",
+      "source_repository": "integration-pr26",
+      "target": "configs/distillschedule/best_known/helios14b_gan_best.json"
+    },
+    {
+      "integrated_sha256": "00716145197fa0ff9b0fce2557b732ef88d66864a1068d463bbf2d07f2c5783c",
+      "source_commit": "integration-pr26",
+      "source_path": "configs/distillschedule/best_known/helios14b_nogan_best.json",
+      "source_repository": "integration-pr26",
+      "target": "configs/distillschedule/best_known/helios14b_nogan_best.json"
+    },
+    {
+      "integrated_sha256": "c38cf92798122b5359385cc425862a3f276d4e65681ea370fbb4eb8fb48638a7",
+      "source_commit": "integration-pr26",
+      "source_path": "configs/distillschedule/best_known/livewan_crossscale_pipeline_best.json",
+      "source_repository": "integration-pr26",
+      "target": "configs/distillschedule/best_known/livewan_crossscale_pipeline_best.json"
+    },
+    {
+      "integrated_sha256": "f47e43a63867785bacdbf54fd9b7fe42dc4f34ff5acd2e5fa26b815b5ab07cac",
+      "source_commit": "integration-pr26",
+      "source_path": "configs/distillschedule/best_known/minimax_h3_grid1000_best.json",
+      "source_repository": "integration-pr26",
+      "target": "configs/distillschedule/best_known/minimax_h3_grid1000_best.json"
+    },
+    {
+      "integrated_sha256": "8eba9c827708ac38f53a517e8c7a9543ca36e3e1ba3f1d0b52815bb94a20b728",
+      "source_commit": "integration-pr26",
+      "source_path": "configs/distillschedule/best_known/registry.lock.json",
+      "source_repository": "integration-pr26",
+      "target": "configs/distillschedule/best_known/registry.lock.json"
+    },
+    {
+      "integrated_sha256": "8a1bda0851c42f576b2c3358cc07ec2873fe641c82b7e020b876864fe8141775",
+      "source_commit": "integration-pr26",
+      "source_path": "configs/distillschedule/best_known/wan13b_nogan_resident_best.json",
+      "source_repository": "integration-pr26",
+      "target": "configs/distillschedule/best_known/wan13b_nogan_resident_best.json"
+    },
+    {
+      "integrated_sha256": "e59e7e5c4d22a3bc0a49988e0421b5b569dac5812edc9ceacf0e5a905c80354e",
+      "source_commit": "integration-pr26",
+      "source_path": "configs/distillschedule/best_known/assets_examples/helios14b_gan_best.json",
+      "source_repository": "integration-pr26",
+      "target": "configs/distillschedule/best_known/assets_examples/helios14b_gan_best.json"
+    },
+    {
+      "integrated_sha256": "09bccd366bdf7365582f04e18109d57f469943903ec2b7a738e3134ebc394e90",
+      "source_commit": "integration-pr26",
+      "source_path": "configs/distillschedule/best_known/assets_examples/helios14b_nogan_best.json",
+      "source_repository": "integration-pr26",
+      "target": "configs/distillschedule/best_known/assets_examples/helios14b_nogan_best.json"
+    },
+    {
+      "integrated_sha256": "6e6948160f13c1da2d0c02e484382f88ed1ac0b1ba388fa7adfff6c1ca775083",
+      "source_commit": "integration-pr26",
+      "source_path": "configs/distillschedule/best_known/assets_examples/livewan_crossscale_pipeline_best.json",
+      "source_repository": "integration-pr26",
+      "target": "configs/distillschedule/best_known/assets_examples/livewan_crossscale_pipeline_best.json"
+    },
+    {
+      "integrated_sha256": "f03d8d75a1dc610f68e760c05aec8461a7a2ab5914ef711ff584e42309ea43dc",
+      "source_commit": "integration-pr26",
+      "source_path": "configs/distillschedule/best_known/assets_examples/minimax_h3_grid1000_best.json",
+      "source_repository": "integration-pr26",
+      "target": "configs/distillschedule/best_known/assets_examples/minimax_h3_grid1000_best.json"
+    },
+    {
+      "integrated_sha256": "cac972b2fdc52aabef8df166e7529ab5a3fb19fa938f627e7a3adaccd152d9ce",
+      "source_commit": "integration-pr26",
+      "source_path": "configs/distillschedule/best_known/assets_examples/wan13b_nogan_resident_best.json",
+      "source_repository": "integration-pr26",
+      "target": "configs/distillschedule/best_known/assets_examples/wan13b_nogan_resident_best.json"
+    },
+    {
+      "integrated_sha256": "3edc8e9fed136a26c4c49b22fd727fabf64c632be34a065aec9abad906400a8f",
+      "source_commit": "integration-pr26",
+      "source_path": "docs/workloads/BEST_KNOWN_MIGRATION.md",
+      "source_repository": "integration-pr26",
+      "target": "docs/workloads/BEST_KNOWN_MIGRATION.md"
+    },
+    {
+      "integrated_sha256": "9b9159bafdaec1e2125dc8efd4538b465e56dfe628366cb9652e118bb8983cca",
+      "source_commit": "integration-pr26",
+      "source_path": "docs/workloads/BEST_KNOWN_SOURCE_MAP.md",
+      "source_repository": "integration-pr26",
+      "target": "docs/workloads/BEST_KNOWN_SOURCE_MAP.md"
+    },
+    {
+      "integrated_sha256": "3e90581a82f6d3a68d564bee4e36114abc743f118e6bc83a68b41447d4ec6b4a",
+      "source_commit": "integration-pr26",
+      "source_path": "docs/workloads/BEST_KNOWN_WORKLOADS.md",
+      "source_repository": "integration-pr26",
+      "target": "docs/workloads/BEST_KNOWN_WORKLOADS.md"
+    },
+    {
+      "integrated_sha256": "5b2bfcc5a2f9fe792bdf15d2d59dd69240883ed5cb936fe4f4aaa3d10724ec6f",
+      "source_commit": "integration-pr26",
+      "source_path": "docs/workloads/SERVER_REVALIDATION_CHECKLIST.md",
+      "source_repository": "integration-pr26",
+      "target": "docs/workloads/SERVER_REVALIDATION_CHECKLIST.md"
+    },
+    {
+      "integrated_sha256": "36294a2c20aa09f1f0b90d36d2df2dd060ae86548a6b16aed28bdad20d647f25",
+      "source_commit": "integration-pr26",
+      "source_path": "docs/workloads/runbooks/helios14b_gan_best.md",
+      "source_repository": "integration-pr26",
+      "target": "docs/workloads/runbooks/helios14b_gan_best.md"
+    },
+    {
+      "integrated_sha256": "f453f1b3cdb7103dcfc5ac5c5fb98c5a3562a33244f68b7878b0af109902ec3b",
+      "source_commit": "integration-pr26",
+      "source_path": "docs/workloads/runbooks/helios14b_nogan_best.md",
+      "source_repository": "integration-pr26",
+      "target": "docs/workloads/runbooks/helios14b_nogan_best.md"
+    },
+    {
+      "integrated_sha256": "688ee86605ed52de47399c9dadbe210b5150c0d95365eea92c1e450db712d66d",
+      "source_commit": "integration-pr26",
+      "source_path": "docs/workloads/runbooks/livewan_crossscale_pipeline_best.md",
+      "source_repository": "integration-pr26",
+      "target": "docs/workloads/runbooks/livewan_crossscale_pipeline_best.md"
+    },
+    {
+      "integrated_sha256": "30793114bbe70a3129f6e30439d710fe0e8ec95c3e2246f4987a5abafe0c3412",
+      "source_commit": "integration-pr26",
+      "source_path": "docs/workloads/runbooks/minimax_h3_grid1000_best.md",
+      "source_repository": "integration-pr26",
+      "target": "docs/workloads/runbooks/minimax_h3_grid1000_best.md"
+    },
+    {
+      "integrated_sha256": "2e2da284b9b0b85a7784292792637a89f012d68e3df8b651289b25b6783831c5",
+      "source_commit": "integration-pr26",
+      "source_path": "docs/workloads/runbooks/wan13b_nogan_resident_best.md",
+      "source_repository": "integration-pr26",
+      "target": "docs/workloads/runbooks/wan13b_nogan_resident_best.md"
+    }
+  ],
+  "gpu_server_revalidation": "NOT_RUN_ON_INTEGRATION_BRANCH",
+  "integration_target": "sliortega295-ops/DMD-System PR #26",
+  "schema_version": "distillschedule.source_import_map.v1"
+}

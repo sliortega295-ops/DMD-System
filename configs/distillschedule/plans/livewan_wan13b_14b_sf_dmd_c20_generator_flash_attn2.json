@@ -1,0 +1,26 @@
+{
+  "include": [
+    "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2_generator_cross_kv_cache_host_runahead.json"
+  ],
+  "id": "livewan-wan13b-14b-sfdmd-g1c5-world16-c20-generator-flash-attn2",
+  "metadata": {
+    "generator_attention_backend": {
+      "enabled": true,
+      "name": "generator_flash_attn2_unmasked_exact_cast_v1",
+      "scope": "generator_ranks_student_and_frozen_critic_shadow",
+      "source_flash_attention_sha256": "c59c125fd92234d2ddec63f3ae3bd2a2479862faba44fa955fdedad2b8203a59",
+      "artifact_metadata_sha256": "7749dd68b81a544c1973d68c30be5aa316ee1a718ae0228e0368c2cd04365516",
+      "artifact_package_sha256": "0c560f96b857c188c4a8297ff27d1299619957c3459a5e433e132329fbfdf066",
+      "artifact_extension_sha256": "c2acd487c5d1d77b7f6721eabc0fee4f8c5c8f9e682aadf43bfa99b394eecba7",
+      "math_change": "replace_cudnn_sdpa_with_pinned_flash_attn2_under_fixed_parity_gate",
+      "mask_contract": "full_length_unmasked_only",
+      "raw_input_dtype_contract": [
+        "bfloat16/bfloat16/bfloat16",
+        "float32/float32/bfloat16"
+      ],
+      "kernel_compute_dtype": "bfloat16",
+      "output_dtype": "preserve_query_dtype",
+      "head_dimension": 128
+    }
+  }
+}

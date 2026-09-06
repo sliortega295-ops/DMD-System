@@ -1,0 +1,16 @@
+{
+  "include": ["livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2.json"],
+  "id": "livewan-wan13b-14b-sfdmd-g1c5-world16-pipeline8x8-runahead-criticb2-local-context",
+  "metadata": {
+    "pool_policy": "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
+    "score_context_transport": "trace_local_replay",
+    "context_value_contract": "same_fp32_prompt_selected_by_immutable_dataset_index",
+    "context_model_cast": "bf16_at_original_score_projection_boundary"
+  },
+  "lifecycle": {
+    "metadata": {
+      "transport": "cuda_p2p_latent_only_plus_trace_local_context",
+      "context_p2p": false
+    }
+  }
+}

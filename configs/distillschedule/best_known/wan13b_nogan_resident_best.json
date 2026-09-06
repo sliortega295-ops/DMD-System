@@ -1,0 +1,71 @@
+{
+  "allowed_run_modes": ["validate", "correctness", "diagnostic-timing"],
+  "contract": {
+    "actual_global_batch": 16, "base_dtype": "bfloat16",
+    "final_versions": {"critic": 15, "ema": 15, "generator": 3},
+    "initial_versions": {"critic": 10, "ema": 10, "generator": 2},
+    "local_batch": 1, "lora_dtype": "float32", "lora_rank": 256,
+    "parameter_reduction": "FP32_SUM_THEN_DIVIDE_16", "rollout_identities": 80,
+    "score_packing": false, "updates": {"critic": 5, "ema": 5, "generator": 1}, "variant": "no-gan"
+  },
+  "display_name": "Wan2.1-1.3B Resident / async128 Tree chunk2048",
+  "hardware": {"gpu": "A100-40GB", "gpus_per_node": 8, "nodes": 2, "world_size": 16},
+  "historical": {
+    "formal_speedup_eligible": false,
+    "run_id": "iter349_wan13b_fused_epilogue_candidate_timing_r5_20260824",
+    "sampling": "single_unprofiled_diagnostic",
+    "scope": "world-max No-GAN Full5 G1/C5/EMA5", "seconds": 26.227822833,
+    "strict_independent_run_numerical_gate": "FAIL_AT_REPORTED_NOISE_FLOOR"
+  },
+  "id": "wan13b_nogan_resident_best",
+  "memory": {
+    "activation_boundary_offload": false, "critic_residual": "cuda_out_of_place",
+    "ema_device": "cuda", "generator_residual": "cuda_out_of_place", "model_swap": false,
+    "optimizer_offload": false, "parameter_offload": false, "parameter_streaming": false
+  },
+  "model_family": "wan2.1", "profile_version": 1,
+  "required_assets": {
+    "bootstrap": {"environment": "DISTILLSCHEDULE_WAN13B_BOOTSTRAP", "fingerprint_required": true, "identity_file": "manifest.json", "kind": "directory", "logical_hash": "6a713476d9839cf1ea37689d63cb1cc2b405b9f9915ca5314ccdadb67b3cd60d"},
+    "hf_home": {"environment": "HF_HOME", "fingerprint_required": true, "kind": "directory"},
+    "model": {"environment": "DISTILLSCHEDULE_WAN13B_MODEL_ROOT", "fingerprint_required": true, "kind": "directory"},
+    "negative_prompt": {"environment": "DISTILLSCHEDULE_NEGATIVE_PROMPT_ASSET", "fingerprint_required": true, "kind": "directory"},
+    "trace": {"environment": "DISTILLSCHEDULE_TRACE_BUNDLE", "fingerprint_required": true, "kind": "directory", "logical_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3"}
+  },
+  "runtime": {
+    "arguments": ["{node_rank}", "{run_id}", "{mode}", "{head}", "{master_addr}", "{master_port}", "resident-async128-tree-chunk2048"],
+    "environment": {
+      "DISTILLSCHEDULE_CRITIC_ONLY_STEP": "",
+      "DISTILLSCHEDULE_CRITIC_RESIDUAL_STORAGE": "cuda_out_of_place",
+      "DISTILLSCHEDULE_EMA_DEVICE": "cuda",
+      "DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
+      "DISTILLSCHEDULE_GENERATOR_RESIDUAL_STORAGE": "cuda_out_of_place",
+      "DISTILLSCHEDULE_OPERATION_SOURCE": "off",
+      "DISTILLSCHEDULE_OPERATION_SOURCE_MAX_EVENTS": "256",
+      "DISTILLSCHEDULE_OPERATION_SOURCE_RANK": "0",
+      "DISTILLSCHEDULE_OPERATION_SOURCE_TARGET_BYTES": "113049600",
+      "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS": "off",
+      "DISTILLSCHEDULE_TRACE_BUNDLE_HASH": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+      "DISTILLSCHEDULE_WAN13B_BOOTSTRAP_HASH": "6a713476d9839cf1ea37689d63cb1cc2b405b9f9915ca5314ccdadb67b3cd60d",
+      "DISTILLSCHEDULE_WAN13B_EMA_IMPLEMENTATION": "reference",
+      "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE": "0",
+      "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE": "1",
+      "DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS": "3",
+      "DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_TARGET_RANK": "0",
+      "DISTILLSCHEDULE_WAN13B_LORA_OPERATOR_ATTRIBUTION": "0",
+      "NCCL_ALGO": "Tree", "NCCL_ASYNC_ERROR_HANDLING": "1", "OMP_NUM_THREADS": "8"
+    },
+    "launcher": "scripts/distillschedule/launch_wan13b_fair_world16_node.sh",
+    "unset_environment": ["LOCAL_KERNELS", "PYTORCH_CUDA_ALLOC_CONF", "PYTORCH_ALLOC_CONF", "DISTILLSCHEDULE_NCU_BIN"]
+  },
+  "schema_version": "distillschedule.best_known.v1",
+  "semantics": "source_equivalent_numerical_drift_reported",
+  "source": {
+    "branch": "agent/wan13b-lora-cast-20260824",
+    "performance_commit": "67b2880901abece947732ba5de45a5c2685ab274",
+    "publication_commit": "631bc082c819d0728059e96663cdf31cd66d5b0b",
+    "repository": "sliortega295-ops/DMD-System"
+  },
+  "topology": {"gradient_sync": "gradient_ready_async_128_MiB_allreduce_tree", "model_replication": "full", "placement": "resident-async128-tree-chunk2048"},
+  "upstreams": [],
+  "validation": {"gpu_claim": "HISTORICAL_PROVENANCE_ONLY", "historical_source_validated": true, "integration_ci_validated": false, "server_revalidation": "NOT_RUN_ON_INTEGRATION_BRANCH"}
+}

@@ -105,19 +105,28 @@ class DMDScheduleSpec:
 
 @dataclass(frozen=True)
 class WorkloadSpec:
-    name:str; adapter:str; generator:ModelSpec; score:ModelSpec; shape:ShapeSpec; schedule:DMDScheduleSpec=field(default_factory=DMDScheduleSpec); branches:DMDBranchesSpec=field(default_factory=DMDBranchesSpec); metadata:Mapping[str,Any]=field(default_factory=dict)
+    name:str; adapter:str; generator:ModelSpec; score:ModelSpec; shape:ShapeSpec; teacher:ModelSpec|None=None; schedule:DMDScheduleSpec=field(default_factory=DMDScheduleSpec); branches:DMDBranchesSpec=field(default_factory=DMDBranchesSpec); metadata:Mapping[str,Any]=field(default_factory=dict)
     @classmethod
     def from_mapping(cls,v:Any,*,path:str="workload")->"WorkloadSpec":
-        m=_map(v,path); reject_unknown_keys(m,{"name","adapter","generator","score","shape","schedule","branches","metadata","profile_key"},path=path)
-        obj=cls(_s(_need(m,"name",path),f"{path}.name"),_s(_need(m,"adapter",path),f"{path}.adapter"),ModelSpec.from_mapping(_need(m,"generator",path),path=f"{path}.generator"),ModelSpec.from_mapping(_need(m,"score",path),path=f"{path}.score"),ShapeSpec.from_mapping(_need(m,"shape",path),path=f"{path}.shape"),DMDScheduleSpec.from_mapping(m.get("schedule"),path=f"{path}.schedule"),DMDBranchesSpec.from_mapping(m.get("branches"),path=f"{path}.branches"),_meta(m.get("metadata")))
+        m=_map(v,path); reject_unknown_keys(m,{"name","adapter","generator","score","teacher","shape","schedule","branches","metadata","profile_key"},path=path)
+        teacher=ModelSpec.from_mapping(m["teacher"],path=f"{path}.teacher") if m.get("teacher") is not None else None
+        obj=cls(_s(_need(m,"name",path),f"{path}.name"),_s(_need(m,"adapter",path),f"{path}.adapter"),ModelSpec.from_mapping(_need(m,"generator",path),path=f"{path}.generator"),ModelSpec.from_mapping(_need(m,"score",path),path=f"{path}.score"),ShapeSpec.from_mapping(_need(m,"shape",path),path=f"{path}.shape"),teacher,DMDScheduleSpec.from_mapping(m.get("schedule"),path=f"{path}.schedule"),DMDBranchesSpec.from_mapping(m.get("branches"),path=f"{path}.branches"),_meta(m.get("metadata")))
         if obj.generator.role != ModelRole.GENERATOR: raise ContractViolation("generator model role must be 'generator'",path=f"{path}.generator.role")
+        if obj.teacher is not None and obj.teacher.role != ModelRole.TEACHER: raise ContractViolation("teacher model role must be 'teacher'",path=f"{path}.teacher.role")
         return obj
     @property
     def profile_key(self)->str:
         g=f"g-{_slug(self.generator.family)}-{_slug(self.generator.size)}-{self.generator.precision.value}-r{self.generator.adapter.rank}"
         s=f"s-{_slug(self.score.family)}-{_slug(self.score.size)}-{self.score.precision.value}-r{self.score.adapter.rank}"
-        return f"{g}__{s}__{self.shape.profile_key}"
-    def to_dict(self): return {"name":self.name,"adapter":self.adapter,"generator":self.generator.to_dict(),"score":self.score.to_dict(),"shape":self.shape.to_dict(),"schedule":self.schedule.to_dict(),"branches":self.branches.to_dict(),"metadata":dict(self.metadata)}
+        teacher=(
+            f"__t-{_slug(self.teacher.family)}-{_slug(self.teacher.size)}-{self.teacher.precision.value}"
+            if self.teacher is not None else ""
+        )
+        return f"{g}__{s}{teacher}__{self.shape.profile_key}"
+    def to_dict(self):
+        out={"name":self.name,"adapter":self.adapter,"generator":self.generator.to_dict(),"score":self.score.to_dict(),"shape":self.shape.to_dict(),"schedule":self.schedule.to_dict(),"branches":self.branches.to_dict(),"metadata":dict(self.metadata)}
+        if self.teacher is not None: out["teacher"]=self.teacher.to_dict()
+        return out
 
 @dataclass(frozen=True)
 class HardwareSpec:

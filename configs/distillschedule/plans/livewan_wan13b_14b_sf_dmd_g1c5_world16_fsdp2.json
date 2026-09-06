@@ -1,0 +1,129 @@
+{
+  "schema_version": "1",
+  "id": "livewan-wan13b-14b-sfdmd-g1c5-world16-fsdp2",
+  "workload": {
+    "name": "livewan-wan13b-from-wan14b-sfdmd-full5",
+    "adapter": "livewan-sfdmd",
+    "generator": {
+      "name": "student",
+      "family": "wan2.1",
+      "size": "1.3B",
+      "role": "generator",
+      "checkpoint": "${ENV:LIVEWAN_STUDENT_CHECKPOINT}",
+      "precision": "fp32",
+      "adapter": {"kind": "none", "rank": 0, "trainable": false}
+    },
+    "score": {
+      "name": "fake-score",
+      "family": "wan2.1",
+      "size": "1.3B",
+      "role": "critic",
+      "checkpoint": "${ENV:LIVEWAN_CRITIC_CHECKPOINT}",
+      "precision": "bf16",
+      "adapter": {"kind": "lora", "rank": 32, "trainable": true}
+    },
+    "teacher": {
+      "name": "real-score",
+      "family": "wan2.1",
+      "size": "14B",
+      "role": "teacher",
+      "checkpoint": "${ENV:LIVEWAN_TEACHER_CHECKPOINT}",
+      "precision": "bf16",
+      "adapter": {"kind": "none", "rank": 0, "trainable": false}
+    },
+    "shape": {
+      "batch_size": 16,
+      "frames": 21,
+      "resolution": [368, 640],
+      "latent": {"channels": 16, "frames": 21, "height": 46, "width": 80},
+      "text_tokens": 512
+    },
+    "schedule": {
+      "generator_update_every": 5,
+      "critic_update_every": 1,
+      "ema_update_every": 8,
+      "ema_start_step": 0,
+      "ema_bootstrap_before_start": false,
+      "ema_generator_only_after_start": false,
+      "ema_after_critic": true
+    },
+    "branches": {
+      "dmd": true,
+      "gan": false,
+      "reward": false,
+      "vae_decode": false,
+      "ema": false,
+      "classifier_free_guidance": true
+    },
+    "metadata": {
+      "livewan_commit": "1eabf43c777bc5b2816926ca998cd4e4c2dfa3d5",
+      "wan21_commit": "9737cba9c1c3c4d04b33fcad41c111989865d315",
+      "global_batch": 16,
+      "full5": "step0_G_plus_C_then_steps1_4_C_only",
+      "world_choices": [3, 6, 9],
+      "block_frames": 3,
+      "steps_per_block": 4,
+      "grad_blocks": 3,
+      "guidance": 5.0,
+      "sigma_distribution": "shifted_uniform_continuous_0.02_0.98_shift5",
+      "t_min": 0.02,
+      "t_max": 0.98,
+      "roll_depth": 0,
+      "ema_timing": "separate_not_in_full5"
+    }
+  },
+  "hardware": {
+    "nodes": 2,
+    "local_world_size": 8,
+    "world_size": 16,
+    "gpu_memory_gib": 40,
+    "node_memory_gib": 760,
+    "reserve_gib": 0,
+    "device_type": "cuda"
+  },
+  "rank_groups": [
+    {"name": "generator", "ranks": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], "components": ["generator"]},
+    {"name": "score", "ranks": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], "components": ["score", "critic"]},
+    {"name": "teacher", "ranks": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], "components": ["teacher"]}
+  ],
+  "training_backends": {
+    "generator": {"kind": "fsdp", "parameter_offload": "none", "optimizer_offload": "none", "gradient_checkpointing": true, "options": {"reshard_after_forward": false}},
+    "score": {"kind": "native", "parameter_offload": "none", "optimizer_offload": "none", "gradient_checkpointing": true},
+    "teacher": {"kind": "fsdp", "parameter_offload": "none", "optimizer_offload": "none", "gradient_checkpointing": false, "options": {"reshard_after_forward": true}}
+  },
+  "rollout": {"engine": "native", "protocol": "in_process", "exact_version": true, "max_version_staleness": 0},
+  "lifecycle": {
+    "split_modulation": false,
+    "activation_offload": {"enabled": false, "threshold_mib": 0, "components": []},
+    "frozen_block_streaming": {"enabled": false},
+    "construction_wave_size": 0,
+    "swap_wave_size": 0,
+    "prefetch_distance": 0,
+    "trim_host_after_move": true,
+    "phase_resident_critic_generator": false,
+    "critic_phase_offload_generator_lp_state": false,
+    "metadata": {"model_redistribution": false}
+  },
+  "evidence": {
+    "run_id": "${ENV:DISTILLSCHEDULE_RUN_ID:-livewan-crossscale-baseline}",
+    "output_dir": "${ENV:DISTILLSCHEDULE_OUTPUT_DIR:-../../../artifacts/runs/livewan-crossscale-baseline}",
+    "start_step": 0,
+    "steps": 5,
+    "instrumentation": "timing",
+    "semantic_assertions": true,
+    "operation_trace": "${ENV:LIVEWAN_OPERATION_TRACE}",
+    "checkpoint": "${ENV:LIVEWAN_SYSTEMS_BOOTSTRAP}",
+    "metadata": {"initial_versions": {"generator": 0, "critic": 0, "ema": 0}}
+  },
+  "legacy": {
+    "config_path": "livewan_wan13b_14b_sf_dmd_g1c5_world16_fsdp2.json",
+    "entrypoint": "../../../scripts/distillschedule/livewan_crossscale_entrypoint.py",
+    "python_executable": "${ENV:DISTILLSCHEDULE_PYTHON:-python}",
+    "cwd": "${ENV:DMD_SYSTEM_ROOT:-../../..}"
+  },
+  "metadata": {
+    "execution_mode": "baseline",
+    "claim": "single sequential FSDP2 denominator",
+    "formal_speedup_denominator": true
+  }
+}

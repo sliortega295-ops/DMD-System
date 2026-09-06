@@ -1,0 +1,16 @@
+{
+  "include": ["livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8.json"],
+  "id": "livewan-wan13b-14b-sfdmd-g1c5-world16-pipeline8x8-runahead",
+  "metadata": {
+    "pool_policy": "persistent_8g_8score_teacher_fsdp8_runahead",
+    "generator_nograd_runahead": true,
+    "runahead_buffers_per_generator_rank": 2,
+    "runahead_steps": [1, 2, 3, 4]
+  },
+  "lifecycle": {
+    "metadata": {
+      "cross_step_overlap": "generator_step_k_plus_1_rollout_with_critic_step_k",
+      "bounded_pending_p2p_per_generator_rank": 2
+    }
+  }
+}

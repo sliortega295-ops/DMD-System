@@ -1,0 +1,27 @@
+name: helios-compat-source
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  source-integrity:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Check recovered bytes, syntax, and local import providers
+        run: python scripts/distillschedule/verify_helios_compat_source.py --output source-receipt.json
+      - name: Exercise fail-closed source checks without model imports
+        run: python -m unittest discover -s tests -p test_refactor_helios_compat_source.py -v
+      - uses: actions/upload-artifact@v4
+        with:
+          name: helios-source-receipt-py${{ matrix.python-version }}
+          path: source-receipt.json
+          if-no-files-found: error

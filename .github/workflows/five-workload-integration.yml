@@ -1,0 +1,53 @@
+name: five-workload-integration
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Preserve exact recovery source for integration audit
+        if: matrix.python-version == '3.11' && github.head_ref == 'agent/integrate-five-workload-winners-20260905'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/integration-source
+          git fetch --no-tags origin b191f0b8bcb16b075b5456b0a35f22eb75f1435e
+          git archive --format=zip b191f0b8bcb16b075b5456b0a35f22eb75f1435e > /tmp/integration-source/recovery.zip
+          git ls-tree -r -l b191f0b8bcb16b075b5456b0a35f22eb75f1435e > /tmp/integration-source/recovery-tree.txt
+          git archive --format=zip HEAD > /tmp/integration-source/source.zip
+          git rev-parse HEAD > /tmp/integration-source/head.txt
+          git update-ref refs/heads/audit-recovery b191f0b8bcb16b075b5456b0a35f22eb75f1435e
+          git bundle create /tmp/integration-source/recovery.bundle --all
+      - uses: actions/upload-artifact@v4
+        if: matrix.python-version == '3.11' && github.head_ref == 'agent/integrate-five-workload-winners-20260905'
+        with:
+          name: integration-recovery-${{ github.event.pull_request.head.sha }}
+          path: /tmp/integration-source/
+          retention-days: 7
+          if-no-files-found: error
+      - name: Verify recovered Helios source
+        run: |
+          python scripts/distillschedule/verify_helios_compat_source.py
+          python -m unittest discover -s tests -p test_refactor_helios_compat_source.py -v
+      - name: Required integration acceptance (missing files are failures)
+        run: |
+          test -f scripts/distillschedule/check_best_known_integration.py
+          test -f configs/distillschedule/best_known/registry.lock.json
+          python scripts/distillschedule/check_best_known_integration.py

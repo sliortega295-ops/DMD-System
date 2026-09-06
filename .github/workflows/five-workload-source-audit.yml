@@ -1,0 +1,74 @@
+name: five-workload-source-audit
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/five-workload-source-audit.yml
+permissions:
+  contents: read
+jobs:
+  source-audit:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'agent/integrate-five-workload-winners-20260905'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+      - name: Export pinned source snapshots and ancestry without executing source code
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import io, json, pathlib, subprocess, tarfile, zipfile
+          main='6be2b4278cc21740f3005b8e9df8c8292dbe25b1'
+          sources={
+            'main':(main,main),
+            'wan':('631bc082c819d0728059e96663cdf31cd66d5b0b','67b2880901abece947732ba5de45a5c2685ab274'),
+            'helios':('9c53d8e75b0981a3a9299e4f3bec2819ea105013','ad9e16b83800463c069e87b562f2d07a41bbeab3'),
+            'gan':('a78827099c89795416f9ac6c77284dd5bacb0383','d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d'),
+            'livewan':('54351707288c8d8a8d2efd789ece708852a07033','c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b')}
+          def git(*a,check=True):
+            p=subprocess.run(['git',*a],stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=check)
+            return p.stdout
+          heads=sorted({s for pair in sources.values() for s in pair})
+          git('fetch','--no-tags','--unshallow','origin',*heads)
+          git('remote','add','h3-audit','https://github.com/sliortega295-ops/H3-DMD-for-A100.git')
+          git('fetch','--no-tags','h3-audit','9100ec51cf741e9f01a836a8428a28a3d81838ec')
+          sources['h3']=('9100ec51cf741e9f01a836a8428a28a3d81838ec','cfecbb4188e1f3820451657f744aa2c823e24da4')
+          out=pathlib.Path('source-audit');out.mkdir()
+          summaries={}
+          with zipfile.ZipFile(out/'pinned-sources.zip','w',zipfile.ZIP_DEFLATED) as z:
+            for name,(head,tested) in sources.items():
+              tree=git('ls-tree','-r','-l',head).decode()
+              paths=[]
+              for row in tree.splitlines():
+                meta,path=row.split('\t',1);mode,kind,sha,size=meta.split()
+                if kind!='blob' or int(size)>1500000:continue
+                p=pathlib.PurePosixPath(path)
+                if p.suffix in {'.py','.sh','.json','.yaml','.yml','.toml','.md','.txt','.patch','.ini','.cfg'} or p.name in {'LICENSE','NOTICE','.gitmodules','.gitignore','Makefile'}:
+                  if '/raw/' not in path and '/logs/' not in path and not path.startswith('artifacts/runs/'):
+                    paths.append(path)
+              archive=git('archive',head,'--',*paths)
+              with tarfile.open(fileobj=io.BytesIO(archive)) as t:
+                for m in t:
+                  if m.isfile():z.writestr(name+'/'+m.name,t.extractfile(m).read())
+              mb=git('merge-base',main,head,check=False).decode().strip()
+              summaries[name]={'head':head,'tested':tested,'merge_base':mb or 'UNRELATED_REPOSITORY','text_files':len(paths)}
+              z.writestr('audit/'+name+'-tree.txt',tree)
+              z.writestr('audit/'+name+'-log.txt',git('log','--reverse','--format=%H %s',main+'..'+head))
+              z.writestr('audit/'+name+'-tested-diff.patch',git('diff',tested,head))
+              z.writestr('audit/'+name+'-main-diff-stat.txt',git('diff','--stat',main,head))
+              if mb:
+                z.writestr('audit/'+name+'-range-diff.txt',git('range-diff',mb+'..'+tested,mb+'..'+head,check=False))
+                z.writestr('audit/'+name+'-main-code.patch',git('diff',main,head,'--','src','runtime','scripts','configs','tests','pyproject.toml','.gitmodules'))
+            z.writestr('audit/identities.json',json.dumps(summaries,indent=2))
+          print(json.dumps(summaries,indent=2))
+          print('GPU/server execution: NOT_RUN_ON_INTEGRATION_BRANCH')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: five-workload-pinned-source-audit
+          path: source-audit/pinned-sources.zip
+          retention-days: 7
+          if-no-files-found: error

@@ -53,3 +53,5 @@ artifacts/g_offload_search/**
 .env-distillschedule/
 *.nsys-rep
 *.sqlite
+
+.pytest_cache/

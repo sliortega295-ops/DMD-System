@@ -1,0 +1,719 @@
+{
+  "schema_version": "distillschedule.helios_compat_source.v1",
+  "snapshot_id": "helios_a100_compat_5d3ffe37",
+  "source_git_commit": "8b15dede4449ea0363600ab82a0db719d054a732",
+  "source_git_commit_public_before_recovery": false,
+  "upstream_project": "https://github.com/PKU-YuanGroup/Helios",
+  "upstream_license": "Apache-2.0",
+  "upstream_commit": "UNRESOLVED_SYNTHETIC_COMPATIBILITY_HISTORY",
+  "integration_parent_commit": "dffa5c4a1b1b699f30146673720dd21101e3ee90",
+  "integration_source_root": "source",
+  "historical_reference_root": "reference",
+  "expected_transformer_sha256": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
+  "content_tree_sha256": "0d21cad0e2bb6bea7a5bf38cc467f3dcb08eb2986f4746765d4315ff00fe14d4",
+  "file_count": 83,
+  "total_bytes": 1799673,
+  "files": [
+    {
+      "path": "LICENSE.txt",
+      "source_path": "LICENSE.txt",
+      "source_git_blob": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "bytes": 11357,
+      "usage": "license"
+    },
+    {
+      "path": "reference/requirements.txt",
+      "source_path": "requirements.txt",
+      "source_git_blob": "c72a793365058a546c74727f6eb91d6b0c083148",
+      "sha256": "1ca87815f6b77dc284e927e04ad55cc8af8dc9c05e3948e7b51c4149a1ac4e4e",
+      "bytes": 515,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/__init__.py",
+      "source_path": "runtime/__init__.py",
+      "source_git_blob": "c878880902bbca71a3d7e9b0386638cd0d41a538",
+      "sha256": "d35fad499ffd2187ee4a6aa931d7fd62e0f4c32c9717531b58cea4f4fa4f4592",
+      "bytes": 1638,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/activation_offload.py",
+      "source_path": "runtime/activation_offload.py",
+      "source_git_blob": "e669f2c34a4526122327f4e2e0d8851e0acab24c",
+      "sha256": "f2d907f494228f195818c88446f1c226941d9de15dde709974475df762a368ec",
+      "bytes": 14457,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/chunked_lora.py",
+      "source_path": "runtime/chunked_lora.py",
+      "source_git_blob": "3b935c9c8ea730e3c70f7b7a72bb2051dc9e9cb9",
+      "sha256": "a08a5428d1dc4411f4581f38540735cc5b994a47bd1a0e3ded22c476c698674f",
+      "bytes": 11027,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/critic_pool.py",
+      "source_path": "runtime/critic_pool.py",
+      "source_git_blob": "ce467c43243c3eae624a06ef43bd5ef9998448db",
+      "sha256": "fea6ae113d4f4ecf8604bc7d51150e045df3a692b7b7875db6fa7794f6df6356",
+      "bytes": 24540,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/critic_pool_checkpoint.py",
+      "source_path": "runtime/critic_pool_checkpoint.py",
+      "source_git_blob": "d6d05f1607d6b63351a77b13bf9633eebc03838d",
+      "sha256": "2587e5c5859d8e809190376f5e6876a1a7afa6404f6c4a5bd013f0a1df67d540",
+      "bytes": 7259,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/critic_pool_helios.py",
+      "source_path": "runtime/critic_pool_helios.py",
+      "source_git_blob": "fc72c077483934946c018f3c1abe08627de12457",
+      "sha256": "53368bb100dc4fc4fb0fc573a7dea94359acd9eaf5a63ac216d1afdae5b8323a",
+      "bytes": 18447,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/critic_pool_trace.py",
+      "source_path": "runtime/critic_pool_trace.py",
+      "source_git_blob": "4fbbe706d39892e3327d5a22390fd289b4ccdef0",
+      "sha256": "186e4ae9343d93a3449f4ffb68b80ae99b68e1d29b81b9aa0a089aad89fdc76e",
+      "bytes": 14814,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/critic_pool_transport.py",
+      "source_path": "runtime/critic_pool_transport.py",
+      "source_git_blob": "cbd0dc922e2a65888b7dab3c75827cbe57bcb992",
+      "sha256": "1712b9e075412c7b927968c3b9eaa66d17613a061fe08fec0f27e7ff9f76795a",
+      "bytes": 9352,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/deepspeed_backend.py",
+      "source_path": "runtime/deepspeed_backend.py",
+      "source_git_blob": "8b95a352e31e30c2aadfcb790b44adcc17b1fc6b",
+      "sha256": "15887878db8419d6d326fdd72ee41e3f8de5fcd47bd40c23270decf0e6d9c77e",
+      "bytes": 3864,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/deepspeed_phase_state.py",
+      "source_path": "runtime/deepspeed_phase_state.py",
+      "source_git_blob": "a1a7da2d7ee0cc4de980fa076598c21ce15a63cf",
+      "sha256": "252e3cb847d030da7cea65448300643ac7d494784d2039cafd44539aa320e635",
+      "bytes": 11364,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/dmd_boundary.py",
+      "source_path": "runtime/dmd_boundary.py",
+      "source_git_blob": "2385a7d7ec1e5199fa175a7052c0ca3a8a454e6a",
+      "sha256": "ce3d1b646228bff7f8daa2f878168cdaf79ef54f573c42c622869c0787d5997f",
+      "bytes": 7172,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/ema.py",
+      "source_path": "runtime/ema.py",
+      "source_git_blob": "de3bed384279c2a5bc6a37f6bc740f76ae765c0f",
+      "sha256": "c393973e0503a2ec7a7bb05ed5ccb1a2ecb3cf82964ad224c21df745575dc243",
+      "bytes": 4587,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/frequency.py",
+      "source_path": "runtime/frequency.py",
+      "source_git_blob": "33c8b1e04283308ed89c62c88ab97cd10f1629fd",
+      "sha256": "86fc0a45dc8770b404fc59d5d2f72b156d9221f204f40b3073d69c1db1b30e52",
+      "bytes": 1326,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/fresh_init_rng.py",
+      "source_path": "runtime/fresh_init_rng.py",
+      "source_git_blob": "5d57e2e955ed99cc00589805650a390840496f24",
+      "sha256": "e1e314239941544ba61415b871af5aa0d62f9307e9b4ef312b66b1fc2acaa04d",
+      "bytes": 1311,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/frozen_block_streaming.py",
+      "source_path": "runtime/frozen_block_streaming.py",
+      "source_git_blob": "096c8a5aab3105b82e34cc468ce694ec1339b511",
+      "sha256": "7446342c54bed3ba4d6da6037794cd1705b236c8456808adc98798ac1df396e1",
+      "bytes": 49090,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/gan_rolephase_node1.py",
+      "source_path": "runtime/gan_rolephase_node1.py",
+      "source_git_blob": "1c2dd67922bed6a0943c6acb5892dd2d0dc31c32",
+      "sha256": "bf40dbc4e01221c77f3f162c354df1a227ac9d11f16afe94b2cc3f6a173f7f78",
+      "bytes": 6930,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/generator_update_gate.py",
+      "source_path": "runtime/generator_update_gate.py",
+      "source_git_blob": "38cdb3b9b88e581b8c44eea982ccecc95e2ec720",
+      "sha256": "4b80af3571f78b5af36b021b3618960cd98c51ff82cf5dd70951264c1e613085",
+      "bytes": 10036,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/host_admission.py",
+      "source_path": "runtime/host_admission.py",
+      "source_git_blob": "6b8b45af319423af00ea13f8fe7e7c8d7b63cdee",
+      "sha256": "8d29a8764b1125edea5d4496ab097c0d854500b242c7c441a56d7b26e159ebc6",
+      "bytes": 11651,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/immutable_model_backing.py",
+      "source_path": "runtime/immutable_model_backing.py",
+      "source_git_blob": "2b1d4cfeecccb7cdf69ca4bcd1f1f172c6700b20",
+      "sha256": "d45171cb57186a24bd1c2462ac5e8aab764c7b0fd2e5f3aa262e83ec2b62f4f6",
+      "bytes": 29371,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/ir.py",
+      "source_path": "runtime/ir.py",
+      "source_git_blob": "5b7a5a20a7bbb6b7473687af4962ae78e2f744b9",
+      "sha256": "7bec5082d5f6943d2c7e26b31664f9985960f4e708088c20d7e6016be55c249b",
+      "bytes": 10402,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/lifecycle_profile.py",
+      "source_path": "runtime/lifecycle_profile.py",
+      "source_git_blob": "28e2ac00ca8b92c8871815ec40701d5ae1aabcd0",
+      "sha256": "b820543ac58ffb43cfd2724a4276e104d359c71eb0d9d34da8b24f9894a894cf",
+      "bytes": 35827,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/m0_timing.py",
+      "source_path": "runtime/m0_timing.py",
+      "source_git_blob": "8a08a6cad72cbf07dd06872d4bb6556f527aefb9",
+      "sha256": "c163dc79b701565ad294eea0f2d0706aa65830f01f58e33778c09cf278225038",
+      "bytes": 3463,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/m1_action_library.py",
+      "source_path": "runtime/m1_action_library.py",
+      "source_git_blob": "ded0f73803e6a01aa25e6532cb07e18e4c14a6ab",
+      "sha256": "17ec1ab8371fd57d3703880fe499a372dd4a53fe3e05beb6e3d5f3b3d122e6c5",
+      "bytes": 3529,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/official_baseline.py",
+      "source_path": "runtime/official_baseline.py",
+      "source_git_blob": "83ea064b088007b73d867932041dbbe5bed2b628",
+      "sha256": "fa8533e2d22ef7d0344463350dba861cc4efa2966ff0245a3c4d55347788db72",
+      "bytes": 58714,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/operation_trace.py",
+      "source_path": "runtime/operation_trace.py",
+      "source_git_blob": "a97ac9e0a2c1a163d44c30b3a0e3426bf3c905b2",
+      "sha256": "11a38fe7c3d53693dcbf839b7cdd039b47ae55ed2c0536420cb76af8ae49fa2b",
+      "bytes": 20854,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/planner.py",
+      "source_path": "runtime/planner.py",
+      "source_git_blob": "c18c6658bb9c2df7cc50afafc999a0982c556f4b",
+      "sha256": "62ae6dad6d1dd0ce5fb2bfbf3b813033c3b0233f6996259489900d7c7de00ca5",
+      "bytes": 7605,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/precast_checkpoint.py",
+      "source_path": "runtime/precast_checkpoint.py",
+      "source_git_blob": "281ddd042f8e5399a45ee5ef9c9995317893df08",
+      "sha256": "c252726182c614fa5ca99ebf5f266a3f8aa2637322dda51718075e12aa71f5d5",
+      "bytes": 21536,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/residency.py",
+      "source_path": "runtime/residency.py",
+      "source_git_blob": "ac51583b1a419c1ccf4cde881a1a99e6e72f38c8",
+      "sha256": "292c156c3e3ac09ad2b24f2f4c9682df9ab5abdfa0bf1cbd4af06ba811645e03",
+      "bytes": 13284,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/rollout_trace.py",
+      "source_path": "runtime/rollout_trace.py",
+      "source_git_blob": "7433f5c01e5b2536ded90f9ebc1e9d503f9c121f",
+      "sha256": "4c776d5e76d503bb747d714fe3e5026d9781d4f36c2146458affe793ff4dad9f",
+      "bytes": 10400,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/safe_tiled_ffn.py",
+      "source_path": "runtime/safe_tiled_ffn.py",
+      "source_git_blob": "94ba390468aea68075424dbd29db1504b1db4bf2",
+      "sha256": "037aa86dac4be9dac5ef097caf8631612160a1a25ea8dcc77aca5edefc9c531c",
+      "bytes": 14556,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/source_batch.py",
+      "source_path": "runtime/source_batch.py",
+      "source_git_blob": "cc7231b3cfbe07d47b494ab577db998eeaa4dbc0",
+      "sha256": "37e33dcbd109d980594f2381190e2a5b16de1337a18ec0a0239bf41f96894906",
+      "bytes": 5136,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/trace.py",
+      "source_path": "runtime/trace.py",
+      "source_git_blob": "b37be50d508687a6e2a25ac820afea1dcd7f3654",
+      "sha256": "7f71093af5fcebc15b0b1709575cea6610d1139b1bfeaa4c28b570715cbcb686",
+      "bytes": 11475,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/wavefront.py",
+      "source_path": "runtime/wavefront.py",
+      "source_git_blob": "8e633a0dc4782c1b773d298c6dcd2183bfb2d3a7",
+      "sha256": "d099971a531695f8cf217549af1f272491a6f180fb4df8021f0d94fad0a61b76",
+      "bytes": 25277,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/workloads/__init__.py",
+      "source_path": "runtime/workloads/__init__.py",
+      "source_git_blob": "3da0d2e9037b553ee9ff65a4372a5847c48f0285",
+      "sha256": "d6ee4b5f8c9c689e9a7164253d011b5463ff9ad9ed8705e80cd52d5d729009dc",
+      "bytes": 795,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/workloads/image_dmd2.py",
+      "source_path": "runtime/workloads/image_dmd2.py",
+      "source_git_blob": "70431d70a2e4bd8eda658af4f10d211971c8f21e",
+      "sha256": "ea8e3227f212971b5565d91b8f63c0f31dec7dcdaf4cd1443278060366b04ed1",
+      "bytes": 22915,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/workloads/mini_distill.py",
+      "source_path": "runtime/workloads/mini_distill.py",
+      "source_git_blob": "21d63a799e410a43aa0ddb6c3ad30cacdf7f9f8b",
+      "sha256": "e40bdc2096e1c4a8c0d1987f9773f858533240f47c6f8a9791947e0b984ad4a9",
+      "bytes": 53038,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/workloads/split_distill.py",
+      "source_path": "runtime/workloads/split_distill.py",
+      "source_git_blob": "c57c05baed2860b687841c43d6dc29425db81d3b",
+      "sha256": "323268b5fbd1b64e8aeeeb3bbc117b8705c5a9e0e31c23cbd2f85ced64da7815",
+      "bytes": 14689,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/zero3_checkpoint.py",
+      "source_path": "runtime/zero3_checkpoint.py",
+      "source_git_blob": "1fe9224974be7916beffb83ba62b7c37c5f7ffb3",
+      "sha256": "5143a370bdb149b0ee5396f5d2e7835e79066d056cb6ebb40de2d0375b087715",
+      "bytes": 1931,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/runtime/zero_partition.py",
+      "source_path": "runtime/zero_partition.py",
+      "source_git_blob": "4975dd007b05d2efbdc44c84e07264e69a0f25bc",
+      "sha256": "c967179578c5615eed57f3a67347b908901fb08dccaaec469a301288fdcf2f5e",
+      "bytes": 537,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "reference/train_helios.py",
+      "source_path": "train_helios.py",
+      "source_git_blob": "7dcb77bbc135c55707d85e286105b731d5b8670c",
+      "sha256": "f1dd9c3076e737aa1e578cc47e50c14ba8fa4a7623141dd7d8258c36e4534993",
+      "bytes": 219675,
+      "usage": "historical_reference_only"
+    },
+    {
+      "path": "source/helios/__init__.py",
+      "source_path": "helios/__init__.py",
+      "source_git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/dataset/__init__.py",
+      "source_path": "helios/dataset/__init__.py",
+      "source_git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/dataset/dataloader_dmd.py",
+      "source_path": "helios/dataset/dataloader_dmd.py",
+      "source_git_blob": "dccb43b57f3932b90e1dbe4e1d407f5001f53f90",
+      "sha256": "a9dd6b69e49b2c5e11684f2fd2275d158c475fe1ca23f9d670291b8878cfb7b4",
+      "bytes": 20708,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/dataset/dataloader_history_latents_dist.py",
+      "source_path": "helios/dataset/dataloader_history_latents_dist.py",
+      "source_git_blob": "f53ca5ee7a429c899ca48fc9baa0df0f24e0e72c",
+      "sha256": "2b6a36f3aae0428a44e77538802a39cab364c24545ea011a48f7731997f1e1a5",
+      "bytes": 26937,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/dataset/dataloader_mp4_dist.py",
+      "source_path": "helios/dataset/dataloader_mp4_dist.py",
+      "source_git_blob": "8fc7529d39bdde6e8cdb58adeb427fc54c4f013a",
+      "sha256": "f07de7c23ad164ada723f9228214256b991874d40b88bc00b33ab1e624397020",
+      "bytes": 31278,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/diffusers_version/__init__.py",
+      "source_path": "helios/diffusers_version/__init__.py",
+      "source_git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/diffusers_version/pipeline_helios_diffusers.py",
+      "source_path": "helios/diffusers_version/pipeline_helios_diffusers.py",
+      "source_git_blob": "4115291297ec1f505317186b07a75823bc6dd49a",
+      "sha256": "679f3993a9bdd0cce66915dc24f2232fc1ce98bf293d8904e45b211765a202c6",
+      "bytes": 63915,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/diffusers_version/scheduling_helios_diffusers.py",
+      "source_path": "helios/diffusers_version/scheduling_helios_diffusers.py",
+      "source_git_blob": "e6c1ad2279a242e31f3781461cf9f31935e6b43b",
+      "sha256": "8b49198dd067429b571f2c7ba9e784b0237bc956d58e55dd2ad9e772d754f372",
+      "bytes": 36292,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/diffusers_version/transformer_helios_diffusers.py",
+      "source_path": "helios/diffusers_version/transformer_helios_diffusers.py",
+      "source_git_blob": "aec1d755e2a3d2407d6807fce7aab66626a6aef8",
+      "sha256": "4a612254f4586553eadcd91eea6be8f184479b44b72b703371338c75a069cc34",
+      "bytes": 34708,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/modules/__init__.py",
+      "source_path": "helios/modules/__init__.py",
+      "source_git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/modules/helios_kernels/__init__.py",
+      "source_path": "helios/modules/helios_kernels/__init__.py",
+      "source_git_blob": "d1dbec84f900cd6910d5fe6d0de817f64026c1a1",
+      "sha256": "17d3f1b8b439a87c4d7c5ac4edff87706d38e66d30fbac926559620c937000a3",
+      "bytes": 304,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/modules/helios_kernels/attention_dispatch.py",
+      "source_path": "helios/modules/helios_kernels/attention_dispatch.py",
+      "source_git_blob": "1fd606ca2212a81123e173e8af5944d88a9e9f6d",
+      "sha256": "090e0cf5894eb3d57d6bbb609b5346ba909ea3a9422be8e3abc49f89518f6daf",
+      "bytes": 6498,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/modules/helios_kernels/fp32_rmsnorm.py",
+      "source_path": "helios/modules/helios_kernels/fp32_rmsnorm.py",
+      "source_git_blob": "51d565ffb96534d190714e17922652499f682bb0",
+      "sha256": "9d751659731882c9f456c51a37d9f738892a4eb4058c742b71c0e05a7dad4a95",
+      "bytes": 1511,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/modules/helios_kernels/tiled_linear.py",
+      "source_path": "helios/modules/helios_kernels/tiled_linear.py",
+      "source_git_blob": "3f2572fabb3a0cddd597dd75ed6c762e1bca2a03",
+      "sha256": "3dab1f319d1420efe853d91a122062fae904572cedb4a86216c1555f13f87f6d",
+      "bytes": 14177,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/modules/helios_kernels/triton_norm.py",
+      "source_path": "helios/modules/helios_kernels/triton_norm.py",
+      "source_git_blob": "7487b1a1ff244738a6a7b8130d280550e1b94cc1",
+      "sha256": "25b8bc708e0b7c1f41d49b27e2a645817fb603423390d8d83a689c8777501cb7",
+      "bytes": 12325,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/modules/helios_kernels/triton_rope.py",
+      "source_path": "helios/modules/helios_kernels/triton_rope.py",
+      "source_git_blob": "6daa822c00df99756b887103aaddc7fd5b5d57bb",
+      "sha256": "51d7a6e582110cf7bedd582edef4b74bba0583d0956d7e868834efcc7c01e8d7",
+      "bytes": 13526,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/modules/helios_kernels/utils.py",
+      "source_path": "helios/modules/helios_kernels/utils.py",
+      "source_git_blob": "aa5d395cbf611d6b189a5725a8a40b55c6e183ef",
+      "sha256": "15de578a865a5af5aae0d28c627394e54de04cc5aa934f8ba3da4d185eb2da82",
+      "bytes": 1655,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/modules/transformer_helios.py",
+      "source_path": "helios/modules/transformer_helios.py",
+      "source_git_blob": "be001e0284d336c92a502623fabd28b3f0fc9c46",
+      "sha256": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
+      "bytes": 115651,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/pipelines/__init__.py",
+      "source_path": "helios/pipelines/__init__.py",
+      "source_git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/pipelines/pipeline_helios.py",
+      "source_path": "helios/pipelines/pipeline_helios.py",
+      "source_git_blob": "3f011352d659acce0ac3a88b4ad8ce5228469ce5",
+      "sha256": "da8b8e21773067656cc2c31bc37d8549a37e5c6a5a622b572c3bdf9e4136d8e0",
+      "bytes": 72734,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/pipelines/pipeline_helios_ode.py",
+      "source_path": "helios/pipelines/pipeline_helios_ode.py",
+      "source_git_blob": "2af787661753475ef4484a589fa9b23c992b7517",
+      "sha256": "c31d066530878138195bf71fe5dc34d7245d2a40389c28da5f08b40262b329b3",
+      "bytes": 71842,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/pipelines/pipeline_output.py",
+      "source_path": "helios/pipelines/pipeline_output.py",
+      "source_git_blob": "08546289ef4c0739916c3106b8d9e6a93120d64a",
+      "sha256": "985b670cbb024986be19a0d303244e8d317378d2501a656d9205d63beece2e8b",
+      "bytes": 611,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/scheduler/__init__.py",
+      "source_path": "helios/scheduler/__init__.py",
+      "source_git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/scheduler/scheduling_helios.py",
+      "source_path": "helios/scheduler/scheduling_helios.py",
+      "source_git_blob": "b4831b9e9405e9d41d7fdae73eb1640d04d0a373",
+      "sha256": "30f5dea16ec0f9b247ef935044ca60811473c479fa5302dae89fa2a3553e929d",
+      "bytes": 41508,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/utils/__init__.py",
+      "source_path": "helios/utils/__init__.py",
+      "source_git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/utils/create_ema_zero3.py",
+      "source_path": "helios/utils/create_ema_zero3.py",
+      "source_git_blob": "7b9b271a5aed1bbfc6060ca34314946e23989120",
+      "sha256": "bf7feaf8407f2f77a8ed5c6501b271713f77bd16b93fed943a9f2ff205c0e2fb",
+      "bytes": 17045,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/utils/create_ema_zero3_lora.py",
+      "source_path": "helios/utils/create_ema_zero3_lora.py",
+      "source_git_blob": "8974336b4aadbfae9cdcc9c824040c9aaf94e53e",
+      "sha256": "8690345334d1be26e57c8f8c57e2b6f5b35944abf8f4317016f0e3a00ef95959",
+      "bytes": 12776,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/utils/train_config.py",
+      "source_path": "helios/utils/train_config.py",
+      "source_git_blob": "ed1e35922844061567dbae0a9c094282407d3107",
+      "sha256": "610f3301bc5e72114e4032bbfb39a27ebe997509c78c49ed8934026041e8989a",
+      "bytes": 19876,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/utils/utils_base.py",
+      "source_path": "helios/utils/utils_base.py",
+      "source_git_blob": "b41db36efcc554e7caca824a74e1e1666b98d1a4",
+      "sha256": "efacaacacaa1e51e70a92040e8fc0c584b382b80df2cae85c37be9d833e990c7",
+      "bytes": 30093,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/utils/utils_helios_base.py",
+      "source_path": "helios/utils/utils_helios_base.py",
+      "source_git_blob": "f74c853fc3ae73ab2fc16cece89e4767b67c8c7e",
+      "sha256": "ebd2dcb3bff01d807ae2a27b141a0e3ba8ea929d2c63e6440faab6379e69ea4a",
+      "bytes": 44991,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/utils/utils_helios_post.py",
+      "source_path": "helios/utils/utils_helios_post.py",
+      "source_git_blob": "706f6d9608e692bdd19f0c8d2d3dc4257f1074d4",
+      "sha256": "e3ff9e5f8bf025ee740e436bc0c209c972f1e56eb0236b968fe6bd8284107004",
+      "bytes": 184631,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/utils/utils_recycle_batch.py",
+      "source_path": "helios/utils/utils_recycle_batch.py",
+      "source_git_blob": "4f5b9522a264e8c5ccacda6be28829b05283d7dc",
+      "sha256": "b7e97d2fb61720a5ea59f398e026b6abdf8785ab3a3bcfb86fcfe4e7a050e4dc",
+      "bytes": 29913,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/utils/utils_recycle_single.py",
+      "source_path": "helios/utils/utils_recycle_single.py",
+      "source_git_blob": "c9a574008fcd6872482da206f6a5afadf6810137",
+      "sha256": "5a66c32eab4f2db7da14cfacb6b4bba7729408d23cf67a9669f6e45fd80610ea",
+      "bytes": 18678,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/videoalign/__init__.py",
+      "source_path": "helios/videoalign/__init__.py",
+      "source_git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/videoalign/data.py",
+      "source_path": "helios/videoalign/data.py",
+      "source_git_blob": "7f1f314608903b2f5e8704cfef9fdbc6a6a2163c",
+      "sha256": "bd98aa3faa69287843be442bd1daa876a738a2f8ddb8107b77ba91c61b932d5c",
+      "bytes": 10241,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/videoalign/inference.py",
+      "source_path": "helios/videoalign/inference.py",
+      "source_git_blob": "4e6a06c9ab8b62cb2dfe23734e900c3f81bed70d",
+      "sha256": "f04be92df9675ca2314cb6c91cdf8cc1ba1b693dcbf93bc79fe9f1087075e180",
+      "bytes": 14721,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/videoalign/prompt_template.py",
+      "source_path": "helios/videoalign/prompt_template.py",
+      "source_git_blob": "88aca67afe33e3b4f6110178eb93a3440404b7cf",
+      "sha256": "fd07d854843ba7464dabde0b73c88194dba45c57c855f4e23674cd3e7dcbbcec",
+      "bytes": 10643,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/videoalign/train_reward.py",
+      "source_path": "helios/videoalign/train_reward.py",
+      "source_git_blob": "7311aa1a75765a1ef5fb5fcb8fede16a52e1d880",
+      "sha256": "5d09d00df6ab69f809f07d67d991f208f93591a363f875710265eb067dba27d8",
+      "bytes": 3956,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/videoalign/trainer.py",
+      "source_path": "helios/videoalign/trainer.py",
+      "source_git_blob": "9c6d35c848af5bfcd6821bf08d610211126d9521",
+      "sha256": "8c9cb4f1aec2a576686bf8f89803d83d078bb14a8d6b2139f6fc91701107c4e3",
+      "bytes": 6224,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/videoalign/utils.py",
+      "source_path": "helios/videoalign/utils.py",
+      "source_git_blob": "6237c8a2c78a86300087043dbccb5ed888ab8d9c",
+      "sha256": "8fe48427cbe822a2883a949f4d0e330a09d947629ece006dba35c93f2c45c8b6",
+      "bytes": 9311,
+      "usage": "integration_source"
+    },
+    {
+      "path": "source/helios/videoalign/vision_process.py",
+      "source_path": "helios/videoalign/vision_process.py",
+      "source_git_blob": "065db90d4df499410d38dde181b065bd8cea0099",
+      "sha256": "0670e8b5290ec92a470dac2bf3a4622611f34f29db5e8d4dc33503ba2284a036",
+      "bytes": 14648,
+      "usage": "integration_source"
+    }
+  ],
+  "consumer_pins": [
+    {
+      "workload": "wan13b_nogan",
+      "source_commit": "631bc082c819d0728059e96663cdf31cd66d5b0b",
+      "tested_commit": "67b2880901abece947732ba5de45a5c2685ab274",
+      "pin_path": "scripts/distillschedule/launch_wan13b_fair_world16_node.sh",
+      "pin_kind": "launcher_default"
+    },
+    {
+      "workload": "helios14b_nogan",
+      "source_commit": "9c53d8e75b0981a3a9299e4f3bec2819ea105013",
+      "tested_commit": "ad9e16b83800463c069e87b562f2d07a41bbeab3",
+      "pin_path": "src/distillschedule/runtime/helios_modulated_norm_fusion.py",
+      "pin_kind": "kernel_installer_required_sha"
+    },
+    {
+      "workload": "helios14b_gan_c25",
+      "source_commit": "a78827099c89795416f9ac6c77284dd5bacb0383",
+      "tested_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "pin_path": "src/distillschedule/runtime/helios_history_current_fusion.py",
+      "pin_kind": "kernel_installer_required_sha"
+    }
+  ],
+  "validation_scope": {
+    "byte_identity": "PASS",
+    "python_syntax": "PASS",
+    "model_import": "NOT_RUN",
+    "gpu": "NOT_RUN",
+    "historical_helper_identity_vs_every_winner_receipt": "NOT_INDEPENDENTLY_VERIFIED"
+  },
+  "dependency_notes": [
+    "The source/helios package imports runtime.precast_checkpoint and runtime.official_baseline from DMD-System; reference/runtime must not shadow them.",
+    "reference/ preserves the original training entrypoint and complete historical runtime Python sources for inspection only. It is not the five-workload launcher.",
+    "reference/requirements.txt is original historical metadata with mutable upstream requirements, not a reproducible dependency lock and not an install command.",
+    "Model weights, trace bundles, pre-cast checkpoints, FlashAttention binary and environment package identities remain external assets.",
+    "The GAN branch launcher default Transformer SHA is not the C25 kernel-installer SHA. Restore the measured effective override; do not bypass identity checks."
+  ]
+}

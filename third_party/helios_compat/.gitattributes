@@ -1,0 +1,4 @@
+# Preserve recovered Git blob bytes even when a consumer enables autocrlf.
+source/** -text
+reference/** -text
+LICENSE.txt -text
