@@ -1411,7 +1411,16 @@
       "target": "src/distillschedule/evidence/trajectory_coarse.py"
     },
     {
-      "integrated_sha256": "e8af8bafdd1f6dda566b24c56c411395d0a2b82bb7f49458a3c510a9508d09c3",
+      "adaptations": [
+        {
+          "base_integration_head": "51a5bc424e7f560fd270fcd2f50e3f61cf935ab9",
+          "new_integrated_sha256": "07a240fd4946942b6111aa661d33124988a9ec000329521b6c1f4b55413afb30",
+          "previous_integrated_sha256": "e8af8bafdd1f6dda566b24c56c411395d0a2b82bb7f49458a3c510a9508d09c3",
+          "reason": "Restore Wan v2 all-rank numeric sketch/Gloo evidence API and comparator, opt-in only; preserve LiveWan v1 partial-owner defaults and all numerical thresholds.",
+          "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206"
+        }
+      ],
+      "integrated_sha256": "07a240fd4946942b6111aa661d33124988a9ec000329521b6c1f4b55413afb30",
       "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "src/distillschedule/evidence/trajectory_state_sketch.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -1689,7 +1698,16 @@
       "target": "tests/test_refactor_trajectory_coarse.py"
     },
     {
-      "integrated_sha256": "bab95895b4a8e9cd43cd0056037ed045926669a934458e5b8609f538c0a306c6",
+      "adaptations": [
+        {
+          "base_integration_head": "51a5bc424e7f560fd270fcd2f50e3f61cf935ab9",
+          "new_integrated_sha256": "46753ac89736d02826d4fd592caf2e3cf0ff2463c43e0745f88a8cc6b5596995",
+          "previous_integrated_sha256": "bab95895b4a8e9cd43cd0056037ed045926669a934458e5b8609f538c0a306c6",
+          "reason": "Restore Wan v2 all-rank numeric sketch/Gloo evidence API and comparator, opt-in only; preserve LiveWan v1 partial-owner defaults and all numerical thresholds.",
+          "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206"
+        }
+      ],
+      "integrated_sha256": "46753ac89736d02826d4fd592caf2e3cf0ff2463c43e0745f88a8cc6b5596995",
       "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "tests/test_refactor_trajectory_state_sketch.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -1756,7 +1774,16 @@
       "target": "scripts/distillschedule/compare_wan13b_two_cycle_timing.py"
     },
     {
-      "integrated_sha256": "6ac5e764f43c7c7990f48635c474b208896b0e960ac5013ccc08695ca3a4b250",
+      "adaptations": [
+        {
+          "base_integration_head": "51a5bc424e7f560fd270fcd2f50e3f61cf935ab9",
+          "new_integrated_sha256": "f7080e10ff2d95ab965c4f01acaa119f846f9bd344618948c8c3fbfb5483084b",
+          "previous_integrated_sha256": "6ac5e764f43c7c7990f48635c474b208896b0e960ac5013ccc08695ca3a4b250",
+          "reason": "Restore Wan v2 all-rank numeric sketch/Gloo evidence API and comparator, opt-in only; preserve LiveWan v1 partial-owner defaults and all numerical thresholds.",
+          "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206"
+        }
+      ],
+      "integrated_sha256": "f7080e10ff2d95ab965c4f01acaa119f846f9bd344618948c8c3fbfb5483084b",
       "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math.",
       "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
       "source_path": "scripts/distillschedule/probe_wan13b_trajectory_world16.py",
@@ -1765,7 +1792,16 @@
       "target": "scripts/distillschedule/probe_wan13b_trajectory_world16.py"
     },
     {
-      "integrated_sha256": "32730d4add4c56e3491bd24c5afc77d723b34abaaf1a1e52e8f7c025603bf69d",
+      "adaptations": [
+        {
+          "base_integration_head": "51a5bc424e7f560fd270fcd2f50e3f61cf935ab9",
+          "new_integrated_sha256": "0fb49a22280a34335685336c60898e119c6ed307e153fe49304703be9c9aec7d",
+          "previous_integrated_sha256": "32730d4add4c56e3491bd24c5afc77d723b34abaaf1a1e52e8f7c025603bf69d",
+          "reason": "Restore Wan v2 all-rank numeric sketch/Gloo evidence API and comparator, opt-in only; preserve LiveWan v1 partial-owner defaults and all numerical thresholds.",
+          "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206"
+        }
+      ],
+      "integrated_sha256": "0fb49a22280a34335685336c60898e119c6ed307e153fe49304703be9c9aec7d",
       "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math.",
       "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
       "source_path": "scripts/distillschedule/summarize_wan13b_trajectory_world16.py",
@@ -1774,7 +1810,16 @@
       "target": "scripts/distillschedule/summarize_wan13b_trajectory_world16.py"
     },
     {
-      "integrated_sha256": "7b30514245591432ac26b20a0c2879d5987c133b98caf9f168fd055e29f75289",
+      "adaptations": [
+        {
+          "base_integration_head": "51a5bc424e7f560fd270fcd2f50e3f61cf935ab9",
+          "new_integrated_sha256": "10c0c437dbd0502611352ae736e42b8853797b1c6524c554cc5e26e38dc1c4bc",
+          "previous_integrated_sha256": "7b30514245591432ac26b20a0c2879d5987c133b98caf9f168fd055e29f75289",
+          "reason": "Restore Wan v2 all-rank numeric sketch/Gloo evidence API and comparator, opt-in only; preserve LiveWan v1 partial-owner defaults and all numerical thresholds.",
+          "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206"
+        }
+      ],
+      "integrated_sha256": "10c0c437dbd0502611352ae736e42b8853797b1c6524c554cc5e26e38dc1c4bc",
       "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math.",
       "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
       "source_path": "scripts/distillschedule/compare_wan13b_trajectory_world16.py",

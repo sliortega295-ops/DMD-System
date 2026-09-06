@@ -12,7 +12,7 @@ from typing import Any
 
 from distillschedule.evidence.trajectory_coarse import load_trajectory_jsonl
 from distillschedule.evidence.trajectory_state_sketch import (
-    SCHEMA_VERSION as STATE_SKETCH_SCHEMA_VERSION,
+    ALL_RANKS_SCHEMA_VERSION as STATE_SKETCH_SCHEMA_VERSION,
 )
 
 

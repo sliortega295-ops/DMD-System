@@ -305,6 +305,7 @@ def _state_anchor(
                 named_values=rows,
                 samples_per_tensor=16,
                 object_collective_group=evidence_group,
+                verify_all_replicas=True,
             ),
         }
     anchor = {

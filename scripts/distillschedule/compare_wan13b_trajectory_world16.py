@@ -14,7 +14,7 @@ from distillschedule.evidence.trajectory_coarse import (
     write_trajectory_report,
 )
 from distillschedule.evidence.trajectory_state_sketch import (
-    SCHEMA_VERSION as STATE_SKETCH_SCHEMA_VERSION,
+    ALL_RANKS_SCHEMA_VERSION as STATE_SKETCH_SCHEMA_VERSION,
     compare_numeric_state_sketches,
 )
 

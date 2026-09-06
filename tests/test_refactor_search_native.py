@@ -71,6 +71,22 @@ def test_native_worker_dynamic_import_dependencies_exist():
     assert StaticFSDP2Full5NsightRange(variant="no-gan", enabled=False, rank=0, local_rank=0).enabled is False
 
 
+def test_cpu_api_gate_catches_drift_without_executing_model_functions(tmp_path):
+    import importlib.util
+    gate_path = ROOT / "scripts/distillschedule/check_search_native_api.py"
+    spec = importlib.util.spec_from_file_location("search_native_api_gate", gate_path)
+    gate = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gate)
+    source = tmp_path / "unit_api.py"
+    source.write_text("def helper(value):\n    raise AssertionError('must not run')\ndef worker():\n    return helper(1, missing_option=True)\n")
+    spec = importlib.util.spec_from_file_location("unit_api", source)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    checked, errors = gate.check_module(module)
+    assert checked >= 1 and len(errors) == 1
+    assert "missing_option" in errors[0]["error"]
+
+
 def test_preparation_is_serial_and_once_per_selected_candidate(tmp_path):
     assets = {"assets": {"test": "UNIT_TEST_NOT_ASSETS"}, "nodes": []}
     identity = {"source_head": "a" * 40, "asset_fingerprint": fingerprint(assets["assets"])}
