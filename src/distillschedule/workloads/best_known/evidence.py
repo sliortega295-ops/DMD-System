@@ -4,7 +4,37 @@ import json
 from pathlib import Path
 import subprocess
 from typing import Any
-from .registry import load_profile, write_new_json, _require
+from .registry import load_profile, write_new_json, fingerprint, git_head, repository_root, _require
+
+
+def bind_livewan_gate(gate: dict[str, Any], receipt: dict[str, Any]) -> dict[str, Any]:
+    """Attach canonical identity after the native matched-gate builder passes.
+
+    This does not convert a trajectory summary or numeric REVIEW into strict
+    parity. Native worker validation still checks every gate field and asset.
+    """
+    p = load_profile("livewan_crossscale_pipeline_best")
+    _require(gate.get("schema_version") == "distillschedule.livewan_two_cycle_timing_gate.v2"
+             and gate.get("status") == "PASS" and gate.get("claimable_for_two_cycle_timing") is True,
+             "canonical binding requires the native matched two-cycle gate")
+    _require(receipt.get("integration_head") == gate.get("expected_head") == git_head(repository_root()),
+             "canonical gate source HEAD differs")
+    _require(receipt.get("profile_id") == p["id"] and receipt.get("profile_sha256") == fingerprint(p),
+             "canonical gate profile differs")
+    _require(receipt.get("mode") == "correctness" and receipt.get("native_mode") == "trajectory",
+             "binding must come from canonical correctness, not timing")
+    _require(receipt.get("asset_fingerprint") == fingerprint(receipt["asset_config"]["assets"]),
+             "canonical gate asset fingerprint differs")
+    arm = gate.get("arms", {}).get("pipeline", {})
+    _require(arm.get("run_id") == receipt.get("run_id")
+             and arm.get("arm_id") == p["runtime"]["environment"]["LIVEWAN_TWO_CYCLE_ARM_ID"]
+             and arm.get("pipeline_variant") == p["contract"]["variant"]
+             and gate.get("seed") == p["contract"]["seed"], "canonical pipeline arm binding differs")
+    result = dict(gate)
+    result["integration_binding"] = {k: receipt[k] for k in
+                                    ("integration_head", "profile_sha256", "asset_fingerprint")}
+    result["integration_binding"]["profile_id"] = p["id"]
+    return result
 
 
 def summary_command(receipt: dict[str, Any]) -> list[str] | None:
@@ -39,6 +69,15 @@ def summary_command(receipt: dict[str, Any]) -> list[str] | None:
             command += ["--"+flag, env[selected[0]]]
         return command
     if p["id"].startswith("livewan"):
+        if receipt.get("native_mode") == "trajectory":
+            return prefix + [str(root/"scripts/distillschedule/summarize_livewan_trajectory_world16.py"),
+                "--cycles", str(p["contract"]["continuous_cycles"]),
+                "--expected-head", receipt["integration_head"], *tail]
+        if receipt.get("native_mode") == "two-cycle-timing":
+            return prefix + [str(root/"scripts/distillschedule/summarize_livewan_two_cycle_timing_world16.py"),
+                "--execution-mode", "pipeline", "--pipeline-variant", p["contract"]["variant"],
+                "--trace", env["LIVEWAN_OPERATION_TRACE"],
+                "--expected-head", receipt["integration_head"], *tail]
         return prefix + [str(root/"scripts/distillschedule/summarize_livewan_continuous_world16.py"),
             "--execution-mode", "pipeline", "--run-kind", receipt["mode"],
             "--trace", env["LIVEWAN_OPERATION_TRACE"], "--plan", str(Path(run)/"resolved_plan.node0.json"),
@@ -75,6 +114,11 @@ def collect(receipt: dict[str, Any]) -> int:
     # Add metadata, do not replace/waive any native gate or invent a new speedup.
     value["integration_binding"] = {k:receipt[k] for k in ("integration_head","profile_sha256","asset_fingerprint")}
     value["integration_binding"].update(profile_id=p["id"],historical_time_reproduced=False)
+    if p["id"] == "livewan_crossscale_pipeline_best":
+        value["integration_binding"].update(
+            numeric_policy="REJECT_EXTREME_ONLY_RECORD_ORDINARY_REVIEW",
+            strict_cross_implementation_parity="NOT_ESTABLISHED",
+            speedup_requires_matched_current_head_baseline=True)
     write_new_json(out/"bound-summary.json", value)
     print(out/"bound-summary.json")
     return 0

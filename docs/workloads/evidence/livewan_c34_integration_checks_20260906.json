@@ -1,0 +1,145 @@
+{
+  "schema_version": "distillschedule.livewan_c34_cpu_integration.v1",
+  "run_id": "livewan_c34_main_integration_20260906",
+  "base_main_head": "a6b8ab7e38d865b724f8982becdfab15065a3b48",
+  "tested_source_head": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+  "integration_source_identity": "The enclosing Git commit and docs/workloads/source_import_map.json bind this report; no integration GPU run has occurred.",
+  "canonical_profiles": 5,
+  "livewan_profile_version": 2,
+  "other_four_profile_files": "BYTE_UNCHANGED_FROM_BASE_MAIN",
+  "c24_profile_snapshot": "BYTE_UNCHANGED_HISTORY_COPY",
+  "native_runtime_equality": {
+    "status": "PASS",
+    "files": [
+      {
+        "path": "src/distillschedule/adapters/livewan/adapter.py",
+        "sha256": "b3a193c8523e4093f573b168a4174a0af92f271a5238217122f1f4827cb0912e",
+        "source_sha256": "b3a193c8523e4093f573b168a4174a0af92f271a5238217122f1f4827cb0912e",
+        "identical": true
+      },
+      {
+        "path": "src/distillschedule/evidence/__init__.py",
+        "sha256": "77f7c5ff2e6f213e97c36effa6a991fd3c123361773f40c2c887b2e065aa2f05",
+        "source_sha256": "77f7c5ff2e6f213e97c36effa6a991fd3c123361773f40c2c887b2e065aa2f05",
+        "identical": true
+      },
+      {
+        "path": "src/distillschedule/evidence/trajectory_coarse.py",
+        "sha256": "38865f0216cbc9341e288623a08e7bbf5983ec9ed28c9ae90c9d7e9bcfebeb35",
+        "source_sha256": "38865f0216cbc9341e288623a08e7bbf5983ec9ed28c9ae90c9d7e9bcfebeb35",
+        "identical": true
+      },
+      {
+        "path": "src/distillschedule/evidence/trajectory_state_sketch.py",
+        "sha256": "e8af8bafdd1f6dda566b24c56c411395d0a2b82bb7f49458a3c510a9508d09c3",
+        "source_sha256": "e8af8bafdd1f6dda566b24c56c411395d0a2b82bb7f49458a3c510a9508d09c3",
+        "identical": true
+      },
+      {
+        "path": "src/distillschedule/runtime/livewan_attention_checkpoint.py",
+        "sha256": "ad6535d481105dfbf72d6643d1f79568fa58e4fa78b6cdf3180b58bed480cfa3",
+        "source_sha256": "ad6535d481105dfbf72d6643d1f79568fa58e4fa78b6cdf3180b58bed480cfa3",
+        "identical": true
+      },
+      {
+        "path": "src/distillschedule/runtime/livewan_c30_contract.py",
+        "sha256": "81c72fbb04e1b7db963c2acae3bb1fa880795793fa4df0b672b23140db0e1754",
+        "source_sha256": "81c72fbb04e1b7db963c2acae3bb1fa880795793fa4df0b672b23140db0e1754",
+        "identical": true
+      },
+      {
+        "path": "src/distillschedule/runtime/livewan_context_staging.py",
+        "sha256": "470c2cb9ae20186f8f29024c675591899c6ba8037b025141257212d5452b7693",
+        "source_sha256": "470c2cb9ae20186f8f29024c675591899c6ba8037b025141257212d5452b7693",
+        "identical": true
+      },
+      {
+        "path": "src/distillschedule/runtime/livewan_crossscale_worker.py",
+        "sha256": "25d41a29c403f0ead87097123e5d51e12939eb53c66566158d50387516b1691a",
+        "source_sha256": "25d41a29c403f0ead87097123e5d51e12939eb53c66566158d50387516b1691a",
+        "identical": true
+      },
+      {
+        "path": "src/distillschedule/runtime/livewan_cuda_setup.py",
+        "sha256": "81b236c4f21dcb868c97440f2b534e8a24a938a00570109855b8a13565eb41b9",
+        "source_sha256": "81b236c4f21dcb868c97440f2b534e8a24a938a00570109855b8a13565eb41b9",
+        "identical": true
+      },
+      {
+        "path": "src/distillschedule/runtime/livewan_generator_gate.py",
+        "sha256": "8811aee8efb8293daa48c55d6f1aa74f6dc26b0ab28489aa4047f7471f377af7",
+        "source_sha256": "8811aee8efb8293daa48c55d6f1aa74f6dc26b0ab28489aa4047f7471f377af7",
+        "identical": true
+      },
+      {
+        "path": "src/distillschedule/runtime/livewan_generator_modulation.py",
+        "sha256": "d9e735e58f2f8dbe2f28d37a38de2f8ee0fa901f33cc34d8b48712655f408934",
+        "source_sha256": "d9e735e58f2f8dbe2f28d37a38de2f8ee0fa901f33cc34d8b48712655f408934",
+        "identical": true
+      },
+      {
+        "path": "src/distillschedule/runtime/livewan_generator_rms_epilogue.py",
+        "sha256": "494cc6952669e64325bb99c571b68fb2097699606b7224e81f737d20dd743eb3",
+        "source_sha256": "494cc6952669e64325bb99c571b68fb2097699606b7224e81f737d20dd743eb3",
+        "identical": true
+      },
+      {
+        "path": "src/distillschedule/runtime/livewan_rollout_cast_cache.py",
+        "sha256": "e42e6347064c6a2f527cfade202428a63e62b38135933187db5908bef5945c13",
+        "source_sha256": "e42e6347064c6a2f527cfade202428a63e62b38135933187db5908bef5945c13",
+        "identical": true
+      },
+      {
+        "path": "src/distillschedule/runtime/livewan_score_rmsnorm.py",
+        "sha256": "fa0807917d760cb1b86a1e57b9cd8f31bbc9aa8401b0fc502d42d05753216c8d",
+        "source_sha256": "fa0807917d760cb1b86a1e57b9cd8f31bbc9aa8401b0fc502d42d05753216c8d",
+        "identical": true
+      },
+      {
+        "path": "src/distillschedule/runtime/livewan_two_cycle_profile.py",
+        "sha256": "f05bf166d0edbfa4da76c8b986712ac87cc384111130f63aa67724295fee9e67",
+        "source_sha256": "f05bf166d0edbfa4da76c8b986712ac87cc384111130f63aa67724295fee9e67",
+        "identical": true
+      }
+    ]
+  },
+  "tests": {
+    "canonical_cpu": {
+      "passed": 18,
+      "status": "PASS"
+    },
+    "all_refactor": {
+      "passed": 386,
+      "skipped": 11,
+      "status": "PASS"
+    },
+    "skips": "9 optional Torch/CUDA tests and 2 optional matplotlib plotting tests; neither dependency installed in the CPU-only environment",
+    "compileall": "PASS",
+    "shell_syntax": "PASS",
+    "source_import_map": "PASS"
+  },
+  "validation_environment": {
+    "python": "3.12.3",
+    "pytest": "8.4.2",
+    "pyyaml": "6.0.2",
+    "omegaconf": "2.3.0",
+    "torch": "NOT_INSTALLED_CPU_ONLY"
+  },
+  "fixes": [
+    "Exclude .pyc/.pyo from text-path scanner, not source files",
+    "Bind native correctness to two-cycle trajectory and diagnostic timing to two-cycle-timing",
+    "Preserve stable arm identity across separate run IDs",
+    "Require explicit deployment environment/lock/FlashAttention paths"
+  ],
+  "gpu_revalidation": "NOT_RUN_ON_INTEGRATION_BRANCH",
+  "new_performance_measurements": "NOT_RUN",
+  "remote_environment_changes": "NONE",
+  "gpu_resources_acquired": false,
+  "historical_evidence": "livewan_c34_20260906.json",
+  "historical_numeric_status": "REVIEW_NOT_STRICT_PARITY",
+  "limitations": [
+    "Historical 1.327725x is one matched native cycle2 observation at tested source HEAD, not this integration HEAD.",
+    "New-head baseline and pipeline trajectory/gates must be rebuilt before diagnostic timing.",
+    "No new scheduling, kernel or KV optimization in this integration."
+  ]
+}

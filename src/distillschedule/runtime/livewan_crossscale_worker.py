@@ -15,10 +15,18 @@ import json
 import math
 import os
 from pathlib import Path
-import random
 import sys
 import time
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Mapping, Sequence
+
+from distillschedule.evidence.trajectory_coarse import (
+    AppendOnlyTrajectoryWriter,
+    TrajectoryCycleReceipt,
+)
+from distillschedule.evidence.trajectory_state_sketch import (
+    canonical_state_name,
+    collect_numeric_state_sketch,
+)
 
 from distillschedule.runtime.livewan_grad_reducer import (
     GradReadyAsyncGroupReducer,
@@ -63,6 +71,15 @@ PHASE_EXPANDED_CRITIC16_POOL_POLICY = (
     "phase_expanded_critic16_fsdp16"
 )
 B32_CONTINUOUS_NAME = "continuous_full5_b32_depth1_systems_v1"
+TRAJECTORY_CONTINUOUS_NAME = "trajectory_coarse_c24_b16_depth1_v1"
+TWO_CYCLE_TIMING_CONTINUOUS_NAME = "two_cycle_timing_c24_b16_depth1_v1"
+TWO_CYCLE_PROFILE_CONTINUOUS_NAME = "two_cycle_profile_c29_b16_depth1_v1"
+TWO_CYCLE_TIMING_CYCLES = 2
+TRAJECTORY_ANCHOR_CYCLES = frozenset({1, 10, 25, 50})
+TRAJECTORY_ALLOWED_CYCLES = frozenset({1, 2, 5, 50})
+TRAJECTORY_CRITIC_B1_ATTRIBUTION_NAME = (
+    "c24_critic_b1_two_backward_single_commit_attribution_v1"
+)
 
 
 def _pipeline_8x8_slot_pairs(
@@ -619,6 +636,8 @@ class ModelBundle:
     teacher: Any | None
     generator_optimizer: Any | None
     critic_optimizer: Any | None
+    generator_optimizer_parameter_names: dict[int, str]
+    critic_optimizer_parameter_names: dict[int, str]
     critic_lora_params: list[Any]
     critic_shadow_lora_params: list[Any]
     critic_gradient_reducer: GradReadyAsyncGroupReducer | None
@@ -812,16 +831,337 @@ def _continuous_pipeline_contract(
         source_reuse_within_step=True,
         training_quality_claimable=False,
     )
-    _require(
-        dict(value) in (expected, expected_c1, expected_b32),
-        "continuous pipeline contract changed",
-    )
+    if value.get("name") == TRAJECTORY_CONTINUOUS_NAME:
+        cycles = int(value.get("cycles", -1))
+        _require(
+            cycles in TRAJECTORY_ALLOWED_CYCLES,
+            "trajectory cycle count must be one of 1, 2, 5, or 50",
+        )
+        expected_trajectory = dict(
+            expected,
+            name=TRAJECTORY_CONTINUOUS_NAME,
+            cycles=cycles,
+            source_reuse_across_cycles=cycles > 1,
+            critic_shadow_sync_versions=[
+                CRITIC_UPDATES * cycle for cycle in range(1, cycles)
+            ],
+            trajectory_schema="trajectory_coarse_v1",
+            trajectory_diagnostic_only=True,
+            formal_timing_eligible=False,
+        )
+        _require(
+            dict(value) == expected_trajectory,
+            "trajectory continuous pipeline contract changed",
+        )
+    elif value.get("name") in {TWO_CYCLE_TIMING_CONTINUOUS_NAME, TWO_CYCLE_PROFILE_CONTINUOUS_NAME}:
+        diagnostic_profile = value.get("name") == TWO_CYCLE_PROFILE_CONTINUOUS_NAME
+        expected_timing = dict(
+            expected,
+            name=TWO_CYCLE_PROFILE_CONTINUOUS_NAME if diagnostic_profile else TWO_CYCLE_TIMING_CONTINUOUS_NAME,
+            cycles=TWO_CYCLE_TIMING_CYCLES,
+            critic_shadow_sync_versions=[CRITIC_UPDATES],
+            timing_schema="livewan_two_cycle_timing_v1",
+            profiled=diagnostic_profile,
+            formal_timing_eligible=not diagnostic_profile,
+        )
+        _require(
+            dict(value) == expected_timing,
+            "two-cycle timing continuous pipeline contract changed",
+        )
+    else:
+        _require(
+            dict(value) in (expected, expected_c1, expected_b32),
+            "continuous pipeline contract changed",
+        )
     _require(_split_dmd_shadow_enabled(plan, mode=mode), "continuous pipeline needs split-DMD shadow")
     _require(
         _generator_runahead_transport_enabled(plan, mode=mode),
         "continuous pipeline needs the C19 pinned-host transport",
     )
     return value
+
+
+def _apply_trajectory_contract(
+    plan: dict[str, Any], *, cycles: int, mode: str
+) -> None:
+    """Turn one exact matched arm into a bounded trajectory plan in memory.
+
+    The mutation is diagnostic-only and happens after rendering.  It changes
+    neither the checked-in baseline nor C24 plan, and legacy run kinds never
+    enter this function.
+    """
+
+    _require(
+        cycles in TRAJECTORY_ALLOWED_CYCLES,
+        "trajectory cycles must be one of 1, 2, 5, or 50",
+    )
+    metadata = dict(plan.get("metadata", {}))
+    if mode == "baseline":
+        _require(
+            metadata.get("execution_mode") == "baseline"
+            and metadata.get("pool_policy") in {None, "world16_fsdp2_sequential"},
+            "trajectory baseline must start from the exact sequential plan",
+        )
+        _require(
+            "continuous_pipeline" not in metadata,
+            "trajectory baseline unexpectedly contains a pipeline contract",
+        )
+        metadata["trajectory_diagnostic"] = {
+            "schema": "trajectory_coarse_v1",
+            "cycles": cycles,
+            "schedule": "world16_fsdp2_sequential",
+            "source_reuse_across_cycles": cycles > 1,
+            "formal_timing_eligible": False,
+        }
+        plan["metadata"] = metadata
+        return
+    _require(mode == "pipeline", "unknown trajectory execution mode")
+    current = dict(metadata.get("continuous_pipeline", {}))
+    _require(
+        current.get("name") == "continuous_full5_b16_depth1_v1"
+        and int(current.get("cycles", -1)) == 3,
+        "trajectory mode must start from the exact C24 continuous-B16 plan",
+    )
+    score_modulation = dict(metadata.get("score_modulation_kernel", {}))
+    _require(
+        score_modulation.get("enabled") is True
+        and score_modulation.get("name") == "score_bf16_modulation_fusion_v1",
+        "trajectory mode requires the exact C24 Score modulation kernel",
+    )
+    current.update(
+        name=TRAJECTORY_CONTINUOUS_NAME,
+        cycles=cycles,
+        source_reuse_across_cycles=cycles > 1,
+        critic_shadow_sync_versions=[
+            CRITIC_UPDATES * cycle for cycle in range(1, cycles)
+        ],
+        trajectory_schema="trajectory_coarse_v1",
+        trajectory_diagnostic_only=True,
+        formal_timing_eligible=False,
+    )
+    metadata["continuous_pipeline"] = current
+    plan["metadata"] = metadata
+
+
+def _apply_two_cycle_timing_contract(plan: dict[str, Any], *, mode: str) -> None:
+    """Bind the immutable two-cycle trace to the exact sequential/C24 arms.
+
+    This is a timing-only in-memory plan adaptation.  It changes only the
+    number of consecutive cycles represented by the immutable trace; the
+    checked-in plans and every per-cycle workload operation remain unchanged.
+    """
+
+    metadata = dict(plan.get("metadata", {}))
+    evidence = dict(plan.get("evidence", {}))
+    _require(int(evidence.get("steps", -1)) == FULL5_STEPS, "source plan is not Full5")
+    evidence["steps"] = TWO_CYCLE_TIMING_CYCLES * FULL5_STEPS
+    plan["evidence"] = evidence
+    if mode == "baseline":
+        _require(
+            metadata.get("execution_mode") == "baseline"
+            and metadata.get("pool_policy") in {None, "world16_fsdp2_sequential"},
+            "two-cycle timing baseline must start from the exact sequential plan",
+        )
+        _require(
+            "continuous_pipeline" not in metadata,
+            "two-cycle timing baseline unexpectedly contains a pipeline contract",
+        )
+        metadata["two_cycle_timing"] = {
+            "schema": "livewan_two_cycle_timing_v1",
+            "cycles": TWO_CYCLE_TIMING_CYCLES,
+            "schedule": "world16_fsdp2_sequential",
+            "source_reuse_across_cycles": True,
+            "profiled": False,
+            "formal_timing_eligible": True,
+        }
+        plan["metadata"] = metadata
+        return
+
+    _require(mode == "pipeline", "unknown two-cycle timing execution mode")
+    current = dict(metadata.get("continuous_pipeline", {}))
+    _require(
+        current.get("name") == "continuous_full5_b16_depth1_v1"
+        and int(current.get("cycles", -1)) == 3,
+        "two-cycle timing must start from the exact C24 continuous-B16 plan",
+    )
+    score_modulation = dict(metadata.get("score_modulation_kernel", {}))
+    _require(
+        score_modulation.get("enabled") is True
+        and score_modulation.get("name") == "score_bf16_modulation_fusion_v1",
+        "two-cycle timing requires the exact C24 Score modulation kernel",
+    )
+    current.update(
+        name=TWO_CYCLE_TIMING_CONTINUOUS_NAME,
+        cycles=TWO_CYCLE_TIMING_CYCLES,
+        critic_shadow_sync_versions=[CRITIC_UPDATES],
+        timing_schema="livewan_two_cycle_timing_v1",
+        profiled=False,
+        formal_timing_eligible=True,
+    )
+    metadata["continuous_pipeline"] = current
+    plan["metadata"] = metadata
+
+
+def _effective_plan_sha256(plan: Mapping[str, Any]) -> str:
+    return hashlib.sha256(
+        json.dumps(plan, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
+def _record_two_cycle_endpoint(
+    torch: Any,
+    *,
+    records: list[dict[str, Any]],
+    versions: Mapping[str, int],
+    inventory: "CallInventory",
+    evidence: "RunEvidence",
+) -> None:
+    """Enqueue a completion marker without synchronizing the host or world.
+
+    The event is recorded on the current compute stream after the terminal
+    optimizer commit.  Any helper stream used by the runtime must already be
+    joined by its ``finish``/``wait`` contract before that commit can return.
+    Event elapsed times are read only after the single post-cycle2 device sync.
+    """
+
+    event = torch.cuda.Event(enable_timing=True)
+    event.record(torch.cuda.current_stream())
+    logical = dict(inventory.counts)
+    logical.update(evidence.logical_score_calls)
+    records.append(
+        {
+            "event": event,
+            "host_completion_ns": time.perf_counter_ns(),
+            "local_versions": {key: int(value) for key, value in versions.items()},
+            "physical_call_inventory": dict(inventory.counts),
+            "logical_call_inventory": logical,
+        }
+    )
+
+
+def _load_two_cycle_timing_gate(
+    *,
+    path: str | Path,
+    expected_sha256: str,
+    expected_head: str,
+    mode: str,
+    pipeline_variant: str,
+    arm_id: str,
+    seed: int,
+    trace: FormalTrace,
+    bootstrap: Bootstrap,
+    source_receipt: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate the exact-head correctness evidence authorizing native timing."""
+
+    resolved = Path(path).expanduser().resolve()
+    _require(resolved.is_file(), "two-cycle timing correctness gate is missing")
+    _require(
+        len(expected_sha256) == 64 and sha256_file(resolved) == expected_sha256,
+        "two-cycle timing correctness gate SHA256 changed",
+    )
+    value = json.loads(resolved.read_text(encoding="utf-8"))
+    required = {
+        "schema_version": "distillschedule.livewan_two_cycle_timing_gate.v2",
+        "status": "PASS",
+        "claimable_for_two_cycle_timing": True,
+        "expected_head": expected_head,
+        "cycles": TWO_CYCLE_TIMING_CYCLES,
+        "final_versions": {"generator": 2, "critic": 10, "ema": 0},
+    }
+    for key, expected in required.items():
+        _require(value.get(key) == expected, f"two-cycle timing gate changed {key}")
+    numerical_review = dict(value.get("numerical_review", {}))
+    _require(
+        numerical_review.get("policy")
+        == "REJECT_EXTREME_ONLY_RECORD_ORDINARY_REVIEW"
+        and numerical_review.get("extreme_failure_count") == 0,
+        "two-cycle timing gate lost its extreme-drift policy",
+    )
+    _require(
+        set(dict(value.get("heads", {})).values()) == {expected_head},
+        "two-cycle timing gate uses a different source HEAD",
+    )
+    identity = dict(value.get("identity", {}))
+    expected_identity = {
+        "trace_sha256": trace.sha256,
+        "bootstrap_sha256": bootstrap.sha256,
+        "source_receipt_sha256": source_receipt["source_receipt_sha256"],
+    }
+    _require(identity == expected_identity, "two-cycle timing gate asset identity changed")
+    _require(int(value.get("seed", -1)) == seed, "two-cycle timing seed changed")
+    arm = dict(dict(value.get("arms", {})).get(mode, {}))
+    _require(arm.get("arm_id") == arm_id, "two-cycle timing arm identity changed")
+    _require(
+        arm.get("pipeline_variant") == pipeline_variant,
+        "two-cycle timing physical implementation changed",
+    )
+    _require(
+        isinstance(arm.get("trajectory_summary_sha256"), str)
+        and len(str(arm["trajectory_summary_sha256"])) == 64,
+        "two-cycle timing trajectory summary SHA is missing",
+    )
+    comparison = dict(value.get("trajectory_comparison", {}))
+    _require(
+        comparison.get("schema_version")
+        == "distillschedule.trajectory_coarse_comparison.v1"
+        and comparison.get("contract_status") == "PASS"
+        and comparison.get("complete") is True
+        and isinstance(comparison.get("sha256"), str)
+        and len(str(comparison["sha256"])) == 64,
+        "two-cycle cross-arm trajectory comparison is not PASS",
+    )
+    return {
+        "path": str(resolved),
+        "sha256": expected_sha256,
+        "schema_version": value["schema_version"],
+        "trajectory_summary_sha256": arm.get("trajectory_summary_sha256"),
+        "trajectory_comparison_sha256": comparison["sha256"],
+        "arm_id": arm_id,
+        "pipeline_variant": pipeline_variant,
+        "status": value["status"],
+    }
+
+
+def _trajectory_critic_batch_ablation_enabled(
+    plan: Mapping[str, Any], *, mode: str
+) -> bool:
+    """Validate the diagnostic-only C24 physical-B1 Critic contract.
+
+    The ordinary C24 plan has no such contract and remains on its existing
+    physical-B2 path.  The ablation changes only how each Score rank executes
+    its two logical Critic samples: two weighted B1 backwards accumulate into
+    the same asynchronous reducer and retain one optimizer commit.
+    """
+
+    metadata = plan.get("metadata", {})
+    value = metadata.get("trajectory_critic_batch_ablation")
+    if value is None:
+        return False
+    expected = {
+        "enabled": True,
+        "name": TRAJECTORY_CRITIC_B1_ATTRIBUTION_NAME,
+        "scope": "trajectory_diagnostic_only",
+        "critic_physical_batch_size": 1,
+        "physical_backward_calls_per_step": 2,
+        "loss_weights": [0.5, 0.5],
+        "reducer_accumulation": [[0, 2], [1, 2]],
+        "optimizer_commits_per_step": 1,
+        "all_other_c24_execution_unchanged": True,
+        "formal_timing_eligible": False,
+    }
+    _require(mode == "pipeline", "C24 Critic-B1 attribution is pipeline-only")
+    _require(dict(value) == expected, "C24 Critic-B1 attribution contract changed")
+    _require(
+        int(metadata.get("critic_physical_batch_size", -1)) == 1,
+        "C24 Critic-B1 attribution did not select physical B1",
+    )
+    _require(
+        dict(metadata.get("score_modulation_kernel", {})).get("name")
+        == "score_bf16_modulation_fusion_v1",
+        "C24 Critic-B1 attribution lost the exact C24 Score kernel",
+    )
+    return True
 
 
 def _critic_checkpoint_rng_elision_enabled(
@@ -1030,6 +1370,8 @@ def build_models(
     }
     student = critic = critic_shadow = teacher = None
     opt_g = opt_c = None
+    generator_optimizer_parameter_names: dict[int, str] = {}
+    critic_optimizer_parameter_names: dict[int, str] = {}
     lora_params: list[Any] = []
     shadow_lora_params: list[Any] = []
     critic_gradient_reducer = None
@@ -1072,9 +1414,17 @@ def build_models(
         optimizer_kwargs = (
             {"fused": True} if optimizer_impl == "fused_adamw" else {"foreach": True}
         )
+        generator_named_parameters = list(student.named_parameters())
         opt_g = torch.optim.AdamW(
-            list(student.parameters()), lr=2e-6, betas=(0.0, 0.99),
+            [parameter for _name, parameter in generator_named_parameters],
+            lr=2e-6, betas=(0.0, 0.99),
             weight_decay=0.0, eps=1e-8, **optimizer_kwargs,
+        )
+        generator_optimizer_parameter_names = (
+            _bind_trajectory_optimizer_parameter_names(
+                named_parameters=generator_named_parameters,
+                optimizer=opt_g,
+            )
         )
         metadata["student"] = {
             "placement": (
@@ -1119,6 +1469,11 @@ def build_models(
         opt_c = torch.optim.AdamW(
             lora_params, lr=4e-5, betas=(0.0, 0.99),
             weight_decay=0.0, eps=1e-8, foreach=True,
+        )
+        critic_optimizer_parameter_names = _bind_trajectory_optimizer_parameter_names(
+            named_parameters=list(critic.named_parameters()),
+            optimizer=opt_c,
+            expected_parameter_ids={id(parameter) for parameter in lora_params},
         )
         critic_optimizer_receipt = materialize_adam_state(
             torch, opt_c, step=int(bootstrap.value["optimizer"]["critic_step"])
@@ -1285,6 +1640,8 @@ def build_models(
         teacher=teacher,
         generator_optimizer=opt_g,
         critic_optimizer=opt_c,
+        generator_optimizer_parameter_names=generator_optimizer_parameter_names,
+        critic_optimizer_parameter_names=critic_optimizer_parameter_names,
         critic_lora_params=lora_params,
         critic_shadow_lora_params=shadow_lora_params,
         critic_gradient_reducer=critic_gradient_reducer,
@@ -1667,6 +2024,11 @@ def prepare_rollout(
     device: Any,
     elide_full_context_lens: bool = False,
 ) -> PreparedRollout:
+    from distillschedule.runtime.livewan_rollout_cast_cache import model_rollout_cast_cache_scope
+    from distillschedule.runtime.livewan_generator_rms_epilogue import model_runtime_scope as generator_rms_scope
+    from distillschedule.runtime.livewan_generator_modulation import model_runtime_scope as generator_modulation_scope
+    from distillschedule.runtime.livewan_generator_gate import model_runtime_scope as generator_gate_scope
+
     latent, context, _ = loader.load(row)
     z_teacher = latent.to(device, non_blocking=True).unsqueeze(0)
     raw_context = context.to(device, non_blocking=True).unsqueeze(0)
@@ -1679,7 +2041,7 @@ def prepare_rollout(
         if elide_full_context_lens
         else torch.tensor([raw_context.shape[1]], device=device, dtype=torch.long)
     )
-    with torch.no_grad():
+    with torch.no_grad(), model_rollout_cast_cache_scope(torch, student), generator_rms_scope(torch, student), generator_modulation_scope(torch, student), generator_gate_scope(torch, student):
         student_context = student.text_embedding(raw_context)
         streamer.set_text(student_context, context_lens)
         streamer.rope_gap = row.rope_gap
@@ -2177,6 +2539,21 @@ def critic_backward_for_batch(
     return tuple(value.detach() for value in losses.unbind(0))
 
 
+def _critic_b1_attribution_reducer_accumulation(wave: int) -> tuple[int, int]:
+    """Return the exact two-backward/single-reduction C24-B1 boundary."""
+
+    _require(wave in {0, 1}, "C24 Critic-B1 attribution wave must be 0 or 1")
+    return wave, 2
+
+
+def _physical_critic_backward_calls_for_step(
+    *, critic_b2_only: bool, split_step1: bool
+) -> int:
+    """Return physical backward invocations for the branch that completed."""
+
+    return 2 if split_step1 or not critic_b2_only else 1
+
+
 def generator_backward_for_sample(
     torch: Any,
     *,
@@ -2223,6 +2600,442 @@ def _tensor_fingerprint(torch: Any, value: Any) -> dict[str, Any]:
     }
 
 
+def _trajectory_model_named_values(
+    model: Any | None, *, parameter_ids: set[int] | None = None
+) -> list[tuple[str, Any, Any | None]]:
+    if model is None:
+        return []
+    return [
+        (_trajectory_livewan_state_name(name), parameter, None)
+        for name, parameter in model.named_parameters()
+        if (
+            (parameter_ids is None and parameter.requires_grad)
+            or (parameter_ids is not None and id(parameter) in parameter_ids)
+        )
+    ]
+
+
+def _trajectory_livewan_state_name(name: str) -> str:
+    """Map LiveWan's FSDP-only wrapper paths back to plain Wan names.
+
+    ``wanstreamer.fsdp.attach_causal_modules`` re-registers ``blocks`` and
+    ``head`` below ``CausalBlock.blk`` and ``CausalHead.head`` so composable
+    FSDP hooks wrap the functions entered by the custom forward.  It does not
+    create or replace parameters, but it changes their ``named_parameters()``
+    paths.  State evidence must use the underlying Wan identity so FSDP and
+    resident placements select the same deterministic tensor coordinates.
+    """
+
+    value = canonical_state_name(name)
+    layer_prefix = "causal_layers."
+    if value.startswith(layer_prefix):
+        layer_and_name = value[len(layer_prefix) :]
+        layer, separator, remainder = layer_and_name.partition(".blk.")
+        if not separator or not layer.isdigit() or not remainder:
+            raise ValueError(f"unsupported LiveWan CausalBlock parameter path: {value}")
+        return f"blocks.{layer}.{remainder}"
+    head_prefix = "causal_head.head."
+    if value.startswith(head_prefix):
+        remainder = value[len(head_prefix) :]
+        if not remainder:
+            raise ValueError(f"unsupported LiveWan CausalHead parameter path: {value}")
+        return f"head.{remainder}"
+    return value
+
+
+def _bind_trajectory_optimizer_parameter_names(
+    *,
+    named_parameters: Sequence[tuple[str, Any]],
+    optimizer: Any,
+    expected_parameter_ids: set[int] | None = None,
+) -> dict[int, str]:
+    """Bind optimizer parameters to stable model names before FSDP execution.
+
+    Composable FSDP2 temporarily exposes unsharded ``Parameter`` objects from
+    ``module.named_parameters()`` while the optimizer continues to own the
+    original sharded DTensor parameters.  Looking names up by object identity
+    after a forward therefore fails even though the optimizer inventory is
+    unchanged.  Capture the identity-to-name relation once, at optimizer
+    construction, while both views are guaranteed to agree.
+
+    The binding is diagnostics-only and does not mutate the model, optimizer,
+    parameter groups, or training state.
+    """
+
+    names: dict[int, str] = {}
+    canonical_ids: dict[str, int] = {}
+    for raw_name, parameter in named_parameters:
+        parameter_id = id(parameter)
+        name = _trajectory_livewan_state_name(raw_name)
+        previous_id = canonical_ids.get(name)
+        if previous_id is not None and previous_id != parameter_id:
+            raise AssertionError(
+                f"trajectory model has duplicate canonical parameter name: {name}"
+            )
+        previous_name = names.get(parameter_id)
+        if previous_name is not None and previous_name != name:
+            raise AssertionError(
+                "trajectory model parameter has multiple canonical names: "
+                f"{previous_name} vs {name}"
+            )
+        names[parameter_id] = name
+        canonical_ids[name] = parameter_id
+
+    optimizer_ids: list[int] = []
+    optimizer_id_set: set[int] = set()
+    for group in optimizer.param_groups:
+        for parameter in group["params"]:
+            parameter_id = id(parameter)
+            if parameter_id in optimizer_id_set:
+                raise AssertionError(
+                    "trajectory optimizer parameter appears in multiple parameter groups"
+                )
+            optimizer_ids.append(parameter_id)
+            optimizer_id_set.add(parameter_id)
+            if parameter_id not in names:
+                raise AssertionError(
+                    "trajectory optimizer parameter has no model name at construction"
+                )
+
+    if expected_parameter_ids is not None and optimizer_id_set != expected_parameter_ids:
+        missing = sorted(expected_parameter_ids - optimizer_id_set)
+        unexpected = sorted(optimizer_id_set - expected_parameter_ids)
+        raise AssertionError(
+            "trajectory optimizer parameter inventory differs from the registered "
+            f"trainable inventory: missing={len(missing)} unexpected={len(unexpected)}"
+        )
+    return {parameter_id: names[parameter_id] for parameter_id in optimizer_ids}
+
+
+def _trajectory_optimizer_named_values(
+    optimizer: Any | None,
+    *,
+    parameter_names: Mapping[int, str],
+) -> list[tuple[str, Any, Any | None]]:
+    if optimizer is None:
+        _require(not parameter_names, "missing optimizer has a trajectory name binding")
+        return []
+    result: list[tuple[str, Any, Any | None]] = []
+    observed_ids: set[int] = set()
+    for group in optimizer.param_groups:
+        for parameter in group["params"]:
+            parameter_id = id(parameter)
+            if parameter_id in observed_ids:
+                raise AssertionError(
+                    "trajectory optimizer parameter appears in multiple parameter groups"
+                )
+            observed_ids.add(parameter_id)
+            name = parameter_names.get(parameter_id)
+            if name is None:
+                raise AssertionError(
+                    "trajectory optimizer parameter is absent from its construction-time "
+                    "name binding"
+                )
+            state = optimizer.state.get(parameter, {})
+            for key in ("exp_avg", "exp_avg_sq"):
+                if key in state:
+                    value = state[key]
+                    layout_source = None if hasattr(value, "placements") else parameter
+                    result.append((f"{name}/{key}", value, layout_source))
+    if observed_ids != set(parameter_names):
+        raise AssertionError(
+            "trajectory optimizer parameter groups changed after name binding"
+        )
+    return result
+
+
+def _trajectory_state_anchor(
+    *,
+    torch: Any,
+    rank: int,
+    cycle: int,
+    output_dir: Path,
+    bundle: ModelBundle,
+) -> tuple[dict[str, str], dict[str, Any]]:
+    """Write one canonical numeric state sketch shared by the two role pools."""
+
+    generator_ranks = tuple(int(value) for value in bundle.metadata["generator_ranks"])
+    critic_ranks = tuple(int(value) for value in bundle.metadata["critic_ranks"])
+    _require(bool(generator_ranks) and bool(critic_ranks), "trajectory role ranks are empty")
+    generator_primary = min(generator_ranks)
+    critic_primary = min(critic_ranks)
+    critic_ids = {id(parameter) for parameter in bundle.critic_lora_params}
+    components = {
+        "generator_trainable": collect_numeric_state_sketch(
+            torch=torch,
+            named_values=_trajectory_model_named_values(bundle.student),
+            samples_per_tensor=16,
+            primary_rank=generator_primary,
+        ),
+        "generator_adam": collect_numeric_state_sketch(
+            torch=torch,
+            named_values=_trajectory_optimizer_named_values(
+                bundle.generator_optimizer,
+                parameter_names=bundle.generator_optimizer_parameter_names,
+            ),
+            samples_per_tensor=16,
+            primary_rank=generator_primary,
+        ),
+        "critic_trainable": collect_numeric_state_sketch(
+            torch=torch,
+            named_values=_trajectory_model_named_values(
+                bundle.critic, parameter_ids=critic_ids
+            ),
+            samples_per_tensor=16,
+            primary_rank=critic_primary,
+        ),
+        "critic_adam": collect_numeric_state_sketch(
+            torch=torch,
+            named_values=_trajectory_optimizer_named_values(
+                bundle.critic_optimizer,
+                parameter_names=bundle.critic_optimizer_parameter_names,
+            ),
+            samples_per_tensor=16,
+            primary_rank=critic_primary,
+        ),
+    }
+    anchor = {
+        "schema_version": "distillschedule.livewan_trajectory_state_anchor.v1",
+        "cycle": cycle,
+        "writer_rank": 0,
+        "topology": {
+            "generator_replicas": list(generator_ranks),
+            "critic_replicas": list(critic_ranks),
+            "representative_ranks": {
+                "generator": generator_primary,
+                "critic": critic_primary,
+            },
+        },
+        "components": components,
+        "comparison_scope": (
+            "align each component by (tensor, flat_index), then compute cosine "
+            "and normalized-L2 from value_fp32"
+        ),
+    }
+    payload = json.dumps(anchor, sort_keys=True, separators=(",", ":")).encode()
+    digest = hashlib.sha256(payload).hexdigest()
+    anchor["anchor_sha256"] = digest
+    path = output_dir / "trajectory" / "anchors" / f"cycle_{cycle:02d}_global.json"
+    if rank == 0:
+        atomic_json(path, anchor)
+    torch.distributed.barrier()
+    fingerprints = {
+        name: hashlib.sha256(
+            json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        for name, value in components.items()
+    }
+    fingerprints["anchor"] = digest
+    return fingerprints, {"path": str(path), "sha256": digest}
+
+
+def _trajectory_normalized_cycle_evidence(
+    *,
+    torch: Any,
+    rank: int,
+    cycle: int,
+    trace: FormalTrace,
+    local_losses: Sequence[Mapping[str, Any]],
+    local_optimizer: Sequence[Mapping[str, Any]],
+    local_call_census: Mapping[str, int],
+) -> tuple[
+    tuple[str, ...],
+    dict[str, str],
+    dict[str, int],
+    dict[str, float | None],
+    dict[str, float | None],
+    bool,
+]:
+    """Normalize physical role-pool evidence to one logical world16 view.
+
+    The sequential denominator executes one sample on every world rank.  C24
+    executes two samples on each of eight Generator ranks and the matching two
+    samples on each of eight Score ranks.  Trajectory comparison is defined in
+    logical global-rank coordinates, so every physical rank first contributes
+    its observed counters/losses and then receives the same global view.  Rank
+    ``r`` writes only slot ``r``.  This makes sample/RNG/loss/call receipts
+    directly comparable without pretending the two physical topologies match.
+
+    Call counts are exact global totals, not a per-rank mean.  The immutable
+    operation trace assigns rank-qualified history lengths, so the number of
+    Student block evaluations legitimately differs between logical slots.  A
+    global total therefore need not be divisible by ``trace.global_batch``;
+    retaining the integer total also makes the baseline and C24 comparison
+    lossless.
+    """
+
+    gathered: list[dict[str, Any] | None] = [None] * WORLD_SIZE
+    torch.distributed.all_gather_object(
+        gathered,
+        {
+            "losses": [dict(row) for row in local_losses],
+            "optimizer": [dict(row) for row in local_optimizer],
+            "call_census": {str(key): int(value) for key, value in local_call_census.items()},
+        },
+    )
+    _require(all(row is not None for row in gathered), "trajectory evidence gather is incomplete")
+
+    loss_values: dict[tuple[str, str], list[float]] = {}
+    optimizer_values: dict[str, list[float]] = {"generator": [], "critic": []}
+    global_call_census: dict[str, int] = {}
+    for contributor in gathered:
+        assert contributor is not None
+        for row in contributor["losses"]:
+            key = (str(row["kind"]), str(row["operation_key"]))
+            loss_values.setdefault(key, []).append(float(row["mean"]))
+        for row in contributor["optimizer"]:
+            role = str(row["role"])
+            if role in optimizer_values:
+                optimizer_values[role].append(float(row["clip_input_norm"]))
+        for key, value in contributor["call_census"].items():
+            global_call_census[str(key)] = global_call_census.get(str(key), 0) + int(value)
+
+    exact_global_call_census = dict(sorted(global_call_census.items()))
+    _require(bool(exact_global_call_census), "trajectory call census is empty")
+
+    rows = tuple(
+        trace.row(cycle * FULL5_STEPS + step, rank)
+        for step in range(FULL5_STEPS)
+    )
+    generator_key = rows[0].operation_key
+    generator_values = loss_values.get(("generator", generator_key), [])
+    critic_values = [
+        number
+        for row in rows
+        for number in loss_values.get(("critic", row.operation_key), [])
+    ]
+    _require(bool(generator_values), f"trajectory generator loss is missing for {generator_key}")
+    _require(
+        len(critic_values) == FULL5_STEPS,
+        f"trajectory Critic loss inventory for logical rank {rank} is not five",
+    )
+    _require(
+        bool(optimizer_values["generator"]) and bool(optimizer_values["critic"]),
+        "trajectory gradient-norm inventory is incomplete",
+    )
+
+    losses: dict[str, float | None] = {
+        "generator_mean": sum(generator_values) / len(generator_values),
+        "critic_mean": sum(critic_values) / len(critic_values),
+    }
+    gradient_norms: dict[str, float | None] = {
+        role + "_mean": sum(values) / len(values)
+        for role, values in optimizer_values.items()
+    }
+    numeric = [
+        *(float(value) for value in losses.values() if value is not None),
+        *(float(value) for value in gradient_norms.values() if value is not None),
+    ]
+    finite = bool(numeric) and all(math.isfinite(value) for value in numeric)
+    return (
+        tuple(row.operation_key for row in rows),
+        {
+            row.operation_key: hashlib.sha256(
+                json.dumps(
+                    dict(row.seeds), sort_keys=True, separators=(",", ":")
+                ).encode()
+            ).hexdigest()
+            for row in rows
+        },
+        exact_global_call_census,
+        losses,
+        gradient_norms,
+        finite,
+    )
+
+
+def _append_trajectory_cycle_receipt(
+    *,
+    torch: Any,
+    rank: int,
+    cycle: int,
+    trace: FormalTrace,
+    seed: int,
+    arm_id: str,
+    execution_mode: str,
+    implementation: Mapping[str, str],
+    versions: Mapping[str, int],
+    initial_versions: Mapping[str, int],
+    local_losses: Sequence[Mapping[str, Any]],
+    local_optimizer: Sequence[Mapping[str, Any]],
+    local_call_census: Mapping[str, int],
+    state_fingerprints: Mapping[str, str],
+    writer: AppendOnlyTrajectoryWriter,
+) -> tuple[bool, dict[str, int]]:
+    """Append one post-cycle receipt after topology-independent normalization."""
+
+    (
+        sample_identities,
+        rng_identities,
+        call_census,
+        losses,
+        gradient_norms,
+        finite,
+    ) = _trajectory_normalized_cycle_evidence(
+        torch=torch,
+        rank=rank,
+        cycle=cycle,
+        trace=trace,
+        local_losses=local_losses,
+        local_optimizer=local_optimizer,
+        local_call_census=local_call_census,
+    )
+    cycle_number = cycle + 1
+    expected_versions = {
+        "generator": int(initial_versions["generator"]) + cycle_number,
+        "critic": int(initial_versions["critic"]) + CRITIC_UPDATES * cycle_number,
+        "ema": int(initial_versions["ema"]),
+    }
+    writer.append(
+        TrajectoryCycleReceipt(
+            run_id=str(os.environ.get("DISTILLSCHEDULE_RUN_ID", "unknown")),
+            workload="livewan_wan13b_teacher14b_sfdmd",
+            variant=arm_id,
+            rank=rank,
+            world_size=WORLD_SIZE,
+            seed=seed,
+            cycle=cycle_number,
+            expected_total_cycles=trace.cycles,
+            logical_step=cycle * FULL5_STEPS,
+            matched_contract={
+                "trace_sha256": trace.sha256,
+                "global_batch": str(trace.global_batch),
+                "updates": "G1_C5_EMA0",
+                "sample_policy": "80_SOURCE_ROWS_REUSED_FRESH_OPERATION_KEYED_RNG",
+                "trajectory_schema": "trajectory_coarse_v1",
+                "call_census_scope": "EXACT_GLOBAL_WORLD16_TOTALS",
+            },
+            implementation={
+                "execution_mode": execution_mode,
+                "trajectory_arm_id": arm_id,
+                **{str(key): str(value) for key, value in implementation.items()},
+            },
+            sample_identities=sample_identities,
+            rng_identities=rng_identities,
+            versions=expected_versions,
+            cycle_updates={"generator": 1, "critic": 5, "ema": 0},
+            cumulative_updates={
+                "generator": cycle_number,
+                "critic": CRITIC_UPDATES * cycle_number,
+                "ema": 0,
+            },
+            call_census=call_census,
+            losses=losses,
+            gradient_norms=gradient_norms,
+            tensor_contracts={
+                "rollout_latent": {
+                    "shape": list(LATENT_SHAPE),
+                    "dtype": "torch.float32",
+                }
+            },
+            state_fingerprints=state_fingerprints,
+            finite=finite,
+            runtime_status="PASS" if finite else "NONFINITE",
+        )
+    )
+    return finite, call_census
+
+
 @dataclass
 class RunEvidence:
     output_fingerprints: list[dict[str, Any]] = field(default_factory=list)
@@ -2240,6 +3053,7 @@ class RunEvidence:
     score_receive_waits: list[dict[str, Any]] = field(default_factory=list)
     generator_backpressure: list[dict[str, Any]] = field(default_factory=list)
     critic_checkpoint_rng: dict[str, Any] = field(default_factory=dict)
+    physical_critic_backward_calls: int = 0
 
     def add_logical_score_calls(self, key: str, count: int) -> None:
         _require(count > 0, "logical Score call count must be positive")
@@ -2249,6 +3063,18 @@ class RunEvidence:
             self.logical_score_calls[logical_key] = (
                 self.logical_score_calls.get(logical_key, 0) + count
             )
+
+    def add_physical_critic_backward_calls(self, count: int) -> None:
+        """Record completed physical Critic backward invocations.
+
+        This counter is intentionally independent of the logical Score-call
+        inventory: a physical B2 backward represents two logical samples,
+        whereas the attribution arm executes those samples as two physical B1
+        backwards before the same single optimizer commit.
+        """
+
+        _require(count > 0, "physical Critic backward count must be positive")
+        self.physical_critic_backward_calls += count
 
 
 def _record_optimizer_diagnostics(
@@ -2262,10 +3088,25 @@ def _record_optimizer_diagnostics(
     clip_norm: Any,
     gradient_before_clip: Mapping[str, float | int] | None,
 ) -> None:
+    trajectory_mode = run_kind == "trajectory"
+    # Keep the historical correctness-only branch explicit.  Trajectory is an
+    # additional low-volume diagnostic consumer; all other legacy run kinds
+    # return at the same point as before.
     if run_kind != "correctness":
+        if not trajectory_mode:
+            return
+    norm = clip_norm.full_tensor() if hasattr(clip_norm, "full_tensor") else clip_norm
+    if trajectory_mode:
+        evidence.optimizer_diagnostics.append(
+            {
+                "role": role,
+                "step": step,
+                "clip_input_norm": float(norm.detach().float().cpu()),
+                "gradient_tensor_metrics": "NOT_COLLECTED_TRAJECTORY_LOW_OVERHEAD",
+            }
+        )
         return
     gradients = [parameter.grad for parameter in parameters if parameter.grad is not None]
-    norm = clip_norm.full_tensor() if hasattr(clip_norm, "full_tensor") else clip_norm
     evidence.optimizer_diagnostics.append(
         {
             "role": role,
@@ -2472,6 +3313,162 @@ def _score_modulation_kernel_enabled(plan: Mapping[str, Any], *, mode: str) -> b
         "triton_block_size": 256,
     }
     _require(dict(kernel) == expected, "Score modulation kernel contract changed")
+    return True
+
+
+def _score_rmsnorm_kernel_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_score_rmsnorm import PLAN_CONTRACT
+
+    value = plan.get("metadata", {}).get("score_rmsnorm_kernel")
+    if value is None:
+        return False
+    _require(mode == "pipeline", "Score RMSNorm is pipeline-only")
+    _require(value == PLAN_CONTRACT, "Score RMSNorm contract changed")
+    _require(_score_modulation_kernel_enabled(plan, mode=mode), "Score RMSNorm requires C24")
+    return True
+
+
+def _c30_checkpoint_composition_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_c30_contract import PLAN_CONTRACT, C31_PLAN_CONTRACT, C32_PLAN_CONTRACT, C33_PLAN_CONTRACT, C34_PLAN_CONTRACT
+    from distillschedule.runtime.livewan_attention_checkpoint import PLAN_CONTRACT as SAC
+    from distillschedule.runtime.livewan_generator_rms_epilogue import PLAN_CONTRACT as RMS
+    from distillschedule.runtime.livewan_generator_rms_epilogue import CAST_SQUARE_PLAN_CONTRACT
+    from distillschedule.runtime.livewan_rollout_cast_cache import PLAN_CONTRACT as CAST
+    from distillschedule.runtime.livewan_generator_modulation import PLAN_CONTRACT as MOD
+    from distillschedule.runtime.livewan_generator_gate import PLAN_CONTRACT as GATE, LAYOUT_PLAN_CONTRACT as LAYOUT
+
+    metadata = plan.get("metadata", {})
+    value = metadata.get("checkpoint_composition")
+    if value is None:
+        return False
+    _require(mode == "pipeline" and value in (PLAN_CONTRACT, C31_PLAN_CONTRACT, C32_PLAN_CONTRACT, C33_PLAN_CONTRACT, C34_PLAN_CONTRACT),
+             "C30 explicit composition contract changed")
+    expected_rms = RMS if value == PLAN_CONTRACT else CAST_SQUARE_PLAN_CONTRACT
+    _require(metadata.get("critic_attention_checkpoint") == SAC
+             and metadata.get("generator_rms_epilogue") == expected_rms
+             and metadata.get("generator_rollout_cast_cache") == CAST
+             and metadata.get("generator_modulation") == (MOD if value in (C32_PLAN_CONTRACT, C33_PLAN_CONTRACT, C34_PLAN_CONTRACT) else None)
+             and metadata.get("generator_gate") == (GATE if value in (C33_PLAN_CONTRACT, C34_PLAN_CONTRACT) else None)
+             and metadata.get("generator_residual_layout") == (LAYOUT if value == C34_PLAN_CONTRACT else None)
+             and metadata.get("score_prompt_staging") is None
+             and not metadata.get("score_context_prefetch"),
+             "C30 requires exact C29 parent plus unchanged C26 policy")
+    return True
+
+
+def _generator_rollout_cast_cache_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_rollout_cast_cache import PLAN_CONTRACT
+
+    metadata = plan.get("metadata", {})
+    value = metadata.get("generator_rollout_cast_cache")
+    if value is None:
+        return False
+    _require(mode == "pipeline" and dict(value) == PLAN_CONTRACT,
+             "C28 Generator rollout cast-cache contract changed")
+    _require(_score_rmsnorm_kernel_enabled(plan, mode=mode)
+             and _generator_cross_kv_cache_enabled(plan, mode=mode)
+             and _generator_attention_backend_enabled(plan, mode=mode)
+             and metadata.get("score_prompt_staging") is None
+             and (metadata.get("critic_attention_checkpoint") is None
+                  or _c30_checkpoint_composition_enabled(plan, mode=mode))
+             and not metadata.get("score_context_prefetch"),
+             "C28 requires unchanged C25 parent or explicitly registered C30")
+    return True
+
+
+def _generator_rms_epilogue_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_generator_rms_epilogue import (
+        PLAN_CONTRACT, CAST_SQUARE_PLAN_CONTRACT)
+
+    value = plan.get("metadata", {}).get("generator_rms_epilogue")
+    if value is None:
+        return False
+    _require(mode == "pipeline" and dict(value) in (PLAN_CONTRACT, CAST_SQUARE_PLAN_CONTRACT),
+             "C29 Generator RMS epilogue contract changed")
+    if value == CAST_SQUARE_PLAN_CONTRACT:
+        _require(_c30_checkpoint_composition_enabled(plan, mode=mode),
+                 "C31 requires explicit C30 plus cast-square composition")
+    _require(_generator_rollout_cast_cache_enabled(plan, mode=mode),
+             "C29 requires unchanged C28 parent")
+    return True
+
+
+def _generator_rms_cast_square_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_generator_rms_epilogue import CAST_SQUARE_PLAN_CONTRACT
+
+    return (_generator_rms_epilogue_enabled(plan, mode=mode)
+            and plan["metadata"]["generator_rms_epilogue"] == CAST_SQUARE_PLAN_CONTRACT)
+
+
+def _generator_modulation_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_generator_modulation import PLAN_CONTRACT
+
+    value = plan.get("metadata", {}).get("generator_modulation")
+    if value is None:
+        return False
+    _require(mode == "pipeline" and value == PLAN_CONTRACT,
+             "C32 Generator modulation contract changed")
+    _require(_c30_checkpoint_composition_enabled(plan, mode=mode)
+             and _generator_rms_cast_square_enabled(plan, mode=mode),
+             "C32 requires explicit unchanged C31 parent")
+    return True
+
+
+def _generator_gate_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_generator_gate import PLAN_CONTRACT
+
+    value = plan.get("metadata", {}).get("generator_gate")
+    if value is None:
+        return False
+    _require(mode == "pipeline" and value == PLAN_CONTRACT,
+             "C33 Generator residual gate contract changed")
+    _require(_c30_checkpoint_composition_enabled(plan, mode=mode)
+             and _generator_modulation_enabled(plan, mode=mode),
+             "C33 requires explicit unchanged C32 parent")
+    return True
+
+
+def _generator_residual_layout_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_generator_gate import LAYOUT_PLAN_CONTRACT
+
+    value = plan.get("metadata", {}).get("generator_residual_layout")
+    if value is None:
+        return False
+    _require(mode == "pipeline" and value == LAYOUT_PLAN_CONTRACT,
+             "C34 Generator residual layout contract changed")
+    _require(_generator_gate_enabled(plan, mode=mode),
+             "C34 requires explicit unchanged C33 parent")
+    return True
+
+
+def _score_prompt_staging_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_context_staging import PLAN_CONTRACT
+
+    metadata = plan.get("metadata", {})
+    value = metadata.get("score_prompt_staging")
+    if value is None:
+        return False
+    _require(mode == "pipeline" and dict(value) == PLAN_CONTRACT,
+             "C27 Score input staging contract changed")
+    _require(_score_rmsnorm_kernel_enabled(plan, mode=mode)
+             and _critic_physical_batch_size(plan, mode=mode) == 2
+             and metadata.get("critic_attention_checkpoint") is None
+             and metadata.get("score_context_prefetch", False) is False,
+             "C27 requires C25 parent without SAC/projected context prefetch")
+    return True
+
+
+def _critic_attention_checkpoint_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_attention_checkpoint import PLAN_CONTRACT
+
+    value = plan.get("metadata", {}).get("critic_attention_checkpoint")
+    if value is None:
+        return False
+    _require(mode == "pipeline" and value == PLAN_CONTRACT, "C26 SAC contract changed")
+    _require(_score_rmsnorm_kernel_enabled(plan, mode=mode), "C26 requires C25 parent")
+    _require(_continuous_pipeline_contract(plan, mode=mode) is not None, "C26 requires continuous B16")
+    _require(_critic_physical_batch_size(plan, mode=mode) == 2, "C26 Critic B2 changed")
+    _require(not _critic_checkpoint_rng_elision_enabled(plan, mode=mode), "C26 cannot change checkpoint RNG")
     return True
 
 
@@ -2745,6 +3742,15 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _score_context_prefetch_enabled(plan, mode=mode)
     _critic_lora_scale_one_enabled(plan, mode=mode)
     _score_modulation_kernel_enabled(plan, mode=mode)
+    _score_rmsnorm_kernel_enabled(plan, mode=mode)
+    _c30_checkpoint_composition_enabled(plan, mode=mode)
+    _critic_attention_checkpoint_enabled(plan, mode=mode)
+    _score_prompt_staging_enabled(plan, mode=mode)
+    _generator_rollout_cast_cache_enabled(plan, mode=mode)
+    _generator_rms_epilogue_enabled(plan, mode=mode)
+    _generator_modulation_enabled(plan, mode=mode)
+    _generator_gate_enabled(plan, mode=mode)
+    _generator_residual_layout_enabled(plan, mode=mode)
     _score_rope_kernel_enabled(plan, mode=mode)
     _score_attention_backend_enabled(plan, mode=mode)
     _generator_cross_kv_cache_enabled(plan, mode=mode)
@@ -2818,6 +3824,44 @@ def run_worker(
 ) -> dict[str, Any]:
     plan_path = Path(plan_path).expanduser().resolve()
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    from distillschedule.runtime.livewan_two_cycle_profile import enabled as profile_two_enabled
+    profile_two_cycles = profile_two_enabled(run_kind)
+    critic_b1_attribution = _trajectory_critic_batch_ablation_enabled(
+        plan, mode=mode
+    )
+    _require(
+        not critic_b1_attribution or run_kind == "trajectory",
+        "C24 Critic-B1 attribution is diagnostic trajectory-only",
+    )
+    trajectory_cycles = 0
+    trajectory_seed = 0
+    trajectory_arm_id = ""
+    two_cycle_timing = run_kind == "two-cycle-timing"
+    two_cycle_seed = 0
+    two_cycle_arm_id = ""
+    if run_kind == "trajectory":
+        trajectory_cycles = int(os.environ.get("LIVEWAN_TRAJECTORY_CYCLES", "0"))
+        trajectory_seed = int(os.environ.get("LIVEWAN_TRAJECTORY_SEED", "0"))
+        trajectory_arm_id = os.environ.get("LIVEWAN_TRAJECTORY_ARM_ID", "")
+        _require(trajectory_arm_id != "", "trajectory arm identity is missing")
+        _apply_trajectory_contract(plan, cycles=trajectory_cycles, mode=mode)
+    elif two_cycle_timing:
+        two_cycle_seed = int(os.environ.get("LIVEWAN_TWO_CYCLE_SEED", "-1"))
+        two_cycle_arm_id = os.environ.get("LIVEWAN_TWO_CYCLE_ARM_ID", "")
+        _require(two_cycle_seed >= 0, "two-cycle timing seed is missing")
+        _require(two_cycle_arm_id != "", "two-cycle timing arm identity is missing")
+        _require(
+            not os.environ.get("DISTILLSCHEDULE_NSYS_BIN")
+            and not os.environ.get("DISTILLSCHEDULE_NCU_BIN"),
+            "two-cycle native timing cannot run under a profiler",
+        )
+        _apply_two_cycle_timing_contract(plan, mode=mode)
+    elif profile_two_cycles:
+        from distillschedule.runtime.livewan_two_cycle_profile import apply_contract
+        two_cycle_seed = int(os.environ.get("LIVEWAN_TWO_CYCLE_SEED", "-1"))
+        two_cycle_arm_id = os.environ.get("LIVEWAN_TWO_CYCLE_ARM_ID", "")
+        _require(two_cycle_seed >= 0 and two_cycle_arm_id != "", "two-cycle profile identity missing")
+        apply_contract(plan, mode=mode)
     _validate_plan_identity(plan, mode=mode)
     continuous_contract = _continuous_pipeline_contract(plan, mode=mode)
     continuous_cycles = (
@@ -2825,16 +3869,65 @@ def run_worker(
         if continuous_contract is not None
         else 1
     )
+    trace_cycles = (
+        trajectory_cycles
+        if run_kind == "trajectory"
+        else (TWO_CYCLE_TIMING_CYCLES if two_cycle_timing else continuous_cycles)
+    )
     registered_batch = int(plan["workload"]["shape"]["batch_size"])
     trace = FormalTrace.load(
         plan["evidence"]["operation_trace"],
-        expected_cycles=continuous_cycles,
+        expected_cycles=trace_cycles,
         expected_global_batch=registered_batch,
     )
     _validate_trace_balanced_pairing(plan, trace)
     bootstrap = Bootstrap.load(plan["evidence"]["checkpoint"], trace=trace)
+    if run_kind == "trajectory" or two_cycle_timing or profile_two_cycles:
+        trace_payload = json.loads(trace.path.read_text(encoding="utf-8"))
+        _require(
+            int(trace_payload.get("seed", -1))
+            == (two_cycle_seed if two_cycle_timing or profile_two_cycles else trajectory_seed),
+            "run seed differs from the immutable trace seed",
+        )
+        diagnostic = dict(bootstrap.value.get("continuous_diagnostic", {}))
+        _require(
+            int(diagnostic.get("cycles", -1)) == trace_cycles
+            and diagnostic.get("source_reuse_across_cycles")
+            is (trace_cycles > 1)
+            and dict(diagnostic.get("expected_final_versions", {}))
+            == {
+                "generator": trace_cycles,
+                "critic": trace_cycles * CRITIC_UPDATES,
+                "ema": 0,
+            },
+            "bootstrap contract differs from the requested cycle count",
+        )
     root = Path(repo_root).expanduser().resolve()
     source_receipt = validate_source_receipt(bootstrap, repo_root=root)
+    two_cycle_gate = None
+    two_cycle_profile_gate = None
+    if two_cycle_timing:
+        two_cycle_gate = _load_two_cycle_timing_gate(
+            path=os.environ.get("LIVEWAN_PAIR_CORRECTNESS_RECEIPT", ""),
+            expected_sha256=os.environ.get("LIVEWAN_PAIR_CORRECTNESS_SHA256", ""),
+            expected_head=os.environ.get("LIVEWAN_EXPECTED_HEAD", ""),
+            mode=mode,
+            pipeline_variant=os.environ.get("LIVEWAN_PIPELINE_VARIANT", ""),
+            arm_id=two_cycle_arm_id,
+            seed=two_cycle_seed,
+            trace=trace,
+            bootstrap=bootstrap,
+            source_receipt=source_receipt,
+        )
+    if profile_two_cycles:
+        from distillschedule.runtime.livewan_two_cycle_profile import load_gate
+        two_cycle_profile_gate = load_gate(
+            path=os.environ.get("LIVEWAN_PAIR_CORRECTNESS_RECEIPT", ""),
+            expected_sha256=os.environ.get("LIVEWAN_PAIR_CORRECTNESS_SHA256", ""),
+            expected_head=os.environ.get("LIVEWAN_EXPECTED_HEAD", ""), mode=mode,
+            pipeline_variant=os.environ.get("LIVEWAN_PIPELINE_VARIANT", ""),
+            arm_id=two_cycle_arm_id, seed=two_cycle_seed, trace=trace,
+            bootstrap=bootstrap, source_receipt=source_receipt)
     configure_python_sources(repo_root=root, source_receipt=source_receipt)
     output_dir = Path(plan["evidence"]["output_dir"]).expanduser().resolve()
     if run_kind == "validate":
@@ -2847,7 +3940,8 @@ def run_worker(
         atomic_json(output_dir / f"validate_only.node{node_rank}.json", result)
         return result
     _require(
-        run_kind in {"capacity", "correctness", "timing", "profile"},
+        run_kind in {"capacity", "correctness", "timing", "profile"}
+        or run_kind in {"trajectory", "two-cycle-timing"},
         "invalid run kind",
     )
 
@@ -2863,6 +3957,18 @@ def run_worker(
         dist.init_process_group("nccl")
     torch.cuda.set_device(local_rank)
     device = torch.device(f"cuda:{local_rank}")
+    from distillschedule.runtime.livewan_cuda_setup import materialize_blas_handles
+
+    # Shared hardware compatibility, before any model construction/timer.
+    cuda_library_setup = materialize_blas_handles(torch, device)
+    effective_plan_sha256 = _effective_plan_sha256(plan)
+    if (two_cycle_timing or profile_two_cycles) and local_rank == 0:
+        node_rank = int(os.environ.get("DISTILLSCHEDULE_NODE_RANK", "-1"))
+        _require(node_rank in {0, 1}, "two-cycle timing node rank is missing")
+        atomic_json(
+            output_dir / f"effective_plan.node{node_rank}.json",
+            {**plan, "effective_plan_sha256": effective_plan_sha256},
+        )
     critic_lora_kernel = {
         "enabled": False,
         "name": "native_livewan_lora",
@@ -2917,6 +4023,16 @@ def run_worker(
                 "dimension_histogram": {},
                 "observed_contract": None,
             }
+    score_rmsnorm_kernel = {"enabled": False, "execution_status": "DISABLED"}
+    if _score_rmsnorm_kernel_enabled(plan, mode=mode):
+        _, score_ranks = _plan_role_ranks(plan, mode=mode)
+        if rank in score_ranks:
+            from distillschedule.runtime.livewan_score_rmsnorm import install_frozen_score_rmsnorm
+
+            score_rmsnorm_kernel = install_frozen_score_rmsnorm(torch)
+        else:
+            score_rmsnorm_kernel = {"enabled": True, "role": "generator",
+                "execution_status": "NOT_APPLICABLE", "forward_calls": 0, "backward_calls": 0}
     score_rope_kernel = {
         "enabled": False,
         "name": "native_livewan_score_rope",
@@ -3100,6 +4216,7 @@ def run_worker(
     bundle = build_models(
         torch=torch, plan=plan, bootstrap=bootstrap, mode=mode, rank=rank, device=device,
     )
+    bundle.metadata["cuda_library_setup"] = cuda_library_setup
     if _critic_lora_scale_one_enabled(plan, mode=mode):
         lora_model = (
             bundle.critic if bundle.critic is not None else bundle.critic_shadow
@@ -3139,7 +4256,37 @@ def run_worker(
                 module_count=len(lora_modules),
                 all_scales_one=True,
             )
+    rollout_cast_cache = None
+    if _generator_rollout_cast_cache_enabled(plan, mode=mode) and rank < 8:
+        from distillschedule.runtime.livewan_rollout_cast_cache import install as install_rollout_cast_cache
+
+        rollout_cast_cache = install_rollout_cast_cache(torch, bundle.student)
+    generator_rms_epilogue = None
+    if _generator_rms_epilogue_enabled(plan, mode=mode) and rank < 8:
+        from distillschedule.runtime.livewan_generator_rms_epilogue import install as install_generator_rms
+
+        generator_rms_epilogue = install_generator_rms(torch, bundle.student,
+            fuse_cast_square=_generator_rms_cast_square_enabled(plan, mode=mode))
+    generator_modulation = None
+    if _generator_modulation_enabled(plan, mode=mode) and rank < 8:
+        from distillschedule.runtime.livewan_generator_modulation import install as install_g_modulation
+
+        generator_modulation = install_g_modulation(torch, bundle.student)
+    generator_gate = None
+    if _generator_gate_enabled(plan, mode=mode) and rank < 8:
+        from distillschedule.runtime.livewan_generator_gate import install as install_g_gate
+
+        generator_gate = install_g_gate(torch, bundle.student,
+            output_layout="row_major" if _generator_residual_layout_enabled(plan, mode=mode) else "native")
+
     loader = InputLoader(torch=torch, trace=trace)
+    pinned_score_context = None
+    if _score_prompt_staging_enabled(plan, mode=mode) and rank >= 8:
+        from distillschedule.runtime.livewan_context_staging import install as install_context_staging
+
+        pinned_score_context = install_context_staging(
+            torch, loader, allowed_indices={row.dataset_index for row in trace.rows},
+        )
     generator_streamers = []
     if bundle.student is not None:
         generator_ranks = tuple(int(value) for value in bundle.metadata["generator_ranks"])
@@ -3250,6 +4397,7 @@ def run_worker(
             "cgroup_oom_after": after_oom,
             "critic_lora_kernel": critic_lora_kernel,
             "score_modulation_kernel": score_modulation_kernel,
+            "score_rmsnorm_kernel": score_rmsnorm_kernel,
             "score_rope_kernel": score_rope_kernel,
             "score_attention_backend": score_attention_backend,
             "generator_cross_attention_kv_cache": generator_cross_kv_cache,
@@ -3309,7 +4457,28 @@ def run_worker(
             "execution_status": "DISABLED",
             "checkpoint_calls": 0,
         }
+    critic_attention_proxy = None
+    critic_attention_receipt = {"enabled": False, "execution_status": "DISABLED"}
+    if _critic_attention_checkpoint_enabled(plan, mode=mode):
+        if rank in _plan_role_ranks(plan, mode=mode)[1]:
+            from distillschedule.runtime.livewan_attention_backend import _load_flash_attn2
+            from distillschedule.runtime.livewan_attention_checkpoint import CriticAttentionCheckpointProxy
+
+            flash_module, _ = _load_flash_attn2()
+            critic_attention_proxy = CriticAttentionCheckpointProxy(bc.ckpt, torch, flash_module)
+            bc.ckpt = critic_attention_proxy
+        else:
+            critic_attention_receipt = {"enabled": True, "execution_status": "NOT_APPLICABLE", "checkpoint_calls": 0}
     inventory = CallInventory()
+    trajectory_writer = (
+        AppendOnlyTrajectoryWriter(
+            output_dir / "trajectory" / f"rank_{rank:03d}.jsonl",
+            run_id=str(os.environ.get("DISTILLSCHEDULE_RUN_ID", "unknown")),
+            rank=rank,
+        )
+        if run_kind == "trajectory"
+        else None
+    )
     roles = {
         id(model): role
         for model, role in (
@@ -3321,6 +4490,7 @@ def run_worker(
         if model is not None
     }
     is_profile = run_kind == "profile"
+    cycle_endpoint_records: list[dict[str, Any]] = []
     dist.barrier()
     if is_profile:
         # cudaProfilerApi capture state is process-scoped under the node-outer
@@ -3342,17 +4512,60 @@ def run_worker(
         time.sleep(10.0)
         dist.barrier()
     torch.cuda.synchronize(device)
+    timing_start_event = torch.cuda.Event(enable_timing=True) if two_cycle_timing else None
+    if timing_start_event is not None:
+        timing_start_event.record(torch.cuda.current_stream(device))
+    timing_start_ns = time.perf_counter_ns()
     start = time.perf_counter()
     with _profile_range(
         torch, run_kind=run_kind, label=f"livewan/full5/{mode}/rank_{rank}"
     ):
         with inventory.install(torch=torch, blockcausal=bc, roles=roles):
             if mode == "baseline":
-                _run_baseline(
-                    torch=torch, rank=rank, trace=trace, loader=loader, bundle=bundle,
-                    streamers=generator_streamers, score_context=score_context,
-                    run_kind=run_kind, evidence=evidence, versions=versions, device=device,
-                )
+                if run_kind == "trajectory":
+                    _require(
+                        trajectory_writer is not None and score_context is not None,
+                        "baseline trajectory evidence configuration is incomplete",
+                    )
+                    _run_baseline_trajectory(
+                        torch=torch,
+                        rank=rank,
+                        trace=trace,
+                        loader=loader,
+                        bundle=bundle,
+                        streamers=generator_streamers,
+                        score_context=score_context,
+                        evidence=evidence,
+                        versions=versions,
+                        device=device,
+                        inventory=inventory,
+                        writer=trajectory_writer,
+                        seed=trajectory_seed,
+                        arm_id=trajectory_arm_id,
+                        output_dir=output_dir,
+                    )
+                elif two_cycle_timing:
+                    _require(score_context is not None, "baseline timing lacks Score context")
+                    _run_baseline_two_cycle_timing(
+                        torch=torch,
+                        rank=rank,
+                        trace=trace,
+                        loader=loader,
+                        bundle=bundle,
+                        streamers=generator_streamers,
+                        score_context=score_context,
+                        evidence=evidence,
+                        versions=versions,
+                        device=device,
+                        cycle_endpoint_records=cycle_endpoint_records,
+                        inventory=inventory,
+                    )
+                else:
+                    _run_baseline(
+                        torch=torch, rank=rank, trace=trace, loader=loader, bundle=bundle,
+                        streamers=generator_streamers, score_context=score_context,
+                        run_kind=run_kind, evidence=evidence, versions=versions, device=device,
+                    )
             elif continuous_contract is not None:
                 _run_pipeline_8x8_continuous(
                     torch=torch,
@@ -3375,6 +4588,21 @@ def run_worker(
                     critic_step1_split_overlap=(
                         continuous_contract.get("name")
                         == "continuous_full5_b16_depth1_step1_b1_overlap_v1"
+                    ),
+                    critic_b1_attribution=critic_b1_attribution,
+                    inventory=inventory,
+                    trajectory_writer=trajectory_writer,
+                    trajectory_seed=(
+                        trajectory_seed if run_kind == "trajectory" else None
+                    ),
+                    trajectory_arm_id=(
+                        trajectory_arm_id if run_kind == "trajectory" else None
+                    ),
+                    trajectory_output_dir=(
+                        output_dir if run_kind == "trajectory" else None
+                    ),
+                    cycle_endpoint_records=(
+                        cycle_endpoint_records if two_cycle_timing else None
                     ),
                 )
             elif (
@@ -3463,10 +4691,67 @@ def run_worker(
                 raise RuntimeError("unsupported LiveWan pipeline pool policy")
     torch.cuda.synchronize(device)
     dist.barrier()
+    timing_stop_ns = time.perf_counter_ns()
     full5_wall = time.perf_counter() - start
     if is_profile:
         dist.barrier()
         torch.cuda.cudart().cudaProfilerStop()
+    if _score_rmsnorm_kernel_enabled(plan, mode=mode):
+        from distillschedule.runtime.livewan_score_rmsnorm import runtime_receipt_errors
+
+        _require(not runtime_receipt_errors(score_rmsnorm_kernel, rank=rank),
+                 "Score RMSNorm runtime contract/counters incomplete")
+    local_final_versions = dict(versions)
+    rollout_cast_cache_receipt = {"enabled": False, "execution_status": "DISABLED"}
+    if _generator_rollout_cast_cache_enabled(plan, mode=mode):
+        from distillschedule.runtime.livewan_rollout_cast_cache import runtime_receipt_errors as cast_scope_errors
+
+        rollout_cast_cache_receipt = (
+            rollout_cast_cache.receipt() if rollout_cast_cache is not None
+            else {"enabled": True, "execution_status": "NOT_APPLICABLE"}
+        )
+        _require(not cast_scope_errors(rollout_cast_cache_receipt, rank=rank, cycles=continuous_cycles),
+                 "C28 Generator rollout cast-cache lifecycle/count failed")
+    generator_rms_epilogue_receipt = {"enabled": False, "execution_status": "DISABLED"}
+    if _generator_rms_epilogue_enabled(plan, mode=mode):
+        from distillschedule.runtime.livewan_generator_rms_epilogue import runtime_receipt_errors as rms_epilogue_errors
+
+        generator_rms_epilogue_receipt = (
+            generator_rms_epilogue.receipt() if generator_rms_epilogue is not None
+            else {"enabled": True, "execution_status": "NOT_APPLICABLE"}
+        )
+        _require(not rms_epilogue_errors(generator_rms_epilogue_receipt, rank=rank, cycles=continuous_cycles,
+                     fuse_cast_square=_generator_rms_cast_square_enabled(plan, mode=mode)),
+                 "C29 Generator no-grad RMS epilogue scope/call contract failed")
+    score_prompt_staging_receipt = {"enabled": False, "execution_status": "DISABLED"}
+    generator_modulation_receipt = {"enabled": False, "execution_status": "DISABLED"}
+    if _generator_modulation_enabled(plan, mode=mode):
+        from distillschedule.runtime.livewan_generator_modulation import runtime_receipt_errors as modulation_errors
+
+        generator_modulation_receipt = (generator_modulation.receipt() if generator_modulation is not None
+            else {"enabled": True, "execution_status": "NOT_APPLICABLE"})
+        _require(not modulation_errors(generator_modulation_receipt, rank=rank, cycles=continuous_cycles),
+                 "C32 Generator no-grad modulation scope/call contract failed")
+    generator_gate_receipt = {"enabled": False, "execution_status": "DISABLED"}
+    if _generator_gate_enabled(plan, mode=mode):
+        from distillschedule.runtime.livewan_generator_gate import runtime_receipt_errors as gate_errors
+
+        generator_gate_receipt = (generator_gate.receipt() if generator_gate is not None
+            else {"enabled": True, "execution_status": "NOT_APPLICABLE"})
+        _require(not gate_errors(generator_gate_receipt, rank=rank, cycles=continuous_cycles,
+                   output_layout="row_major" if _generator_residual_layout_enabled(plan, mode=mode) else "native"),
+                 "C33 Generator no-grad residual gate scope/call contract failed")
+    if _score_prompt_staging_enabled(plan, mode=mode):
+        from distillschedule.runtime.livewan_context_staging import SOURCE_SHA256, runtime_receipt_errors as staging_errors
+
+        score_prompt_staging_receipt = (
+            {**pinned_score_context.receipt(), "enabled": True, "execution_status": "PASS",
+             "source_context_method_sha256": SOURCE_SHA256}
+            if pinned_score_context is not None
+            else {"enabled": True, "execution_status": "NOT_APPLICABLE"}
+        )
+        _require(not staging_errors(score_prompt_staging_receipt, rank=rank, cycles=continuous_cycles),
+                 "C27 actual input staging census failed")
     version_tensor = torch.tensor(
         [versions["generator"], versions["critic"], versions["ema"]],
         device=device,
@@ -3479,6 +4764,105 @@ def run_worker(
         ema=int(version_tensor[2].cpu()),
     )
     after_oom = cgroup_oom_counts()
+
+    two_cycle_timing_receipt = None
+    if two_cycle_timing:
+        _require(
+            timing_start_event is not None
+            and len(cycle_endpoint_records) == TWO_CYCLE_TIMING_CYCLES
+            and timing_start_ns
+            < int(cycle_endpoint_records[0]["host_completion_ns"])
+            < int(cycle_endpoint_records[1]["host_completion_ns"])
+            <= timing_stop_ns,
+            "two-cycle timing endpoints are missing or out of order",
+        )
+        host_completion_offsets = [
+            (int(value["host_completion_ns"]) - timing_start_ns) / 1e9
+            for value in cycle_endpoint_records
+        ]
+        gpu_completion_offsets = [
+            float(timing_start_event.elapsed_time(value["event"])) / 1000.0
+            for value in cycle_endpoint_records
+        ]
+        _require(
+            0.0 < gpu_completion_offsets[0] < gpu_completion_offsets[1],
+            "two-cycle CUDA completion events are missing or out of order",
+        )
+        cycle_rows = []
+        for index, value in enumerate(cycle_endpoint_records):
+            previous_physical = (
+                cycle_endpoint_records[index - 1]["physical_call_inventory"]
+                if index else {}
+            )
+            previous_logical = (
+                cycle_endpoint_records[index - 1]["logical_call_inventory"]
+                if index else {}
+            )
+            cycle_rows.append(
+                {
+                    "cycle": index + 1,
+                    "local_versions": value["local_versions"],
+                    "physical_call_inventory_cumulative": value[
+                        "physical_call_inventory"
+                    ],
+                    "logical_call_inventory_cumulative": value[
+                        "logical_call_inventory"
+                    ],
+                    "physical_call_inventory_delta": {
+                        key: int(count) - int(previous_physical.get(key, 0))
+                        for key, count in value["physical_call_inventory"].items()
+                        if int(count) - int(previous_physical.get(key, 0))
+                    },
+                    "logical_call_inventory_delta": {
+                        key: int(count) - int(previous_logical.get(key, 0))
+                        for key, count in value["logical_call_inventory"].items()
+                        if int(count) - int(previous_logical.get(key, 0))
+                    },
+                }
+            )
+        two_cycle_timing_receipt = {
+            "schema_version": "distillschedule.livewan_two_cycle_timing_rank.v1",
+            "cycles_in_same_process": TWO_CYCLE_TIMING_CYCLES,
+            "cycle_1": {
+                "role": "WARMUP_DIAGNOSTIC",
+                "completion_offset_seconds": gpu_completion_offsets[0],
+                "host_enqueue_offset_seconds": host_completion_offsets[0],
+                "local_endpoint_delta_seconds": gpu_completion_offsets[0],
+                "claimable": False,
+            },
+            "cycle_2": {
+                "role": "STEADY_STATE_CLAIMABLE",
+                "completion_offset_seconds": gpu_completion_offsets[1],
+                "host_enqueue_offset_seconds": host_completion_offsets[1],
+                "local_endpoint_delta_seconds": (
+                    gpu_completion_offsets[1] - gpu_completion_offsets[0]
+                ),
+                "claimable": True,
+            },
+            "final_sync_barrier_tail_seconds": (
+                timing_stop_ns - int(cycle_endpoint_records[1]["host_completion_ns"])
+            )
+            / 1e9,
+            "total_outer_wall_seconds": (timing_stop_ns - timing_start_ns) / 1e9,
+            "endpoint_definition": (
+                "rank terminal CUDA-event completion on the current compute stream; "
+                "cycle2 is completion2-completion1; "
+                "C24 cycle2 therefore includes inter-cycle lookahead and Critic-shadow "
+                "hot-sync; no midpoint synchronize or barrier"
+            ),
+            "world_aggregation": (
+                "baseline=max_all_rank_completion_offsets; "
+                "pipeline=max_score_rank_completion_offsets"
+            ),
+            "profiled": False,
+            "profiler_status": "NOT_RUN",
+            "state_anchors": "NOT_COLLECTED_IN_TIMING_MODE",
+            "evidence_extraction": "AFTER_BOTH_TIMED_CYCLE_ENDPOINTS",
+            "per_cycle_contract": cycle_rows,
+            "local_final_versions_before_world_max": local_final_versions,
+            "effective_plan_sha256": effective_plan_sha256,
+            "correctness_binding": two_cycle_gate,
+        }
 
     output_tensor_artifact = None
     if run_kind == "correctness" and evidence.output_tensors:
@@ -3494,14 +4878,18 @@ def run_worker(
 
     generator_metrics = None
     critic_metrics = None
-    if bundle.student is not None:
+    if run_kind != "trajectory" and bundle.student is not None:
         generator_metrics = _state_metrics(torch, list(bundle.student.parameters()))
-    if bundle.critic is not None:
+    if run_kind != "trajectory" and bundle.critic is not None:
         # Critic is replicated in both paths.  One local metric is sufficient;
         # the summarizer checks equality across owners.
         critic_metrics = _state_metrics(torch, bundle.critic_lora_params)
     logical_call_inventory = dict(inventory.counts)
     logical_call_inventory.update(evidence.logical_score_calls)
+    if critic_attention_proxy is not None:
+        _require(bundle.critic is not None, "C26 Score checkpoint lacks Critic")
+        critic_attention_receipt = critic_attention_proxy.receipt(
+            expected_calls=int(inventory.counts.get("critic/grad/checkpoint", 0)) * len(bundle.critic.blocks))
     if critic_checkpoint_proxy is not None:
         _require(bundle.critic is not None, "Score checkpoint proxy lacks Critic")
         expected_checkpoint_calls = int(
@@ -3547,6 +4935,7 @@ def run_worker(
         "trace_sha256": trace.sha256,
         "bootstrap_sha256": bootstrap.sha256,
         "source_receipt_sha256": source_receipt["source_receipt_sha256"],
+        "effective_plan_sha256": effective_plan_sha256,
         "logical_generator_updates": GENERATOR_UPDATES * workload_cycles,
         "logical_critic_updates": CRITIC_UPDATES * workload_cycles,
         "physical_generator_commits": (
@@ -3581,6 +4970,7 @@ def run_worker(
         "split_dmd_shadow": evidence.split_dmd_shadow,
         "critic_lora_kernel": critic_lora_kernel,
         "score_modulation_kernel": score_modulation_kernel,
+        "score_rmsnorm_kernel": score_rmsnorm_kernel,
         "score_rope_kernel": score_rope_kernel,
         "score_attention_backend": score_attention_backend,
         "generator_cross_attention_kv_cache": generator_cross_kv_cache,
@@ -3591,8 +4981,18 @@ def run_worker(
         "score_receive_waits": evidence.score_receive_waits,
         "generator_backpressure": evidence.generator_backpressure,
         "critic_checkpoint_rng": evidence.critic_checkpoint_rng,
+        "checkpoint_composition": plan.get("metadata", {}).get("checkpoint_composition"),
+        "critic_attention_checkpoint": critic_attention_receipt,
+        "score_prompt_staging": score_prompt_staging_receipt,
+        "generator_rollout_cast_cache": rollout_cast_cache_receipt,
+        "generator_rms_epilogue": generator_rms_epilogue_receipt,
+        "generator_modulation": generator_modulation_receipt,
+        "generator_gate": generator_gate_receipt,
         "slot_routing": slot_routing,
         "full5_wall_seconds": full5_wall,
+        "two_cycle_timing": two_cycle_timing_receipt,
+        "two_cycle_profile": two_cycle_profile_gate,
+        "profiled": False if two_cycle_timing else is_profile,
         "construction_wall_seconds": build_wall,
         "setup_memory": setup_memory,
         "peak_memory": memory_snapshot(torch, device),
@@ -3610,6 +5010,17 @@ def run_worker(
         "build": bundle.metadata,
         "ema": {"updates_in_full5": 0, "status": "NOT_RUN_SEPARATE_GATE"},
     }
+    if run_kind == "trajectory":
+        receipt["trajectory"] = {
+            "schema": "trajectory_coarse_v1",
+            "cycles": trajectory_cycles,
+            "seed": trajectory_seed,
+            "arm_id": trajectory_arm_id,
+            "jsonl": str(trajectory_writer.path),
+            "diagnostic_only": True,
+            "formal_timing_eligible": False,
+            "ordinary_numerical_drift_early_stop": False,
+        }
     _write_rank_receipt(output_dir=output_dir, rank=rank, value=receipt)
     dist.barrier()
     if is_profile:
@@ -3648,13 +5059,15 @@ def _run_baseline(
     evidence: RunEvidence,
     versions: dict[str, int],
     device: Any,
+    step_offset: int = 0,
 ) -> None:
     _require(bundle.student is not None and bundle.critic is not None and bundle.teacher is not None, "baseline needs all roles")
     for step in range(FULL5_STEPS):
+        global_step = step_offset + step
         with _profile_range(
             torch, run_kind=run_kind, label=f"livewan/baseline/step_{step}"
         ):
-            row = trace.row(step, rank)
+            row = trace.row(global_step, rank)
             bundle.generator_optimizer.zero_grad(set_to_none=True)
             bundle.critic_optimizer.zero_grad(set_to_none=True)
             with _profile_range(
@@ -3695,7 +5108,7 @@ def _run_baseline(
                     losses = generator_backward_for_sample(
                         torch, prepared=prepared, dmd_gradient=gradient, sample_weight=1.0,
                     )
-                if run_kind == "correctness":
+                if run_kind in {"correctness", "trajectory"}:
                     evidence.loss_fingerprints.extend(
                         {"operation_key": row.operation_key, "kind": "generator", **_tensor_fingerprint(torch, value)}
                         for value in losses
@@ -3710,7 +5123,7 @@ def _run_baseline(
                     context_lens=prepared.context_lens, sample_weight=1.0,
                 )
                 evidence.add_logical_score_calls("critic/grad/checkpoint", 1)
-            if run_kind == "correctness":
+            if run_kind in {"correctness", "trajectory"}:
                 evidence.loss_fingerprints.append(
                     {"operation_key": row.operation_key, "kind": "critic", **_tensor_fingerprint(torch, critic_loss)}
                 )
@@ -3726,7 +5139,7 @@ def _run_baseline(
                     )
                     generator_clip_norm = torch.nn.utils.clip_grad_norm_(generator_parameters, 1.0)
                     _record_optimizer_diagnostics(
-                        torch, evidence, run_kind=run_kind, role="generator", step=step,
+                        torch, evidence, run_kind=run_kind, role="generator", step=global_step,
                         parameters=generator_parameters, clip_norm=generator_clip_norm,
                         gradient_before_clip=generator_pre_clip,
                     )
@@ -3740,19 +5153,182 @@ def _run_baseline(
                     torch, bundle.critic_lora_params, group=bundle.score_group,
                     group_size=bundle.score_group_size, bucket_mib=128,
                 )
-                evidence.gradient_sync.append({"step": step, "role": "critic", **sync})
+                evidence.gradient_sync.append({"step": global_step, "role": "critic", **sync})
                 critic_pre_clip = (
                     _state_metrics(torch, [parameter.grad for parameter in bundle.critic_lora_params])
                     if run_kind == "correctness" else None
                 )
                 critic_clip_norm = torch.nn.utils.clip_grad_norm_(bundle.critic_lora_params, 1.0, foreach=True)
                 _record_optimizer_diagnostics(
-                    torch, evidence, run_kind=run_kind, role="critic", step=step,
+                    torch, evidence, run_kind=run_kind, role="critic", step=global_step,
                     parameters=bundle.critic_lora_params, clip_norm=critic_clip_norm,
                     gradient_before_clip=critic_pre_clip,
                 )
                 bundle.critic_optimizer.step()
                 versions["critic"] += 1
+
+
+def _run_baseline_trajectory(
+    *,
+    torch: Any,
+    rank: int,
+    trace: FormalTrace,
+    loader: InputLoader,
+    bundle: ModelBundle,
+    streamers: Sequence[Any],
+    score_context: ScoreContext,
+    evidence: RunEvidence,
+    versions: dict[str, int],
+    device: Any,
+    inventory: CallInventory,
+    writer: AppendOnlyTrajectoryWriter,
+    seed: int,
+    arm_id: str,
+    output_dir: Path,
+) -> None:
+    """Run sequential world16 in uninterrupted G1/C5 trajectory cycles."""
+
+    _require(
+        trace.cycles in TRAJECTORY_ALLOWED_CYCLES,
+        "baseline trajectory cycle count is not registered",
+    )
+    initial_versions = dict(versions)
+    reference_call_census: dict[str, int] | None = None
+    for cycle in range(trace.cycles):
+        loss_start = len(evidence.loss_fingerprints)
+        optimizer_start = len(evidence.optimizer_diagnostics)
+        inventory_before = dict(inventory.counts)
+        logical_score_before = dict(evidence.logical_score_calls)
+        _run_baseline(
+            torch=torch,
+            rank=rank,
+            trace=trace,
+            loader=loader,
+            bundle=bundle,
+            streamers=streamers,
+            score_context=score_context,
+            run_kind="trajectory",
+            evidence=evidence,
+            versions=versions,
+            device=device,
+            step_offset=cycle * FULL5_STEPS,
+        )
+        cycle_number = cycle + 1
+        expected_versions = {
+            "generator": int(initial_versions["generator"]) + cycle_number,
+            "critic": int(initial_versions["critic"]) + CRITIC_UPDATES * cycle_number,
+            "ema": int(initial_versions["ema"]),
+        }
+        _require(
+            dict(versions) == expected_versions,
+            "sequential trajectory physical commit inventory changed",
+        )
+        state_fingerprints: dict[str, str] = {}
+        if cycle_number in TRAJECTORY_ANCHOR_CYCLES or cycle_number == trace.cycles:
+            state_fingerprints, _state_anchor = _trajectory_state_anchor(
+                torch=torch,
+                rank=rank,
+                cycle=cycle_number,
+                output_dir=output_dir,
+                bundle=bundle,
+            )
+        inventory_after = dict(inventory.counts)
+        logical_score_after = dict(evidence.logical_score_calls)
+        local_call_census = {
+            **{
+                f"application/{key}": int(value) - int(inventory_before.get(key, 0))
+                for key, value in inventory_after.items()
+                if key.startswith("student")
+                and int(value) - int(inventory_before.get(key, 0))
+            },
+            **{
+                f"logical_score/{key}": int(value)
+                - int(logical_score_before.get(key, 0))
+                for key, value in logical_score_after.items()
+                if int(value) - int(logical_score_before.get(key, 0))
+            },
+        }
+        finite, call_census = _append_trajectory_cycle_receipt(
+            torch=torch,
+            rank=rank,
+            cycle=cycle,
+            trace=trace,
+            seed=seed,
+            arm_id=arm_id,
+            execution_mode="baseline",
+            implementation={
+                "pool_topology": "WORLD16_SEQUENTIAL_FSDP2",
+                "physical_role": "all_roles",
+                "critic_physical_batch_size": "1",
+                "critic_physical_backward_calls": "5",
+                "critic_optimizer_commits": "5",
+            },
+            versions=versions,
+            initial_versions=initial_versions,
+            local_losses=evidence.loss_fingerprints[loss_start:],
+            local_optimizer=evidence.optimizer_diagnostics[optimizer_start:],
+            local_call_census=local_call_census,
+            state_fingerprints=state_fingerprints,
+            writer=writer,
+        )
+        if reference_call_census is None:
+            reference_call_census = dict(call_census)
+        else:
+            _require(
+                call_census == reference_call_census,
+                "sequential trajectory changed its per-cycle call census",
+            )
+        if not finite:
+            raise FloatingPointError(
+                f"non-finite LiveWan baseline trajectory evidence at cycle {cycle_number}"
+            )
+
+
+def _run_baseline_two_cycle_timing(
+    *,
+    torch: Any,
+    rank: int,
+    trace: FormalTrace,
+    loader: InputLoader,
+    bundle: ModelBundle,
+    streamers: Sequence[Any],
+    score_context: ScoreContext,
+    evidence: RunEvidence,
+    versions: dict[str, int],
+    device: Any,
+    cycle_endpoint_records: list[dict[str, Any]],
+    inventory: CallInventory,
+) -> None:
+    """Run two uninterrupted sequential cycles with timestamp-only boundaries."""
+
+    _require(
+        trace.cycles == TWO_CYCLE_TIMING_CYCLES,
+        "sequential timing trace must contain exactly two cycles",
+    )
+    for cycle in range(TWO_CYCLE_TIMING_CYCLES):
+        _run_baseline(
+            torch=torch,
+            rank=rank,
+            trace=trace,
+            loader=loader,
+            bundle=bundle,
+            streamers=streamers,
+            score_context=score_context,
+            run_kind="two-cycle-timing",
+            evidence=evidence,
+            versions=versions,
+            device=device,
+            step_offset=cycle * FULL5_STEPS,
+        )
+        # A nonblocking event only: deliberately no host synchronize or
+        # distributed collective at the cycle boundary.
+        _record_two_cycle_endpoint(
+            torch,
+            records=cycle_endpoint_records,
+            versions=versions,
+            inventory=inventory,
+            evidence=evidence,
+        )
 
 
 def _recv_pair(
@@ -3912,6 +5488,7 @@ def _run_pipeline_8x8(
     device: Any,
     rollout_runahead: bool = False,
     critic_b2_only: bool = False,
+    critic_b1_accumulate: bool = False,
     critic_step1_split_overlap: bool = False,
     score_context_from_trace: bool = False,
     slot_pairs_by_lane: Sequence[Sequence[int]] | None = None,
@@ -3985,6 +5562,15 @@ def _run_pipeline_8x8(
             and runahead_host_transport is not None
             and bundle.critic_gradient_reducer is not None,
             "step1 split overlap requires C21 B2 run-ahead and its async reducer",
+        )
+    if critic_b1_accumulate and not is_generator:
+        _require(
+            not critic_b2_only
+            and not critic_step1_split_overlap
+            and rollout_runahead
+            and runahead_host_transport is not None
+            and bundle.critic_gradient_reducer is not None,
+            "C24 Critic-B1 attribution requires two accumulated B1 backwards",
         )
 
     prefetched_contexts: dict[tuple[int, int], ScoreSampleContext] = {}
@@ -4344,7 +5930,7 @@ def _run_pipeline_8x8(
                     losses1 = generator_backward_for_sample(
                         torch, prepared=second, dmd_gradient=grad1, sample_weight=0.5,
                     )
-                if run_kind == "correctness":
+                if run_kind in {"correctness", "trajectory"}:
                     for row, losses in zip(rows, (losses0, losses1)):
                         evidence.loss_fingerprints.extend(
                             {"operation_key": row.operation_key, "kind": "generator", **_tensor_fingerprint(torch, value)}
@@ -4666,6 +6252,11 @@ def _run_pipeline_8x8(
                         torch, bundle=bundle, score_context=score_context, row=rows[0],
                         x0=first_x0, sample_context=first_sample_context, context_lens=context_lens,
                         sample_weight=0.5,
+                        reducer_accumulation=(
+                            _critic_b1_attribution_reducer_accumulation(0)
+                            if critic_b1_accumulate
+                            else None
+                        ),
                     )
                     evidence.add_logical_score_calls("critic/grad/checkpoint", 1)
                 with _profile_range(
@@ -4676,8 +6267,25 @@ def _run_pipeline_8x8(
                         torch, bundle=bundle, score_context=score_context, row=rows[1],
                         x0=second_x0, sample_context=second_sample_context, context_lens=context_lens,
                         sample_weight=0.5,
+                        reducer_accumulation=(
+                            _critic_b1_attribution_reducer_accumulation(1)
+                            if critic_b1_accumulate
+                            else None
+                        ),
                     )
                     evidence.add_logical_score_calls("critic/grad/checkpoint", 1)
+            if run_kind == "trajectory":
+                # Count completed physical backward invocations from the
+                # branch that actually ran.  Do not infer this from logical
+                # sample inventory: B2 contributes two logical calls but one
+                # physical backward, while the B1 attribution arm contributes
+                # two physical backwards before the same commit.
+                evidence.add_physical_critic_backward_calls(
+                    _physical_critic_backward_calls_for_step(
+                        critic_b2_only=critic_b2_only,
+                        split_step1=split_step1,
+                    )
+                )
             if grad1_work is not None:
                 with _profile_range(
                     torch, run_kind=run_kind,
@@ -4688,7 +6296,7 @@ def _run_pipeline_8x8(
                 # work is complete; deleting it earlier would make the
                 # transport lifetime implementation-dependent.
                 del grad1_send
-            if run_kind == "correctness":
+            if run_kind in {"correctness", "trajectory"}:
                 for row, loss in zip(rows, (loss0, loss1)):
                     evidence.loss_fingerprints.append(
                         {"operation_key": row.operation_key, "kind": "critic", **_tensor_fingerprint(torch, loss)}
@@ -5218,10 +6826,40 @@ def _run_pipeline_8x8_continuous(
     slot_pairs_by_lane: Sequence[Sequence[int]],
     full_context_lens_elision: bool,
     critic_step1_split_overlap: bool,
+    critic_b1_attribution: bool,
+    inventory: CallInventory,
+    trajectory_writer: AppendOnlyTrajectoryWriter | None = None,
+    trajectory_seed: int | None = None,
+    trajectory_arm_id: str | None = None,
+    trajectory_output_dir: Path | None = None,
+    cycle_endpoint_records: list[dict[str, Any]] | None = None,
 ) -> None:
-    """Run three exact cycles with one next-cycle rollout wave in flight."""
+    """Run exact C24 cycles with one next-cycle rollout wave in flight."""
 
-    _require(trace.cycles == 3, "C21 continuous trace must contain three cycles")
+    trajectory_mode = run_kind == "trajectory"
+    two_cycle_timing = run_kind == "two-cycle-timing"
+    if trajectory_mode:
+        _require(
+            trace.cycles in TRAJECTORY_ALLOWED_CYCLES,
+            "trajectory trace cycles must be one of 1, 2, 5, or 50",
+        )
+        _require(
+            trajectory_writer is not None
+            and trajectory_seed is not None
+            and trajectory_arm_id is not None
+            and trajectory_output_dir is not None,
+            "trajectory evidence configuration is incomplete",
+        )
+    elif two_cycle_timing:
+        _require(
+            trace.cycles == TWO_CYCLE_TIMING_CYCLES
+            and cycle_endpoint_records is not None,
+            "C24 two-cycle timing trace/endpoint recorder is incomplete",
+        )
+    else:
+        from distillschedule.runtime.livewan_two_cycle_profile import enabled as profile_two_enabled
+        _require(trace.cycles == (2 if profile_two_enabled(run_kind) else 3),
+                 "continuous diagnostic trace cycle count changed")
     _require(
         runahead_host_transport is not None and critic_shadow_hot_sync is not None,
         "C21 continuous transports are incomplete",
@@ -5234,13 +6872,33 @@ def _run_pipeline_8x8_continuous(
         slots_per_lane=trace.global_batch // 8,
     )[lane]
     batch32 = trace.global_batch == 32
+    _require(
+        not critic_b1_attribution or (trajectory_mode and not batch32),
+        "C24 Critic-B1 attribution is restricted to trajectory B16",
+    )
     latent_bytes = math.prod(LATENT_SHAPE) * 4
     started = time.perf_counter()
     cycle_events: list[dict[str, Any]] = []
     precomputed_first: PreparedRollout | None = None
+    initial_versions = dict(versions)
+    reference_call_census: dict[str, int] | None = None
+    pending_application_calls: dict[str, int] = {}
+    pending_logical_score_calls: dict[str, int] = {}
 
     for cycle in range(trace.cycles):
         cycle_started = time.perf_counter()
+        if trajectory_mode:
+            incoming_application_calls = pending_application_calls
+            incoming_logical_score_calls = pending_logical_score_calls
+            pending_application_calls = {}
+            pending_logical_score_calls = {}
+            loss_start = len(evidence.loss_fingerprints)
+            optimizer_start = len(evidence.optimizer_diagnostics)
+            inventory_before = dict(inventory.counts)
+            logical_score_before = dict(evidence.logical_score_calls)
+            physical_critic_backward_before = (
+                evidence.physical_critic_backward_calls
+            )
         with _profile_range(
             torch,
             run_kind=run_kind,
@@ -5284,7 +6942,8 @@ def _run_pipeline_8x8_continuous(
                     versions=versions,
                     device=device,
                     rollout_runahead=True,
-                    critic_b2_only=True,
+                    critic_b2_only=not critic_b1_attribution,
+                    critic_b1_accumulate=critic_b1_attribution,
                     critic_step1_split_overlap=critic_step1_split_overlap,
                     score_context_from_trace=True,
                     slot_pairs_by_lane=slot_pairs_by_lane,
@@ -5299,6 +6958,38 @@ def _run_pipeline_8x8_continuous(
                     finalize_host_transport=False,
                 )
         role_returned = time.perf_counter()
+        if two_cycle_timing:
+            # The endpoint is immediately after this rank's terminal work for
+            # the logical cycle.  For cycle 1 it is intentionally before the
+            # next-cycle lookahead/hot-sync below, so the cycle-2 endpoint delta
+            # includes all of that attributable cross-cycle work.  This is a
+            # timestamp only: no midpoint synchronization or barrier is added.
+            _record_two_cycle_endpoint(
+                torch,
+                records=cycle_endpoint_records,
+                versions=versions,
+                inventory=inventory,
+                evidence=evidence,
+            )
+        if trajectory_mode:
+            cycle_losses = list(evidence.loss_fingerprints[loss_start:])
+            cycle_optimizer = list(evidence.optimizer_diagnostics[optimizer_start:])
+            inventory_after = dict(inventory.counts)
+            logical_score_after = dict(evidence.logical_score_calls)
+        state_fingerprints: dict[str, str] = {}
+        state_anchor = None
+        cycle_number = cycle + 1
+        if trajectory_mode and (
+            cycle_number in TRAJECTORY_ANCHOR_CYCLES
+            or cycle_number == trace.cycles
+        ):
+            state_fingerprints, state_anchor = _trajectory_state_anchor(
+                torch=torch,
+                rank=rank,
+                cycle=cycle_number,
+                output_dir=trajectory_output_dir,
+                bundle=bundle,
+            )
         event: dict[str, Any] = {
             "cycle": cycle,
             "role": "generator" if is_generator else "score",
@@ -5378,8 +7069,109 @@ def _run_pipeline_8x8_continuous(
                 event["critic_shadow_sync_submit_offset_seconds"] = (
                     time.perf_counter() - started
                 )
+        if trajectory_mode:
+            pending_application_calls = {
+                key: int(value) - int(inventory_after.get(key, 0))
+                for key, value in inventory.counts.items()
+                if int(value) - int(inventory_after.get(key, 0))
+            }
+            pending_logical_score_calls = {
+                key: int(value) - int(logical_score_after.get(key, 0))
+                for key, value in evidence.logical_score_calls.items()
+                if int(value) - int(logical_score_after.get(key, 0))
+            }
         cycle_events.append(event)
 
+        if trajectory_mode:
+            local_call_census = {
+                **{
+                    f"application/{key}": int(value)
+                    - int(inventory_before.get(key, 0))
+                    + int(incoming_application_calls.get(key, 0))
+                    for key, value in inventory_after.items()
+                    if key.startswith("student")
+                    and int(value) - int(inventory_before.get(key, 0))
+                    + int(incoming_application_calls.get(key, 0))
+                },
+                **{
+                    f"logical_score/{key}": int(value)
+                    - int(logical_score_before.get(key, 0))
+                    + int(incoming_logical_score_calls.get(key, 0))
+                    for key, value in logical_score_after.items()
+                    if int(value) - int(logical_score_before.get(key, 0))
+                    + int(incoming_logical_score_calls.get(key, 0))
+                },
+            }
+            expected_generator = int(initial_versions["generator"]) + cycle_number
+            expected_critic = int(initial_versions["critic"]) + (
+                CRITIC_UPDATES * cycle_number
+            )
+            expected_ema = int(initial_versions["ema"])
+            if is_generator:
+                _require(
+                    int(versions["generator"]) == expected_generator
+                    and int(versions["critic"]) == int(initial_versions["critic"])
+                    and int(versions["ema"]) == expected_ema,
+                    "Generator-pool physical commit inventory changed",
+                )
+            else:
+                _require(
+                    int(versions["generator"]) == int(initial_versions["generator"])
+                    and int(versions["critic"]) == expected_critic
+                    and int(versions["ema"]) == expected_ema,
+                    "Score-pool physical commit inventory changed",
+                )
+            finite, call_census = _append_trajectory_cycle_receipt(
+                torch=torch,
+                rank=rank,
+                cycle=cycle,
+                trace=trace,
+                seed=trajectory_seed,
+                arm_id=trajectory_arm_id,
+                execution_mode="pipeline",
+                implementation={
+                    "pool_topology": "8G_8SCORE",
+                    "physical_role": "generator" if is_generator else "score",
+                    "schedule": "C24_CONTINUOUS_B16_DEPTH1",
+                    "critic_physical_batch_size": (
+                        "1" if critic_b1_attribution else "2"
+                    ),
+                    "critic_physical_backward_calls": str(
+                        evidence.physical_critic_backward_calls
+                        - physical_critic_backward_before
+                    ),
+                    "critic_optimizer_commits": "0" if is_generator else "5",
+                },
+                versions=versions,
+                initial_versions=initial_versions,
+                local_losses=cycle_losses,
+                local_optimizer=cycle_optimizer,
+                local_call_census=local_call_census,
+                state_fingerprints=state_fingerprints,
+                writer=trajectory_writer,
+            )
+            if reference_call_census is None:
+                reference_call_census = dict(call_census)
+            else:
+                _require(
+                    call_census == reference_call_census,
+                    "continuous trajectory changed its per-cycle call census",
+                )
+            event["trajectory_receipt"] = {
+                "cycle": cycle_number,
+                "finite": finite,
+                "state_anchor": state_anchor,
+            }
+            if not finite:
+                raise FloatingPointError(
+                    f"non-finite LiveWan trajectory evidence at cycle {cycle_number}"
+                )
+
+    if trajectory_mode:
+        _require(
+            not pending_application_calls and not pending_logical_score_calls,
+            "continuous execution left an unattributed lookahead call",
+        )
     runahead_host_transport.finish()
     evidence.generator_runahead_transport = runahead_host_transport.receipt()
     critic_shadow_hot_sync.finish()
@@ -5387,12 +7179,20 @@ def _run_pipeline_8x8_continuous(
     evidence.continuous_pipeline = {
         "enabled": True,
         "name": (
-            B32_CONTINUOUS_NAME
-            if batch32
+            TRAJECTORY_CONTINUOUS_NAME
+            if trajectory_mode
             else (
-                "continuous_full5_b16_depth1_step1_b1_overlap_v1"
-                if critic_step1_split_overlap
-                else "continuous_full5_b16_depth1_v1"
+                TWO_CYCLE_TIMING_CONTINUOUS_NAME
+                if two_cycle_timing
+                else (
+                    B32_CONTINUOUS_NAME
+                    if batch32
+                    else (
+                        "continuous_full5_b16_depth1_step1_b1_overlap_v1"
+                        if critic_step1_split_overlap
+                        else "continuous_full5_b16_depth1_v1"
+                    )
+                )
             )
         ),
         "cycles": trace.cycles,
@@ -5405,8 +7205,16 @@ def _run_pipeline_8x8_continuous(
             else (
                 "wave0_b1_backward_then_wave1_b1_backward_single_commit"
                 if critic_step1_split_overlap
-                else "single_b2_backward"
+                else (
+                    "two_b1_backwards_accumulated_single_commit_every_step"
+                    if critic_b1_attribution
+                    else "single_b2_backward"
+                )
             )
+        ),
+        "critic_physical_batch_size": 1 if critic_b1_attribution else 2,
+        "critic_physical_backward_calls_per_step": (
+            2 if critic_b1_attribution else 1
         ),
         "global_batch": trace.global_batch,
         "waves_per_step": len(lane_slots),
@@ -5418,6 +7226,9 @@ def _run_pipeline_8x8_continuous(
         "role_total_wall_seconds": time.perf_counter() - started,
         "execution_status": "PASS",
     }
+    if run_kind == "profile" and os.environ.get("LIVEWAN_PROFILE_TWO_CYCLES", "0") == "1":
+        evidence.continuous_pipeline["name"] = TWO_CYCLE_PROFILE_CONTINUOUS_NAME
+        evidence.continuous_pipeline["training_quality_claimable"] = False
 
 
 def _run_pipeline_phase_expanded_critic16(

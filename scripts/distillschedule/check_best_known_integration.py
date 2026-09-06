@@ -39,7 +39,7 @@ def main() -> int:
     if missing:raise SystemExit(f"missing local source imports: {missing}")
     for name in sorted(CANONICAL_IDS):source_layout(ROOT,load_profile(name,root=ROOT))
     subprocess.run([sys.executable,str(ROOT/"scripts/distillschedule/verify_helios_compat_source.py")],check=True)
-    subprocess.run([sys.executable,"-m","unittest","discover","-s",str(ROOT/"tests"),"-p","test_refactor_best_known.py","-v"],cwd=ROOT, env={**os.environ, "PYTHONPATH": str(ROOT/"src")+os.pathsep+str(ROOT)}, check=True)
+    subprocess.run([sys.executable,"-m","unittest","discover","-s",str(ROOT/"tests"),"-p","test_refactor_best_known*.py","-v"],cwd=ROOT, env={**os.environ, "PYTHONPATH": str(ROOT/"src")+os.pathsep+str(ROOT)}, check=True)
     print(json.dumps({"status":"PASS_CPU_INTEGRATION","canonical_profiles":5,"gpu_server":"NOT_RUN_ON_INTEGRATION_BRANCH"}))
     return 0
 if __name__=="__main__":raise SystemExit(main())

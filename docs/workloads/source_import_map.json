@@ -506,32 +506,37 @@
       "target": "src/distillschedule/runtime/p0_parity.py"
     },
     {
-      "integrated_sha256": "c354d7f91d1161e995e3c24a86debf70cc5403a20b956cefef9907ddb18b3507",
-      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "integrated_sha256": "b04f099870aa8820e48558f4d2d4653c414f03a4c6f07f1801377cc3b94193dd",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh",
       "source_repository": "sliortega295-ops/DMD-System",
-      "target": "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh"
+      "target": "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh",
+      "integration_note": "Deployment/test/optional canonical-gate binding adaptation only; see C34 integration report. Worker and numerical kernels retain source bytes.",
+      "source_sha256": "e3b47223512e2aaa62fac94f6bed34416fa9dc02bfdc1e1204cb01a4c5a58ae4"
     },
     {
-      "integrated_sha256": "2f399aed0dafa14efabfe7601ac45cd7fa3c39f1ecd148f2cff62dec35576ebb",
-      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "integrated_sha256": "7aec7cdb08cd93a543a19e676d73102359a0c453538385e58cf511e39262eeeb",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "scripts/distillschedule/livewan_crossscale_entrypoint.py",
       "source_repository": "sliortega295-ops/DMD-System",
-      "target": "scripts/distillschedule/livewan_crossscale_entrypoint.py"
+      "target": "scripts/distillschedule/livewan_crossscale_entrypoint.py",
+      "source_sha256": "7aec7cdb08cd93a543a19e676d73102359a0c453538385e58cf511e39262eeeb"
     },
     {
-      "integrated_sha256": "643e4fa3e7591f8dcf6908329223b60af1a411301ac331e3daa513f02eae8a7c",
-      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "integrated_sha256": "ceb1c4b06677d0b9957c4b2a28e6c3e8b017020a7cd567923cb90fda0a1b1687",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "scripts/distillschedule/probe_livewan_crossscale_transport.py",
       "source_repository": "sliortega295-ops/DMD-System",
-      "target": "scripts/distillschedule/probe_livewan_crossscale_transport.py"
+      "target": "scripts/distillschedule/probe_livewan_crossscale_transport.py",
+      "source_sha256": "ceb1c4b06677d0b9957c4b2a28e6c3e8b017020a7cd567923cb90fda0a1b1687"
     },
     {
-      "integrated_sha256": "11fe9ac23ee3c7d63f95bd9317cfeff9e68499713dbe1edc296407050ff98e01",
-      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "integrated_sha256": "88cf2e079bf11372dff78c8e0373d8cb97b03500cc20a10a0c4924e00dda1821",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "scripts/distillschedule/run_livewan_crossscale_world16.py",
       "source_repository": "sliortega295-ops/DMD-System",
-      "target": "scripts/distillschedule/run_livewan_crossscale_world16.py"
+      "target": "scripts/distillschedule/run_livewan_crossscale_world16.py",
+      "source_sha256": "88cf2e079bf11372dff78c8e0373d8cb97b03500cc20a10a0c4924e00dda1821"
     },
     {
       "integrated_sha256": "5872428e2d8aa3a010450fa60ca468bca43fe94aedb92a029b164f3b25d27feb",
@@ -555,11 +560,12 @@
       "target": "src/distillschedule/adapters/livewan/__init__.py"
     },
     {
-      "integrated_sha256": "7bb5a793c1020bad0a745898c077b79aec8356bb42102009981d135554af8bfe",
-      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "integrated_sha256": "b3a193c8523e4093f573b168a4174a0af92f271a5238217122f1f4827cb0912e",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "src/distillschedule/adapters/livewan/adapter.py",
       "source_repository": "sliortega295-ops/DMD-System",
-      "target": "src/distillschedule/adapters/livewan/adapter.py"
+      "target": "src/distillschedule/adapters/livewan/adapter.py",
+      "source_sha256": "b3a193c8523e4093f573b168a4174a0af92f271a5238217122f1f4827cb0912e"
     },
     {
       "integrated_sha256": "014fcebb5683f47fc3280663b27e9ffa842bcf8f02514b7bee7efef3d5e51e02",
@@ -590,11 +596,12 @@
       "target": "src/distillschedule/runtime/livewan_cross_kv_cache.py"
     },
     {
-      "integrated_sha256": "a8a6f0ad670e9120fbad3d785deb3016b350aac1d49f22847a1bd79e5da96e44",
-      "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+      "integrated_sha256": "25d41a29c403f0ead87097123e5d51e12939eb53c66566158d50387516b1691a",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "src/distillschedule/runtime/livewan_crossscale_worker.py",
       "source_repository": "sliortega295-ops/DMD-System",
-      "target": "src/distillschedule/runtime/livewan_crossscale_worker.py"
+      "target": "src/distillschedule/runtime/livewan_crossscale_worker.py",
+      "source_sha256": "25d41a29c403f0ead87097123e5d51e12939eb53c66566158d50387516b1691a"
     },
     {
       "integrated_sha256": "3b9adba03c5f05645759d968bf1f9186bc6d6049433f9e638e91697adae484e6",
@@ -786,11 +793,12 @@
       "target": "scripts/distillschedule/run_best_known_workload.py"
     },
     {
-      "integrated_sha256": "69c65ca69e3d53f72bf3cb1f67760d08acd11b1397a647a8ff141a52abbe5887",
+      "integrated_sha256": "44cfb0d2da3e53a5d0e3d48869baf29edf84be1bebb47b65e8920820ec0d80e9",
       "source_commit": "integration-pr26",
       "source_path": "scripts/distillschedule/check_best_known_integration.py",
       "source_repository": "integration-pr26",
-      "target": "scripts/distillschedule/check_best_known_integration.py"
+      "target": "scripts/distillschedule/check_best_known_integration.py",
+      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution."
     },
     {
       "integrated_sha256": "ea9b6a9030c21aadcdeb8bad036feff8c495106a053aa6a7e05684298ea25557",
@@ -828,25 +836,28 @@
       "target": "src/distillschedule/workloads/best_known/dispatch.py"
     },
     {
-      "integrated_sha256": "159ed22abbe301e2f6f8afd9921714aa0ccc1228987d912996cce4c3390c24e1",
+      "integrated_sha256": "181580601553110e9ae7d717c11719994f6fe324452565f6bcc883dc622b58f9",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/evidence.py",
       "source_repository": "integration-pr26",
-      "target": "src/distillschedule/workloads/best_known/evidence.py"
+      "target": "src/distillschedule/workloads/best_known/evidence.py",
+      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution."
     },
     {
-      "integrated_sha256": "f55c50520324e7ba21c4946bee4f3fdb6f69a9fc53a33c5f430c31a3ca2735b0",
+      "integrated_sha256": "1c407cebc87d0b8904a47f42bf29511b939ec0dfdb6c2fe418e60a491bbf9962",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/registry.py",
       "source_repository": "integration-pr26",
-      "target": "src/distillschedule/workloads/best_known/registry.py"
+      "target": "src/distillschedule/workloads/best_known/registry.py",
+      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution."
     },
     {
-      "integrated_sha256": "f746e8fb36d4b38d17b45721337218e15fe3e2eba6ed33680a2c03a32db360e1",
+      "integrated_sha256": "886c4ae6da4d7fc63e310a48c47da31f620a05e51b26cd6f7bf118a1d5e99b97",
       "source_commit": "integration-pr26",
       "source_path": "tests/test_refactor_best_known.py",
       "source_repository": "integration-pr26",
-      "target": "tests/test_refactor_best_known.py"
+      "target": "tests/test_refactor_best_known.py",
+      "integration_note": "Ignore locally generated Python bytecode during source-path audit; source files remain audited."
     },
     {
       "integrated_sha256": "8978a1d8a24bbdfcfaefad05caa027a950bb31a041b7736a654bfecc3cf92d6e",
@@ -870,11 +881,12 @@
       "target": "configs/distillschedule/best_known/helios14b_nogan_best.json"
     },
     {
-      "integrated_sha256": "c38cf92798122b5359385cc425862a3f276d4e65681ea370fbb4eb8fb48638a7",
+      "integrated_sha256": "6bf9a806f0d01e562cf0ebbebd7be78be7d41deca600b04f5e03d40f77b4dc08",
       "source_commit": "integration-pr26",
       "source_path": "configs/distillschedule/best_known/livewan_crossscale_pipeline_best.json",
       "source_repository": "integration-pr26",
-      "target": "configs/distillschedule/best_known/livewan_crossscale_pipeline_best.json"
+      "target": "configs/distillschedule/best_known/livewan_crossscale_pipeline_best.json",
+      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution."
     },
     {
       "integrated_sha256": "f47e43a63867785bacdbf54fd9b7fe42dc4f34ff5acd2e5fa26b815b5ab07cac",
@@ -884,11 +896,12 @@
       "target": "configs/distillschedule/best_known/minimax_h3_grid1000_best.json"
     },
     {
-      "integrated_sha256": "8eba9c827708ac38f53a517e8c7a9543ca36e3e1ba3f1d0b52815bb94a20b728",
+      "integrated_sha256": "4e1264ad52fec8a44b358ad477e428a222ae1c41824e959dd2cc643ff784a13d",
       "source_commit": "integration-pr26",
       "source_path": "configs/distillschedule/best_known/registry.lock.json",
       "source_repository": "integration-pr26",
-      "target": "configs/distillschedule/best_known/registry.lock.json"
+      "target": "configs/distillschedule/best_known/registry.lock.json",
+      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution."
     },
     {
       "integrated_sha256": "8a1bda0851c42f576b2c3358cc07ec2873fe641c82b7e020b876864fe8141775",
@@ -947,11 +960,12 @@
       "target": "docs/workloads/BEST_KNOWN_SOURCE_MAP.md"
     },
     {
-      "integrated_sha256": "3e90581a82f6d3a68d564bee4e36114abc743f118e6bc83a68b41447d4ec6b4a",
+      "integrated_sha256": "00164f48e6a425f09052eaf157e437b305745a58add16ec65fcc8a92603e70e9",
       "source_commit": "integration-pr26",
       "source_path": "docs/workloads/BEST_KNOWN_WORKLOADS.md",
       "source_repository": "integration-pr26",
-      "target": "docs/workloads/BEST_KNOWN_WORKLOADS.md"
+      "target": "docs/workloads/BEST_KNOWN_WORKLOADS.md",
+      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution."
     },
     {
       "integrated_sha256": "5b2bfcc5a2f9fe792bdf15d2d59dd69240883ed5cb936fe4f4aaa3d10724ec6f",
@@ -975,11 +989,12 @@
       "target": "docs/workloads/runbooks/helios14b_nogan_best.md"
     },
     {
-      "integrated_sha256": "688ee86605ed52de47399c9dadbe210b5150c0d95365eea92c1e450db712d66d",
+      "integrated_sha256": "0ce7c1cb4caab909b35d29c939c69a5d1622ca658f58fed30d2290aa782c200d",
       "source_commit": "integration-pr26",
       "source_path": "docs/workloads/runbooks/livewan_crossscale_pipeline_best.md",
       "source_repository": "integration-pr26",
-      "target": "docs/workloads/runbooks/livewan_crossscale_pipeline_best.md"
+      "target": "docs/workloads/runbooks/livewan_crossscale_pipeline_best.md",
+      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution."
     },
     {
       "integrated_sha256": "30793114bbe70a3129f6e30439d710fe0e8ec95c3e2246f4987a5abafe0c3412",
@@ -994,6 +1009,587 @@
       "source_path": "docs/workloads/runbooks/wan13b_nogan_resident_best.md",
       "source_repository": "integration-pr26",
       "target": "docs/workloads/runbooks/wan13b_nogan_resident_best.md"
+    },
+    {
+      "integrated_sha256": "97867d0763fb3bb60a867b0bff52edb300085c185ffdde793a2f3f7a2ce9d0d1",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c24_continuous_b16_score_modulation_b1_attribution.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "97867d0763fb3bb60a867b0bff52edb300085c185ffdde793a2f3f7a2ce9d0d1",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c24_continuous_b16_score_modulation_b1_attribution.json"
+    },
+    {
+      "integrated_sha256": "655c94310a168e404ecf752be539c3aa5f2556710366859ab4de21798ab4c076",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c25_continuous_b16_score_rmsnorm.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "655c94310a168e404ecf752be539c3aa5f2556710366859ab4de21798ab4c076",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c25_continuous_b16_score_rmsnorm.json"
+    },
+    {
+      "integrated_sha256": "b8b5c5db219fdf06ebc796f9b2ebdd232afde6738a62d659ce0feec40efefb6d",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c26_continuous_b16_critic_attention_checkpoint.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "b8b5c5db219fdf06ebc796f9b2ebdd232afde6738a62d659ce0feec40efefb6d",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c26_continuous_b16_critic_attention_checkpoint.json"
+    },
+    {
+      "integrated_sha256": "2f89b084f715a19976330e5f2c8b955b78a70601d811b62f5c3ff8c7dbc5ae64",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c27_continuous_b16_pinned_prompt_staging.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "2f89b084f715a19976330e5f2c8b955b78a70601d811b62f5c3ff8c7dbc5ae64",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c27_continuous_b16_pinned_prompt_staging.json"
+    },
+    {
+      "integrated_sha256": "0f1d2c5f3429b9bdf59e6d9b4db1f76c5a53ca7561f0ef23fce81e37521b4fd9",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c28_continuous_b16_rollout_cast_cache.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "0f1d2c5f3429b9bdf59e6d9b4db1f76c5a53ca7561f0ef23fce81e37521b4fd9",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c28_continuous_b16_rollout_cast_cache.json"
+    },
+    {
+      "integrated_sha256": "eddbb1646509508858cb9cf1fafda3a61fc8367aeca9bec576549387c81189b7",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c29_continuous_b16_generator_rms_epilogue.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "eddbb1646509508858cb9cf1fafda3a61fc8367aeca9bec576549387c81189b7",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c29_continuous_b16_generator_rms_epilogue.json"
+    },
+    {
+      "integrated_sha256": "f448bc154d5d95d58a568e62e5fcc80e637ecc5a4df5b5d7942616e2e67a351b",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c30_continuous_b16_generator_rms_critic_checkpoint.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "f448bc154d5d95d58a568e62e5fcc80e637ecc5a4df5b5d7942616e2e67a351b",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c30_continuous_b16_generator_rms_critic_checkpoint.json"
+    },
+    {
+      "integrated_sha256": "67b53391f200c127404f5840f7e778d1169a570941ba360a4024bb905d40ec69",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c31_continuous_b16_generator_rms_cast_square.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "67b53391f200c127404f5840f7e778d1169a570941ba360a4024bb905d40ec69",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c31_continuous_b16_generator_rms_cast_square.json"
+    },
+    {
+      "integrated_sha256": "0e1e592575557618417ab5f4f34a44bf7e7548a989245b1d831a103cb2ff4300",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c32_continuous_b16_generator_modulation.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "0e1e592575557618417ab5f4f34a44bf7e7548a989245b1d831a103cb2ff4300",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c32_continuous_b16_generator_modulation.json"
+    },
+    {
+      "integrated_sha256": "f3edf39e58719abed245100f6a1c796b378133851d8d257cb0d101d98114ea47",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c33_continuous_b16_generator_gate.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "f3edf39e58719abed245100f6a1c796b378133851d8d257cb0d101d98114ea47",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c33_continuous_b16_generator_gate.json"
+    },
+    {
+      "integrated_sha256": "f4b05a0f3fdb8b63eddc34e8dda07edf225f7472729c9320cda379843b53a60b",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c34_continuous_b16_residual_layout.json",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "f4b05a0f3fdb8b63eddc34e8dda07edf225f7472729c9320cda379843b53a60b",
+      "target": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c34_continuous_b16_residual_layout.json"
+    },
+    {
+      "integrated_sha256": "c59ec7ed1ae7f8d91ff539165897b8e175a0863248e805a51851b9fb8576fe63",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/analyze_livewan_crossscale_nsys.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "c59ec7ed1ae7f8d91ff539165897b8e175a0863248e805a51851b9fb8576fe63",
+      "target": "scripts/distillschedule/analyze_livewan_crossscale_nsys.py"
+    },
+    {
+      "integrated_sha256": "cf30378967454a76926a5dd12eb92c1bad2d15ee05fe5d9d9d4cbd4754f996fa",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/build_livewan_continuous_trace.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "cf30378967454a76926a5dd12eb92c1bad2d15ee05fe5d9d9d4cbd4754f996fa",
+      "target": "scripts/distillschedule/build_livewan_continuous_trace.py"
+    },
+    {
+      "integrated_sha256": "4ad660e38631c64299bfeaf60c0e1020932c2bfcfcd8605d95371f4b733c2f59",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/build_livewan_crossscale_bootstrap.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "4ad660e38631c64299bfeaf60c0e1020932c2bfcfcd8605d95371f4b733c2f59",
+      "target": "scripts/distillschedule/build_livewan_crossscale_bootstrap.py"
+    },
+    {
+      "integrated_sha256": "aed0188a42528978d72945db586eb820ebbf8833925a47624e7da012b65403fb",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/build_livewan_crossscale_profile_gate.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "aed0188a42528978d72945db586eb820ebbf8833925a47624e7da012b65403fb",
+      "target": "scripts/distillschedule/build_livewan_crossscale_profile_gate.py"
+    },
+    {
+      "integrated_sha256": "c8dbc8742268ca42ff6912f23801fe9176303d92736f9c762641ea232751af3c",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/build_livewan_crossscale_trace.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "c8dbc8742268ca42ff6912f23801fe9176303d92736f9c762641ea232751af3c",
+      "target": "scripts/distillschedule/build_livewan_crossscale_trace.py"
+    },
+    {
+      "integrated_sha256": "3e0f72741271535042af57531b69b142c6d3d10ba1b49ec2b9b51296e18280c1",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/build_livewan_two_cycle_profile_gate.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "3e0f72741271535042af57531b69b142c6d3d10ba1b49ec2b9b51296e18280c1",
+      "target": "scripts/distillschedule/build_livewan_two_cycle_profile_gate.py"
+    },
+    {
+      "integrated_sha256": "0b8bc6a7f75107a25e21be83c9e118742586b030f2cfd940a24011ccea550817",
+      "integration_note": "Deployment/test/optional canonical-gate binding adaptation only; see C34 integration report. Worker and numerical kernels retain source bytes.",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/build_livewan_two_cycle_timing_gate.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "e47ded225a3b698c19368a4fca53cf74a90854fbcb7e269e31f018689081f738",
+      "target": "scripts/distillschedule/build_livewan_two_cycle_timing_gate.py"
+    },
+    {
+      "integrated_sha256": "4150386ee28ec3c229c2cb9a2664127ed34e2318ca3ab7c084d4f2bbe00b6b68",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/canary_livewan_attention_checkpoint.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "4150386ee28ec3c229c2cb9a2664127ed34e2318ca3ab7c084d4f2bbe00b6b68",
+      "target": "scripts/distillschedule/canary_livewan_attention_checkpoint.py"
+    },
+    {
+      "integrated_sha256": "05093935fe78bf51d718f5fe45d7015609c34e499e7f0777ca48ab2400cf8705",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/canary_livewan_context_staging.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "05093935fe78bf51d718f5fe45d7015609c34e499e7f0777ca48ab2400cf8705",
+      "target": "scripts/distillschedule/canary_livewan_context_staging.py"
+    },
+    {
+      "integrated_sha256": "ef8ddac1cf5c082119911069f027789abdd2bcc138680af603c87c8667824fdb",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/canary_livewan_generator_gate.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "ef8ddac1cf5c082119911069f027789abdd2bcc138680af603c87c8667824fdb",
+      "target": "scripts/distillschedule/canary_livewan_generator_gate.py"
+    },
+    {
+      "integrated_sha256": "c604e9574bf412919701ae0489c8a8e51f0359eddd90df23605c6753557763a5",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/canary_livewan_generator_modulation.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "c604e9574bf412919701ae0489c8a8e51f0359eddd90df23605c6753557763a5",
+      "target": "scripts/distillschedule/canary_livewan_generator_modulation.py"
+    },
+    {
+      "integrated_sha256": "dcadbe577c89007bafe935746393b5f3505a46c0b2609a793732ec0a6f099388",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/canary_livewan_generator_rms_epilogue.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "dcadbe577c89007bafe935746393b5f3505a46c0b2609a793732ec0a6f099388",
+      "target": "scripts/distillschedule/canary_livewan_generator_rms_epilogue.py"
+    },
+    {
+      "integrated_sha256": "7c00d3055748fce6e5b071b2a23390fe29efb6a8c7164700e592ac5d93557640",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/canary_livewan_rollout_cast_cache.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "7c00d3055748fce6e5b071b2a23390fe29efb6a8c7164700e592ac5d93557640",
+      "target": "scripts/distillschedule/canary_livewan_rollout_cast_cache.py"
+    },
+    {
+      "integrated_sha256": "74712134a76b24f54af60ce3c28b6a9270586be9d40a73190b414586fa04d5c7",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/canary_livewan_score_rmsnorm.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "74712134a76b24f54af60ce3c28b6a9270586be9d40a73190b414586fa04d5c7",
+      "target": "scripts/distillschedule/canary_livewan_score_rmsnorm.py"
+    },
+    {
+      "integrated_sha256": "329aaaffdad40a22e0b33598317c9a230e3929116eec3fc4b245376fefba6025",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/compare_livewan_crossscale_correctness.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "329aaaffdad40a22e0b33598317c9a230e3929116eec3fc4b245376fefba6025",
+      "target": "scripts/distillschedule/compare_livewan_crossscale_correctness.py"
+    },
+    {
+      "integrated_sha256": "9a246d959d82f49f32a56cda5f16dc14b33c0f42f7a52fa62d4bddef1b4a78db",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/compare_livewan_two_cycle_timing.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "9a246d959d82f49f32a56cda5f16dc14b33c0f42f7a52fa62d4bddef1b4a78db",
+      "target": "scripts/distillschedule/compare_livewan_two_cycle_timing.py"
+    },
+    {
+      "integrated_sha256": "a32d6715fd45504d7c5b527dd84788cba9ff21d38091188c0640e927b829e45f",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/compare_livewan_two_cycle_trajectories.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "a32d6715fd45504d7c5b527dd84788cba9ff21d38091188c0640e927b829e45f",
+      "target": "scripts/distillschedule/compare_livewan_two_cycle_trajectories.py"
+    },
+    {
+      "integrated_sha256": "4a600ef3467f05a32976b0e8732beb41c0c98885696dd0146f2e98f586026356",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/derive_livewan_continuous_bootstrap.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "4a600ef3467f05a32976b0e8732beb41c0c98885696dd0146f2e98f586026356",
+      "target": "scripts/distillschedule/derive_livewan_continuous_bootstrap.py"
+    },
+    {
+      "integrated_sha256": "b815bbf377d9a83ff9b77bf8b7c6eda7204086f6c5600d7edf070c579ab4c461",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/livewan_ncu_rank_wrapper.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "b815bbf377d9a83ff9b77bf8b7c6eda7204086f6c5600d7edf070c579ab4c461",
+      "target": "scripts/distillschedule/livewan_ncu_rank_wrapper.py"
+    },
+    {
+      "integrated_sha256": "51dfa4a023d5aa7e89a82c0140e5d4f92b9a8a420ef2b982bef9b7cb53fc2732",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/summarize_livewan_continuous_world16.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "51dfa4a023d5aa7e89a82c0140e5d4f92b9a8a420ef2b982bef9b7cb53fc2732",
+      "target": "scripts/distillschedule/summarize_livewan_continuous_world16.py"
+    },
+    {
+      "integrated_sha256": "25a1429c7fb8b6c47a34a4509ba42cf0280232966589367ce9d5b02200adad1c",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/summarize_livewan_trajectory_world16.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "25a1429c7fb8b6c47a34a4509ba42cf0280232966589367ce9d5b02200adad1c",
+      "target": "scripts/distillschedule/summarize_livewan_trajectory_world16.py"
+    },
+    {
+      "integrated_sha256": "474506ca399abb13adc33672929a06f13d593a09d049b64996e0b7cab8959d39",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "scripts/distillschedule/summarize_livewan_two_cycle_timing_world16.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "474506ca399abb13adc33672929a06f13d593a09d049b64996e0b7cab8959d39",
+      "target": "scripts/distillschedule/summarize_livewan_two_cycle_timing_world16.py"
+    },
+    {
+      "integrated_sha256": "77f7c5ff2e6f213e97c36effa6a991fd3c123361773f40c2c887b2e065aa2f05",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "src/distillschedule/evidence/__init__.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "77f7c5ff2e6f213e97c36effa6a991fd3c123361773f40c2c887b2e065aa2f05",
+      "target": "src/distillschedule/evidence/__init__.py"
+    },
+    {
+      "integrated_sha256": "38865f0216cbc9341e288623a08e7bbf5983ec9ed28c9ae90c9d7e9bcfebeb35",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "src/distillschedule/evidence/trajectory_coarse.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "38865f0216cbc9341e288623a08e7bbf5983ec9ed28c9ae90c9d7e9bcfebeb35",
+      "target": "src/distillschedule/evidence/trajectory_coarse.py"
+    },
+    {
+      "integrated_sha256": "e8af8bafdd1f6dda566b24c56c411395d0a2b82bb7f49458a3c510a9508d09c3",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "src/distillschedule/evidence/trajectory_state_sketch.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "e8af8bafdd1f6dda566b24c56c411395d0a2b82bb7f49458a3c510a9508d09c3",
+      "target": "src/distillschedule/evidence/trajectory_state_sketch.py"
+    },
+    {
+      "integrated_sha256": "ad6535d481105dfbf72d6643d1f79568fa58e4fa78b6cdf3180b58bed480cfa3",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "src/distillschedule/runtime/livewan_attention_checkpoint.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "ad6535d481105dfbf72d6643d1f79568fa58e4fa78b6cdf3180b58bed480cfa3",
+      "target": "src/distillschedule/runtime/livewan_attention_checkpoint.py"
+    },
+    {
+      "integrated_sha256": "81c72fbb04e1b7db963c2acae3bb1fa880795793fa4df0b672b23140db0e1754",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "src/distillschedule/runtime/livewan_c30_contract.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "81c72fbb04e1b7db963c2acae3bb1fa880795793fa4df0b672b23140db0e1754",
+      "target": "src/distillschedule/runtime/livewan_c30_contract.py"
+    },
+    {
+      "integrated_sha256": "470c2cb9ae20186f8f29024c675591899c6ba8037b025141257212d5452b7693",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "src/distillschedule/runtime/livewan_context_staging.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "470c2cb9ae20186f8f29024c675591899c6ba8037b025141257212d5452b7693",
+      "target": "src/distillschedule/runtime/livewan_context_staging.py"
+    },
+    {
+      "integrated_sha256": "81b236c4f21dcb868c97440f2b534e8a24a938a00570109855b8a13565eb41b9",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "src/distillschedule/runtime/livewan_cuda_setup.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "81b236c4f21dcb868c97440f2b534e8a24a938a00570109855b8a13565eb41b9",
+      "target": "src/distillschedule/runtime/livewan_cuda_setup.py"
+    },
+    {
+      "integrated_sha256": "8811aee8efb8293daa48c55d6f1aa74f6dc26b0ab28489aa4047f7471f377af7",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "src/distillschedule/runtime/livewan_generator_gate.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "8811aee8efb8293daa48c55d6f1aa74f6dc26b0ab28489aa4047f7471f377af7",
+      "target": "src/distillschedule/runtime/livewan_generator_gate.py"
+    },
+    {
+      "integrated_sha256": "d9e735e58f2f8dbe2f28d37a38de2f8ee0fa901f33cc34d8b48712655f408934",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "src/distillschedule/runtime/livewan_generator_modulation.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "d9e735e58f2f8dbe2f28d37a38de2f8ee0fa901f33cc34d8b48712655f408934",
+      "target": "src/distillschedule/runtime/livewan_generator_modulation.py"
+    },
+    {
+      "integrated_sha256": "494cc6952669e64325bb99c571b68fb2097699606b7224e81f737d20dd743eb3",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "src/distillschedule/runtime/livewan_generator_rms_epilogue.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "494cc6952669e64325bb99c571b68fb2097699606b7224e81f737d20dd743eb3",
+      "target": "src/distillschedule/runtime/livewan_generator_rms_epilogue.py"
+    },
+    {
+      "integrated_sha256": "e42e6347064c6a2f527cfade202428a63e62b38135933187db5908bef5945c13",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "src/distillschedule/runtime/livewan_rollout_cast_cache.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "e42e6347064c6a2f527cfade202428a63e62b38135933187db5908bef5945c13",
+      "target": "src/distillschedule/runtime/livewan_rollout_cast_cache.py"
+    },
+    {
+      "integrated_sha256": "fa0807917d760cb1b86a1e57b9cd8f31bbc9aa8401b0fc502d42d05753216c8d",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "src/distillschedule/runtime/livewan_score_rmsnorm.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "fa0807917d760cb1b86a1e57b9cd8f31bbc9aa8401b0fc502d42d05753216c8d",
+      "target": "src/distillschedule/runtime/livewan_score_rmsnorm.py"
+    },
+    {
+      "integrated_sha256": "f05bf166d0edbfa4da76c8b986712ac87cc384111130f63aa67724295fee9e67",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "src/distillschedule/runtime/livewan_two_cycle_profile.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "f05bf166d0edbfa4da76c8b986712ac87cc384111130f63aa67724295fee9e67",
+      "target": "src/distillschedule/runtime/livewan_two_cycle_profile.py"
+    },
+    {
+      "integrated_sha256": "401b1e6a73804a0093fc7746036e85764e725e7a6f2f5cc26cf092f18abfa696",
+      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution.",
+      "source_commit": "integration-livewan-c34",
+      "source_path": "tests/test_refactor_best_known_livewan_c34.py",
+      "source_repository": "integration-livewan-c34",
+      "target": "tests/test_refactor_best_known_livewan_c34.py"
+    },
+    {
+      "integrated_sha256": "a15b56e978dd2123659866b566488ccd7a980062055024e440cc58556d3bacef",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_attention_checkpoint.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "a15b56e978dd2123659866b566488ccd7a980062055024e440cc58556d3bacef",
+      "target": "tests/test_refactor_livewan_attention_checkpoint.py"
+    },
+    {
+      "integrated_sha256": "1460298d419d6c1fe2142b64203b4ec315aa89b5d86601b7179ffe411cfad5e1",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_b1_attribution.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "1460298d419d6c1fe2142b64203b4ec315aa89b5d86601b7179ffe411cfad5e1",
+      "target": "tests/test_refactor_livewan_b1_attribution.py"
+    },
+    {
+      "integrated_sha256": "c8a48a00583f9a032778fa5af3c662c739512eb663a9016edb6485a11e1f6628",
+      "integration_note": "Deployment/test/optional canonical-gate binding adaptation only; see C34 integration report. Worker and numerical kernels retain source bytes.",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_c30_composition.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "79c554e22e453feafb47f52888f468fb01a4df7b17a7fe6edbfa0e83a47b32b0",
+      "target": "tests/test_refactor_livewan_c30_composition.py"
+    },
+    {
+      "integrated_sha256": "b6b2d2260bf5edf4cabfd9e2cd6c44677236522c284ad41889215954c4bd284e",
+      "integration_note": "Deployment/test/optional canonical-gate binding adaptation only; see C34 integration report. Worker and numerical kernels retain source bytes.",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_c31_integration.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "c5057468fadd6de8c174e9f32f913705445e13761a56b69862ba6fe9a4579561",
+      "target": "tests/test_refactor_livewan_c31_integration.py"
+    },
+    {
+      "integrated_sha256": "15a9d353322e0caf4df103b898743c963861038d26f68c5cfe9b71d7d884d662",
+      "integration_note": "Deployment/test/optional canonical-gate binding adaptation only; see C34 integration report. Worker and numerical kernels retain source bytes.",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_c32_integration.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "3f4882c3cefe01c458261efe68965dd4bd2e9736d318501c729b42ea441bff2a",
+      "target": "tests/test_refactor_livewan_c32_integration.py"
+    },
+    {
+      "integrated_sha256": "f99212afdf04279bc697a475993ae2b1fcdfc17dfde4aac3b4ff5cc455483e89",
+      "integration_note": "Deployment/test/optional canonical-gate binding adaptation only; see C34 integration report. Worker and numerical kernels retain source bytes.",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_c33_integration.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "74cf994af20a648a7954a1cbb869fb8826298ed5ce7f9f219dcbf0c495dd593e",
+      "target": "tests/test_refactor_livewan_c33_integration.py"
+    },
+    {
+      "integrated_sha256": "698f75fd2b230b037b2ef4bbdaed64f64400ba83ba87215e6685a85a2509db94",
+      "integration_note": "Deployment/test/optional canonical-gate binding adaptation only; see C34 integration report. Worker and numerical kernels retain source bytes.",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_c34_integration.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "4408af597da87d1212867ba4b19fc034ba85fc48c380008a41df89542e54d2e8",
+      "target": "tests/test_refactor_livewan_c34_integration.py"
+    },
+    {
+      "integrated_sha256": "22d07b44f0bbc29764f95ca53e9b38f9c2b4ca5ebf04aec951ef368b16d70bdb",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_context_staging.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "22d07b44f0bbc29764f95ca53e9b38f9c2b4ca5ebf04aec951ef368b16d70bdb",
+      "target": "tests/test_refactor_livewan_context_staging.py"
+    },
+    {
+      "integrated_sha256": "341501e06a86bf53b8d71e12f556e3bed2e94755a188bba30894804cae788dba",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_crossscale_profile.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "341501e06a86bf53b8d71e12f556e3bed2e94755a188bba30894804cae788dba",
+      "target": "tests/test_refactor_livewan_crossscale_profile.py"
+    },
+    {
+      "integrated_sha256": "fa975a19dc35903500b44cd59182a3d954ba68a2676a5334f33401b266817e21",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_cuda_setup.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "fa975a19dc35903500b44cd59182a3d954ba68a2676a5334f33401b266817e21",
+      "target": "tests/test_refactor_livewan_cuda_setup.py"
+    },
+    {
+      "integrated_sha256": "81e72e879c335cb48f2c5fe9a33856d475800aa49fb9bfa22f7f4725e489b9e0",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_failure_receipt.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "81e72e879c335cb48f2c5fe9a33856d475800aa49fb9bfa22f7f4725e489b9e0",
+      "target": "tests/test_refactor_livewan_failure_receipt.py"
+    },
+    {
+      "integrated_sha256": "75e3eb6cd30443ef2b8d11f29dd4bd1d58e1a56b98de373613f82bc8312c7ddc",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_generator_cast_square.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "75e3eb6cd30443ef2b8d11f29dd4bd1d58e1a56b98de373613f82bc8312c7ddc",
+      "target": "tests/test_refactor_livewan_generator_cast_square.py"
+    },
+    {
+      "integrated_sha256": "1c21d113e5dde88d909690209549a5e1bd27dcde124fd890d0a2614bde7a55f0",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_generator_gate.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "1c21d113e5dde88d909690209549a5e1bd27dcde124fd890d0a2614bde7a55f0",
+      "target": "tests/test_refactor_livewan_generator_gate.py"
+    },
+    {
+      "integrated_sha256": "e7037ee2274d3070f740f943e7b443e9a7b83d7e542bbb27bdbdf487fb3ae2de",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_generator_modulation.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "e7037ee2274d3070f740f943e7b443e9a7b83d7e542bbb27bdbdf487fb3ae2de",
+      "target": "tests/test_refactor_livewan_generator_modulation.py"
+    },
+    {
+      "integrated_sha256": "eecc8ffd76e22eb078c26beeed5c7f87a00c18068b9e15ec5230bc170db3c611",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_generator_rms_epilogue.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "eecc8ffd76e22eb078c26beeed5c7f87a00c18068b9e15ec5230bc170db3c611",
+      "target": "tests/test_refactor_livewan_generator_rms_epilogue.py"
+    },
+    {
+      "integrated_sha256": "40f9ac12bf39736f2cd20fc295267dc80999802fe53a668dbafec97093f17cde",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_rollout_cast_cache.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "40f9ac12bf39736f2cd20fc295267dc80999802fe53a668dbafec97093f17cde",
+      "target": "tests/test_refactor_livewan_rollout_cast_cache.py"
+    },
+    {
+      "integrated_sha256": "49f0b1ca86f4e2b7b4f809bab63e5178bf28846d6c03782e7ea8c2ab4a9a1843",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_score_rmsnorm.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "49f0b1ca86f4e2b7b4f809bab63e5178bf28846d6c03782e7ea8c2ab4a9a1843",
+      "target": "tests/test_refactor_livewan_score_rmsnorm.py"
+    },
+    {
+      "integrated_sha256": "dcd1a64f616b21cd2825a5ffd3f101c4d1e059adc65e94905c56ab4f70807375",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_teardown_visibility.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "dcd1a64f616b21cd2825a5ffd3f101c4d1e059adc65e94905c56ab4f70807375",
+      "target": "tests/test_refactor_livewan_teardown_visibility.py"
+    },
+    {
+      "integrated_sha256": "069550df29335fa41a6b96c1a8802b0a08f3abac3eb37f2b2ab0461bee65c739",
+      "integration_note": "Deployment/test/optional canonical-gate binding adaptation only; see C34 integration report. Worker and numerical kernels retain source bytes.",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_trajectory.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "f22bfc47d499cc4320d4635512c206c555a4995346d6104595ec96e8057f875d",
+      "target": "tests/test_refactor_livewan_trajectory.py"
+    },
+    {
+      "integrated_sha256": "b18ed768884b297974cc506d71637ae9fea832f4625fb418e5fe96957574c369",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_two_cycle_profile.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "b18ed768884b297974cc506d71637ae9fea832f4625fb418e5fe96957574c369",
+      "target": "tests/test_refactor_livewan_two_cycle_profile.py"
+    },
+    {
+      "integrated_sha256": "d3dcfdeaa54d1a7cb1b0bf2589f586ef1d6274fc857da3e88cf67d8a506b5f6d",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_livewan_two_cycle_timing.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "d3dcfdeaa54d1a7cb1b0bf2589f586ef1d6274fc857da3e88cf67d8a506b5f6d",
+      "target": "tests/test_refactor_livewan_two_cycle_timing.py"
+    },
+    {
+      "integrated_sha256": "ff272c9a3a57e55edb45e2681454dd62c5ac39d5796a0d09172ffdb9ec6758c8",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_trajectory_coarse.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "ff272c9a3a57e55edb45e2681454dd62c5ac39d5796a0d09172ffdb9ec6758c8",
+      "target": "tests/test_refactor_trajectory_coarse.py"
+    },
+    {
+      "integrated_sha256": "bab95895b4a8e9cd43cd0056037ed045926669a934458e5b8609f538c0a306c6",
+      "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+      "source_path": "tests/test_refactor_trajectory_state_sketch.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "bab95895b4a8e9cd43cd0056037ed045926669a934458e5b8609f538c0a306c6",
+      "target": "tests/test_refactor_trajectory_state_sketch.py"
+    },
+    {
+      "target": "docs/workloads/evidence/livewan_c34_integration_checks_20260906.json",
+      "source_repository": "integration-livewan-c34",
+      "source_commit": "integration-local",
+      "source_path": "docs/workloads/evidence/livewan_c34_integration_checks_20260906.json",
+      "integrated_sha256": "826c39c032e10a7a27c3aa3a47a1ea03efa963ef8c45b5646ed212d7e2805650"
+    },
+    {
+      "target": "docs/workloads/evidence/livewan_c34_integration_20260906.md",
+      "source_repository": "integration-livewan-c34",
+      "source_commit": "integration-local",
+      "source_path": "docs/workloads/evidence/livewan_c34_integration_20260906.md",
+      "integrated_sha256": "6384647b74e5596e71726c7c0158a8f7e65db64ffb3acdaf6f68c568d07d0513"
     }
   ],
   "gpu_server_revalidation": "NOT_RUN_ON_INTEGRATION_BRANCH",

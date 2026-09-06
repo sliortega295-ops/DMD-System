@@ -34,6 +34,9 @@ PHASE_EXPANDED_CRITIC16_POOL_POLICY = (
     "persistent_8g_8score_teacher_fsdp8_trace_balanced_"
     "phase_expanded_critic16_fsdp16"
 )
+TRAJECTORY_CRITIC_B1_ATTRIBUTION_NAME = (
+    "c24_critic_b1_two_backward_single_commit_attribution_v1"
+)
 
 
 class LiveWanSFDMDAdapter(DMDModelAdapter):
@@ -231,20 +234,49 @@ class LiveWanSFDMDAdapter(DMDModelAdapter):
                         "Critic-only B2 must preserve B1 DMD",
                         "metadata.score_physical_batch_size",
                     )
-                if plan.metadata.get("critic_physical_batch_size") != 2:
+                critic_batch = plan.metadata.get("critic_physical_batch_size")
+                critic_policy = plan.training_backends["score"].options.get(
+                    "critic_physical_batch_policy"
+                )
+                b1_ablation = plan.metadata.get("trajectory_critic_batch_ablation")
+                if critic_batch == 2:
+                    if b1_ablation is not None:
+                        self._fail(
+                            "C24 production B2 cannot carry a B1 attribution contract",
+                            "metadata.trajectory_critic_batch_ablation",
+                        )
+                    if critic_policy != "exact_b2_after_b1_dmd":
+                        self._fail(
+                            "Critic-only B2 backend policy mismatch",
+                            "training_backends.score.options.critic_physical_batch_policy",
+                        )
+                elif critic_batch == 1:
+                    expected_b1_ablation = {
+                        "enabled": True,
+                        "name": TRAJECTORY_CRITIC_B1_ATTRIBUTION_NAME,
+                        "scope": "trajectory_diagnostic_only",
+                        "critic_physical_batch_size": 1,
+                        "physical_backward_calls_per_step": 2,
+                        "loss_weights": [0.5, 0.5],
+                        "reducer_accumulation": [[0, 2], [1, 2]],
+                        "optimizer_commits_per_step": 1,
+                        "all_other_c24_execution_unchanged": True,
+                        "formal_timing_eligible": False,
+                    }
+                    if b1_ablation != expected_b1_ablation:
+                        self._fail(
+                            "Critic B1 attribution contract changed",
+                            "metadata.trajectory_critic_batch_ablation",
+                        )
+                    if critic_policy != "two_b1_accumulated_single_commit_attribution":
+                        self._fail(
+                            "Critic B1 attribution backend policy mismatch",
+                            "training_backends.score.options.critic_physical_batch_policy",
+                        )
+                else:
                     self._fail(
-                        "Critic-only B2 plan must explicitly register B2",
+                        "Critic-only C24 plan must register B2 or diagnostic B1",
                         "metadata.critic_physical_batch_size",
-                    )
-                if (
-                    plan.training_backends["score"].options.get(
-                        "critic_physical_batch_policy"
-                    )
-                    != "exact_b2_after_b1_dmd"
-                ):
-                    self._fail(
-                        "Critic-only B2 backend policy mismatch",
-                        "training_backends.score.options.critic_physical_batch_policy",
                     )
             if pool_policy in {
                 "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2_local_context",
