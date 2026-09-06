@@ -146,6 +146,22 @@ def test_crash_is_preserved_not_silently_retried(tmp_path):
     assert sum(e["type"] == "START" for e in s.events()) == 1
 
 
+def test_historical_prior_discloses_unknown_old_contract_without_waiving_measurement(tmp_path):
+    p = profile_fixture()
+    p["identity"] = {**IDENTITY, "semantic_fingerprint": "OLD_SEED_NOT_RECORDED"}
+    with pytest.raises(ValueError, match="historical-prior"):
+        SearchSession(workload=WAN, identity=IDENTITY, profile=p, output=tmp_path / "rejected")
+    s = SearchSession(workload=WAN, identity=IDENTITY, profile=p, output=tmp_path / "prior", historical_prior=True)
+    assert "semantic_fingerprint" in s.spec["profile_identity_differences"]
+    raw = measurement(get_candidate(WAN, "fsdp-reference"))
+    raw["semantic_fingerprint"] = "OLD_SEED_NOT_RECORDED"
+    with pytest.raises(ValueError, match="semantic_fingerprint"):
+        validate_measurement(raw, IDENTITY, get_candidate(WAN, "fsdp-reference"))
+    p["identity"]["workload"] = LIVEWAN
+    with pytest.raises(ValueError, match="another workload"):
+        SearchSession(workload=WAN, identity=IDENTITY, profile=p, output=tmp_path / "other", historical_prior=True)
+
+
 def test_nccl_failure_stops_but_capacity_failure_consumes_budget(tmp_path):
     def execute(c, phase, _):
         if phase == "candidate":

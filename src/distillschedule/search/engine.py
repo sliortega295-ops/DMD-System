@@ -25,12 +25,13 @@ class SearchSession:
         require(workload in PILOTS, "workload is registered CPU-only; GPU search NOT_RUN")
         require(type(max_trials) is int and 1 <= max_trials <= 8, "v1 budget must be 1..8 candidates")
         validate_profile(profile)
-        require(profile["identity"].get("semantic_fingerprint") == identity["semantic_fingerprint"],
-                "profile semantic_fingerprint mismatch")
+        require(profile["identity"].get("workload") == workload == identity.get("workload"),
+                "profile belongs to another workload")
         require(profile["identity"].get("hardware_fingerprint") == identity["hardware_fingerprint"],
                 "profile hardware_fingerprint mismatch")
         mismatches = {key: {"profile": profile["identity"].get(key), "run": identity.get(key)}
-                      for key in ("source_head", "asset_fingerprint") if profile["identity"].get(key) != identity.get(key)}
+                      for key in ("source_head", "asset_fingerprint", "semantic_fingerprint")
+                      if profile["identity"].get(key) != identity.get(key)}
         require(historical_prior or (not mismatches and profile["cycle"] == 2),
                 "unmatched profile requires explicit historical-prior mode")
         self.workload, self.identity, self.profile = workload, identity, profile

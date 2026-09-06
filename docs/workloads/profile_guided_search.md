@@ -64,10 +64,14 @@ kernel mechanisms require separate evidence-driven kernel-design work before
 registration. These are deliberate v1 limits, not a claim that universal
 automatic scheduling has been solved.
 
-Old source/assets/cycle-1 profiles require `--historical-profile-prior`. Their
-identity differences are persisted, and their measurements can only influence
-ordering. Native search comparisons still require a common current source,
-assets, hardware and semantic fingerprint.
+Old source/assets/contract/cycle-1 profiles require `--historical-profile-prior`
+and the same registered workload and hardware. For example, a historical
+single-cycle profile may not have recorded the current two-cycle RNG seed. Do
+not fabricate a matching semantic fingerprint: retain its observed contract,
+including unknown fields. All identity differences are persisted and only
+influence ordering. This flag never relaxes the native measurement gate: search
+comparisons still require a common current source, assets, hardware, seed and
+semantic fingerprint. A historical profile is not a matched latency estimate.
 
 ## Commands
 

@@ -33,7 +33,7 @@ def main(argv: list[str]) -> int:
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--resume", action="store_true")
     p.add_argument("--historical-profile-prior", action="store_true",
-                   help="Explicitly allow an old source/assets/cycle profile as ranking hints only")
+                   help="Explicitly allow a same-workload historical contract/source/assets/cycle as ranking hints only; measurements still match exactly")
     args = parser.parse_args(argv)
     try:
         if args.action == "profile":

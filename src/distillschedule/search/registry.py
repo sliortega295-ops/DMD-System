@@ -141,5 +141,5 @@ def search_identity(workload: str, *, source_head: str, assets: dict[str, Any],
                     hardware: dict[str, Any]) -> dict[str, str]:
     require(hardware.get("world_size") == 16 and hardware.get("nodes") == 2,
             "v1 pilots require the same 2-node/world16 allocation")
-    return {"source_head": source_head, "semantic_fingerprint": fingerprint(semantic_contract(load_profile(workload))),
+    return {"workload": workload, "source_head": source_head, "semantic_fingerprint": fingerprint(semantic_contract(load_profile(workload))),
             "asset_fingerprint": fingerprint(assets), "hardware_fingerprint": fingerprint(hardware)}
