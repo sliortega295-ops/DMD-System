@@ -1084,9 +1084,15 @@
           "new_integrated_sha256": "f68745c24f40f96fec4368ba4f828f10d5bebfb733aac747689c5c98e7c8c251",
           "previous_integrated_sha256": "00164f48e6a425f09052eaf157e437b305745a58add16ec65fcc8a92603e70e9",
           "reason": "Link opt-in profile-guided search documentation; canonical configuration unchanged."
+        },
+        {
+          "base_integration_head": "5337d74a1055d460c2e2446bbbd8ef344a280d4d",
+          "new_integrated_sha256": "ba71b562a4784211e85b4752e7f20e1d163d9c395ffd0405e816f0207c710fd4",
+          "previous_integrated_sha256": "f68745c24f40f96fec4368ba4f828f10d5bebfb733aac747689c5c98e7c8c251",
+          "reason": "Bind the added measured-pilot report link; documentation only, no canonical profile or runtime changes."
         }
       ],
-      "integrated_sha256": "f68745c24f40f96fec4368ba4f828f10d5bebfb733aac747689c5c98e7c8c251",
+      "integrated_sha256": "ba71b562a4784211e85b4752e7f20e1d163d9c395ffd0405e816f0207c710fd4",
       "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution.",
       "source_commit": "integration-pr26",
       "source_path": "docs/workloads/BEST_KNOWN_WORKLOADS.md",
