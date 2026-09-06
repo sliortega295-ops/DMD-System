@@ -20,8 +20,21 @@ flock -n 9 || exit 73
 [[ -z "$(nvidia-smi --query-compute-apps=pid --format=csv,noheader | sed '/^[[:space:]]*$/d')" ]] || exit 81
 cp /sys/fs/cgroup/memory.events "$LOG/cgroup_before.txt"
 export EXPECTED_INTEGRATION_HEAD="$EXPECTED_HEAD"
-"$PYTHON" "$ROOT/scripts/distillschedule/preflight_minimax_h3_best.py" \
-  --repo-root "$ROOT" --lightx2v-root "$LIGHTX2V_ROOT" >"$LOG/launch_manifest.json"
+"$PYTHON" - "$ROOT" "$LIGHTX2V_ROOT" >"$LOG/launch_manifest.json" <<'PY'
+import json, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+lightx = pathlib.Path(sys.argv[2])
+required = [
+    root / "src/distillschedule/backends/training/minimax_h3/trainer.py",
+    root / "src/distillschedule/backends/training/minimax_h3/fa3_replay_cache.py",
+    root / "src/distillschedule/backends/training/minimax_h3/grid_entrypoint.py",
+    lightx / "lightx2v_train",
+]
+missing = [str(p) for p in required if not p.exists()]
+if missing:
+    raise SystemExit(f"missing H3 integration source: {missing}")
+print(json.dumps({"status":"PASS_SOURCE_PREFLIGHT","h3_backend":"in_repo","lightx2v":str(lightx)}, sort_keys=True))
+PY
 set +e
 "$PYTHON" -m torch.distributed.run --nnodes=2 --nproc-per-node=8 \
   --node-rank="$NODE_RANK" --master-addr="$MASTER_ADDR" --master-port="$MASTER_PORT" \

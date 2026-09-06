@@ -114,13 +114,23 @@ def source_layout(root: Path, profile: Mapping[str, Any], *, verify_upstreams: b
     rows = []
     for dep in profile["upstreams"]:
         path = root / dep["path"]
-        status = "NOT_CHECKED_SOURCE_ONLY"
+        # The repository tree itself is the canonical dependency pin. This is
+        # checked even on CPU CI where submodules are intentionally not cloned.
+        tree_line = subprocess.check_output(
+            ["git", "-C", str(root), "ls-tree", "HEAD", "--", dep["path"]],
+            text=True,
+        ).strip()
+        parts = tree_line.split(None, 3)
+        _require(len(parts) == 4 and parts[0] == "160000" and parts[1] == "commit",
+                 f"upstream is not a pinned gitlink: {dep['path']}")
+        _require(parts[2] == dep["commit"], f"upstream gitlink revision mismatch: {dep['path']}")
+        status = "PASS_GITLINK_PIN"
         if verify_upstreams:
             _require(path.is_dir(), f"upstream not initialized: {dep['path']}; run git submodule update --init --recursive")
             _require(git_head(path) == dep["commit"], f"upstream revision mismatch: {dep['path']}")
             dirty = subprocess.check_output(["git", "-C", str(path), "status", "--porcelain"], text=True)
             _require(not dirty.strip(), f"upstream source is dirty: {dep['path']}")
-            status = "PASS"
+            status = "PASS_CHECKED_OUT_CLEAN"
         rows.append({**dep, "verification": status})
     return {"status": "PASS", "scope": "PACKAGED_SOURCE_LAYOUT", "upstreams": rows,
             "real_model_import": "NOT_RUN", "gpu_revalidation": GPU_NOT_RUN}

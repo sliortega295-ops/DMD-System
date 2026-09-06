@@ -1,0 +1,23 @@
+{
+  "include": [
+    "livewan_wan13b_14b_sf_dmd_c20_generator_flash_attn2.json"
+  ],
+  "id": "livewan-wan13b-14b-sfdmd-c21-continuous-b16",
+  "metadata": {
+    "continuous_pipeline": {
+      "enabled": true,
+      "name": "continuous_full5_b16_depth1_v1",
+      "cycles": 3,
+      "cycle_length": 5,
+      "lookahead_depth": 1,
+      "lookahead_scope": "next_cycle_step0_wave0_rollout_only",
+      "source_reuse_across_cycles": true,
+      "fresh_rank_qualified_rng_per_cycle": true,
+      "critic_shadow_hot_sync": "paired_score_to_generator_fp32_lora_after_c5",
+      "critic_shadow_sync_versions": [5, 10],
+      "single_generator_commit_per_cycle": true,
+      "five_critic_commits_per_cycle": true,
+      "math_and_call_inventory_preserved": true
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "dependencies": [
+    {
+      "commit": "d034a6b0ecaa31aa07c81aeb7bbe69b225f1d7be",
+      "path": "third_party/lightx2v",
+      "url": "https://github.com/ModelTC/LightX2V.git",
+      "used_by": [
+        "minimax_h3_grid1000_best"
+      ]
+    },
+    {
+      "commit": "1eabf43c777bc5b2816926ca998cd4e4c2dfa3d5",
+      "path": "third_party/livewan",
+      "url": "https://github.com/JonathanColetti/LiveWan.git",
+      "used_by": [
+        "livewan_crossscale_pipeline_best"
+      ]
+    },
+    {
+      "commit": "9737cba9c1c3c4d04b33fcad41c111989865d315",
+      "path": "third_party/wan21",
+      "url": "https://github.com/Wan-Video/Wan2.1.git",
+      "used_by": [
+        "livewan_crossscale_pipeline_best"
+      ]
+    }
+  ],
+  "schema_version": 1
+}

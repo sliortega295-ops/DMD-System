@@ -123,6 +123,10 @@ def _run(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else list(argv)
+    if argv and argv[0] == "workloads":
+        from distillschedule.workloads.best_known.cli import main as workloads_main
+        return workloads_main(argv[1:])
     parser = _build_parser()
     args = parser.parse_args(argv)
     handlers = {

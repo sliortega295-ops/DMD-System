@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "profiles": {
+    "wan13b_nogan_resident_best": "f30fc096885e7738ada55cf5a3f5020b890ed4d8b61e290c892c709e6c45c44c",
+    "helios14b_nogan_best": "7b35a7f77cf830507c0b01ce14810ab0265d39859190fa6306e5047793d0924b",
+    "helios14b_gan_best": "9471f4e7abe9ad5b317de64024d7d727d57a8c026bb3cc7e41fee6925c56c242",
+    "minimax_h3_grid1000_best": "97af8315061b5b99ddeae75acfb51110a763f9ef097c2f46c721563b519777dd",
+    "livewan_crossscale_pipeline_best": "b2750300c4e5ba911d41e735091d578bb61350a68695943846c9f25e591b734d"
+  }
+}

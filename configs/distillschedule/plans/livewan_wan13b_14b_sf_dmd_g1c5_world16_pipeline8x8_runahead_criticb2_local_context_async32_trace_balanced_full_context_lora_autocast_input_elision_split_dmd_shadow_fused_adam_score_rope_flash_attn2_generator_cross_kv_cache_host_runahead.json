@@ -1,0 +1,23 @@
+{
+  "include": [
+    "livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context_lora_autocast_input_elision_split_dmd_shadow_fused_adam_score_rope_flash_attn2_generator_cross_kv_cache.json"
+  ],
+  "id": "livewan-wan13b-14b-sfdmd-g1c5-world16-pipeline8x8-runahead-criticb2-local-context-async32-trace-balanced-full-context-lora-autocast-input-elision-split-dmd-shadow-fused-adam-score-rope-flash-attn2-generator-cross-kv-cache-host-runahead",
+  "metadata": {
+    "generator_runahead_transport": {
+      "enabled": true,
+      "name": "pinned_cpu_gloo_latent_v1",
+      "scope": "critic_only_steps_1_4_latent_only",
+      "logical_steps": [1, 2, 3, 4],
+      "waves_per_step": 2,
+      "payload_dtype": "float32",
+      "payload_shape": [1, 16, 21, 46, 80],
+      "pinned_host": true,
+      "background_sender_threads_per_rank": 1,
+      "preposted_receives": true,
+      "step0_transport": "cuda_nccl_p2p_unchanged",
+      "context_transport": "trace_local_replay_unchanged",
+      "calls_preserved": true
+    }
+  }
+}

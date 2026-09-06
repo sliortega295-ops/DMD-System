@@ -1,0 +1,67 @@
+{
+  "assets": {
+    "flash_attn_kernel": {
+      "identity_file": "IDENTITY.sha256",
+      "path": "/srv/dmd-assets/helios14b_gan_best/flash_attn_kernel",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "generator_model": {
+      "identity_file": "IDENTITY.sha256",
+      "path": "/srv/dmd-assets/helios14b_gan_best/generator_model",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "generator_precast": {
+      "identity_file": "IDENTITY.sha256",
+      "path": "/srv/dmd-assets/helios14b_gan_best/generator_precast",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "hf_home": {
+      "identity_file": "IDENTITY.sha256",
+      "path": "/srv/dmd-assets/helios14b_gan_best/hf_home",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "logical_checkpoint": {
+      "identity_file": "IDENTITY.sha256",
+      "path": "/srv/dmd-assets/helios14b_gan_best/logical_checkpoint",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "negative_prompt": {
+      "identity_file": "IDENTITY.sha256",
+      "path": "/srv/dmd-assets/helios14b_gan_best/negative_prompt",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "score_model": {
+      "identity_file": "IDENTITY.sha256",
+      "path": "/srv/dmd-assets/helios14b_gan_best/score_model",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "score_precast": {
+      "identity_file": "IDENTITY.sha256",
+      "path": "/srv/dmd-assets/helios14b_gan_best/score_precast",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "trace": {
+      "identity_file": "IDENTITY.sha256",
+      "path": "/srv/dmd-assets/helios14b_gan_best/trace",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  "master_addr": "10.0.0.1",
+  "master_port": 29500,
+  "node_local_cache_root": "/var/tmp/distillschedule-cache",
+  "nodes": [
+    {
+      "host": "node0",
+      "python_env": "/opt/dmd-python",
+      "repo_root": "/opt/DMD-System"
+    },
+    {
+      "host": "node1",
+      "python_env": "/opt/dmd-python",
+      "repo_root": "/opt/DMD-System"
+    }
+  ],
+  "run_root": "/var/tmp/dmd-runs",
+  "schema_version": 1,
+  "timeout_seconds": 18000
+}

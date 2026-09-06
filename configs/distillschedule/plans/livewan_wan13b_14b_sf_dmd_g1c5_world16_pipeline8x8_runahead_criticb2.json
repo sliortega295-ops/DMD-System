@@ -1,0 +1,19 @@
+{
+  "include": ["livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead.json"],
+  "id": "livewan-wan13b-14b-sfdmd-g1c5-world16-pipeline8x8-runahead-criticb2",
+  "training_backends": {
+    "score": {
+      "options": {
+        "critic_physical_batch_policy": "exact_b2_after_b1_dmd"
+      }
+    }
+  },
+  "metadata": {
+    "pool_policy": "persistent_8g_8score_teacher_fsdp8_runahead_critic_b2",
+    "score_physical_batch_size": 1,
+    "critic_physical_batch_size": 2,
+    "dmd_physical_batch_size": 1,
+    "critic_b2_preserves_per_sample_rng": true,
+    "critic_b2_preserves_single_commit_per_step": true
+  }
+}

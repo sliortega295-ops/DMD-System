@@ -1,0 +1,15 @@
+{
+  "include": ["livewan_wan13b_14b_sf_dmd_g1c5_world16_pipeline8x8_runahead_criticb2_local_context_async32_trace_balanced_full_context.json"],
+  "id": "livewan-wan13b-14b-sfdmd-g1c5-world16-pipeline8x8-runahead-criticb2-local-context-async32-trace-balanced-full-context-lora-scale1",
+  "metadata": {
+    "critic_lora_kernel": {
+      "enabled": true,
+      "name": "scale_one_identity_epilogue_v1",
+      "scale": 1.0,
+      "math_change": "remove_identity_multiply_only",
+      "base_input_output_dtype": "bfloat16",
+      "lora_parameter_compute_dtype": "float32",
+      "source_forward_sha256": "70d00d496aa2bd8ea06d64e6b04af873644eff52539396f74ec586a4cbbe97a3"
+    }
+  }
+}

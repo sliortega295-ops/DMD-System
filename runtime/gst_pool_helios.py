@@ -42,6 +42,9 @@ def run_generator_update_trace_rollout(
     entry: GSTTraceEntry,
     device: torch.device,
     detailed_profile: bool,
+    collect_diagnostics: bool = True,
+    empty_cache_before_rollout: bool = True,
+    synchronize_after_rollout: bool = True,
 ) -> tuple[torch.Tensor, torch.Tensor | None, dict[str, Any]]:
     """Replay one grad-selected Generator-update sample without RNG sampling."""
 
@@ -106,7 +109,8 @@ def run_generator_update_trace_rollout(
     model = _module(engine)
     model.enable_adapters()
     model.train()
-    torch.cuda.empty_cache()
+    if empty_cache_before_rollout:
+        torch.cuda.empty_cache()
     torch.cuda.reset_peak_memory_stats(device)
     (
         generated_x0,
@@ -152,7 +156,8 @@ def run_generator_update_trace_rollout(
         operation_trace=entry.operation_trace,
         trace_prefix=f"step/{entry.logical_step}/generator",
     )
-    torch.cuda.synchronize(device)
+    if synchronize_after_rollout:
+        torch.cuda.synchronize(device)
     if list(generated_x0.shape) != [1, 16, 9, 48, 80]:
         raise AssertionError("Generator returned a reduced or malformed x0")
     if generated_x0.dtype != torch.bfloat16:
@@ -205,14 +210,22 @@ def run_generator_update_trace_rollout(
         "output_dtype": str(generated_x0.dtype),
         "output_requires_grad": True,
         "gradient_mask_is_none": gradient_mask is None,
-        "denoised_timestep_from": float(
-            torch.as_tensor(denoised_from).detach().flatten()[0].cpu()
+        "empty_cache_before_rollout": bool(empty_cache_before_rollout),
+        "synchronize_after_rollout": bool(synchronize_after_rollout),
+        "denoised_timestep_from": (
+            float(torch.as_tensor(denoised_from).detach().flatten()[0].cpu())
+            if collect_diagnostics
+            else "omitted_in_clean_profile"
         ),
-        "denoised_timestep_to": float(
-            torch.as_tensor(denoised_to).detach().flatten()[0].cpu()
+        "denoised_timestep_to": (
+            float(torch.as_tensor(denoised_to).detach().flatten()[0].cpu())
+            if collect_diagnostics
+            else "omitted_in_clean_profile"
         ),
-        "consistency_loss": float(
-            torch.as_tensor(consistency_loss).detach().cpu()
+        "consistency_loss": (
+            float(torch.as_tensor(consistency_loss).detach().cpu())
+            if collect_diagnostics
+            else "omitted_in_clean_profile"
         ),
         "memory": _memory_snapshot(device),
     }

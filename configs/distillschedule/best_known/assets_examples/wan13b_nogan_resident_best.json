@@ -1,0 +1,47 @@
+{
+  "assets": {
+    "bootstrap": {
+      "identity_file": "manifest.json",
+      "path": "/srv/dmd-assets/wan13b_nogan_resident_best/bootstrap",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "hf_home": {
+      "identity_file": "IDENTITY.sha256",
+      "path": "/srv/dmd-assets/wan13b_nogan_resident_best/hf_home",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "model": {
+      "identity_file": "IDENTITY.sha256",
+      "path": "/srv/dmd-assets/wan13b_nogan_resident_best/model",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "negative_prompt": {
+      "identity_file": "IDENTITY.sha256",
+      "path": "/srv/dmd-assets/wan13b_nogan_resident_best/negative_prompt",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "trace": {
+      "identity_file": "IDENTITY.sha256",
+      "path": "/srv/dmd-assets/wan13b_nogan_resident_best/trace",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  "master_addr": "10.0.0.1",
+  "master_port": 29500,
+  "node_local_cache_root": "/var/tmp/distillschedule-cache",
+  "nodes": [
+    {
+      "host": "node0",
+      "python_env": "/opt/dmd-python",
+      "repo_root": "/opt/DMD-System"
+    },
+    {
+      "host": "node1",
+      "python_env": "/opt/dmd-python",
+      "repo_root": "/opt/DMD-System"
+    }
+  ],
+  "run_root": "/var/tmp/dmd-runs",
+  "schema_version": 1,
+  "timeout_seconds": 18000
+}
