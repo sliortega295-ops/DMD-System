@@ -243,6 +243,20 @@ def test_representative_prior_never_becomes_a_world16_profile_or_measurement(tmp
         validate_measurement(raw, IDENTITY, get_candidate(WAN, "fsdp-reference"))
 
 
+def test_phase_partition_matches_full_scan_with_cross_boundary_copies():
+    from distillschedule.search.profile import _partition_activities
+    from distillschedule.profiling.nsight_activity import ActivityInterval, Interval, analyze_windows
+    import random
+    rng = random.Random(42)
+    windows = [Interval(10, 90), Interval(90, 180), Interval(200, 300)]
+    rows = [ActivityInterval(Interval(x, x + rng.randrange(1, 140)), rng.choice(["compute", "nccl", "h2d"]), bytes=1024)
+            for x in (rng.randrange(0, 330) for _ in range(400))]
+    rows += [ActivityInterval(Interval(89, 201), "d2h", bytes=4096)]
+    buckets = _partition_activities(rows, windows)
+    for window, scoped in zip(windows, buckets):
+        assert analyze_windows(rows, [window]) == analyze_windows(scoped, [window])
+
+
 @pytest.mark.parametrize("bad", ["missing_rank", "duplicate_gpu", "parser", "bad_tid", "fake_nvtx", "nested_phase", "doctor", "hash"])
 def test_profile_invalid_evidence_rejected(tmp_path, bad):
     v = sqlite_fixture(tmp_path)

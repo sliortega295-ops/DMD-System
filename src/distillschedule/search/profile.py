@@ -7,6 +7,7 @@ are analyzed where they reside; only normalized observations need be moved.
 from __future__ import annotations
 
 from collections import defaultdict
+from bisect import bisect_right
 import json
 from pathlib import Path
 import re
@@ -119,6 +120,23 @@ def _validate_window(db: sqlite3.Connection, rank: dict[str, Any], item: dict[st
     return Interval(int(item["start_ns"]), int(item["end_ns"]))
 
 
+def _partition_activities(activities: list[ActivityInterval], windows: list[Interval]) -> list[list[ActivityInterval]]:
+    """Assign once to sorted disjoint phases instead of rescanning N events/P phases.
+
+    A straddling activity belongs to both windows; analyze_windows retains the
+    original clipping and per-window event/byte semantics exactly.
+    """
+    require(all(a.end_ns <= b.start_ns for a, b in zip(windows, windows[1:])), "partition windows overlap")
+    ends = [w.end_ns for w in windows]
+    buckets: list[list[ActivityInterval]] = [[] for _ in windows]
+    for activity in activities:
+        index = bisect_right(ends, activity.interval.start_ns)
+        while index < len(windows) and windows[index].start_ns < activity.interval.end_ns:
+            buckets[index].append(activity)
+            index += 1
+    return buckets
+
+
 def parse_profile(manifest: dict[str, Any]) -> dict[str, Any]:
     require(manifest.get("schema_version") == "distillschedule.search.profile_input.v1", "profile input schema mismatch")
     require(manifest.get("cycle") in (1, 2), "profile must identify the actual captured cycle")
@@ -163,15 +181,19 @@ def parse_profile(manifest: dict[str, Any]) -> dict[str, Any]:
                     require(all(window.clip(w) is None for w in phase_windows),
                             "search cost phases must be disjoint; nested NVTX would double-count work")
                     phase_windows.append(window)
-                    measure = analyze_windows(activities, (window,))
-                    compute = [a.interval for a in activities if a.category == "compute"]
-                    nccl = [a.interval for a in activities if a.category == "nccl"]
+                ordered = sorted(zip(phase_windows, rank["phases"]), key=lambda row: row[0].start_ns)
+                buckets = _partition_activities(activities, [w for w, _ in ordered])
+                for (window, phase), scoped in zip(ordered, buckets):
+                    require(time.monotonic() < deadline, "bounded phase analysis timed out")
+                    measure = analyze_windows(scoped, (window,))
+                    compute = [a.interval for a in scoped if a.category == "compute"]
+                    nccl = [a.interval for a in scoped if a.category == "nccl"]
                     c_ns = interval_union_ns(clip_intervals_to_windows(compute, (window,)))
                     n_ns = interval_union_ns(clip_intervals_to_windows(nccl, (window,)))
                     combined = interval_union_ns(clip_intervals_to_windows(compute + nccl, (window,)))
                     overlap = c_ns + n_ns - combined
                     phase_quality = {**quality, "pointwise_name_family_union_ns": interval_union_ns(
-                        clip_intervals_to_windows((a.interval for a in activities if a.category == "compute"
+                        clip_intervals_to_windows((a.interval for a in scoped if a.category == "compute"
                             and re.search(r"elementwise|vectorized|copy|cast|cat|norm|modulat|residual|gate", a.name, re.I)), (window,)))}
                     output.append({"rank": rank["rank"], "node": rank["node"], "device_id": rank["device_id"],
                         "phase": phase["name"], "role": phase["role"], "occurrence": phase.get("occurrence", 0),
