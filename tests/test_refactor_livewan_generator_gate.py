@@ -48,7 +48,7 @@ def test_plan_only_no_assets_or_cuda(tmp_path):
     assert 'BITWISE' in v['correctness'] and not out.exists()
 
 
-def test_no_production_install_yet():
+def test_only_explicit_production_install():
     root = Path(__file__).resolve().parents[1]
     worker = (root/'src/distillschedule/runtime/livewan_crossscale_worker.py').read_text()
-    assert 'livewan_generator_gate' not in worker
+    assert 'if _generator_gate_enabled(plan, mode=mode) and rank < 8:' in worker

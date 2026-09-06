@@ -101,3 +101,67 @@ def canary_scope(torch: Any, student: Any, op: Any, *, enabled=False):
         yield
     finally:
         bc._gate = original
+
+
+class GeneratorGate:
+    def __init__(self, torch, student):
+        self.student = student
+        self.op, self.kernel_receipt = build(torch)
+        self.entries = self.exits = self.failures = 0
+        self.active = False
+        self.scope_calls = []
+
+    @contextmanager
+    def scope(self, torch):
+        if self.active:
+            raise RuntimeError('recursive Generator gate scope')
+        self.active = True
+        self.entries += 1
+        before = self.kernel_receipt['calls']
+        try:
+            with canary_scope(torch, self.student, self.op, enabled=True):
+                yield
+        except BaseException:
+            self.failures += 1
+            raise
+        finally:
+            self.scope_calls.append(self.kernel_receipt['calls'] - before)
+            self.active = False
+            self.exits += 1
+
+    def receipt(self):
+        return dict(self.kernel_receipt, enabled=True, execution_status='PASS',
+            scope_entries=self.entries, scope_exits=self.exits, active=self.active,
+            scope_failures=self.failures, scope_forward_calls=self.scope_calls)
+
+
+def install(torch, student):
+    if str(torch.__version__) != '2.10.0+cu128' or hasattr(student, ATTRIBUTE):
+        raise RuntimeError('C33 validated environment or install state changed')
+    helper = GeneratorGate(torch, student)
+    setattr(student, ATTRIBUTE, helper)
+    return helper
+
+
+@contextmanager
+def model_runtime_scope(torch, student):
+    helper = getattr(student, ATTRIBUTE, None)
+    if helper is None:
+        yield
+    else:
+        with helper.scope(torch):
+            yield
+
+
+def runtime_receipt_errors(r, *, rank, cycles):
+    if rank >= 8:
+        return [] if r.get('execution_status') == 'NOT_APPLICABLE' else ['C33 changed Score scope']
+    calls = r.get('scope_forward_calls', [])
+    if (any(r.get(k) != v for k, v in PLAN_CONTRACT.items())
+        or r.get('execution_status') != 'PASS' or r.get('scope_entries') != 10*cycles
+        or r.get('scope_exits') != 10*cycles or r.get('active') is not False
+        or r.get('scope_failures') != 0 or r.get('contract_failures') != 0
+        or len(calls) != 10*cycles or any(c not in (1260, 1560, 1860) for c in calls)
+        or r.get('calls') != sum(calls)):
+        return ['C33 actual no-grad gate call/scope/precision contract failed']
+    return []

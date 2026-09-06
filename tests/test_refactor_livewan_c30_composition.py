@@ -68,8 +68,8 @@ def test_receipt_summarizers_require_both_g_and_score_checks():
     name='c30-continuous-b16-generator-rms-critic-checkpoint'
     for p in ('summarize_livewan_trajectory_world16.py','summarize_livewan_two_cycle_timing_world16.py'):
         s=(ROOT/'scripts/distillschedule'/p).read_text()
-        assert '"c29-continuous-b16-generator-rms-epilogue", "'+name+'", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation"}' in s
-        assert '"c26-continuous-b16-critic-attention-checkpoint", "'+name+'", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation"}' in s
+        assert '"c29-continuous-b16-generator-rms-epilogue", "'+name+'", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate"}' in s
+        assert '"c26-continuous-b16-critic-attention-checkpoint", "'+name+'", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate"}' in s
 
 @pytest.mark.parametrize('kind',['trajectory','two-cycle-timing'])
 @pytest.mark.parametrize('variant,expected',[
