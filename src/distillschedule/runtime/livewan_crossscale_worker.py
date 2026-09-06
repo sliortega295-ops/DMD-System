@@ -3329,26 +3329,27 @@ def _score_rmsnorm_kernel_enabled(plan: Mapping[str, Any], *, mode: str) -> bool
 
 
 def _c30_checkpoint_composition_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
-    from distillschedule.runtime.livewan_c30_contract import PLAN_CONTRACT, C31_PLAN_CONTRACT, C32_PLAN_CONTRACT, C33_PLAN_CONTRACT
+    from distillschedule.runtime.livewan_c30_contract import PLAN_CONTRACT, C31_PLAN_CONTRACT, C32_PLAN_CONTRACT, C33_PLAN_CONTRACT, C34_PLAN_CONTRACT
     from distillschedule.runtime.livewan_attention_checkpoint import PLAN_CONTRACT as SAC
     from distillschedule.runtime.livewan_generator_rms_epilogue import PLAN_CONTRACT as RMS
     from distillschedule.runtime.livewan_generator_rms_epilogue import CAST_SQUARE_PLAN_CONTRACT
     from distillschedule.runtime.livewan_rollout_cast_cache import PLAN_CONTRACT as CAST
     from distillschedule.runtime.livewan_generator_modulation import PLAN_CONTRACT as MOD
-    from distillschedule.runtime.livewan_generator_gate import PLAN_CONTRACT as GATE
+    from distillschedule.runtime.livewan_generator_gate import PLAN_CONTRACT as GATE, LAYOUT_PLAN_CONTRACT as LAYOUT
 
     metadata = plan.get("metadata", {})
     value = metadata.get("checkpoint_composition")
     if value is None:
         return False
-    _require(mode == "pipeline" and value in (PLAN_CONTRACT, C31_PLAN_CONTRACT, C32_PLAN_CONTRACT, C33_PLAN_CONTRACT),
+    _require(mode == "pipeline" and value in (PLAN_CONTRACT, C31_PLAN_CONTRACT, C32_PLAN_CONTRACT, C33_PLAN_CONTRACT, C34_PLAN_CONTRACT),
              "C30 explicit composition contract changed")
     expected_rms = RMS if value == PLAN_CONTRACT else CAST_SQUARE_PLAN_CONTRACT
     _require(metadata.get("critic_attention_checkpoint") == SAC
              and metadata.get("generator_rms_epilogue") == expected_rms
              and metadata.get("generator_rollout_cast_cache") == CAST
-             and metadata.get("generator_modulation") == (MOD if value in (C32_PLAN_CONTRACT, C33_PLAN_CONTRACT) else None)
-             and metadata.get("generator_gate") == (GATE if value == C33_PLAN_CONTRACT else None)
+             and metadata.get("generator_modulation") == (MOD if value in (C32_PLAN_CONTRACT, C33_PLAN_CONTRACT, C34_PLAN_CONTRACT) else None)
+             and metadata.get("generator_gate") == (GATE if value in (C33_PLAN_CONTRACT, C34_PLAN_CONTRACT) else None)
+             and metadata.get("generator_residual_layout") == (LAYOUT if value == C34_PLAN_CONTRACT else None)
              and metadata.get("score_prompt_staging") is None
              and not metadata.get("score_context_prefetch"),
              "C30 requires exact C29 parent plus unchanged C26 policy")
@@ -3424,6 +3425,19 @@ def _generator_gate_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
     _require(_c30_checkpoint_composition_enabled(plan, mode=mode)
              and _generator_modulation_enabled(plan, mode=mode),
              "C33 requires explicit unchanged C32 parent")
+    return True
+
+
+def _generator_residual_layout_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_generator_gate import LAYOUT_PLAN_CONTRACT
+
+    value = plan.get("metadata", {}).get("generator_residual_layout")
+    if value is None:
+        return False
+    _require(mode == "pipeline" and value == LAYOUT_PLAN_CONTRACT,
+             "C34 Generator residual layout contract changed")
+    _require(_generator_gate_enabled(plan, mode=mode),
+             "C34 requires explicit unchanged C33 parent")
     return True
 
 
@@ -3736,6 +3750,7 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _generator_rms_epilogue_enabled(plan, mode=mode)
     _generator_modulation_enabled(plan, mode=mode)
     _generator_gate_enabled(plan, mode=mode)
+    _generator_residual_layout_enabled(plan, mode=mode)
     _score_rope_kernel_enabled(plan, mode=mode)
     _score_attention_backend_enabled(plan, mode=mode)
     _generator_cross_kv_cache_enabled(plan, mode=mode)
@@ -4261,7 +4276,8 @@ def run_worker(
     if _generator_gate_enabled(plan, mode=mode) and rank < 8:
         from distillschedule.runtime.livewan_generator_gate import install as install_g_gate
 
-        generator_gate = install_g_gate(torch, bundle.student)
+        generator_gate = install_g_gate(torch, bundle.student,
+            output_layout="row_major" if _generator_residual_layout_enabled(plan, mode=mode) else "native")
 
     loader = InputLoader(torch=torch, trace=trace)
     pinned_score_context = None
@@ -4722,7 +4738,8 @@ def run_worker(
 
         generator_gate_receipt = (generator_gate.receipt() if generator_gate is not None
             else {"enabled": True, "execution_status": "NOT_APPLICABLE"})
-        _require(not gate_errors(generator_gate_receipt, rank=rank, cycles=continuous_cycles),
+        _require(not gate_errors(generator_gate_receipt, rank=rank, cycles=continuous_cycles,
+                   output_layout="row_major" if _generator_residual_layout_enabled(plan, mode=mode) else "native"),
                  "C33 Generator no-grad residual gate scope/call contract failed")
     if _score_prompt_staging_enabled(plan, mode=mode):
         from distillschedule.runtime.livewan_context_staging import SOURCE_SHA256, runtime_receipt_errors as staging_errors

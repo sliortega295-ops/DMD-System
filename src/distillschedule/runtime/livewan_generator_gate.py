@@ -15,10 +15,16 @@ PLAN_CONTRACT = dict(
     product_dtype='float32', output_dtype='float32', fma=False,
     out_of_place=True, grad_path_changed=False,
 )
+LAYOUT_PLAN_CONTRACT = dict(
+    enabled=True, name='generator_nograd_row_major_residual_v1',
+    scope='single_prepare_rollout_generator_only', output_layout='row_major',
+    internal_stride_changed=True, public_output_contract_unchanged=True,
+    source_sha256=SOURCE_SHA256, grad_path_changed=False,
+)
 
 
 def build(torch: Any, *, output_layout: str = 'native'):
-    # C34 is an explicit canary-only layout ablation until separately admitted.
+    # C34 is an explicitly registered layout ablation after the real-row canary.
     # Default C33 and the Generator grad path preserve their existing layout.
     if output_layout not in ('native', 'row_major'):
         raise ValueError('unsupported Generator gate output layout')
@@ -109,9 +115,9 @@ def canary_scope(torch: Any, student: Any, op: Any, *, enabled=False):
 
 
 class GeneratorGate:
-    def __init__(self, torch, student):
+    def __init__(self, torch, student, *, output_layout='native'):
         self.student = student
-        self.op, self.kernel_receipt = build(torch)
+        self.op, self.kernel_receipt = build(torch, output_layout=output_layout)
         self.entries = self.exits = self.failures = 0
         self.active = False
         self.scope_calls = []
@@ -140,10 +146,10 @@ class GeneratorGate:
             scope_failures=self.failures, scope_forward_calls=self.scope_calls)
 
 
-def install(torch, student):
+def install(torch, student, *, output_layout='native'):
     if str(torch.__version__) != '2.10.0+cu128' or hasattr(student, ATTRIBUTE):
         raise RuntimeError('C33 validated environment or install state changed')
-    helper = GeneratorGate(torch, student)
+    helper = GeneratorGate(torch, student, output_layout=output_layout)
     setattr(student, ATTRIBUTE, helper)
     return helper
 
@@ -158,11 +164,13 @@ def model_runtime_scope(torch, student):
             yield
 
 
-def runtime_receipt_errors(r, *, rank, cycles):
+def runtime_receipt_errors(r, *, rank, cycles, output_layout='native'):
     if rank >= 8:
         return [] if r.get('execution_status') == 'NOT_APPLICABLE' else ['C33 changed Score scope']
     calls = r.get('scope_forward_calls', [])
-    if (any(r.get(k) != v for k, v in PLAN_CONTRACT.items())
+    if (output_layout not in ('native', 'row_major')
+        or r.get('output_layout', 'native') != output_layout
+        or any(r.get(k) != v for k, v in PLAN_CONTRACT.items())
         or r.get('execution_status') != 'PASS' or r.get('scope_entries') != 10*cycles
         or r.get('scope_exits') != 10*cycles or r.get('active') is not False
         or r.get('scope_failures') != 0 or r.get('contract_failures') != 0

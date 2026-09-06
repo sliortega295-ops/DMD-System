@@ -35,3 +35,12 @@ C33_PLAN_CONTRACT = {
     "application_calls_unchanged": True,
     "numeric_policy_unchanged": True,
 }
+
+C34_PLAN_CONTRACT = {
+    "name": "c33_plus_generator_row_major_residual_v1",
+    "parent": "c33-continuous-b16-generator-gate",
+    "added_factor": "generator_nograd_row_major_residual_v1",
+    "critic_path_unchanged": True,
+    "application_calls_unchanged": True,
+    "numeric_policy_unchanged": True,
+}
