@@ -65,11 +65,22 @@ def test_modified_fa2_math_rng_or_storage_rejected(plans):
 
 
 def test_receipt_summarizers_require_both_g_and_score_checks():
+    import ast
     name='c30-continuous-b16-generator-rms-critic-checkpoint'
     for p in ('summarize_livewan_trajectory_world16.py','summarize_livewan_two_cycle_timing_world16.py'):
-        s=(ROOT/'scripts/distillschedule'/p).read_text()
-        assert '"c29-continuous-b16-generator-rms-epilogue", "'+name+'", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate"}' in s
-        assert '"c26-continuous-b16-critic-attention-checkpoint", "'+name+'", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate"}' in s
+        tree=ast.parse((ROOT/'scripts/distillschedule'/p).read_text())
+        checks=set()
+        for node in ast.walk(tree):
+            if not isinstance(node,ast.If):
+                continue
+            if not any(isinstance(v,ast.Constant) and v.value==name for v in ast.walk(node.test)):
+                continue
+            for statement in node.body:
+                checks.update(call.func.id for call in ast.walk(statement)
+                    if isinstance(call,ast.Call) and isinstance(call.func,ast.Name))
+        # C30 must still execute both actual validators, independent of which
+        # newer opt-in variants share the same membership set.
+        assert {'rms_epilogue_errors','sac_errors'} <= checks
 
 @pytest.mark.parametrize('kind',['trajectory','two-cycle-timing'])
 @pytest.mark.parametrize('variant,expected',[
