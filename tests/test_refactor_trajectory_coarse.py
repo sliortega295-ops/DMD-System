@@ -91,6 +91,26 @@ def test_schema_is_independent_from_strict_p0_parity() -> None:
     assert COARSE_50C_THRESHOLDS is not DEFAULT_P0_PARITY
 
 
+def test_headless_report_retains_all_numeric_evidence_without_plot_import(tmp_path, monkeypatch):
+    import hashlib
+    import sys
+    from distillschedule.evidence import trajectory_coarse
+    result = compare_trajectories(_rows(run_id="a", variant="baseline"),
+                                  _rows(run_id="b", variant="optimized"),
+                                  expected_cycles=50, expected_world_size=2)
+    monkeypatch.setitem(sys.modules, "matplotlib", None)
+    monkeypatch.setattr(trajectory_coarse, "_render_png", lambda *args: pytest.fail("plot called"))
+    outputs = write_trajectory_report(result, tmp_path, render_png=False)
+    assert set(outputs) == {"json", "csv", "markdown", "sha256"}
+    assert json.loads(outputs["json"].read_text()) == result
+    assert not (tmp_path / "trajectory_comparison.png").exists()
+    hashes = json.loads(outputs["sha256"].read_text())
+    for key in ("json", "csv", "markdown"):
+        assert hashes[outputs[key].name] == hashlib.sha256(outputs[key].read_bytes()).hexdigest()
+    with pytest.raises(FileExistsError):
+        write_trajectory_report(result, tmp_path, render_png=False)
+
+
 def test_receipt_round_trip_and_rejects_nonfinite_json_values() -> None:
     receipt = _receipt(run_id="run-a", variant="baseline", rank=0, cycle=1)
     payload = receipt.to_mapping()

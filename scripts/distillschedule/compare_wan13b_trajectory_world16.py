@@ -85,6 +85,8 @@ def main() -> int:
     parser.add_argument("--candidate-run-root", type=Path, required=True)
     parser.add_argument("--cycles", type=int, choices=(1, 2, 5, 50), required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--no-plot", action="store_true",
+                        help="Write all numerical evidence without importing matplotlib; gates unchanged")
     args = parser.parse_args()
 
     reference_rows = _load_rows(args.reference_run_root)
@@ -113,12 +115,13 @@ def main() -> int:
         comparison_kind="semantic",
         required_state_cycles=anchors,
     )
-    paths = write_trajectory_report(result, args.output_dir)
+    paths = write_trajectory_report(result, args.output_dir, render_png=not args.no_plot)
     print(
         json.dumps(
             {
                 "status": result["status"],
                 "contract": result["contract"],
+                "plot_status": "NOT_RUN_REQUESTED" if args.no_plot else "PASS",
                 "outputs": {key: str(path) for key, path in paths.items()},
             },
             indent=2,

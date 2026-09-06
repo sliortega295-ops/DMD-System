@@ -70,7 +70,7 @@ def prepare_pair(reference: dict[str, Any], candidate: dict[str, Any]) -> dict[s
     if workload == WAN:
         _command(node, [str(root / "compare_wan13b_trajectory_world16.py"),
             "--reference-run-root", str(left), "--candidate-run-root", str(right),
-            "--cycles", "2", "--output-dir", str(out / "comparison")], out / "compare.log")
+            "--cycles", "2", "--no-plot", "--output-dir", str(out / "comparison")], out / "compare.log")
         source = out / "comparison/trajectory_comparison.json"
         # Workload-owned writer names are explicit, never a glob fallback.
         require(source.is_file(), f"native comparison output missing: {source}")

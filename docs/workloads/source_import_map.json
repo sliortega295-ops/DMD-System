@@ -1410,7 +1410,14 @@
       "target": "src/distillschedule/evidence/__init__.py"
     },
     {
-      "integrated_sha256": "38865f0216cbc9341e288623a08e7bbf5983ec9ed28c9ae90c9d7e9bcfebeb35",
+      "integrated_sha256": "f032c2605d23eae389519cc530273b00f6550f18c839a6b160901d4cd9aaa6b1",
+      "integration_adaptations": [
+        {
+          "integrated_sha256": "f032c2605d23eae389519cc530273b00f6550f18c839a6b160901d4cd9aaa6b1",
+          "previous_sha256": "38865f0216cbc9341e288623a08e7bbf5983ec9ed28c9ae90c9d7e9bcfebeb35",
+          "reason": "Opt-in headless numerical report; default PNG behavior and all numerical gates unchanged. Search does not require matplotlib in the training environment."
+        }
+      ],
       "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "src/distillschedule/evidence/trajectory_coarse.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -1697,7 +1704,14 @@
       "target": "tests/test_refactor_livewan_two_cycle_timing.py"
     },
     {
-      "integrated_sha256": "ff272c9a3a57e55edb45e2681454dd62c5ac39d5796a0d09172ffdb9ec6758c8",
+      "integrated_sha256": "ae1ac30375e93c907f2f7f96b4202ecba26c4039a34d9892c61b97a5914e402c",
+      "integration_adaptations": [
+        {
+          "integrated_sha256": "ae1ac30375e93c907f2f7f96b4202ecba26c4039a34d9892c61b97a5914e402c",
+          "previous_sha256": "ff272c9a3a57e55edb45e2681454dd62c5ac39d5796a0d09172ffdb9ec6758c8",
+          "reason": "Test complete headless numerical report, artifact hashes and unchanged overwrite guard without matplotlib."
+        }
+      ],
       "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "tests/test_refactor_trajectory_coarse.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -1826,7 +1840,14 @@
           "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206"
         }
       ],
-      "integrated_sha256": "10c0c437dbd0502611352ae736e42b8853797b1c6524c554cc5e26e38dc1c4bc",
+      "integrated_sha256": "3b2213e5b80bc194ebadb7543d4fad7f564bf9cb59f6b2d4465ea90c2a408f2e",
+      "integration_adaptations": [
+        {
+          "integrated_sha256": "3b2213e5b80bc194ebadb7543d4fad7f564bf9cb59f6b2d4465ea90c2a408f2e",
+          "previous_sha256": "10c0c437dbd0502611352ae736e42b8853797b1c6524c554cc5e26e38dc1c4bc",
+          "reason": "Opt-in headless numerical report; default PNG behavior and all numerical gates unchanged. Search does not require matplotlib in the training environment."
+        }
+      ],
       "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math.",
       "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
       "source_path": "scripts/distillschedule/compare_wan13b_trajectory_world16.py",
