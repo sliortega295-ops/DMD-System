@@ -9,12 +9,19 @@ from .registry import list_profiles, load_profile, resolve_profile, verify_asset
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
+    if argv and argv[0] in {"profile", "search"}:
+        from distillschedule.search.cli import main as search_main
+        return search_main(argv)
     if argv == ["_collect"]:
         from .evidence import collect
         return collect(json.load(sys.stdin))
     if argv == ["_node"]:
         from .dispatch import execute_node
         return execute_node(json.load(sys.stdin))
+    if argv == ["_search"]:
+        from distillschedule.search.native import handle_request
+        print(json.dumps(handle_request(json.load(sys.stdin)), sort_keys=True, allow_nan=False))
+        return 0
     parser = argparse.ArgumentParser(prog="distillctl workloads")
     subs = parser.add_subparsers(dest="action", required=True)
     subs.add_parser("list", help="List exactly five canonical workloads without Torch or GPU imports")
@@ -28,12 +35,27 @@ def main(argv: list[str] | None = None) -> int:
             sub.add_argument("--output", type=Path, required=True)
         if action == "run":
             sub.add_argument("--dry-run", action="store_true")
+            sub.add_argument("--search-plan", type=Path, help="Execute a registered, source-bound search plan")
+            sub.add_argument("--coordinator-output", type=Path, help="Fresh local directory for search-plan replay logs")
     args = parser.parse_args(argv)
     try:
         if args.action == "list":
             for p in list_profiles():
                 print(f'{p["id"]}\t{p["semantics"]}\t{p["display_name"]}')
             return 0
+        if args.action == "run" and args.search_plan:
+            from distillschedule.search.execution import run_plan, rebind_plan
+            from .registry import _object, _require
+            receipt = _object(args.search_plan)
+            _require(receipt.get("profile_id") == args.workload, "search-plan workload differs")
+            if not args.dry_run:
+                _require(args.coordinator_output is not None, "replay requires a fresh coordinator-output and run-id")
+                receipt = rebind_plan(receipt, run_id=args.run_id, assets_path=args.assets_config,
+                                      coordinator_output=args.coordinator_output)
+            else:
+                _require(args.assets_config is None, "dry-run inspects the bound plan; assets override forbidden")
+            return run_plan(receipt, dry_run=args.dry_run,
+                            coordinator_output=args.coordinator_output / "dispatch" if args.coordinator_output else None)
         receipt = resolve_profile(args.workload, assets_path=args.assets_config, run_id=args.run_id, mode=args.mode)
         if args.action == "explain":
             print(json.dumps(receipt, indent=2, sort_keys=True))

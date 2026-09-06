@@ -40,7 +40,11 @@ def _correctness_binding(receipt: dict[str, Any]) -> None:
 
 
 def validate_local(receipt: dict[str, Any], *, root: Path) -> dict[str, Any]:
-    profile = load_profile(receipt["profile_id"], root=root)
+    if "search_candidate" in receipt:
+        from distillschedule.search.execution import validated_profile
+        profile = validated_profile(receipt, root=root)
+    else:
+        profile = load_profile(receipt["profile_id"], root=root)
     _require(fingerprint(profile) == receipt["profile_sha256"], "resolved profile changed")
     _require(git_head(root) == receipt["integration_head"], "integration HEAD changed")
     # Legacy workers reject tracked dirt too; include untracked Python/configs
@@ -69,6 +73,16 @@ def validate_local(receipt: dict[str, Any], *, root: Path) -> dict[str, Any]:
             "scope": "CPU_SOURCE_AND_ASSET_ONLY", "gpu": "NOT_RUN_ON_INTEGRATION_BRANCH"}
 
 
+def ssh_command(node: dict[str, Any]) -> list[str]:
+    """Per-allocation SSH transport; never edits the user's SSH configuration."""
+    command = ["ssh", "-oBatchMode=yes", "-oConnectTimeout=15", "-oControlMaster=no", "-oControlPath=none"]
+    if node.get("address_family") in {"ipv4", "ipv6"}:
+        command.append("-4" if node["address_family"] == "ipv4" else "-6")
+    if "ssh_port" in node:
+        command += ["-p", str(node["ssh_port"])]
+    return command + [node["host"]]
+
+
 def execute_node(payload: dict[str, Any]) -> int:
     receipt, index = payload["receipt"], int(payload["node_rank"])
     _require(index in (0, 1), "invalid node rank")
@@ -85,7 +99,12 @@ def execute_node(payload: dict[str, Any]) -> int:
     wrapper = root / "scripts/distillschedule/remote_stage_wrapper.sh"
     pid = out / f"owned-node{index}.pid"
     command = ["bash", str(wrapper), str(pid), *node["command"]]
-    code = subprocess.call(command, cwd=root, env=env)
+    if "search_candidate" in receipt:
+        from distillschedule.search.resources import ResourceObserver
+        with ResourceObserver(out / f"search-resources.node{index}.json", receipt["run_id"], index):
+            code = subprocess.call(command, cwd=root, env=env)
+    else:
+        code = subprocess.call(command, cwd=root, env=env)
     write_new_json(out / f"node-exit.{index}.json", {
         "status": "PROCESS_EXIT_ONLY_NOT_CORRECTNESS", "return_code": code,
         "integration_head": receipt["integration_head"], "profile_id": receipt["profile_id"],
@@ -94,12 +113,14 @@ def execute_node(payload: dict[str, Any]) -> int:
     return int(code)
 
 
-def run_resolved(receipt: dict[str, Any], *, dry_run: bool = False) -> int:
+def run_resolved(receipt: dict[str, Any], *, dry_run: bool = False,
+                 coordinator_output: Path | None = None) -> int:
     _require(len(receipt.get("nodes", [])) == 2, "run requires an assets config")
     if dry_run:
         print(json.dumps(receipt, indent=2, sort_keys=True))
         return 0
-    out = Path(receipt["asset_config"]["run_root"]) / receipt["run_id"]
+    remote_out = Path(receipt["asset_config"]["run_root"]) / receipt["run_id"]
+    out = coordinator_output if coordinator_output is not None else remote_out
     out.mkdir(parents=True, exist_ok=False)
     write_new_json(out / "coordinator-contract.json", receipt)
     jobs: list[tuple[Any, Any, dict[str, Any]]] = []
@@ -108,7 +129,7 @@ def run_resolved(receipt: dict[str, Any], *, dry_run: bool = False) -> int:
             worker = str(Path(node["repo_root"]) / "scripts/distillschedule/run_best_known_workload.py")
             remote = shlex.join([node["python"], worker, "_node"])
             log = (out / f"ssh-node{i}.log").open("x")
-            proc = subprocess.Popen(["ssh", "-oBatchMode=yes", "-oConnectTimeout=15", node["host"], remote],
+            proc = subprocess.Popen([*ssh_command(node), remote],
                                     stdin=subprocess.PIPE, stdout=log, stderr=subprocess.STDOUT, text=True)
             jobs.append((proc, log, node))
             assert proc.stdin is not None
@@ -126,7 +147,7 @@ def run_resolved(receipt: dict[str, Any], *, dry_run: bool = False) -> int:
         _require(codes == [0, 0], f"node launcher exit codes: {codes}")
         node = receipt["nodes"][0]
         worker = str(Path(node["repo_root"]) / "scripts/distillschedule/run_best_known_workload.py")
-        subprocess.run(["ssh", "-oBatchMode=yes", "-oConnectTimeout=15", node["host"],
+        subprocess.run([*ssh_command(node),
                         shlex.join([node["python"], worker, "_collect"])],
                        input=json.dumps(receipt), text=True, check=True, timeout=300)
         # Do NOT manufacture a correctness PASS or speed number from exit status.
@@ -140,8 +161,8 @@ def run_resolved(receipt: dict[str, Any], *, dry_run: bool = False) -> int:
         for i, (proc, _, node) in enumerate(jobs):
             cancel = Path(node["repo_root"]) / "scripts/distillschedule/cancel_remote_stage.sh"
             try:
-                subprocess.run(["ssh", "-oBatchMode=yes", "-oConnectTimeout=15", node["host"],
-                                shlex.join(["bash", str(cancel), str(out / f"owned-node{i}.pid")])], timeout=60, check=False)
+                subprocess.run([*ssh_command(node),
+                                shlex.join(["bash", str(cancel), str(remote_out / f"owned-node{i}.pid")])], timeout=60, check=False)
             except (OSError, subprocess.TimeoutExpired):
                 pass
             if proc.poll() is None:

@@ -44,6 +44,15 @@ def summary_command(receipt: dict[str, Any]) -> list[str] | None:
     prefix = [n["python"]]
     tail = ["--run-root", run, "--output", str(Path(run)/"native-summary.json")]
     if p["id"].startswith("wan13b"):
+        native_mode = receipt.get("native_mode")
+        if native_mode in {"trajectory", "two-cycle-timing"}:
+            stem = "trajectory" if native_mode == "trajectory" else "two_cycle_timing"
+            command = prefix + [str(root / f"scripts/distillschedule/summarize_wan13b_{stem}_world16.py"),
+                "--placement", p["topology"]["placement"],
+                "--expected-head", receipt["integration_head"], *tail]
+            if native_mode == "trajectory":
+                command += ["--cycles", "2"]
+            return command
         return prefix + [str(root/"scripts/distillschedule/summarize_wan13b_fair_world16.py"),
                          "--placement", p["topology"]["placement"], "--mode", receipt["mode"], *tail]
     if p["id"].startswith("helios"):
@@ -75,7 +84,7 @@ def summary_command(receipt: dict[str, Any]) -> list[str] | None:
                 "--expected-head", receipt["integration_head"], *tail]
         if receipt.get("native_mode") == "two-cycle-timing":
             return prefix + [str(root/"scripts/distillschedule/summarize_livewan_two_cycle_timing_world16.py"),
-                "--execution-mode", "pipeline", "--pipeline-variant", p["contract"]["variant"],
+                "--execution-mode", "baseline" if p["contract"]["variant"] == "b1" else "pipeline", "--pipeline-variant", p["contract"]["variant"],
                 "--trace", env["LIVEWAN_OPERATION_TRACE"],
                 "--expected-head", receipt["integration_head"], *tail]
         return prefix + [str(root/"scripts/distillschedule/summarize_livewan_continuous_world16.py"),
@@ -89,7 +98,11 @@ def collect(receipt: dict[str, Any]) -> int:
     from .dispatch import clean_environment
     node = receipt["nodes"][0]
     root = Path(node["repo_root"])
-    p = load_profile(receipt["profile_id"], root=root)
+    if "search_candidate" in receipt:
+        from distillschedule.search.execution import validated_profile
+        p = validated_profile(receipt, root=root)
+    else:
+        p = load_profile(receipt["profile_id"], root=root)
     out = Path(receipt["asset_config"]["run_root"]) / receipt["run_id"]
     native = out / "native-summary.json"
     _require(not native.exists(), "refusing to overwrite native evidence")

@@ -144,20 +144,30 @@ def source_layout(root: Path, profile: Mapping[str, Any], *, verify_upstreams: b
 
 
 def load_assets(path: Path, profile: Mapping[str, Any]) -> dict[str, Any]:
-    value = _object(path)
-    allowed = {"schema_version", "nodes", "master_addr", "master_port", "run_root", "node_local_cache_root", "assets", "correctness", "timeout_seconds"}
+    return validate_asset_config(_object(path), profile)
+
+
+def validate_asset_config(value: dict[str, Any], profile: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate before an RPC persists an assets config; no filesystem writes."""
+    allowed = {"schema_version", "nodes", "master_addr", "master_port", "run_root", "node_local_cache_root", "assets", "correctness", "trajectory_comparison", "timeout_seconds"}
     _require(not (set(value) - allowed), f"unknown assets fields (performance overrides forbidden): {sorted(set(value)-allowed)}")
     _require(value.get("schema_version") == 1, "assets schema_version must be 1")
     nodes = value.get("nodes")
     _require(isinstance(nodes, list) and len(nodes) == 2, "exactly two nodes are required")
     _require(nodes[0].get("host") != nodes[1].get("host"), "nodes must use different SSH hosts")
     for n in nodes:
-        _require(set(n) == {"host", "repo_root", "python_env"}, "node must explicitly specify host, repo_root, python_env")
+        _require({"host", "repo_root", "python_env"}.issubset(n)
+                 and not set(n) - {"host", "repo_root", "python_env", "ssh_port", "address_family"},
+                 "node must specify host, repo_root, python_env; only SSH port/family are optional")
+        _require(type(n.get("ssh_port", 22)) is int and 1 <= n.get("ssh_port", 22) <= 65535, "invalid SSH port")
+        _require(n.get("address_family", "auto") in {"auto", "ipv4", "ipv6"}, "invalid SSH address family")
         _require(bool(re.fullmatch(r"[A-Za-z0-9_.@:-]+", str(n["host"]))) and not n["host"].startswith("-"), "unsafe SSH host")
         for k in ["repo_root", "python_env"]:
             _require(isinstance(n[k], str) and Path(n[k]).is_absolute(), f"node {k} must be absolute")
     for k in ["run_root", "node_local_cache_root"]:
-        _require(isinstance(value.get(k), str) and Path(value[k]).is_absolute(), f"{k} must be explicit and absolute")
+        _require(isinstance(value.get(k), str) and Path(value[k]).is_absolute()
+                 and Path(value[k]) not in (Path('/'), Path('/home/lyy')),
+                 f"{k} must be an explicit project subtree, not a filesystem/home root")
     for node in nodes:
         repo = Path(node["repo_root"]).resolve()
         output = Path(value["run_root"]).resolve()
@@ -214,6 +224,13 @@ def resolve_profile(workload: str, *, root: Path | None = None, assets_path: Pat
                     run_id: str = "source-inspection", mode: str = "correctness") -> dict[str, Any]:
     root = root or repository_root()
     profile = load_profile(workload, root=root)
+    return resolve_configuration(profile, root=root, assets_path=assets_path, run_id=run_id, mode=mode)
+
+
+def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: Path | None = None,
+                          run_id: str = "source-inspection", mode: str = "correctness") -> dict[str, Any]:
+    """Shared compiler; dispatcher reconstructs the canonical/registered recipe."""
+    workload = profile["id"]
     _require(bool(SAFE_ID.fullmatch(run_id)) and run_id not in {".", ".."}, "unsafe run id")
     _require(mode in profile["allowed_run_modes"], f"mode {mode} is not authorized for {workload}")
     native_mode = profile["runtime"].get("native_run_modes", {}).get(mode, mode)
@@ -246,6 +263,14 @@ def resolve_profile(workload: str, *, root: Path | None = None, assets_path: Pat
     receipt["asset_config"] = assets
     receipt["scope"] = "RESOLVED_NOT_EXECUTED"
     correctness = assets.get("correctness")
+    comparison = assets.get("trajectory_comparison")
+    if workload.startswith("wan13b") and native_mode == "two-cycle-timing":
+        _require(isinstance(comparison, dict) and set(comparison) == {"path", "sha256"}
+                 and Path(comparison["path"]).is_absolute()
+                 and bool(SHA256_RE.fullmatch(comparison["sha256"])),
+                 "Wan two-cycle timing requires a hash-bound native trajectory comparison")
+    elif comparison is not None:
+        _require(False, "trajectory_comparison is only used by Wan native two-cycle timing")
     if mode in {"timing", "diagnostic-timing"}:
         _require(isinstance(correctness, dict) and set(correctness) == {"path", "sha256"},
                  "timing requires an explicit correctness receipt path and SHA256")
@@ -282,6 +307,9 @@ def resolve_profile(workload: str, *, root: Path | None = None, assets_path: Pat
                 ("LIVEWAN_PAIR_CORRECTNESS_RECEIPT", "LIVEWAN_PAIR_CORRECTNESS_SHA256") if workload.startswith("livewan") else
                 ("DISTILLSCHEDULE_FSDP2_CORRECTNESS_SUMMARY", "DISTILLSCHEDULE_FSDP2_CORRECTNESS_SHA256"))
             env[bindings[0]], env[bindings[1]] = correctness["path"], correctness["sha256"]
+        if comparison:
+            env["DISTILLSCHEDULE_WAN13B_TRAJECTORY_COMPARISON_RECEIPT"] = comparison["path"]
+            env["DISTILLSCHEDULE_WAN13B_TRAJECTORY_COMPARISON_SHA256"] = comparison["sha256"]
         pp = [str(rr/"src"), str(rr)]
         if profile["model_family"] in {"helios", "wan2.1"}:
             pp.append(env["HELIOS_RUNTIME_ROOT"])
@@ -297,6 +325,9 @@ def resolve_profile(workload: str, *, root: Path | None = None, assets_path: Pat
         args = _substitute(profile["runtime"]["arguments"], repl)
         node = {"node_rank": i, "host": n["host"], "repo_root":str(rr), "python":env["DISTILLSCHEDULE_PYTHON"],
                 "environment":env, "command":["bash",str(rr/profile["runtime"]["launcher"]),*args]}
+        for option in ("ssh_port", "address_family"):
+            if option in n:
+                node[option] = n[option]
         if "model_config" in profile["runtime"]:
             node["resolved_model_config"] = _substitute(profile["runtime"]["model_config"],repl)
         if native_plan is not None:

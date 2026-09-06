@@ -29,3 +29,7 @@ Asset templates are in `configs/distillschedule/best_known/assets_examples/`. Mo
 Do not compare the seconds across rows as model speed: models, topology and timer scopes differ. LiveWan 54.291817154 s is a B32-derived B16-equivalent normalization and is intentionally not the canonical actual-B16 number.
 
 LiveWan v2 selects C34. The former C24 54.441603646 s profile is preserved in `history/livewan_c24_profile_v1.json`; its three-cycle timing is not an isolated C24-to-C34 A/B. C34 uses `--mode diagnostic-timing`, not strict `timing`; native two-cycle gate and numeric drift records remain required. See `runbooks/livewan_crossscale_pipeline_best.md`.
+
+## Profile-guided search
+
+The opt-in [registered-plan search](profile_guided_search.md) reuses this compiler and dispatcher. It preserves canonical defaults and separates measured search results from historical evidence.

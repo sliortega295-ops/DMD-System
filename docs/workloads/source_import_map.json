@@ -212,7 +212,15 @@
       "target": "third_party/licenses/H3-DMD-for-A100-LICENSE"
     },
     {
-      "integrated_sha256": "6db1c3f7d6321ae251aaee65dbde3ca51ad00e1df64da4bcdb6c552201b7518e",
+      "adaptations": [
+        {
+          "base_integration_head": "e69f4bf8b8bb64f54542fea74c452b53e090b526",
+          "new_integrated_sha256": "bb432d4b6523a88bb226001676b20700b44bcb3cd5ff2a69f4b9045bb7036a8f",
+          "previous_integrated_sha256": "6db1c3f7d6321ae251aaee65dbde3ca51ad00e1df64da4bcdb6c552201b7518e",
+          "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        }
+      ],
+      "integrated_sha256": "bb432d4b6523a88bb226001676b20700b44bcb3cd5ff2a69f4b9045bb7036a8f",
       "source_commit": "67b2880901abece947732ba5de45a5c2685ab274",
       "source_path": "scripts/distillschedule/launch_wan13b_fair_world16_node.sh",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -240,7 +248,15 @@
       "target": "scripts/distillschedule/summarize_wan13b_fair_world16.py"
     },
     {
-      "integrated_sha256": "85157718f4be78a1480f9d3063e06feab64723b03ba8f8e3f7f60ef735f0895e",
+      "adaptations": [
+        {
+          "base_integration_head": "e69f4bf8b8bb64f54542fea74c452b53e090b526",
+          "new_integrated_sha256": "7e076b90946d4ac74e97551dc36601b844c5c6df305f5108b1d78cc757bfc12b",
+          "previous_integrated_sha256": "85157718f4be78a1480f9d3063e06feab64723b03ba8f8e3f7f60ef735f0895e",
+          "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        }
+      ],
+      "integrated_sha256": "7e076b90946d4ac74e97551dc36601b844c5c6df305f5108b1d78cc757bfc12b",
       "source_commit": "67b2880901abece947732ba5de45a5c2685ab274",
       "source_path": "src/distillschedule/runtime/wan13b_fair.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -275,7 +291,15 @@
       "target": "src/distillschedule/runtime/helios_residual_runtime.py"
     },
     {
-      "integrated_sha256": "a4e1cfbd31c426af8523eca8d6aee459a455ede52558977e8c1a4feb117e9a40",
+      "adaptations": [
+        {
+          "base_integration_head": "e69f4bf8b8bb64f54542fea74c452b53e090b526",
+          "new_integrated_sha256": "d75cced808b92adc8b775e3e19f2a8797dc53a2b00775563b7dc13b24bd62572",
+          "previous_integrated_sha256": "a4e1cfbd31c426af8523eca8d6aee459a455ede52558977e8c1a4feb117e9a40",
+          "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        }
+      ],
+      "integrated_sha256": "d75cced808b92adc8b775e3e19f2a8797dc53a2b00775563b7dc13b24bd62572",
       "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
       "source_path": "runtime/critic_pool_helios.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -289,14 +313,30 @@
       "target": "runtime/gan_score_packing.py"
     },
     {
-      "integrated_sha256": "2699577d50df586579ad652c7b30f107424808273ccfe11445d43adac05938b3",
+      "adaptations": [
+        {
+          "base_integration_head": "e69f4bf8b8bb64f54542fea74c452b53e090b526",
+          "new_integrated_sha256": "006a5a6a99277e2dc348eb44c65e00c3c3a3b4fb9e4d9bb170d12ef1f93133ca",
+          "previous_integrated_sha256": "2699577d50df586579ad652c7b30f107424808273ccfe11445d43adac05938b3",
+          "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        }
+      ],
+      "integrated_sha256": "006a5a6a99277e2dc348eb44c65e00c3c3a3b4fb9e4d9bb170d12ef1f93133ca",
       "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
       "source_path": "runtime/gst_pool_helios.py",
       "source_repository": "sliortega295-ops/DMD-System",
       "target": "runtime/gst_pool_helios.py"
     },
     {
-      "integrated_sha256": "2e9338ca864c519d87dab5bcabf2ccac51a359a180923d5af4a2ff4e08875614",
+      "adaptations": [
+        {
+          "base_integration_head": "e69f4bf8b8bb64f54542fea74c452b53e090b526",
+          "new_integrated_sha256": "f44579ab6959eff7a835f3771cb1f3f4f08f9ffd1b5d8da2ebb4549208b4d3a8",
+          "previous_integrated_sha256": "2e9338ca864c519d87dab5bcabf2ccac51a359a180923d5af4a2ff4e08875614",
+          "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        }
+      ],
+      "integrated_sha256": "f44579ab6959eff7a835f3771cb1f3f4f08f9ffd1b5d8da2ebb4549208b4d3a8",
       "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
       "source_path": "runtime/static_fsdp2_p0_helios.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -324,7 +364,15 @@
       "target": "scripts/distillschedule/launch_static_fsdp2_p0_world16_node.sh"
     },
     {
-      "integrated_sha256": "f7a5451847814a2639d927fc57a58856ab36cd0b03ed71c4e16df92d5dd372f3",
+      "adaptations": [
+        {
+          "base_integration_head": "e69f4bf8b8bb64f54542fea74c452b53e090b526",
+          "new_integrated_sha256": "24fe6a5ede551af63d19fd4360de9997dd0c1c6dd853f1f3157d5c221a9258f9",
+          "previous_integrated_sha256": "f7a5451847814a2639d927fc57a58856ab36cd0b03ed71c4e16df92d5dd372f3",
+          "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        }
+      ],
+      "integrated_sha256": "24fe6a5ede551af63d19fd4360de9997dd0c1c6dd853f1f3157d5c221a9258f9",
       "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
       "source_path": "scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -380,14 +428,30 @@
       "target": "src/distillschedule/runtime/fsdp2_nograd_persistence.py"
     },
     {
-      "integrated_sha256": "033e8cd15ab947ede069fb0fbc739c0345d2e35bdeb99a149913f360a9786429",
+      "adaptations": [
+        {
+          "base_integration_head": "e69f4bf8b8bb64f54542fea74c452b53e090b526",
+          "new_integrated_sha256": "3177c56c11aa82341c0437ef4f8aef1ed9b69811475eb1e1846690d340af012f",
+          "previous_integrated_sha256": "033e8cd15ab947ede069fb0fbc739c0345d2e35bdeb99a149913f360a9786429",
+          "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        }
+      ],
+      "integrated_sha256": "3177c56c11aa82341c0437ef4f8aef1ed9b69811475eb1e1846690d340af012f",
       "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
       "source_path": "src/distillschedule/runtime/fsdp2_p0.py",
       "source_repository": "sliortega295-ops/DMD-System",
       "target": "src/distillschedule/runtime/fsdp2_p0.py"
     },
     {
-      "integrated_sha256": "5f1ccf775ec63cf2107ff544628f1e8fd1cc7d20e2f4737924eb13eb732e9d6a",
+      "adaptations": [
+        {
+          "base_integration_head": "e69f4bf8b8bb64f54542fea74c452b53e090b526",
+          "new_integrated_sha256": "c7b8b5eca9a591f6d548984cc557ecca8aadecb69e842eb902ed4dd9243e5aca",
+          "previous_integrated_sha256": "5f1ccf775ec63cf2107ff544628f1e8fd1cc7d20e2f4737924eb13eb732e9d6a",
+          "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        }
+      ],
+      "integrated_sha256": "c7b8b5eca9a591f6d548984cc557ecca8aadecb69e842eb902ed4dd9243e5aca",
       "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
       "source_path": "src/distillschedule/runtime/fsdp2_static.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -507,36 +571,36 @@
     },
     {
       "integrated_sha256": "b04f099870aa8820e48558f4d2d4653c414f03a4c6f07f1801377cc3b94193dd",
+      "integration_note": "Deployment/test/optional canonical-gate binding adaptation only; see C34 integration report. Worker and numerical kernels retain source bytes.",
       "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh",
       "source_repository": "sliortega295-ops/DMD-System",
-      "target": "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh",
-      "integration_note": "Deployment/test/optional canonical-gate binding adaptation only; see C34 integration report. Worker and numerical kernels retain source bytes.",
-      "source_sha256": "e3b47223512e2aaa62fac94f6bed34416fa9dc02bfdc1e1204cb01a4c5a58ae4"
+      "source_sha256": "e3b47223512e2aaa62fac94f6bed34416fa9dc02bfdc1e1204cb01a4c5a58ae4",
+      "target": "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh"
     },
     {
       "integrated_sha256": "7aec7cdb08cd93a543a19e676d73102359a0c453538385e58cf511e39262eeeb",
       "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "scripts/distillschedule/livewan_crossscale_entrypoint.py",
       "source_repository": "sliortega295-ops/DMD-System",
-      "target": "scripts/distillschedule/livewan_crossscale_entrypoint.py",
-      "source_sha256": "7aec7cdb08cd93a543a19e676d73102359a0c453538385e58cf511e39262eeeb"
+      "source_sha256": "7aec7cdb08cd93a543a19e676d73102359a0c453538385e58cf511e39262eeeb",
+      "target": "scripts/distillschedule/livewan_crossscale_entrypoint.py"
     },
     {
       "integrated_sha256": "ceb1c4b06677d0b9957c4b2a28e6c3e8b017020a7cd567923cb90fda0a1b1687",
       "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "scripts/distillschedule/probe_livewan_crossscale_transport.py",
       "source_repository": "sliortega295-ops/DMD-System",
-      "target": "scripts/distillschedule/probe_livewan_crossscale_transport.py",
-      "source_sha256": "ceb1c4b06677d0b9957c4b2a28e6c3e8b017020a7cd567923cb90fda0a1b1687"
+      "source_sha256": "ceb1c4b06677d0b9957c4b2a28e6c3e8b017020a7cd567923cb90fda0a1b1687",
+      "target": "scripts/distillschedule/probe_livewan_crossscale_transport.py"
     },
     {
       "integrated_sha256": "88cf2e079bf11372dff78c8e0373d8cb97b03500cc20a10a0c4924e00dda1821",
       "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "scripts/distillschedule/run_livewan_crossscale_world16.py",
       "source_repository": "sliortega295-ops/DMD-System",
-      "target": "scripts/distillschedule/run_livewan_crossscale_world16.py",
-      "source_sha256": "88cf2e079bf11372dff78c8e0373d8cb97b03500cc20a10a0c4924e00dda1821"
+      "source_sha256": "88cf2e079bf11372dff78c8e0373d8cb97b03500cc20a10a0c4924e00dda1821",
+      "target": "scripts/distillschedule/run_livewan_crossscale_world16.py"
     },
     {
       "integrated_sha256": "5872428e2d8aa3a010450fa60ca468bca43fe94aedb92a029b164f3b25d27feb",
@@ -564,8 +628,8 @@
       "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "src/distillschedule/adapters/livewan/adapter.py",
       "source_repository": "sliortega295-ops/DMD-System",
-      "target": "src/distillschedule/adapters/livewan/adapter.py",
-      "source_sha256": "b3a193c8523e4093f573b168a4174a0af92f271a5238217122f1f4827cb0912e"
+      "source_sha256": "b3a193c8523e4093f573b168a4174a0af92f271a5238217122f1f4827cb0912e",
+      "target": "src/distillschedule/adapters/livewan/adapter.py"
     },
     {
       "integrated_sha256": "014fcebb5683f47fc3280663b27e9ffa842bcf8f02514b7bee7efef3d5e51e02",
@@ -600,8 +664,8 @@
       "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "src/distillschedule/runtime/livewan_crossscale_worker.py",
       "source_repository": "sliortega295-ops/DMD-System",
-      "target": "src/distillschedule/runtime/livewan_crossscale_worker.py",
-      "source_sha256": "25d41a29c403f0ead87097123e5d51e12939eb53c66566158d50387516b1691a"
+      "source_sha256": "25d41a29c403f0ead87097123e5d51e12939eb53c66566158d50387516b1691a",
+      "target": "src/distillschedule/runtime/livewan_crossscale_worker.py"
     },
     {
       "integrated_sha256": "3b9adba03c5f05645759d968bf1f9186bc6d6049433f9e638e91697adae484e6",
@@ -793,12 +857,20 @@
       "target": "scripts/distillschedule/run_best_known_workload.py"
     },
     {
-      "integrated_sha256": "44cfb0d2da3e53a5d0e3d48869baf29edf84be1bebb47b65e8920820ec0d80e9",
+      "adaptations": [
+        {
+          "base_integration_head": "e69f4bf8b8bb64f54542fea74c452b53e090b526",
+          "new_integrated_sha256": "226af8f67241ecbe45323c18d8598b25a47b4134cfd7442267190dbe8d8fbf6d",
+          "previous_integrated_sha256": "44cfb0d2da3e53a5d0e3d48869baf29edf84be1bebb47b65e8920820ec0d80e9",
+          "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        }
+      ],
+      "integrated_sha256": "226af8f67241ecbe45323c18d8598b25a47b4134cfd7442267190dbe8d8fbf6d",
+      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution.",
       "source_commit": "integration-pr26",
       "source_path": "scripts/distillschedule/check_best_known_integration.py",
       "source_repository": "integration-pr26",
-      "target": "scripts/distillschedule/check_best_known_integration.py",
-      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution."
+      "target": "scripts/distillschedule/check_best_known_integration.py"
     },
     {
       "integrated_sha256": "ea9b6a9030c21aadcdeb8bad036feff8c495106a053aa6a7e05684298ea25557",
@@ -822,42 +894,74 @@
       "target": "src/distillschedule/workloads/best_known/__init__.py"
     },
     {
-      "integrated_sha256": "601cea3e2f1eccc171463b57f8dc079eb1b8bd36ef0bb5e792ddb333f049c182",
+      "adaptations": [
+        {
+          "base_integration_head": "e69f4bf8b8bb64f54542fea74c452b53e090b526",
+          "new_integrated_sha256": "6d66ec5cc2bf7a9bd2187d11d11b9579df5dcf9e5d0e0ec0328c7081ccb7cb04",
+          "previous_integrated_sha256": "601cea3e2f1eccc171463b57f8dc079eb1b8bd36ef0bb5e792ddb333f049c182",
+          "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        }
+      ],
+      "integrated_sha256": "6d66ec5cc2bf7a9bd2187d11d11b9579df5dcf9e5d0e0ec0328c7081ccb7cb04",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/cli.py",
       "source_repository": "integration-pr26",
       "target": "src/distillschedule/workloads/best_known/cli.py"
     },
     {
-      "integrated_sha256": "9ab4e0d84122dbb5cee1296a2eaa4b79a580897efac78cbff2199097819beb2a",
+      "adaptations": [
+        {
+          "base_integration_head": "e69f4bf8b8bb64f54542fea74c452b53e090b526",
+          "new_integrated_sha256": "d6ec0a0450aad62d60092b1a9c33ad6be39dc5908f4d2ae9d114dccff55672d5",
+          "previous_integrated_sha256": "9ab4e0d84122dbb5cee1296a2eaa4b79a580897efac78cbff2199097819beb2a",
+          "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        }
+      ],
+      "integrated_sha256": "d6ec0a0450aad62d60092b1a9c33ad6be39dc5908f4d2ae9d114dccff55672d5",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/dispatch.py",
       "source_repository": "integration-pr26",
       "target": "src/distillschedule/workloads/best_known/dispatch.py"
     },
     {
-      "integrated_sha256": "181580601553110e9ae7d717c11719994f6fe324452565f6bcc883dc622b58f9",
+      "adaptations": [
+        {
+          "base_integration_head": "e69f4bf8b8bb64f54542fea74c452b53e090b526",
+          "new_integrated_sha256": "177256925e73e7badd0ed9680b9d03380677315337c4acf625e2aaf0338652ae",
+          "previous_integrated_sha256": "181580601553110e9ae7d717c11719994f6fe324452565f6bcc883dc622b58f9",
+          "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        }
+      ],
+      "integrated_sha256": "177256925e73e7badd0ed9680b9d03380677315337c4acf625e2aaf0338652ae",
+      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution.",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/evidence.py",
       "source_repository": "integration-pr26",
-      "target": "src/distillschedule/workloads/best_known/evidence.py",
-      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution."
+      "target": "src/distillschedule/workloads/best_known/evidence.py"
     },
     {
-      "integrated_sha256": "1c407cebc87d0b8904a47f42bf29511b939ec0dfdb6c2fe418e60a491bbf9962",
+      "adaptations": [
+        {
+          "base_integration_head": "e69f4bf8b8bb64f54542fea74c452b53e090b526",
+          "new_integrated_sha256": "82a6637a1d28ef3ece2db6de032370f96e45515a35335739aff099107268a03b",
+          "previous_integrated_sha256": "1c407cebc87d0b8904a47f42bf29511b939ec0dfdb6c2fe418e60a491bbf9962",
+          "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        }
+      ],
+      "integrated_sha256": "82a6637a1d28ef3ece2db6de032370f96e45515a35335739aff099107268a03b",
+      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution.",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/registry.py",
       "source_repository": "integration-pr26",
-      "target": "src/distillschedule/workloads/best_known/registry.py",
-      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution."
+      "target": "src/distillschedule/workloads/best_known/registry.py"
     },
     {
       "integrated_sha256": "886c4ae6da4d7fc63e310a48c47da31f620a05e51b26cd6f7bf118a1d5e99b97",
+      "integration_note": "Ignore locally generated Python bytecode during source-path audit; source files remain audited.",
       "source_commit": "integration-pr26",
       "source_path": "tests/test_refactor_best_known.py",
       "source_repository": "integration-pr26",
-      "target": "tests/test_refactor_best_known.py",
-      "integration_note": "Ignore locally generated Python bytecode during source-path audit; source files remain audited."
+      "target": "tests/test_refactor_best_known.py"
     },
     {
       "integrated_sha256": "8978a1d8a24bbdfcfaefad05caa027a950bb31a041b7736a654bfecc3cf92d6e",
@@ -882,11 +986,11 @@
     },
     {
       "integrated_sha256": "6bf9a806f0d01e562cf0ebbebd7be78be7d41deca600b04f5e03d40f77b4dc08",
+      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution.",
       "source_commit": "integration-pr26",
       "source_path": "configs/distillschedule/best_known/livewan_crossscale_pipeline_best.json",
       "source_repository": "integration-pr26",
-      "target": "configs/distillschedule/best_known/livewan_crossscale_pipeline_best.json",
-      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution."
+      "target": "configs/distillschedule/best_known/livewan_crossscale_pipeline_best.json"
     },
     {
       "integrated_sha256": "f47e43a63867785bacdbf54fd9b7fe42dc4f34ff5acd2e5fa26b815b5ab07cac",
@@ -897,11 +1001,11 @@
     },
     {
       "integrated_sha256": "4e1264ad52fec8a44b358ad477e428a222ae1c41824e959dd2cc643ff784a13d",
+      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution.",
       "source_commit": "integration-pr26",
       "source_path": "configs/distillschedule/best_known/registry.lock.json",
       "source_repository": "integration-pr26",
-      "target": "configs/distillschedule/best_known/registry.lock.json",
-      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution."
+      "target": "configs/distillschedule/best_known/registry.lock.json"
     },
     {
       "integrated_sha256": "8a1bda0851c42f576b2c3358cc07ec2873fe641c82b7e020b876864fe8141775",
@@ -960,12 +1064,20 @@
       "target": "docs/workloads/BEST_KNOWN_SOURCE_MAP.md"
     },
     {
-      "integrated_sha256": "00164f48e6a425f09052eaf157e437b305745a58add16ec65fcc8a92603e70e9",
+      "adaptations": [
+        {
+          "base_integration_head": "e69f4bf8b8bb64f54542fea74c452b53e090b526",
+          "new_integrated_sha256": "f68745c24f40f96fec4368ba4f828f10d5bebfb733aac747689c5c98e7c8c251",
+          "previous_integrated_sha256": "00164f48e6a425f09052eaf157e437b305745a58add16ec65fcc8a92603e70e9",
+          "reason": "Link opt-in profile-guided search documentation; canonical configuration unchanged."
+        }
+      ],
+      "integrated_sha256": "f68745c24f40f96fec4368ba4f828f10d5bebfb733aac747689c5c98e7c8c251",
+      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution.",
       "source_commit": "integration-pr26",
       "source_path": "docs/workloads/BEST_KNOWN_WORKLOADS.md",
       "source_repository": "integration-pr26",
-      "target": "docs/workloads/BEST_KNOWN_WORKLOADS.md",
-      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution."
+      "target": "docs/workloads/BEST_KNOWN_WORKLOADS.md"
     },
     {
       "integrated_sha256": "5b2bfcc5a2f9fe792bdf15d2d59dd69240883ed5cb936fe4f4aaa3d10724ec6f",
@@ -990,11 +1102,11 @@
     },
     {
       "integrated_sha256": "0ce7c1cb4caab909b35d29c939c69a5d1622ca658f58fed30d2290aa782c200d",
+      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution.",
       "source_commit": "integration-pr26",
       "source_path": "docs/workloads/runbooks/livewan_crossscale_pipeline_best.md",
       "source_repository": "integration-pr26",
-      "target": "docs/workloads/runbooks/livewan_crossscale_pipeline_best.md",
-      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution."
+      "target": "docs/workloads/runbooks/livewan_crossscale_pipeline_best.md"
     },
     {
       "integrated_sha256": "30793114bbe70a3129f6e30439d710fe0e8ec95c3e2246f4987a5abafe0c3412",
@@ -1578,18 +1690,99 @@
       "target": "tests/test_refactor_trajectory_state_sketch.py"
     },
     {
-      "target": "docs/workloads/evidence/livewan_c34_integration_checks_20260906.json",
-      "source_repository": "integration-livewan-c34",
+      "integrated_sha256": "826c39c032e10a7a27c3aa3a47a1ea03efa963ef8c45b5646ed212d7e2805650",
       "source_commit": "integration-local",
       "source_path": "docs/workloads/evidence/livewan_c34_integration_checks_20260906.json",
-      "integrated_sha256": "826c39c032e10a7a27c3aa3a47a1ea03efa963ef8c45b5646ed212d7e2805650"
+      "source_repository": "integration-livewan-c34",
+      "target": "docs/workloads/evidence/livewan_c34_integration_checks_20260906.json"
     },
     {
-      "target": "docs/workloads/evidence/livewan_c34_integration_20260906.md",
-      "source_repository": "integration-livewan-c34",
+      "integrated_sha256": "6384647b74e5596e71726c7c0158a8f7e65db64ffb3acdaf6f68c568d07d0513",
       "source_commit": "integration-local",
       "source_path": "docs/workloads/evidence/livewan_c34_integration_20260906.md",
-      "integrated_sha256": "6384647b74e5596e71726c7c0158a8f7e65db64ffb3acdaf6f68c568d07d0513"
+      "source_repository": "integration-livewan-c34",
+      "target": "docs/workloads/evidence/livewan_c34_integration_20260906.md"
+    },
+    {
+      "integrated_sha256": "0f86e95ca945e2b120259ee36c811ce20fcd4e847ee66913faf68de8e0055ed5",
+      "integration_note": "Restore missing dynamic worker dependency from measured GAN C25 source.",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "scripts/distillschedule/probe_static_fsdp2_full5_world16.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "0f86e95ca945e2b120259ee36c811ce20fcd4e847ee66913faf68de8e0055ed5",
+      "target": "scripts/distillschedule/probe_static_fsdp2_full5_world16.py"
+    },
+    {
+      "integrated_sha256": "54bb24519590c293a542eb92a80e75703630661917acd17a5786c2c51e6d18a2",
+      "integration_note": "Restore static Full5 profiler class used by Wan and Helios imports; default-disabled behavior unchanged.",
+      "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+      "source_path": "src/distillschedule/runtime/nsys_range.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "54bb24519590c293a542eb92a80e75703630661917acd17a5786c2c51e6d18a2",
+      "target": "src/distillschedule/runtime/nsys_range.py"
+    },
+    {
+      "integrated_sha256": "a45085b1c33fe28cbeba7d46d680df0c700c58e09812a86c9139387a532d197b",
+      "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math.",
+      "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
+      "source_path": "scripts/distillschedule/probe_wan13b_two_cycle_timing_world16.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "20ed5fe4bc99ae3de142d6de9ef32d8cd7f5011235c60b891255647d8ec082af",
+      "target": "scripts/distillschedule/probe_wan13b_two_cycle_timing_world16.py"
+    },
+    {
+      "integrated_sha256": "52f34f1ca092714f9f47a7ee13b194ac62ab2e4f4a4f62c416cf1da9a977a06c",
+      "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math.",
+      "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
+      "source_path": "scripts/distillschedule/summarize_wan13b_two_cycle_timing_world16.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "46b29ce72dde9dcdc46566cd3a0efcd835aced1b3c766619713b0107848c03ff",
+      "target": "scripts/distillschedule/summarize_wan13b_two_cycle_timing_world16.py"
+    },
+    {
+      "integrated_sha256": "4b0d2d57a14f9568d63387e95b622713c4251d47c75316bdc50ddbf9a3a6c5d9",
+      "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math.",
+      "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
+      "source_path": "scripts/distillschedule/compare_wan13b_two_cycle_timing.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "4b0d2d57a14f9568d63387e95b622713c4251d47c75316bdc50ddbf9a3a6c5d9",
+      "target": "scripts/distillschedule/compare_wan13b_two_cycle_timing.py"
+    },
+    {
+      "integrated_sha256": "6ac5e764f43c7c7990f48635c474b208896b0e960ac5013ccc08695ca3a4b250",
+      "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math.",
+      "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
+      "source_path": "scripts/distillschedule/probe_wan13b_trajectory_world16.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "1bea0ca08ba49fc30078703b7e853efbd6363aafb8f659f0548bd6c483b1087c",
+      "target": "scripts/distillschedule/probe_wan13b_trajectory_world16.py"
+    },
+    {
+      "integrated_sha256": "32730d4add4c56e3491bd24c5afc77d723b34abaaf1a1e52e8f7c025603bf69d",
+      "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math.",
+      "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
+      "source_path": "scripts/distillschedule/summarize_wan13b_trajectory_world16.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "4e9f0a6a4de285cb9e3168acbac6ad5d9100c6f45807916d243fdc6c3911071b",
+      "target": "scripts/distillschedule/summarize_wan13b_trajectory_world16.py"
+    },
+    {
+      "integrated_sha256": "7b30514245591432ac26b20a0c2879d5987c133b98caf9f168fd055e29f75289",
+      "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math.",
+      "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
+      "source_path": "scripts/distillschedule/compare_wan13b_trajectory_world16.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "7b30514245591432ac26b20a0c2879d5987c133b98caf9f168fd055e29f75289",
+      "target": "scripts/distillschedule/compare_wan13b_trajectory_world16.py"
+    },
+    {
+      "integrated_sha256": "1e493dbc05660d3ec69516f36c1f7b6aed9e78918700e832a1b0a85dc298e34f",
+      "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math.",
+      "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
+      "source_path": "scripts/distillschedule/run_wan13b_fair_world16.py",
+      "source_repository": "sliortega295-ops/DMD-System",
+      "source_sha256": "1e493dbc05660d3ec69516f36c1f7b6aed9e78918700e832a1b0a85dc298e34f",
+      "target": "scripts/distillschedule/run_wan13b_fair_world16.py"
     }
   ],
   "gpu_server_revalidation": "NOT_RUN_ON_INTEGRATION_BRANCH",
