@@ -31,6 +31,26 @@ def binding(path: Path) -> dict[str, str]:
     return {"path": str(path.resolve()), "sha256": file_sha256(path)}
 
 
+def validate_native_comparison(value: dict[str, Any]) -> None:
+    """Consume the native comparator schema, not synthetic PASS/REVIEW labels.
+
+    Historical status names contain ``50C`` even for a two-cycle comparison.
+    The typed inventory, not that label, determines the actual cycle count.
+    Neither accepted coarse result establishes strict numerical equivalence.
+    """
+    for key, expected in {
+        "schema_version": "distillschedule.trajectory_coarse_comparison.v1",
+        "comparison_kind": "semantic", "expected_cycles": 2,
+        "expected_world_size": 16, "complete": True,
+    }.items():
+        require(value.get(key) == expected, f"native comparison {key} mismatch")
+    require(value.get("contract", {}).get("status") == "PASS"
+            and not value["contract"].get("mismatches"), "trajectory semantic comparison failed")
+    require(value.get("status") in {
+        "TRAJECTORY_MATCHED_50C_SINGLE_SEED", "TRAJECTORY_REVIEW_50C_COMPLETED",
+    }, "native numerical gate failed")
+
+
 def checked_summary(receipt: dict[str, Any]) -> tuple[Path, dict[str, Any]]:
     validated_profile(receipt, root=repository_root())
     out = Path(receipt["asset_config"]["run_root"]) / receipt["run_id"]
@@ -95,11 +115,9 @@ def prepare_pair(reference: dict[str, Any], candidate: dict[str, Any]) -> dict[s
         raw_gate = read(gate_path)
         require(raw_gate.get("status") == "PASS", "native matched gate failed")
     cv = read(comparison)
-    require(cv.get("complete") is True and cv.get("contract", {}).get("status") == "PASS"
-            and not cv["contract"].get("mismatches"), "trajectory semantic comparison failed")
     # Coarse trajectory PASS is not DEFAULT_P0_PARITY / strict equivalence.
     # Keep the raw thresholds and metrics. No relaxation or relabeling.
-    require(cv.get("status") in {"PASS", "REVIEW"}, "native numerical result failed")
+    validate_native_comparison(cv)
     ready = {}
     for receipt, run in ((reference, left), (candidate, right)):
         cid = receipt["search_candidate"]["id"]

@@ -11,7 +11,7 @@ from typing import Any
 
 from distillschedule.workloads.best_known.registry import fingerprint, file_sha256
 from .contracts import MEASUREMENT_SCHEMA, require, validate_measurement
-from .native import read, binding, checked_summary
+from .native import read, binding, checked_summary, validate_native_comparison
 from .registry import WAN, get_candidate
 
 
@@ -27,9 +27,7 @@ def normalize_native(receipt: dict[str, Any], preparation: dict[str, Any],
     for name in ("comparison", "correctness"):
         require(file_sha256(Path(preparation[name]["path"])) == preparation[name]["sha256"], f"{name} changed")
     comparison = read(Path(preparation["comparison"]["path"]))
-    require(comparison["complete"] and comparison["contract"]["status"] == "PASS"
-            and not comparison["contract"]["mismatches"], "semantic gate failed")
-    require(comparison.get("status") in {"PASS", "REVIEW"}, "native numerical gate failed")
+    validate_native_comparison(comparison)
     require(summary.get("profiled") is False and summary.get("profiler_status") == "NOT_RUN", "profiled receipt")
     require(summary.get("cycles_in_same_process") == 2 and summary["cycle_2"]["claimable"] is True,
             "native two-cycle timer missing")

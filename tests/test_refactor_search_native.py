@@ -20,6 +20,28 @@ from distillschedule.workloads.best_known.dispatch import ssh_command
 from distillschedule.workloads.best_known.registry import fingerprint
 
 
+def _native_comparison_fixture():
+    return {"schema_version": "distillschedule.trajectory_coarse_comparison.v1",
+            "comparison_kind": "semantic", "expected_cycles": 2, "expected_world_size": 16,
+            "complete": True, "status": "TRAJECTORY_MATCHED_50C_SINGLE_SEED",
+            "contract": {"status": "PASS", "mismatches": []}}
+
+
+@pytest.mark.parametrize("status", ["TRAJECTORY_MATCHED_50C_SINGLE_SEED", "TRAJECTORY_REVIEW_50C_COMPLETED"])
+def test_native_comparison_uses_real_schema_and_two_cycle_inventory(status):
+    from distillschedule.search.native import validate_native_comparison
+    value = _native_comparison_fixture()
+    value["status"] = status
+    validate_native_comparison(value)
+    for key, bad in (("expected_cycles", 50), ("expected_world_size", 8),
+                     ("comparison_kind", "approximation"), ("complete", False),
+                     ("schema_version", "invented"), ("status", "PASS"),
+                     ("status", "CONTRACT_MISMATCH_50C_COMPLETED")):
+        changed = {**value, key: bad}
+        with pytest.raises(ValueError):
+            validate_native_comparison(changed)
+
+
 def test_wan_search_maps_to_real_two_cycle_workers():
     for key in ("fsdp-reference", "resident-tree", "resident-chunk2048", "resident-lora-epilogue"):
         p = candidate_profile(get_candidate(WAN, key))
@@ -150,7 +172,7 @@ def test_normalizer_requires_native_gates_and_preserves_review(tmp_path, workloa
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(value))
     put(tmp_path / "bound-summary.json", summary)
-    cv = {"complete": True, "status": "PASS", "contract": {"status": "PASS", "mismatches": []}}
+    cv = _native_comparison_fixture()
     put(tmp_path / "compare.json", cv)
     preparation = {"source_head": "a" * 40, "candidate_id": c.id,
         "comparison": binding(tmp_path / "compare.json"), "correctness": binding(tmp_path / "bound-summary.json")}
@@ -173,7 +195,7 @@ def test_normalizer_requires_native_gates_and_preserves_review(tmp_path, workloa
         put(tmp_path / path, raw)
     with patch("distillschedule.search.measurement.checked_summary", return_value=(tmp_path, summary)):
         result = normalize_native(receipt, preparation, identity)
-        assert result["numerical_status"] == "REVIEW" and result["native_numerical_status"] == "PASS"
+        assert result["numerical_status"] == "REVIEW" and result["native_numerical_status"] == cv["status"]
         assert result["cycle_wall_seconds"] == {"1": 100, "2": 90}
         assert len(result["ranks"]) == 16
         cv["status"] = "FAIL"
