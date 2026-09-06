@@ -41,6 +41,12 @@ with tarfile.open(PAYLOAD_GZ, 'r:gz') as tf:
     tf.extractall(ROOT, filter='data')
 
 manifest=json.loads(MAP.read_text())
+# Exclude the unvalidated C27-only canary from the canonical C25 integration.
+blocked_target='src/distillschedule/runtime/helios_frozen_cross_norm_kernel.py'
+manifest['files']=[e for e in manifest['files'] if e.get('target') != blocked_target]
+MAP.write_text(json.dumps(manifest, indent=2, sort_keys=True)+'\n')
+blocked_path=ROOT/blocked_target
+if blocked_path.exists(): blocked_path.unlink()
 entries=manifest['files']
 source_entries=[e for e in entries if e['source_repository'] in {
     'sliortega295-ops/DMD-System','sliortega295-ops/H3-DMD-for-A100'
