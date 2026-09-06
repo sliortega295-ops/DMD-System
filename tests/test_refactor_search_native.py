@@ -78,6 +78,49 @@ def test_remote_rpc_rejects_wrong_revision_before_writing():
             handle_request({"source_head": "b" * 40, "action": "resolve"})
 
 
+def test_livewan_checked_summary_uses_native_rank_cycle_schema(tmp_path):
+    """Regression for the actual writer: no rank_count in trajectory summary."""
+    from distillschedule.search.native import checked_summary
+    receipt = {"profile_id": LIVEWAN, "native_mode": "trajectory", "run_id": "unit",
+               "asset_config": {"run_root": str(tmp_path)},
+               "integration_head": "a" * 40, "profile_sha256": "b" * 64,
+               "asset_fingerprint": "c" * 64}
+    root = tmp_path / "unit"
+    (root / "trajectory").mkdir(parents=True)
+    value = {"schema_version": "distillschedule.livewan_trajectory_summary.v1",
+             "status": "PASS", "errors": [], "cycles": 2,
+             "rank_cycle_receipts": 32, "expected_rank_cycle_receipts": 32,
+             "final_versions": {"generator": 2, "critic": 10, "ema": 0},
+             "integration_binding": {k: receipt[k] for k in
+                 ("integration_head", "profile_sha256", "asset_fingerprint")}}
+    path = root / "bound-summary.json"
+    path.write_text(json.dumps(value))
+    for rank in range(16):
+        (root / "trajectory" / f"rank_{rank:03d}.jsonl").write_text("".join(
+            json.dumps({"rank": rank, "cycle": cycle, "world_size": 16,
+                        "expected_total_cycles": 2}) + "\n" for cycle in (1, 2)))
+    with patch("distillschedule.search.native.validated_profile"):
+        assert checked_summary(receipt) == (root, value)
+        for key, bad in (("schema_version", "invented"), ("cycles", 50),
+                         ("rank_cycle_receipts", 30), ("rank_count", 15)):
+            path.write_text(json.dumps({**value, key: bad}))
+            with pytest.raises(ValueError):
+                checked_summary(receipt)
+        path.write_text(json.dumps(value))
+        last = root / "trajectory/rank_015.jsonl"
+        original = last.read_text()
+        for needle, replacement in (('"rank": 15', '"rank": 14'),
+                                    ('"cycle": 2', '"cycle": 1'),
+                                    ('"world_size": 16', '"world_size": 8'),
+                                    ('"expected_total_cycles": 2', '"expected_total_cycles": 50')):
+            last.write_text(original.replace(needle, replacement))
+            with pytest.raises(ValueError, match="rank15"):
+                checked_summary(receipt)
+        last.unlink()
+        with pytest.raises(FileNotFoundError):
+            checked_summary(receipt)
+
+
 def test_native_worker_dynamic_import_dependencies_exist():
     # The previous integration AST check covered import statements but missed
     # ROOT / file imports used by the Wan/Helios native adapter chain.

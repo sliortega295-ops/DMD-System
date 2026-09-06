@@ -59,7 +59,25 @@ def checked_summary(receipt: dict[str, Any]) -> tuple[Path, dict[str, Any]]:
     require(all(summary.get("integration_binding", {}).get(k) == v for k, v in expected.items()),
             "native summary does not bind this execution")
     require(summary.get("status") == "PASS" and not summary.get("errors"), "native summary failed")
-    require(summary.get("rank_count") == 16, "native summary rank coverage incomplete")
+    if receipt["profile_id"] == LIVEWAN and receipt["native_mode"] == "trajectory":
+        # This native writer counts rank-cycle rows, not ranks. Do not invent
+        # rank_count or accept 32 rows without checking the sixteen owners.
+        required = {"schema_version": "distillschedule.livewan_trajectory_summary.v1",
+                    "cycles": 2, "rank_cycle_receipts": 32, "expected_rank_cycle_receipts": 32,
+                    "final_versions": {"generator": 2, "critic": 10, "ema": 0}}
+        require(all(summary.get(k) == v for k, v in required.items()),
+                "LiveWan native trajectory summary inventory incomplete")
+        require(summary.get("rank_count", 16) == 16, "contradictory native rank coverage")
+        for rank in range(16):
+            path = out / "trajectory" / f"rank_{rank:03d}.jsonl"
+            rows = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+            require(len(rows) == 2 and all(
+                row.get("rank") == rank and row.get("cycle") == cycle
+                and row.get("world_size") == 16 and row.get("expected_total_cycles") == 2
+                for cycle, row in enumerate(rows, 1)),
+                f"LiveWan native rank{rank} two-cycle receipt coverage incomplete")
+    else:
+        require(summary.get("rank_count") == 16, "native summary rank coverage incomplete")
     return out, summary
 
 
