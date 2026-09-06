@@ -1,0 +1,55 @@
+{
+  "allowed_run_modes": ["validate", "correctness", "timing"],
+  "contract": {
+    "actual_global_batch": 16, "continuous_cycles": 3, "critic_lora_rank": 32,
+    "final_versions": {"critic": 15, "ema": 0, "generator": 3},
+    "local_batch": 1, "micro_waves": 2,
+    "per_cycle_updates": {"critic": 5, "ema": 0, "generator": 1},
+    "sigma": "shifted_uniform_continuous_0.02_0.98_shift5", "student_train_type": "full_parameter",
+    "timing_normalized_from_B32": false, "variant": "c24-continuous-b16-score-modulation"
+  },
+  "display_name": "LiveWan C24 continuous actual-B16 cross-scale pipeline",
+  "hardware": {"gpu": "A100-40GB", "gpus_per_node": 8, "nodes": 2, "world_size": 16},
+  "historical": {
+    "excluded_B32_equivalent_seconds": 54.291817154, "formal_speedup_eligible": false,
+    "run_id": "iteration_178_c24_continuous_modulation_timing_20260901",
+    "sampling": "single_unprofiled_actual_B16",
+    "scope": "actual-B16 measured middle Full5 of three continuous cycles; G3/C15/EMA0 final", "seconds": 54.441603646
+  },
+  "id": "livewan_crossscale_pipeline_best",
+  "memory": {"activation_boundary_offload": false, "model_swap": false, "optimizer_offload": false, "parameter_offload": false, "parameter_streaming": false},
+  "model_family": "wan2.1-crossscale", "profile_version": 1,
+  "required_assets": {
+    "bootstrap": {"environment": "LIVEWAN_SYSTEMS_BOOTSTRAP", "fingerprint_required": true, "kind": "file"},
+    "critic_checkpoint": {"environment": "LIVEWAN_CRITIC_CHECKPOINT", "fingerprint_required": true, "kind": "directory"},
+    "flash_attn_kernel": {"environment": "DISTILLSCHEDULE_FLASH_ATTN_KERNEL", "fingerprint_required": true, "kind": "directory"},
+    "hf_home": {"environment": "HF_HOME", "fingerprint_required": true, "kind": "directory"},
+    "python_overlay": {"environment": "LIVEWAN_PYTHON_OVERLAY", "fingerprint_required": true, "kind": "directory"},
+    "source_receipt": {"environment": "LIVEWAN_SOURCE_RECEIPT", "fingerprint_required": true, "kind": "file"},
+    "student_checkpoint": {"environment": "LIVEWAN_STUDENT_CHECKPOINT", "fingerprint_required": true, "kind": "directory"},
+    "teacher_checkpoint": {"environment": "LIVEWAN_TEACHER_CHECKPOINT", "fingerprint_required": true, "kind": "directory"},
+    "trace": {"environment": "LIVEWAN_OPERATION_TRACE", "fingerprint_required": true, "kind": "file"}
+  },
+  "runtime": {
+    "arguments": ["{node_rank}", "{run_id}", "{mode}", "pipeline", "{head}", "{master_addr}", "{master_port}"],
+    "environment": {"LIVEWAN_PIPELINE_VARIANT": "c24-continuous-b16-score-modulation", "NCCL_ASYNC_ERROR_HANDLING": "1", "OMP_NUM_THREADS": "8"},
+    "launcher": "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh",
+    "typed_plan": "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c24_continuous_b16_score_modulation.json",
+    "typed_plan_template_sha256": "962d0a14bdeb2759c111279cf4046d758ad698690f6c88062b1f1b1f7e3beca4",
+    "unset_environment": ["LOCAL_KERNELS", "NCCL_ALGO", "PYTORCH_CUDA_ALLOC_CONF", "PYTORCH_ALLOC_CONF", "DISTILLSCHEDULE_NCU_BIN"]
+  },
+  "schema_version": "distillschedule.best_known.v1", "semantics": "continuous_sigma_source_equivalent",
+  "source": {
+    "branch": "agent/livewan-continuous-c21-20260901", "performance_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
+    "publication_commit": "54351707288c8d8a8d2efd789ece708852a07033", "repository": "sliortega295-ops/DMD-System"
+  },
+  "topology": {
+    "generator_ranks": [0, 1, 2, 3, 4, 5, 6, 7], "placement": "persistent_8g_8score_teacher_fsdp8",
+    "score_ranks": [8, 9, 10, 11, 12, 13, 14, 15], "student_critic": "resident", "teacher": "fsdp2", "teacher_ranks": [8, 9, 10, 11, 12, 13, 14, 15]
+  },
+  "upstreams": [
+    {"commit": "1eabf43c777bc5b2816926ca998cd4e4c2dfa3d5", "path": "third_party/livewan", "url": "https://github.com/JonathanColetti/LiveWan.git"},
+    {"commit": "9737cba9c1c3c4d04b33fcad41c111989865d315", "path": "third_party/wan21", "url": "https://github.com/Wan-Video/Wan2.1.git"}
+  ],
+  "validation": {"gpu_claim": "HISTORICAL_PROVENANCE_ONLY", "historical_source_validated": true, "integration_ci_validated": false, "server_revalidation": "NOT_RUN_ON_INTEGRATION_BRANCH"}
+}

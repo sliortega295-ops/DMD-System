@@ -92,6 +92,13 @@ def load_profile(workload: str, *, root: Path | None = None) -> dict[str, Any]:
     if workload == "livewan_crossscale_pipeline_best":
         _require(value["contract"]["actual_global_batch"] == 16 and value["contract"]["timing_normalized_from_B32"] is False,
                  "B32 normalization is not actual-B16 timing")
+        _require(value["contract"]["continuous_cycles"] == 2,
+                 "LiveWan canonical timing requires same-process warmup and measured cycle2")
+        _require(value["runtime"]["native_run_modes"] == {
+            "correctness": "trajectory",
+            "diagnostic-timing": "two-cycle-timing"}, "LiveWan canonical native mode binding changed")
+        _require("timing" not in value["allowed_run_modes"],
+                 "numerical REVIEW cannot silently authorize strict timing")
     return value
 
 
@@ -209,6 +216,7 @@ def resolve_profile(workload: str, *, root: Path | None = None, assets_path: Pat
     profile = load_profile(workload, root=root)
     _require(bool(SAFE_ID.fullmatch(run_id)) and run_id not in {".", ".."}, "unsafe run id")
     _require(mode in profile["allowed_run_modes"], f"mode {mode} is not authorized for {workload}")
+    native_mode = profile["runtime"].get("native_run_modes", {}).get(mode, mode)
     head = git_head(root)
     native_plan = None
     if "typed_plan" in profile["runtime"]:
@@ -226,7 +234,8 @@ def resolve_profile(workload: str, *, root: Path | None = None, assets_path: Pat
         "historical_evidence": {**profile["historical"], "valid_for_integration_head": False},
         "validation": {"historical_source_validated": True, "integration_ci_validated": "CHECK_EXACT_HEAD_ACTIONS",
                        "server_revalidation": GPU_NOT_RUN, "asset_verification": "NOT_RUN"},
-        "native_plan": native_plan, "run_id": run_id, "mode": mode, "fully_resolved_profile": profile, "nodes": [],
+        "native_plan": native_plan, "run_id": run_id, "mode": mode, "native_mode": native_mode,
+        "fully_resolved_profile": profile, "nodes": [],
         "asset_fingerprint": None,
     }
     if assets_path is None:
@@ -249,7 +258,7 @@ def resolve_profile(workload: str, *, root: Path | None = None, assets_path: Pat
         env.update({d["environment"]: assets["assets"][k]["path"] for k, d in profile["required_assets"].items()})
         env.update(DMD_SYSTEM_ROOT=str(rr), DISTILLSCHEDULE_PYENV=n["python_env"],
                    DISTILLSCHEDULE_RUN_ROOT=output, DISTILLSCHEDULE_OUTPUT_DIR=output,
-                   DISTILLSCHEDULE_RUN_ID=run_id, DISTILLSCHEDULE_RUN_KIND=mode,
+                   DISTILLSCHEDULE_RUN_ID=run_id, DISTILLSCHEDULE_RUN_KIND=native_mode,
                    DISTILLSCHEDULE_PYTHON=str(Path(n["python_env"])/"bin/python"),
                    HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1", TOKENIZERS_PARALLELISM="false",
                    PYTHONDONTWRITEBYTECODE="1", DISTILLSCHEDULE_NODE_LOCK="/tmp/distillschedule_gpu_node.lock",
@@ -281,7 +290,7 @@ def resolve_profile(workload: str, *, root: Path | None = None, assets_path: Pat
         if workload == "livewan_crossscale_pipeline_best":
             pp = [env["LIVEWAN_PYTHON_OVERLAY"], *pp, str(rr/"third_party/livewan"), env["LIVEWAN_WAN21_SOURCE"]]
         env["PYTHONPATH"] = os.pathsep.join(pp)
-        repl = {"node_rank":str(i), "run_id":run_id, "mode":mode, "head":head,
+        repl = {"node_rank":str(i), "run_id":run_id, "mode":native_mode, "head":head,
                 "master_addr":assets["master_addr"], "master_port":str(assets["master_port"]),
                 "output_dir":env.get("H3_OUTPUT_DIR",output),
                 **{"asset:"+k:v["path"] for k,v in assets["assets"].items()}}

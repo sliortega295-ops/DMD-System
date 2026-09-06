@@ -75,7 +75,15 @@ def main() -> int:
     parser.add_argument("--plan", type=Path, required=True)
     parser.add_argument("--expected-head", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--diagnostic-two-cycle", action="store_true")
     args = parser.parse_args()
+    if args.diagnostic_two_cycle:
+        if args.run_kind != "profile":
+            raise SystemExit("two-cycle diagnostic cannot produce a native timing summary")
+        from distillschedule.runtime.livewan_two_cycle_profile import summarize
+        result = summarize(run_root=args.run_root, trace_path=args.trace, expected_head=args.expected_head)
+        atomic_json(args.output, result)
+        return 0 if result['status'] == 'PASS' else 1
     errors: list[str] = []
     plan = json.loads(args.plan.read_text(encoding="utf-8"))
     contract = dict(plan.get("metadata", {}).get("continuous_pipeline", {}))

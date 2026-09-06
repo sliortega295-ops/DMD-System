@@ -1,0 +1,377 @@
+{
+  "baseline": {
+    "cycle_1_seconds": 79.6252421875,
+    "cycle_2_seconds": 62.42788281249999,
+    "run_id": "livewan_s130_baseline_4c994ed_c2_20260906_r1"
+  },
+  "candidate": "c34_generator_row_major_residual",
+  "candidate_timing": {
+    "cycle_1_seconds": 51.38320703125,
+    "cycle_2_seconds": 47.01868359374999,
+    "run_id": "livewan_s130_c34_4c994ed_c2_20260906_r1"
+  },
+  "cleanup": {
+    "nodes": [
+      {
+        "gpu_processes": 0,
+        "lock": "FREE",
+        "node": 0
+      },
+      {
+        "gpu_processes": 0,
+        "lock": "FREE",
+        "node": 1
+      }
+    ],
+    "status": "PASS",
+    "utc": "2026-09-06T09:19:56.646138+00:00"
+  },
+  "cycle2_speedup": 1.3277250242028955,
+  "evidence_source_sha256": "40eedd5cb624df656dff2e1ce1e8c7218bcf63f4fa3c7b01938c466c29bc9cdb",
+  "final_versions": {
+    "critic": 10,
+    "ema": 0,
+    "generator": 2
+  },
+  "head": "4c994edca7d83ff553cab6025d8b93b279cd1634",
+  "history_not_new_integration_measurement": true,
+  "identity": {
+    "bootstrap_sha256": "d71cbb48bf57cfa92b6a05614d93c52062d371d43b1d106fcab7b1acbc185fc3",
+    "source_receipt_sha256": "43c99f0bf054c4656d339b2146c2b7096bac5ba5a09870be1a054a33642eb493",
+    "trace_sha256": "53f9a1ee26cf613f19ed48f814a2c895cea3f1d2795048eda66ee67512176789"
+  },
+  "integration_gpu_revalidation": "NOT_RUN_ON_INTEGRATION_BRANCH",
+  "limitations": [
+    "one native observation per arm, not a median",
+    "strict numeric REVIEW is not strict parity PASS",
+    "C33 vs C34 raw marginal comparison uses different HEADs and is not repeated isolated causality",
+    "source-scoped norm profiler is diagnostic only",
+    "internal residual stride intentionally row-major; public output shape/dtype/stride and values passed bitwise real-row canary",
+    "no new whole-world Nsight"
+  ],
+  "numeric_eligibility": {
+    "policy": "REJECT_EXTREME_ONLY_RECORD_ORDINARY_REVIEW",
+    "schema_version": "distillschedule.livewan_two_cycle_numeric_eligibility.v1",
+    "status": "PASS",
+    "thresholds": {
+      "maximum_norm_ratio": 2.0,
+      "maximum_normalized_l2": 0.5,
+      "minimum_cosine": 0.9,
+      "minimum_norm_ratio": 0.5
+    },
+    "violations": []
+  },
+  "oom_delta": 0,
+  "rank_cycle_receipts": 32,
+  "rank_resources": [
+    {
+      "arm": "baseline",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 21.904232501983643,
+      "max_reserved_GiB": 38.369140625,
+      "rank": 0,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "baseline",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 21.90100336074829,
+      "max_reserved_GiB": 38.412109375,
+      "rank": 1,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "baseline",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 21.904225826263428,
+      "max_reserved_GiB": 38.365234375,
+      "rank": 2,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "baseline",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 21.90214967727661,
+      "max_reserved_GiB": 38.232421875,
+      "rank": 3,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "baseline",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 21.905483722686768,
+      "max_reserved_GiB": 38.23046875,
+      "rank": 4,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "baseline",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 21.909966945648193,
+      "max_reserved_GiB": 38.23828125,
+      "rank": 5,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "baseline",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 21.904225826263428,
+      "max_reserved_GiB": 38.365234375,
+      "rank": 6,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "baseline",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 21.899805545806885,
+      "max_reserved_GiB": 38.3671875,
+      "rank": 7,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "baseline",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 21.903608798980713,
+      "max_reserved_GiB": 38.23828125,
+      "rank": 8,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "baseline",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 21.904225826263428,
+      "max_reserved_GiB": 38.40625,
+      "rank": 9,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "baseline",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 21.90865468978882,
+      "max_reserved_GiB": 38.26953125,
+      "rank": 10,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "baseline",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 21.90214967727661,
+      "max_reserved_GiB": 38.232421875,
+      "rank": 11,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "baseline",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 21.905556201934814,
+      "max_reserved_GiB": 38.23828125,
+      "rank": 12,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "baseline",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 21.903608798980713,
+      "max_reserved_GiB": 38.23828125,
+      "rank": 13,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "baseline",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 21.90601396560669,
+      "max_reserved_GiB": 38.365234375,
+      "rank": 14,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "baseline",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 21.90214967727661,
+      "max_reserved_GiB": 38.3671875,
+      "rank": 15,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "c34",
+      "gate_calls": 31200,
+      "gate_layout": "row_major",
+      "max_allocated_GiB": 35.13620615005493,
+      "max_reserved_GiB": 37.283203125,
+      "rank": 0,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "c34",
+      "gate_calls": 31800,
+      "gate_layout": "row_major",
+      "max_allocated_GiB": 35.144092082977295,
+      "max_reserved_GiB": 37.255859375,
+      "rank": 1,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "c34",
+      "gate_calls": 31800,
+      "gate_layout": "row_major",
+      "max_allocated_GiB": 35.14895057678223,
+      "max_reserved_GiB": 37.318359375,
+      "rank": 2,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "c34",
+      "gate_calls": 31200,
+      "gate_layout": "row_major",
+      "max_allocated_GiB": 35.14789581298828,
+      "max_reserved_GiB": 37.240234375,
+      "rank": 3,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "c34",
+      "gate_calls": 30000,
+      "gate_layout": "row_major",
+      "max_allocated_GiB": 35.14467763900757,
+      "max_reserved_GiB": 37.0703125,
+      "rank": 4,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "c34",
+      "gate_calls": 31200,
+      "gate_layout": "row_major",
+      "max_allocated_GiB": 35.14962100982666,
+      "max_reserved_GiB": 37.17578125,
+      "rank": 5,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "c34",
+      "gate_calls": 31200,
+      "gate_layout": "row_major",
+      "max_allocated_GiB": 35.1522798538208,
+      "max_reserved_GiB": 37.099609375,
+      "rank": 6,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "c34",
+      "gate_calls": 28800,
+      "gate_layout": "row_major",
+      "max_allocated_GiB": 35.15110731124878,
+      "max_reserved_GiB": 37.13671875,
+      "rank": 7,
+      "score_receive_host_wait_c2_s": 0
+    },
+    {
+      "arm": "c34",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 18.20014476776123,
+      "max_reserved_GiB": 38.064453125,
+      "rank": 8,
+      "score_receive_host_wait_c2_s": 1.7533627799712121
+    },
+    {
+      "arm": "c34",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 18.199156284332275,
+      "max_reserved_GiB": 38.076171875,
+      "rank": 9,
+      "score_receive_host_wait_c2_s": 1.7621587309986353
+    },
+    {
+      "arm": "c34",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 18.20014476776123,
+      "max_reserved_GiB": 38.064453125,
+      "rank": 10,
+      "score_receive_host_wait_c2_s": 1.2857007789425552
+    },
+    {
+      "arm": "c34",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 18.199156284332275,
+      "max_reserved_GiB": 37.85546875,
+      "rank": 11,
+      "score_receive_host_wait_c2_s": 1.736426666378975
+    },
+    {
+      "arm": "c34",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 18.199156284332275,
+      "max_reserved_GiB": 37.85546875,
+      "rank": 12,
+      "score_receive_host_wait_c2_s": 1.677130111726001
+    },
+    {
+      "arm": "c34",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 18.199156284332275,
+      "max_reserved_GiB": 37.85546875,
+      "rank": 13,
+      "score_receive_host_wait_c2_s": 1.2833134832326323
+    },
+    {
+      "arm": "c34",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 18.20014476776123,
+      "max_reserved_GiB": 38.064453125,
+      "rank": 14,
+      "score_receive_host_wait_c2_s": 1.7584181961137801
+    },
+    {
+      "arm": "c34",
+      "gate_calls": 0,
+      "gate_layout": "disabled",
+      "max_allocated_GiB": 18.20014476776123,
+      "max_reserved_GiB": 38.064453125,
+      "rank": 15,
+      "score_receive_host_wait_c2_s": 1.6622537651564926
+    }
+  ],
+  "ranks_pass": 16,
+  "schema_version": "distillschedule.livewan_c34_historical_evidence.v1",
+  "status": "PASS_NATIVE_PAIR_TARGET_MET_SINGLE_OBSERVATION",
+  "strict_numeric": "REVIEW",
+  "strict_numeric_summary": {
+    "contract_mismatch_count": 0,
+    "curve_count": 2,
+    "curve_review_count": 1,
+    "gradient_norm_curve_count": 2,
+    "gradient_norm_curve_review_count": 0,
+    "state_comparison_count": 8,
+    "state_review_count": 6
+  },
+  "timing_contract": {
+    "aggregation": "CRITICAL_ROLE_CUDA_COMPLETION_ENDPOINT_DELTA",
+    "average_cycles": false,
+    "cycle_1": "WARMUP_DIAGNOSTIC_EXCLUDED",
+    "cycle_2": "STEADY_STATE_ONLY_CLAIMABLE",
+    "profiled": false,
+    "same_process_cycles": 2
+  }
+}

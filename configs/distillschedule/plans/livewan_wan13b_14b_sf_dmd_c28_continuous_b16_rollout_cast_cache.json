@@ -1,0 +1,40 @@
+{
+  "include": [
+    "livewan_wan13b_14b_sf_dmd_c21_continuous_b16.json"
+  ],
+  "id": "livewan-wan13b-14b-sfdmd-c24-continuous-b16-score-modulation",
+  "metadata": {
+    "score_modulation_kernel": {
+      "enabled": true,
+      "name": "score_bf16_modulation_fusion_v1",
+      "scope": "score_ranks_only_critic_and_teacher",
+      "source_modulate_sha256": "f244152360d40d6745e28bed4add081604312d04fe2f342842a32432f4bd20ad",
+      "math_change": "fuse_exact_bf16_to_fp32_modulation_pointwise_chain",
+      "normalized_shift_scale_dtype": "bfloat16",
+      "output_dtype": "float32",
+      "per_frame": false,
+      "triton_block_size": 256
+    },
+    "score_rmsnorm_kernel": {
+      "enabled": true,
+      "name": "score_frozen_bf16_rmsnorm_v1",
+      "scope": "score_ranks_only_critic_and_teacher",
+      "source_class_sha256": "31bf960deb2ee55c33ed4656a0ca3e9e4e9632cd41fd04a8677e70e86edbff2e",
+      "affine_requires_grad": false,
+      "input_output_affine_dtype": "bfloat16",
+      "accumulation_dtype": "float32",
+      "intermediate_bf16_rounding": true,
+      "epsilon": 1e-06
+    },
+    "generator_rollout_cast_cache": {
+      "enabled": true,
+      "name": "generator_nograd_autocast_weight_cache_lifetime_v1",
+      "scope": "single_prepare_rollout_generator_only",
+      "outer_autocast_enabled": false,
+      "changes_effective_dtype": false,
+      "cache_cross_optimizer": false,
+      "parameter_dtype": "float32",
+      "preserve_native_inner_autocast": true
+    }
+  }
+}
