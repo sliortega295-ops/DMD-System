@@ -123,10 +123,16 @@ def parse_profile(manifest: dict[str, Any]) -> dict[str, Any]:
     require(manifest.get("schema_version") == "distillschedule.search.profile_input.v1", "profile input schema mismatch")
     require(manifest.get("cycle") in (1, 2), "profile must identify the actual captured cycle")
     ranks = manifest.get("ranks", [])
-    require(len(ranks) == 16 and {r["rank"] for r in ranks} == set(range(16)), "16-rank profile coverage required")
-    require(len({(r["node"], r["device_id"]) for r in ranks}) == 16, "duplicate GPU/rank mapping")
+    representative = manifest.get("scope") == "REPRESENTATIVE_PRIOR_ONLY"
+    expected_ranks = set(manifest.get("sampled_ranks", [])) if representative else set(range(16))
+    require(0 < len(expected_ranks) <= 16 and expected_ranks <= set(range(16)), "invalid sampled rank declaration")
+    require(len(ranks) == len(expected_ranks) and {r["rank"] for r in ranks} == expected_ranks,
+            "16-rank profile coverage required unless explicitly representative-prior-only")
+    require(len({(r["node"], r["device_id"]) for r in ranks}) == len(ranks), "duplicate GPU/rank mapping")
     require({r["node"] for r in ranks} == {0, 1}, "two node profiles required")
-    require(all({r["device_id"] for r in ranks if r["node"] == n} == set(range(8)) for n in (0, 1)), "8/8 GPUs per node required")
+    require(all(r["rank"] == r["node"] * 8 + r["device_id"] and 0 <= r["device_id"] < 8 for r in ranks), "rank mapping changed")
+    if not representative:
+        require(all({r["device_id"] for r in ranks if r["node"] == n} == set(range(8)) for n in (0, 1)), "8/8 GPUs per node required")
     groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for rank in ranks:
         groups[rank["sqlite"]].append(rank)
@@ -172,7 +178,9 @@ def parse_profile(manifest: dict[str, Any]) -> dict[str, Any]:
                         "metrics": measure, "nccl_hidden_by_compute_ns": overlap,
                         "nccl_not_covered_by_compute_ns": n_ns - overlap,
                         "critical_path_wait": "UNRESOLVED_REQUIRES_DEPENDENCY_EVIDENCE", "quality": phase_quality})
-    result = {"schema_version": PROFILE_SCHEMA, "status": "PASS", "cycle": manifest["cycle"],
+    result = {"schema_version": PROFILE_SCHEMA, "status": "PASS_REPRESENTATIVE_PRIOR" if representative else "PASS", "cycle": manifest["cycle"],
+              "profile_scope": "REPRESENTATIVE_PRIOR_ONLY" if representative else "ALL_16_RANKS",
+              "sampled_ranks": sorted(expected_ranks), "world16_phase_attribution": "NOT_ESTABLISHED" if representative else "PASS",
               "identity": manifest["identity"], "hardware": manifest["hardware"],
               "sources": sources, "rows": output,
               "denominator": "PER_RANK_PHASE_WALL_NOT_GLOBAL_WALL",
@@ -182,10 +190,15 @@ def parse_profile(manifest: dict[str, Any]) -> dict[str, Any]:
 
 
 def validate_profile(value: dict[str, Any]) -> None:
-    require(value.get("schema_version") == PROFILE_SCHEMA and value.get("status") == "PASS", "invalid profile")
+    representative = value.get("profile_scope") == "REPRESENTATIVE_PRIOR_ONLY"
+    require(value.get("schema_version") == PROFILE_SCHEMA and value.get("status") == ("PASS_REPRESENTATIVE_PRIOR" if representative else "PASS"), "invalid profile")
     require(value.get("cycle") in (1, 2), "actual captured cycle missing")
     require(bool(value.get("sources")), "profile provenance missing")
-    require({row["rank"] for row in value.get("rows", [])} == set(range(16)), "incomplete profile rank coverage")
+    expected = set(value.get("sampled_ranks", [])) if representative else set(range(16))
+    require(expected and expected <= set(range(16)) and {row["rank"] for row in value.get("rows", [])} == expected,
+            "incomplete profile rank coverage")
+    if representative:
+        require(value.get("world16_phase_attribution") == "NOT_ESTABLISHED", "representative data is not a world16 conclusion")
     require(value["identity"]["hardware_fingerprint"] == fingerprint(value["hardware"]), "profile hardware fingerprint mismatch")
     for row in value["rows"]:
         metrics = row["metrics"]

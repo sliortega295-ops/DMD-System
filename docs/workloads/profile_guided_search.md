@@ -73,6 +73,15 @@ influence ordering. This flag never relaxes the native measurement gate: search
 comparisons still require a common current source, assets, hardware, seed and
 semantic fingerprint. A historical profile is not a matched latency estimate.
 
+Some historical captures have kernels on all devices but phase NVTX only on
+rank 0/8. Do not fabricate the other ranks' windows. The importer additionally
+accepts an **explicit** `scope: REPRESENTATIVE_PRIOR_ONLY` plus `sampled_ranks`.
+It validates exact windows only for those ranks, emits
+`PASS_REPRESENTATIVE_PRIOR` / `world16_phase_attribution: NOT_ESTABLISHED`, and
+requires the historical-prior search opt-in. It does not scale two GPUs' union
+to sixteen GPUs or claim world16 utilization. All native measurement gates
+still require 16/16; default profile import still requires all sixteen ranks.
+
 ## Commands
 
 Run from a clean source checkout. Local controller evidence belongs under a

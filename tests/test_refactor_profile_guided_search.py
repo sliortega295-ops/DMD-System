@@ -225,6 +225,24 @@ def test_sqlite_per_device_union_pid_and_reconciliation(tmp_path):
     assert result["claim_boundary"].startswith("DIAGNOSTIC")
 
 
+def test_representative_prior_never_becomes_a_world16_profile_or_measurement(tmp_path):
+    manifest = sqlite_fixture(tmp_path)
+    manifest.update(scope="REPRESENTATIVE_PRIOR_ONLY", sampled_ranks=[0, 8])
+    manifest["ranks"] = [r for r in manifest["ranks"] if r["rank"] in (0, 8)]
+    result = parse_profile(manifest)
+    assert result["status"] == "PASS_REPRESENTATIVE_PRIOR"
+    assert result["world16_phase_attribution"] == "NOT_ESTABLISHED"
+    assert len(result["rows"]) == 2
+    with pytest.raises(ValueError, match="historical-prior"):
+        SearchSession(workload=WAN, identity=IDENTITY, profile=result, output=tmp_path / "strict")
+    s = SearchSession(workload=WAN, identity=IDENTITY, profile=result, output=tmp_path / "prior", historical_prior=True)
+    assert s.spec["sampled_profile_ranks"] == [0, 8]
+    raw = measurement(get_candidate(WAN, "fsdp-reference"))
+    raw["ranks"] = raw["ranks"][:2]
+    with pytest.raises(ValueError, match="16/16"):
+        validate_measurement(raw, IDENTITY, get_candidate(WAN, "fsdp-reference"))
+
+
 @pytest.mark.parametrize("bad", ["missing_rank", "duplicate_gpu", "parser", "bad_tid", "fake_nvtx", "nested_phase", "doctor", "hash"])
 def test_profile_invalid_evidence_rejected(tmp_path, bad):
     v = sqlite_fixture(tmp_path)

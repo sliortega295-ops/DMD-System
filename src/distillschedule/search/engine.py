@@ -32,7 +32,7 @@ class SearchSession:
         mismatches = {key: {"profile": profile["identity"].get(key), "run": identity.get(key)}
                       for key in ("source_head", "asset_fingerprint", "semantic_fingerprint")
                       if profile["identity"].get(key) != identity.get(key)}
-        require(historical_prior or (not mismatches and profile["cycle"] == 2),
+        require(historical_prior or (not mismatches and profile["cycle"] == 2 and profile.get("profile_scope") != "REPRESENTATIVE_PRIOR_ONLY"),
                 "unmatched profile requires explicit historical-prior mode")
         self.workload, self.identity, self.profile = workload, identity, profile
         self.output, self.max_trials = Path(output), max_trials
@@ -44,6 +44,8 @@ class SearchSession:
                      "beam_width": 2, "objective": "native_cycle2_seconds",
                      "profile_role": "HISTORICAL_PRIOR_ONLY" if historical_prior else "MATCHED",
                      "profile_identity_differences": mismatches, "profile_cycle": profile["cycle"],
+                     "profile_scope": profile.get("profile_scope", "ALL_16_RANKS"),
+                     "sampled_profile_ranks": profile.get("sampled_ranks", list(range(16))),
                      "candidate_space": [c.to_dict() for c in self.space]}
         if resume:
             require((self.output / "search.json").is_file(), "search state missing")
