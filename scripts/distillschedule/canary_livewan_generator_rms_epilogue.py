@@ -18,12 +18,17 @@ def main():
     p.add_argument('--bootstrap', type=Path, required=True)
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--plan-only', action='store_true')
+    p.add_argument('--fuse-cast-square', action='store_true',
+                   help='C31 canary only: C30 G reference vs fused cast-square, same mean')
     args = p.parse_args()
     out = dict(status='NOT_RUN', candidate='C29_GENERATOR_RMS_EPILOGUE', parent='C28',
         input_kind='REAL_STUDENT_REAL_IMMUTABLE_TRACE', world16='NOT_RUN',
         production_installed=False, operator_cases=[], rollout_cases=[],
         thresholds=dict(assert_close='torch FP32 defaults', normalized_l2_max=1e-3,
                         cosine_min=.999999, real_rollout='BITWISE_ALL_RECORDED_LATENTS'))
+    if args.fuse_cast_square:
+        out.update(candidate='C31_GENERATOR_RMS_CAST_SQUARE', parent='C30',
+                   native_mean_preserved=True, square_and_variance_parity='BITWISE_REQUIRED')
     if args.plan_only:
         print(json.dumps(out)); return 0
     if args.output.exists():
@@ -47,7 +52,7 @@ def main():
         from distillschedule.runtime.livewan_rollout_cast_cache import rollout_cast_cache_scope
         from distillschedule.runtime.livewan_generator_rms_epilogue import (
             build_nograd_generator_rms_epilogue, model_epilogue_canary_scope,
-            REFERENCE_CLASS_SHA256)
+            REFERENCE_CLASS_SHA256, build_cast_square)
 
         assert torch.cuda.device_count() == 1
         torch.cuda.set_device(0)
@@ -64,7 +69,9 @@ def main():
         student.to(device).train()
         streamer = worker._build_streamers(torch, student=student, count=1, device=device)[0]
         loader = worker.InputLoader(torch=torch, trace=trace)
-        op, receipt = build_nograd_generator_rms_epilogue(torch)
+        op, receipt = build_nograd_generator_rms_epilogue(torch, fuse_cast_square=args.fuse_cast_square)
+        reference_op = build_nograd_generator_rms_epilogue(torch)[0] if args.fuse_cast_square else None
+        square_op = build_cast_square(torch) if args.fuse_cast_square else None
         torch.cuda.synchronize()
         out.update(torch=torch.__version__, cuda=torch.version.cuda,
             gpu=torch.cuda.get_device_name(0), student_state=state, trace_sha256=trace.sha256,
@@ -77,7 +84,8 @@ def main():
 
         def run(row, enabled):
             with torch.no_grad(), rollout_cast_cache_scope(torch, enabled=True), \
-                 model_epilogue_canary_scope(torch, student, op, enabled=enabled):
+                 model_epilogue_canary_scope(torch, student,
+                    op if enabled else reference_op, enabled=enabled or args.fuse_cast_square):
                 return worker.prepare_rollout(torch, row=row, streamer=streamer, student=student,
                     loader=loader, device=device, elide_full_context_lens=True)
 
@@ -98,6 +106,7 @@ def main():
                         assert torch.equal(r1[k],r2[k]) if torch.is_tensor(r1[k]) else r1[k] == r2[k]
 
         samples, norm_counts, active, ops = {}, Counter(), [], Counter()
+        sampled_shapes = set()
         # Attribute ops inside the actual norm invocation on the issuing Python thread.
         class NormOps(TorchDispatchMode):
             def __torch_dispatch__(self, func, types, positional=(), kwargs=None):
@@ -112,8 +121,10 @@ def main():
                     x = inputs[0]
                     key = (name, str(x.dtype), tuple(x.shape))
                     norm_counts[str(key)] += 1
-                    if len(samples) < 6 and key not in samples:
+                    take_sample = (tuple(x.shape) not in sampled_shapes if args.fuse_cast_square else key not in samples)
+                    if len(samples) < (12 if args.fuse_cast_square else 6) and take_sample:
                         samples[key] = (m, x.detach().clone())
+                        sampled_shapes.add(tuple(x.shape))
                     active.append(name)
                 def after(m, inputs, output):
                     assert active
@@ -134,7 +145,13 @@ def main():
 
         for key, (module, x) in samples.items():
             with torch.no_grad():
-                ref, cand = module(x), op(x, module.weight, module.eps)
+                ref = reference_op(x, module.weight, module.eps) if args.fuse_cast_square else module(x)
+                cand = op(x, module.weight, module.eps)
+                if args.fuse_cast_square:
+                    squared_reference, squared_candidate = x.float().pow(2), square_op(x)
+                    assert torch.equal(squared_reference, squared_candidate), 'C31 squared values differ'
+                    assert torch.equal(squared_reference.mean(-1, keepdim=True), squared_candidate.mean(-1, keepdim=True)), 'C31 variance differs'
+                    assert torch.equal(ref, cand), 'C31 RMS output differs'
                 assert ref.dtype == cand.dtype == torch.float32 and ref.shape == cand.shape
                 a,b=ref.double().flatten(),cand.double().flatten()
                 na,nb=torch.linalg.vector_norm(a),torch.linalg.vector_norm(b)
@@ -144,6 +161,8 @@ def main():
                     finite=bool(torch.isfinite(ref).all() and torch.isfinite(cand).all()))
                 case = dict(name=key[0],shape=list(x.shape),input_dtype=str(x.dtype),
                     weight_dtype=str(module.weight.dtype),output_dtype=str(ref.dtype),metrics=metrics)
+                if args.fuse_cast_square:
+                    case.update(square_bitwise=True, variance_bitwise=True)
                 out['operator_cases'].append(case)
                 save()
                 torch.testing.assert_close(cand, ref)  # FP32 defaults; never weakened
@@ -162,7 +181,8 @@ def main():
                     torch.cuda.synchronize(); torch.cuda.reset_peak_memory_stats()
                     t=time.perf_counter(); prepared=run(row,enabled); torch.cuda.synchronize()
                     seconds=time.perf_counter()-t
-                    case['arms'].setdefault('c29' if enabled else 'c28',[]).append(dict(
+                    label = ('c31' if enabled else 'c30') if args.fuse_cast_square else ('c29' if enabled else 'c28')
+                    case['arms'].setdefault(label,[]).append(dict(
                         repeat=repeat,wall_s=seconds,peak_allocated_bytes=torch.cuda.max_memory_allocated(),
                         peak_reserved_bytes=torch.cuda.max_memory_reserved(),driver_free_bytes=torch.cuda.mem_get_info()[0]))
                     compare_rollout(ref,pack(prepared)); del prepared

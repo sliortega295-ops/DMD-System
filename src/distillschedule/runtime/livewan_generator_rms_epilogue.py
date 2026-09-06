@@ -31,7 +31,31 @@ def validate_inputs(torch: Any, x: Any, weight: Any, eps: float) -> None:
         raise RuntimeError('Generator RMS epilogue source dtype/shape/device/epsilon mismatch')
 
 
-def build_nograd_generator_rms_epilogue(torch: Any) -> tuple[Any, dict[str, Any]]:
+def build_cast_square(torch: Any) -> Any:
+    """C31 canary primitive: FP32 square without an intermediate FP32 cast tensor."""
+    import triton
+    import triton.language as tl
+
+    @triton.jit
+    def cast_square(X, Y, N: tl.constexpr, BLOCK: tl.constexpr):
+        i = tl.program_id(0) * BLOCK + tl.arange(0, BLOCK)
+        value = tl.load(X + i, i < N, other=0).to(tl.float32)
+        tl.store(Y + i, value * value, i < N)
+
+    def square(x: Any) -> Any:
+        if (torch.is_grad_enabled() or not x.is_cuda or x.dtype != torch.bfloat16
+            or not x.is_contiguous() or x.ndim != 3 or x.shape[0] != 1
+            or x.shape[-1] != 1536):
+            raise RuntimeError('C31 cast-square requires source-pinned no-grad BF16 G input')
+        y = torch.empty(x.shape, device=x.device, dtype=torch.float32)
+        cast_square[(triton.cdiv(x.numel(), 1024),)](
+            x, y, N=x.numel(), BLOCK=1024, num_warps=4, enable_fp_fusion=False)
+        return y
+
+    return square
+
+
+def build_nograd_generator_rms_epilogue(torch: Any, *, fuse_cast_square: bool = False) -> tuple[Any, dict[str, Any]]:
     import triton
     import triton.language as tl
 
@@ -50,6 +74,11 @@ def build_nograd_generator_rms_epilogue(torch: Any) -> tuple[Any, dict[str, Any]
         native_pow_mean_preserved=True, input_dtype='bfloat16', output_dtype='float32',
         affine_dtype='float32', intermediate_bf16_rounding=True, grad_path_changed=False,
         shape_histogram={}, triton_version=triton.__version__)
+    square = build_cast_square(torch) if fuse_cast_square else None
+    if fuse_cast_square:
+        receipt.update(name='generator_nograd_rms_cast_square_v1',
+            native_pow_mean_preserved=False, native_mean_preserved=True,
+            fp32_square_preserved=True, fused_cast_square=True, square_calls=0)
 
     def op(x: Any, weight: Any, eps: float) -> Any:
         try:
@@ -58,7 +87,11 @@ def build_nograd_generator_rms_epilogue(torch: Any) -> tuple[Any, dict[str, Any]
             receipt['contract_failures'] += 1
             raise
         # Exactly the original reduction operations/order; only fuse the tail.
-        var = x.float().pow(2).mean(dim=-1, keepdim=True)
+        if square is None:
+            var = x.float().pow(2).mean(dim=-1, keepdim=True)
+        else:
+            var = square(x).mean(dim=-1, keepdim=True)
+            receipt['square_calls'] += 1
         y = torch.empty(x.shape, device=x.device, dtype=torch.float32)
         epilogue[(triton.cdiv(x.numel(), 1024),)](x, var, weight, y,
             N=x.numel(), D=x.shape[-1], BLOCK=1024, num_warps=4, enable_fp_fusion=False)
