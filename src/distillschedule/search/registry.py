@@ -124,7 +124,13 @@ def candidate_profile(candidate: Candidate, *, root: Path | None = None) -> dict
         p["topology"]["placement"] = candidate.placement
         if is_baseline:
             p["topology"].update(generator_ranks=list(range(16)), score_ranks=list(range(16)),
-                                 teacher_ranks=list(range(16)), student_critic="fsdp2")
+                                 teacher_ranks=list(range(16)),
+                                 student_critic="student_fsdp2_keep_unsharded_critic_resident",
+                                 role_placement={
+                                     "student": "world16_fsdp2_keep_unsharded",
+                                     "critic": "gpu_resident_replica",
+                                     "teacher": "fsdp2_group16_reshard",
+                                 })
         if is_baseline:
             template = "livewan_wan13b_14b_sf_dmd_g1c5_world16_fsdp2.json"
         else:

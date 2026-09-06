@@ -53,6 +53,23 @@ def test_wan_search_maps_to_real_two_cycle_workers():
     assert not get_candidate(WAN, "resident-flat512").executable
 
 
+def test_livewan_reference_describes_actual_native_role_residency():
+    # Native worker build receipts: the sequential control's Critic is not
+    # sharded, and Student keeps its unsharded parameters after forward.
+    p = candidate_profile(get_candidate(LIVEWAN, "fsdp-reference"))
+    assert p["topology"]["student_critic"] == "student_fsdp2_keep_unsharded_critic_resident"
+    assert p["topology"]["role_placement"] == {
+        "student": "world16_fsdp2_keep_unsharded",
+        "critic": "gpu_resident_replica",
+        "teacher": "fsdp2_group16_reshard",
+    }
+    assert p["runtime"]["typed_plan"] == (
+        "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_fsdp2.json"
+    )
+    assert p["runtime"]["arguments"][3] == "baseline"
+    assert p["contract"]["variant"] == "b1"
+
+
 def test_native_summary_dispatch_does_not_fall_back_to_one_cycle():
     r = resolve_candidate(WAN, "resident-tree")
     r.update(nodes=[{"repo_root": str(ROOT), "python": sys.executable, "environment": {}}],
