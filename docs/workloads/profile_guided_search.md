@@ -32,8 +32,14 @@ or start a GPU worker.
 | MiniMax-H3 | Grid1000 canonical reference | CPU registration only; approximate sigma semantics remain explicit |
 
 `executable` means an adapter exists, **not** that this integration HEAD has
-passed a GPU experiment. Each recipe records `NOT_RUN_ON_SEARCH_BRANCH` until
-source-bound receipts prove otherwise. Unintegrated recipes fail before launch.
+passed a GPU experiment. Catalog `NOT_RUN` fields are conservative registration
+labels, not a mutable experiment database. Actual validation belongs to a
+source/assets-bound search result. Unintegrated recipes fail before launch.
+
+The [first world16 pilot report](evidence/profile_guided_search_20260906.md)
+records measured Wan and LiveWan searches, their numerical REVIEW boundary and
+independent confirmations. It does not change a canonical profile or claim to
+reproduce historical winner times.
 
 Wan's FSDP -> Resident Tree edge changes a registered bundle (placement and
 gradient reduction implementation); it is **not a pure placement ablation**.

@@ -33,3 +33,7 @@ LiveWan v2 selects C34. The former C24 54.441603646 s profile is preserved in `h
 ## Profile-guided search
 
 The opt-in [registered-plan search](profile_guided_search.md) reuses this compiler and dispatcher. It preserves canonical defaults and separates measured search results from historical evidence.
+
+[World16 pilot results](evidence/profile_guided_search_20260906.md) now demonstrate
+the search/execute/confirm loop for Wan and LiveWan. They are source-bound
+diagnostic rankings, not strict numerical approval or replacement canonical times.
