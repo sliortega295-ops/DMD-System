@@ -9,8 +9,18 @@ loop. Its proposed objective is native **cycle 2** wall time after one in-proces
 warm-up. Initialization, correctness probes, calibration and profiling are not
 part of that denominator.
 
-This feature branch is **not yet an end-to-end GPU-validated planner**. CPU
-simulation, native backend support and GPU validation are different statuses.
+The restricted **Wan placement/chunk/epilogue family now has a completed
+measured-cost → search → native-validation loop**. LiveWan/H3 and the broader
+sharing/reordering dimensions are not yet GPU-validated generated planners.
+CPU simulation, native support, diagnostic validation and strict numerical
+equivalence remain separate statuses.
+
+Latest evidence: [Wan closed-loop native diagnostic](../experiments/DMD_JOINT_PLANNER_WAN_CLOSED_LOOP_20260907.md).
+Runtime source is `4e3ffb59c21429f3e9e714f14006f5ae6afbd002`, not a later
+report-publication commit. Six current-source native trials completed 16/16
+rank gates; confirmed cycle-2 comparison is **35.975044 → 24.617367 s,
+1.461369× diagnostic**. Numerical `REVIEW` remains; no strict/canonical winner
+was promoted. The search rediscovered the incumbent rather than beating it.
 
 ## Method being implemented
 
@@ -116,8 +126,8 @@ Per-rank maxima are conservative, not an assertion that all ranks use equal HBM.
 
 ```bash
 # Runs next to the small native calibration receipts (normally remotely).
-# Requires the complete measured layout + costs. The pilot below has ONE fragment;
-# the remaining six implementations are not calibrated yet.
+# Requires the complete measured layout + costs. The initial pilot below had
+# one fragment; the closed-loop report now records all seven at runtime 4e3ffb59.
 python scripts/distillctl.py workloads search \
   --strategy model-based --workload wan13b_nogan_resident_best \
   --planning-layout native-stage-layout.json --cost-model native-stage-costs.json \
@@ -131,13 +141,15 @@ actual native candidate. Saved synthetic fixtures or changed DAGs are rejected.
 The existing native runner supports an explicit matching generated control;
 it rejects mixing the generated precision family with legacy arms. The validation
 controller now connects calibrated proposals to this runner. The native collector
-has produced one current-source fragment (see the pilot below). The controller
-still requires a complete measured layout/cost set; it does not invent missing
+has produced all seven current-source fragments (the original one-fragment
+pilot is retained below as historical evidence). The controller
+requires a complete measured layout/cost set; it does not invent missing
 implementation costs or silently reuse historical results.
 
 ```bash
-# Proposed only: the complete seven-implementation layout and this search are NOT_RUN.
-# A fresh validation journal must not overwrite the completed anchor runs.
+# Example for a separately authorized future epoch. The completed Wan experiment
+# has spent its entire 8-attempt budget. Do not relaunch it or reset its budget.
+# A fresh validation journal must not overwrite completed or failed runs.
 python scripts/distillctl.py workloads search \
   --strategy model-based --workload wan13b_nogan_resident_best \
   --planning-layout native-stage-layout.json --cost-model native-stage-costs.json \
@@ -148,9 +160,10 @@ python scripts/distillctl.py workloads search \
 
 The total budget includes baseline, incumbent, new plans and independent
 confirmation (eight means **1 + 1 + at most 5 + 1**, not eight candidates plus
-anchors). The current pilot has already spent two timing attempts, so its next
-session has at most **six remaining**, including any source-required replacement
-anchors. Do not reset the overall experiment budget when changing a commit.
+anchors). The initial pilot spent two timing attempts; the closed-loop session
+then spent the **six remaining**, including source-required replacement anchors
+and independent confirmation. No Wan timing attempts remain in this epoch.
+Do not reset the overall experiment budget when changing a commit.
 Failed/aborted attempts consume budget. Resume rechecks the small receipts and
 refuses an incomplete run; it never retries a possibly live worker. Numerical
 `REVIEW` remains diagnostic and cannot produce a strict winner. Predictions and
@@ -171,8 +184,10 @@ as having used it.
 ## Acceptance remaining before a planner speed claim
 
 - LiveWan/H3 planning adapters and generated native lowering. Wan's generated
-  FSDP control and Resident incumbent now have native two-cycle validation;
-  newly searched non-seed combinations have not been run.
+  FSDP control, Resident incumbent and three model-ranked non-seed combinations
+  now have native two-cycle validation, plus independent winner confirmation.
+  Strict numerical equivalence remains unestablished; the current Wan timing
+  budget is exhausted (two earlier anchors plus six current-source attempts).
 - Finer calibrated operator/layer costs, G/C ordering/pool lowering, and shared
   backbone placement choices; no unsupported TP/PP, dynamic repartition or
   fabricated pool mappings.

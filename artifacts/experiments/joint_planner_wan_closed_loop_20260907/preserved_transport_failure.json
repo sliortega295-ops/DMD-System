@@ -1,0 +1,24 @@
+{
+  "status": "FAILED_CORRECTNESS_RUN_RECONCILED_NO_OOM",
+  "utc": "2026-09-07T06:20:20.057713+00:00",
+  "runtime_head": "4e3ffb59c21429f3e9e714f14006f5ae6afbd002",
+  "implementation": "joint-wan1-resident-c512-e1",
+  "failed_run": "jointp_wan_close_20260907_r1-2-joint-wan1-resident-c512-e1-gate-joint-wan1-resident-c512-e1",
+  "phase": "CORRECTNESS_MODEL_LOADING_BEFORE_COMPLETED_CYCLES",
+  "primary_observation": "Both SSH clients exited255 Broken pipe; native torchrun received SIGTERM in loader; peer TCPStore disconnect followed",
+  "failure_class": "LAUNCHER_ERROR",
+  "transport_root_cause": "UNRESOLVED_CONNECTION_LOSS_NOT_PROVEN_PLATFORM_OR_LOCAL_NETWORK",
+  "cleanup": "Both nodes GPU-empty, no matching processes, locks available",
+  "cgroup_oom_delta": [
+    0,
+    0
+  ],
+  "completed_rank_receipts": 0,
+  "formal_timing_attempts": 0,
+  "preserved_successes": [
+    "joint-wan1-fsdp-c512-e0",
+    "joint-wan1-resident-c512-e0"
+  ],
+  "planned_recovery": "Only after bounded SSH stability and renewed preflight PASS: manual fresh recovery epoch for remaining4; no reuse of failed run ID or failed preparation directory",
+  "default_auto_retry": false
+}
