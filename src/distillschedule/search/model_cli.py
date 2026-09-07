@@ -14,9 +14,18 @@ from .plan_ir import PlanningProblem
 
 def model_based_search(args):
     require(args.workload in CANONICAL_IDS, "unknown workload")
-    require(not args.resume, "model-based execution journal/resume is not yet integrated; preserve the old run")
+    execute_native = getattr(args, "execute_native", False)
+    validation_dir = getattr(args, "validation_dir", None)
+    require(not args.resume or execute_native, "resume applies only to native validation journals")
+    require(not execute_native or (not args.dry_run and validation_dir and args.assets_config),
+            "native execution needs validation-dir/assets-config and cannot be dry-run")
+    require(not (execute_native and args.emit_native_plan), "emit-only and execute-native are separate actions")
+    require(validation_dir is None or execute_native, "validation-dir requires execute-native")
     require(not args.historical_profile_prior,
             "historical profile hints cannot substitute for source-bound operation calibration")
+    budget = getattr(args, "max_trials", 8)
+    require(type(budget) is int and 3 <= budget <= 8,
+            "model-based total timing budget must be 3..8 including anchors/confirmation")
     root = repository_root()
     profile = load_profile(args.workload)
     require(not (args.problem and args.planning_layout), "use either adapter layout or saved problem, not both")
@@ -55,9 +64,22 @@ def model_based_search(args):
     from .wan_model_adapter import ADAPTER
     result["native_lowering"] = ("WAN_COMPOSITION_AVAILABLE_AFTER_NATIVE_INPUT_VALIDATION"
         if problem.lowering.get("adapter") == ADAPTER else "NOT_IMPLEMENTED_FOR_GENERATED_PLANS")
-    result["native_trial_budget"] = {"total": 8, "baseline": 1, "incumbent": 1,
-                                     "new_candidates": 5, "confirmation": 1,
-                                     "actual_runs": 0, "status": "PLANNED_MODEL_EXECUTION_CONTROLLER_PENDING"}
+    result["native_trial_budget"] = {"total": budget, "baseline": 1, "incumbent": 1,
+                                     "new_candidates": budget - 3, "confirmation": 1,
+                                     "actual_runs": 0, "status": "REQUIRES_EXPLICIT_EXECUTE_NATIVE"}
+    if execute_native:
+        from .model_validation import ModelValidationSession
+        from .execution import NativeTrialRunner
+        from distillschedule.workloads.best_known.registry import load_assets
+        session = ModelValidationSession(problem=problem, costs=costs, prediction=result,
+            output=validation_dir, max_trials=budget, resume=args.resume)
+        assets = load_assets(args.assets_config, profile)
+        require(fingerprint(assets["assets"]) == problem.binding["asset_fingerprint"],
+                "native validation assets differ from calibration")
+        runner = NativeTrialRunner(workload=args.workload, identity=session.identity, assets=assets,
+            output=validation_dir, run_prefix=args.run_id, reference_id=session.seeds[0],
+            bootstrap_peer=session.seeds[1])
+        return session.run(runner)
     if args.emit_native_plan:
         from .wan_model_adapter import lower_prediction
         plan = lower_prediction(result, problem, costs, run_id=args.run_id,

@@ -96,10 +96,11 @@ def test_graph_has_native_clustered_order_exact_versions_and_no_hidden_reorder()
         assert sum(i.get("ema_updates", 0) for i in inventory) == 5
 
 
-def calibration_fixture(tmp_path):
+def calibration_fixture(tmp_path, binding_overrides=None):
     binding = {"source_head": git_head(repository_root()), "precision_fingerprint": PRECISION.digest,
         "semantic_fingerprint": fingerprint(semantic_contract(load_profile(WAN))),
         **{k: "a" * 64 for k in ("asset_fingerprint", "environment_fingerprint", "hardware_fingerprint")}}
+    binding.update(binding_overrides or {})
     layout = {"schema_version": "distillschedule.wan_stage_layout.v1", "status": "PASS", "profiled": False,
         "binding": binding, "adapter": ADAPTER, "memory_limits": {str(i): 1000 for i in range(16)},
         "memory_definition": "POST_SETUP_STATIC; STAGE_COST_INCLUDES_ALL_ADDITIONAL_LIVE_MEMORY",

@@ -38,6 +38,9 @@ def main(argv: list[str]) -> int:
     p.add_argument("--problem", type=Path, help="Adapter-produced, versioned planning problem")
     p.add_argument("--planning-layout", type=Path, help="Measured native layout; adapter constructs the problem")
     p.add_argument("--emit-native-plan", type=Path, help="Lower calibrated model result; does not launch GPUs")
+    p.add_argument("--execute-native", action="store_true",
+                   help="Explicitly validate generated plans through native two-cycle gates; total budget includes anchors/confirmation")
+    p.add_argument("--validation-dir", type=Path, help="Immutable model-based native validation journal")
     p.add_argument("--cost-model", type=Path, help="Source/environment/precision-bound operation calibrations")
     p.add_argument("--search-seed", type=int, default=0, help="Planner RNG only; never the training RNG")
     p.add_argument("--max-proposals", type=int, default=10000)
@@ -52,8 +55,13 @@ def main(argv: list[str]) -> int:
             from .model_cli import model_based_search
             result = model_based_search(args)
             if args.output:
-                write_new_json(args.output, result)
+                if args.resume and args.output.exists():
+                    require(_object(args.output) == result, "saved model-validation result changed")
+                else:
+                    write_new_json(args.output, result)
         elif args.dry_run:
+            require(not args.execute_native and args.validation_dir is None,
+                    "generated-plan execution flags require model-based strategy")
             require(1 <= args.max_trials <= 8, "v1 budget is 1..8")
             profile = _object(args.profile) if args.profile else None
             if profile is not None:
@@ -69,6 +77,8 @@ def main(argv: list[str]) -> int:
             if args.output:
                 write_new_json(args.output, result)
         else:
+            require(not args.execute_native and args.validation_dir is None,
+                    "generated-plan execution flags require model-based strategy")
             require(args.workload in PILOTS, "CPU-only registration; GPU search NOT_RUN for this workload")
             require(all((args.profile, args.assets_config, args.output)),
                     "search execution requires profile, assets-config and output")

@@ -55,7 +55,9 @@ copied into this implementation.
 | Bounded search | `search/model_search.py` | New non-seed combination found; small-space exhaustive oracle; deterministic planner RNG |
 | Existing implementation inventory | `search/implementation_library.py` | AST/source hashes without Torch imports; no generated kernels |
 | Precision identity | `search/precision.py` | Explicit TF32 policy and runtime assertion; verification does not mutate Torch |
-| Unified CLI | `workloads search --strategy model-based` | CPU-only path; legacy registered search unchanged |
+| Native validation controller | `search/model_validation.py` | Total 3..8 attempts including anchors/failures/confirmation; immutable resume and precision checks |
+| Observed native calibration binding | `search/runtime_identity.py` | Fresh, sanitized worker Python on both nodes; versions/selected binaries and 16 GPU identities before/after execution |
+| Unified CLI | `workloads search --strategy model-based` | CPU by default, explicit `--execute-native` after calibration; legacy search unchanged |
 
 Simulator times in unit tests are **synthetic nanoseconds**, not real model or
 GPU measurements. A resource envelope includes its internal overlap; adding its
@@ -125,14 +127,50 @@ python scripts/distillctl.py workloads search \
 This emits a plan; it does not launch it. Lowering rebuilds the adapter graph,
 verifies calibration hashes, and checks the selected decision vector against the
 actual native candidate. Saved synthetic fixtures or changed DAGs are rejected.
-The existing native runner now supports an explicit matching generated control;
-it rejects mixing the generated precision family with legacy arms. Automatic
-model-search budget execution and calibration collection remain to be connected.
+The existing native runner supports an explicit matching generated control;
+it rejects mixing the generated precision family with legacy arms. The validation
+controller now connects calibrated proposals to this runner. Native operation
+calibration collection remains outstanding: the controller cannot run without
+real, current-source calibration/layout receipts.
+
+```bash
+# Proposed only: calibration/layout collection is NOT_RUN in the current pilot.
+# A fresh validation journal must not overwrite the completed anchor runs.
+python scripts/distillctl.py workloads search \
+  --strategy model-based --workload wan13b_nogan_resident_best \
+  --planning-layout native-stage-layout.json --cost-model native-stage-costs.json \
+  --execute-native --assets-config assets.json --run-id new-generated-validation \
+  --validation-dir new-validation-journal --max-trials 6 \
+  --output new-native-validation-result.json
+```
+
+The total budget includes baseline, incumbent, new plans and independent
+confirmation (eight means **1 + 1 + at most 5 + 1**, not eight candidates plus
+anchors). The current pilot has already spent two timing attempts, so its next
+session has at most **six remaining**, including any source-required replacement
+anchors. Do not reset the overall experiment budget when changing a commit.
+Failed/aborted attempts consume budget. Resume rechecks the small receipts and
+refuses an incomplete run; it never retries a possibly live worker. Numerical
+`REVIEW` remains diagnostic and cannot produce a strict winner. Predictions and
+measured errors are stored separately; native latency never gets replaced by a
+model estimate. This does not update a canonical profile.
+
+The new model-based runner does not accept expected environment/hardware
+fingerprints simply echoed into measurements. It collects both nodes' actual
+Python/Torch/CUDA/NCCL/package and selected-binary identities, GPU UUIDs and
+topology in the same sanitized import environment as the native launcher.
+Calibration and execution observations must agree before correctness workers,
+before timing and after execution. Collection itself creates no CUDA context.
+This is a versions/selected-binaries check, **not** a full-environment hash or a
+replacement for the dispatcher's GPU ownership lock. The `be877cef` anchor
+experiments predate this additional machine-readable gate and are not relabeled
+as having used it.
 
 ## Acceptance remaining before a planner speed claim
 
-- LiveWan/H3 planning adapters and generated native lowering. Wan's source-bound
-  adapter/parameter lowering is CPU-tested, but still awaits native validation.
+- LiveWan/H3 planning adapters and generated native lowering. Wan's generated
+  FSDP control and Resident incumbent now have native two-cycle validation;
+  newly searched non-seed combinations have not been run.
 - Finer calibrated operator/layer costs, G/C ordering/pool lowering, and shared
   backbone placement choices; no unsupported TP/PP, dynamic repartition or
   fabricated pool mappings.
@@ -156,7 +194,8 @@ Inherited source: `d310597e774b18fea98118e00a58a4b912e89f19`, based on fetched m
   `tests/test_refactor_*.py`: **509 passed, 17 skipped**; skipped tests are
   not claimed as passing GPU checks.
 - Existing five-workload integration/source-hash/compile/shell checks: **PASS**.
-- Native generated-plan GPU runs/calibration: **NOT_RUN**.
+- Wan generated control/incumbent: native validation below. Operation
+  calibration and automatic model-generated non-seed GPU search: **NOT_RUN**.
 - No historical timing has been relabeled as a result of this branch.
 
 Small local evidence:
@@ -164,3 +203,28 @@ Small local evidence:
 Raw model/profile assets remain remote. Two-node read-only preflight found 16
 idle A100s and the prior Torch 2.10/CUDA 12.8 environment, but this does not grant
 a future GPU lock; ownership must be checked again at launch.
+
+## Native Wan bridge acceptance
+
+Experiment source: `be877cef1b3599266a4d8b75f304006653cae5b9`.
+Both generated implementations completed two-cycle correctness on 16/16 ranks,
+then one independent two-cycle unprofiled timing run each. Every rank ended at
+G4/C20/EMA20. No new OOM; owned teardown and subsequent idle/lock audit passed.
+
+| Generated implementation | Cycle 1 (warm-up) | Cycle 2 | Peak allocated |
+|---|---:|---:|---:|
+| world16 FSDP control, chunk512, epilogue off | 45.774857 s | 36.443519 s | 4.298 GiB |
+| Resident incumbent, chunk2048, epilogue on | 27.660358 s | 24.628109 s | 21.899 GiB |
+
+The diagnostic cycle-2 ratio is **1.479753x**. This is an **incumbent
+revalidation**, not a new plan discovered by the model search and not a
+placement-only ablation (the Resident implementation also selects existing
+reduction/kernel policies). Both arms explicitly observed TF32 enabled; neither
+is compared against historical TF32-off data. Coarse two-cycle trajectory
+comparison passed; strict P0 numerical equivalence remains **NOT_ESTABLISHED**.
+The native comparator's legacy status string contains `50C`, but this run
+executed **two**, not fifty, cycles.
+
+Evidence: `docs/experiments/DMD_JOINT_PLANNER_WAN_BRIDGE_20260907.md` and
+`artifacts/manifests/dmd_joint_planner_wan_bridge_20260907.json`. Publication
+commits after `be877cef` do not relabel the experiment's source revision.

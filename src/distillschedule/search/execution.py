@@ -126,11 +126,12 @@ class NativeTrialRunner:
         self.prepared: dict[str, dict[str, Any]] = {}
         self.trajectories: dict[str, dict[str, Any]] = {}
 
-    def _rpc(self, action: str, **kwargs: Any) -> dict[str, Any]:
+    def _rpc(self, action: str, *, _node_rank: int = 0, **kwargs: Any) -> dict[str, Any]:
         import shlex
         import subprocess
         from distillschedule.workloads.best_known.dispatch import ssh_command
-        node = self.assets["nodes"][0]
+        require(type(_node_rank) is int and _node_rank in (0, 1), "invalid RPC node rank")
+        node = self.assets["nodes"][_node_rank]
         python = str(Path(node["python_env"]) / "bin/python")
         worker = str(Path(node["repo_root"]) / "scripts/distillschedule/run_best_known_workload.py")
         command = [*ssh_command(node), shlex.join(["env", "PYTHONDONTWRITEBYTECODE=1",
@@ -205,13 +206,33 @@ class NativeTrialRunner:
         return self.prepared[c.id]
 
     def __call__(self, candidate: Candidate, phase: str, directory: Path) -> dict[str, Any]:
+        model_based = "environment_fingerprint" in self.identity
+        if model_based:
+            # Check both allocations/environments before even a correctness
+            # worker can run. Never accept a caller-supplied digest by echo.
+            self._observe_model_runtime(candidate)
         prepared = self._prepare(candidate)
         receipt = self._rpc("resolve", workload=self.workload, candidate_id=candidate.id,
             assets=prepared["assets"], run_id=self.run_prefix + "-" + directory.name,
             mode="diagnostic-timing")
+        before = self._observe_model_runtime(candidate, receipt=receipt) if model_based else None
         require(receipt["asset_fingerprint"] == self.identity["asset_fingerprint"], "prepared asset identity changed")
         write_new_json(directory / "execution-plan.json", receipt)
         run_plan(receipt, coordinator_output=directory / "dispatch")
         raw = self._rpc("measurement", receipt=receipt, preparation=prepared, identity=self.identity)
+        if model_based:
+            raw["runtime_identity_evidence"] = {
+                "before": before, "after": self._observe_model_runtime(candidate, receipt=receipt)}
+            from .runtime_identity import verify_measurement_runtime
+            verify_measurement_runtime(raw, self.identity)
         validate_measurement(raw, self.identity, candidate)
         return raw
+
+    def _observe_model_runtime(self, candidate: Candidate, *, receipt: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        from .runtime_identity import verify_observed_binding
+        if receipt is None:
+            receipt = self._rpc("resolve", workload=self.workload, candidate_id=candidate.id,
+                assets=self.assets, run_id=self.run_prefix + "-identity-" + candidate.id, mode="correctness")
+        nodes = [self._rpc("runtime_identity", _node_rank=i, node_rank=i, receipt=receipt) for i in (0, 1)]
+        verify_observed_binding(nodes, self.identity)
+        return nodes

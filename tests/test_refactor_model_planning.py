@@ -215,7 +215,8 @@ def test_incomplete_problem_fields_rejected(bad):
             replace(p, binding={k: v for k, v in p.binding.items() if k != bad})
 
 
-def test_cli_model_based_search_is_explicitly_cpu_only(tmp_path):
+@pytest.mark.parametrize("budget", [3, 6, 8])
+def test_cli_model_based_search_is_explicitly_cpu_only(tmp_path, budget):
     p, c, _ = fixture()
     problem_path, cost_path = tmp_path / "problem.json", tmp_path / "costs.json"
     problem_path.write_text(json.dumps(p.to_dict()))
@@ -223,12 +224,15 @@ def test_cli_model_based_search_is_explicitly_cpu_only(tmp_path):
     output = tmp_path / "result.json"
     command = [sys.executable, str(ROOT / "scripts/distillctl.py"), "workloads", "search",
                "--strategy", "model-based", "--workload", p.workload, "--problem", str(problem_path),
-               "--cost-model", str(cost_path), "--max-proposals", "8", "--exhaustive", "--output", str(output)]
+               "--cost-model", str(cost_path), "--max-proposals", "8", "--exhaustive",
+               "--max-trials", str(budget), "--output", str(output)]
     completed = subprocess.run(command, cwd=ROOT, text=True, capture_output=True)
     assert completed.returncode == 0, completed.stderr
     result = json.loads(output.read_text())
     assert result["status"] == "PASS_CPU_SEARCH"
     assert result["native_trial_budget"]["actual_runs"] == 0
+    assert result["native_trial_budget"]["total"] == budget
+    assert result["native_trial_budget"]["new_candidates"] == budget - 3
     assert result["native_lowering"] == "NOT_IMPLEMENTED_FOR_GENERATED_PLANS"
     # A second invocation may not overwrite an existing evidence file.
     assert subprocess.run(command, cwd=ROOT, capture_output=True).returncode != 0

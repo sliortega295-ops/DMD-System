@@ -169,6 +169,9 @@ def handle_request(payload: dict[str, Any]) -> dict[str, Any]:
     dirty = subprocess.check_output(["git", "-C", str(root), "status", "--porcelain"], text=True)
     require(not dirty.strip(), "remote search checkout is dirty")
     action = payload.get("action")
+    if action == "runtime_identity":
+        from .runtime_identity import collect_planned_node_identity
+        return collect_planned_node_identity(payload["receipt"], node_rank=payload["node_rank"])
     if action == "resolve":
         candidate = get_candidate(payload["workload"], payload["candidate_id"])
         require(candidate.executable, "candidate native two-cycle adapter unavailable")
