@@ -80,15 +80,23 @@ def collect_planned_node_identity(receipt: dict[str, Any], *, node_rank: int) ->
     require(type(node_rank) is int and node_rank in (0, 1), "invalid identity node")
     root = repository_root()
     validated_profile(receipt, root=root)
-    require(receipt["profile_id"] == WAN, "runtime identity adapter not implemented for this workload")
+    require(receipt["profile_id"] in {WAN, "livewan_crossscale_pipeline_best", "minimax_h3_grid1000_best"},
+            "runtime identity adapter not implemented for this workload")
     require(receipt["integration_head"] == git_head(root), "runtime probe source changed")
     node = receipt["nodes"][node_rank]
     require(Path(node["repo_root"]).resolve() == root.resolve(), "runtime probe on wrong source checkout")
     require(Path(node["python"]).resolve() == Path(sys.executable).resolve(), "runtime probe on wrong Python")
     code = ("import json; from distillschedule.search.runtime_identity import collect_node_identity; "
             f"print(json.dumps(collect_node_identity(source_head={git_head(root)!r}, node_rank={node_rank})))")
+    if receipt["profile_id"] == WAN:
+        env = wan_probe_environment(node)
+    else:
+        from distillschedule.workloads.best_known.dispatch import clean_environment
+        env = clean_environment(node)
+        if receipt["profile_id"] == "livewan_crossscale_pipeline_best":
+            env["LD_LIBRARY_PATH"] = str(Path(node["python"]).parent.parent / "lib")
     result = subprocess.check_output([node["python"], "-c", code], cwd=root,
-        env=wan_probe_environment(node), text=True, timeout=90)
+        env=env, text=True, timeout=90)
     return json.loads(result)
 
 

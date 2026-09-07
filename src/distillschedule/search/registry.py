@@ -73,6 +73,12 @@ def candidates(workload: str) -> tuple[Candidate, ...]:
 
 
 def get_candidate(workload: str, candidate_id: str) -> Candidate:
+    from .h3_implementation import H3, H3Implementation
+    from .livewan_implementation import LiveWanImplementation
+    if workload == H3 and candidate_id.startswith("joint-h3"):
+        return H3Implementation.parse(candidate_id).candidate()
+    if workload == LIVEWAN and candidate_id.startswith("joint-livewan"):
+        return LiveWanImplementation.parse(candidate_id).candidate()
     from .wan_implementation import PREFIX, WanImplementation
     if workload == WAN and candidate_id.startswith(PREFIX):
         return WanImplementation.parse(candidate_id).candidate()
@@ -93,6 +99,12 @@ def candidate_profile(candidate: Candidate, *, root: Path | None = None) -> dict
     """Compile only a registered recipe. No arbitrary env override API."""
     root = root or repository_root()
     require(candidate == get_candidate(candidate.workload, candidate.id), "candidate payload was altered")
+    if candidate.workload == "minimax_h3_grid1000_best" and candidate.id.startswith("joint-h3"):
+        from .h3_implementation import H3Implementation
+        return H3Implementation.parse(candidate.id).lower_profile(root=root)
+    if candidate.workload == LIVEWAN and candidate.id.startswith("joint-livewan"):
+        from .livewan_implementation import LiveWanImplementation
+        return LiveWanImplementation.parse(candidate.id).lower_profile(root=root)
     p = copy.deepcopy(load_profile(candidate.workload, root=root))
     original_semantics = semantic_contract(p)
     p["display_name"] = f"Search recipe: {candidate.workload}/{candidate.id}"
@@ -128,6 +140,10 @@ def candidate_profile(candidate: Candidate, *, root: Path | None = None) -> dict
         p["contract"]["final_versions"] = {"generator": 4, "critic": 20, "ema": 20}
     elif candidate.workload == LIVEWAN:
         is_baseline = candidate.id == "fsdp-reference"
+        p["allowed_run_modes"] = [*p["allowed_run_modes"], "calibration"]
+        runtime["native_run_modes"]["calibration"] = "two-cycle-timing"
+        env["DISTILLSCHEDULE_SEARCH_CANDIDATE_ID"] = candidate.id
+        env["DISTILLSCHEDULE_LIVEWAN_OPERATION_CALIBRATION"] = "0"
         env["LIVEWAN_PIPELINE_VARIANT"] = candidate.variant
         env["LIVEWAN_TWO_CYCLE_ARM_ID"] = "search-" + candidate.id
         env["LIVEWAN_TRAJECTORY_ARM_ID"] = "search-" + candidate.id

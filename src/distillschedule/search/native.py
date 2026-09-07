@@ -93,10 +93,14 @@ def _command(node: dict[str, Any], args: list[str], log: Path) -> None:
 
 
 def prepare_pair(reference: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any]:
+    if reference["profile_id"] == "minimax_h3_grid1000_best":
+        from .h3_native_bridge import prepare_pair as h3_pair
+        return h3_pair(reference, candidate)
     from .wan_implementation import PREFIX, WanImplementation
     ref_id = reference["search_candidate"]["id"]
     new_ref = reference["profile_id"] == WAN and ref_id.startswith(PREFIX)
-    require(ref_id == "fsdp-reference" or (new_ref and WanImplementation.parse(ref_id).placement == "fsdp"),
+    require(ref_id == "fsdp-reference" or ref_id == "joint-livewan1-fsdp-m0-g0-r0"
+            or (new_ref and WanImplementation.parse(ref_id).placement == "fsdp"),
             "unregistered baseline")
     require(new_ref == candidate["search_candidate"]["id"].startswith(PREFIX),
             "generated pair cannot mix precision contracts with legacy measurements")
@@ -191,10 +195,17 @@ def handle_request(payload: dict[str, Any]) -> dict[str, Any]:
     if action == "prepare_pair":
         return prepare_pair(payload["reference"], payload["candidate"])
     if action == "measurement":
+        if payload["receipt"]["profile_id"] == "minimax_h3_grid1000_best":
+            from .h3_native_bridge import normalize_native
+            return normalize_native(payload["receipt"], payload["preparation"], payload["identity"])
         from .measurement import normalize_native
         return normalize_native(payload["receipt"], payload["preparation"], payload["identity"])
     if action == "wan_stage_calibration":
         from .wan_calibration_evidence import assemble_native
+        return assemble_native(payload["receipt"], payload["preparation"], payload["identity"],
+                               payload["runtime_identity_evidence"])
+    if action == "macro_calibration":
+        from .native_macro_adapter import assemble_native
         return assemble_native(payload["receipt"], payload["preparation"], payload["identity"],
                                payload["runtime_identity_evidence"])
     raise ValueError(f"unsupported search action: {action}")

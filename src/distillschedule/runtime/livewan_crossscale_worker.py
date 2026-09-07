@@ -140,10 +140,16 @@ def _require(condition: bool, message: str) -> None:
         raise RuntimeError(message)
 
 
+_operation_calibrator = None  # process-local, explicit diagnostic opt-in only
+
+
 @contextmanager
 def _profile_range(torch: Any, *, run_kind: str, label: str):
     """Add profile-only NVTX without changing the formal timing path."""
-    if run_kind == "profile":
+    if _operation_calibrator is not None:
+        with _operation_calibrator.range(label):
+            yield
+    elif run_kind == "profile":
         with torch.cuda.nvtx.range(label):
             yield
     else:
@@ -4513,6 +4519,18 @@ def run_worker(
         dist.barrier()
     torch.cuda.synchronize(device)
     timing_start_event = torch.cuda.Event(enable_timing=True) if two_cycle_timing else None
+    global _operation_calibrator
+    calibration_flag = os.environ.get("DISTILLSCHEDULE_LIVEWAN_OPERATION_CALIBRATION", "0")
+    _require(calibration_flag in {"0", "1"}, "invalid operation calibration flag")
+    _require(_operation_calibrator is None, "operation calibrator already active")
+    if calibration_flag == "1":
+        _require(two_cycle_timing, "operation calibration requires the two-cycle native path")
+        from distillschedule.search.async_range_calibration import AsyncRangeCollector
+        _operation_calibrator = AsyncRangeCollector(
+            torch=torch, device=device, rank=rank,
+            source_head=os.environ["LIVEWAN_EXPECTED_HEAD"],
+            implementation=os.environ.get("DISTILLSCHEDULE_SEARCH_CANDIDATE_ID", ""),
+        )
     if timing_start_event is not None:
         timing_start_event.record(torch.cuda.current_stream(device))
     timing_start_ns = time.perf_counter_ns()
@@ -4693,6 +4711,12 @@ def run_worker(
     dist.barrier()
     timing_stop_ns = time.perf_counter_ns()
     full5_wall = time.perf_counter() - start
+    operation_calibration = None
+    if _operation_calibrator is not None:
+        operation_calibration = _operation_calibrator.finish()
+        _operation_calibrator = None
+        atomic_json(output_dir / "operation_calibration" / f"rank_{rank:03d}.json",
+                    operation_calibration)
     if is_profile:
         dist.barrier()
         torch.cuda.cudart().cudaProfilerStop()
@@ -4992,6 +5016,11 @@ def run_worker(
         "full5_wall_seconds": full5_wall,
         "two_cycle_timing": two_cycle_timing_receipt,
         "two_cycle_profile": two_cycle_profile_gate,
+        "operation_calibration": ({
+            "enabled": True, "calibration_only": True, "formal_timing_eligible": False,
+            "path": str(output_dir / "operation_calibration" / f"rank_{rank:03d}.json"),
+            "status": operation_calibration["status"],
+        } if operation_calibration is not None else {"enabled": False}),
         "profiled": False if two_cycle_timing else is_profile,
         "construction_wall_seconds": build_wall,
         "setup_memory": setup_memory,
@@ -5166,6 +5195,8 @@ def _run_baseline(
                 )
                 bundle.critic_optimizer.step()
                 versions["critic"] += 1
+                if _operation_calibrator is not None:
+                    _operation_calibrator.boundary(cycle=global_step // 5 + 1, step=step)
 
 
 def _run_baseline_trajectory(
@@ -5306,6 +5337,8 @@ def _run_baseline_two_cycle_timing(
         "sequential timing trace must contain exactly two cycles",
     )
     for cycle in range(TWO_CYCLE_TIMING_CYCLES):
+        if _operation_calibrator is not None:
+            _operation_calibrator.cycle = cycle + 1
         _run_baseline(
             torch=torch,
             rank=rank,
@@ -6327,6 +6360,8 @@ def _run_pipeline_8x8(
                 )
                 bundle.critic_optimizer.step()
                 versions["critic"] += 1
+                if _operation_calibrator is not None:
+                    _operation_calibrator.boundary(cycle=global_step // 5 + 1, step=step)
     if runahead_host_transport is not None and not is_generator and finalize_host_transport:
         runahead_host_transport.finish()
         evidence.generator_runahead_transport = runahead_host_transport.receipt()
@@ -6886,6 +6921,8 @@ def _run_pipeline_8x8_continuous(
     pending_logical_score_calls: dict[str, int] = {}
 
     for cycle in range(trace.cycles):
+        if _operation_calibrator is not None:
+            _operation_calibrator.cycle = cycle + 1
         cycle_started = time.perf_counter()
         if trajectory_mode:
             incoming_application_calls = pending_application_calls

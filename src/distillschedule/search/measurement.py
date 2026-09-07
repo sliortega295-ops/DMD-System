@@ -29,6 +29,7 @@ def normalize_native(receipt: dict[str, Any], preparation: dict[str, Any],
     comparison = read(Path(preparation["comparison"]["path"]))
     validate_native_comparison(comparison)
     require(summary.get("profiled") is False and summary.get("profiler_status") == "NOT_RUN", "profiled receipt")
+    require(not summary.get("calibration_only"), "operation calibration is not native timing")
     require(summary.get("cycles_in_same_process") == 2 and summary["cycle_2"]["claimable"] is True,
             "native two-cycle timer missing")
     require(not list(out.rglob("*.nsys-rep")) and not list(out.rglob("*.sqlite")), "profile artifacts in native run")

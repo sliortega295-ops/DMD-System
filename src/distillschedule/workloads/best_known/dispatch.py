@@ -53,6 +53,16 @@ def validate_local(receipt: dict[str, Any], *, root: Path) -> dict[str, Any]:
     _require(not dirty.strip(), "run requires a clean committed integration checkout")
     for node in receipt["nodes"]:
         for key, expected in profile["runtime"]["environment"].items():
+            if (receipt["mode"] == "calibration" and receipt["profile_id"] == "minimax_h3_grid1000_best"
+                    and "search_candidate" in receipt and key == "H3_PLANNER_CALIBRATION"):
+                _require(expected == "0", "H3 calibration must have a disabled default")
+                expected = "1"
+            if (receipt["mode"] == "calibration"
+                    and receipt["profile_id"] == "livewan_crossscale_pipeline_best"
+                    and "search_candidate" in receipt
+                    and key == "DISTILLSCHEDULE_LIVEWAN_OPERATION_CALIBRATION"):
+                _require(expected == "0", "calibration must be opt-in over a disabled default")
+                expected = "1"
             _require(node["environment"].get(key) == expected, f"canonical environment override: {key}")
         _require(node["command"][1] == str(Path(node["repo_root"])/profile["runtime"]["launcher"]), "noncanonical launcher")
     layout = source_layout(root, profile, verify_upstreams=True)

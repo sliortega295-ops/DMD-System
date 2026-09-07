@@ -43,6 +43,11 @@ class H3A100LoopMixin:
 
     def train(self):
         resume_ckpt_path, current_iter = self._resolve_resume_a100()
+        planner_observer = getattr(self, "planner_cycle_observer", None)
+        if planner_observer is not None:
+            planner_observer.validate_start(
+                self, current_iter=current_iter, resume_ckpt_path=resume_ckpt_path
+            )
         self.setup(resume_ckpt_path=resume_ckpt_path)
         if is_main_process():
             os.makedirs(self.output_train_dir, exist_ok=True)
@@ -61,6 +66,8 @@ class H3A100LoopMixin:
         )
         if torch.cuda.is_available():
             torch.cuda.reset_peak_memory_stats()
+        if planner_observer is not None:
+            planner_observer.after_setup(self)
 
         while current_iter < self.max_train_iters:
             if self.matched_compute_enabled:
@@ -74,10 +81,15 @@ class H3A100LoopMixin:
             self._begin_fa3_replay_cache_cycle()
             self._begin_lora_scale1_cycle()
             runtime_state_start = self.shared_model.runtime_state_stats()
+            if planner_observer is not None:
+                planner_observer.before_cycle(self, current_iter)
+                planner_observer.start_cycle(current_iter)
             with self._nvtx("h3/student_step"):
                 running_dmd = self._student_step(samples, grad_accum_iters, current_iter)
             with self._nvtx("h3/critic_phase"):
                 running_fake = self._fake_steps(samples, grad_accum_iters)
+            if planner_observer is not None:
+                planner_observer.stop_cycle(current_iter)
             if self.matched_compute_enabled:
                 self._validate_matched_cycle(current_iter)
             self._validate_boundary_offload_cycle(current_iter)
@@ -106,6 +118,8 @@ class H3A100LoopMixin:
                 runtime_state_end["physical_role"],
                 runtime_state_end["physical_training_mode"],
             )
+            if planner_observer is not None:
+                planner_observer.after_cycle(self, current_iter, running_dmd, running_fake)
 
             current_iter += 1
             # Scalar logging is outside the model-compute/timing range.  Keep
@@ -188,6 +202,9 @@ class H3A100LoopMixin:
         torch.nn.utils.clip_grad_norm_(self.trainable_params, self.max_grad_norm)
         self._log_residency("before_student_optimizer")
         self.optimizer.step()
+        planner_observer = getattr(self, "planner_cycle_observer", None)
+        if planner_observer is not None:
+            planner_observer.note_update("student")
         self.lr_scheduler.step()
         self._log_residency("after_student_optimizer")
         self.optimizer.zero_grad(set_to_none=True)
@@ -266,6 +283,9 @@ class H3A100LoopMixin:
         torch.nn.utils.clip_grad_norm_(self.fake_trainable_params, self.max_grad_norm)
         self._log_residency("before_fake_optimizer")
         self.fake_optimizer.step()
+        planner_observer = getattr(self, "planner_cycle_observer", None)
+        if planner_observer is not None:
+            planner_observer.note_update("fake")
         self.fake_lr_scheduler.step()
         self._log_residency("after_fake_optimizer")
         self.fake_optimizer.zero_grad(set_to_none=True)

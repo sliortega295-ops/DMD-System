@@ -93,6 +93,10 @@ def summary_command(receipt: dict[str, Any]) -> list[str] | None:
             "--execution-mode", "pipeline", "--run-kind", receipt["mode"],
             "--trace", env["LIVEWAN_OPERATION_TRACE"], "--plan", str(Path(run)/"resolved_plan.node0.json"),
             "--expected-head", receipt["integration_head"], *tail]
+    if p["id"] == "minimax_h3_grid1000_best" and "search_candidate" in receipt:
+        return prefix + ["-m", "distillschedule.search.h3_native", "summarize",
+            "--candidate-id", receipt["search_candidate"]["id"],
+            "--expected-head", receipt["integration_head"], *tail]
     return None
 
 

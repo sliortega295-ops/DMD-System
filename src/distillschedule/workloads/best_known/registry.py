@@ -280,6 +280,13 @@ def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: P
     for i, n in enumerate(assets["nodes"]):
         rr = Path(n["repo_root"])
         env = dict(profile["runtime"]["environment"])
+        if workload == "livewan_crossscale_pipeline_best" and mode == "calibration":
+            _require(env.get("DISTILLSCHEDULE_LIVEWAN_OPERATION_CALIBRATION") == "0",
+                     "only source-registered LiveWan candidates support operation calibration")
+            env["DISTILLSCHEDULE_LIVEWAN_OPERATION_CALIBRATION"] = "1"
+        if workload == "minimax_h3_grid1000_best" and mode == "calibration":
+            _require(env.get("H3_PLANNER_CALIBRATION") == "0", "H3 calibration requires generated native adapter")
+            env["H3_PLANNER_CALIBRATION"] = "1"
         env.update({d["environment"]: assets["assets"][k]["path"] for k, d in profile["required_assets"].items()})
         env.update(DMD_SYSTEM_ROOT=str(rr), DISTILLSCHEDULE_PYENV=n["python_env"],
                    DISTILLSCHEDULE_RUN_ROOT=output, DISTILLSCHEDULE_OUTPUT_DIR=output,
@@ -296,6 +303,12 @@ def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: P
             env["LIGHTX2V_ROOT"] = str(rr/"third_party/lightx2v")
             env["H3_OUTPUT_DIR"] = str(Path(output)/"h3")
             env["H3_CONFIG"] = str(Path(output)/f"h3-config-node{i}.json")
+            if "diffusers_source" in assets["assets"]:
+                env["H3_DIFFUSERS_SOURCE"] = assets["assets"]["diffusers_source"]["path"]
+                env["LD_LIBRARY_PATH"] = os.pathsep.join((
+                    str(Path(n["python_env"])/"lib/python3.10/site-packages/torch/lib"),
+                    "/usr/lib/x86_64-linux-gnu", "/usr/local/cuda/targets/x86_64-linux/lib"))
+                env.update(USE_TF="0", TRANSFORMERS_NO_TF="1", PYTHONNOUSERSITE="1")
         if workload == "livewan_crossscale_pipeline_best":
             # Source overlay is generated from pinned submodules, never an old experimental worktree.
             source_receipt = _object(Path(env["LIVEWAN_SOURCE_RECEIPT"]))
@@ -315,6 +328,8 @@ def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: P
             pp.append(env["HELIOS_RUNTIME_ROOT"])
         if workload == "minimax_h3_grid1000_best":
             pp += [env["LIGHTX2V_ROOT"], str(Path(env["LIGHTX2V_ROOT"])/"lightx2v_train")]
+            if env.get("H3_DIFFUSERS_SOURCE"):
+                pp.insert(0, str(Path(env["H3_DIFFUSERS_SOURCE"])/"src"))
         if workload == "livewan_crossscale_pipeline_best":
             pp = [env["LIVEWAN_PYTHON_OVERLAY"], *pp, str(rr/"third_party/livewan"), env["LIVEWAN_WAN21_SOURCE"]]
         env["PYTHONPATH"] = os.pathsep.join(pp)

@@ -38,8 +38,8 @@ def resolve_candidate(workload: str, candidate_id: str, *, root: Path | None = N
 
 def validated_profile(receipt: dict[str, Any], *, root: Path) -> dict[str, Any]:
     if "model_plan" in receipt:
-        from .wan_model_adapter import validate_lowered_plan
-        validate_lowered_plan(receipt)
+        from .model_adapters import adapter_for
+        adapter_for(receipt["profile_id"]).validate_lowered_plan(receipt)
     c = get_candidate(receipt["profile_id"], receipt["search_candidate"]["id"])
     require(fingerprint(receipt["search_candidate"]) == fingerprint(c.to_dict()), "search candidate changed")
     p = candidate_profile(c, root=root)
@@ -117,11 +117,14 @@ class NativeTrialRunner:
         self.output, self.run_prefix = Path(output), run_prefix
         self.bootstrap_peer = get_candidate(workload, bootstrap_peer)
         self.reference = get_candidate(workload, reference_id)
-        require(self.reference.placement == "world16-fsdp", "reference must use world16 FSDP")
+        require(self.reference.placement in {"world16-fsdp", "world16-fsdp2"}, "reference must use world16 FSDP")
         require(self.bootstrap_peer.executable and bootstrap_peer != reference_id, "invalid bootstrap peer")
         from .wan_implementation import PREFIX
         require(self.reference.id.startswith(PREFIX) == self.bootstrap_peer.id.startswith(PREFIX),
                 "cannot mix generated precision contract and legacy search arms")
+        for family in ("joint-livewan1-", "joint-h3v1-"):
+            require(self.reference.id.startswith(family) == self.bootstrap_peer.id.startswith(family),
+                    "cannot mix generated native family and legacy arms")
         require(fingerprint(assets["assets"]) == identity["asset_fingerprint"], "asset identity mismatch")
         self.prepared: dict[str, dict[str, Any]] = {}
         self.trajectories: dict[str, dict[str, Any]] = {}
@@ -240,17 +243,19 @@ class NativeTrialRunner:
     def calibrate(self, candidate: Candidate, *, directory: Path) -> dict[str, Any]:
         """One diagnostic collection, not a timing trial or a matrix search."""
         from .wan_implementation import PREFIX
-        require(candidate.workload == WAN and candidate.id.startswith(PREFIX), "native calibration adapter unavailable")
+        require((candidate.workload == WAN and candidate.id.startswith(PREFIX)) or
+                candidate.id.startswith(("joint-livewan1-", "joint-h3v1-")), "native calibration adapter unavailable")
         directory.mkdir(exist_ok=False)
         self._observe_model_runtime(candidate)
         prepared = self._prepare(candidate)
         receipt = self._rpc("resolve", workload=self.workload, candidate_id=candidate.id,
-            assets=prepared["assets"], run_id=self.run_prefix + "-calibration", mode="calibration")
+            assets=prepared["assets"], run_id=self.run_prefix + "-cal-" + candidate.id, mode="calibration")
         before = self._observe_model_runtime(candidate, receipt=receipt)
         write_new_json(directory / "execution-plan.json", receipt)
         run_plan(receipt, coordinator_output=directory / "dispatch")
         after = self._observe_model_runtime(candidate, receipt=receipt)
-        value = self._rpc("wan_stage_calibration", receipt=receipt, preparation=prepared,
+        value = self._rpc("wan_stage_calibration" if candidate.workload == WAN else "macro_calibration",
+            receipt=receipt, preparation=prepared,
             identity=self.identity, runtime_identity_evidence={"before": before, "after": after})
         write_new_json(directory / "result.json", value)
         return value

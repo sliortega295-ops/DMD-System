@@ -23,7 +23,7 @@ from .simulator import simulate
 
 
 class ModelValidationSession:
-    """First lowering is Wan; unsupported adapters fail before any GPU launch.
+    """Source-owned lowerers only; unsupported adapters fail before GPU launch.
 
     ``execute`` is the existing NativeTrialRunner, not an arbitrary shell plan.
     Tests inject a receipt producer to exercise failures without GPU resources.
@@ -33,11 +33,12 @@ class ModelValidationSession:
     def __init__(self, *, problem: PlanningProblem, costs: CostModel,
                  prediction: Mapping[str, Any], output: Path,
                  max_trials: int = 8, resume: bool = False):
-        from .wan_model_adapter import validate_native_problem
-        from .wan_implementation import WanImplementation
+        from .model_adapters import adapter_for
+        self.adapter = adapter_for(problem.workload)
+        Implementation = self.adapter.implementation_type
         require(type(max_trials) is int and 3 <= max_trials <= 8,
                 "total timing budget must be 3..8 including anchors and confirmation")
-        validate_native_problem(problem)
+        self.adapter.validate_native_problem(problem)
         costs.verify_receipts()
         validate_saved_prediction(prediction, problem, costs)
         require(len(problem.seeds) == 2 and problem.seeds[0] != problem.seeds[1],
@@ -51,10 +52,10 @@ class ModelValidationSession:
         for assignment in assignments:
             actual = simulate(problem, assignment, costs)
             require(actual["status"] == "PREDICTED_FEASIBLE", "native proposal is not calibrated/feasible")
-            implementation = WanImplementation.from_assignment(assignment)
+            implementation = Implementation.from_assignment(assignment)
             self.predictions[implementation.id] = actual
             self.candidates[implementation.id] = get_candidate(problem.workload, implementation.id)
-        self.seeds = tuple(WanImplementation.from_assignment(s).id for s in problem.seeds)
+        self.seeds = tuple(Implementation.from_assignment(s).id for s in problem.seeds)
         self.ranked = sorted((cid for cid in self.candidates if cid not in self.seeds),
             key=lambda cid: (self.predictions[cid]["predicted_cycle2_ns"], cid))
         self.spec = {"schema_version": "distillschedule.model_validation.v1",
@@ -123,10 +124,9 @@ class ModelValidationSession:
         # This is the graph-to-native binding proof. NativeTrialRunner resolves
         # the same typed implementation with fresh run IDs and native gates;
         # calibration paths need not be copied to every GPU worker filesystem.
-        from .wan_model_adapter import lower_prediction
         selection = {"problem_sha256": self.problem.digest, "cost_model_sha256": self.costs.digest,
                      "predicted_best": self.predictions[cid]}
-        plan = lower_prediction(selection, self.problem, self.costs, run_id=directory.name)
+        plan = self.adapter.lower_prediction(selection, self.problem, self.costs, run_id=directory.name)
         require(plan["search_candidate"] == self.candidates[cid].to_dict(), "lowering changed candidate")
         write_new_json(directory / "model-lowering.json", plan)
         self._append({"type": "START", "trial_id": directory.name, "candidate_id": cid, "phase": phase})
