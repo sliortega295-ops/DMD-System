@@ -264,14 +264,14 @@ def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: P
     receipt["scope"] = "RESOLVED_NOT_EXECUTED"
     correctness = assets.get("correctness")
     comparison = assets.get("trajectory_comparison")
-    if workload.startswith("wan13b") and native_mode == "two-cycle-timing":
+    if workload.startswith("wan13b") and native_mode in {"two-cycle-timing", "two-cycle-calibration"}:
         _require(isinstance(comparison, dict) and set(comparison) == {"path", "sha256"}
                  and Path(comparison["path"]).is_absolute()
                  and bool(SHA256_RE.fullmatch(comparison["sha256"])),
                  "Wan two-cycle timing requires a hash-bound native trajectory comparison")
     elif comparison is not None:
         _require(False, "trajectory_comparison is only used by Wan native two-cycle timing")
-    if mode in {"timing", "diagnostic-timing"}:
+    if mode in {"timing", "diagnostic-timing", "calibration"}:
         _require(isinstance(correctness, dict) and set(correctness) == {"path", "sha256"},
                  "timing requires an explicit correctness receipt path and SHA256")
         _require(Path(correctness["path"]).is_absolute() and bool(SHA256_RE.fullmatch(correctness["sha256"])),

@@ -220,7 +220,7 @@
           "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
         }
       ],
-      "integrated_sha256": "6cc3db60c911cc987901149c123912ffb9838f5cbc911c2d70ceaec995245f86",
+      "integrated_sha256": "c5ef834564761d78664106abb94430c3710bd9a34485f18692cb91eb32965bfb",
       "integration_note": " | Joint planner opt-in Wan composition/precision wiring, legacy defaults unchanged; GPU revalidation pending.",
       "source_commit": "67b2880901abece947732ba5de45a5c2685ab274",
       "source_path": "scripts/distillschedule/launch_wan13b_fair_world16_node.sh",
@@ -934,7 +934,7 @@
           "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
         }
       ],
-      "integrated_sha256": "d6ec0a0450aad62d60092b1a9c33ad6be39dc5908f4d2ae9d114dccff55672d5",
+      "integrated_sha256": "fd4ca6ea4e8248ea83d022e73c267e188d1c203fd39a5405354928193f2ef59a",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/dispatch.py",
       "source_repository": "integration-pr26",
@@ -949,7 +949,7 @@
           "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
         }
       ],
-      "integrated_sha256": "177256925e73e7badd0ed9680b9d03380677315337c4acf625e2aaf0338652ae",
+      "integrated_sha256": "bfd6e473269e70ef4f5b76649e7a9df33f8f43acda0df1e1db9eb1b7c1cb2f58",
       "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution.",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/evidence.py",
@@ -965,7 +965,7 @@
           "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
         }
       ],
-      "integrated_sha256": "82a6637a1d28ef3ece2db6de032370f96e45515a35335739aff099107268a03b",
+      "integrated_sha256": "b97c8c547aa4eb87b0165944b318642ec3d1be45ace5c6fb481b6aa49d2f7a02",
       "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution.",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/registry.py",
@@ -1777,7 +1777,7 @@
       "target": "src/distillschedule/runtime/nsys_range.py"
     },
     {
-      "integrated_sha256": "13b1fea3eebce48c8697fae53c3c89bfb48b80e7733f645d4882edf3bd9c164c",
+      "integrated_sha256": "c83fe65557defc8fe29456891bdbab3cbb8637aec9fdfcde54ee37e22e6891b4",
       "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math. | Joint planner opt-in Wan composition/precision wiring, legacy defaults unchanged; GPU revalidation pending.",
       "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
       "source_path": "scripts/distillschedule/probe_wan13b_two_cycle_timing_world16.py",
@@ -1786,7 +1786,7 @@
       "target": "scripts/distillschedule/probe_wan13b_two_cycle_timing_world16.py"
     },
     {
-      "integrated_sha256": "cde25b175d76604115919aef519c957338760c67d62b470e2ab57dfc78ef85c6",
+      "integrated_sha256": "c21b5416f176b5428e2cc38607899ab689d95e1e71122788f18c48c93a60e85f",
       "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math. | Joint planner opt-in Wan composition/precision wiring, legacy defaults unchanged; GPU revalidation pending.",
       "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
       "source_path": "scripts/distillschedule/summarize_wan13b_two_cycle_timing_world16.py",

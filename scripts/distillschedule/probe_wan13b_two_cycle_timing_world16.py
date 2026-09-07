@@ -22,6 +22,7 @@ import socket
 import sys
 import time
 import traceback
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
@@ -106,6 +107,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--expected-correctness-hash", required=True)
     value.add_argument("--trajectory-comparison-receipt", type=Path, required=True)
     value.add_argument("--expected-trajectory-comparison-hash", required=True)
+    value.add_argument("--calibrate-stages", action="store_true", help="Diagnostic only: synchronized macro-stage cost collection; never formal timing")
     return value
 
 
@@ -306,60 +308,65 @@ def _run_workload_cycle(
     clean_runtime: bool,
     runtime_cache: dict[str, Any] | None,
     deferred_finite_checks: list[torch.Tensor],
+    calibrator: Any = None,
+    cycle: int = 1,
 ) -> dict[str, Any]:
     """Execute G1/C5/EMA5 without CPU evidence extraction or serialization."""
 
     critic_entries: dict[int, Any] = {}
-    generator_record = p0._run_nogan_generator_update_p0(
-        rank=rank,
-        device=device,
-        generator_engine=generator_engine,
-        critic_engine=critic_engine,
-        trace=trace,
-        negative=negative,
-        collect_diagnostics=False,
-        collect_scalars=False,
-        diagnostics=diagnostics,
-        policy=policy,
-        score_pack_parity_check=False,
-        clean_runtime=clean_runtime,
-        runtime_cache=runtime_cache,
-        deferred_finite_checks=deferred_finite_checks,
-    )
-    rollout_outputs, rollout_records, _persistence = p0._precompute_critic_rollouts(
-        rank=rank,
-        steps=SOURCE_STEPS,
-        device=device,
-        generator_engine=generator_engine,
-        trace=trace,
-        policy=policy,
-        collect_diagnostics=False,
-        diagnostics=diagnostics,
-        rollout_parity_check=False,
-        clean_runtime=clean_runtime,
-        runtime_cache=runtime_cache,
-        entry_outputs=critic_entries,
-    )
+    with calibrator.stage(cycle, "generator_update") if calibrator is not None else nullcontext():
+        generator_record = p0._run_nogan_generator_update_p0(
+            rank=rank,
+            device=device,
+            generator_engine=generator_engine,
+            critic_engine=critic_engine,
+            trace=trace,
+            negative=negative,
+            collect_diagnostics=False,
+            collect_scalars=False,
+            diagnostics=diagnostics,
+            policy=policy,
+            score_pack_parity_check=False,
+            clean_runtime=clean_runtime,
+            runtime_cache=runtime_cache,
+            deferred_finite_checks=deferred_finite_checks,
+        )
+    with calibrator.stage(cycle, "critic_rollouts") if calibrator is not None else nullcontext():
+        rollout_outputs, rollout_records, _persistence = p0._precompute_critic_rollouts(
+            rank=rank,
+            steps=SOURCE_STEPS,
+            device=device,
+            generator_engine=generator_engine,
+            trace=trace,
+            policy=policy,
+            collect_diagnostics=False,
+            diagnostics=diagnostics,
+            rollout_parity_check=False,
+            clean_runtime=clean_runtime,
+            runtime_cache=runtime_cache,
+            entry_outputs=critic_entries,
+        )
     critic_records: list[dict[str, Any]] = []
     for source_step in SOURCE_STEPS:
-        critic_records.append(
-            p0._run_nogan_critic_precomputed(
-                rank=rank,
-                step=source_step,
-                x0=rollout_outputs[source_step],
-                device=device,
-                critic_engine=critic_engine,
-                trace=trace,
-                collect_diagnostics=False,
-                collect_scalars=False,
-                diagnostics=diagnostics,
-                entry=critic_entries[source_step],
-                runtime_cache=runtime_cache,
-                deferred_finite_checks=deferred_finite_checks,
+        with calibrator.stage(cycle, f"critic{source_step - 10}_update_ema") if calibrator is not None else nullcontext():
+            critic_records.append(
+                p0._run_nogan_critic_precomputed(
+                    rank=rank,
+                    step=source_step,
+                    x0=rollout_outputs[source_step],
+                    device=device,
+                    critic_engine=critic_engine,
+                    trace=trace,
+                    collect_diagnostics=False,
+                    collect_scalars=False,
+                    diagnostics=diagnostics,
+                    entry=critic_entries[source_step],
+                    runtime_cache=runtime_cache,
+                    deferred_finite_checks=deferred_finite_checks,
+                )
             )
-        )
-        ema.step()
-        del rollout_outputs[source_step]
+            ema.step()
+            del rollout_outputs[source_step]
     return {
         "generator": generator_record,
         "rollouts": rollout_records,
@@ -581,6 +588,9 @@ def main() -> int:
     if profiler_environment["lora_operator_attribution"] != "0":
         raise ValueError("two-cycle native timing cannot enable LoRA profiling")
 
+    from distillschedule.search.wan_implementation import current_implementation
+    if args.calibrate_stages and current_implementation() is None:
+        raise ValueError("calibration requires a generated native Wan implementation")
     arm = _validate_arm_environment(args.placement)
     correctness = _load_correctness_binding(args, expected_arm=arm)
     correctness_run_id = correctness.get("run_id")
@@ -603,7 +613,9 @@ def main() -> int:
     torch.cuda.manual_seed_all(runtime_seed)
     output = args.output_dir / "ranks" / f"rank_{rank:02d}.json"
     result: dict[str, Any] = {
-        "schema_version": "distillschedule.wan13b_two_cycle_timing_rank.v1",
+        "schema_version": ("distillschedule.wan13b_two_cycle_calibration_rank.v1" if args.calibrate_stages else "distillschedule.wan13b_two_cycle_timing_rank.v1"),
+        "calibration_only": args.calibrate_stages,
+        "formal_timing_eligible": not args.calibrate_stages,
         "status": "RUNNING",
         "run_id": args.run_id,
         "expected_head": args.expected_head,
@@ -623,13 +635,14 @@ def main() -> int:
         "profiler_environment": profiler_environment,
         "cycle_contract": {
             "cycles_in_same_process": TIMED_CYCLES,
-            "cycle_1_role": "WARMUP_DIAGNOSTIC",
-            "cycle_2_role": "STEADY_STATE_CLAIMABLE",
-            "claimable_cycle": 2,
+            "cycle_1_role": "STAGE_CALIBRATION_DIAGNOSTIC" if args.calibrate_stages else "WARMUP_DIAGNOSTIC",
+            "cycle_2_role": "STAGE_CALIBRATION_DIAGNOSTIC" if args.calibrate_stages else "STEADY_STATE_CLAIMABLE",
+            "claimable_cycle": None if args.calibrate_stages else 2,
             "trace_replay_policy": "FIXED_FIVE_STEP_COHORT_REPLAY",
             "updates_per_cycle": {"generator": 1, "critic": 5, "ema": 5},
         },
     }
+    calibrator = None
     try:
         contract = base.contract_for_variant("no-gan")
         bootstrap = base.Wan13BBootstrap.load(
@@ -713,6 +726,10 @@ def main() -> int:
         if initial_versions != {"generator": 2, "critic": 10, "ema": 10}:
             raise AssertionError("two-cycle bootstrap versions changed")
 
+        if args.calibrate_stages:
+            from distillschedule.search.wan_stage_calibration import StageCalibrator
+            calibrator = StageCalibrator(torch=torch, distributed=dist, device=device, rank=rank,
+                implementation=current_implementation(), source_head=args.expected_head)
         torch.cuda.reset_peak_memory_stats(device)
         deferred_finite_checks: list[torch.Tensor] = []
         finite_slices: list[tuple[int, int]] = []
@@ -738,6 +755,8 @@ def main() -> int:
                 clean_runtime=clean_runtime,
                 runtime_cache=runtime_cache,
                 deferred_finite_checks=deferred_finite_checks,
+                calibrator=calibrator,
+                cycle=cycle,
             )
             torch.cuda.synchronize(device)
             dist.barrier()
@@ -748,7 +767,7 @@ def main() -> int:
             timing_rows.append(
                 {
                     "cycle": cycle,
-                    "role": "WARMUP_DIAGNOSTIC" if cycle == 1 else "STEADY_STATE_CLAIMABLE",
+                    "role": ("STAGE_CALIBRATION_DIAGNOSTIC" if args.calibrate_stages else ("WARMUP_DIAGNOSTIC" if cycle == 1 else "STEADY_STATE_CLAIMABLE")),
                     "start_unix_ns": start_ns,
                     "stop_unix_ns": stop_ns,
                     "local_elapsed_seconds": elapsed,
@@ -809,8 +828,13 @@ def main() -> int:
             },
             evidence_extraction="AFTER_BOTH_TIMED_WINDOWS",
             state_anchors="NOT_COLLECTED_IN_TIMING_MODE",
-            claimable_cycle=2,
+            claimable_cycle=None if args.calibrate_stages else 2,
         )
+        if calibrator is not None:
+            calibrated = calibrator.finish()
+            result["stage_calibration"] = calibrated
+            result["memory"].update(max_allocated_bytes=calibrated["peak_allocated_bytes"],
+                                    max_reserved_bytes=calibrated["peak_reserved_bytes"])
         _atomic_json(output, result)
         dist.barrier()
         return 0
@@ -826,6 +850,8 @@ def main() -> int:
             error=str(error),
             traceback=traceback.format_exc(),
         )
+        if calibrator is not None:
+            result["stage_calibration"] = calibrator.snapshot()
         try:
             result["memory_failure"] = base._memory(device)
         except BaseException:

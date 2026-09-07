@@ -24,7 +24,7 @@ def clean_environment(node: dict[str, Any]) -> dict[str, str]:
 
 
 def _correctness_binding(receipt: dict[str, Any]) -> None:
-    if receipt["mode"] not in {"timing", "diagnostic-timing"}:
+    if receipt["mode"] not in {"timing", "diagnostic-timing", "calibration"}:
         return
     binding = receipt["asset_config"]["correctness"]
     path = Path(binding["path"])

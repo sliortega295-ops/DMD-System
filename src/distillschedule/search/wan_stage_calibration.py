@@ -146,10 +146,40 @@ class StageCalibrator:
                 self._fail(row, "after_clock", error)
                 first_error = error
         memory_error = self._observe_memory(row["memory_after"], row=row)
+        for key in ("peak_allocated_bytes", "peak_reserved_bytes"):
+            if key in row["memory_after"]:
+                row["memory_after"][key] = max(row["memory_after"][key], row["inner_reset_peaks"][key])
+        self._remember_memory(row["memory_after"])
         if "peak_allocated_bytes" in row["memory_after"]:
             row["workspace_bytes_per_rank"] = max(
                 0, row["memory_after"]["peak_allocated_bytes"] - self._static_bytes)
         return first_error if first_error is not None else memory_error
+
+    @contextmanager
+    def _preserve_inner_peaks(self, row: dict[str, Any]) -> Iterator[None]:
+        """Observe pre-reset peaks without suppressing existing runtime resets.
+
+        FSDP's native rollout helpers reset statistics several times within the
+        five-rollout macro-stage. This process-local wrapper exists only during
+        explicit calibration, calls the original reset, adds no CUDA sync/copy,
+        and is restored even when model execution fails. No site-package edits.
+        """
+        original = self._cuda.reset_peak_memory_stats
+
+        def reset(*args: Any, **kwargs: Any) -> Any:
+            for key, api in (("peak_allocated_bytes", "max_memory_allocated"),
+                             ("peak_reserved_bytes", "max_memory_reserved")):
+                peak = nonnegative(getattr(self._cuda, api)(self._device), key)
+                row["inner_reset_peaks"][key] = max(row["inner_reset_peaks"][key], peak)
+            self._remember_memory(row["inner_reset_peaks"])
+            row["nested_peak_reset_count"] += 1
+            return original(*args, **kwargs)
+
+        self._cuda.reset_peak_memory_stats = reset
+        try:
+            yield
+        finally:
+            self._cuda.reset_peak_memory_stats = original
 
     @contextmanager
     def stage(self, cycle: int, stage_name: str) -> Iterator[None]:
@@ -173,7 +203,9 @@ class StageCalibrator:
                "operation_contract_sha256": fingerprint(contract),
                "memory_definition": contract["memory_definition"], "timing_definition": contract["timing_definition"],
                "status": "INCOMPLETE", "start_ns": None, "stop_ns": None, "duration_ns": None,
-               "workspace_bytes_per_rank": None, "memory_before": {}, "memory_after": {}, "errors": []}
+               "workspace_bytes_per_rank": None, "memory_before": {}, "memory_after": {}, "errors": [],
+               "nested_peak_reset_count": 0,
+               "inner_reset_peaks": {"peak_allocated_bytes": 0, "peak_reserved_bytes": 0}}
         self._stages.append(row)
         self._active = row
         try:
@@ -187,7 +219,8 @@ class StageCalibrator:
                 self._fail(row, "before", error)
                 raise
             try:
-                yield
+                with self._preserve_inner_peaks(row):
+                    yield
             except BaseException as error:
                 self._fail(row, "body", error)
                 self._observe_after(row)  # Never mask the original body exception.

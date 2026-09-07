@@ -45,13 +45,15 @@ def summary_command(receipt: dict[str, Any]) -> list[str] | None:
     tail = ["--run-root", run, "--output", str(Path(run)/"native-summary.json")]
     if p["id"].startswith("wan13b"):
         native_mode = receipt.get("native_mode")
-        if native_mode in {"trajectory", "two-cycle-timing"}:
+        if native_mode in {"trajectory", "two-cycle-timing", "two-cycle-calibration"}:
             stem = "trajectory" if native_mode == "trajectory" else "two_cycle_timing"
             command = prefix + [str(root / f"scripts/distillschedule/summarize_wan13b_{stem}_world16.py"),
                 "--placement", p["topology"]["placement"],
                 "--expected-head", receipt["integration_head"], *tail]
             if native_mode == "trajectory":
                 command += ["--cycles", "2"]
+            elif native_mode == "two-cycle-calibration":
+                command += ["--calibrate-stages"]
             return command
         return prefix + [str(root/"scripts/distillschedule/summarize_wan13b_fair_world16.py"),
                          "--placement", p["topology"]["placement"], "--mode", receipt["mode"], *tail]

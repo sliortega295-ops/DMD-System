@@ -193,4 +193,8 @@ def handle_request(payload: dict[str, Any]) -> dict[str, Any]:
     if action == "measurement":
         from .measurement import normalize_native
         return normalize_native(payload["receipt"], payload["preparation"], payload["identity"])
+    if action == "wan_stage_calibration":
+        from .wan_calibration_evidence import assemble_native
+        return assemble_native(payload["receipt"], payload["preparation"], payload["identity"],
+                               payload["runtime_identity_evidence"])
     raise ValueError(f"unsupported search action: {action}")

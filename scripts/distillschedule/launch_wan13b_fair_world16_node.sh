@@ -4,7 +4,7 @@ set -Eeuo pipefail
 
 NODE_RANK="${1:?node rank 0 or 1}"
 RUN_ID="${2:?immutable run id}"
-MODE="${3:?validate, correctness, timing, diagnostic-timing, profile, trajectory, or two-cycle-timing}"
+MODE="${3:?validate, correctness, timing, diagnostic-timing, profile, trajectory, two-cycle-timing, or two-cycle-calibration}"
 EXPECTED_HEAD="${4:?expected DMD-System HEAD}"
 MASTER_ADDR="${5:?node0 routable address}"
 MASTER_PORT="${6:?world16 rendezvous port}"
@@ -13,7 +13,7 @@ PLACEMENT="${7:?resident, resident-clean, resident-async128, resident-async128-t
 [[ "${NODE_RANK}" == 0 || "${NODE_RANK}" == 1 ]] || exit 2
 [[ "${MODE}" == validate || "${MODE}" == correctness || "${MODE}" == timing || \
    "${MODE}" == diagnostic-timing || "${MODE}" == profile || \
-   "${MODE}" == trajectory || "${MODE}" == two-cycle-timing ]] || exit 2
+   "${MODE}" == trajectory || ( "${MODE}" == two-cycle-timing || "${MODE}" == two-cycle-calibration ) ]] || exit 2
 [[ "${PLACEMENT}" == resident || "${PLACEMENT}" == resident-ddp || \
    "${PLACEMENT}" == resident-clean || "${PLACEMENT}" == resident-async128 || \
    "${PLACEMENT}" == resident-async128-tree || \
@@ -63,7 +63,7 @@ if [[ "${MODE}" == trajectory ]]; then
      "${TRAJECTORY_CYCLES}" == 50 ]] || exit 2
   [[ "${TRAJECTORY_SEED}" =~ ^[0-9]+$ && -n "${TRAJECTORY_ARM_ID}" ]] || exit 2
 fi
-if [[ "${MODE}" == two-cycle-timing ]]; then
+if [[ ( "${MODE}" == two-cycle-timing || "${MODE}" == two-cycle-calibration ) ]]; then
   WORKER="${ROOT}/scripts/distillschedule/probe_wan13b_two_cycle_timing_world16.py"
   [[ "${TWO_CYCLE_SEED}" =~ ^[0-9]+$ && -n "${TWO_CYCLE_ARM_ID}" ]] || exit 2
 fi
@@ -78,7 +78,7 @@ LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS="${DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_
 GENERATOR_NOGRAD_LORA_CAST_CACHE="${DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE:-0}"
 GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE="${DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE:-0}"
 
-if [[ "${MODE}" == trajectory || "${MODE}" == two-cycle-timing ]]; then
+if [[ "${MODE}" == trajectory || ( "${MODE}" == two-cycle-timing || "${MODE}" == two-cycle-calibration ) ]]; then
   if [[ -n "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID:-}" ]]; then
     PYTHONPATH="${ROOT}/src:${ROOT}" "${PYTHON}" - "${PLACEMENT}" <<'PYCHECK'
 import os, sys
@@ -103,7 +103,7 @@ PYCHECK
   fi
 fi
 
-if [[ "${MODE}" == two-cycle-timing ]]; then
+if [[ ( "${MODE}" == two-cycle-timing || "${MODE}" == two-cycle-calibration ) ]]; then
   [[ -f "${TRAJECTORY_COMPARISON_RECEIPT}" ]] || {
     echo trajectory_comparison_receipt_missing >&2; exit 3;
   }
@@ -166,7 +166,7 @@ HELIOS_TRANSFORMER="${HELIOS}/helios/modules/transformer_helios.py"
 }
 
 if [[ "${MODE}" == timing || "${MODE}" == diagnostic-timing || \
-      "${MODE}" == profile || "${MODE}" == two-cycle-timing ]]; then
+      "${MODE}" == profile || ( "${MODE}" == two-cycle-timing || "${MODE}" == two-cycle-calibration ) ]]; then
   [[ -f "${CORRECTNESS_RECEIPT}" ]] || { echo correctness_receipt_missing >&2; exit 3; }
   [[ "${CORRECTNESS_SHA256}" =~ ^[0-9a-f]{64}$ ]] || { echo correctness_hash_missing >&2; exit 3; }
   [[ "$(sha256sum "${CORRECTNESS_RECEIPT}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || {
@@ -184,7 +184,7 @@ mode = sys.argv[3]
 expected_helios_sha256 = sys.argv[4]
 expected_head, bootstrap_hash, trace_hash = sys.argv[5:8]
 two_cycle_seed, two_cycle_arm_id = int(sys.argv[8]), sys.argv[9]
-if mode == "two-cycle-timing":
+if mode in {"two-cycle-timing", "two-cycle-calibration"}:
     if value.get("schema_version") != "distillschedule.wan13b_trajectory_summary.v1":
         raise SystemExit("two-cycle timing requires a trajectory correctness summary")
     required = {
@@ -229,7 +229,7 @@ if mode == "timing":
         raise SystemExit(
             f"correctness receipt does not cover requested placement {placement}: {placements}"
         )
-elif mode != "two-cycle-timing":
+elif mode not in {"two-cycle-timing", "two-cycle-calibration"}:
     if value.get("status") != "PASS" or value.get("mode") != "correctness":
         raise SystemExit("diagnostic timing requires a PASS semantic correctness summary")
     if value.get("placement") != placement or value.get("rank_count") != 16:
@@ -353,7 +353,7 @@ optimizer_offload=false
 parameter_streaming=false
 model_swap=false
 python_runtime_lib_path=${PYENV}/lib
-claim_boundary=$( if [[ "${MODE}" == two-cycle-timing ]]; then echo STEADY_STATE_CYCLE2_UNPROFILED; elif [[ "${MODE}" == diagnostic-timing || "${MODE}" == profile || "${MODE}" == trajectory ]]; then echo DIAGNOSTIC_ONLY; else echo FORMAL_GATE_BOUND; fi )
+claim_boundary=$( if [[ "${MODE}" == two-cycle-calibration ]]; then echo NATIVE_STAGE_CALIBRATION_ONLY; elif [[ ( "${MODE}" == two-cycle-timing || "${MODE}" == two-cycle-calibration ) ]]; then echo STEADY_STATE_CYCLE2_UNPROFILED; elif [[ "${MODE}" == diagnostic-timing || "${MODE}" == profile || "${MODE}" == trajectory ]]; then echo DIAGNOSTIC_ONLY; else echo FORMAL_GATE_BOUND; fi )
 EOF
 if [[ "${MODE}" == trajectory ]]; then
   cat >>"${NODE_LOG}/launch_manifest.txt" <<EOF
@@ -362,10 +362,10 @@ trajectory_seed=${TRAJECTORY_SEED}
 trajectory_arm_id=${TRAJECTORY_ARM_ID}
 EOF
 fi
-if [[ "${MODE}" == two-cycle-timing ]]; then
+if [[ ( "${MODE}" == two-cycle-timing || "${MODE}" == two-cycle-calibration ) ]]; then
   cat >>"${NODE_LOG}/launch_manifest.txt" <<EOF
 two_cycle_count=2
-two_cycle_claimable_cycle=2
+two_cycle_claimable_cycle=$( if [[ "${MODE}" == two-cycle-calibration ]]; then echo NONE; else echo 2; fi )
 two_cycle_trace_replay_policy=FIXED_FIVE_STEP_COHORT_REPLAY
 two_cycle_seed=${TWO_CYCLE_SEED}
 two_cycle_arm_id=${TWO_CYCLE_ARM_ID}
@@ -398,7 +398,7 @@ if [[ "${MODE}" == trajectory ]]; then
     --trajectory-arm-id "${TRAJECTORY_ARM_ID}"
   )
 fi
-if [[ "${MODE}" == two-cycle-timing ]]; then
+if [[ ( "${MODE}" == two-cycle-timing || "${MODE}" == two-cycle-calibration ) ]]; then
   WORKER_ARGS+=(
     --timing-seed "${TWO_CYCLE_SEED}"
     --timing-arm-id "${TWO_CYCLE_ARM_ID}"
@@ -408,6 +408,13 @@ if [[ "${MODE}" == two-cycle-timing ]]; then
     --trajectory-comparison-receipt "${TRAJECTORY_COMPARISON_RECEIPT}"
     --expected-trajectory-comparison-hash "${TRAJECTORY_COMPARISON_SHA256}"
   )
+fi
+
+if [[ "${MODE}" == two-cycle-calibration ]]; then
+  [[ "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID:-}" == joint-wan1-* ]] || {
+    echo calibration_requires_generated_wan_implementation >&2; exit 2;
+  }
+  WORKER_ARGS+=(--calibrate-stages)
 fi
 
 set +e

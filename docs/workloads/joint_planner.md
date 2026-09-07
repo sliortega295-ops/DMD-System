@@ -248,3 +248,55 @@ zero. The selected-version/binary identity scope remains explicit.
 Receipt: `artifacts/manifests/dmd_joint_planner_runtime_identity_20260907.json`.
 This proves the observation path on the real substrate, not a measured cost
 model, automatically discovered GPU plan or completed LiveWan/H3 pilot.
+
+## Opt-in native stage calibration bridge
+
+The new collector is attached to the existing Wan two-cycle worker's actual
+G update, five-rollout production and five C+EMA call sites. No duplicate
+training loop, model arithmetic or altered call census is introduced. Only
+generated `joint-wan1-*` profiles admit `calibration`; the canonical five
+profiles and registered timing defaults are unchanged.
+
+```bash
+# Without --execute this only writes a NOT_RUN source-only plan.
+python scripts/distillschedule/calibrate_wan_native_stages.py \
+  --implementation joint-wan1-resident-c1024-e1 \
+  --expected-head "$(git rev-parse HEAD)" \
+  --run-id fresh-native-stage-canary --output "${EVIDENCE_ROOT}/new-controller-evidence"
+
+# Explicit GPU opt-in additionally requires --assets-config assets.json --execute.
+# Exactly ONE implementation, current-source correctness preparation, then two
+# calibration cycles. This command never starts the seven-arm matrix or timing.
+```
+
+Each of the fourteen stages uses an entry barrier/device sync and trailing
+device sync. Memory observations and entry synchronization are outside the
+stage's duration. This perturbs cross-stage overlap: **neither cycle wall nor
+sum of stage durations is a formal measurement**. Ordinary timing summaries
+explicitly reject these receipts, including calibration hidden under the old
+timing schema. Failure snapshots preserve partial stages and cannot become PASS.
+
+Collection validates current-source correctness, all sixteen owners, fixed
+sample/trace/versions/census/finite gates, both nodes' observed environment and
+GPU identities before/after, OOM counters and owned teardown. Coarse numeric
+`REVIEW` is retained, never upgraded to strict equivalence. Output consists of
+fourteen content-hashed `operation_calibration.v1` receipts, operation costs and
+a **partial** layout fragment. Unknown implementations remain `UNCALIBRATED`;
+one fragment cannot masquerade as the complete seven-implementation layout.
+
+The operation sample is the maximum rank-local synchronized envelope, not a
+kernel-duration sum. Peak allocation is aggregated across all stage peak resets;
+workspace includes all live bytes above post-setup static allocation, including
+retained rollout outputs. Memory limits subtract boundary-observed non-allocator
+usage plus 2 GiB safety. This is conservative allocator accounting with sampled
+driver information, **not an exact continuously observed driver peak**.
+The calibration context also observes peaks before the FSDP helpers' nested
+`reset_peak_memory_stats` calls, invokes those original resets, and restores the
+process-local wrapper on exit/failure; otherwise earlier rollout peaks vanish.
+
+Calibration GPU expenses and native timing attempts are separate ledger fields.
+This milestone authorizes one non-seed `resident/c1024/epilogue-on` diagnostic
+canary, not a fresh eight-trial budget. Current-source correctness may have to
+be collected again after instrumentation changes; old-source gates are never
+relabelled. The two published timing attempts remain spent; six timing attempts
+remain, and calibration does not establish a new speedup or canonical winner.

@@ -236,3 +236,21 @@ class NativeTrialRunner:
         nodes = [self._rpc("runtime_identity", _node_rank=i, node_rank=i, receipt=receipt) for i in (0, 1)]
         verify_observed_binding(nodes, self.identity)
         return nodes
+
+    def calibrate(self, candidate: Candidate, *, directory: Path) -> dict[str, Any]:
+        """One diagnostic collection, not a timing trial or a matrix search."""
+        from .wan_implementation import PREFIX
+        require(candidate.workload == WAN and candidate.id.startswith(PREFIX), "native calibration adapter unavailable")
+        directory.mkdir(exist_ok=False)
+        self._observe_model_runtime(candidate)
+        prepared = self._prepare(candidate)
+        receipt = self._rpc("resolve", workload=self.workload, candidate_id=candidate.id,
+            assets=prepared["assets"], run_id=self.run_prefix + "-calibration", mode="calibration")
+        before = self._observe_model_runtime(candidate, receipt=receipt)
+        write_new_json(directory / "execution-plan.json", receipt)
+        run_plan(receipt, coordinator_output=directory / "dispatch")
+        after = self._observe_model_runtime(candidate, receipt=receipt)
+        value = self._rpc("wan_stage_calibration", receipt=receipt, preparation=prepared,
+            identity=self.identity, runtime_identity_evidence={"before": before, "after": after})
+        write_new_json(directory / "result.json", value)
+        return value

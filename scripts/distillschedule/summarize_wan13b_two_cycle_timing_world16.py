@@ -104,7 +104,7 @@ def _normalize_rollout_contract(
     return result
 
 
-def _parse_manifest(path: Path, *, node: int, errors: list[str]) -> dict[str, str]:
+def _parse_manifest(path: Path, *, node: int, errors: list[str], calibrate: bool = False) -> dict[str, str]:
     try:
         rows = [line.split("=", 1) for line in path.read_text().splitlines() if "=" in line]
     except OSError as error:
@@ -112,15 +112,15 @@ def _parse_manifest(path: Path, *, node: int, errors: list[str]) -> dict[str, st
         return {}
     value = {key: item for key, item in rows}
     required = {
-        "mode": "two-cycle-timing",
+        "mode": "two-cycle-calibration" if calibrate else "two-cycle-timing",
         "world_size": "16",
         "global_batch": "16",
         "rollout_batch_size": "1",
         "score_packing": "false",
         "two_cycle_count": "2",
-        "two_cycle_claimable_cycle": "2",
+        "two_cycle_claimable_cycle": "NONE" if calibrate else "2",
         "two_cycle_trace_replay_policy": "FIXED_FIVE_STEP_COHORT_REPLAY",
-        "claim_boundary": "STEADY_STATE_CYCLE2_UNPROFILED",
+        "claim_boundary": "NATIVE_STAGE_CALIBRATION_ONLY" if calibrate else "STEADY_STATE_CYCLE2_UNPROFILED",
         "parameter_offload": "false",
         "activation_offload": "false",
         "optimizer_offload": "false",
@@ -264,6 +264,7 @@ def main() -> int:
     parser.add_argument("--placement", required=True)
     parser.add_argument("--expected-head", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--calibrate-stages", action="store_true", help="Accept diagnostic stage receipts, never produce claimable native timing")
     args = parser.parse_args()
     errors: list[str] = []
     if args.placement not in registered_placements():
@@ -276,6 +277,7 @@ def main() -> int:
             args.run_root / "launcher" / f"node_{node}" / "launch_manifest.txt",
             node=node,
             errors=errors,
+            calibrate=args.calibrate_stages,
         )
         for node in range(2)
     ]
@@ -318,7 +320,19 @@ def main() -> int:
             errors.append(f"rank{rank}: invalid timing receipt: {error}")
             continue
         rows.append(row)
-        if row.get("schema_version") != "distillschedule.wan13b_two_cycle_timing_rank.v1":
+        expected_schema = ("distillschedule.wan13b_two_cycle_calibration_rank.v1" if args.calibrate_stages
+                           else "distillschedule.wan13b_two_cycle_timing_rank.v1")
+        if args.calibrate_stages:
+            try:
+                from distillschedule.search.wan_calibration_evidence import validate_rank
+                if row.get("calibration_only") is not True or row.get("formal_timing_eligible") is not False or row.get("claimable_cycle") is not None:
+                    raise ValueError("calibration run lacks non-claimable boundary")
+                validate_rank(row["stage_calibration"], source_head=args.expected_head, rank=rank, placement=args.placement)
+            except (KeyError, TypeError, ValueError) as error:
+                errors.append(f"rank{rank}: invalid stage calibration: {error}")
+        elif row.get("calibration_only") or "stage_calibration" in row or row.get("formal_timing_eligible") is False:
+            errors.append(f"rank{rank}: calibration cannot enter native timing")
+        if row.get("schema_version") != expected_schema:
             errors.append(f"rank{rank}: timing receipt schema changed")
         if row.get("status") != "PASS" or row.get("rank") != rank:
             errors.append(f"rank{rank}: rank receipt is not PASS")
@@ -393,7 +407,7 @@ def main() -> int:
         if len(cycles) != 2:
             errors.append(f"rank{rank}: expected exactly two cycle timers")
         else:
-            expected_roles = ("WARMUP_DIAGNOSTIC", "STEADY_STATE_CLAIMABLE")
+            expected_roles = (("STAGE_CALIBRATION_DIAGNOSTIC",) * 2 if args.calibrate_stages else ("WARMUP_DIAGNOSTIC", "STEADY_STATE_CLAIMABLE"))
             for expected_cycle, (cycle, expected_role) in enumerate(zip(cycles, expected_roles, strict=True), start=1):
                 if cycle.get("cycle") != expected_cycle or cycle.get("role") != expected_role:
                     errors.append(f"rank{rank}: cycle timer identity changed")
@@ -573,10 +587,12 @@ def main() -> int:
 
     memory_rows = [row.get("memory", {}) for row in rows]
     construction = [float(row.get("construction_seconds", 0.0)) for row in rows]
-    formal = not errors and len(rows) == WORLD_SIZE
+    valid = not errors and len(rows) == WORLD_SIZE
+    formal = valid and not args.calibrate_stages
     summary = {
-        "schema_version": "distillschedule.wan13b_two_cycle_timing_summary.v1",
-        "status": "PASS" if formal else "FAIL",
+        "schema_version": ("distillschedule.wan13b_two_cycle_calibration_summary.v1" if args.calibrate_stages else "distillschedule.wan13b_two_cycle_timing_summary.v1"),
+        "calibration_only": args.calibrate_stages,
+        "status": "PASS" if valid else "FAIL",
         "errors": errors,
         "run_id": manifest_run_id or args.run_root.name,
         "run_root": str(args.run_root.resolve()),
@@ -607,18 +623,18 @@ def main() -> int:
             == payload_mapping_by_cycle[2],
         },
         "cycle_1": {
-            "role": "WARMUP_DIAGNOSTIC",
+            "role": "STAGE_CALIBRATION_DIAGNOSTIC" if args.calibrate_stages else "WARMUP_DIAGNOSTIC",
             "rank_local_seconds": cycle_values[1],
             "world_max_seconds": max(cycle_values[1]) if cycle_values[1] else None,
             "claimable": False,
         },
         "cycle_2": {
-            "role": "STEADY_STATE_CLAIMABLE",
+            "role": "STAGE_CALIBRATION_DIAGNOSTIC" if args.calibrate_stages else "STEADY_STATE_CLAIMABLE",
             "rank_local_seconds": cycle_values[2],
             "world_max_seconds": max(cycle_values[2]) if cycle_values[2] else None,
             "claimable": formal,
         },
-        "speed_claim_denominator": "CYCLE2_WORLD_MAX_ONLY",
+        "speed_claim_denominator": None if args.calibrate_stages else "CYCLE2_WORLD_MAX_ONLY",
         "cycle_1_excluded_from_speed_claim": True,
         "initial_versions": {"generator": 2, "critic": 10, "ema": 10},
         "cycle_versions": list(EXPECTED_VERSIONS),
@@ -651,6 +667,12 @@ def main() -> int:
             for rank in range(WORLD_SIZE)
         ],
     }
+    if args.calibrate_stages:
+        summary["timing_claim"] = "NONE: stage barriers/synchronization perturb the cycle; native cost calibration only"
+        summary["stage_calibration"] = {"operation_count_per_rank": 14,
+            "ranks_validated": WORLD_SIZE if valid else 0,
+            "claimable_for_formal_timing": False,
+            "memory_scope": "TORCH_ALLOCATOR_PEAK_AND_BOUNDARY_SAMPLED_DRIVER_FREE_NOT_CONTINUOUS_DRIVER_PEAK"}
     summary["summary_contract_sha256"] = _canonical_hash({
         "expected_head": summary["expected_head"],
         "placement": summary["placement"],

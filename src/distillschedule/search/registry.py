@@ -120,6 +120,9 @@ def candidate_profile(candidate: Candidate, *, root: Path | None = None) -> dict
             runtime["planner_implementation"] = joint.assignment
         runtime["native_run_modes"] = {"correctness": "trajectory",
                                       "diagnostic-timing": "two-cycle-timing"}
+        if joint is not None:
+            p["allowed_run_modes"] = [*p["allowed_run_modes"], "calibration"]
+            runtime["native_run_modes"]["calibration"] = "two-cycle-calibration"
         runtime["search_two_cycle_ready"] = candidate.executable
         p["contract"]["continuous_cycles"] = 2
         p["contract"]["final_versions"] = {"generator": 4, "critic": 20, "ema": 20}
