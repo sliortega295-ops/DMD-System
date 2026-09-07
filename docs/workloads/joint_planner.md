@@ -228,3 +228,23 @@ executed **two**, not fifty, cycles.
 Evidence: `docs/experiments/DMD_JOINT_PLANNER_WAN_BRIDGE_20260907.md` and
 `artifacts/manifests/dmd_joint_planner_wan_bridge_20260907.json`. Publication
 commits after `be877cef` do not relabel the experiment's source revision.
+
+## Native controller identity probe
+
+Controller implementation `18e889ad3653103e7f1d1aebfb055d71cdc22205` passed
+**521 CPU tests, 17 skipped**, plus the five-workload integration/compile/shell
+checks. A bounded independent review reproduced and verified repairs for
+expected-identity echo and inherited SSH import-path contamination. Full CE
+review orchestration was unavailable; this is not a full review coverage claim.
+
+The exact commit was then deployed to a **new** shared worktree and probed on
+both actual A100 nodes through the native RPC and sanitized worker Python.
+Both observed Python 3.10.20, Torch 2.10.0+cu128, CUDA 12.8, NCCL 2.27.5 and
+eight GPU identities. Neither probe created a CUDA context. No model loading,
+GPU experiment or new timing attempt occurred. Pre/post GPU process lists were
+empty, both node locks were available, and cgroup OOM/oom_kill increments were
+zero. The selected-version/binary identity scope remains explicit.
+
+Receipt: `artifacts/manifests/dmd_joint_planner_runtime_identity_20260907.json`.
+This proves the observation path on the real substrate, not a measured cost
+model, automatically discovered GPU plan or completed LiveWan/H3 pilot.
