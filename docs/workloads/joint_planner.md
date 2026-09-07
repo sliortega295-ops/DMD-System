@@ -116,7 +116,8 @@ Per-rank maxima are conservative, not an assertion that all ranks use equal HBM.
 
 ```bash
 # Runs next to the small native calibration receipts (normally remotely).
-# Requires an actual measured layout + costs, which have NOT been collected yet.
+# Requires the complete measured layout + costs. The pilot below has ONE fragment;
+# the remaining six implementations are not calibrated yet.
 python scripts/distillctl.py workloads search \
   --strategy model-based --workload wan13b_nogan_resident_best \
   --planning-layout native-stage-layout.json --cost-model native-stage-costs.json \
@@ -129,12 +130,13 @@ verifies calibration hashes, and checks the selected decision vector against the
 actual native candidate. Saved synthetic fixtures or changed DAGs are rejected.
 The existing native runner supports an explicit matching generated control;
 it rejects mixing the generated precision family with legacy arms. The validation
-controller now connects calibrated proposals to this runner. Native operation
-calibration collection remains outstanding: the controller cannot run without
-real, current-source calibration/layout receipts.
+controller now connects calibrated proposals to this runner. The native collector
+has produced one current-source fragment (see the pilot below). The controller
+still requires a complete measured layout/cost set; it does not invent missing
+implementation costs or silently reuse historical results.
 
 ```bash
-# Proposed only: calibration/layout collection is NOT_RUN in the current pilot.
+# Proposed only: the complete seven-implementation layout and this search are NOT_RUN.
 # A fresh validation journal must not overwrite the completed anchor runs.
 python scripts/distillctl.py workloads search \
   --strategy model-based --workload wan13b_nogan_resident_best \
@@ -300,3 +302,21 @@ canary, not a fresh eight-trial budget. Current-source correctness may have to
 be collected again after instrumentation changes; old-source gates are never
 relabelled. The two published timing attempts remain spent; six timing attempts
 remain, and calibration does not establish a new speedup or canonical winner.
+
+### Native single-implementation pilot: PASS
+
+Executed source `4e3ffb59c21429f3e9e714f14006f5ae6afbd002`, run
+`jointp_wan_stage_c1024_20260907_r1-calibration`: **16/16 ranks, 224 ordered
+stage observations, 14 verified operation-cost receipts**, final G4/C20/EMA20.
+Peak allocated was 21.90 GiB, with no new CUDA/cgroup OOM and owned teardown
+verified on both nodes. The current-source two-cycle correctness preparations
+passed the existing coarse trajectory gate, not strict numerical equivalence.
+
+This proves actual native collection and receipt ingestion for
+`joint-wan1-resident-c1024-e1`, not a complete search database. The two diagnostic
+cycle envelopes include extra stage synchronization and cannot establish speedup.
+Keep calibration execution at the recorded runtime source/import paths; later
+report-only publication commits do not change the measured source identity.
+
+Report: [native stage calibration](../experiments/DMD_JOINT_PLANNER_NATIVE_CALIBRATION_20260907.md).
+Manifest: `artifacts/manifests/dmd_joint_planner_native_calibration_20260907.json`.
