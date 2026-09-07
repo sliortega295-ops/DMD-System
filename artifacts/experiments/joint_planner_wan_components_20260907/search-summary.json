@@ -1,0 +1,5228 @@
+{
+  "assembly": {
+    "calibrated_implementations": 2,
+    "claimable_speedup": false,
+    "component_count": 24,
+    "cost_model": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/analysis_r1/assembly/cost-model.json",
+    "gpu_execution": "NOT_RUN",
+    "layout": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/analysis_r1/assembly/layout.json",
+    "native_actions": 32,
+    "next_gate": "MODEL_SEARCH_AND_NATIVE_CONFIRMATION",
+    "problem": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/analysis_r1/assembly/problem.json",
+    "source_calibrations": [
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/analysis_r1/inputs/joint-wan2-fsdp-c512-e0-w5.json",
+        "sha256": "2350d99140037bcb8de98910c2754bb8f78393ab8d3284711289702fb9aae6eb"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/analysis_r1/inputs/joint-wan2-resident-c2048-e1-w5.json",
+        "sha256": "7853bcbc251ba616a775f9a7e39b86dd280425572e9ec2d7e55b0d57b1efaac3"
+      }
+    ],
+    "source_head": "ceb2921985e5a855ff93d6c9d7e21e7528b6ef5a",
+    "status": "PASS_COMPONENT_LIBRARY_ASSEMBLY"
+  },
+  "claimable_speedup": false,
+  "feasible": 10,
+  "gpu_execution": "NOT_RUN",
+  "paths": {
+    "root": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/analysis_r1",
+    "search": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/analysis_r1/search.json"
+  },
+  "predicted_best": {
+    "assignment": {
+      "chunk_tokens": "2048",
+      "lora_epilogue": "on",
+      "placement": "resident",
+      "rollout_window": "2"
+    },
+    "claimable_speedup": false,
+    "cost_model_sha256": "1776c338e57971fd0a212373f769f85b3a92c414b2d2beeaedb4f459a1b02ad4",
+    "critical_path_scope": "MODEL_PREDICTION_NOT_NSYS_DEPENDENCY_PROOF",
+    "cycle2_early_activity_sum_ns_not_wall": 0,
+    "cycle2_work_started_before_cycle1_commit": [],
+    "evidence_scope": "MEASURED",
+    "gpu_execution": "NOT_RUN",
+    "memory": [
+      {
+        "limit_bytes": 39313604608,
+        "peak_at_ns": 28451686080,
+        "peak_bytes": 23513754624,
+        "predicted_headroom_bytes": 15799849984,
+        "rank": 0,
+        "static_bytes": 19071560192
+      },
+      {
+        "limit_bytes": 39326187520,
+        "peak_at_ns": 28451686080,
+        "peak_bytes": 23513754624,
+        "predicted_headroom_bytes": 15812432896,
+        "rank": 1,
+        "static_bytes": 19071560192
+      },
+      {
+        "limit_bytes": 39305216000,
+        "peak_at_ns": 28451686080,
+        "peak_bytes": 23513754624,
+        "predicted_headroom_bytes": 15791461376,
+        "rank": 10,
+        "static_bytes": 19071560192
+      },
+      {
+        "limit_bytes": 39263272960,
+        "peak_at_ns": 28451686080,
+        "peak_bytes": 23513754624,
+        "predicted_headroom_bytes": 15749518336,
+        "rank": 11,
+        "static_bytes": 19071560192
+      },
+      {
+        "limit_bytes": 39263272960,
+        "peak_at_ns": 28451686080,
+        "peak_bytes": 23513754624,
+        "predicted_headroom_bytes": 15749518336,
+        "rank": 12,
+        "static_bytes": 19071560192
+      },
+      {
+        "limit_bytes": 39292633088,
+        "peak_at_ns": 28451686080,
+        "peak_bytes": 23513754624,
+        "predicted_headroom_bytes": 15778878464,
+        "rank": 13,
+        "static_bytes": 19071560192
+      },
+      {
+        "limit_bytes": 39313604608,
+        "peak_at_ns": 28451686080,
+        "peak_bytes": 23513754624,
+        "predicted_headroom_bytes": 15799849984,
+        "rank": 14,
+        "static_bytes": 19071560192
+      },
+      {
+        "limit_bytes": 39313604608,
+        "peak_at_ns": 28451686080,
+        "peak_bytes": 23513754624,
+        "predicted_headroom_bytes": 15799849984,
+        "rank": 15,
+        "static_bytes": 19071560192
+      },
+      {
+        "limit_bytes": 39305216000,
+        "peak_at_ns": 28451686080,
+        "peak_bytes": 23513754624,
+        "predicted_headroom_bytes": 15791461376,
+        "rank": 2,
+        "static_bytes": 19071560192
+      },
+      {
+        "limit_bytes": 39263272960,
+        "peak_at_ns": 28451686080,
+        "peak_bytes": 23513754624,
+        "predicted_headroom_bytes": 15749518336,
+        "rank": 3,
+        "static_bytes": 19071560192
+      },
+      {
+        "limit_bytes": 39263272960,
+        "peak_at_ns": 28451686080,
+        "peak_bytes": 23513754624,
+        "predicted_headroom_bytes": 15749518336,
+        "rank": 4,
+        "static_bytes": 19071560192
+      },
+      {
+        "limit_bytes": 39292633088,
+        "peak_at_ns": 28451686080,
+        "peak_bytes": 23513754624,
+        "predicted_headroom_bytes": 15778878464,
+        "rank": 5,
+        "static_bytes": 19071560192
+      },
+      {
+        "limit_bytes": 39313604608,
+        "peak_at_ns": 28451686080,
+        "peak_bytes": 23513754624,
+        "predicted_headroom_bytes": 15799849984,
+        "rank": 6,
+        "static_bytes": 19071560192
+      },
+      {
+        "limit_bytes": 39313604608,
+        "peak_at_ns": 28451686080,
+        "peak_bytes": 23513754624,
+        "predicted_headroom_bytes": 15799849984,
+        "rank": 7,
+        "static_bytes": 19071560192
+      },
+      {
+        "limit_bytes": 39313604608,
+        "peak_at_ns": 28451686080,
+        "peak_bytes": 23513754624,
+        "predicted_headroom_bytes": 15799849984,
+        "rank": 8,
+        "static_bytes": 19071560192
+      },
+      {
+        "limit_bytes": 39326187520,
+        "peak_at_ns": 28451686080,
+        "peak_bytes": 23513754624,
+        "predicted_headroom_bytes": 15812432896,
+        "rank": 9,
+        "static_bytes": 19071560192
+      }
+    ],
+    "memory_reconciliation": "PASS",
+    "predicted_cycle1_ns": 28451686080,
+    "predicted_cycle2_ns": 24513250866,
+    "predicted_total_ns": 52964936946,
+    "problem_sha256": "37afa7aadbcae6269a99fa238e6c67927862fdfa745c2902baf9a9187cfea388",
+    "status": "PREDICTED_FEASIBLE",
+    "timeline": [
+      {
+        "cost_key": "a7d37e25bb6acbe546ba34923644993d5463223923985a4c3f88f8bec65cad59",
+        "critical_predecessors": [],
+        "cycle": 1,
+        "duration_ns": 9590565843,
+        "end_ns": 9590565843,
+        "kind": "generator_update",
+        "operation": "cycle1.g",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 0
+      },
+      {
+        "cost_key": "ffff0b58e0d3a2781d1cf2e8670168b1397aa568be502b6d0dd00b7a4008537c",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.g",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.g",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.g",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.g",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.g",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.g",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.g",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.g",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.g",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.g",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.g",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.g",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.g",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.g",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.g",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.g",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.g",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 1,
+        "duration_ns": 1752359915,
+        "end_ns": 11342925758,
+        "kind": "critic_rollout",
+        "operation": "cycle1.r0",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 9590565843
+      },
+      {
+        "cost_key": "ffff0b58e0d3a2781d1cf2e8670168b1397aa568be502b6d0dd00b7a4008537c",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.r0",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.r0",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.r0",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.r0",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.r0",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.r0",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.r0",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.r0",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.r0",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.r0",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.r0",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.r0",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.r0",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.r0",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.r0",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.r0",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.r0",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 1,
+        "duration_ns": 1752359915,
+        "end_ns": 13095285673,
+        "kind": "critic_rollout",
+        "operation": "cycle1.r1",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 11342925758
+      },
+      {
+        "cost_key": "60b2ea20610b7674c441abd978922fc8a8ee84f93f3788cb41632269eaf5e4ad",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.r1",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.r1",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.r1",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.r1",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.r1",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.r1",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.r1",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.r1",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.r1",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.r1",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.r1",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.r1",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.r1",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.r1",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.r1",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.r1",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.r1",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 1,
+        "duration_ns": 2246290233,
+        "end_ns": 15341575906,
+        "kind": "critic_update",
+        "operation": "cycle1.c0",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 13095285673
+      },
+      {
+        "cost_key": "0acba7a408c12657e19fa3d0fd6afc1665beac70ba9b5e8f472c03f8b1ebcbc1",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.c0",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.c0",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.c0",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.c0",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.c0",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.c0",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.c0",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.c0",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.c0",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.c0",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.c0",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.c0",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.c0",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.c0",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.c0",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.c0",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.c0",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 1,
+        "duration_ns": 19187473,
+        "end_ns": 15360763379,
+        "kind": "ema_update",
+        "operation": "cycle1.e0",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 15341575906
+      },
+      {
+        "cost_key": "4b091a322ecf6ab62cd465296ddaf11b8807b2b4e9d2b8c8283406e837f35d6e",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.e0",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.e0",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.e0",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.e0",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.e0",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.e0",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.e0",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.e0",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.e0",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.e0",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.e0",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.e0",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.e0",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.e0",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.e0",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.e0",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.e0",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 1,
+        "duration_ns": 1234369482,
+        "end_ns": 16595132861,
+        "kind": "critic_rollout",
+        "operation": "cycle1.r2",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 15360763379
+      },
+      {
+        "cost_key": "60b2ea20610b7674c441abd978922fc8a8ee84f93f3788cb41632269eaf5e4ad",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.r2",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.r2",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.r2",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.r2",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.r2",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.r2",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.r2",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.r2",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.r2",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.r2",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.r2",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.r2",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.r2",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.r2",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.r2",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.r2",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.r2",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 1,
+        "duration_ns": 2246290233,
+        "end_ns": 18841423094,
+        "kind": "critic_update",
+        "operation": "cycle1.c1",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 16595132861
+      },
+      {
+        "cost_key": "0acba7a408c12657e19fa3d0fd6afc1665beac70ba9b5e8f472c03f8b1ebcbc1",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.c1",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.c1",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.c1",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.c1",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.c1",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.c1",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.c1",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.c1",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.c1",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.c1",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.c1",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.c1",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.c1",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.c1",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.c1",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.c1",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.c1",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 1,
+        "duration_ns": 19187473,
+        "end_ns": 18860610567,
+        "kind": "ema_update",
+        "operation": "cycle1.e1",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 18841423094
+      },
+      {
+        "cost_key": "de4306fbcbe467ca6056c694f068b28c54ee9e5011cbcdd98129620268ea514e",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.e1",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.e1",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.e1",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.e1",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.e1",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.e1",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.e1",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.e1",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.e1",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.e1",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.e1",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.e1",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.e1",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.e1",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.e1",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.e1",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.e1",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 1,
+        "duration_ns": 1042282480,
+        "end_ns": 19902893047,
+        "kind": "critic_rollout",
+        "operation": "cycle1.r3",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 18860610567
+      },
+      {
+        "cost_key": "60b2ea20610b7674c441abd978922fc8a8ee84f93f3788cb41632269eaf5e4ad",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.r3",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.r3",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.r3",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.r3",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.r3",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.r3",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.r3",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.r3",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.r3",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.r3",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.r3",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.r3",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.r3",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.r3",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.r3",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.r3",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.r3",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 1,
+        "duration_ns": 2246290233,
+        "end_ns": 22149183280,
+        "kind": "critic_update",
+        "operation": "cycle1.c2",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 19902893047
+      },
+      {
+        "cost_key": "0acba7a408c12657e19fa3d0fd6afc1665beac70ba9b5e8f472c03f8b1ebcbc1",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.c2",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.c2",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.c2",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.c2",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.c2",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.c2",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.c2",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.c2",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.c2",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.c2",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.c2",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.c2",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.c2",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.c2",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.c2",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.c2",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.c2",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 1,
+        "duration_ns": 19187473,
+        "end_ns": 22168370753,
+        "kind": "ema_update",
+        "operation": "cycle1.e2",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 22149183280
+      },
+      {
+        "cost_key": "ffff0b58e0d3a2781d1cf2e8670168b1397aa568be502b6d0dd00b7a4008537c",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.e2",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.e2",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.e2",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.e2",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.e2",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.e2",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.e2",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.e2",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.e2",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.e2",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.e2",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.e2",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.e2",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.e2",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.e2",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.e2",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.e2",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 1,
+        "duration_ns": 1752359915,
+        "end_ns": 23920730668,
+        "kind": "critic_rollout",
+        "operation": "cycle1.r4",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 22168370753
+      },
+      {
+        "cost_key": "60b2ea20610b7674c441abd978922fc8a8ee84f93f3788cb41632269eaf5e4ad",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.r4",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.r4",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.r4",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.r4",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.r4",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.r4",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.r4",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.r4",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.r4",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.r4",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.r4",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.r4",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.r4",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.r4",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.r4",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.r4",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.r4",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 1,
+        "duration_ns": 2246290233,
+        "end_ns": 26167020901,
+        "kind": "critic_update",
+        "operation": "cycle1.c3",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 23920730668
+      },
+      {
+        "cost_key": "0acba7a408c12657e19fa3d0fd6afc1665beac70ba9b5e8f472c03f8b1ebcbc1",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.c3",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.c3",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.c3",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.c3",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.c3",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.c3",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.c3",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.c3",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.c3",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.c3",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.c3",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.c3",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.c3",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.c3",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.c3",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.c3",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.c3",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 1,
+        "duration_ns": 19187473,
+        "end_ns": 26186208374,
+        "kind": "ema_update",
+        "operation": "cycle1.e3",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 26167020901
+      },
+      {
+        "cost_key": "60b2ea20610b7674c441abd978922fc8a8ee84f93f3788cb41632269eaf5e4ad",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.e3",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.e3",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.e3",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.e3",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.e3",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.e3",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.e3",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.e3",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.e3",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.e3",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.e3",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.e3",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.e3",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.e3",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.e3",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.e3",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.e3",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 1,
+        "duration_ns": 2246290233,
+        "end_ns": 28432498607,
+        "kind": "critic_update",
+        "operation": "cycle1.c4",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 26186208374
+      },
+      {
+        "cost_key": "0acba7a408c12657e19fa3d0fd6afc1665beac70ba9b5e8f472c03f8b1ebcbc1",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.c4",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.c4",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.c4",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.c4",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.c4",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.c4",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.c4",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.c4",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.c4",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.c4",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.c4",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.c4",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.c4",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.c4",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.c4",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.c4",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.c4",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 1,
+        "duration_ns": 19187473,
+        "end_ns": 28451686080,
+        "kind": "ema_update",
+        "operation": "cycle1.e4",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 28432498607
+      },
+      {
+        "cost_key": "fd5502651d78005e95dedd2fbb16e9b9abb3b900c19590e0f22b0173d0b9ef21",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.e4",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.e4",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.e4",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.e4",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.e4",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.e4",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.e4",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.e4",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.e4",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.e4",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.e4",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.e4",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.e4",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.e4",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.e4",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.e4",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.e4",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 5671254910,
+        "end_ns": 34122940990,
+        "kind": "generator_update",
+        "operation": "cycle2.g",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 28451686080
+      },
+      {
+        "cost_key": "5143765f835f88d7df4128d5f8dc7c48179b20c64197539b908a537712726389",
+        "critical_predecessors": [
+          {
+            "operation": "cycle2.g",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle2.g",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle2.g",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle2.g",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle2.g",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle2.g",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle2.g",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle2.g",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle2.g",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle2.g",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle2.g",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle2.g",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle2.g",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle2.g",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle2.g",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle2.g",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle2.g",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 1746660633,
+        "end_ns": 35869601623,
+        "kind": "critic_rollout",
+        "operation": "cycle2.r0",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 34122940990
+      },
+      {
+        "cost_key": "5143765f835f88d7df4128d5f8dc7c48179b20c64197539b908a537712726389",
+        "critical_predecessors": [
+          {
+            "operation": "cycle2.r0",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle2.r0",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle2.r0",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle2.r0",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle2.r0",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle2.r0",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle2.r0",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle2.r0",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle2.r0",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle2.r0",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle2.r0",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle2.r0",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle2.r0",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle2.r0",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle2.r0",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle2.r0",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle2.r0",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 1746660633,
+        "end_ns": 37616262256,
+        "kind": "critic_rollout",
+        "operation": "cycle2.r1",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 35869601623
+      },
+      {
+        "cost_key": "2c26b295c37044e6512f01d70ae0f664112dd1b67fe8ebb3c38b364bf2369776",
+        "critical_predecessors": [
+          {
+            "operation": "cycle2.r1",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle2.r1",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle2.r1",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle2.r1",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle2.r1",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle2.r1",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle2.r1",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle2.r1",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle2.r1",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle2.r1",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle2.r1",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle2.r1",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle2.r1",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle2.r1",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle2.r1",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle2.r1",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle2.r1",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 2246744318,
+        "end_ns": 39863006574,
+        "kind": "critic_update",
+        "operation": "cycle2.c0",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 37616262256
+      },
+      {
+        "cost_key": "ae6b9076af8352a9ba65743773899d70a13c6477a726968449e1013a1f9096f1",
+        "critical_predecessors": [
+          {
+            "operation": "cycle2.c0",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle2.c0",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle2.c0",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle2.c0",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle2.c0",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle2.c0",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle2.c0",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle2.c0",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle2.c0",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle2.c0",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle2.c0",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle2.c0",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle2.c0",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle2.c0",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle2.c0",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle2.c0",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle2.c0",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 19347364,
+        "end_ns": 39882353938,
+        "kind": "ema_update",
+        "operation": "cycle2.e0",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 39863006574
+      },
+      {
+        "cost_key": "d1751199e435d05cf8625e1609d85c4dcfe3f176d91fac67153e4c6014bc7ea3",
+        "critical_predecessors": [
+          {
+            "operation": "cycle2.e0",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle2.e0",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle2.e0",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle2.e0",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle2.e0",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle2.e0",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle2.e0",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle2.e0",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle2.e0",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle2.e0",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle2.e0",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle2.e0",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle2.e0",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle2.e0",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle2.e0",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle2.e0",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle2.e0",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 1231645478,
+        "end_ns": 41113999416,
+        "kind": "critic_rollout",
+        "operation": "cycle2.r2",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 39882353938
+      },
+      {
+        "cost_key": "2c26b295c37044e6512f01d70ae0f664112dd1b67fe8ebb3c38b364bf2369776",
+        "critical_predecessors": [
+          {
+            "operation": "cycle2.r2",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle2.r2",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle2.r2",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle2.r2",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle2.r2",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle2.r2",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle2.r2",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle2.r2",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle2.r2",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle2.r2",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle2.r2",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle2.r2",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle2.r2",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle2.r2",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle2.r2",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle2.r2",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle2.r2",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 2246744318,
+        "end_ns": 43360743734,
+        "kind": "critic_update",
+        "operation": "cycle2.c1",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 41113999416
+      },
+      {
+        "cost_key": "ae6b9076af8352a9ba65743773899d70a13c6477a726968449e1013a1f9096f1",
+        "critical_predecessors": [
+          {
+            "operation": "cycle2.c1",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle2.c1",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle2.c1",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle2.c1",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle2.c1",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle2.c1",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle2.c1",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle2.c1",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle2.c1",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle2.c1",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle2.c1",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle2.c1",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle2.c1",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle2.c1",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle2.c1",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle2.c1",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle2.c1",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 19347364,
+        "end_ns": 43380091098,
+        "kind": "ema_update",
+        "operation": "cycle2.e1",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 43360743734
+      },
+      {
+        "cost_key": "94ab95250ec37ae94a3500b7c523116db10c68812b48d302318f634456fd1059",
+        "critical_predecessors": [
+          {
+            "operation": "cycle2.e1",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle2.e1",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle2.e1",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle2.e1",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle2.e1",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle2.e1",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle2.e1",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle2.e1",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle2.e1",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle2.e1",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle2.e1",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle2.e1",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle2.e1",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle2.e1",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle2.e1",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle2.e1",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle2.e1",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 1039910169,
+        "end_ns": 44420001267,
+        "kind": "critic_rollout",
+        "operation": "cycle2.r3",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 43380091098
+      },
+      {
+        "cost_key": "2c26b295c37044e6512f01d70ae0f664112dd1b67fe8ebb3c38b364bf2369776",
+        "critical_predecessors": [
+          {
+            "operation": "cycle2.r3",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle2.r3",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle2.r3",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle2.r3",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle2.r3",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle2.r3",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle2.r3",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle2.r3",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle2.r3",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle2.r3",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle2.r3",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle2.r3",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle2.r3",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle2.r3",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle2.r3",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle2.r3",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle2.r3",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 2246744318,
+        "end_ns": 46666745585,
+        "kind": "critic_update",
+        "operation": "cycle2.c2",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 44420001267
+      },
+      {
+        "cost_key": "ae6b9076af8352a9ba65743773899d70a13c6477a726968449e1013a1f9096f1",
+        "critical_predecessors": [
+          {
+            "operation": "cycle2.c2",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle2.c2",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle2.c2",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle2.c2",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle2.c2",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle2.c2",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle2.c2",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle2.c2",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle2.c2",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle2.c2",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle2.c2",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle2.c2",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle2.c2",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle2.c2",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle2.c2",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle2.c2",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle2.c2",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 19347364,
+        "end_ns": 46686092949,
+        "kind": "ema_update",
+        "operation": "cycle2.e2",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 46666745585
+      },
+      {
+        "cost_key": "5143765f835f88d7df4128d5f8dc7c48179b20c64197539b908a537712726389",
+        "critical_predecessors": [
+          {
+            "operation": "cycle2.e2",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle2.e2",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle2.e2",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle2.e2",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle2.e2",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle2.e2",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle2.e2",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle2.e2",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle2.e2",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle2.e2",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle2.e2",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle2.e2",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle2.e2",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle2.e2",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle2.e2",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle2.e2",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle2.e2",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 1746660633,
+        "end_ns": 48432753582,
+        "kind": "critic_rollout",
+        "operation": "cycle2.r4",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 46686092949
+      },
+      {
+        "cost_key": "2c26b295c37044e6512f01d70ae0f664112dd1b67fe8ebb3c38b364bf2369776",
+        "critical_predecessors": [
+          {
+            "operation": "cycle2.r4",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle2.r4",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle2.r4",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle2.r4",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle2.r4",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle2.r4",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle2.r4",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle2.r4",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle2.r4",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle2.r4",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle2.r4",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle2.r4",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle2.r4",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle2.r4",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle2.r4",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle2.r4",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle2.r4",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 2246744318,
+        "end_ns": 50679497900,
+        "kind": "critic_update",
+        "operation": "cycle2.c3",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 48432753582
+      },
+      {
+        "cost_key": "ae6b9076af8352a9ba65743773899d70a13c6477a726968449e1013a1f9096f1",
+        "critical_predecessors": [
+          {
+            "operation": "cycle2.c3",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle2.c3",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle2.c3",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle2.c3",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle2.c3",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle2.c3",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle2.c3",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle2.c3",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle2.c3",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle2.c3",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle2.c3",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle2.c3",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle2.c3",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle2.c3",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle2.c3",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle2.c3",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle2.c3",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 19347364,
+        "end_ns": 50698845264,
+        "kind": "ema_update",
+        "operation": "cycle2.e3",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 50679497900
+      },
+      {
+        "cost_key": "2c26b295c37044e6512f01d70ae0f664112dd1b67fe8ebb3c38b364bf2369776",
+        "critical_predecessors": [
+          {
+            "operation": "cycle2.e3",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle2.e3",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle2.e3",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle2.e3",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle2.e3",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle2.e3",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle2.e3",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle2.e3",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle2.e3",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle2.e3",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle2.e3",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle2.e3",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle2.e3",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle2.e3",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle2.e3",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle2.e3",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle2.e3",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 2246744318,
+        "end_ns": 52945589582,
+        "kind": "critic_update",
+        "operation": "cycle2.c4",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 50698845264
+      },
+      {
+        "cost_key": "ae6b9076af8352a9ba65743773899d70a13c6477a726968449e1013a1f9096f1",
+        "critical_predecessors": [
+          {
+            "operation": "cycle2.c4",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle2.c4",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle2.c4",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle2.c4",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle2.c4",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle2.c4",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle2.c4",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle2.c4",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle2.c4",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle2.c4",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle2.c4",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle2.c4",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle2.c4",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle2.c4",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle2.c4",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle2.c4",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle2.c4",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 19347364,
+        "end_ns": 52964936946,
+        "kind": "ema_update",
+        "operation": "cycle2.e4",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 52945589582
+      }
+    ]
+  },
+  "ranked": [
+    {
+      "assignment": {
+        "chunk_tokens": "2048",
+        "lora_epilogue": "on",
+        "placement": "resident",
+        "rollout_window": "2"
+      },
+      "memory": [
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 0,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39326187520,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15812432896,
+          "rank": 1,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39305216000,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15791461376,
+          "rank": 10,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15749518336,
+          "rank": 11,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15749518336,
+          "rank": 12,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39292633088,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15778878464,
+          "rank": 13,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 14,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 15,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39305216000,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15791461376,
+          "rank": 2,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15749518336,
+          "rank": 3,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15749518336,
+          "rank": 4,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39292633088,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15778878464,
+          "rank": 5,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 6,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 7,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 8,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39326187520,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15812432896,
+          "rank": 9,
+          "static_bytes": 19071560192
+        }
+      ],
+      "predicted_cycle2_ns": 24513250866
+    },
+    {
+      "assignment": {
+        "chunk_tokens": "2048",
+        "lora_epilogue": "on",
+        "placement": "resident",
+        "rollout_window": "4"
+      },
+      "memory": [
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 0,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39326187520,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15812432896,
+          "rank": 1,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39305216000,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15791461376,
+          "rank": 10,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15749518336,
+          "rank": 11,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15749518336,
+          "rank": 12,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39292633088,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15778878464,
+          "rank": 13,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 14,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 15,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39305216000,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15791461376,
+          "rank": 2,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15749518336,
+          "rank": 3,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15749518336,
+          "rank": 4,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39292633088,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15778878464,
+          "rank": 5,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 6,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 7,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 8,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39326187520,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15812432896,
+          "rank": 9,
+          "static_bytes": 19071560192
+        }
+      ],
+      "predicted_cycle2_ns": 24513250866
+    },
+    {
+      "assignment": {
+        "chunk_tokens": "2048",
+        "lora_epilogue": "on",
+        "placement": "resident",
+        "rollout_window": "1"
+      },
+      "memory": [
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 0,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39326187520,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15812432896,
+          "rank": 1,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39305216000,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15791461376,
+          "rank": 10,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15749518336,
+          "rank": 11,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15749518336,
+          "rank": 12,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39292633088,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15778878464,
+          "rank": 13,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 14,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 15,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39305216000,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15791461376,
+          "rank": 2,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15749518336,
+          "rank": 3,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15749518336,
+          "rank": 4,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39292633088,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15778878464,
+          "rank": 5,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 6,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 7,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 8,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39326187520,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15812432896,
+          "rank": 9,
+          "static_bytes": 19071560192
+        }
+      ],
+      "predicted_cycle2_ns": 24513250866
+    },
+    {
+      "assignment": {
+        "chunk_tokens": "2048",
+        "lora_epilogue": "on",
+        "placement": "resident",
+        "rollout_window": "3"
+      },
+      "memory": [
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 0,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39326187520,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15812432896,
+          "rank": 1,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39305216000,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15791461376,
+          "rank": 10,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15749518336,
+          "rank": 11,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15749518336,
+          "rank": 12,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39292633088,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15778878464,
+          "rank": 13,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 14,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 15,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39305216000,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15791461376,
+          "rank": 2,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15749518336,
+          "rank": 3,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15749518336,
+          "rank": 4,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39292633088,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15778878464,
+          "rank": 5,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 6,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 7,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 8,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39326187520,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15812432896,
+          "rank": 9,
+          "static_bytes": 19071560192
+        }
+      ],
+      "predicted_cycle2_ns": 24513250866
+    },
+    {
+      "assignment": {
+        "chunk_tokens": "2048",
+        "lora_epilogue": "on",
+        "placement": "resident",
+        "rollout_window": "5"
+      },
+      "memory": [
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 0,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39326187520,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15812432896,
+          "rank": 1,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39305216000,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15791461376,
+          "rank": 10,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15749518336,
+          "rank": 11,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15749518336,
+          "rank": 12,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39292633088,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15778878464,
+          "rank": 13,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 14,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 15,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39305216000,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15791461376,
+          "rank": 2,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15749518336,
+          "rank": 3,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15749518336,
+          "rank": 4,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39292633088,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15778878464,
+          "rank": 5,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 6,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 7,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15799849984,
+          "rank": 8,
+          "static_bytes": 19071560192
+        },
+        {
+          "limit_bytes": 39326187520,
+          "peak_at_ns": 28451686080,
+          "peak_bytes": 23513754624,
+          "predicted_headroom_bytes": 15812432896,
+          "rank": 9,
+          "static_bytes": 19071560192
+        }
+      ],
+      "predicted_cycle2_ns": 24513250866
+    },
+    {
+      "assignment": {
+        "chunk_tokens": "512",
+        "lora_epilogue": "off",
+        "placement": "fsdp",
+        "rollout_window": "2"
+      },
+      "memory": [
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 0,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39326187520,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33511327744,
+          "rank": 1,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39305216000,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33490356224,
+          "rank": 10,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33448413184,
+          "rank": 11,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33448413184,
+          "rank": 12,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39292633088,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33477773312,
+          "rank": 13,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 14,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 15,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39305216000,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33490356224,
+          "rank": 2,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33448413184,
+          "rank": 3,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33448413184,
+          "rank": 4,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39292633088,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33477773312,
+          "rank": 5,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 6,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 7,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 8,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39326187520,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33511327744,
+          "rank": 9,
+          "static_bytes": 991354368
+        }
+      ],
+      "predicted_cycle2_ns": 36373372127
+    },
+    {
+      "assignment": {
+        "chunk_tokens": "512",
+        "lora_epilogue": "off",
+        "placement": "fsdp",
+        "rollout_window": "4"
+      },
+      "memory": [
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 0,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39326187520,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33511327744,
+          "rank": 1,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39305216000,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33490356224,
+          "rank": 10,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33448413184,
+          "rank": 11,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33448413184,
+          "rank": 12,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39292633088,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33477773312,
+          "rank": 13,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 14,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 15,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39305216000,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33490356224,
+          "rank": 2,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33448413184,
+          "rank": 3,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33448413184,
+          "rank": 4,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39292633088,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33477773312,
+          "rank": 5,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 6,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 7,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 8,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39326187520,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33511327744,
+          "rank": 9,
+          "static_bytes": 991354368
+        }
+      ],
+      "predicted_cycle2_ns": 36373372127
+    },
+    {
+      "assignment": {
+        "chunk_tokens": "512",
+        "lora_epilogue": "off",
+        "placement": "fsdp",
+        "rollout_window": "1"
+      },
+      "memory": [
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 0,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39326187520,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33511327744,
+          "rank": 1,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39305216000,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33490356224,
+          "rank": 10,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33448413184,
+          "rank": 11,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33448413184,
+          "rank": 12,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39292633088,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33477773312,
+          "rank": 13,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 14,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 15,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39305216000,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33490356224,
+          "rank": 2,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33448413184,
+          "rank": 3,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33448413184,
+          "rank": 4,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39292633088,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33477773312,
+          "rank": 5,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 6,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 7,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 8,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39326187520,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33511327744,
+          "rank": 9,
+          "static_bytes": 991354368
+        }
+      ],
+      "predicted_cycle2_ns": 36373372127
+    },
+    {
+      "assignment": {
+        "chunk_tokens": "512",
+        "lora_epilogue": "off",
+        "placement": "fsdp",
+        "rollout_window": "5"
+      },
+      "memory": [
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 0,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39326187520,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33511327744,
+          "rank": 1,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39305216000,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33490356224,
+          "rank": 10,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33448413184,
+          "rank": 11,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33448413184,
+          "rank": 12,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39292633088,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33477773312,
+          "rank": 13,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 14,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 15,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39305216000,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33490356224,
+          "rank": 2,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33448413184,
+          "rank": 3,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33448413184,
+          "rank": 4,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39292633088,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33477773312,
+          "rank": 5,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 6,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 7,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 8,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39326187520,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33511327744,
+          "rank": 9,
+          "static_bytes": 991354368
+        }
+      ],
+      "predicted_cycle2_ns": 36373372127
+    },
+    {
+      "assignment": {
+        "chunk_tokens": "512",
+        "lora_epilogue": "off",
+        "placement": "fsdp",
+        "rollout_window": "3"
+      },
+      "memory": [
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 0,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39326187520,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33511327744,
+          "rank": 1,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39305216000,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33490356224,
+          "rank": 10,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33448413184,
+          "rank": 11,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33448413184,
+          "rank": 12,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39292633088,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33477773312,
+          "rank": 13,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 14,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 15,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39305216000,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33490356224,
+          "rank": 2,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33448413184,
+          "rank": 3,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39263272960,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33448413184,
+          "rank": 4,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39292633088,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33477773312,
+          "rank": 5,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 6,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 7,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39313604608,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33498744832,
+          "rank": 8,
+          "static_bytes": 991354368
+        },
+        {
+          "limit_bytes": 39326187520,
+          "peak_at_ns": 0,
+          "peak_bytes": 5814859776,
+          "predicted_headroom_bytes": 33511327744,
+          "rank": 9,
+          "static_bytes": 991354368
+        }
+      ],
+      "predicted_cycle2_ns": 36373372127
+    }
+  ],
+  "rejections": {
+    "REJECTED_CONTRACT": 25,
+    "UNCALIBRATED": 25
+  },
+  "source_head": "ceb2921985e5a855ff93d6c9d7e21e7528b6ef5a",
+  "space_size": 60,
+  "status": "PASS_MEASURED_COMPONENT_SEARCH",
+  "unique_evaluated": 60
+}

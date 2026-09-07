@@ -8,6 +8,7 @@ from parameter counts or historical winner timings.
 """
 from __future__ import annotations
 
+from dataclasses import replace
 from itertools import product
 from pathlib import Path
 from typing import Any, Mapping
@@ -94,6 +95,10 @@ def cost_key(operation: Operation, implementation: WanImplementation) -> str:
 
 
 def capability_report() -> dict[str, Any]:
+    from .wan_action_model_adapter import DOMAINS as ACTION_DOMAINS
+    from .wan_action_costs import ADAPTER as ACTION_ADAPTER, action_graph
+    actions = [replace(impl, rollout_window=window)
+               for impl in implementations() for window in range(1, 6)]
     return {"adapter": ADAPTER, "workload": WAN, "decisions": DOMAINS,
             "native_implementations": [{"id": i.id, "assignment": i.assignment,
                 "lowered_placement": i.native_placement, "native_gpu_validation": "NOT_RUN"} for i in implementations()],
@@ -101,8 +106,16 @@ def capability_report() -> dict[str, Any]:
             "incumbent": WanImplementation("resident", 2048, True).assignment,
             "precision_fingerprint": PRECISION.digest,
             "sharing": "FIXED_CURRENT_BACKEND; NO_UNSUPPORTED_SHARED_GENERATOR_CRITIC",
-            "schedule": "FIXED_NATIVE_CLUSTERED; DEPTH1_NOT_YET_IMPLEMENTED_FOR_WAN",
-            "cost_calibration": "REQUIRED", "gpu_execution": "NOT_RUN"}
+            "schedule": "LEGACY_MACRO_FIXED_NATIVE_CLUSTERED; SEE_PREPARED_ACTIONS_FOR_GENERATED_WINDOWS",
+            "cost_calibration": "REQUIRED", "gpu_execution": "NOT_RUN",
+            "prepared_actions": {
+                "adapter": ACTION_ADAPTER, "decisions": ACTION_DOMAINS,
+                "actions_per_two_cycles": len(action_graph().operations),
+                "native_implementations": [dict(id=impl.id, assignment=impl.assignment,
+                    lowered_placement=impl.native_placement) for impl in actions],
+                "measurement_admission": "SOURCE_BOUND_NATIVE_RECEIPTS_REQUIRED",
+                "inter_action_overlap": False, "claimable_speedup": False,
+                "cost_scope": "REUSABLE_NATIVE_ACTIONS_WITH_EXPLICIT_RETAINED_OUTPUT_LIFETIMES"}}
 
 
 def build_problem(layout_path: Path, *, root: Path | None = None) -> PlanningProblem:

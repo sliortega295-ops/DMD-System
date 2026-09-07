@@ -1,0 +1,142 @@
+{
+  "excerpt": {
+    "construction": {
+      "included_in_cycle_timers": false,
+      "rank_local_seconds": [
+        35.85437807603739,
+        40.16294718417339,
+        39.291826270055026,
+        39.21258094510995,
+        39.17151782196015,
+        39.34764620405622,
+        39.73880666913465,
+        39.546809579012915,
+        39.64217850193381,
+        40.515371437883005,
+        39.5774702031631,
+        39.5520238338504,
+        39.5103682980407,
+        39.458811106858775,
+        39.67782410304062,
+        39.83925727196038
+      ],
+      "world_max_seconds": 40.515371437883005
+    },
+    "cycle_1": {
+      "claimable": false,
+      "rank_local_seconds": [
+        27.614491465035826,
+        27.614481425844133,
+        27.614484811900184,
+        27.614525149110705,
+        27.61449879896827,
+        27.61452160193585,
+        27.61451281583868,
+        27.614520891103894,
+        27.61592649202794,
+        27.61592084984295,
+        27.61592125101015,
+        27.615918264957145,
+        27.61592320492491,
+        27.615883216960356,
+        27.615927894134074,
+        27.615926020080224
+      ],
+      "role": "WARMUP_DIAGNOSTIC",
+      "world_max_seconds": 27.615927894134074
+    },
+    "cycle_2": {
+      "claimable": true,
+      "rank_local_seconds": [
+        24.367250306997448,
+        24.36725577688776,
+        24.367254134034738,
+        24.367254844866693,
+        24.367261757841334,
+        24.367261368082836,
+        24.36725730006583,
+        24.367258372018114,
+        24.368434417061508,
+        24.36843406711705,
+        24.368431772105396,
+        24.36842969781719,
+        24.36842577997595,
+        24.368430278962478,
+        24.368433564901352,
+        24.36843352485448
+      ],
+      "role": "STEADY_STATE_CLAIMABLE",
+      "world_max_seconds": 24.368434417061508
+    },
+    "cycle_versions": [
+      {
+        "critic": 15,
+        "ema": 15,
+        "generator": 3
+      },
+      {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      }
+    ],
+    "final_versions": {
+      "critic": 20,
+      "ema": 20,
+      "generator": 4
+    },
+    "memory": {
+      "max_allocated_bytes": 23513754624,
+      "max_reserved_bytes": 24022876160,
+      "min_driver_free_bytes": 17421434880
+    },
+    "prepared_cycle_execution": null,
+    "profiled": false,
+    "profiler_status": "NOT_RUN",
+    "rank_count": 16,
+    "resource_status": {
+      "cgroup_memory_events": [
+        {
+          "high_delta": 0,
+          "low_delta": 0,
+          "max_delta": 0,
+          "oom_delta": 0,
+          "oom_kill_delta": 0,
+          "status": "PASS"
+        },
+        {
+          "high_delta": 0,
+          "low_delta": 0,
+          "max_delta": 0,
+          "oom_delta": 0,
+          "oom_kill_delta": 0,
+          "status": "PASS"
+        }
+      ],
+      "profiler_artifacts": [],
+      "teardown": [
+        {
+          "gpu_process_count": "0",
+          "owner_run_id": "jointp_wan_components_20260907_r1-heldout-w2-native",
+          "status": "PASS"
+        },
+        {
+          "gpu_process_count": "0",
+          "owner_run_id": "jointp_wan_components_20260907_r1-heldout-w2-native",
+          "status": "PASS"
+        }
+      ]
+    },
+    "run_id": "jointp_wan_components_20260907_r1-heldout-w2-native",
+    "status": "PASS",
+    "updates": {
+      "critic": 10,
+      "ema": 10,
+      "generator": 2
+    }
+  },
+  "source": {
+    "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/bound-summary.json",
+    "sha256": "c206504bdc966c1d7e05e7956d5e655242d71a41afae54cf541b6b490c7d7ff0"
+  }
+}

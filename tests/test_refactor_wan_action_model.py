@@ -131,3 +131,19 @@ def test_assembler_rejects_a_cost_model_unrelated_to_its_fragment(tmp_path,monke
     results[0].write_text(json.dumps(a))
     with pytest.raises(ValueError, match="fragment.*cost"):
         assemble_calibrations(results,output=tmp_path/"rejected",expected_head="a"*40)
+
+
+def test_front_door_reports_prepared_action_capability_without_claiming_measurement():
+    from distillschedule.search.model_adapters import adapter_for
+    from distillschedule.search.wan_implementation import WAN, WanImplementation
+    value = adapter_for(WAN).capability_report()
+    actions = value["prepared_actions"]
+    assert actions["adapter"] == "wan_prepared_actions_v2"
+    assert actions["decisions"]["rollout_window"] == ("1", "2", "3", "4", "5")
+    assert actions["actions_per_two_cycles"] == 32
+    assert len(actions["native_implementations"]) == 35
+    assert {WanImplementation.parse(row["id"]).rollout_window
+            for row in actions["native_implementations"]} == set(range(1, 6))
+    assert actions["measurement_admission"] == "SOURCE_BOUND_NATIVE_RECEIPTS_REQUIRED"
+    assert actions["inter_action_overlap"] is False
+    assert actions["claimable_speedup"] is False
