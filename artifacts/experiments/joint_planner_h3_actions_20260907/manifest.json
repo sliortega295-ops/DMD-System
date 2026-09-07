@@ -1,0 +1,13 @@
+{
+  "status": "PASS_NATIVE_ACTION_CORRECTNESS_NOT_TIMING",
+  "runtime_head": "878aff490ce28c661ac1d927f08f8846992baf45",
+  "publication_parent": "6c7d0cbaac3a80eba8d82f409db826fb4572c50f",
+  "run_id": "jointp_h3_actions_20260907_r1-w3-correctness",
+  "tests": "257 passed in 17.16s",
+  "canonical_profiles_changed": false,
+  "prior_matrices_repeated": false,
+  "calibration": "NOT_RUN",
+  "native_timing": "NOT_RUN",
+  "search_ready": false,
+  "new_speedup": null
+}

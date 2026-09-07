@@ -31,6 +31,14 @@ C5 shadow publication and async transport safety. This is **CPU structure only**
 76 storage descriptors, independent service costs and native action lowering
 remain unadmitted. No LiveWan matrix was repeated.
 
+[H3's generated retained-window native action gate](../experiments/DMD_H3_PREPARED_ACTIONS_20260907.md)
+now also passes: source `878aff4`, window3, 16/16 two-cycle runtime gates,
+352 dispatched actions and 1,152 actual draw tensor hashes. These are
+correctness-only observations, **not costs or native timing**. Prior numerical
+drift remains REVIEW under the user's exploratory acceptance; it is not being
+re-tested or relabeled strict PASS. Action calibration/search/held-out feedback
+are the remaining H3 work, not another depth1/depth2/self-repeat matrix.
+
 Latest evidence: [Wan closed-loop native diagnostic](../experiments/DMD_JOINT_PLANNER_WAN_CLOSED_LOOP_20260907.md).
 Runtime source is `4e3ffb59c21429f3e9e714f14006f5ae6afbd002`, not a later
 report-publication commit. Six current-source native trials completed 16/16

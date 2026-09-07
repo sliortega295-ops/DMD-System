@@ -1,0 +1,3 @@
+START jointp_h3_actions_20260907_r1-w3-correctness
+/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_actions_r1/native/jointp_h3_actions_20260907_r1-w3-correctness/bound-summary.json
+Dispatch completed. Native/bound summaries written in /home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_actions_r1/coordinator-native-r1; no historical speedup is reasserted.

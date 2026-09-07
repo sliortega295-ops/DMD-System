@@ -1,0 +1,20 @@
+{
+  "schema_version": "distillschedule.postrun_readback.v1",
+  "node": 0,
+  "hostname": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0",
+  "time_ns": 1788809272085939933,
+  "run_id": "jointp_h3_actions_20260907_r1-w3-correctness",
+  "gpu_processes": [],
+  "owned_run_processes": [],
+  "node_lock_free": true,
+  "port": 31487,
+  "port_listeners": [],
+  "cgroup_events": {
+    "low": "0",
+    "high": "0",
+    "max": "0",
+    "oom": "0",
+    "oom_kill": "0"
+  },
+  "status": "PASS"
+}

@@ -1,0 +1,133 @@
+{
+  "status": "PASS",
+  "nodes": [
+    {
+      "status": "PASS_READ_ONLY_NO_GPU_WORK",
+      "node": 0,
+      "host": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0",
+      "python": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/env/bin/python",
+      "python_version": "3.10.20 | packaged by conda-forge | (main, Jun 11 2026, 03:31:56) [GCC 14.3.0]",
+      "torch": "2.10.0+cu128",
+      "cuda": "12.8",
+      "nccl": [
+        2,
+        27,
+        5
+      ],
+      "cuda_context": false,
+      "gpu": "0, NVIDIA A100-SXM4-40GB, 40960, 40339, 535.161.08\n1, NVIDIA A100-SXM4-40GB, 40960, 40339, 535.161.08\n2, NVIDIA A100-SXM4-40GB, 40960, 40339, 535.161.08\n3, NVIDIA A100-SXM4-40GB, 40960, 40339, 535.161.08\n4, NVIDIA A100-SXM4-40GB, 40960, 40339, 535.161.08\n5, NVIDIA A100-SXM4-40GB, 40960, 40339, 535.161.08\n6, NVIDIA A100-SXM4-40GB, 40960, 40339, 535.161.08\n7, NVIDIA A100-SXM4-40GB, 40960, 40339, 535.161.08",
+      "gpu_processes": "",
+      "worker_processes": [],
+      "node_lock_free": true,
+      "cgroup": {
+        "memory.current": "8103510016",
+        "memory.max": "962072674304",
+        "memory.peak": "UNAVAILABLE",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0"
+      },
+      "asset_identities": [
+        {
+          "asset": "model",
+          "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/models/MiniMax-H3-train/transformer/config.json",
+          "sha256": "74c11bff524336576096993cbfcdcdc2ef4fa2fa4409df693bdcbc6c666282ae",
+          "bytes": 546
+        },
+        {
+          "asset": "prompt_cache",
+          "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/prompt_cache/minimax_h3_prompt_cache_96/metadata.jsonl",
+          "sha256": "a2e479c5c8f8c656f4548d24f01408081e7c2631e07fc2cb89882dec56c5e5dd",
+          "bytes": 14622
+        },
+        {
+          "asset": "flash_attn3_kernel",
+          "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home/hub/models--kernels-community--flash-attn3/snapshots/acb0f42e6901d3e9effa8a83bd32bc2bf0cfdfc2/build/torch210-cxx11-cu128-x86_64-linux/metadata.json",
+          "sha256": "f1b4b0ef991c0966f7d848777154c0591c4580968fb6da33f6b2a2829a109309",
+          "bytes": 221
+        },
+        {
+          "asset": "hf_home",
+          "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home/hub/models--kernels-community--flash-attn3/snapshots/acb0f42e6901d3e9effa8a83bd32bc2bf0cfdfc2/build/torch210-cxx11-cu128-x86_64-linux/metadata.json",
+          "sha256": "f1b4b0ef991c0966f7d848777154c0591c4580968fb6da33f6b2a2829a109309",
+          "bytes": 221
+        },
+        {
+          "asset": "diffusers_source",
+          "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/source/diffusers/src/diffusers/models/transformers/transformer_minimax_h3.py",
+          "sha256": "1926b1bc15a5bebda05e3dc8cde1b3955d56641ba7f8f9d6e90c8f78c66ae30c",
+          "bytes": 32991
+        },
+        {
+          "asset": "adaln_grid_manifest",
+          "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/grid1000_adaln_20260820/table/adaln_grid1000.json",
+          "sha256": "dd2625e0013509e31b984ee37be752c5d397da7e23aa1c945f66150af95cc1f3",
+          "bytes": 73122
+        }
+      ],
+      "persistent_free_bytes": 902401203974144
+    },
+    {
+      "status": "PASS_READ_ONLY_NO_GPU_WORK",
+      "node": 1,
+      "host": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0",
+      "python": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/env/bin/python",
+      "python_version": "3.10.20 | packaged by conda-forge | (main, Jun 11 2026, 03:31:56) [GCC 14.3.0]",
+      "torch": "2.10.0+cu128",
+      "cuda": "12.8",
+      "nccl": [
+        2,
+        27,
+        5
+      ],
+      "cuda_context": false,
+      "gpu": "0, NVIDIA A100-SXM4-40GB, 40960, 40339, 535.161.08\n1, NVIDIA A100-SXM4-40GB, 40960, 40339, 535.161.08\n2, NVIDIA A100-SXM4-40GB, 40960, 40339, 535.161.08\n3, NVIDIA A100-SXM4-40GB, 40960, 40339, 535.161.08\n4, NVIDIA A100-SXM4-40GB, 40960, 40339, 535.161.08\n5, NVIDIA A100-SXM4-40GB, 40960, 40339, 535.161.08\n6, NVIDIA A100-SXM4-40GB, 40960, 40339, 535.161.08\n7, NVIDIA A100-SXM4-40GB, 40960, 40339, 535.161.08",
+      "gpu_processes": "",
+      "worker_processes": [],
+      "node_lock_free": true,
+      "cgroup": {
+        "memory.current": "7832182784",
+        "memory.max": "816043786240",
+        "memory.peak": "UNAVAILABLE",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0"
+      },
+      "asset_identities": [
+        {
+          "asset": "model",
+          "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/models/MiniMax-H3-train/transformer/config.json",
+          "sha256": "74c11bff524336576096993cbfcdcdc2ef4fa2fa4409df693bdcbc6c666282ae",
+          "bytes": 546
+        },
+        {
+          "asset": "prompt_cache",
+          "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/prompt_cache/minimax_h3_prompt_cache_96/metadata.jsonl",
+          "sha256": "a2e479c5c8f8c656f4548d24f01408081e7c2631e07fc2cb89882dec56c5e5dd",
+          "bytes": 14622
+        },
+        {
+          "asset": "flash_attn3_kernel",
+          "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home/hub/models--kernels-community--flash-attn3/snapshots/acb0f42e6901d3e9effa8a83bd32bc2bf0cfdfc2/build/torch210-cxx11-cu128-x86_64-linux/metadata.json",
+          "sha256": "f1b4b0ef991c0966f7d848777154c0591c4580968fb6da33f6b2a2829a109309",
+          "bytes": 221
+        },
+        {
+          "asset": "hf_home",
+          "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home/hub/models--kernels-community--flash-attn3/snapshots/acb0f42e6901d3e9effa8a83bd32bc2bf0cfdfc2/build/torch210-cxx11-cu128-x86_64-linux/metadata.json",
+          "sha256": "f1b4b0ef991c0966f7d848777154c0591c4580968fb6da33f6b2a2829a109309",
+          "bytes": 221
+        },
+        {
+          "asset": "diffusers_source",
+          "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/source/diffusers/src/diffusers/models/transformers/transformer_minimax_h3.py",
+          "sha256": "1926b1bc15a5bebda05e3dc8cde1b3955d56641ba7f8f9d6e90c8f78c66ae30c",
+          "bytes": 32991
+        },
+        {
+          "asset": "adaln_grid_manifest",
+          "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/grid1000_adaln_20260820/table/adaln_grid1000.json",
+          "sha256": "dd2625e0013509e31b984ee37be752c5d397da7e23aa1c945f66150af95cc1f3",
+          "bytes": 73122
+        }
+      ],
+      "persistent_free_bytes": 902401184108544
+    }
+  ]
+}
