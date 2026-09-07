@@ -563,6 +563,11 @@ def _validate_build_contract(
 
 def main() -> int:
     args = parser().parse_args()
+    from distillschedule.search.wan_implementation import current_rollout_window
+    from distillschedule.runtime.wan_cycle_plan import prepare_wan_cycle
+    rollout_window = current_rollout_window()
+    if rollout_window is not None and args.calibrate_stages:
+        raise ValueError("prepared schedules require component calibration, not legacy stage costs")
     # Construction helpers use these shared mode attributes to disable audit
     # hooks.  This dedicated worker never enters the legacy one-cycle timer or
     # the trajectory evidence path.
@@ -737,31 +742,58 @@ def main() -> int:
         timing_rows: list[dict[str, Any]] = []
         version_rows: list[dict[str, int]] = []
         for cycle in range(1, TIMED_CYCLES + 1):
+            prepared_cycle = None
+            if rollout_window is not None:
+                prepared_cycle = prepare_wan_cycle(
+                    p0=p0, source_steps=SOURCE_STEPS, max_live_rollouts=rollout_window,
+                    rank=rank, device=device, generator_engine=generator_engine,
+                    critic_engine=critic_engine, ema=ema, trace=trace, negative=negative,
+                    diagnostics=diagnostics, policy=policy, clean_runtime=clean_runtime,
+                    runtime_cache=runtime_cache, deferred_finite_checks=deferred_finite_checks,
+                )
             dist.barrier()
             torch.cuda.synchronize(device)
             check_start = len(deferred_finite_checks)
             start_ns = time.time_ns()
             started = time.perf_counter()
-            raw = _run_workload_cycle(
-                rank=rank,
-                device=device,
-                generator_engine=generator_engine,
-                critic_engine=critic_engine,
-                ema=ema,
-                trace=trace,
-                negative=negative,
-                diagnostics=diagnostics,
-                policy=policy,
-                clean_runtime=clean_runtime,
-                runtime_cache=runtime_cache,
-                deferred_finite_checks=deferred_finite_checks,
-                calibrator=calibrator,
-                cycle=cycle,
-            )
-            torch.cuda.synchronize(device)
-            dist.barrier()
+            if prepared_cycle is not None:
+                try:
+                    raw = prepared_cycle.run()
+                except BaseException:
+                    result.setdefault("prepared_cycle_receipts", []).append(prepared_cycle.receipt())
+                    raise
+            else:
+                raw = _run_workload_cycle(
+                    rank=rank,
+                    device=device,
+                    generator_engine=generator_engine,
+                    critic_engine=critic_engine,
+                    ema=ema,
+                    trace=trace,
+                    negative=negative,
+                    diagnostics=diagnostics,
+                    policy=policy,
+                    clean_runtime=clean_runtime,
+                    runtime_cache=runtime_cache,
+                    deferred_finite_checks=deferred_finite_checks,
+                    calibrator=calibrator,
+                    cycle=cycle,
+                )
+            try:
+                torch.cuda.synchronize(device)
+                dist.barrier()
+            except BaseException as error:
+                if prepared_cycle is not None:
+                    failure = prepared_cycle.receipt()
+                    failure.update(dispatch_status=failure["status"], status="FAIL",
+                                   native_completion="FAIL_AT_CUDA_OR_WORLD_FENCE",
+                                   native_completion_error=str(error))
+                    result.setdefault("prepared_cycle_receipts", []).append(failure)
+                raise
             elapsed = time.perf_counter() - started
             stop_ns = time.time_ns()
+            if prepared_cycle is not None:
+                result.setdefault("prepared_cycle_receipts", []).append(prepared_cycle.receipt())
             finite_slices.append((check_start, len(deferred_finite_checks)))
             raw_cycles.append(raw)
             timing_rows.append(

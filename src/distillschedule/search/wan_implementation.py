@@ -17,6 +17,8 @@ from .precision import ExecutionPrecision
 WAN = "wan13b_nogan_resident_best"
 PREFIX = "joint-wan1-"
 PATTERN = re.compile(r"joint-wan1-(fsdp|resident)-c(512|1024|2048)-e([01])$")
+SCHEDULE_PREFIX = "joint-wan2-"
+SCHEDULE_PATTERN = re.compile(r"joint-wan2-(fsdp|resident)-c(512|1024|2048)-e([01])-w([1-5])$")
 PRECISION = ExecutionPrecision("bfloat16", "float32", "float32", True, True,
                                "flash_attention_2_source_bound_by_environment")
 
@@ -26,17 +28,22 @@ class WanImplementation:
     placement: str
     chunk_tokens: int
     lora_epilogue: bool
+    rollout_window: int | None = None
 
     def __post_init__(self) -> None:
         require(self.placement in {"fsdp", "resident"}, "unsupported Wan placement")
         require(type(self.chunk_tokens) is int and self.chunk_tokens in {512, 1024, 2048}, "unsupported chunk size")
         require(type(self.lora_epilogue) is bool, "epilogue must be boolean")
+        require(self.rollout_window is None or (type(self.rollout_window) is int and 1 <= self.rollout_window <= 5),
+                "rollout window must be [1,5]")
         require(self.placement != "fsdp" or (self.chunk_tokens == 512 and not self.lora_epilogue),
                 "FSDP native kernel combinations beyond control are not yet admitted")
 
     @property
     def id(self) -> str:
-        return f"{PREFIX}{self.placement}-c{self.chunk_tokens}-e{int(self.lora_epilogue)}"
+        prefix = PREFIX if self.rollout_window is None else SCHEDULE_PREFIX
+        suffix = "" if self.rollout_window is None else f"-w{self.rollout_window}"
+        return f"{prefix}{self.placement}-c{self.chunk_tokens}-e{int(self.lora_epilogue)}{suffix}"
 
     @property
     def native_placement(self) -> str:
@@ -47,20 +54,26 @@ class WanImplementation:
     @property
     def assignment(self) -> dict[str, str]:
         return {"placement": self.placement, "chunk_tokens": str(self.chunk_tokens),
-                "lora_epilogue": "on" if self.lora_epilogue else "off"}
+                "lora_epilogue": "on" if self.lora_epilogue else "off",
+                **({"rollout_window": str(self.rollout_window)} if self.rollout_window is not None else {})}
 
     @classmethod
     def parse(cls, key: str) -> "WanImplementation":
-        match = PATTERN.fullmatch(key)
+        match = PATTERN.fullmatch(key) or SCHEDULE_PATTERN.fullmatch(key)
         require(match is not None, "malformed/unregistered joint Wan implementation")
-        return cls(match[1], int(match[2]), bool(int(match[3])))
+        return cls(match[1], int(match[2]), bool(int(match[3])),
+                   int(match[4]) if match.re == SCHEDULE_PATTERN else None)
 
     @classmethod
     def from_assignment(cls, assignment: Mapping[str, str]) -> "WanImplementation":
-        require(set(assignment) == {"placement", "chunk_tokens", "lora_epilogue"}, "Wan plan has extra/missing decisions")
+        required = {"placement", "chunk_tokens", "lora_epilogue"}
+        require(set(assignment) in (required, required | {"rollout_window"}), "Wan plan has extra/missing decisions")
         require(assignment["chunk_tokens"] in {"512", "1024", "2048"}
                 and assignment["lora_epilogue"] in {"on", "off"}, "invalid Wan decision")
-        return cls(assignment["placement"], int(assignment["chunk_tokens"]), assignment["lora_epilogue"] == "on")
+        require("rollout_window" not in assignment or assignment["rollout_window"] in {"1","2","3","4","5"},
+                "invalid rollout window")
+        return cls(assignment["placement"], int(assignment["chunk_tokens"]), assignment["lora_epilogue"] == "on",
+                   int(assignment["rollout_window"]) if "rollout_window" in assignment else None)
 
     def candidate(self) -> Candidate:
         kernels = (f"modulation_chunk{self.chunk_tokens}",) + (("lora_nograd_epilogue",) if self.lora_epilogue else ())
@@ -69,12 +82,28 @@ class WanImplementation:
 
     def environment(self) -> dict[str, str]:
         return {**PRECISION.launch_environment(),
-                "DISTILLSCHEDULE_WAN13B_PLANNER_PRECISION": PRECISION.digest}
+                "DISTILLSCHEDULE_WAN13B_PLANNER_PRECISION": PRECISION.digest,
+                **({"DISTILLSCHEDULE_WAN_ROLLOUT_WINDOW":str(self.rollout_window)}
+                   if self.rollout_window is not None else {})}
+
+
+def is_generated(key: str) -> bool:
+    return key.startswith((PREFIX, SCHEDULE_PREFIX))
 
 
 def current_implementation(environment: Mapping[str, str] | None = None) -> WanImplementation | None:
     key = (os.environ if environment is None else environment).get("DISTILLSCHEDULE_SEARCH_CANDIDATE_ID", "")
-    return WanImplementation.parse(key) if key.startswith(PREFIX) else None
+    return WanImplementation.parse(key) if is_generated(key) else None
+
+
+def current_rollout_window(environment: Mapping[str, str] | None = None) -> int | None:
+    env = os.environ if environment is None else environment
+    impl = current_implementation(env)
+    expected = None if impl is None else impl.rollout_window
+    raw = env.get("DISTILLSCHEDULE_WAN_ROLLOUT_WINDOW", "")
+    require(raw == ("" if expected is None else str(expected)),
+            "rollout window differs from generated implementation identity")
+    return expected
 
 
 def verify_execution_precision(torch: Any, environment: Mapping[str, str] | None = None) -> dict[str, Any] | None:

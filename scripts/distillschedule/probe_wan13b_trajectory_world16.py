@@ -350,6 +350,9 @@ def _clean_runtime(placement: str) -> bool:
 
 def main() -> int:
     args = parser().parse_args()
+    from distillschedule.search.wan_implementation import current_rollout_window
+    from distillschedule.runtime.wan_cycle_plan import prepare_wan_cycle
+    rollout_window = current_rollout_window()
     # The shared construction helper only branches on these legacy execution
     # flags.  Trajectory is its own diagnostic mode and uses neither path.
     args.timing_mode = False
@@ -524,64 +527,84 @@ def main() -> int:
         for cycle in range(1, args.trajectory_cycles + 1):
             cycle_started = time.perf_counter()
             deferred_finite_checks: list[torch.Tensor] = []
-            critic_entries: dict[int, Any] = {}
-            generator_record = p0._run_nogan_generator_update_p0(
-                rank=rank,
-                device=device,
-                generator_engine=generator_engine,
-                critic_engine=critic_engine,
-                trace=trace,
-                negative=negative,
-                collect_diagnostics=False,
-                collect_scalars=True,
-                diagnostics=diagnostics,
-                policy=policy,
-                score_pack_parity_check=False,
-                clean_runtime=clean_runtime,
-                runtime_cache=runtime_cache,
-                deferred_finite_checks=deferred_finite_checks,
-            )
-            generator_grad_norm = _finite_number(
-                getattr(generator_engine, "last_gradient_norm", None)
-            )
-            rollout_outputs, rollout_records, _persistence = p0._precompute_critic_rollouts(
-                rank=rank,
-                steps=SOURCE_STEPS,
-                device=device,
-                generator_engine=generator_engine,
-                trace=trace,
-                policy=policy,
-                collect_diagnostics=False,
-                diagnostics=diagnostics,
-                rollout_parity_check=False,
-                clean_runtime=clean_runtime,
-                runtime_cache=runtime_cache,
-                entry_outputs=critic_entries,
-            )
-            critic_records: list[dict[str, Any]] = []
-            critic_grad_norms: list[float | None] = []
-            for source_step in SOURCE_STEPS:
-                critic_records.append(
-                    p0._run_nogan_critic_precomputed(
-                        rank=rank,
-                        step=source_step,
-                        x0=rollout_outputs[source_step],
-                        device=device,
-                        critic_engine=critic_engine,
-                        trace=trace,
-                        collect_diagnostics=False,
-                        collect_scalars=True,
-                        diagnostics=diagnostics,
-                        entry=critic_entries[source_step],
-                        runtime_cache=runtime_cache,
-                        deferred_finite_checks=deferred_finite_checks,
+            if rollout_window is not None:
+                prepared_cycle = prepare_wan_cycle(
+                    p0=p0, source_steps=SOURCE_STEPS, max_live_rollouts=rollout_window,
+                    rank=rank, device=device, generator_engine=generator_engine,
+                    critic_engine=critic_engine, ema=ema, trace=trace, negative=negative,
+                    diagnostics=diagnostics, policy=policy, clean_runtime=clean_runtime,
+                    runtime_cache=runtime_cache, deferred_finite_checks=deferred_finite_checks,
+                    collect_scalars=True,
+                    observe_grad_norm=lambda engine: _finite_number(getattr(engine, "last_gradient_norm", None)),
+                )
+                try:
+                    raw = prepared_cycle.run()
+                except BaseException:
+                    result.setdefault("prepared_cycle_receipts", []).append(prepared_cycle.receipt())
+                    raise
+                result.setdefault("prepared_cycle_receipts", []).append(prepared_cycle.receipt())
+                generator_record, rollout_records, critic_records = raw["generator"], raw["rollouts"], raw["critic"]
+                generator_grad_norm = generator_record["prepared_gradient_norm"]
+                critic_grad_norms = [row["prepared_gradient_norm"] for row in critic_records]
+            else:
+                critic_entries: dict[int, Any] = {}
+                generator_record = p0._run_nogan_generator_update_p0(
+                    rank=rank,
+                    device=device,
+                    generator_engine=generator_engine,
+                    critic_engine=critic_engine,
+                    trace=trace,
+                    negative=negative,
+                    collect_diagnostics=False,
+                    collect_scalars=True,
+                    diagnostics=diagnostics,
+                    policy=policy,
+                    score_pack_parity_check=False,
+                    clean_runtime=clean_runtime,
+                    runtime_cache=runtime_cache,
+                    deferred_finite_checks=deferred_finite_checks,
+                )
+                generator_grad_norm = _finite_number(
+                    getattr(generator_engine, "last_gradient_norm", None)
+                )
+                rollout_outputs, rollout_records, _persistence = p0._precompute_critic_rollouts(
+                    rank=rank,
+                    steps=SOURCE_STEPS,
+                    device=device,
+                    generator_engine=generator_engine,
+                    trace=trace,
+                    policy=policy,
+                    collect_diagnostics=False,
+                    diagnostics=diagnostics,
+                    rollout_parity_check=False,
+                    clean_runtime=clean_runtime,
+                    runtime_cache=runtime_cache,
+                    entry_outputs=critic_entries,
+                )
+                critic_records: list[dict[str, Any]] = []
+                critic_grad_norms: list[float | None] = []
+                for source_step in SOURCE_STEPS:
+                    critic_records.append(
+                        p0._run_nogan_critic_precomputed(
+                            rank=rank,
+                            step=source_step,
+                            x0=rollout_outputs[source_step],
+                            device=device,
+                            critic_engine=critic_engine,
+                            trace=trace,
+                            collect_diagnostics=False,
+                            collect_scalars=True,
+                            diagnostics=diagnostics,
+                            entry=critic_entries[source_step],
+                            runtime_cache=runtime_cache,
+                            deferred_finite_checks=deferred_finite_checks,
+                        )
                     )
-                )
-                critic_grad_norms.append(
-                    _finite_number(getattr(critic_engine, "last_gradient_norm", None))
-                )
-                ema.step()
-                del rollout_outputs[source_step]
+                    critic_grad_norms.append(
+                        _finite_number(getattr(critic_engine, "last_gradient_norm", None))
+                    )
+                    ema.step()
+                    del rollout_outputs[source_step]
 
             finite_gate = bool(torch.stack(deferred_finite_checks).all().detach().cpu())
             generator_loss = _finite_number(generator_record["surrogate_loss"])

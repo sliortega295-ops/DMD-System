@@ -83,7 +83,7 @@ def rebind_plan(receipt: dict[str, Any], *, run_id: str,
     assets = load_assets(assets_path, p) if assets_path is not None else receipt["asset_config"]
     require(assets == receipt["asset_config"], "replay assets/gates changed")
     from .registry import candidates
-    from .wan_implementation import PREFIX, WanImplementation
+    from .wan_implementation import is_generated, WanImplementation
     from .livewan_implementation import PREFIX as LIVEWAN_PREFIX, LiveWanImplementation
     from .h3_implementation import PREFIX as H3_PREFIX, H3Implementation
     candidate_id = receipt["search_candidate"]["id"]
@@ -97,8 +97,9 @@ def rebind_plan(receipt: dict[str, Any], *, run_id: str,
         require(len(problem.seeds) == 2 and problem.seeds[0] != problem.seeds[1],
                 "exactly two distinct baseline/incumbent seeds required")
         reference_id, peer = (Implementation.from_assignment(seed).id for seed in problem.seeds)
-    elif candidate_id.startswith(PREFIX):
-        reference_id, peer = WanImplementation("fsdp", 512, False).id, WanImplementation("resident", 2048, True).id
+    elif is_generated(candidate_id):
+        window = 5 if WanImplementation.parse(candidate_id).rollout_window is not None else None
+        reference_id, peer = WanImplementation("fsdp", 512, False, window).id, WanImplementation("resident", 2048, True, window).id
     elif candidate_id.startswith(LIVEWAN_PREFIX):
         reference_id, peer = LiveWanImplementation("fsdp").id, LiveWanImplementation("pipeline").id
     elif candidate_id.startswith(H3_PREFIX):
@@ -138,8 +139,8 @@ class NativeTrialRunner:
         self.reference = get_candidate(workload, reference_id)
         require(self.reference.placement in {"world16-fsdp", "world16-fsdp2"}, "reference must use world16 FSDP")
         require(self.bootstrap_peer.executable and bootstrap_peer != reference_id, "invalid bootstrap peer")
-        from .wan_implementation import PREFIX
-        require(self.reference.id.startswith(PREFIX) == self.bootstrap_peer.id.startswith(PREFIX),
+        from .wan_implementation import is_generated
+        require(is_generated(self.reference.id) == is_generated(self.bootstrap_peer.id),
                 "cannot mix generated precision contract and legacy search arms")
         for family in ("joint-livewan1-", "joint-h3v1-"):
             require(self.reference.id.startswith(family) == self.bootstrap_peer.id.startswith(family),

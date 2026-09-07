@@ -302,7 +302,7 @@ if [[ "${PLACEMENT}" == resident-lora-zero2 || "${PLACEMENT}" == resident-rollou
 fi
 torch_compile_scope=$( [[ "${PLACEMENT}" == resident-async128-tree-chunk2048-compile ]] && echo GENERATOR_NOGRAD_TRANSFORMER_BLOCKS_ONLY || echo DISABLED )
 modulation_chunk_tokens=$( case "${PLACEMENT}" in resident-async128-tree) echo 512 ;; resident-async128-tree-chunk2048|resident-async128-tree-chunk2048-compile) echo 2048 ;; *) echo RUNTIME_DEFAULT ;; esac )
-if [[ "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID:-}" == joint-wan1-* ]]; then
+if [[ "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID:-}" == joint-wan1-* || "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID:-}" == joint-wan2-* ]]; then
   modulation_chunk_tokens=$(PYTHONPATH="${ROOT}/src:${ROOT}" "${PYTHON}" - "${PLACEMENT}" <<'PYCHUNK'
 import sys
 from distillschedule.search.wan_contract import arm

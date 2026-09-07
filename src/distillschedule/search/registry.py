@@ -79,8 +79,8 @@ def get_candidate(workload: str, candidate_id: str) -> Candidate:
         return H3Implementation.parse(candidate_id).candidate()
     if workload == LIVEWAN and candidate_id.startswith("joint-livewan"):
         return LiveWanImplementation.parse(candidate_id).candidate()
-    from .wan_implementation import PREFIX, WanImplementation
-    if workload == WAN and candidate_id.startswith(PREFIX):
+    from .wan_implementation import is_generated, WanImplementation
+    if workload == WAN and is_generated(candidate_id):
         return WanImplementation.parse(candidate_id).candidate()
     found = [c for c in candidates(workload) if c.id == candidate_id]
     require(len(found) == 1, f"unregistered candidate: {workload}/{candidate_id}")
@@ -110,8 +110,8 @@ def candidate_profile(candidate: Candidate, *, root: Path | None = None) -> dict
     p["display_name"] = f"Search recipe: {candidate.workload}/{candidate.id}"
     runtime, env = p["runtime"], p["runtime"]["environment"]
     if candidate.workload == WAN:
-        from .wan_implementation import PREFIX, WanImplementation
-        joint = WanImplementation.parse(candidate.id) if candidate.id.startswith(PREFIX) else None
+        from .wan_implementation import is_generated, WanImplementation
+        joint = WanImplementation.parse(candidate.id) if is_generated(candidate.id) else None
         p["topology"]["placement"] = candidate.placement
         if candidate.id == "fsdp-reference" or (joint is not None and joint.placement == "fsdp"):
             p["topology"].update(model_replication="world16_full_shard",

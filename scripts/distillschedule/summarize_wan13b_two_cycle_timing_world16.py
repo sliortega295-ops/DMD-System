@@ -320,6 +320,12 @@ def main() -> int:
             errors.append(f"rank{rank}: invalid timing receipt: {error}")
             continue
         rows.append(row)
+        from distillschedule.runtime.wan_cycle_plan import validate_wan_prepared_receipts
+        from distillschedule.search.wan_implementation import current_rollout_window
+        try:
+            validate_wan_prepared_receipts(row.get("prepared_cycle_receipts", []), window=current_rollout_window(), cycles=2)
+        except ValueError as error:
+            errors.append(f"rank{rank}: prepared schedule: {error}")
         expected_schema = ("distillschedule.wan13b_two_cycle_calibration_rank.v1" if args.calibrate_stages
                            else "distillschedule.wan13b_two_cycle_timing_rank.v1")
         if args.calibrate_stages:

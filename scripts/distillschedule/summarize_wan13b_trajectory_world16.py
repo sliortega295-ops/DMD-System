@@ -412,6 +412,12 @@ def main() -> int:
             expected_hash = _canonical_hash(trace_rollout_contract)
             if observed_hash != expected_hash:
                 errors.append(f"rank{rank}: trace rollout contract SHA changed")
+        from distillschedule.runtime.wan_cycle_plan import validate_wan_prepared_receipts
+        from distillschedule.search.wan_implementation import current_rollout_window
+        try:
+            validate_wan_prepared_receipts(final.get("prepared_cycle_receipts", []), window=current_rollout_window(), cycles=args.cycles)
+        except ValueError as error:
+            errors.append(f"rank{rank}: prepared schedule: {error}")
         local_rank = final.get("local_rank")
         hostname = final.get("hostname")
         if not isinstance(hostname, str) or not isinstance(local_rank, int):

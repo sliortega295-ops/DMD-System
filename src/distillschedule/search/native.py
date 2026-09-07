@@ -96,13 +96,13 @@ def prepare_pair(reference: dict[str, Any], candidate: dict[str, Any]) -> dict[s
     if reference["profile_id"] == "minimax_h3_grid1000_best":
         from .h3_native_bridge import prepare_pair as h3_pair
         return h3_pair(reference, candidate)
-    from .wan_implementation import PREFIX, WanImplementation
+    from .wan_implementation import is_generated, WanImplementation
     ref_id = reference["search_candidate"]["id"]
-    new_ref = reference["profile_id"] == WAN and ref_id.startswith(PREFIX)
+    new_ref = reference["profile_id"] == WAN and is_generated(ref_id)
     require(ref_id == "fsdp-reference" or ref_id == "joint-livewan1-fsdp-m0-g0-r0"
             or (new_ref and WanImplementation.parse(ref_id).placement == "fsdp"),
             "unregistered baseline")
-    require(new_ref == candidate["search_candidate"]["id"].startswith(PREFIX),
+    require(new_ref == is_generated(candidate["search_candidate"]["id"]),
             "generated pair cannot mix precision contracts with legacy measurements")
     require(reference["mode"] == candidate["mode"] == "correctness", "pair must use correctness runs")
     for key in ("profile_id", "integration_head", "asset_fingerprint", "workload_semantics_hash"):

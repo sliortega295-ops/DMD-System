@@ -236,9 +236,15 @@
           "new_integrated_sha256": "bb432d4b6523a88bb226001676b20700b44bcb3cd5ff2a69f4b9045bb7036a8f",
           "previous_integrated_sha256": "6db1c3f7d6321ae251aaee65dbde3ca51ad00e1df64da4bcdb6c552201b7518e",
           "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        },
+        {
+          "base_integration_head": "8949a489499fba0e65b3c4e60d2199a7e0dbcedd",
+          "new_integrated_sha256": "adee5aefec9873e6dab241af18b0c267ef5dcb98de6608965d1d64cfad30d42f",
+          "previous_integrated_sha256": "c5ef834564761d78664106abb94430c3710bd9a34485f18692cb91eb32965bfb",
+          "reason": "Opt-in generated Wan retained-rollout schedule reaches original native helpers; preserve legacy defaults, trace/model math and two-cycle timer. Validate actual dispatch receipts and retain failed action prefixes."
         }
       ],
-      "integrated_sha256": "c5ef834564761d78664106abb94430c3710bd9a34485f18692cb91eb32965bfb",
+      "integrated_sha256": "adee5aefec9873e6dab241af18b0c267ef5dcb98de6608965d1d64cfad30d42f",
       "integration_note": " | Joint planner opt-in Wan composition/precision wiring, legacy defaults unchanged; GPU revalidation pending.",
       "source_commit": "67b2880901abece947732ba5de45a5c2685ab274",
       "source_path": "scripts/distillschedule/launch_wan13b_fair_world16_node.sh",
@@ -1852,7 +1858,15 @@
       "target": "src/distillschedule/runtime/nsys_range.py"
     },
     {
-      "integrated_sha256": "c83fe65557defc8fe29456891bdbab3cbb8637aec9fdfcde54ee37e22e6891b4",
+      "adaptations": [
+        {
+          "base_integration_head": "8949a489499fba0e65b3c4e60d2199a7e0dbcedd",
+          "new_integrated_sha256": "4e109d288bc414448cc86ed0ecfee9471b7316ed7994e0fe80754540ef1d94d5",
+          "previous_integrated_sha256": "c83fe65557defc8fe29456891bdbab3cbb8637aec9fdfcde54ee37e22e6891b4",
+          "reason": "Opt-in generated Wan retained-rollout schedule reaches original native helpers; preserve legacy defaults, trace/model math and two-cycle timer. Validate actual dispatch receipts and retain failed action prefixes."
+        }
+      ],
+      "integrated_sha256": "4e109d288bc414448cc86ed0ecfee9471b7316ed7994e0fe80754540ef1d94d5",
       "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math. | Joint planner opt-in Wan composition/precision wiring, legacy defaults unchanged; GPU revalidation pending.",
       "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
       "source_path": "scripts/distillschedule/probe_wan13b_two_cycle_timing_world16.py",
@@ -1861,7 +1875,15 @@
       "target": "scripts/distillschedule/probe_wan13b_two_cycle_timing_world16.py"
     },
     {
-      "integrated_sha256": "c21b5416f176b5428e2cc38607899ab689d95e1e71122788f18c48c93a60e85f",
+      "adaptations": [
+        {
+          "base_integration_head": "8949a489499fba0e65b3c4e60d2199a7e0dbcedd",
+          "new_integrated_sha256": "eed82fb8da52472347e617252ff0e35dba7b8ace822adc66e380ed1f61bde1b2",
+          "previous_integrated_sha256": "c21b5416f176b5428e2cc38607899ab689d95e1e71122788f18c48c93a60e85f",
+          "reason": "Opt-in generated Wan retained-rollout schedule reaches original native helpers; preserve legacy defaults, trace/model math and two-cycle timer. Validate actual dispatch receipts and retain failed action prefixes."
+        }
+      ],
+      "integrated_sha256": "eed82fb8da52472347e617252ff0e35dba7b8ace822adc66e380ed1f61bde1b2",
       "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math. | Joint planner opt-in Wan composition/precision wiring, legacy defaults unchanged; GPU revalidation pending.",
       "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
       "source_path": "scripts/distillschedule/summarize_wan13b_two_cycle_timing_world16.py",
@@ -1886,9 +1908,15 @@
           "previous_integrated_sha256": "6ac5e764f43c7c7990f48635c474b208896b0e960ac5013ccc08695ca3a4b250",
           "reason": "Restore Wan v2 all-rank numeric sketch/Gloo evidence API and comparator, opt-in only; preserve LiveWan v1 partial-owner defaults and all numerical thresholds.",
           "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206"
+        },
+        {
+          "base_integration_head": "8949a489499fba0e65b3c4e60d2199a7e0dbcedd",
+          "new_integrated_sha256": "d8be1f8ff44b0751ebaece4519a174aafae962f42f386c7082398bd73af4f984",
+          "previous_integrated_sha256": "f7080e10ff2d95ab965c4f01acaa119f846f9bd344618948c8c3fbfb5483084b",
+          "reason": "Opt-in generated Wan retained-rollout schedule reaches original native helpers; preserve legacy defaults, trace/model math and two-cycle timer. Validate actual dispatch receipts and retain failed action prefixes."
         }
       ],
-      "integrated_sha256": "f7080e10ff2d95ab965c4f01acaa119f846f9bd344618948c8c3fbfb5483084b",
+      "integrated_sha256": "d8be1f8ff44b0751ebaece4519a174aafae962f42f386c7082398bd73af4f984",
       "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math.",
       "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
       "source_path": "scripts/distillschedule/probe_wan13b_trajectory_world16.py",
@@ -1904,9 +1932,15 @@
           "previous_integrated_sha256": "32730d4add4c56e3491bd24c5afc77d723b34abaaf1a1e52e8f7c025603bf69d",
           "reason": "Restore Wan v2 all-rank numeric sketch/Gloo evidence API and comparator, opt-in only; preserve LiveWan v1 partial-owner defaults and all numerical thresholds.",
           "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206"
+        },
+        {
+          "base_integration_head": "8949a489499fba0e65b3c4e60d2199a7e0dbcedd",
+          "new_integrated_sha256": "2b50a730f19f938f66414d637c94b4a857900d2fd55f823b6871dbf8fb0fa201",
+          "previous_integrated_sha256": "804b99803f903406a2b1d885c28877ca862aa265a5744ccc0cdf4f7f39410cd6",
+          "reason": "Opt-in generated Wan retained-rollout schedule reaches original native helpers; preserve legacy defaults, trace/model math and two-cycle timer. Validate actual dispatch receipts and retain failed action prefixes."
         }
       ],
-      "integrated_sha256": "804b99803f903406a2b1d885c28877ca862aa265a5744ccc0cdf4f7f39410cd6",
+      "integrated_sha256": "2b50a730f19f938f66414d637c94b4a857900d2fd55f823b6871dbf8fb0fa201",
       "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math. | Joint planner opt-in Wan composition/precision wiring, legacy defaults unchanged; GPU revalidation pending.",
       "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
       "source_path": "scripts/distillschedule/summarize_wan13b_trajectory_world16.py",
