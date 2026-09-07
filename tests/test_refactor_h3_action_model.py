@@ -99,3 +99,18 @@ def test_launch_asset_binding_cannot_be_relabelled(tmp_path,monkeypatch):
         implementation_id='joint-h3v2-d2-n128-w3',binding=dict(source_head='a'*40,asset_fingerprint='d'*64,
                                                            semantic_fingerprint='c'*64))
     with pytest.raises(ValueError,match='actual launch'):m._verify_run_binding(layout,[],{},tmp_path)
+
+
+def test_stripped_optional_metadata_cannot_bypass_h3_cost_provenance(tmp_path,monkeypatch):
+    from dataclasses import replace
+    from distillschedule.search.cost_model import CostModel
+    layout,_=data(tmp_path,monkeypatch)
+    _,costs=m.assemble_calibration(layout,output=tmp_path/'out')
+    record=costs.records[0];path=Path(record.evidence['source_receipt'])
+    raw=json.loads(path.read_text());raw['samples_ns']=[1]
+    del raw['component_contract'];del raw['h3_action_layout'];path.write_text(json.dumps(raw))
+    evidence={k:v for k,v in record.evidence.items() if k!='component_contract'}
+    evidence['source_receipt_sha256']=file_sha256(path)
+    bad=replace(record,samples_ns=(1,),evidence=evidence)
+    with pytest.raises(ValueError,match='component provenance'):
+        CostModel(costs.binding,(bad,*costs.records[1:])).verify_receipts()
