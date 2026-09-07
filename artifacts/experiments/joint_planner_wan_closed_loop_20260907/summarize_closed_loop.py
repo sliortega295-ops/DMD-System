@@ -98,7 +98,10 @@ def main():
     (out / "summary.json").write_text(json.dumps(summary, indent=2, allow_nan=False)+"\n")
     for name, values in [("native_trials.csv", rows), ("calibration.csv", calibration)]:
         with (out / name).open("x", newline="") as file:
-            w=csv.DictWriter(file, fieldnames=list(values[0]));w.writeheader();w.writerows(values)
+            w=csv.DictWriter(file, fieldnames=list(values[0]), lineterminator="\n")
+            w.writeheader()
+            w.writerows({k:json.dumps(v, sort_keys=True) if isinstance(v, (dict, list)) else v
+                         for k,v in row.items()} for row in values)
     lines = ["# Wan measured-cost planner: closed-loop native diagnostic", "",
         f"Runtime source: `{source}`. Later publication commits are not execution identities.", "",
         "Seven implementations / 98 operation costs / 1,568 rank-stage records. CPU search agrees with a bounded exhaustive oracle.",

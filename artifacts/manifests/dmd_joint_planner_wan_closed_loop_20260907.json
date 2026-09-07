@@ -12,8 +12,8 @@
   "files": [
     {
       "path": "artifacts/experiments/joint_planner_wan_closed_loop_20260907/calibration.csv",
-      "bytes": 4002,
-      "sha256": "1d70f888ea669c1a1d6e89451747afb8d5b642fff19aed00f4b30eeee9888684"
+      "bytes": 4050,
+      "sha256": "81969677cf829064e7e085e56963e596b6bb91861c36e9b058c43c277897ff4b"
     },
     {
       "path": "artifacts/experiments/joint_planner_wan_closed_loop_20260907/measured_operation_costs.json",
@@ -27,8 +27,8 @@
     },
     {
       "path": "artifacts/experiments/joint_planner_wan_closed_loop_20260907/native_trials.csv",
-      "bytes": 2419,
-      "sha256": "0aafcdca5f2e4be19f167d3f89c8c5d9a11f2034e80dc1adc8b1cfed7c22625d"
+      "bytes": 2412,
+      "sha256": "bb9459d2945bba6180d4f832de19b98920c9dfec7cde03cb1f6c6fb19fe1100a"
     },
     {
       "path": "artifacts/experiments/joint_planner_wan_closed_loop_20260907/preserved_transport_failure.json",
@@ -42,8 +42,8 @@
     },
     {
       "path": "artifacts/experiments/joint_planner_wan_closed_loop_20260907/summarize_closed_loop.py",
-      "bytes": 9582,
-      "sha256": "96f730ebe6ac9575b8cf84f709f0febf66770172ced8a80d5407f5de32041aa2"
+      "bytes": 9758,
+      "sha256": "626cc2ba3087fecf820fdf35bcec647214d40fd6e21a0235615af509305fe068"
     },
     {
       "path": "artifacts/experiments/joint_planner_wan_closed_loop_20260907/summary.json",
@@ -73,5 +73,6 @@
     },
     "source_scope": "PRODUCTION_RUNTIME_UNCHANGED_FROM_4e3ffb59; PUBLICATION_IS_NOT_A_GPU_EXECUTION_HEAD",
     "full_ce_review": "NOT_RUN"
-  }
+  },
+  "publication_format": "CSV uses LF and JSON for structured cells; numeric values unchanged from original immutable reports"
 }
