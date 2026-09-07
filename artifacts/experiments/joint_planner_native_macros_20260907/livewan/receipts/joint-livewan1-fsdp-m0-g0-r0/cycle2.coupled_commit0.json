@@ -1,0 +1,64 @@
+{
+  "binding": {
+    "asset_fingerprint": "c045acd2b88c1de9a3f6b11d1d0d94ce2384d58d710ced61d38010e89d746b13",
+    "environment_fingerprint": "1da30724a680d0fff882ce68c9ec2b856cdd0ebbaab9c4ab4984f2e6df2ebc3a",
+    "hardware_fingerprint": "ac432a4127e0887d11f4e3ecc90c3cc180a65ee02c91f6a2192c7b277c4531fc",
+    "precision_fingerprint": "1daeb5cdd04b09d22f58247a2dff28510570b801f90d61a562744019e8e51139",
+    "semantic_fingerprint": "34204f6bfc01b703b34d9362f4a3dd8995f335912533ee919a080ea278a4da77",
+    "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b"
+  },
+  "calibration_only": true,
+  "cost_scope": "COUPLED_COMMIT_ACCOUNTING_PARTITIONS",
+  "formal_timing_eligible": false,
+  "key": "c767d19fc5af4f36f1ad7bc722f9ff0c717720c4a0c9993cf1ef7c227a4c84f2",
+  "kind": "native_operation",
+  "operation_contract_sha256": "c767d19fc5af4f36f1ad7bc722f9ff0c717720c4a0c9993cf1ef7c227a4c84f2",
+  "operation_id": "cycle2.coupled_commit0",
+  "owner_ranks": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "per_owner_duration_ns": [
+    29267757812,
+    29267734374,
+    29267867188,
+    29267828126,
+    29267867187,
+    29267742188,
+    29267671876,
+    29267789063,
+    29267914063,
+    29267804688,
+    29267992187,
+    29267914062,
+    29267960938,
+    29267695313,
+    29267906250,
+    29267734376
+  ],
+  "profiled": false,
+  "provenance": {
+    "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_macro_20260907_r2-cal-joint-livewan1-fsdp-m0-g0-r0/macro-costs/provenance.json",
+    "sha256": "30174dfb4bc48f4aef5c6f76000f55db996392a1d26755145a40b2d5725f4a23"
+  },
+  "samples_ns": [
+    29267992187
+  ],
+  "schema_version": "distillschedule.operation_calibration.v1",
+  "status": "PASS",
+  "workspace_bytes_per_rank": 32688897024
+}

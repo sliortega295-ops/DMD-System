@@ -1,0 +1,26 @@
+{
+  "status": "RESOLVED_WITH_CPU_REGRESSION_TESTS_GPU_NOT_RUN",
+  "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+  "utc": "2026-09-07T09:52:02.135186+00:00",
+  "review_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/reports/code-review-receipt.json",
+  "findings": {
+    "1": "typed calibrated anchor routing; six combined red failures witnessed before fixes",
+    "2": "native validation dispatch through selected adapter",
+    "4": "85 native calibration/summary CPU tests; no invented raw LiveWan run_id"
+  },
+  "additional_actual_failure": "R1 calibration raw rank receipt lacks run_id; replaced with native path/source-bound operation_calibration proof",
+  "environment_probe_fix": "Probe now uses actual clean_environment; no extra LiveWan LD_LIBRARY_PATH",
+  "full_cpu_suite": {
+    "passed": 761,
+    "skipped": 17,
+    "seconds": 39.32
+  },
+  "compile": "PASS",
+  "shell_syntax": "PASS",
+  "diff_check": "PASS",
+  "training_math_changes": false,
+  "canonical_profile_changes": false,
+  "r1_calibration_reuse": false,
+  "raw_gpu_results": "NOT_RUN_FOR_THIS_HEAD",
+  "external_review": "UNAVAILABLE_DEADLINE_1200s; local review completed; not an external review PASS"
+}

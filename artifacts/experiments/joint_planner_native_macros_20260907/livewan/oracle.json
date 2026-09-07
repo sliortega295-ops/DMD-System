@@ -1,0 +1,5251 @@
+{
+  "binding": {
+    "asset_fingerprint": "c045acd2b88c1de9a3f6b11d1d0d94ce2384d58d710ced61d38010e89d746b13",
+    "environment_fingerprint": "1da30724a680d0fff882ce68c9ec2b856cdd0ebbaab9c4ab4984f2e6df2ebc3a",
+    "hardware_fingerprint": "ac432a4127e0887d11f4e3ecc90c3cc180a65ee02c91f6a2192c7b277c4531fc",
+    "precision_fingerprint": "1daeb5cdd04b09d22f58247a2dff28510570b801f90d61a562744019e8e51139",
+    "semantic_fingerprint": "34204f6bfc01b703b34d9362f4a3dd8995f335912533ee919a080ea278a4da77",
+    "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b"
+  },
+  "calibration_requests": [],
+  "claimable_speedup": false,
+  "cost_model_sha256": "762efebeacef42b2c2eeac6ed03dc3c487d22d256e56ffce215e62d5794af76c",
+  "evidence_scope": "MEASURED",
+  "exhaustive": true,
+  "gpu_execution": "NOT_RUN",
+  "journal": [
+    {
+      "assignment_sha256": "1780021caf825289b24fc01f96e58372c10076291a667710b6f86518e8b4c106",
+      "proposal": 0,
+      "reason": "MANDATORY_BASELINE_OR_INCUMBENT",
+      "status": "PREDICTED_FEASIBLE"
+    },
+    {
+      "assignment_sha256": "dde44d39c3b6aa36a9efdf4a6f9bfbf7b56a7c1d9f354571ae20a6254040b8b0",
+      "proposal": 1,
+      "reason": "MANDATORY_BASELINE_OR_INCUMBENT",
+      "status": "PREDICTED_FEASIBLE"
+    },
+    {
+      "assignment_sha256": "dde44d39c3b6aa36a9efdf4a6f9bfbf7b56a7c1d9f354571ae20a6254040b8b0",
+      "proposal": 2,
+      "reason": "INITIAL_CHAIN",
+      "status": "PREDICTED_FEASIBLE"
+    },
+    {
+      "assignment_sha256": "1780021caf825289b24fc01f96e58372c10076291a667710b6f86518e8b4c106",
+      "proposal": 3,
+      "reason": "EXHAUSTIVE_ORACLE",
+      "status": "PREDICTED_FEASIBLE"
+    },
+    {
+      "assignment_sha256": "085668e2f010ddf31097ac15f64de066b0bc6fca2c43f6fbf0b29f2600c5d275",
+      "proposal": 4,
+      "reason": "EXHAUSTIVE_ORACLE",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment_sha256": "ebdc866357c56d5a61f234c20df6b26ce76a2ce60ace460f6da431a319888d8e",
+      "proposal": 5,
+      "reason": "EXHAUSTIVE_ORACLE",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment_sha256": "af9a3798a496d2db08ba4cd7b8b61f9f3e69ab9c22fcd1e6a310ce9d01d0ed90",
+      "proposal": 6,
+      "reason": "EXHAUSTIVE_ORACLE",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment_sha256": "434340fd9e391be1776f2428329536d3680ae82486555f342c88baabbbf59763",
+      "proposal": 7,
+      "reason": "EXHAUSTIVE_ORACLE",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment_sha256": "e9a6c81db267f56d05d52af15273cb038c6dc0204b1271b770bac11e59b77ae4",
+      "proposal": 8,
+      "reason": "EXHAUSTIVE_ORACLE",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment_sha256": "327b7b012ce4544e3e4e2dfc3cb145a5249e3fe830f2fa20e13ad13ca7b777e3",
+      "proposal": 9,
+      "reason": "EXHAUSTIVE_ORACLE",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment_sha256": "874b1b5508535cb6fee7644ada4012b2beff2e0c27e5fa0faa09cc4d8158aced",
+      "proposal": 10,
+      "reason": "EXHAUSTIVE_ORACLE",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment_sha256": "10ab4ea7016c9a1d97119227c32849b0d843423d25934a6a1a9e872a488a2b92",
+      "proposal": 11,
+      "reason": "EXHAUSTIVE_ORACLE",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment_sha256": "55e65fc7cf1fff4834f7fc2f7ddcf4e82e01f6107e32fa063df113ff0a42aad7",
+      "proposal": 12,
+      "reason": "EXHAUSTIVE_ORACLE",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment_sha256": "93b22539852c8c8846972b04fd8445c25658575191d430373dce9e73f2e28865",
+      "proposal": 13,
+      "reason": "EXHAUSTIVE_ORACLE",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment_sha256": "af5ae6146d1d325aa9b956f6898961b82399d0390bd472fb62489af70bad2d3c",
+      "proposal": 14,
+      "reason": "EXHAUSTIVE_ORACLE",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment_sha256": "21f8f04b47def08852d7fb23c91d219e6b4ddf51b9328d9c45e85b0d5b1006cd",
+      "proposal": 15,
+      "reason": "EXHAUSTIVE_ORACLE",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment_sha256": "1a71c6bca5704fab612de6daba299c1e464d361f2b15a3f4d277dbab94229c41",
+      "proposal": 16,
+      "reason": "EXHAUSTIVE_ORACLE",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment_sha256": "ce4422a8c1103eb24b3b3ec82528e012cae27a59462e2fd452487f79b96707ac",
+      "proposal": 17,
+      "reason": "EXHAUSTIVE_ORACLE",
+      "status": "PREDICTED_FEASIBLE"
+    },
+    {
+      "assignment_sha256": "dde44d39c3b6aa36a9efdf4a6f9bfbf7b56a7c1d9f354571ae20a6254040b8b0",
+      "proposal": 18,
+      "reason": "EXHAUSTIVE_ORACLE",
+      "status": "PREDICTED_FEASIBLE"
+    }
+  ],
+  "predicted_best": {
+    "assignment": {
+      "gate": "on",
+      "modulation": "on",
+      "placement": "pipeline",
+      "row_major": "on"
+    },
+    "claimable_speedup": false,
+    "cost_model_sha256": "762efebeacef42b2c2eeac6ed03dc3c487d22d256e56ffce215e62d5794af76c",
+    "critical_path_scope": "MODEL_PREDICTION_NOT_NSYS_DEPENDENCY_PROOF",
+    "cycle2_early_activity_sum_ns_not_wall": 0,
+    "cycle2_work_started_before_cycle1_commit": [],
+    "evidence_scope": "MEASURED",
+    "gpu_execution": "NOT_RUN",
+    "memory": [
+      {
+        "limit_bytes": 42949672960,
+        "peak_at_ns": 0,
+        "peak_bytes": 42941284352,
+        "predicted_headroom_bytes": 8388608,
+        "rank": 0,
+        "static_bytes": 28111631360
+      },
+      {
+        "limit_bytes": 42949672960,
+        "peak_at_ns": 0,
+        "peak_bytes": 42941284352,
+        "predicted_headroom_bytes": 8388608,
+        "rank": 1,
+        "static_bytes": 28111631360
+      },
+      {
+        "limit_bytes": 42949672960,
+        "peak_at_ns": 0,
+        "peak_bytes": 42941284352,
+        "predicted_headroom_bytes": 8388608,
+        "rank": 10,
+        "static_bytes": 28111631360
+      },
+      {
+        "limit_bytes": 42949672960,
+        "peak_at_ns": 0,
+        "peak_bytes": 42941284352,
+        "predicted_headroom_bytes": 8388608,
+        "rank": 11,
+        "static_bytes": 28111631360
+      },
+      {
+        "limit_bytes": 42949672960,
+        "peak_at_ns": 0,
+        "peak_bytes": 42941284352,
+        "predicted_headroom_bytes": 8388608,
+        "rank": 12,
+        "static_bytes": 28111631360
+      },
+      {
+        "limit_bytes": 42949672960,
+        "peak_at_ns": 0,
+        "peak_bytes": 42941284352,
+        "predicted_headroom_bytes": 8388608,
+        "rank": 13,
+        "static_bytes": 28111631360
+      },
+      {
+        "limit_bytes": 42949672960,
+        "peak_at_ns": 0,
+        "peak_bytes": 42941284352,
+        "predicted_headroom_bytes": 8388608,
+        "rank": 14,
+        "static_bytes": 28111631360
+      },
+      {
+        "limit_bytes": 42949672960,
+        "peak_at_ns": 0,
+        "peak_bytes": 42941284352,
+        "predicted_headroom_bytes": 8388608,
+        "rank": 15,
+        "static_bytes": 28111631360
+      },
+      {
+        "limit_bytes": 42949672960,
+        "peak_at_ns": 0,
+        "peak_bytes": 42941284352,
+        "predicted_headroom_bytes": 8388608,
+        "rank": 2,
+        "static_bytes": 28111631360
+      },
+      {
+        "limit_bytes": 42949672960,
+        "peak_at_ns": 0,
+        "peak_bytes": 42941284352,
+        "predicted_headroom_bytes": 8388608,
+        "rank": 3,
+        "static_bytes": 28111631360
+      },
+      {
+        "limit_bytes": 42949672960,
+        "peak_at_ns": 0,
+        "peak_bytes": 42941284352,
+        "predicted_headroom_bytes": 8388608,
+        "rank": 4,
+        "static_bytes": 28111631360
+      },
+      {
+        "limit_bytes": 42949672960,
+        "peak_at_ns": 0,
+        "peak_bytes": 42941284352,
+        "predicted_headroom_bytes": 8388608,
+        "rank": 5,
+        "static_bytes": 28111631360
+      },
+      {
+        "limit_bytes": 42949672960,
+        "peak_at_ns": 0,
+        "peak_bytes": 42941284352,
+        "predicted_headroom_bytes": 8388608,
+        "rank": 6,
+        "static_bytes": 28111631360
+      },
+      {
+        "limit_bytes": 42949672960,
+        "peak_at_ns": 0,
+        "peak_bytes": 42941284352,
+        "predicted_headroom_bytes": 8388608,
+        "rank": 7,
+        "static_bytes": 28111631360
+      },
+      {
+        "limit_bytes": 42949672960,
+        "peak_at_ns": 0,
+        "peak_bytes": 42941284352,
+        "predicted_headroom_bytes": 8388608,
+        "rank": 8,
+        "static_bytes": 28111631360
+      },
+      {
+        "limit_bytes": 42949672960,
+        "peak_at_ns": 0,
+        "peak_bytes": 42941284352,
+        "predicted_headroom_bytes": 8388608,
+        "rank": 9,
+        "static_bytes": 28111631360
+      }
+    ],
+    "memory_reconciliation": "PASS",
+    "predicted_cycle1_ns": 53657996094,
+    "predicted_cycle2_ns": 47097269532,
+    "predicted_total_ns": 100755265626,
+    "problem_sha256": "3ec51b3ac2e4176ff385f0534931adf690f3186f7a8d61d52ac6507b04ebc265",
+    "status": "PREDICTED_FEASIBLE",
+    "timeline": [
+      {
+        "cost_key": "684f74edb38c8a20125fba227e9b5bbb3993d2565883911501e757413735a7d9",
+        "critical_predecessors": [],
+        "cycle": 1,
+        "duration_ns": 29612708984,
+        "end_ns": 29612708984,
+        "kind": "critic_update",
+        "operation": "cycle1.coupled_commit0",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 0
+      },
+      {
+        "cost_key": "7b61037b1bc9e0e0e7b566b6f54564050395ba99e3c22aad199ca4682cc3d054",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.coupled_commit0",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.coupled_commit0",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.coupled_commit0",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.coupled_commit0",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.coupled_commit0",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.coupled_commit0",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.coupled_commit0",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.coupled_commit0",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.coupled_commit0",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.coupled_commit0",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.coupled_commit0",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.coupled_commit0",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.coupled_commit0",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.coupled_commit0",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.coupled_commit0",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.coupled_commit0",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.coupled_commit0",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 1,
+        "duration_ns": 7515501953,
+        "end_ns": 37128210937,
+        "kind": "critic_update",
+        "operation": "cycle1.coupled_commit1",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 29612708984
+      },
+      {
+        "cost_key": "afdc74a72832dd135c69d5933307c74656dd49d25fa6db74cb19627c44a2a240",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.coupled_commit1",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.coupled_commit1",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.coupled_commit1",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.coupled_commit1",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.coupled_commit1",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.coupled_commit1",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.coupled_commit1",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.coupled_commit1",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.coupled_commit1",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.coupled_commit1",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.coupled_commit1",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.coupled_commit1",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.coupled_commit1",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.coupled_commit1",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.coupled_commit1",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.coupled_commit1",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.coupled_commit1",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 1,
+        "duration_ns": 5503656250,
+        "end_ns": 42631867187,
+        "kind": "critic_update",
+        "operation": "cycle1.coupled_commit2",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 37128210937
+      },
+      {
+        "cost_key": "5f56488f34292b7fef463b4d0fb1cda0b5d040d74e7223858009c1f6aa68ed88",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.coupled_commit2",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.coupled_commit2",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.coupled_commit2",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.coupled_commit2",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.coupled_commit2",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.coupled_commit2",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.coupled_commit2",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.coupled_commit2",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.coupled_commit2",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.coupled_commit2",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.coupled_commit2",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.coupled_commit2",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.coupled_commit2",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.coupled_commit2",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.coupled_commit2",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.coupled_commit2",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.coupled_commit2",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 1,
+        "duration_ns": 5511593750,
+        "end_ns": 48143460937,
+        "kind": "critic_update",
+        "operation": "cycle1.coupled_commit3",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 42631867187
+      },
+      {
+        "cost_key": "1e3d083efe6e56f6ffb67af4827004b3dceced044e3326277e6980b4cbd075ee",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.coupled_commit3",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.coupled_commit3",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.coupled_commit3",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.coupled_commit3",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.coupled_commit3",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.coupled_commit3",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.coupled_commit3",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.coupled_commit3",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.coupled_commit3",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.coupled_commit3",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.coupled_commit3",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.coupled_commit3",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.coupled_commit3",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.coupled_commit3",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.coupled_commit3",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.coupled_commit3",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.coupled_commit3",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 1,
+        "duration_ns": 5514535157,
+        "end_ns": 53657996094,
+        "kind": "critic_update",
+        "operation": "cycle1.coupled_commit4",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 48143460937
+      },
+      {
+        "cost_key": "042de355445816ed685086fbd111e4e61121d58e18d74ca2e433069e2556893f",
+        "critical_predecessors": [
+          {
+            "operation": "cycle1.coupled_commit4",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle1.coupled_commit4",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle1.coupled_commit4",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle1.coupled_commit4",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle1.coupled_commit4",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle1.coupled_commit4",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle1.coupled_commit4",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle1.coupled_commit4",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle1.coupled_commit4",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle1.coupled_commit4",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle1.coupled_commit4",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle1.coupled_commit4",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle1.coupled_commit4",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle1.coupled_commit4",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle1.coupled_commit4",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle1.coupled_commit4",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle1.coupled_commit4",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 23094949219,
+        "end_ns": 76752945313,
+        "kind": "critic_update",
+        "operation": "cycle2.coupled_commit0",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 53657996094
+      },
+      {
+        "cost_key": "03e98fe7b35fec6e4398c2cbd61256602ac0f712e64ba6ec245eb5e80013dc71",
+        "critical_predecessors": [
+          {
+            "operation": "cycle2.coupled_commit0",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle2.coupled_commit0",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle2.coupled_commit0",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle2.coupled_commit0",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle2.coupled_commit0",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle2.coupled_commit0",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle2.coupled_commit0",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle2.coupled_commit0",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle2.coupled_commit0",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle2.coupled_commit0",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle2.coupled_commit0",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle2.coupled_commit0",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle2.coupled_commit0",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle2.coupled_commit0",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle2.coupled_commit0",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle2.coupled_commit0",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle2.coupled_commit0",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 7437906250,
+        "end_ns": 84190851563,
+        "kind": "critic_update",
+        "operation": "cycle2.coupled_commit1",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 76752945313
+      },
+      {
+        "cost_key": "111806fa3ea929048ab2d0615af6f6c806712869fd203451e1f92956c2ae2c39",
+        "critical_predecessors": [
+          {
+            "operation": "cycle2.coupled_commit1",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle2.coupled_commit1",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle2.coupled_commit1",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle2.coupled_commit1",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle2.coupled_commit1",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle2.coupled_commit1",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle2.coupled_commit1",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle2.coupled_commit1",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle2.coupled_commit1",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle2.coupled_commit1",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle2.coupled_commit1",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle2.coupled_commit1",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle2.coupled_commit1",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle2.coupled_commit1",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle2.coupled_commit1",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle2.coupled_commit1",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle2.coupled_commit1",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 5522281250,
+        "end_ns": 89713132813,
+        "kind": "critic_update",
+        "operation": "cycle2.coupled_commit2",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 84190851563
+      },
+      {
+        "cost_key": "b7a00a1368dd79a495b699776c1f856e4b81c47cd9a4c428cb00d16573742192",
+        "critical_predecessors": [
+          {
+            "operation": "cycle2.coupled_commit2",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle2.coupled_commit2",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle2.coupled_commit2",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle2.coupled_commit2",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle2.coupled_commit2",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle2.coupled_commit2",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle2.coupled_commit2",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle2.coupled_commit2",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle2.coupled_commit2",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle2.coupled_commit2",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle2.coupled_commit2",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle2.coupled_commit2",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle2.coupled_commit2",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle2.coupled_commit2",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle2.coupled_commit2",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle2.coupled_commit2",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle2.coupled_commit2",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 5519085938,
+        "end_ns": 95232218751,
+        "kind": "critic_update",
+        "operation": "cycle2.coupled_commit3",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 89713132813
+      },
+      {
+        "cost_key": "8ca676cf889ae3f3c767377a69a3d30761a2cf30fd5005e405653e616fa24b74",
+        "critical_predecessors": [
+          {
+            "operation": "cycle2.coupled_commit3",
+            "reason": "dependency"
+          },
+          {
+            "operation": "cycle2.coupled_commit3",
+            "reason": "resource:gpu:0"
+          },
+          {
+            "operation": "cycle2.coupled_commit3",
+            "reason": "resource:gpu:1"
+          },
+          {
+            "operation": "cycle2.coupled_commit3",
+            "reason": "resource:gpu:10"
+          },
+          {
+            "operation": "cycle2.coupled_commit3",
+            "reason": "resource:gpu:11"
+          },
+          {
+            "operation": "cycle2.coupled_commit3",
+            "reason": "resource:gpu:12"
+          },
+          {
+            "operation": "cycle2.coupled_commit3",
+            "reason": "resource:gpu:13"
+          },
+          {
+            "operation": "cycle2.coupled_commit3",
+            "reason": "resource:gpu:14"
+          },
+          {
+            "operation": "cycle2.coupled_commit3",
+            "reason": "resource:gpu:15"
+          },
+          {
+            "operation": "cycle2.coupled_commit3",
+            "reason": "resource:gpu:2"
+          },
+          {
+            "operation": "cycle2.coupled_commit3",
+            "reason": "resource:gpu:3"
+          },
+          {
+            "operation": "cycle2.coupled_commit3",
+            "reason": "resource:gpu:4"
+          },
+          {
+            "operation": "cycle2.coupled_commit3",
+            "reason": "resource:gpu:5"
+          },
+          {
+            "operation": "cycle2.coupled_commit3",
+            "reason": "resource:gpu:6"
+          },
+          {
+            "operation": "cycle2.coupled_commit3",
+            "reason": "resource:gpu:7"
+          },
+          {
+            "operation": "cycle2.coupled_commit3",
+            "reason": "resource:gpu:8"
+          },
+          {
+            "operation": "cycle2.coupled_commit3",
+            "reason": "resource:gpu:9"
+          }
+        ],
+        "cycle": 2,
+        "duration_ns": 5523046875,
+        "end_ns": 100755265626,
+        "kind": "critic_update",
+        "operation": "cycle2.coupled_commit4",
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "resources": [
+          "gpu:0",
+          "gpu:1",
+          "gpu:10",
+          "gpu:11",
+          "gpu:12",
+          "gpu:13",
+          "gpu:14",
+          "gpu:15",
+          "gpu:2",
+          "gpu:3",
+          "gpu:4",
+          "gpu:5",
+          "gpu:6",
+          "gpu:7",
+          "gpu:8",
+          "gpu:9"
+        ],
+        "role": "native_runtime",
+        "start_ns": 95232218751
+      }
+    ]
+  },
+  "problem_sha256": "3ec51b3ac2e4176ff385f0534931adf690f3186f7a8d61d52ac6507b04ebc265",
+  "ranked": [
+    {
+      "assignment": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "on"
+      },
+      "claimable_speedup": false,
+      "cost_model_sha256": "762efebeacef42b2c2eeac6ed03dc3c487d22d256e56ffce215e62d5794af76c",
+      "critical_path_scope": "MODEL_PREDICTION_NOT_NSYS_DEPENDENCY_PROOF",
+      "cycle2_early_activity_sum_ns_not_wall": 0,
+      "cycle2_work_started_before_cycle1_commit": [],
+      "evidence_scope": "MEASURED",
+      "gpu_execution": "NOT_RUN",
+      "memory": [
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42941284352,
+          "predicted_headroom_bytes": 8388608,
+          "rank": 0,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42941284352,
+          "predicted_headroom_bytes": 8388608,
+          "rank": 1,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42941284352,
+          "predicted_headroom_bytes": 8388608,
+          "rank": 10,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42941284352,
+          "predicted_headroom_bytes": 8388608,
+          "rank": 11,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42941284352,
+          "predicted_headroom_bytes": 8388608,
+          "rank": 12,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42941284352,
+          "predicted_headroom_bytes": 8388608,
+          "rank": 13,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42941284352,
+          "predicted_headroom_bytes": 8388608,
+          "rank": 14,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42941284352,
+          "predicted_headroom_bytes": 8388608,
+          "rank": 15,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42941284352,
+          "predicted_headroom_bytes": 8388608,
+          "rank": 2,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42941284352,
+          "predicted_headroom_bytes": 8388608,
+          "rank": 3,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42941284352,
+          "predicted_headroom_bytes": 8388608,
+          "rank": 4,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42941284352,
+          "predicted_headroom_bytes": 8388608,
+          "rank": 5,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42941284352,
+          "predicted_headroom_bytes": 8388608,
+          "rank": 6,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42941284352,
+          "predicted_headroom_bytes": 8388608,
+          "rank": 7,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42941284352,
+          "predicted_headroom_bytes": 8388608,
+          "rank": 8,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42941284352,
+          "predicted_headroom_bytes": 8388608,
+          "rank": 9,
+          "static_bytes": 28111631360
+        }
+      ],
+      "memory_reconciliation": "PASS",
+      "predicted_cycle1_ns": 53657996094,
+      "predicted_cycle2_ns": 47097269532,
+      "predicted_total_ns": 100755265626,
+      "problem_sha256": "3ec51b3ac2e4176ff385f0534931adf690f3186f7a8d61d52ac6507b04ebc265",
+      "status": "PREDICTED_FEASIBLE",
+      "timeline": [
+        {
+          "cost_key": "684f74edb38c8a20125fba227e9b5bbb3993d2565883911501e757413735a7d9",
+          "critical_predecessors": [],
+          "cycle": 1,
+          "duration_ns": 29612708984,
+          "end_ns": 29612708984,
+          "kind": "critic_update",
+          "operation": "cycle1.coupled_commit0",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 0
+        },
+        {
+          "cost_key": "7b61037b1bc9e0e0e7b566b6f54564050395ba99e3c22aad199ca4682cc3d054",
+          "critical_predecessors": [
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 1,
+          "duration_ns": 7515501953,
+          "end_ns": 37128210937,
+          "kind": "critic_update",
+          "operation": "cycle1.coupled_commit1",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 29612708984
+        },
+        {
+          "cost_key": "afdc74a72832dd135c69d5933307c74656dd49d25fa6db74cb19627c44a2a240",
+          "critical_predecessors": [
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 1,
+          "duration_ns": 5503656250,
+          "end_ns": 42631867187,
+          "kind": "critic_update",
+          "operation": "cycle1.coupled_commit2",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 37128210937
+        },
+        {
+          "cost_key": "5f56488f34292b7fef463b4d0fb1cda0b5d040d74e7223858009c1f6aa68ed88",
+          "critical_predecessors": [
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 1,
+          "duration_ns": 5511593750,
+          "end_ns": 48143460937,
+          "kind": "critic_update",
+          "operation": "cycle1.coupled_commit3",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 42631867187
+        },
+        {
+          "cost_key": "1e3d083efe6e56f6ffb67af4827004b3dceced044e3326277e6980b4cbd075ee",
+          "critical_predecessors": [
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 1,
+          "duration_ns": 5514535157,
+          "end_ns": 53657996094,
+          "kind": "critic_update",
+          "operation": "cycle1.coupled_commit4",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 48143460937
+        },
+        {
+          "cost_key": "042de355445816ed685086fbd111e4e61121d58e18d74ca2e433069e2556893f",
+          "critical_predecessors": [
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 2,
+          "duration_ns": 23094949219,
+          "end_ns": 76752945313,
+          "kind": "critic_update",
+          "operation": "cycle2.coupled_commit0",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 53657996094
+        },
+        {
+          "cost_key": "03e98fe7b35fec6e4398c2cbd61256602ac0f712e64ba6ec245eb5e80013dc71",
+          "critical_predecessors": [
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 2,
+          "duration_ns": 7437906250,
+          "end_ns": 84190851563,
+          "kind": "critic_update",
+          "operation": "cycle2.coupled_commit1",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 76752945313
+        },
+        {
+          "cost_key": "111806fa3ea929048ab2d0615af6f6c806712869fd203451e1f92956c2ae2c39",
+          "critical_predecessors": [
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 2,
+          "duration_ns": 5522281250,
+          "end_ns": 89713132813,
+          "kind": "critic_update",
+          "operation": "cycle2.coupled_commit2",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 84190851563
+        },
+        {
+          "cost_key": "b7a00a1368dd79a495b699776c1f856e4b81c47cd9a4c428cb00d16573742192",
+          "critical_predecessors": [
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 2,
+          "duration_ns": 5519085938,
+          "end_ns": 95232218751,
+          "kind": "critic_update",
+          "operation": "cycle2.coupled_commit3",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 89713132813
+        },
+        {
+          "cost_key": "8ca676cf889ae3f3c767377a69a3d30761a2cf30fd5005e405653e616fa24b74",
+          "critical_predecessors": [
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 2,
+          "duration_ns": 5523046875,
+          "end_ns": 100755265626,
+          "kind": "critic_update",
+          "operation": "cycle2.coupled_commit4",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 95232218751
+        }
+      ]
+    },
+    {
+      "assignment": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "off"
+      },
+      "claimable_speedup": false,
+      "cost_model_sha256": "762efebeacef42b2c2eeac6ed03dc3c487d22d256e56ffce215e62d5794af76c",
+      "critical_path_scope": "MODEL_PREDICTION_NOT_NSYS_DEPENDENCY_PROOF",
+      "cycle2_early_activity_sum_ns_not_wall": 0,
+      "cycle2_work_started_before_cycle1_commit": [],
+      "evidence_scope": "MEASURED",
+      "gpu_execution": "NOT_RUN",
+      "memory": [
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42949672960,
+          "predicted_headroom_bytes": 0,
+          "rank": 0,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42949672960,
+          "predicted_headroom_bytes": 0,
+          "rank": 1,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42949672960,
+          "predicted_headroom_bytes": 0,
+          "rank": 10,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42949672960,
+          "predicted_headroom_bytes": 0,
+          "rank": 11,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42949672960,
+          "predicted_headroom_bytes": 0,
+          "rank": 12,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42949672960,
+          "predicted_headroom_bytes": 0,
+          "rank": 13,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42949672960,
+          "predicted_headroom_bytes": 0,
+          "rank": 14,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42949672960,
+          "predicted_headroom_bytes": 0,
+          "rank": 15,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42949672960,
+          "predicted_headroom_bytes": 0,
+          "rank": 2,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42949672960,
+          "predicted_headroom_bytes": 0,
+          "rank": 3,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42949672960,
+          "predicted_headroom_bytes": 0,
+          "rank": 4,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42949672960,
+          "predicted_headroom_bytes": 0,
+          "rank": 5,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42949672960,
+          "predicted_headroom_bytes": 0,
+          "rank": 6,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42949672960,
+          "predicted_headroom_bytes": 0,
+          "rank": 7,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42949672960,
+          "predicted_headroom_bytes": 0,
+          "rank": 8,
+          "static_bytes": 28111631360
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42949672960,
+          "predicted_headroom_bytes": 0,
+          "rank": 9,
+          "static_bytes": 28111631360
+        }
+      ],
+      "memory_reconciliation": "PASS",
+      "predicted_cycle1_ns": 55177585936,
+      "predicted_cycle2_ns": 48404250001,
+      "predicted_total_ns": 103581835937,
+      "problem_sha256": "3ec51b3ac2e4176ff385f0534931adf690f3186f7a8d61d52ac6507b04ebc265",
+      "status": "PREDICTED_FEASIBLE",
+      "timeline": [
+        {
+          "cost_key": "2825106681c11fa1e16f81709e7d5002e056ba8a3870fcdfcee4774afc9972da",
+          "critical_predecessors": [],
+          "cycle": 1,
+          "duration_ns": 29954476562,
+          "end_ns": 29954476562,
+          "kind": "critic_update",
+          "operation": "cycle1.coupled_commit0",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 0
+        },
+        {
+          "cost_key": "81a75b7f71e0e76a110f468d679cabed46b4ee8683b359f782d694e863e42464",
+          "critical_predecessors": [
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 1,
+          "duration_ns": 7869097656,
+          "end_ns": 37823574218,
+          "kind": "critic_update",
+          "operation": "cycle1.coupled_commit1",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 29954476562
+        },
+        {
+          "cost_key": "12c5b099c28bf2ab36233ba63b0e8643351512eb06edf0c77426b9525ed7fcb3",
+          "critical_predecessors": [
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 1,
+          "duration_ns": 5517742187,
+          "end_ns": 43341316405,
+          "kind": "critic_update",
+          "operation": "cycle1.coupled_commit2",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 37823574218
+        },
+        {
+          "cost_key": "f2953807954cb8151cb2896eaeb9366914f74caf0a9f0f4ec4a2100ae764b52c",
+          "critical_predecessors": [
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 1,
+          "duration_ns": 6072960937,
+          "end_ns": 49414277342,
+          "kind": "critic_update",
+          "operation": "cycle1.coupled_commit3",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 43341316405
+        },
+        {
+          "cost_key": "1031eddfc3d625d522ca3b25d2f00cb07ff1dd168b930c66c40e04b98cb48221",
+          "critical_predecessors": [
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 1,
+          "duration_ns": 5763308594,
+          "end_ns": 55177585936,
+          "kind": "critic_update",
+          "operation": "cycle1.coupled_commit4",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 49414277342
+        },
+        {
+          "cost_key": "5169292fb4c17d08ff12497a0130a84a376c78db1acf25494a0110fa6740ac12",
+          "critical_predecessors": [
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 2,
+          "duration_ns": 23146187500,
+          "end_ns": 78323773436,
+          "kind": "critic_update",
+          "operation": "cycle2.coupled_commit0",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 55177585936
+        },
+        {
+          "cost_key": "4398da4520d6fb58f4dc51999afbbf84978f65fe1d8afe67ae022e77deb4aafa",
+          "critical_predecessors": [
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 2,
+          "duration_ns": 7889218750,
+          "end_ns": 86212992186,
+          "kind": "critic_update",
+          "operation": "cycle2.coupled_commit1",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 78323773436
+        },
+        {
+          "cost_key": "d71829662d6936ae33367cdc8fee41af575d578d70d19ceabe53a661a24bf37a",
+          "critical_predecessors": [
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 2,
+          "duration_ns": 5512226563,
+          "end_ns": 91725218749,
+          "kind": "critic_update",
+          "operation": "cycle2.coupled_commit2",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 86212992186
+        },
+        {
+          "cost_key": "c7bb0352164640f87cb4b9388ac9ab4f50bc4f566e8f9c5675ca7dd5a4c82f02",
+          "critical_predecessors": [
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 2,
+          "duration_ns": 6038039063,
+          "end_ns": 97763257812,
+          "kind": "critic_update",
+          "operation": "cycle2.coupled_commit3",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 91725218749
+        },
+        {
+          "cost_key": "78394aae937f58c707a312c68bdee5f851d666394332f1b2edc830de313d03ff",
+          "critical_predecessors": [
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 2,
+          "duration_ns": 5818578125,
+          "end_ns": 103581835937,
+          "kind": "critic_update",
+          "operation": "cycle2.coupled_commit4",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 97763257812
+        }
+      ]
+    },
+    {
+      "assignment": {
+        "gate": "off",
+        "modulation": "off",
+        "placement": "fsdp",
+        "row_major": "off"
+      },
+      "claimable_speedup": false,
+      "cost_model_sha256": "762efebeacef42b2c2eeac6ed03dc3c487d22d256e56ffce215e62d5794af76c",
+      "critical_path_scope": "MODEL_PREDICTION_NOT_NSYS_DEPENDENCY_PROOF",
+      "cycle2_early_activity_sum_ns_not_wall": 0,
+      "cycle2_work_started_before_cycle1_commit": [],
+      "evidence_scope": "MEASURED",
+      "gpu_execution": "NOT_RUN",
+      "memory": [
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42945478656,
+          "predicted_headroom_bytes": 4194304,
+          "rank": 0,
+          "static_bytes": 10256581632
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42945478656,
+          "predicted_headroom_bytes": 4194304,
+          "rank": 1,
+          "static_bytes": 10256581632
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42945478656,
+          "predicted_headroom_bytes": 4194304,
+          "rank": 10,
+          "static_bytes": 10256581632
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42945478656,
+          "predicted_headroom_bytes": 4194304,
+          "rank": 11,
+          "static_bytes": 10256581632
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42945478656,
+          "predicted_headroom_bytes": 4194304,
+          "rank": 12,
+          "static_bytes": 10256581632
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42945478656,
+          "predicted_headroom_bytes": 4194304,
+          "rank": 13,
+          "static_bytes": 10256581632
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42945478656,
+          "predicted_headroom_bytes": 4194304,
+          "rank": 14,
+          "static_bytes": 10256581632
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42945478656,
+          "predicted_headroom_bytes": 4194304,
+          "rank": 15,
+          "static_bytes": 10256581632
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42945478656,
+          "predicted_headroom_bytes": 4194304,
+          "rank": 2,
+          "static_bytes": 10256581632
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42945478656,
+          "predicted_headroom_bytes": 4194304,
+          "rank": 3,
+          "static_bytes": 10256581632
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42945478656,
+          "predicted_headroom_bytes": 4194304,
+          "rank": 4,
+          "static_bytes": 10256581632
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42945478656,
+          "predicted_headroom_bytes": 4194304,
+          "rank": 5,
+          "static_bytes": 10256581632
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42945478656,
+          "predicted_headroom_bytes": 4194304,
+          "rank": 6,
+          "static_bytes": 10256581632
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42945478656,
+          "predicted_headroom_bytes": 4194304,
+          "rank": 7,
+          "static_bytes": 10256581632
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42945478656,
+          "predicted_headroom_bytes": 4194304,
+          "rank": 8,
+          "static_bytes": 10256581632
+        },
+        {
+          "limit_bytes": 42949672960,
+          "peak_at_ns": 0,
+          "peak_bytes": 42945478656,
+          "predicted_headroom_bytes": 4194304,
+          "rank": 9,
+          "static_bytes": 10256581632
+        }
+      ],
+      "memory_reconciliation": "PASS",
+      "predicted_cycle1_ns": 79617738281,
+      "predicted_cycle2_ns": 62416109375,
+      "predicted_total_ns": 142033847656,
+      "problem_sha256": "3ec51b3ac2e4176ff385f0534931adf690f3186f7a8d61d52ac6507b04ebc265",
+      "status": "PREDICTED_FEASIBLE",
+      "timeline": [
+        {
+          "cost_key": "906c1d50e35580cd5637601fc77712c87807240c5b97ec0815767943e5f38419",
+          "critical_predecessors": [],
+          "cycle": 1,
+          "duration_ns": 42531132812,
+          "end_ns": 42531132812,
+          "kind": "critic_update",
+          "operation": "cycle1.coupled_commit0",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 0
+        },
+        {
+          "cost_key": "026adc9423a2ca5668b61f86ca9b481fecee8a1cbabf5f8ccbb79ce45d8a2453",
+          "critical_predecessors": [
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle1.coupled_commit0",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 1,
+          "duration_ns": 10295757812,
+          "end_ns": 52826890624,
+          "kind": "critic_update",
+          "operation": "cycle1.coupled_commit1",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 42531132812
+        },
+        {
+          "cost_key": "b65f4fe5d07f7be559a9f7745de48baabe03ef8a3d88caca027bbd5b191108e7",
+          "critical_predecessors": [
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle1.coupled_commit1",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 1,
+          "duration_ns": 9086902344,
+          "end_ns": 61913792968,
+          "kind": "critic_update",
+          "operation": "cycle1.coupled_commit2",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 52826890624
+        },
+        {
+          "cost_key": "3f450db0f1c625614544e43372bf053ffef12e52488b8627db62f6697df9e8d6",
+          "critical_predecessors": [
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle1.coupled_commit2",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 1,
+          "duration_ns": 9511679687,
+          "end_ns": 71425472655,
+          "kind": "critic_update",
+          "operation": "cycle1.coupled_commit3",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 61913792968
+        },
+        {
+          "cost_key": "07dbf2fe30971bc264ef36225af106fd2d08d6d40542698618236f1b1236316b",
+          "critical_predecessors": [
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle1.coupled_commit3",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 1,
+          "duration_ns": 8192265626,
+          "end_ns": 79617738281,
+          "kind": "critic_update",
+          "operation": "cycle1.coupled_commit4",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 71425472655
+        },
+        {
+          "cost_key": "c767d19fc5af4f36f1ad7bc722f9ff0c717720c4a0c9993cf1ef7c227a4c84f2",
+          "critical_predecessors": [
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle1.coupled_commit4",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 2,
+          "duration_ns": 29267992187,
+          "end_ns": 108885730468,
+          "kind": "critic_update",
+          "operation": "cycle2.coupled_commit0",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 79617738281
+        },
+        {
+          "cost_key": "b650b91dc22aa4c60eacbd4cb3096ba0d5f8d01e6494b1a7d5475c186d9737df",
+          "critical_predecessors": [
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle2.coupled_commit0",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 2,
+          "duration_ns": 8529171875,
+          "end_ns": 117414902343,
+          "kind": "critic_update",
+          "operation": "cycle2.coupled_commit1",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 108885730468
+        },
+        {
+          "cost_key": "7aa60ac294ab0c7848a2c5d4fefc196a935be838ec4836fe0f8b7025ee52b7e9",
+          "critical_predecessors": [
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle2.coupled_commit1",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 2,
+          "duration_ns": 8205242188,
+          "end_ns": 125620144531,
+          "kind": "critic_update",
+          "operation": "cycle2.coupled_commit2",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 117414902343
+        },
+        {
+          "cost_key": "45d4a1daf6bce0928a1857bd86daaff5b6c9318802f8ccc71055b504f599f0b3",
+          "critical_predecessors": [
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle2.coupled_commit2",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 2,
+          "duration_ns": 8211515625,
+          "end_ns": 133831660156,
+          "kind": "critic_update",
+          "operation": "cycle2.coupled_commit3",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 125620144531
+        },
+        {
+          "cost_key": "69064664ebbb53f07943632b8b59b99eb43ae8725a80078b377da454e25b4178",
+          "critical_predecessors": [
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "dependency"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:0"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:1"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:10"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:11"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:12"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:13"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:14"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:15"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:2"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:3"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:4"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:5"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:6"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:7"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:8"
+            },
+            {
+              "operation": "cycle2.coupled_commit3",
+              "reason": "resource:gpu:9"
+            }
+          ],
+          "cycle": 2,
+          "duration_ns": 8202187500,
+          "end_ns": 142033847656,
+          "kind": "critic_update",
+          "operation": "cycle2.coupled_commit4",
+          "ranks": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "resources": [
+            "gpu:0",
+            "gpu:1",
+            "gpu:10",
+            "gpu:11",
+            "gpu:12",
+            "gpu:13",
+            "gpu:14",
+            "gpu:15",
+            "gpu:2",
+            "gpu:3",
+            "gpu:4",
+            "gpu:5",
+            "gpu:6",
+            "gpu:7",
+            "gpu:8",
+            "gpu:9"
+          ],
+          "role": "native_runtime",
+          "start_ns": 133831660156
+        }
+      ]
+    }
+  ],
+  "rejections": [
+    {
+      "assignment": {
+        "gate": "off",
+        "modulation": "off",
+        "placement": "fsdp",
+        "row_major": "on"
+      },
+      "detail": "ambiguous or missing lowering rule: cycle1.coupled_commit0",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment": {
+        "gate": "off",
+        "modulation": "off",
+        "placement": "pipeline",
+        "row_major": "off"
+      },
+      "detail": "ambiguous or missing lowering rule: cycle1.coupled_commit0",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment": {
+        "gate": "off",
+        "modulation": "off",
+        "placement": "pipeline",
+        "row_major": "on"
+      },
+      "detail": "ambiguous or missing lowering rule: cycle1.coupled_commit0",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment": {
+        "gate": "off",
+        "modulation": "on",
+        "placement": "fsdp",
+        "row_major": "off"
+      },
+      "detail": "ambiguous or missing lowering rule: cycle1.coupled_commit0",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment": {
+        "gate": "off",
+        "modulation": "on",
+        "placement": "fsdp",
+        "row_major": "on"
+      },
+      "detail": "ambiguous or missing lowering rule: cycle1.coupled_commit0",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment": {
+        "gate": "off",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "off"
+      },
+      "detail": "ambiguous or missing lowering rule: cycle1.coupled_commit0",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment": {
+        "gate": "off",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "on"
+      },
+      "detail": "ambiguous or missing lowering rule: cycle1.coupled_commit0",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment": {
+        "gate": "on",
+        "modulation": "off",
+        "placement": "fsdp",
+        "row_major": "off"
+      },
+      "detail": "ambiguous or missing lowering rule: cycle1.coupled_commit0",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment": {
+        "gate": "on",
+        "modulation": "off",
+        "placement": "fsdp",
+        "row_major": "on"
+      },
+      "detail": "ambiguous or missing lowering rule: cycle1.coupled_commit0",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment": {
+        "gate": "on",
+        "modulation": "off",
+        "placement": "pipeline",
+        "row_major": "off"
+      },
+      "detail": "ambiguous or missing lowering rule: cycle1.coupled_commit0",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment": {
+        "gate": "on",
+        "modulation": "off",
+        "placement": "pipeline",
+        "row_major": "on"
+      },
+      "detail": "ambiguous or missing lowering rule: cycle1.coupled_commit0",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "fsdp",
+        "row_major": "off"
+      },
+      "detail": "ambiguous or missing lowering rule: cycle1.coupled_commit0",
+      "status": "REJECTED_CONTRACT"
+    },
+    {
+      "assignment": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "fsdp",
+        "row_major": "on"
+      },
+      "detail": "ambiguous or missing lowering rule: cycle1.coupled_commit0",
+      "status": "REJECTED_CONTRACT"
+    }
+  ],
+  "schema_version": "distillschedule.model_search_result.v1",
+  "search_seconds": 0.007366450998233631,
+  "seed": 0,
+  "space_size": 16,
+  "status": "PASS_CPU_SEARCH",
+  "strict_winner": null,
+  "unique_evaluated": 16,
+  "workload": "livewan_crossscale_pipeline_best"
+}

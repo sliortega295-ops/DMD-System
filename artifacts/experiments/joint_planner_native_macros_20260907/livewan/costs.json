@@ -1,0 +1,464 @@
+{
+  "binding": {
+    "asset_fingerprint": "c045acd2b88c1de9a3f6b11d1d0d94ce2384d58d710ced61d38010e89d746b13",
+    "environment_fingerprint": "1da30724a680d0fff882ce68c9ec2b856cdd0ebbaab9c4ab4984f2e6df2ebc3a",
+    "hardware_fingerprint": "ac432a4127e0887d11f4e3ecc90c3cc180a65ee02c91f6a2192c7b277c4531fc",
+    "precision_fingerprint": "1daeb5cdd04b09d22f58247a2dff28510570b801f90d61a562744019e8e51139",
+    "semantic_fingerprint": "34204f6bfc01b703b34d9362f4a3dd8995f335912533ee919a080ea278a4da77",
+    "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b"
+  },
+  "records": [
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "906c1d50e35580cd5637601fc77712c87807240c5b97ec0815767943e5f38419",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-fsdp-m0-g0-r0/cycle1.coupled_commit0.json",
+        "source_receipt_sha256": "b1301dbbd21e3149f8da98ded409c9f10464e20abed5ad232b8037f3c57ab3d2",
+        "status": "PASS"
+      },
+      "key": "906c1d50e35580cd5637601fc77712c87807240c5b97ec0815767943e5f38419",
+      "samples_ns": [
+        42531132812
+      ],
+      "workspace_bytes_per_rank": 32688897024
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "026adc9423a2ca5668b61f86ca9b481fecee8a1cbabf5f8ccbb79ce45d8a2453",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-fsdp-m0-g0-r0/cycle1.coupled_commit1.json",
+        "source_receipt_sha256": "e2004c3f7a048a43c7f313ecb3c8ab2022dab5627a2095fd0caa8cceddf9c409",
+        "status": "PASS"
+      },
+      "key": "026adc9423a2ca5668b61f86ca9b481fecee8a1cbabf5f8ccbb79ce45d8a2453",
+      "samples_ns": [
+        10295757812
+      ],
+      "workspace_bytes_per_rank": 32688897024
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "b65f4fe5d07f7be559a9f7745de48baabe03ef8a3d88caca027bbd5b191108e7",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-fsdp-m0-g0-r0/cycle1.coupled_commit2.json",
+        "source_receipt_sha256": "cb89d84780a29ddbe6a3c508a34f402a67a7cd84af4b1b4049ab3dae755668f3",
+        "status": "PASS"
+      },
+      "key": "b65f4fe5d07f7be559a9f7745de48baabe03ef8a3d88caca027bbd5b191108e7",
+      "samples_ns": [
+        9086902344
+      ],
+      "workspace_bytes_per_rank": 32688897024
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "3f450db0f1c625614544e43372bf053ffef12e52488b8627db62f6697df9e8d6",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-fsdp-m0-g0-r0/cycle1.coupled_commit3.json",
+        "source_receipt_sha256": "c4a09922c8079d47a0a060e2aeb5a7dc3d5ae6d99a8d5c4743cf5fea8553a80c",
+        "status": "PASS"
+      },
+      "key": "3f450db0f1c625614544e43372bf053ffef12e52488b8627db62f6697df9e8d6",
+      "samples_ns": [
+        9511679687
+      ],
+      "workspace_bytes_per_rank": 32688897024
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "07dbf2fe30971bc264ef36225af106fd2d08d6d40542698618236f1b1236316b",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-fsdp-m0-g0-r0/cycle1.coupled_commit4.json",
+        "source_receipt_sha256": "3216a88a75429e916844dd2939befd3bf7a0c918ff6c8178c53bf7fda7d9da44",
+        "status": "PASS"
+      },
+      "key": "07dbf2fe30971bc264ef36225af106fd2d08d6d40542698618236f1b1236316b",
+      "samples_ns": [
+        8192265626
+      ],
+      "workspace_bytes_per_rank": 32688897024
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "c767d19fc5af4f36f1ad7bc722f9ff0c717720c4a0c9993cf1ef7c227a4c84f2",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-fsdp-m0-g0-r0/cycle2.coupled_commit0.json",
+        "source_receipt_sha256": "582b3a33578bc06ce3b77491846f413f1135e29c837a71d67af041a5d41e85fc",
+        "status": "PASS"
+      },
+      "key": "c767d19fc5af4f36f1ad7bc722f9ff0c717720c4a0c9993cf1ef7c227a4c84f2",
+      "samples_ns": [
+        29267992187
+      ],
+      "workspace_bytes_per_rank": 32688897024
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "b650b91dc22aa4c60eacbd4cb3096ba0d5f8d01e6494b1a7d5475c186d9737df",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-fsdp-m0-g0-r0/cycle2.coupled_commit1.json",
+        "source_receipt_sha256": "d2478895c18b4aa921a1782cdf24f277689029b859ea30d0a7c6516f306a0841",
+        "status": "PASS"
+      },
+      "key": "b650b91dc22aa4c60eacbd4cb3096ba0d5f8d01e6494b1a7d5475c186d9737df",
+      "samples_ns": [
+        8529171875
+      ],
+      "workspace_bytes_per_rank": 32688897024
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "7aa60ac294ab0c7848a2c5d4fefc196a935be838ec4836fe0f8b7025ee52b7e9",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-fsdp-m0-g0-r0/cycle2.coupled_commit2.json",
+        "source_receipt_sha256": "482266dbd14758f2d5b3bf121518b35ec3e736e62600d63643793ff172850d08",
+        "status": "PASS"
+      },
+      "key": "7aa60ac294ab0c7848a2c5d4fefc196a935be838ec4836fe0f8b7025ee52b7e9",
+      "samples_ns": [
+        8205242188
+      ],
+      "workspace_bytes_per_rank": 32688897024
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "45d4a1daf6bce0928a1857bd86daaff5b6c9318802f8ccc71055b504f599f0b3",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-fsdp-m0-g0-r0/cycle2.coupled_commit3.json",
+        "source_receipt_sha256": "07520ba2e2679dbbede68b697925ee1b4d9970f6d02bca13f829286a0c8302ca",
+        "status": "PASS"
+      },
+      "key": "45d4a1daf6bce0928a1857bd86daaff5b6c9318802f8ccc71055b504f599f0b3",
+      "samples_ns": [
+        8211515625
+      ],
+      "workspace_bytes_per_rank": 32688897024
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "69064664ebbb53f07943632b8b59b99eb43ae8725a80078b377da454e25b4178",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-fsdp-m0-g0-r0/cycle2.coupled_commit4.json",
+        "source_receipt_sha256": "de32e35a36c317c6f46620a2beb97ebc43dbed7719b6e3ee8117ff18e9aefda9",
+        "status": "PASS"
+      },
+      "key": "69064664ebbb53f07943632b8b59b99eb43ae8725a80078b377da454e25b4178",
+      "samples_ns": [
+        8202187500
+      ],
+      "workspace_bytes_per_rank": 32688897024
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "2825106681c11fa1e16f81709e7d5002e056ba8a3870fcdfcee4774afc9972da",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-pipeline-m1-g1-r0/cycle1.coupled_commit0.json",
+        "source_receipt_sha256": "fd7e0a55aaf7723918d6e3b9689c58d7601046c196efabcbf56564d62b154e3c",
+        "status": "PASS"
+      },
+      "key": "2825106681c11fa1e16f81709e7d5002e056ba8a3870fcdfcee4774afc9972da",
+      "samples_ns": [
+        29954476562
+      ],
+      "workspace_bytes_per_rank": 14838041600
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "81a75b7f71e0e76a110f468d679cabed46b4ee8683b359f782d694e863e42464",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-pipeline-m1-g1-r0/cycle1.coupled_commit1.json",
+        "source_receipt_sha256": "69bc9cfb3441882cc2201ce438b9a6a08cf99b00a8f458d43b1e94b146f23947",
+        "status": "PASS"
+      },
+      "key": "81a75b7f71e0e76a110f468d679cabed46b4ee8683b359f782d694e863e42464",
+      "samples_ns": [
+        7869097656
+      ],
+      "workspace_bytes_per_rank": 14838041600
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "12c5b099c28bf2ab36233ba63b0e8643351512eb06edf0c77426b9525ed7fcb3",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-pipeline-m1-g1-r0/cycle1.coupled_commit2.json",
+        "source_receipt_sha256": "98e47d752ffd2b5f91080c071fadd2596ab4c54cdab0ede517f21cfc14795081",
+        "status": "PASS"
+      },
+      "key": "12c5b099c28bf2ab36233ba63b0e8643351512eb06edf0c77426b9525ed7fcb3",
+      "samples_ns": [
+        5517742187
+      ],
+      "workspace_bytes_per_rank": 14838041600
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "f2953807954cb8151cb2896eaeb9366914f74caf0a9f0f4ec4a2100ae764b52c",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-pipeline-m1-g1-r0/cycle1.coupled_commit3.json",
+        "source_receipt_sha256": "8c2e45eeed336bb2697d357755899496bb3cf897338805dd6f099623e74c38e9",
+        "status": "PASS"
+      },
+      "key": "f2953807954cb8151cb2896eaeb9366914f74caf0a9f0f4ec4a2100ae764b52c",
+      "samples_ns": [
+        6072960937
+      ],
+      "workspace_bytes_per_rank": 14838041600
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "1031eddfc3d625d522ca3b25d2f00cb07ff1dd168b930c66c40e04b98cb48221",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-pipeline-m1-g1-r0/cycle1.coupled_commit4.json",
+        "source_receipt_sha256": "8c2c5a33c61c6d820e9ce911a4dd41140e4fef0ac171313a125188fbb980ef54",
+        "status": "PASS"
+      },
+      "key": "1031eddfc3d625d522ca3b25d2f00cb07ff1dd168b930c66c40e04b98cb48221",
+      "samples_ns": [
+        5763308594
+      ],
+      "workspace_bytes_per_rank": 14838041600
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "5169292fb4c17d08ff12497a0130a84a376c78db1acf25494a0110fa6740ac12",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-pipeline-m1-g1-r0/cycle2.coupled_commit0.json",
+        "source_receipt_sha256": "00a1d3700575704015396d10cc7d5abd004977ec953fe12471f6e62248825959",
+        "status": "PASS"
+      },
+      "key": "5169292fb4c17d08ff12497a0130a84a376c78db1acf25494a0110fa6740ac12",
+      "samples_ns": [
+        23146187500
+      ],
+      "workspace_bytes_per_rank": 14838041600
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "4398da4520d6fb58f4dc51999afbbf84978f65fe1d8afe67ae022e77deb4aafa",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-pipeline-m1-g1-r0/cycle2.coupled_commit1.json",
+        "source_receipt_sha256": "7b0e2c609cca33230e26885d40010e8a3882180fe559ddaf61da0327c5fddd64",
+        "status": "PASS"
+      },
+      "key": "4398da4520d6fb58f4dc51999afbbf84978f65fe1d8afe67ae022e77deb4aafa",
+      "samples_ns": [
+        7889218750
+      ],
+      "workspace_bytes_per_rank": 14838041600
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "d71829662d6936ae33367cdc8fee41af575d578d70d19ceabe53a661a24bf37a",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-pipeline-m1-g1-r0/cycle2.coupled_commit2.json",
+        "source_receipt_sha256": "12c1ba96f57520850ffcf228507a8a2f1b7fa7e911409baa3bd7eb4a66b93911",
+        "status": "PASS"
+      },
+      "key": "d71829662d6936ae33367cdc8fee41af575d578d70d19ceabe53a661a24bf37a",
+      "samples_ns": [
+        5512226563
+      ],
+      "workspace_bytes_per_rank": 14838041600
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "c7bb0352164640f87cb4b9388ac9ab4f50bc4f566e8f9c5675ca7dd5a4c82f02",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-pipeline-m1-g1-r0/cycle2.coupled_commit3.json",
+        "source_receipt_sha256": "0efa2a566d3f6119a896f22960f4f062324f6149eac546bd49da1512587e282f",
+        "status": "PASS"
+      },
+      "key": "c7bb0352164640f87cb4b9388ac9ab4f50bc4f566e8f9c5675ca7dd5a4c82f02",
+      "samples_ns": [
+        6038039063
+      ],
+      "workspace_bytes_per_rank": 14838041600
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "78394aae937f58c707a312c68bdee5f851d666394332f1b2edc830de313d03ff",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-pipeline-m1-g1-r0/cycle2.coupled_commit4.json",
+        "source_receipt_sha256": "b6e99c660f8b685101064f9483510ca12ba1b0d013e0b7ef6de89b1e9e2c1b97",
+        "status": "PASS"
+      },
+      "key": "78394aae937f58c707a312c68bdee5f851d666394332f1b2edc830de313d03ff",
+      "samples_ns": [
+        5818578125
+      ],
+      "workspace_bytes_per_rank": 14838041600
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "684f74edb38c8a20125fba227e9b5bbb3993d2565883911501e757413735a7d9",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-pipeline-m1-g1-r1/cycle1.coupled_commit0.json",
+        "source_receipt_sha256": "e525b0bf68c5cd3ce0254c9c1777a0af42e3aa3714f25d5b2cabf0aecf1c9c55",
+        "status": "PASS"
+      },
+      "key": "684f74edb38c8a20125fba227e9b5bbb3993d2565883911501e757413735a7d9",
+      "samples_ns": [
+        29612708984
+      ],
+      "workspace_bytes_per_rank": 14829652992
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "7b61037b1bc9e0e0e7b566b6f54564050395ba99e3c22aad199ca4682cc3d054",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-pipeline-m1-g1-r1/cycle1.coupled_commit1.json",
+        "source_receipt_sha256": "3bfbdc0988645aa898292e2d3b7da98e0fd1b5ea12d69371c18e49ce2e20f33b",
+        "status": "PASS"
+      },
+      "key": "7b61037b1bc9e0e0e7b566b6f54564050395ba99e3c22aad199ca4682cc3d054",
+      "samples_ns": [
+        7515501953
+      ],
+      "workspace_bytes_per_rank": 14829652992
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "afdc74a72832dd135c69d5933307c74656dd49d25fa6db74cb19627c44a2a240",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-pipeline-m1-g1-r1/cycle1.coupled_commit2.json",
+        "source_receipt_sha256": "73d466aa6c2786d0f657b8ed38a991910ebeaf80a925708bd6927408126b2af6",
+        "status": "PASS"
+      },
+      "key": "afdc74a72832dd135c69d5933307c74656dd49d25fa6db74cb19627c44a2a240",
+      "samples_ns": [
+        5503656250
+      ],
+      "workspace_bytes_per_rank": 14829652992
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "5f56488f34292b7fef463b4d0fb1cda0b5d040d74e7223858009c1f6aa68ed88",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-pipeline-m1-g1-r1/cycle1.coupled_commit3.json",
+        "source_receipt_sha256": "b5ba9b7bdf9602d7f4bd636b3c601539f8f7ccc3c6c06b938000f882c1b6fc4f",
+        "status": "PASS"
+      },
+      "key": "5f56488f34292b7fef463b4d0fb1cda0b5d040d74e7223858009c1f6aa68ed88",
+      "samples_ns": [
+        5511593750
+      ],
+      "workspace_bytes_per_rank": 14829652992
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "1e3d083efe6e56f6ffb67af4827004b3dceced044e3326277e6980b4cbd075ee",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-pipeline-m1-g1-r1/cycle1.coupled_commit4.json",
+        "source_receipt_sha256": "07eed435ed716e620cf0576b55b616efc9abf79c4f98b6f0a46ee87a5ece54e7",
+        "status": "PASS"
+      },
+      "key": "1e3d083efe6e56f6ffb67af4827004b3dceced044e3326277e6980b4cbd075ee",
+      "samples_ns": [
+        5514535157
+      ],
+      "workspace_bytes_per_rank": 14829652992
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "042de355445816ed685086fbd111e4e61121d58e18d74ca2e433069e2556893f",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-pipeline-m1-g1-r1/cycle2.coupled_commit0.json",
+        "source_receipt_sha256": "1c36f2748d71d9066e0dcd0b4ccbd24953a8a40397daac418aebe83a3349919a",
+        "status": "PASS"
+      },
+      "key": "042de355445816ed685086fbd111e4e61121d58e18d74ca2e433069e2556893f",
+      "samples_ns": [
+        23094949219
+      ],
+      "workspace_bytes_per_rank": 14829652992
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "03e98fe7b35fec6e4398c2cbd61256602ac0f712e64ba6ec245eb5e80013dc71",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-pipeline-m1-g1-r1/cycle2.coupled_commit1.json",
+        "source_receipt_sha256": "2da2fa983ac65a1fefafba35f81dd7f5ea40efbf7cc2387bb1981c71f58a6700",
+        "status": "PASS"
+      },
+      "key": "03e98fe7b35fec6e4398c2cbd61256602ac0f712e64ba6ec245eb5e80013dc71",
+      "samples_ns": [
+        7437906250
+      ],
+      "workspace_bytes_per_rank": 14829652992
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "111806fa3ea929048ab2d0615af6f6c806712869fd203451e1f92956c2ae2c39",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-pipeline-m1-g1-r1/cycle2.coupled_commit2.json",
+        "source_receipt_sha256": "5592ef4cd12d319f38e4f883d284e4fd7004c20187db862a57f1af8bb1421b6e",
+        "status": "PASS"
+      },
+      "key": "111806fa3ea929048ab2d0615af6f6c806712869fd203451e1f92956c2ae2c39",
+      "samples_ns": [
+        5522281250
+      ],
+      "workspace_bytes_per_rank": 14829652992
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "b7a00a1368dd79a495b699776c1f856e4b81c47cd9a4c428cb00d16573742192",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-pipeline-m1-g1-r1/cycle2.coupled_commit3.json",
+        "source_receipt_sha256": "e85747a9ed8e5ab3576c86b9d49a10003a3c9a3aab33ba0ff7fa0f2247ceec65",
+        "status": "PASS"
+      },
+      "key": "b7a00a1368dd79a495b699776c1f856e4b81c47cd9a4c428cb00d16573742192",
+      "samples_ns": [
+        5519085938
+      ],
+      "workspace_bytes_per_rank": 14829652992
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "8ca676cf889ae3f3c767377a69a3d30761a2cf30fd5005e405653e616fa24b74",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/receipts/joint-livewan1-pipeline-m1-g1-r1/cycle2.coupled_commit4.json",
+        "source_receipt_sha256": "cc6abe96a540fb276c73821c2e8e11065f44ab93e0aa259ae7d096bc7daebe67",
+        "status": "PASS"
+      },
+      "key": "8ca676cf889ae3f3c767377a69a3d30761a2cf30fd5005e405653e616fa24b74",
+      "samples_ns": [
+        5523046875
+      ],
+      "workspace_bytes_per_rank": 14829652992
+    }
+  ],
+  "schema_version": "distillschedule.cost_model.v1",
+  "scope": "MEASURED"
+}

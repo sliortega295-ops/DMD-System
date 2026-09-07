@@ -10,8 +10,10 @@ warm-up. Initialization, correctness probes, calibration and profiling are not
 part of that denominator.
 
 The restricted **Wan placement/chunk/epilogue family now has a completed
-measured-cost → search → native-validation loop**. LiveWan/H3 and the broader
-sharing/reordering dimensions are not yet GPU-validated generated planners.
+measured-cost → search → native-validation loop**. The bounded LiveWan native-macro family now also completes
+that loop. H3 generated runs complete runtime/census gates but fail numerical
+admission (including an unchanged-arm repeat); H3 calibration/search are blocked.
+Broader sharing/reordering dimensions are not yet GPU-validated generated planners.
 CPU simulation, native support, diagnostic validation and strict numerical
 equivalence remain separate statuses.
 
@@ -21,6 +23,12 @@ report-publication commit. Six current-source native trials completed 16/16
 rank gates; confirmed cycle-2 comparison is **35.975044 → 24.617367 s,
 1.461369× diagnostic**. Numerical `REVIEW` remains; no strict/canonical winner
 was promoted. The search rediscovered the incumbent rather than beating it.
+
+Latest continuation: [LiveWan native closure and H3 numerical blocker](../experiments/DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md).
+LiveWan runtime `06d5e67a`: cycle 2 **62.637898 → 47.138629 s**, **1.328802× diagnostic**, incumbent rediscovered, strict winner null.
+H3 runtime `b1706f07`: depth1/depth2/self-repeat each complete 16/16 two-cycle runtime gates,
+but both cross-arm and self numerical comparisons fail. Costs, search and timing are **NOT_RUN**;
+no H3 speedup is admitted. Canonical profiles and main remain unchanged.
 
 ## Method being implemented
 
@@ -183,7 +191,8 @@ as having used it.
 
 ## Acceptance remaining before a planner speed claim
 
-- LiveWan/H3 planning adapters and generated native lowering. Wan's generated
+- LiveWan/H3 typed native adapters and lowering are implemented. LiveWan completed
+  native validation; H3 numerical admission is blocked as recorded above. Wan's generated
   FSDP control, Resident incumbent and three model-ranked non-seed combinations
   now have native two-cycle validation, plus independent winner confirmation.
   Strict numerical equivalence remains unestablished; the current Wan timing
@@ -192,7 +201,7 @@ as having used it.
   backbone placement choices; no unsupported TP/PP, dynamic repartition or
   fabricated pool mappings.
 - Native operation calibration and memory lifetimes for each admitted binding.
-- Wan, then LiveWan, then H3 Grid1000 pilots under owned world16 locks. H3 keeps
+- Wan and LiveWan closed loops completed under owned world16 locks. H3 keeps
   approximate Grid1000 semantics and FA3 CPU replay storage explicit; boundary
   offload `none` does not mean there are no CPU transfers.
 - Per workload: at most eight timing runs (baseline, incumbent, up to five new

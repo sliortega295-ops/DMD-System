@@ -1,0 +1,25 @@
+{
+  "main_adapter_review": {
+    "status": "complete",
+    "source_head": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+    "run_id": "20260907-051135-433c8230",
+    "verdict": "Not ready before three findings fixed"
+  },
+  "followup": {
+    "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+    "actionable_findings_resolved": [
+      1,
+      2,
+      4
+    ],
+    "regression_tests": "PASS"
+  },
+  "h3_loader_post_review_fix": {
+    "source_head": "b1706f073d09a5de03926c6e216273898af754f3",
+    "code_lines_added": 26,
+    "validation": "red/green tests, pinned loader/CPU trainer on both nodes, native world16 3x two-cycle complete",
+    "additional_independent_review": "NOT_RUN"
+  },
+  "external_review": "TIMEOUT_NO_USABLE_ARTIFACT_NOT_CLAIMED",
+  "remaining_blocker": "H3 numerical cross and same-arm fail; no timing approval"
+}

@@ -1,0 +1,32 @@
+{
+  "status": "FAIL_CLOSED_CONFIG_BINDING_BEFORE_TRAINING",
+  "run_id": "jointp_h3_macro_20260907_r2-gate-joint-h3v1-d1-n128",
+  "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+  "failure_type": "CONFIG_BINDING_ERROR_NOT_CAPACITY",
+  "root_cause": [
+    "Pinned LightX2V load_config appends config_path",
+    "Pinned PyYAML loader parses scientific JSON numeric literals as strings: fake LR 2e-05, Student/Fake epsilon 1e-08",
+    "New native observer compared loaded config to raw JSON without normalizing these representations"
+  ],
+  "evidence": [
+    "logs/h3-r2-failure-node0.txt",
+    "logs/h3-r2-failure-node1.txt",
+    "logs/h3-r2-upstream-config-real-path-audit.txt",
+    "logs/h3-r2-cpu-config-diff.txt",
+    "logs/h3-config-binding-red.log"
+  ],
+  "gpu_forward": "NOT_RUN",
+  "cpu_model_load": "PASS",
+  "cuda_oom": 0,
+  "cgroup_oom_delta": [
+    0,
+    0
+  ],
+  "teardown": [
+    "PASS_GPU_PROCESS_COUNT_0",
+    "PASS_GPU_PROCESS_COUNT_0"
+  ],
+  "livewan": "COMPLETED_NATIVE_VALIDATION_DO_NOT_RERUN",
+  "h3_native_timing_attempts": 0,
+  "remedy": "Normalize only config_path provenance and pinned optimizer scalar float representations; assert config_path matches launcher; preserve all math/config gates; fresh H3 epoch/source"
+}

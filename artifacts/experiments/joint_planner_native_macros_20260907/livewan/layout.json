@@ -1,0 +1,488 @@
+{
+  "adapter": "native_coupled_macro_v1",
+  "binding": {
+    "asset_fingerprint": "c045acd2b88c1de9a3f6b11d1d0d94ce2384d58d710ced61d38010e89d746b13",
+    "environment_fingerprint": "1da30724a680d0fff882ce68c9ec2b856cdd0ebbaab9c4ab4984f2e6df2ebc3a",
+    "hardware_fingerprint": "ac432a4127e0887d11f4e3ecc90c3cc180a65ee02c91f6a2192c7b277c4531fc",
+    "precision_fingerprint": "1daeb5cdd04b09d22f58247a2dff28510570b801f90d61a562744019e8e51139",
+    "semantic_fingerprint": "34204f6bfc01b703b34d9362f4a3dd8995f335912533ee919a080ea278a4da77",
+    "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b"
+  },
+  "claim_boundary": "MEASURED_NATIVE_MACROS_ONLY; UNCALIBRATED_CHOICES_REJECTED; NO_ARBITRARY_POOL_DAG",
+  "implementations": {
+    "joint-livewan1-fsdp-m0-g0-r0": {
+      "ranks": [
+        {
+          "peak_reserved_bytes": 41198551040,
+          "post_setup_static_bytes": 10256581632,
+          "rank": 0,
+          "sampled_driver_or_reserved_peak_bytes": 42572185600,
+          "sampled_min_driver_free_bytes": 377487360,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 41244688384,
+          "post_setup_static_bytes": 10254345216,
+          "rank": 1,
+          "sampled_driver_or_reserved_peak_bytes": 42945478656,
+          "sampled_min_driver_free_bytes": 4194304,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 41194356736,
+          "post_setup_static_bytes": 10254345216,
+          "rank": 2,
+          "sampled_driver_or_reserved_peak_bytes": 42834329600,
+          "sampled_min_driver_free_bytes": 115343360,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 41051750400,
+          "post_setup_static_bytes": 10254345216,
+          "rank": 3,
+          "sampled_driver_or_reserved_peak_bytes": 42687528960,
+          "sampled_min_driver_free_bytes": 262144000,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 41049653248,
+          "post_setup_static_bytes": 10254345216,
+          "rank": 4,
+          "sampled_driver_or_reserved_peak_bytes": 42305847296,
+          "sampled_min_driver_free_bytes": 643825664,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 41058041856,
+          "post_setup_static_bytes": 10254345216,
+          "rank": 5,
+          "sampled_driver_or_reserved_peak_bytes": 42549116928,
+          "sampled_min_driver_free_bytes": 400556032,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 41194356736,
+          "post_setup_static_bytes": 10254345216,
+          "rank": 6,
+          "sampled_driver_or_reserved_peak_bytes": 42842718208,
+          "sampled_min_driver_free_bytes": 106954752,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 41196453888,
+          "post_setup_static_bytes": 10254345216,
+          "rank": 7,
+          "sampled_driver_or_reserved_peak_bytes": 42570088448,
+          "sampled_min_driver_free_bytes": 379584512,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 41058041856,
+          "post_setup_static_bytes": 10254345216,
+          "rank": 8,
+          "sampled_driver_or_reserved_peak_bytes": 42381344768,
+          "sampled_min_driver_free_bytes": 568328192,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 41238396928,
+          "post_setup_static_bytes": 10254345216,
+          "rank": 9,
+          "sampled_driver_or_reserved_peak_bytes": 42939187200,
+          "sampled_min_driver_free_bytes": 10485760,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 41091596288,
+          "post_setup_static_bytes": 10254345216,
+          "rank": 10,
+          "sampled_driver_or_reserved_peak_bytes": 41863348224,
+          "sampled_min_driver_free_bytes": 1086324736,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 41051750400,
+          "post_setup_static_bytes": 10254345216,
+          "rank": 11,
+          "sampled_driver_or_reserved_peak_bytes": 42687528960,
+          "sampled_min_driver_free_bytes": 262144000,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 41058041856,
+          "post_setup_static_bytes": 10254345216,
+          "rank": 12,
+          "sampled_driver_or_reserved_peak_bytes": 42538631168,
+          "sampled_min_driver_free_bytes": 411041792,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 41058041856,
+          "post_setup_static_bytes": 10254345216,
+          "rank": 13,
+          "sampled_driver_or_reserved_peak_bytes": 42423287808,
+          "sampled_min_driver_free_bytes": 526385152,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 41194356736,
+          "post_setup_static_bytes": 10254345216,
+          "rank": 14,
+          "sampled_driver_or_reserved_peak_bytes": 42842718208,
+          "sampled_min_driver_free_bytes": 106954752,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 41196453888,
+          "post_setup_static_bytes": 10254345216,
+          "rank": 15,
+          "sampled_driver_or_reserved_peak_bytes": 42570088448,
+          "sampled_min_driver_free_bytes": 379584512,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        }
+      ],
+      "status": "PASS"
+    },
+    "joint-livewan1-pipeline-m1-g1-r0": {
+      "ranks": [
+        {
+          "peak_reserved_bytes": 39942356992,
+          "post_setup_static_bytes": 28111631360,
+          "rank": 0,
+          "sampled_driver_or_reserved_peak_bytes": 42175823872,
+          "sampled_min_driver_free_bytes": 773849088,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40126906368,
+          "post_setup_static_bytes": 28111631360,
+          "rank": 1,
+          "sampled_driver_or_reserved_peak_bytes": 42486202368,
+          "sampled_min_driver_free_bytes": 463470592,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40068186112,
+          "post_setup_static_bytes": 28111631360,
+          "rank": 2,
+          "sampled_driver_or_reserved_peak_bytes": 42452647936,
+          "sampled_min_driver_free_bytes": 497025024,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40005271552,
+          "post_setup_static_bytes": 28111631360,
+          "rank": 3,
+          "sampled_driver_or_reserved_peak_bytes": 42431676416,
+          "sampled_min_driver_free_bytes": 517996544,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 39810236416,
+          "post_setup_static_bytes": 28111631360,
+          "rank": 4,
+          "sampled_driver_or_reserved_peak_bytes": 42236641280,
+          "sampled_min_driver_free_bytes": 713031680,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 39994785792,
+          "post_setup_static_bytes": 28111631360,
+          "rank": 5,
+          "sampled_driver_or_reserved_peak_bytes": 42404413440,
+          "sampled_min_driver_free_bytes": 545259520,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 39873150976,
+          "post_setup_static_bytes": 28111631360,
+          "rank": 6,
+          "sampled_driver_or_reserved_peak_bytes": 42257612800,
+          "sampled_min_driver_free_bytes": 692060160,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 39898316800,
+          "post_setup_static_bytes": 28111631360,
+          "rank": 7,
+          "sampled_driver_or_reserved_peak_bytes": 42131783680,
+          "sampled_min_driver_free_bytes": 817889280,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40871395328,
+          "post_setup_static_bytes": 7188978176,
+          "rank": 8,
+          "sampled_driver_or_reserved_peak_bytes": 42949672960,
+          "sampled_min_driver_free_bytes": 0,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40883978240,
+          "post_setup_static_bytes": 7188978176,
+          "rank": 9,
+          "sampled_driver_or_reserved_peak_bytes": 42937090048,
+          "sampled_min_driver_free_bytes": 12582912,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40871395328,
+          "post_setup_static_bytes": 7188978176,
+          "rank": 10,
+          "sampled_driver_or_reserved_peak_bytes": 42949672960,
+          "sampled_min_driver_free_bytes": 0,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40647000064,
+          "post_setup_static_bytes": 7188978176,
+          "rank": 11,
+          "sampled_driver_or_reserved_peak_bytes": 42767220736,
+          "sampled_min_driver_free_bytes": 182452224,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40647000064,
+          "post_setup_static_bytes": 7188978176,
+          "rank": 12,
+          "sampled_driver_or_reserved_peak_bytes": 42767220736,
+          "sampled_min_driver_free_bytes": 182452224,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40647000064,
+          "post_setup_static_bytes": 7188978176,
+          "rank": 13,
+          "sampled_driver_or_reserved_peak_bytes": 42750443520,
+          "sampled_min_driver_free_bytes": 199229440,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40871395328,
+          "post_setup_static_bytes": 7188978176,
+          "rank": 14,
+          "sampled_driver_or_reserved_peak_bytes": 42949672960,
+          "sampled_min_driver_free_bytes": 0,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40871395328,
+          "post_setup_static_bytes": 7188978176,
+          "rank": 15,
+          "sampled_driver_or_reserved_peak_bytes": 42949672960,
+          "sampled_min_driver_free_bytes": 0,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        }
+      ],
+      "status": "PASS"
+    },
+    "joint-livewan1-pipeline-m1-g1-r1": {
+      "ranks": [
+        {
+          "peak_reserved_bytes": 40032534528,
+          "post_setup_static_bytes": 28111631360,
+          "rank": 0,
+          "sampled_driver_or_reserved_peak_bytes": 42266001408,
+          "sampled_min_driver_free_bytes": 683671552,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40003174400,
+          "post_setup_static_bytes": 28111631360,
+          "rank": 1,
+          "sampled_driver_or_reserved_peak_bytes": 42362470400,
+          "sampled_min_driver_free_bytes": 587202560,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40070283264,
+          "post_setup_static_bytes": 28111631360,
+          "rank": 2,
+          "sampled_driver_or_reserved_peak_bytes": 42454745088,
+          "sampled_min_driver_free_bytes": 494927872,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 39986397184,
+          "post_setup_static_bytes": 28111631360,
+          "rank": 3,
+          "sampled_driver_or_reserved_peak_bytes": 42412802048,
+          "sampled_min_driver_free_bytes": 536870912,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 39803944960,
+          "post_setup_static_bytes": 28111631360,
+          "rank": 4,
+          "sampled_driver_or_reserved_peak_bytes": 42230349824,
+          "sampled_min_driver_free_bytes": 719323136,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 39917191168,
+          "post_setup_static_bytes": 28111631360,
+          "rank": 5,
+          "sampled_driver_or_reserved_peak_bytes": 42326818816,
+          "sampled_min_driver_free_bytes": 622854144,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 39835402240,
+          "post_setup_static_bytes": 28111631360,
+          "rank": 6,
+          "sampled_driver_or_reserved_peak_bytes": 42219864064,
+          "sampled_min_driver_free_bytes": 729808896,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 39875248128,
+          "post_setup_static_bytes": 28111631360,
+          "rank": 7,
+          "sampled_driver_or_reserved_peak_bytes": 42108715008,
+          "sampled_min_driver_free_bytes": 840957952,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40871395328,
+          "post_setup_static_bytes": 7188978176,
+          "rank": 8,
+          "sampled_driver_or_reserved_peak_bytes": 42941284352,
+          "sampled_min_driver_free_bytes": 8388608,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40883978240,
+          "post_setup_static_bytes": 7188978176,
+          "rank": 9,
+          "sampled_driver_or_reserved_peak_bytes": 42916118528,
+          "sampled_min_driver_free_bytes": 33554432,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40871395328,
+          "post_setup_static_bytes": 7188978176,
+          "rank": 10,
+          "sampled_driver_or_reserved_peak_bytes": 42941284352,
+          "sampled_min_driver_free_bytes": 8388608,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40647000064,
+          "post_setup_static_bytes": 7188978176,
+          "rank": 11,
+          "sampled_driver_or_reserved_peak_bytes": 42721083392,
+          "sampled_min_driver_free_bytes": 228589568,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40647000064,
+          "post_setup_static_bytes": 7188978176,
+          "rank": 12,
+          "sampled_driver_or_reserved_peak_bytes": 42721083392,
+          "sampled_min_driver_free_bytes": 228589568,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40647000064,
+          "post_setup_static_bytes": 7188978176,
+          "rank": 13,
+          "sampled_driver_or_reserved_peak_bytes": 42704306176,
+          "sampled_min_driver_free_bytes": 245366784,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40871395328,
+          "post_setup_static_bytes": 7188978176,
+          "rank": 14,
+          "sampled_driver_or_reserved_peak_bytes": 42941284352,
+          "sampled_min_driver_free_bytes": 8388608,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        },
+        {
+          "peak_reserved_bytes": 40871395328,
+          "post_setup_static_bytes": 7188978176,
+          "rank": 15,
+          "sampled_driver_or_reserved_peak_bytes": 42941284352,
+          "sampled_min_driver_free_bytes": 8388608,
+          "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+          "status": "PASS"
+        }
+      ],
+      "status": "PASS"
+    }
+  },
+  "memory_definition": "POST_SETUP_STATIC_PLUS_CONSERVATIVE_GLOBAL_ADDITIONAL_PEAK",
+  "memory_limits": {
+    "0": 42949672960,
+    "1": 42949672960,
+    "10": 42949672960,
+    "11": 42949672960,
+    "12": 42949672960,
+    "13": 42949672960,
+    "14": 42949672960,
+    "15": 42949672960,
+    "2": 42949672960,
+    "3": 42949672960,
+    "4": 42949672960,
+    "5": 42949672960,
+    "6": 42949672960,
+    "7": 42949672960,
+    "8": 42949672960,
+    "9": 42949672960
+  },
+  "profiled": false,
+  "schema_version": "distillschedule.native_macro_layout.v1",
+  "seed_implementations": [
+    "joint-livewan1-fsdp-m0-g0-r0",
+    "joint-livewan1-pipeline-m1-g1-r1"
+  ],
+  "status": "PASS",
+  "workload": "livewan_crossscale_pipeline_best"
+}

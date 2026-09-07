@@ -1,0 +1,394 @@
+{
+  "baseline": {
+    "candidate_id": "joint-livewan1-fsdp-m0-g0-r0",
+    "cycle1_seconds": 83.7087734375,
+    "cycle2_seconds": 62.6378984375,
+    "measurement_sha256": "380bae909270489bea4acadae4a9b1847c231bac5aa655742f5d6099cbcd4a3b",
+    "min_driver_free_bytes": 12582912,
+    "native_evidence": [
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/bound-summary.json",
+        "sha256": "f048cc523b384dd7bb1cff8b6c5907a93d6ceedb409e826a9e9aaf2c500bd935"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_macro_20260907_r2-gate-joint-livewan1-pipeline-m1-g1-r1/search-gate/trajectory_comparison.json",
+        "sha256": "00b12e3cb312fd9309ed51871a28cb69cb2220a87e465dba81a39fe473b91ad1"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_macro_20260907_r2-gate-joint-livewan1-fsdp-m0-g0-r0/bound-summary.json",
+        "sha256": "25142f1a6fe5ea606e7762d83945f93f36648b3ebf7b3ad601612d62be189518"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/search-resources.node0.json",
+        "sha256": "1b903e2ba12201fb720b6bd8dfee26d3b24aef254c229f06aaaf8840816f56ab"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/launcher/node_0/launch_manifest.txt",
+        "sha256": "4f4301a0baf2b0051051764faa2b775fb8424c2859b5fc791d54638ace5813c8"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/launcher/node_0/teardown_status.txt",
+        "sha256": "63c68c2f5b613da2bff0d0886b5b1f9498e947ac5b09b7de105f7c8aed270451"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/search-resources.node1.json",
+        "sha256": "c066606a83a46e1f6d98b9f604fa0ab524152a8e8f5ac0c8d5dad89555a0eaf5"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/launcher/node_1/launch_manifest.txt",
+        "sha256": "3c040f2b88d335519870c7bdedfe58cb8addf65d480d824d5a56fcdc691f1839"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/launcher/node_1/teardown_status.txt",
+        "sha256": "63c68c2f5b613da2bff0d0886b5b1f9498e947ac5b09b7de105f7c8aed270451"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/receipts/rank_000.json",
+        "sha256": "cb696e30068adffa2ef0e837c76eb4074ce0b2fa12f78ec73da6ddece56374b0"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/receipts/rank_001.json",
+        "sha256": "176a0e27ebbe865badeb63bcad8ea30be3c9669efbbf7bc6e1bdd1119b417f5f"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/receipts/rank_002.json",
+        "sha256": "fd11aa87d66d28d5f4568b6cf5857024d3810fbbcaae0dc33f431c37fae1f04e"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/receipts/rank_003.json",
+        "sha256": "53f81e7c188730f41d45f061bfeb7752aa0889f8a0595f5c33f830b0fdc1e785"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/receipts/rank_004.json",
+        "sha256": "b6435f350e3c74b222e33efc447614d468f88dd0b6d3c34fcb5faef5239af7a1"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/receipts/rank_005.json",
+        "sha256": "9962bbfec540039bf9be2fe805facb51a0f1231f11a952475c9c3ad80d9cb98c"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/receipts/rank_006.json",
+        "sha256": "7338aff095a036e1ce83fda6fab95b4a85f1664e1dbcad7c83b149b005fbff1e"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/receipts/rank_007.json",
+        "sha256": "3690360757c4d667f2ff04201dd5ad4388fd0b1938df18bb5af2bb40e4a1e617"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/receipts/rank_008.json",
+        "sha256": "43dfd4c4a0b74162492720e7e0f7d694f958c182aa71a24e12dcaed4d2ec2bc1"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/receipts/rank_009.json",
+        "sha256": "3f36dda3bf513138557d51c997407dc245d5f68218380bd62f41cfa5b2d9e3d9"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/receipts/rank_010.json",
+        "sha256": "375535b203e091f1296c3f47bed60093376ee534fd5ca83cd5a13410d7a82173"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/receipts/rank_011.json",
+        "sha256": "d6b0b19b20f23a72d9aa69421511ef3b3bc1d4384012b5060fbf9130f71abef2"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/receipts/rank_012.json",
+        "sha256": "4980bf8be585f4106feb189eeed92c766beb658d2a1ebfaeea45d43f7ba1fe6f"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/receipts/rank_013.json",
+        "sha256": "de7908c1053a26e1d7faf13bde4136dd8a07e2c40fbcec6f0c675dc9b3c46df7"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/receipts/rank_014.json",
+        "sha256": "a92a8eee24f63914cf6fc849e4966dd5c30197ddba2274bcd42b4818dc36b0e7"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-00-baseline-joint-livewan1-fsdp-m0-g0-r0/receipts/rank_015.json",
+        "sha256": "5b120be0f5c283727b05b106357e798520afc59539f0aa0ed03369365804cc26"
+      }
+    ],
+    "numerical_status": "REVIEW",
+    "observations": {},
+    "peak_allocated_bytes": 23525647872,
+    "semantics_status": "PASS",
+    "strict_eligible": false
+  },
+  "canonical_winner_updated": false,
+  "capacity_failures": 0,
+  "claim_boundary": "BEST_TESTED_WITHIN_BUDGET; REVIEW_IS_NOT_STRICT_EQUIVALENCE; NO_GLOBAL_OPTIMUM_CLAIM",
+  "confirmed_candidate": {
+    "candidate_id": "joint-livewan1-pipeline-m1-g1-r1",
+    "cycle1_seconds": 53.61407421875,
+    "cycle2_seconds": 47.13862890625,
+    "measurement_sha256": "870e32ea275f8c21ccd0f1a2a5a9ddb6deeadc7c754baef5e9a109b473142847",
+    "min_driver_free_bytes": 8388608,
+    "native_evidence": [
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/bound-summary.json",
+        "sha256": "0db172070d18a6a8e85464b702189b96eb68a95284d4ad82db2d8b0163bfa82e"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_macro_20260907_r2-gate-joint-livewan1-pipeline-m1-g1-r1/search-gate/trajectory_comparison.json",
+        "sha256": "00b12e3cb312fd9309ed51871a28cb69cb2220a87e465dba81a39fe473b91ad1"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_macro_20260907_r2-gate-joint-livewan1-pipeline-m1-g1-r1/bound-summary.json",
+        "sha256": "6eb6ccefdf813ad27395df0a5fcbe58c2eee6df51ff0440ae84a385b119ee13f"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/search-resources.node0.json",
+        "sha256": "a5e1c00ed51b480574ba870b50d91bec587044e4003ce30ec31c73643def1686"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/launcher/node_0/launch_manifest.txt",
+        "sha256": "56a47098df1508755b266b506cb47b0b775d65e7d7c66e8fe0ef1504e7ec1a04"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/launcher/node_0/teardown_status.txt",
+        "sha256": "a72b3e2c8a4b3f33352e89e4ac641f3b9851f8eec5bfb0e11f9b613c9865d267"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/search-resources.node1.json",
+        "sha256": "7e6584c7c8d3ac87f8f1ea2266f126d42f9b5a4ad1380625cd35e63c651c1245"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/launcher/node_1/launch_manifest.txt",
+        "sha256": "c473452d6b068de7864f823a84bb23f7ae4b87f655d5752e06b808dfad17750a"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/launcher/node_1/teardown_status.txt",
+        "sha256": "a72b3e2c8a4b3f33352e89e4ac641f3b9851f8eec5bfb0e11f9b613c9865d267"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_000.json",
+        "sha256": "492eb9ec7c795f5c4eb49228577c018255b85cb56e83928dee103f284c6378b4"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_001.json",
+        "sha256": "aff64ed1575915e1ae454184b70955f9e37c1f45490c635a7f402465283ab971"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_002.json",
+        "sha256": "ebe60e78ef3e6810d99d1a96502b2b18d3f8de4632c994894c2a60d342243837"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_003.json",
+        "sha256": "74f778a0c484cab30aeb5b4dd6a6452f9511a046c208d7ff8acc757e2d8dddeb"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_004.json",
+        "sha256": "db045aa75203cd13be007373a10ec45fd8d28257430323097abb6ca439eab832"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_005.json",
+        "sha256": "33a855c4b07a61c7b3c3d313ea8572188ad79f0ac28750b1623f585a9f535018"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_006.json",
+        "sha256": "f0892bb37121ce751dece5e2f8ebc9a59e0751d93848ad9d0df052a6bd391058"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_007.json",
+        "sha256": "f3c73ff75f04e1b9002cfa8aec37f88a36772bc849b0db82a0543929943958c1"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_008.json",
+        "sha256": "c41aa399df2dd7725b9fd786290845fdb9f47ef9b4f7e28084f3922d2c11f65b"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_009.json",
+        "sha256": "8d07e69ac0a2bb03877ae5f59dc9c37b960471021ea2a1f50b151e9eec07032e"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_010.json",
+        "sha256": "568cec04d9578b95a337e2ebea5c884667df54c28fa893af9e12224b4cdf13d2"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_011.json",
+        "sha256": "d9538b9566aa7c2d3f08a8c174ec44b883db7d48d4fdb9002211e9de8e4fafc9"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_012.json",
+        "sha256": "82e449136b1b330fa480f71118883cc132798e0dc0616c10b9376e0310929351"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_013.json",
+        "sha256": "006512c4c4ee976216971c90aba2902ad512506700464633e46810229d587a47"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_014.json",
+        "sha256": "1a3546585746ea0825ff9caa73132e358022a38fb63f17e1c3d05d3f333568bb"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-03-confirmation-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_015.json",
+        "sha256": "ed692e1ce03a4bbda51affab51642243b6342d2ad7cebfa44d2074d205d0c078"
+      }
+    ],
+    "numerical_status": "REVIEW",
+    "observations": {},
+    "peak_allocated_bytes": 37744473088,
+    "semantics_status": "PASS",
+    "strict_eligible": false
+  },
+  "cycle2_speedup_diagnostic": 1.3288018741927172,
+  "identity": {
+    "asset_fingerprint": "c045acd2b88c1de9a3f6b11d1d0d94ce2384d58d710ced61d38010e89d746b13",
+    "environment_fingerprint": "1da30724a680d0fff882ce68c9ec2b856cdd0ebbaab9c4ab4984f2e6df2ebc3a",
+    "hardware_fingerprint": "ac432a4127e0887d11f4e3ecc90c3cc180a65ee02c91f6a2192c7b277c4531fc",
+    "precision_fingerprint": "1daeb5cdd04b09d22f58247a2dff28510570b801f90d61a562744019e8e51139",
+    "semantic_fingerprint": "34204f6bfc01b703b34d9362f4a3dd8995f335912533ee919a080ea278a4da77",
+    "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+    "workload": "livewan_crossscale_pipeline_best"
+  },
+  "improvement_over_incumbent": 0.9984705185975311,
+  "incumbent": {
+    "candidate_id": "joint-livewan1-pipeline-m1-g1-r1",
+    "cycle1_seconds": 53.7502578125,
+    "cycle2_seconds": 47.066531250000004,
+    "measurement_sha256": "44f4a050fdd5a187dbfe41d1c013953d114b6d60e12c0ba97b9bd428bb72b096",
+    "min_driver_free_bytes": 8388608,
+    "native_evidence": [
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/bound-summary.json",
+        "sha256": "191c5b25ccf6908e6999a1070e86de73303d60fc40b82d0493af546cc32e7255"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_macro_20260907_r2-gate-joint-livewan1-pipeline-m1-g1-r1/search-gate/trajectory_comparison.json",
+        "sha256": "00b12e3cb312fd9309ed51871a28cb69cb2220a87e465dba81a39fe473b91ad1"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_macro_20260907_r2-gate-joint-livewan1-pipeline-m1-g1-r1/bound-summary.json",
+        "sha256": "6eb6ccefdf813ad27395df0a5fcbe58c2eee6df51ff0440ae84a385b119ee13f"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/search-resources.node0.json",
+        "sha256": "4cd51332bc2382f90d6b1ee1586bc49504fe11db7ab0a59599ae165b76a7c1cd"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/launcher/node_0/launch_manifest.txt",
+        "sha256": "9fb9b4e983f3a67c8802faade363ff4021397b7a52e97cba03314c8ae6a7b205"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/launcher/node_0/teardown_status.txt",
+        "sha256": "b90545d37c25089154c0981293210f433e8f0a1db4937df1a072b0e689a7bf69"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/search-resources.node1.json",
+        "sha256": "7335806683ef92f45ed65c16b10c2a631fe3d1cd898595f2003fb1243532e5dd"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/launcher/node_1/launch_manifest.txt",
+        "sha256": "d41494041af86a433b730b980297f44f7905e125dceea020912a58e1a6f08bcf"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/launcher/node_1/teardown_status.txt",
+        "sha256": "b90545d37c25089154c0981293210f433e8f0a1db4937df1a072b0e689a7bf69"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_000.json",
+        "sha256": "9fda739f9171439556f62cbdccedee4dec91167cfbceb230df76c7458dc3b10d"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_001.json",
+        "sha256": "f5dfefe7f3ea0b52538d213eb8fc02d85f230f0e91664655f1a2bff07c8c70ad"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_002.json",
+        "sha256": "fa0f163647d9e0e7e4d1d696777db6a92517b103ab3d50b14c53ef8776d52ef5"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_003.json",
+        "sha256": "138ae082470386c614147625e5577bd3abc9cc48b868f36223aa2b26d5ccc697"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_004.json",
+        "sha256": "23674ea573e47b417d3619c6b0ee6be9de15ad4a0396d0bcc47b1caa1b839601"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_005.json",
+        "sha256": "363810b0fb3d843aa5f0324f9ab0c4815b9f898a14e936ce1e9109584afac074"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_006.json",
+        "sha256": "622b85e9e105f8889bede96d0119e53435d2e6c3c06a52196446455eaaa93672"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_007.json",
+        "sha256": "b8f560d0a7e5d5885b2d6eb6d1666c1ade5788fee8f944d59544fa61ca5dc410"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_008.json",
+        "sha256": "6ca30c206b0028f10342bad81b393d350312a58f3715686af0eca7bdba6d39b1"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_009.json",
+        "sha256": "386548686b9dbf288ba0127f2a6a491a9a0f06c239bc230fe3d4f538662dd210"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_010.json",
+        "sha256": "1595609d3b47710c7efdece6426368133d314fc693efc6a2fe972d0e32b960d7"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_011.json",
+        "sha256": "a32382dc959fee5c91646d5571a134d8c5833546f982c1bf1d0c072211c9ea02"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_012.json",
+        "sha256": "5082d21dd1eeb12519da1a5a899370d4cb5bb20c9d97bc8102de55a1c77805e2"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_013.json",
+        "sha256": "31945af086e0b727f346f91c6c3a376259a56e43add8ba738455461bab1d8e9a"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_014.json",
+        "sha256": "beb707ad21a92e29d794c53ff1b8366ea7eb2081feeca910f10fa7064c176031"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-01-incumbent-joint-livewan1-pipeline-m1-g1-r1/receipts/rank_015.json",
+        "sha256": "88a1a2a573ce9daf7127d90a7e21f50c3e98999fd90739335c31aa65c4f0ad82"
+      }
+    ],
+    "numerical_status": "REVIEW",
+    "observations": {},
+    "peak_allocated_bytes": 37744473088,
+    "semantics_status": "PASS",
+    "strict_eligible": false
+  },
+  "new_candidate_attempts": 1,
+  "prediction_errors": [
+    {
+      "candidate_id": "joint-livewan1-fsdp-m0-g0-r0",
+      "measured_cycle2_seconds": 62.6378984375,
+      "phase": "baseline",
+      "predicted_cycle2_seconds": 62.416109375,
+      "relative_prediction_error": -0.0035408126395125583
+    },
+    {
+      "candidate_id": "joint-livewan1-pipeline-m1-g1-r1",
+      "measured_cycle2_seconds": 47.066531250000004,
+      "phase": "incumbent",
+      "predicted_cycle2_seconds": 47.097269532,
+      "relative_prediction_error": 0.0006530815248890764
+    },
+    {
+      "candidate_id": "joint-livewan1-pipeline-m1-g1-r0",
+      "measured_cycle2_seconds": 48.44161328125,
+      "phase": "candidate",
+      "predicted_cycle2_seconds": 48.404250001,
+      "relative_prediction_error": -0.0007713054483357018
+    },
+    {
+      "candidate_id": "joint-livewan1-pipeline-m1-g1-r1",
+      "measured_cycle2_seconds": 47.13862890625,
+      "phase": "confirmation",
+      "predicted_cycle2_seconds": 47.097269532,
+      "relative_prediction_error": -0.0008773987536263572
+    }
+  ],
+  "schema_version": "distillschedule.model_validation_result.v1",
+  "status": "COMPLETE_NATIVE_VALIDATION",
+  "strict_winner": null,
+  "timing_attempts": 4,
+  "validation_sha256": "6e678146388e5bcbac4ce3971cdfa2e8c17633a4e41e0cd3ed4332630959e567"
+}

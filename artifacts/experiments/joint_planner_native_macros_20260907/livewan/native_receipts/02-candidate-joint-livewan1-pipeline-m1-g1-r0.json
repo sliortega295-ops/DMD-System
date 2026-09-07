@@ -1,0 +1,933 @@
+{
+  "asset_fingerprint": "c045acd2b88c1de9a3f6b11d1d0d94ce2384d58d710ced61d38010e89d746b13",
+  "candidate_id": "joint-livewan1-pipeline-m1-g1-r0",
+  "cleanup_status": "PASS",
+  "construction": "SEE_NATIVE_SETUP_RECEIPTS",
+  "cycle_wall_seconds": {
+    "1": 55.41442578125,
+    "2": 48.44161328125
+  },
+  "environment_fingerprint": "1da30724a680d0fff882ce68c9ec2b856cdd0ebbaab9c4ab4984f2e6df2ebc3a",
+  "execution_fingerprint": "6b7b67bddf41bdbf30eb11aa75ebadbb87dcd0c252a1a7338686407afeef115b",
+  "hardware_fingerprint": "ac432a4127e0887d11f4e3ecc90c3cc180a65ee02c91f6a2192c7b277c4531fc",
+  "initializations": 1,
+  "native_evidence": [
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/bound-summary.json",
+      "sha256": "416accf7260deec9f629b20c7c3e79584001b0165e1246de09de18446c7ab6cf"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_macro_20260907_r2-gate-joint-livewan1-pipeline-m1-g1-r0/search-gate/trajectory_comparison.json",
+      "sha256": "3e2f2cd496082791fb9c9f7a07ee7077731e131917bd9f17527e0993c9708533"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_macro_20260907_r2-gate-joint-livewan1-pipeline-m1-g1-r0/bound-summary.json",
+      "sha256": "bd8cebc2fe8f9420969bb280f25893f13d5157d880e7916c91bed94cef60cbed"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/search-resources.node0.json",
+      "sha256": "418fe2ded04619d15317bc2f9b56d2add3b08435f252a3b2e9bf170cb1b6fcd3"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/launcher/node_0/launch_manifest.txt",
+      "sha256": "b8cd7c9731649163ddbdc668955c6ce0234a992dcab650ea69cb8bb66f8940f0"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/launcher/node_0/teardown_status.txt",
+      "sha256": "ee67a3de51becc1e245ae95fcd0f5252b0d1c4e1c4cfc96a3ceff427bd612f4b"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/search-resources.node1.json",
+      "sha256": "66245f774b0a60b4c8b1b417fa764db660742453ea6e71a2e961d859b1c74c6d"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/launcher/node_1/launch_manifest.txt",
+      "sha256": "908ea0baa17adef009becea7cc2170482e87c79cee6e29056572236e877abb9d"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/launcher/node_1/teardown_status.txt",
+      "sha256": "ee67a3de51becc1e245ae95fcd0f5252b0d1c4e1c4cfc96a3ceff427bd612f4b"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_000.json",
+      "sha256": "72ad9c16310f8d2bcbd962d987f902b78d59f241ac49f3efd11cc154654063eb"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_001.json",
+      "sha256": "a3600fa031a9789af575e9993c19c409acf55dfab499cb1075c465bc240ec6ca"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_002.json",
+      "sha256": "e7b505bc670774c7a570807dc41c2ccdd981502dddaf9099e2d0071ccc80d79e"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_003.json",
+      "sha256": "8fa1819ec650c0103e72af594a7281e75b43968a1c397f68509aa53b035c50bc"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_004.json",
+      "sha256": "7d783e0fd6b4d736c3f89d75aa413b7ce10793270ad9c7b9a6f898b1eb739e4a"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_005.json",
+      "sha256": "f8e390d1141a10787cf0a5d4b3279171042760ba00bf1ca9f21cce433a3c690e"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_006.json",
+      "sha256": "35c0ee2dd1964fa9a5b05cf486b77c1fdacb0861e7f66514d14303bf79264552"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_007.json",
+      "sha256": "09df8a4167c12587b1f9a1a8a6efb8142e096b3afb93c071d4a7dd5ce41f7a5c"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_008.json",
+      "sha256": "6abe6d22aa09700cb18029825b2c25510c07e416d4073efcb755b760755966aa"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_009.json",
+      "sha256": "62406931fe18698ba96b60e7f4fa8167c95afecc978e08bef81c8ff2529e6855"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_010.json",
+      "sha256": "b3b094b7cc831d296ded71636e273dd67b93456fb604310a883f1d7bab7e7506"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_011.json",
+      "sha256": "7069403b4495095e7a949baf203f9f3c6caea96b0aa9f89438de29a2c0549e1e"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_012.json",
+      "sha256": "74d9787d3b58e1e62b3e159f6fcbca4aa4404b6e585cfad8ebbd7ae259e11b05"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_013.json",
+      "sha256": "680383c91121e66af4f3a16065b1e85d1ab28e21ea69ef264ea273a0010b5f10"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_014.json",
+      "sha256": "6bf5bd0b69d04e408a8de419c9006d90fbdd6199d13a82b61456e54ae6a6e75e"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_015.json",
+      "sha256": "c1c14389848510fae9bf097c137cd973a954121862e0821e932b259cf80ee4cd"
+    }
+  ],
+  "native_numerical_status": "TRAJECTORY_REVIEW_50C_COMPLETED",
+  "native_timer_denominator": "MAX_SCORE_POOL_COMPLETION_2_MINUS_MAX_SCORE_POOL_COMPLETION_1",
+  "numerical_scope": "COARSE_TRAJECTORY_IS_NOT_STRICT_P0_PARITY; STRICT_NOT_ESTABLISHED",
+  "numerical_status": "REVIEW",
+  "precision_fingerprint": "1daeb5cdd04b09d22f58247a2dff28510570b801f90d61a562744019e8e51139",
+  "profiled": false,
+  "profiler_status": "DISABLED",
+  "ranks": [
+    {
+      "census": "PASS",
+      "cgroup_oom_delta": 0,
+      "cuda_oom_delta": 0,
+      "cuda_oom_evidence": "NATIVE_COMPLETION_AND_NO_WORKER_OOM; NOT_A_DRIVER_COUNTER",
+      "dtype": "PASS",
+      "finite": "PASS",
+      "gate_authority": "SOURCE_BOUND_WORKLOAD_OWNED_SUMMARIZER_AND_TRAJECTORY_COMPARATOR",
+      "host_peak_bytes": 77114564608,
+      "memory": "PASS",
+      "min_driver_free_bytes": 773849088,
+      "native_receipt": {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_000.json",
+        "sha256": "72ad9c16310f8d2bcbd962d987f902b78d59f241ac49f3efd11cc154654063eb"
+      },
+      "peak_allocated_bytes": 37732487680,
+      "peak_reserved_bytes": 39942356992,
+      "rank": 0,
+      "sample_rng": "PASS",
+      "status": "PASS",
+      "telemetry_scope": "NATIVE_ALLOCATOR_PEAK; SAMPLED_DRIVER_MIN; NODE_CGROUP_PEAK_SHARED_BY_8_RANKS",
+      "versions": "PASS"
+    },
+    {
+      "census": "PASS",
+      "cgroup_oom_delta": 0,
+      "cuda_oom_delta": 0,
+      "cuda_oom_evidence": "NATIVE_COMPLETION_AND_NO_WORKER_OOM; NOT_A_DRIVER_COUNTER",
+      "dtype": "PASS",
+      "finite": "PASS",
+      "gate_authority": "SOURCE_BOUND_WORKLOAD_OWNED_SUMMARIZER_AND_TRAJECTORY_COMPARATOR",
+      "host_peak_bytes": 77114564608,
+      "memory": "PASS",
+      "min_driver_free_bytes": 463470592,
+      "native_receipt": {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_001.json",
+        "sha256": "a3600fa031a9789af575e9993c19c409acf55dfab499cb1075c465bc240ec6ca"
+      },
+      "peak_allocated_bytes": 37742331392,
+      "peak_reserved_bytes": 40126906368,
+      "rank": 1,
+      "sample_rng": "PASS",
+      "status": "PASS",
+      "telemetry_scope": "NATIVE_ALLOCATOR_PEAK; SAMPLED_DRIVER_MIN; NODE_CGROUP_PEAK_SHARED_BY_8_RANKS",
+      "versions": "PASS"
+    },
+    {
+      "census": "PASS",
+      "cgroup_oom_delta": 0,
+      "cuda_oom_delta": 0,
+      "cuda_oom_evidence": "NATIVE_COMPLETION_AND_NO_WORKER_OOM; NOT_A_DRIVER_COUNTER",
+      "dtype": "PASS",
+      "finite": "PASS",
+      "gate_authority": "SOURCE_BOUND_WORKLOAD_OWNED_SUMMARIZER_AND_TRAJECTORY_COMPARATOR",
+      "host_peak_bytes": 77114564608,
+      "memory": "PASS",
+      "min_driver_free_bytes": 497025024,
+      "native_receipt": {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_002.json",
+        "sha256": "e7b505bc670774c7a570807dc41c2ccdd981502dddaf9099e2d0071ccc80d79e"
+      },
+      "peak_allocated_bytes": 37743511552,
+      "peak_reserved_bytes": 40068186112,
+      "rank": 2,
+      "sample_rng": "PASS",
+      "status": "PASS",
+      "telemetry_scope": "NATIVE_ALLOCATOR_PEAK; SAMPLED_DRIVER_MIN; NODE_CGROUP_PEAK_SHARED_BY_8_RANKS",
+      "versions": "PASS"
+    },
+    {
+      "census": "PASS",
+      "cgroup_oom_delta": 0,
+      "cuda_oom_delta": 0,
+      "cuda_oom_evidence": "NATIVE_COMPLETION_AND_NO_WORKER_OOM; NOT_A_DRIVER_COUNTER",
+      "dtype": "PASS",
+      "finite": "PASS",
+      "gate_authority": "SOURCE_BOUND_WORKLOAD_OWNED_SUMMARIZER_AND_TRAJECTORY_COMPARATOR",
+      "host_peak_bytes": 77114564608,
+      "memory": "PASS",
+      "min_driver_free_bytes": 517996544,
+      "native_receipt": {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_003.json",
+        "sha256": "8fa1819ec650c0103e72af594a7281e75b43968a1c397f68509aa53b035c50bc"
+      },
+      "peak_allocated_bytes": 37737943040,
+      "peak_reserved_bytes": 40005271552,
+      "rank": 3,
+      "sample_rng": "PASS",
+      "status": "PASS",
+      "telemetry_scope": "NATIVE_ALLOCATOR_PEAK; SAMPLED_DRIVER_MIN; NODE_CGROUP_PEAK_SHARED_BY_8_RANKS",
+      "versions": "PASS"
+    },
+    {
+      "census": "PASS",
+      "cgroup_oom_delta": 0,
+      "cuda_oom_delta": 0,
+      "cuda_oom_evidence": "NATIVE_COMPLETION_AND_NO_WORKER_OOM; NOT_A_DRIVER_COUNTER",
+      "dtype": "PASS",
+      "finite": "PASS",
+      "gate_authority": "SOURCE_BOUND_WORKLOAD_OWNED_SUMMARIZER_AND_TRAJECTORY_COMPARATOR",
+      "host_peak_bytes": 77114564608,
+      "memory": "PASS",
+      "min_driver_free_bytes": 713031680,
+      "native_receipt": {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_004.json",
+        "sha256": "7d783e0fd6b4d736c3f89d75aa413b7ce10793270ad9c7b9a6f898b1eb739e4a"
+      },
+      "peak_allocated_bytes": 37739671040,
+      "peak_reserved_bytes": 39810236416,
+      "rank": 4,
+      "sample_rng": "PASS",
+      "status": "PASS",
+      "telemetry_scope": "NATIVE_ALLOCATOR_PEAK; SAMPLED_DRIVER_MIN; NODE_CGROUP_PEAK_SHARED_BY_8_RANKS",
+      "versions": "PASS"
+    },
+    {
+      "census": "PASS",
+      "cgroup_oom_delta": 0,
+      "cuda_oom_delta": 0,
+      "cuda_oom_evidence": "NATIVE_COMPLETION_AND_NO_WORKER_OOM; NOT_A_DRIVER_COUNTER",
+      "dtype": "PASS",
+      "finite": "PASS",
+      "gate_authority": "SOURCE_BOUND_WORKLOAD_OWNED_SUMMARIZER_AND_TRAJECTORY_COMPARATOR",
+      "host_peak_bytes": 77114564608,
+      "memory": "PASS",
+      "min_driver_free_bytes": 545259520,
+      "native_receipt": {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_005.json",
+        "sha256": "f8e390d1141a10787cf0a5d4b3279171042760ba00bf1ca9f21cce433a3c690e"
+      },
+      "peak_allocated_bytes": 37743617024,
+      "peak_reserved_bytes": 39994785792,
+      "rank": 5,
+      "sample_rng": "PASS",
+      "status": "PASS",
+      "telemetry_scope": "NATIVE_ALLOCATOR_PEAK; SAMPLED_DRIVER_MIN; NODE_CGROUP_PEAK_SHARED_BY_8_RANKS",
+      "versions": "PASS"
+    },
+    {
+      "census": "PASS",
+      "cgroup_oom_delta": 0,
+      "cuda_oom_delta": 0,
+      "cuda_oom_evidence": "NATIVE_COMPLETION_AND_NO_WORKER_OOM; NOT_A_DRIVER_COUNTER",
+      "dtype": "PASS",
+      "finite": "PASS",
+      "gate_authority": "SOURCE_BOUND_WORKLOAD_OWNED_SUMMARIZER_AND_TRAJECTORY_COMPARATOR",
+      "host_peak_bytes": 77114564608,
+      "memory": "PASS",
+      "min_driver_free_bytes": 692060160,
+      "native_receipt": {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_006.json",
+        "sha256": "35c0ee2dd1964fa9a5b05cf486b77c1fdacb0861e7f66514d14303bf79264552"
+      },
+      "peak_allocated_bytes": 37740852736,
+      "peak_reserved_bytes": 39873150976,
+      "rank": 6,
+      "sample_rng": "PASS",
+      "status": "PASS",
+      "telemetry_scope": "NATIVE_ALLOCATOR_PEAK; SAMPLED_DRIVER_MIN; NODE_CGROUP_PEAK_SHARED_BY_8_RANKS",
+      "versions": "PASS"
+    },
+    {
+      "census": "PASS",
+      "cgroup_oom_delta": 0,
+      "cuda_oom_delta": 0,
+      "cuda_oom_evidence": "NATIVE_COMPLETION_AND_NO_WORKER_OOM; NOT_A_DRIVER_COUNTER",
+      "dtype": "PASS",
+      "finite": "PASS",
+      "gate_authority": "SOURCE_BOUND_WORKLOAD_OWNED_SUMMARIZER_AND_TRAJECTORY_COMPARATOR",
+      "host_peak_bytes": 77114564608,
+      "memory": "PASS",
+      "min_driver_free_bytes": 817889280,
+      "native_receipt": {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_007.json",
+        "sha256": "09df8a4167c12587b1f9a1a8a6efb8142e096b3afb93c071d4a7dd5ce41f7a5c"
+      },
+      "peak_allocated_bytes": 37741701120,
+      "peak_reserved_bytes": 39898316800,
+      "rank": 7,
+      "sample_rng": "PASS",
+      "status": "PASS",
+      "telemetry_scope": "NATIVE_ALLOCATOR_PEAK; SAMPLED_DRIVER_MIN; NODE_CGROUP_PEAK_SHARED_BY_8_RANKS",
+      "versions": "PASS"
+    },
+    {
+      "census": "PASS",
+      "cgroup_oom_delta": 0,
+      "cuda_oom_delta": 0,
+      "cuda_oom_evidence": "NATIVE_COMPLETION_AND_NO_WORKER_OOM; NOT_A_DRIVER_COUNTER",
+      "dtype": "PASS",
+      "finite": "PASS",
+      "gate_authority": "SOURCE_BOUND_WORKLOAD_OWNED_SUMMARIZER_AND_TRAJECTORY_COMPARATOR",
+      "host_peak_bytes": 477967409152,
+      "memory": "PASS",
+      "min_driver_free_bytes": 8388608,
+      "native_receipt": {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_008.json",
+        "sha256": "6abe6d22aa09700cb18029825b2c25510c07e416d4073efcb755b760755966aa"
+      },
+      "peak_allocated_bytes": 19542256640,
+      "peak_reserved_bytes": 40871395328,
+      "rank": 8,
+      "sample_rng": "PASS",
+      "status": "PASS",
+      "telemetry_scope": "NATIVE_ALLOCATOR_PEAK; SAMPLED_DRIVER_MIN; NODE_CGROUP_PEAK_SHARED_BY_8_RANKS",
+      "versions": "PASS"
+    },
+    {
+      "census": "PASS",
+      "cgroup_oom_delta": 0,
+      "cuda_oom_delta": 0,
+      "cuda_oom_evidence": "NATIVE_COMPLETION_AND_NO_WORKER_OOM; NOT_A_DRIVER_COUNTER",
+      "dtype": "PASS",
+      "finite": "PASS",
+      "gate_authority": "SOURCE_BOUND_WORKLOAD_OWNED_SUMMARIZER_AND_TRAJECTORY_COMPARATOR",
+      "host_peak_bytes": 477967409152,
+      "memory": "PASS",
+      "min_driver_free_bytes": 18874368,
+      "native_receipt": {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_009.json",
+        "sha256": "62406931fe18698ba96b60e7f4fa8167c95afecc978e08bef81c8ff2529e6855"
+      },
+      "peak_allocated_bytes": 19541195264,
+      "peak_reserved_bytes": 40883978240,
+      "rank": 9,
+      "sample_rng": "PASS",
+      "status": "PASS",
+      "telemetry_scope": "NATIVE_ALLOCATOR_PEAK; SAMPLED_DRIVER_MIN; NODE_CGROUP_PEAK_SHARED_BY_8_RANKS",
+      "versions": "PASS"
+    },
+    {
+      "census": "PASS",
+      "cgroup_oom_delta": 0,
+      "cuda_oom_delta": 0,
+      "cuda_oom_evidence": "NATIVE_COMPLETION_AND_NO_WORKER_OOM; NOT_A_DRIVER_COUNTER",
+      "dtype": "PASS",
+      "finite": "PASS",
+      "gate_authority": "SOURCE_BOUND_WORKLOAD_OWNED_SUMMARIZER_AND_TRAJECTORY_COMPARATOR",
+      "host_peak_bytes": 477967409152,
+      "memory": "PASS",
+      "min_driver_free_bytes": 8388608,
+      "native_receipt": {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_010.json",
+        "sha256": "b3b094b7cc831d296ded71636e273dd67b93456fb604310a883f1d7bab7e7506"
+      },
+      "peak_allocated_bytes": 19542256640,
+      "peak_reserved_bytes": 40871395328,
+      "rank": 10,
+      "sample_rng": "PASS",
+      "status": "PASS",
+      "telemetry_scope": "NATIVE_ALLOCATOR_PEAK; SAMPLED_DRIVER_MIN; NODE_CGROUP_PEAK_SHARED_BY_8_RANKS",
+      "versions": "PASS"
+    },
+    {
+      "census": "PASS",
+      "cgroup_oom_delta": 0,
+      "cuda_oom_delta": 0,
+      "cuda_oom_evidence": "NATIVE_COMPLETION_AND_NO_WORKER_OOM; NOT_A_DRIVER_COUNTER",
+      "dtype": "PASS",
+      "finite": "PASS",
+      "gate_authority": "SOURCE_BOUND_WORKLOAD_OWNED_SUMMARIZER_AND_TRAJECTORY_COMPARATOR",
+      "host_peak_bytes": 477967409152,
+      "memory": "PASS",
+      "min_driver_free_bytes": 182452224,
+      "native_receipt": {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_011.json",
+        "sha256": "7069403b4495095e7a949baf203f9f3c6caea96b0aa9f89438de29a2c0549e1e"
+      },
+      "peak_allocated_bytes": 19541195264,
+      "peak_reserved_bytes": 40647000064,
+      "rank": 11,
+      "sample_rng": "PASS",
+      "status": "PASS",
+      "telemetry_scope": "NATIVE_ALLOCATOR_PEAK; SAMPLED_DRIVER_MIN; NODE_CGROUP_PEAK_SHARED_BY_8_RANKS",
+      "versions": "PASS"
+    },
+    {
+      "census": "PASS",
+      "cgroup_oom_delta": 0,
+      "cuda_oom_delta": 0,
+      "cuda_oom_evidence": "NATIVE_COMPLETION_AND_NO_WORKER_OOM; NOT_A_DRIVER_COUNTER",
+      "dtype": "PASS",
+      "finite": "PASS",
+      "gate_authority": "SOURCE_BOUND_WORKLOAD_OWNED_SUMMARIZER_AND_TRAJECTORY_COMPARATOR",
+      "host_peak_bytes": 477967409152,
+      "memory": "PASS",
+      "min_driver_free_bytes": 182452224,
+      "native_receipt": {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_012.json",
+        "sha256": "74d9787d3b58e1e62b3e159f6fcbca4aa4404b6e585cfad8ebbd7ae259e11b05"
+      },
+      "peak_allocated_bytes": 19541195264,
+      "peak_reserved_bytes": 40647000064,
+      "rank": 12,
+      "sample_rng": "PASS",
+      "status": "PASS",
+      "telemetry_scope": "NATIVE_ALLOCATOR_PEAK; SAMPLED_DRIVER_MIN; NODE_CGROUP_PEAK_SHARED_BY_8_RANKS",
+      "versions": "PASS"
+    },
+    {
+      "census": "PASS",
+      "cgroup_oom_delta": 0,
+      "cuda_oom_delta": 0,
+      "cuda_oom_evidence": "NATIVE_COMPLETION_AND_NO_WORKER_OOM; NOT_A_DRIVER_COUNTER",
+      "dtype": "PASS",
+      "finite": "PASS",
+      "gate_authority": "SOURCE_BOUND_WORKLOAD_OWNED_SUMMARIZER_AND_TRAJECTORY_COMPARATOR",
+      "host_peak_bytes": 477967409152,
+      "memory": "PASS",
+      "min_driver_free_bytes": 199229440,
+      "native_receipt": {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_013.json",
+        "sha256": "680383c91121e66af4f3a16065b1e85d1ab28e21ea69ef264ea273a0010b5f10"
+      },
+      "peak_allocated_bytes": 19541195264,
+      "peak_reserved_bytes": 40647000064,
+      "rank": 13,
+      "sample_rng": "PASS",
+      "status": "PASS",
+      "telemetry_scope": "NATIVE_ALLOCATOR_PEAK; SAMPLED_DRIVER_MIN; NODE_CGROUP_PEAK_SHARED_BY_8_RANKS",
+      "versions": "PASS"
+    },
+    {
+      "census": "PASS",
+      "cgroup_oom_delta": 0,
+      "cuda_oom_delta": 0,
+      "cuda_oom_evidence": "NATIVE_COMPLETION_AND_NO_WORKER_OOM; NOT_A_DRIVER_COUNTER",
+      "dtype": "PASS",
+      "finite": "PASS",
+      "gate_authority": "SOURCE_BOUND_WORKLOAD_OWNED_SUMMARIZER_AND_TRAJECTORY_COMPARATOR",
+      "host_peak_bytes": 477967409152,
+      "memory": "PASS",
+      "min_driver_free_bytes": 8388608,
+      "native_receipt": {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_014.json",
+        "sha256": "6bf5bd0b69d04e408a8de419c9006d90fbdd6199d13a82b61456e54ae6a6e75e"
+      },
+      "peak_allocated_bytes": 19542256640,
+      "peak_reserved_bytes": 40871395328,
+      "rank": 14,
+      "sample_rng": "PASS",
+      "status": "PASS",
+      "telemetry_scope": "NATIVE_ALLOCATOR_PEAK; SAMPLED_DRIVER_MIN; NODE_CGROUP_PEAK_SHARED_BY_8_RANKS",
+      "versions": "PASS"
+    },
+    {
+      "census": "PASS",
+      "cgroup_oom_delta": 0,
+      "cuda_oom_delta": 0,
+      "cuda_oom_evidence": "NATIVE_COMPLETION_AND_NO_WORKER_OOM; NOT_A_DRIVER_COUNTER",
+      "dtype": "PASS",
+      "finite": "PASS",
+      "gate_authority": "SOURCE_BOUND_WORKLOAD_OWNED_SUMMARIZER_AND_TRAJECTORY_COMPARATOR",
+      "host_peak_bytes": 477967409152,
+      "memory": "PASS",
+      "min_driver_free_bytes": 8388608,
+      "native_receipt": {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros_r2/livewan/jointp_livewan_native_20260907_r2-02-candidate-joint-livewan1-pipeline-m1-g1-r0/receipts/rank_015.json",
+        "sha256": "c1c14389848510fae9bf097c137cd973a954121862e0821e932b259cf80ee4cd"
+      },
+      "peak_allocated_bytes": 19542256640,
+      "peak_reserved_bytes": 40871395328,
+      "rank": 15,
+      "sample_rng": "PASS",
+      "status": "PASS",
+      "telemetry_scope": "NATIVE_ALLOCATOR_PEAK; SAMPLED_DRIVER_MIN; NODE_CGROUP_PEAK_SHARED_BY_8_RANKS",
+      "versions": "PASS"
+    }
+  ],
+  "resource_status": "EXCLUSIVE_LOCKED",
+  "runtime_identity_evidence": {
+    "after": [
+      {
+        "cuda_context_created": false,
+        "environment": {
+          "executable": "/tmp/distillschedule-helios-official-torch210/bin/python3.10",
+          "executable_sha256": "7c9e72ea1f06138ed5f52f49894c62f29e51e302f0d02f8fb18490e90e994331",
+          "ld_library_path": "",
+          "nccl": [
+            2,
+            27,
+            5
+          ],
+          "packages": {
+            "accelerate": "1.12.0",
+            "diffusers": "0.38.0.dev0",
+            "flash-attn": null,
+            "nvidia-nccl-cu12": "2.27.5",
+            "peft": "0.18.1",
+            "safetensors": "0.8.0",
+            "torch": "2.10.0",
+            "transformers": "5.3.0",
+            "triton": "3.6.0"
+          },
+          "python": "3.10.20",
+          "pythonpath": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_envs/livewan_crossscale_pydeps_762d18d3:/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-native-macros-06d5e67aab7e-20260907/src:/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-native-macros-06d5e67aab7e-20260907:/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-native-macros-06d5e67aab7e-20260907/third_party/livewan:/share/project/shuchenweng/yongyan_liu/DistillSchedule_runtime_sources/livewan-wan21-b723aaf",
+          "scope": "OBSERVED_VERSIONS_AND_SELECTED_BINARIES_NOT_FULL_ENVIRONMENT_HASH",
+          "torch": "2.10.0+cu128",
+          "torch_cuda": "12.8",
+          "torch_extension_sha256": "b1fc7e58206d478db8b55d41b5c4925b432e181f38c7bce11d62bf40de978090"
+        },
+        "hardware": {
+          "gpus": [
+            {
+              "device": 0,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:07:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-cad55364-e014-c35f-337e-db899afd1c6a"
+            },
+            {
+              "device": 1,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:0F:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-a904c6f6-6410-dc0f-c7c3-efc068004617"
+            },
+            {
+              "device": 2,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:47:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-79ab3e5e-e382-1f9c-bede-1900666e9283"
+            },
+            {
+              "device": 3,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:4E:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-bab43db0-a051-0419-39f7-e33effa9445b"
+            },
+            {
+              "device": 4,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:87:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-44bddf94-7411-b3ad-f195-fdbdd12fa73e"
+            },
+            {
+              "device": 5,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:90:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-af8dba1f-f74e-6a55-bb9e-6c8961edbd6e"
+            },
+            {
+              "device": 6,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:B7:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-5edaa614-d5f8-8a3f-11ec-b128f8d029f3"
+            },
+            {
+              "device": 7,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:BD:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-01fff32a-1dd6-93a7-1aae-60d378382961"
+            }
+          ],
+          "topology": "\t\u001b[4mGPU0\tGPU1\tGPU2\tGPU3\tGPU4\tGPU5\tGPU6\tGPU7\tNIC0\tNIC1\tNIC2\tNIC3\tNIC4\tNIC5\tNIC6\tNIC7\tNIC8\tNIC9\tCPU Affinity\tNUMA Affinity\tGPU NUMA ID\u001b[0m\nGPU0\t X \tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t48-63,176-191\t3\t\tN/A\nGPU1\tNV12\t X \tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t48-63,176-191\t3\t\tN/A\nGPU2\tNV12\tNV12\t X \tNV12\tNV12\tNV12\tNV12\tNV12\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t16-31,144-159\t1\t\tN/A\nGPU3\tNV12\tNV12\tNV12\t X \tNV12\tNV12\tNV12\tNV12\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t16-31,144-159\t1\t\tN/A\nGPU4\tNV12\tNV12\tNV12\tNV12\t X \tNV12\tNV12\tNV12\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\t112-127,240-255\t7\t\tN/A\nGPU5\tNV12\tNV12\tNV12\tNV12\tNV12\t X \tNV12\tNV12\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\t112-127,240-255\t7\t\tN/A\nGPU6\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\t X \tNV12\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\t80-95,208-223\t5\t\tN/A\nGPU7\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\t X \tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\t80-95,208-223\t5\t\tN/A\nNIC0\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC1\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC2\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC3\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC4\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC5\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC6\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\t\t\t\t\nNIC7\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\t\t\t\t\nNIC8\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPIX\t\t\t\t\nNIC9\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPIX\t X \t\t\t\t\n\nLegend:\n\n  X    = Self\n  SYS  = Connection traversing PCIe as well as the SMP interconnect between NUMA nodes (e.g., QPI/UPI)\n  NODE = Connection traversing PCIe as well as the interconnect between PCIe Host Bridges within a NUMA node\n  PHB  = Connection traversing PCIe as well as a PCIe Host Bridge (typically the CPU)\n  PXB  = Connection traversing multiple PCIe bridges (without traversing the PCIe Host Bridge)\n  PIX  = Connection traversing at most a single PCIe bridge\n  NV#  = Connection traversing a bonded set of # NVLinks\n\nNIC Legend:\n\n  NIC0: mlx5_0\n  NIC1: mlx5_1\n  NIC2: mlx5_2\n  NIC3: mlx5_3\n  NIC4: mlx5_4\n  NIC5: mlx5_5\n  NIC6: mlx5_6\n  NIC7: mlx5_7\n  NIC8: mlx5_8\n  NIC9: mlx5_9\n\n"
+        },
+        "node_rank": 0,
+        "schema_version": "distillschedule.model_runtime_identity.v1",
+        "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+        "status": "PASS"
+      },
+      {
+        "cuda_context_created": false,
+        "environment": {
+          "executable": "/tmp/distillschedule-helios-official-torch210/bin/python3.10",
+          "executable_sha256": "7c9e72ea1f06138ed5f52f49894c62f29e51e302f0d02f8fb18490e90e994331",
+          "ld_library_path": "",
+          "nccl": [
+            2,
+            27,
+            5
+          ],
+          "packages": {
+            "accelerate": "1.12.0",
+            "diffusers": "0.38.0.dev0",
+            "flash-attn": null,
+            "nvidia-nccl-cu12": "2.27.5",
+            "peft": "0.18.1",
+            "safetensors": "0.8.0",
+            "torch": "2.10.0",
+            "transformers": "5.3.0",
+            "triton": "3.6.0"
+          },
+          "python": "3.10.20",
+          "pythonpath": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_envs/livewan_crossscale_pydeps_762d18d3:/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-native-macros-06d5e67aab7e-20260907/src:/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-native-macros-06d5e67aab7e-20260907:/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-native-macros-06d5e67aab7e-20260907/third_party/livewan:/share/project/shuchenweng/yongyan_liu/DistillSchedule_runtime_sources/livewan-wan21-b723aaf",
+          "scope": "OBSERVED_VERSIONS_AND_SELECTED_BINARIES_NOT_FULL_ENVIRONMENT_HASH",
+          "torch": "2.10.0+cu128",
+          "torch_cuda": "12.8",
+          "torch_extension_sha256": "b1fc7e58206d478db8b55d41b5c4925b432e181f38c7bce11d62bf40de978090"
+        },
+        "hardware": {
+          "gpus": [
+            {
+              "device": 0,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:07:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-a7668680-c210-ecdd-c247-a8337b735231"
+            },
+            {
+              "device": 1,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:0F:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-0d872e88-5c95-9d42-61c2-d2f7c815209a"
+            },
+            {
+              "device": 2,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:47:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-9e7d5554-df1e-fd82-7362-db81068ca9bc"
+            },
+            {
+              "device": 3,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:4E:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-1244db6f-2ea8-4ffa-a3f3-3529e3c0b060"
+            },
+            {
+              "device": 4,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:87:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-94ee2054-b5c5-d249-c1f7-11c4f1f9bfd2"
+            },
+            {
+              "device": 5,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:90:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-2d8db9f8-6454-f744-0d9b-0f553205267d"
+            },
+            {
+              "device": 6,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:B7:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-75e465e8-461a-dfde-2e54-6d79c23fc521"
+            },
+            {
+              "device": 7,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:BD:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-cacfee38-f05a-b52a-2d12-5a75bde031e6"
+            }
+          ],
+          "topology": "\t\u001b[4mGPU0\tGPU1\tGPU2\tGPU3\tGPU4\tGPU5\tGPU6\tGPU7\tNIC0\tNIC1\tNIC2\tNIC3\tNIC4\tNIC5\tNIC6\tNIC7\tNIC8\tNIC9\tCPU Affinity\tNUMA Affinity\tGPU NUMA ID\u001b[0m\nGPU0\t X \tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t48-63,176-191\t3\t\tN/A\nGPU1\tNV12\t X \tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t48-63,176-191\t3\t\tN/A\nGPU2\tNV12\tNV12\t X \tNV12\tNV12\tNV12\tNV12\tNV12\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t16-31,144-159\t1\t\tN/A\nGPU3\tNV12\tNV12\tNV12\t X \tNV12\tNV12\tNV12\tNV12\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t16-31,144-159\t1\t\tN/A\nGPU4\tNV12\tNV12\tNV12\tNV12\t X \tNV12\tNV12\tNV12\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\t112-127,240-255\t7\t\tN/A\nGPU5\tNV12\tNV12\tNV12\tNV12\tNV12\t X \tNV12\tNV12\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\t112-127,240-255\t7\t\tN/A\nGPU6\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\t X \tNV12\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\t80-95,208-223\t5\t\tN/A\nGPU7\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\t X \tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\t80-95,208-223\t5\t\tN/A\nNIC0\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC1\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC2\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC3\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC4\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC5\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC6\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\t\t\t\t\nNIC7\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\t\t\t\t\nNIC8\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPIX\t\t\t\t\nNIC9\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPIX\t X \t\t\t\t\n\nLegend:\n\n  X    = Self\n  SYS  = Connection traversing PCIe as well as the SMP interconnect between NUMA nodes (e.g., QPI/UPI)\n  NODE = Connection traversing PCIe as well as the interconnect between PCIe Host Bridges within a NUMA node\n  PHB  = Connection traversing PCIe as well as a PCIe Host Bridge (typically the CPU)\n  PXB  = Connection traversing multiple PCIe bridges (without traversing the PCIe Host Bridge)\n  PIX  = Connection traversing at most a single PCIe bridge\n  NV#  = Connection traversing a bonded set of # NVLinks\n\nNIC Legend:\n\n  NIC0: mlx5_0\n  NIC1: mlx5_1\n  NIC2: mlx5_2\n  NIC3: mlx5_3\n  NIC4: mlx5_4\n  NIC5: mlx5_5\n  NIC6: mlx5_6\n  NIC7: mlx5_7\n  NIC8: mlx5_8\n  NIC9: mlx5_9\n\n"
+        },
+        "node_rank": 1,
+        "schema_version": "distillschedule.model_runtime_identity.v1",
+        "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+        "status": "PASS"
+      }
+    ],
+    "before": [
+      {
+        "cuda_context_created": false,
+        "environment": {
+          "executable": "/tmp/distillschedule-helios-official-torch210/bin/python3.10",
+          "executable_sha256": "7c9e72ea1f06138ed5f52f49894c62f29e51e302f0d02f8fb18490e90e994331",
+          "ld_library_path": "",
+          "nccl": [
+            2,
+            27,
+            5
+          ],
+          "packages": {
+            "accelerate": "1.12.0",
+            "diffusers": "0.38.0.dev0",
+            "flash-attn": null,
+            "nvidia-nccl-cu12": "2.27.5",
+            "peft": "0.18.1",
+            "safetensors": "0.8.0",
+            "torch": "2.10.0",
+            "transformers": "5.3.0",
+            "triton": "3.6.0"
+          },
+          "python": "3.10.20",
+          "pythonpath": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_envs/livewan_crossscale_pydeps_762d18d3:/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-native-macros-06d5e67aab7e-20260907/src:/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-native-macros-06d5e67aab7e-20260907:/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-native-macros-06d5e67aab7e-20260907/third_party/livewan:/share/project/shuchenweng/yongyan_liu/DistillSchedule_runtime_sources/livewan-wan21-b723aaf",
+          "scope": "OBSERVED_VERSIONS_AND_SELECTED_BINARIES_NOT_FULL_ENVIRONMENT_HASH",
+          "torch": "2.10.0+cu128",
+          "torch_cuda": "12.8",
+          "torch_extension_sha256": "b1fc7e58206d478db8b55d41b5c4925b432e181f38c7bce11d62bf40de978090"
+        },
+        "hardware": {
+          "gpus": [
+            {
+              "device": 0,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:07:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-cad55364-e014-c35f-337e-db899afd1c6a"
+            },
+            {
+              "device": 1,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:0F:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-a904c6f6-6410-dc0f-c7c3-efc068004617"
+            },
+            {
+              "device": 2,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:47:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-79ab3e5e-e382-1f9c-bede-1900666e9283"
+            },
+            {
+              "device": 3,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:4E:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-bab43db0-a051-0419-39f7-e33effa9445b"
+            },
+            {
+              "device": 4,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:87:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-44bddf94-7411-b3ad-f195-fdbdd12fa73e"
+            },
+            {
+              "device": 5,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:90:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-af8dba1f-f74e-6a55-bb9e-6c8961edbd6e"
+            },
+            {
+              "device": 6,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:B7:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-5edaa614-d5f8-8a3f-11ec-b128f8d029f3"
+            },
+            {
+              "device": 7,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:BD:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-01fff32a-1dd6-93a7-1aae-60d378382961"
+            }
+          ],
+          "topology": "\t\u001b[4mGPU0\tGPU1\tGPU2\tGPU3\tGPU4\tGPU5\tGPU6\tGPU7\tNIC0\tNIC1\tNIC2\tNIC3\tNIC4\tNIC5\tNIC6\tNIC7\tNIC8\tNIC9\tCPU Affinity\tNUMA Affinity\tGPU NUMA ID\u001b[0m\nGPU0\t X \tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t48-63,176-191\t3\t\tN/A\nGPU1\tNV12\t X \tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t48-63,176-191\t3\t\tN/A\nGPU2\tNV12\tNV12\t X \tNV12\tNV12\tNV12\tNV12\tNV12\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t16-31,144-159\t1\t\tN/A\nGPU3\tNV12\tNV12\tNV12\t X \tNV12\tNV12\tNV12\tNV12\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t16-31,144-159\t1\t\tN/A\nGPU4\tNV12\tNV12\tNV12\tNV12\t X \tNV12\tNV12\tNV12\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\t112-127,240-255\t7\t\tN/A\nGPU5\tNV12\tNV12\tNV12\tNV12\tNV12\t X \tNV12\tNV12\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\t112-127,240-255\t7\t\tN/A\nGPU6\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\t X \tNV12\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\t80-95,208-223\t5\t\tN/A\nGPU7\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\t X \tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\t80-95,208-223\t5\t\tN/A\nNIC0\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC1\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC2\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC3\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC4\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC5\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC6\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\t\t\t\t\nNIC7\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\t\t\t\t\nNIC8\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPIX\t\t\t\t\nNIC9\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPIX\t X \t\t\t\t\n\nLegend:\n\n  X    = Self\n  SYS  = Connection traversing PCIe as well as the SMP interconnect between NUMA nodes (e.g., QPI/UPI)\n  NODE = Connection traversing PCIe as well as the interconnect between PCIe Host Bridges within a NUMA node\n  PHB  = Connection traversing PCIe as well as a PCIe Host Bridge (typically the CPU)\n  PXB  = Connection traversing multiple PCIe bridges (without traversing the PCIe Host Bridge)\n  PIX  = Connection traversing at most a single PCIe bridge\n  NV#  = Connection traversing a bonded set of # NVLinks\n\nNIC Legend:\n\n  NIC0: mlx5_0\n  NIC1: mlx5_1\n  NIC2: mlx5_2\n  NIC3: mlx5_3\n  NIC4: mlx5_4\n  NIC5: mlx5_5\n  NIC6: mlx5_6\n  NIC7: mlx5_7\n  NIC8: mlx5_8\n  NIC9: mlx5_9\n\n"
+        },
+        "node_rank": 0,
+        "schema_version": "distillschedule.model_runtime_identity.v1",
+        "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+        "status": "PASS"
+      },
+      {
+        "cuda_context_created": false,
+        "environment": {
+          "executable": "/tmp/distillschedule-helios-official-torch210/bin/python3.10",
+          "executable_sha256": "7c9e72ea1f06138ed5f52f49894c62f29e51e302f0d02f8fb18490e90e994331",
+          "ld_library_path": "",
+          "nccl": [
+            2,
+            27,
+            5
+          ],
+          "packages": {
+            "accelerate": "1.12.0",
+            "diffusers": "0.38.0.dev0",
+            "flash-attn": null,
+            "nvidia-nccl-cu12": "2.27.5",
+            "peft": "0.18.1",
+            "safetensors": "0.8.0",
+            "torch": "2.10.0",
+            "transformers": "5.3.0",
+            "triton": "3.6.0"
+          },
+          "python": "3.10.20",
+          "pythonpath": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_envs/livewan_crossscale_pydeps_762d18d3:/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-native-macros-06d5e67aab7e-20260907/src:/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-native-macros-06d5e67aab7e-20260907:/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-native-macros-06d5e67aab7e-20260907/third_party/livewan:/share/project/shuchenweng/yongyan_liu/DistillSchedule_runtime_sources/livewan-wan21-b723aaf",
+          "scope": "OBSERVED_VERSIONS_AND_SELECTED_BINARIES_NOT_FULL_ENVIRONMENT_HASH",
+          "torch": "2.10.0+cu128",
+          "torch_cuda": "12.8",
+          "torch_extension_sha256": "b1fc7e58206d478db8b55d41b5c4925b432e181f38c7bce11d62bf40de978090"
+        },
+        "hardware": {
+          "gpus": [
+            {
+              "device": 0,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:07:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-a7668680-c210-ecdd-c247-a8337b735231"
+            },
+            {
+              "device": 1,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:0F:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-0d872e88-5c95-9d42-61c2-d2f7c815209a"
+            },
+            {
+              "device": 2,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:47:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-9e7d5554-df1e-fd82-7362-db81068ca9bc"
+            },
+            {
+              "device": 3,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:4E:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-1244db6f-2ea8-4ffa-a3f3-3529e3c0b060"
+            },
+            {
+              "device": 4,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:87:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-94ee2054-b5c5-d249-c1f7-11c4f1f9bfd2"
+            },
+            {
+              "device": 5,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:90:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-2d8db9f8-6454-f744-0d9b-0f553205267d"
+            },
+            {
+              "device": 6,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:B7:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-75e465e8-461a-dfde-2e54-6d79c23fc521"
+            },
+            {
+              "device": 7,
+              "driver": "535.161.08",
+              "name": "NVIDIA A100-SXM4-40GB",
+              "pci_bus_id": "00000000:BD:00.0",
+              "total_bytes": 42949672960,
+              "uuid": "GPU-cacfee38-f05a-b52a-2d12-5a75bde031e6"
+            }
+          ],
+          "topology": "\t\u001b[4mGPU0\tGPU1\tGPU2\tGPU3\tGPU4\tGPU5\tGPU6\tGPU7\tNIC0\tNIC1\tNIC2\tNIC3\tNIC4\tNIC5\tNIC6\tNIC7\tNIC8\tNIC9\tCPU Affinity\tNUMA Affinity\tGPU NUMA ID\u001b[0m\nGPU0\t X \tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t48-63,176-191\t3\t\tN/A\nGPU1\tNV12\t X \tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t48-63,176-191\t3\t\tN/A\nGPU2\tNV12\tNV12\t X \tNV12\tNV12\tNV12\tNV12\tNV12\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t16-31,144-159\t1\t\tN/A\nGPU3\tNV12\tNV12\tNV12\t X \tNV12\tNV12\tNV12\tNV12\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t16-31,144-159\t1\t\tN/A\nGPU4\tNV12\tNV12\tNV12\tNV12\t X \tNV12\tNV12\tNV12\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\t112-127,240-255\t7\t\tN/A\nGPU5\tNV12\tNV12\tNV12\tNV12\tNV12\t X \tNV12\tNV12\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\t112-127,240-255\t7\t\tN/A\nGPU6\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\t X \tNV12\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\t80-95,208-223\t5\t\tN/A\nGPU7\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\tNV12\t X \tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\t80-95,208-223\t5\t\tN/A\nNIC0\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC1\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC2\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC3\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC4\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC5\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\tSYS\tSYS\t\t\t\t\nNIC6\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPXB\tSYS\tSYS\t\t\t\t\nNIC7\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\tPXB\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPXB\t X \tSYS\tSYS\t\t\t\t\nNIC8\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\t X \tPIX\t\t\t\t\nNIC9\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tSYS\tPIX\t X \t\t\t\t\n\nLegend:\n\n  X    = Self\n  SYS  = Connection traversing PCIe as well as the SMP interconnect between NUMA nodes (e.g., QPI/UPI)\n  NODE = Connection traversing PCIe as well as the interconnect between PCIe Host Bridges within a NUMA node\n  PHB  = Connection traversing PCIe as well as a PCIe Host Bridge (typically the CPU)\n  PXB  = Connection traversing multiple PCIe bridges (without traversing the PCIe Host Bridge)\n  PIX  = Connection traversing at most a single PCIe bridge\n  NV#  = Connection traversing a bonded set of # NVLinks\n\nNIC Legend:\n\n  NIC0: mlx5_0\n  NIC1: mlx5_1\n  NIC2: mlx5_2\n  NIC3: mlx5_3\n  NIC4: mlx5_4\n  NIC5: mlx5_5\n  NIC6: mlx5_6\n  NIC7: mlx5_7\n  NIC8: mlx5_8\n  NIC9: mlx5_9\n\n"
+        },
+        "node_rank": 1,
+        "schema_version": "distillschedule.model_runtime_identity.v1",
+        "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+        "status": "PASS"
+      }
+    ]
+  },
+  "runtime_validation": {
+    "effective_plan_sha256": "db57174494da4ee586dac50cfcb1832c1be2aa58435ffa4924067b5d4637a3ea",
+    "fingerprint": "fb35f06e2aa3c49dc9b7797c771a3d470bd6cd16bbcc1271d1086e38737d6f7a",
+    "mode": "pipeline",
+    "physical_call_inventory": {
+      "critic/grad/checkpoint": 80,
+      "critic/nograd/plain": 32,
+      "student/grad/checkpoint": 96,
+      "student/nograd/plain": 4120,
+      "teacher/nograd/plain": 32
+    },
+    "variant": "c33-continuous-b16-generator-gate"
+  },
+  "same_process": true,
+  "schema_version": "distillschedule.search.measurement.v1",
+  "semantic_fingerprint": "34204f6bfc01b703b34d9362f4a3dd8995f335912533ee919a080ea278a4da77",
+  "semantics_status": "PASS",
+  "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b",
+  "status": "PASS",
+  "timer_scope": "NATIVE_CYCLE_OUTSIDE_PROBES",
+  "workload": "livewan_crossscale_pipeline_best"
+}
