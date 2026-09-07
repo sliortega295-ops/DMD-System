@@ -127,7 +127,16 @@
       "target": "src/distillschedule/backends/training/minimax_h3/grid_timestep_compat.py"
     },
     {
-      "integrated_sha256": "1324db24773e213ecf5c84a7e3599222f139af395218998901e2e11ca2a7ab18",
+      "adaptations": [
+        {
+          "base_integration_head": "9314c2b9e7826a0d4c7991b3204a5181a0cf9a35",
+          "new_integrated_sha256": "f804134d24bce6520822ee063610ad55387e1527a52125a25147939bb8100b96",
+          "previous_integrated_sha256": "1324db24773e213ecf5c84a7e3599222f139af395218998901e2e11ca2a7ab18",
+          "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change.",
+          "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
+        }
+      ],
+      "integrated_sha256": "f804134d24bce6520822ee063610ad55387e1527a52125a25147939bb8100b96",
       "note": "DMD-System integration adapter around the imported H3 backend",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/backends/training/minimax_h3/integrated_entrypoint.py",
@@ -163,7 +172,16 @@
       "target": "src/distillschedule/backends/training/minimax_h3/trainer.py"
     },
     {
-      "integrated_sha256": "ebe457b06a85cebd20199e4e57f8150b2e7f2e1d7801cff327ecaa6d57b27c03",
+      "adaptations": [
+        {
+          "base_integration_head": "9314c2b9e7826a0d4c7991b3204a5181a0cf9a35",
+          "new_integrated_sha256": "ad15a07aa563b278943c7c59f7cf5d6694f94387ab519cf495dbe7dea4d1d28b",
+          "previous_integrated_sha256": "ebe457b06a85cebd20199e4e57f8150b2e7f2e1d7801cff327ecaa6d57b27c03",
+          "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change.",
+          "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
+        }
+      ],
+      "integrated_sha256": "ad15a07aa563b278943c7c59f7cf5d6694f94387ab519cf495dbe7dea4d1d28b",
       "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
       "source_path": "h3_a100/trainer_loop.py",
       "source_repository": "sliortega295-ops/H3-DMD-for-A100",
@@ -587,8 +605,17 @@
       "target": "src/distillschedule/runtime/p0_parity.py"
     },
     {
-      "integrated_sha256": "b04f099870aa8820e48558f4d2d4653c414f03a4c6f07f1801377cc3b94193dd",
-      "integration_note": "Deployment/test/optional canonical-gate binding adaptation only; see C34 integration report. Worker and numerical kernels retain source bytes.",
+      "adaptations": [
+        {
+          "base_integration_head": "9314c2b9e7826a0d4c7991b3204a5181a0cf9a35",
+          "new_integrated_sha256": "0094534ad674d8c17c1a1ae748043dca6950c5b9263c7349a09cce17d3325007",
+          "previous_integrated_sha256": "b04f099870aa8820e48558f4d2d4653c414f03a4c6f07f1801377cc3b94193dd",
+          "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change.",
+          "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
+        }
+      ],
+      "integrated_sha256": "0094534ad674d8c17c1a1ae748043dca6950c5b9263c7349a09cce17d3325007",
+      "integration_note": "Deployment/test/optional canonical-gate binding adaptation only; see C34 integration report. Worker and numerical kernels retain source bytes. | Latest source adds opt-in native planner hooks/gates; exact adaptation hashes below supersede the earlier byte-identical-worker statement where applicable.",
       "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -677,7 +704,16 @@
       "target": "src/distillschedule/runtime/livewan_cross_kv_cache.py"
     },
     {
-      "integrated_sha256": "25d41a29c403f0ead87097123e5d51e12939eb53c66566158d50387516b1691a",
+      "adaptations": [
+        {
+          "base_integration_head": "9314c2b9e7826a0d4c7991b3204a5181a0cf9a35",
+          "new_integrated_sha256": "dd7b5cbc51959b060a4d70f0e46181dd9b460a4c88a6adafe706371c000502c9",
+          "previous_integrated_sha256": "25d41a29c403f0ead87097123e5d51e12939eb53c66566158d50387516b1691a",
+          "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change.",
+          "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
+        }
+      ],
+      "integrated_sha256": "dd7b5cbc51959b060a4d70f0e46181dd9b460a4c88a6adafe706371c000502c9",
       "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "src/distillschedule/runtime/livewan_crossscale_worker.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -890,7 +926,16 @@
       "target": "scripts/distillschedule/check_best_known_integration.py"
     },
     {
-      "integrated_sha256": "ea9b6a9030c21aadcdeb8bad036feff8c495106a053aa6a7e05684298ea25557",
+      "adaptations": [
+        {
+          "base_integration_head": "9314c2b9e7826a0d4c7991b3204a5181a0cf9a35",
+          "new_integrated_sha256": "7f68fc93234bb39681a4ae97f3bfcb43118a4af109a831b49a8fd7e8c5929f1c",
+          "previous_integrated_sha256": "ea9b6a9030c21aadcdeb8bad036feff8c495106a053aa6a7e05684298ea25557",
+          "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change.",
+          "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
+        }
+      ],
+      "integrated_sha256": "7f68fc93234bb39681a4ae97f3bfcb43118a4af109a831b49a8fd7e8c5929f1c",
       "source_commit": "integration-pr26",
       "source_path": "scripts/distillschedule/launch_minimax_h3_best_node.sh",
       "source_repository": "integration-pr26",
@@ -932,9 +977,16 @@
           "new_integrated_sha256": "d6ec0a0450aad62d60092b1a9c33ad6be39dc5908f4d2ae9d114dccff55672d5",
           "previous_integrated_sha256": "9ab4e0d84122dbb5cee1296a2eaa4b79a580897efac78cbff2199097819beb2a",
           "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        },
+        {
+          "base_integration_head": "9314c2b9e7826a0d4c7991b3204a5181a0cf9a35",
+          "new_integrated_sha256": "e4a2ce254ecc0bd6a0d549c9a95f1097e25e265a26161082ddc4debd182132d5",
+          "previous_integrated_sha256": "fd4ca6ea4e8248ea83d022e73c267e188d1c203fd39a5405354928193f2ef59a",
+          "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change.",
+          "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
         }
       ],
-      "integrated_sha256": "fd4ca6ea4e8248ea83d022e73c267e188d1c203fd39a5405354928193f2ef59a",
+      "integrated_sha256": "e4a2ce254ecc0bd6a0d549c9a95f1097e25e265a26161082ddc4debd182132d5",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/dispatch.py",
       "source_repository": "integration-pr26",
@@ -947,10 +999,17 @@
           "new_integrated_sha256": "177256925e73e7badd0ed9680b9d03380677315337c4acf625e2aaf0338652ae",
           "previous_integrated_sha256": "181580601553110e9ae7d717c11719994f6fe324452565f6bcc883dc622b58f9",
           "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        },
+        {
+          "base_integration_head": "9314c2b9e7826a0d4c7991b3204a5181a0cf9a35",
+          "new_integrated_sha256": "33315d6479e46aec84c6ba9f2542e1a201fd6b8bf80575da2e2d29d8b204fae3",
+          "previous_integrated_sha256": "bfd6e473269e70ef4f5b76649e7a9df33f8f43acda0df1e1db9eb1b7c1cb2f58",
+          "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change.",
+          "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
         }
       ],
-      "integrated_sha256": "bfd6e473269e70ef4f5b76649e7a9df33f8f43acda0df1e1db9eb1b7c1cb2f58",
-      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution.",
+      "integrated_sha256": "33315d6479e46aec84c6ba9f2542e1a201fd6b8bf80575da2e2d29d8b204fae3",
+      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution. | Latest source adds opt-in native planner hooks/gates; exact adaptation hashes below supersede the earlier byte-identical-worker statement where applicable.",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/evidence.py",
       "source_repository": "integration-pr26",
@@ -963,10 +1022,17 @@
           "new_integrated_sha256": "82a6637a1d28ef3ece2db6de032370f96e45515a35335739aff099107268a03b",
           "previous_integrated_sha256": "1c407cebc87d0b8904a47f42bf29511b939ec0dfdb6c2fe418e60a491bbf9962",
           "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        },
+        {
+          "base_integration_head": "9314c2b9e7826a0d4c7991b3204a5181a0cf9a35",
+          "new_integrated_sha256": "ce9b0fcc1b19c56f8487eb2120b23dd781c9ac61d84bbd8ab0dac01301077ca8",
+          "previous_integrated_sha256": "b97c8c547aa4eb87b0165944b318642ec3d1be45ace5c6fb481b6aa49d2f7a02",
+          "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change.",
+          "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
         }
       ],
-      "integrated_sha256": "b97c8c547aa4eb87b0165944b318642ec3d1be45ace5c6fb481b6aa49d2f7a02",
-      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution.",
+      "integrated_sha256": "ce9b0fcc1b19c56f8487eb2120b23dd781c9ac61d84bbd8ab0dac01301077ca8",
+      "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution. | Latest source adds opt-in native planner hooks/gates; exact adaptation hashes below supersede the earlier byte-identical-worker statement where applicable.",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/registry.py",
       "source_repository": "integration-pr26",
@@ -1403,7 +1469,16 @@
       "target": "scripts/distillschedule/summarize_livewan_trajectory_world16.py"
     },
     {
-      "integrated_sha256": "474506ca399abb13adc33672929a06f13d593a09d049b64996e0b7cab8959d39",
+      "adaptations": [
+        {
+          "base_integration_head": "9314c2b9e7826a0d4c7991b3204a5181a0cf9a35",
+          "new_integrated_sha256": "3ca1bd8498c4391fce0e3277c6bcf9d19903a9e46ad73ccf57bf51619a2b71b5",
+          "previous_integrated_sha256": "474506ca399abb13adc33672929a06f13d593a09d049b64996e0b7cab8959d39",
+          "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change.",
+          "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
+        }
+      ],
+      "integrated_sha256": "3ca1bd8498c4391fce0e3277c6bcf9d19903a9e46ad73ccf57bf51619a2b71b5",
       "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "scripts/distillschedule/summarize_livewan_two_cycle_timing_world16.py",
       "source_repository": "sliortega295-ops/DMD-System",

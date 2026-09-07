@@ -162,6 +162,14 @@ One initial CPU probe unexpectedly initialized a CUDA generator; it terminated,
 was preserved, then a new explicitly CPU-masked probe passed. Training GPU
 visibility was never masked.
 
+The first publication CI then caught stale `source_import_map.json` entries for
+nine changed integration files. Their prior hashes were verified against
+`9314c2b9`, and explicit adaptation records now retain both old and new hashes.
+Only identity metadata was repaired; no GPU/runtime source or measurement was
+changed. The unchanged full `check_best_known_integration.py` acceptance now
+passes (five canonical profiles, 18 integration tests). Failure and repair are
+recorded in `dmd_joint_planner_import_map_repair_20260907.json`.
+
 Current CPU suite: **768 passed, 17 skipped**; skipped GPU-specific tests are not
 reported as passes. Compile/shell/diff checks passed. The completed CE review of
 the main adapter patch produced three actionable findings; all were resolved
