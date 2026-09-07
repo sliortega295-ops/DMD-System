@@ -81,13 +81,20 @@ class H3A100LoopMixin:
             self._begin_fa3_replay_cache_cycle()
             self._begin_lora_scale1_cycle()
             runtime_state_start = self.shared_model.runtime_state_stats()
+            action_program = None
             if planner_observer is not None:
                 planner_observer.before_cycle(self, current_iter)
+                action_program = planner_observer.prepare_actions(self, samples, grad_accum_iters, current_iter)
                 planner_observer.start_cycle(current_iter)
-            with self._nvtx("h3/student_step"):
-                running_dmd = self._student_step(samples, grad_accum_iters, current_iter)
-            with self._nvtx("h3/critic_phase"):
-                running_fake = self._fake_steps(samples, grad_accum_iters)
+            if action_program is None:
+                with self._nvtx("h3/student_step"):
+                    running_dmd = self._student_step(samples, grad_accum_iters, current_iter)
+                with self._nvtx("h3/critic_phase"):
+                    running_fake = self._fake_steps(samples, grad_accum_iters)
+            else:
+                action_outputs = action_program.run()
+                running_dmd = action_outputs["g"]
+                running_fake = [loss for i in range(5) for loss in action_outputs[f"c{i}"]]
             if planner_observer is not None:
                 planner_observer.stop_cycle(current_iter)
             if self.matched_compute_enabled:

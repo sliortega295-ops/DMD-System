@@ -20,7 +20,12 @@ fi
 [[ "${H3_PLANNER_TWO_CYCLE:-0}" == 0 || "${H3_PLANNER_TWO_CYCLE:-0}" == 1 ]] || exit 2
 [[ "${H3_PLANNER_CALIBRATION:-0}" == 0 || "${H3_PLANNER_CALIBRATION:-0}" == 1 ]] || exit 2
 if [[ -n "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID:-}" ]]; then
-  [[ "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID}" =~ ^joint-h3v1-d[12]-n(64|128)$ ]] || exit 2
+  if [[ "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID}" =~ ^joint-h3v2-d[12]-n(64|128)-w([1-5])$ ]]; then
+    [[ "$MODE" == correctness && "${H3_PLANNER_ROLLOUT_WINDOW:-}" == "${BASH_REMATCH[2]}" ]] || exit 2
+  else
+    [[ "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID}" =~ ^joint-h3v1-d[12]-n(64|128)$ && \
+       -z "${H3_PLANNER_ROLLOUT_WINDOW:-}" ]] || exit 2
+  fi
   [[ "${H3_PLANNER_TWO_CYCLE:-0}" == 1 && "${H3_PLANNER_CLOCK:-}" == host_fenced ]] || exit 2
   if [[ "$MODE" == calibration ]]; then
     [[ "${H3_PLANNER_CALIBRATION:-0}" == 1 ]] || exit 2
@@ -28,6 +33,7 @@ if [[ -n "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID:-}" ]]; then
     [[ "${H3_PLANNER_CALIBRATION:-0}" == 0 ]] || exit 2
   fi
 else
+  [[ -z "${H3_PLANNER_ROLLOUT_WINDOW:-}" ]] || exit 2
   [[ "$MODE" != calibration && "${H3_PLANNER_TWO_CYCLE:-0}" == 0 && \
      "${H3_PLANNER_CALIBRATION:-0}" == 0 && -z "${H3_PLANNER_CLOCK:-}" ]] || exit 2
 fi

@@ -138,7 +138,7 @@ def _native_loop_class(torch, calls):
     return namespace["H3A100LoopMixin"]
 
 
-def _native_fixture(*, observed=True, calibration=False, bad_loss=False):
+def _native_fixture(*, observed=True, calibration=False, bad_loss=False, fake_loss_rng=True):
     from distillschedule.backends.training.minimax_h3.matched_contract import MatchedCycleCensus
     calls, probes = [], []
     cuda = FakeCuda()
@@ -248,7 +248,7 @@ def _native_fixture(*, observed=True, calibration=False, bad_loss=False):
         return SimpleNamespace(cache_key=conditions)
 
     def fake_loss(item):
-        calls.append(("fake_loss", item.cache_key, rng.random()))
+        calls.append(("fake_loss", item.cache_key, rng.random() if fake_loss_rng else None))
         cuda.now += 3
         trainer.matched_cycle_census.note_forward("fake", grad_enabled=True)
         grid_grad()

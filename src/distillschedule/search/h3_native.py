@@ -81,6 +81,24 @@ def summarize_native_two_cycle(receipts: Sequence[Mapping[str, Any]], *, expecte
                     and len(losses["fake"]) == 5, "H3 loss inventory incomplete")
             require(all(type(v) in (int, float) and math.isfinite(v)
                         for values in losses.values() for v in values), "H3 loss nonfinite")
+            if impl.rollout_window is not None:
+                from distillschedule.backends.training.minimax_h3.cycle_actions import validate_cycle_actions
+                actions = item.get("action_execution", {})
+                require(actions.get("status") == "PASS_NATIVE_ACTION_BINDING"
+                        and actions.get("source_head") == expected_head and actions.get("rank") == rank
+                        and actions.get("cycle") == cycle and actions.get("census_binding") == item["census"]
+                        and actions.get("dispatch", {}).get("peak_live_inputs") == impl.rollout_window,
+                        "H3 action execution missing/source/sample/window mismatch")
+                validate_cycle_actions(actions)
+                for action_state, native_state in ((actions["rows"][0]["rng_before"], item.get("rng_before")),
+                                                    (actions["rows"][-1]["rng_after"], item.get("rng_after"))):
+                    require(isinstance(native_state, dict) and set(native_state) == {"torch_cpu", "torch_cuda"}
+                            and all(action_state.get(k) == v for k, v in native_state.items()),
+                            "H3 action RNG endpoints differ from native cycle")
+                if cycle == 2:
+                    require(actions["rows"][0]["rng_before"] ==
+                            cycles[0]["action_execution"]["rows"][-1]["rng_after"],
+                            "H3 observed generators advanced between cycles")
     for index in range(2):
         errors = validate_global_snapshots([row["cycles"][index]["census"] for row in rows],
                                           expected_world_size=16, require_unique_samples=True)
@@ -91,7 +109,8 @@ def summarize_native_two_cycle(receipts: Sequence[Mapping[str, Any]], *, expecte
             "errors": [], "integration_head": expected_head, **binding, "rank_count": 16,
             "cycles": 2, "cycles_in_same_process": 2, "final_versions": dict(generator=2, critic=10, ema=0),
             "cycle_wall_seconds": wall, "cycle_cuda_elapsed_seconds": cuda,
-            "timer_scope": "RANK_MAX_NATIVE_HOST_FENCED_CYCLE_WALL",
+            "timer_scope": ("CORRECTNESS_ACTION_HASH_PROBES_INCLUDED_NOT_NATIVE_PERFORMANCE"
+                            if impl.rollout_window is not None else "RANK_MAX_NATIVE_HOST_FENCED_CYCLE_WALL"),
             "cross_rank_clock_alignment": "NOT_ESTABLISHED", "calibration_only": calibration,
             "formal_timing_eligible": False, "search_ready": False, "strict_pair_gate": "NOT_RUN",
             "claim_boundary": "NATIVE_DIAGNOSTIC_NOT_SEARCH_READY_OR_FORMAL_SPEEDUP",
@@ -220,16 +239,25 @@ def compare_native_two_cycle(reference: Sequence[Mapping[str, Any]], candidate: 
     summaries = [summarize_native_two_cycle(rows, expected_head=expected_head, candidate_id=rows[0].get("candidate_id"))
                  for rows in (reference, candidate)]
     require(not any(s["calibration_only"] for s in summaries), "H3 correctness pair cannot use calibration receipts")
+    action_pair = any(H3Implementation.parse(s["candidate_id"]).rollout_window is not None for s in summaries)
     ranks = []
     for left, right in zip(sorted(reference, key=lambda r: r["rank"]), sorted(candidate, key=lambda r: r["rank"])):
         rank = left["rank"]
         losses = [{role: _parity(a["losses"][role], b["losses"][role]) for role in ("student", "fake")}
                   for a, b in zip(left["cycles"], right["cycles"])]
+        action_inputs = []
+        if action_pair:
+            from distillschedule.backends.training.minimax_h3.cycle_actions import compare_action_inputs
+            action_inputs = [compare_action_inputs(a["action_execution"], b["action_execution"])
+                             if "action_execution" in a and "action_execution" in b else {"status": "NOT_RUN"}
+                             for a, b in zip(left["cycles"], right["cycles"])]
         ranks.append({"rank": rank, "sampled_state": _compare_state(left, right, rank), "losses": losses,
                       "loss_status": _aggregate([m["status"] for cycle in losses for m in cycle.values()]),
                       "sample_status": "PASS" if all(a["census"]["samples"] == b["census"]["samples"]
                           for a, b in zip(left["cycles"], right["cycles"])) else "FAIL",
-                      "rng_status": _rng(left, right, rank, expected_head)})
+                      "rng_status": _aggregate([_rng(left, right, rank, expected_head),
+                                                  *(x["status"] for x in action_inputs)]),
+                      **({"action_inputs": action_inputs} if action_pair else {})})
     state = _aggregate([r["sampled_state"]["status"] for r in ranks])
     statuses = {key: _aggregate([r[key] for r in ranks]) for key in ("loss_status", "sample_status", "rng_status")}
     failed = "FAIL" in [state, *statuses.values()]

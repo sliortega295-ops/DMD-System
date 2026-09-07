@@ -1,8 +1,9 @@
 """Bounded H3 controls lowered from the locked canonical profile, not a recipe.
 
-Only the existing CPU-staged FA3 inflight depth and LoRA epilogue tile vary.
-The generated native bridge is diagnostic until a separate strict pair gate;
-the canonical one-cycle depth2/N128 profile is never mutated.
+v1 varies existing CPU-staged FA3 inflight depth and LoRA epilogue tile.
+v2 additionally binds an exact retained-rollout window to the common action
+runner, correctness-only until native action-qualified evidence is admitted.
+The canonical one-cycle depth2/N128 profile is never mutated.
 """
 from __future__ import annotations
 
@@ -20,6 +21,7 @@ from .contracts import Candidate, require, semantic_contract
 H3 = "minimax_h3_grid1000_best"
 PREFIX = "joint-h3v1-"
 PATTERN = re.compile(r"joint-h3v1-d([12])-n(64|128)")
+ACTION_PATTERN = re.compile(r"joint-h3v2-d([12])-n(64|128)-w([1-5])")
 MODES = ("correctness", "diagnostic-timing", "calibration")
 _PATH_FIELDS = (
     ("data", "train", "data_path"),
@@ -68,35 +70,48 @@ def normalized_model_config(config: Mapping[str, Any]) -> dict[str, Any]:
 class H3Implementation:
     prefetch_depth: int = 2
     lora_epilogue_block_n: int = 128
+    rollout_window: int | None = None
 
     def __post_init__(self) -> None:
         require(type(self.prefetch_depth) is int and self.prefetch_depth in (1, 2),
                 "H3 cpu_staged prefetch depth must be 1 or 2")
         require(type(self.lora_epilogue_block_n) is int and self.lora_epilogue_block_n in (64, 128),
                 "H3 LoRA epilogue block N must be 64 or 128")
+        require(self.rollout_window is None or (type(self.rollout_window) is int and 1 <= self.rollout_window <= 5),
+                "H3 rollout window must be an integer in [1,5]")
 
     @property
     def id(self) -> str:
+        if self.rollout_window is not None:
+            return f"joint-h3v2-d{self.prefetch_depth}-n{self.lora_epilogue_block_n}-w{self.rollout_window}"
         return f"{PREFIX}d{self.prefetch_depth}-n{self.lora_epilogue_block_n}"
 
     @property
     def assignment(self) -> dict[str, str]:
         return {"prefetch_depth": str(self.prefetch_depth),
-                "lora_epilogue_block_n": str(self.lora_epilogue_block_n)}
+                "lora_epilogue_block_n": str(self.lora_epilogue_block_n),
+                **({"rollout_window": str(self.rollout_window)} if self.rollout_window is not None else {})}
 
     @classmethod
     def parse(cls, key: str) -> "H3Implementation":
+        action = ACTION_PATTERN.fullmatch(key) if isinstance(key, str) else None
+        if action is not None:
+            return cls(int(action[1]), int(action[2]), int(action[3]))
         match = PATTERN.fullmatch(key) if isinstance(key, str) else None
         require(match is not None, "malformed/unregistered joint H3 implementation")
         return cls(int(match[1]), int(match[2]))
 
     @classmethod
     def from_assignment(cls, assignment: Mapping[str, str]) -> "H3Implementation":
-        require(set(assignment) == {"prefetch_depth", "lora_epilogue_block_n"},
+        base = {"prefetch_depth", "lora_epilogue_block_n"}
+        require(set(assignment) in (base, base | {"rollout_window"}),
                 "H3 plan has extra/missing decisions")
         require(assignment["prefetch_depth"] in ("1", "2")
                 and assignment["lora_epilogue_block_n"] in ("64", "128"), "invalid H3 decision")
-        return cls(int(assignment["prefetch_depth"]), int(assignment["lora_epilogue_block_n"]))
+        require("rollout_window" not in assignment or assignment["rollout_window"] in ("1", "2", "3", "4", "5"),
+                "invalid H3 rollout window")
+        return cls(int(assignment["prefetch_depth"]), int(assignment["lora_epilogue_block_n"]),
+                   int(assignment["rollout_window"]) if "rollout_window" in assignment else None)
 
     def candidate(self) -> Candidate:
         return Candidate(self.id, H3, "world16-fsdp2",
@@ -108,13 +123,20 @@ class H3Implementation:
                 "H3_FA3_REPLAY_CACHE_MAX_D2H_INFLIGHT": str(self.prefetch_depth),
                 "H3_LORA_EPILOGUE_BLOCK_N": str(self.lora_epilogue_block_n),
                 "H3_MAX_ITERS": "2", "H3_PLANNER_TWO_CYCLE": "1",
-                "H3_PLANNER_CLOCK": "host_fenced", "H3_PLANNER_CALIBRATION": "0"}
+                "H3_PLANNER_CLOCK": "host_fenced", "H3_PLANNER_CALIBRATION": "0",
+                **({"H3_PLANNER_ROLLOUT_WINDOW": str(self.rollout_window)} if self.rollout_window is not None else {})}
+
+    @property
+    def run_modes(self) -> tuple[str, ...]:
+        # New ordering must first supply operation-qualified native evidence.
+        # A v1 sampled-state gate or seven macro costs cannot admit it to timing.
+        return ("correctness",) if self.rollout_window is not None else MODES
 
     def lower_profile(self, *, root: Path | None = None) -> dict[str, Any]:
         p = copy.deepcopy(load_profile(H3, root=root))
         semantics = semantic_contract(p)
         p["display_name"] = f"Generated native H3 diagnostic: {self.id}"
-        p["allowed_run_modes"] = list(MODES)
+        p["allowed_run_modes"] = list(self.run_modes)
         p["required_assets"]["diffusers_source"] = {
             "kind": "directory", "environment": "H3_DIFFUSERS_SOURCE", "fingerprint_required": True,
             "identity_file": "src/diffusers/models/transformers/transformer_minimax_h3.py"}
@@ -124,7 +146,7 @@ class H3Implementation:
         runtime["model_config"]["training"]["max_train_iters"] = 2
         runtime["model_config"]["training"]["a100"]["fa3_replay_cache"]["max_d2h_inflight"] = self.prefetch_depth
         runtime.update(planner_implementation=self.assignment,
-                       native_run_modes={mode: mode for mode in MODES},
+                       native_run_modes={mode: mode for mode in self.run_modes},
                        native_two_cycle_adapter_available=True, search_two_cycle_ready=False,
                        strict_pair_gate="NOT_RUN")
         p["contract"].update(continuous_cycles=2, final_versions={"generator": 2, "critic": 10, "ema": 0})
@@ -139,7 +161,10 @@ class H3Implementation:
         reconstructed receipt. Calibration is explicit and mode-bound; it is
         excluded from the training-config digest but reported separately.
         """
-        require(mode in MODES, "unsupported H3 native mode")
+        require(mode in self.run_modes, "unsupported H3 native mode (action evidence precedes timing/calibration)")
+        require(environment.get("H3_PLANNER_ROLLOUT_WINDOW", "") ==
+                ("" if self.rollout_window is None else str(self.rollout_window)),
+                "H3 rollout window differs from generated identity")
         if "config_path" in config:
             path = config["config_path"]
             expected_path = environment.get("H3_CONFIG")

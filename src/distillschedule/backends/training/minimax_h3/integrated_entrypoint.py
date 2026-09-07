@@ -10,6 +10,7 @@ import functools
 import json
 import os
 from pathlib import Path
+import sys
 import time
 
 
@@ -39,6 +40,24 @@ def _measure_planner_two_cycle(trainer, original, *, torch, rank: int) -> None:
         with path.open("x") as f:
             json.dump(row, f, indent=2, sort_keys=True, allow_nan=False)
             f.write("\n")
+    except BaseException as error:
+        if observer.action_trace is not None:
+            # An interrupted optimizer cannot be rolled back; preserve the
+            # observed prefix separately, never a successful completion receipt.
+            try:
+                path = Path(os.environ["DISTILLSCHEDULE_RUN_ROOT"]) / "execution/action_failures" / f"rank_{rank:03d}.json"
+                path.parent.mkdir(parents=True, exist_ok=True)
+                with path.open("x") as f:
+                    json.dump(dict(status="FAIL_NATIVE_ACTION_RUN", error_type=type(error).__name__,
+                        error=str(error), rank=rank, integration_head=observer.source_head,
+                        cycle=observer.action_trace.cycle, completed_cycles=observer.cycles,
+                        actual_updates=observer.updates, rows=observer.action_trace.rows,
+                        dispatch=observer.action_program.receipt() if observer.action_program is not None else None,
+                        rollback="NOT_SUPPORTED", retry="FORBIDDEN_SAME_PROCESS"), f, indent=2, allow_nan=False)
+            except Exception as persistence_error:
+                print(f"H3 action failure receipt could not be persisted: {persistence_error!r}; "
+                      f"preserving native {type(error).__name__}: {error}", file=sys.stderr)
+        raise
     finally:
         observer.close(trainer)
         del trainer.planner_cycle_observer
