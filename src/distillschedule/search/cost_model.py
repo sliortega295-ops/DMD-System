@@ -17,6 +17,50 @@ class MissingCalibration(ValueError):
 
 
 @dataclass(frozen=True)
+class ComponentContract:
+    """Reusable native operation identity, independent of a complete recipe.
+
+    ``context`` must bind entry residency, initialized optimizer/cache state and
+    concurrent resource usage. Serial calibration cannot predict contention by
+    silently discounting NCCL. Source/hardware/assets remain bound by CostModel.
+    Work includes actual shape/call counts; implementation contains only the
+    choices consumed by this component. The adapter owns that projection.
+    """
+    family: str
+    work: Mapping[str, Any]
+    precision: Mapping[str, Any]
+    placement: Mapping[str, Any]
+    implementation: Mapping[str, Any]
+    context: Mapping[str, Any]
+    schema_version: str = "distillschedule.component_contract.v1"
+
+    def __post_init__(self) -> None:
+        require(self.schema_version == "distillschedule.component_contract.v1", "component schema mismatch")
+        require(isinstance(self.family, str) and bool(self.family.strip()), "component family missing")
+        for name in ("work", "precision", "placement", "implementation", "context"):
+            value = getattr(self, name)
+            require(isinstance(value, Mapping) and bool(value), f"component {name} contract missing")
+            # Reject NaN, tensors and non-JSON values before hashing/calibration.
+            object.__setattr__(self, name, json.loads(json.dumps(dict(value), allow_nan=False)))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"schema_version": self.schema_version, "family": self.family,
+                **{k: dict(getattr(self, k)) for k in
+                   ("work", "precision", "placement", "implementation", "context")}}
+
+    @property
+    def digest(self) -> str:
+        return fingerprint(self.to_dict())
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> ComponentContract:
+        require(set(value) == {"schema_version", "family", "work", "precision",
+                               "placement", "implementation", "context"},
+                "unknown/missing component field; recipe/occurrence IDs are not component costs")
+        return cls(**value)
+
+
+@dataclass(frozen=True)
 class OperationCost:
     key: str
     samples_ns: tuple[int, ...]
@@ -68,6 +112,15 @@ class CostModel:
                 return record
         raise MissingCalibration(f"UNCALIBRATED: {key}")
 
+    def get_component(self, contract: ComponentContract) -> OperationCost:
+        record = self.get(contract.digest)
+        require(record.evidence.get("component_contract") == contract.to_dict(),
+                "component calibration identity missing or changed")
+        require(self.scope == "CPU_FIXTURE_ONLY" or
+                record.evidence.get("operation_contract_sha256") == contract.digest,
+                "component operation contract hash mismatch")
+        return record
+
     def verify_receipts(self) -> None:
         """Run beside the receipts (normally remotely), before using real costs.
 
@@ -87,6 +140,11 @@ class CostModel:
             require(raw.get("workspace_bytes_per_rank") == record.workspace_bytes_per_rank, "calibration memory changed")
             for key in ("status", "profiled", "kind", "operation_contract_sha256"):
                 require(raw.get(key) == record.evidence[key], f"calibration evidence changed: {key}")
+            if "component_contract" in record.evidence:
+                contract = ComponentContract.from_dict(record.evidence["component_contract"])
+                self.get_component(contract)
+                require(raw.get("component_contract") == contract.to_dict(),
+                        "component source receipt contract changed")
 
     def to_dict(self) -> dict[str, Any]:
         return {"schema_version": self.schema_version, "binding": dict(self.binding), "scope": self.scope,
