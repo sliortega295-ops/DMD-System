@@ -51,6 +51,9 @@ def simulate(problem: PlanningProblem, assignment: Mapping[str, str], costs: Cos
         start, _, key, resources, blockers = min(ready, key=lambda x: (x[0], x[1]))
         rule, op = bindings[key], operations[key]
         cost = costs.get(rule.cost_key)
+        if costs.scope == "MEASURED":
+            require(rule.operation_contract_sha256 == cost.evidence["operation_contract_sha256"],
+                    "operation calibration contract does not match selected binding")
         end = start + cost.duration_ns
         done[key] = {"operation": key, "role": op.role, "cycle": op.metadata.get("cycle"),
                      "kind": op.kind.value, "ranks": list(rule.ranks), "resources": sorted(resources),

@@ -220,6 +220,13 @@ def _validate_runtime_build(
     for role in ("generator", "critic"):
         component = build.get(role, {})
         metadata = component.get("metadata", {})
+        from distillschedule.search.wan_implementation import current_implementation, PRECISION
+        if current_implementation() is not None:
+            precision = metadata.get("planner_execution_precision", {})
+            if precision.get("status") != "PASS" or precision.get("precision_fingerprint") != PRECISION.digest:
+                errors.append(f"rank{rank}/{role}: planner effective precision missing/changed")
+            if precision.get("observed", {}).get("matmul_allow_tf32") is not True or precision.get("observed", {}).get("cudnn_allow_tf32") is not True:
+                errors.append(f"rank{rank}/{role}: planner TF32 flags not effective")
         placement_receipt = component.get("placement", {})
         residual = metadata.get("chunked_residual_runtime", {})
         if metadata.get("chunked_residual_storage") != "cuda_out_of_place":

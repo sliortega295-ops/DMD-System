@@ -90,6 +90,12 @@ def configure_modulation_chunk_tokens(module: Any, *, placement: str) -> dict[st
     """Pin the split-modulation tile size and emit a fail-closed receipt."""
 
     requested = MODULATION_CHUNK_TOKENS_BY_PLACEMENT.get(placement)
+    from distillschedule.search.wan_implementation import current_implementation
+    joint = current_implementation()
+    if joint is not None:
+        if placement != joint.native_placement:
+            raise ValueError("joint plan modulation placement mismatch")
+        requested = joint.chunk_tokens
     blocks = list(getattr(module, "blocks", ()))
     if len(blocks) != WAN13B_BLOCK_COUNT:
         raise AssertionError(

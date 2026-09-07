@@ -73,6 +73,9 @@ def candidates(workload: str) -> tuple[Candidate, ...]:
 
 
 def get_candidate(workload: str, candidate_id: str) -> Candidate:
+    from .wan_implementation import PREFIX, WanImplementation
+    if workload == WAN and candidate_id.startswith(PREFIX):
+        return WanImplementation.parse(candidate_id).candidate()
     found = [c for c in candidates(workload) if c.id == candidate_id]
     require(len(found) == 1, f"unregistered candidate: {workload}/{candidate_id}")
     return found[0]
@@ -95,8 +98,10 @@ def candidate_profile(candidate: Candidate, *, root: Path | None = None) -> dict
     p["display_name"] = f"Search recipe: {candidate.workload}/{candidate.id}"
     runtime, env = p["runtime"], p["runtime"]["environment"]
     if candidate.workload == WAN:
+        from .wan_implementation import PREFIX, WanImplementation
+        joint = WanImplementation.parse(candidate.id) if candidate.id.startswith(PREFIX) else None
         p["topology"]["placement"] = candidate.placement
-        if candidate.id == "fsdp-reference":
+        if candidate.id == "fsdp-reference" or (joint is not None and joint.placement == "fsdp"):
             p["topology"].update(model_replication="world16_full_shard",
                                  gradient_sync="reduce_scatter_fp32_sum_postdivide16")
         env["NCCL_ALGO"] = "Tree" if "tree" in candidate.placement else ""
@@ -109,6 +114,10 @@ def candidate_profile(candidate: Candidate, *, root: Path | None = None) -> dict
                    DISTILLSCHEDULE_TWO_CYCLE_SEED="20260903",
                    DISTILLSCHEDULE_TRAJECTORY_ARM_ID="search-" + candidate.id,
                    DISTILLSCHEDULE_TWO_CYCLE_ARM_ID="search-" + candidate.id)
+        if joint is not None:
+            env.update(joint.environment())
+            runtime["unset_environment"] = list(dict.fromkeys([*runtime.get("unset_environment", ()), "NVIDIA_TF32_OVERRIDE"]))
+            runtime["planner_implementation"] = joint.assignment
         runtime["native_run_modes"] = {"correctness": "trajectory",
                                       "diagnostic-timing": "two-cycle-timing"}
         runtime["search_two_cycle_ready"] = candidate.executable

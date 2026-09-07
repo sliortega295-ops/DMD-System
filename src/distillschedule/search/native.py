@@ -93,7 +93,13 @@ def _command(node: dict[str, Any], args: list[str], log: Path) -> None:
 
 
 def prepare_pair(reference: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any]:
-    require(reference["search_candidate"]["id"] == "fsdp-reference", "unregistered baseline")
+    from .wan_implementation import PREFIX, WanImplementation
+    ref_id = reference["search_candidate"]["id"]
+    new_ref = reference["profile_id"] == WAN and ref_id.startswith(PREFIX)
+    require(ref_id == "fsdp-reference" or (new_ref and WanImplementation.parse(ref_id).placement == "fsdp"),
+            "unregistered baseline")
+    require(new_ref == candidate["search_candidate"]["id"].startswith(PREFIX),
+            "generated pair cannot mix precision contracts with legacy measurements")
     require(reference["mode"] == candidate["mode"] == "correctness", "pair must use correctness runs")
     for key in ("profile_id", "integration_head", "asset_fingerprint", "workload_semantics_hash"):
         require(reference[key] == candidate[key], f"pair {key} mismatch")

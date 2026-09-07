@@ -83,12 +83,59 @@ The second command runs the simulator/search, **not GPU workers**. A CPU fixture
 cannot be promoted to a native plan. Existing outputs are never overwritten.
 The existing registered native search remains the default strategy.
 
+## Wan native composition bridge
+
+`wan_implementation.py` and `wan_model_adapter.py` now lower independently
+selected **placement, chunk size and existing no-grad LoRA epilogue** into the
+existing Wan workers/dispatcher. There are seven admitted combinations: one
+FSDP control and six Resident combinations (512/1024/2048 × epilogue off/on).
+An unsupported FSDP+epilogue or placement is rejected, not mapped to a nearby
+recipe. Unit tests verify that 1024 actually reaches all 30 block attributes.
+
+This adapter models the native worker's 14 composite stage envelopes over two
+cycles: G update, five-rollout production, then five C-update+EMA stages per
+cycle. **14 stages is not a DiT forward count.** The existing trace-based native
+forward/backward/update census remains authoritative. The adapter does not
+claim to lower arbitrary G/C reordering, HSDP or new Wan GPU pools yet.
+
+All `joint-wan1-*` implementations, including the control, explicitly enable
+the same matmul/cuDNN TF32 policy; BF16 base/FP32 LoRA/FP32 reduction remain
+unchanged. Runtime observations are checked in both trajectory and native timing
+receipts. These new controls must not be compared against legacy TF32-off runs.
+Canonical defaults and the old registered IDs are not changed by this opt-in.
+
+The layout input schema is `distillschedule.wan_stage_layout.v1`: current source,
+precision and workload binding, sixteen rank owners for each implementation,
+post-setup static allocation, and per-rank capacity. Stage cost envelopes include
+**all additional live allocation**, including retained rollout outputs; the
+adapter therefore does not add separate retained-tensor lifetimes a second time.
+Per-rank maxima are conservative, not an assertion that all ranks use equal HBM.
+`operation_contract()` supplies the signature that each calibration must match.
+
+```bash
+# Runs next to the small native calibration receipts (normally remotely).
+# Requires an actual measured layout + costs, which have NOT been collected yet.
+python scripts/distillctl.py workloads search \
+  --strategy model-based --workload wan13b_nogan_resident_best \
+  --planning-layout native-stage-layout.json --cost-model native-stage-costs.json \
+  --assets-config assets.json --run-id fresh-planner-canary \
+  --emit-native-plan native-plan.json --output predicted-plans.json
+```
+
+This emits a plan; it does not launch it. Lowering rebuilds the adapter graph,
+verifies calibration hashes, and checks the selected decision vector against the
+actual native candidate. Saved synthetic fixtures or changed DAGs are rejected.
+The existing native runner now supports an explicit matching generated control;
+it rejects mixing the generated precision family with legacy arms. Automatic
+model-search budget execution and calibration collection remain to be connected.
+
 ## Acceptance remaining before a planner speed claim
 
-- Workload adapters emitting source-bound planning graphs from actual workload
-  contracts, not user-written synthetic graphs.
-- Exact generated-plan lowering and runtime receipts; no unsupported TP/PP,
-  dynamic repartition or fabricated pool mappings.
+- LiveWan/H3 planning adapters and generated native lowering. Wan's source-bound
+  adapter/parameter lowering is CPU-tested, but still awaits native validation.
+- Finer calibrated operator/layer costs, G/C ordering/pool lowering, and shared
+  backbone placement choices; no unsupported TP/PP, dynamic repartition or
+  fabricated pool mappings.
 - Native operation calibration and memory lifetimes for each admitted binding.
 - Wan, then LiveWan, then H3 Grid1000 pilots under owned world16 locks. H3 keeps
   approximate Grid1000 semantics and FA3 CPU replay storage explicit; boundary
@@ -105,7 +152,8 @@ Inherited source: `d310597e774b18fea98118e00a58a4b912e89f19`, based on fetched m
 `e69f4bf8b8bb64f54542fea74c452b53e090b526`. Branch:
 `agent/dmd-joint-planner-20260907`.
 
-- Full `tests/test_refactor_*.py`: **498 passed, 17 skipped**; skipped tests are
+- First core: **498 passed, 17 skipped**. With Wan composition:
+  `tests/test_refactor_*.py`: **509 passed, 17 skipped**; skipped tests are
   not claimed as passing GPU checks.
 - Existing five-workload integration/source-hash/compile/shell checks: **PASS**.
 - Native generated-plan GPU runs/calibration: **NOT_RUN**.

@@ -194,6 +194,13 @@ def _validate_arm(
         errors.append(f"rank{rank}: FSDP enabled Resident-only LoRA arm")
 
     runtime = row.get("runtime_contract", {})
+    from distillschedule.search.wan_implementation import current_implementation, PRECISION
+    if current_implementation() is not None:
+        precision = runtime.get("planner_execution_precision", {})
+        if precision.get("status") != "PASS" or precision.get("precision_fingerprint") != PRECISION.digest:
+            errors.append(f"rank{rank}: planner precision receipt missing/changed")
+        if precision.get("observed", {}).get("matmul_allow_tf32") is not True or precision.get("observed", {}).get("cudnn_allow_tf32") is not True:
+            errors.append(f"rank{rank}: planner TF32 execution mismatch")
     expected_runtime = {
         "ema_implementation": "reference",
         "nccl_algo": search_arm(placement)["algo"],

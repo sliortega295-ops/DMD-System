@@ -479,6 +479,11 @@ def _validate_build_contract(
     for role in ("generator", "critic"):
         component = build.get(role, {})
         metadata = component.get("metadata", {})
+        from distillschedule.search.wan_implementation import current_implementation, PRECISION
+        if current_implementation() is not None:
+            observed_precision = metadata.get("planner_execution_precision", {})
+            if observed_precision.get("status") != "PASS" or observed_precision.get("precision_fingerprint") != PRECISION.digest:
+                raise AssertionError(f"{role}: effective planner precision not proven")
         residual = metadata.get("chunked_residual_runtime", {})
         if metadata.get("chunked_residual_storage") != "cuda_out_of_place":
             raise AssertionError(f"{role}: residual storage is not GPU resident")
@@ -544,6 +549,8 @@ def _validate_build_contract(
         "optimizer_offload": False,
         "parameter_streaming": False,
         "model_swap": False,
+        **({"planner_execution_precision": PRECISION.assert_runtime(torch, os.environ)}
+           if current_implementation() is not None else {}),
     }
 
 

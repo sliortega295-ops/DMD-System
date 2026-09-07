@@ -117,6 +117,7 @@ class BindingRule:
     ranks: tuple[int, ...]
     resources: tuple[str, ...]
     states: tuple[str, ...] = ()
+    operation_contract_sha256: str | None = None
     # Explicit staging/transport implementations are operations, not hidden
     # duration discounts. Backend lowering owns physical placement validation.
 

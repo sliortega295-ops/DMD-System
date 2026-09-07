@@ -220,14 +220,16 @@
           "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
         }
       ],
-      "integrated_sha256": "bb432d4b6523a88bb226001676b20700b44bcb3cd5ff2a69f4b9045bb7036a8f",
+      "integrated_sha256": "6cc3db60c911cc987901149c123912ffb9838f5cbc911c2d70ceaec995245f86",
+      "integration_note": " | Joint planner opt-in Wan composition/precision wiring, legacy defaults unchanged; GPU revalidation pending.",
       "source_commit": "67b2880901abece947732ba5de45a5c2685ab274",
       "source_path": "scripts/distillschedule/launch_wan13b_fair_world16_node.sh",
       "source_repository": "sliortega295-ops/DMD-System",
       "target": "scripts/distillschedule/launch_wan13b_fair_world16_node.sh"
     },
     {
-      "integrated_sha256": "87f4564b55f403b670a9cd38000eea7f409ecf6e63726a4aa5844c888468d2b8",
+      "integrated_sha256": "d83eeba2196a0d0eb96d66e441439da8185bb271492b85f5a70cc0390d400aa6",
+      "integration_note": " | Joint planner opt-in Wan composition/precision wiring, legacy defaults unchanged; GPU revalidation pending.",
       "source_commit": "67b2880901abece947732ba5de45a5c2685ab274",
       "source_path": "scripts/distillschedule/probe_wan13b_fair_world16.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -256,7 +258,8 @@
           "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
         }
       ],
-      "integrated_sha256": "7e076b90946d4ac74e97551dc36601b844c5c6df305f5108b1d78cc757bfc12b",
+      "integrated_sha256": "d9ed5d75168e8fda957758dff42bb61d64c0eae43b15fae80eaf2a814bb7aed5",
+      "integration_note": " | Joint planner opt-in Wan composition/precision wiring, legacy defaults unchanged; GPU revalidation pending.",
       "source_commit": "67b2880901abece947732ba5de45a5c2685ab274",
       "source_path": "src/distillschedule/runtime/wan13b_fair.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -1774,8 +1777,8 @@
       "target": "src/distillschedule/runtime/nsys_range.py"
     },
     {
-      "integrated_sha256": "a45085b1c33fe28cbeba7d46d680df0c700c58e09812a86c9139387a532d197b",
-      "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math.",
+      "integrated_sha256": "13b1fea3eebce48c8697fae53c3c89bfb48b80e7733f645d4882edf3bd9c164c",
+      "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math. | Joint planner opt-in Wan composition/precision wiring, legacy defaults unchanged; GPU revalidation pending.",
       "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
       "source_path": "scripts/distillschedule/probe_wan13b_two_cycle_timing_world16.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -1783,8 +1786,8 @@
       "target": "scripts/distillschedule/probe_wan13b_two_cycle_timing_world16.py"
     },
     {
-      "integrated_sha256": "52f34f1ca092714f9f47a7ee13b194ac62ab2e4f4a4f62c416cf1da9a977a06c",
-      "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math.",
+      "integrated_sha256": "cde25b175d76604115919aef519c957338760c67d62b470e2ab57dfc78ef85c6",
+      "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math. | Joint planner opt-in Wan composition/precision wiring, legacy defaults unchanged; GPU revalidation pending.",
       "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
       "source_path": "scripts/distillschedule/summarize_wan13b_two_cycle_timing_world16.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -1828,8 +1831,8 @@
           "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206"
         }
       ],
-      "integrated_sha256": "0fb49a22280a34335685336c60898e119c6ed307e153fe49304703be9c9aec7d",
-      "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math.",
+      "integrated_sha256": "804b99803f903406a2b1d885c28877ca862aa265a5744ccc0cdf4f7f39410cd6",
+      "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math. | Joint planner opt-in Wan composition/precision wiring, legacy defaults unchanged; GPU revalidation pending.",
       "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
       "source_path": "scripts/distillschedule/summarize_wan13b_trajectory_world16.py",
       "source_repository": "sliortega295-ops/DMD-System",

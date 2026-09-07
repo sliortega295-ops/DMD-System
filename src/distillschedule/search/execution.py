@@ -30,10 +30,16 @@ def resolve_candidate(workload: str, candidate_id: str, *, root: Path | None = N
                    canonical_profile_sha256=fingerprint(load_profile(workload, root=root)),
                    workload_semantics_hash=fingerprint(semantic_contract(p)),
                    execution_fingerprint=fingerprint(c.to_dict()))
+    if "planner_implementation" in p["runtime"]:
+        receipt.update(canonical_status="GENERATED_IMPLEMENTATION_NOT_CANONICAL_WINNER",
+                       canonical_scope="COMPOSED_PLACEMENT_KERNEL_PARAMETERS_BOUND_TO_FROZEN_WORKLOAD")
     return receipt
 
 
 def validated_profile(receipt: dict[str, Any], *, root: Path) -> dict[str, Any]:
+    if "model_plan" in receipt:
+        from .wan_model_adapter import validate_lowered_plan
+        validate_lowered_plan(receipt)
     c = get_candidate(receipt["profile_id"], receipt["search_candidate"]["id"])
     require(fingerprint(receipt["search_candidate"]) == fingerprint(c.to_dict()), "search candidate changed")
     p = candidate_profile(c, root=root)
@@ -77,15 +83,22 @@ def rebind_plan(receipt: dict[str, Any], *, run_id: str,
     assets = load_assets(assets_path, p) if assets_path is not None else receipt["asset_config"]
     require(assets == receipt["asset_config"], "replay assets/gates changed")
     from .registry import candidates
-    peer = next(c.id for c in candidates(receipt["profile_id"]) if c.executable and c.id != "fsdp-reference")
+    from .wan_implementation import PREFIX, WanImplementation
+    is_joint = receipt["search_candidate"]["id"].startswith(PREFIX)
+    peer = (WanImplementation("resident", 2048, True).id if is_joint else
+            next(c.id for c in candidates(receipt["profile_id"]) if c.executable and c.id != "fsdp-reference"))
     coordinator_output.mkdir(parents=True, exist_ok=False)
     runner = NativeTrialRunner(workload=receipt["profile_id"], assets=assets,
         identity={"source_head": receipt["integration_head"], "asset_fingerprint": receipt["asset_fingerprint"]},
-        output=coordinator_output, run_prefix=run_id, bootstrap_peer=peer)
+        output=coordinator_output, run_prefix=run_id, bootstrap_peer=peer,
+        reference_id=WanImplementation("fsdp", 512, False).id if is_joint else "fsdp-reference")
     # Resolve beside the immutable source receipts; those remote asset files
     # are deliberately not downloaded onto the controller machine.
     result = runner._rpc("resolve", workload=receipt["profile_id"], candidate_id=receipt["search_candidate"]["id"],
                          assets=assets, run_id=run_id, mode=receipt["mode"])
+    if "model_plan" in receipt:
+        result["model_plan"] = receipt["model_plan"]
+        validated_profile(result, root=root)
     write_new_json(coordinator_output / "execution-plan.json", result)
     return result
 
@@ -98,11 +111,17 @@ class NativeTrialRunner:
     Preparation is cached immutably. Interrupted run IDs are never retried.
     """
     def __init__(self, *, workload: str, identity: dict[str, str], assets: dict[str, Any],
-                 output: Path, run_prefix: str, bootstrap_peer: str):
+                 output: Path, run_prefix: str, bootstrap_peer: str,
+                 reference_id: str = "fsdp-reference"):
         self.workload, self.identity, self.assets = workload, identity, assets
         self.output, self.run_prefix = Path(output), run_prefix
         self.bootstrap_peer = get_candidate(workload, bootstrap_peer)
-        require(self.bootstrap_peer.executable and bootstrap_peer != "fsdp-reference", "invalid bootstrap peer")
+        self.reference = get_candidate(workload, reference_id)
+        require(self.reference.placement == "world16-fsdp", "reference must use world16 FSDP")
+        require(self.bootstrap_peer.executable and bootstrap_peer != reference_id, "invalid bootstrap peer")
+        from .wan_implementation import PREFIX
+        require(self.reference.id.startswith(PREFIX) == self.bootstrap_peer.id.startswith(PREFIX),
+                "cannot mix generated precision contract and legacy search arms")
         require(fingerprint(assets["assets"]) == identity["asset_fingerprint"], "asset identity mismatch")
         self.prepared: dict[str, dict[str, Any]] = {}
         self.trajectories: dict[str, dict[str, Any]] = {}
@@ -169,10 +188,10 @@ class NativeTrialRunner:
             self.prepared[c.id] = value
         if c.id in self.prepared:
             return self.prepared[c.id]
-        if c.id == "fsdp-reference":
+        if c.id == self.reference.id:
             self._prepare(self.bootstrap_peer)
             return self.prepared[c.id]
-        ref = self._trajectory(get_candidate(self.workload, "fsdp-reference"))
+        ref = self._trajectory(self.reference)
         candidate = self._trajectory(c)
         ready = self._rpc("prepare_pair", reference=ref, candidate=candidate)
         for cid, value in ready.items():

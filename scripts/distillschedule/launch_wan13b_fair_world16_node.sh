@@ -301,6 +301,15 @@ if [[ "${PLACEMENT}" == resident-lora-zero2 || "${PLACEMENT}" == resident-rollou
   ema_implementation=WORLD16_LOCAL_FLAT_SHARD
 fi
 torch_compile_scope=$( [[ "${PLACEMENT}" == resident-async128-tree-chunk2048-compile ]] && echo GENERATOR_NOGRAD_TRANSFORMER_BLOCKS_ONLY || echo DISABLED )
+modulation_chunk_tokens=$( case "${PLACEMENT}" in resident-async128-tree) echo 512 ;; resident-async128-tree-chunk2048|resident-async128-tree-chunk2048-compile) echo 2048 ;; *) echo RUNTIME_DEFAULT ;; esac )
+if [[ "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID:-}" == joint-wan1-* ]]; then
+  modulation_chunk_tokens=$(PYTHONPATH="${ROOT}/src:${ROOT}" "${PYTHON}" - "${PLACEMENT}" <<'PYCHUNK'
+import sys
+from distillschedule.search.wan_contract import arm
+print(arm(sys.argv[1])["chunk"])
+PYCHUNK
+)
+fi
 
 cat >"${NODE_LOG}/launch_manifest.txt" <<EOF
 schema_version=distillschedule.wan13b_fair_launch.v1
@@ -326,7 +335,7 @@ gradient_mean=SUM_THEN_DIVIDE_WORLD_SIZE
 resident_ddp_bucket_mb=128
 resident_async_bucket_mb=$( case "${PLACEMENT}" in resident-async128|resident-async128-tree|resident-async128-tree-chunk2048|resident-async128-tree-chunk2048-compile) echo 128 ;; resident-async256) echo 256 ;; *) echo NOT_APPLICABLE ;; esac )
 resident_async_collective_order=$( [[ "${PLACEMENT}" == resident-async128 || "${PLACEMENT}" == resident-async128-tree || "${PLACEMENT}" == resident-async128-tree-chunk2048 || "${PLACEMENT}" == resident-async128-tree-chunk2048-compile || "${PLACEMENT}" == resident-async256 ]] && echo DETERMINISTIC_REVERSE_PARAMETER_BUCKET_ORDER || echo NOT_APPLICABLE )
-modulation_chunk_tokens=$( case "${PLACEMENT}" in resident-async128-tree) echo 512 ;; resident-async128-tree-chunk2048|resident-async128-tree-chunk2048-compile) echo 2048 ;; *) echo RUNTIME_DEFAULT ;; esac )
+modulation_chunk_tokens=${modulation_chunk_tokens}
 nccl_algo=${NCCL_ALGO:-AUTO}
 torch_compile_scope=${torch_compile_scope}
 torch_compile_cache_root=${DISTILLSCHEDULE_WAN13B_COMPILE_CACHE_ROOT:-NOT_APPLICABLE}

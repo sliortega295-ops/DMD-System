@@ -16,6 +16,13 @@ def search_enabled() -> bool:
 
 
 def arm(placement: str) -> dict:
+    from .wan_implementation import current_implementation
+    joint = current_implementation()
+    if joint is not None:
+        require(joint.native_placement == placement, "joint plan placement mismatch")
+        return {"name": "JOINT_" + joint.id, "fused": joint.lora_epilogue,
+                "chunk": joint.chunk_tokens, "algo": "Tree" if joint.placement == "resident" else "AUTO",
+                "clean": joint.placement == "resident"}
     candidate_id = os.environ.get("DISTILLSCHEDULE_SEARCH_CANDIDATE_ID")
     if not candidate_id:
         require(placement in {"world16-fsdp", "resident-async128-tree-chunk2048"}, "unregistered native Wan arm")
@@ -35,6 +42,10 @@ def arm(placement: str) -> dict:
 
 
 def registered_placements() -> frozenset[str]:
+    from .wan_implementation import current_implementation
+    joint = current_implementation()
+    if joint is not None:
+        return frozenset({joint.native_placement})
     if not search_enabled():
         return frozenset({"world16-fsdp", "resident-async128-tree-chunk2048"})
     from .registry import WAN, get_candidate
