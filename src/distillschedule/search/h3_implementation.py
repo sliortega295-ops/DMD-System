@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
+import math
 import os
 from pathlib import Path
 import re
@@ -29,12 +30,18 @@ _PATH_FIELDS = (
 
 
 def normalized_model_config(config: Mapping[str, Any]) -> dict[str, Any]:
-    """Remove only known asset/output locations, never training decisions.
+    """Normalize pinned loader representations, never training decisions.
 
     Assets remain separately hash-bound by the owning execution receipt. A
     different run directory is not a different model configuration.
     """
     result = copy.deepcopy(dict(config))
+    if "config_path" in result:
+        require(isinstance(result["config_path"], str) and bool(result["config_path"]),
+                "invalid H3 loader config_path")
+        # LightX2V d034a6b runtime/config.py appends this provenance field.
+        # receipt_binding separately checks it against the launcher's H3_CONFIG.
+        result.pop("config_path")
     for path in _PATH_FIELDS:
         value = result
         for key in path[:-1]:
@@ -43,6 +50,17 @@ def normalized_model_config(config: Mapping[str, Any]) -> dict[str, Any]:
         require(isinstance(value.get(path[-1]), str) and bool(value[path[-1]]),
                 f"H3 model config missing {'.'.join(path)}")
         value[path[-1]] = "{path:" + ".".join(path) + "}"
+    for role in ("student", "fake"):
+        optimizer = result["training"].get(role, {}).get("optimizer")
+        require(isinstance(optimizer, dict), f"missing H3 {role} optimizer")
+        for key in ("learning_rate", "adam_epsilon"):
+            # PyYAML 1.1 reads JSON's 1e-08 / 2e-05 as strings. These are
+            # explicitly consumed via float() by the pinned optimizer builder.
+            value = optimizer.get(key)
+            require(type(value) in (str, int, float), f"invalid H3 {role} {key}")
+            value = float(value)
+            require(math.isfinite(value), f"nonfinite H3 {role} {key}")
+            optimizer[key] = value
     return result
 
 
@@ -122,6 +140,13 @@ class H3Implementation:
         excluded from the training-config digest but reported separately.
         """
         require(mode in MODES, "unsupported H3 native mode")
+        if "config_path" in config:
+            path = config["config_path"]
+            expected_path = environment.get("H3_CONFIG")
+            require(isinstance(path, str) and bool(path)
+                    and isinstance(expected_path, str) and bool(expected_path)
+                    and Path(path).resolve() == Path(expected_path).resolve(),
+                    "H3 loader config_path differs from launcher H3_CONFIG")
         runtime = self.lower_profile(root=root)["runtime"]
         wanted = runtime["environment"]
         for key, expected in wanted.items():

@@ -124,6 +124,49 @@ def test_launch_binding_validates_mode_and_all_frozen_config_not_only_two_decisi
     assert binding["candidate_id"] == impl.id
 
 
+def test_binding_accepts_exact_pinned_lightx2v_loader_representation(tmp_path):
+    # d034a6b runtime/config.py uses PyYAML -> OmegaConf and appends
+    # config_path. YAML 1.1 reads JSON 1e-08 / 2e-05 as strings; the native
+    # optimizer builder explicitly converts those same values with float().
+    import yaml
+    impl = H3Implementation(1, 128)
+    runtime = impl.lower_profile()["runtime"]
+    path = tmp_path / "h3-config-node0.json"
+    path.write_text(json.dumps(runtime["model_config"]))
+    loaded = yaml.safe_load(path.read_text())
+    loaded["config_path"] = str(path.resolve())
+    env = {**runtime["environment"], "H3_CONFIG": str(path)}
+    assert isinstance(loaded["training"]["fake"]["optimizer"]["learning_rate"], str)
+    assert impl.receipt_binding(loaded, env) == impl.receipt_binding(runtime["model_config"], env)
+    assert loaded["config_path"] == str(path.resolve())  # no mutation
+    assert isinstance(loaded["training"]["fake"]["optimizer"]["learning_rate"], str)
+
+
+@pytest.mark.parametrize("mutation", ["config_path", "missing_path_env", "learning_rate", "epsilon", "unknown_key", "nonfinite"])
+def test_loader_metadata_does_not_relax_native_config_contract(tmp_path, mutation):
+    import yaml
+    impl = H3Implementation(1, 128)
+    runtime = impl.lower_profile()["runtime"]
+    path = tmp_path / "h3-config.json"
+    loaded = yaml.safe_load(json.dumps(runtime["model_config"]))
+    loaded["config_path"] = str(path.resolve())
+    env = {**runtime["environment"], "H3_CONFIG": str(path)}
+    if mutation == "config_path":
+        loaded["config_path"] = str(tmp_path / "unbound.json")
+    elif mutation == "missing_path_env":
+        env.pop("H3_CONFIG")
+    elif mutation == "learning_rate":
+        loaded["training"]["fake"]["optimizer"]["learning_rate"] = "2e-04"
+    elif mutation == "epsilon":
+        loaded["training"]["student"]["optimizer"]["adam_epsilon"] = "1e-06"
+    elif mutation == "nonfinite":
+        loaded["training"]["fake"]["optimizer"]["learning_rate"] = "nan"
+    else:
+        loaded["unknown_loader_key"] = True
+    with pytest.raises(ValueError):
+        impl.receipt_binding(loaded, env)
+
+
 def test_summary_uses_rank_max_host_wall_not_cuda_or_cross_node_endpoints():
     rows = _receipts()
     result = summarize_native_two_cycle(rows, expected_head=HEAD, candidate_id=H3Implementation().id)
