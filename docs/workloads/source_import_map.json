@@ -725,7 +725,7 @@
           "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
         }
       ],
-      "integrated_sha256": "afaa13b0a76a5f9dbfb6b4884ecd97ee5c46908a34a2b3cfd2b3256919d7ec59",
+      "integrated_sha256": "9b33e0ec3872cdf5403ddb062504db3714c99785d86bddc55df9002bf050c31c",
       "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "src/distillschedule/runtime/livewan_crossscale_worker.py",
       "source_repository": "sliortega295-ops/DMD-System",

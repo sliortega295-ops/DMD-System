@@ -4561,7 +4561,8 @@ def run_worker(
     _require(calibration_flag in {"0", "1"}, "invalid operation calibration flag")
     _require(_operation_calibrator is None, "operation calibrator already active")
     if calibration_flag == "1":
-        _require(two_cycle_timing, "operation calibration requires the two-cycle native path")
+        _require(two_cycle_timing or (run_kind == 'trajectory' and trajectory_cycles == 2),
+                 "operation observation requires two native cycles")
         from distillschedule.search.async_range_calibration import AsyncRangeCollector
         _operation_calibrator = AsyncRangeCollector(
             torch=torch, device=device, rank=rank,
@@ -4765,6 +4766,8 @@ def run_worker(
     operation_calibration = None
     if _operation_calibrator is not None:
         operation_calibration = _operation_calibrator.finish()
+        operation_calibration['native_run_kind'] = run_kind
+        operation_calibration['service_cost_eligible'] = False
         if transport_observer is not None:
             operation_calibration['transport_observation'] = transport_observer.finish()
             if operation_calibration['transport_observation']['status'] != 'PASS':

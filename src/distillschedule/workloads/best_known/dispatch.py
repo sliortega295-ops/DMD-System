@@ -57,7 +57,7 @@ def validate_local(receipt: dict[str, Any], *, root: Path) -> dict[str, Any]:
                     and "search_candidate" in receipt and key == "H3_PLANNER_CALIBRATION"):
                 _require(expected == "0", "H3 calibration must have a disabled default")
                 expected = "1"
-            if (receipt["mode"] == "calibration"
+            if (receipt["mode"] in {"calibration", "action-observation"}
                     and receipt["profile_id"] == "livewan_crossscale_pipeline_best"
                     and "search_candidate" in receipt
                     and key == "DISTILLSCHEDULE_LIVEWAN_OPERATION_CALIBRATION"):

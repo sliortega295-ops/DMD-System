@@ -280,7 +280,7 @@ def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: P
     for i, n in enumerate(assets["nodes"]):
         rr = Path(n["repo_root"])
         env = dict(profile["runtime"]["environment"])
-        if workload == "livewan_crossscale_pipeline_best" and mode == "calibration":
+        if workload == "livewan_crossscale_pipeline_best" and mode in {"calibration", "action-observation"}:
             _require(env.get("DISTILLSCHEDULE_LIVEWAN_OPERATION_CALIBRATION") == "0",
                      "only source-registered LiveWan candidates support operation calibration")
             env["DISTILLSCHEDULE_LIVEWAN_OPERATION_CALIBRATION"] = "1"

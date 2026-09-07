@@ -42,7 +42,9 @@ PROFILE_TWO_CYCLES="${LIVEWAN_PROFILE_TWO_CYCLES:-0}"
 OPERATION_CALIBRATION="${DISTILLSCHEDULE_LIVEWAN_OPERATION_CALIBRATION:-0}"
 [[ "${OPERATION_CALIBRATION}" == 0 || "${OPERATION_CALIBRATION}" == 1 ]] || exit 2
 if [[ "${OPERATION_CALIBRATION}" == 1 ]]; then
-  [[ "${RUN_KIND}" == two-cycle-timing && -n "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID:-}" ]] || exit 2
+  [[ -n "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID:-}" ]] || exit 2
+  [[ "${RUN_KIND}" == two-cycle-timing ||
+     ( "${RUN_KIND}" == trajectory && "${LIVEWAN_TRAJECTORY_CYCLES:-0}" == 2 ) ]] || exit 2
 fi
 [[ "${PROFILE_TWO_CYCLES}" == 0 || "${PROFILE_TWO_CYCLES}" == 1 ]] || exit 2
 if [[ "${PROFILE_TWO_CYCLES}" == 1 ]]; then

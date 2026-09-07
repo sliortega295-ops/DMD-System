@@ -68,6 +68,11 @@ class LiveWanImplementation:
         runtime["planner_implementation"] = self.assignment
         env.update(DISTILLSCHEDULE_SEARCH_CANDIDATE_ID=self.id,
                    LIVEWAN_TWO_CYCLE_ARM_ID="search-" + self.id, LIVEWAN_TRAJECTORY_ARM_ID="search-" + self.id)
+        if self.placement == 'pipeline':
+            # Source/identity observations can accompany the existing two-cycle
+            # trajectory gate; this does not authorize native performance timing.
+            p['allowed_run_modes'] = [*p['allowed_run_modes'], 'action-observation']
+            runtime['native_run_modes']['action-observation'] = 'trajectory'
         return p
 
 

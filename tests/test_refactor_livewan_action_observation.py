@@ -145,6 +145,35 @@ def test_legacy_envelopes_cannot_be_admitted_as_independent_action_costs():
         validate_action_observations(raws, expected_head='a'*40)
 
 
+@pytest.mark.parametrize('kind,cycles,allowed', [('trajectory','2',True),('trajectory','50',False),
+                                              ('two-cycle-timing','0',True),('timing','0',False)])
+def test_observation_launcher_does_not_bypass_formal_timing_gate(kind,cycles,allowed):
+    import os
+    from pathlib import Path
+    import subprocess
+    source=Path('scripts/distillschedule/launch_livewan_crossscale_world16_node.sh').read_text()
+    fragment=source[source.index('if [[ "${OPERATION_CALIBRATION}" == 1 ]]; then'):source.index('[[ "${PROFILE_TWO_CYCLES}" == 0')]
+    env={**os.environ,'OPERATION_CALIBRATION':'1','RUN_KIND':kind,'LIVEWAN_TRAJECTORY_CYCLES':cycles,
+         'DISTILLSCHEDULE_SEARCH_CANDIDATE_ID':'fixture'}
+    assert (subprocess.run(['bash','-c','set -eu\n'+fragment],env=env).returncode == 0) is allowed
+    # The existing timing path still requires current-source paired correctness.
+    assert '"expected_head": expected_head,' in source
+    assert '"claimable_for_two_cycle_timing": True,' in source
+
+
+def test_action_observation_is_typed_trajectory_only_not_new_timing_authority():
+    from distillschedule.search.execution import resolve_candidate
+    from distillschedule.search.livewan_implementation import LIVEWAN, LiveWanImplementation
+    from distillschedule.workloads.best_known.registry import load_profile
+    c=LiveWanImplementation('pipeline',True,True,True)
+    p=resolve_candidate(LIVEWAN,c.id,mode='action-observation')
+    assert p['native_mode'] == 'trajectory'
+    assert p['fully_resolved_profile']['runtime']['environment']['DISTILLSCHEDULE_LIVEWAN_OPERATION_CALIBRATION']=='0'
+    assert 'action-observation' not in load_profile(LIVEWAN)['allowed_run_modes']
+    with pytest.raises(ValueError):
+        resolve_candidate(LIVEWAN,LiveWanImplementation('fsdp').id,mode='action-observation')
+
+
 def test_native_receiver_uses_one_existing_wait_and_same_h2d(monkeypatch):
     class Tensor:
         def copy_(self, source, **kwargs):
