@@ -128,9 +128,9 @@ class H3Implementation:
 
     @property
     def run_modes(self) -> tuple[str, ...]:
-        # New ordering must first supply operation-qualified native evidence.
-        # A v1 sampled-state gate or seven macro costs cannot admit it to timing.
-        return ("correctness",) if self.rollout_window is not None else MODES
+        # Common dispatch requires a hash-bound prior action proof for v2
+        # non-correctness runs. Legacy sampled-state/macro receipts cannot admit it.
+        return MODES
 
     def lower_profile(self, *, root: Path | None = None) -> dict[str, Any]:
         p = copy.deepcopy(load_profile(H3, root=root))

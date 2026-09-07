@@ -129,6 +129,7 @@ class CostModel:
         """
         if self.scope == "CPU_FIXTURE_ONLY":
             return
+        native_component_cache = {}
         for record in self.records:
             path = Path(record.evidence["source_receipt"])
             require(path.is_file(), f"calibration receipt missing: {path}")
@@ -148,6 +149,9 @@ class CostModel:
             if "component_sources" in raw:
                 from .component_calibration import validate_pooled_receipt
                 validate_pooled_receipt(raw)
+            if record.evidence.get("component_contract", {}).get("family", "").startswith("h3."):
+                from .h3_action_model_adapter import validate_component_receipt
+                validate_component_receipt(raw, native_component_cache)
 
     def to_dict(self) -> dict[str, Any]:
         return {"schema_version": self.schema_version, "binding": dict(self.binding), "scope": self.scope,

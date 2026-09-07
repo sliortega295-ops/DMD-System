@@ -30,7 +30,7 @@ def _checked_native(receipt):
     return out, summary, rows, bindings
 
 
-def _unprofiled_launch_evidence(receipt, out, summary):
+def _unprofiled_launch_evidence(receipt, out, summary, *, mode="diagnostic-timing"):
     """Positive source-bound direct-launch proof, not an absent-file inference.
 
     The clean source launcher runs this exact command in clean_environment;
@@ -38,6 +38,8 @@ def _unprofiled_launch_evidence(receipt, out, summary):
     This does not claim system-wide profiler detection outside that launcher.
     """
     from .native import read, binding
+    require(mode in ("diagnostic-timing", "calibration") and receipt["mode"] == mode,
+            "H3 direct launch mode mismatch")
     evidence = []
     for node_rank, node in enumerate(receipt["nodes"]):
         env = node["environment"]
@@ -49,12 +51,12 @@ def _unprofiled_launch_evidence(receipt, out, summary):
             "distillschedule.backends.training.minimax_h3.integrated_entrypoint", "--config", env["H3_CONFIG"]]
         require(manifest.get("status") == "PASS_SOURCE_PREFLIGHT" and manifest.get("source_clean") is True
                 and manifest.get("integration_head") == receipt["integration_head"]
-                and manifest.get("mode") == "diagnostic-timing" and manifest.get("command") == expected
+                and manifest.get("mode") == mode and manifest.get("command") == expected
                 and manifest.get("python_executable") == node["python"], "H3 direct unprofiled launch proof failed")
         observed = manifest.get("environment", {})
         wanted = {k: v for k, v in env.items() if k.startswith("H3_")}
         wanted.update(DISTILLSCHEDULE_RUN_ID=receipt["run_id"], DISTILLSCHEDULE_RUN_ROOT=str(out),
-                      DISTILLSCHEDULE_RUN_KIND="diagnostic-timing", H3_PLANNER_CALIBRATION="0")
+                      DISTILLSCHEDULE_RUN_KIND=mode, H3_PLANNER_CALIBRATION=str(int(mode == "calibration")))
         require(all(observed.get(k) == v for k, v in wanted.items()), "H3 launch environment/calibration proof failed")
         require(manifest.get("planner_binding") == {k: summary[k] for k in
             ("candidate_id", "planner_implementation", "effective_configuration_sha256")}, "H3 launch binding differs")

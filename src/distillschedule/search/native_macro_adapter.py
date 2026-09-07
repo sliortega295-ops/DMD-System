@@ -125,6 +125,9 @@ def capability_report(workload):
 
 
 def build_problem(layout_path, *, root=None):
+    if _object(layout_path).get("schema_version") == "distillschedule.h3_action_layout.v1":
+        from .h3_action_model_adapter import build_problem as build_actions
+        return build_actions(layout_path, root=root)
     root = root or repository_root()
     layout_path = Path(layout_path)
     layout = _object(layout_path)
@@ -168,6 +171,9 @@ def build_problem(layout_path, *, root=None):
 
 
 def validate_native_problem(problem):
+    if problem.lowering.get("adapter") == "h3_prepared_actions_v2":
+        from .h3_action_model_adapter import validate_native_problem as validate_actions
+        return validate_actions(problem)
     require(problem.evidence_scope == "MEASURED" and problem.lowering.get("adapter") == ADAPTER,
             "unimplemented native adapter or fixture")
     path = Path(problem.lowering["layout_receipt"])

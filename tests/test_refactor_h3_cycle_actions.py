@@ -108,12 +108,16 @@ def test_new_id_is_opt_in_and_cannot_admit_timing_or_old_macro_costs(window):
     assert H3Implementation.parse(impl.id) == impl
     assert H3Implementation.from_assignment(impl.assignment) == impl
     profile = impl.lower_profile()
-    assert profile["allowed_run_modes"] == ["correctness"]
+    assert profile["allowed_run_modes"] == ["correctness", "diagnostic-timing", "calibration"]
     assert profile["runtime"]["environment"]["H3_PLANNER_ROLLOUT_WINDOW"] == str(window)
     assert profile["runtime"]["model_config"] == legacy.lower_profile()["runtime"]["model_config"]
     for mode in ("diagnostic-timing", "calibration"):
-        with pytest.raises(ValueError, match="mode"):
-            impl.receipt_binding(profile["runtime"]["model_config"], profile["runtime"]["environment"], mode=mode)
+        env=dict(profile["runtime"]["environment"],H3_PLANNER_CALIBRATION=str(int(mode=='calibration')))
+        impl.receipt_binding(profile["runtime"]["model_config"],env,mode=mode)
+    from distillschedule.search.h3_action_admission import validate_action_admission
+    from pathlib import Path
+    with pytest.raises(ValueError,match='prior native action proof'):
+        validate_action_admission({}, {}, Path('.'))
 
 
 def test_dispatch_success_is_not_native_update_success():
@@ -216,7 +220,7 @@ def test_failure_evidence_io_error_does_not_mask_native_error(tmp_path, monkeypa
 @pytest.mark.parametrize("candidate,window,mode,passes", [
     ("joint-h3v2-d2-n128-w3", "3", "correctness", True),
     ("joint-h3v2-d1-n64-w5", "5", "correctness", True),
-    ("joint-h3v2-d2-n128-w3", "3", "diagnostic-timing", False),
+    ("joint-h3v2-d2-n128-w3", "3", "diagnostic-timing", True),
     ("joint-h3v2-d2-n128-w3", "2", "correctness", False),
     ("joint-h3v1-d2-n128", "3", "correctness", False),
     ("joint-h3v1-d2-n128", "", "correctness", True),

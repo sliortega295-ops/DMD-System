@@ -10,7 +10,7 @@ import sys
 import time
 from typing import Any
 
-from .registry import (file_sha256, fingerprint, git_head, load_profile, source_layout,
+from .registry import (file_sha256, fingerprint, git_head, load_profile, source_layout, repository_root,
                        verify_assets, write_new_json, _require)
 
 
@@ -37,6 +37,9 @@ def _correctness_binding(receipt: dict[str, Any]) -> None:
     for key, value in expected.items():
         _require(data.get("integration_binding", {}).get(key) == value,
                  f"correctness report lacks current integration binding: {key}")
+    if receipt.get("search_candidate", {}).get("id", "").startswith("joint-h3v2-"):
+        from distillschedule.search.h3_action_admission import validate_action_admission
+        validate_action_admission(data, receipt, repository_root())
 
 
 def validate_local(receipt: dict[str, Any], *, root: Path) -> dict[str, Any]:

@@ -53,6 +53,9 @@ class StageCalibrator:
 
     SCHEMA = "distillschedule.wan_stage_rank_calibration.v1"
     ADAPTER = ADAPTER
+    IMPLEMENTATION_TYPE = WanImplementation
+    WORKLOAD = WAN
+    PRECISION_FINGERPRINT = PRECISION.digest
 
     def operation_graph(self):
         return native_graph()
@@ -65,7 +68,8 @@ class StageCalibrator:
                  clock: Callable[[], int] | None = None,
                  evidence_scope: str = "MEASURED") -> None:
         require(type(rank) is int and rank in RANKS, "native Wan rank must be in world16")
-        require(isinstance(implementation, WanImplementation), "WanImplementation required")
+        require(isinstance(implementation, self.IMPLEMENTATION_TYPE),
+                f"{self.IMPLEMENTATION_TYPE.__name__} required")
         require(isinstance(source_head, str) and len(source_head) == 40
                 and all(c in "0123456789abcdef" for c in source_head), "invalid source_head")
         require(evidence_scope in {"MEASURED", "CPU_FIXTURE_ONLY"}, "unknown calibration evidence scope")
@@ -251,9 +255,9 @@ class StageCalibrator:
         return deepcopy({
             "schema_version": self.SCHEMA, **self._labels,
             "status": "FAIL" if self._errors else ("PASS" if self._finished else "INCOMPLETE"),
-            "adapter": self.ADAPTER, "workload": WAN, "rank": self._rank, "device": str(self._device),
+            "adapter": self.ADAPTER, "workload": self.WORKLOAD, "rank": self._rank, "device": str(self._device),
             "source_head": self._source_head, "implementation_id": self._implementation.id,
-            "implementation": self._implementation.assignment, "precision_fingerprint": PRECISION.digest,
+            "implementation": self._implementation.assignment, "precision_fingerprint": self.PRECISION_FINGERPRINT,
             "native_graph_sha256": fingerprint(self._graph.to_dict()),
             "post_setup_static_bytes": self._static_bytes, "post_setup_memory": self._post_setup,
             "peak_allocated_bytes": self._peak_allocated, "peak_reserved_bytes": self._peak_reserved,

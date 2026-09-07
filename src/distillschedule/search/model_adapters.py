@@ -19,7 +19,8 @@ def adapter_for(workload):
             lower_prediction=m.lower_prediction, validate_lowered_plan=m.validate_lowered_plan)
     from . import native_macro_adapter as m
     require(workload in (m.LIVEWAN, m.H3), "native model adapter not implemented")
-    return SimpleNamespace(ADAPTER=m.ADAPTER, implementation_type=m.implementation_type(workload),
+    return SimpleNamespace(ADAPTER=m.ADAPTER, ADAPTERS=(m.ADAPTER,"h3_prepared_actions_v2") if workload == H3 else (m.ADAPTER,),
+        implementation_type=m.implementation_type(workload),
         capability_report=partial(m.capability_report, workload), build_problem=m.build_problem,
         validate_native_problem=m.validate_native_problem,
         lower_prediction=m.lower_prediction, validate_lowered_plan=m.validate_lowered_plan)

@@ -21,7 +21,7 @@ fi
 [[ "${H3_PLANNER_CALIBRATION:-0}" == 0 || "${H3_PLANNER_CALIBRATION:-0}" == 1 ]] || exit 2
 if [[ -n "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID:-}" ]]; then
   if [[ "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID}" =~ ^joint-h3v2-d[12]-n(64|128)-w([1-5])$ ]]; then
-    [[ "$MODE" == correctness && "${H3_PLANNER_ROLLOUT_WINDOW:-}" == "${BASH_REMATCH[2]}" ]] || exit 2
+    [[ "${H3_PLANNER_ROLLOUT_WINDOW:-}" == "${BASH_REMATCH[2]}" ]] || exit 2
   else
     [[ "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID}" =~ ^joint-h3v1-d[12]-n(64|128)$ && \
        -z "${H3_PLANNER_ROLLOUT_WINDOW:-}" ]] || exit 2

@@ -38,9 +38,15 @@ def summarize_native_two_cycle(receipts: Sequence[Mapping[str, Any]], *, expecte
             and {r["rank"] for r in receipts} == set(range(16)), "H3 requires 16 unique rank receipts")
     rows = sorted(receipts, key=lambda row: row["rank"])
     calibration = rows[0].get("calibration_only")
+    run_kind = rows[0].get("run_kind", "calibration" if calibration else "correctness")
+    require(run_kind in impl.run_modes and (run_kind == "calibration") == calibration,
+            "H3 run kind/calibration mismatch")
+    full_values = run_kind == "correctness"
     require(type(calibration) is bool, "H3 calibration mode absent")
     for row in rows:
         rank = row["rank"]
+        require(row.get("run_kind", "calibration" if calibration else "correctness") == run_kind,
+                "H3 rank run kinds differ")
         for key, expected in {"schema_version": "distillschedule.h3_native_two_cycle.v1",
                               "status": "PASS_NATIVE_RUNTIME_CONTRACTS", "integration_head": expected_head,
                               "semantics": "approximate_grid1000", **binding,
@@ -84,7 +90,11 @@ def summarize_native_two_cycle(receipts: Sequence[Mapping[str, Any]], *, expecte
             if impl.rollout_window is not None:
                 from distillschedule.backends.training.minimax_h3.cycle_actions import validate_cycle_actions
                 actions = item.get("action_execution", {})
-                require(actions.get("status") == "PASS_NATIVE_ACTION_BINDING"
+                wanted_status = ("PASS_NATIVE_ACTION_BINDING" if full_values else
+                                 "PASS_NATIVE_METADATA_ACTION_BINDING_VALUES_NOT_RECHECKED")
+                wanted_reads = ("CORRECTNESS_ONLY_SYNCHRONIZING_FULL_DRAW_HASHES" if full_values else
+                                "DISABLED_METADATA_ONLY_PRIOR_CORRECTNESS_REQUIRED")
+                require(actions.get("status") == wanted_status and actions.get("tensor_value_reads") == wanted_reads
                         and actions.get("source_head") == expected_head and actions.get("rank") == rank
                         and actions.get("cycle") == cycle and actions.get("census_binding") == item["census"]
                         and actions.get("dispatch", {}).get("peak_live_inputs") == impl.rollout_window,
@@ -109,8 +119,10 @@ def summarize_native_two_cycle(receipts: Sequence[Mapping[str, Any]], *, expecte
             "errors": [], "integration_head": expected_head, **binding, "rank_count": 16,
             "cycles": 2, "cycles_in_same_process": 2, "final_versions": dict(generator=2, critic=10, ema=0),
             "cycle_wall_seconds": wall, "cycle_cuda_elapsed_seconds": cuda,
-            "timer_scope": ("CORRECTNESS_ACTION_HASH_PROBES_INCLUDED_NOT_NATIVE_PERFORMANCE"
-                            if impl.rollout_window is not None else "RANK_MAX_NATIVE_HOST_FENCED_CYCLE_WALL"),
+            "timer_scope": ("FENCED_ACTION_CALIBRATION_NOT_NATIVE_PERFORMANCE" if calibration else
+                            "CORRECTNESS_ACTION_HASH_PROBES_INCLUDED_NOT_NATIVE_PERFORMANCE"
+                            if impl.rollout_window is not None and full_values else "RANK_MAX_NATIVE_HOST_FENCED_CYCLE_WALL"),
+            "run_kind": run_kind, "unprofiled_native_cycle2_measured": "REQUIRES_DIRECT_LAUNCH_PROOF",
             "cross_rank_clock_alignment": "NOT_ESTABLISHED", "calibration_only": calibration,
             "formal_timing_eligible": False, "search_ready": False, "strict_pair_gate": "NOT_RUN",
             "claim_boundary": "NATIVE_DIAGNOSTIC_NOT_SEARCH_READY_OR_FORMAL_SPEEDUP",

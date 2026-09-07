@@ -163,6 +163,7 @@ class H3PlannerCycleObserver:
         self.host_fenced_clock = host_fenced_clock
         self.action_trace = None
         self.action_program = None
+        self.run_kind = os.environ.get("DISTILLSCHEDULE_RUN_KIND", "correctness")
 
     def validate_start(self, trainer, *, current_iter: int, resume_ckpt_path) -> None:
         if current_iter != 0 or resume_ckpt_path is not None:
@@ -217,12 +218,17 @@ class H3PlannerCycleObserver:
                         self.torch.cuda.Event(enable_timing=True, blocking=False)) for _ in range(2)]
         if self.implementation is not None and self.implementation.rollout_window is not None:
             from .cycle_actions import H3ActionTrace, torch_rng_snapshot
-            if self.calibration_enabled:
-                raise ValueError("H3 action correctness evidence cannot be used as calibration")
             self.action_trace = H3ActionTrace(rank=self.rank, source_head=self.source_head,
-                rng_snapshot=lambda: torch_rng_snapshot(self.torch, self.device))
+                rng_snapshot=lambda: torch_rng_snapshot(self.torch, self.device),
+                value_mode="full" if self.run_kind == "correctness" else "metadata")
             self.action_trace.install_draw_hooks(trainer, self.torch)
-        if self.calibration_enabled:
+            if self.calibration_enabled:
+                from distillschedule.search.h3_action_calibration import H3ActionCalibrator
+                self.collector = H3ActionCalibrator(torch=self.torch, distributed=self.torch.distributed,
+                    device=self.device, rank=self.rank, source_head=self.source_head,
+                    implementation=self.implementation)
+                self.collector.install(trainer)
+        if self.calibration_enabled and self.action_trace is None:
             from distillschedule.search.async_range_calibration import AsyncRangeCollector
             self.collector = AsyncRangeCollector(torch=self.torch, device=self.device, rank=self.rank,
                 source_head=self.source_head, implementation=(self.implementation.id if self.implementation is not None
@@ -343,7 +349,7 @@ class H3PlannerCycleObserver:
                 raise RuntimeError("H3 cycle CUDA completion elapsed must be finite and positive")
             row["gpu_completion_elapsed_s"] = elapsed
         calibration = self.collector.finish() if self.collector is not None else None
-        if calibration is not None:
+        if calibration is not None and self.action_trace is None:
             for cycle in (1, 2):
                 labels = tuple(r["label"] for r in calibration["rows"] if r["cycle"] == cycle)
                 if labels != _STAGES:
@@ -367,13 +373,16 @@ class H3PlannerCycleObserver:
                 "native_wall_clock": "HOST_MONOTONIC_CUDA_FENCED" if self.host_fenced_clock else "NOT_RUN",
                 "native_boundary_fences": 4 if self.host_fenced_clock else 0,
                 "cross_rank_clock_alignment": "NOT_ESTABLISHED",
-                "formal_timing_eligible": False, "calibration_only": self.calibration_enabled,
+                "formal_timing_eligible": False, "calibration_only": self.calibration_enabled, "run_kind": self.run_kind,
                 "numerical_cross_reference": "NOT_RUN", "state_fingerprints": final_state,
                 "rng_coverage": "TORCH_DEFAULT_CPU_AND_RANK_CUDA_ONLY; OTHER_GENERATORS_NOT_OBSERVED",
                 "stage_calibration": calibration,
-                "extra_explicit_synchronization_calls": 4 if self.host_fenced_clock else 0, "extra_collectives": 0,
+                "extra_explicit_synchronization_calls": (4 if self.host_fenced_clock else 0) +
+                    (45 if self.calibration_enabled and self.action_trace is not None else 0),
+                "extra_collectives": 23 if self.calibration_enabled and self.action_trace is not None else 0,
                 "probe_host_reads": ("ACTION_CORRECTNESS_FULL_DRAW_HASHES_MAY_SYNC_INSIDE_CYCLE_NOT_TIMING"
-                                     if self.action_trace is not None else "MAY_WAIT_OUTSIDE_TIMED_ENVELOPES_ONLY"),
+                                     if self.action_trace is not None and self.action_trace.value_mode == "full"
+                                     else "TENSOR_VALUES_OUTSIDE_TIMING; ACTION_RNG_AND_METADATA_ONLY"),
                 "boundary_policy": trainer.activation_policy,
                 "fa3_replay_storage": trainer.fa3_replay_cache_storage,
                 "frozen_contract": self.frozen_contract,
@@ -385,6 +394,8 @@ class H3PlannerCycleObserver:
                     or key == "DISTILLSCHEDULE_SEARCH_CANDIDATE_ID"}}
 
     def close(self, trainer) -> None:
+        if self.calibration_enabled and self.action_trace is not None and self.collector is not None:
+            self.collector.close()
         if self.action_trace is not None:
             self.action_trace.close(trainer)
         if self._original_nvtx is not None:

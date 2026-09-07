@@ -6,7 +6,7 @@ a diagnostic failure cannot roll back an already completed optimizer update.
 """
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from copy import deepcopy
 import hashlib
 import pickle
@@ -37,16 +37,24 @@ def prepare_cycle(trainer, *, samples, grad_accum_iters, current_iter, rollout_w
     # These are logical Fake-step IDs, not H3's native outer iteration number.
     order = rollout_window_order(graph, max_live_rollouts=rollout_window)
 
+    def calibration(ctx):
+        collector = getattr(observer, "collector", None)
+        return (collector.stage(current_iter+1, ctx.operation.operation_id)
+                if collector is not None else nullcontext())
+
     def student(ctx):
-        with trace.scope(ctx, trainer), trainer._nvtx("h3/student_step"):
+        with trace.scope(ctx, trainer), calibration(ctx), trainer._nvtx("h3/student_step"):
             return trainer._student_step(samples, grad_accum_iters, current_iter)
 
     def prepare(ctx):
-        with trace.scope(ctx, trainer), trainer._nvtx("h3/critic_prepare_one"):
-            return trainer._prepare_one_fake_group(samples, grad_accum_iters, ctx.operation.metadata["fake_index"])
+        with trace.scope(ctx, trainer), calibration(ctx) as sample, trainer._nvtx("h3/critic_prepare_one"):
+            result = trainer._prepare_one_fake_group(samples, grad_accum_iters, ctx.operation.metadata["fake_index"])
+        if sample is not None:
+            sample.record_output(result)  # Storage metadata outside calibrated range.
+        return result
 
     def update(ctx):
-        with trace.scope(ctx, trainer), trainer._nvtx("h3/critic_update_F"):
+        with trace.scope(ctx, trainer), calibration(ctx), trainer._nvtx("h3/critic_update_F"):
             return trainer._apply_one_fake_group(ctx.values[ctx.operation.metadata["inputs"][0]])
 
     return StaticRoleRunner("native_runtime", {
@@ -67,7 +75,7 @@ def torch_rng_snapshot(torch, device):
     return result
 
 
-def tensor_evidence(torch, value):
+def tensor_evidence(torch, value, *, value_mode="full"):
     """Full actual draw digest, correctness ONLY; host reads can synchronize.
 
     No replacement draws, sampled value sketch, or retained GPU copy. Canonical
@@ -75,13 +83,18 @@ def tensor_evidence(torch, value):
     """
     values = value if isinstance(value, (tuple, list)) else (value,)
     rows = []
+    require(value_mode in ("full", "metadata"), "unknown H3 draw evidence mode")
     for tensor in values:
         require(torch.is_tensor(tensor), "H3 draw site returned a non-tensor")
+        metadata = dict(shape=list(tensor.shape), dtype=str(tensor.dtype), device=str(tensor.device),
+                        bytes=int(tensor.numel() * tensor.element_size()))
+        if value_mode == "metadata":
+            rows.append(metadata)
+            continue
         local = tensor.detach().contiguous().cpu()
         finite = bool(torch.isfinite(local).all().item())
         require(finite, "H3 stochastic input contains nonfinite values")
-        rows.append(dict(shape=list(tensor.shape), dtype=str(tensor.dtype), device=str(tensor.device),
-            bytes=int(tensor.numel() * tensor.element_size()), finite=True,
+        rows.append(dict(**metadata, finite=True,
             sha256=hashlib.sha256(local.reshape(-1).view(torch.uint8).numpy().tobytes()).hexdigest()))
     return rows
 
@@ -89,7 +102,9 @@ def tensor_evidence(torch, value):
 class H3ActionTrace:
     """Action-owned samples/draws and update neutrality; not a service-cost clock."""
 
-    def __init__(self, *, rank, source_head, rng_snapshot):
+    def __init__(self, *, rank, source_head, rng_snapshot, value_mode="full"):
+        require(value_mode in ("full", "metadata"), "unknown H3 draw evidence mode")
+        self.value_mode = value_mode
         self.rank, self.source_head, self.rng_snapshot = rank, source_head, rng_snapshot
         self.rows, self.active, self.cycle = [], None, None
         self._originals = {}
@@ -105,7 +120,7 @@ class H3ActionTrace:
             def observed(*args, _original=original, _site=site, **kwargs):
                 require(self.active is not None, f"H3 draw {_site} outside prepared action")
                 result = _original(*args, **kwargs)
-                self.active["draws"].append(dict(site=_site, tensors=tensor_evidence(torch, result)))
+                self.active["draws"].append(dict(site=_site, tensors=tensor_evidence(torch, result, value_mode=self.value_mode)))
                 return result
 
             setattr(trainer, method, observed)
@@ -154,15 +169,21 @@ class H3ActionTrace:
         value = dict(schema_version="distillschedule.h3_cycle_actions.v1", source_head=self.source_head,
             rank=self.rank, cycle=self.cycle, dispatch=dispatch, actual_versions=versions(updates),
             rows=deepcopy(self.rows), status="CAPTURED", cost_admission=False,
-            tensor_value_reads="CORRECTNESS_ONLY_SYNCHRONIZING_FULL_DRAW_HASHES",
+            tensor_value_reads=("CORRECTNESS_ONLY_SYNCHRONIZING_FULL_DRAW_HASHES" if self.value_mode == "full"
+                                else "DISABLED_METADATA_ONLY_PRIOR_CORRECTNESS_REQUIRED"),
             rng_scope="TORCH_DEFAULT_CPU_RANK_CUDA_PYTHON_RANDOM_NUMPY_LEGACY; CUSTOM_GENERATORS_UNOBSERVED",
             timer_eligible=False, census_binding=deepcopy(census))
         validate_cycle_actions(value, require_draws=require_draws)
-        value["status"] = "PASS_NATIVE_ACTION_BINDING" if require_draws else "PASS_CPU_FIXTURE_DISPATCH_ONLY"
+        value["status"] = (("PASS_NATIVE_ACTION_BINDING" if self.value_mode == "full"
+                            else "PASS_NATIVE_METADATA_ACTION_BINDING_VALUES_NOT_RECHECKED")
+                           if require_draws else "PASS_CPU_FIXTURE_DISPATCH_ONLY")
         return value
 
 
 def validate_cycle_actions(value, *, require_draws=True):
+    full_values = value.get("tensor_value_reads") == "CORRECTNESS_ONLY_SYNCHRONIZING_FULL_DRAW_HASHES"
+    require(full_values or value.get("tensor_value_reads") == "DISABLED_METADATA_ONLY_PRIOR_CORRECTNESS_REQUIRED",
+            "H3 draw evidence mode missing")
     cycle, rows, dispatch = value["cycle"], value["rows"], value["dispatch"]
     require(cycle in (1, 2) and dispatch["status"] == "PASS", "H3 action execution incomplete")
     initial = dict(generator=cycle-1, critic=5*(cycle-1), ema=0)
@@ -217,13 +238,19 @@ def validate_cycle_actions(value, *, require_draws=True):
                 for draw, count in zip(row["draws"], (2, 2, 1, 1)):
                     require(len(draw["tensors"]) == count, "H3 video/audio draw pair missing")
                     for tensor in draw["tensors"]:
-                        require(tensor.get("finite") is True and tensor.get("bytes", 0) > 0
-                                and re.fullmatch(r"[0-9a-f]{64}", tensor.get("sha256", "")) is not None
+                        require(tensor.get("bytes", 0) > 0
                                 and isinstance(tensor.get("shape"), list)
                                 and all(type(n) is int and n > 0 for n in tensor["shape"])
                                 and tensor.get("dtype", "").startswith("torch.")
                                 and tensor.get("device", "").startswith("cuda:"),
                                 "H3 actual draw digest/finite evidence missing")
+                        if full_values:
+                            require(tensor.get("finite") is True and
+                                    re.fullmatch(r"[0-9a-f]{64}", tensor.get("sha256", "")) is not None,
+                                    "H3 full draw digest/finite evidence missing")
+                        else:
+                            require("finite" not in tensor and "sha256" not in tensor,
+                                    "H3 metadata-only observation cannot claim tensor value proof")
     require(samples == value["census_binding"]["samples"], "H3 action/native sample census differs")
 
 
@@ -231,6 +258,8 @@ def compare_action_inputs(left, right):
     """Join by native action identity, not the reordered physical row position."""
     try:
         for value in (left, right):
+            require(value.get("tensor_value_reads") == "CORRECTNESS_ONLY_SYNCHRONIZING_FULL_DRAW_HASHES",
+                    "metadata-only action receipts cannot prove value parity")
             validate_cycle_actions(value)
         require(all(left[k] == right[k] for k in ("rank", "cycle", "source_head")),
                 "H3 action comparison identity changed")
