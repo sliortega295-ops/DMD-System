@@ -61,7 +61,7 @@ def model_based_search(args):
     result = search_plans(problem, costs, seed=args.search_seed, max_proposals=args.max_proposals,
                           timeout_seconds=args.search_timeout, exhaustive=args.exhaustive)
     result["native_lowering"] = ("COMPOSITION_AVAILABLE_AFTER_NATIVE_INPUT_VALIDATION"
-        if adapter and problem.lowering.get("adapter") == adapter.ADAPTER else "NOT_IMPLEMENTED_FOR_GENERATED_PLANS")
+        if adapter and problem.lowering.get("adapter") in getattr(adapter,"ADAPTERS",(adapter.ADAPTER,)) else "NOT_IMPLEMENTED_FOR_GENERATED_PLANS")
     result["native_trial_budget"] = {"total": budget, "baseline": 1, "incumbent": 1,
                                      "new_candidates": budget - 3, "confirmation": 1,
                                      "actual_runs": 0, "status": "REQUIRES_EXPLICIT_EXECUTE_NATIVE"}

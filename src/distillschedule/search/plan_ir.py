@@ -129,6 +129,8 @@ class Lifetime:
     consumers: tuple[str, ...]
     ranks: tuple[int, ...]
     bytes_per_rank: int
+    # Producer workspace may already include creation of its returned storage.
+    allocation_point: str = "producer_entry"
 
 
 @dataclass(frozen=True)
@@ -187,6 +189,7 @@ class PlanningProblem:
             require(v.producer not in v.consumers, "self-consuming lifetime")
             self._ranks(v.ranks)
             nonnegative(v.bytes_per_rank, v.id)
+            require(v.allocation_point in {"producer_entry", "producer_exit"}, "invalid lifetime allocation point")
         for condition in self.forbidden:
             require(bool(condition), "empty forbidden condition rejects every plan")
             self._condition(condition)

@@ -87,7 +87,7 @@ def prepare_wan_cycle(*, p0: Any, source_steps: tuple[int, ...], max_live_rollou
     def rollout(ctx):
         step = ctx.operation.logical_step
         entries = {}
-        with scope(ctx):
+        with scope(ctx) as sample:
             generated, rows, _ = p0._precompute_critic_rollouts(**common, steps=(step,),
                 generator_engine=generator_engine, policy=policy, rollout_parity_check=False,
                 clean_runtime=clean_runtime, entry_outputs=entries)
@@ -95,7 +95,11 @@ def prepare_wan_cycle(*, p0: Any, source_steps: tuple[int, ...], max_live_rollou
                     "native single-rollout inventory changed", path="wan.cycle.rollout")
             rows[0]["batch_index"] = ctx.operation.metadata["fake_index"]
             records.extend(rows)
-            return generated[step], entries[step]
+        if sample is not None:
+            # Calibration-only storage metadata; never read latent values and
+            # never include metadata inspection in the calibrated action range.
+            sample.record_output((generated[step], entries[step].tensors))
+        return generated[step], entries[step]
     def update(ctx):
         x0, entry = ctx.values[ctx.operation.metadata["inputs"][0]]
         with scope(ctx):

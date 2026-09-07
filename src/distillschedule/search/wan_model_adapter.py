@@ -108,6 +108,9 @@ def capability_report() -> dict[str, Any]:
 def build_problem(layout_path: Path, *, root: Path | None = None) -> PlanningProblem:
     root = root or repository_root()
     layout = _object(layout_path)
+    if layout.get("schema_version") == "distillschedule.wan_action_layout.v1":
+        from .wan_action_model_adapter import build_problem as build_actions
+        return build_actions(layout_path,root=root)
     require(layout.get("schema_version") == "distillschedule.wan_stage_layout.v1", "unsupported native layout receipt")
     require(layout.get("status") == "PASS" and layout.get("profiled") is False, "native layout receipt not passing/unprofiled")
     binding = layout["binding"]
@@ -148,6 +151,9 @@ def build_problem(layout_path: Path, *, root: Path | None = None) -> PlanningPro
 
 
 def validate_native_problem(problem: PlanningProblem) -> None:
+    if problem.lowering.get("adapter") == "wan_prepared_actions_v2":
+        from .wan_action_model_adapter import validate_native_problem as validate_actions
+        return validate_actions(problem)
     require(problem.evidence_scope == "MEASURED", "CPU fixture may not be lowered to native execution")
     require(problem.lowering.get("adapter") == ADAPTER, "unimplemented generated native adapter")
     path = Path(problem.lowering["layout_receipt"])

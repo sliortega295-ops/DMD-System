@@ -13,17 +13,22 @@ from .wan_model_adapter import ADAPTER, cost_key, native_graph, operation_contra
 
 def validate_rank(value: Mapping[str, Any], *, source_head: str, rank: int,
                   placement: str) -> WanImplementation:
-    expected = dict(schema_version="distillschedule.wan_stage_rank_calibration.v1",
-        status="PASS", source_head=source_head, rank=rank, adapter=ADAPTER, workload=WAN,
+    impl = WanImplementation.parse(value["implementation_id"])
+    actions = impl.rollout_window is not None
+    from . import wan_action_costs as action_costs
+    from .wan_action_calibration import validate_lifetimes
+    expected = dict(schema_version="distillschedule.wan_action_rank_calibration.v1" if actions else "distillschedule.wan_stage_rank_calibration.v1",
+        status="PASS", source_head=source_head, rank=rank, adapter=action_costs.ADAPTER if actions else ADAPTER, workload=WAN,
         precision_fingerprint=PRECISION.digest, calibration_only=True,
         formal_timing_eligible=False, profiled=False, evidence_scope="MEASURED",
         kind="native_operation", errors=[], missing_operation_ids=[])
     for key, item in expected.items():
         require(value.get(key) == item, f"stage calibration rank{rank}: {key} differs")
-    impl = WanImplementation.parse(value["implementation_id"])
     require(impl.assignment == value["implementation"] and impl.native_placement == placement,
             "calibrated implementation differs from executed placement")
-    graph = native_graph()
+    graph = action_costs.action_graph(impl.rollout_window) if actions else native_graph()
+    if actions:
+        validate_lifetimes(value)
     ids = [op.operation_id for op in graph.operations]
     require(value["native_graph_sha256"] == fingerprint(graph.to_dict()), "calibration graph differs")
     require(value["completed_operation_ids"] == ids, "calibration operation order differs")
@@ -34,17 +39,21 @@ def validate_rank(value: Mapping[str, Any], *, source_head: str, rank: int,
     snapshots = [value["post_setup_memory"]]
     previous_stop = -1
     for op, stage in zip(graph.operations, stages):
-        contract = operation_contract(op, impl)
+        contract = (action_costs.component_contract(op, impl, value["work_signatures"][op.metadata["action"]]).to_dict()
+                    if actions else operation_contract(op, impl))
         require(stage["status"] == "PASS" and stage.get("errors") == [], "failed stage")
-        require(stage["operation_id"] == op.operation_id and stage["key"] == cost_key(op, impl), "stage cost key differs")
+        require(stage["operation_id"] == op.operation_id and stage["key"] == fingerprint(contract), "stage cost key differs")
         require(stage["operation_contract"] == contract and stage["operation_contract_sha256"] == fingerprint(contract),
                 "stage operation contract differs")
         start, stop, duration = (nonnegative(stage[k], k) for k in ("start_ns", "stop_ns", "duration_ns"))
         require(duration > 0 and stop - start == duration and start >= previous_stop, "stage clock/order invalid")
         previous_stop = stop
         after = stage["memory_after"]
-        require(stage["workspace_bytes_per_rank"] == max(0, after["peak_allocated_bytes"] - static),
+        retained = stage["entry_retained_input_bytes"] if actions else 0
+        require(stage["workspace_bytes_per_rank"] == max(0, after["peak_allocated_bytes"] - static - retained),
                 "stage workspace accounting differs")
+        if actions:
+            require(stage.get("component_contract") == contract,"component identity differs")
         snapshots.extend((stage["memory_before"], after))
     total = nonnegative(value["post_setup_memory"]["driver_total_bytes"], "driver capacity")
     for memory in snapshots:
@@ -126,41 +135,60 @@ def assemble_native(receipt: dict[str, Any], preparation: dict[str, Any],
         limits[str(rank)] = value["post_setup_memory"]["driver_total_bytes"] - non_allocator - 2 * 2**30
         require(limits[str(rank)] > value["peak_allocated_bytes"], "calibration lacks conservative HBM margin")
     # Write only after every native gate passed. Existing directories are never reused.
-    target = out / "stage-costs"
+    actions = impl.rollout_window is not None
+    from . import wan_action_costs as action_costs
+    graph = action_costs.action_graph(impl.rollout_window) if actions else native_graph()
+    if actions:
+        require(all(r["work_signatures"] == ranks[0]["work_signatures"] for r in ranks),
+                "rank-global physical work signatures disagree")
+    target = out / ("component-costs" if actions else "stage-costs")
     target.mkdir(exist_ok=False)
     provenance = dict(native_summary=binding(out / "bound-summary.json"), rank_receipts=sources,
         resource_receipts=[binding(out / f"search-resources.node{i}.json") for i in (0, 1)],
         runtime_identity_evidence=runtime_identity_evidence, correctness=preparation["correctness"],
         comparison=preparation["comparison"], strict_numerical_gate=preparation["strict_numerical_gate"])
     write_new_json(target / "provenance.json", provenance)
-    records = []
-    for index, op in enumerate(native_graph().operations):
+    records, grouped = [], {}
+    for index, op in enumerate(graph.operations):
         stages = [r["stages"][index] for r in ranks]
+        key = stages[0]["key"]
+        require(all(s["key"] == key and s["operation_contract"] == stages[0]["operation_contract"] for s in stages),
+                "ranks executed different component contracts")
+        grouped.setdefault(key, []).append((op, stages))
+    for key, occurrences in grouped.items():
+        op, stages = occurrences[0]
+        contract = stages[0]["operation_contract"]
         payload = dict(schema_version="distillschedule.operation_calibration.v1", binding=identity,
-            key=cost_key(op, impl), samples_ns=[max(s["duration_ns"] for s in stages)],
-            workspace_bytes_per_rank=max(s["workspace_bytes_per_rank"] for s in stages), status="PASS",
-            profiled=False, kind="native_operation", operation_contract_sha256=fingerprint(operation_contract(op, impl)),
+            key=key, samples_ns=[max(s["duration_ns"] for s in rows) for _,rows in occurrences],
+            workspace_bytes_per_rank=max(s["workspace_bytes_per_rank"] for _,rows in occurrences for s in rows), status="PASS",
+            profiled=False, kind="native_operation", operation_contract_sha256=fingerprint(contract),
             calibration_only=True, formal_timing_eligible=False, operation_id=op.operation_id,
             aggregation="MAX_RANK_SYNCHRONIZED_LOCAL_STAGE_WALL_NOT_SUM_OF_GPU_KERNELS",
-            per_rank_duration_ns=[s["duration_ns"] for s in stages], provenance=binding(target / "provenance.json"))
-        path = target / f"{op.operation_id}.json"
+            per_rank_duration_ns=[s["duration_ns"] for s in stages], provenance=binding(target / "provenance.json"),
+            occurrences=[{"operation_id":o.operation_id,"per_rank_duration_ns":[s["duration_ns"] for s in rows]}
+                         for o,rows in occurrences])
+        if actions:
+            payload["component_contract"] = contract
+        path = target / f"{key if actions else op.operation_id}.json"
         write_new_json(path, payload)
         records.append(OperationCost(payload["key"], tuple(payload["samples_ns"]), payload["workspace_bytes_per_rank"],
             {**{k: payload[k] for k in ("status", "profiled", "kind", "operation_contract_sha256")},
-             "source_receipt": str(path), "source_receipt_sha256": file_sha256(path)}))
+             "source_receipt": str(path), "source_receipt_sha256": file_sha256(path),
+             **({"component_contract":contract} if actions else {})}))
     costs = CostModel(identity, tuple(records))
     costs.verify_receipts()
     write_new_json(target / "operation-costs.json", costs.to_dict())
-    fragment = dict(schema_version="distillschedule.wan_stage_layout_fragment.v1", status="PASS", profiled=False,
-        binding=identity, adapter=ADAPTER, memory_limits=limits,
-        memory_definition="POST_SETUP_STATIC; STAGE_COST_INCLUDES_ALL_ADDITIONAL_LIVE_MEMORY",
+    fragment = dict(schema_version="distillschedule.wan_action_layout_fragment.v1" if actions else "distillschedule.wan_stage_layout_fragment.v1", status="PASS", profiled=False,
+        binding=identity, adapter=action_costs.ADAPTER if actions else ADAPTER, memory_limits=limits,
+        memory_definition=action_costs.MEMORY_DEFINITION if actions else "POST_SETUP_STATIC; STAGE_COST_INCLUDES_ALL_ADDITIONAL_LIVE_MEMORY",
         capacity_scope="TORCH_ALLOCATOR; MAX_BOUNDARY_OBSERVED_NON_ALLOCATOR_USE; 2GIB_SAFETY_NOT_EXACT_DRIVER_PEAK",
         implementations={impl.id: {"status": "PASS", "ranks": ranks}},
         provenance=binding(target / "provenance.json"), complete_planning_layout=False)
     write_new_json(target / "layout-fragment.json", fragment)
     return dict(status="PASS_NATIVE_STAGE_CALIBRATION", source_head=identity["source_head"],
-        run_id=receipt["run_id"], implementation_id=impl.id, rank_count=16, stages_per_rank=14,
+        run_id=receipt["run_id"], implementation_id=impl.id, rank_count=16, stages_per_rank=len(graph.operations),
         native_summary=summary, layout_fragment=binding(target / "layout-fragment.json"),
         operation_costs=binding(target / "operation-costs.json"), provenance=binding(target / "provenance.json"),
-        stage_world_max_seconds={op.operation_id: records[i].duration_ns / 1e9 for i, op in enumerate(native_graph().operations)},
+        stage_world_max_seconds={op.operation_id:max(r["stages"][i]["duration_ns"] for r in ranks)/1e9
+                                 for i,op in enumerate(graph.operations)},
         formal_timing_eligible=False, complete_planning_layout=False, speedup=None)

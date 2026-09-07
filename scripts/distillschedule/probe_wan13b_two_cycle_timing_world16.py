@@ -566,8 +566,6 @@ def main() -> int:
     from distillschedule.search.wan_implementation import current_rollout_window
     from distillschedule.runtime.wan_cycle_plan import prepare_wan_cycle
     rollout_window = current_rollout_window()
-    if rollout_window is not None and args.calibrate_stages:
-        raise ValueError("prepared schedules require component calibration, not legacy stage costs")
     # Construction helpers use these shared mode attributes to disable audit
     # hooks.  This dedicated worker never enters the legacy one-cycle timer or
     # the trajectory evidence path.
@@ -732,9 +730,16 @@ def main() -> int:
             raise AssertionError("two-cycle bootstrap versions changed")
 
         if args.calibrate_stages:
-            from distillschedule.search.wan_stage_calibration import StageCalibrator
-            calibrator = StageCalibrator(torch=torch, distributed=dist, device=device, rank=rank,
+            calibration_args = dict(torch=torch, distributed=dist, device=device, rank=rank,
                 implementation=current_implementation(), source_head=args.expected_head)
+            if rollout_window is not None:
+                from distillschedule.search.wan_action_calibration import ActionCalibrator
+                from distillschedule.search.wan_action_costs import trace_work_signatures
+                calibrator = ActionCalibrator(**calibration_args,
+                    work=trace_work_signatures(trace, trace_rollout_contract))
+            else:
+                from distillschedule.search.wan_stage_calibration import StageCalibrator
+                calibrator = StageCalibrator(**calibration_args)
         torch.cuda.reset_peak_memory_stats(device)
         deferred_finite_checks: list[torch.Tensor] = []
         finite_slices: list[tuple[int, int]] = []
@@ -750,6 +755,7 @@ def main() -> int:
                     critic_engine=critic_engine, ema=ema, trace=trace, negative=negative,
                     diagnostics=diagnostics, policy=policy, clean_runtime=clean_runtime,
                     runtime_cache=runtime_cache, deferred_finite_checks=deferred_finite_checks,
+                    operation_scope=(lambda op: calibrator.stage(cycle, op.operation_id)) if calibrator is not None else None,
                 )
             dist.barrier()
             torch.cuda.synchronize(device)

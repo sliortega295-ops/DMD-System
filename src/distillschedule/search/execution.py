@@ -262,8 +262,8 @@ class NativeTrialRunner:
 
     def calibrate(self, candidate: Candidate, *, directory: Path) -> dict[str, Any]:
         """One diagnostic collection, not a timing trial or a matrix search."""
-        from .wan_implementation import PREFIX
-        require((candidate.workload == WAN and candidate.id.startswith(PREFIX)) or
+        from .wan_implementation import is_generated
+        require((candidate.workload == WAN and is_generated(candidate.id)) or
                 candidate.id.startswith(("joint-livewan1-", "joint-h3v1-")), "native calibration adapter unavailable")
         directory.mkdir(exist_ok=False)
         self._observe_model_runtime(candidate)

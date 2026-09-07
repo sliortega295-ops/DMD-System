@@ -242,9 +242,15 @@
           "new_integrated_sha256": "adee5aefec9873e6dab241af18b0c267ef5dcb98de6608965d1d64cfad30d42f",
           "previous_integrated_sha256": "c5ef834564761d78664106abb94430c3710bd9a34485f18692cb91eb32965bfb",
           "reason": "Opt-in generated Wan retained-rollout schedule reaches original native helpers; preserve legacy defaults, trace/model math and two-cycle timer. Validate actual dispatch receipts and retain failed action prefixes."
+        },
+        {
+          "date": "2026-09-07",
+          "new_integrated_sha256": "b8860b893b022335ea9a2931eb3fcc0dd2f5db8b6c198af6406fd4944ff029b9",
+          "note": "Admit explicit joint-wan2 action calibration only; canonical and timing defaults unchanged.",
+          "previous_integrated_sha256": "adee5aefec9873e6dab241af18b0c267ef5dcb98de6608965d1d64cfad30d42f"
         }
       ],
-      "integrated_sha256": "adee5aefec9873e6dab241af18b0c267ef5dcb98de6608965d1d64cfad30d42f",
+      "integrated_sha256": "b8860b893b022335ea9a2931eb3fcc0dd2f5db8b6c198af6406fd4944ff029b9",
       "integration_note": " | Joint planner opt-in Wan composition/precision wiring, legacy defaults unchanged; GPU revalidation pending.",
       "source_commit": "67b2880901abece947732ba5de45a5c2685ab274",
       "source_path": "scripts/distillschedule/launch_wan13b_fair_world16_node.sh",
@@ -1864,9 +1870,15 @@
           "new_integrated_sha256": "4e109d288bc414448cc86ed0ecfee9471b7316ed7994e0fe80754540ef1d94d5",
           "previous_integrated_sha256": "c83fe65557defc8fe29456891bdbab3cbb8637aec9fdfcde54ee37e22e6891b4",
           "reason": "Opt-in generated Wan retained-rollout schedule reaches original native helpers; preserve legacy defaults, trace/model math and two-cycle timer. Validate actual dispatch receipts and retain failed action prefixes."
+        },
+        {
+          "date": "2026-09-07",
+          "new_integrated_sha256": "81cfa192c7e199f1e64976781f805d12b99a77e4d20a1037177eae5cdb6832ea",
+          "note": "Opt-in native action observer, metadata-only retained-storage accounting; no default model execution changes.",
+          "previous_integrated_sha256": "4e109d288bc414448cc86ed0ecfee9471b7316ed7994e0fe80754540ef1d94d5"
         }
       ],
-      "integrated_sha256": "4e109d288bc414448cc86ed0ecfee9471b7316ed7994e0fe80754540ef1d94d5",
+      "integrated_sha256": "81cfa192c7e199f1e64976781f805d12b99a77e4d20a1037177eae5cdb6832ea",
       "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math. | Joint planner opt-in Wan composition/precision wiring, legacy defaults unchanged; GPU revalidation pending.",
       "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
       "source_path": "scripts/distillschedule/probe_wan13b_two_cycle_timing_world16.py",
@@ -1881,9 +1893,15 @@
           "new_integrated_sha256": "eed82fb8da52472347e617252ff0e35dba7b8ace822adc66e380ed1f61bde1b2",
           "previous_integrated_sha256": "c21b5416f176b5428e2cc38607899ab689d95e1e71122788f18c48c93a60e85f",
           "reason": "Opt-in generated Wan retained-rollout schedule reaches original native helpers; preserve legacy defaults, trace/model math and two-cycle timer. Validate actual dispatch receipts and retain failed action prefixes."
+        },
+        {
+          "date": "2026-09-07",
+          "new_integrated_sha256": "32daaf74523d7ab76b6f02aca4d9b364ba8129542beafc983b6d16879246b60b",
+          "note": "Validate 32 native actions for generated two-cycle calibration; legacy 14 macro stages unchanged.",
+          "previous_integrated_sha256": "eed82fb8da52472347e617252ff0e35dba7b8ace822adc66e380ed1f61bde1b2"
         }
       ],
-      "integrated_sha256": "eed82fb8da52472347e617252ff0e35dba7b8ace822adc66e380ed1f61bde1b2",
+      "integrated_sha256": "32daaf74523d7ab76b6f02aca4d9b364ba8129542beafc983b6d16879246b60b",
       "integration_note": "Port existing two-cycle and trajectory worker; narrow opt-in registered search arm contract; no new workload math. | Joint planner opt-in Wan composition/precision wiring, legacy defaults unchanged; GPU revalidation pending.",
       "source_commit": "7fa5b866c544594094b8d3c421959bbc64bf9206",
       "source_path": "scripts/distillschedule/summarize_wan13b_two_cycle_timing_world16.py",

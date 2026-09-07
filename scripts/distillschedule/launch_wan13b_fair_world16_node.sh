@@ -411,7 +411,7 @@ if [[ ( "${MODE}" == two-cycle-timing || "${MODE}" == two-cycle-calibration ) ]]
 fi
 
 if [[ "${MODE}" == two-cycle-calibration ]]; then
-  [[ "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID:-}" == joint-wan1-* ]] || {
+  [[ "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID:-}" == joint-wan1-* || "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID:-}" == joint-wan2-* ]] || {
     echo calibration_requires_generated_wan_implementation >&2; exit 2;
   }
   WORKER_ARGS+=(--calibrate-stages)

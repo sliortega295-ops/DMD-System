@@ -8,7 +8,7 @@ from distillschedule.runtime.wan_cycle_plan import prepare_wan_cycle
 from distillschedule.search.wan_implementation import WanImplementation, current_implementation
 
 
-def make_native(window, *, persistent=False):
+def make_native(window, *, persistent=False, operation_scope=None):
     calls = []
     g, c, ema = NS(global_steps=2), NS(global_steps=10), NS(optimization_step=10)
     def gupdate(**kw):
@@ -18,10 +18,10 @@ def make_native(window, *, persistent=False):
         assert len(kw["steps"]) == 1
         step = kw["steps"][0]
         calls.append(("r", step, g.global_steps))
-        kw["entry_outputs"][step] = ("trace", step)
+        kw["entry_outputs"][step] = NS(tensors={"trace": step})
         return {step:(g.global_steps,step)}, [{"batch_size":1, "batch_index":0}], {}
     def critic(**kw):
-        assert kw["entry"] == ("trace",kw["step"])
+        assert kw["entry"].tensors == {"trace":kw["step"]}
         assert kw["x0"] == (3,kw["step"])
         calls.append(("c",kw["step"],c.global_steps)); c.global_steps += 1
         return {"logical_step":kw["step"],"score_forwards":1}
@@ -34,7 +34,7 @@ def make_native(window, *, persistent=False):
         rank=0, device="test", generator_engine=g, critic_engine=c, ema=ema, trace=object(),
         negative=object(), diagnostics=object(), policy=NS(rollout_batch_size=1,
             generator_nograd_persistent_unshard=persistent), clean_runtime=True,
-        runtime_cache={}, deferred_finite_checks=[], collect_scalars=False)
+        runtime_cache={}, deferred_finite_checks=[], collect_scalars=False, operation_scope=operation_scope)
     return program, calls
 
 
@@ -114,3 +114,28 @@ def test_both_real_workers_consume_prepared_plan_and_timing_compiles_before_star
         assert "prepared_cycle.receipt()" in source
     timing = (root/"probe_wan13b_two_cycle_timing_world16.py").read_text()
     assert timing.index("prepared_cycle = prepare_wan_cycle(") < timing.index("start_ns = time.time_ns()")
+
+
+def test_native_rollout_storage_observer_runs_after_calibrated_range():
+    from contextlib import contextmanager
+    events=[]
+    @contextmanager
+    def scope(op):
+        events.append(("start",op.operation_id))
+        yield NS(record_output=lambda value:events.append(("output",op.operation_id,value)))
+        events.append(("stop",op.operation_id))
+    program,_=make_native(3,operation_scope=scope)
+    program.run()
+    outputs=[row for row in events if row[0]=="output"]
+    assert len(outputs)==5
+    for row in outputs:
+        assert events.index(("stop",row[1])) < events.index(row)
+        assert row[2][1] == {"trace":10+int(row[1][1:])}
+
+
+def test_prepared_calibration_reaches_native_collector_not_legacy_macros():
+    root=Path(__file__).resolve().parents[1]
+    worker=(root/"scripts/distillschedule/probe_wan13b_two_cycle_timing_world16.py").read_text()
+    assert "from distillschedule.search.wan_action_calibration import ActionCalibrator" in worker
+    assert "operation_scope=" in worker
+    assert "prepared schedules require component calibration, not legacy stage costs" not in worker

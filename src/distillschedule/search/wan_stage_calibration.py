@@ -17,7 +17,7 @@ from distillschedule.workloads.best_known.registry import fingerprint
 from .contracts import require
 from .plan_ir import nonnegative
 from .wan_implementation import PRECISION, WAN, WanImplementation
-from .wan_model_adapter import ADAPTER, RANKS, cost_key, native_graph, operation_contract
+from .wan_model_adapter import ADAPTER, RANKS, native_graph, operation_contract
 
 
 class StageCalibrator:
@@ -51,6 +51,15 @@ class StageCalibrator:
     hardware binding and rank aggregation belong to the controller, not here.
     """
 
+    SCHEMA = "distillschedule.wan_stage_rank_calibration.v1"
+    ADAPTER = ADAPTER
+
+    def operation_graph(self):
+        return native_graph()
+
+    def contract(self, operation):
+        return operation_contract(operation, self._implementation)
+
     def __init__(self, *, torch: Any, distributed: Any, device: Any, rank: int,
                  implementation: WanImplementation, source_head: str,
                  clock: Callable[[], int] | None = None,
@@ -66,7 +75,7 @@ class StageCalibrator:
         self._rank, self._implementation, self._source_head = rank, implementation, source_head
         self._labels = {"evidence_scope": evidence_scope, "calibration_only": True,
                         "formal_timing_eligible": False, "profiled": False, "kind": "native_operation"}
-        self._graph = native_graph()
+        self._graph = self.operation_graph()
         self._stages: list[dict[str, Any]] = []
         self._errors: list[dict[str, str]] = []
         self._active: dict[str, Any] | None = None
@@ -197,11 +206,12 @@ class StageCalibrator:
         operation = self._graph.operations[self._completed]
         if operation_id != operation.operation_id:
             self._reject(f"reordered/unknown stage: expected {operation.operation_id}, got {operation_id}")
-        contract = operation_contract(operation, self._implementation)
+        contract = self.contract(operation)
         row = {**self._labels, "operation_id": operation_id, "cycle": cycle, "stage": stage_name,
-               "key": cost_key(operation, self._implementation), "operation_contract": contract,
+               "key": fingerprint(contract), "operation_contract": contract,
                "operation_contract_sha256": fingerprint(contract),
-               "memory_definition": contract["memory_definition"], "timing_definition": contract["timing_definition"],
+               "memory_definition": contract.get("memory_definition", getattr(self, "MEMORY_DEFINITION", None)),
+               "timing_definition": contract.get("timing_definition", getattr(self, "TIMING_DEFINITION", None)),
                "status": "INCOMPLETE", "start_ns": None, "stop_ns": None, "duration_ns": None,
                "workspace_bytes_per_rank": None, "memory_before": {}, "memory_after": {}, "errors": [],
                "nested_peak_reset_count": 0,
@@ -239,9 +249,9 @@ class StageCalibrator:
         """Detached, JSON-ready evidence; does not query the backend or tensors."""
         completed = [row["operation_id"] for row in self._stages if row["status"] == "PASS"]
         return deepcopy({
-            "schema_version": "distillschedule.wan_stage_rank_calibration.v1", **self._labels,
+            "schema_version": self.SCHEMA, **self._labels,
             "status": "FAIL" if self._errors else ("PASS" if self._finished else "INCOMPLETE"),
-            "adapter": ADAPTER, "workload": WAN, "rank": self._rank, "device": str(self._device),
+            "adapter": self.ADAPTER, "workload": WAN, "rank": self._rank, "device": str(self._device),
             "source_head": self._source_head, "implementation_id": self._implementation.id,
             "implementation": self._implementation.assignment, "precision_fingerprint": PRECISION.digest,
             "native_graph_sha256": fingerprint(self._graph.to_dict()),

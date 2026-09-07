@@ -55,10 +55,11 @@ def main() -> int:
     assets = json.loads(args.assets_config.read_text())
     identity = dict(source_head=head, asset_fingerprint=fingerprint(assets["assets"]),
         precision_fingerprint=PRECISION.digest, semantic_fingerprint=plan["workload_semantics_hash"])
-    reference = WanImplementation("fsdp", 512, False).id
+    window = 5 if impl.rollout_window is not None else None
+    reference = WanImplementation("fsdp", 512, False, window).id
     runner = NativeTrialRunner(workload=WAN, identity=identity, assets=assets, output=args.output,
         run_prefix=args.run_id, reference_id=reference,
-        bootstrap_peer=impl.id if impl.id != reference else WanImplementation("resident", 2048, True).id)
+        bootstrap_peer=impl.id if impl.id != reference else WanImplementation("resident", 2048, True, window).id)
     try:
         probe = runner._rpc("resolve", workload=WAN, candidate_id=impl.id, assets=assets,
                             run_id=args.run_id + "-identity", mode="correctness")

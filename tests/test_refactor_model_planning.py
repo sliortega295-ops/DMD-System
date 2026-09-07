@@ -77,6 +77,20 @@ def test_round_trip_reuses_core_graph_and_hash():
     assert simulate(other, a, CostModel.from_dict(c.to_dict())) == simulate(p, a, c)
 
 
+def test_producer_exit_lifetime_does_not_double_count_measured_output_workspace():
+    p, costs, assignment = fixture()
+    assignment = {**assignment,"kernel":"fast"}
+    old = simulate(p, assignment, costs)
+    p = replace(p, lifetimes=tuple(replace(x,allocation_point="producer_exit") for x in p.lifetimes))
+    measured = simulate(p, assignment, costs)
+    assert old["memory"][0]["peak_bytes"] == 95
+    assert measured["memory"][0]["peak_bytes"] == 90
+    assert measured["memory_reconciliation"] == "PASS"
+    assert PlanningProblem.from_dict(json.loads(json.dumps(p.to_dict()))).digest == p.digest
+    with pytest.raises(ValueError):
+        replace(p,lifetimes=(replace(p.lifetimes[0],allocation_point="guessed"),))
+
+
 def test_hand_computed_serial_and_depth1_cycle_accounting():
     p, c, a = fixture()
     serial = simulate(p, a, c)

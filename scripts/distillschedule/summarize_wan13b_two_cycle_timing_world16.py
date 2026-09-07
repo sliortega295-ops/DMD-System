@@ -675,7 +675,8 @@ def main() -> int:
     }
     if args.calibrate_stages:
         summary["timing_claim"] = "NONE: stage barriers/synchronization perturb the cycle; native cost calibration only"
-        summary["stage_calibration"] = {"operation_count_per_rank": 14,
+        from distillschedule.search.wan_implementation import current_rollout_window
+        summary["stage_calibration"] = {"operation_count_per_rank": 32 if current_rollout_window() is not None else 14,
             "ranks_validated": WORLD_SIZE if valid else 0,
             "claimable_for_formal_timing": False,
             "memory_scope": "TORCH_ALLOCATOR_PEAK_AND_BOUNDARY_SAMPLED_DRIVER_FREE_NOT_CONTINUOUS_DRIVER_PEAK"}

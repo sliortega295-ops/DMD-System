@@ -70,9 +70,10 @@ def simulate(problem: PlanningProblem, assignment: Mapping[str, str], costs: Cos
         pending.remove(key)
 
     for value in problem.lifetimes:
-        # Conservatively allocate the output at producer entry, retaining it
-        # through its last consuming backward/transfer/commit.
-        start = done[value.producer]["start_ns"]
+        # Legacy costs exclude retained outputs. Native action calibration can
+        # instead include output creation in producer workspace and start the
+        # separate retained lifetime at return, without double counting.
+        start = done[value.producer]["end_ns" if value.allocation_point == "producer_exit" else "start_ns"]
         end = max(done[c]["end_ns"] for c in value.consumers)
         if end > start:
             for rank in value.ranks:

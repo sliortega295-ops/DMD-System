@@ -145,6 +145,9 @@ class CostModel:
                 self.get_component(contract)
                 require(raw.get("component_contract") == contract.to_dict(),
                         "component source receipt contract changed")
+            if "component_sources" in raw:
+                from .component_calibration import validate_pooled_receipt
+                validate_pooled_receipt(raw)
 
     def to_dict(self) -> dict[str, Any]:
         return {"schema_version": self.schema_version, "binding": dict(self.binding), "scope": self.scope,
