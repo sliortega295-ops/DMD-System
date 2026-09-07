@@ -34,11 +34,23 @@ def main(argv: list[str]) -> int:
     p.add_argument("--resume", action="store_true")
     p.add_argument("--historical-profile-prior", action="store_true",
                    help="Explicitly allow a same-workload historical contract/source/assets/cycle as ranking hints only; measurements still match exactly")
+    p.add_argument("--strategy", choices=("registered", "model-based"), default="registered")
+    p.add_argument("--problem", type=Path, help="Adapter-produced, versioned planning problem")
+    p.add_argument("--cost-model", type=Path, help="Source/environment/precision-bound operation calibrations")
+    p.add_argument("--search-seed", type=int, default=0, help="Planner RNG only; never the training RNG")
+    p.add_argument("--max-proposals", type=int, default=10000)
+    p.add_argument("--search-timeout", type=float, default=600)
+    p.add_argument("--exhaustive", action="store_true", help="Bounded CPU oracle, not GPU brute force")
     args = parser.parse_args(argv)
     try:
         if args.action == "profile":
             result = parse_profile(_object(args.input))
             write_new_json(args.output, result)
+        elif args.strategy == "model-based":
+            from .model_cli import model_based_search
+            result = model_based_search(args)
+            if args.output:
+                write_new_json(args.output, result)
         elif args.dry_run:
             require(1 <= args.max_trials <= 8, "v1 budget is 1..8")
             profile = _object(args.profile) if args.profile else None
