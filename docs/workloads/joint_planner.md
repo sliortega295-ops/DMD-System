@@ -11,8 +11,10 @@ part of that denominator.
 
 The restricted **Wan placement/chunk/epilogue family now has a completed
 measured-cost → search → native-validation loop**. The bounded LiveWan native-macro family now also completes
-that loop. H3 generated runs complete runtime/census gates but fail numerical
-admission (including an unchanged-arm repeat); H3 calibration/search are blocked.
+that loop. H3's original depth matrix has strict numerical failures (including
+an unchanged-arm repeat); the user accepted exploratory REVIEW without changing
+those thresholds. The subsequent H3 prepared-action native gate now passes.
+Its calibrated action costs and held-out search loop remain unfinished.
 Broader sharing/reordering dimensions are not yet GPU-validated generated planners.
 CPU simulation, native support, diagnostic validation and strict numerical
 equivalence remain separate statuses.
@@ -214,7 +216,9 @@ as having used it.
 ## Acceptance remaining before a planner speed claim
 
 - LiveWan/H3 typed native adapters and lowering are implemented. LiveWan completed
-  native validation; H3 numerical admission is blocked as recorded above. Wan's generated
+  bounded macro native validation, and H3 now passes the new prepared-action
+  correctness gate under the separate REVIEW boundary above. H3 action cost
+  admission/search and LiveWan distributed action lowering are still missing. Wan's generated
   FSDP control, Resident incumbent and three model-ranked non-seed combinations
   now have native two-cycle validation, plus independent winner confirmation.
   Strict numerical equivalence remains unestablished; the current Wan timing
