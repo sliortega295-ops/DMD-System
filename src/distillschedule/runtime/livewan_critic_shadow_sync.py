@@ -10,6 +10,7 @@ the sync cannot be confused with the latent P2P stream.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from contextlib import nullcontext
 import hashlib
 import json
 import time
@@ -50,6 +51,12 @@ class PairedCriticShadowSync:
     pending_source_work: Any | None = field(init=False, default=None)
     pending_source_version: int | None = field(init=False, default=None)
     events: list[dict[str, Any]] = field(init=False, default_factory=list)
+    observer: Any | None = None
+
+    def _observe(self, kind: str, version: int):
+        if self.observer is None:
+            return nullcontext()
+        return self.observer.gpu_range(kind, key=(int(version), 0), nbytes=self.total_numel * 4)
 
     def __post_init__(self) -> None:
         if self.group is None:
@@ -120,7 +127,8 @@ class PairedCriticShadowSync:
         if self.pending_source_work is not None:
             raise RuntimeError("previous Critic-shadow source sync is still pending")
         started = time.perf_counter()
-        self._pack_source()
+        with self._observe('shadow_source_pack', version):
+            self._pack_source()
         source_sha = self._sha256()
         work = self.dist.broadcast(
             self.flat,
@@ -149,7 +157,8 @@ class PairedCriticShadowSync:
         if self.pending_source_version != int(expected_version):
             raise RuntimeError("Critic-shadow source version changed")
         started = time.perf_counter()
-        self.pending_source_work.wait()
+        with self._observe('shadow_source_completion_wait', expected_version):
+            self.pending_source_work.wait()
         self.events[-1]["completion_wall_seconds"] = time.perf_counter() - started
         self.events[-1]["status"] = "PASS"
         self.pending_source_work = None
@@ -159,16 +168,18 @@ class PairedCriticShadowSync:
         if not self.is_generator:
             raise RuntimeError("Score rank cannot load the Critic shadow")
         started = time.perf_counter()
-        work = self.dist.broadcast(
-            self.flat,
-            src=self.score_rank,
-            group=self.group,
-            async_op=True,
-        )
-        work.wait()
+        with self._observe('shadow_receiver_transfer_wait', version):
+            work = self.dist.broadcast(
+                self.flat,
+                src=self.score_rank,
+                group=self.group,
+                async_op=True,
+            )
+            work.wait()
         loaded_sha = self._sha256()
         with self.torch.no_grad():
-            self._unpack_receiver()
+            with self._observe('shadow_target_load', version):
+                self._unpack_receiver()
         self.events.append(
             {
                 "role": "receiver",

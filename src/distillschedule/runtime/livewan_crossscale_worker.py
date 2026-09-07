@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from functools import wraps
 import gc
 import hashlib
 import json
@@ -141,6 +142,33 @@ def _require(condition: bool, message: str) -> None:
 
 
 _operation_calibrator = None  # process-local, explicit diagnostic opt-in only
+
+
+def _observe_native_action(kind: str):
+    """Diagnostic leaf around an existing helper, never a new training path.
+
+    The enclosing native range supplies cycle/wave identity for helper calls
+    without a trace-row argument. Row/seed and tensor *metadata* reads remain
+    host-only; tensor values and RNG state are neither read nor changed.
+    """
+    def decorate(function):
+        @wraps(function)
+        def call(*args, **kwargs):
+            if _operation_calibrator is None:
+                return function(*args, **kwargs)
+            rows = kwargs.get('rows')
+            if rows is None:
+                row = kwargs.get('row')
+                if row is None and kwargs.get('prepared') is not None:
+                    row = kwargs['prepared'].row
+                rows = () if row is None else (row,)
+            metadata = dict(action_kind=kind, source_function=function.__name__,
+                rows=[dict(operation_key=r.operation_key, logical_step=r.logical_step,
+                           logical_slot=r.logical_slot, seeds=dict(r.seeds)) for r in rows])
+            with _operation_calibrator.range('livewan/native/' + kind, metadata=metadata):
+                return function(*args, **kwargs)
+        return call
+    return decorate
 
 
 @contextmanager
@@ -2020,6 +2048,7 @@ def _build_streamers(torch: Any, *, student: Any, count: int, device: Any):
     ]
 
 
+@_observe_native_action('generator_rollout')
 def prepare_rollout(
     torch: Any,
     *,
@@ -2098,6 +2127,7 @@ def build_score_context(torch: Any, *, bundle: ModelBundle, loader: InputLoader,
     return ScoreContext(rope=rope, negative_teacher_context=negative)
 
 
+@_observe_native_action('score_context')
 def prepare_score_sample_context(
     torch: Any,
     *,
@@ -2136,6 +2166,7 @@ class DMDFlowInputs:
     z_t: Any
 
 
+@_observe_native_action('dmd_flow_inputs')
 def _dmd_flow_inputs(
     torch: Any, *, row: OperationTraceRow, x0: Any
 ) -> DMDFlowInputs:
@@ -2152,6 +2183,7 @@ def _dmd_flow_inputs(
     return DMDFlowInputs(t=t, t_view=t_view, z_t=(1.0 - t_view) * x0 + t_view * noise)
 
 
+@_observe_native_action('teacher_velocity')
 def _dmd_teacher_velocity(
     torch: Any,
     *,
@@ -2201,6 +2233,7 @@ def _dmd_teacher_velocity(
     return velocity.float()
 
 
+@_observe_native_action('fake_velocity')
 def _dmd_fake_velocity(
     torch: Any,
     *,
@@ -2229,6 +2262,7 @@ def _dmd_fake_velocity(
     return velocity.float()
 
 
+@_observe_native_action('combine_dmd_gradient')
 def _combine_dmd_gradient(
     torch: Any,
     *,
@@ -2483,6 +2517,7 @@ def critic_backward_for_sample(
     return loss.detach()
 
 
+@_observe_native_action('critic_backward_b2')
 def critic_backward_for_batch(
     torch: Any,
     *,
@@ -2560,6 +2595,7 @@ def _physical_critic_backward_calls_for_step(
     return 2 if split_step1 or not critic_b2_only else 1
 
 
+@_observe_native_action('generator_backward')
 def generator_backward_for_sample(
     torch: Any,
     *,
@@ -4521,6 +4557,7 @@ def run_worker(
     timing_start_event = torch.cuda.Event(enable_timing=True) if two_cycle_timing else None
     global _operation_calibrator
     calibration_flag = os.environ.get("DISTILLSCHEDULE_LIVEWAN_OPERATION_CALIBRATION", "0")
+    transport_observer = None
     _require(calibration_flag in {"0", "1"}, "invalid operation calibration flag")
     _require(_operation_calibrator is None, "operation calibrator already active")
     if calibration_flag == "1":
@@ -4530,7 +4567,21 @@ def run_worker(
             torch=torch, device=device, rank=rank,
             source_head=os.environ["LIVEWAN_EXPECTED_HEAD"],
             implementation=os.environ.get("DISTILLSCHEDULE_SEARCH_CANDIDATE_ID", ""),
+            runtime_metadata=lambda: {
+                **dict(versions),
+                'shadow_loaded_version': (
+                    critic_shadow_hot_sync.events[-1]['version']
+                    if critic_shadow_hot_sync is not None
+                    and critic_shadow_hot_sync.is_generator
+                    and critic_shadow_hot_sync.events else None),
+            },
         )
+        if runahead_host_transport is not None:
+            from distillschedule.search.livewan_action_observation import TransportObserver
+            transport_observer = TransportObserver(torch=torch, device=device, rank=rank)
+            runahead_host_transport.observer = transport_observer
+            if critic_shadow_hot_sync is not None:
+                critic_shadow_hot_sync.observer = transport_observer
     if timing_start_event is not None:
         timing_start_event.record(torch.cuda.current_stream(device))
     timing_start_ns = time.perf_counter_ns()
@@ -4714,6 +4765,14 @@ def run_worker(
     operation_calibration = None
     if _operation_calibrator is not None:
         operation_calibration = _operation_calibrator.finish()
+        if transport_observer is not None:
+            operation_calibration['transport_observation'] = transport_observer.finish()
+            if operation_calibration['transport_observation']['status'] != 'PASS':
+                operation_calibration['status'] = 'FAIL'
+            operation_calibration['native_transport_contract'] = {
+                'runahead': dict(runahead_host_transport.receipt()),
+                'shadow': dict(critic_shadow_hot_sync.receipt()) if critic_shadow_hot_sync is not None else None,
+            }
         _operation_calibrator = None
         atomic_json(output_dir / "operation_calibration" / f"rank_{rank:03d}.json",
                     operation_calibration)
@@ -5364,6 +5423,7 @@ def _run_baseline_two_cycle_timing(
         )
 
 
+@_observe_native_action('latent_nccl_receive_wait')
 def _recv_pair(
     torch: Any, *, source: int, device: Any, receive_context: bool = True
 ) -> tuple[Any, Any | None]:
@@ -5377,6 +5437,7 @@ def _recv_pair(
     return x0, context
 
 
+@_observe_native_action('latent_nccl_submit_or_wait')
 def _send_pair(
     *,
     destination: int,

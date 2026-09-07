@@ -702,7 +702,7 @@
       "target": "src/distillschedule/runtime/livewan_attention_backend.py"
     },
     {
-      "integrated_sha256": "58b71bea15729d0dc81f5fc2f91f51c7629c8a5cc7d6714290b874d4b89957d5",
+      "integrated_sha256": "1219b5c1aaa4ae29ba5da7b83aca61983a7cc3cb761c0fa8e684af6f1b9395f0",
       "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
       "source_path": "src/distillschedule/runtime/livewan_critic_shadow_sync.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -725,7 +725,7 @@
           "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
         }
       ],
-      "integrated_sha256": "dd7b5cbc51959b060a4d70f0e46181dd9b460a4c88a6adafe706371c000502c9",
+      "integrated_sha256": "afaa13b0a76a5f9dbfb6b4884ecd97ee5c46908a34a2b3cfd2b3256919d7ec59",
       "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "src/distillschedule/runtime/livewan_crossscale_worker.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -740,7 +740,7 @@
       "target": "src/distillschedule/runtime/livewan_grad_reducer.py"
     },
     {
-      "integrated_sha256": "7b219ed51896053ed04d41240a53a39e13724aa196e6387a9028592fbe09bc2a",
+      "integrated_sha256": "ee95b11f35a99945e5ba87b8bc1fb49a01a0f8f8afaf50bfbacdc553297f6ff8",
       "source_commit": "c2a1ee389f7fe93dd9c289ab32068e41e5b9a90b",
       "source_path": "src/distillschedule/runtime/livewan_host_runahead.py",
       "source_repository": "sliortega295-ops/DMD-System",

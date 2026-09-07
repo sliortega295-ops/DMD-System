@@ -18,13 +18,14 @@ from .contracts import require
 
 class AsyncRangeCollector:
     def __init__(self, *, torch: Any, device: Any, rank: int, source_head: str,
-                 implementation: str, clock=perf_counter_ns):
+                 implementation: str, clock=perf_counter_ns, runtime_metadata=None):
         self.torch, self.device, self.clock = torch, device, clock
         self.thread = threading.get_ident()
         self.rows, self.stack = [], []
         self.boundaries = []
         self.cycle, self.finished = 0, False
         self.identity = dict(rank=rank, source_head=source_head, implementation=implementation)
+        self.runtime_metadata = runtime_metadata
         self.origin = self._event()
         self.static_bytes = int(torch.cuda.memory_allocated(device))
 
@@ -46,13 +47,17 @@ class AsyncRangeCollector:
         return event
 
     @contextmanager
-    def range(self, label: str):
+    def range(self, label: str, *, metadata=None):
         require(not self.finished and threading.get_ident() == self.thread,
                 "range collector is single issuing-thread and cannot resume")
         index = len(self.rows)
         row = {"index": index, "parent": self.stack[-1] if self.stack else None,
                "cycle": self.cycle, "label": label, "start_event": self._event(),
                "host_start_ns": self.clock(), "status": "RUNNING"}
+        if metadata is not None:
+            row['metadata'] = dict(metadata)
+        if self.runtime_metadata is not None:
+            row['runtime_before'] = dict(self.runtime_metadata())
         self.rows.append(row)
         self.stack.append(index)
         try:
@@ -65,6 +70,8 @@ class AsyncRangeCollector:
             row["host_stop_ns"] = self.clock()
             row["stop_event"] = self._event()
             row["allocated_at_return_bytes"] = int(self.torch.cuda.memory_allocated(self.device))
+            if self.runtime_metadata is not None:
+                row['runtime_after'] = dict(self.runtime_metadata())
             require(self.stack.pop() == index, "range nesting changed")
 
     def finish(self) -> dict:

@@ -15,6 +15,7 @@ step 0's differentiable DMD exchange.
 from __future__ import annotations
 
 from concurrent.futures import Future, ThreadPoolExecutor
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
@@ -53,6 +54,13 @@ class PinnedHostRunaheadTransport:
     send_futures: dict[tuple[int, int], Future[Any]] = field(default_factory=dict)
     sent_keys: set[tuple[int, int]] = field(default_factory=set)
     received_keys: set[tuple[int, int]] = field(default_factory=set)
+    observer: Any | None = None  # Attached only by native operation calibration.
+
+    def _observe(self, clock: str, kind: str, key: tuple[int, int], **kwargs):
+        observer = getattr(self, 'observer', None)
+        if observer is None:
+            return nullcontext()
+        return getattr(observer, clock + '_range')(kind, key=key, nbytes=self.payload_bytes, **kwargs)
 
     def __post_init__(self) -> None:
         if self.cycles < 1:
@@ -112,14 +120,16 @@ class PinnedHostRunaheadTransport:
 
     def _send_after_copy(self, key: tuple[int, int], event: Any, source: Any) -> None:
         self.torch.cuda.set_device(self.device)
-        event.synchronize()
-        work = self.dist.isend(
-            self.buffers[key],
-            dst=self.peer,
-            group=self.group,
-            tag=runahead_tag(*key, waves_per_step=self.waves_per_step),
-        )
-        work.wait()
+        with self._observe('host', 'sender_copy_ready_wait', key):
+            event.synchronize()
+        with self._observe('host', 'gloo_send_completion', key):
+            work = self.dist.isend(
+                self.buffers[key],
+                dst=self.peer,
+                group=self.group,
+                tag=runahead_tag(*key, waves_per_step=self.waves_per_step),
+            )
+            work.wait()
         # ``source`` deliberately remains captured until the D2H copy and Gloo
         # send complete.  This makes its CUDA/storage lifetime explicit.
         del source
@@ -141,7 +151,8 @@ class PinnedHostRunaheadTransport:
         self.copy_stream.wait_stream(producer_stream)
         event = self.torch.cuda.Event(enable_timing=False)
         with self.torch.cuda.stream(self.copy_stream):
-            self.buffers[key].copy_(source, non_blocking=True)
+            with self._observe('gpu', 'latent_d2h', key, stream=self.copy_stream):
+                self.buffers[key].copy_(source, non_blocking=True)
             event.record(self.copy_stream)
         self.copy_events[key] = event
         self.send_futures[key] = self.executor.submit(
@@ -156,7 +167,8 @@ class PinnedHostRunaheadTransport:
         event = self.copy_events.get(key)
         if event is None:
             raise RuntimeError(f"run-ahead staging event is missing: {key}")
-        event.synchronize()
+        with self._observe('host', 'streamer_reuse_copy_wait', key):
+            event.synchronize()
 
     def receive_to_device(self, *, step: int, wave: int) -> Any:
         if self.is_generator:
@@ -167,9 +179,11 @@ class PinnedHostRunaheadTransport:
         work = self.receive_works.get(key)
         if work is None:
             raise RuntimeError(f"preposted run-ahead receive is missing: {key}")
-        work.wait()
-        value = self.torch.empty(self.shape, dtype=self.dtype, device=self.device)
-        value.copy_(self.buffers[key], non_blocking=True)
+        with self._observe('host', 'gloo_receive_wait', key):
+            work.wait()
+        with self._observe('gpu', 'latent_h2d', key):
+            value = self.torch.empty(self.shape, dtype=self.dtype, device=self.device)
+            value.copy_(self.buffers[key], non_blocking=True)
         self.received_keys.add(key)
         return value
 
