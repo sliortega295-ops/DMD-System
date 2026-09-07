@@ -1,0 +1,181 @@
+id,pool,cycle,step,family,native_source,required_versions,produced_versions
+s0.g.rollout.w0,generator_pool,1,0,rollout,prepare_rollout,"{""generator"": 0}",{}
+s0.latent.delivery.w0,link,1,0,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s0.latent.issue.w0,generator_pool,1,0,latent_submit,_send_pair,{},{}
+s0.latent.ready.w0,score_pool,1,0,latent_ready,_recv_pair,{},{}
+s0.latent.complete.w0,generator_transport,1,0,latent_complete,native NCCL send completion,{},{}
+s0.g.rollout.w1,generator_pool,1,0,rollout,prepare_rollout,"{""generator"": 0}",{}
+s0.latent.delivery.w1,link,1,0,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s0.latent.issue.w1,generator_pool,1,0,latent_submit,_send_pair,{},{}
+s0.latent.ready.w1,score_pool,1,0,latent_ready,_recv_pair,{},{}
+s0.latent.complete.w1,generator_transport,1,0,latent_complete,native NCCL send completion,{},{}
+s0.c.backward,score_pool,1,0,critic_backward,critic_backward_for_batch,"{""critic"": 0}",{}
+s0.c.commit,score_pool,1,0,critic_commit,reducer.finish -> clip -> optimizer.step,"{""critic"": 0}","{""critic"": 1}"
+s1.g.rollout.w0,generator_pool,1,1,rollout,prepare_rollout,"{""generator"": 1}",{}
+s1.latent.delivery.w0,link,1,1,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s1.latent.issue.w0,generator_pool,1,1,latent_submit,PinnedHostRunaheadTransport.enqueue_send,{},{}
+s1.latent.ready.w0,score_pool,1,1,latent_ready,PinnedHostRunaheadTransport.receive_to_device,{},{}
+s1.latent.complete.w0,generator_transport,1,1,latent_complete,PinnedHostRunaheadTransport._send_after_copy,{},{}
+s1.latent.d2h_ready.w0,generator_transport,1,1,latent_d2h_ready,native copy event,{},{}
+s1.g.rollout.w1,generator_pool,1,1,rollout,prepare_rollout,"{""generator"": 1}",{}
+s1.latent.delivery.w1,link,1,1,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s1.latent.issue.w1,generator_pool,1,1,latent_submit,PinnedHostRunaheadTransport.enqueue_send,{},{}
+s1.latent.ready.w1,score_pool,1,1,latent_ready,PinnedHostRunaheadTransport.receive_to_device,{},{}
+s1.latent.complete.w1,generator_transport,1,1,latent_complete,PinnedHostRunaheadTransport._send_after_copy,{},{}
+s1.latent.d2h_ready.w1,generator_transport,1,1,latent_d2h_ready,native copy event,{},{}
+s1.c.backward,score_pool,1,1,critic_backward,critic_backward_for_batch,"{""critic"": 1}",{}
+s1.c.commit,score_pool,1,1,critic_commit,reducer.finish -> clip -> optimizer.step,"{""critic"": 1}","{""critic"": 2}"
+s2.g.rollout.w0,generator_pool,1,2,rollout,prepare_rollout,"{""generator"": 1}",{}
+s2.latent.delivery.w0,link,1,2,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s2.latent.issue.w0,generator_pool,1,2,latent_submit,PinnedHostRunaheadTransport.enqueue_send,{},{}
+s2.latent.ready.w0,score_pool,1,2,latent_ready,PinnedHostRunaheadTransport.receive_to_device,{},{}
+s2.latent.complete.w0,generator_transport,1,2,latent_complete,PinnedHostRunaheadTransport._send_after_copy,{},{}
+s2.latent.d2h_ready.w0,generator_transport,1,2,latent_d2h_ready,native copy event,{},{}
+s2.g.rollout.w1,generator_pool,1,2,rollout,prepare_rollout,"{""generator"": 1}",{}
+s2.latent.delivery.w1,link,1,2,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s2.latent.issue.w1,generator_pool,1,2,latent_submit,PinnedHostRunaheadTransport.enqueue_send,{},{}
+s2.latent.ready.w1,score_pool,1,2,latent_ready,PinnedHostRunaheadTransport.receive_to_device,{},{}
+s2.latent.complete.w1,generator_transport,1,2,latent_complete,PinnedHostRunaheadTransport._send_after_copy,{},{}
+s2.latent.d2h_ready.w1,generator_transport,1,2,latent_d2h_ready,native copy event,{},{}
+s2.c.backward,score_pool,1,2,critic_backward,critic_backward_for_batch,"{""critic"": 2}",{}
+s2.c.commit,score_pool,1,2,critic_commit,reducer.finish -> clip -> optimizer.step,"{""critic"": 2}","{""critic"": 3}"
+s3.g.rollout.w0,generator_pool,1,3,rollout,prepare_rollout,"{""generator"": 1}",{}
+s3.latent.delivery.w0,link,1,3,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s3.latent.issue.w0,generator_pool,1,3,latent_submit,PinnedHostRunaheadTransport.enqueue_send,{},{}
+s3.latent.ready.w0,score_pool,1,3,latent_ready,PinnedHostRunaheadTransport.receive_to_device,{},{}
+s3.latent.complete.w0,generator_transport,1,3,latent_complete,PinnedHostRunaheadTransport._send_after_copy,{},{}
+s3.latent.d2h_ready.w0,generator_transport,1,3,latent_d2h_ready,native copy event,{},{}
+s3.g.rollout.w1,generator_pool,1,3,rollout,prepare_rollout,"{""generator"": 1}",{}
+s3.latent.delivery.w1,link,1,3,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s3.latent.issue.w1,generator_pool,1,3,latent_submit,PinnedHostRunaheadTransport.enqueue_send,{},{}
+s3.latent.ready.w1,score_pool,1,3,latent_ready,PinnedHostRunaheadTransport.receive_to_device,{},{}
+s3.latent.complete.w1,generator_transport,1,3,latent_complete,PinnedHostRunaheadTransport._send_after_copy,{},{}
+s3.latent.d2h_ready.w1,generator_transport,1,3,latent_d2h_ready,native copy event,{},{}
+s3.c.backward,score_pool,1,3,critic_backward,critic_backward_for_batch,"{""critic"": 3}",{}
+s3.c.commit,score_pool,1,3,critic_commit,reducer.finish -> clip -> optimizer.step,"{""critic"": 3}","{""critic"": 4}"
+s4.g.rollout.w0,generator_pool,1,4,rollout,prepare_rollout,"{""generator"": 1}",{}
+s4.latent.delivery.w0,link,1,4,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s4.latent.issue.w0,generator_pool,1,4,latent_submit,PinnedHostRunaheadTransport.enqueue_send,{},{}
+s4.latent.ready.w0,score_pool,1,4,latent_ready,PinnedHostRunaheadTransport.receive_to_device,{},{}
+s4.latent.complete.w0,generator_transport,1,4,latent_complete,PinnedHostRunaheadTransport._send_after_copy,{},{}
+s4.latent.d2h_ready.w0,generator_transport,1,4,latent_d2h_ready,native copy event,{},{}
+s4.g.rollout.w1,generator_pool,1,4,rollout,prepare_rollout,"{""generator"": 1}",{}
+s4.latent.delivery.w1,link,1,4,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s4.latent.issue.w1,generator_pool,1,4,latent_submit,PinnedHostRunaheadTransport.enqueue_send,{},{}
+s4.latent.ready.w1,score_pool,1,4,latent_ready,PinnedHostRunaheadTransport.receive_to_device,{},{}
+s4.latent.complete.w1,generator_transport,1,4,latent_complete,PinnedHostRunaheadTransport._send_after_copy,{},{}
+s4.latent.d2h_ready.w1,generator_transport,1,4,latent_d2h_ready,native copy event,{},{}
+s4.c.backward,score_pool,1,4,critic_backward,critic_backward_for_batch,"{""critic"": 4}",{}
+s4.c.commit,score_pool,1,4,critic_commit,reducer.finish -> clip -> optimizer.step,"{""critic"": 4}","{""critic"": 5}"
+s5.g.rollout.w0,generator_pool,2,5,rollout,prepare_rollout,"{""generator"": 1}",{}
+s5.latent.delivery.w0,link,2,5,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s5.latent.issue.w0,generator_pool,2,5,latent_submit,PinnedHostRunaheadTransport.enqueue_send,{},{}
+s5.latent.ready.w0,score_pool,2,5,latent_ready,PinnedHostRunaheadTransport.receive_to_device,{},{}
+s5.latent.complete.w0,generator_transport,2,5,latent_complete,PinnedHostRunaheadTransport._send_after_copy,{},{}
+s5.latent.d2h_ready.w0,generator_transport,2,5,latent_d2h_ready,native copy event,{},{}
+s5.g.rollout.w1,generator_pool,2,5,rollout,prepare_rollout,"{""generator"": 1}",{}
+s5.latent.delivery.w1,link,2,5,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s5.latent.issue.w1,generator_pool,2,5,latent_submit,_send_pair,{},{}
+s5.latent.ready.w1,score_pool,2,5,latent_ready,_recv_pair,{},{}
+s5.latent.complete.w1,generator_transport,2,5,latent_complete,native NCCL send completion,{},{}
+s5.c.backward,score_pool,2,5,critic_backward,critic_backward_for_batch,"{""critic"": 5}",{}
+s5.c.commit,score_pool,2,5,critic_commit,reducer.finish -> clip -> optimizer.step,"{""critic"": 5}","{""critic"": 6}"
+s6.g.rollout.w0,generator_pool,2,6,rollout,prepare_rollout,"{""generator"": 2}",{}
+s6.latent.delivery.w0,link,2,6,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s6.latent.issue.w0,generator_pool,2,6,latent_submit,PinnedHostRunaheadTransport.enqueue_send,{},{}
+s6.latent.ready.w0,score_pool,2,6,latent_ready,PinnedHostRunaheadTransport.receive_to_device,{},{}
+s6.latent.complete.w0,generator_transport,2,6,latent_complete,PinnedHostRunaheadTransport._send_after_copy,{},{}
+s6.latent.d2h_ready.w0,generator_transport,2,6,latent_d2h_ready,native copy event,{},{}
+s6.g.rollout.w1,generator_pool,2,6,rollout,prepare_rollout,"{""generator"": 2}",{}
+s6.latent.delivery.w1,link,2,6,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s6.latent.issue.w1,generator_pool,2,6,latent_submit,PinnedHostRunaheadTransport.enqueue_send,{},{}
+s6.latent.ready.w1,score_pool,2,6,latent_ready,PinnedHostRunaheadTransport.receive_to_device,{},{}
+s6.latent.complete.w1,generator_transport,2,6,latent_complete,PinnedHostRunaheadTransport._send_after_copy,{},{}
+s6.latent.d2h_ready.w1,generator_transport,2,6,latent_d2h_ready,native copy event,{},{}
+s6.c.backward,score_pool,2,6,critic_backward,critic_backward_for_batch,"{""critic"": 6}",{}
+s6.c.commit,score_pool,2,6,critic_commit,reducer.finish -> clip -> optimizer.step,"{""critic"": 6}","{""critic"": 7}"
+s7.g.rollout.w0,generator_pool,2,7,rollout,prepare_rollout,"{""generator"": 2}",{}
+s7.latent.delivery.w0,link,2,7,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s7.latent.issue.w0,generator_pool,2,7,latent_submit,PinnedHostRunaheadTransport.enqueue_send,{},{}
+s7.latent.ready.w0,score_pool,2,7,latent_ready,PinnedHostRunaheadTransport.receive_to_device,{},{}
+s7.latent.complete.w0,generator_transport,2,7,latent_complete,PinnedHostRunaheadTransport._send_after_copy,{},{}
+s7.latent.d2h_ready.w0,generator_transport,2,7,latent_d2h_ready,native copy event,{},{}
+s7.g.rollout.w1,generator_pool,2,7,rollout,prepare_rollout,"{""generator"": 2}",{}
+s7.latent.delivery.w1,link,2,7,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s7.latent.issue.w1,generator_pool,2,7,latent_submit,PinnedHostRunaheadTransport.enqueue_send,{},{}
+s7.latent.ready.w1,score_pool,2,7,latent_ready,PinnedHostRunaheadTransport.receive_to_device,{},{}
+s7.latent.complete.w1,generator_transport,2,7,latent_complete,PinnedHostRunaheadTransport._send_after_copy,{},{}
+s7.latent.d2h_ready.w1,generator_transport,2,7,latent_d2h_ready,native copy event,{},{}
+s7.c.backward,score_pool,2,7,critic_backward,critic_backward_for_batch,"{""critic"": 7}",{}
+s7.c.commit,score_pool,2,7,critic_commit,reducer.finish -> clip -> optimizer.step,"{""critic"": 7}","{""critic"": 8}"
+s8.g.rollout.w0,generator_pool,2,8,rollout,prepare_rollout,"{""generator"": 2}",{}
+s8.latent.delivery.w0,link,2,8,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s8.latent.issue.w0,generator_pool,2,8,latent_submit,PinnedHostRunaheadTransport.enqueue_send,{},{}
+s8.latent.ready.w0,score_pool,2,8,latent_ready,PinnedHostRunaheadTransport.receive_to_device,{},{}
+s8.latent.complete.w0,generator_transport,2,8,latent_complete,PinnedHostRunaheadTransport._send_after_copy,{},{}
+s8.latent.d2h_ready.w0,generator_transport,2,8,latent_d2h_ready,native copy event,{},{}
+s8.g.rollout.w1,generator_pool,2,8,rollout,prepare_rollout,"{""generator"": 2}",{}
+s8.latent.delivery.w1,link,2,8,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s8.latent.issue.w1,generator_pool,2,8,latent_submit,PinnedHostRunaheadTransport.enqueue_send,{},{}
+s8.latent.ready.w1,score_pool,2,8,latent_ready,PinnedHostRunaheadTransport.receive_to_device,{},{}
+s8.latent.complete.w1,generator_transport,2,8,latent_complete,PinnedHostRunaheadTransport._send_after_copy,{},{}
+s8.latent.d2h_ready.w1,generator_transport,2,8,latent_d2h_ready,native copy event,{},{}
+s8.c.backward,score_pool,2,8,critic_backward,critic_backward_for_batch,"{""critic"": 8}",{}
+s8.c.commit,score_pool,2,8,critic_commit,reducer.finish -> clip -> optimizer.step,"{""critic"": 8}","{""critic"": 9}"
+s9.g.rollout.w0,generator_pool,2,9,rollout,prepare_rollout,"{""generator"": 2}",{}
+s9.latent.delivery.w0,link,2,9,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s9.latent.issue.w0,generator_pool,2,9,latent_submit,PinnedHostRunaheadTransport.enqueue_send,{},{}
+s9.latent.ready.w0,score_pool,2,9,latent_ready,PinnedHostRunaheadTransport.receive_to_device,{},{}
+s9.latent.complete.w0,generator_transport,2,9,latent_complete,PinnedHostRunaheadTransport._send_after_copy,{},{}
+s9.latent.d2h_ready.w0,generator_transport,2,9,latent_d2h_ready,native copy event,{},{}
+s9.g.rollout.w1,generator_pool,2,9,rollout,prepare_rollout,"{""generator"": 2}",{}
+s9.latent.delivery.w1,link,2,9,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s9.latent.issue.w1,generator_pool,2,9,latent_submit,PinnedHostRunaheadTransport.enqueue_send,{},{}
+s9.latent.ready.w1,score_pool,2,9,latent_ready,PinnedHostRunaheadTransport.receive_to_device,{},{}
+s9.latent.complete.w1,generator_transport,2,9,latent_complete,PinnedHostRunaheadTransport._send_after_copy,{},{}
+s9.latent.d2h_ready.w1,generator_transport,2,9,latent_d2h_ready,native copy event,{},{}
+s9.c.backward,score_pool,2,9,critic_backward,critic_backward_for_batch,"{""critic"": 9}",{}
+s9.c.commit,score_pool,2,9,critic_commit,reducer.finish -> clip -> optimizer.step,"{""critic"": 9}","{""critic"": 10}"
+s0.teacher.delivery.w0,link,1,0,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s0.g.fake.w0,generator_pool,1,0,fake_velocity,context -> flow -> _dmd_fake_velocity,"{""shadow_epoch"": 0}",{}
+s0.s.teacher.w0,score_pool,1,0,teacher_velocity,local context -> flow -> _dmd_teacher_velocity,"{""teacher"": 0}",{}
+s0.teacher.issue.w0,score_pool,1,0,teacher_submit,dist.send,{},{}
+s0.teacher.ready.w0,generator_pool,1,0,teacher_ready,dist.recv,{},{}
+s0.teacher.complete.w0,score_pool,1,0,teacher_complete,dist.send return,{},{}
+s0.g.combine.w0,generator_pool,1,0,combine,_combine_dmd_gradient,{},{}
+s0.g.backward.w0,generator_pool,1,0,generator_backward,generator_backward_for_sample,"{""generator"": 0}",{}
+s0.teacher.delivery.w1,link,1,0,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s0.g.fake.w1,generator_pool,1,0,fake_velocity,context -> flow -> _dmd_fake_velocity,"{""shadow_epoch"": 0}",{}
+s0.s.teacher.w1,score_pool,1,0,teacher_velocity,local context -> flow -> _dmd_teacher_velocity,"{""teacher"": 0}",{}
+s0.teacher.issue.w1,score_pool,1,0,teacher_submit,dist.isend,{},{}
+s0.teacher.ready.w1,generator_pool,1,0,teacher_ready,dist.recv,{},{}
+s0.teacher.complete.w1,score_pool,1,0,teacher_complete,grad1_work.wait,{},{}
+s0.g.combine.w1,generator_pool,1,0,combine,_combine_dmd_gradient,{},{}
+s0.g.backward.w1,generator_pool,1,0,generator_backward,generator_backward_for_sample,"{""generator"": 0}",{}
+s0.g.commit,generator_pool,1,0,generator_commit,gradient mean -> clip -> optimizer.step,"{""generator"": 0}","{""generator"": 1}"
+cycle1.g.role_return,generator_pool,1,4,role_return,_run_pipeline_8x8 return,{},{}
+cycle1.g.clear_precomputed_first,generator_pool,1,4,clear_precomputed_handle,_run_pipeline_8x8_continuous: endpoint/trajectory anchor -> precomputed_first=None,{},{}
+s5.teacher.delivery.w0,link,2,5,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s5.g.fake.w0,generator_pool,2,5,fake_velocity,context -> flow -> _dmd_fake_velocity,"{""shadow_epoch"": 1}",{}
+s5.s.teacher.w0,score_pool,2,5,teacher_velocity,local context -> flow -> _dmd_teacher_velocity,"{""teacher"": 0}",{}
+s5.teacher.issue.w0,score_pool,2,5,teacher_submit,dist.send,{},{}
+s5.teacher.ready.w0,generator_pool,2,5,teacher_ready,dist.recv,{},{}
+s5.teacher.complete.w0,score_pool,2,5,teacher_complete,dist.send return,{},{}
+s5.g.combine.w0,generator_pool,2,5,combine,_combine_dmd_gradient,{},{}
+s5.g.backward.w0,generator_pool,2,5,generator_backward,generator_backward_for_sample,"{""generator"": 1}",{}
+s5.teacher.delivery.w1,link,2,5,protocol_delivery,LOGICAL_MESSAGE_DELIVERY_NOT_OBSERVED_HOST_RETURN_ORDER,{},{}
+s5.g.fake.w1,generator_pool,2,5,fake_velocity,context -> flow -> _dmd_fake_velocity,"{""shadow_epoch"": 1}",{}
+s5.s.teacher.w1,score_pool,2,5,teacher_velocity,local context -> flow -> _dmd_teacher_velocity,"{""teacher"": 0}",{}
+s5.teacher.issue.w1,score_pool,2,5,teacher_submit,dist.isend,{},{}
+s5.teacher.ready.w1,generator_pool,2,5,teacher_ready,dist.recv,{},{}
+s5.teacher.complete.w1,score_pool,2,5,teacher_complete,grad1_work.wait,{},{}
+s5.g.combine.w1,generator_pool,2,5,combine,_combine_dmd_gradient,{},{}
+s5.g.backward.w1,generator_pool,2,5,generator_backward,generator_backward_for_sample,"{""generator"": 1}",{}
+s5.g.commit,generator_pool,2,5,generator_commit,gradient mean -> clip -> optimizer.step,"{""generator"": 1}","{""generator"": 2}"
+cycle2.g.role_return,generator_pool,2,9,role_return,_run_pipeline_8x8 return,{},{}
+cycle2.g.clear_precomputed_first,generator_pool,2,9,clear_precomputed_handle,_run_pipeline_8x8_continuous: endpoint/trajectory anchor -> precomputed_first=None,{},{}
+shadow.pack.C5,score_pool,2,5,shadow_pack,PairedCriticShadowSync.begin_source,"{""critic"": 5}",{}
+shadow.load.C5,generator_pool,2,5,shadow_load,PairedCriticShadowSync.receive_and_load,"{""shadow_epoch"": 0}","{""shadow_epoch"": 1}"
+shadow.source_wait.C5,score_pool,2,5,shadow_source_wait,PairedCriticShadowSync.wait_source,{},{}
+transport.finish.G,generator_pool,2,9,transport_drain,PinnedHostRunaheadTransport.finish,{},{}
+transport.finish.Score,score_pool,2,9,transport_drain,PinnedHostRunaheadTransport.finish,{},{}

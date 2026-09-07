@@ -1,0 +1,15 @@
+{
+  "status": "PASS_CPU_SOURCE_GRAPH_ONLY",
+  "base_head": "878aff490ce28c661ac1d927f08f8846992baf45",
+  "observed_runtime_head": "78e501bc1727013d94e356f697051b4d11cba4be",
+  "source_files": {
+    "src/distillschedule/search/livewan_pool_contract.py": "52b4a0e284e505ee87370dc0183769007d11aef1339682a2771cc5bfdcf484da",
+    "tests/test_refactor_livewan_pool_contract.py": "b860d977cc75a8c835f71e8a63cc660742ef822f8e75bf60ad991dd47db1317c"
+  },
+  "tests": "96 passed in 2.53s",
+  "test_command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src <validated-cpu-python> -m pytest -q tests/test_refactor_livewan_pool_contract.py tests/test_refactor_livewan_action_observation.py tests/test_refactor_prepared_cycle.py tests/test_refactor_model_planning.py",
+  "review": "READ_ONLY_REVIEW_COMPLETED_FINAL_FINDING_FIXED",
+  "new_gpu_runs": 0,
+  "cost_admission": "UNADMITTED",
+  "native_lowering": "NOT_RUN"
+}

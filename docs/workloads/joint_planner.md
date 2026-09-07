@@ -24,6 +24,13 @@ The latter passes 16-rank identity/byte reconciliation, but does not yet admit a
 independent G/Score/link model. These narrower completion states supersede stale
 "not run" notes for the same units, not the five-workload unfinished boundary.
 
+The next LiveWan structural unit now also reuses those observations:
+[source-bound pool DAG](../experiments/DMD_LIVEWAN_POOL_DAG_20260907.md).
+Its 180 nodes/397 dependencies preserve native step0 pre-commit G provenance,
+C5 shadow publication and async transport safety. This is **CPU structure only**;
+76 storage descriptors, independent service costs and native action lowering
+remain unadmitted. No LiveWan matrix was repeated.
+
 Latest evidence: [Wan closed-loop native diagnostic](../experiments/DMD_JOINT_PLANNER_WAN_CLOSED_LOOP_20260907.md).
 Runtime source is `4e3ffb59c21429f3e9e714f14006f5ae6afbd002`, not a later
 report-publication commit. Six current-source native trials completed 16/16
