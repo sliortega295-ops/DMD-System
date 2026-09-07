@@ -27,8 +27,11 @@ hardware remain bound by the existing `CostModel` and content-hashed receipts.
 Changing concurrent NCCL, cold optimizer state, shape, precision or local kernel
 requires new calibration. Serial measurements do not prove contention costs.
 
-CPU fixtures demonstrate reuse/rejection, **not measured prediction accuracy**.
-Native component calibration and held-out schedule prediction remain unfinished.
+CPU fixtures demonstrate reuse/rejection, not prediction accuracy. The subsequent
+[Wan component experiment](../experiments/DMD_COMPOSABLE_WAN_ACTIONS_20260907.md)
+completed measured reuse and a held-out native window2 confirmation: predicted
+24.513251 s versus native cycle2 24.368434 s (+0.59428% error). Do not rerun that
+completed unit. This does not establish arbitrary cross-pool overlap prediction.
 
 ## Native Wan action binding
 
@@ -57,7 +60,7 @@ the program before START and materializes its successful receipt after STOP.
 
 | Workload | Next native requirement |
 |---|---|
-| Wan | Generated-order world16 validation; measured reusable action costs and held-out search execution |
+| Wan | Completed bounded serial action-cost/search/held-out loop; broader pool/overlap changes unvalidated |
 | LiveWan | Separate actual G/C operations from coupled-commit envelopes; legal pool/wave/transport lowering |
 | H3 | Operation-owned RNG/sample bindings for interleaving; shared adapter/recompute exclusion; measured action costs |
 | Helios No-GAN | Native action binding and genuine same-process two-cycle trace/version generalization |
@@ -68,3 +71,14 @@ searchable and actually consumed together; registering profiles is insufficient.
 User-approved finite numerical drift may be admitted as explicit diagnostic
 exploration while retaining original strict metrics. It does not waive sample,
 RNG, version, call/update census, finite, source, resource or completeness gates.
+
+## LiveWan missing-boundary unit completed
+
+[Native action observations](../experiments/DMD_LIVEWAN_NATIVE_ACTION_OBSERVATIONS_20260907.md)
+now cover 336 core helper calls and actual two-thread/stream transport boundaries
+on all 16 ranks over two cycles. The source-owned trace/RNG/version checks,
+160 sample producer-consumer identities and copy-byte/event reconciliation pass.
+No old candidate matrix or baseline was repeated. The trajectory observations
+remain **not independently admitted service costs**. Workspace/lifetimes,
+generated distributed action execution and held-out feedback remain missing;
+successful instrumentation is not planner completion.

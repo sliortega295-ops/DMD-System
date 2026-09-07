@@ -17,6 +17,13 @@ Broader sharing/reordering dimensions are not yet GPU-validated generated planne
 CPU simulation, native support, diagnostic validation and strict numerical
 equivalence remain separate statuses.
 
+Further completed units, without repeating those matrices:
+[Wan reusable action costs and held-out execution](../experiments/DMD_COMPOSABLE_WAN_ACTIONS_20260907.md)
+and [LiveWan native helper/transport observations](../experiments/DMD_LIVEWAN_NATIVE_ACTION_OBSERVATIONS_20260907.md).
+The latter passes 16-rank identity/byte reconciliation, but does not yet admit an
+independent G/Score/link model. These narrower completion states supersede stale
+"not run" notes for the same units, not the five-workload unfinished boundary.
+
 Latest evidence: [Wan closed-loop native diagnostic](../experiments/DMD_JOINT_PLANNER_WAN_CLOSED_LOOP_20260907.md).
 Runtime source is `4e3ffb59c21429f3e9e714f14006f5ae6afbd002`, not a later
 report-publication commit. Six current-source native trials completed 16/16

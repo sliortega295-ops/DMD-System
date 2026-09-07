@@ -1,0 +1,19 @@
+{
+  "status": "GO_NATIVE_ACTION_OBSERVATION",
+  "time_utc": "2026-09-07T17:45:56.605614+00:00",
+  "run_id": "jointp_livewan_actions_20260907_r1-native-observation",
+  "source_head": "78e501bc1727013d94e356f697051b4d11cba4be",
+  "purpose": "MISSING_HELPER_AND_TRANSPORT_OBSERVATIONS_NOT_REPEAT_OF_COMPLETED_MATRIX",
+  "native_mode": "trajectory",
+  "cycles": 2,
+  "correctness_probes": "UNCHANGED",
+  "timing_authority": false,
+  "independent_costs_admitted": false,
+  "rank_topology": "G0..7_SCORE8..15",
+  "global_batch": 16,
+  "physical_critic_batch": 2,
+  "locks": "NATIVE_LAUNCHERS_HOLD_THROUGH_AUDIT_SETUP_RUN_TEARDOWN",
+  "prior_micro_canary": "jointp_livewan_actions_20260907_r1-transport-canary",
+  "prior_raw_receipts": "HASH_VERIFIED_REMOTE_NOT_RELABELED",
+  "failure_policy": "STOP_PRESERVE_NO_AUTOMATIC_RETRY"
+}
