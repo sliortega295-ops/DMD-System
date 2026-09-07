@@ -93,8 +93,6 @@ def collect_planned_node_identity(receipt: dict[str, Any], *, node_rank: int) ->
     else:
         from distillschedule.workloads.best_known.dispatch import clean_environment
         env = clean_environment(node)
-        if receipt["profile_id"] == "livewan_crossscale_pipeline_best":
-            env["LD_LIBRARY_PATH"] = str(Path(node["python"]).parent.parent / "lib")
     result = subprocess.check_output([node["python"], "-c", code], cwd=root,
         env=env, text=True, timeout=90)
     return json.loads(result)

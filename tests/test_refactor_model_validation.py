@@ -162,6 +162,33 @@ def test_gpu_identity_change_after_execution_is_not_an_accepted_measurement(tmp_
         s._validate_raw(raw, c)
 
 
+def test_livewan_identity_uses_actual_native_loader_environment(monkeypatch):
+    import sys
+    from distillschedule.search import execution, runtime_identity
+    from distillschedule.workloads.best_known.dispatch import clean_environment
+    root = repository_root()
+    head = git_head(root)
+    node = {"repo_root": str(root), "python": sys.executable,
+            "environment": {"PYTHONPATH": "/explicit/native/import/path"}}
+    receipt = {"profile_id": "livewan_crossscale_pipeline_best",
+               "integration_head": head, "nodes": [node, node]}
+    monkeypatch.setenv("LD_LIBRARY_PATH", "/inherited/wrong-libraries")
+    monkeypatch.setattr(execution, "validated_profile", lambda *a, **kw: {})
+    original = runtime_identity.subprocess.check_output
+    calls = []
+
+    def output(command, **kwargs):
+        if command[0] == sys.executable:
+            calls.append(kwargs["env"])
+            return '{"status":"CPU_TEST_ONLY"}'
+        return original(command, **kwargs)
+
+    monkeypatch.setattr(runtime_identity.subprocess, "check_output", output)
+    runtime_identity.collect_planned_node_identity(receipt, node_rank=0)
+    assert calls == [clean_environment(node)]
+    assert "LD_LIBRARY_PATH" not in calls[0]
+
+
 def test_resume_revalidates_completed_receipts_not_only_cached_result(tmp_path):
     s = session(tmp_path, budget=3)
     s.run(lambda c, phase, out: measurement(s, c))

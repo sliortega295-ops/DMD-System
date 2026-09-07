@@ -64,8 +64,13 @@ def assemble_native(receipt, preparation, identity, runtime_identity_evidence):
         rank = raw["rank"]
         require(raw["final_versions"] == dict(generator=2, critic=10, ema=0), "native versions failed")
         if w == LIVEWAN:
-            require(raw["status"] == "PASS" and raw["run_id"] == receipt["run_id"], "native rank failed")
             p = out / "operation_calibration" / f"rank_{rank:03d}.json"
+            marker = raw.get("operation_calibration", {})
+            require(raw["status"] == "PASS" and marker.get("enabled") is True
+                    and marker.get("status") == "PASS" and marker.get("path") == str(p)
+                    and marker.get("calibration_only") is True
+                    and marker.get("formal_timing_eligible") is False,
+                    "native rank/calibration run binding failed")
             cal = read(p)
             sources.append(binding(p))
             peak = raw["peak_memory"]["max_reserved_bytes"]

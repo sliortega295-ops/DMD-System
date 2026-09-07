@@ -84,14 +84,33 @@ def rebind_plan(receipt: dict[str, Any], *, run_id: str,
     require(assets == receipt["asset_config"], "replay assets/gates changed")
     from .registry import candidates
     from .wan_implementation import PREFIX, WanImplementation
-    is_joint = receipt["search_candidate"]["id"].startswith(PREFIX)
-    peer = (WanImplementation("resident", 2048, True).id if is_joint else
-            next(c.id for c in candidates(receipt["profile_id"]) if c.executable and c.id != "fsdp-reference"))
+    from .livewan_implementation import PREFIX as LIVEWAN_PREFIX, LiveWanImplementation
+    from .h3_implementation import PREFIX as H3_PREFIX, H3Implementation
+    candidate_id = receipt["search_candidate"]["id"]
+    if "model_plan" in receipt:
+        from .model_adapters import adapter_for
+        from .plan_ir import PlanningProblem
+        # validated_profile has checked the serialized graph, calibration and
+        # selected implementation. Preserve its calibrated anchor pair too.
+        problem = PlanningProblem.from_dict(receipt["model_plan"]["problem"])
+        Implementation = adapter_for(receipt["profile_id"]).implementation_type
+        require(len(problem.seeds) == 2 and problem.seeds[0] != problem.seeds[1],
+                "exactly two distinct baseline/incumbent seeds required")
+        reference_id, peer = (Implementation.from_assignment(seed).id for seed in problem.seeds)
+    elif candidate_id.startswith(PREFIX):
+        reference_id, peer = WanImplementation("fsdp", 512, False).id, WanImplementation("resident", 2048, True).id
+    elif candidate_id.startswith(LIVEWAN_PREFIX):
+        reference_id, peer = LiveWanImplementation("fsdp").id, LiveWanImplementation("pipeline").id
+    elif candidate_id.startswith(H3_PREFIX):
+        reference_id, peer = H3Implementation(2, 128).id, H3Implementation(1, 128).id
+    else:
+        reference_id = "fsdp-reference"
+        peer = next(c.id for c in candidates(receipt["profile_id"]) if c.executable and c.id != reference_id)
     coordinator_output.mkdir(parents=True, exist_ok=False)
     runner = NativeTrialRunner(workload=receipt["profile_id"], assets=assets,
         identity={"source_head": receipt["integration_head"], "asset_fingerprint": receipt["asset_fingerprint"]},
         output=coordinator_output, run_prefix=run_id, bootstrap_peer=peer,
-        reference_id=WanImplementation("fsdp", 512, False).id if is_joint else "fsdp-reference")
+        reference_id=reference_id)
     # Resolve beside the immutable source receipts; those remote asset files
     # are deliberately not downloaded onto the controller machine.
     result = runner._rpc("resolve", workload=receipt["profile_id"], candidate_id=receipt["search_candidate"]["id"],

@@ -182,8 +182,7 @@ class ModelValidationSession:
     def run(self, execute: Callable[[Candidate, str, Path], dict[str, Any]]) -> dict[str, Any]:
         with (self.output / "controller.lock").open("a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            from .wan_model_adapter import validate_native_problem
-            validate_native_problem(self.problem)
+            self.adapter.validate_native_problem(self.problem)
             self.costs.verify_receipts()
             self._verify_journal()
             result_path = self.output / "result.json"
