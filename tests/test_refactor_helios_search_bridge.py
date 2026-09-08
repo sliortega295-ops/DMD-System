@@ -172,3 +172,65 @@ def test_native_alias_cannot_enable_profiler_or_silent_recipe_fallback(tmp_path)
             assert plan['fully_resolved_profile']['runtime']['planner_implementation']==impl.assignment
         with pytest.raises(ValueError):
             resolve_candidate(workload,impl.id,mode='profile',run_id='fixture-not-run')
+
+
+def test_helios_binding_cannot_strip_component_provenance(tmp_path):
+    from distillschedule.search.cost_model import CostModel,OperationCost
+    from distillschedule.search.helios_action_costs import PRECISION
+    from distillschedule.workloads.best_known.registry import file_sha256
+    from test_refactor_model_planning import BINDING
+    binding={**BINDING,'precision_fingerprint':PRECISION}
+    raw=dict(schema_version='distillschedule.operation_calibration.v1',binding=binding,
+        key='copied-contract-key',samples_ns=[1],workspace_bytes_per_rank=1,
+        status='PASS',profiled=False,kind='native_operation',operation_contract_sha256='copied-contract-key')
+    path=tmp_path/'forged.json';path.write_text(json.dumps(raw))
+    evidence={k:raw[k] for k in ('status','profiled','kind','operation_contract_sha256')}
+    evidence.update(source_receipt=str(path),source_receipt_sha256=file_sha256(path))
+    with pytest.raises(ValueError,match='Helios.*provenance'):
+        CostModel(binding,(OperationCost(raw['key'],(1,),1,evidence),)).verify_receipts()
+
+
+def test_correctness_rank_evidence_is_bound_to_executed_run_not_relabelled_plan(tmp_path,monkeypatch):
+    from distillschedule.search import helios_native as n,execution
+    from distillschedule.runtime import helios_planner_cycle as runtime
+    # This tests source ownership, not numerical parity or a GPU state sketch.
+    monkeypatch.setattr(runtime,'_correctness_sketch',lambda *args: {'fixture_only':True})
+    rows,impl=native_rows(monkeypatch,mode='correctness')
+    plan=dict(mode='correctness',search_candidate=impl.candidate().to_dict(),
+        integration_head=rows[0]['source_head'],asset_fingerprint='assets',profile_id=impl.workload,
+        workload_semantics_hash='semantics',run_id='fixture-only',asset_config={'run_root':str(tmp_path)})
+    out=tmp_path/plan['run_id']
+    source=dict(execution_receipt={'path':str(out/'effective-contract.node0.json'),'sha256':'0'*64},
+        native_ranks=[{'path':str(out/'execution/ranks'/f'rank_{i:02d}.json'),'sha256':'0'*64} for i in range(16)])
+    monkeypatch.setattr(execution,'validated_profile',lambda p,root:p)
+    def bound(ref):
+        if ref['path'].endswith('effective-contract.node0.json'):return plan
+        return rows[int(Path(ref['path']).stem.split('_')[1])]
+    monkeypatch.setattr(n,'bound',bound)
+    n._correctness_source(source,plan,impl.id,tmp_path)
+    bad=deepcopy(source);bad['native_ranks'][10]['path']=str(tmp_path/'OTHER_RUN/execution/ranks/rank_10.json')
+    with pytest.raises(ValueError,match='rank paths'):
+        n._correctness_source(bad,plan,impl.id,tmp_path)
+    rows[10]['run_id']='unexecuted-plan'
+    with pytest.raises(ValueError,match='run IDs|run identity'):
+        n._correctness_source(source,plan,impl.id,tmp_path)
+    rows[10]['run_id']='fixture-only'
+    with pytest.raises(ValueError,match='source/assets/semantics'):
+        n._correctness_source(source,{**plan,'asset_fingerprint':'different-checkpoint'},impl.id,tmp_path)
+
+
+def test_admission_cannot_swap_comparison_sources(monkeypatch):
+    from distillschedule.search import helios_native as n
+    impl=HeliosImplementation('no-gan','world16-fsdp',512,5,False)
+    receipt=dict(search_candidate={'id':impl.id},integration_head='a'*40,profile_sha256='b'*64,asset_fingerprint='c'*64)
+    comparison=dict(schema_version=n.COMPARISON_SCHEMA,status='REVIEW_SAMPLED_PARITY_ONLY',
+        source_head=receipt['integration_head'],reference_candidate_id=impl.id,candidate_id='peer',
+        rank_count=16,cycles=2,semantics_status='PASS',sample_rng_status='PASS',finite_status='PASS',
+        initial_sampled_state_status='PASS',state_metrics=[{}]*32,loss_metrics=[{}],
+        sources={'reference':{'execution_receipt':'ACTUAL','native_ranks':'ACTUAL'},'candidate':{}})
+    data=dict(schema_version=n.GATE_SCHEMA,status='PASS',candidate_id=impl.id,comparison={},
+        integration_binding={k:receipt[k] for k in ('integration_head','profile_sha256','asset_fingerprint')},
+        execution_receipt='UNEXECUTED',native_ranks='OLD_ROWS')
+    monkeypatch.setattr(n,'bound',lambda r:comparison)
+    with pytest.raises(ValueError,match='actual comparison inputs'):
+        n.validate_admission(data,receipt)

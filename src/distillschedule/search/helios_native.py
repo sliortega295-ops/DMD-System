@@ -152,8 +152,12 @@ def validate_comparison(value):
 def prepare_pair(reference,candidate):
     for k in ('profile_id','integration_head','asset_fingerprint','workload_semantics_hash'):
         require(reference[k]==candidate[k],f'Helios pair {k} differs')
-    lo,_,lr,_=checked(reference);ro,_,rr,_=checked(candidate)
+    lo,_,lr,lrefs=checked(reference);ro,_,rr,rrefs=checked(candidate)
     value=compare_rows(lr,rr,head=reference['integration_head'])
+    value['sources']={
+        'reference':dict(execution_receipt=ref(lo/'effective-contract.node0.json'),native_ranks=lrefs),
+        'candidate':dict(execution_receipt=ref(ro/'effective-contract.node0.json'),native_ranks=rrefs),
+    }
     target=ro/'search-gate';target.mkdir(exist_ok=False)
     p=target/'comparison.json';write_new_json(p,value);validate_comparison(value)
     ready={}
@@ -172,19 +176,51 @@ def prepare_pair(reference,candidate):
     return ready
 
 
+def _correctness_source(source,receipt,candidate_id,root):
+    """Bind an executed correctness plan to its own exact rank files/run ID."""
+    from .execution import validated_profile
+    plan=bound(source['execution_receipt'])
+    validated_profile(plan,root=root)
+    require(plan['mode']=='correctness' and plan['search_candidate']['id']==candidate_id,
+            'Helios source is not this candidate correctness run')
+    require(all(plan[k]==receipt[k] for k in ('integration_head','asset_fingerprint','profile_id',
+                                            'workload_semantics_hash')),
+            'Helios correctness source/assets/semantics differ')
+    out=Path(plan['asset_config']['run_root'])/plan['run_id']
+    require(Path(source['execution_receipt']['path']).resolve()==(out/'effective-contract.node0.json').resolve(),
+            'Helios source plan does not belong to the executed run')
+    references=source['native_ranks']
+    require(len(references)==16 and {Path(r['path']).resolve() for r in references}==
+            {(out/'execution/ranks'/f'rank_{i:02d}.json').resolve() for i in range(16)},
+            'Helios native rank paths do not belong to correctness run')
+    rows=[bound(r) for r in references]
+    summary=summarize(rows,expected_head=receipt['integration_head'],candidate_id=candidate_id)
+    require(summary['run_id']==plan['run_id'] and summary['mode']=='correctness',
+            'Helios native rank run identity differs from correctness plan')
+    return plan,rows
+
+
 def validate_admission(data,receipt,root=None):
+    root=root or repository_root()
     require(data.get('schema_version')==GATE_SCHEMA and data.get('status')=='PASS','Helios native gate missing')
     cid=receipt['search_candidate']['id'];require(data['candidate_id']==cid,'Helios gate candidate differs')
     require(data['integration_binding']=={k:receipt[k] for k in ('integration_head','profile_sha256','asset_fingerprint')},
             'Helios gate source/assets/profile differs')
-    plan=bound(data['execution_receipt'])
-    require(plan['mode']=='correctness' and all(plan[k]==receipt[k] for k in
-        ('integration_head','profile_sha256','asset_fingerprint','profile_id')),'Helios gate is not matched correctness')
-    summary=summarize([bound(r) for r in data['native_ranks']],expected_head=receipt['integration_head'],candidate_id=cid)
-    require(summary['mode']=='correctness','Helios timing cannot self-admit')
     comparison=bound(data['comparison']);validate_comparison(comparison)
     require(comparison['source_head']==receipt['integration_head'] and cid in
         (comparison['reference_candidate_id'],comparison['candidate_id']),'Helios comparison binding differs')
+    sources=comparison.get('sources',{})
+    require(set(sources)=={'reference','candidate'},'Helios comparison executed sources missing')
+    field='reference' if cid==comparison['reference_candidate_id'] else 'candidate'
+    require(sources[field]=={k:data[k] for k in ('execution_receipt','native_ranks')},
+            'Helios gate sources differ from actual comparison inputs')
+    left,lrows=_correctness_source(sources['reference'],receipt,comparison['reference_candidate_id'],root)
+    right,rrows=_correctness_source(sources['candidate'],receipt,comparison['candidate_id'],root)
+    expected=left if field=='reference' else right
+    require(expected['profile_sha256']==receipt['profile_sha256'],'Helios admitted implementation differs')
+    actual=compare_rows(lrows,rrows,head=receipt['integration_head'])
+    require({k:v for k,v in comparison.items() if k!='sources'}==actual,
+            'Helios comparison differs from executed rank observations')
 
 
 def validate_launcher_admission(environment):

@@ -141,6 +141,12 @@ class CostModel:
             require(raw.get("workspace_bytes_per_rank") == record.workspace_bytes_per_rank, "calibration memory changed")
             for key in ("status", "profiled", "kind", "operation_contract_sha256"):
                 require(raw.get(key) == record.evidence[key], f"calibration evidence changed: {key}")
+            from .helios_action_costs import PRECISION as HELIOS_PRECISION
+            helios = (self.binding["precision_fingerprint"] == HELIOS_PRECISION or
+                      record.evidence.get("component_contract", {}).get("family", "").startswith("helios."))
+            if helios:
+                require(record.evidence.get("component_contract", {}).get("family", "").startswith("helios."),
+                        "Helios action binding requires component provenance")
             if "component_contract" in record.evidence:
                 contract = ComponentContract.from_dict(record.evidence["component_contract"])
                 self.get_component(contract)
@@ -151,7 +157,7 @@ class CostModel:
                 validate_pooled_receipt(raw)
                 # The flat sources already validate their native provenance.
                 continue
-            if record.evidence.get("component_contract", {}).get("family", "").startswith("helios."):
+            if helios:
                 from .helios_model_adapter import validate_component_receipt
                 validate_component_receipt(raw, native_component_cache)
             from .h3_action_costs import PRECISION as H3_ACTION_PRECISION
