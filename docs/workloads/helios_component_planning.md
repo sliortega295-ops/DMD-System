@@ -99,7 +99,45 @@ The existing `NativeTrialRunner.calibrate()` collects one implementation;
 The existing explicit `--execute-native` validation path executes selected
 plans. A CPU fixture, dry-run, or emitted plan is not GPU success.
 
-Initial acceptance: 972 CPU refactor tests passed, 17 skipped; both capability
-dry-runs and compile/shell checks passed. Real Helios GPU correctness,
-calibration, search feedback and timing are **NOT_RUN at this documentation
-checkpoint**. Subsequent experiment reports must state exact runtime HEADs.
+## Completed two-node closure (2026-09-08)
+
+Both adapters have now completed real world16 correctness, component collection,
+common CPU search and native two-cycle validation. This is no longer a CPU-only
+capability inventory. The source-bound results are in
+[the Helios closure report](../experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md).
+
+- No-GAN: 40 observed components, 20 assignments, 10 feasible and 10
+  `UNCALIBRATED`. The generated HSDP/chunk512/window1 plan actually dispatches
+  `g,r0,c0,e0,...,r4,c4,e4` on all 16 ranks. Confirmed native cycle2: 91.617 s.
+- GAN: 22 observed components, four assignments, one feasible, two
+  `UNCALIBRATED`, one predicted capacity rejection. The selected nonpersistent
+  chunk512 plan completes two native confirmations: 126.902 / 126.762 s.
+  These are the **same implementation**, not an optimization speedup.
+- Both: semantic/rank/trace/version/finite gates PASS, numerical `REVIEW`, no
+  CUDA/cgroup OOM, owned teardown PASS. No canonical winner was overwritten.
+
+The original native sources remain separate: No-GAN `85be7e4e36de`, GAN
+`cc7e451bff73`. Later collector/controller fixes and this publication do not
+relabel those measurements as execution of a newer HEAD. Costs from a different
+HEAD still fail admission; obtain matching calibration before a new-source run.
+
+### Predicted-rejected incumbent
+
+A previously runnable incumbent need not satisfy the current modeled safety
+margin. GAN C25 passed correctness/calibration without OOM but its 37.006 GiB
+peak exceeds the model's unchanged limit after reserving 2 GiB and observed
+non-allocator usage. It is retained as `PREDICTED_CAPACITY_FAIL`, **not CUDA OOM**.
+Its native validation and speedup are `NOT_RUN`/null; calibration time is not
+substituted. Baseline must remain feasible and the new-candidate budget does
+not increase when an incumbent is skipped.
+
+`NativeTrialRunner` now carries an admitted-candidate set through preparation,
+calibration and timing. It cannot implicitly bootstrap a rejected peer. Existing
+source/asset-bound correctness preparation can be reused; absent that preparation
+and another feasible peer, a fresh validation fails closed before launching GPUs.
+The cluster controller used the already verified calibration preparation. This
+is an explicit prerequisite, not a fallback to a historical fixed script.
+
+A 2 GiB **modeled allocation** margin is not a 2 GiB continuously sampled
+**driver-free** guarantee: the GAN native run sampled as little as 440 MiB free
+while allocator reservation was high. The report preserves both measurements.

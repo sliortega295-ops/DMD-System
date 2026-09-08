@@ -1,0 +1,209 @@
+{
+  "schema_version": "distillschedule.helios_native_closure.v1",
+  "created_utc": "2026-09-08T06:56:09.552896+00:00",
+  "status": "COMPLETE_BOUNDED_COMPONENT_SEARCH_NATIVE_CLOSURE",
+  "branch": "agent/dmd-joint-planner-20260907",
+  "final_controller_source": "a7dbfc264acde942fc0fbf90ba8e65399a4372b4",
+  "native_deployments": {
+    "no-gan": {
+      "source_head": "85be7e4e36dea31bdc01bcfe8faf3d67efb58494",
+      "target": "/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-helios-components-85be7e4e36de-20260908-r3"
+    },
+    "gan": {
+      "source_head": "cc7e451bff7387640634a394f07047be8e0c089e",
+      "target": "/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-helios-components-cc7e451bff73-20260908-r3"
+    }
+  },
+  "local_evidence_root": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1",
+  "remote_evidence_root": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1",
+  "measured_denominator": "MAX_RANK_LOCAL_NATIVE_CYCLE2_SECONDS",
+  "numerical_status": "REVIEW_SAMPLED_PARITY_ONLY",
+  "canonical_winner_updated": false,
+  "not_run": [
+    "new kernel experiments",
+    "Nsight",
+    "C50",
+    "strict full-state equivalence",
+    "arbitrary new backbone sharing / TP / PP pools",
+    "main merge",
+    "GitHub push"
+  ],
+  "frozen": {
+    "world_size": 16,
+    "nodes": 2,
+    "gpu": "A100-SXM4-40GB",
+    "logical_batch": 16,
+    "physical_rollout_batch": 1,
+    "resolution": [
+      384,
+      640
+    ],
+    "score_packing": false,
+    "both_residuals": "cuda_out_of_place",
+    "ema": "cuda",
+    "parameter_offload": false,
+    "activation_offload": false,
+    "source_cohort": "fixed_source_cohort_replay"
+  },
+  "code_commits": {
+    "task_start": "68c3c0b1bf8c3ad350b27b49344e9bb9402df3fa",
+    "no_gan_runtime": "85be7e4e36dea31bdc01bcfe8faf3d67efb58494",
+    "gan_runtime": "cc7e451bff7387640634a394f07047be8e0c089e",
+    "final_logical_label_guard": "d60aceab5922a71c28c8d57011d729f7cfa604ae",
+    "admission_guard": "a7dbfc264acde942fc0fbf90ba8e65399a4372b4"
+  },
+  "copied_sources": [
+    {
+      "published": "nogan_closure.json",
+      "source": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/reports/nogan-model-native-closure-85be7e4.json",
+        "sha256": "a339e7fcd246688eb9a168dff01d1b18affe8fe63b421dcbe12b7b1601d9ffa3",
+        "bytes": 27884
+      }
+    },
+    {
+      "published": "nogan_search.json",
+      "source": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/controller/85be7e4e36de/no-gan/model-search/plan/result.json",
+        "sha256": "40d9ba0e005a09a33ab90d1cd6eadb879edc03cd6475959434feda88a889533c",
+        "bytes": 6500
+      }
+    },
+    {
+      "published": "gan_closure.json",
+      "source": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/reports/gan-model-native-closure-cc7e451.json",
+        "sha256": "0b2bfdbc4a6aa378cbd305a46a44628e371c80efab80e2df1a24b9a95b7bb8ed",
+        "bytes": 161250
+      }
+    },
+    {
+      "published": "gan_search.json",
+      "source": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/controller/cc7e451bff73/gan/model-search/plan/result.json",
+        "sha256": "e23065322633c0d63444105d7c5561f418b74c22ce5bb31d4f2dc3539ad0810f",
+        "bytes": 2419
+      }
+    },
+    {
+      "published": "gan_correctness.json",
+      "source": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/reports/gan-correctness-cc7e451.json",
+        "sha256": "7cf11e4afef3b57038ad4f3b5d49ee4ec75bc8b6a6e661cb0ede645824eb6250",
+        "bytes": 122974
+      }
+    },
+    {
+      "published": "manifests/final_cleanup.json",
+      "source": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/manifests/final-cleanup-readback.json",
+        "sha256": "157813d8b4cd2861e6e293433bdac401b0d2d7e67a0717610c4605b6a1d2609a",
+        "bytes": 3553
+      }
+    },
+    {
+      "published": "cpu_controller_snapshot/model_validation.py",
+      "source": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/pending-anchor-rejection/executed-controller-r2.py",
+        "sha256": "950c1bb364f1553d9294c95682ce03f62d7c0e4bfe4a47ae627716e1ccc2e6e2",
+        "bytes": 14056
+      }
+    },
+    {
+      "published": "review/followup_resolution.json",
+      "source": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/reports/anchor-rejection-resolution.json",
+        "sha256": "f4c5365bab533b0c0f12f2ec352d3ac1c9fbe1eb53e6833636c2ceee2c8a2137",
+        "bytes": 2361
+      }
+    },
+    {
+      "published": "tests/final-committed-path-focused-r2.txt",
+      "source": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/logs/final-committed-path-focused-r2.txt",
+        "sha256": "8f26dd6750e2176d44c88fb6877b756a5b5c38ae03ed9ad9e2049a2489ff47aa",
+        "bytes": 181
+      }
+    },
+    {
+      "published": "tests/final-committed-path-full.txt",
+      "source": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/logs/final-committed-path-full.txt",
+        "sha256": "c52875c1fca598b3b6a0d2158f72637f9227861d70aa3e3dfaedcdbb8f4f098e",
+        "bytes": 1234
+      }
+    },
+    {
+      "published": "tests/final-committed-path-focused.txt",
+      "source": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/logs/final-committed-path-focused.txt",
+        "sha256": "77eb23d081fa99b467f02a73b86ba8b04397c1d20a354f909f5f45cf134cfcc2",
+        "bytes": 103
+      }
+    },
+    {
+      "published": "tests/final-nogan-dry-run.json",
+      "source": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/logs/final-nogan-dry-run.json",
+        "sha256": "75ef01b3a0aa07407aa6c9581857d034b4aa3294e9fd94979d7135394b325e4b",
+        "bytes": 10504
+      }
+    },
+    {
+      "published": "tests/final-gan-dry-run.json",
+      "source": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/logs/final-gan-dry-run.json",
+        "sha256": "52aa20ff959243b1eab3fb684ddc5bb1b166729b321b3c3faf423418e5d16c93",
+        "bytes": 10457
+      }
+    },
+    {
+      "published": "historical_controller_scripts/run_unit.py",
+      "source": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/scripts/run_unit.py",
+        "sha256": "a0198dd91b97ffde17fb6dc3443a7a227304b1d2c19cc79daee48e13a08155e1",
+        "bytes": 3342
+      }
+    },
+    {
+      "published": "historical_controller_scripts/model_roundtrip.py",
+      "source": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/scripts/model_roundtrip.py",
+        "sha256": "e41a6225d8265101dec887b45ecab52ae385cf991a3c85fa06d825d2d62412f1",
+        "bytes": 10710
+      }
+    },
+    {
+      "published": "historical_controller_scripts/model_roundtrip_anchor_r2.py",
+      "source": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/scripts/model_roundtrip_anchor_r2.py",
+        "sha256": "b963811bd8c4c5f1065254387cfa7fca5da67927d41acc01e3a35bd127818a36",
+        "bytes": 11972
+      }
+    },
+    {
+      "published": "historical_controller_scripts/collect_gan_closure.py",
+      "source": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/scripts/collect_gan_closure.py",
+        "sha256": "3280a2aa571b522bd05541d05262ae8cc0930d6c4bdfb7dbabb695baa66cf0b5",
+        "bytes": 6622
+      }
+    },
+    {
+      "published": "historical_controller_scripts/final_cleanup_readback.py",
+      "source": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/scripts/final_cleanup_readback.py",
+        "sha256": "67dd8ba4a5842c4e7635804f58a55d824eed977b991035a1b10d33778c4ebae9",
+        "bytes": 3525
+      }
+    }
+  ],
+  "limitations": [
+    "Search predictions cover observed component combinations only; missing combinations stay UNCALIBRATED.",
+    "C25 completed calibration without OOM but was rejected by the unchanged modeled margin, not an observed OOM.",
+    "The GAN native validation CPU snapshot differs from its worker source; both hashes are retained.",
+    "NativeTrialRunner reuses current-source preparation; a fresh baseline-only validation without preparation fails closed.",
+    "Historical controller scripts are exact run evidence with site-specific paths, not new-head portable launch commands.",
+    "Final controller fixes were CPU-tested after GPU runs; original measurements are not relabelled."
+  ]
+}

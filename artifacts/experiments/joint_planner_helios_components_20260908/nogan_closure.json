@@ -1,0 +1,1286 @@
+{
+  "status": "COMPLETE_NATIVE_VALIDATION",
+  "source_head": "85be7e4e36dea31bdc01bcfe8faf3d67efb58494",
+  "workload": "helios14b_nogan_best",
+  "costs": 40,
+  "candidates": 20,
+  "feasible": 10,
+  "uncalibrated": 10,
+  "selected_by_model": "joint-helios1-nogan-hsdp-c512-p0-w1",
+  "trials": [
+    {
+      "trial": "00-baseline-joint-helios1-nogan-fsdp-c512-p0-w5",
+      "candidate_id": "joint-helios1-nogan-fsdp-c512-p0-w5",
+      "cycle_wall_seconds": {
+        "1": 96.61651469091885,
+        "2": 93.16518415790051
+      },
+      "numerical_status": "REVIEW",
+      "semantics_status": "PASS",
+      "cleanup_status": "PASS",
+      "resource_status": "EXCLUSIVE_LOCKED"
+    },
+    {
+      "trial": "01-incumbent-joint-helios1-nogan-hsdp-c512-p0-w5",
+      "candidate_id": "joint-helios1-nogan-hsdp-c512-p0-w5",
+      "cycle_wall_seconds": {
+        "1": 95.7950713490136,
+        "2": 91.76702918997034
+      },
+      "numerical_status": "REVIEW",
+      "semantics_status": "PASS",
+      "cleanup_status": "PASS",
+      "resource_status": "EXCLUSIVE_LOCKED"
+    },
+    {
+      "trial": "02-candidate-joint-helios1-nogan-hsdp-c512-p0-w1",
+      "candidate_id": "joint-helios1-nogan-hsdp-c512-p0-w1",
+      "cycle_wall_seconds": {
+        "1": 95.86701080598868,
+        "2": 91.73674797592685
+      },
+      "numerical_status": "REVIEW",
+      "semantics_status": "PASS",
+      "cleanup_status": "PASS",
+      "resource_status": "EXCLUSIVE_LOCKED"
+    },
+    {
+      "trial": "03-confirmation-joint-helios1-nogan-hsdp-c512-p0-w1",
+      "candidate_id": "joint-helios1-nogan-hsdp-c512-p0-w1",
+      "cycle_wall_seconds": {
+        "1": 95.91958199092187,
+        "2": 91.6171227300074
+      },
+      "numerical_status": "REVIEW",
+      "semantics_status": "PASS",
+      "cleanup_status": "PASS",
+      "resource_status": "EXCLUSIVE_LOCKED"
+    }
+  ],
+  "strict_winner": null,
+  "cycle2_speedup_diagnostic": 1.016897075369363,
+  "improvement_over_incumbent": 1.0016362275467297,
+  "prediction_errors": [
+    {
+      "candidate_id": "joint-helios1-nogan-fsdp-c512-p0-w5",
+      "measured_cycle2_seconds": 93.16518415790051,
+      "phase": "baseline",
+      "predicted_cycle2_seconds": 93.392675477,
+      "relative_prediction_error": 0.00244180614417
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-hsdp-c512-p0-w5",
+      "measured_cycle2_seconds": 91.76702918997034,
+      "phase": "incumbent",
+      "predicted_cycle2_seconds": 91.877870366,
+      "relative_prediction_error": 0.0012078540300155538
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-hsdp-c512-p0-w1",
+      "measured_cycle2_seconds": 91.73674797592685,
+      "phase": "candidate",
+      "predicted_cycle2_seconds": 91.877870366,
+      "relative_prediction_error": 0.0015383408850526692
+    },
+    {
+      "candidate_id": "joint-helios1-nogan-hsdp-c512-p0-w1",
+      "measured_cycle2_seconds": 91.6171227300074,
+      "phase": "confirmation",
+      "predicted_cycle2_seconds": 91.877870366,
+      "relative_prediction_error": 0.002846057900781407
+    }
+  ],
+  "canonical_winner_updated": false,
+  "claim_boundary": "BEST_TESTED_WITHIN_BUDGET; REVIEW_IS_NOT_STRICT_EQUIVALENCE; NO_GLOBAL_OPTIMUM_CLAIM",
+  "remote_output": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/model-search-85be7e4e36de/no-gan",
+  "new_plan": "HSDP2x8/chunk512/no persistence/retained-rollout window1",
+  "expected_native_order": [
+    "g",
+    "r0",
+    "c0",
+    "e0",
+    "r1",
+    "c1",
+    "e1",
+    "r2",
+    "c2",
+    "e2",
+    "r3",
+    "c3",
+    "e3",
+    "r4",
+    "c4",
+    "e4"
+  ],
+  "actual_native_dispatch_proof": "PASS_GENERATED_WINDOW1_ORDER_16_RANKS_TWO_CYCLES",
+  "rank_receipts": [
+    {
+      "rank": 0,
+      "status": "PASS",
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "cycle_orders": [
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ],
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ]
+      ],
+      "peak_live_rollouts": [
+        1,
+        1
+      ],
+      "peak_allocated_bytes": 25213155328,
+      "peak_reserved_bytes": 36905680896,
+      "semantics": [
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        },
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        }
+      ]
+    },
+    {
+      "rank": 1,
+      "status": "PASS",
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "cycle_orders": [
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ],
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ]
+      ],
+      "peak_live_rollouts": [
+        1,
+        1
+      ],
+      "peak_allocated_bytes": 25213155328,
+      "peak_reserved_bytes": 36905680896,
+      "semantics": [
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        },
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "status": "PASS",
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "cycle_orders": [
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ],
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ]
+      ],
+      "peak_live_rollouts": [
+        1,
+        1
+      ],
+      "peak_allocated_bytes": 25213155328,
+      "peak_reserved_bytes": 36905680896,
+      "semantics": [
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        },
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "status": "PASS",
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "cycle_orders": [
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ],
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ]
+      ],
+      "peak_live_rollouts": [
+        1,
+        1
+      ],
+      "peak_allocated_bytes": 25213155328,
+      "peak_reserved_bytes": 36905680896,
+      "semantics": [
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        },
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "status": "PASS",
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "cycle_orders": [
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ],
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ]
+      ],
+      "peak_live_rollouts": [
+        1,
+        1
+      ],
+      "peak_allocated_bytes": 25213155328,
+      "peak_reserved_bytes": 36905680896,
+      "semantics": [
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        },
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "status": "PASS",
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "cycle_orders": [
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ],
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ]
+      ],
+      "peak_live_rollouts": [
+        1,
+        1
+      ],
+      "peak_allocated_bytes": 25213155328,
+      "peak_reserved_bytes": 36905680896,
+      "semantics": [
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        },
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "status": "PASS",
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "cycle_orders": [
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ],
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ]
+      ],
+      "peak_live_rollouts": [
+        1,
+        1
+      ],
+      "peak_allocated_bytes": 25213155328,
+      "peak_reserved_bytes": 36905680896,
+      "semantics": [
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        },
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        }
+      ]
+    },
+    {
+      "rank": 7,
+      "status": "PASS",
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "cycle_orders": [
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ],
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ]
+      ],
+      "peak_live_rollouts": [
+        1,
+        1
+      ],
+      "peak_allocated_bytes": 25213155328,
+      "peak_reserved_bytes": 36905680896,
+      "semantics": [
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        },
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "status": "PASS",
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "cycle_orders": [
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ],
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ]
+      ],
+      "peak_live_rollouts": [
+        1,
+        1
+      ],
+      "peak_allocated_bytes": 25213155328,
+      "peak_reserved_bytes": 36905680896,
+      "semantics": [
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        },
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        }
+      ]
+    },
+    {
+      "rank": 9,
+      "status": "PASS",
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "cycle_orders": [
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ],
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ]
+      ],
+      "peak_live_rollouts": [
+        1,
+        1
+      ],
+      "peak_allocated_bytes": 25213155328,
+      "peak_reserved_bytes": 36905680896,
+      "semantics": [
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        },
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "status": "PASS",
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "cycle_orders": [
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ],
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ]
+      ],
+      "peak_live_rollouts": [
+        1,
+        1
+      ],
+      "peak_allocated_bytes": 25213155328,
+      "peak_reserved_bytes": 36905680896,
+      "semantics": [
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        },
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "status": "PASS",
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "cycle_orders": [
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ],
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ]
+      ],
+      "peak_live_rollouts": [
+        1,
+        1
+      ],
+      "peak_allocated_bytes": 25213155328,
+      "peak_reserved_bytes": 36905680896,
+      "semantics": [
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        },
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "status": "PASS",
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "cycle_orders": [
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ],
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ]
+      ],
+      "peak_live_rollouts": [
+        1,
+        1
+      ],
+      "peak_allocated_bytes": 25213155328,
+      "peak_reserved_bytes": 36905680896,
+      "semantics": [
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        },
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "status": "PASS",
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "cycle_orders": [
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ],
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ]
+      ],
+      "peak_live_rollouts": [
+        1,
+        1
+      ],
+      "peak_allocated_bytes": 25213155328,
+      "peak_reserved_bytes": 36905680896,
+      "semantics": [
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        },
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "status": "PASS",
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "cycle_orders": [
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ],
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ]
+      ],
+      "peak_live_rollouts": [
+        1,
+        1
+      ],
+      "peak_allocated_bytes": 25213155328,
+      "peak_reserved_bytes": 36905680896,
+      "semantics": [
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        },
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "status": "PASS",
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "cycle_orders": [
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ],
+        [
+          "g",
+          "r0",
+          "c0",
+          "e0",
+          "r1",
+          "c1",
+          "e1",
+          "r2",
+          "c2",
+          "e2",
+          "r3",
+          "c3",
+          "e3",
+          "r4",
+          "c4",
+          "e4"
+        ]
+      ],
+      "peak_live_rollouts": [
+        1,
+        1
+      ],
+      "peak_allocated_bytes": 25213155328,
+      "peak_reserved_bytes": 36905680896,
+      "semantics": [
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        },
+        {
+          "census": "PASS",
+          "dtype": "PASS",
+          "finite": "PASS",
+          "numerical_equivalence": "NOT_RUN",
+          "sample_rng": "PASS",
+          "sample_rng_scope": "actual_rank_qualified_trace_entries_not_global_rng_state",
+          "versions": "PASS"
+        }
+      ]
+    }
+  ]
+}

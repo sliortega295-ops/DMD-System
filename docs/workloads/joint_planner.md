@@ -375,3 +375,16 @@ report-only publication commits do not change the measured source identity.
 
 Report: [native stage calibration](../experiments/DMD_JOINT_PLANNER_NATIVE_CALIBRATION_20260907.md).
 Manifest: `artifacts/manifests/dmd_joint_planner_native_calibration_20260907.json`.
+
+## Helios No-GAN and GAN component/native closure
+
+The two Helios workloads now use the same measured-component planner and typed
+native execution path as the other adapters. Both have actual two-node/world16
+correctness, calibration and unprofiled two-cycle evidence; No-GAN additionally
+executes a generated window1 ordering different from the calibrated window5
+recipe. Missing component combinations stay `UNCALIBRATED`; GAN's predicted
+capacity-rejected incumbent is not launched by validation or implicit bootstrap.
+Numerical evidence remains `REVIEW`, so this does not publish a new strict winner.
+
+See [adapter contract](helios_component_planning.md) and
+[source-pinned native closure](../experiments/DMD_HELIOS_COMPONENT_CLOSURE_20260908.md).
