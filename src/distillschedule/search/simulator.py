@@ -80,7 +80,10 @@ def simulate(problem: PlanningProblem, assignment: Mapping[str, str], costs: Cos
                 peak_events[rank].extend([(start, value.bytes_per_rank, value.id),
                                           (end, -value.bytes_per_rank, value.id)])
     memory = []
-    for rank, events in peak_events.items():
+    # Sorted JSON keys order ranks as 0,1,10,...,2. Prediction arrays must not
+    # inherit that mapping insertion order or native plan revalidation fails.
+    for rank in sorted(peak_events):
+        events = peak_events[rank]
         live, peak, peak_at = static[rank], static[rank], 0
         # Intervals are half-open: release before allocate at a common boundary.
         for when, delta, _ in sorted(events, key=lambda e: (e[0], e[1])):
