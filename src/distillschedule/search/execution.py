@@ -104,6 +104,9 @@ def rebind_plan(receipt: dict[str, Any], *, run_id: str,
         reference_id, peer = LiveWanImplementation("fsdp").id, LiveWanImplementation("pipeline").id
     elif candidate_id.startswith(H3_PREFIX):
         reference_id, peer = H3Implementation(2, 128).id, H3Implementation(1, 128).id
+    elif candidate_id.startswith("joint-helios1-"):
+        from .helios_action_costs import anchors
+        reference_id, peer = (i.id for i in anchors(receipt["profile_id"]))
     else:
         reference_id = "fsdp-reference"
         peer = next(c.id for c in candidates(receipt["profile_id"]) if c.executable and c.id != reference_id)
@@ -142,7 +145,7 @@ class NativeTrialRunner:
         from .wan_implementation import is_generated
         require(is_generated(self.reference.id) == is_generated(self.bootstrap_peer.id),
                 "cannot mix generated precision contract and legacy search arms")
-        for family in ("joint-livewan1-", "joint-h3v1-"):
+        for family in ("joint-livewan1-", "joint-h3v1-", "joint-helios1-"):
             require(self.reference.id.startswith(family) == self.bootstrap_peer.id.startswith(family),
                     "cannot mix generated native family and legacy arms")
         require(fingerprint(assets["assets"]) == identity["asset_fingerprint"], "asset identity mismatch")
@@ -264,7 +267,7 @@ class NativeTrialRunner:
         """One diagnostic collection, not a timing trial or a matrix search."""
         from .wan_implementation import is_generated
         require((candidate.workload == WAN and is_generated(candidate.id)) or
-                candidate.id.startswith(("joint-livewan1-", "joint-h3v1-")), "native calibration adapter unavailable")
+                candidate.id.startswith(("joint-livewan1-", "joint-h3v1-", "joint-helios1-")), "native calibration adapter unavailable")
         directory.mkdir(exist_ok=False)
         self._observe_model_runtime(candidate)
         prepared = self._prepare(candidate)
@@ -274,7 +277,9 @@ class NativeTrialRunner:
         write_new_json(directory / "execution-plan.json", receipt)
         run_plan(receipt, coordinator_output=directory / "dispatch")
         after = self._observe_model_runtime(candidate, receipt=receipt)
-        value = self._rpc("wan_stage_calibration" if candidate.workload == WAN else "macro_calibration",
+        action = ("wan_stage_calibration" if candidate.workload == WAN else
+                  "helios_calibration" if candidate.id.startswith("joint-helios1-") else "macro_calibration")
+        value = self._rpc(action,
             receipt=receipt, preparation=prepared,
             identity=self.identity, runtime_identity_evidence={"before": before, "after": after})
         write_new_json(directory / "result.json", value)

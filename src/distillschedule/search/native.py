@@ -93,6 +93,9 @@ def _command(node: dict[str, Any], args: list[str], log: Path) -> None:
 
 
 def prepare_pair(reference: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any]:
+    if reference["search_candidate"]["id"].startswith("joint-helios1-"):
+        from .helios_native import prepare_pair as helios_pair
+        return helios_pair(reference,candidate)
     if reference["profile_id"] == "minimax_h3_grid1000_best":
         from .h3_native_bridge import prepare_pair as h3_pair
         return h3_pair(reference, candidate)
@@ -195,6 +198,9 @@ def handle_request(payload: dict[str, Any]) -> dict[str, Any]:
     if action == "prepare_pair":
         return prepare_pair(payload["reference"], payload["candidate"])
     if action == "measurement":
+        if payload["receipt"]["search_candidate"]["id"].startswith("joint-helios1-"):
+            from .helios_native import normalize_native
+            return normalize_native(payload["receipt"],payload["preparation"],payload["identity"])
         if payload["receipt"]["profile_id"] == "minimax_h3_grid1000_best":
             from .h3_native_bridge import normalize_native
             return normalize_native(payload["receipt"], payload["preparation"], payload["identity"])
@@ -207,5 +213,9 @@ def handle_request(payload: dict[str, Any]) -> dict[str, Any]:
     if action == "macro_calibration":
         from .native_macro_adapter import assemble_native
         return assemble_native(payload["receipt"], payload["preparation"], payload["identity"],
+                               payload["runtime_identity_evidence"])
+    if action == "helios_calibration":
+        from .helios_model_adapter import assemble_native
+        return assemble_native(payload["receipt"],payload["preparation"],payload["identity"],
                                payload["runtime_identity_evidence"])
     raise ValueError(f"unsupported search action: {action}")

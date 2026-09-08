@@ -149,6 +149,11 @@ class CostModel:
             if "component_sources" in raw:
                 from .component_calibration import validate_pooled_receipt
                 validate_pooled_receipt(raw)
+                # The flat sources already validate their native provenance.
+                continue
+            if record.evidence.get("component_contract", {}).get("family", "").startswith("helios."):
+                from .helios_model_adapter import validate_component_receipt
+                validate_component_receipt(raw, native_component_cache)
             from .h3_action_costs import PRECISION as H3_ACTION_PRECISION
             if (self.binding["precision_fingerprint"] == H3_ACTION_PRECISION or
                     record.evidence.get("component_contract", {}).get("family", "").startswith("h3.")):

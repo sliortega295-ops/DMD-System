@@ -2,6 +2,11 @@
 
 ## Scope
 
+Helios No-GAN and GAN now have an opt-in prepared-action bridge and component
+adapter: [scope, commands, and acceptance](helios_component_planning.md).
+This adds supported native choices to the common planner, not GPU evidence by
+registration. Canonical profiles and historical timing remain unchanged.
+
 The registered-recipe search remains available and its published evidence is
 unchanged. The new, opt-in `--strategy model-based` implements a separate search
 algorithm over the **same** `core.graph.ExecutionGraph`, not a second training

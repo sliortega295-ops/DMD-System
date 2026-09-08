@@ -24,7 +24,7 @@ def clean_environment(node: dict[str, Any]) -> dict[str, str]:
 
 
 def _correctness_binding(receipt: dict[str, Any]) -> None:
-    if receipt["mode"] not in {"timing", "diagnostic-timing", "calibration"}:
+    if receipt["mode"] not in {"timing", "diagnostic-timing", "calibration", "native"}:
         return
     binding = receipt["asset_config"]["correctness"]
     path = Path(binding["path"])
@@ -40,6 +40,9 @@ def _correctness_binding(receipt: dict[str, Any]) -> None:
     if receipt.get("search_candidate", {}).get("id", "").startswith("joint-h3v2-"):
         from distillschedule.search.h3_action_admission import validate_action_admission
         validate_action_admission(data, receipt, repository_root())
+    if receipt.get("search_candidate", {}).get("id", "").startswith("joint-helios1-"):
+        from distillschedule.search.helios_native import validate_admission
+        validate_admission(data, receipt, repository_root())
 
 
 def validate_local(receipt: dict[str, Any], *, root: Path) -> dict[str, Any]:
@@ -56,6 +59,9 @@ def validate_local(receipt: dict[str, Any], *, root: Path) -> dict[str, Any]:
     _require(not dirty.strip(), "run requires a clean committed integration checkout")
     for node in receipt["nodes"]:
         for key, expected in profile["runtime"]["environment"].items():
+            if key == "DISTILLSCHEDULE_HELIOS_PLANNER_MODE" and "search_candidate" in receipt:
+                _require(expected == "off", "Helios planner must default off")
+                expected = "native" if receipt["mode"] == "diagnostic-timing" else receipt["mode"]
             if (receipt["mode"] == "calibration" and receipt["profile_id"] == "minimax_h3_grid1000_best"
                     and "search_candidate" in receipt and key == "H3_PLANNER_CALIBRATION"):
                 _require(expected == "0", "H3 calibration must have a disabled default")

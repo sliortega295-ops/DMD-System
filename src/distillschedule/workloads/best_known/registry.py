@@ -271,7 +271,7 @@ def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: P
                  "Wan two-cycle timing requires a hash-bound native trajectory comparison")
     elif comparison is not None:
         _require(False, "trajectory_comparison is only used by Wan native two-cycle timing")
-    if mode in {"timing", "diagnostic-timing", "calibration"}:
+    if mode in {"timing", "diagnostic-timing", "calibration", "native"}:
         _require(isinstance(correctness, dict) and set(correctness) == {"path", "sha256"},
                  "timing requires an explicit correctness receipt path and SHA256")
         _require(Path(correctness["path"]).is_absolute() and bool(SHA256_RE.fullmatch(correctness["sha256"])),
@@ -280,6 +280,9 @@ def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: P
     for i, n in enumerate(assets["nodes"]):
         rr = Path(n["repo_root"])
         env = dict(profile["runtime"]["environment"])
+        if profile["id"].startswith("helios14b_") and "planner_implementation" in profile["runtime"]:
+            _require(env.get("DISTILLSCHEDULE_HELIOS_PLANNER_MODE") == "off", "Helios planner must default off")
+            env["DISTILLSCHEDULE_HELIOS_PLANNER_MODE"] = "native" if mode == "diagnostic-timing" else mode
         if workload == "livewan_crossscale_pipeline_best" and mode in {"calibration", "action-observation"}:
             _require(env.get("DISTILLSCHEDULE_LIVEWAN_OPERATION_CALIBRATION") == "0",
                      "only source-registered LiveWan candidates support operation calibration")

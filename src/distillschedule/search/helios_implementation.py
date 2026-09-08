@@ -1,0 +1,174 @@
+"""Bounded Helios scheduling controls lowered from immutable canonical profiles.
+
+Generated identities do not themselves authorize execution or timing. The
+controller must set an explicit adapter mode and retain its source-bound gates.
+"""
+from __future__ import annotations
+
+import copy
+from dataclasses import dataclass
+import json
+import os
+from pathlib import Path
+import re
+from typing import Any, Mapping
+
+from distillschedule.workloads.best_known.registry import fingerprint, load_profile
+from .contracts import Candidate, require, semantic_contract
+
+NO_GAN = "helios14b_nogan_best"
+GAN = "helios14b_gan_best"
+PREFIX = "joint-helios1-"
+PATTERN = re.compile(r"joint-helios1-(nogan|gan)-(fsdp|hsdp)-c(512|2048)-p([01])-w([1-5])")
+MODES = ("correctness", "calibration", "native")
+MODE_ENV = "DISTILLSCHEDULE_HELIOS_PLANNER_MODE"
+ASSIGNMENT_ENV = "DISTILLSCHEDULE_HELIOS_PLANNER_ASSIGNMENT"
+
+
+@dataclass(frozen=True)
+class HeliosImplementation:
+    variant: str
+    mesh: str
+    chunk_tokens: int
+    rollout_window: int
+    persistent_unshard: bool
+
+    def __post_init__(self) -> None:
+        require(self.variant in ("no-gan", "gan"), "unsupported Helios variant")
+        require(self.mesh in ("world16-fsdp", "node-hsdp"), "unsupported Helios mesh")
+        require(type(self.chunk_tokens) is int and self.chunk_tokens in (512, 2048),
+                "Helios chunk tokens must be 512 or 2048")
+        require(type(self.rollout_window) is int and 1 <= self.rollout_window <= 5,
+                "Helios rollout window must be an integer in [1,5]")
+        require(type(self.persistent_unshard) is bool, "Helios persistence must be boolean")
+        require(self.variant != "gan" or self.mesh == "world16-fsdp",
+                "GAN initially supports only world16-fsdp")
+        require(not self.persistent_unshard or (self.variant == "gan" and self.rollout_window == 5),
+                "persistent unshard requires GAN and a single five-rollout scope")
+
+    @property
+    def id(self) -> str:
+        variant = "nogan" if self.variant == "no-gan" else "gan"
+        mesh = "fsdp" if self.mesh == "world16-fsdp" else "hsdp"
+        return f"{PREFIX}{variant}-{mesh}-c{self.chunk_tokens}-p{int(self.persistent_unshard)}-w{self.rollout_window}"
+
+    @property
+    def workload(self) -> str:
+        return NO_GAN if self.variant == "no-gan" else GAN
+
+    @property
+    def assignment(self) -> dict[str, str]:
+        return dict(variant=self.variant, mesh=self.mesh, chunk_tokens=str(self.chunk_tokens),
+                    rollout_window=str(self.rollout_window),
+                    persistent_unshard="on" if self.persistent_unshard else "off")
+
+    @classmethod
+    def parse(cls, key: str) -> "HeliosImplementation":
+        match = PATTERN.fullmatch(key) if isinstance(key, str) else None
+        require(match is not None, "malformed/unregistered joint Helios implementation")
+        return cls("no-gan" if match[1] == "nogan" else "gan",
+                   "world16-fsdp" if match[2] == "fsdp" else "node-hsdp",
+                   int(match[3]), int(match[5]), match[4] == "1")
+
+    @classmethod
+    def from_assignment(cls, assignment: Mapping[str, str]) -> "HeliosImplementation":
+        require(set(assignment) == {"variant", "mesh", "chunk_tokens", "rollout_window", "persistent_unshard"},
+                "Helios assignment has extra/missing decisions")
+        require(assignment["chunk_tokens"] in ("512", "2048")
+                and assignment["rollout_window"] in ("1", "2", "3", "4", "5")
+                and assignment["persistent_unshard"] in ("on", "off"), "invalid Helios decision")
+        return cls(assignment["variant"], assignment["mesh"], int(assignment["chunk_tokens"]),
+                   int(assignment["rollout_window"]), assignment["persistent_unshard"] == "on")
+
+    @property
+    def run_modes(self) -> tuple[str, ...]:
+        return MODES
+
+    def candidate(self) -> Candidate:
+        return Candidate(self.id, self.workload, self.mesh, (f"modulation_chunk{self.chunk_tokens}",),
+                         ("nccl", "pointwise", "residency"), variant=self.variant,
+                         mechanism="native_mesh_chunk_retained_rollout_window_and_bounded_unshard")
+
+    def environment(self, *, root: Path | None = None) -> dict[str, str]:
+        env = dict(load_profile(self.workload, root=root)["runtime"]["environment"])
+        env.update({"DISTILLSCHEDULE_SEARCH_CANDIDATE_ID": self.id,
+                    ASSIGNMENT_ENV: json.dumps(self.assignment, sort_keys=True, separators=(",", ":")),
+                    MODE_ENV: "off",
+                    "DISTILLSCHEDULE_HELIOS_MODULATION_CHUNK_TOKENS": str(self.chunk_tokens),
+                    "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_PERSISTENT_UNSHARD":
+                        "on" if self.persistent_unshard else "off"})
+        return env
+
+    def lower_profile(self, *, root: Path | None = None) -> dict[str, Any]:
+        profile = copy.deepcopy(load_profile(self.workload, root=root))
+        semantics = semantic_contract(profile)
+        profile["display_name"] = f"Generated native Helios two-cycle diagnostic: {self.id}"
+        profile["allowed_run_modes"] = [*self.run_modes, "diagnostic-timing"]
+        profile["topology"].update(placement=self.mesh, replicate=2 if self.mesh == "node-hsdp" else 1,
+                                   shard=8 if self.mesh == "node-hsdp" else 16)
+        runtime = profile["runtime"]
+        runtime["arguments"][7] = self.mesh
+        runtime["environment"].update(self.environment(root=root))
+        runtime.update(planner_implementation=self.assignment,
+                       native_run_modes={mode: "timing" for mode in (*self.run_modes, "diagnostic-timing")},
+                       native_two_cycle_adapter_available=True, search_two_cycle_ready=False,
+                       strict_pair_gate="NOT_RUN")
+        initial = profile["contract"]["initial_versions"]
+        updates = profile["contract"]["updates"]
+        profile["contract"].update(continuous_cycles=2,
+            final_versions={key: initial[key] + 2*updates[key] for key in initial})
+        require(semantic_contract(profile) == semantics, "Helios lowering changed frozen workload semantics")
+        return profile
+
+    def receipt_binding(self, *, args: Any, policy: Any,
+                        environment: Mapping[str, str] | None = None) -> dict[str, Any]:
+        env = os.environ if environment is None else environment
+        require(current_implementation(env) == self, "Helios runtime identity mismatch")
+        wanted = self.environment()
+        for key, value in wanted.items():
+            if key != MODE_ENV:
+                require(env.get(key) == value, f"Helios launch {key} differs from canonical generated copy")
+        require(args.variant == self.variant and policy.mesh_policy == self.mesh
+                and policy.modulation_chunk_tokens == self.chunk_tokens
+                and policy.generator_nograd_persistent_unshard == self.persistent_unshard,
+                "Helios actual scheduling policy differs from generated identity")
+        require(args.timing_mode and not args.profile_mode and not args.profile_diagnostics,
+                "Helios planner requires unprofiled timing-mode helpers; correctness probes run outside cycles")
+        require(policy.rollout_batch_size == 1 and not policy.pack_real_score_pair,
+                "Helios generated plans preserve B1 and unpacked Score calls")
+        require(policy.rollout_backend == "native-fsdp2-batch", "Helios rollout backend changed")
+        require(type(policy.selective_flash_checkpoint_stride) is int
+                and policy.selective_flash_checkpoint_stride == 2, "Helios effective selective checkpoint policy changed")
+        require(args.ema_device == "cuda" and args.attention_backend == "local-fa2"
+                and args.generator_residual_storage == args.critic_residual_storage == "cuda_out_of_place",
+                "Helios generated plans cannot change frozen residency/attention/residual policies")
+        require(args.critic_only_step is None and not args.operation_source,
+                "Helios generated plan is not a single-Critic/profiler diagnostic")
+        # The launcher translates these canonical environment flags into args
+        # and policy fields. Check the effective values as well as the env.
+        for key, value in wanted.items():
+            if not key.startswith("DISTILLSCHEDULE_") or value not in ("on", "off"):
+                continue
+            name = key.removeprefix("DISTILLSCHEDULE_").removeprefix("HELIOS_").lower()
+            for owner in (args, policy):
+                if hasattr(owner, name):
+                    require(getattr(owner, name) is (value == "on"), f"Helios effective {name} mismatch")
+        return dict(candidate_id=self.id, planner_implementation=self.assignment, mode=env[MODE_ENV],
+                    effective_configuration_sha256=fingerprint({k: v for k,v in wanted.items() if k != MODE_ENV}))
+
+
+def current_implementation(environment: Mapping[str, str] | None = None) -> HeliosImplementation | None:
+    env = os.environ if environment is None else environment
+    key = env.get("DISTILLSCHEDULE_SEARCH_CANDIDATE_ID", "")
+    mode = env.get(MODE_ENV, "off")
+    if not key.startswith("joint-helios"):
+        require(mode == "off" and not env.get(ASSIGNMENT_ENV), "Helios planner mode/assignment without generated identity")
+        return None
+    impl = HeliosImplementation.parse(key)
+    require(mode in MODES, "Helios generated identity requires explicit correctness/calibration/native mode")
+    try:
+        assignment = json.loads(env.get(ASSIGNMENT_ENV, ""))
+    except (ValueError, TypeError) as error:
+        raise ValueError("Helios generated assignment is missing/malformed") from error
+    require(assignment == impl.assignment, "Helios assignment differs from generated identity")
+    return impl

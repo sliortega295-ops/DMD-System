@@ -5,11 +5,19 @@ from .contracts import require
 from .wan_implementation import WAN
 from .livewan_implementation import LIVEWAN
 from .h3_implementation import H3
+from .helios_implementation import NO_GAN, GAN
 
-SUPPORTED_WORKLOADS = frozenset((WAN, LIVEWAN, H3))
+SUPPORTED_WORKLOADS = frozenset((WAN, LIVEWAN, H3, NO_GAN, GAN))
 
 
 def adapter_for(workload):
+    if workload in (NO_GAN, GAN):
+        from . import helios_model_adapter as m
+        from .helios_implementation import HeliosImplementation
+        return SimpleNamespace(ADAPTER=m.ADAPTER,ADAPTERS=(m.ADAPTER,),implementation_type=HeliosImplementation,
+            capability_report=partial(m.capability_report,workload),build_problem=m.build_problem,
+            validate_native_problem=m.validate_native_problem,lower_prediction=m.lower_prediction,
+            validate_lowered_plan=m.validate_lowered_plan)
     from .wan_implementation import WAN, WanImplementation
     if workload == WAN:
         from . import wan_model_adapter as m

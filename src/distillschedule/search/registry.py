@@ -73,6 +73,11 @@ def candidates(workload: str) -> tuple[Candidate, ...]:
 
 
 def get_candidate(workload: str, candidate_id: str) -> Candidate:
+    from .helios_implementation import NO_GAN, GAN, HeliosImplementation
+    if workload in (NO_GAN,GAN) and candidate_id.startswith("joint-helios"):
+        impl = HeliosImplementation.parse(candidate_id)
+        require(impl.workload == workload, "Helios variant/workload differs")
+        return impl.candidate()
     from .h3_implementation import H3, H3Implementation
     from .livewan_implementation import LiveWanImplementation
     if workload == H3 and candidate_id.startswith("joint-h3"):
@@ -99,6 +104,9 @@ def candidate_profile(candidate: Candidate, *, root: Path | None = None) -> dict
     """Compile only a registered recipe. No arbitrary env override API."""
     root = root or repository_root()
     require(candidate == get_candidate(candidate.workload, candidate.id), "candidate payload was altered")
+    if candidate.id.startswith("joint-helios"):
+        from .helios_implementation import HeliosImplementation
+        return HeliosImplementation.parse(candidate.id).lower_profile(root=root)
     if candidate.workload == "minimax_h3_grid1000_best" and candidate.id.startswith("joint-h3"):
         from .h3_implementation import H3Implementation
         return H3Implementation.parse(candidate.id).lower_profile(root=root)

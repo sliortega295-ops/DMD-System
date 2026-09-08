@@ -1462,6 +1462,21 @@ def main() -> int:
             "ema_step": int(ema.optimization_step),
             "memory": base._memory(device),
         }
+        from distillschedule.search.helios_implementation import current_implementation
+
+        if current_implementation() is not None:
+            from distillschedule.runtime.helios_planner_cycle import run_two_cycles
+
+            run_two_cycles(
+                p0=sys.modules[__name__], args=args, policy=policy, result=result,
+                output=output, rank=rank, device=device, logical=logical, trace=trace,
+                negative=negative, cfg=cfg, generator_engine=generator_engine,
+                critic_engine=critic_engine, ema=ema, diagnostics=diagnostics,
+                generator_free_memory=generator_free_memory,
+            )
+            base._atomic_json(output, result)
+            dist.barrier()
+            return 0
         dist.barrier()
         torch.cuda.synchronize(device)
         started_perf = time.perf_counter()

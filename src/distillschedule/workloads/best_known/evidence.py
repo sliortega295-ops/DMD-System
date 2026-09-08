@@ -58,6 +58,9 @@ def summary_command(receipt: dict[str, Any]) -> list[str] | None:
         return prefix + [str(root/"scripts/distillschedule/summarize_wan13b_fair_world16.py"),
                          "--placement", p["topology"]["placement"], "--mode", receipt["mode"], *tail]
     if p["id"].startswith("helios"):
+        if receipt.get("search_candidate",{}).get("id","").startswith("joint-helios1-"):
+            return prefix + ["-m","distillschedule.search.helios_native","summarize",
+                "--candidate-id",receipt["search_candidate"]["id"],"--expected-head",receipt["integration_head"],*tail]
         command = prefix + [str(root/"scripts/distillschedule/summarize_static_fsdp2_p0_world16.py"),
             "--variant", p["contract"]["variant"], "--mode", receipt["mode"],
             "--mesh-policy", p["topology"]["placement"], "--rollout-batch-size", "1",
