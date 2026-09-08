@@ -277,3 +277,16 @@ def test_admission_cannot_swap_comparison_sources(monkeypatch):
     monkeypatch.setattr(n,'bound',lambda r:comparison)
     with pytest.raises(ValueError,match='actual comparison inputs'):
         n.validate_admission(data,receipt)
+
+
+@pytest.mark.parametrize("variant,window", [("no-gan",3),("gan",5)])
+@pytest.mark.parametrize("field", ["generator_logical_version","critic_logical_version"])
+def test_nested_logical_receipt_labels_are_rechecked_after_json_roundtrip(monkeypatch,variant,window,field):
+    from distillschedule.search.helios_native import summarize
+    rows,impl=native_rows(monkeypatch,variant=variant,window=window)
+    rows=json.loads(json.dumps(rows))
+    head=rows[0]["source_head"]
+    assert summarize(rows,expected_head=head,candidate_id=impl.id)["status"]=="PASS"
+    rows[10]["final"][field]+=1
+    with pytest.raises(ValueError,match="logical final"):
+        summarize(rows,expected_head=head,candidate_id=impl.id)

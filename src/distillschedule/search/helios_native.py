@@ -59,6 +59,9 @@ def summarize(rows,*,expected_head,candidate_id):
                 and r['final']['critic_physical_step']==r['final_physical_versions']['critic']
                 and r['final']['ema_step']==r['final_physical_versions']['ema'],
                 'Helios physical final engine counters differ')
+        require(r['final']['generator_logical_version']==r['final_versions']['generator']
+                and r['final']['critic_logical_version']==r['final_versions']['critic'],
+                'Helios logical final engine labels differ')
         require(len(r['cycles'])==2,'Helios requires two cycles')
         previous=contract['initial_versions']
         for index,c in enumerate(r['cycles'],1):
