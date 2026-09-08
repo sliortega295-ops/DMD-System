@@ -343,7 +343,8 @@ def _validate_action(row, impl):
             require(record.get("logical_steps") == [entry["source_step"]] and record.get("batch_size") == 1,
                     "helper rollout source step or physical B1 changed")
         require(record["call_count"] == entry["expected_call_count"], "native helper vs trace rollout count differs")
-        require({int(k): v for k,v in record["stage_call_count"].items()} == entry["expected_stage_call_count"],
+        require({int(k): v for k,v in record["stage_call_count"].items()} ==
+                {int(k): v for k,v in entry["expected_stage_call_count"].items()},
                 "native helper vs trace stage count differs")
         calls = [x for x in row["forwards"] if x["application_forward"] and x["root_module"] == "generator"
                  and x["trace"]["rollout_operation"] == entry["rollout_operation"]]

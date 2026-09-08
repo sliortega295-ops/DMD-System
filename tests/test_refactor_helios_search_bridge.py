@@ -45,6 +45,7 @@ def native_rows(monkeypatch, *, variant='no-gan', mode='calibration', window=3):
 def test_native_summary_rechecks_actual_inventory_and_two_cycles(monkeypatch,variant,window):
     from distillschedule.search.helios_native import summarize
     rows,impl=native_rows(monkeypatch,variant=variant,window=window)
+    rows=json.loads(json.dumps(rows))  # Real collectors consume persisted JSON, not Python objects.
     value=summarize(rows,expected_head=rows[0]['source_head'],candidate_id=impl.id)
     assert value['status']=='PASS' and value['rank_count']==16
     assert value['calibration_only'] and not value['formal_timing_eligible']
