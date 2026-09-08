@@ -2,11 +2,35 @@
 from copy import deepcopy
 from pathlib import Path
 import json
+import os
+import subprocess
 
 import pytest
 
 from distillschedule.search.helios_implementation import HeliosImplementation, NO_GAN, GAN
 from distillschedule.workloads.best_known.registry import fingerprint, load_profile
+
+
+@pytest.mark.parametrize('query_status,remaining',[(0,''),(0,'1234'),(1,'')])
+def test_static_launcher_records_real_post_worker_gpu_teardown(tmp_path,query_status,remaining):
+    source=(Path(__file__).parents[1]/'scripts/distillschedule/launch_static_fsdp2_p0_world16_node.sh').read_text()
+    # Execute the actual post-worker shell suffix, not a rewritten Python model.
+    marker='# Post-worker GPU ownership check; the node flock is still held.'
+    assert marker in source
+    tail=source[source.index(marker):]
+    shim=tmp_path/'nvidia-smi'
+    shim.write_text(f'#!/bin/bash\nprintf "%s" "{remaining}"\nexit {query_status}\n')
+    shim.chmod(0o755)
+    node=tmp_path/'node';node.mkdir()
+    result=subprocess.run(['bash','-Eeuo','pipefail','-c',tail],env={**os.environ,
+        'PATH':str(tmp_path)+os.pathsep+os.environ['PATH'],'NODE_LOG':str(node),'RUN_ID':'cpu-teardown-test'},
+        capture_output=True,text=True)
+    if query_status==0 and not remaining:
+        assert result.returncode==0,result.stderr
+        assert (node/'teardown_status.txt').read_text()==(
+            'status=PASS\ngpu_process_count=0\nowner_run_id=cpu-teardown-test\n')
+    else:
+        assert result.returncode!=0 and not (node/'teardown_status.txt').exists()
 
 
 @pytest.mark.parametrize("workload,variant", [(NO_GAN,"no-gan"),(GAN,"gan")])

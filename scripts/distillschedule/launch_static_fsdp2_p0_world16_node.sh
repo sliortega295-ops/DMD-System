@@ -514,4 +514,12 @@ else
     "${WORKER[@]}" >"${NODE_LOG}/console.log" 2>&1
 fi
 
-[[ -z "$(nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | sed '/^[[:space:]]*$/d')" ]] || { echo gpu_processes_remain >&2; exit 88; }
+# Post-worker GPU ownership check; the node flock is still held.
+# An unavailable query is not evidence that the GPUs are empty.
+remaining_gpu_processes="$(nvidia-smi --query-compute-apps=pid --format=csv,noheader | sed '/^[[:space:]]*$/d')" || { echo gpu_process_query_failed >&2; exit 88; }
+[[ -z "${remaining_gpu_processes}" ]] || { echo gpu_processes_remain >&2; exit 88; }
+cat >"${NODE_LOG}/teardown_status.txt" <<EOF
+status=PASS
+gpu_process_count=0
+owner_run_id=${RUN_ID}
+EOF
