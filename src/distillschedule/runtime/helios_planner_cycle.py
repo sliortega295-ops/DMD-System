@@ -133,7 +133,7 @@ class _Observer:
     def __init__(self, *, torch, device, rank, impl, generator, critic, ema, mode):
         self.torch, self.device, self.rank, self.impl = torch, device, rank, impl
         self.generator, self.critic, self.ema, self.mode = generator, critic, ema, mode
-        self.actions, self.losses, self.finite_flags = [], [], []
+        self.actions, self.losses = [], []
         self.current, self.current_entry = None, None
         self.last_entries = {}
         self.live, self.lifetimes = {}, []
@@ -178,7 +178,6 @@ class _Observer:
                         self.current["counts"][f"{role}_backward"] += 1
                         scalar = loss.detach()
                         self.losses.append((self.current, role, scalar))
-                        self.finite_flags.append(self.torch.isfinite(scalar).all())
                         self.in_backward = True
                         try:
                             return original(loss, *args, **kwargs)
@@ -280,13 +279,13 @@ class _Observer:
     def finish(self):
         """Only called after the CUDA-fenced outer cycle wall has stopped."""
         require(not self.live, "native cycle retained unconsumed rollout tensors")
-        require(bool(self.finite_flags), "native cycle did not observe loss tensors")
-        finite = self.torch.stack(self.finite_flags).cpu().tolist()
+        require(bool(self.losses), "native cycle did not observe loss tensors")
+        finite = self.torch.stack([self.torch.isfinite(scalar).all()
+                                  for _, _, scalar in self.losses]).cpu().tolist()
         require(all(finite), "native cycle observed a non-finite backward loss")
         for action, role, scalar in self.losses:
             action["losses"].append(dict(role=role, value=float(scalar.float().cpu().item())))
         self.losses.clear()
-        self.finite_flags.clear()
         for row in self.actions:
             _validate_action(row, self.impl)
         return dict(census="PASS", versions="PASS", finite="PASS", dtype="PASS", sample_rng="PASS",

@@ -418,3 +418,19 @@ def test_native_finite_gate_is_after_cycle_boundary(monkeypatch):
     with pytest.raises(ValueError, match="finite"):
         run_two_cycles(**f.kwargs)
     assert len([e for e in f.events if e[0] == "fence"]) == 2
+
+
+def test_finite_gpu_scans_also_stay_outside_native_timer(monkeypatch):
+    from distillschedule.runtime.helios_planner_cycle import run_two_cycles
+    f = _fixture(monkeypatch)
+    original = f.kwargs['p0'].torch.isfinite
+    def scan(value):
+        f.events.append(('finite_scan',))
+        return original(value)
+    f.kwargs['p0'].torch.isfinite = scan
+    run_two_cycles(**f.kwargs)
+    fences = [i for i,e in enumerate(f.events) if e[0] == 'fence']
+    scans = [i for i,e in enumerate(f.events) if e[0] == 'finite_scan']
+    assert len(fences) == 4 and len(scans) == 12
+    assert all(fences[1] < i < fences[2] for i in scans[:6])
+    assert all(fences[3] < i for i in scans[6:])
