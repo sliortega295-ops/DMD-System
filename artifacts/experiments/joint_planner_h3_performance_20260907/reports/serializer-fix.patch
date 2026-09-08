@@ -1,0 +1,52 @@
+commit eb0cea17fc6488096cb9b130782950e31dbd959d
+Author:     SliOrtega295 <SliOrtega295@gmail.com>
+AuthorDate: Mon Sep 7 20:42:20 2026 -0400
+Commit:     SliOrtega295 <SliOrtega295@gmail.com>
+CommitDate: Mon Sep 7 20:42:20 2026 -0400
+
+    fix(planner): stabilize rank memory rows across JSON roundtrips
+---
+ src/distillschedule/search/simulator.py        |  5 ++++-
+ tests/test_refactor_simulator_serialization.py | 18 ++++++++++++++++++
+ 2 files changed, 22 insertions(+), 1 deletion(-)
+
+diff --git a/src/distillschedule/search/simulator.py b/src/distillschedule/search/simulator.py
+index 75de1cf..dfd3bfb 100644
+--- a/src/distillschedule/search/simulator.py
++++ b/src/distillschedule/search/simulator.py
+@@ -80,7 +80,10 @@ def simulate(problem: PlanningProblem, assignment: Mapping[str, str], costs: Cos
+                 peak_events[rank].extend([(start, value.bytes_per_rank, value.id),
+                                           (end, -value.bytes_per_rank, value.id)])
+     memory = []
+-    for rank, events in peak_events.items():
++    # Sorted JSON keys order ranks as 0,1,10,...,2. Prediction arrays must not
++    # inherit that mapping insertion order or native plan revalidation fails.
++    for rank in sorted(peak_events):
++        events = peak_events[rank]
+         live, peak, peak_at = static[rank], static[rank], 0
+         # Intervals are half-open: release before allocate at a common boundary.
+         for when, delta, _ in sorted(events, key=lambda e: (e[0], e[1])):
+diff --git a/tests/test_refactor_simulator_serialization.py b/tests/test_refactor_simulator_serialization.py
+new file mode 100644
+index 0000000..a70e690
+--- /dev/null
++++ b/tests/test_refactor_simulator_serialization.py
+@@ -0,0 +1,18 @@
++"""Regression from world16 control-plane admission; CPU fixture only."""
++from dataclasses import replace
++import json
++
++from test_refactor_model_planning import fixture
++from distillschedule.search.plan_ir import PlanningProblem
++from distillschedule.search.model_search import search_plans, validate_saved_prediction
++from distillschedule.search.simulator import simulate
++
++
++def test_world16_sorted_json_roundtrip_preserves_prediction():
++    problem, costs, assignment = fixture()
++    problem = replace(problem, memory_limits={rank: 100 for rank in range(16)})
++    restored = PlanningProblem.from_dict(json.loads(json.dumps(problem.to_dict(), sort_keys=True)))
++    assert restored.digest == problem.digest
++    assert simulate(problem, assignment, costs) == simulate(restored, assignment, costs)
++    result = search_plans(problem, costs, exhaustive=True, max_proposals=8)
++    validate_saved_prediction(json.loads(json.dumps(result, sort_keys=True)), restored, costs)

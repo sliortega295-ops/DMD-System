@@ -1,0 +1,211 @@
+{
+  "action_count": 352,
+  "application_forward_per_rank_cycle": {
+    "fake": 6,
+    "student": 24,
+    "teacher": 1
+  },
+  "backward_per_rank_cycle": {
+    "fake": 5,
+    "student": 1
+  },
+  "binding": {
+    "asset_fingerprint": "1d18ea58838bf792ed277da1290f4e9b4473317436cee5f4eeb89fb74b378dc4",
+    "environment_fingerprint": "3df0e50279867f29a52504746ff08254801c2c30cd25aebe95c74f4cf4aac209",
+    "hardware_fingerprint": "ac432a4127e0887d11f4e3ecc90c3cc180a65ee02c91f6a2192c7b277c4531fc",
+    "precision_fingerprint": "d9770d317e012107205af1ee8b189d47950470184c22983ba75f779164a10728",
+    "semantic_fingerprint": "cb9b6dee5817aeec0f5042912b82d89236bdc9b0f9651814461aac72f14c91cd",
+    "source_head": "bf59e39b8a6fe158ad15ebae07be7df71369f5fd"
+  },
+  "boundary_offload": "none",
+  "candidate_id": "joint-h3v2-d2-n128-w3",
+  "cycle1_scope": "COLD_WARMUP_DIAGNOSTIC",
+  "cycle2_native_measurement": false,
+  "cycle_wall_seconds": {
+    "1": 775.16221922,
+    "2": 771.453950295
+  },
+  "cycles": 2,
+  "fa3_storage": "cpu_staged",
+  "final_versions": {
+    "critic": 10,
+    "ema": 0,
+    "generator": 2
+  },
+  "finite_losses": true,
+  "formal_speedup": null,
+  "grid_per_rank_cycle": {
+    "cache_hit_count": 600,
+    "cache_miss_count": 0,
+    "checkpoint_wrap_count": 300,
+    "missing_key_count": 0,
+    "scoped_execution_count": 600
+  },
+  "initializations": 1,
+  "launch_proof": "EXACT_SOURCE_BOUND_DIRECT_TORCHRUN_BOTH_NODES",
+  "matched_native_baseline": "NOT_RUN_IN_THIS_BOUNDED_CLOSURE",
+  "mode": "calibration",
+  "numerical_status": "REVIEW_NOT_STRICT_PASS",
+  "peak_allocated_bytes": 35770782208,
+  "peak_reserved_bytes": 41362128896,
+  "profiled": false,
+  "rank_count": 16,
+  "resources": [
+    {
+      "cgroup_oom_delta": 0,
+      "cgroup_oom_kill_delta": 0,
+      "node": 0,
+      "peak_scope": "SAMPLED_MONITOR_NOT_KERNEL_MEMORY_PEAK",
+      "sample_count": 807,
+      "sampled_cgroup_peak_bytes": 485185613824,
+      "sampled_driver_free_min_bytes": 912261120,
+      "status": "PASS",
+      "teardown": "PASS"
+    },
+    {
+      "cgroup_oom_delta": 0,
+      "cgroup_oom_kill_delta": 0,
+      "node": 1,
+      "peak_scope": "SAMPLED_MONITOR_NOT_KERNEL_MEMORY_PEAK",
+      "sample_count": 808,
+      "sampled_cgroup_peak_bytes": 484986044416,
+      "sampled_driver_free_min_bytes": 81788928,
+      "status": "PASS",
+      "teardown": "PASS"
+    }
+  ],
+  "rng_neutral_consumers": 160,
+  "run_id": "jointp_h3_actions_perf_20260907_r1-calibration",
+  "same_process": true,
+  "source_head": "bf59e39b8a6fe158ad15ebae07be7df71369f5fd",
+  "sources": [
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/execution/ranks/rank_000.json",
+      "sha256": "ead1e369f5ee266462334d38259d170fa8c8976a58bb8580a1f0023124ee43eb"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/execution/ranks/rank_001.json",
+      "sha256": "7e0308b8af074d3166ea8d465d7618e4d943e54ed9b31dca1e69c644cf30d5e0"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/execution/ranks/rank_002.json",
+      "sha256": "5524b44ab608a677cc08590d9ebbb0678bb14fba19c5adde73450f749c001c7f"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/execution/ranks/rank_003.json",
+      "sha256": "7c897c54f58216b70802872819c8ff162e68869afba678cb81f34d31dbe3b3d3"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/execution/ranks/rank_004.json",
+      "sha256": "2d65954a3b353172089dfba502dc27fb6f2e299fdc0eafad3624982c253ed2f5"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/execution/ranks/rank_005.json",
+      "sha256": "9e56c3d52e4425b51fb48be56222e6f392b8a53d6fb866be7dbb15bc8babdeb1"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/execution/ranks/rank_006.json",
+      "sha256": "e936221e5237b274675f42077271bc16fc662a873b53c4acc5a8d40af101828a"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/execution/ranks/rank_007.json",
+      "sha256": "4ad5db1bc788d4b5d83c423ad675ef1e89f502ff6a731292ce8f3c6541e5a8d5"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/execution/ranks/rank_008.json",
+      "sha256": "38f7f852d597608e9aca693a8384b6b49c7f6c782a042e395679851f9305d546"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/execution/ranks/rank_009.json",
+      "sha256": "a7c24b0f93238ab59f793267610be21a2a50074eda1334659e59dd587d20190f"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/execution/ranks/rank_010.json",
+      "sha256": "ce47482db93b62119b3b9a5ba2ad03e7bb4ccc9a2acb004f201088f8d986eb02"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/execution/ranks/rank_011.json",
+      "sha256": "4af41ade8144d32550501ac1f35897bcee979bd0bee044fa0930c7d6a146f01c"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/execution/ranks/rank_012.json",
+      "sha256": "42e8263f5e3d237c9f4692777bf2a536963bb2d477137629f65b34894c7da47f"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/execution/ranks/rank_013.json",
+      "sha256": "76e561a0d8d5ff4f16c19f2d790a5ab157459157effca0dccbb514700ec09fa4"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/execution/ranks/rank_014.json",
+      "sha256": "4f0b8f853acbab0af0fe5a4440a2c5d0d45537431f1d98753653637d179ab2cc"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/execution/ranks/rank_015.json",
+      "sha256": "68461fd1aec59860aa707d28c0fbbde5a9930470da3d1507a3dd18c313713f6c"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/launcher/node_0/launch_manifest.json",
+      "sha256": "e8ce4d167c4c6c4f602ac60a8681f19c511f09b28df34619d3923091c3e28736"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/launcher/node_1/launch_manifest.json",
+      "sha256": "0b043c76c791a32a630f82643ebfd8e6a3bd25decdf69302cf05306bcd3cda8d"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/preflight-r2/execution-plan-node0.json",
+      "sha256": "29d0295447a6b643181af98dd5cb8c757e34c15e086e649517def34526b06021"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/preflight-r2/runtime-calibration.json",
+      "sha256": "570a346b1c897e5a988bf7958248de374857fccd771f4fc2a2b55558bf0359cd"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/bound-summary.json",
+      "sha256": "7fb06e73331c10142e84098ddb5e1922c3c89cddd0a3de3f39ce4cfed5d07f65"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/native-summary.json",
+      "sha256": "c7dcec4991630a41a5f0485ae92c04b4d3591525be15b79712681b41ef87fcd4"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/search-resources.node0.json",
+      "sha256": "e70057acb6c7bcd32b072b00eb51ad5b684a47567eaf5e24ee3381222ae7a9a2"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/node-exit.0.json",
+      "sha256": "62f94647110a69b574cab31be584ad435b8b4435a59022df92208f3402d9704e"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/launcher/node_0/teardown_status.txt",
+      "sha256": "5b5c641cec10dfab5c0884388983e45a32f5b7031b4ee090c6a350502015136d"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/search-resources.node1.json",
+      "sha256": "17f5bd0e5815833a29478e592f297e92190cbbec94a577c5016d9c9692f06cd8"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/node-exit.1.json",
+      "sha256": "62f94647110a69b574cab31be584ad435b8b4435a59022df92208f3402d9704e"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/launcher/node_1/teardown_status.txt",
+      "sha256": "5b5c641cec10dfab5c0884388983e45a32f5b7031b4ee090c6a350502015136d"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/h3/train.log",
+      "sha256": "ac617fc81afbec7f5d004b904d47f0fa5a00902ee81439230dd2e2a1b58b8152"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/launcher/node_0/console.log",
+      "sha256": "01ebeaf1dabb426fd18ffe66484bb603e2b76c7242567c4655e8b6c9172fe815"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration/launcher/node_1/console.log",
+      "sha256": "5ac81ea8fa9b49f344ff99544a05b57a0df319a94e03faeb83a0b5d386f17682"
+    }
+  ],
+  "status": "PASS_ACTION_CALIBRATION",
+  "strict_numerical_parity": "NOT_REESTABLISHED",
+  "tensor_value_reads": "DISABLED_METADATA_ONLY_PRIOR_CORRECTNESS_REQUIRED",
+  "timer_scope": "FENCED_ACTION_CALIBRATION_NOT_NATIVE_PERFORMANCE"
+}

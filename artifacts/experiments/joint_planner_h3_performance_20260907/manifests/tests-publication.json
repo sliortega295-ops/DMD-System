@@ -1,0 +1,31 @@
+{
+  "head": "eb0cea17fc6488096cb9b130782950e31dbd959d",
+  "command": [
+    "/tmp/lyy-experiments/DMD-System/livewan_c34_main_integration_20260906/cpu-env/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "-p",
+    "no:cacheprovider",
+    "tests/test_refactor_native_macro_adapter.py",
+    "tests/test_refactor_wan_action_costs.py",
+    "tests/test_refactor_best_known_livewan_c34.py",
+    "tests/test_refactor_native_macro_routing.py",
+    "tests/test_refactor_wan_action_calibration.py",
+    "tests/test_refactor_best_known.py",
+    "tests/test_refactor_native_macro_calibration.py",
+    "tests/test_refactor_h3_action_model.py",
+    "tests/test_refactor_h3_action_calibration.py",
+    "tests/test_refactor_wan_action_model.py",
+    "tests/test_refactor_h3_planner_cycle_observer.py",
+    "tests/test_refactor_h3_cycle_actions.py",
+    "tests/test_refactor_profile_guided_search.py",
+    "tests/test_refactor_search_native.py",
+    "tests/test_refactor_h3_search_native.py",
+    "tests/test_refactor_model_planning.py",
+    "tests/test_refactor_simulator_serialization.py"
+  ],
+  "returncode": 0,
+  "runtime_gpu_head": "bf59e39b8a6fe158ad15ebae07be7df71369f5fd",
+  "scope": "POST_RUN_CPU_SERIALIZATION_FIX_ONLY"
+}

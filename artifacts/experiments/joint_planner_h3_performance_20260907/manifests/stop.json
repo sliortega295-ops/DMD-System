@@ -1,0 +1,13 @@
+{
+  "status": "COMPLETE_BOUNDED_PERFORMANCE_CLOSURE",
+  "runtime_head": "bf59e39b8a6fe158ad15ebae07be7df71369f5fd",
+  "new_gpu_runs": 2,
+  "calibration_cycles": 2,
+  "confirmation_cycles": 2,
+  "correctness_repeat": false,
+  "other_workloads": "NOT_RUN",
+  "nsys": "NOT_RUN",
+  "cleanup": "PASS_BOTH_NODES",
+  "next_experiment": "NOT_RUN_WAIT_FOR_USER",
+  "numerical_status": "REVIEW"
+}

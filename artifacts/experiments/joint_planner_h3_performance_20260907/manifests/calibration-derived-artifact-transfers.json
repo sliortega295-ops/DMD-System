@@ -1,0 +1,104 @@
+[
+  {
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/scripts/analyze_completed.py",
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/scripts/analyze_completed.py",
+    "sha256": "fd96ce1cffc5931c2e5c223c2f3d3f1dd3ca18f231ba5cd64a074916a43b41a5",
+    "bytes": 7699
+  },
+  {
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/scripts/search_components.py",
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/scripts/search_components.py",
+    "sha256": "214d953ed8a229d9e941f3b47b3f2ff6c0facbdc52fe3bbe36a9307a98216b13",
+    "bytes": 4857
+  },
+  {
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/manifests/runtime-calibration.json",
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/preflight-r2/runtime-calibration.json",
+    "sha256": "570a346b1c897e5a988bf7958248de374857fccd771f4fc2a2b55558bf0359cd",
+    "bytes": 29038
+  },
+  {
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/analysis-calibration-r1/summary.json",
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/reports/calibration/summary.json",
+    "sha256": "d2dd1caa0c0b629ae52b97be86e199f4dcb074f4442fa1345b904ac54d879597",
+    "bytes": 11905
+  },
+  {
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/analysis-calibration-r1/native-summary.json",
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/reports/calibration/native-summary.json",
+    "sha256": "7fb06e73331c10142e84098ddb5e1922c3c89cddd0a3de3f39ce4cfed5d07f65",
+    "bytes": 8314
+  },
+  {
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/analysis-calibration-r1/rank-cycles.csv",
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/reports/calibration/rank-cycles.csv",
+    "sha256": "cd0d78d217d7cfa37bd2f5d766549a7d9f2076d2cfcc7c3a3dc5341fa9f7bfad",
+    "bytes": 5161
+  },
+  {
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/analysis-calibration-r1/action-metadata.csv",
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/reports/calibration/action-metadata.csv",
+    "sha256": "2045036d409e1d24a1c7ff55a46f68e393c6b3ded5cea8c6c19ba310704aab4e",
+    "bytes": 27510
+  },
+  {
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/analysis-calibration-r1/fa3-cache-observations.json",
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/reports/calibration/fa3-cache-observations.json",
+    "sha256": "f6362d4e4bfd3488966efef59b77bb306e130e92ac4c4e13c3c29abf8bd0798e",
+    "bytes": 2481
+  },
+  {
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/analysis-calibration-r1/artifact_sha256.json",
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/reports/calibration/artifact_sha256.json",
+    "sha256": "ae135d980ac3aa1244228125815c45e2efead4209f6aac36b613a56e01f680ec",
+    "bytes": 658
+  },
+  {
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/analysis-calibration-r1/calibrated-components.csv",
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/reports/calibration/calibrated-components.csv",
+    "sha256": "242ebee7346bdfaf43399febed4191595dbea0beb2f73e94118fa452ca2f13ec",
+    "bytes": 53018
+  },
+  {
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/analysis-calibration-r1/output-lifetimes.csv",
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/reports/calibration/output-lifetimes.csv",
+    "sha256": "c636926868d3cf10dba6255c3a653cb296086cf7a2c1384314f28acb206b2e65",
+    "bytes": 7467
+  },
+  {
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/search-r1/summary.json",
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/reports/search/summary.json",
+    "sha256": "90bc9e9442bcd295f31a07296318665752d7d2b838965541102597299dae8db6",
+    "bytes": 1202
+  },
+  {
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/search-r1/search-candidates.csv",
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/reports/search/search-candidates.csv",
+    "sha256": "96a8bbd4f3d2cdfc082bfced586c27f9eca37c3cb93650186e4a6e79299243dc",
+    "bytes": 2484
+  },
+  {
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/search-r1/search-result.json",
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/reports/search/search-result.json",
+    "sha256": "f1904e6144a95d5c89c5927466f9a68aef215d9e2f2e80cb09843e0f69371c2f",
+    "bytes": 408414
+  },
+  {
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/search-r1/confirmation-validation.json",
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/reports/search/confirmation-validation.json",
+    "sha256": "96037edb43f563b49aae5a744147fb887a4e8258400a8f982be95e0cd3620699",
+    "bytes": 3865
+  },
+  {
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/search-r1/execution-plan-confirmation.json",
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/reports/search/execution-plan-confirmation.json",
+    "sha256": "7dff99f7609e2ecae35021976fa8d2f499f95d142b083b0977bc14d3a68ded24",
+    "bytes": 3558119
+  },
+  {
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/search-r1/assets-selected.json",
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/manifests/assets-confirmation.json",
+    "sha256": "0fb1f1425f053f5111294d0dae50f3ded3a444af74256bc3f83477e2b4ca0927",
+    "bytes": 3493
+  }
+]

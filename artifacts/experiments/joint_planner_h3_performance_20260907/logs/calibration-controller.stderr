@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/scripts/launch_calibration.py", line 40, in <module>
+    before=[runner._rpc('runtime_identity',_node_rank=i,node_rank=i,receipt=plan) for i in (0,1)]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/lyy/Helios/DMD-System/worktrees/joint-planner-20260907/src/distillschedule/search/execution.py", line 164, in _rpc
+    logs.mkdir(exist_ok=True)
+  File "/usr/lib/python3.12/pathlib.py", line 1313, in mkdir
+    os.mkdir(self, mode)
+FileNotFoundError: [Errno 2] No such file or directory: '/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/identity-rpc/rpc'

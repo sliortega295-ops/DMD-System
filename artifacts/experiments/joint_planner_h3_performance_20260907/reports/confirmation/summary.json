@@ -1,0 +1,211 @@
+{
+  "action_count": 352,
+  "application_forward_per_rank_cycle": {
+    "fake": 6,
+    "student": 24,
+    "teacher": 1
+  },
+  "backward_per_rank_cycle": {
+    "fake": 5,
+    "student": 1
+  },
+  "binding": {
+    "asset_fingerprint": "1d18ea58838bf792ed277da1290f4e9b4473317436cee5f4eeb89fb74b378dc4",
+    "environment_fingerprint": "3df0e50279867f29a52504746ff08254801c2c30cd25aebe95c74f4cf4aac209",
+    "hardware_fingerprint": "ac432a4127e0887d11f4e3ecc90c3cc180a65ee02c91f6a2192c7b277c4531fc",
+    "precision_fingerprint": "d9770d317e012107205af1ee8b189d47950470184c22983ba75f779164a10728",
+    "semantic_fingerprint": "cb9b6dee5817aeec0f5042912b82d89236bdc9b0f9651814461aac72f14c91cd",
+    "source_head": "bf59e39b8a6fe158ad15ebae07be7df71369f5fd"
+  },
+  "boundary_offload": "none",
+  "candidate_id": "joint-h3v2-d2-n128-w5",
+  "cycle1_scope": "COLD_WARMUP_DIAGNOSTIC",
+  "cycle2_native_measurement": true,
+  "cycle_wall_seconds": {
+    "1": 772.776955216,
+    "2": 769.785204601
+  },
+  "cycles": 2,
+  "fa3_storage": "cpu_staged",
+  "final_versions": {
+    "critic": 10,
+    "ema": 0,
+    "generator": 2
+  },
+  "finite_losses": true,
+  "formal_speedup": null,
+  "grid_per_rank_cycle": {
+    "cache_hit_count": 600,
+    "cache_miss_count": 0,
+    "checkpoint_wrap_count": 300,
+    "missing_key_count": 0,
+    "scoped_execution_count": 600
+  },
+  "initializations": 1,
+  "launch_proof": "EXACT_SOURCE_BOUND_DIRECT_TORCHRUN_BOTH_NODES",
+  "matched_native_baseline": "NOT_RUN_IN_THIS_BOUNDED_CLOSURE",
+  "mode": "diagnostic-timing",
+  "numerical_status": "REVIEW_NOT_STRICT_PASS",
+  "peak_allocated_bytes": 35857402368,
+  "peak_reserved_bytes": 40942698496,
+  "profiled": false,
+  "rank_count": 16,
+  "resources": [
+    {
+      "cgroup_oom_delta": 0,
+      "cgroup_oom_kill_delta": 0,
+      "node": 0,
+      "peak_scope": "SAMPLED_MONITOR_NOT_KERNEL_MEMORY_PEAK",
+      "sample_count": 800,
+      "sampled_cgroup_peak_bytes": 484830773248,
+      "sampled_driver_free_min_bytes": 522190848,
+      "status": "PASS",
+      "teardown": "PASS"
+    },
+    {
+      "cgroup_oom_delta": 0,
+      "cgroup_oom_kill_delta": 0,
+      "node": 1,
+      "peak_scope": "SAMPLED_MONITOR_NOT_KERNEL_MEMORY_PEAK",
+      "sample_count": 798,
+      "sampled_cgroup_peak_bytes": 484590522368,
+      "sampled_driver_free_min_bytes": 666894336,
+      "status": "PASS",
+      "teardown": "PASS"
+    }
+  ],
+  "rng_neutral_consumers": 160,
+  "run_id": "jointp_h3_actions_perf_20260907_r1-confirmation",
+  "same_process": true,
+  "source_head": "bf59e39b8a6fe158ad15ebae07be7df71369f5fd",
+  "sources": [
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/execution/ranks/rank_000.json",
+      "sha256": "997c718acd42338fd372cec90a4efa7a16309636fc8488d93beb72ca4c0514ad"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/execution/ranks/rank_001.json",
+      "sha256": "4dd5d5702994900c2706d7f938c45364a5f32ffc11f1652156d38637b0891582"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/execution/ranks/rank_002.json",
+      "sha256": "b7c8f2dc4d2762ad392e33b32ae466120e9bc785614e7559dee79ef1a37a7bac"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/execution/ranks/rank_003.json",
+      "sha256": "4f8f121a98a63539dbe6e6575ac08f1648eaaa3cf775f5d5d35b456cf115c4d6"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/execution/ranks/rank_004.json",
+      "sha256": "5910baf8ad1416d17322de94141b01108364312a53386557d9cc3206d065e5fc"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/execution/ranks/rank_005.json",
+      "sha256": "f35f5f79654afb7b331b0070d12a1052e46440cdbc98549a85db343c57bd1d71"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/execution/ranks/rank_006.json",
+      "sha256": "9bdbe3f9e4bb61783ca9bbb199c298e084da2fb6bf52267b0feac0f44238ee3b"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/execution/ranks/rank_007.json",
+      "sha256": "2fee893018fd3d751ded2f1b30a746ad96ce5e1be7ac7623744ca0c20608ead6"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/execution/ranks/rank_008.json",
+      "sha256": "79e2e8d4b7797ee8d5db72f1c892a44e5ebfb4c21ab0dec49ac33f3c274b2508"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/execution/ranks/rank_009.json",
+      "sha256": "df02e608292037cb384f12f6c9bc2beab980a7778b702eee47a3ba5945599152"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/execution/ranks/rank_010.json",
+      "sha256": "0163580751095957f99fc9dd4dbbb20b4bc01f82587d21232beea8cf0b3a5fc9"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/execution/ranks/rank_011.json",
+      "sha256": "4ed7ab4a12e472e6e90787ba7f37421e61d3b1d3901b3717d793f2e44aea87b9"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/execution/ranks/rank_012.json",
+      "sha256": "3969e4b7d0ce8a61199e46e898b7c1197b95e3aae3e2987bdc84ce9ed91ab2d7"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/execution/ranks/rank_013.json",
+      "sha256": "2e8d763cb2ff72352ebce7d1a922497db41d4f59aba524ee365b5b9e994f2862"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/execution/ranks/rank_014.json",
+      "sha256": "1bfb5b1438c977d84151a8f035aacd9e0fef35577ff146acdc509b484f576ab1"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/execution/ranks/rank_015.json",
+      "sha256": "ccdb7b17dca173512583c0ec285d0e2c4f1fe81d9084a7aecdd25e22a81fd338"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/launcher/node_0/launch_manifest.json",
+      "sha256": "51c16690f604adc36469ee37dcbd3c47fdd4304381a7d2c74ddcebff95b5fd6f"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/launcher/node_1/launch_manifest.json",
+      "sha256": "4f89fff5c0d51159517144a9d6f3ad38e76db8a3d1f00bd9353af187959ed93c"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/search-r2/execution-plan-confirmation.json",
+      "sha256": "73a8791fe45c25f2bc4d8ae57f853227ccae369d9b2d384878e5d4f18d115b4b"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/search-r2/runtime-confirmation.json",
+      "sha256": "570a346b1c897e5a988bf7958248de374857fccd771f4fc2a2b55558bf0359cd"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/bound-summary.json",
+      "sha256": "244793601547474c0e7b7b79f727ceb7f7469bd1628e7350edd7552d7448feb7"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/native-summary.json",
+      "sha256": "21b8c3302b8d1b841e173c28d199b46d9528668ea904795c569169e66f1ef702"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/search-resources.node0.json",
+      "sha256": "eae610b0bd759419ac6c3996c7b0c92d654bedc7e304e677ce397df4f106e22b"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/node-exit.0.json",
+      "sha256": "2249b3109e8b117583d765d8d68c8fcf1e36e728eff69642cbc7807e0efc4a93"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/launcher/node_0/teardown_status.txt",
+      "sha256": "c15f2b401089b2c4ce4171b931aab859dde333a7e95c844d6106501d25e49ce5"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/search-resources.node1.json",
+      "sha256": "013a208512552411bf524bf6acb2d679d6b82f59005b9de88c937749de9b49d4"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/node-exit.1.json",
+      "sha256": "2249b3109e8b117583d765d8d68c8fcf1e36e728eff69642cbc7807e0efc4a93"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/launcher/node_1/teardown_status.txt",
+      "sha256": "c15f2b401089b2c4ce4171b931aab859dde333a7e95c844d6106501d25e49ce5"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/h3/train.log",
+      "sha256": "ca73daf3d84b3c67eaa82cbdc962e5fe1bc70bfe64ea63320b949ff3f77a76b9"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/launcher/node_0/console.log",
+      "sha256": "415f3e3fccdf7e5b0736c047e001da8430b2a5a56c31f7402ef34c6de4ce3d34"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-confirmation/launcher/node_1/console.log",
+      "sha256": "860f405425089a87dc530f607a93ba9cd33939a4843e12c1a2b0a2c13ca04291"
+    }
+  ],
+  "status": "PASS_UNPROFILED_NATIVE_DIAGNOSTIC",
+  "strict_numerical_parity": "NOT_REESTABLISHED",
+  "tensor_value_reads": "DISABLED_METADATA_ONLY_PRIOR_CORRECTNESS_REQUIRED",
+  "timer_scope": "RANK_MAX_NATIVE_HOST_FENCED_CYCLE_WALL"
+}

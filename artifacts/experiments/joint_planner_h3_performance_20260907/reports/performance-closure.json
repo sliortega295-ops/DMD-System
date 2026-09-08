@@ -1,0 +1,81 @@
+{
+  "schema_version": "distillschedule.h3_action_performance_closure.v1",
+  "status": "PASS_MEASURED_COMPONENT_SEARCH_NATIVE_CONFIRMATION",
+  "runtime_head": "bf59e39b8a6fe158ad15ebae07be7df71369f5fd",
+  "calibration_run_id": "jointp_h3_actions_perf_20260907_r1-calibration",
+  "confirmation_run_id": "jointp_h3_actions_perf_20260907_r1-confirmation",
+  "candidate_id": "joint-h3v2-d2-n128-w5",
+  "same_process_cycles": 2,
+  "initializations": 1,
+  "cycle1_seconds": 772.776955216,
+  "cycle2_seconds": 769.785204601,
+  "predicted_cycle2_seconds": 771.399059042,
+  "prediction_error_seconds": 1.613854440999944,
+  "prediction_error_percent": 0.2096499687645359,
+  "denominator": "RANK_MAX_NATIVE_HOST_FENCED_CYCLE_WALL",
+  "profiled": false,
+  "rank_count": 16,
+  "final_versions": {
+    "critic": 10,
+    "ema": 0,
+    "generator": 2
+  },
+  "hard_runtime_gates": "PASS",
+  "numerical_status": "REVIEW_NOT_STRICT_PASS",
+  "strict_tensor_value_equality": "NOT_RECHECKED_THIS_PERFORMANCE_RUN",
+  "cost_components": 22,
+  "cpu_search_evaluated": 20,
+  "feasible": 5,
+  "uncalibrated": 15,
+  "latency_tie": [
+    "joint-h3v2-d2-n128-w5",
+    "joint-h3v2-d2-n128-w2",
+    "joint-h3v2-d2-n128-w1",
+    "joint-h3v2-d2-n128-w4",
+    "joint-h3v2-d2-n128-w3"
+  ],
+  "measured_subspace": "depth2 / N128 / windows1..5; only window5 native confirmation",
+  "additional_speedup": null,
+  "matched_native_baseline": "NOT_RUN",
+  "historical_772_seconds": "CONTEXT_ONLY_DIFFERENT_SOURCE_NO_SPEEDUP_RATIO",
+  "peak_allocated_gib": 33.394808292388916,
+  "peak_reserved_gib": 38.130859375,
+  "resources": [
+    {
+      "cgroup_oom_delta": 0,
+      "cgroup_oom_kill_delta": 0,
+      "node": 0,
+      "peak_scope": "SAMPLED_MONITOR_NOT_KERNEL_MEMORY_PEAK",
+      "sample_count": 800,
+      "sampled_cgroup_peak_bytes": 484830773248,
+      "sampled_driver_free_min_bytes": 522190848,
+      "status": "PASS",
+      "teardown": "PASS"
+    },
+    {
+      "cgroup_oom_delta": 0,
+      "cgroup_oom_kill_delta": 0,
+      "node": 1,
+      "peak_scope": "SAMPLED_MONITOR_NOT_KERNEL_MEMORY_PEAK",
+      "sample_count": 798,
+      "sampled_cgroup_peak_bytes": 484590522368,
+      "sampled_driver_free_min_bytes": 666894336,
+      "status": "PASS",
+      "teardown": "PASS"
+    }
+  ],
+  "boundary_offload": "none",
+  "fa3_storage": "cpu_staged",
+  "metadata_correspondence": "PASS_METADATA_RNG_CENSUS_CORRESPONDENCE",
+  "loss_relative_error": {
+    "count": 192,
+    "max": 0.6566145920640079,
+    "mean": 0.021353912388069368,
+    "median": 0.004017461521698943,
+    "p95": 0.09543449544698136
+  },
+  "oom_delta": 0,
+  "cleanup": "PASS_BOTH_NODES_GPU_PROCESSES_EMPTY_PORT_FREE_LOCK_FREE",
+  "next_gpu_run": "NOT_AUTHORIZED_NOT_RUN",
+  "created_utc": "2026-09-08T00:45:54.877935+00:00"
+}

@@ -1,0 +1,11 @@
+{
+  "cost_model": {
+    "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/search-r1/calibration/cost-model.json",
+    "sha256": "4a5bb635e84483ec94daa465f4fd9f3cf2b338673ff0e96c046bf48d776b7483"
+  },
+  "new_gpu_calibration": false,
+  "problem": {
+    "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/search-r1/calibration/problem.json",
+    "sha256": "079c6b92384dde3d45ef8b765f7d2a143311f5d4e22a68818955be4f59748852"
+  }
+}

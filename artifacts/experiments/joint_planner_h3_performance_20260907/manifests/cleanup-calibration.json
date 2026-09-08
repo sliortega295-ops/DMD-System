@@ -1,0 +1,42 @@
+[
+  {
+    "schema_version": "distillschedule.postrun_readback.v1",
+    "node": 0,
+    "hostname": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0",
+    "time_ns": 1788825710625409951,
+    "run_id": "jointp_h3_actions_perf_20260907_r1-calibration",
+    "gpu_processes": [],
+    "owned_run_processes": [],
+    "node_lock_free": true,
+    "port": 31491,
+    "port_listeners": [],
+    "cgroup_events": {
+      "low": "0",
+      "high": "0",
+      "max": "0",
+      "oom": "0",
+      "oom_kill": "0"
+    },
+    "status": "PASS"
+  },
+  {
+    "schema_version": "distillschedule.postrun_readback.v1",
+    "node": 1,
+    "hostname": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0",
+    "time_ns": 1788825710610611300,
+    "run_id": "jointp_h3_actions_perf_20260907_r1-calibration",
+    "gpu_processes": [],
+    "owned_run_processes": [],
+    "node_lock_free": true,
+    "port": 31491,
+    "port_listeners": [],
+    "cgroup_events": {
+      "low": "0",
+      "high": "0",
+      "max": "0",
+      "oom": "0",
+      "oom_kill": "0"
+    },
+    "status": "PASS"
+  }
+]

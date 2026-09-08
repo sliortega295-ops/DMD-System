@@ -1,5 +1,10 @@
 # Native planner continuation: LiveWan complete, H3 numerical gate blocked
 
+> Later bounded continuation: [H3 action performance closure](DMD_H3_ACTION_PERFORMANCE_CLOSURE_20260907.md)
+> completed measured components, common search and independent native cycle2
+> (**769.785204601 s**), under the user's diagnostic numerical-REVIEW scope.
+> The strict numerical failure below remains preserved; it was not relabelled PASS.
+
 **Status:** LiveWan completed measured-cost → CPU search → native two-cycle
 validation. H3's generated implementations run successfully, but cross-arm and
 unchanged-arm numerical checks fail; **H3 calibration/search/timing did not run**.

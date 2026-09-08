@@ -1,0 +1,7 @@
+{
+  "status": "FAIL_PLAN_ROUNDTRIP_PREFLIGHT",
+  "gpu": "NOT_RUN",
+  "bug": "memory rank rows reordered by sorted JSON string keys",
+  "proof": "controlplane-serialization-root-cause.json",
+  "recovery": "Load saved PlanningProblem and cost model, rerun CPU search through common search and lowerer; no timing/values edited"
+}

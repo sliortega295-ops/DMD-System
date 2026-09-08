@@ -1,5 +1,11 @@
 # H3 generated prepared-action native gate
 
+> Subsequent update: the missing measured-cost/search/native performance unit
+> is completed in [H3 action performance closure](DMD_H3_ACTION_PERFORMANCE_CLOSURE_20260907.md).
+> Independent cycle2 is **769.785204601 s** against a **771.399059042 s** prediction.
+> The correctness-only numbers and original stopping boundary below remain
+> historical evidence, not native timing denominators.
+
 **PASS: new native action execution and identity unit, not performance.**
 The old depth1/depth2/self-repeat matrix was not repeated. This run exercised
 the previously unvalidated generated **window=3** action order in the existing

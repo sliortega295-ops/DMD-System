@@ -1,0 +1,59 @@
+{
+  "assets": {
+    "adaln_grid_manifest": {
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/grid1000_adaln_20260820/table/adaln_grid1000.json",
+      "sha256": "dd2625e0013509e31b984ee37be752c5d397da7e23aa1c945f66150af95cc1f3"
+    },
+    "diffusers_source": {
+      "identity_file": "src/diffusers/models/transformers/transformer_minimax_h3.py",
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/source/diffusers",
+      "sha256": "1926b1bc15a5bebda05e3dc8cde1b3955d56641ba7f8f9d6e90c8f78c66ae30c"
+    },
+    "flash_attn3_kernel": {
+      "identity_file": "metadata.json",
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home/hub/models--kernels-community--flash-attn3/snapshots/acb0f42e6901d3e9effa8a83bd32bc2bf0cfdfc2/build/torch210-cxx11-cu128-x86_64-linux",
+      "sha256": "f1b4b0ef991c0966f7d848777154c0591c4580968fb6da33f6b2a2829a109309"
+    },
+    "hf_home": {
+      "identity_file": "hub/models--kernels-community--flash-attn3/snapshots/acb0f42e6901d3e9effa8a83bd32bc2bf0cfdfc2/build/torch210-cxx11-cu128-x86_64-linux/metadata.json",
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home",
+      "sha256": "f1b4b0ef991c0966f7d848777154c0591c4580968fb6da33f6b2a2829a109309"
+    },
+    "model": {
+      "identity_file": "transformer/config.json",
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/models/MiniMax-H3-train",
+      "sha256": "74c11bff524336576096993cbfcdcdc2ef4fa2fa4409df693bdcbc6c666282ae"
+    },
+    "prompt_cache": {
+      "identity_file": "metadata.jsonl",
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/prompt_cache/minimax_h3_prompt_cache_96",
+      "sha256": "a2e479c5c8f8c656f4548d24f01408081e7c2631e07fc2cb89882dec56c5e5dd"
+    }
+  },
+  "correctness": {
+    "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/search-r1/prior-action-gate-selected.json",
+    "sha256": "015b1901310326f028990f02ad5fae01d29d6dcd01714a79b933a0f7f7fc9faa"
+  },
+  "master_addr": "172.24.211.163",
+  "master_port": 31491,
+  "node_local_cache_root": "/tmp/lyy-experiments/DMD-System/joint_h3_performance_20260907_r1",
+  "nodes": [
+    {
+      "address_family": "ipv4",
+      "host": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0.shuchenweng.baai-vision_vision.dx-calc1.job@ssh.platform-multi.baai.ac.cn",
+      "python_env": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/env",
+      "repo_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-h3-performance-bf59e39b8a6f-20260907",
+      "ssh_port": 2222
+    },
+    {
+      "address_family": "ipv4",
+      "host": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0.shuchenweng.baai-vision_vision.dx-calc1.job@ssh.platform-multi.baai.ac.cn",
+      "python_env": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/env",
+      "repo_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-h3-performance-bf59e39b8a6f-20260907",
+      "ssh_port": 2222
+    }
+  ],
+  "run_root": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native",
+  "schema_version": 1,
+  "timeout_seconds": 3300
+}

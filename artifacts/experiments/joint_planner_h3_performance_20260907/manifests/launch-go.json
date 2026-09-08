@@ -1,0 +1,27 @@
+{
+  "checks": [
+    {
+      "cgroup": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n",
+      "gpu": "0, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n1, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n2, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n3, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n4, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n5, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n6, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n7, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08",
+      "head": "bf59e39b8a6fe158ad15ebae07be7df71369f5fd",
+      "hostname": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0",
+      "run_dir": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration",
+      "status": "GO_PRELAUNCH_RECHECK_NATIVE_LAUNCHER_REACQUIRES_LOCK"
+    },
+    {
+      "cgroup": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n",
+      "gpu": "0, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n1, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n2, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n3, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n4, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n5, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n6, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n7, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08",
+      "head": "bf59e39b8a6fe158ad15ebae07be7df71369f5fd",
+      "hostname": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0",
+      "run_dir": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/native/jointp_h3_actions_perf_20260907_r1-calibration",
+      "status": "GO_PRELAUNCH_RECHECK_NATIVE_LAUNCHER_REACQUIRES_LOCK"
+    }
+  ],
+  "created_utc": "2026-09-07T23:30:43.606526+00:00",
+  "node_lock": "Native launcher owns audit through teardown",
+  "previous_work": "NOT_REPEATED",
+  "run_id": "jointp_h3_actions_perf_20260907_r1-calibration",
+  "source_head": "bf59e39b8a6fe158ad15ebae07be7df71369f5fd",
+  "status": "GO_ONE_ACTION_CALIBRATION_2_CYCLES",
+  "timing": "CALIBRATION_NOT_NATIVE_PERFORMANCE"
+}
