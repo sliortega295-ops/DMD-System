@@ -135,9 +135,13 @@ class NativeTrialRunner:
     """
     def __init__(self, *, workload: str, identity: dict[str, str], assets: dict[str, Any],
                  output: Path, run_prefix: str, bootstrap_peer: str,
-                 reference_id: str = "fsdp-reference"):
+                 reference_id: str = "fsdp-reference",
+                 admitted_candidate_ids: set[str] | None = None):
         self.workload, self.identity, self.assets = workload, identity, assets
         self.output, self.run_prefix = Path(output), run_prefix
+        self.admitted_candidate_ids = None if admitted_candidate_ids is None else frozenset(admitted_candidate_ids)
+        require(self.admitted_candidate_ids is None or reference_id in self.admitted_candidate_ids,
+                "native baseline was not admitted by prediction")
         self.bootstrap_peer = get_candidate(workload, bootstrap_peer)
         self.reference = get_candidate(workload, reference_id)
         require(self.reference.placement in {"world16-fsdp", "world16-fsdp2"}, "reference must use world16 FSDP")
@@ -184,6 +188,10 @@ class NativeTrialRunner:
             raise RuntimeError(f"native {action} failed ({response.returncode}); evidence: {directory}: {response.stderr[-6000:]}")
         return json.loads(response.stdout)
 
+    def _require_admitted(self, candidate: Candidate) -> None:
+        require(self.admitted_candidate_ids is None or candidate.id in self.admitted_candidate_ids,
+                f"candidate {candidate.id} rejected by prediction; current source-bound preparation required")
+
     def _trajectory(self, c: Candidate) -> dict[str, Any]:
         if c.id in self.trajectories:
             return self.trajectories[c.id]
@@ -195,6 +203,7 @@ class NativeTrialRunner:
             require(plan["integration_head"] == self.identity["source_head"], "old preparation source")
             require(plan["asset_fingerprint"] == self.identity["asset_fingerprint"], "old preparation assets")
         else:
+            self._require_admitted(c)
             directory.mkdir(parents=True, exist_ok=False)
             plan = self._rpc("resolve", workload=self.workload, candidate_id=c.id,
                 assets=self.assets, run_id=self.run_prefix + "-gate-" + c.id, mode="correctness")
@@ -215,6 +224,7 @@ class NativeTrialRunner:
             self.prepared[c.id] = value
         if c.id in self.prepared:
             return self.prepared[c.id]
+        self._require_admitted(c)
         if c.id == self.reference.id:
             self._prepare(self.bootstrap_peer)
             return self.prepared[c.id]
@@ -232,6 +242,7 @@ class NativeTrialRunner:
         return self.prepared[c.id]
 
     def __call__(self, candidate: Candidate, phase: str, directory: Path) -> dict[str, Any]:
+        self._require_admitted(candidate)
         model_based = "environment_fingerprint" in self.identity
         if model_based:
             # Check both allocations/environments before even a correctness
@@ -265,6 +276,7 @@ class NativeTrialRunner:
 
     def calibrate(self, candidate: Candidate, *, directory: Path) -> dict[str, Any]:
         """One diagnostic collection, not a timing trial or a matrix search."""
+        self._require_admitted(candidate)
         from .wan_implementation import is_generated
         require((candidate.workload == WAN and is_generated(candidate.id)) or
                 candidate.id.startswith(("joint-livewan1-", "joint-h3v1-", "joint-helios1-")), "native calibration adapter unavailable")

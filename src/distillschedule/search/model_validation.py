@@ -48,11 +48,19 @@ class ModelValidationSession:
         self.identity = {"workload": problem.workload, **problem.binding}
         self.predictions = {}
         self.candidates = {}
+        self.rejected_anchors = {}
         assignments = [*problem.seeds, *(r["assignment"] for r in prediction["ranked"])]
         for assignment in assignments:
             actual = simulate(problem, assignment, costs)
-            require(actual["status"] == "PREDICTED_FEASIBLE", "native proposal is not calibrated/feasible")
             implementation = Implementation.from_assignment(assignment)
+            if actual["status"] != "PREDICTED_FEASIBLE":
+                require(assignment == problem.seeds[1] and actual["status"] == "PREDICTED_CAPACITY_FAIL",
+                        "native baseline/proposal is not calibrated/feasible")
+                # A historical incumbent may run yet fail the current safety
+                # margin. Preserve the rejection, never launch it or silently
+                # substitute its old timing. Baseline remains mandatory.
+                self.rejected_anchors[implementation.id] = actual
+                continue
             self.predictions[implementation.id] = actual
             self.candidates[implementation.id] = get_candidate(problem.workload, implementation.id)
         self.seeds = tuple(Implementation.from_assignment(s).id for s in problem.seeds)
@@ -64,6 +72,7 @@ class ModelValidationSession:
             "max_new_candidates": max_trials - 3, "baseline": self.seeds[0],
             "incumbent": self.seeds[1], "ranked_proposals": self.ranked,
             "predictions": self.predictions,
+            "rejected_anchors": self.rejected_anchors,
             "candidate_contracts": {cid: c.to_dict() for cid, c in self.candidates.items()},
             "objective": "NATIVE_UNPROFILED_CYCLE2_NOT_CYCLE_AVERAGE"}
         if resume:
@@ -117,6 +126,7 @@ class ModelValidationSession:
                     "previous non-capacity/anchor failure stops this session")
 
     def _trial(self, cid: str, phase: str, execute: Callable) -> dict[str, Any]:
+        require(cid in self.candidates, "native proposal was rejected by prediction")
         index = sum(e["type"] == "START" for e in self.events())
         require(index < self.max_trials, "total timing budget exhausted")
         directory = self.output / "trials" / f"{index:02d}-{phase}-{cid}"
@@ -154,9 +164,12 @@ class ModelValidationSession:
     def _result(self) -> dict[str, Any]:
         done = [e for e in self.events() if e["type"] == "COMPLETE"]
         baseline = next(e for e in done if e["phase"] == "baseline")["result"]
-        incumbent = next(e for e in done if e["phase"] == "incumbent")["result"]
+        incumbent_event = next((e for e in done if e["phase"] == "incumbent"), None)
+        incumbent = incumbent_event["result"] if incumbent_event else None
+        require(incumbent is not None or self.seeds[1] in self.rejected_anchors,
+                "missing native incumbent without a preserved prediction rejection")
         final = next(e for e in done if e["phase"] == "confirmation")["result"]
-        assert baseline and incumbent and final
+        assert baseline and final
         strict = baseline["strict_eligible"] and final["strict_eligible"]
         discovery = next(e["result"] for e in done if e["candidate_id"] == final["candidate_id"]
                          and e["phase"] != "confirmation")
@@ -171,9 +184,13 @@ class ModelValidationSession:
             "status": "COMPLETE_NATIVE_VALIDATION", "identity": self.identity,
             "validation_sha256": fingerprint(self.spec), "baseline": baseline, "incumbent": incumbent,
             "confirmed_candidate": final,
-            "strict_winner": final if strict and final["cycle2_seconds"] < baseline["cycle2_seconds"] else None,
+            "strict_winner": final if strict and final["candidate_id"] != baseline["candidate_id"]
+                and final["cycle2_seconds"] < baseline["cycle2_seconds"] else None,
             "cycle2_speedup_diagnostic": baseline["cycle2_seconds"] / final["cycle2_seconds"],
-            "improvement_over_incumbent": incumbent["cycle2_seconds"] / final["cycle2_seconds"],
+            "improvement_over_incumbent": incumbent["cycle2_seconds"] / final["cycle2_seconds"] if incumbent is not None else None,
+            "rejected_anchors": {cid: {"status": value["status"], "gpu_execution": value["gpu_execution"],
+                "memory": value["memory"], "capacity_failure_observed": False}
+                for cid, value in self.rejected_anchors.items()},
             "timing_attempts": len(done), "new_candidate_attempts": sum(e["phase"] == "candidate" for e in done),
             "capacity_failures": sum(e["failure_type"] in CAPACITY_FAILURES for e in done),
             "prediction_errors": errors, "canonical_winner_updated": False,
@@ -191,6 +208,8 @@ class ModelValidationSession:
                 require(value == self._result(), "cached validation result changed")
                 return value
             for cid, phase in zip(self.seeds, ("baseline", "incumbent")):
+                if cid in self.rejected_anchors:
+                    continue
                 if not any(e["type"] == "COMPLETE" and e["phase"] == phase for e in self.events()):
                     self._trial(cid, phase, execute)
             for cid in self.ranked[:self.max_trials - 3]:

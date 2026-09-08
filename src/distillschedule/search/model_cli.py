@@ -77,7 +77,9 @@ def model_based_search(args):
                 "native validation assets differ from calibration")
         runner = NativeTrialRunner(workload=args.workload, identity=session.identity, assets=assets,
             output=validation_dir, run_prefix=args.run_id, reference_id=session.seeds[0],
-            bootstrap_peer=session.seeds[1])
+            bootstrap_peer=(session.seeds[1] if session.seeds[1] in session.candidates else
+                next((cid for cid in session.candidates if cid != session.seeds[0]), session.seeds[1])),
+            admitted_candidate_ids=set(session.candidates))
         return session.run(runner)
     if args.emit_native_plan:
         require(adapter is not None, "native adapter not implemented")
