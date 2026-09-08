@@ -120,6 +120,14 @@ class HeliosImplementation:
         require(semantic_contract(profile) == semantics, "Helios lowering changed frozen workload semantics")
         return profile
 
+    def version_mapping(self, contract: Mapping[str, Any]) -> dict[str, Any]:
+        """Schedule labels are not Adam step counters in the GAN bootstrap."""
+        logical = dict(contract["initial_versions"])
+        physical = (dict(generator=2, critic=10, ema=800)
+                    if self.variant == "gan" else dict(logical))
+        return dict(physical_initial=physical, logical_initial=logical,
+                    logical_minus_physical={key: logical[key]-physical[key] for key in logical})
+
     def receipt_binding(self, *, args: Any, policy: Any,
                         environment: Mapping[str, str] | None = None) -> dict[str, Any]:
         env = os.environ if environment is None else environment

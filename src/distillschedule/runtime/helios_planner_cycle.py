@@ -130,9 +130,10 @@ class _ObservedTrace:
 
 
 class _Observer:
-    def __init__(self, *, torch, device, rank, impl, generator, critic, ema, mode):
+    def __init__(self, *, torch, device, rank, impl, generator, critic, ema, mode, version_offsets):
         self.torch, self.device, self.rank, self.impl = torch, device, rank, impl
         self.generator, self.critic, self.ema, self.mode = generator, critic, ema, mode
+        self.version_offsets = dict(version_offsets)
         self.actions, self.losses = [], []
         self.current, self.current_entry = None, None
         self.last_entries = {}
@@ -140,8 +141,13 @@ class _Observer:
         self.peak_live = 0
         self.in_backward = False
 
+    def version_snapshot(self):
+        physical = _versions(self.generator, self.critic, self.ema)
+        logical = {key: value+self.version_offsets[key] for key, value in physical.items()}
+        return logical, physical
+
     def versions(self):
-        return _versions(self.generator, self.critic, self.ema)
+        return self.version_snapshot()[0]
 
     def entry(self, value, *, generator, rank):
         require(self.current is not None, "trace load outside native action")
@@ -230,8 +236,10 @@ class _Observer:
     @contextmanager
     def action(self, op, *, source_steps):
         require(self.current is None, "nested native actions are not supported")
+        logical_versions, physical_versions = self.version_snapshot()
         row = dict(action_id=op.operation_id, kind=op.kind.value, source_steps=list(source_steps), source_rank=self.rank,
-                   versions_before=self.versions(), counts={key:0 for key in _COUNTS}, forwards=[], trace_entries=[],
+                   versions_before=logical_versions, physical_versions_before=physical_versions,
+                   counts={key:0 for key in _COUNTS}, forwards=[], trace_entries=[],
                    produced=[], losses=[], calibration_seconds=None, calibration_start_unix_ns=None,
                    calibration_stop_unix_ns=None)
         self.actions.append(row)
@@ -251,7 +259,7 @@ class _Observer:
                 self.torch.cuda.synchronize(self.device)
                 row["calibration_seconds"] = time.perf_counter() - started
                 row["calibration_stop_unix_ns"] = time.time_ns()
-            row["versions_after"] = self.versions()
+            row["versions_after"], row["physical_versions_after"] = self.version_snapshot()
             row["memory_after"] = _memory(self.torch, self.device, driver=calibrated)
             row["retained_after"] = dict(count=len(self.live), bytes=sum(x["bytes"] for x in self.live.values()))
             self.current, self.current_entry = None, None
@@ -263,9 +271,11 @@ class _Observer:
         metadata = _tensor_metadata(value, self.torch)
         require(metadata["shape"] == [1,16,9,48,80] and metadata["dtype"] == "torch.bfloat16"
                 and not metadata["requires_grad"], "retained Helios rollout must be physical B1 BF16 no-grad")
+        physical_step = int(self.generator.global_steps)
         item = dict(source_step=step, producer=self.current["action_id"],
                     produced_after_action=len(self.actions)-1, released_after_action=None,
-                    generator_version=int(self.generator.global_steps), **metadata)
+                    generator_version=physical_step+self.version_offsets["generator"],
+                    generator_physical_step=physical_step, **metadata)
         self.current["produced"].append(item)
         self.lifetimes.append(item)
         self.live[step] = item
@@ -457,10 +467,21 @@ def run_two_cycles(*, p0: Any, args: Any, policy: Any, result: dict[str, Any], o
     binding = impl.receipt_binding(args=args, policy=policy)
     mode, torch = binding["mode"], p0.torch
     canonical = impl.lower_profile()["contract"]
-    initial = _versions(generator_engine, critic_engine, ema)
-    require(initial == canonical["initial_versions"], "native initial G/C/EMA versions differ from canonical checkpoint")
-    require(all(int(logical.component(key)["optimizer_step"]) == initial[key] for key in ("generator", "critic")),
-            "native engine versions differ from loaded logical checkpoint")
+    mapping = impl.version_mapping(canonical)
+    physical_initial = _versions(generator_engine, critic_engine, ema)
+    require(physical_initial == mapping["physical_initial"],
+            "native physical G/C/EMA steps differ from canonical checkpoint")
+    require(all(int(logical.component(key)["optimizer_step"]) == physical_initial[key]
+                for key in ("generator", "critic")),
+            "native engine physical steps differ from loaded logical checkpoint")
+    if impl.variant == "gan":
+        control = logical.manifest.get("systems_only_control", {})
+        require(control.get("classification") == "systems_only_gan_bootstrap"
+                and control.get("logical_schedule_versions") == mapping["logical_initial"]
+                and control.get("logical_control_window") == canonical["logical_steps"]
+                and control.get("official_checkpoint_1000") is False,
+                "GAN systems-only logical version mapping differs from loaded checkpoint")
+    initial = dict(mapping["logical_initial"])
     steps = tuple(trace.logical_steps)
     require(steps == tuple(canonical["logical_steps"]), "native source cohort must remain fixed")
     require(result.get("world_size") == 16 and result.get("rank") == rank, "Helios requires rank-qualified world16")
@@ -477,6 +498,7 @@ def run_two_cycles(*, p0: Any, args: Any, policy: Any, result: dict[str, Any], o
                   candidate_id=impl.id, planner_binding=binding, source_cohort_policy=COHORT_POLICY,
                   source_steps=list(steps), same_process=True, initializations=1, measured_cycle=2,
                   timer_scope="NATIVE_CYCLE_OUTSIDE_PROBES", cycles=[], initial_versions=initial,
+                  version_mapping=mapping, initial_physical_versions=physical_initial,
                   numerical_status="NOT_RUN", numerical_evidence_scope="diagnostic_sampled_state_not_strict_parity",
                   post_setup_memory=_memory(torch, device, driver=True), outside_timer_probes=[])
     if mode == "correctness":
@@ -485,11 +507,14 @@ def run_two_cycles(*, p0: Any, args: Any, policy: Any, result: dict[str, Any], o
             torch, generator_engine, critic_engine, ema), seconds=time.perf_counter()-started))
     for cycle in (1, 2):
         observer = _Observer(torch=torch, device=device, rank=rank, impl=impl, generator=generator_engine,
-                             critic=critic_engine, ema=ema, mode=mode)
+                             critic=critic_engine, ema=ema, mode=mode,
+                             version_offsets=mapping["logical_minus_physical"])
         prepared, graph, order = _prepare_cycle(observer=observer, p0=p0, args=args, policy=policy, steps=steps,
             trace=trace, negative=negative, cfg=cfg, diagnostics=diagnostics, generator_free_memory=generator_free_memory)
+        logical_versions, physical_versions = observer.version_snapshot()
         row = dict(cycle=cycle, measured=cycle == 2, source_steps=list(steps), source_cohort_policy=COHORT_POLICY,
-                   initial_versions=observer.versions(), graph=graph.to_dict(), selected_order=list(order),
+                   initial_versions=logical_versions, initial_physical_versions=physical_versions,
+                   graph=graph.to_dict(), selected_order=list(order),
                    actions=observer.actions, status="RUNNING")
         result["cycles"].append(row)
         with observer.installed():
@@ -502,7 +527,9 @@ def run_two_cycles(*, p0: Any, args: Any, policy: Any, result: dict[str, Any], o
             torch.cuda.synchronize(device)
             row["wall_seconds"] = time.perf_counter()-started
             row["stop_unix_ns"] = time.time_ns()
-        row.update(final_versions=observer.versions(), dispatch=prepared.receipt(),
+        logical_versions, physical_versions = observer.version_snapshot()
+        row.update(final_versions=logical_versions, final_physical_versions=physical_versions,
+                   dispatch=prepared.receipt(),
                    peak_live_rollouts=observer.peak_live, retained_lifetimes=observer.lifetimes,
                    memory=_memory(torch, device, driver=True))
         _include_helper_peaks(row["memory"], observer.actions)
@@ -513,15 +540,18 @@ def run_two_cycles(*, p0: Any, args: Any, policy: Any, result: dict[str, Any], o
             row["state_sketch"] = _correctness_sketch(torch, generator_engine, critic_engine, ema)
         row["outside_timer_probe_seconds"] = time.perf_counter()-probe_started
         row["status"] = "PASS"
-    final = _versions(generator_engine, critic_engine, ema)
+    final, physical_final = observer.version_snapshot()
     require(final == canonical["final_versions"], "native two-cycle final versions changed")
     if hasattr(trace, "receipt"):
         result["input_reuse"] = trace.receipt()
         require(result["input_reuse"].get("critic_entries_still_cached") == 0,
                 "hardened trace cache retained an unconsumed input")
     result.update(status="PASS", semantics_status="PASS", final_versions=final,
+                  final_physical_versions=physical_final,
                   cycle_wall_seconds={str(row["cycle"]): row["wall_seconds"] for row in result["cycles"]},
                   updates={key: final[key]-initial[key] for key in final},
-                  final=dict(generator_physical_step=final["generator"], critic_physical_step=final["critic"],
+                  final=dict(generator_physical_step=physical_final["generator"],
+                             critic_physical_step=physical_final["critic"],
+                             generator_logical_version=final["generator"], critic_logical_version=final["critic"],
                              ema_step=final["ema"], memory=_memory(torch, device, driver=True)))
     return result

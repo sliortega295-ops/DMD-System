@@ -36,6 +36,9 @@ def summarize(rows,*,expected_head,candidate_id):
     require(len(rows)==16 and {r.get('rank') for r in rows}==set(range(16)),'Helios needs 16/16 ranks')
     require(len({r.get('run_id') for r in rows})==1,'rank run IDs differ')
     mode=rows[0]['mode']
+    mapping=impl.version_mapping(contract)
+    def physical(logical):
+        return {key: value-mapping['logical_minus_physical'][key] for key,value in logical.items()}
     for r in rows:
         require(r.get('schema_version')==SCHEMA and r.get('status')=='PASS'
                 and r.get('source_head')==expected_head and r.get('candidate_id')==impl.id
@@ -48,11 +51,22 @@ def summarize(rows,*,expected_head,candidate_id):
                 'Helios fixed source cohort changed')
         require(r['initial_versions']==contract['initial_versions'] and r['final_versions']==contract['final_versions'],
                 'Helios final/initial versions differ')
+        require(r.get('version_mapping')==mapping
+                and r.get('initial_physical_versions')==physical(r['initial_versions'])
+                and r.get('final_physical_versions')==physical(r['final_versions']),
+                'Helios physical versus logical version mapping differs')
+        require(r['final']['generator_physical_step']==r['final_physical_versions']['generator']
+                and r['final']['critic_physical_step']==r['final_physical_versions']['critic']
+                and r['final']['ema_step']==r['final_physical_versions']['ema'],
+                'Helios physical final engine counters differ')
         require(len(r['cycles'])==2,'Helios requires two cycles')
         previous=contract['initial_versions']
         for index,c in enumerate(r['cycles'],1):
             require(c['cycle']==index and c['status']=='PASS' and c['measured']==(index==2)
                     and c['initial_versions']==previous,'Helios cycle sequence/status differs')
+            require(c.get('initial_physical_versions')==physical(c['initial_versions'])
+                    and c.get('final_physical_versions')==physical(c['final_versions']),
+                    'Helios cycle physical step census differs')
             finite_number(c['wall_seconds'],'cycle wall',positive=True)
             graph,order=_cycle_graph(impl,tuple(contract['logical_steps']),previous)
             require(fingerprint(c['graph'])==fingerprint(graph.to_dict()) and c['selected_order']==list(order),
@@ -66,6 +80,9 @@ def summarize(rows,*,expected_head,candidate_id):
                 require(a['versions_before']==versions,'action version dependency differs')
                 versions.update(by_id[a['action_id']].produced_versions)
                 require(a['versions_after']==versions,'action commit versions differ')
+                require(a.get('physical_versions_before')==physical(a['versions_before'])
+                        and a.get('physical_versions_after')==physical(a['versions_after']),
+                        'Helios action physical step census differs')
                 require(all(math.isfinite(l['value']) for l in a['losses']),'non-finite native loss')
                 require(len(a['losses'])==a['counts']['generator_backward']+a['counts']['critic_backward'],
                         'backward loss observations incomplete')
@@ -89,6 +106,8 @@ def summarize(rows,*,expected_head,candidate_id):
     return dict(schema_version=SUMMARY_SCHEMA,status='PASS',rank_count=16,source_head=expected_head,
         run_id=rows[0].get('run_id'),candidate_id=impl.id,mode=mode,profiled=False,
         initial_versions=contract['initial_versions'],final_versions=contract['final_versions'],
+        version_mapping=mapping,initial_physical_versions=physical(contract['initial_versions']),
+        final_physical_versions=physical(contract['final_versions']),
         cycle_wall_seconds={str(i):max(r['cycles'][i-1]['wall_seconds'] for r in rows) for i in (1,2)},
         timer_scope='MAX_RANK_LOCAL_CUDA_FENCED_CYCLE_WALL_OUTSIDE_PROBES',
         source_cohort_policy='fixed_source_cohort_replay',calibration_only=mode=='calibration',

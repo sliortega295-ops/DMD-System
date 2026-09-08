@@ -33,6 +33,15 @@ two cycles, carrying real model/optimizer/EMA versions forward. This is explicit
 | No-GAN | 10..14 | 2/10/10 | 4/20/20 |
 | GAN | 1000..1004 | 200/1000/800 | 202/1010/802 |
 
+The GAN rows are **logical schedule versions**, not physical Adam counters.
+The pinned systems-only bootstrap restores physical G2/C10/EMA800; after
+two cycles its physical counters are G4/C20/EMA802. The adapter validates
+the immutable bootstrap's `systems_only_control` mapping, then applies the
+fixed offsets only to its version ledger and logical receipt labels. It never
+writes G200/C1000 into the optimizer or scheduler. Both physical and logical
+counters are recorded and independently rechecked at action/cycle boundaries.
+No-GAN has an identity mapping. A mismatch fails before the first cycle.
+
 ## Cost and execution provenance
 
 `helios_implementation.py` validates a typed assignment and lowers it into the

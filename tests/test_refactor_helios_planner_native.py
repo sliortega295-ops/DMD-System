@@ -171,7 +171,7 @@ def _fixture(monkeypatch, *, variant="no-gan", window=3, persistence=False, mode
             self.optimizer.step()
             self.optimizer.zero_grad(set_to_none=True)
             self.global_steps += 1
-    initial = dict(generator=200, critic=1000, ema=800) if variant == "gan" else dict(generator=2, critic=10, ema=10)
+    initial = dict(generator=2, critic=10, ema=800) if variant == "gan" else dict(generator=2, critic=10, ema=10)
     g, c = Engine(initial["generator"]), Engine(initial["critic"])
     ema = NS(optimization_step=initial["ema"], last_transfer_bytes=0)
     def ema_step():
@@ -290,7 +290,10 @@ def _fixture(monkeypatch, *, variant="no-gan", window=3, persistence=False, mode
     result = dict(rank=0, world_size=16, status="RUNNING", initial={})
     return NS(impl=impl, events=events, g=g, c=c, ema=ema, trace=trace, result=result,
               kwargs=dict(p0=p0, args=args, policy=policy, result=result, output=Path("unused"),
-                  rank=0, device="cpu", logical=NS(component=lambda key: {"optimizer_step": initial[key]}),
+                  rank=0, device="cpu", logical=NS(component=lambda key: {"optimizer_step": initial[key]},
+                      manifest={"systems_only_control": dict(classification="systems_only_gan_bootstrap",
+                          logical_schedule_versions=dict(generator=200, critic=1000, ema=800),
+                          logical_control_window=list(range(1000,1005)), official_checkpoint_1000=False)}),
                   trace=trace, negative=hidden, cfg=NS(), generator_engine=g, critic_engine=c, ema=ema,
                   diagnostics=NS(add_bytes=lambda *a, **kw: None), generator_free_memory={}))
 
@@ -314,6 +317,11 @@ def test_two_cycles_execute_native_helpers_order_versions_and_actual_census(monk
     assert f.result["cycles"][1]["initial_versions"] == f.result["cycles"][0]["final_versions"]
     assert f.result["final_versions"] == (dict(generator=202, critic=1010, ema=802) if variant == "gan"
                                          else dict(generator=4, critic=20, ema=20))
+    assert f.g.global_steps == 4 and f.c.global_steps == 20
+    assert f.result["initial_physical_versions"] == dict(generator=2, critic=10, ema=800 if variant == "gan" else 10)
+    assert f.result["final_physical_versions"] == dict(generator=4, critic=20, ema=802 if variant == "gan" else 20)
+    assert f.result["final"]["generator_physical_step"] == 4
+    assert f.result["final"]["critic_physical_step"] == 20
     assert f.trace.loads == f.trace.hits == 10 and not f.trace.cached
     for cycle in f.result["cycles"]:
         actions = cycle["actions"]
@@ -344,6 +352,31 @@ def test_gan_w5_off_uses_one_composite_scope_just_like_on(monkeypatch):
         assert cycle["selected_order"][:3] == ["g", "r_all", "c0"]
         assert cycle["actions"][1]["persistence"]["enabled"] is False
     assert len([e for e in f.events if e[0] == "r"]) == 2
+
+
+@pytest.mark.parametrize("field,value", [("generator", 200), ("critic", 1000)])
+def test_gan_logical_label_cannot_replace_physical_optimizer_step(monkeypatch, field, value):
+    from distillschedule.runtime.helios_planner_cycle import run_two_cycles
+    f = _fixture(monkeypatch, variant="gan", window=5)
+    setattr(f.g if field == "generator" else f.c, "global_steps", value)
+    with pytest.raises(ValueError, match="physical"):
+        run_two_cycles(**f.kwargs)
+    assert not f.events
+
+
+@pytest.mark.parametrize("change", [
+    {"logical_schedule_versions": {"generator": 201, "critic": 1000, "ema": 800}},
+    {"logical_control_window": list(range(10, 15))},
+    {"classification": "official"}, {"official_checkpoint_1000": True},
+])
+def test_gan_loaded_systems_control_mapping_is_fail_closed(monkeypatch, change):
+    from distillschedule.runtime.helios_planner_cycle import run_two_cycles
+    f = _fixture(monkeypatch, variant="gan", window=5)
+    f.kwargs["logical"].manifest["systems_only_control"].update(change)
+    with pytest.raises(ValueError, match="logical version mapping"):
+        run_two_cycles(**f.kwargs)
+    assert (f.g.global_steps, f.c.global_steps, f.ema.optimization_step) == (2, 10, 800)
+    assert not f.events
 
 
 @pytest.mark.parametrize("field,value", [("selective_flash_checkpoint_stride", 0),

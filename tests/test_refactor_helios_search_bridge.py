@@ -65,6 +65,24 @@ def native_rows(monkeypatch, *, variant='no-gan', mode='calibration', window=3):
     return rows,f.impl
 
 
+@pytest.mark.parametrize('tamper', ['mapping', 'cycle', 'action', 'final'])
+def test_gan_collector_checks_physical_steps_separately_from_logical_labels(monkeypatch,tamper):
+    from distillschedule.search.helios_native import summarize
+    rows,impl=native_rows(monkeypatch,variant='gan',window=5)
+    head=rows[0]['source_head']
+    report=summarize(rows,expected_head=head,candidate_id=impl.id)
+    assert report['initial_physical_versions']==dict(generator=2,critic=10,ema=800)
+    assert report['final_physical_versions']==dict(generator=4,critic=20,ema=802)
+    assert report['final_versions']==dict(generator=202,critic=1010,ema=802)
+    row=rows[0]
+    if tamper=='mapping':row['version_mapping']['physical_initial']['generator']=200
+    elif tamper=='cycle':row['cycles'][0]['final_physical_versions']['generator']=201
+    elif tamper=='action':row['cycles'][0]['actions'][0]['physical_versions_after']['generator']=201
+    else:row['final']['generator_physical_step']=202
+    with pytest.raises(ValueError,match='physical'):
+        summarize(rows,expected_head=head,candidate_id=impl.id)
+
+
 @pytest.mark.parametrize('variant,window',[('no-gan',3),('gan',5)])
 def test_native_summary_rechecks_actual_inventory_and_two_cycles(monkeypatch,variant,window):
     from distillschedule.search.helios_native import summarize
