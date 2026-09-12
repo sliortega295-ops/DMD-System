@@ -134,9 +134,16 @@
           "previous_integrated_sha256": "1324db24773e213ecf5c84a7e3599222f139af395218998901e2e11ca2a7ab18",
           "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change.",
           "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
+        },
+        {
+          "base_integration_head": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+          "new_integrated_sha256": "7560c4f89a133f984bc712eecf30d8a17c568930bfab16d38da323fd12735202",
+          "previous_integrated_sha256": "f804134d24bce6520822ee063610ad55387e1527a52125a25147939bb8100b96",
+          "reason": "Bind generated H3 action windows to native helpers and preserve one-shot failure-prefix receipts; canonical H3 training math and winner profile unchanged.",
+          "source_commit": "878aff490ce28c661ac1d927f08f8846992baf45"
         }
       ],
-      "integrated_sha256": "f804134d24bce6520822ee063610ad55387e1527a52125a25147939bb8100b96",
+      "integrated_sha256": "7560c4f89a133f984bc712eecf30d8a17c568930bfab16d38da323fd12735202",
       "note": "DMD-System integration adapter around the imported H3 backend",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/backends/training/minimax_h3/integrated_entrypoint.py",
@@ -179,9 +186,16 @@
           "previous_integrated_sha256": "ebe457b06a85cebd20199e4e57f8150b2e7f2e1d7801cff327ecaa6d57b27c03",
           "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change.",
           "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
+        },
+        {
+          "base_integration_head": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+          "new_integrated_sha256": "a63e3d18a129cd3a12dd5e6601d6a3777ebb91d726b62932a4cde341c71fc17e",
+          "previous_integrated_sha256": "ad15a07aa563b278943c7c59f7cf5d6694f94387ab519cf495dbe7dea4d1d28b",
+          "reason": "Bind generated H3 action windows to existing Student/Fake native helpers and actual RNG evidence; canonical H3 winner profile unchanged.",
+          "source_commit": "878aff490ce28c661ac1d927f08f8846992baf45"
         }
       ],
-      "integrated_sha256": "ad15a07aa563b278943c7c59f7cf5d6694f94387ab519cf495dbe7dea4d1d28b",
+      "integrated_sha256": "a63e3d18a129cd3a12dd5e6601d6a3777ebb91d726b62932a4cde341c71fc17e",
       "source_commit": "cfecbb4188e1f3820451657f744aa2c823e24da4",
       "source_path": "h3_a100/trainer_loop.py",
       "source_repository": "sliortega295-ops/H3-DMD-for-A100",
@@ -397,7 +411,16 @@
       "target": "scripts/distillschedule/compare_static_fsdp2_p0_correctness.py"
     },
     {
-      "integrated_sha256": "4103bab06079e57bd8ed1f294370bf300c292778338e0f02ee79b1ea2a1226f0",
+      "adaptations": [
+        {
+          "base_integration_head": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+          "new_integrated_sha256": "15afebdd1fc10a0e1ad3b34b111f9d6dc784e3e74f2a2c0954c18eb47e2c841f",
+          "previous_integrated_sha256": "4103bab06079e57bd8ed1f294370bf300c292778338e0f02ee79b1ea2a1226f0",
+          "reason": "Record fail-closed post-worker GPU ownership/teardown evidence; training math and canonical Helios profiles unchanged.",
+          "source_commit": "85be7e4e36dea31bdc01bcfe8faf3d67efb58494"
+        }
+      ],
+      "integrated_sha256": "15afebdd1fc10a0e1ad3b34b111f9d6dc784e3e74f2a2c0954c18eb47e2c841f",
       "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
       "source_path": "scripts/distillschedule/launch_static_fsdp2_p0_world16_node.sh",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -410,16 +433,32 @@
           "new_integrated_sha256": "24fe6a5ede551af63d19fd4360de9997dd0c1c6dd853f1f3157d5c221a9258f9",
           "previous_integrated_sha256": "f7a5451847814a2639d927fc57a58856ab36cd0b03ed71c4e16df92d5dd372f3",
           "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        },
+        {
+          "base_integration_head": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+          "new_integrated_sha256": "a59e54758bcd9d722ad4473ce1855b77a3f4a442229033a73d72ceb5584b9bb2",
+          "previous_integrated_sha256": "24fe6a5ede551af63d19fd4360de9997dd0c1c6dd853f1f3157d5c221a9258f9",
+          "reason": "Connect Helios variants to opt-in measured component plans and native two-cycle execution; canonical helpers/profiles/results unchanged.",
+          "source_commit": "5171065c6efc558fe4d7d394a2fb2976bb5c6b31"
         }
       ],
-      "integrated_sha256": "24fe6a5ede551af63d19fd4360de9997dd0c1c6dd853f1f3157d5c221a9258f9",
+      "integrated_sha256": "a59e54758bcd9d722ad4473ce1855b77a3f4a442229033a73d72ceb5584b9bb2",
       "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
       "source_path": "scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
       "source_repository": "sliortega295-ops/DMD-System",
       "target": "scripts/distillschedule/probe_static_fsdp2_p0_world16.py"
     },
     {
-      "integrated_sha256": "3700a46b8aaf4981728272db1686b42727c2d9c5060368c5f26e6597b52f097f",
+      "adaptations": [
+        {
+          "base_integration_head": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
+          "new_integrated_sha256": "8af7899d9686cfa75880f009e38acf41305be73d515e6bafcd38e2212196b457",
+          "previous_integrated_sha256": "3700a46b8aaf4981728272db1686b42727c2d9c5060368c5f26e6597b52f097f",
+          "reason": "Connect hardened Helios native worker to opt-in measured component plans; canonical helpers/profiles/results unchanged.",
+          "source_commit": "5171065c6efc558fe4d7d394a2fb2976bb5c6b31"
+        }
+      ],
+      "integrated_sha256": "8af7899d9686cfa75880f009e38acf41305be73d515e6bafcd38e2212196b457",
       "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
       "source_path": "scripts/distillschedule/probe_static_fsdp2_p0_world16_hardened.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -624,9 +663,16 @@
           "previous_integrated_sha256": "b04f099870aa8820e48558f4d2d4653c414f03a4c6f07f1801377cc3b94193dd",
           "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change.",
           "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
+        },
+        {
+          "base_integration_head": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+          "new_integrated_sha256": "c50f9141c17c2f9e20cfb46b80384fb7686c7a8951ed372b133566910fef53af",
+          "previous_integrated_sha256": "0094534ad674d8c17c1a1ae748043dca6950c5b9263c7349a09cce17d3325007",
+          "reason": "Allow source/identity action observation through the existing two-cycle trajectory gate without granting timing authority; canonical LiveWan profile unchanged.",
+          "source_commit": "78e501bc1727013d94e356f697051b4d11cba4be"
         }
       ],
-      "integrated_sha256": "0094534ad674d8c17c1a1ae748043dca6950c5b9263c7349a09cce17d3325007",
+      "integrated_sha256": "c50f9141c17c2f9e20cfb46b80384fb7686c7a8951ed372b133566910fef53af",
       "integration_note": "Deployment/test/optional canonical-gate binding adaptation only; see C34 integration report. Worker and numerical kernels retain source bytes. | Latest source adds opt-in native planner hooks/gates; exact adaptation hashes below supersede the earlier byte-identical-worker statement where applicable.",
       "source_commit": "4c994edca7d83ff553cab6025d8b93b279cd1634",
       "source_path": "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh",
@@ -945,9 +991,16 @@
           "previous_integrated_sha256": "ea9b6a9030c21aadcdeb8bad036feff8c495106a053aa6a7e05684298ea25557",
           "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change.",
           "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
+        },
+        {
+          "base_integration_head": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+          "new_integrated_sha256": "a95ed4b8479e0d101b05c84d6c341bb258dff66d8d7aeb1eb9fd1ecaf4a194b5",
+          "previous_integrated_sha256": "7f68fc93234bb39681a4ae97f3bfcb43118a4af109a831b49a8fd7e8c5929f1c",
+          "reason": "Gate H3 prepared-action calibration/native timing while preserving the canonical H3 invocation and winner profile.",
+          "source_commit": "d730a89b11efe21074f411a865b3feda44f818f3"
         }
       ],
-      "integrated_sha256": "7f68fc93234bb39681a4ae97f3bfcb43118a4af109a831b49a8fd7e8c5929f1c",
+      "integrated_sha256": "a95ed4b8479e0d101b05c84d6c341bb258dff66d8d7aeb1eb9fd1ecaf4a194b5",
       "source_commit": "integration-pr26",
       "source_path": "scripts/distillschedule/launch_minimax_h3_best_node.sh",
       "source_repository": "integration-pr26",
@@ -996,9 +1049,16 @@
           "previous_integrated_sha256": "fd4ca6ea4e8248ea83d022e73c267e188d1c203fd39a5405354928193f2ef59a",
           "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change.",
           "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
+        },
+        {
+          "base_integration_head": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+          "new_integrated_sha256": "d891c6496a70a761867c2da1b685ec4347dec2c6dbc432ba167dac5f6526b16a",
+          "previous_integrated_sha256": "e4a2ce254ecc0bd6a0d549c9a95f1097e25e265a26161082ddc4debd182132d5",
+          "reason": "Route opt-in Helios measured component/native plans through existing best-known dispatch without altering canonical profiles.",
+          "source_commit": "5171065c6efc558fe4d7d394a2fb2976bb5c6b31"
         }
       ],
-      "integrated_sha256": "e4a2ce254ecc0bd6a0d549c9a95f1097e25e265a26161082ddc4debd182132d5",
+      "integrated_sha256": "d891c6496a70a761867c2da1b685ec4347dec2c6dbc432ba167dac5f6526b16a",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/dispatch.py",
       "source_repository": "integration-pr26",
@@ -1018,9 +1078,16 @@
           "previous_integrated_sha256": "bfd6e473269e70ef4f5b76649e7a9df33f8f43acda0df1e1db9eb1b7c1cb2f58",
           "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change.",
           "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
+        },
+        {
+          "base_integration_head": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+          "new_integrated_sha256": "63f1d0bc95dde055ddbfab46af216deef49c2bb473324c500b3e638810e0eff2",
+          "previous_integrated_sha256": "33315d6479e46aec84c6ba9f2542e1a201fd6b8bf80575da2e2d29d8b204fae3",
+          "reason": "Validate opt-in Helios native evidence/receipts while retaining REVIEW claim boundaries and unchanged canonical results.",
+          "source_commit": "5171065c6efc558fe4d7d394a2fb2976bb5c6b31"
         }
       ],
-      "integrated_sha256": "33315d6479e46aec84c6ba9f2542e1a201fd6b8bf80575da2e2d29d8b204fae3",
+      "integrated_sha256": "63f1d0bc95dde055ddbfab46af216deef49c2bb473324c500b3e638810e0eff2",
       "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution. | Latest source adds opt-in native planner hooks/gates; exact adaptation hashes below supersede the earlier byte-identical-worker statement where applicable.",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/evidence.py",
@@ -1041,9 +1108,16 @@
           "previous_integrated_sha256": "b97c8c547aa4eb87b0165944b318642ec3d1be45ace5c6fb481b6aa49d2f7a02",
           "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change.",
           "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
+        },
+        {
+          "base_integration_head": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+          "new_integrated_sha256": "7fc6a33383c9a6c10983ae393fbe8c26754af8e6a3056e62a36f6d84ddd4da49",
+          "previous_integrated_sha256": "ce9b0fcc1b19c56f8487eb2120b23dd781c9ac61d84bbd8ab0dac01301077ca8",
+          "reason": "Expose opt-in Helios native planning modes in registry resolution; five canonical profile definitions/results remain unchanged.",
+          "source_commit": "5171065c6efc558fe4d7d394a2fb2976bb5c6b31"
         }
       ],
-      "integrated_sha256": "ce9b0fcc1b19c56f8487eb2120b23dd781c9ac61d84bbd8ab0dac01301077ca8",
+      "integrated_sha256": "7fc6a33383c9a6c10983ae393fbe8c26754af8e6a3056e62a36f6d84ddd4da49",
       "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution. | Latest source adds opt-in native planner hooks/gates; exact adaptation hashes below supersede the earlier byte-identical-worker statement where applicable.",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/registry.py",
