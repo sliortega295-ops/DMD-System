@@ -1,0 +1,1938 @@
+{
+  "binding": {
+    "asset_fingerprint": "c045acd2b88c1de9a3f6b11d1d0d94ce2384d58d710ced61d38010e89d746b13",
+    "environment_fingerprint": "1da30724a680d0fff882ce68c9ec2b856cdd0ebbaab9c4ab4984f2e6df2ebc3a",
+    "hardware_fingerprint": "ac432a4127e0887d11f4e3ecc90c3cc180a65ee02c91f6a2192c7b277c4531fc",
+    "precision_fingerprint": "1daeb5cdd04b09d22f58247a2dff28510570b801f90d61a562744019e8e51139",
+    "semantic_fingerprint": "34204f6bfc01b703b34d9362f4a3dd8995f335912533ee919a080ea278a4da77",
+    "source_head": "06d5e67aab7e4aef0f110e8b315ac7f02c80ff4b"
+  },
+  "conditional_dependencies": [],
+  "decisions": {
+    "gate": [
+      "off",
+      "on"
+    ],
+    "modulation": [
+      "off",
+      "on"
+    ],
+    "placement": [
+      "fsdp",
+      "pipeline"
+    ],
+    "row_major": [
+      "off",
+      "on"
+    ]
+  },
+  "evidence_scope": "MEASURED",
+  "forbidden": [],
+  "graph": {
+    "dependencies": [
+      {
+        "kind": "fixed_native_accounting_order",
+        "metadata": {},
+        "source": "cycle1.coupled_commit0",
+        "target": "cycle1.coupled_commit1"
+      },
+      {
+        "kind": "fixed_native_accounting_order",
+        "metadata": {},
+        "source": "cycle1.coupled_commit1",
+        "target": "cycle1.coupled_commit2"
+      },
+      {
+        "kind": "fixed_native_accounting_order",
+        "metadata": {},
+        "source": "cycle1.coupled_commit2",
+        "target": "cycle1.coupled_commit3"
+      },
+      {
+        "kind": "fixed_native_accounting_order",
+        "metadata": {},
+        "source": "cycle1.coupled_commit3",
+        "target": "cycle1.coupled_commit4"
+      },
+      {
+        "kind": "fixed_native_accounting_order",
+        "metadata": {},
+        "source": "cycle1.coupled_commit4",
+        "target": "cycle2.coupled_commit0"
+      },
+      {
+        "kind": "fixed_native_accounting_order",
+        "metadata": {},
+        "source": "cycle2.coupled_commit0",
+        "target": "cycle2.coupled_commit1"
+      },
+      {
+        "kind": "fixed_native_accounting_order",
+        "metadata": {},
+        "source": "cycle2.coupled_commit1",
+        "target": "cycle2.coupled_commit2"
+      },
+      {
+        "kind": "fixed_native_accounting_order",
+        "metadata": {},
+        "source": "cycle2.coupled_commit2",
+        "target": "cycle2.coupled_commit3"
+      },
+      {
+        "kind": "fixed_native_accounting_order",
+        "metadata": {},
+        "source": "cycle2.coupled_commit3",
+        "target": "cycle2.coupled_commit4"
+      }
+    ],
+    "metadata": {
+      "adapter": "native_coupled_macro_v1",
+      "arbitrary_pool_dag_lowering": false,
+      "canonical_profile_sha256": "9d03f5856ba47946ec57c86678a5c534f8ff8830b4a1305243c9492a7c4aa037",
+      "cycle_ends": {
+        "1": "cycle1.coupled_commit4",
+        "2": "cycle2.coupled_commit4"
+      },
+      "final_versions": {
+        "completed_cycles": 2
+      },
+      "independent_overlap_discounts": false,
+      "initial_versions": {
+        "completed_cycles": 0
+      },
+      "memory_definition": "POST_SETUP_STATIC_PLUS_CONSERVATIVE_GLOBAL_ADDITIONAL_PEAK",
+      "native_final_versions": {
+        "critic": 10,
+        "ema": 0,
+        "generator": 2
+      },
+      "parameter_version_proof": "WORKLOAD_NATIVE_RECEIPTS_NOT_MACRO_CLOCK_PARTITIONS",
+      "scope": "COUPLED_COMMIT_ACCOUNTING_PARTITIONS",
+      "workload": "livewan_crossscale_pipeline_best"
+    },
+    "operations": [
+      {
+        "adapter_mode": "native_role_scopes",
+        "condition": null,
+        "grad_mode": "grad",
+        "kind": "critic_update",
+        "logical_step": 0,
+        "metadata": {
+          "cycle": 1,
+          "scope": "NATIVE_COUPLED_ACCOUNTING_ENVELOPE",
+          "stage": "coupled_commit0"
+        },
+        "operation_id": "cycle1.coupled_commit0",
+        "physical_state": null,
+        "produced_versions": {},
+        "required_versions": {
+          "completed_cycles": 0
+        },
+        "role": "native_runtime"
+      },
+      {
+        "adapter_mode": "native_role_scopes",
+        "condition": null,
+        "grad_mode": "grad",
+        "kind": "critic_update",
+        "logical_step": 0,
+        "metadata": {
+          "cycle": 1,
+          "scope": "NATIVE_COUPLED_ACCOUNTING_ENVELOPE",
+          "stage": "coupled_commit1"
+        },
+        "operation_id": "cycle1.coupled_commit1",
+        "physical_state": null,
+        "produced_versions": {},
+        "required_versions": {
+          "completed_cycles": 0
+        },
+        "role": "native_runtime"
+      },
+      {
+        "adapter_mode": "native_role_scopes",
+        "condition": null,
+        "grad_mode": "grad",
+        "kind": "critic_update",
+        "logical_step": 0,
+        "metadata": {
+          "cycle": 1,
+          "scope": "NATIVE_COUPLED_ACCOUNTING_ENVELOPE",
+          "stage": "coupled_commit2"
+        },
+        "operation_id": "cycle1.coupled_commit2",
+        "physical_state": null,
+        "produced_versions": {},
+        "required_versions": {
+          "completed_cycles": 0
+        },
+        "role": "native_runtime"
+      },
+      {
+        "adapter_mode": "native_role_scopes",
+        "condition": null,
+        "grad_mode": "grad",
+        "kind": "critic_update",
+        "logical_step": 0,
+        "metadata": {
+          "cycle": 1,
+          "scope": "NATIVE_COUPLED_ACCOUNTING_ENVELOPE",
+          "stage": "coupled_commit3"
+        },
+        "operation_id": "cycle1.coupled_commit3",
+        "physical_state": null,
+        "produced_versions": {},
+        "required_versions": {
+          "completed_cycles": 0
+        },
+        "role": "native_runtime"
+      },
+      {
+        "adapter_mode": "native_role_scopes",
+        "condition": null,
+        "grad_mode": "grad",
+        "kind": "critic_update",
+        "logical_step": 0,
+        "metadata": {
+          "cycle": 1,
+          "scope": "NATIVE_COUPLED_ACCOUNTING_ENVELOPE",
+          "stage": "coupled_commit4"
+        },
+        "operation_id": "cycle1.coupled_commit4",
+        "physical_state": null,
+        "produced_versions": {
+          "completed_cycles": 1
+        },
+        "required_versions": {
+          "completed_cycles": 0
+        },
+        "role": "native_runtime"
+      },
+      {
+        "adapter_mode": "native_role_scopes",
+        "condition": null,
+        "grad_mode": "grad",
+        "kind": "critic_update",
+        "logical_step": 5,
+        "metadata": {
+          "cycle": 2,
+          "scope": "NATIVE_COUPLED_ACCOUNTING_ENVELOPE",
+          "stage": "coupled_commit0"
+        },
+        "operation_id": "cycle2.coupled_commit0",
+        "physical_state": null,
+        "produced_versions": {},
+        "required_versions": {
+          "completed_cycles": 1
+        },
+        "role": "native_runtime"
+      },
+      {
+        "adapter_mode": "native_role_scopes",
+        "condition": null,
+        "grad_mode": "grad",
+        "kind": "critic_update",
+        "logical_step": 5,
+        "metadata": {
+          "cycle": 2,
+          "scope": "NATIVE_COUPLED_ACCOUNTING_ENVELOPE",
+          "stage": "coupled_commit1"
+        },
+        "operation_id": "cycle2.coupled_commit1",
+        "physical_state": null,
+        "produced_versions": {},
+        "required_versions": {
+          "completed_cycles": 1
+        },
+        "role": "native_runtime"
+      },
+      {
+        "adapter_mode": "native_role_scopes",
+        "condition": null,
+        "grad_mode": "grad",
+        "kind": "critic_update",
+        "logical_step": 5,
+        "metadata": {
+          "cycle": 2,
+          "scope": "NATIVE_COUPLED_ACCOUNTING_ENVELOPE",
+          "stage": "coupled_commit2"
+        },
+        "operation_id": "cycle2.coupled_commit2",
+        "physical_state": null,
+        "produced_versions": {},
+        "required_versions": {
+          "completed_cycles": 1
+        },
+        "role": "native_runtime"
+      },
+      {
+        "adapter_mode": "native_role_scopes",
+        "condition": null,
+        "grad_mode": "grad",
+        "kind": "critic_update",
+        "logical_step": 5,
+        "metadata": {
+          "cycle": 2,
+          "scope": "NATIVE_COUPLED_ACCOUNTING_ENVELOPE",
+          "stage": "coupled_commit3"
+        },
+        "operation_id": "cycle2.coupled_commit3",
+        "physical_state": null,
+        "produced_versions": {},
+        "required_versions": {
+          "completed_cycles": 1
+        },
+        "role": "native_runtime"
+      },
+      {
+        "adapter_mode": "native_role_scopes",
+        "condition": null,
+        "grad_mode": "grad",
+        "kind": "critic_update",
+        "logical_step": 5,
+        "metadata": {
+          "cycle": 2,
+          "scope": "NATIVE_COUPLED_ACCOUNTING_ENVELOPE",
+          "stage": "coupled_commit4"
+        },
+        "operation_id": "cycle2.coupled_commit4",
+        "physical_state": null,
+        "produced_versions": {
+          "completed_cycles": 2
+        },
+        "required_versions": {
+          "completed_cycles": 1
+        },
+        "role": "native_runtime"
+      }
+    ]
+  },
+  "lifetimes": [],
+  "lowering": {
+    "adapter": "native_coupled_macro_v1",
+    "layout_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/native_macro_closed_loop_r2/livewan/planning/layout.json",
+    "layout_sha256": "396d50b4c4b3af3877a78b5fb257b28cbd428a1ea7dd6dfe0736834cabc22560"
+  },
+  "memory_limits": {
+    "0": 42949672960,
+    "1": 42949672960,
+    "10": 42949672960,
+    "11": 42949672960,
+    "12": 42949672960,
+    "13": 42949672960,
+    "14": 42949672960,
+    "15": 42949672960,
+    "2": 42949672960,
+    "3": 42949672960,
+    "4": 42949672960,
+    "5": 42949672960,
+    "6": 42949672960,
+    "7": 42949672960,
+    "8": 42949672960,
+    "9": 42949672960
+  },
+  "rules": [
+    {
+      "cost_key": "906c1d50e35580cd5637601fc77712c87807240c5b97ec0815767943e5f38419",
+      "operation": "cycle1.coupled_commit0",
+      "operation_contract_sha256": "906c1d50e35580cd5637601fc77712c87807240c5b97ec0815767943e5f38419",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-fsdp-m0-g0-r0"
+      ],
+      "when": {
+        "gate": "off",
+        "modulation": "off",
+        "placement": "fsdp",
+        "row_major": "off"
+      }
+    },
+    {
+      "cost_key": "026adc9423a2ca5668b61f86ca9b481fecee8a1cbabf5f8ccbb79ce45d8a2453",
+      "operation": "cycle1.coupled_commit1",
+      "operation_contract_sha256": "026adc9423a2ca5668b61f86ca9b481fecee8a1cbabf5f8ccbb79ce45d8a2453",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-fsdp-m0-g0-r0"
+      ],
+      "when": {
+        "gate": "off",
+        "modulation": "off",
+        "placement": "fsdp",
+        "row_major": "off"
+      }
+    },
+    {
+      "cost_key": "b65f4fe5d07f7be559a9f7745de48baabe03ef8a3d88caca027bbd5b191108e7",
+      "operation": "cycle1.coupled_commit2",
+      "operation_contract_sha256": "b65f4fe5d07f7be559a9f7745de48baabe03ef8a3d88caca027bbd5b191108e7",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-fsdp-m0-g0-r0"
+      ],
+      "when": {
+        "gate": "off",
+        "modulation": "off",
+        "placement": "fsdp",
+        "row_major": "off"
+      }
+    },
+    {
+      "cost_key": "3f450db0f1c625614544e43372bf053ffef12e52488b8627db62f6697df9e8d6",
+      "operation": "cycle1.coupled_commit3",
+      "operation_contract_sha256": "3f450db0f1c625614544e43372bf053ffef12e52488b8627db62f6697df9e8d6",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-fsdp-m0-g0-r0"
+      ],
+      "when": {
+        "gate": "off",
+        "modulation": "off",
+        "placement": "fsdp",
+        "row_major": "off"
+      }
+    },
+    {
+      "cost_key": "07dbf2fe30971bc264ef36225af106fd2d08d6d40542698618236f1b1236316b",
+      "operation": "cycle1.coupled_commit4",
+      "operation_contract_sha256": "07dbf2fe30971bc264ef36225af106fd2d08d6d40542698618236f1b1236316b",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-fsdp-m0-g0-r0"
+      ],
+      "when": {
+        "gate": "off",
+        "modulation": "off",
+        "placement": "fsdp",
+        "row_major": "off"
+      }
+    },
+    {
+      "cost_key": "c767d19fc5af4f36f1ad7bc722f9ff0c717720c4a0c9993cf1ef7c227a4c84f2",
+      "operation": "cycle2.coupled_commit0",
+      "operation_contract_sha256": "c767d19fc5af4f36f1ad7bc722f9ff0c717720c4a0c9993cf1ef7c227a4c84f2",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-fsdp-m0-g0-r0"
+      ],
+      "when": {
+        "gate": "off",
+        "modulation": "off",
+        "placement": "fsdp",
+        "row_major": "off"
+      }
+    },
+    {
+      "cost_key": "b650b91dc22aa4c60eacbd4cb3096ba0d5f8d01e6494b1a7d5475c186d9737df",
+      "operation": "cycle2.coupled_commit1",
+      "operation_contract_sha256": "b650b91dc22aa4c60eacbd4cb3096ba0d5f8d01e6494b1a7d5475c186d9737df",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-fsdp-m0-g0-r0"
+      ],
+      "when": {
+        "gate": "off",
+        "modulation": "off",
+        "placement": "fsdp",
+        "row_major": "off"
+      }
+    },
+    {
+      "cost_key": "7aa60ac294ab0c7848a2c5d4fefc196a935be838ec4836fe0f8b7025ee52b7e9",
+      "operation": "cycle2.coupled_commit2",
+      "operation_contract_sha256": "7aa60ac294ab0c7848a2c5d4fefc196a935be838ec4836fe0f8b7025ee52b7e9",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-fsdp-m0-g0-r0"
+      ],
+      "when": {
+        "gate": "off",
+        "modulation": "off",
+        "placement": "fsdp",
+        "row_major": "off"
+      }
+    },
+    {
+      "cost_key": "45d4a1daf6bce0928a1857bd86daaff5b6c9318802f8ccc71055b504f599f0b3",
+      "operation": "cycle2.coupled_commit3",
+      "operation_contract_sha256": "45d4a1daf6bce0928a1857bd86daaff5b6c9318802f8ccc71055b504f599f0b3",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-fsdp-m0-g0-r0"
+      ],
+      "when": {
+        "gate": "off",
+        "modulation": "off",
+        "placement": "fsdp",
+        "row_major": "off"
+      }
+    },
+    {
+      "cost_key": "69064664ebbb53f07943632b8b59b99eb43ae8725a80078b377da454e25b4178",
+      "operation": "cycle2.coupled_commit4",
+      "operation_contract_sha256": "69064664ebbb53f07943632b8b59b99eb43ae8725a80078b377da454e25b4178",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-fsdp-m0-g0-r0"
+      ],
+      "when": {
+        "gate": "off",
+        "modulation": "off",
+        "placement": "fsdp",
+        "row_major": "off"
+      }
+    },
+    {
+      "cost_key": "2825106681c11fa1e16f81709e7d5002e056ba8a3870fcdfcee4774afc9972da",
+      "operation": "cycle1.coupled_commit0",
+      "operation_contract_sha256": "2825106681c11fa1e16f81709e7d5002e056ba8a3870fcdfcee4774afc9972da",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-pipeline-m1-g1-r0"
+      ],
+      "when": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "off"
+      }
+    },
+    {
+      "cost_key": "81a75b7f71e0e76a110f468d679cabed46b4ee8683b359f782d694e863e42464",
+      "operation": "cycle1.coupled_commit1",
+      "operation_contract_sha256": "81a75b7f71e0e76a110f468d679cabed46b4ee8683b359f782d694e863e42464",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-pipeline-m1-g1-r0"
+      ],
+      "when": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "off"
+      }
+    },
+    {
+      "cost_key": "12c5b099c28bf2ab36233ba63b0e8643351512eb06edf0c77426b9525ed7fcb3",
+      "operation": "cycle1.coupled_commit2",
+      "operation_contract_sha256": "12c5b099c28bf2ab36233ba63b0e8643351512eb06edf0c77426b9525ed7fcb3",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-pipeline-m1-g1-r0"
+      ],
+      "when": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "off"
+      }
+    },
+    {
+      "cost_key": "f2953807954cb8151cb2896eaeb9366914f74caf0a9f0f4ec4a2100ae764b52c",
+      "operation": "cycle1.coupled_commit3",
+      "operation_contract_sha256": "f2953807954cb8151cb2896eaeb9366914f74caf0a9f0f4ec4a2100ae764b52c",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-pipeline-m1-g1-r0"
+      ],
+      "when": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "off"
+      }
+    },
+    {
+      "cost_key": "1031eddfc3d625d522ca3b25d2f00cb07ff1dd168b930c66c40e04b98cb48221",
+      "operation": "cycle1.coupled_commit4",
+      "operation_contract_sha256": "1031eddfc3d625d522ca3b25d2f00cb07ff1dd168b930c66c40e04b98cb48221",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-pipeline-m1-g1-r0"
+      ],
+      "when": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "off"
+      }
+    },
+    {
+      "cost_key": "5169292fb4c17d08ff12497a0130a84a376c78db1acf25494a0110fa6740ac12",
+      "operation": "cycle2.coupled_commit0",
+      "operation_contract_sha256": "5169292fb4c17d08ff12497a0130a84a376c78db1acf25494a0110fa6740ac12",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-pipeline-m1-g1-r0"
+      ],
+      "when": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "off"
+      }
+    },
+    {
+      "cost_key": "4398da4520d6fb58f4dc51999afbbf84978f65fe1d8afe67ae022e77deb4aafa",
+      "operation": "cycle2.coupled_commit1",
+      "operation_contract_sha256": "4398da4520d6fb58f4dc51999afbbf84978f65fe1d8afe67ae022e77deb4aafa",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-pipeline-m1-g1-r0"
+      ],
+      "when": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "off"
+      }
+    },
+    {
+      "cost_key": "d71829662d6936ae33367cdc8fee41af575d578d70d19ceabe53a661a24bf37a",
+      "operation": "cycle2.coupled_commit2",
+      "operation_contract_sha256": "d71829662d6936ae33367cdc8fee41af575d578d70d19ceabe53a661a24bf37a",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-pipeline-m1-g1-r0"
+      ],
+      "when": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "off"
+      }
+    },
+    {
+      "cost_key": "c7bb0352164640f87cb4b9388ac9ab4f50bc4f566e8f9c5675ca7dd5a4c82f02",
+      "operation": "cycle2.coupled_commit3",
+      "operation_contract_sha256": "c7bb0352164640f87cb4b9388ac9ab4f50bc4f566e8f9c5675ca7dd5a4c82f02",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-pipeline-m1-g1-r0"
+      ],
+      "when": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "off"
+      }
+    },
+    {
+      "cost_key": "78394aae937f58c707a312c68bdee5f851d666394332f1b2edc830de313d03ff",
+      "operation": "cycle2.coupled_commit4",
+      "operation_contract_sha256": "78394aae937f58c707a312c68bdee5f851d666394332f1b2edc830de313d03ff",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-pipeline-m1-g1-r0"
+      ],
+      "when": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "off"
+      }
+    },
+    {
+      "cost_key": "684f74edb38c8a20125fba227e9b5bbb3993d2565883911501e757413735a7d9",
+      "operation": "cycle1.coupled_commit0",
+      "operation_contract_sha256": "684f74edb38c8a20125fba227e9b5bbb3993d2565883911501e757413735a7d9",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-pipeline-m1-g1-r1"
+      ],
+      "when": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "on"
+      }
+    },
+    {
+      "cost_key": "7b61037b1bc9e0e0e7b566b6f54564050395ba99e3c22aad199ca4682cc3d054",
+      "operation": "cycle1.coupled_commit1",
+      "operation_contract_sha256": "7b61037b1bc9e0e0e7b566b6f54564050395ba99e3c22aad199ca4682cc3d054",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-pipeline-m1-g1-r1"
+      ],
+      "when": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "on"
+      }
+    },
+    {
+      "cost_key": "afdc74a72832dd135c69d5933307c74656dd49d25fa6db74cb19627c44a2a240",
+      "operation": "cycle1.coupled_commit2",
+      "operation_contract_sha256": "afdc74a72832dd135c69d5933307c74656dd49d25fa6db74cb19627c44a2a240",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-pipeline-m1-g1-r1"
+      ],
+      "when": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "on"
+      }
+    },
+    {
+      "cost_key": "5f56488f34292b7fef463b4d0fb1cda0b5d040d74e7223858009c1f6aa68ed88",
+      "operation": "cycle1.coupled_commit3",
+      "operation_contract_sha256": "5f56488f34292b7fef463b4d0fb1cda0b5d040d74e7223858009c1f6aa68ed88",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-pipeline-m1-g1-r1"
+      ],
+      "when": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "on"
+      }
+    },
+    {
+      "cost_key": "1e3d083efe6e56f6ffb67af4827004b3dceced044e3326277e6980b4cbd075ee",
+      "operation": "cycle1.coupled_commit4",
+      "operation_contract_sha256": "1e3d083efe6e56f6ffb67af4827004b3dceced044e3326277e6980b4cbd075ee",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-pipeline-m1-g1-r1"
+      ],
+      "when": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "on"
+      }
+    },
+    {
+      "cost_key": "042de355445816ed685086fbd111e4e61121d58e18d74ca2e433069e2556893f",
+      "operation": "cycle2.coupled_commit0",
+      "operation_contract_sha256": "042de355445816ed685086fbd111e4e61121d58e18d74ca2e433069e2556893f",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-pipeline-m1-g1-r1"
+      ],
+      "when": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "on"
+      }
+    },
+    {
+      "cost_key": "03e98fe7b35fec6e4398c2cbd61256602ac0f712e64ba6ec245eb5e80013dc71",
+      "operation": "cycle2.coupled_commit1",
+      "operation_contract_sha256": "03e98fe7b35fec6e4398c2cbd61256602ac0f712e64ba6ec245eb5e80013dc71",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-pipeline-m1-g1-r1"
+      ],
+      "when": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "on"
+      }
+    },
+    {
+      "cost_key": "111806fa3ea929048ab2d0615af6f6c806712869fd203451e1f92956c2ae2c39",
+      "operation": "cycle2.coupled_commit2",
+      "operation_contract_sha256": "111806fa3ea929048ab2d0615af6f6c806712869fd203451e1f92956c2ae2c39",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-pipeline-m1-g1-r1"
+      ],
+      "when": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "on"
+      }
+    },
+    {
+      "cost_key": "b7a00a1368dd79a495b699776c1f856e4b81c47cd9a4c428cb00d16573742192",
+      "operation": "cycle2.coupled_commit3",
+      "operation_contract_sha256": "b7a00a1368dd79a495b699776c1f856e4b81c47cd9a4c428cb00d16573742192",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-pipeline-m1-g1-r1"
+      ],
+      "when": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "on"
+      }
+    },
+    {
+      "cost_key": "8ca676cf889ae3f3c767377a69a3d30761a2cf30fd5005e405653e616fa24b74",
+      "operation": "cycle2.coupled_commit4",
+      "operation_contract_sha256": "8ca676cf889ae3f3c767377a69a3d30761a2cf30fd5005e405653e616fa24b74",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "resources": [
+        "gpu:0",
+        "gpu:1",
+        "gpu:2",
+        "gpu:3",
+        "gpu:4",
+        "gpu:5",
+        "gpu:6",
+        "gpu:7",
+        "gpu:8",
+        "gpu:9",
+        "gpu:10",
+        "gpu:11",
+        "gpu:12",
+        "gpu:13",
+        "gpu:14",
+        "gpu:15"
+      ],
+      "states": [
+        "joint-livewan1-pipeline-m1-g1-r1"
+      ],
+      "when": {
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "on"
+      }
+    }
+  ],
+  "schema_version": "distillschedule.model_planning.v1",
+  "seeds": [
+    {
+      "gate": "off",
+      "modulation": "off",
+      "placement": "fsdp",
+      "row_major": "off"
+    },
+    {
+      "gate": "on",
+      "modulation": "on",
+      "placement": "pipeline",
+      "row_major": "on"
+    }
+  ],
+  "states": [
+    {
+      "adapter_scoped": false,
+      "bytes_per_rank": 10256581632,
+      "content_hash": "c722c7aa6e8c86b94591c8a1caaf7920bd3efabc5f1eed5aed08b68ba0facbab",
+      "frozen": false,
+      "id": "joint-livewan1-fsdp-m0-g0-r0",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "roles": [
+        "native_runtime"
+      ]
+    },
+    {
+      "adapter_scoped": false,
+      "bytes_per_rank": 28111631360,
+      "content_hash": "916e1b0937e4cf27eb41d18f705e527d4913038c350cc36729c536279ba6dd0e",
+      "frozen": false,
+      "id": "joint-livewan1-pipeline-m1-g1-r0",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "roles": [
+        "native_runtime"
+      ]
+    },
+    {
+      "adapter_scoped": false,
+      "bytes_per_rank": 28111631360,
+      "content_hash": "527e62529695db0fdc6f942b306576ff89650ae4b68cc4f177cce194221a6445",
+      "frozen": false,
+      "id": "joint-livewan1-pipeline-m1-g1-r1",
+      "ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "roles": [
+        "native_runtime"
+      ]
+    }
+  ],
+  "workload": "livewan_crossscale_pipeline_best"
+}

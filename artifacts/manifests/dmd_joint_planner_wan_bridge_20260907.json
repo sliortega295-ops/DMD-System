@@ -1,0 +1,340 @@
+{
+  "schema_version": "distillschedule.joint_planner_anchor_evidence.v1",
+  "run_id": "joint_planner_20260907",
+  "experiment_source_head": "be877cef1b3599266a4d8b75f304006653cae5b9",
+  "claim_scope": "INCUMBENT_REVALIDATION_NOT_AUTOMATIC_MODEL_SEARCH",
+  "denominator": "SAME_PROCESS_UNPROFILED_CYCLE2_ONLY",
+  "cycle2_ratio_diagnostic": 1.4797530153065312,
+  "strict_equivalence": "NOT_ESTABLISHED",
+  "strict_winner": null,
+  "canonical_profile_updated": false,
+  "controls": "SAME_SOURCE_ASSETS_BATCH_TRACE_UPDATES_EXPLICIT_TF32; NOT_PLACEMENT_ONLY_ABLATION",
+  "timing_runs_used": 2,
+  "remaining_original_timing_budget": 6,
+  "matched_identity": {
+    "source_head": "be877cef1b3599266a4d8b75f304006653cae5b9",
+    "asset_fingerprint": "825d0ff761b62e167fde9bf34aefae9b4e534598ff7f8462407472e1ea9b7ec7",
+    "semantic_fingerprint": "a4d411a2b5a53f1253b6fe63a6f95bdf0a59116abd018c31286aca881df4ad12",
+    "hardware_fingerprint": "037078a18b7dcb3edea3af742be80d38b09c6906b2f3461ec2d400d4fe7a915a"
+  },
+  "model_cost_calibration": "NOT_RUN",
+  "model_based_gpu_search": "NOT_RUN",
+  "LiveWan": "NOT_RUN",
+  "H3_Grid1000": "NOT_RUN",
+  "rows": [
+    {
+      "run_id": "jointp_wan_anchors_20260907_r1-00-baseline",
+      "candidate_id": "joint-wan1-fsdp-c512-e0",
+      "source_head": "be877cef1b3599266a4d8b75f304006653cae5b9",
+      "status": "PASS_NATIVE_EXECUTION_NUMERICAL_REVIEW",
+      "ranks": 16,
+      "cycles": 2,
+      "cycle1_seconds": 45.774857226992026,
+      "cycle2_seconds": 36.443518619053066,
+      "construction_world_max_seconds": 42.126078750006855,
+      "peak_allocated_gib": 4.298320293426514,
+      "peak_reserved_gib": 6.521484375,
+      "min_sampled_driver_free_gib": 32.009765625,
+      "max_sampled_node_cgroup_gib": 52.34868621826172,
+      "oom_delta": 0,
+      "cleanup": "PASS",
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "runtime_contract_rank0": {
+        "activation_offload": false,
+        "ema_implementation": "reference",
+        "helios_transformer_sha256": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
+        "model_swap": false,
+        "nccl_algo": "AUTO",
+        "optimizer_offload": false,
+        "parameter_offload": false,
+        "parameter_streaming": false,
+        "planner_execution_precision": {
+          "observed": {
+            "cudnn_allow_tf32": true,
+            "float32_matmul_precision": "high",
+            "matmul_allow_tf32": true
+          },
+          "parameter_dtype_gate": "REQUIRES_NATIVE_LAYER_RECEIPTS",
+          "precision_fingerprint": "3de62c3adf7a22dd9c9d3cc748e7af60e7a7aa2c4433071dc19ebe452b812d90",
+          "status": "PASS"
+        },
+        "residual_storage": "cuda_out_of_place"
+      },
+      "native_evidence": [
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/bound-summary.json",
+          "sha256": "179ea5e09afdf9267cb6cad8e0132f80b88ebd813390ddcaf509c8e0633734e6"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_bridge_20260907_r1-gate-joint-wan1-resident-c2048-e1/search-gate/comparison/trajectory_comparison.json",
+          "sha256": "3d2eb3fd18758fa2e7ccb9f1ee8ee901f63f405448dd7d5ee7b96450b65b95f8"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_bridge_20260907_r1-gate-joint-wan1-fsdp-c512-e0/bound-summary.json",
+          "sha256": "e5b5d8a316120430b5a4e11ce07e2de121cafb14994ff97f4ea6ae8970ee6db5"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/search-resources.node0.json",
+          "sha256": "4bfa05a3c10bdb49446f471d7a076b7e8b11d7067ed8360f539b6658becbc3b7"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/launcher/node_0/launch_manifest.txt",
+          "sha256": "f87f78401644eb4208db1c1a48aa2231e3423815c799c9f4fecee48c55336037"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/launcher/node_0/teardown_status.txt",
+          "sha256": "054b5c3ff245d41fce64d799e77bc5af3b8548ac96a950a477faeaea59a7d995"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/search-resources.node1.json",
+          "sha256": "d0378e519fbc704724c9a7154c8658450e5c16fdbe2af15b22ed02b936401871"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/launcher/node_1/launch_manifest.txt",
+          "sha256": "fd0d1c6a6bd200786a158a7a1295ad0206bbde0285392d894715d63c329fb151"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/launcher/node_1/teardown_status.txt",
+          "sha256": "054b5c3ff245d41fce64d799e77bc5af3b8548ac96a950a477faeaea59a7d995"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/execution/ranks/rank_00.json",
+          "sha256": "839799e9a1eaaf9c2a48a146a85949ab85ef56b24f907e0b81ce43ce6c5f4bda"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/execution/ranks/rank_01.json",
+          "sha256": "806dfa396b95da674b62aaada6d0a4a3c1ca7585cbb2941b39ebf0d58f194b69"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/execution/ranks/rank_02.json",
+          "sha256": "c7df6d6218210291013d5c7978aacab5a3750c71e021f116c436bfa4ac1616ce"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/execution/ranks/rank_03.json",
+          "sha256": "0e40a039905a61e734d03339ce9a9664b65256866aed61b8e708d5e325d7264d"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/execution/ranks/rank_04.json",
+          "sha256": "e8d37fc40472ce7d1a22eb221e14a7c30d323dcec085baef14ad287940d30cee"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/execution/ranks/rank_05.json",
+          "sha256": "0972776efed2410e6ef35a2709fa15e5daf1a4873dcf94126a1ddf9b7cd84841"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/execution/ranks/rank_06.json",
+          "sha256": "95bf98b33a6fc1a8150acb6e4798a031b762b3413c2e851627f506667aedc5b5"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/execution/ranks/rank_07.json",
+          "sha256": "a513e9041193141ff3ee193b57b74ce1cdc204c850156d00cb7f76691e7f9f3d"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/execution/ranks/rank_08.json",
+          "sha256": "1251d1c0b391d820f4c76777bcdf53e2e3e4826489a8611db691c142b4991e5b"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/execution/ranks/rank_09.json",
+          "sha256": "5678a35eead2b7890d23e0ea71a1514528a6fe64a4ffdbe80aa902d37e64a778"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/execution/ranks/rank_10.json",
+          "sha256": "29a88f878d1d07f834399a9a7f37e1bbadb81a3688b7b7c90b5acd884ce60681"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/execution/ranks/rank_11.json",
+          "sha256": "14351664892c6f4bbb023393724e8dce497aede7070837089406c5c203e99554"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/execution/ranks/rank_12.json",
+          "sha256": "94744acaa0d4280004683492dd6fe56154d71ba42a46f2bbbf13ee2ad695b99d"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/execution/ranks/rank_13.json",
+          "sha256": "4bf5d7fd21c12d6328e950b43d8e33a6a3d95b345abe0fb501ba1ddab6fdf264"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/execution/ranks/rank_14.json",
+          "sha256": "4f6b51a92a7da072e174ae9c6c73945606d6c50b22f01d3ddf00150d310c208f"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-00-baseline/execution/ranks/rank_15.json",
+          "sha256": "56e8ea6df2a407ac2a67179bf8fcb5944bd0e8ba5a175262ebaa15999e83f269"
+        }
+      ],
+      "numerical_status": "REVIEW"
+    },
+    {
+      "run_id": "jointp_wan_anchors_20260907_r1-01-incumbent",
+      "candidate_id": "joint-wan1-resident-c2048-e1",
+      "source_head": "be877cef1b3599266a4d8b75f304006653cae5b9",
+      "status": "PASS_NATIVE_EXECUTION_NUMERICAL_REVIEW",
+      "ranks": 16,
+      "cycles": 2,
+      "cycle1_seconds": 27.660357747925445,
+      "cycle2_seconds": 24.628109043929726,
+      "construction_world_max_seconds": 43.45518502080813,
+      "peak_allocated_gib": 21.898890495300293,
+      "peak_reserved_gib": 22.373046875,
+      "min_sampled_driver_free_gib": 16.224609375,
+      "max_sampled_node_cgroup_gib": 54.11804962158203,
+      "oom_delta": 0,
+      "cleanup": "PASS",
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "runtime_contract_rank0": {
+        "activation_offload": false,
+        "ema_implementation": "reference",
+        "helios_transformer_sha256": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
+        "model_swap": false,
+        "nccl_algo": "Tree",
+        "optimizer_offload": false,
+        "parameter_offload": false,
+        "parameter_streaming": false,
+        "planner_execution_precision": {
+          "observed": {
+            "cudnn_allow_tf32": true,
+            "float32_matmul_precision": "high",
+            "matmul_allow_tf32": true
+          },
+          "parameter_dtype_gate": "REQUIRES_NATIVE_LAYER_RECEIPTS",
+          "precision_fingerprint": "3de62c3adf7a22dd9c9d3cc748e7af60e7a7aa2c4433071dc19ebe452b812d90",
+          "status": "PASS"
+        },
+        "residual_storage": "cuda_out_of_place"
+      },
+      "native_evidence": [
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/bound-summary.json",
+          "sha256": "789e0a533f9e315aa73f1280e41c1148d8fb15003f5634d2ded27ad40dff661b"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_bridge_20260907_r1-gate-joint-wan1-resident-c2048-e1/search-gate/comparison/trajectory_comparison.json",
+          "sha256": "3d2eb3fd18758fa2e7ccb9f1ee8ee901f63f405448dd7d5ee7b96450b65b95f8"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_bridge_20260907_r1-gate-joint-wan1-resident-c2048-e1/bound-summary.json",
+          "sha256": "575fbccc6c82c0490b00e2c98158c36a1fcff807810b490ff5a0b41ba550ab6c"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/search-resources.node0.json",
+          "sha256": "45010d15e09ea4753c8fce47a1511c767dbd9ba9d026eebee01a40aeb8880e88"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/launcher/node_0/launch_manifest.txt",
+          "sha256": "27ff8695a9fd5d3a4fb5d0c6078f2acec0fdc463d66c3b5150ac6e8dea78b060"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/launcher/node_0/teardown_status.txt",
+          "sha256": "e14ce3dc3801537492c6f883170192470949aa7d92fa56c1c9a2de475894ed7f"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/search-resources.node1.json",
+          "sha256": "9394a9ca43c35015c5f34e835527ad45f410fa1ef373bcce5ccbc3992a054c5f"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/launcher/node_1/launch_manifest.txt",
+          "sha256": "f5d527620ea6f381d1e60e7a81c9f4b13c8677d284d6a393dcc469c5d52f10ed"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/launcher/node_1/teardown_status.txt",
+          "sha256": "e14ce3dc3801537492c6f883170192470949aa7d92fa56c1c9a2de475894ed7f"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/execution/ranks/rank_00.json",
+          "sha256": "7bd9334ed30088fd6088b1fd9c8800c98333dda785693aeeabccf985054fb56b"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/execution/ranks/rank_01.json",
+          "sha256": "8e05dd800fbecbe304f4aa2ab5335fa16ec7264b216ad84058ecd8da3d423b7c"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/execution/ranks/rank_02.json",
+          "sha256": "f8037e924c6d22e5aca06c3451c80c982b25074f165295c50c8690fb7eb1c68b"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/execution/ranks/rank_03.json",
+          "sha256": "fa1b108ca1362a936ab4d56790aa38c8712ee31f47057438e4325afcf9338fe2"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/execution/ranks/rank_04.json",
+          "sha256": "963fc532b0c812f4a83604f4ce80a74c8b79a25bce7a9f9d80000a16fbce86b9"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/execution/ranks/rank_05.json",
+          "sha256": "f24f7f315b2d5b6ef5020e71f6262c46042799b7774eca47f5c9eb3037651e92"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/execution/ranks/rank_06.json",
+          "sha256": "df725ea177f7b837eff7c1330b0547cf4cae49bac1c184f7c76bb2db7a4c3bad"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/execution/ranks/rank_07.json",
+          "sha256": "a9502a8f07c69c365240491d58652e17b097ec912b210c7835c66cef4019679e"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/execution/ranks/rank_08.json",
+          "sha256": "e1707f700954c2524bd9439b7a98b2da139a4d20a366d46dd063aa3b6295dd0d"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/execution/ranks/rank_09.json",
+          "sha256": "68b6190d0389c2ff8f162bafc287fb2821eecc5f39d297ed578d5b0fe04fdef3"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/execution/ranks/rank_10.json",
+          "sha256": "66aaded8f52405da41af5e45ebb0f21cc9e8589753a044d089dc3b8a8209a6e8"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/execution/ranks/rank_11.json",
+          "sha256": "cb6c123ef7f365b310cc54a7f0aa8ad6fa248825a95d363305e3d2bb2d22c8a4"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/execution/ranks/rank_12.json",
+          "sha256": "463ac5c7a821fb26bc593cf4ed331860cd4b1a5c5c52d7642577a66890b9ee56"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/execution/ranks/rank_13.json",
+          "sha256": "2c583c3cd8272bf2ce8b39ed237898e82a427c8bc63e2494f1518001ad053e6d"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/execution/ranks/rank_14.json",
+          "sha256": "51c6a0dbe39919e8aa9ab6bf9e2253d34b23756cc982cae6bb373aa50bfe256e"
+        },
+        {
+          "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/wan_native/jointp_wan_anchors_20260907_r1-01-incumbent/execution/ranks/rank_15.json",
+          "sha256": "d993dd956c263af86e502add3f72d1d7dec1f72d2fc437ebea036d7b52f45d0d"
+        }
+      ],
+      "numerical_status": "REVIEW"
+    }
+  ],
+  "small_evidence_checksums": [
+    {
+      "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_native_bridge_r1/anchor-timing/00-baseline/measurement.json",
+      "bytes": 25230,
+      "sha256": "e78fc6f78321e0d7e7d0384f2da992461198d5a1e184e5337642b4ce0e75e438"
+    },
+    {
+      "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_native_bridge_r1/anchor-timing/01-incumbent/measurement.json",
+      "bytes": 25316,
+      "sha256": "89f9927fadd121a063c4517961fbc36accb901a1d720ce74b2f715d35b0d204e"
+    },
+    {
+      "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_native_bridge_r1/anchor-timing/native_receipt_excerpt.json",
+      "bytes": 25583,
+      "sha256": "d0b6d020f480c5e4ae18d7325f7a09606c88a0445e366efd43c287ba84ba5b9b"
+    },
+    {
+      "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/manifests/wan_native_anchors_cleanup.json",
+      "bytes": 1327,
+      "sha256": "049510195d69e234bf4f45cae1b5f3fd9fb348f544b1601d88958a866bbe5f4c"
+    }
+  ]
+}

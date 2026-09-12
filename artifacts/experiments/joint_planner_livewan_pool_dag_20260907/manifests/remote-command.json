@@ -1,0 +1,10 @@
+{
+  "command": "env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-livewan-observation-78e501bc1727-20260907/src LD_LIBRARY_PATH=/tmp/distillschedule-helios-official-torch210/lib /tmp/distillschedule-helios-official-torch210/bin/python /share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_dag_r1/source/derive_pool_contract.py --module /share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_dag_r1/source/livewan_pool_contract.py --module-sha 52b4a0e284e505ee87370dc0183769007d11aef1339682a2771cc5bfdcf484da --plan /share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native-inputs/execution-plan.json --output /share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_dag_r1/analysis-r1",
+  "host": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0.shuchenweng.baai-vision_vision.dx-calc1.job@ssh.platform-multi.baai.ac.cn",
+  "source_hashes": {
+    "livewan_pool_contract.py": "52b4a0e284e505ee87370dc0183769007d11aef1339682a2771cc5bfdcf484da",
+    "derive_pool_contract.py": "ffbf1f596191df4ad55972bf1b09af88ffa92675f5469e43710ebbc2f2b8c419"
+  },
+  "input_plan": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native-inputs/execution-plan.json",
+  "new_gpu_runs": 0
+}

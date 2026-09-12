@@ -1,0 +1,16 @@
+{
+  "exhaustive_agreement": true,
+  "formal_time": false,
+  "gpu_validation": "NOT_RUN",
+  "measured_implementations": 7,
+  "measured_operation_costs": 98,
+  "predicted_best": {
+    "chunk_tokens": "2048",
+    "lora_epilogue": "on",
+    "placement": "resident"
+  },
+  "predicted_cycle2_seconds": 24.635730291,
+  "source_head": "4e3ffb59c21429f3e9e714f14006f5ae6afbd002",
+  "speedup": null,
+  "status": "PASS_COMPLETE_CALIBRATION_AND_CPU_SEARCH"
+}

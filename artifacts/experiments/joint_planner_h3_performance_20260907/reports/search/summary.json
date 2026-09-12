@@ -1,0 +1,30 @@
+{
+  "calibration_run_id": "jointp_h3_actions_perf_20260907_r1-calibration",
+  "claimable_speedup": null,
+  "component_count": 22,
+  "confirmation_run_id": "jointp_h3_actions_perf_20260907_r1-confirmation",
+  "cost_source": "ACTUAL_FENCED_ACTIONS_MAX_RANK; PHYSICAL_RANK_LAYOUTS_AND_WARM_STATE_BOUND",
+  "equal_latency_candidates": [
+    "joint-h3v2-d2-n128-w5",
+    "joint-h3v2-d2-n128-w2",
+    "joint-h3v2-d2-n128-w1",
+    "joint-h3v2-d2-n128-w4",
+    "joint-h3v2-d2-n128-w3"
+  ],
+  "evaluated": 20,
+  "feasible": 5,
+  "missing_costs": "UNMEASURED_DEPTH_TILE_REMAIN_UNCALIBRATED",
+  "observed_operations_per_rank": 22,
+  "overlap": "SERIAL_WORLD16_GPU_RESOURCE_ENVELOPES; NO_SYNTHETIC_FREE_OVERLAP",
+  "predicted_best_unique_latency": false,
+  "predicted_cycle1_seconds": 775.113990284,
+  "predicted_cycle2_seconds": 771.399059042,
+  "search_space": 20,
+  "selected": "joint-h3v2-d2-n128-w5",
+  "source_head": "bf59e39b8a6fe158ad15ebae07be7df71369f5fd",
+  "status": "PASS_CPU_MODEL_SEARCH_NATIVE_CONFIRMATION_NOT_RUN",
+  "strict_numerical_status": "REVIEW",
+  "tie_break": "EXISTING_DETERMINISTIC_FINGERPRINT_TIEBREAK_NOT_MEASURED_SPEEDUP",
+  "uncalibrated": 15,
+  "validation": "PASS_BUT_CPU_ONLY"
+}

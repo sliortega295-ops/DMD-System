@@ -1,0 +1,362 @@
+{
+  "runs": {
+    "jointp_livewan_macro_20260907_r1-cal-joint-livewan1-fsdp-m0-g0-r0": {
+      "summary_path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros/livewan/jointp_livewan_macro_20260907_r1-cal-joint-livewan1-fsdp-m0-g0-r0/bound-summary.json",
+      "summary": {
+        "arm_id": "search-joint-livewan1-fsdp-m0-g0-r0",
+        "calibration_only": true,
+        "claim_boundary": "OPERATION_CALIBRATION_DIAGNOSTIC_ONLY",
+        "correctness_binding": {
+          "gate_sha256": "891c1bbabfae32d4799a6f11a70499d19ddd1f0ce044615dedaf3d4c1d53d165",
+          "trajectory_comparison_sha256": "33f2b350bf71d0879894bbfc38fe8fb1ffd71c0f69edfe07a8bc877160cd2d46"
+        },
+        "cycle_1": {
+          "claimable": false,
+          "critical_rank_local_endpoint_deltas": {
+            "count": 16,
+            "max": 79.400484375,
+            "mean": 79.398677734375,
+            "median": 79.39810156249999,
+            "min": 79.39696875
+          },
+          "role": "WARMUP_DIAGNOSTIC",
+          "world_completion_endpoint_seconds": 79.400484375
+        },
+        "cycle_2": {
+          "claimable": false,
+          "critical_rank_local_endpoint_deltas": {
+            "count": 16,
+            "max": 62.523234375,
+            "mean": 62.5228271484375,
+            "median": 62.5227734375,
+            "min": 62.522515625
+          },
+          "denominator": "MAX_WORLD_COMPLETION_2_MINUS_MAX_WORLD_COMPLETION_1",
+          "endpoint_1_world_seconds": 79.400484375,
+          "endpoint_2_world_seconds": 141.923234375,
+          "includes_cross_cycle_lookahead_and_hot_sync": false,
+          "role": "OPERATION_CALIBRATION_ONLY",
+          "seconds": 62.52274999999999
+        },
+        "cycles_in_same_process": 2,
+        "errors": [],
+        "execution_mode": "baseline",
+        "final_versions": {
+          "critic": 10,
+          "ema": 0,
+          "generator": 2
+        },
+        "formal_timing_eligible": false,
+        "head": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+        "heads": {
+          "baseline": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
+        },
+        "identity": {
+          "bootstrap_sha256": "ee842eb9db7100ce8b1399f787a7d5e055f13b4c87dfd6b8a390977bb32ee853",
+          "source_receipt_sha256": "8101f89ae3ea9d30c17cda57cf2c64f2f9463f7db15031fc2ee55a514626c29b",
+          "trace_sha256": "53f9a1ee26cf613f19ed48f814a2c895cea3f1d2795048eda66ee67512176789"
+        },
+        "implementation": {
+          "effective_plan_sha256": "2b77986606af7b58cee01811e12a62aaab569736c408087f8498db87c64961cd",
+          "fingerprint": "a85c24dfee1c3a7abd27e1111575f5e303752a6738593ab05fe5fa20f377fd20",
+          "mode": "baseline",
+          "physical_call_inventory": {
+            "critic/grad/checkpoint": 160,
+            "critic/nograd/plain": 32,
+            "student/grad/checkpoint": 96,
+            "student/nograd/plain": 4120,
+            "teacher/nograd/plain": 32
+          },
+          "variant": "b1"
+        },
+        "integration_binding": {
+          "asset_fingerprint": "506a57cd30db642e44c3ede97231bb18d70bd20812e7ea9398383035a3279e86",
+          "historical_time_reproduced": false,
+          "integration_head": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+          "numeric_policy": "REJECT_EXTREME_ONLY_RECORD_ORDINARY_REVIEW",
+          "profile_id": "livewan_crossscale_pipeline_best",
+          "profile_sha256": "9449e0c4bf949562c7f5c0e9f7b1ddb48efe31cf3e636e13a509a77c2d7653bf",
+          "speedup_requires_matched_current_head_baseline": true,
+          "strict_cross_implementation_parity": "NOT_ESTABLISHED"
+        },
+        "logical_call_inventory": {
+          "critic": 192,
+          "critic/grad": 160,
+          "critic/grad/checkpoint": 160,
+          "critic/nograd": 32,
+          "critic/nograd/plain": 32,
+          "student": 4216,
+          "student/grad": 96,
+          "student/grad/checkpoint": 96,
+          "student/nograd": 4120,
+          "student/nograd/plain": 4120,
+          "teacher": 32,
+          "teacher/nograd": 32,
+          "teacher/nograd/plain": 32
+        },
+        "matched_workload_contract": {
+          "cycles_in_same_process": 2,
+          "global_batch": 16,
+          "head": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+          "identity": {
+            "bootstrap_sha256": "ee842eb9db7100ce8b1399f787a7d5e055f13b4c87dfd6b8a390977bb32ee853",
+            "source_receipt_sha256": "8101f89ae3ea9d30c17cda57cf2c64f2f9463f7db15031fc2ee55a514626c29b",
+            "trace_sha256": "53f9a1ee26cf613f19ed48f814a2c895cea3f1d2795048eda66ee67512176789"
+          },
+          "logical_call_inventory": {
+            "critic/grad/checkpoint": 160,
+            "critic/nograd/plain": 32,
+            "student/grad/checkpoint": 96,
+            "student/nograd/plain": 4120,
+            "teacher/nograd/plain": 32
+          },
+          "logical_updates": {
+            "critic": 10,
+            "ema": 0,
+            "generator": 2
+          },
+          "profiled": false,
+          "schema": "livewan_two_cycle_timing_contract_v1",
+          "seed": 20260830,
+          "source_reuse_across_cycles": true,
+          "timer_boundary": "one pre-run barrier+synchronize; no midpoint barrier/synchronize; one post-cycle2 synchronize+barrier",
+          "world_size": 16
+        },
+        "matched_workload_fingerprint": "9d6233ffc11ab9f58a79998eba2d452241bbf18471a78a73f52e427359bd7f09",
+        "native_unprofiled": true,
+        "outer_two_cycle_wall_diagnostic": {
+          "count": 16,
+          "max": 141.92491816799156,
+          "mean": 141.92368707094283,
+          "median": 141.92360824905336,
+          "min": 141.92147761583328
+        },
+        "per_cycle_call_inventory": [
+          {
+            "cycle": 1,
+            "logical": {
+              "critic": 96,
+              "critic/grad": 80,
+              "critic/grad/checkpoint": 80,
+              "critic/nograd": 16,
+              "critic/nograd/plain": 16,
+              "student": 2108,
+              "student/grad": 48,
+              "student/grad/checkpoint": 48,
+              "student/nograd": 2060,
+              "student/nograd/plain": 2060,
+              "teacher": 16,
+              "teacher/nograd": 16,
+              "teacher/nograd/plain": 16
+            },
+            "physical": {
+              "critic": 96,
+              "critic/grad": 80,
+              "critic/grad/checkpoint": 80,
+              "critic/nograd": 16,
+              "critic/nograd/plain": 16,
+              "student": 2108,
+              "student/grad": 48,
+              "student/grad/checkpoint": 48,
+              "student/nograd": 2060,
+              "student/nograd/plain": 2060,
+              "teacher": 16,
+              "teacher/nograd": 16,
+              "teacher/nograd/plain": 16
+            }
+          },
+          {
+            "cycle": 2,
+            "logical": {
+              "critic": 96,
+              "critic/grad": 80,
+              "critic/grad/checkpoint": 80,
+              "critic/nograd": 16,
+              "critic/nograd/plain": 16,
+              "student": 2108,
+              "student/grad": 48,
+              "student/grad/checkpoint": 48,
+              "student/nograd": 2060,
+              "student/nograd/plain": 2060,
+              "teacher": 16,
+              "teacher/nograd": 16,
+              "teacher/nograd/plain": 16
+            },
+            "physical": {
+              "critic": 96,
+              "critic/grad": 80,
+              "critic/grad/checkpoint": 80,
+              "critic/nograd": 16,
+              "critic/nograd/plain": 16,
+              "student": 2108,
+              "student/grad": 48,
+              "student/grad/checkpoint": 48,
+              "student/nograd": 2060,
+              "student/nograd/plain": 2060,
+              "teacher": 16,
+              "teacher/nograd": 16,
+              "teacher/nograd/plain": 16
+            }
+          }
+        ],
+        "physical_call_inventory": {
+          "critic": 192,
+          "critic/grad": 160,
+          "critic/grad/checkpoint": 160,
+          "critic/nograd": 32,
+          "critic/nograd/plain": 32,
+          "student": 4216,
+          "student/grad": 96,
+          "student/grad/checkpoint": 96,
+          "student/nograd": 4120,
+          "student/nograd/plain": 4120,
+          "teacher": 32,
+          "teacher/nograd": 32,
+          "teacher/nograd/plain": 32
+        },
+        "pipeline_variant": "b1",
+        "profiled": false,
+        "profiler_status": "NOT_RUN",
+        "rank_count": 16,
+        "run_id": "jointp_livewan_macro_20260907_r1-cal-joint-livewan1-fsdp-m0-g0-r0",
+        "run_kind": "two-cycle-timing",
+        "run_root": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros/livewan/jointp_livewan_macro_20260907_r1-cal-joint-livewan1-fsdp-m0-g0-r0",
+        "schema_version": "distillschedule.livewan_two_cycle_timing_summary.v1",
+        "status": "PASS",
+        "trace_sha256": "53f9a1ee26cf613f19ed48f814a2c895cea3f1d2795048eda66ee67512176789"
+      },
+      "teardown": {
+        "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros/livewan/jointp_livewan_macro_20260907_r1-cal-joint-livewan1-fsdp-m0-g0-r0/launcher/node_0/teardown_status.txt": "status=PASS\ngpu_process_count=0\nowner_run_id=jointp_livewan_macro_20260907_r1-cal-joint-livewan1-fsdp-m0-g0-r0\n",
+        "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros/livewan/jointp_livewan_macro_20260907_r1-cal-joint-livewan1-fsdp-m0-g0-r0/launcher/node_1/teardown_status.txt": "status=PASS\ngpu_process_count=0\nowner_run_id=jointp_livewan_macro_20260907_r1-cal-joint-livewan1-fsdp-m0-g0-r0\n"
+      }
+    },
+    "jointp_livewan_macro_20260907_r1-gate-joint-livewan1-fsdp-m0-g0-r0": {
+      "summary_path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros/livewan/jointp_livewan_macro_20260907_r1-gate-joint-livewan1-fsdp-m0-g0-r0/bound-summary.json",
+      "summary": {
+        "arm_id": "search-joint-livewan1-fsdp-m0-g0-r0",
+        "cycles": 2,
+        "errors": [],
+        "execution_mode": "baseline",
+        "expected_head": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+        "expected_rank_cycle_receipts": 32,
+        "final_versions": {
+          "critic": 10,
+          "ema": 0,
+          "generator": 2
+        },
+        "formal_timing_eligible": false,
+        "head": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+        "heads": {
+          "baseline": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
+        },
+        "identity": {
+          "bootstrap_sha256": "ee842eb9db7100ce8b1399f787a7d5e055f13b4c87dfd6b8a390977bb32ee853",
+          "source_receipt_sha256": "8101f89ae3ea9d30c17cda57cf2c64f2f9463f7db15031fc2ee55a514626c29b",
+          "trace_sha256": "53f9a1ee26cf613f19ed48f814a2c895cea3f1d2795048eda66ee67512176789"
+        },
+        "integration_binding": {
+          "asset_fingerprint": "506a57cd30db642e44c3ede97231bb18d70bd20812e7ea9398383035a3279e86",
+          "historical_time_reproduced": false,
+          "integration_head": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+          "numeric_policy": "REJECT_EXTREME_ONLY_RECORD_ORDINARY_REVIEW",
+          "profile_id": "livewan_crossscale_pipeline_best",
+          "profile_sha256": "9449e0c4bf949562c7f5c0e9f7b1ddb48efe31cf3e636e13a509a77c2d7653bf",
+          "speedup_requires_matched_current_head_baseline": true,
+          "strict_cross_implementation_parity": "NOT_ESTABLISHED"
+        },
+        "numeric_state_anchors": [
+          {
+            "cycle": 1,
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros/livewan/jointp_livewan_macro_20260907_r1-gate-joint-livewan1-fsdp-m0-g0-r0/trajectory/anchors/cycle_01_global.json",
+            "sha256": "e16ee6e526e7548509628f89a4879e4d4e295a57d38b5965cd86f779545d6a65"
+          },
+          {
+            "cycle": 2,
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros/livewan/jointp_livewan_macro_20260907_r1-gate-joint-livewan1-fsdp-m0-g0-r0/trajectory/anchors/cycle_02_global.json",
+            "sha256": "b38b779308e84b1f6f2e8c1715ff1cd138aae6622c0764e3905381ed4dc3d7b3"
+          }
+        ],
+        "ordinary_numerical_drift_early_stop": false,
+        "pipeline_variant": "b1",
+        "rank_cycle_receipts": 32,
+        "run_id": "jointp_livewan_macro_20260907_r1-gate-joint-livewan1-fsdp-m0-g0-r0",
+        "run_root": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros/livewan/jointp_livewan_macro_20260907_r1-gate-joint-livewan1-fsdp-m0-g0-r0",
+        "sample_contract": "80 logical rank-qualified operation keys per cycle; source samples reused across cycles with fresh operation-keyed RNG",
+        "schema_version": "distillschedule.livewan_trajectory_summary.v1",
+        "seed": 20260830,
+        "status": "PASS"
+      },
+      "teardown": {}
+    },
+    "jointp_livewan_macro_20260907_r1-gate-joint-livewan1-pipeline-m1-g1-r1": {
+      "summary_path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros/livewan/jointp_livewan_macro_20260907_r1-gate-joint-livewan1-pipeline-m1-g1-r1/bound-summary.json",
+      "summary": {
+        "arm_id": "search-joint-livewan1-pipeline-m1-g1-r1",
+        "cycles": 2,
+        "errors": [],
+        "execution_mode": "pipeline",
+        "expected_head": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+        "expected_rank_cycle_receipts": 32,
+        "final_versions": {
+          "critic": 10,
+          "ema": 0,
+          "generator": 2
+        },
+        "formal_timing_eligible": false,
+        "head": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+        "heads": {
+          "pipeline": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0"
+        },
+        "identity": {
+          "bootstrap_sha256": "ee842eb9db7100ce8b1399f787a7d5e055f13b4c87dfd6b8a390977bb32ee853",
+          "source_receipt_sha256": "8101f89ae3ea9d30c17cda57cf2c64f2f9463f7db15031fc2ee55a514626c29b",
+          "trace_sha256": "53f9a1ee26cf613f19ed48f814a2c895cea3f1d2795048eda66ee67512176789"
+        },
+        "integration_binding": {
+          "asset_fingerprint": "506a57cd30db642e44c3ede97231bb18d70bd20812e7ea9398383035a3279e86",
+          "historical_time_reproduced": false,
+          "integration_head": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+          "numeric_policy": "REJECT_EXTREME_ONLY_RECORD_ORDINARY_REVIEW",
+          "profile_id": "livewan_crossscale_pipeline_best",
+          "profile_sha256": "71e1c108a0c457bf6d9eb31a87e417a2db9ed905c8907cadcb4d119abb94433e",
+          "speedup_requires_matched_current_head_baseline": true,
+          "strict_cross_implementation_parity": "NOT_ESTABLISHED"
+        },
+        "numeric_state_anchors": [
+          {
+            "cycle": 1,
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros/livewan/jointp_livewan_macro_20260907_r1-gate-joint-livewan1-pipeline-m1-g1-r1/trajectory/anchors/cycle_01_global.json",
+            "sha256": "8c9cfa371624d27862e4cb83b45513d3af6b4db4285875bb4c0fffc0178cc5cf"
+          },
+          {
+            "cycle": 2,
+            "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros/livewan/jointp_livewan_macro_20260907_r1-gate-joint-livewan1-pipeline-m1-g1-r1/trajectory/anchors/cycle_02_global.json",
+            "sha256": "7d4aa6d852b0de58d33f6f299800e367172bd925da5918eb756c18bd043f01b4"
+          }
+        ],
+        "ordinary_numerical_drift_early_stop": false,
+        "pipeline_variant": "c34-continuous-b16-residual-layout",
+        "rank_cycle_receipts": 32,
+        "run_id": "jointp_livewan_macro_20260907_r1-gate-joint-livewan1-pipeline-m1-g1-r1",
+        "run_root": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/native_macros/livewan/jointp_livewan_macro_20260907_r1-gate-joint-livewan1-pipeline-m1-g1-r1",
+        "sample_contract": "80 logical rank-qualified operation keys per cycle; source samples reused across cycles with fresh operation-keyed RNG",
+        "schema_version": "distillschedule.livewan_trajectory_summary.v1",
+        "seed": 20260830,
+        "status": "PASS"
+      },
+      "teardown": {}
+    }
+  },
+  "gpu_processes": "",
+  "cgroup_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n",
+  "status": "OLD_REVISION_NATIVE_GATES_PASSED_ASSEMBLY_FAILED",
+  "accepted_costs": 0,
+  "formal_native_timing_attempts": 0,
+  "h3_gpu": "NOT_RUN",
+  "bugs": [
+    "native rank receipts bind run via operation_calibration.path, not run_id",
+    "model_validation.run used Wan-only adapter",
+    "emitted H3 replay selected nonexistent legacy anchors",
+    "runtime identity forced LD_LIBRARY_PATH not present in native launcher"
+  ]
+}

@@ -1,0 +1,150 @@
+{
+  "calibration_only": false,
+  "candidate_id": "joint-h3v2-d2-n128-w3",
+  "claim_boundary": "NATIVE_DIAGNOSTIC_NOT_SEARCH_READY_OR_FORMAL_SPEEDUP",
+  "cross_rank_clock_alignment": "NOT_ESTABLISHED",
+  "cycle_cuda_elapsed_seconds": {
+    "1": 773.95025,
+    "2": 774.3975625
+  },
+  "cycle_wall_seconds": {
+    "1": 773.958214879,
+    "2": 774.401585729
+  },
+  "cycles": 2,
+  "cycles_in_same_process": 2,
+  "effective_configuration_sha256": "133c025de61debe13e32681a062d451c9f0b180d81cfd5886e4128d4c4e67654",
+  "errors": [],
+  "final_versions": {
+    "critic": 10,
+    "ema": 0,
+    "generator": 2
+  },
+  "formal_timing_eligible": false,
+  "integration_head": "878aff490ce28c661ac1d927f08f8846992baf45",
+  "planner_implementation": {
+    "lora_epilogue_block_n": "128",
+    "prefetch_depth": "2",
+    "rollout_window": "3"
+  },
+  "rank_count": 16,
+  "ranks": [
+    {
+      "cycle_wall_seconds": {
+        "1": 773.955404301,
+        "2": 774.401303242
+      },
+      "rank": 0
+    },
+    {
+      "cycle_wall_seconds": {
+        "1": 773.957754689,
+        "2": 774.401559108
+      },
+      "rank": 1
+    },
+    {
+      "cycle_wall_seconds": {
+        "1": 773.95784961,
+        "2": 774.401382261
+      },
+      "rank": 2
+    },
+    {
+      "cycle_wall_seconds": {
+        "1": 773.957772943,
+        "2": 774.401235853
+      },
+      "rank": 3
+    },
+    {
+      "cycle_wall_seconds": {
+        "1": 773.958214879,
+        "2": 774.401524763
+      },
+      "rank": 4
+    },
+    {
+      "cycle_wall_seconds": {
+        "1": 773.957584403,
+        "2": 774.401585729
+      },
+      "rank": 5
+    },
+    {
+      "cycle_wall_seconds": {
+        "1": 773.957732366,
+        "2": 774.401516909
+      },
+      "rank": 6
+    },
+    {
+      "cycle_wall_seconds": {
+        "1": 773.957482899,
+        "2": 774.40153352
+      },
+      "rank": 7
+    },
+    {
+      "cycle_wall_seconds": {
+        "1": 773.948954415,
+        "2": 774.397737797
+      },
+      "rank": 8
+    },
+    {
+      "cycle_wall_seconds": {
+        "1": 773.951158406,
+        "2": 774.397695046
+      },
+      "rank": 9
+    },
+    {
+      "cycle_wall_seconds": {
+        "1": 773.950962002,
+        "2": 774.397793744
+      },
+      "rank": 10
+    },
+    {
+      "cycle_wall_seconds": {
+        "1": 773.951000336,
+        "2": 774.397705405
+      },
+      "rank": 11
+    },
+    {
+      "cycle_wall_seconds": {
+        "1": 773.951004483,
+        "2": 774.397790156
+      },
+      "rank": 12
+    },
+    {
+      "cycle_wall_seconds": {
+        "1": 773.951244851,
+        "2": 774.397651463
+      },
+      "rank": 13
+    },
+    {
+      "cycle_wall_seconds": {
+        "1": 773.951189235,
+        "2": 774.397801739
+      },
+      "rank": 14
+    },
+    {
+      "cycle_wall_seconds": {
+        "1": 773.950812538,
+        "2": 774.397887722
+      },
+      "rank": 15
+    }
+  ],
+  "schema_version": "distillschedule.h3_native_two_cycle_summary.v1",
+  "search_ready": false,
+  "status": "PASS",
+  "strict_pair_gate": "NOT_RUN",
+  "timer_scope": "CORRECTNESS_ACTION_HASH_PROBES_INCLUDED_NOT_NATIVE_PERFORMANCE"
+}

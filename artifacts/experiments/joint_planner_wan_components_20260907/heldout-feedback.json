@@ -1,0 +1,161 @@
+{
+  "candidate_id": "joint-wan2-resident-c2048-e1-w2",
+  "extra_baseline_runs": 0,
+  "extra_incumbent_runs": 0,
+  "historical_window3_repeats": 0,
+  "lowering": {
+    "asset_fingerprint": "825d0ff761b62e167fde9bf34aefae9b4e534598ff7f8462407472e1ea9b7ec7",
+    "candidate": {
+      "executable": true,
+      "gpu_validation": "NOT_RUN_ON_SEARCH_BRANCH",
+      "id": "joint-wan2-resident-c2048-e1-w2",
+      "kernels": [
+        "modulation_chunk2048",
+        "lora_nograd_epilogue"
+      ],
+      "mechanism": "joint_placement_and_existing_kernel_parameters",
+      "parent": null,
+      "placement": "resident-async128-tree-chunk2048",
+      "targets": [
+        "nccl",
+        "pointwise"
+      ],
+      "variant": null,
+      "workload": "wan13b_nogan_resident_best"
+    },
+    "cost_model_sha256": "1776c338e57971fd0a212373f769f85b3a92c414b2d2beeaedb4f459a1b02ad4",
+    "integration_head": "ceb2921985e5a855ff93d6c9d7e21e7528b6ef5a",
+    "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/analysis_r1/heldout-model-plan.json",
+    "predicted_cycle2_ns": 24513250866,
+    "problem_sha256": "37afa7aadbcae6269a99fa238e6c67927862fdfa745c2902baf9a9187cfea388",
+    "sha256": "7b7a48cfc204d2cc3e8dcd9e5d79b242706176852e5b0051c44de2c352476d8c",
+    "status": "PASS_MODEL_TO_NATIVE_LOWERING",
+    "workload_semantics_hash": "a4d411a2b5a53f1253b6fe63a6f95bdf0a59116abd018c31286aca881df4ad12"
+  },
+  "model_memory_peak_bytes": 23513754624,
+  "native": {
+    "candidate_id": "joint-wan2-resident-c2048-e1-w2",
+    "cycle1_seconds": 27.615927894134074,
+    "cycle2_seconds": 24.368434417061508,
+    "measurement_sha256": "ac589ac129cd926bd80643e318d7cc92193d82f7ef735aa773e7effdae9a8885",
+    "min_driver_free_bytes": 17421041664,
+    "native_evidence": [
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/bound-summary.json",
+        "sha256": "c206504bdc966c1d7e05e7956d5e655242d71a41afae54cf541b6b490c7d7ff0"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-gate-joint-wan2-resident-c2048-e1-w2/search-gate/comparison/trajectory_comparison.json",
+        "sha256": "8bfa2f24ad68c40de570fe98b4f9820b8035487bfa11d484913a5b870e9943ef"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-gate-joint-wan2-resident-c2048-e1-w2/bound-summary.json",
+        "sha256": "7c132321d3382213cc65c4be05701014a4f8463b032ced39c6e9f207adc66b61"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/search-resources.node0.json",
+        "sha256": "3e986f4cb558e452f666492f2ad42bdbd8811d136ffa48c7b271defe361dd1fb"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/launcher/node_0/launch_manifest.txt",
+        "sha256": "6beb2b1231bc06ec1eb0d0962b2b163462cfbf48401d9c5793792b7ea140d37d"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/launcher/node_0/teardown_status.txt",
+        "sha256": "cc53cce957e0c0bbe02746288c290509e29ae8edb6f6b2a5a7183e9abd76733c"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/search-resources.node1.json",
+        "sha256": "56a4113ced26ffa7a2dc94e061593f71914f15e898b90686447f993b6a5f3455"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/launcher/node_1/launch_manifest.txt",
+        "sha256": "8194ab3add08f73207233fafdd4996b4670c8360a477fe2276c9642eb80304e4"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/launcher/node_1/teardown_status.txt",
+        "sha256": "cc53cce957e0c0bbe02746288c290509e29ae8edb6f6b2a5a7183e9abd76733c"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/execution/ranks/rank_00.json",
+        "sha256": "3b1669983fabbae69e928bb6d808d4b63b63a197a7473985339cc019492d4275"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/execution/ranks/rank_01.json",
+        "sha256": "4a0cd3f806b2a9b01ae2ec7e4ccb9a0fffb405e39841f01b5ddfa46c3b1eef9f"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/execution/ranks/rank_02.json",
+        "sha256": "1f3af1bdc14375ca3b6cdda484f397ac6163f8743eb6cd9df4e6b64fd7be79b1"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/execution/ranks/rank_03.json",
+        "sha256": "a7faf962811af20a8be45b4bfbeab56e11fb3de066efaa7e6bbfb626bb780474"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/execution/ranks/rank_04.json",
+        "sha256": "adf3e34c47c5616fe2e77ade149b0f5d48a1c22804e8baaaf084a2bd3984ca6c"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/execution/ranks/rank_05.json",
+        "sha256": "eabd1eeba73f6224afb18bace184d1cdc5ce7f84ce7019ee5bf744683f698bd9"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/execution/ranks/rank_06.json",
+        "sha256": "67b614a09baab99ba7b7ca055c80b7b03fb232c2377fd182c28fef6b85c7ae97"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/execution/ranks/rank_07.json",
+        "sha256": "6a9ae253d6b66974e60d7adf453ec363ca87e3210bdfa469ce3cf1db0c5abc48"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/execution/ranks/rank_08.json",
+        "sha256": "fbcb0282e1ae460b0a4b4a8c9738f511009e0abfd710ce6272ad7dec4a7f3af7"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/execution/ranks/rank_09.json",
+        "sha256": "e2260ae3521914fee08fa011a8563a5c309110bb2c52500fac3a25a96232da08"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/execution/ranks/rank_10.json",
+        "sha256": "256433ec91123d4f1e075822b0e126900e3c0367502532cac7471e2e95080154"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/execution/ranks/rank_11.json",
+        "sha256": "f657b72bcc13141170deb799cd99f50ac7f251bd7b7e72df8bb7b79a6bf835d3"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/execution/ranks/rank_12.json",
+        "sha256": "b1015c61b2ad24ebcb5b9ec8eaa9d55ec7dfae1234b284704e79595bfb769ba6"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/execution/ranks/rank_13.json",
+        "sha256": "ec14003a10cce37155a920ed1a206b9d313cca61b010ca49ef4c401b5afab6e6"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/execution/ranks/rank_14.json",
+        "sha256": "1d6f71f1d0ae35ab763aec34ba4485ae1ece6c3b400293657cf80a9f94b50cfd"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/native/jointp_wan_components_20260907_r1-heldout-w2-native/execution/ranks/rank_15.json",
+        "sha256": "eb15c35f0bf6332111b8780dc65d56df387469d61dca94f79fcc5e754b9543b1"
+      }
+    ],
+    "numerical_status": "REVIEW",
+    "observations": {},
+    "peak_allocated_bytes": 23513754624,
+    "semantics_status": "PASS",
+    "strict_eligible": false
+  },
+  "native_receipt": {
+    "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/component_costs_r1/controller/heldout-w2-native/executor-receipt.json",
+    "sha256": "1e11973e787b80dafb2826660a4f5249ab4d4715687f65a302c2f33ca94803c0"
+  },
+  "new_speedup_claim": false,
+  "predicted_cycle2_seconds": 24.513250866,
+  "relative_prediction_error": 0.005942788381887221,
+  "source_head": "ceb2921985e5a855ff93d6c9d7e21e7528b6ef5a",
+  "status": "PASS_HELDOUT_NATIVE_FEEDBACK",
+  "strict_equivalence": false,
+  "tie_boundary": "All five Resident window orders predict equal action-sum latency; w2 is deterministic tie-break, not a proven optimum."
+}

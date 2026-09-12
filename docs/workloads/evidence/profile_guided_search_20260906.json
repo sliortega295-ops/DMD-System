@@ -1,0 +1,2428 @@
+{
+  "schema_version": "distillschedule.profile_guided_search_pilots.v1",
+  "status": "COMPLETE_BOUNDED_DIAGNOSTIC_PILOTS",
+  "implementation_base_main": "e69f4bf8b8bb64f54542fea74c452b53e090b526",
+  "final_code_head": "d2b47cb7c443b3408fbc740a10068a20c26b99e3",
+  "source_after_gpu_runs": "Only descriptive LiveWan role-residency metadata and its regression test changed after ff0c874; native runtime arguments/environment/typed plan unchanged. Measured receipts remain bound to their actual old HEADs.",
+  "post_run_change_binding": {
+    "path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/manifests/livewan_residency_metadata_only.json",
+    "sha256": "ca135b6992102774cb41923371f471d20de53487d35ce74c103eaf98c16a32cd"
+  },
+  "pilots": [
+    {
+      "workload": "wan13b_nogan_resident_best",
+      "search_run": "wan_search_r4",
+      "run_prefix": "pgsearch-wan-0921deb-r4",
+      "identity": {
+        "asset_fingerprint": "825d0ff761b62e167fde9bf34aefae9b4e534598ff7f8462407472e1ea9b7ec7",
+        "hardware_fingerprint": "037078a18b7dcb3edea3af742be80d38b09c6906b2f3461ec2d400d4fe7a915a",
+        "semantic_fingerprint": "a4d411a2b5a53f1253b6fe63a6f95bdf0a59116abd018c31286aca881df4ad12",
+        "source_head": "0921deb12c64eba7f13fd0e12ac0ef8db19842a9",
+        "workload": "wan13b_nogan_resident_best"
+      },
+      "baseline": {
+        "candidate_id": "fsdp-reference",
+        "cycle1_seconds": 52.91106461896561,
+        "cycle2_seconds": 43.52725392091088,
+        "measurement_sha256": "9bded1e9ec50cbf7090e95425c7f421a605a3302d55563938f48aaa621b1433a",
+        "min_driver_free_bytes": 34372321280,
+        "numerical_status": "REVIEW",
+        "observations": {},
+        "peak_allocated_bytes": 4615286272,
+        "semantics_status": "PASS",
+        "strict_eligible": false
+      },
+      "confirmed_diagnostic_winner": {
+        "candidate_id": "resident-lora-epilogue",
+        "cycle1_seconds": 39.80090749799274,
+        "cycle2_seconds": 36.786678393837065,
+        "measurement_sha256": "e792820bf3476c94950579b0ba319dbb9336876006266c6d5324507c2364ddb9",
+        "min_driver_free_bytes": 17423138816,
+        "numerical_status": "REVIEW",
+        "observations": {},
+        "peak_allocated_bytes": 23513754624,
+        "semantics_status": "PASS",
+        "strict_eligible": false
+      },
+      "diagnostic_time_ratio": 1.1832341440265255,
+      "strict_winner": null,
+      "candidate_timing_attempts": 3,
+      "completed_timing_runs": 5,
+      "correctness_preparations": 4,
+      "search_cost_seconds_including_gates": 1452.8836273540037,
+      "rows": [
+        {
+          "trial": "00-baseline-fsdp-reference",
+          "candidate": "fsdp-reference",
+          "phase": "baseline",
+          "status": "PASS_NATIVE_SEMANTIC_GATES",
+          "numerical_status": "REVIEW",
+          "native_numerical_status": "TRAJECTORY_MATCHED_50C_SINGLE_SEED",
+          "cycle1_seconds": 52.91106461896561,
+          "cycle2_seconds": 43.52725392091088,
+          "diagnostic_ratio_vs_baseline": 1.0,
+          "rank_count": 16,
+          "peak_allocated_gib": 4.298320293426514,
+          "peak_reserved_gib": 6.521484375,
+          "sampled_min_driver_free_gib": 32.01171875,
+          "node0_sampled_cgroup_peak_gib": 52.182037353515625,
+          "node1_sampled_cgroup_peak_gib": 51.94346237182617,
+          "oom_deltas": 0,
+          "profiler": "DISABLED",
+          "cleanup": "PASS",
+          "elapsed_seconds_including_preparation": 518.8204112210005,
+          "parent": null,
+          "observed_parent_cycle2_minus_candidate_seconds": null
+        },
+        {
+          "trial": "01-candidate-resident-tree",
+          "candidate": "resident-tree",
+          "phase": "candidate",
+          "status": "PASS_NATIVE_SEMANTIC_GATES",
+          "numerical_status": "REVIEW",
+          "native_numerical_status": "TRAJECTORY_MATCHED_50C_SINGLE_SEED",
+          "cycle1_seconds": 43.6965865730308,
+          "cycle2_seconds": 41.06017258600332,
+          "diagnostic_ratio_vs_baseline": 1.0600845339785188,
+          "rank_count": 16,
+          "peak_allocated_gib": 21.913519859313965,
+          "peak_reserved_gib": 22.375,
+          "sampled_min_driver_free_gib": 16.224609375,
+          "node0_sampled_cgroup_peak_gib": 53.6983642578125,
+          "node1_sampled_cgroup_peak_gib": 52.509788513183594,
+          "oom_deltas": 0,
+          "profiler": "DISABLED",
+          "cleanup": "PASS",
+          "elapsed_seconds_including_preparation": 161.1733267540003,
+          "parent": "fsdp-reference",
+          "observed_parent_cycle2_minus_candidate_seconds": 2.4670813349075615
+        },
+        {
+          "trial": "02-candidate-resident-chunk2048",
+          "candidate": "resident-chunk2048",
+          "phase": "candidate",
+          "status": "PASS_NATIVE_SEMANTIC_GATES",
+          "numerical_status": "REVIEW",
+          "native_numerical_status": "TRAJECTORY_MATCHED_50C_SINGLE_SEED",
+          "cycle1_seconds": 40.811556211905554,
+          "cycle2_seconds": 37.55382832093164,
+          "diagnostic_ratio_vs_baseline": 1.1590630267820068,
+          "rank_count": 16,
+          "peak_allocated_gib": 21.895514488220215,
+          "peak_reserved_gib": 22.015625,
+          "sampled_min_driver_free_gib": 16.583984375,
+          "node0_sampled_cgroup_peak_gib": 54.05730438232422,
+          "node1_sampled_cgroup_peak_gib": 53.624271392822266,
+          "oom_deltas": 0,
+          "profiler": "DISABLED",
+          "cleanup": "PASS",
+          "elapsed_seconds_including_preparation": 313.81497799000135,
+          "parent": "resident-tree",
+          "observed_parent_cycle2_minus_candidate_seconds": 3.506344265071675
+        },
+        {
+          "trial": "03-candidate-resident-lora-epilogue",
+          "candidate": "resident-lora-epilogue",
+          "phase": "candidate",
+          "status": "PASS_NATIVE_SEMANTIC_GATES",
+          "numerical_status": "REVIEW",
+          "native_numerical_status": "TRAJECTORY_MATCHED_50C_SINGLE_SEED",
+          "cycle1_seconds": 39.84761974797584,
+          "cycle2_seconds": 36.56244319002144,
+          "diagnostic_ratio_vs_baseline": 1.1904908458849999,
+          "rank_count": 16,
+          "peak_allocated_gib": 21.898890495300293,
+          "peak_reserved_gib": 22.373046875,
+          "sampled_min_driver_free_gib": 16.2265625,
+          "node0_sampled_cgroup_peak_gib": 53.67033004760742,
+          "node1_sampled_cgroup_peak_gib": 53.697391510009766,
+          "oom_deltas": 0,
+          "profiler": "DISABLED",
+          "cleanup": "PASS",
+          "elapsed_seconds_including_preparation": 309.58698139400076,
+          "parent": "resident-chunk2048",
+          "observed_parent_cycle2_minus_candidate_seconds": 0.9913851309102029
+        },
+        {
+          "trial": "04-confirmation-resident-lora-epilogue",
+          "candidate": "resident-lora-epilogue",
+          "phase": "confirmation",
+          "status": "PASS_NATIVE_SEMANTIC_GATES",
+          "numerical_status": "REVIEW",
+          "native_numerical_status": "TRAJECTORY_MATCHED_50C_SINGLE_SEED",
+          "cycle1_seconds": 39.80090749799274,
+          "cycle2_seconds": 36.786678393837065,
+          "diagnostic_ratio_vs_baseline": 1.1832341440265255,
+          "rank_count": 16,
+          "peak_allocated_gib": 21.898890495300293,
+          "peak_reserved_gib": 22.373046875,
+          "sampled_min_driver_free_gib": 16.2265625,
+          "node0_sampled_cgroup_peak_gib": 53.952327728271484,
+          "node1_sampled_cgroup_peak_gib": 53.97153091430664,
+          "oom_deltas": 0,
+          "profiler": "DISABLED",
+          "cleanup": "PASS",
+          "elapsed_seconds_including_preparation": 149.48792999500074,
+          "parent": "resident-chunk2048",
+          "observed_parent_cycle2_minus_candidate_seconds": 0.7671499270945787
+        }
+      ],
+      "plan": {
+        "executable": true,
+        "gpu_validation": "NOT_RUN_ON_SEARCH_BRANCH",
+        "id": "resident-lora-epilogue",
+        "kernels": [
+          "modulation_chunk2048",
+          "lora_nograd_epilogue"
+        ],
+        "mechanism": "lora_epilogue",
+        "parent": "resident-chunk2048",
+        "placement": "resident-async128-tree-chunk2048",
+        "targets": [
+          "pointwise"
+        ],
+        "variant": null,
+        "workload": "wan13b_nogan_resident_best"
+      },
+      "execution_plan": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/wan_search_r4/trials/04-confirmation-resident-lora-epilogue/execution-plan.json",
+      "result_binding": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/wan_search_r4/result.json",
+        "sha256": "a03f836281beee16cf8c38cae76a6291ca9c45eb90f383a135e4c529a6a558ff"
+      },
+      "events_binding": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/wan_search_r4/events.jsonl",
+        "sha256": "d1027d4d217401eab7884624b9580778b0a2ec9ff0cf81d298fc4dc5cbe16918"
+      },
+      "native_receipt_bindings": [
+        {
+          "trial": "00-baseline-fsdp-reference",
+          "executor_receipt_path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/wan_search_r4/trials/00-baseline-fsdp-reference/executor-receipt.json",
+          "executor_receipt_sha256": "5f2ec8ed4eb69dd2d2f600925c93cb9ac12c519a3a1a3e690d60bf02ef994e78",
+          "native_evidence": [
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/bound-summary.json",
+              "sha256": "7586a9099fd9adb157c42325c9728f83dca9c2089c859f38d7493da7b8dd8872"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-gate-resident-tree/search-gate/comparison/trajectory_comparison.json",
+              "sha256": "8a20cf1f926f061a816ff96ad70d3fe4bac481da3cf39af8ae808694f9806fcd"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-gate-fsdp-reference/bound-summary.json",
+              "sha256": "a63db826dc8db5e04e1e73b2c4ed4e813fd022d15281fc11a559561b0b6706a0"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/search-resources.node0.json",
+              "sha256": "7ca7a90a5c520f031674337a1729922290798cefbee74c9334c8616b9d594cdc"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/launcher/node_0/launch_manifest.txt",
+              "sha256": "7a95158da498b1ead28de8d052131e87bfe89e2cc4fded0b2bafa9cc42b79b4e"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/launcher/node_0/teardown_status.txt",
+              "sha256": "7c1779be968cd23e695fe08dcc10cac181cd09265a615f7647a06aa200286120"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/search-resources.node1.json",
+              "sha256": "0d068349c626c6d69cc7edaa6bd47679bbaa4158ac06ea2b7f45235d94f34a77"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/launcher/node_1/launch_manifest.txt",
+              "sha256": "805431dfb889368cde3b75d8423f12855ebd62cafa9c011d815c69b748cc7488"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/launcher/node_1/teardown_status.txt",
+              "sha256": "7c1779be968cd23e695fe08dcc10cac181cd09265a615f7647a06aa200286120"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/execution/ranks/rank_00.json",
+              "sha256": "273ce5e384457c076fb250dfcab4e795719f5e96b7004e991a1fa41248e09998"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/execution/ranks/rank_01.json",
+              "sha256": "9269d38cfb537d8f8014d98763af768787037854c52726251637220c43afff72"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/execution/ranks/rank_02.json",
+              "sha256": "7943028ea07962a31894acc093f3d272d4e1560afa95a021b0627341e0752ffd"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/execution/ranks/rank_03.json",
+              "sha256": "d3f6639c88c90ff7a73b99eb3673d5756aea281466deb8ac36369ac35a649328"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/execution/ranks/rank_04.json",
+              "sha256": "0c15ff1a341df243d04a2169e71ade5907d2e451b4b4ba4d5129760b1ffe0fa4"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/execution/ranks/rank_05.json",
+              "sha256": "f6231197c9a1031904d8a213da82a4a11e629fb2c94042a2f7ded5028658e797"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/execution/ranks/rank_06.json",
+              "sha256": "e10851c854cc6bdca78a40499f4b5ebf1f32d5dcec1d438150573bf538ab32c1"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/execution/ranks/rank_07.json",
+              "sha256": "ba7e4701c7582602c77fc3be0749c02bdf17da359286a4a864313b60dd831051"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/execution/ranks/rank_08.json",
+              "sha256": "859e1aed4b00ae6d705215644045d1eab2e268c8ab601c08dec5d9a10e942b5c"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/execution/ranks/rank_09.json",
+              "sha256": "9db18f797368641039300a2e8f853b84094de600d5778b90e57570092078def5"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/execution/ranks/rank_10.json",
+              "sha256": "9c1096a4cbfa20bae00390b5c590fdd85c0b2f44e3471d17a1213da85ebfeafc"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/execution/ranks/rank_11.json",
+              "sha256": "cc31ffc4a52b211975455c88ddc44610cdd1f920312bbea9aec70a99adefd45b"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/execution/ranks/rank_12.json",
+              "sha256": "c1cf5636a2702cbc9373705b24a47e41295560658c8393bfd29bed2cc1886f64"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/execution/ranks/rank_13.json",
+              "sha256": "9f827abec535808d3026ee08eac5f5f9443dfab8464cce5eaef0ad590f3b0909"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/execution/ranks/rank_14.json",
+              "sha256": "7282d975f9cabd7e4c894d15ecefd44573c378e1234922cc417c7b0eff137bad"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-00-baseline-fsdp-reference/execution/ranks/rank_15.json",
+              "sha256": "43ec488c2e82b250f2f6f9ce3a030038f2e98a3096dc162f9b3d2b63d373190a"
+            }
+          ],
+          "runtime_validation": {
+            "arm_contract": "SEARCH_43e7068814b5f3874069daf2f875ad6a0123bba5ed6ab0d121d35875fc30cfee",
+            "generator_nograd_lora_cast_cache": false,
+            "generator_nograd_lora_fused_epilogue": false
+          }
+        },
+        {
+          "trial": "01-candidate-resident-tree",
+          "executor_receipt_path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/wan_search_r4/trials/01-candidate-resident-tree/executor-receipt.json",
+          "executor_receipt_sha256": "6d753c3ddd83c11453527327c0b5e45e29b0df73d68d45bcb6c1924aee994c27",
+          "native_evidence": [
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/bound-summary.json",
+              "sha256": "f52c1f49a3037afff0296fb07f26e58b3dd84e66cdbf30e5c402a1b933faee84"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-gate-resident-tree/search-gate/comparison/trajectory_comparison.json",
+              "sha256": "8a20cf1f926f061a816ff96ad70d3fe4bac481da3cf39af8ae808694f9806fcd"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-gate-resident-tree/bound-summary.json",
+              "sha256": "8a691d7786225b5a93161e2f3af2744399cb6ca6851ce8383c9baefc706cc276"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/search-resources.node0.json",
+              "sha256": "5c8458c9c3fff2964587c136fa315cef274f32a4bf2483c7429d9fbe6c8dd289"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/launcher/node_0/launch_manifest.txt",
+              "sha256": "59c953605d777d8c7ccba94c91e9d37a5ba56a7f9db4e9f34bfac0656bdfdb25"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/launcher/node_0/teardown_status.txt",
+              "sha256": "b064bbea98a26bd3d62096860c538cffb19e940931e933ae46e30e75f27fc1fe"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/search-resources.node1.json",
+              "sha256": "ae52bf4987d832d0aa0a35ac97f554e48a1ae233988d7f04bec8ae5ac537a7f7"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/launcher/node_1/launch_manifest.txt",
+              "sha256": "0ffb823af4b3e5227fe1b738969687ce8a751077d20f2d4353e21f7f18e62600"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/launcher/node_1/teardown_status.txt",
+              "sha256": "b064bbea98a26bd3d62096860c538cffb19e940931e933ae46e30e75f27fc1fe"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/execution/ranks/rank_00.json",
+              "sha256": "153f2d4b401b01d9bed1376ba6dd30b582ca70d79cf8c686c2839033e3a76b26"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/execution/ranks/rank_01.json",
+              "sha256": "111cca46904309ef6fb3ea5c80b1449fdb5afd15c91ace27ef24df6329982ec0"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/execution/ranks/rank_02.json",
+              "sha256": "92b9204282a2b2d24978581e473fc2b288e7dd77e4296e31ede7cca353d8be40"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/execution/ranks/rank_03.json",
+              "sha256": "222035ea2e64c774600eeb01de06f654cfc29621868610103281daabfe710be2"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/execution/ranks/rank_04.json",
+              "sha256": "f4e26e95294fa0649d9e19cae9ade5c147cc5592ec11c3e289ce8e1853f2ae4f"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/execution/ranks/rank_05.json",
+              "sha256": "5063ac7c231f8ef136ef2648e578ea9601dc23178bf0e738bb101a1680a3dce2"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/execution/ranks/rank_06.json",
+              "sha256": "0172e462811f52e16c001d8eca32b232f8ca3c246bfd1a2e4c990c4ecb274baa"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/execution/ranks/rank_07.json",
+              "sha256": "4aba9d7558d5b75491901a8544c5072f30a2423b16c25f1a26d9630a6200de72"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/execution/ranks/rank_08.json",
+              "sha256": "46410257f1acb71fbb4a7b6fd5f83696a6964c1f5dbca5045bd846977b1d1665"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/execution/ranks/rank_09.json",
+              "sha256": "7fb42e380c49961431b6d713e39950bb7bb97ac9d5f808c2857551c93c79cc03"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/execution/ranks/rank_10.json",
+              "sha256": "7d43ff560f1b12fdbb1984490dc9e513f0b67cec2c69d2215f2e1678408a4ab0"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/execution/ranks/rank_11.json",
+              "sha256": "797d52791d7b57fe60af509f99770977aac001551165c0a7b8d1edea679efa46"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/execution/ranks/rank_12.json",
+              "sha256": "03154d219b18548476fd112cba220d20936d0ab7129a43a9648892e154d90c7a"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/execution/ranks/rank_13.json",
+              "sha256": "b26bcced6e6f929f5edad8dff1710dcae9427bdcbb899351e2998ea11d0772d9"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/execution/ranks/rank_14.json",
+              "sha256": "9f4424dd2f5ed00147a94521a5a6007f543a3ab4286f80774e27da808f024d82"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-01-candidate-resident-tree/execution/ranks/rank_15.json",
+              "sha256": "8ad8e1a1d3ba4758cf173800c667a9a01a5d88cd2c013f08d75358bbc4435ade"
+            }
+          ],
+          "runtime_validation": {
+            "arm_contract": "SEARCH_4d7ecdb1e0203c9a33b34cab25957b1565823f5311da58fb15622ea0dd7d209b",
+            "generator_nograd_lora_cast_cache": false,
+            "generator_nograd_lora_fused_epilogue": false
+          }
+        },
+        {
+          "trial": "02-candidate-resident-chunk2048",
+          "executor_receipt_path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/wan_search_r4/trials/02-candidate-resident-chunk2048/executor-receipt.json",
+          "executor_receipt_sha256": "e3f2ab9761b7e75f893c8e72db644aa596a121d47e939f6dfda14d3c35ee9481",
+          "native_evidence": [
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/bound-summary.json",
+              "sha256": "6e269929a80ab160057fda44cb959c947eeb96212398413400095e49e38a8238"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-gate-resident-chunk2048/search-gate/comparison/trajectory_comparison.json",
+              "sha256": "ddaa1f7d3da38ebcdd355202232509a6f7f9459a8f708fdaac6ea67af8795a17"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-gate-resident-chunk2048/bound-summary.json",
+              "sha256": "99e418860509de9c684e1be05a18a357c4e329fd3d0070dd10cbaa6540bd5621"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/search-resources.node0.json",
+              "sha256": "e92cd85174e82a26d8a2253f14b5f3b7eb3d3dbf93da68568bd6fe03142c5028"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/launcher/node_0/launch_manifest.txt",
+              "sha256": "91e40b79e94f2c2eb9d025bd9337d4887200cda199d05bb797e74127f64be066"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/launcher/node_0/teardown_status.txt",
+              "sha256": "914a829052c51fa67abf64f5a6c144218488e4b35c3bc31ec22f6a3cadcba253"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/search-resources.node1.json",
+              "sha256": "787874a41d010b489d8449ed84c2b9059f41a073ba804b998d525407fc7c9afe"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/launcher/node_1/launch_manifest.txt",
+              "sha256": "a11fcdfbc3378b6d5c71c3b30ef026aa337763874e7f3b8dc76ea5b1bfa45376"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/launcher/node_1/teardown_status.txt",
+              "sha256": "914a829052c51fa67abf64f5a6c144218488e4b35c3bc31ec22f6a3cadcba253"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/execution/ranks/rank_00.json",
+              "sha256": "d253ac90c337512b83fd29cbe9734e53b2ae814be42170db242ddbbf9325b852"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/execution/ranks/rank_01.json",
+              "sha256": "3d74156e7a970263c98f6bf01b4a48068774f73d40a7c131b0afcaa41a16c8ab"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/execution/ranks/rank_02.json",
+              "sha256": "01931699e50e3995bfdfcd49bbad7b3f84bcee2aad3639f1b4272087a7868082"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/execution/ranks/rank_03.json",
+              "sha256": "c343abcf478487ece44270de630e2e115c78fca51bb992c2830dfb50907c3035"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/execution/ranks/rank_04.json",
+              "sha256": "e0ca33fa5514a8051e31ff309073caff9ce84b2b6ed00d8add2d607da7c2e427"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/execution/ranks/rank_05.json",
+              "sha256": "8d7171eb8cf1c11b8e6ee9d24e528c1d92e8b8462eea233b9e9847b6d1213849"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/execution/ranks/rank_06.json",
+              "sha256": "ee597a0ddf2713a8b7e4847e1e42fb3cfa00715474901124bac0763ee2852b47"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/execution/ranks/rank_07.json",
+              "sha256": "269217f88adc447aa1ce6a1ee839491cf0ba1352a1e0a63d0ea4ce6c8b7ae040"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/execution/ranks/rank_08.json",
+              "sha256": "ecb3969f6de931c3a07f0fbba529e81bce104d17a57ff14f807a8fbb2590edc5"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/execution/ranks/rank_09.json",
+              "sha256": "e9fb1ac0b0e55de722b3b1a1aa803e9afd3caa961ba4854224afef70ac92dd48"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/execution/ranks/rank_10.json",
+              "sha256": "f640941573588cbeba2c983b571b91ac28fd1a8a5bd02db94248ca92fb5d5f5a"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/execution/ranks/rank_11.json",
+              "sha256": "f03d9f58c1f7669dfdd1643286b96443e589c6d4ed4944adbf869447767c1c77"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/execution/ranks/rank_12.json",
+              "sha256": "23b3b2eced2977574efd0760c9451e9c9da601aae4ff4e9a37d6b56ccf6ed9b2"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/execution/ranks/rank_13.json",
+              "sha256": "ff9a5e653462eaf51dab8641cd740d8fe9ed3a754f3d280e51751a9558d63b3c"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/execution/ranks/rank_14.json",
+              "sha256": "0335adbed88467b4b8cd2eed3a468e79a75d546f069fc8f638152d4e0f1e3bab"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-02-candidate-resident-chunk2048/execution/ranks/rank_15.json",
+              "sha256": "d14191259d9ee192927f60966c0c1fa41e7ffee7ad3a094666af878c6b9139df"
+            }
+          ],
+          "runtime_validation": {
+            "arm_contract": "SEARCH_1cd7604c726394359120df0c6f1295bcde5580516b32d5fd911c87255488aeaa",
+            "generator_nograd_lora_cast_cache": false,
+            "generator_nograd_lora_fused_epilogue": false
+          }
+        },
+        {
+          "trial": "03-candidate-resident-lora-epilogue",
+          "executor_receipt_path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/wan_search_r4/trials/03-candidate-resident-lora-epilogue/executor-receipt.json",
+          "executor_receipt_sha256": "3b24db642b75e28fed7a6f11648d6fe0bcee3feeab2f6267f27243c1294284f8",
+          "native_evidence": [
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/bound-summary.json",
+              "sha256": "79c5e3f86c741a3b9e82e3c6fd36b09bbc0d78bfcfe3bf0529694e7bc7f7a34f"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-gate-resident-lora-epilogue/search-gate/comparison/trajectory_comparison.json",
+              "sha256": "d9065001911c71c442a31096b8d87d8ced8f3b2bfff0fa1067ba5690d7d86abe"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-gate-resident-lora-epilogue/bound-summary.json",
+              "sha256": "da773cfec13e247d5063449e7f0b5d4c41a6b20c4a058315a0be9867ccbc25bb"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/search-resources.node0.json",
+              "sha256": "4c3bfac1e1817333b3add189b996b1189a51c6db8d51285e5b44bb57639f218e"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/launcher/node_0/launch_manifest.txt",
+              "sha256": "3c2483bcb2d564f23cb5076e305177a87ee2c1defbdf252f6d9e3d3137e25c7c"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/launcher/node_0/teardown_status.txt",
+              "sha256": "045626228eaee74d1c1f0448c44a3a7035b6a70ed39b9043f6f60f672d9ab45b"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/search-resources.node1.json",
+              "sha256": "16af4885cf604b80a5186237c24d8cb355f75d8c26c03968bfd390cefeee35cf"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/launcher/node_1/launch_manifest.txt",
+              "sha256": "491e473eafa878607fe61f555eff441fbb67453c8f653deca3cd272ffa036e9b"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/launcher/node_1/teardown_status.txt",
+              "sha256": "045626228eaee74d1c1f0448c44a3a7035b6a70ed39b9043f6f60f672d9ab45b"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/execution/ranks/rank_00.json",
+              "sha256": "f595aa2d28407a7df379fc8f623e9210d476f83886133999f79ee093038f043f"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/execution/ranks/rank_01.json",
+              "sha256": "a6645b8c9efbbcf257fb94d7d349c6696eaa45402f296fe655d006501535006d"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/execution/ranks/rank_02.json",
+              "sha256": "6b85f36a1f00f48f2b9e7e15ab8bf0c9d7ac87ff6e1120fc75c072d9d6877695"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/execution/ranks/rank_03.json",
+              "sha256": "396eb6a6ee64a437be3f1453de3965bebe03324e36cc3be1ddacdc8e4c69e3ef"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/execution/ranks/rank_04.json",
+              "sha256": "fe369c660d61b79131945957235dfef3dc95e46265cf9af55b5a80eb8ed8ca28"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/execution/ranks/rank_05.json",
+              "sha256": "e66399e60cc7d0a83b79af0289e3aa128a86a8dd39fc76f64530af9c7eb611e5"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/execution/ranks/rank_06.json",
+              "sha256": "b441bf65df4303b30c3c6bba2e694a598d690c1fb0f51f4a4b4327c0eac7891e"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/execution/ranks/rank_07.json",
+              "sha256": "8d2dc26995678dfe5d60807f1d2cd1cebbe3741d54f174d1ce0310df16477bc9"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/execution/ranks/rank_08.json",
+              "sha256": "cf93ac0ab5a493bdfa26623d14c4ff9c4fe6f43be3ee243697b26cb3c79ebc2b"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/execution/ranks/rank_09.json",
+              "sha256": "7059834da329af0e25e67679d3a47be50f8a02d6df097044e554d7420b5cd933"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/execution/ranks/rank_10.json",
+              "sha256": "e3b199d4d2c78e0df398f12cfa69c8a5fbbbcf066e4fde0040eded863a6f422a"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/execution/ranks/rank_11.json",
+              "sha256": "34577e78d7392289d9ab2055e6ee3059cbaaf9663dc225692ead5c2e0d8a390b"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/execution/ranks/rank_12.json",
+              "sha256": "6442d7fe681dfb95ccf8b310a58df6db2413404a26e87a6cd766b97ff1143d2f"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/execution/ranks/rank_13.json",
+              "sha256": "d7feb6aaaad2457b647d68d64622d72769e9b125845e7431290cf58a89a1c4c4"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/execution/ranks/rank_14.json",
+              "sha256": "3fc976eded077151444d77fe38f52952809b64075b39e5c0827fdee8affcbac3"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-03-candidate-resident-lora-epilogue/execution/ranks/rank_15.json",
+              "sha256": "569cee023932c1e06c74ed935846f3361b45ef771c25b3cdb33c55702ba1d413"
+            }
+          ],
+          "runtime_validation": {
+            "arm_contract": "SEARCH_1c0feaceafc0855cefab7f14b60e73daa20c4b3b9b684d68fafeb7efce114851",
+            "generator_nograd_lora_cast_cache": false,
+            "generator_nograd_lora_fused_epilogue": true
+          }
+        },
+        {
+          "trial": "04-confirmation-resident-lora-epilogue",
+          "executor_receipt_path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/wan_search_r4/trials/04-confirmation-resident-lora-epilogue/executor-receipt.json",
+          "executor_receipt_sha256": "b0f202e7e1a2c3d2691e4230571fc40cf3f3e3fee2a0f74f260265b432ff89c0",
+          "native_evidence": [
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/bound-summary.json",
+              "sha256": "d429ec1f880735e20755784f9165e797f96bcd423f04fb8ff06e8baecf3755f0"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-gate-resident-lora-epilogue/search-gate/comparison/trajectory_comparison.json",
+              "sha256": "d9065001911c71c442a31096b8d87d8ced8f3b2bfff0fa1067ba5690d7d86abe"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-gate-resident-lora-epilogue/bound-summary.json",
+              "sha256": "da773cfec13e247d5063449e7f0b5d4c41a6b20c4a058315a0be9867ccbc25bb"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/search-resources.node0.json",
+              "sha256": "e96c1da61a041f60136ab056b534b6cdf21d9c94efbeb022522653b7890a38b6"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/launcher/node_0/launch_manifest.txt",
+              "sha256": "6a420b4aa15dfdf6918a1fd3176c2650cbc696a4f331c14da9a050463513dad2"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/launcher/node_0/teardown_status.txt",
+              "sha256": "f73efc195fd4bdcbcd9d550d23dd2bfc221f2c73b8c56d9cf025f70dee6bf3e5"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/search-resources.node1.json",
+              "sha256": "214f5438716088aa3a940b0526b0fea8429e7f4d169520b95207db6197c51bf1"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/launcher/node_1/launch_manifest.txt",
+              "sha256": "799dafda9c39298b6047a61acfca729743a7d9de0ffb7698b56c266614735f97"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/launcher/node_1/teardown_status.txt",
+              "sha256": "f73efc195fd4bdcbcd9d550d23dd2bfc221f2c73b8c56d9cf025f70dee6bf3e5"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/execution/ranks/rank_00.json",
+              "sha256": "20c2f247df325d9548e66a1468bbbdea65531b83262f1af00859cc0fb19a9318"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/execution/ranks/rank_01.json",
+              "sha256": "638751a9b032d7a4c1ba23c338c3ff00e3204538f18c4f65ed59727bcd56afa0"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/execution/ranks/rank_02.json",
+              "sha256": "20e0275bcbba43746953d66ba0fce1f7eb5ecb85b63dffbf4184c0dafc9afcc3"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/execution/ranks/rank_03.json",
+              "sha256": "eaa76e80b28e5d07bf545416c594fb455b4b8339198486e14101b8820d190668"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/execution/ranks/rank_04.json",
+              "sha256": "99d429b51d935bfb20b541727c30ff93f75ac150308fe9c3bba60d90429ab7a2"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/execution/ranks/rank_05.json",
+              "sha256": "a71642b82addcb280b02d70194ba9100be778fd2ef5dcae30108ce7163bee2db"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/execution/ranks/rank_06.json",
+              "sha256": "f5af33e70cd75567373cfe80073f5df1fe1caf2db48874ea460d49eb843df290"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/execution/ranks/rank_07.json",
+              "sha256": "c231bc06e4ce9660e2d1f10fb73945bf99472d0f3eb3debfa74b0775662f3466"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/execution/ranks/rank_08.json",
+              "sha256": "34cbf08fd2fe7b668223ade7f5d2304a98e1ef5b9223525e67ad6f20d5bc3e47"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/execution/ranks/rank_09.json",
+              "sha256": "9d7cac79b95a822f4f4b9c401fd08bb22745039c67c843405bf792237f91a498"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/execution/ranks/rank_10.json",
+              "sha256": "e3505b33e3d779376627782e42ce1a4a523dd05c6a06be9530c242f3b105ee16"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/execution/ranks/rank_11.json",
+              "sha256": "a4bd8db58adef5779110dafeb4c72025813e0343f8410e3a8ebb6b21d8281644"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/execution/ranks/rank_12.json",
+              "sha256": "363c06f2b16249c45e1d603beb4dab20c712e63127331152529b27f15df1d597"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/execution/ranks/rank_13.json",
+              "sha256": "a378ec2b343cf92cdcada296b4409e42da8bca0f69e43b1a173ebf0555f8b879"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/execution/ranks/rank_14.json",
+              "sha256": "32098b4deba355606868b99101bbd7fdbe6910fbbc8c7723b3f39d811dcf5eaa"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/wan_native/pgsearch-wan-0921deb-r4-04-confirmation-resident-lora-epilogue/execution/ranks/rank_15.json",
+              "sha256": "456416302afa2efaf10c9b61fc7844dd231afe462492e7469dd1385e985265d3"
+            }
+          ],
+          "runtime_validation": {
+            "arm_contract": "SEARCH_1c0feaceafc0855cefab7f14b60e73daa20c4b3b9b684d68fafeb7efce114851",
+            "generator_nograd_lora_cast_cache": false,
+            "generator_nograd_lora_fused_epilogue": true
+          }
+        }
+      ],
+      "not_timed_candidates": [
+        "resident",
+        "resident-clean",
+        "resident-async128",
+        "resident-local-fast",
+        "resident-flat256",
+        "resident-flat512",
+        "resident-async256"
+      ]
+    },
+    {
+      "workload": "livewan_crossscale_pipeline_best",
+      "search_run": "livewan_search_r2",
+      "run_prefix": "pgsearch-livewan-ff0c874-r2",
+      "identity": {
+        "asset_fingerprint": "28d531f4079e94fbf3b157c93101e16ea4e62371d3e96f2512d7b528188eba41",
+        "hardware_fingerprint": "037078a18b7dcb3edea3af742be80d38b09c6906b2f3461ec2d400d4fe7a915a",
+        "semantic_fingerprint": "34204f6bfc01b703b34d9362f4a3dd8995f335912533ee919a080ea278a4da77",
+        "source_head": "ff0c874a34fce9b34457767118d98cbfa8223a1e",
+        "workload": "livewan_crossscale_pipeline_best"
+      },
+      "baseline": {
+        "candidate_id": "fsdp-reference",
+        "cycle1_seconds": 79.3951875,
+        "cycle2_seconds": 62.86859374999999,
+        "measurement_sha256": "55afc1ff2039038d73890ab370893e6efe361cbba0a4b36040700c57b415b72a",
+        "min_driver_free_bytes": 12582912,
+        "numerical_status": "REVIEW",
+        "observations": {},
+        "peak_allocated_bytes": 23525647872,
+        "semantics_status": "PASS",
+        "strict_eligible": false
+      },
+      "confirmed_diagnostic_winner": {
+        "candidate_id": "c32",
+        "cycle1_seconds": 55.40684375,
+        "cycle2_seconds": 48.61178125,
+        "measurement_sha256": "9111bab3b81030016a14adf6ee742d79bd107ed8b7de6fb709c1447449f7b247",
+        "min_driver_free_bytes": 0,
+        "numerical_status": "REVIEW",
+        "observations": {},
+        "peak_allocated_bytes": 37744975872,
+        "semantics_status": "PASS",
+        "strict_eligible": false
+      },
+      "diagnostic_time_ratio": 1.2932789569400933,
+      "strict_winner": null,
+      "candidate_timing_attempts": 8,
+      "completed_timing_runs": 10,
+      "correctness_preparations": 9,
+      "search_cost_seconds_including_gates": 8542.851893708,
+      "rows": [
+        {
+          "trial": "00-baseline-fsdp-reference",
+          "candidate": "fsdp-reference",
+          "phase": "baseline",
+          "status": "PASS_NATIVE_SEMANTIC_GATES",
+          "numerical_status": "REVIEW",
+          "native_numerical_status": "TRAJECTORY_REVIEW_50C_COMPLETED",
+          "cycle1_seconds": 79.3951875,
+          "cycle2_seconds": 62.86859374999999,
+          "diagnostic_ratio_vs_baseline": 1.0,
+          "rank_count": 16,
+          "peak_allocated_gib": 21.909966945648193,
+          "peak_reserved_gib": 38.412109375,
+          "sampled_min_driver_free_gib": 0.01171875,
+          "node0_sampled_cgroup_peak_gib": 454.50647354125977,
+          "node1_sampled_cgroup_peak_gib": 454.3580856323242,
+          "oom_deltas": 0,
+          "profiler": "DISABLED",
+          "cleanup": "PASS",
+          "elapsed_seconds_including_preparation": 1453.1933953499974,
+          "parent": null,
+          "observed_parent_cycle2_minus_candidate_seconds": null
+        },
+        {
+          "trial": "01-candidate-c24",
+          "candidate": "c24",
+          "phase": "candidate",
+          "status": "PASS_NATIVE_SEMANTIC_GATES",
+          "numerical_status": "REVIEW",
+          "native_numerical_status": "TRAJECTORY_REVIEW_50C_COMPLETED",
+          "cycle1_seconds": 60.45579296875,
+          "cycle2_seconds": 54.84820703125,
+          "diagnostic_ratio_vs_baseline": 1.1462287858230322,
+          "rank_count": 16,
+          "peak_allocated_gib": 35.153597831726074,
+          "peak_reserved_gib": 37.708984375,
+          "sampled_min_driver_free_gib": 0.400390625,
+          "node0_sampled_cgroup_peak_gib": 72.4934310913086,
+          "node1_sampled_cgroup_peak_gib": 446.3398017883301,
+          "oom_deltas": 0,
+          "profiler": "DISABLED",
+          "cleanup": "PASS",
+          "elapsed_seconds_including_preparation": 445.2799336390017,
+          "parent": "fsdp-reference",
+          "observed_parent_cycle2_minus_candidate_seconds": 8.02038671874999
+        },
+        {
+          "trial": "02-candidate-c25",
+          "candidate": "c25",
+          "phase": "candidate",
+          "status": "PASS_NATIVE_SEMANTIC_GATES",
+          "numerical_status": "REVIEW",
+          "native_numerical_status": "TRAJECTORY_REVIEW_50C_COMPLETED",
+          "cycle1_seconds": 59.042859375,
+          "cycle2_seconds": 53.22251562500001,
+          "diagnostic_ratio_vs_baseline": 1.1812405522686147,
+          "rank_count": 16,
+          "peak_allocated_gib": 35.153597831726074,
+          "peak_reserved_gib": 38.0859375,
+          "sampled_min_driver_free_gib": 0.0,
+          "node0_sampled_cgroup_peak_gib": 71.02417373657227,
+          "node1_sampled_cgroup_peak_gib": 445.2924690246582,
+          "oom_deltas": 0,
+          "profiler": "DISABLED",
+          "cleanup": "PASS",
+          "elapsed_seconds_including_preparation": 897.6421583960037,
+          "parent": "c24",
+          "observed_parent_cycle2_minus_candidate_seconds": 1.6256914062499916
+        },
+        {
+          "trial": "03-candidate-c26",
+          "candidate": "c26",
+          "phase": "candidate",
+          "status": "PASS_NATIVE_SEMANTIC_GATES",
+          "numerical_status": "REVIEW",
+          "native_numerical_status": "TRAJECTORY_REVIEW_50C_COMPLETED",
+          "cycle1_seconds": 58.1850625,
+          "cycle2_seconds": 52.621734375,
+          "diagnostic_ratio_vs_baseline": 1.1947267511552822,
+          "rank_count": 16,
+          "peak_allocated_gib": 35.153597831726074,
+          "peak_reserved_gib": 38.076171875,
+          "sampled_min_driver_free_gib": 0.0078125,
+          "node0_sampled_cgroup_peak_gib": 71.13879013061523,
+          "node1_sampled_cgroup_peak_gib": 444.6540946960449,
+          "oom_deltas": 0,
+          "profiler": "DISABLED",
+          "cleanup": "PASS",
+          "elapsed_seconds_including_preparation": 885.5778891759983,
+          "parent": "c25",
+          "observed_parent_cycle2_minus_candidate_seconds": 0.6007812500000043
+        },
+        {
+          "trial": "04-candidate-c28",
+          "candidate": "c28",
+          "phase": "candidate",
+          "status": "PASS_NATIVE_SEMANTIC_GATES",
+          "numerical_status": "REVIEW",
+          "native_numerical_status": "TRAJECTORY_REVIEW_50C_COMPLETED",
+          "cycle1_seconds": 57.3182734375,
+          "cycle2_seconds": 51.94144531250001,
+          "diagnostic_ratio_vs_baseline": 1.2103743623566496,
+          "rank_count": 16,
+          "peak_allocated_gib": 35.15413951873779,
+          "peak_reserved_gib": 38.0859375,
+          "sampled_min_driver_free_gib": 0.0,
+          "node0_sampled_cgroup_peak_gib": 71.89058685302734,
+          "node1_sampled_cgroup_peak_gib": 445.9002799987793,
+          "oom_deltas": 0,
+          "profiler": "DISABLED",
+          "cleanup": "PASS",
+          "elapsed_seconds_including_preparation": 905.8375558719999,
+          "parent": "c25",
+          "observed_parent_cycle2_minus_candidate_seconds": 1.281070312499999
+        },
+        {
+          "trial": "05-candidate-c29",
+          "candidate": "c29",
+          "phase": "candidate",
+          "status": "PASS_NATIVE_SEMANTIC_GATES",
+          "numerical_status": "REVIEW",
+          "native_numerical_status": "TRAJECTORY_REVIEW_50C_COMPLETED",
+          "cycle1_seconds": 56.85675390625,
+          "cycle2_seconds": 50.42891796875001,
+          "diagnostic_ratio_vs_baseline": 1.2466774279979327,
+          "rank_count": 16,
+          "peak_allocated_gib": 35.15186786651611,
+          "peak_reserved_gib": 38.0859375,
+          "sampled_min_driver_free_gib": 0.0,
+          "node0_sampled_cgroup_peak_gib": 71.97759246826172,
+          "node1_sampled_cgroup_peak_gib": 445.5721435546875,
+          "oom_deltas": 0,
+          "profiler": "DISABLED",
+          "cleanup": "PASS",
+          "elapsed_seconds_including_preparation": 889.3397059160052,
+          "parent": "c28",
+          "observed_parent_cycle2_minus_candidate_seconds": 1.5125273437500013
+        },
+        {
+          "trial": "06-candidate-c30",
+          "candidate": "c30",
+          "phase": "candidate",
+          "status": "PASS_NATIVE_SEMANTIC_GATES",
+          "numerical_status": "REVIEW",
+          "native_numerical_status": "TRAJECTORY_REVIEW_50C_COMPLETED",
+          "cycle1_seconds": 56.423921875,
+          "cycle2_seconds": 49.6937578125,
+          "diagnostic_ratio_vs_baseline": 1.2651205406363126,
+          "rank_count": 16,
+          "peak_allocated_gib": 35.15157985687256,
+          "peak_reserved_gib": 38.076171875,
+          "sampled_min_driver_free_gib": 0.0,
+          "node0_sampled_cgroup_peak_gib": 72.15933990478516,
+          "node1_sampled_cgroup_peak_gib": 445.49641036987305,
+          "oom_deltas": 0,
+          "profiler": "DISABLED",
+          "cleanup": "PASS",
+          "elapsed_seconds_including_preparation": 883.3092661330011,
+          "parent": "c29",
+          "observed_parent_cycle2_minus_candidate_seconds": 0.7351601562500036
+        },
+        {
+          "trial": "07-candidate-c31",
+          "candidate": "c31",
+          "phase": "candidate",
+          "status": "PASS_NATIVE_SEMANTIC_GATES",
+          "numerical_status": "REVIEW",
+          "native_numerical_status": "TRAJECTORY_REVIEW_50C_COMPLETED",
+          "cycle1_seconds": 56.0691640625,
+          "cycle2_seconds": 49.010937500000004,
+          "diagnostic_ratio_vs_baseline": 1.2827461982338122,
+          "rank_count": 16,
+          "peak_allocated_gib": 35.15668201446533,
+          "peak_reserved_gib": 38.076171875,
+          "sampled_min_driver_free_gib": 0.0078125,
+          "node0_sampled_cgroup_peak_gib": 71.66568374633789,
+          "node1_sampled_cgroup_peak_gib": 445.92663955688477,
+          "oom_deltas": 0,
+          "profiler": "DISABLED",
+          "cleanup": "PASS",
+          "elapsed_seconds_including_preparation": 874.6557608709991,
+          "parent": "c30",
+          "observed_parent_cycle2_minus_candidate_seconds": 0.6828203124999987
+        },
+        {
+          "trial": "08-candidate-c32",
+          "candidate": "c32",
+          "phase": "candidate",
+          "status": "PASS_NATIVE_SEMANTIC_GATES",
+          "numerical_status": "REVIEW",
+          "native_numerical_status": "TRAJECTORY_REVIEW_50C_COMPLETED",
+          "cycle1_seconds": 55.3256640625,
+          "cycle2_seconds": 48.6435078125,
+          "diagnostic_ratio_vs_baseline": 1.2924354467266554,
+          "rank_count": 16,
+          "peak_allocated_gib": 35.152748107910156,
+          "peak_reserved_gib": 38.076171875,
+          "sampled_min_driver_free_gib": 0.0078125,
+          "node0_sampled_cgroup_peak_gib": 71.36125183105469,
+          "node1_sampled_cgroup_peak_gib": 446.41019439697266,
+          "oom_deltas": 0,
+          "profiler": "DISABLED",
+          "cleanup": "PASS",
+          "elapsed_seconds_including_preparation": 869.7905724629964,
+          "parent": "c31",
+          "observed_parent_cycle2_minus_candidate_seconds": 0.3674296875000067
+        },
+        {
+          "trial": "09-confirmation-c32",
+          "candidate": "c32",
+          "phase": "confirmation",
+          "status": "PASS_NATIVE_SEMANTIC_GATES",
+          "numerical_status": "REVIEW",
+          "native_numerical_status": "TRAJECTORY_REVIEW_50C_COMPLETED",
+          "cycle1_seconds": 55.40684375,
+          "cycle2_seconds": 48.61178125,
+          "diagnostic_ratio_vs_baseline": 1.2932789569400933,
+          "rank_count": 16,
+          "peak_allocated_gib": 35.152748107910156,
+          "peak_reserved_gib": 38.076171875,
+          "sampled_min_driver_free_gib": 0.0,
+          "node0_sampled_cgroup_peak_gib": 71.64368438720703,
+          "node1_sampled_cgroup_peak_gib": 444.72937393188477,
+          "oom_deltas": 0,
+          "profiler": "DISABLED",
+          "cleanup": "PASS",
+          "elapsed_seconds_including_preparation": 438.22565589199803,
+          "parent": "c31",
+          "observed_parent_cycle2_minus_candidate_seconds": 0.3991562500000043
+        }
+      ],
+      "plan": {
+        "executable": true,
+        "gpu_validation": "NOT_RUN_ON_SEARCH_BRANCH",
+        "id": "c32",
+        "kernels": [
+          "continuous_full5_b16_depth1_v1",
+          "critic_fa2_exact_gpu_checkpoint_outputs_v1",
+          "generator_flash_attn2_unmasked_exact_cast_v1",
+          "generator_nograd_autocast_weight_cache_lifetime_v1",
+          "generator_nograd_fp32_modulation_v1",
+          "generator_nograd_rms_cast_square_v1",
+          "generator_nograd_text_kv_cache_v1",
+          "pinned_cpu_gloo_latent_v1",
+          "scale_one_autocast_bf16_input_elision_v1",
+          "score_bf16_modulation_fusion_v1",
+          "score_bf16_rope_fusion_v1",
+          "score_flash_attn2_unmasked_bf16_v1",
+          "score_frozen_bf16_rmsnorm_v1"
+        ],
+        "mechanism": "generator_modulation",
+        "parent": "c31",
+        "placement": "8g8score",
+        "targets": [
+          "pointwise"
+        ],
+        "variant": "c32-continuous-b16-generator-modulation",
+        "workload": "livewan_crossscale_pipeline_best"
+      },
+      "execution_plan": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/livewan_search_r2/trials/09-confirmation-c32/execution-plan.json",
+      "result_binding": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/livewan_search_r2/result.json",
+        "sha256": "9fa9f1a11b466f7d3a5131edb124aaadf637c634b67571921103618269415c79"
+      },
+      "events_binding": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/livewan_search_r2/events.jsonl",
+        "sha256": "af4785e5a7e501e8e5526d9adb02849ddd23ff1970c2238209046c0813fe20d7"
+      },
+      "native_receipt_bindings": [
+        {
+          "trial": "00-baseline-fsdp-reference",
+          "executor_receipt_path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/livewan_search_r2/trials/00-baseline-fsdp-reference/executor-receipt.json",
+          "executor_receipt_sha256": "9a4335a4b8ed0d270a7d8f8839f2c63dfaa81ebf7d732313e489b5fe2a823ee5",
+          "native_evidence": [
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/bound-summary.json",
+              "sha256": "fc06306620a8a7f5e0c4dffc3e01c945ddc38bb4a81bf7f17061f3c8caa56600"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-gate-c24/search-gate/trajectory_comparison.json",
+              "sha256": "d140e66f06f8589996943af02ea3e3c740536d3106eb4e1a0e2103204c566144"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-gate-fsdp-reference/bound-summary.json",
+              "sha256": "cfc355d32e046ecbd082f0c881ec1733e46ef721808d8bb7631313d3b82a1e62"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/search-resources.node0.json",
+              "sha256": "15e770ab14ccb1e15259fdb104647d46d04d696ee0e543bea7e54ca3193f8db8"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/launcher/node_0/launch_manifest.txt",
+              "sha256": "56d70aec92fa0288273f8da1273e1221614bee9df43732e6e42b61e531f47989"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/launcher/node_0/teardown_status.txt",
+              "sha256": "01eecdb08219af68b2232b2a000a7d08e483348daecb74ebb4030609c0d547f2"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/search-resources.node1.json",
+              "sha256": "30e4c5dff43cc171bd602d1e65bfe0c2513f6c60b0f4c452c6a5230d2ef9bc02"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/launcher/node_1/launch_manifest.txt",
+              "sha256": "48a9965b4b6ebb0949481d0a4ff11f821ed996830e3e02f1b140bf7454763ab0"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/launcher/node_1/teardown_status.txt",
+              "sha256": "01eecdb08219af68b2232b2a000a7d08e483348daecb74ebb4030609c0d547f2"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/receipts/rank_000.json",
+              "sha256": "da7b96638643c7f20f823652f9c62cbf1869f09215b3e85699331c1a57b136bd"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/receipts/rank_001.json",
+              "sha256": "76bd7cebc915afff62808eba126b693251b3b1b1bdcab38ffb0e4f26d2f52ef4"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/receipts/rank_002.json",
+              "sha256": "aaa35c0814df20513e42a93a66b5b96ba1691ecbc3728cd053b76991425005b9"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/receipts/rank_003.json",
+              "sha256": "a2d66ef5aaa7290d5e279cb534e281540360a3825aafd7ef68f911108ac7d40b"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/receipts/rank_004.json",
+              "sha256": "4d146591e9bde280f133b9c73444b992be242f980a11994e1b2f71fa919534be"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/receipts/rank_005.json",
+              "sha256": "11d9859ead1b4f7a04f4fb28b4ecadcc878e6df4842f74d468e0104e57e1162e"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/receipts/rank_006.json",
+              "sha256": "e373eb1a8eae4a548419f732f4a543653a9590e5f9b4af13502c633c0abdd8bf"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/receipts/rank_007.json",
+              "sha256": "6ed9e67ae8829a5656930abb21c4516e0c8e5422d7480d970aacab15dd3ce3de"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/receipts/rank_008.json",
+              "sha256": "57599512ea880cc369d820c0327b1d404ed24a75a6c3dbffb2f62cc222a14cc5"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/receipts/rank_009.json",
+              "sha256": "b20aaefea88a80791f47fbe6d0a1b18805a22c29f36bb742b3c231bd80522edc"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/receipts/rank_010.json",
+              "sha256": "5bb9324df1537126e25cc7576550c11aee8109dcc617e5375c9a74020f8184eb"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/receipts/rank_011.json",
+              "sha256": "8016e6cc0751d6aa5d8287ebeb61ff62a11baf74bc5ec7294594e034906e2d93"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/receipts/rank_012.json",
+              "sha256": "5e32310b734752cd6967508755660f4a3a8dbefb64efd4927089a2a03cb7efc3"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/receipts/rank_013.json",
+              "sha256": "cd5199c84a022184294047564374ba78f075d46b5e43e75cf1f899620aac02ac"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/receipts/rank_014.json",
+              "sha256": "7b9e7dc7ab58ed49f3e6dc9d3d06426e738973d503064948c1a67e3c0e0c0a30"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-00-baseline-fsdp-reference/receipts/rank_015.json",
+              "sha256": "ec3156afe3cc256cf8e91e0577fcc5266a25b77064a33d91ef33a4e87ac9e0e7"
+            }
+          ],
+          "runtime_validation": {
+            "effective_plan_sha256": "4fe200ac433397e0709ff78696923423b41a8834e7a5f3b52878f61caf0c67e7",
+            "fingerprint": "a11cc11bb0f40ad7363a86ae872f45799682a22a4e2b7e6785d251468c358257",
+            "mode": "baseline",
+            "physical_call_inventory": {
+              "critic/grad/checkpoint": 160,
+              "critic/nograd/plain": 32,
+              "student/grad/checkpoint": 96,
+              "student/nograd/plain": 4120,
+              "teacher/nograd/plain": 32
+            },
+            "variant": "b1"
+          }
+        },
+        {
+          "trial": "01-candidate-c24",
+          "executor_receipt_path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/livewan_search_r2/trials/01-candidate-c24/executor-receipt.json",
+          "executor_receipt_sha256": "93864dac67abcb82f290ae959b79ee159b3e8fe5297f1e32030208c980ded3c8",
+          "native_evidence": [
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/bound-summary.json",
+              "sha256": "b6a6d9af6837761b9a2585594b57c4c0c8406d9277828f77d6c7486bed4d1568"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-gate-c24/search-gate/trajectory_comparison.json",
+              "sha256": "d140e66f06f8589996943af02ea3e3c740536d3106eb4e1a0e2103204c566144"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-gate-c24/bound-summary.json",
+              "sha256": "cc3e59d658762d113c7713e3b2380c1a65c8bdd8b03924a48e7ad59168ff670f"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/search-resources.node0.json",
+              "sha256": "607c68dc3eee3dbb1a890471aeda547bad273dbe2488431453b02c980066e30f"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/launcher/node_0/launch_manifest.txt",
+              "sha256": "148f6bda0f5c3e5dd7a583edc66c8c68bdd97d2d9f1fdc0b8ff76d9709068690"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/launcher/node_0/teardown_status.txt",
+              "sha256": "d61f6fd6ef7fbfef6461ea5a6c74436ce69661ecd4f6c2425888b7656dd61083"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/search-resources.node1.json",
+              "sha256": "d62881ea53ac106d16186d81e898110ad9cb335a2dc88deff9142819577bbc46"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/launcher/node_1/launch_manifest.txt",
+              "sha256": "102525e5b385bafef6b52426e31ce5f1feeb4cb0ad303c336a92d136a177cbb4"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/launcher/node_1/teardown_status.txt",
+              "sha256": "d61f6fd6ef7fbfef6461ea5a6c74436ce69661ecd4f6c2425888b7656dd61083"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/receipts/rank_000.json",
+              "sha256": "45e4823b40f3a111827781bf5483930cf82b2e45cf51e714f98058b39d6f103f"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/receipts/rank_001.json",
+              "sha256": "281705fb3de7137d86b4475538a4f4cc9274f5080e6c4cfb8b7daeb0ef9173a4"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/receipts/rank_002.json",
+              "sha256": "27f3fadfd7e402aec2678a938cd5f08515d3d61a8a479ae72c65aa66027d11cd"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/receipts/rank_003.json",
+              "sha256": "2bc322fa8225861cec44568eae9f842222ff52edaa40249a62281de292c32c9d"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/receipts/rank_004.json",
+              "sha256": "66e319395ed1139a17e20d9850ba2a9380163008f78c14307dea9e7d9405fb6b"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/receipts/rank_005.json",
+              "sha256": "7716280bf781e643e0f2251aa8412e2e44719728e1f70120cd3f3e847bb64331"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/receipts/rank_006.json",
+              "sha256": "20ea3b0ddfa83d070ef143009cfc9e1de4610c7a7f659d9141d8875ae6108410"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/receipts/rank_007.json",
+              "sha256": "11840929423e09303f490f9fec5d3df636515aa2dd4cd0bef274c8524bfbe47f"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/receipts/rank_008.json",
+              "sha256": "b0ff95a6140764ee94882128d49567a8114f84f220bcaafd6522cc04bcf862df"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/receipts/rank_009.json",
+              "sha256": "0d2ac7ed1f9331ca5da01d12428c2b4ea59530a357f1ca03e76a983c12a67c35"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/receipts/rank_010.json",
+              "sha256": "428ddc336807e4cf7735f20600e56c1b7d4d2a33fcfc969f5d84697c99e879f2"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/receipts/rank_011.json",
+              "sha256": "ebbdcae10dd5b387f75375ce5fd00614eeb2dd03965b45aa1a4970bc5b3f6090"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/receipts/rank_012.json",
+              "sha256": "a85c74afcc692fbeabdceb6f8a6500b65fe15c3148c0783b35393472832df101"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/receipts/rank_013.json",
+              "sha256": "398f1a677b29a390c0d026c6ba6e1ad71ac9def31a6dcb9d142e5512b76ae9f5"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/receipts/rank_014.json",
+              "sha256": "0f3e45eaa0ed33eb90b10987cbba8a15c89c11398a8389610c4340d99e4a1293"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-01-candidate-c24/receipts/rank_015.json",
+              "sha256": "1b42b8f56ef41d6a3e0596624f0205dde85a7933e88859478b5745408a14ff6a"
+            }
+          ],
+          "runtime_validation": {
+            "effective_plan_sha256": "b9f078470e51bfe22b09cc0f52348ac750cd5d8b13a2f58bbb736b159f519496",
+            "fingerprint": "2a908ba14c855261830d24a79bd396b688b347a53cf1b2af80be0e9dd3b98a9a",
+            "mode": "pipeline",
+            "physical_call_inventory": {
+              "critic/grad/checkpoint": 80,
+              "critic/nograd/plain": 32,
+              "student/grad/checkpoint": 96,
+              "student/nograd/plain": 4120,
+              "teacher/nograd/plain": 32
+            },
+            "variant": "c24-continuous-b16-score-modulation"
+          }
+        },
+        {
+          "trial": "02-candidate-c25",
+          "executor_receipt_path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/livewan_search_r2/trials/02-candidate-c25/executor-receipt.json",
+          "executor_receipt_sha256": "8e73ba8392c0abab1d98e990e5fc7a9b09d850ee2a5505e11e71c9f9ecdd0095",
+          "native_evidence": [
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/bound-summary.json",
+              "sha256": "2ed9dcb3817f75a5a36207592d6dd091d22b91aad1c54d6fb6634836cc39333e"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-gate-c25/search-gate/trajectory_comparison.json",
+              "sha256": "e89d02677dbad2c6b33619093859416a6a937f4e2a5345375053e69efe8f1a03"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-gate-c25/bound-summary.json",
+              "sha256": "b165cb11fb813abb49ec474f59f53292c70a852e4daab18234ca633c3b55c635"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/search-resources.node0.json",
+              "sha256": "7ed89880c3bf1b580b647e19585db5c5c3dc55fc52a731210581e80315211af8"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/launcher/node_0/launch_manifest.txt",
+              "sha256": "ffda1bf84c793a4a9d28978da797051150b20ab00cf4bc3a652cc22efbf8364b"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/launcher/node_0/teardown_status.txt",
+              "sha256": "7d58a6bb025d2cd75c0b8b4a2cc33f0c22320ddac4415645f4cf0f6dfd39ff11"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/search-resources.node1.json",
+              "sha256": "844c50784386e15f854e44acea97ea1dedb64a436e25acfdd2658456d64f0564"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/launcher/node_1/launch_manifest.txt",
+              "sha256": "f579cff881f5a77fb59c696a649c5476974914e770b6af18b4c1b09b31175dee"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/launcher/node_1/teardown_status.txt",
+              "sha256": "7d58a6bb025d2cd75c0b8b4a2cc33f0c22320ddac4415645f4cf0f6dfd39ff11"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/receipts/rank_000.json",
+              "sha256": "49e9a26bb530aa4e881b92ebfef3a64a85dcc37ed2c60639d6a60757de932091"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/receipts/rank_001.json",
+              "sha256": "fc0d4a44fec57a3e522fe35fc3b5a29e1d3c7ea45531cc3c86247b0c42928d18"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/receipts/rank_002.json",
+              "sha256": "02b4233ed99034255b6f2ce3cef17269808355006c420399812fdf371093162f"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/receipts/rank_003.json",
+              "sha256": "ebabad4cf98deae69a793ea30e4ccd62664e63acc4739363ec738ed12842fbcd"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/receipts/rank_004.json",
+              "sha256": "929209b81cab8cd5ed452fb5c3697e69b0f4e2b0dfab3869e22511e5b08cb545"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/receipts/rank_005.json",
+              "sha256": "2d937c6009e96d8793543896723c480877eb96132149636cd4b54cdd39127a33"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/receipts/rank_006.json",
+              "sha256": "0d0ccc5c9752c90447d0e27de4e5ec192b98c5bb0000ca87aebe11dbed095500"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/receipts/rank_007.json",
+              "sha256": "ad0dc2163e99a7b5d02e14bfe8dc44172bb47cff8cc036721caae49f29afee40"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/receipts/rank_008.json",
+              "sha256": "3eb80e0d1293a961d1255280e607462c3492d7a57ce14ce7e6e7148f8578cccc"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/receipts/rank_009.json",
+              "sha256": "a4edacebe38e482f4beed606d427ef0b112a76ef6c7746d0c2efe3dd43baeaea"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/receipts/rank_010.json",
+              "sha256": "001199f9bc9c6ff8c1b8bba63f91864519e0991897c459c202030d00fc9e52b5"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/receipts/rank_011.json",
+              "sha256": "656d17a9a60e96d04ecc94870e54d08a61382c819b28d7a13f18fdb4476e0f79"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/receipts/rank_012.json",
+              "sha256": "59a17a162a13a1207139a075c3b5026c6caf7fd1c33126e4018500e643bb27a6"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/receipts/rank_013.json",
+              "sha256": "09f5fe6763463392f22ee40bbd6f3bfcd19b90f3677cdb798dc6a870a6f48ee4"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/receipts/rank_014.json",
+              "sha256": "ad05e01ac99923d070b91a2c2e98741d7ed86ab52fb8ae02e052e40b252317e9"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-02-candidate-c25/receipts/rank_015.json",
+              "sha256": "fa73c68d3dd1c4b93630a29632ea987a88b8bd5254570fb6fe3af92c468b169a"
+            }
+          ],
+          "runtime_validation": {
+            "effective_plan_sha256": "3918c5c9638fd6dabed17899f84abfd4d84f7f19e90151324a10f1a79c14e3d0",
+            "fingerprint": "cf9941b9c058b9e127d2a80403e2eaf29305c45decea24e490a302a82b98afcd",
+            "mode": "pipeline",
+            "physical_call_inventory": {
+              "critic/grad/checkpoint": 80,
+              "critic/nograd/plain": 32,
+              "student/grad/checkpoint": 96,
+              "student/nograd/plain": 4120,
+              "teacher/nograd/plain": 32
+            },
+            "variant": "c25-continuous-b16-score-rmsnorm"
+          }
+        },
+        {
+          "trial": "03-candidate-c26",
+          "executor_receipt_path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/livewan_search_r2/trials/03-candidate-c26/executor-receipt.json",
+          "executor_receipt_sha256": "88460b7a9d3aa72d7cf51134ef6e962fdc81b5274905a6366240f8eb650a762c",
+          "native_evidence": [
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/bound-summary.json",
+              "sha256": "46b25f767d021dc9a327bfb271d78df45b5feb7ce534d241a5644b928a7c46e1"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-gate-c26/search-gate/trajectory_comparison.json",
+              "sha256": "d847a90e675c5136a640777f698074eae6a6e60ae28a00cf5d9c9e346ec83966"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-gate-c26/bound-summary.json",
+              "sha256": "5099a1c8df48a6cf99a9c2186078637b2fd08b437d2d98c32e86426b530c50be"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/search-resources.node0.json",
+              "sha256": "7319ee1c69aa9cbf8e4a14137cbd598bd1ebc18525cf2f5a260ecbdeaf27c712"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/launcher/node_0/launch_manifest.txt",
+              "sha256": "22f984e48d2b029854082f69982e99c66a96c9ac8fc9ab9cee5725817799f333"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/launcher/node_0/teardown_status.txt",
+              "sha256": "811e9964875db971d20c4c507bf99a3a21eb72fc8046efcb00a2b3158a89ed24"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/search-resources.node1.json",
+              "sha256": "e8e3b41576fea8c00600f0153cfdb48dd7f3f2b6e539bb660cf55eb354b4a9be"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/launcher/node_1/launch_manifest.txt",
+              "sha256": "07c363e5640f71e73533935a8a47751da70084a515aa96bad5c7e3bb909ac1d5"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/launcher/node_1/teardown_status.txt",
+              "sha256": "811e9964875db971d20c4c507bf99a3a21eb72fc8046efcb00a2b3158a89ed24"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/receipts/rank_000.json",
+              "sha256": "8f7d9d05710bd692cdc57467093639bc6a04e2769610a377348950ce7e880a4f"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/receipts/rank_001.json",
+              "sha256": "93cc3e5700ab9ecd01d4aff22705d2eeeb2e47ace93a65703078ff3ab0dd7e6b"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/receipts/rank_002.json",
+              "sha256": "671f92e9849e950e7daab4f4c75ef5c388fa59a9c6670172b06f121e004a0209"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/receipts/rank_003.json",
+              "sha256": "bb145d468122b3db03ba57282de11039ddeabf0311c8168eb213cce7e1cc61bc"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/receipts/rank_004.json",
+              "sha256": "7c3450fc82035773aece37c1888b74b8bfa6ce71fb83cf0fb5c6355c3c01750d"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/receipts/rank_005.json",
+              "sha256": "3a7ca9cff93f83621ba71d46a937c0c927a0c8d5364e9e45de2340a9e6c22431"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/receipts/rank_006.json",
+              "sha256": "f2cca8a7e6d0c4e84e5f47270e9d126b0697b29e49bf92e4daf12f081b47d25e"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/receipts/rank_007.json",
+              "sha256": "4bad2d38e27ec38c5489ec268282f4e7d0d0a2ec33b2eea12ec10fe72677fb45"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/receipts/rank_008.json",
+              "sha256": "bf1ea909b6d198fbe782c1a5bb1720b23d77eb928e9b0869340af33da0999a97"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/receipts/rank_009.json",
+              "sha256": "9896cdaa18e715d00a005ffd7b43c29af4bd1c68efd90acccb30bbd3dac60d74"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/receipts/rank_010.json",
+              "sha256": "c6d2b60ec87cf5c98b7916b029fc102affec493af25048fd3790652f5c9673ac"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/receipts/rank_011.json",
+              "sha256": "a10bf6624b2d501c5d4a5ada8220459b1221c4cfc79a6d563c3e826f0fa00639"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/receipts/rank_012.json",
+              "sha256": "d13b80936169c16c58ae7c18d6af92515a53b8917d530bcf8220016e1203b1e9"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/receipts/rank_013.json",
+              "sha256": "152cde33d8ad62ea00bf8dd35b3f4b493f8c0f816aa2af821e84c558ec5359d2"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/receipts/rank_014.json",
+              "sha256": "55377d783b46c9de42fe4512d06c1cc8ea3ea6103e56d606bab6353c30a0b936"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-03-candidate-c26/receipts/rank_015.json",
+              "sha256": "5f749ffc3c30a9a398f65fa12cdfd2315c878e75d828f95dfce784c20192dea7"
+            }
+          ],
+          "runtime_validation": {
+            "effective_plan_sha256": "c1f196edf130115af436dcdc5daf67728c65c15cde6f0f4eedbb06705825de24",
+            "fingerprint": "1a76cdac3409dd62ce16f4d5a574c40113fab042d1e4afff4288486030ceeb2f",
+            "mode": "pipeline",
+            "physical_call_inventory": {
+              "critic/grad/checkpoint": 80,
+              "critic/nograd/plain": 32,
+              "student/grad/checkpoint": 96,
+              "student/nograd/plain": 4120,
+              "teacher/nograd/plain": 32
+            },
+            "variant": "c26-continuous-b16-critic-attention-checkpoint"
+          }
+        },
+        {
+          "trial": "04-candidate-c28",
+          "executor_receipt_path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/livewan_search_r2/trials/04-candidate-c28/executor-receipt.json",
+          "executor_receipt_sha256": "ca01ea609a22506245151a633c75218b1554c581aa17871ead8fe219101cc0de",
+          "native_evidence": [
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/bound-summary.json",
+              "sha256": "0674247593eaf2b5a2ae95fb776335f1d3b5584c722748538177af412685c746"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-gate-c28/search-gate/trajectory_comparison.json",
+              "sha256": "ce08a3a95cffb763b977469f92211b2d3e7607ef6fbb39d91c57eba9191b190e"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-gate-c28/bound-summary.json",
+              "sha256": "ac34238899a53b0a76bbd6c7973e1ed053a57692f308c156490f50884d90e056"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/search-resources.node0.json",
+              "sha256": "5fb016ad19f07f2adefd8cc4160868197bffa540437fff758dc2f818607eff24"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/launcher/node_0/launch_manifest.txt",
+              "sha256": "ef4062fa386d9e4360ac2b704d63bb9daa9c1507d9cf99c326cc325fd8b23b40"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/launcher/node_0/teardown_status.txt",
+              "sha256": "238dd6286fbf8d4b697285441d6447d1528605eebb677c079d3f875c311014cc"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/search-resources.node1.json",
+              "sha256": "19dd203dcd9e63a902636e413b90b571458a0a25338bc4d97d1daf9edf8330c8"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/launcher/node_1/launch_manifest.txt",
+              "sha256": "2628aafb0a5442a790c65c592573d61c49b8c5e3204698451af7f48b9f758fbc"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/launcher/node_1/teardown_status.txt",
+              "sha256": "238dd6286fbf8d4b697285441d6447d1528605eebb677c079d3f875c311014cc"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/receipts/rank_000.json",
+              "sha256": "5f9bf60d6336785f770a986c8056fd0bc4718582219fb5f7d47c6a6282893ab8"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/receipts/rank_001.json",
+              "sha256": "77dfec6f46eeb66e604d964caa91389cff115b219811999dd2a4875da3731c07"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/receipts/rank_002.json",
+              "sha256": "4c5be4ff1745c24110d3dbae1cd5e0a15ce259f835338a48078e4b4f58e7532a"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/receipts/rank_003.json",
+              "sha256": "c199d5d89ca145621c3ccacb1c69eafd7d1529a2341d705b1f855767821450ce"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/receipts/rank_004.json",
+              "sha256": "070096896e2299d5abb47fc26b49eb5c8113b5c4e756ced77c3e26145916c5ac"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/receipts/rank_005.json",
+              "sha256": "1f4454af4c8c0a9903ca38d035d333722a22e2bf93f4646ca9089fe675e31f71"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/receipts/rank_006.json",
+              "sha256": "9761dd4f94381471aa1e4271d34eec03b2f8536d8e2f712ed6ce53dbf5cf524b"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/receipts/rank_007.json",
+              "sha256": "801c765cd2d9642b0bc17a6a7358e795b1ddddfad46c8fbb4c679bce461644e4"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/receipts/rank_008.json",
+              "sha256": "dd912d49133c4f04f34f26e86121af47f501870d95928a9971705f14250b233d"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/receipts/rank_009.json",
+              "sha256": "26951bdad3fcc29ce99aca33ac9df6db704a2d7d679d6af87bf01c0f8edf978b"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/receipts/rank_010.json",
+              "sha256": "4becfc55f34687a391eb629fe970693c560f75a21b5bd49a7298bb2f36723358"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/receipts/rank_011.json",
+              "sha256": "1de3f13ca08b150a02798ea6053ae96b7b182fad8ce87f66b24d478145d3287c"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/receipts/rank_012.json",
+              "sha256": "6aba585c43a1a56107ed9c698dc8765856155769cb87f100cb894ad6b5f5da09"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/receipts/rank_013.json",
+              "sha256": "dc11a5a28edde2f9c9eef831d7179b115c0985d410d79f5e55b15d8d4e580575"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/receipts/rank_014.json",
+              "sha256": "d9e9e0e3305a9e1e12a3ca068b7bb2fe0e5e2244d68929842aa0079a431b38d8"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-04-candidate-c28/receipts/rank_015.json",
+              "sha256": "bd7455be5779f502f644284db6807ef81b8325650950fabfe50f177b2d6b924d"
+            }
+          ],
+          "runtime_validation": {
+            "effective_plan_sha256": "a62c82a9da305b38d08cb7ba918fc9b4801a639ad52e532211f5574836199cbe",
+            "fingerprint": "c06949c284046af2f14ced7ea0c3343b0b7746d1db3ba14913931963bf37677b",
+            "mode": "pipeline",
+            "physical_call_inventory": {
+              "critic/grad/checkpoint": 80,
+              "critic/nograd/plain": 32,
+              "student/grad/checkpoint": 96,
+              "student/nograd/plain": 4120,
+              "teacher/nograd/plain": 32
+            },
+            "variant": "c28-continuous-b16-rollout-cast-cache"
+          }
+        },
+        {
+          "trial": "05-candidate-c29",
+          "executor_receipt_path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/livewan_search_r2/trials/05-candidate-c29/executor-receipt.json",
+          "executor_receipt_sha256": "d64f5872fbf2520aad04d06ec7dc6441ab57c4e9f8ab74ee7406f09c99eeaccc",
+          "native_evidence": [
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/bound-summary.json",
+              "sha256": "df26668614c4d1aadd6e38783532c081c76df58ef5e00f7492a95316f5abe302"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-gate-c29/search-gate/trajectory_comparison.json",
+              "sha256": "444404fc9660f177b9ff267cc68207ded968d91487ecf4b5ad76288fa31ee463"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-gate-c29/bound-summary.json",
+              "sha256": "941f4ef82e6d40f6b8a575cc47c947e570f902e64a1891b84382165241c149e7"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/search-resources.node0.json",
+              "sha256": "261a596ca402313fedeca521ebe19420716202c0abec67b29f4dc894fe0c994c"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/launcher/node_0/launch_manifest.txt",
+              "sha256": "6b33b31a6e45cb1a09b0096e0b3a9a8e04f140005a2e6492e8415494ee309676"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/launcher/node_0/teardown_status.txt",
+              "sha256": "589bddaf3f2362ad4781069ce51e74b69156c56a8e70932e445d0ef4cb47755d"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/search-resources.node1.json",
+              "sha256": "57c18716e16d5a9b5d3ac35746e9264e4538224711bb58af7ef933a880466d58"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/launcher/node_1/launch_manifest.txt",
+              "sha256": "7d7efb7850af3dbaf410361582b111a2a91ce74dd2017eb9014873412d992c67"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/launcher/node_1/teardown_status.txt",
+              "sha256": "589bddaf3f2362ad4781069ce51e74b69156c56a8e70932e445d0ef4cb47755d"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/receipts/rank_000.json",
+              "sha256": "79675023899feffb77a83a5980161f49cea06a55d9764ee67d3a5c684e62f209"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/receipts/rank_001.json",
+              "sha256": "1c7a1457397424ccdeebf3303278725245680fb11a75ff8b534045b25389d6a5"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/receipts/rank_002.json",
+              "sha256": "d8f4a35b44bb2fc0e806cf7d32a07d5b4652585fba4b0acab21a381b230aea88"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/receipts/rank_003.json",
+              "sha256": "a8f38e24de71dc19b9cfdbcec942eb67afc6beb13906f4648a1ea695c2b58995"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/receipts/rank_004.json",
+              "sha256": "21195fc88d9543492ff8951bd34eb2ad804eaf0e0fcd2d1cd9cd9bbca05023a3"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/receipts/rank_005.json",
+              "sha256": "5873585c7af301407092f08a1585f5c4454bb3a5c2d2f5822d987dd19e98eb77"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/receipts/rank_006.json",
+              "sha256": "b5da8490a73c38cbe39874e7f38db81abf5596a2d3ab734726db4c92ed0dd6f7"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/receipts/rank_007.json",
+              "sha256": "f4a7a2fd295a69ceda1dd72562f35a448f46a785e2db2a484adc5bf586e0f038"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/receipts/rank_008.json",
+              "sha256": "69379a9a501833a1b26d38482173cf4a11452c7c15244dc8928935ab073d0809"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/receipts/rank_009.json",
+              "sha256": "f50f05c7fab81a7dcb7b6e05b1a27db33f3c8be60bda6f00608f83e3bab28548"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/receipts/rank_010.json",
+              "sha256": "b47c91a050961a7d2efadcda91ea06f6bb559260e4a35bf747d4497e80e3b9a4"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/receipts/rank_011.json",
+              "sha256": "f2c55c7079791a6b24d480bf1f9087c375b6b5bbfc02d9b07d62f92938d995fe"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/receipts/rank_012.json",
+              "sha256": "5a051b5299f44d98c0ff9fb2e6b17cc0149315f911c4a3776610b421a6642240"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/receipts/rank_013.json",
+              "sha256": "1f232a03f0ccd0220f4f73ab8610d5e4896898efcedac7bd706d5e4562d4e84d"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/receipts/rank_014.json",
+              "sha256": "d69e7aef56277797fad825717b5a2ede954137cc9051ced0b823822355c9d927"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-05-candidate-c29/receipts/rank_015.json",
+              "sha256": "99281894394fa6e3e2383e18c193e01c6eaa67bb54756f122965ea31aa72ee2d"
+            }
+          ],
+          "runtime_validation": {
+            "effective_plan_sha256": "fe8495f704a124ba9b4cf66b711ed8fb6e882d77325e3710b09d74ef9664ce00",
+            "fingerprint": "bc271d285e8e7f96bbb9ed0896ec23cbdb161a6923a67b029085fc58fd67c501",
+            "mode": "pipeline",
+            "physical_call_inventory": {
+              "critic/grad/checkpoint": 80,
+              "critic/nograd/plain": 32,
+              "student/grad/checkpoint": 96,
+              "student/nograd/plain": 4120,
+              "teacher/nograd/plain": 32
+            },
+            "variant": "c29-continuous-b16-generator-rms-epilogue"
+          }
+        },
+        {
+          "trial": "06-candidate-c30",
+          "executor_receipt_path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/livewan_search_r2/trials/06-candidate-c30/executor-receipt.json",
+          "executor_receipt_sha256": "2ecdcd03e4b1d2fb69daeb3ef5c276db49ca69ff94ad43e6455d121efce72860",
+          "native_evidence": [
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/bound-summary.json",
+              "sha256": "545df81260ff49f5e9f04c58f4af09206fe94d7fab04b1d08cf98fae5a480c34"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-gate-c30/search-gate/trajectory_comparison.json",
+              "sha256": "924509c8002e633948d1b5dbd69b870bfe66c233e5bb3d88658e5db539ba3791"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-gate-c30/bound-summary.json",
+              "sha256": "927f965c5c2bc5d38b5445103d08e1e157fbd4b32b12108acff500965006fad9"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/search-resources.node0.json",
+              "sha256": "6ec51b78884781ee1f15a76d08d0e9feca8156e69cd3d5b47f59ef71814095a4"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/launcher/node_0/launch_manifest.txt",
+              "sha256": "4582d0d80719ea8b5a48e496153200b73642dea3002dee13bd10c70b49040e1c"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/launcher/node_0/teardown_status.txt",
+              "sha256": "93d6086990de72c1c58007740df8155c0d82449457e05c920d58ee08fe830f15"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/search-resources.node1.json",
+              "sha256": "9def256aad50f8677112916a96db3e1b587665203660aa95c6ef84280552d97c"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/launcher/node_1/launch_manifest.txt",
+              "sha256": "26d472488c3bc1ad7e3f66e40740710bebb8b08b1c5dc7c1a83e57d711f9231e"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/launcher/node_1/teardown_status.txt",
+              "sha256": "93d6086990de72c1c58007740df8155c0d82449457e05c920d58ee08fe830f15"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/receipts/rank_000.json",
+              "sha256": "c7e0e84eed7796d470a51a5769a0133a6e52d1e2017fe0b01e54ab5686a485b9"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/receipts/rank_001.json",
+              "sha256": "cbd48e923a002ca3b83a97218ee2ef42f84acc823ba40f7201b78b4ccec280eb"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/receipts/rank_002.json",
+              "sha256": "0c797c8e5851b3a6f8773932972cbd4445e0280f8d80556ca4c29ddd43b0daa1"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/receipts/rank_003.json",
+              "sha256": "fc4865e3e26eb88dce007bc79ed90515477f6e8a40a8ba56ae662397756981ba"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/receipts/rank_004.json",
+              "sha256": "e4554f0ed2edd081c4da5f60c8b34c5f13124e542a75571f34c4e1e31f0b760c"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/receipts/rank_005.json",
+              "sha256": "6f204c1c0707c798f4d45e5d2b5e7009a8af7aeb65b86bb272086a6e99a9b0b0"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/receipts/rank_006.json",
+              "sha256": "8fc93c856bc3c0722dde8df13a6bebd419be2e122f8154e72d5f8114b25aa89e"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/receipts/rank_007.json",
+              "sha256": "be4c54d0af928c53353d40a6f75423e4770a0162b8106ea4b963f677ef47dd63"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/receipts/rank_008.json",
+              "sha256": "3b82ea95eaf44e46badfeb3f41790f57baa4b5af09273ccc702f41b899433153"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/receipts/rank_009.json",
+              "sha256": "95e6c7596e7dffc7191e63a7ba04cf4950ef9303acce2536217c3c53297f8a6e"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/receipts/rank_010.json",
+              "sha256": "008b1b2785aa2eb4c5936f1b122f644d3e3f03ec398150fc400e06704fa0de0b"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/receipts/rank_011.json",
+              "sha256": "be46772a63aa5288906f85b73a8f14755232d02a5cf5edaa4e31b76a13863d01"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/receipts/rank_012.json",
+              "sha256": "19ef627285cbe900b8cd4e1c4cfcbab75a88dd7e4979417dafc27bce5d6914cb"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/receipts/rank_013.json",
+              "sha256": "f39e1e5d6d6705fdf1a5f010edc2a0f780e36f803137978efe7252e2b0f16395"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/receipts/rank_014.json",
+              "sha256": "b3dc1994b5dac91c4c9c1078ddd0f2be48bc2a5da3bf56edca9c966830c86e2e"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-06-candidate-c30/receipts/rank_015.json",
+              "sha256": "2f164f989b5e7bfc9f775d1e2b8083867c6daceb7c619d940d031e26b7837dc2"
+            }
+          ],
+          "runtime_validation": {
+            "effective_plan_sha256": "734932de52048de8c69fb0a95ecbd32fbc7ec2f8d269d5864f8049f0c2edbe62",
+            "fingerprint": "78d23378a86e8e2f6637d74e74d77cac8e0f87c2eb5c128a7dfbfdf847aafa29",
+            "mode": "pipeline",
+            "physical_call_inventory": {
+              "critic/grad/checkpoint": 80,
+              "critic/nograd/plain": 32,
+              "student/grad/checkpoint": 96,
+              "student/nograd/plain": 4120,
+              "teacher/nograd/plain": 32
+            },
+            "variant": "c30-continuous-b16-generator-rms-critic-checkpoint"
+          }
+        },
+        {
+          "trial": "07-candidate-c31",
+          "executor_receipt_path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/livewan_search_r2/trials/07-candidate-c31/executor-receipt.json",
+          "executor_receipt_sha256": "8ce426d90fdd83bd15aab041bd0afa3a4451b3186a64664704b8ede9950a5efb",
+          "native_evidence": [
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/bound-summary.json",
+              "sha256": "d1f4d98b7cb29d5382aa9deed3e11b9be1add1df8a61c93dc230c66f8ce14fe1"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-gate-c31/search-gate/trajectory_comparison.json",
+              "sha256": "845be8b3bf4fc0a8b927d831dd11002b25c3e35a145f84f838a99991d8ed9d7c"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-gate-c31/bound-summary.json",
+              "sha256": "88f6676609f54fc54c7bff37e31c4eb4c5b43cc9e19f6546e93a9aa69661ecd6"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/search-resources.node0.json",
+              "sha256": "ce4327c521ceb6f7ae028c22c40458ed2c322085215c0c79ae98b3d2fcc77062"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/launcher/node_0/launch_manifest.txt",
+              "sha256": "32a2c60625852135c350fddf6c70507d21436c7b312d7b9b9b14ba3135311427"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/launcher/node_0/teardown_status.txt",
+              "sha256": "dfb755a584622c1e79153f9b46de2c0659b499e6b17d1533aaad0f0d249a19fb"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/search-resources.node1.json",
+              "sha256": "732d95fbc516406ddc33fa60ccd75106292dd4db6358eacee43ad6556a237bd9"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/launcher/node_1/launch_manifest.txt",
+              "sha256": "ed927a90b44b5a0a96fe6469fc7f75fbf0437ac65a5e2278f6b91b8b6fdc26be"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/launcher/node_1/teardown_status.txt",
+              "sha256": "dfb755a584622c1e79153f9b46de2c0659b499e6b17d1533aaad0f0d249a19fb"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/receipts/rank_000.json",
+              "sha256": "b5bb08e9e86f021ca92935cc28fdaad6e36acac786ed3c19ca2705bbb12a1026"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/receipts/rank_001.json",
+              "sha256": "7ffccbaaebc90a13e10fb8d791eeff498e3a493592eae478dbc0baab3d164e82"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/receipts/rank_002.json",
+              "sha256": "9ae4ecd50f6bc461b78c920d94ff5b26988f58843dd28433cf436689eba4d3bd"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/receipts/rank_003.json",
+              "sha256": "69e1ba5a027a93f8f695651f3b90d42316bd5575c7c42a09e455012f9b26cfdf"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/receipts/rank_004.json",
+              "sha256": "75bdb152caeb18d768dd75a15d9b6e4bdd89380160fe8afd24181bbafeaf4262"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/receipts/rank_005.json",
+              "sha256": "5a2b19ec8daaf09913c0341f6f98fb750d85279520571b5645cd18a87b02fc8d"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/receipts/rank_006.json",
+              "sha256": "8c45f0feb6d2aa1a88821cec6edd1db7c088fea84e0d057f78e703ef1d6565eb"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/receipts/rank_007.json",
+              "sha256": "8ce2d04413f47db3452c1ff362d0e455d3726df3cc7c33f15c4c9a85e38dedb4"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/receipts/rank_008.json",
+              "sha256": "dacc0da9736f32d482f86fa24360da082b746ba735a494f4ef9aa8a4bf712ae7"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/receipts/rank_009.json",
+              "sha256": "e332b1ee95b01753581a5889d99c60f5d3cd237d659777a2e5eae2a4adfb958a"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/receipts/rank_010.json",
+              "sha256": "64fbe8dc78015632716d544eff264981e9f2e7e5097a4191e31a35ffc7048818"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/receipts/rank_011.json",
+              "sha256": "ed59526e10b751ddbdeb4beef0e305c0b3b04f65844a8dc0189556ae084c1cde"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/receipts/rank_012.json",
+              "sha256": "a8bd39145dbca60b668c646e9492057e718619462cb8de99efa0e3c308cb653b"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/receipts/rank_013.json",
+              "sha256": "c81f44a9cc3b4f27e5de62c5417b38e2fbff200e2763b050926ac63f2ab9cc60"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/receipts/rank_014.json",
+              "sha256": "7ca994d59fe10a42e05eb10b3f7d7a755c5573ba9cc92e1aa52ce265e990ed86"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-07-candidate-c31/receipts/rank_015.json",
+              "sha256": "4ad0635d03f44cfc5e0efe95170f49454f192e619a8d6a53336ac6017fcb44a7"
+            }
+          ],
+          "runtime_validation": {
+            "effective_plan_sha256": "8583471a06142b9bf7fe03d1b987a4d574fa8f85b9961bdb92d173f0e1dda7f1",
+            "fingerprint": "4f4c08d11c0d9b277cc3f991707ec4a7ee9f569740bb920fb4d8e5032706cad4",
+            "mode": "pipeline",
+            "physical_call_inventory": {
+              "critic/grad/checkpoint": 80,
+              "critic/nograd/plain": 32,
+              "student/grad/checkpoint": 96,
+              "student/nograd/plain": 4120,
+              "teacher/nograd/plain": 32
+            },
+            "variant": "c31-continuous-b16-generator-rms-cast-square"
+          }
+        },
+        {
+          "trial": "08-candidate-c32",
+          "executor_receipt_path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/livewan_search_r2/trials/08-candidate-c32/executor-receipt.json",
+          "executor_receipt_sha256": "16379b772c8b120139701e7068a4ffad0282e62d686cd0fdae9ef5777f757f7a",
+          "native_evidence": [
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/bound-summary.json",
+              "sha256": "9a51beed418c4b49a20956ab14cc58d3313318ab68fc0e3506927133b2dea1a7"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-gate-c32/search-gate/trajectory_comparison.json",
+              "sha256": "d90e90591f4de4f26e95499ea57f29220d9d9b732e34a527e9509d843843e766"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-gate-c32/bound-summary.json",
+              "sha256": "5c32d53e70be1f7de44f5e6051583bccc1962d067746b8ad37932a79f91964a5"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/search-resources.node0.json",
+              "sha256": "6e949d94824d10ab1da81e789f852ecea5c866a44606cb5b805003976409a244"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/launcher/node_0/launch_manifest.txt",
+              "sha256": "42d89dd3f537b50543f1840f742b0bd683225c09d7e068335fd9e7a997e59e96"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/launcher/node_0/teardown_status.txt",
+              "sha256": "fb09afceb44f915d6f796b497403c8dabd558d31eff343a36a6cec06ce595905"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/search-resources.node1.json",
+              "sha256": "520073e31c1af49bc67cf8805403fd4ac9981592e10fb7aa7fe12f11ecbf8a89"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/launcher/node_1/launch_manifest.txt",
+              "sha256": "6936926ebc42a0a4b91ccd39980e172cb02307313f90100cb209c6a811000ddf"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/launcher/node_1/teardown_status.txt",
+              "sha256": "fb09afceb44f915d6f796b497403c8dabd558d31eff343a36a6cec06ce595905"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/receipts/rank_000.json",
+              "sha256": "5c085c4a12309265336e1469f11fcb09eb6c7012adc43d4a13171131615bead9"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/receipts/rank_001.json",
+              "sha256": "696a72e56097aff34860123e9ffc541c0cbc9cb6424efdeb434ded81e59d87b9"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/receipts/rank_002.json",
+              "sha256": "0e0f1d39a66a8dc766c86705907b11f8119710b4a86551fea0aef9dcc2f4024a"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/receipts/rank_003.json",
+              "sha256": "84661809badf9afbc864826f4f1472beb85cf12c2119fd915e1e88ce4c46049c"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/receipts/rank_004.json",
+              "sha256": "af7492a84fbbc058ef53c415612bdde667b6fdfe003495260a0ea06f3fd76ab7"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/receipts/rank_005.json",
+              "sha256": "8909dee3b061f9d65c05eb1f832ef77ffad97b39489ab3bc0afa79c7f5772d98"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/receipts/rank_006.json",
+              "sha256": "10ac34a00620ee9c33fbe192eb450e5427610e213a176c4458999863463c48c6"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/receipts/rank_007.json",
+              "sha256": "ffde9ab5c6755b2717f1296d85a7feb27d5e4b1de50434ce69693afe28305b83"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/receipts/rank_008.json",
+              "sha256": "31edbca2b54664cc6bf58b6d98fa395b9987742d64868d8bdab3d6e448119c06"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/receipts/rank_009.json",
+              "sha256": "209ba696fd2d7f8defdbc8db443cdb6959125f4fd31ea554634eed8aa09e7235"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/receipts/rank_010.json",
+              "sha256": "f38bb079c987649c9b539dec646b29677950835968ed88cbec3fe6783a51a7f1"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/receipts/rank_011.json",
+              "sha256": "25014c1be6e8a4f3f8afa2c4eb7f27537f2a65930817e37199f079c3ccf9bd24"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/receipts/rank_012.json",
+              "sha256": "ddb4275dadd47bf7a73a603e3668930453695133a5d37f81e89086d5639bdfce"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/receipts/rank_013.json",
+              "sha256": "6845fb18e9817920d0f45668e903509050640f09cd730ec1c54a24567d606325"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/receipts/rank_014.json",
+              "sha256": "2fca147184fbaa16fcab8d49004de232c92851d0064981e7ab698fe97f78103b"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-08-candidate-c32/receipts/rank_015.json",
+              "sha256": "48722326d882ad4c03b777092cfbc3ed2185cc8f7c4acbe532e13db2ad4de6f1"
+            }
+          ],
+          "runtime_validation": {
+            "effective_plan_sha256": "001a00ae5535acf85c5b0972e18fcf3a4022480591997047bd05a0b711f082f8",
+            "fingerprint": "abe6b11aefb7a3c7429184ea538d9f69b8b44cbafd8f306a5ca907dfe767d523",
+            "mode": "pipeline",
+            "physical_call_inventory": {
+              "critic/grad/checkpoint": 80,
+              "critic/nograd/plain": 32,
+              "student/grad/checkpoint": 96,
+              "student/nograd/plain": 4120,
+              "teacher/nograd/plain": 32
+            },
+            "variant": "c32-continuous-b16-generator-modulation"
+          }
+        },
+        {
+          "trial": "09-confirmation-c32",
+          "executor_receipt_path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/livewan_search_r2/trials/09-confirmation-c32/executor-receipt.json",
+          "executor_receipt_sha256": "dbcf6018eed545096818cfae9db286649b6b56aaa6b63cfe4011b5dc73d610cf",
+          "native_evidence": [
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/bound-summary.json",
+              "sha256": "9c2417869210fcb33ba6e6d98c4a2b9d541893de878214b3534d333089818bf7"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-gate-c32/search-gate/trajectory_comparison.json",
+              "sha256": "d90e90591f4de4f26e95499ea57f29220d9d9b732e34a527e9509d843843e766"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-gate-c32/bound-summary.json",
+              "sha256": "5c32d53e70be1f7de44f5e6051583bccc1962d067746b8ad37932a79f91964a5"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/search-resources.node0.json",
+              "sha256": "0b0f40cedea9886a4a29edb7bb80e2ead3771f8583d0ef5c036c946b0bf20d4c"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/launcher/node_0/launch_manifest.txt",
+              "sha256": "187af2a6d5f79ca195a429922587e418e432afc03cf7c54c33c7d22ca084a8b0"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/launcher/node_0/teardown_status.txt",
+              "sha256": "254f3a2f3a44aa27709dba0ff1ebc337432f7e966c4aa2ec9edbf6bb9b04084f"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/search-resources.node1.json",
+              "sha256": "5538de96bb184c03e7816f08bec130f02755cbee6bedcc92ec64ab0063a067d2"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/launcher/node_1/launch_manifest.txt",
+              "sha256": "991e71d1f0a83737d2ddbb4b4297e892ab509f3d7a74d4534f30b784120d8bc1"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/launcher/node_1/teardown_status.txt",
+              "sha256": "254f3a2f3a44aa27709dba0ff1ebc337432f7e966c4aa2ec9edbf6bb9b04084f"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/receipts/rank_000.json",
+              "sha256": "3b4dff98ffb85527b0e68865784f089b28305bd33aa1f169af44a52025da3287"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/receipts/rank_001.json",
+              "sha256": "c0bba66584dceb415d57e542f44222ca4fd586bffc5ce7d86bb9b024ef90c6ec"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/receipts/rank_002.json",
+              "sha256": "2bcee17951a2b43d4d25bb728d501ce5d51f885500f16411357ce4f1526522b6"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/receipts/rank_003.json",
+              "sha256": "880b4e8d69182dd5fd4d6651355e6bc06f0b959d012a22a62e6bf1e2cc839527"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/receipts/rank_004.json",
+              "sha256": "2e35e861ec062084bd4bdffcbb7e99804c259c30c214ddf5d7cb283f31c72b98"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/receipts/rank_005.json",
+              "sha256": "d6bd236f28b6492ff347bbfc944b3c8e5eaa7189169195fdc26ac6a8fb3e5af5"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/receipts/rank_006.json",
+              "sha256": "4f6334ab595cb5dab0853ba767e91570a778e351acfff222e179639191287a01"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/receipts/rank_007.json",
+              "sha256": "e7d207a432d06897dcce6aca26cf8bf1ad3aec68df9ca109dd38531a4de2cd64"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/receipts/rank_008.json",
+              "sha256": "989a32f9db5207e4e67e8ede090a78769c38b302037e51b26a4e4c06ac42b3da"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/receipts/rank_009.json",
+              "sha256": "949e23acbaaaaa4149df41afc7516f4c9a3ac90e2d555ad0f570d9a09032b9a1"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/receipts/rank_010.json",
+              "sha256": "7657e904cb8cb2ac6b825f89640528d6ad71c27b81d6863f100cbeb84887a3ee"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/receipts/rank_011.json",
+              "sha256": "c4a097ca13cb4668d451f94f5d572964a140696bfd3d2a54e8eb0dc845c861cf"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/receipts/rank_012.json",
+              "sha256": "77869c4aed7ca49181d56094f6a13e60ded7f465833b69a3d03e8c424c31218d"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/receipts/rank_013.json",
+              "sha256": "740d36e3a467e5a3c9e74e0fcda9b76d14b01b4b9cc63ab36026cd71548c283a"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/receipts/rank_014.json",
+              "sha256": "cae37f36e77ff46dca9f9248ab0fd8f6b42e75c063b94dbc5462d8d6b06d0ca6"
+            },
+            {
+              "path": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/profile_guided_search_20260906/livewan_native/pgsearch-livewan-ff0c874-r2-09-confirmation-c32/receipts/rank_015.json",
+              "sha256": "6a74a905b2e41f1771d5898345ccaad2a4417aaa04ccb493e7c25f01a4b8b08e"
+            }
+          ],
+          "runtime_validation": {
+            "effective_plan_sha256": "be064d852e18096a8d4aa3cca32defb497153fcdedd30c62c2714212941d97c3",
+            "fingerprint": "98947660d1f43c91ddb60d0c5be4015a37d6a3396109a58ac17df33b71e004b8",
+            "mode": "pipeline",
+            "physical_call_inventory": {
+              "critic/grad/checkpoint": 80,
+              "critic/nograd/plain": 32,
+              "student/grad/checkpoint": 96,
+              "student/nograd/plain": 4120,
+              "teacher/nograd/plain": 32
+            },
+            "variant": "c32-continuous-b16-generator-modulation"
+          }
+        }
+      ],
+      "not_timed_candidates": [
+        "c27",
+        "c33",
+        "c34"
+      ]
+    }
+  ],
+  "other_workloads": {
+    "helios14b_nogan_best": "CPU_REGISTRATION_AND_DRY_RUN_PASS; GPU_SEARCH_NOT_RUN",
+    "helios14b_gan_best": "CPU_REGISTRATION_AND_DRY_RUN_PASS; GPU_SEARCH_NOT_RUN",
+    "minimax_h3_grid1000_best": "CPU_REGISTRATION_AND_DRY_RUN_PASS; GPU_SEARCH_NOT_RUN"
+  },
+  "canonical_profiles": "ALL_FIVE_AND_REGISTRY_LOCK_UNCHANGED_FROM_MAIN",
+  "measurement_contract": "Each trial is a fresh process and initialization with two continuous cycles; cycle1 warmup, cycle2 objective. No profile times substituted. One independent confirmation; not a repeated-trial statistical study.",
+  "claim_boundary": "DIAGNOSTIC_RANKING_ONLY; NATIVE_SEMANTIC_GATES_PASS; STRICT_NUMERICAL_EQUIVALENCE_NOT_ESTABLISHED; BEST_TESTED_WITHIN_BUDGET_NOT_GLOBAL_OPTIMUM",
+  "livewan_reference_native_placement": {
+    "student": "world16_fsdp2_keep_unsharded",
+    "critic": "gpu_resident_replica",
+    "teacher": "fsdp2_group16_reshard"
+  },
+  "memory_boundary": "Native allocator peaks plus 2-second sampled driver/cgroup data across launch. LiveWan sampled driver free reaches zero despite successful completion; cached/reserved memory and live allocations differ. No production headroom claim.",
+  "historical_profile_role": "Ranking hints only, not a latency prediction. Wan prior exact phase scope rank0/rank8 only; LiveWan prior world16. No new Nsight capture or kernel design.",
+  "failure_history": [
+    {
+      "run": "wan_search_r1",
+      "status": "ABORTED_PRESERVED",
+      "reason": "Missing seeded pyramid loader keyword, before construction"
+    },
+    {
+      "run": "wan_search_r2",
+      "status": "ABORTED_PRESERVED",
+      "reason": "Missing all-rank state-sketch API at cycle1 anchor; not a CUDA OOM"
+    },
+    {
+      "run": "wan_search_r3",
+      "status": "ABORTED_PRESERVED",
+      "reason": "CPU comparator required unavailable matplotlib; no timing admitted"
+    },
+    {
+      "run": "livewan_search_r1",
+      "status": "ABORTED_PRESERVED",
+      "reason": "Reader expected rank_count instead of native rank-cycle coverage; no timing admitted"
+    }
+  ],
+  "search_cost_boundary": "Reported per-pilot cost includes native correctness preparation and construction/run/teardown; excludes earlier aborted searches, source adaptation, and profile import.",
+  "environment": {
+    "hardware": "2x8 A100-SXM4-40GB",
+    "driver": "535.161.08",
+    "python_env": "/tmp/distillschedule-helios-official-torch210",
+    "python": "3.10.20",
+    "torch": "2.10.0+cu128",
+    "torch_cuda": "12.8",
+    "nccl": "2.27.5",
+    "diffusers": "0.38.0.dev0",
+    "peft": "0.18.1",
+    "transformers": "5.3.0",
+    "environment_changes": "NONE_EXISTING_VALIDATED_ENVIRONMENT_REUSED"
+  },
+  "cleanup": {
+    "status": "PASS",
+    "source_head": "ff0c874a34fce9b34457767118d98cbfa8223a1e",
+    "run_prefix": "pgsearch-livewan-ff0c874-r2",
+    "timestamp_utc": "2026-09-06T20:23:55.379020+00:00",
+    "nodes": [
+      {
+        "status": "PASS",
+        "hostname": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0",
+        "head": "ff0c874a34fce9b34457767118d98cbfa8223a1e",
+        "git_clean": true,
+        "gpu_processes": "",
+        "gpu_inventory": "0, NVIDIA A100-SXM4-40GB, 40339 MiB, 535.161.08\n1, NVIDIA A100-SXM4-40GB, 40339 MiB, 535.161.08\n2, NVIDIA A100-SXM4-40GB, 40339 MiB, 535.161.08\n3, NVIDIA A100-SXM4-40GB, 40339 MiB, 535.161.08\n4, NVIDIA A100-SXM4-40GB, 40339 MiB, 535.161.08\n5, NVIDIA A100-SXM4-40GB, 40339 MiB, 535.161.08\n6, NVIDIA A100-SXM4-40GB, 40339 MiB, 535.161.08\n7, NVIDIA A100-SXM4-40GB, 40339 MiB, 535.161.08",
+        "task_processes": [],
+        "lock_available": true,
+        "free_ports": [
+          31371,
+          31372,
+          31373
+        ],
+        "cgroup_events": {
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0
+        },
+        "memory_current": "6896242688",
+        "preexisting_defunct_profiler_processes": "UNTOUCHED_NOT_OWNED_BY_THIS_TASK",
+        "node_rank": 0,
+        "log": {
+          "path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/logs/livewan_r2_final_cleanup_node0.log",
+          "sha256": "19556fbc0471652790ae5e7d1ea30e950c22b2a248f2725d7570678c4bdc628c"
+        }
+      },
+      {
+        "status": "PASS",
+        "hostname": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0",
+        "head": "ff0c874a34fce9b34457767118d98cbfa8223a1e",
+        "git_clean": true,
+        "gpu_processes": "",
+        "gpu_inventory": "0, NVIDIA A100-SXM4-40GB, 40339 MiB, 535.161.08\n1, NVIDIA A100-SXM4-40GB, 40339 MiB, 535.161.08\n2, NVIDIA A100-SXM4-40GB, 40339 MiB, 535.161.08\n3, NVIDIA A100-SXM4-40GB, 40339 MiB, 535.161.08\n4, NVIDIA A100-SXM4-40GB, 40339 MiB, 535.161.08\n5, NVIDIA A100-SXM4-40GB, 40339 MiB, 535.161.08\n6, NVIDIA A100-SXM4-40GB, 40339 MiB, 535.161.08\n7, NVIDIA A100-SXM4-40GB, 40339 MiB, 535.161.08",
+        "task_processes": [],
+        "lock_available": true,
+        "free_ports": [
+          31371,
+          31372,
+          31373
+        ],
+        "cgroup_events": {
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0
+        },
+        "memory_current": "6620979200",
+        "preexisting_defunct_profiler_processes": "UNTOUCHED_NOT_OWNED_BY_THIS_TASK",
+        "node_rank": 1,
+        "log": {
+          "path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/logs/livewan_r2_final_cleanup_node1.log",
+          "sha256": "ebeef7991429d0b7e4f68afcce2b22d795f87816513536bb3a06f2a7b544bdc3"
+        }
+      }
+    ],
+    "cleanup_action": "READ_ONLY_RECONCILIATION_NO_KILLS_NO_ENVIRONMENT_CHANGE"
+  },
+  "evidence_root": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906",
+  "github_publication": "NOT_PUSHED_OR_MERGED_BY_THIS_TASK",
+  "cpu_acceptance": {
+    "code_head": "d2b47cb7c443b3408fbc740a10068a20c26b99e3",
+    "status": "PASS",
+    "full_refactor_passed": 468,
+    "skipped": 17,
+    "skip_reasons": "15 require local Torch; 2 require matplotlib; not relabeled as GPU PASS",
+    "integration_unittest_passed": 18,
+    "counts_overlap": true,
+    "compile_shell_syntax_source_imports_canonical_profiles": "PASS",
+    "github_ci": "NOT_RUN_UNPUSHED_BRANCH",
+    "logs": [
+      {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/logs/d2b47cb_full_refactor_cpu.log",
+        "sha256": "eee358106be67bd07d9280249f2d3ebb22085d9804f9a7b61198e05469b3dafd"
+      },
+      {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/profile_guided_search_20260906/logs/d2b47cb_cpu_integration.log",
+        "sha256": "8cd3c7cd094d081f866a1237846388626d849d39151beb3ead77ac326bdfa479"
+      }
+    ]
+  }
+}

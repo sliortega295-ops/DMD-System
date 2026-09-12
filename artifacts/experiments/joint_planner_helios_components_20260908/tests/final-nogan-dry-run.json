@@ -1,0 +1,285 @@
+{
+  "canonical_profile_sha256": "7b35a7f77cf830507c0b01ce14810ab0265d39859190fa6306e5047793d0924b",
+  "claimable_speedup": false,
+  "gpu_execution": "NOT_RUN",
+  "implementation_library": {
+    "entries": [
+      {
+        "composition_validation": "REQUIRED",
+        "contract": "MATCH_NATIVE_CHUNK_ROUNDING_AND_GRADIENT_CONTRACT",
+        "cost_calibration": "REQUIRED",
+        "families": [
+          "wan",
+          "helios"
+        ],
+        "functions": [
+          "configure_helios_modulation_chunk_tokens"
+        ],
+        "gpu_validation": "NOT_RUN_ON_PLANNER_HEAD",
+        "id": "modulation_chunks",
+        "search_admission": "REQUIRES_WORKLOAD_ADAPTER_AND_CALIBRATION",
+        "source": "src/distillschedule/runtime/helios_modulation_chunks.py",
+        "source_sha256": "a99a7429eedfceccbb0f983927d53e804abbb71c238f0aa0c2117ab6308c3b25",
+        "status": "SOURCE_INVENTORIED",
+        "supported_parameters": {
+          "chunk_tokens": [
+            512,
+            1024,
+            2048
+          ]
+        }
+      },
+      {
+        "composition_validation": "REQUIRED",
+        "contract": "BF16_BASE_FP32_LORA_CONTIGUOUS_NOGRAD_RN_MUL_ADD",
+        "cost_calibration": "REQUIRED",
+        "families": [
+          "wan"
+        ],
+        "functions": [
+          "_wan13b_lora_epilogue_kernel",
+          "fused_lora_epilogue",
+          "runtime_identity"
+        ],
+        "gpu_validation": "NOT_RUN_ON_PLANNER_HEAD",
+        "id": "wan_lora_epilogue",
+        "search_admission": "REQUIRES_WORKLOAD_ADAPTER_AND_CALIBRATION",
+        "source": "src/distillschedule/runtime/wan13b_lora_epilogue.py",
+        "source_sha256": "aaa8f8209e75b6f27342aebe4f2d16ef679fb9fd1f5f75c2936bf52e9fa99b47",
+        "status": "SOURCE_INVENTORIED",
+        "supported_parameters": {}
+      },
+      {
+        "composition_validation": "REQUIRED",
+        "contract": "SOURCE_GATED_DTYPE_SHAPE_AND_BACKWARD",
+        "cost_calibration": "REQUIRED",
+        "families": [
+          "helios"
+        ],
+        "functions": [
+          "_helios_modulated_norm_epilogue_kernel",
+          "_helios_modulated_norm_materialization_kernel",
+          "fused_modulated_norm_epilogue",
+          "fused_modulated_norm_materialization",
+          "warmup"
+        ],
+        "gpu_validation": "NOT_RUN_ON_PLANNER_HEAD",
+        "id": "helios_modulated_norm",
+        "search_admission": "REQUIRES_WORKLOAD_ADAPTER_AND_CALIBRATION",
+        "source": "src/distillschedule/runtime/helios_modulated_norm_kernel.py",
+        "source_sha256": "38f615574bd0031058c81d3ad8e13287625a944a39028093789f72f0616fe493",
+        "status": "SOURCE_INVENTORIED",
+        "supported_parameters": {}
+      },
+      {
+        "composition_validation": "REQUIRED",
+        "contract": "SOURCE_GATED_RESIDUAL_STORAGE_AND_DTYPE",
+        "cost_calibration": "REQUIRED",
+        "families": [
+          "helios"
+        ],
+        "functions": [
+          "_helios_gated_residual_kernel",
+          "_helios_gated_residual_backward_kernel",
+          "_helios_gated_residual_trainable_temb_backward_kernel",
+          "fused_gated_residual_chunk",
+          "fused_gated_residual_backward_chunk",
+          "fused_gated_residual_trainable_temb_backward_chunk",
+          "warmup"
+        ],
+        "gpu_validation": "NOT_RUN_ON_PLANNER_HEAD",
+        "id": "helios_residual",
+        "search_admission": "REQUIRES_WORKLOAD_ADAPTER_AND_CALIBRATION",
+        "source": "src/distillschedule/runtime/helios_residual_kernel.py",
+        "source_sha256": "59fc72203e879218df35152cfa00379527e3949f9dbd124866ec4670fe77b6d9",
+        "status": "SOURCE_INVENTORIED",
+        "supported_parameters": {}
+      },
+      {
+        "composition_validation": "REQUIRED",
+        "contract": "SCORE_POOL_ONLY_BF16_SOURCE_HASH_GATED",
+        "cost_calibration": "REQUIRED",
+        "families": [
+          "livewan"
+        ],
+        "functions": [
+          "runtime_receipt_errors",
+          "install_frozen_score_rmsnorm",
+          "validate_frozen_rms_inputs",
+          "build_frozen_score_rmsnorm"
+        ],
+        "gpu_validation": "NOT_RUN_ON_PLANNER_HEAD",
+        "id": "livewan_score_rmsnorm",
+        "search_admission": "REQUIRES_WORKLOAD_ADAPTER_AND_CALIBRATION",
+        "source": "src/distillschedule/runtime/livewan_score_rmsnorm.py",
+        "source_sha256": "fa0807917d760cb1b86a1e57b9cd8f31bbc9aa8401b0fc502d42d05753216c8d",
+        "status": "SOURCE_INVENTORIED",
+        "supported_parameters": {}
+      },
+      {
+        "composition_validation": "REQUIRED",
+        "contract": "GENERATOR_NOGRAD_ONLY_B1_WIDTH1536_FP32_SCALE_SHIFT",
+        "cost_calibration": "REQUIRED",
+        "families": [
+          "livewan"
+        ],
+        "functions": [
+          "build",
+          "canary_scope",
+          "install",
+          "model_runtime_scope",
+          "runtime_receipt_errors"
+        ],
+        "gpu_validation": "NOT_RUN_ON_PLANNER_HEAD",
+        "id": "livewan_generator_modulation",
+        "search_admission": "REQUIRES_WORKLOAD_ADAPTER_AND_CALIBRATION",
+        "source": "src/distillschedule/runtime/livewan_generator_modulation.py",
+        "source_sha256": "d9e735e58f2f8dbe2f28d37a38de2f8ee0fa901f33cc34d8b48712655f408934",
+        "status": "SOURCE_INVENTORIED",
+        "supported_parameters": {}
+      },
+      {
+        "composition_validation": "REQUIRED",
+        "contract": "SOURCE_GATED_GENERATOR_GATE",
+        "cost_calibration": "REQUIRED",
+        "families": [
+          "livewan"
+        ],
+        "functions": [
+          "build",
+          "canary_scope",
+          "install",
+          "model_runtime_scope",
+          "runtime_receipt_errors"
+        ],
+        "gpu_validation": "NOT_RUN_ON_PLANNER_HEAD",
+        "id": "livewan_generator_gate",
+        "search_admission": "REQUIRES_WORKLOAD_ADAPTER_AND_CALIBRATION",
+        "source": "src/distillschedule/runtime/livewan_generator_gate.py",
+        "source_sha256": "8811aee8efb8293daa48c55d6f1aa74f6dc26b0ab28489aa4047f7471f377af7",
+        "status": "SOURCE_INVENTORIED",
+        "supported_parameters": {}
+      },
+      {
+        "composition_validation": "REQUIRED",
+        "contract": "GRID_CONTRACT_FIXED_REPLAY_SCOPE_REQUIRED",
+        "cost_calibration": "REQUIRED",
+        "families": [
+          "h3"
+        ],
+        "functions": [
+          "_source_sha256",
+          "_patched_forward",
+          "install_fused_block_pointwise",
+          "validate_cycle"
+        ],
+        "gpu_validation": "NOT_RUN_ON_PLANNER_HEAD",
+        "id": "h3_block_pointwise",
+        "search_admission": "REQUIRES_WORKLOAD_ADAPTER_AND_CALIBRATION",
+        "source": "src/distillschedule/backends/training/minimax_h3/fused_block_pointwise.py",
+        "source_sha256": "8939965dccfc54120103ba860eba09761f9a2e14267b35e4134cd1814a8cc66d",
+        "status": "SOURCE_INVENTORIED",
+        "supported_parameters": {}
+      },
+      {
+        "composition_validation": "REQUIRED",
+        "contract": "SOURCE_GATED_JOINT_VIDEO_AUDIO_GRADIENTS",
+        "cost_calibration": "REQUIRED",
+        "families": [
+          "h3"
+        ],
+        "functions": [
+          "_source_sha256",
+          "_patched_forward",
+          "install_fused_swiglu",
+          "validate_cycle"
+        ],
+        "gpu_validation": "NOT_RUN_ON_PLANNER_HEAD",
+        "id": "h3_swiglu",
+        "search_admission": "REQUIRES_WORKLOAD_ADAPTER_AND_CALIBRATION",
+        "source": "src/distillschedule/backends/training/minimax_h3/fused_swiglu.py",
+        "source_sha256": "641d463dfa2940c18bb3708f445b57f651ebe41b62ba142dad8cf410af10cbf6",
+        "status": "SOURCE_INVENTORIED",
+        "supported_parameters": {}
+      },
+      {
+        "composition_validation": "REQUIRED",
+        "contract": "SOURCE_GATED_LAYOUT_DTYPE_ROTARY_CONVENTION",
+        "cost_calibration": "REQUIRED",
+        "families": [
+          "h3"
+        ],
+        "functions": [
+          "_source_sha256",
+          "install_fused_qk_rmsnorm_rotary",
+          "validate_cycle"
+        ],
+        "gpu_validation": "NOT_RUN_ON_PLANNER_HEAD",
+        "id": "h3_qk_rmsnorm_rotary",
+        "search_admission": "REQUIRES_WORKLOAD_ADAPTER_AND_CALIBRATION",
+        "source": "src/distillschedule/backends/training/minimax_h3/fused_qk_rmsnorm_rotary.py",
+        "source_sha256": "323916df22ffbddb297da9ab8bbb3c58c80accbe07102c7c597b4a1896e074a8",
+        "status": "SOURCE_INVENTORIED",
+        "supported_parameters": {}
+      },
+      {
+        "composition_validation": "REQUIRED",
+        "contract": "SOURCE_GATED_LORA_PRECISION_AND_ROUNDING",
+        "cost_calibration": "REQUIRED",
+        "families": [
+          "h3"
+        ],
+        "functions": [
+          "_lora_epilogue_kernel",
+          "_validate",
+          "fused_lora_b_residual",
+          "warmup_lora_epilogue"
+        ],
+        "gpu_validation": "NOT_RUN_ON_PLANNER_HEAD",
+        "id": "h3_lora_epilogue",
+        "search_admission": "REQUIRES_WORKLOAD_ADAPTER_AND_CALIBRATION",
+        "source": "src/distillschedule/backends/training/minimax_h3/triton_lora_epilogue.py",
+        "source_sha256": "6dc17c0cd0f324742dd03705424deb8d75e9667d91847528dc07ba4dae73a0e0",
+        "status": "SOURCE_INVENTORIED",
+        "supported_parameters": {}
+      }
+    ],
+    "gpu_execution": "NOT_RUN",
+    "new_kernel_generation": false,
+    "schema_version": "distillschedule.implementation_inventory.v1"
+  },
+  "native_adapter": {
+    "adapter": "helios_prepared_actions_v1",
+    "arbitrary_pool_lowering": false,
+    "cost_policy": "MISSING_NATIVE_COMPONENTS_UNCALIBRATED",
+    "gan_window_restriction": "R_ALL_OWNS_ACQUIRE_FIVE_B1_RELEASE; SPLIT_SCOPE_NOT_ADMITTED",
+    "gpu_execution": "NOT_RUN_BY_CAPABILITY_INVENTORY",
+    "historical_timings_used_as_costs": false,
+    "modulation_chunk_tokens": [
+      512,
+      2048
+    ],
+    "persistent_generator_unshard": [
+      false
+    ],
+    "placement": [
+      "world16-fsdp",
+      "node-hsdp"
+    ],
+    "rollout_window": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "sharing": "EXISTING_SCORE_TEACHER_ADAPTER_ALIAS_ONLY; NO_NEW_BACKBONE_ALIAS",
+    "workload": "helios14b_nogan_best"
+  },
+  "native_lowering": "GENERATED_COMPOSITION_AFTER_CALIBRATION",
+  "next_gate": "ADAPTER_PROBLEM_AND_MATCHED_OPERATION_CALIBRATION_REQUIRED",
+  "semantics": "source_equivalent_strict_correctness_pass",
+  "source_head": "a7dbfc264acde942fc0fbf90ba8e65399a4372b4",
+  "status": "PASS_CPU_CAPABILITY_INVENTORY",
+  "workload": "helios14b_nogan_best"
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/scripts/compare_native_metadata.py",
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/scripts/compare_native_metadata.py",
+    "sha256": "231b6d2333666524be943508b18d610654c0d8fb451e129cf3fc2c9c46ab5669",
+    "bytes": 3698
+  },
+  {
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/analysis-comparison-r1/summary.json",
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/reports/correspondence/summary.json",
+    "sha256": "8c8f41001e10076d89e6c0b97e8c0e2b90e26da0b4d721f03442540dcac0258d",
+    "bytes": 10399
+  },
+  {
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/analysis-comparison-r1/loss-observations.json",
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/reports/correspondence/loss-observations.json",
+    "sha256": "9b714e78950bfe005d9497577cfe3032256a48a8d84b486e32a5603848546c1e",
+    "bytes": 45466
+  },
+  {
+    "remote": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_performance_r1/analysis-comparison-r1/artifact_sha256.json",
+    "local": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/h3_performance_r1/reports/correspondence/artifact_sha256.json",
+    "sha256": "f07bf156477766869b916b32c13db5e06fc21e41636705ba5cffea5c6f667f7e",
+    "bytes": 185
+  }
+]

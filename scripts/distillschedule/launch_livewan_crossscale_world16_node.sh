@@ -39,6 +39,13 @@ SOURCE_ROOT="${LIVEWAN_WAN21_SOURCE:?set LIVEWAN_WAN21_SOURCE}"
 SOURCE_RECEIPT="${LIVEWAN_SOURCE_RECEIPT:?set LIVEWAN_SOURCE_RECEIPT}"
 PIPELINE_VARIANT="${LIVEWAN_PIPELINE_VARIANT:-b1}"
 PROFILE_TWO_CYCLES="${LIVEWAN_PROFILE_TWO_CYCLES:-0}"
+OPERATION_CALIBRATION="${DISTILLSCHEDULE_LIVEWAN_OPERATION_CALIBRATION:-0}"
+[[ "${OPERATION_CALIBRATION}" == 0 || "${OPERATION_CALIBRATION}" == 1 ]] || exit 2
+if [[ "${OPERATION_CALIBRATION}" == 1 ]]; then
+  [[ -n "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID:-}" ]] || exit 2
+  [[ "${RUN_KIND}" == two-cycle-timing ||
+     ( "${RUN_KIND}" == trajectory && "${LIVEWAN_TRAJECTORY_CYCLES:-0}" == 2 ) ]] || exit 2
+fi
 [[ "${PROFILE_TWO_CYCLES}" == 0 || "${PROFILE_TWO_CYCLES}" == 1 ]] || exit 2
 if [[ "${PROFILE_TWO_CYCLES}" == 1 ]]; then
   [[ "${RUN_KIND}" == profile && "${EXECUTION_MODE}" == pipeline && \
@@ -275,6 +282,7 @@ export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
   echo "host=$(hostname)"
   echo "head=${EXPECTED_HEAD}"
   echo "run_kind=${RUN_KIND}"
+  echo "operation_calibration=${OPERATION_CALIBRATION}"
   echo "execution_mode=${EXECUTION_MODE}"
   echo "pipeline_variant=${PIPELINE_VARIANT}"
   if [[ "${PROFILE_TWO_CYCLES}" == 1 ]]; then

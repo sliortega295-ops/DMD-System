@@ -1,0 +1,8 @@
+{
+  "status": "FAIL_ANALYZER_POSTRUN_RECEIPT_SCHEMA",
+  "run_id": "jointp_livewan_actions_20260907_r1-native-observation",
+  "training": "PASS",
+  "validator": "PASSED_BEFORE_CLEANUP_FILE_READ",
+  "error": "Traceback (most recent call last):\n  File \"/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/scripts/analyze_native_observation.py\", line 36, in <module>\n    tp=out/f'launcher/node_{n}/teardown_status.txt';flags=dict(l.split('=',1) for l in tp.read_text().splitlines() if '=' in l)\n  File \"/tmp/distillschedule-helios-official-torch210/lib/python3.10/pathlib.py\", line 1134, in read_text\n    with self.open(mode='r', encoding=encoding, errors=errors) as f:\n  File \"/tmp/distillschedule-helios-official-torch210/lib/python3.10/pathlib.py\", line 1119, in open\n    return self._accessor.open(self, mode, buffering, encoding, errors,\nFileNotFoundError: [Errno 2] No such file or directory: '/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native/jointp_livewan_actions_20260907_r1-native-observation/launcher/node_0/teardown_status.txt'\n",
+  "repair": "Trajectory does not emit timing-only teardown_status; verify native exit/cgroup and fresh readback. No GPU rerun."
+}

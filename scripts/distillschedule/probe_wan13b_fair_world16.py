@@ -79,6 +79,8 @@ def _build_model_fair(
     bootstrap: Any,
     device: torch.device,
 ) -> tuple[torch.nn.Module, dict[str, Any]]:
+    from distillschedule.search.wan_implementation import verify_execution_precision
+    planner_precision = verify_execution_precision(torch)
     seed = int(bootstrap.component(role)["seed"])
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(seed)
@@ -100,6 +102,8 @@ def _build_model_fair(
         model, placement=args.placement
     )
     metadata = dict(metadata)
+    if planner_precision is not None:
+        metadata["planner_execution_precision"] = planner_precision
     metadata["modulation_chunk_runtime"] = modulation_chunk
 
     # Use the same non-reentrant checkpoint wrapper on every arm. Disabling the

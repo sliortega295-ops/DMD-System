@@ -1,0 +1,18 @@
+[
+  {
+    "path": "reports/search/execution-plan-confirmation.json.gz",
+    "uncompressed_name": "execution-plan-confirmation.json",
+    "uncompressed_sha256": "7dff99f7609e2ecae35021976fa8d2f499f95d142b083b0977bc14d3a68ded24",
+    "uncompressed_bytes": 3558119,
+    "compressed_bytes": 83489,
+    "source_copy": "UNCHANGED_IN_LOCAL_EVIDENCE_AND_REMOTE_SEARCH_DIRECTORY"
+  },
+  {
+    "path": "reports/search-r2/execution-plan-confirmation.json.gz",
+    "uncompressed_name": "execution-plan-confirmation.json",
+    "uncompressed_sha256": "73a8791fe45c25f2bc4d8ae57f853227ccae369d9b2d384878e5d4f18d115b4b",
+    "uncompressed_bytes": 3558120,
+    "compressed_bytes": 83481,
+    "source_copy": "UNCHANGED_IN_LOCAL_EVIDENCE_AND_REMOTE_SEARCH_DIRECTORY"
+  }
+]

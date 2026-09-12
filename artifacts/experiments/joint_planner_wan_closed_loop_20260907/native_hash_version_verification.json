@@ -1,0 +1,78 @@
+{
+  "status": "PASS_REMOTE_NATIVE_HASH_AND_VERSIONS",
+  "trials": [
+    {
+      "candidate": "joint-wan1-fsdp-c512-e0",
+      "phase": "baseline",
+      "status": "PASS",
+      "ranks": 16,
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "hashed_native_evidence": 25
+    },
+    {
+      "candidate": "joint-wan1-resident-c2048-e1",
+      "phase": "incumbent",
+      "status": "PASS",
+      "ranks": 16,
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "hashed_native_evidence": 25
+    },
+    {
+      "candidate": "joint-wan1-resident-c2048-e0",
+      "phase": "candidate",
+      "status": "PASS",
+      "ranks": 16,
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "hashed_native_evidence": 25
+    },
+    {
+      "candidate": "joint-wan1-resident-c1024-e1",
+      "phase": "candidate",
+      "status": "PASS",
+      "ranks": 16,
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "hashed_native_evidence": 25
+    },
+    {
+      "candidate": "joint-wan1-resident-c1024-e0",
+      "phase": "candidate",
+      "status": "PASS",
+      "ranks": 16,
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "hashed_native_evidence": 25
+    },
+    {
+      "candidate": "joint-wan1-resident-c2048-e1",
+      "phase": "confirmation",
+      "status": "PASS",
+      "ranks": 16,
+      "final_versions": {
+        "critic": 20,
+        "ema": 20,
+        "generator": 4
+      },
+      "hashed_native_evidence": 25
+    }
+  ],
+  "rank_receipts": 96
+}

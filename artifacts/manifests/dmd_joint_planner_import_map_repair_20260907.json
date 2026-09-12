@@ -1,0 +1,87 @@
+{
+  "status": "SOURCE_IMPORT_IDENTITY_METADATA_FIXED",
+  "utc": "2026-09-07T14:00:56.769379+00:00",
+  "failed_ci_run": 34130312043,
+  "failed_publication_head": "4b511c49e3b8363d60443f839ebd66f8ea4f69cb",
+  "training_source_changed": false,
+  "source_review_and_runtime_report": "docs/experiments/DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md",
+  "files": [
+    {
+      "target": "src/distillschedule/backends/training/minimax_h3/integrated_entrypoint.py",
+      "base_integration_head": "9314c2b9e7826a0d4c7991b3204a5181a0cf9a35",
+      "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+      "previous_integrated_sha256": "1324db24773e213ecf5c84a7e3599222f139af395218998901e2e11ca2a7ab18",
+      "new_integrated_sha256": "f804134d24bce6520822ee063610ad55387e1527a52125a25147939bb8100b96",
+      "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change."
+    },
+    {
+      "target": "src/distillschedule/backends/training/minimax_h3/trainer_loop.py",
+      "base_integration_head": "9314c2b9e7826a0d4c7991b3204a5181a0cf9a35",
+      "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+      "previous_integrated_sha256": "ebe457b06a85cebd20199e4e57f8150b2e7f2e1d7801cff327ecaa6d57b27c03",
+      "new_integrated_sha256": "ad15a07aa563b278943c7c59f7cf5d6694f94387ab519cf495dbe7dea4d1d28b",
+      "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change."
+    },
+    {
+      "target": "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh",
+      "base_integration_head": "9314c2b9e7826a0d4c7991b3204a5181a0cf9a35",
+      "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+      "previous_integrated_sha256": "b04f099870aa8820e48558f4d2d4653c414f03a4c6f07f1801377cc3b94193dd",
+      "new_integrated_sha256": "0094534ad674d8c17c1a1ae748043dca6950c5b9263c7349a09cce17d3325007",
+      "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change."
+    },
+    {
+      "target": "src/distillschedule/runtime/livewan_crossscale_worker.py",
+      "base_integration_head": "9314c2b9e7826a0d4c7991b3204a5181a0cf9a35",
+      "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+      "previous_integrated_sha256": "25d41a29c403f0ead87097123e5d51e12939eb53c66566158d50387516b1691a",
+      "new_integrated_sha256": "dd7b5cbc51959b060a4d70f0e46181dd9b460a4c88a6adafe706371c000502c9",
+      "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change."
+    },
+    {
+      "target": "scripts/distillschedule/launch_minimax_h3_best_node.sh",
+      "base_integration_head": "9314c2b9e7826a0d4c7991b3204a5181a0cf9a35",
+      "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+      "previous_integrated_sha256": "ea9b6a9030c21aadcdeb8bad036feff8c495106a053aa6a7e05684298ea25557",
+      "new_integrated_sha256": "7f68fc93234bb39681a4ae97f3bfcb43118a4af109a831b49a8fd7e8c5929f1c",
+      "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change."
+    },
+    {
+      "target": "src/distillschedule/workloads/best_known/dispatch.py",
+      "base_integration_head": "9314c2b9e7826a0d4c7991b3204a5181a0cf9a35",
+      "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+      "previous_integrated_sha256": "fd4ca6ea4e8248ea83d022e73c267e188d1c203fd39a5405354928193f2ef59a",
+      "new_integrated_sha256": "e4a2ce254ecc0bd6a0d549c9a95f1097e25e265a26161082ddc4debd182132d5",
+      "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change."
+    },
+    {
+      "target": "src/distillschedule/workloads/best_known/evidence.py",
+      "base_integration_head": "9314c2b9e7826a0d4c7991b3204a5181a0cf9a35",
+      "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+      "previous_integrated_sha256": "bfd6e473269e70ef4f5b76649e7a9df33f8f43acda0df1e1db9eb1b7c1cb2f58",
+      "new_integrated_sha256": "33315d6479e46aec84c6ba9f2542e1a201fd6b8bf80575da2e2d29d8b204fae3",
+      "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change."
+    },
+    {
+      "target": "src/distillschedule/workloads/best_known/registry.py",
+      "base_integration_head": "9314c2b9e7826a0d4c7991b3204a5181a0cf9a35",
+      "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+      "previous_integrated_sha256": "b97c8c547aa4eb87b0165944b318642ec3d1be45ace5c6fb481b6aa49d2f7a02",
+      "new_integrated_sha256": "ce9b0fcc1b19c56f8487eb2120b23dd781c9ac61d84bbd8ab0dac01301077ca8",
+      "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change."
+    },
+    {
+      "target": "scripts/distillschedule/summarize_livewan_two_cycle_timing_world16.py",
+      "base_integration_head": "9314c2b9e7826a0d4c7991b3204a5181a0cf9a35",
+      "source_commit": "68b2ea6728d89c52aa5ee840ad6c4f40d84062b0",
+      "previous_integrated_sha256": "474506ca399abb13adc33672929a06f13d593a09d049b64996e0b7cab8959d39",
+      "new_integrated_sha256": "3ca1bd8498c4391fce0e3277c6bcf9d19903a9e46ad73ccf57bf51619a2b71b5",
+      "reason": "Default-off typed native LiveWan/H3 planner instrumentation and receipt routing. See DMD_JOINT_PLANNER_LIVEWAN_H3_20260907.md; historical runtime sources preserved, no training math or canonical profile change."
+    }
+  ],
+  "cpu_integration_status": "PASS_CPU_INTEGRATION",
+  "cpu_integration_command": "python scripts/distillschedule/check_best_known_integration.py",
+  "cpu_integration_log_sha256": "a139fb814696725eda3db88639b2b5d79457a76d52b5d3e5473b29a40b1c8fe2",
+  "source_import_map_sha256": "98e4fc0094ce5bb87d334a66ea4c6e4f801c1e16f954feaea25b1d76122ba0d1",
+  "code_review": "skipped (mechanical diff): only previously reviewed source hashes and audit metadata changed"
+}

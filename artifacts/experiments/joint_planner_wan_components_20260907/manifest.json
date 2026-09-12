@@ -1,0 +1,56 @@
+{
+  "claim_boundary": "COMPONENT_REUSE_AND_ONE_HELDOUT_PREDICTION_VALIDATION; NO_NEW_MATCHED_BASELINE_SPEEDUP; NO_STRICT_EQUIVALENCE; NO_GLOBAL_OPTIMUM",
+  "coverage": {
+    "actions_per_rank_per_calibration": 32,
+    "legal_compositions": 35,
+    "predicted_feasible_compositions": 10,
+    "rank_action_observations": 1024,
+    "rank_count": 16,
+    "rejected_contract_compositions": 25,
+    "uncalibrated_compositions": 25,
+    "unique_components": 24
+  },
+  "executed_source": "ceb2921985e5a855ff93d6c9d7e21e7528b6ef5a",
+  "heldout": {
+    "candidate_id": "joint-wan2-resident-c2048-e1-w2",
+    "cycle1": 27.615927894134074,
+    "cycle2": 24.368434417061508,
+    "final_versions": {
+      "critic": 20,
+      "ema": 20,
+      "generator": 4
+    },
+    "numerical_status": "REVIEW",
+    "predicted_cycle2": 24.513250866,
+    "relative_prediction_error": 0.005942788381887221
+  },
+  "local_evidence": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/component_costs_r1",
+  "new_runs": {
+    "anchor_native_timing_repeats": 0,
+    "component_calibration": 2,
+    "current_source_correctness": 3,
+    "legacy_matrix_repeats": 0,
+    "nsight": 0,
+    "old_window3_repeats": 0,
+    "unprofiled_heldout_two_cycle": 1
+  },
+  "publication_source": "SEE_GIT_COMMIT_CONTAINING_THIS_FILE_NOT_EXECUTED_SOURCE",
+  "remaining": [
+    "LiveWan independent pool/link action components and executable DAG",
+    "H3 operation-owned input/RNG and native action binding with explicit diagnostic admission",
+    "Helios No-GAN and GAN generated two-cycle adapters"
+  ],
+  "remote_analysis": {
+    "root": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/analysis_r1",
+    "search": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/component_costs_r1/analysis_r1/search.json"
+  },
+  "review": {
+    "agent": "heldout_feedback_review",
+    "full_ce_shipping_review": "NOT_RUN",
+    "scope": "New assembly and heldout scripts; minimum native lowering/runner chain",
+    "status": "COMPLETED_NO_CONCRETE_BUGS"
+  },
+  "run_prefix": "jointp_wan_components_20260907_r1",
+  "schema_version": "distillschedule.wan_component_feedback_evidence.v1",
+  "status": "PASS_MEASURED_COMPONENT_SEARCH_AND_HELDOUT_NATIVE"
+}

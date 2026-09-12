@@ -1,0 +1,58 @@
+{
+  "binding": {
+    "asset_fingerprint": "866a8cb24ab901aa790446baf38c9b5e4098b4978080e972a3fa894f659f5a8b",
+    "environment_fingerprint": "2b8db018620e800c65febda13d4200a7aedb119da8273c5765431693efb0c0bc",
+    "hardware_fingerprint": "ac432a4127e0887d11f4e3ecc90c3cc180a65ee02c91f6a2192c7b277c4531fc",
+    "precision_fingerprint": "42b579f79a6b8fda084594466158583f5e0b9ff829e326a60d86c77e6f9ff389",
+    "semantic_fingerprint": "a4c4f291be40f698ec1fe524b7f471d3e729fdd2673c513531188f7031e42189",
+    "source_head": "cc7e451bff7387640634a394f07047be8e0c089e"
+  },
+  "candidates": [
+    {
+      "candidate_id": "joint-helios1-gan-fsdp-c512-p0-w5",
+      "detail": "",
+      "predicted_cycle1_seconds": 131.60397356,
+      "predicted_cycle2_seconds": 126.626024695,
+      "status": "PREDICTED_FEASIBLE"
+    },
+    {
+      "candidate_id": "joint-helios1-gan-fsdp-c2048-p1-w5",
+      "detail": "",
+      "predicted_cycle1_seconds": 129.28176868,
+      "predicted_cycle2_seconds": 123.902110903,
+      "status": "PREDICTED_CAPACITY_FAIL"
+    },
+    {
+      "candidate_id": "joint-helios1-gan-fsdp-c512-p1-w5",
+      "detail": "UNCALIBRATED: 471f03f33751788157c817deebfa2eb52b66577a92769cf2fd0a12f27174a4a4",
+      "predicted_cycle1_seconds": 0.0,
+      "predicted_cycle2_seconds": 0.0,
+      "status": "UNCALIBRATED"
+    },
+    {
+      "candidate_id": "joint-helios1-gan-fsdp-c2048-p0-w5",
+      "detail": "UNCALIBRATED: 53e865e19ed377ed84d5300451f7f65c729ab7538a492b6920898a9854a9e100",
+      "predicted_cycle1_seconds": 0.0,
+      "predicted_cycle2_seconds": 0.0,
+      "status": "UNCALIBRATED"
+    }
+  ],
+  "component_costs": 22,
+  "cost_model_sha256": "4a4e3447e94ce77d99d81c12efd6cdc9d0a99dca0525d1b9077ff70fabae2423",
+  "feasible": 1,
+  "gpu": "NOT_RUN",
+  "historical_costs_used": false,
+  "native_validation_budget": 3,
+  "problem_sha256": "590b00d80e7ed53441e7282445eed908008ba26bde359232d0109ff61ad2f8b1",
+  "remote_output": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/helios_native_r1/model-search-cc7e451bff73/gan",
+  "seeds": [
+    "joint-helios1-gan-fsdp-c512-p0-w5",
+    "joint-helios1-gan-fsdp-c2048-p1-w5"
+  ],
+  "selected": "joint-helios1-gan-fsdp-c512-p0-w5",
+  "source_head": "cc7e451bff7387640634a394f07047be8e0c089e",
+  "space_size": 4,
+  "status": "PASS_MEASURED_CPU_SEARCH_NATIVE_VALIDATION_NOT_RUN",
+  "uncalibrated": 2,
+  "workload": "helios14b_gan_best"
+}

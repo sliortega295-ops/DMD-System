@@ -1,0 +1,198 @@
+{
+  "allowed_run_modes": [
+    "validate",
+    "correctness",
+    "timing"
+  ],
+  "contract": {
+    "actual_global_batch": 16,
+    "dtype": "bfloat16",
+    "final_versions": {
+      "critic": 15,
+      "ema": 15,
+      "generator": 3
+    },
+    "initial_versions": {
+      "critic": 10,
+      "ema": 10,
+      "generator": 2
+    },
+    "local_batch": 1,
+    "logical_steps": [
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "resolution": [
+      384,
+      640
+    ],
+    "score_packing": false,
+    "updates": {
+      "critic": 5,
+      "ema": 5,
+      "generator": 1
+    },
+    "variant": "no-gan",
+    "winner": "iteration380"
+  },
+  "display_name": "Helios14B No-GAN node-HSDP / local FA2 / selective replay",
+  "hardware": {
+    "gpu": "A100-40GB",
+    "gpus_per_node": 8,
+    "nodes": 2,
+    "world_size": 16
+  },
+  "historical": {
+    "formal_speedup_eligible": false,
+    "run_id": "iter380_helios14b_hsdp_localfa2_criticflashsave20_timing_20260825",
+    "sampling": "single_unprofiled_correctness_gated_trial",
+    "scope": "world-max Full5 G1/C5/EMA5",
+    "seconds": 94.461699722
+  },
+  "id": "helios14b_nogan_best",
+  "memory": {
+    "activation_boundary_offload": false,
+    "critic_residual": "cuda_out_of_place",
+    "ema_device": "cuda",
+    "generator_residual": "cuda_out_of_place",
+    "model_swap": false,
+    "optimizer_offload": false,
+    "parameter_offload": false,
+    "parameter_streaming": false
+  },
+  "model_family": "helios",
+  "profile_version": 1,
+  "required_assets": {
+    "flash_attn_kernel": {
+      "environment": "DISTILLSCHEDULE_FLASH_ATTN_KERNEL",
+      "fingerprint_required": true,
+      "kind": "directory"
+    },
+    "generator_model": {
+      "environment": "HELIOS_DISTILLED_ROOT",
+      "fingerprint_required": true,
+      "kind": "directory"
+    },
+    "generator_precast": {
+      "environment": "DISTILLSCHEDULE_PRECAST_GENERATOR_PATH",
+      "fingerprint_required": true,
+      "kind": "directory"
+    },
+    "hf_home": {
+      "environment": "HF_HOME",
+      "fingerprint_required": true,
+      "kind": "directory"
+    },
+    "logical_checkpoint": {
+      "environment": "DISTILLSCHEDULE_LOGICAL_STEP10",
+      "fingerprint_required": true,
+      "kind": "directory",
+      "logical_hash": "68eed293970be008764ee6acadb2aac6ce54de2ce1f55a17fca2246f0d04e4aa"
+    },
+    "negative_prompt": {
+      "environment": "DISTILLSCHEDULE_NEGATIVE_PROMPT_ASSET",
+      "fingerprint_required": true,
+      "kind": "directory"
+    },
+    "score_model": {
+      "environment": "HELIOS_BASE_ROOT",
+      "fingerprint_required": true,
+      "kind": "directory"
+    },
+    "score_precast": {
+      "environment": "DISTILLSCHEDULE_PRECAST_SCORE_PATH",
+      "fingerprint_required": true,
+      "kind": "directory"
+    },
+    "trace": {
+      "environment": "DISTILLSCHEDULE_TRACE_BUNDLE",
+      "fingerprint_required": true,
+      "kind": "directory",
+      "logical_hash": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3"
+    }
+  },
+  "runtime": {
+    "arguments": [
+      "{node_rank}",
+      "{run_id}",
+      "no-gan",
+      "{mode}",
+      "{head}",
+      "{master_addr}",
+      "{master_port}",
+      "node-hsdp",
+      "1",
+      "off"
+    ],
+    "environment": {
+      "DISTILLSCHEDULE_CRITIC_ONLY_STEP": "",
+      "DISTILLSCHEDULE_CRITIC_RESIDUAL_STORAGE": "cuda_out_of_place",
+      "DISTILLSCHEDULE_CUDA_ALLOCATOR_EXPANDABLE_SEGMENTS": "off",
+      "DISTILLSCHEDULE_ELIDE_CRITIC_SCALAR_LOGS": "off",
+      "DISTILLSCHEDULE_ELIDE_EXPLICIT_ROLLOUT_SYNC": "off",
+      "DISTILLSCHEDULE_ELIDE_OFFICIAL_GENERATOR_FREE_MEMORY": "off",
+      "DISTILLSCHEDULE_EMA_DEVICE": "cuda",
+      "DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
+      "DISTILLSCHEDULE_GENERATOR_RESIDUAL_STORAGE": "cuda_out_of_place",
+      "DISTILLSCHEDULE_HELIOS_ALL_ROLE_LORA_SCALE1_ADD": "on",
+      "DISTILLSCHEDULE_HELIOS_ATTENTION_BACKEND": "local-fa2",
+      "DISTILLSCHEDULE_HELIOS_EXACT_GRAD_RESIDUAL_FUSION": "on",
+      "DISTILLSCHEDULE_HELIOS_EXACT_HISTORY_CURRENT_FUSION": "off",
+      "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_BACKWARD": "off",
+      "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_EPILOGUE": "on",
+      "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_FUSED_BACKWARD": "off",
+      "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_LAYERNORM": "off",
+      "DISTILLSCHEDULE_HELIOS_EXACT_MODULATED_NORM_MATERIALIZATION": "on",
+      "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_CROSS_KV_CACHE": "off",
+      "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE": "off",
+      "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_PERSISTENT_UNSHARD": "off",
+      "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_PERSISTENT_UNSHARD_FLUSH_ALLOCATOR_CACHE": "on",
+      "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_RESIDUAL_FUSION": "on",
+      "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_STATIC_CONTEXT_CACHE": "off",
+      "DISTILLSCHEDULE_HELIOS_MODULATION_CHUNK_TOKENS": "512",
+      "DISTILLSCHEDULE_HELIOS_SELECTIVE_FLASH_CHECKPOINT_STRIDE": "2",
+      "DISTILLSCHEDULE_LOGICAL_STEP10_HASH": "68eed293970be008764ee6acadb2aac6ce54de2ce1f55a17fca2246f0d04e4aa",
+      "DISTILLSCHEDULE_OPERATION_SOURCE": "off",
+      "DISTILLSCHEDULE_OPERATION_SOURCE_MAX_EVENTS": "256",
+      "DISTILLSCHEDULE_OPERATION_SOURCE_RANK": "0",
+      "DISTILLSCHEDULE_OPERATION_SOURCE_TARGET_BYTES": "113049600",
+      "DISTILLSCHEDULE_OPTIMIZER_DISPATCH_WARMUP": "on",
+      "DISTILLSCHEDULE_PROFILE_DIAGNOSTICS": "off",
+      "DISTILLSCHEDULE_TRACE_BUNDLE_HASH": "654d49015921b278ab82e2fc84ea1896692da3fd38ce82fbc500cb1ebfec46d3",
+      "NCCL_ASYNC_ERROR_HANDLING": "1",
+      "OMP_NUM_THREADS": "8"
+    },
+    "launcher": "scripts/distillschedule/launch_static_fsdp2_p0_world16_node.sh",
+    "unset_environment": [
+      "LOCAL_KERNELS",
+      "PYTORCH_CUDA_ALLOC_CONF",
+      "PYTORCH_ALLOC_CONF",
+      "DISTILLSCHEDULE_NCU_BIN",
+      "NCCL_ALGO"
+    ]
+  },
+  "schema_version": "distillschedule.best_known.v1",
+  "semantics": "source_equivalent_strict_correctness_pass",
+  "source": {
+    "branch": "agent/helios14b-modnorm-materialization-20260825",
+    "performance_commit": "ad9e16b83800463c069e87b562f2d07a41bbeab3",
+    "publication_commit": "9c53d8e75b0981a3a9299e4f3bec2819ea105013",
+    "repository": "sliortega295-ops/DMD-System"
+  },
+  "topology": {
+    "placement": "node-hsdp",
+    "replicate": 2,
+    "rollout_batch_size": 1,
+    "shard": 8
+  },
+  "upstreams": [],
+  "validation": {
+    "gpu_claim": "HISTORICAL_PROVENANCE_ONLY",
+    "historical_source_validated": true,
+    "integration_ci_validated": false,
+    "server_revalidation": "NOT_RUN_ON_INTEGRATION_BRANCH"
+  }
+}

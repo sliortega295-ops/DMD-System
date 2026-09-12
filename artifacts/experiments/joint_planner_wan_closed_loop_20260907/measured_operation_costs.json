@@ -1,0 +1,1484 @@
+{
+  "binding": {
+    "asset_fingerprint": "825d0ff761b62e167fde9bf34aefae9b4e534598ff7f8462407472e1ea9b7ec7",
+    "environment_fingerprint": "c8bed61f3d53e75bd1cc202c75692afd4b92d3ab1ff179f32840e63e709f0c4f",
+    "hardware_fingerprint": "ac432a4127e0887d11f4e3ecc90c3cc180a65ee02c91f6a2192c7b277c4531fc",
+    "precision_fingerprint": "3de62c3adf7a22dd9c9d3cc748e7af60e7a7aa2c4433071dc19ebe452b812d90",
+    "semantic_fingerprint": "a4d411a2b5a53f1253b6fe63a6f95bdf0a59116abd018c31286aca881df4ad12",
+    "source_head": "4e3ffb59c21429f3e9e714f14006f5ae6afbd002"
+  },
+  "records": [
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "700dd18db375006a7a60e5730f0bd6ff46263b98f022bf5b5ec1271405734284",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-fsdp-c512-e0/cycle1.generator_update.json",
+        "source_receipt_sha256": "4946feb84d751d49c1958acebf524b0b9f0220249cc7e18e505b349c8873eab4",
+        "status": "PASS"
+      },
+      "key": "700dd18db375006a7a60e5730f0bd6ff46263b98f022bf5b5ec1271405734284",
+      "samples_ns": [
+        14773861818
+      ],
+      "workspace_bytes_per_rank": 4823505408
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "f2f17ff585efff958097b4a4e580718d4a6b366a2014de6e8adecce536b6b618",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-fsdp-c512-e0/cycle1.critic_rollouts.json",
+        "source_receipt_sha256": "799f853d08b435e7cb4dd3cd3f19f8ae9f796fa27f14f2d2907cbd87b2741162",
+        "status": "PASS"
+      },
+      "key": "f2f17ff585efff958097b4a4e580718d4a6b366a2014de6e8adecce536b6b618",
+      "samples_ns": [
+        11921495950
+      ],
+      "workspace_bytes_per_rank": 1785079296
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "2a6220b83715b24eaff8a806cbbf428c06b8b3b06dc129b340c0e5804aa968a4",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-fsdp-c512-e0/cycle1.critic0_update_ema.json",
+        "source_receipt_sha256": "b6034764d5b87b3b1a14385be028955be513e73f8455aceec89c03cc8fdf9856",
+        "status": "PASS"
+      },
+      "key": "2a6220b83715b24eaff8a806cbbf428c06b8b3b06dc129b340c0e5804aa968a4",
+      "samples_ns": [
+        5937008072
+      ],
+      "workspace_bytes_per_rank": 3623953408
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "4dee9f2361072d90c571e63a4bb67063511ac3ee88b965bec5fb3d1a2303a701",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-fsdp-c512-e0/cycle1.critic1_update_ema.json",
+        "source_receipt_sha256": "81740f7c283ab7f7bb00d0bcea236818f7d36b9f6a509c372d5d993c4bac274d",
+        "status": "PASS"
+      },
+      "key": "4dee9f2361072d90c571e63a4bb67063511ac3ee88b965bec5fb3d1a2303a701",
+      "samples_ns": [
+        3174662912
+      ],
+      "workspace_bytes_per_rank": 3619972608
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "6ea5055ad34e1e3b2b061140aa55c1ac59cfcf374d97cdafd57c6054f141dda3",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-fsdp-c512-e0/cycle1.critic2_update_ema.json",
+        "source_receipt_sha256": "b4bb1910941ae0d0734e0c712a3e84cd8d778aa2a479f5dd964de8ed4adc9d25",
+        "status": "PASS"
+      },
+      "key": "6ea5055ad34e1e3b2b061140aa55c1ac59cfcf374d97cdafd57c6054f141dda3",
+      "samples_ns": [
+        3163015334
+      ],
+      "workspace_bytes_per_rank": 3617015808
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "3de482e626627972f057c7667a9a3a5caf1c2f8da1ef8ca8dd8613bb85d0359b",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-fsdp-c512-e0/cycle1.critic3_update_ema.json",
+        "source_receipt_sha256": "8df4269452643437dcf4515566865973f9d49b492ea7b776342214002631f88a",
+        "status": "PASS"
+      },
+      "key": "3de482e626627972f057c7667a9a3a5caf1c2f8da1ef8ca8dd8613bb85d0359b",
+      "samples_ns": [
+        3180614115
+      ],
+      "workspace_bytes_per_rank": 3615009280
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "adcea8a4849a181e46fb2cdbdfc1fcc603279ea9a74553fbc4742275aa6796b3",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-fsdp-c512-e0/cycle1.critic4_update_ema.json",
+        "source_receipt_sha256": "34431e8736a6a1b8a45f3ba8a80e01e29ab5d109dc0e872ec1e887676142ea0c",
+        "status": "PASS"
+      },
+      "key": "adcea8a4849a181e46fb2cdbdfc1fcc603279ea9a74553fbc4742275aa6796b3",
+      "samples_ns": [
+        3485052484
+      ],
+      "workspace_bytes_per_rank": 3611044864
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "e2832049d35257fbcaa8daf770027fddf5df6d2f31118501b5f51b78769c23c8",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-fsdp-c512-e0/cycle2.generator_update.json",
+        "source_receipt_sha256": "95ba96434bd27f49a97a1ee29be19ad46c689bd377229aba85147d54108dd1a3",
+        "status": "PASS"
+      },
+      "key": "e2832049d35257fbcaa8daf770027fddf5df6d2f31118501b5f51b78769c23c8",
+      "samples_ns": [
+        8796280073
+      ],
+      "workspace_bytes_per_rank": 4817569280
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "1dc1733eeb25f534951d43548517e35f7527350554afbaf6bec1a044cf0d6a1c",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-fsdp-c512-e0/cycle2.critic_rollouts.json",
+        "source_receipt_sha256": "79ecce62f016c318c2f667ee31f642f92d6e57b5e99ab984c87b600ceecfe398",
+        "status": "PASS"
+      },
+      "key": "1dc1733eeb25f534951d43548517e35f7527350554afbaf6bec1a044cf0d6a1c",
+      "samples_ns": [
+        11804343647
+      ],
+      "workspace_bytes_per_rank": 1783509504
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "360246b4132db57387a6b38f75bd6f2822d132cf3366465b8ea3e3b03477e629",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-fsdp-c512-e0/cycle2.critic0_update_ema.json",
+        "source_receipt_sha256": "bfae2d49b329bc08b991e045150c08c1473cf7edf5646cf0d61a4f5fec1c6429",
+        "status": "PASS"
+      },
+      "key": "360246b4132db57387a6b38f75bd6f2822d132cf3366465b8ea3e3b03477e629",
+      "samples_ns": [
+        3180512680
+      ],
+      "workspace_bytes_per_rank": 3623931904
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "05117d33faa6e94c28e753fa35422657d128487690ee14d4971ff1e6baf66eea",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-fsdp-c512-e0/cycle2.critic1_update_ema.json",
+        "source_receipt_sha256": "e592051e920e898e28c4f9a23f9a33e90607478d4a13e40c1d4b6b2a3d8db524",
+        "status": "PASS"
+      },
+      "key": "05117d33faa6e94c28e753fa35422657d128487690ee14d4971ff1e6baf66eea",
+      "samples_ns": [
+        3171616092
+      ],
+      "workspace_bytes_per_rank": 3620884992
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "41e4fd335659fa944e99b4f89f072156fb08dacbf4e1cdae7f8844043e5a76dc",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-fsdp-c512-e0/cycle2.critic2_update_ema.json",
+        "source_receipt_sha256": "cbf1c68b0b8c32b78a0f5d9bfe7699ff7a3a6cec249f323a85161e61788b30d5",
+        "status": "PASS"
+      },
+      "key": "41e4fd335659fa944e99b4f89f072156fb08dacbf4e1cdae7f8844043e5a76dc",
+      "samples_ns": [
+        3151924617
+      ],
+      "workspace_bytes_per_rank": 3617960960
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "caa414540abf97854b17533fdafbe815138a835350c9f6fb082a610c598cbd7c",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-fsdp-c512-e0/cycle2.critic3_update_ema.json",
+        "source_receipt_sha256": "38da3dc45ed6d1c32bf2a9c7d29b5b5c33a5a750d2b6a2e2f4ea0011bc504da1",
+        "status": "PASS"
+      },
+      "key": "caa414540abf97854b17533fdafbe815138a835350c9f6fb082a610c598cbd7c",
+      "samples_ns": [
+        3149326145
+      ],
+      "workspace_bytes_per_rank": 3612972544
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "5f53adc86e4de33da8f927d6fcfc4c85874ae4e87b6b68d696700e1a2170f26c",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-fsdp-c512-e0/cycle2.critic4_update_ema.json",
+        "source_receipt_sha256": "835e920064b67ebfe1617cb49fee53b96527571a8e2b0d7b3912c29a3a980ad1",
+        "status": "PASS"
+      },
+      "key": "5f53adc86e4de33da8f927d6fcfc4c85874ae4e87b6b68d696700e1a2170f26c",
+      "samples_ns": [
+        3165288526
+      ],
+      "workspace_bytes_per_rank": 3610384384
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "34dc181d83b80b5bf78419dc35196dd4f5acf33c7c9b3fa533af6b9f03706c0f",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e0/cycle1.generator_update.json",
+        "source_receipt_sha256": "3e34fe4f7f3d3527a750ba690f4a4a48f2955e41999c33a7bcb3fc677f768bbe",
+        "status": "PASS"
+      },
+      "key": "34dc181d83b80b5bf78419dc35196dd4f5acf33c7c9b3fa533af6b9f03706c0f",
+      "samples_ns": [
+        10760973262
+      ],
+      "workspace_bytes_per_rank": 4433927680
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "534e10eca39002e32411b24a06d54f7273a2addc211a7bcaf4f27d3776474b57",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e0/cycle1.critic_rollouts.json",
+        "source_receipt_sha256": "57efd53cef047ab5910fd721a6d25069fd100001f6f0eabed5146fd1b62dc141",
+        "status": "PASS"
+      },
+      "key": "534e10eca39002e32411b24a06d54f7273a2addc211a7bcaf4f27d3776474b57",
+      "samples_ns": [
+        10414408165
+      ],
+      "workspace_bytes_per_rank": 1390604800
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "95dee0a99b52d1f97862f7a682811fe92926aee7d2b581d4a18e2dac8d42d40b",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e0/cycle1.critic0_update_ema.json",
+        "source_receipt_sha256": "406427b42e228b66a704617c69ed4a34c620e9c488a0e1d628cfdfb08cba26d7",
+        "status": "PASS"
+      },
+      "key": "95dee0a99b52d1f97862f7a682811fe92926aee7d2b581d4a18e2dac8d42d40b",
+      "samples_ns": [
+        2999015200
+      ],
+      "workspace_bytes_per_rank": 3220897792
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "340915e369df8654321f9bdd96b5ba3dc3587a498fbf9ddefa6e4c8e92014a6e",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e0/cycle1.critic1_update_ema.json",
+        "source_receipt_sha256": "2b071dc7cc88ff9b84a9a5b2e149dba1a5c10a07adc7aace9635168b6a3c057f",
+        "status": "PASS"
+      },
+      "key": "340915e369df8654321f9bdd96b5ba3dc3587a498fbf9ddefa6e4c8e92014a6e",
+      "samples_ns": [
+        2969164031
+      ],
+      "workspace_bytes_per_rank": 3217228288
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "487946c4653163782ee67f214217933cb8fa16bac808a8db0e9908d028ae1050",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e0/cycle1.critic2_update_ema.json",
+        "source_receipt_sha256": "6334504d643ce1677651ec224bf040e92a266e8c2cbad5688b862fa3da0261bb",
+        "status": "PASS"
+      },
+      "key": "487946c4653163782ee67f214217933cb8fa16bac808a8db0e9908d028ae1050",
+      "samples_ns": [
+        2968252532
+      ],
+      "workspace_bytes_per_rank": 3214771200
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "23fa72fefceb7f0f28c2b71fa067040323c8b5004545947fda38a857cf81f374",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e0/cycle1.critic3_update_ema.json",
+        "source_receipt_sha256": "ab1764c9dff47e21ef0027008cdc8457c081b7303349ce8c8c4d13242fdd3725",
+        "status": "PASS"
+      },
+      "key": "23fa72fefceb7f0f28c2b71fa067040323c8b5004545947fda38a857cf81f374",
+      "samples_ns": [
+        3004519984
+      ],
+      "workspace_bytes_per_rank": 3210864128
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "1934dfc85d560d6100cb7ec780f92d446430f52d3d7af8a3e4814e9aae21612b",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e0/cycle1.critic4_update_ema.json",
+        "source_receipt_sha256": "914341a7b006da1298f09e2d4fabce712169f76f1c4e7b57377c98d225c5245c",
+        "status": "PASS"
+      },
+      "key": "1934dfc85d560d6100cb7ec780f92d446430f52d3d7af8a3e4814e9aae21612b",
+      "samples_ns": [
+        2970678960
+      ],
+      "workspace_bytes_per_rank": 3208259584
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "7b8e884995f3dd7fc4f39cf6ce78cbe3d81486527356e5c98a730355aa8fedba",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e0/cycle2.generator_update.json",
+        "source_receipt_sha256": "946ad926874a68a0c5a2368c701a753b7e24912b143813c96d7c16b44bd71d6f",
+        "status": "PASS"
+      },
+      "key": "7b8e884995f3dd7fc4f39cf6ce78cbe3d81486527356e5c98a730355aa8fedba",
+      "samples_ns": [
+        7806266356
+      ],
+      "workspace_bytes_per_rank": 4457902592
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "f542a8eda921a35ef2a3fbf85a45cc97b88b8008e4b856bbf74f27bc33541549",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e0/cycle2.critic_rollouts.json",
+        "source_receipt_sha256": "f2beb304452aae2f7e53746f928d6dede9a52673aa05676560ee09d906954212",
+        "status": "PASS"
+      },
+      "key": "f542a8eda921a35ef2a3fbf85a45cc97b88b8008e4b856bbf74f27bc33541549",
+      "samples_ns": [
+        10421052561
+      ],
+      "workspace_bytes_per_rank": 1390607872
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "5eaa8c28566b337295099dad0cd654a4424cd6e7f21bb9ed73ce1b78977cc81e",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e0/cycle2.critic0_update_ema.json",
+        "source_receipt_sha256": "e39cf2c9a6da5f8e592b88de9b27dd26e38c1acbb2a27a0be89ab2768acdf83c",
+        "status": "PASS"
+      },
+      "key": "5eaa8c28566b337295099dad0cd654a4424cd6e7f21bb9ed73ce1b78977cc81e",
+      "samples_ns": [
+        3244361615
+      ],
+      "workspace_bytes_per_rank": 3220900864
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "3ea9de2ab2aee5fac4d6ab34049a189e5d12914ea9426ebca360a96dd3b3bf2a",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e0/cycle2.critic1_update_ema.json",
+        "source_receipt_sha256": "cfb96c35b191575ef2adb5fb6a3fc77a3c1f27f9c3fb629ca3ac48c641124c1c",
+        "status": "PASS"
+      },
+      "key": "3ea9de2ab2aee5fac4d6ab34049a189e5d12914ea9426ebca360a96dd3b3bf2a",
+      "samples_ns": [
+        2970395270
+      ],
+      "workspace_bytes_per_rank": 3217231360
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "db2f4e68c2a67571a27e2dc9535e74758b09edfe70d89f5fc49e6c404f68cfe0",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e0/cycle2.critic2_update_ema.json",
+        "source_receipt_sha256": "3b619b49b8406be3bce57388715cec9f4508e853361413d12590cbe87604bd03",
+        "status": "PASS"
+      },
+      "key": "db2f4e68c2a67571a27e2dc9535e74758b09edfe70d89f5fc49e6c404f68cfe0",
+      "samples_ns": [
+        2979396743
+      ],
+      "workspace_bytes_per_rank": 3214774272
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "10094090237b3482e4f62fc8475147bbe478b16f13a37f398ca6eeb7ab962257",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e0/cycle2.critic3_update_ema.json",
+        "source_receipt_sha256": "ffaa21e5fad7fcb29402bc85b9b102030efa38b0b1a6e2351f5ee2538772cdb7",
+        "status": "PASS"
+      },
+      "key": "10094090237b3482e4f62fc8475147bbe478b16f13a37f398ca6eeb7ab962257",
+      "samples_ns": [
+        2980050548
+      ],
+      "workspace_bytes_per_rank": 3210867200
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "9c79e35b324549ab645cc55d8c690484fdead7023512dc7c64a3b02411f8bb17",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e0/cycle2.critic4_update_ema.json",
+        "source_receipt_sha256": "d21ff1a14b6d9acc3de71d1c9164d4dcf0a7d440789a8eeb5f2e6f879f3a1092",
+        "status": "PASS"
+      },
+      "key": "9c79e35b324549ab645cc55d8c690484fdead7023512dc7c64a3b02411f8bb17",
+      "samples_ns": [
+        2970353291
+      ],
+      "workspace_bytes_per_rank": 3208262656
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "ecb7b2830cbfc51bb7b85f41d0e4e1e3f5503f8acd1e8af3a594fb03175af22c",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e1/cycle1.generator_update.json",
+        "source_receipt_sha256": "b0ed3e0a00dad28bb127ca59f3e41dd06a22f6a0a1e08a1e931c02e40714e345",
+        "status": "PASS"
+      },
+      "key": "ecb7b2830cbfc51bb7b85f41d0e4e1e3f5503f8acd1e8af3a594fb03175af22c",
+      "samples_ns": [
+        11078745306
+      ],
+      "workspace_bytes_per_rank": 4442904064
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "5f7b616ddece3ed662a524fe549976b586e1b0fe777efc13cabfee534dbe5d66",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e1/cycle1.critic_rollouts.json",
+        "source_receipt_sha256": "ed3be5d82acbbe3749d959953660d7fd9d07cc843534babb16fb60d464f5506d",
+        "status": "PASS"
+      },
+      "key": "5f7b616ddece3ed662a524fe549976b586e1b0fe777efc13cabfee534dbe5d66",
+      "samples_ns": [
+        10260207633
+      ],
+      "workspace_bytes_per_rank": 1194078720
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "5d2f2d4164e059fccc2d50f75850d736e90bf901636409ea9819163e52aabe85",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e1/cycle1.critic0_update_ema.json",
+        "source_receipt_sha256": "2a9d276b5aa0035e3981ea5e405a455c93b567ff1b5f3cbb3108bdf0e37213a6",
+        "status": "PASS"
+      },
+      "key": "5d2f2d4164e059fccc2d50f75850d736e90bf901636409ea9819163e52aabe85",
+      "samples_ns": [
+        3018845577
+      ],
+      "workspace_bytes_per_rank": 3222167552
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "dbd2c2c6ea28c3c895957db8613bcbce418243ed9b022ad6eb73ac43498ce9cb",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e1/cycle1.critic1_update_ema.json",
+        "source_receipt_sha256": "c896030e964b41b4e857f2c8e306c3c28516d4c19ad00e40071e8004d1fc0826",
+        "status": "PASS"
+      },
+      "key": "dbd2c2c6ea28c3c895957db8613bcbce418243ed9b022ad6eb73ac43498ce9cb",
+      "samples_ns": [
+        2958219535
+      ],
+      "workspace_bytes_per_rank": 3218268672
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "a4371547f28b346c0408cebce3a8858f6137ba093cd6f3f12040082959b78cd0",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e1/cycle1.critic2_update_ema.json",
+        "source_receipt_sha256": "865ce3e3eaf36710b56418710810c44403e5f59b83a354f5dce31f1c0cd483e9",
+        "status": "PASS"
+      },
+      "key": "a4371547f28b346c0408cebce3a8858f6137ba093cd6f3f12040082959b78cd0",
+      "samples_ns": [
+        2957970220
+      ],
+      "workspace_bytes_per_rank": 3219579904
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "9f8c33f43c646c5287538b391655a61d245628da60824f7f7ae78b074a0622fc",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e1/cycle1.critic3_update_ema.json",
+        "source_receipt_sha256": "d18d9c950c1ad60844a267cb9a9e22685c3c289fa5ed3f6f71532c15fdc10d5f",
+        "status": "PASS"
+      },
+      "key": "9f8c33f43c646c5287538b391655a61d245628da60824f7f7ae78b074a0622fc",
+      "samples_ns": [
+        2962657876
+      ],
+      "workspace_bytes_per_rank": 3214026240
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "f71bb28fc8dffd343935ee2348a9e2a813382ccb6335dad97599e5769b2cbb7f",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e1/cycle1.critic4_update_ema.json",
+        "source_receipt_sha256": "536b7a60198618c045db47e9d6b175aa1a717c2970c360b8ebe359e9889ee0ba",
+        "status": "PASS"
+      },
+      "key": "f71bb28fc8dffd343935ee2348a9e2a813382ccb6335dad97599e5769b2cbb7f",
+      "samples_ns": [
+        2968140908
+      ],
+      "workspace_bytes_per_rank": 3208136704
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "bf133373cad02257fc86550f7e931a8203d74e1c1ffcf15698b76b272f0df2be",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e1/cycle2.generator_update.json",
+        "source_receipt_sha256": "c50253def1e5358802b51dbf4b1983b1643664eb771b3d5b53873ddbf14084d7",
+        "status": "PASS"
+      },
+      "key": "bf133373cad02257fc86550f7e931a8203d74e1c1ffcf15698b76b272f0df2be",
+      "samples_ns": [
+        7566652259
+      ],
+      "workspace_bytes_per_rank": 4437107200
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "a5842412d331ff108641a41f0eb25a7f75405c280c1ad7b281c27a6c3f13a114",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e1/cycle2.critic_rollouts.json",
+        "source_receipt_sha256": "ca4357b3c2412356593dd809e51cf6bafe4b91ab0b282f36bd354911c30463e0",
+        "status": "PASS"
+      },
+      "key": "a5842412d331ff108641a41f0eb25a7f75405c280c1ad7b281c27a6c3f13a114",
+      "samples_ns": [
+        10247121481
+      ],
+      "workspace_bytes_per_rank": 1194081792
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "e79c83a36884bf423f601591281c3db1382c65a6e5784631e84bbf8600e59983",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e1/cycle2.critic0_update_ema.json",
+        "source_receipt_sha256": "64fdf4cd528ff969ef19ed3f6d8f8a64376a8f7b1292d4d6c0f508edd1522fbe",
+        "status": "PASS"
+      },
+      "key": "e79c83a36884bf423f601591281c3db1382c65a6e5784631e84bbf8600e59983",
+      "samples_ns": [
+        3239790700
+      ],
+      "workspace_bytes_per_rank": 3222170624
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "0db98246bdb7e6155faf2f446a63e1ac1a8f724b508ebf553ab4a0bba5ff471d",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e1/cycle2.critic1_update_ema.json",
+        "source_receipt_sha256": "dcac4c7b1ae469eb6018c2371a00390f306f432c55a2ff9f5604c93f498df089",
+        "status": "PASS"
+      },
+      "key": "0db98246bdb7e6155faf2f446a63e1ac1a8f724b508ebf553ab4a0bba5ff471d",
+      "samples_ns": [
+        2960625891
+      ],
+      "workspace_bytes_per_rank": 3218271744
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "2d728534e6960fb2d6c1e7782f3a03a794c8962a49dffef5a44a16fb8fb914fb",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e1/cycle2.critic2_update_ema.json",
+        "source_receipt_sha256": "a6fe1ac5c7edc5fb9dff8b4141a94736cfe597bd5b3795a583c3c6f41db7cfa2",
+        "status": "PASS"
+      },
+      "key": "2d728534e6960fb2d6c1e7782f3a03a794c8962a49dffef5a44a16fb8fb914fb",
+      "samples_ns": [
+        2962682195
+      ],
+      "workspace_bytes_per_rank": 3219582976
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "4cb92bbc3e275b73afe498b03f5acfbf9af3cb221fe653fb47aab689e7514d27",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e1/cycle2.critic3_update_ema.json",
+        "source_receipt_sha256": "48a65f036318ed6a6a10cf54fc782fffe9d1b95a5e3933ef783040e3957ac131",
+        "status": "PASS"
+      },
+      "key": "4cb92bbc3e275b73afe498b03f5acfbf9af3cb221fe653fb47aab689e7514d27",
+      "samples_ns": [
+        2961123789
+      ],
+      "workspace_bytes_per_rank": 3214029312
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "79ff2e9b2db7a5cf04b93a4b289512892c0f4638a19549e249c595def737baef",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c512-e1/cycle2.critic4_update_ema.json",
+        "source_receipt_sha256": "d1b6d20ed60a2898e20c2b6c52e1afcd5e9135b01eb74cf6654a6acca99a06a5",
+        "status": "PASS"
+      },
+      "key": "79ff2e9b2db7a5cf04b93a4b289512892c0f4638a19549e249c595def737baef",
+      "samples_ns": [
+        2960023484
+      ],
+      "workspace_bytes_per_rank": 3208139776
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "46cbeab15d14333ef11f79ccb38ad7df2680ed0b1331df96b27c11ba3133eabb",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e0/cycle1.generator_update.json",
+        "source_receipt_sha256": "0ee4913d814ee3e7e175ae6c4a81c6f07f7520f7566fb368d11c7c485afb583e",
+        "status": "PASS"
+      },
+      "key": "46cbeab15d14333ef11f79ccb38ad7df2680ed0b1331df96b27c11ba3133eabb",
+      "samples_ns": [
+        9006102102
+      ],
+      "workspace_bytes_per_rank": 4436024832
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "786e2a1bd9476b6a69ca957d4f55d3609da458a71f2b73412348ff2d3729ab99",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e0/cycle1.critic_rollouts.json",
+        "source_receipt_sha256": "c1b2abbd19714a6d47aacb9188f19ac77f10c228ef0c290e26ff2be83f62511d",
+        "status": "PASS"
+      },
+      "key": "786e2a1bd9476b6a69ca957d4f55d3609da458a71f2b73412348ff2d3729ab99",
+      "samples_ns": [
+        8744878241
+      ],
+      "workspace_bytes_per_rank": 1390604800
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "cf601e715106bbd1c4a564fc441612a27c64241f0ee66296c3b35b15ce2fd37c",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e0/cycle1.critic0_update_ema.json",
+        "source_receipt_sha256": "0aa276b21106aadbf666c4b5c1647b20c1b571ebc6000cc476b57c1d4a5b98e4",
+        "status": "PASS"
+      },
+      "key": "cf601e715106bbd1c4a564fc441612a27c64241f0ee66296c3b35b15ce2fd37c",
+      "samples_ns": [
+        2350430371
+      ],
+      "workspace_bytes_per_rank": 3220783104
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "73061df0a9183a5a19fa3fcfb5beae8130ef8281ec186edfe8455829661e5759",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e0/cycle1.critic1_update_ema.json",
+        "source_receipt_sha256": "e81459f4c049d961ef267afe03b49aabb1edecc202df8244099cef4904279794",
+        "status": "PASS"
+      },
+      "key": "73061df0a9183a5a19fa3fcfb5beae8130ef8281ec186edfe8455829661e5759",
+      "samples_ns": [
+        2315720321
+      ],
+      "workspace_bytes_per_rank": 3218801152
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "3ce0c2e054d37d70e1cd7045e9d7b469bbbc7295b203b9d1625b4773e2ff369b",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e0/cycle1.critic2_update_ema.json",
+        "source_receipt_sha256": "273fdb3b301d196e8b87c6b60c04582ce92af018cf3fd1f62d3929a9e95f0d87",
+        "status": "PASS"
+      },
+      "key": "3ce0c2e054d37d70e1cd7045e9d7b469bbbc7295b203b9d1625b4773e2ff369b",
+      "samples_ns": [
+        2315097729
+      ],
+      "workspace_bytes_per_rank": 3215574016
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "fec3123961f8896b7a5aa3d94bf7a442dbc0d24587d13a5fd758746ddb4eb3cc",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e0/cycle1.critic3_update_ema.json",
+        "source_receipt_sha256": "e5cb075729cf797d5e6eb9aa561794190d995ed29bd8a489524efb09caf323e4",
+        "status": "PASS"
+      },
+      "key": "fec3123961f8896b7a5aa3d94bf7a442dbc0d24587d13a5fd758746ddb4eb3cc",
+      "samples_ns": [
+        2315096144
+      ],
+      "workspace_bytes_per_rank": 3212576256
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "882836058954ee91754d3f19e8530302ae93253bcfd775c534f861d156a7bd32",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e0/cycle1.critic4_update_ema.json",
+        "source_receipt_sha256": "8a0033b2bf7599dd5e88ac4c47b319a4d859a8eddd986a26614d1655f3775f43",
+        "status": "PASS"
+      },
+      "key": "882836058954ee91754d3f19e8530302ae93253bcfd775c534f861d156a7bd32",
+      "samples_ns": [
+        2316222279
+      ],
+      "workspace_bytes_per_rank": 3207464960
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "0663c65719a5b20565013fcde6aa889785f12917410ca498f2e8cca55aeafd90",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e0/cycle2.generator_update.json",
+        "source_receipt_sha256": "5c5769eca204f5ededbd6701a4ba161cc43c8760018dc98a5b7581f3725b7610",
+        "status": "PASS"
+      },
+      "key": "0663c65719a5b20565013fcde6aa889785f12917410ca498f2e8cca55aeafd90",
+      "samples_ns": [
+        5668371259
+      ],
+      "workspace_bytes_per_rank": 4427092480
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "dd930276ae495b845a5ec6be9bec42b3b3db9fa65e33d4767588772625ea7132",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e0/cycle2.critic_rollouts.json",
+        "source_receipt_sha256": "eab5cbef90f72503a87d7155205bfb8029d2d595bbda4f2ecbd182216b06cbef",
+        "status": "PASS"
+      },
+      "key": "dd930276ae495b845a5ec6be9bec42b3b3db9fa65e33d4767588772625ea7132",
+      "samples_ns": [
+        8735376247
+      ],
+      "workspace_bytes_per_rank": 1390607872
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "e1abed06e01172eb11a97b73fc9397df28967b9b60808e44cb00ae1c7df0a396",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e0/cycle2.critic0_update_ema.json",
+        "source_receipt_sha256": "4c6f5af192134e1812ea7b4cf4ecb1380c795c346e3b4c6b66cbdc2b1b1d0073",
+        "status": "PASS"
+      },
+      "key": "e1abed06e01172eb11a97b73fc9397df28967b9b60808e44cb00ae1c7df0a396",
+      "samples_ns": [
+        2645203556
+      ],
+      "workspace_bytes_per_rank": 3220786176
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "332e48b7ca977c681afa625ef5ef24f121dad5dc8f1a14ed89d8786a870dbaa5",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e0/cycle2.critic1_update_ema.json",
+        "source_receipt_sha256": "c7ea74d3bebc08f0f0c99ac6921df9b60fdfc6976c903f4a13455cf64d4f421f",
+        "status": "PASS"
+      },
+      "key": "332e48b7ca977c681afa625ef5ef24f121dad5dc8f1a14ed89d8786a870dbaa5",
+      "samples_ns": [
+        2315411768
+      ],
+      "workspace_bytes_per_rank": 3218804224
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "0faf4c2718d88619edb2dbe350fc09e035c3dcebb567789fda1814a7ba6a2b66",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e0/cycle2.critic2_update_ema.json",
+        "source_receipt_sha256": "6714c175a1a3d3dd66f951ccce936a4682399ba1cb83cb55928391deb33b0c21",
+        "status": "PASS"
+      },
+      "key": "0faf4c2718d88619edb2dbe350fc09e035c3dcebb567789fda1814a7ba6a2b66",
+      "samples_ns": [
+        2314698910
+      ],
+      "workspace_bytes_per_rank": 3215577088
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "25f5c35ba93c9fe6f1f8c31b43cd00d1d23f259b61c83524c5f4ffb44f1c6455",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e0/cycle2.critic3_update_ema.json",
+        "source_receipt_sha256": "6d1b2024284b834d66d51b3ad0f706b15437ca0c23d0f1b7cc59c50f59e5bb5c",
+        "status": "PASS"
+      },
+      "key": "25f5c35ba93c9fe6f1f8c31b43cd00d1d23f259b61c83524c5f4ffb44f1c6455",
+      "samples_ns": [
+        2314561946
+      ],
+      "workspace_bytes_per_rank": 3212579328
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "25d590407f43d3a4aa0ce6ba3f4655c22f42bc13c7f2d5db9e736e660c2f4cf1",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e0/cycle2.critic4_update_ema.json",
+        "source_receipt_sha256": "0bd9a862ad78ccb677b9cd5d3873efb8886d5273f2af3a9fcaa513142a6043ea",
+        "status": "PASS"
+      },
+      "key": "25d590407f43d3a4aa0ce6ba3f4655c22f42bc13c7f2d5db9e736e660c2f4cf1",
+      "samples_ns": [
+        2316780738
+      ],
+      "workspace_bytes_per_rank": 3207468032
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "9f4c5b6fd5349d74722e63490c8b68c5c391060720248d6513f3e7ddf6282faa",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e1/cycle1.generator_update.json",
+        "source_receipt_sha256": "fc2ad69b250acbab8eeca57fe94f776979664baede7d518854203c21d2fe6b03",
+        "status": "PASS"
+      },
+      "key": "9f4c5b6fd5349d74722e63490c8b68c5c391060720248d6513f3e7ddf6282faa",
+      "samples_ns": [
+        9188944859
+      ],
+      "workspace_bytes_per_rank": 4442904064
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "2afc910183b9fae2a9c3a5eadfc545d2ab547ad979042853a372c80494165c26",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e1/cycle1.critic_rollouts.json",
+        "source_receipt_sha256": "7e2117efce17e5fa63db34564ab432aea33400c691454b599af1f422cd3ca582",
+        "status": "PASS"
+      },
+      "key": "2afc910183b9fae2a9c3a5eadfc545d2ab547ad979042853a372c80494165c26",
+      "samples_ns": [
+        8097875093
+      ],
+      "workspace_bytes_per_rank": 1194078720
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "ec61538ecd1829e6e37080a0203a527c73f48110037969aaba78cd9625099f00",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e1/cycle1.critic0_update_ema.json",
+        "source_receipt_sha256": "dc56edc39e255ea90f06d8eaa8a2067dcc9a526894c2e9d41a453a4540d978f4",
+        "status": "PASS"
+      },
+      "key": "ec61538ecd1829e6e37080a0203a527c73f48110037969aaba78cd9625099f00",
+      "samples_ns": [
+        2346753032
+      ],
+      "workspace_bytes_per_rank": 3222167552
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "32ce4a706edf413e43c4f932baffb2d6cbcbc8cfc983a1ddb5bb850f03ca7038",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e1/cycle1.critic1_update_ema.json",
+        "source_receipt_sha256": "5d26f105db799601e77de2d77b271e5a2b2605b50ea21f2de40a9283582962b1",
+        "status": "PASS"
+      },
+      "key": "32ce4a706edf413e43c4f932baffb2d6cbcbc8cfc983a1ddb5bb850f03ca7038",
+      "samples_ns": [
+        2315580441
+      ],
+      "workspace_bytes_per_rank": 3218268672
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "4dae15225905dd18038cb0a748d5b1cf9b73414229dd05afee6b4b040d3a361e",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e1/cycle1.critic2_update_ema.json",
+        "source_receipt_sha256": "484165efd76e61992a16a1d9fa1161ea419ef3ba9b0034620e5e09a7b38dece2",
+        "status": "PASS"
+      },
+      "key": "4dae15225905dd18038cb0a748d5b1cf9b73414229dd05afee6b4b040d3a361e",
+      "samples_ns": [
+        2319959696
+      ],
+      "workspace_bytes_per_rank": 3219579904
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "685b90aaf3efd62df9830998200600a36d7d2bdea868c4280dd50c099a668692",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e1/cycle1.critic3_update_ema.json",
+        "source_receipt_sha256": "0332ad878707f3791b277685a48a8867f94b2957119b96b98d4b7a9f6ddd5396",
+        "status": "PASS"
+      },
+      "key": "685b90aaf3efd62df9830998200600a36d7d2bdea868c4280dd50c099a668692",
+      "samples_ns": [
+        2320170021
+      ],
+      "workspace_bytes_per_rank": 3214026240
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "d3371eacdbb49d8cfd98642162488da0c4ffe759bd0911c7e4d6174613714fe7",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e1/cycle1.critic4_update_ema.json",
+        "source_receipt_sha256": "2563aaf9382cb8f39f3b524b734af1e271a695f664d4f781c0edd7bbf00a10e6",
+        "status": "PASS"
+      },
+      "key": "d3371eacdbb49d8cfd98642162488da0c4ffe759bd0911c7e4d6174613714fe7",
+      "samples_ns": [
+        2319388671
+      ],
+      "workspace_bytes_per_rank": 3208136704
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "6a828c421dff4a0bf43d2caaa808b96203038efefce6fb26315313f3df654636",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e1/cycle2.generator_update.json",
+        "source_receipt_sha256": "5a8df132e484537dc570498f7bfe5ba593c846028f88137bf20b552fc1775c67",
+        "status": "PASS"
+      },
+      "key": "6a828c421dff4a0bf43d2caaa808b96203038efefce6fb26315313f3df654636",
+      "samples_ns": [
+        5856459567
+      ],
+      "workspace_bytes_per_rank": 4437107200
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "d5bab931edc919ecf5ac89957ff5e30080ec82f3147d7700e3d0b8843d7e4942",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e1/cycle2.critic_rollouts.json",
+        "source_receipt_sha256": "8cb1f0abcc75a8e4bca8eb353194a580e2f8731c46a284971fc74c1cd84408e8",
+        "status": "PASS"
+      },
+      "key": "d5bab931edc919ecf5ac89957ff5e30080ec82f3147d7700e3d0b8843d7e4942",
+      "samples_ns": [
+        8083177187
+      ],
+      "workspace_bytes_per_rank": 1194081792
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "3a5c5929fbd3e92864bf5ff7a72fb7027b156f3d78f8f7a60e332620e442e7e8",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e1/cycle2.critic0_update_ema.json",
+        "source_receipt_sha256": "00ab40ca11b15597e06793ec5432d059452df984f855984fa017a1a8d3e3ac65",
+        "status": "PASS"
+      },
+      "key": "3a5c5929fbd3e92864bf5ff7a72fb7027b156f3d78f8f7a60e332620e442e7e8",
+      "samples_ns": [
+        2624151678
+      ],
+      "workspace_bytes_per_rank": 3222170624
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "e93020bb40e090231f2c70935221dc176ca37e5ebf10e4fcaf662a5c4dac4d83",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e1/cycle2.critic1_update_ema.json",
+        "source_receipt_sha256": "b3331999fa8acdafa48c8172085089762014b1c34f20b84f4f749d27ddb9c35a",
+        "status": "PASS"
+      },
+      "key": "e93020bb40e090231f2c70935221dc176ca37e5ebf10e4fcaf662a5c4dac4d83",
+      "samples_ns": [
+        2317475065
+      ],
+      "workspace_bytes_per_rank": 3218271744
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "f3570df34e92bc8da511ffc51d8f4515ba4c502b34a0f49f00e558b589420f45",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e1/cycle2.critic2_update_ema.json",
+        "source_receipt_sha256": "045bb63529013107419a915411e212c4b6345249842e13463c4d6028c2ed9929",
+        "status": "PASS"
+      },
+      "key": "f3570df34e92bc8da511ffc51d8f4515ba4c502b34a0f49f00e558b589420f45",
+      "samples_ns": [
+        2319782270
+      ],
+      "workspace_bytes_per_rank": 3219582976
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "319e06b4e99cdb4a4efea29bfd7be0b2664dc267a90f5e6ccb92022451d463e9",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e1/cycle2.critic3_update_ema.json",
+        "source_receipt_sha256": "c85494cd5c9f64556fb0255034478cf10c0aa30ce72aa839968d4656efb5d474",
+        "status": "PASS"
+      },
+      "key": "319e06b4e99cdb4a4efea29bfd7be0b2664dc267a90f5e6ccb92022451d463e9",
+      "samples_ns": [
+        2323729805
+      ],
+      "workspace_bytes_per_rank": 3214029312
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "d84479e791d2809ba3a5e6cc99645d239ac5753c3a17b234bea581f9d43c5d4b",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c1024-e1/cycle2.critic4_update_ema.json",
+        "source_receipt_sha256": "c3d7a980be459c0fd5fd6b87e8e669fcaa8ae5d372f589d7fccd3e3369fd930a",
+        "status": "PASS"
+      },
+      "key": "d84479e791d2809ba3a5e6cc99645d239ac5753c3a17b234bea581f9d43c5d4b",
+      "samples_ns": [
+        2320803694
+      ],
+      "workspace_bytes_per_rank": 3208139776
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "330d010cf4d3121bc9b58f2d551a80417b591a094f6819c6b31f219c09e3681a",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e0/cycle1.generator_update.json",
+        "source_receipt_sha256": "0c4f118f209087e139c8b6167e8d1c7d5fcf56440c3eec8b8bfae9dac90a0875",
+        "status": "PASS"
+      },
+      "key": "330d010cf4d3121bc9b58f2d551a80417b591a094f6819c6b31f219c09e3681a",
+      "samples_ns": [
+        8549093643
+      ],
+      "workspace_bytes_per_rank": 4429104640
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "96cf553d4bbeb13ad1ec3a603517324d15b6c776890481dfb4479532daa7ef5b",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e0/cycle1.critic_rollouts.json",
+        "source_receipt_sha256": "c46686e5c0e26d48109fb54082acca3e1296d146c384c51d31db716dd9bbb615",
+        "status": "PASS"
+      },
+      "key": "96cf553d4bbeb13ad1ec3a603517324d15b6c776890481dfb4479532daa7ef5b",
+      "samples_ns": [
+        8423751665
+      ],
+      "workspace_bytes_per_rank": 1393435136
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "bd322ae5398a111c510d4b940f38c9578941a651ec5dbcdf881f293bb03cd586",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e0/cycle1.critic0_update_ema.json",
+        "source_receipt_sha256": "5b3b00a34d8690fc64a7fe4ca29a1d2c4b8c7a97454b1532e3081e96193205fb",
+        "status": "PASS"
+      },
+      "key": "bd322ae5398a111c510d4b940f38c9578941a651ec5dbcdf881f293bb03cd586",
+      "samples_ns": [
+        2272874863
+      ],
+      "workspace_bytes_per_rank": 3223187456
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "95fed575336c12d3c07b989dc1a25781031cd80dc67678019cb92494982a3f8d",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e0/cycle1.critic1_update_ema.json",
+        "source_receipt_sha256": "361da40baddc6572adb9e0a276cebe20081d455d94ca537b5c6bdec55b465d01",
+        "status": "PASS"
+      },
+      "key": "95fed575336c12d3c07b989dc1a25781031cd80dc67678019cb92494982a3f8d",
+      "samples_ns": [
+        2258533611
+      ],
+      "workspace_bytes_per_rank": 3220042240
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "c631341c4e007cdcb32e7919dc336f7f07077bc7fd48c1426c9a4efb911f63b0",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e0/cycle1.critic2_update_ema.json",
+        "source_receipt_sha256": "f327297517e74c62d6269e96e526ff2cfd6de74fe23808d4b45bd438690623e9",
+        "status": "PASS"
+      },
+      "key": "c631341c4e007cdcb32e7919dc336f7f07077bc7fd48c1426c9a4efb911f63b0",
+      "samples_ns": [
+        2258444255
+      ],
+      "workspace_bytes_per_rank": 3217683456
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "ec3c5fac15cf129b5019fedc9d6cb27bca2f5595512e2012fb0e59ebf7900bb9",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e0/cycle1.critic3_update_ema.json",
+        "source_receipt_sha256": "3b163965fab3f75817a5620c04b9c04fce9ee93a6a0b70b5d934e69cd7288c5a",
+        "status": "PASS"
+      },
+      "key": "ec3c5fac15cf129b5019fedc9d6cb27bca2f5595512e2012fb0e59ebf7900bb9",
+      "samples_ns": [
+        2258805201
+      ],
+      "workspace_bytes_per_rank": 3213751808
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "c0f3a0257a2c585f2564d4bb0f5b1bb15b3373c5ea514d02c0b28af16d78f87e",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e0/cycle1.critic4_update_ema.json",
+        "source_receipt_sha256": "2fdcb0c792e79ed99669c5e03582068c2280ae40facd00d0d5a72c4c1654b693",
+        "status": "PASS"
+      },
+      "key": "c0f3a0257a2c585f2564d4bb0f5b1bb15b3373c5ea514d02c0b28af16d78f87e",
+      "samples_ns": [
+        2257917306
+      ],
+      "workspace_bytes_per_rank": 3209558016
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "e38c1ea24a3cd8307034d7a6268f1e58fa672eed484ddd2a9cea47ec2854ea38",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e0/cycle2.generator_update.json",
+        "source_receipt_sha256": "6f3e2cb2a8e575e43b8b5c355a13b458bc719593da71bb75fb444aea740ac302",
+        "status": "PASS"
+      },
+      "key": "e38c1ea24a3cd8307034d7a6268f1e58fa672eed484ddd2a9cea47ec2854ea38",
+      "samples_ns": [
+        5240490377
+      ],
+      "workspace_bytes_per_rank": 4438569472
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "6b20c7a15375093b2567ca9bac68c8afc27dec0bd65a4289b9c8c4340b860a5a",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e0/cycle2.critic_rollouts.json",
+        "source_receipt_sha256": "b11ce48290cb2aabbb57babfca8cca980f2f4497e56e15753e741b0a4b1aba39",
+        "status": "PASS"
+      },
+      "key": "6b20c7a15375093b2567ca9bac68c8afc27dec0bd65a4289b9c8c4340b860a5a",
+      "samples_ns": [
+        8412485512
+      ],
+      "workspace_bytes_per_rank": 1393438208
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "41488db3046d1071a81197e93abf803fa7e36e548bcde0df4f9438190ec23d36",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e0/cycle2.critic0_update_ema.json",
+        "source_receipt_sha256": "f09656050d5255c68163e20155a8ba94bc0165577a1bf861320d72dcba0b7cdc",
+        "status": "PASS"
+      },
+      "key": "41488db3046d1071a81197e93abf803fa7e36e548bcde0df4f9438190ec23d36",
+      "samples_ns": [
+        2579029021
+      ],
+      "workspace_bytes_per_rank": 3223190528
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "f6752e40441a00f06c16ad5372945739dd4fb6576a4a7b3c66b1f6f4c4ad396d",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e0/cycle2.critic1_update_ema.json",
+        "source_receipt_sha256": "09c6a2fafae2fb5df3b5ac13a8a47b125e60565cf4218b0dcaabdb6186f6a67e",
+        "status": "PASS"
+      },
+      "key": "f6752e40441a00f06c16ad5372945739dd4fb6576a4a7b3c66b1f6f4c4ad396d",
+      "samples_ns": [
+        2259267302
+      ],
+      "workspace_bytes_per_rank": 3220045312
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "ed6070b3520e1595da0d4f73238cc4d91241347225dfa7ef55b834357b0bdc3c",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e0/cycle2.critic2_update_ema.json",
+        "source_receipt_sha256": "97076a07d116531a4df50942eec6204cb66d26325dc588f67f4e533b8376e0b6",
+        "status": "PASS"
+      },
+      "key": "ed6070b3520e1595da0d4f73238cc4d91241347225dfa7ef55b834357b0bdc3c",
+      "samples_ns": [
+        2256970016
+      ],
+      "workspace_bytes_per_rank": 3217686528
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "81a21eccf87ae563d080511b319f4788003fb56ab50da947bbd6cf2dc3cf78e2",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e0/cycle2.critic3_update_ema.json",
+        "source_receipt_sha256": "a8d205818c637d7e85e6f7d296f9540cb1f204522db705f66792868d39b8829a",
+        "status": "PASS"
+      },
+      "key": "81a21eccf87ae563d080511b319f4788003fb56ab50da947bbd6cf2dc3cf78e2",
+      "samples_ns": [
+        2258556262
+      ],
+      "workspace_bytes_per_rank": 3213754880
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "26329592484d6443e5e929ac6006469608cf1d8ea97a34ab5c0b43fe90845a7e",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e0/cycle2.critic4_update_ema.json",
+        "source_receipt_sha256": "73659da2616d7511355a9f148b4347fdb6b34346bbe86ef9bda84f4de28e1836",
+        "status": "PASS"
+      },
+      "key": "26329592484d6443e5e929ac6006469608cf1d8ea97a34ab5c0b43fe90845a7e",
+      "samples_ns": [
+        2258427105
+      ],
+      "workspace_bytes_per_rank": 3209561088
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "4999ae6c2ecf27c497c991f79689a5521bcdfe3f7cbed7e3500cdb88e352af91",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e1/cycle1.generator_update.json",
+        "source_receipt_sha256": "bfb72b64ab6201f3a8f005a0e1e0d702798f7a3558dbde4802a216394995798d",
+        "status": "PASS"
+      },
+      "key": "4999ae6c2ecf27c497c991f79689a5521bcdfe3f7cbed7e3500cdb88e352af91",
+      "samples_ns": [
+        8832773862
+      ],
+      "workspace_bytes_per_rank": 4436690432
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "5434978c810a96f7cc4f624eab61a5885e86653f6c134d213862707f4adc6fb1",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e1/cycle1.critic_rollouts.json",
+        "source_receipt_sha256": "1cf162c9549ccfbc9e7bd958f88c48fa0b1a1da5fcec71081039b0a558c924af",
+        "status": "PASS"
+      },
+      "key": "5434978c810a96f7cc4f624eab61a5885e86653f6c134d213862707f4adc6fb1",
+      "samples_ns": [
+        7568373071
+      ],
+      "workspace_bytes_per_rank": 1195041280
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "eaa2a9ee503420a612a1b628b99828b4b295132b350d813c4debe6a7164c89b0",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e1/cycle1.critic0_update_ema.json",
+        "source_receipt_sha256": "ac7c5ab6e55a9570d6de4156977d8358cfddfb42997ecd57764fecc4a850eb16",
+        "status": "PASS"
+      },
+      "key": "eaa2a9ee503420a612a1b628b99828b4b295132b350d813c4debe6a7164c89b0",
+      "samples_ns": [
+        2280368880
+      ],
+      "workspace_bytes_per_rank": 3223461888
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "e837a3c28758e3ea99c5e7ceff845753e6696fbf8ac7b5531de12f02eb99b907",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e1/cycle1.critic1_update_ema.json",
+        "source_receipt_sha256": "146daf141b0c8dbd443857f9481663fc24212d784aa09e0453b9970e3c7dd5a7",
+        "status": "PASS"
+      },
+      "key": "e837a3c28758e3ea99c5e7ceff845753e6696fbf8ac7b5531de12f02eb99b907",
+      "samples_ns": [
+        2259580739
+      ],
+      "workspace_bytes_per_rank": 3220529664
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "114c48211fa0aa47f145b5a46528197e70e8151a367e2cf7fb746e2b64ff591d",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e1/cycle1.critic2_update_ema.json",
+        "source_receipt_sha256": "4a0eb6e81c01a081f3bad97b73600a6c1e84ed15962bc3cff61b7a482a44d6fc",
+        "status": "PASS"
+      },
+      "key": "114c48211fa0aa47f145b5a46528197e70e8151a367e2cf7fb746e2b64ff591d",
+      "samples_ns": [
+        2260337878
+      ],
+      "workspace_bytes_per_rank": 3215959040
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "d5a007272a42a073055d87a1a0e79d6aeec49e354ce87617d26b5f93bab2e9c4",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e1/cycle1.critic3_update_ema.json",
+        "source_receipt_sha256": "ae88baa2bd9752d4701b59cb9be4b649b893dc06a7b6e1196d1958036987dce4",
+        "status": "PASS"
+      },
+      "key": "d5a007272a42a073055d87a1a0e79d6aeec49e354ce87617d26b5f93bab2e9c4",
+      "samples_ns": [
+        2258056399
+      ],
+      "workspace_bytes_per_rank": 3213329920
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "dd783d82dfeb637570f0464e46f847d1bc6e5eb3e6f98edf9b29ec854a42eae8",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e1/cycle1.critic4_update_ema.json",
+        "source_receipt_sha256": "435d807bd11a112b483b466c976de0a7f651b7638dbb3a2e3e6a4a415e9f6f00",
+        "status": "PASS"
+      },
+      "key": "dd783d82dfeb637570f0464e46f847d1bc6e5eb3e6f98edf9b29ec854a42eae8",
+      "samples_ns": [
+        2259077784
+      ],
+      "workspace_bytes_per_rank": 3208054784
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "1bbfa7373c32ea0f866bd950da39aa8b77db1aac4138618065bcde596c300b52",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e1/cycle2.generator_update.json",
+        "source_receipt_sha256": "bbe8a9ac04405d7d59188dacc3bbd8622d911900b1a520316d720fd58682473a",
+        "status": "PASS"
+      },
+      "key": "1bbfa7373c32ea0f866bd950da39aa8b77db1aac4138618065bcde596c300b52",
+      "samples_ns": [
+        5539115790
+      ],
+      "workspace_bytes_per_rank": 4442194432
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "c3950089ec36b01beb0ae11f9a6905b3831775e262160a780fecbc82bd64dd54",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e1/cycle2.critic_rollouts.json",
+        "source_receipt_sha256": "8fcce29c35649e43d903029054465bb2751327108c0044b918aaa622820889cf",
+        "status": "PASS"
+      },
+      "key": "c3950089ec36b01beb0ae11f9a6905b3831775e262160a780fecbc82bd64dd54",
+      "samples_ns": [
+        7517614823
+      ],
+      "workspace_bytes_per_rank": 1195044352
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "6a3c551a5c1ba23043ad03343494fd33e857d7060dbfeb86663e4510a2e97603",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e1/cycle2.critic0_update_ema.json",
+        "source_receipt_sha256": "470aa5bfbc64f510273b8666623f89ab6cbf22b50e4c2c0f7dcf115fa061178f",
+        "status": "PASS"
+      },
+      "key": "6a3c551a5c1ba23043ad03343494fd33e857d7060dbfeb86663e4510a2e97603",
+      "samples_ns": [
+        2543307105
+      ],
+      "workspace_bytes_per_rank": 3223464960
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "123829263e07644b02a98bc0b830280d951504ebf5e7d43768fb71eb190cc753",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e1/cycle2.critic1_update_ema.json",
+        "source_receipt_sha256": "370c81b8f76240f4bc38c8ac3c82e75f2bdf8d89360bb4f65778aecc238a866b",
+        "status": "PASS"
+      },
+      "key": "123829263e07644b02a98bc0b830280d951504ebf5e7d43768fb71eb190cc753",
+      "samples_ns": [
+        2259332552
+      ],
+      "workspace_bytes_per_rank": 3220532736
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "aa9a824949e098f8262be624760a8d437fccb97b7112c15c4579c072d4d76442",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e1/cycle2.critic2_update_ema.json",
+        "source_receipt_sha256": "43e9261c49ae8c27bc52eb023fac64d33fc4f9470742b8ee82f41431fca1eb3f",
+        "status": "PASS"
+      },
+      "key": "aa9a824949e098f8262be624760a8d437fccb97b7112c15c4579c072d4d76442",
+      "samples_ns": [
+        2258038881
+      ],
+      "workspace_bytes_per_rank": 3215962112
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "0352d107d589b5c24406e26c9f0bfb28c92344662d65f2a3a6724a0d42c265c6",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e1/cycle2.critic3_update_ema.json",
+        "source_receipt_sha256": "9a4e4fc7c4e8f566e08621a1d2e84a6f315c24152cacecff921475e352df0bf9",
+        "status": "PASS"
+      },
+      "key": "0352d107d589b5c24406e26c9f0bfb28c92344662d65f2a3a6724a0d42c265c6",
+      "samples_ns": [
+        2258890663
+      ],
+      "workspace_bytes_per_rank": 3213332992
+    },
+    {
+      "evidence": {
+        "kind": "native_operation",
+        "operation_contract_sha256": "4343169f94f1f66a3f983f100c5a826625136336bbe094a6a1be81a2f69522d4",
+        "profiled": false,
+        "source_receipt": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/wan_closed_loop_r1/planning/receipts/joint-wan1-resident-c2048-e1/cycle2.critic4_update_ema.json",
+        "source_receipt_sha256": "9fd434181d11c5f06e2e4888b7e78b1a1ae6c607f8d5c37f942caee765507527",
+        "status": "PASS"
+      },
+      "key": "4343169f94f1f66a3f983f100c5a826625136336bbe094a6a1be81a2f69522d4",
+      "samples_ns": [
+        2259430477
+      ],
+      "workspace_bytes_per_rank": 3208057856
+    }
+  ],
+  "schema_version": "distillschedule.cost_model.v1",
+  "scope": "MEASURED"
+}

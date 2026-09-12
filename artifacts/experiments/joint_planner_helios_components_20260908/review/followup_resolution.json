@@ -1,0 +1,40 @@
+{
+  "status": "ALL_REPRODUCED_FINDINGS_RESOLVED_IN_PENDING_FILES",
+  "review_run": "20260908-022043-14bbe2e1",
+  "review_status": "complete",
+  "review_coverage": "degraded",
+  "resolutions": [
+    {
+      "issue": "P1 implicit rejected bootstrap peer launch",
+      "fix": "NativeTrialRunner admission guards at preparation, fresh trajectory, calibration and timing; CLI passes the admitted candidate set",
+      "tests": "four pre-RPC path regressions plus bound-cache and public CLI tests"
+    },
+    {
+      "issue": "P2 same-baseline confirmation jitter creates winner",
+      "fix": "Require distinct final candidate identity for strict_winner",
+      "tests": "strict PASS fixture with 10s baseline/9s same-baseline confirmation"
+    }
+  ],
+  "verification": {
+    "focused": "44 passed in 8.10s",
+    "broad": "999 passed, 17 skipped in 58.72s",
+    "scope": "pending model_validation/execution/model_cli loaded process-locally; final logical-label guard tested separately",
+    "live_gpu_code_modified": false
+  },
+  "files": {
+    "src/distillschedule/search/model_validation.py": "8c0fcd54f6c7f05e60f3379aaeb14331b19ac4c6020e7bb6b95dcd747ab2575d",
+    "src/distillschedule/search/execution.py": "160aec098556e129acf4f42067e6279ccd84e58bdb42fa1e82537b9eec299d27",
+    "src/distillschedule/search/model_cli.py": "416aeb4bd0441c5692c007090f3967b58ec1c0d240a31501ed8360b066893edf",
+    "tests/test_refactor_model_validation_anchor_rejection.py": "42f273f428d8c6f57b2cde0f7e8b04dfb9e61e4dc24bf989a678022020f6b81a"
+  },
+  "executed_cpu_controller_snapshot": {
+    "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/pending-anchor-rejection/executed-controller-r2.py",
+    "sha256": "950c1bb364f1553d9294c95682ce03f62d7c0e4bfe4a47ae627716e1ccc2e6e2",
+    "scope": "initial skip-rejected-controller fix; later runner guards and strict-winner regression not part of this native execution; exact native worker source stays cc7e451"
+  },
+  "limitations": [
+    "Independent review covered original pending patch. Followup guard changes have owner diff review plus tests, not a second independent review.",
+    "Review independent lenses and validator encountered agent thread limits; no full-review PASS claimed.",
+    "Final on-tree verification and local commits follow native process completion."
+  ]
+}

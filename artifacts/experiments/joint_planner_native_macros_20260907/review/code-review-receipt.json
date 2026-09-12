@@ -1,0 +1,33 @@
+{
+  "status": "complete",
+  "artifact_path": "/tmp/compound-engineering-1000/ce-code-review/20260907-051135-433c8230",
+  "run_id": "20260907-051135-433c8230",
+  "review_json": "/tmp/compound-engineering-1000/ce-code-review/20260907-051135-433c8230/review.json",
+  "metadata_json": "/tmp/compound-engineering-1000/ce-code-review/20260907-051135-433c8230/metadata.json",
+  "verdict": "Not ready",
+  "actionable_findings": [
+    {
+      "#": 1,
+      "severity": "P1",
+      "file": "src/distillschedule/search/execution.py",
+      "line": 89,
+      "title": "Choose typed H3 anchors when replaying emitted plans"
+    },
+    {
+      "#": 2,
+      "severity": "P1",
+      "file": "src/distillschedule/search/model_validation.py",
+      "line": 185,
+      "title": "Use the selected adapter when starting native validation"
+    },
+    {
+      "#": 4,
+      "severity": "P2",
+      "file": "src/distillschedule/search/native_macro_calibration.py",
+      "line": 15,
+      "title": "Macro calibration assembler has no end-to-end tests"
+    }
+  ],
+  "validator": "3/3 validated",
+  "cross_model": "timeout; no usable artifact; owned lifecycle discharged"
+}

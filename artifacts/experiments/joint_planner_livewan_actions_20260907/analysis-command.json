@@ -1,0 +1,5 @@
+{
+  "command": "env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/share/project/shuchenweng/yongyan_liu/DMD-System_deploy/joint-livewan-observation-78e501bc1727-20260907/src LD_LIBRARY_PATH=/tmp/distillschedule-helios-official-torch210/lib /tmp/distillschedule-helios-official-torch210/bin/python /share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/scripts/analyze_native_observation_r2.py --plan /share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/native-inputs/execution-plan.json --output /share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/analysis-r2",
+  "source_head": "78e501bc1727013d94e356f697051b4d11cba4be",
+  "analysis_script": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1/scripts/analyze_native_observation_r2.py"
+}

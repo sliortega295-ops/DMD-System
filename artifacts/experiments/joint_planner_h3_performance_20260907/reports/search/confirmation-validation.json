@@ -1,0 +1,63 @@
+{
+  "assets": [
+    {
+      "identity_file": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/grid1000_adaln_20260820/table/adaln_grid1000.json",
+      "name": "adaln_grid_manifest",
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/grid1000_adaln_20260820/table/adaln_grid1000.json",
+      "scope": "IDENTITY_FILE_ONLY_PAYLOADS_CHECKED_BY_NATIVE_WORKER",
+      "sha256": "dd2625e0013509e31b984ee37be752c5d397da7e23aa1c945f66150af95cc1f3"
+    },
+    {
+      "identity_file": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/source/diffusers/src/diffusers/models/transformers/transformer_minimax_h3.py",
+      "name": "diffusers_source",
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/source/diffusers",
+      "scope": "IDENTITY_FILE_ONLY_PAYLOADS_CHECKED_BY_NATIVE_WORKER",
+      "sha256": "1926b1bc15a5bebda05e3dc8cde1b3955d56641ba7f8f9d6e90c8f78c66ae30c"
+    },
+    {
+      "identity_file": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home/hub/models--kernels-community--flash-attn3/snapshots/acb0f42e6901d3e9effa8a83bd32bc2bf0cfdfc2/build/torch210-cxx11-cu128-x86_64-linux/metadata.json",
+      "name": "flash_attn3_kernel",
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home/hub/models--kernels-community--flash-attn3/snapshots/acb0f42e6901d3e9effa8a83bd32bc2bf0cfdfc2/build/torch210-cxx11-cu128-x86_64-linux",
+      "scope": "IDENTITY_FILE_ONLY_PAYLOADS_CHECKED_BY_NATIVE_WORKER",
+      "sha256": "f1b4b0ef991c0966f7d848777154c0591c4580968fb6da33f6b2a2829a109309"
+    },
+    {
+      "identity_file": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home/hub/models--kernels-community--flash-attn3/snapshots/acb0f42e6901d3e9effa8a83bd32bc2bf0cfdfc2/build/torch210-cxx11-cu128-x86_64-linux/metadata.json",
+      "name": "hf_home",
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home",
+      "scope": "IDENTITY_FILE_ONLY_PAYLOADS_CHECKED_BY_NATIVE_WORKER",
+      "sha256": "f1b4b0ef991c0966f7d848777154c0591c4580968fb6da33f6b2a2829a109309"
+    },
+    {
+      "identity_file": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/models/MiniMax-H3-train/transformer/config.json",
+      "name": "model",
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/models/MiniMax-H3-train",
+      "scope": "IDENTITY_FILE_ONLY_PAYLOADS_CHECKED_BY_NATIVE_WORKER",
+      "sha256": "74c11bff524336576096993cbfcdcdc2ef4fa2fa4409df693bdcbc6c666282ae"
+    },
+    {
+      "identity_file": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/prompt_cache/minimax_h3_prompt_cache_96/metadata.jsonl",
+      "name": "prompt_cache",
+      "path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/prompt_cache/minimax_h3_prompt_cache_96",
+      "scope": "IDENTITY_FILE_ONLY_PAYLOADS_CHECKED_BY_NATIVE_WORKER",
+      "sha256": "a2e479c5c8f8c656f4548d24f01408081e7c2631e07fc2cb89882dec56c5e5dd"
+    }
+  ],
+  "gpu": "NOT_RUN_ON_INTEGRATION_BRANCH",
+  "scope": "CPU_SOURCE_AND_ASSET_ONLY",
+  "source_layout": {
+    "gpu_revalidation": "NOT_RUN_ON_INTEGRATION_BRANCH",
+    "real_model_import": "NOT_RUN",
+    "scope": "PACKAGED_SOURCE_LAYOUT",
+    "status": "PASS",
+    "upstreams": [
+      {
+        "commit": "d034a6b0ecaa31aa07c81aeb7bbe69b225f1d7be",
+        "path": "third_party/lightx2v",
+        "url": "https://github.com/ModelTC/LightX2V.git",
+        "verification": "PASS_CHECKED_OUT_CLEAN"
+      }
+    ]
+  },
+  "status": "PASS"
+}

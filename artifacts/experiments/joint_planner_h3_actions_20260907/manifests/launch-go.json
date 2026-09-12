@@ -1,0 +1,27 @@
+{
+  "checks": [
+    {
+      "cgroup": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n",
+      "gpu": "0, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n1, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n2, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n3, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n4, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n5, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n6, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n7, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08",
+      "head": "878aff490ce28c661ac1d927f08f8846992baf45",
+      "hostname": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0",
+      "run_dir": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_actions_r1/native/jointp_h3_actions_20260907_r1-w3-correctness",
+      "status": "GO_PRELAUNCH_RECHECK_NATIVE_LAUNCHER_REACQUIRES_LOCK"
+    },
+    {
+      "cgroup": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n",
+      "gpu": "0, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n1, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n2, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n3, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n4, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n5, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n6, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08\n7, NVIDIA A100-SXM4-40GB, 0 MiB, 40339 MiB, 535.161.08",
+      "head": "878aff490ce28c661ac1d927f08f8846992baf45",
+      "hostname": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0",
+      "run_dir": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/h3_actions_r1/native/jointp_h3_actions_20260907_r1-w3-correctness",
+      "status": "GO_PRELAUNCH_RECHECK_NATIVE_LAUNCHER_REACQUIRES_LOCK"
+    }
+  ],
+  "created_utc": "2026-09-07T18:57:09.676455+00:00",
+  "node_lock": "Native launcher owns audit through teardown",
+  "previous_work": "NOT_REPEATED",
+  "run_id": "jointp_h3_actions_20260907_r1-w3-correctness",
+  "source_head": "878aff490ce28c661ac1d927f08f8846992baf45",
+  "status": "GO_NEW_ACTION_CORRECTNESS_ONLY",
+  "timing": "NOT_RUN_NOT_CLAIMABLE"
+}

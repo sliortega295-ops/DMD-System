@@ -49,6 +49,8 @@ def run_generator_trace_rollout_batch(
     use_cross_kv_cache: bool = False,
     use_static_context_cache: bool = False,
     synchronize_after_rollout: bool = True,
+    clean_runtime: bool = False,
+    runtime_cache: dict[str, Any] | None = None,
 ) -> tuple[tuple[torch.Tensor, ...], dict[str, Any]]:
     """Run multiple step-qualified critic rollouts in one physical B>1 trace.
 
@@ -85,22 +87,29 @@ def run_generator_trace_rollout_batch(
         stage_range=[0, 1 / 3, 2 / 3, 1],
         gamma=1 / 3,
     )
-    sigmas = torch.linspace(
-        1.0, 1.0 / 1000, 1000, device=device, dtype=torch.float64
-    )
-    timesteps = sigmas * 1000
-    args = SimpleNamespace(
-        training_config=SimpleNamespace(
-            base_seq_len=256,
-            max_seq_len=4096,
-            base_shift=0.5,
-            max_shift=1.15,
-            saturation_ratio_min=0.3,
-            saturation_ratio_max=1.7,
-            saturation_ratio_clean_prob=0.1,
+    cache_key = f"rollout_constants/{device}"
+    cached = runtime_cache.get(cache_key) if runtime_cache is not None else None
+    if cached is None:
+        sigmas = torch.linspace(
+            1.0, 1.0 / 1000, 1000, device=device, dtype=torch.float64
         )
-    )
-    tracer: Any
+        timesteps = sigmas * 1000
+        args = SimpleNamespace(
+            training_config=SimpleNamespace(
+                base_seq_len=256,
+                max_seq_len=4096,
+                base_shift=0.5,
+                max_shift=1.15,
+                saturation_ratio_min=0.3,
+                saturation_ratio_max=1.7,
+                saturation_ratio_clean_prob=0.1,
+            )
+        )
+        tracer: Any
+        if runtime_cache is not None:
+            runtime_cache[cache_key] = (sigmas, timesteps, args)
+    else:
+        sigmas, timesteps, args = cached
     if detailed_profile:
         tracer = NestedCallTracer(
             model,
@@ -122,7 +131,8 @@ def run_generator_trace_rollout_batch(
     physical_call = ForceNoGradCalls(tracer)
     model.enable_adapters()
     model.train()
-    torch.cuda.reset_peak_memory_stats(device)
+    if not clean_runtime:
+        torch.cuda.reset_peak_memory_stats(device)
     with generator_nograd_cross_kv_cache_scope(
         model,
         enabled=use_cross_kv_cache,
@@ -181,7 +191,7 @@ def run_generator_trace_rollout_batch(
             operation_trace=loaded.operation_trace,
             trace_prefix=loaded.pool_entry.synthetic_trace_prefix,
         )
-    if synchronize_after_rollout:
+    if synchronize_after_rollout and not clean_runtime:
         torch.cuda.synchronize(device)
     batch_size = len(loaded.members)
     if list(generated_x0.shape) != [batch_size, 16, 9, 48, 80]:
@@ -224,6 +234,9 @@ def run_generator_trace_rollout_batch(
         "batch_size": batch_size,
         "call_count": len(tracer.calls),
         "stage_call_count": stage_calls,
+        "logical_call_count": expected_call_count,
+        "logical_stage_call_count": expected_stage_calls,
+        "dummy_call_count": 0,
         "calls": tracer.calls,
         "output_shape": list(generated_x0.shape),
         "output_dtype": str(generated_x0.dtype),
@@ -261,6 +274,8 @@ def run_generator_trace_rollout_batch(
                 with diagnostics_scope(f"DIAG_OUTPUT_SHA_D2H/generator_x0_step{step}"):
                     hashes.append(tensor_sha256(output))
         details["output_sha256"] = hashes
+    from distillschedule.runtime.fsdp2_p0 import validate_exact_rollout_call_inventory
+    validate_exact_rollout_call_inventory(details, label="critic-input rollout")
     return outputs, details
 
 

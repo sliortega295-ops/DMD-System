@@ -1,0 +1,41 @@
+"""One new H3 generated-action correctness gate; no legacy matrix/timing replay."""
+import concurrent.futures, datetime, json, shlex, subprocess, sys
+from pathlib import Path
+from distillschedule.search.execution import run_plan
+from distillschedule.workloads.best_known.registry import write_new_json
+E=Path(__file__).resolve().parents[1]
+root=Path('/home/lyy/Helios/DMD-System/worktrees/joint-planner-20260907')
+plan=json.loads((E/'manifests/execution-plan.json').read_text())
+dep=json.loads((E/'manifests/deployment.json').read_text())
+H='878aff490ce28c661ac1d927f08f8846992baf45'
+assert subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()==H
+assert not subprocess.check_output(['git','status','--porcelain'],cwd=root,text=True).strip()
+assert plan['integration_head']==H and plan['mode']=='correctness'
+assert plan['search_candidate']['id']=='joint-h3v2-d2-n128-w3'
+assert all(r['status']=='PASS' and r['cleanup']=='PASS_GPU_EMPTY' for r in dep['results'])
+code=r'''import fcntl,json,pathlib,socket,subprocess,sys
+x=json.load(sys.stdin);p=pathlib.Path(x['repo']); l=open('/tmp/distillschedule_gpu_node.lock','a');fcntl.flock(l,fcntl.LOCK_EX|fcntl.LOCK_NB)
+def cmd(v):return subprocess.check_output(v,text=True).strip()
+assert cmd(['git','-C',str(p),'rev-parse','HEAD'])==x['head']
+assert not cmd(['git','-C',str(p),'status','--porcelain','--untracked-files=all'])
+assert not cmd(['nvidia-smi','--query-compute-apps=pid','--format=csv,noheader'])
+assert not pathlib.Path(x['run_dir']).exists(), 'immutable run already exists'
+s=socket.socket();s.bind(('',x['port']));s.close()
+print(json.dumps(dict(status='GO_PRELAUNCH_RECHECK_NATIVE_LAUNCHER_REACQUIRES_LOCK',hostname=socket.gethostname(),gpu=cmd(['nvidia-smi','--query-gpu=index,name,memory.used,memory.free,driver_version','--format=csv,noheader']),cgroup=pathlib.Path('/sys/fs/cgroup/memory.events').read_text(),head=x['head'],run_dir=x['run_dir'])))
+'''
+def check(i):
+ n=dep['assets']['nodes'][i]
+ argv=['ssh','-4','-T','-oBatchMode=yes','-oConnectTimeout=15','-oControlMaster=no','-oControlPath=none','-p','2222',n['host'],shlex.join(['python3','-c',code])]
+ p=subprocess.run(argv,input=json.dumps(dict(repo=n['repo_root'],head=H,run_dir=dep['assets']['run_root']+'/'+plan['run_id'],port=dep['assets']['master_port'])),text=True,capture_output=True,timeout=45)
+ (E/'logs'/f'launch-preflight-node{i}.stdout').write_text(p.stdout);(E/'logs'/f'launch-preflight-node{i}.stderr').write_text(p.stderr)
+ assert p.returncode==0,(i,p.stderr);return json.loads(p.stdout)
+with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:checks=list(pool.map(check,range(2)))
+write_new_json(E/'manifests/launch-go.json',dict(status='GO_NEW_ACTION_CORRECTNESS_ONLY',created_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),run_id=plan['run_id'],source_head=H,checks=checks,previous_work='NOT_REPEATED',timing='NOT_RUN_NOT_CLAIMABLE',node_lock='Native launcher owns audit through teardown'))
+print('START',plan['run_id'],flush=True)
+try:
+ rc=run_plan(plan,coordinator_output=E/'coordinator-native-r1')
+except BaseException as e:
+ write_new_json(E/'manifests/controller-result.json',dict(status='FAIL',type=type(e).__name__,error=str(e),run_id=plan['run_id'],source_head=H))
+ raise
+write_new_json(E/'manifests/controller-result.json',dict(status='PASS' if rc==0 else 'FAIL',returncode=rc,run_id=plan['run_id'],source_head=H))
+raise SystemExit(rc)

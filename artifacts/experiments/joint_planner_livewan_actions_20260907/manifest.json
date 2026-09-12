@@ -1,0 +1,42 @@
+{
+  "status": "PASS_NATIVE_ACTION_OBSERVATION_UNIT_FULL_PLANNER_INCOMPLETE",
+  "source_head": "78e501bc1727013d94e356f697051b4d11cba4be",
+  "branch": "agent/dmd-joint-planner-20260907",
+  "run_id": "jointp_livewan_actions_20260907_r1-native-observation",
+  "transport_canary_source": "0b1b62d8825484d3153ce758bf33d6126856fee8",
+  "remote_raw_root": "/share/project/shuchenweng/yongyan_liu/DistillSchedule_runs/joint_planner_20260907/livewan_components_r1",
+  "local_evidence_root": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/livewan_components_r1",
+  "rank_count": 16,
+  "cycles": 2,
+  "core_helper_observations": 336,
+  "matched_rank_sample_identities": 160,
+  "final_versions": {
+    "generator": 2,
+    "critic": 10,
+    "ema": 0
+  },
+  "reconciliation": "PASS_LATENT_BYTES_EVENTS_HOST_AND_SHADOW_INVENTORY",
+  "cpu_focused_tests": {
+    "passed": 187,
+    "failed": 0
+  },
+  "numerical_status": "REVIEW_PREVIOUS_COMPARISON_NOT_REASSERTED",
+  "old_matrices_repeated": false,
+  "new_baseline_runs": 0,
+  "new_formal_timing_runs": 0,
+  "new_speedup": null,
+  "actual_link_copy_count_per_direction": 136,
+  "actual_link_copy_bytes_per_direction": 672645120,
+  "memory_status": "NO_NEW_OOM_BUT_NOT_ROBUST_HEADROOM",
+  "cleanup": "PASS_BOTH_NODES_GPU_WORKERS_LOCKS_PORT",
+  "component_cost_admission": false,
+  "generated_action_dag_native_execution": "NOT_RUN",
+  "remaining": [
+    "WORKSPACE_AND_OUTPUT_LIFETIMES",
+    "CONTEXTUAL_SERVICE_COST_ADMISSION",
+    "EXECUTABLE_ACTION_DAG_LOWERING_AND_HELDOUT_NATIVE_FEEDBACK"
+  ],
+  "main_changed": false,
+  "push": "NOT_RUN",
+  "note": "No Nsight and no environment installation; contextual observer clocks are not independent service costs."
+}

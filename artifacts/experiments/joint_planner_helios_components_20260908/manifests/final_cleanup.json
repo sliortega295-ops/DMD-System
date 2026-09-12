@@ -1,0 +1,70 @@
+{
+  "status": "PASS_16_GPU_IDLE_NO_OWNED_WORKERS_LOCKS_AVAILABLE",
+  "checked_utc": "2026-09-08T06:48:01.371941+00:00",
+  "nodes": [
+    {
+      "node": 0,
+      "status": "PASS_READBACK_NO_GPU_WORK",
+      "utc": "2026-09-08T06:48:01.336300+00:00",
+      "hostname": "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0",
+      "source_head": "cc7e451bff7387640634a394f07047be8e0c089e",
+      "git_status": "",
+      "gpu_rows": [
+        "0, GPU-cad55364-e014-c35f-337e-db899afd1c6a, NVIDIA A100-SXM4-40GB, 40960, 0, 535.161.08",
+        "1, GPU-a904c6f6-6410-dc0f-c7c3-efc068004617, NVIDIA A100-SXM4-40GB, 40960, 0, 535.161.08",
+        "2, GPU-79ab3e5e-e382-1f9c-bede-1900666e9283, NVIDIA A100-SXM4-40GB, 40960, 0, 535.161.08",
+        "3, GPU-bab43db0-a051-0419-39f7-e33effa9445b, NVIDIA A100-SXM4-40GB, 40960, 0, 535.161.08",
+        "4, GPU-44bddf94-7411-b3ad-f195-fdbdd12fa73e, NVIDIA A100-SXM4-40GB, 40960, 0, 535.161.08",
+        "5, GPU-af8dba1f-f74e-6a55-bb9e-6c8961edbd6e, NVIDIA A100-SXM4-40GB, 40960, 0, 535.161.08",
+        "6, GPU-5edaa614-d5f8-8a3f-11ec-b128f8d029f3, NVIDIA A100-SXM4-40GB, 40960, 0, 535.161.08",
+        "7, GPU-01fff32a-1dd6-93a7-1aae-60d378382961, NVIDIA A100-SXM4-40GB, 40960, 0, 535.161.08"
+      ],
+      "gpu_processes": "",
+      "owned_training_profiler_processes": [],
+      "lock_status": "AVAILABLE",
+      "cgroup_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0
+      },
+      "cgroup_current_bytes": 7123660800,
+      "memory_max": "962072674304",
+      "mount": "Filesystem     Type     1024-blocks           Used    Available Capacity Mounted on\nnone           LeoFS 15807353671488 14950991158020 856362513468      95% /share/project"
+    },
+    {
+      "node": 1,
+      "status": "PASS_READBACK_NO_GPU_WORK",
+      "utc": "2026-09-08T06:48:01.399311+00:00",
+      "hostname": "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0",
+      "source_head": "cc7e451bff7387640634a394f07047be8e0c089e",
+      "git_status": "",
+      "gpu_rows": [
+        "0, GPU-a7668680-c210-ecdd-c247-a8337b735231, NVIDIA A100-SXM4-40GB, 40960, 0, 535.161.08",
+        "1, GPU-0d872e88-5c95-9d42-61c2-d2f7c815209a, NVIDIA A100-SXM4-40GB, 40960, 0, 535.161.08",
+        "2, GPU-9e7d5554-df1e-fd82-7362-db81068ca9bc, NVIDIA A100-SXM4-40GB, 40960, 0, 535.161.08",
+        "3, GPU-1244db6f-2ea8-4ffa-a3f3-3529e3c0b060, NVIDIA A100-SXM4-40GB, 40960, 0, 535.161.08",
+        "4, GPU-94ee2054-b5c5-d249-c1f7-11c4f1f9bfd2, NVIDIA A100-SXM4-40GB, 40960, 0, 535.161.08",
+        "5, GPU-2d8db9f8-6454-f744-0d9b-0f553205267d, NVIDIA A100-SXM4-40GB, 40960, 0, 535.161.08",
+        "6, GPU-75e465e8-461a-dfde-2e54-6d79c23fc521, NVIDIA A100-SXM4-40GB, 40960, 0, 535.161.08",
+        "7, GPU-cacfee38-f05a-b52a-2d12-5a75bde031e6, NVIDIA A100-SXM4-40GB, 40960, 0, 535.161.08"
+      ],
+      "gpu_processes": "",
+      "owned_training_profiler_processes": [],
+      "lock_status": "AVAILABLE",
+      "cgroup_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0
+      },
+      "cgroup_current_bytes": 6846668800,
+      "memory_max": "816043786240",
+      "mount": "Filesystem     Type     1024-blocks           Used    Available Capacity Mounted on\nnone           LeoFS 15807353671488 14950991146080 856362525408      95% /share/project"
+    }
+  ],
+  "scope": "Point-in-time readback after final GAN native confirmation; no processes killed",
+  "script_sha256": "67dd8ba4a5842c4e7635804f58a55d824eed977b991035a1b10d33778c4ebae9"
+}

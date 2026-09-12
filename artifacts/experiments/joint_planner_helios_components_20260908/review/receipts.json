@@ -1,0 +1,137 @@
+[
+  {
+    "reference": {
+      "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/reports/namespace-review-cc7e451/review.json",
+      "sha256": "8032bea44672dcdc4265df5ce59504b433066b67053752496536940ae6eda203",
+      "bytes": 8013
+    },
+    "run_id": "20260908-012226-43d5353a",
+    "status": "complete",
+    "verdict": "Ready with fixes",
+    "coverage": {
+      "scope": "Only the six-file namespace mapping diff and immediate loader/restore/collector dependencies; no historical review findings reused.",
+      "roster": {
+        "correctness": "physical/logical runtime and collector invariants",
+        "testing": "changed checkpoint fixture and tamper tests",
+        "project-standards": "applicable /home/lyy/AGENTS.md",
+        "adversarial": "local verification-guard fidelity"
+      },
+      "local_reviewers_completed": 4,
+      "failed_reviewers": [],
+      "timed_out_reviewers": [],
+      "cross_model": {
+        "status": "not_run",
+        "reason": "Caller explicitly prohibited additional cross-model jobs for this follow-up. Independent local adversarial reviewer completed."
+      },
+      "mechanics": {
+        "status": "complete",
+        "raw_candidates": 1,
+        "retained": 1,
+        "malformed": 0,
+        "suppressed_by_confidence": {},
+        "mode_aware_demotions": 0,
+        "severity_calibration": "#1 P1 -> P2: inconsistent redundant receipt labels, not broken native updates or authoritative summary versions."
+      },
+      "validation": {
+        "status": "complete",
+        "batches": 1,
+        "selected": [
+          1
+        ],
+        "validated": [
+          1
+        ],
+        "dropped": [],
+        "cross_model_shortcuts": 0,
+        "degraded_blockers": []
+      },
+      "tests": {
+        "reviewer_rerun": "17 passed, 43 deselected in 1.20s; reused existing CPU environment, disabled bytecode/cache/plugins and GPU visibility.",
+        "owner_logs_verified": [
+          "60 passed in 3.97s",
+          "989 passed, 17 skipped in 53.11s"
+        ],
+        "initial_attempt": "System Python lacked pytest; preserved failure log. No environment was created or modified.",
+        "gpu": "NOT_RUN by this review"
+      },
+      "settlement_suppression": "Not evaluated; no plan discovered.",
+      "repo_unchanged": true,
+      "verdict_reason": "One validated P2 receipt-consistency fix remains. No native execution or optimizer-relabel defect was found in this scoped diff."
+    },
+    "note": "Original review scope; applied followup fixes have owner tests. No additional independent full review claimed."
+  },
+  {
+    "reference": {
+      "path": "/home/lyy/Helios/research_artifacts/DMD-System/joint_planner_20260907/artifacts/helios_native_r1/reports/anchor-rejection-review/review.json",
+      "sha256": "ebc1f56efae729d920d77636f06a3b82f7f9337aa6b3934b99724bb319302eff",
+      "bytes": 11376
+    },
+    "run_id": "20260908-022043-14bbe2e1",
+    "status": "complete",
+    "verdict": "Not ready",
+    "coverage": {
+      "status": "degraded",
+      "scope": "Only the supplied anchor-rejection patch, pending module/test, and direct controller/runner dependencies. No prior namespace findings reused.",
+      "scope_validation": "Patch verified byte-for-byte against pending files and clean cc7e451 base. Git scope helper verified the clean carrier only; it has no external-patch endpoint, so executable count is unavailable and lite review was disabled.",
+      "independent_reviewers_completed": [
+        "correctness"
+      ],
+      "unavailable_independent_lenses": [
+        "testing",
+        "project-standards",
+        "adversarial"
+      ],
+      "fallback": "Three selected lenses received attributed orchestrator checks, not independent review or agreement promotion. Repeated thread-limit backpressure prevented new leaves; no polling or recursive review was used.",
+      "cross_model": {
+        "status": "not_run",
+        "reason": "Explicit caller prohibition; local checkout also differs from the pending patch."
+      },
+      "mechanics": {
+        "status": "complete",
+        "raw_candidates": 2,
+        "malformed": 0,
+        "suppressed_by_confidence": {},
+        "mode_aware_demotions": 0,
+        "retained_primary": 1
+      },
+      "validation": {
+        "status": "unavailable",
+        "batches_completed": 0,
+        "selected": [
+          1,
+          2
+        ],
+        "validated": [],
+        "degraded_blockers": [
+          1
+        ],
+        "dropped_for_infrastructure": [
+          2
+        ],
+        "cross_model_shortcuts": 0,
+        "reason": "Fresh validator spawn and caller-authorized followup to /root/anchor_efficiency both failed with agent thread limit. No close primitive exists; no independent validator result was obtained."
+      },
+      "dropped_candidate": {
+        "#": 2,
+        "severity": "P2",
+        "title": "Faster baseline confirmation becomes a false strict winner",
+        "file": "src/distillschedule/search/model_validation.py",
+        "line": 187,
+        "reason": "Dropped from the primary/actionable set under the skill validator-infrastructure rule for P2 findings, not rejected as false.",
+        "evidence": "CPU repro: rejected incumbent, max_trials=3, same baseline at 10s then 9s, numerical PASS -> strict_winner equals baseline.",
+        "suggested_fix": "Require final candidate_id != baseline candidate_id in strict_winner, plus a faster PASS confirmation regression.",
+        "original_evidence": "correctness.json; hydrated-findings.json; baseline-jitter-repro.json"
+      },
+      "tests": {
+        "actual": "14 passed in 5.91s using the existing CPU environment and pending module loaded through importlib into both sys.modules and distillschedule.search.model_validation.",
+        "owner_log_verified": "14 passed in 5.55s",
+        "additional_repro": "Baseline-only strict PASS jitter reproduced with synthetic receipts. Correctness reviewer also reproduced real runner bootstrap control flow with mocked dispatch.",
+        "gpu_ssh": "NOT_RUN"
+      },
+      "settlement_suppression": "Not evaluated; no plan discovered.",
+      "canonical_repo_unchanged": true,
+      "verdict_reason": "P1 fresh-preparation admission bypass remains in the original pending patch. It is source/CPU reproduced but independent validation is unavailable; this is not a full-coverage PASS."
+    },
+    "note": "Original review scope; applied followup fixes have owner tests. No additional independent full review claimed."
+  }
+]

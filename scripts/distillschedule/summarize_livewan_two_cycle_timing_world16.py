@@ -482,6 +482,12 @@ def main() -> int:
     if not (c1_endpoint > 0.0 and c2_seconds > 0.0):
         errors.append("world cycle endpoint delta is not positive")
 
+    calibration_flags = {bool(row.get("operation_calibration", {}).get("enabled")) for row in rows}
+    if len(calibration_flags) != 1:
+        errors.append("operation calibration policy differs across ranks")
+    calibration_only = True in calibration_flags
+    if calibration_only and any(row.get("operation_calibration", {}).get("status") != "PASS" for row in rows):
+        errors.append("operation calibration rank receipt failed")
     contract = {
         "schema": "livewan_two_cycle_timing_contract_v1",
         "head": args.expected_head,
@@ -514,8 +520,9 @@ def main() -> int:
         "native_unprofiled": True,
         "profiled": False,
         "profiler_status": "NOT_RUN",
-        "formal_timing_eligible": not errors,
-        "claim_boundary": "CYCLE2_ONLY_NATIVE_UNPROFILED",
+        "formal_timing_eligible": not errors and not calibration_only,
+        "calibration_only": calibration_only,
+        "claim_boundary": "OPERATION_CALIBRATION_DIAGNOSTIC_ONLY" if calibration_only else "CYCLE2_ONLY_NATIVE_UNPROFILED",
         "matched_workload_contract": contract,
         "matched_workload_fingerprint": _sha256_json(contract),
         "implementation": {
@@ -556,8 +563,8 @@ def main() -> int:
             ),
         },
         "cycle_2": {
-            "role": "STEADY_STATE_CLAIMABLE",
-            "claimable": not errors,
+            "role": "OPERATION_CALIBRATION_ONLY" if calibration_only else "STEADY_STATE_CLAIMABLE",
+            "claimable": not errors and not calibration_only,
             "seconds": c2_seconds,
             "endpoint_2_world_seconds": c2_endpoint,
             "endpoint_1_world_seconds": c1_endpoint,
