@@ -3,10 +3,9 @@ on:
   push:
     branches: [agent/dmd-joint-planner-20260907]
 permissions:
-  contents: write
+  contents: read
 jobs:
-  repair:
-    if: github.actor != 'github-actions[bot]'
+  inventory:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,44 +15,27 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Repair reviewed H3 source identity and validate
+      - name: Inventory reviewed-source drift
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-          import hashlib, json
-          target = 'src/distillschedule/backends/training/minimax_h3/integrated_entrypoint.py'
-          expected = '7560c4f89a133f984bc712eecf30d8a17c568930bfab16d38da323fd12735202'
-          actual = hashlib.sha256(Path(target).read_bytes()).hexdigest()
-          if actual != expected:
-              raise SystemExit(f'unexpected current H3 entrypoint hash: {actual}')
-          path = Path('docs/workloads/source_import_map.json')
-          doc = json.loads(path.read_text())
-          rows = [r for r in doc['files'] if r.get('target') == target]
-          if len(rows) != 1:
-              raise SystemExit(f'expected one source-map row, got {len(rows)}')
-          row = rows[0]
-          previous = row['integrated_sha256']
-          if previous != 'f804134d24bce6520822ee063610ad55387e1527a52125a25147939bb8100b96' and previous != expected:
-              raise SystemExit(f'unexpected previous reviewed hash: {previous}')
-          adaptation = {
-              'base_integration_head': '68b2ea6728d89c52aa5ee840ad6c4f40d84062b0',
-              'new_integrated_sha256': expected,
-              'previous_integrated_sha256': 'f804134d24bce6520822ee063610ad55387e1527a52125a25147939bb8100b96',
-              'reason': 'Bind generated H3 action windows to native helpers and preserve one-shot failure-prefix receipts for interrupted optimizer/action runs; canonical H3 training math and winner profile remain unchanged.',
-              'source_commit': '878aff490ce28c661ac1d927f08f8846992baf45',
-          }
-          adaptations = row.setdefault('adaptations', [])
-          if not any(a.get('source_commit') == adaptation['source_commit'] and a.get('new_integrated_sha256') == expected for a in adaptations):
-              adaptations.append(adaptation)
-          row['integrated_sha256'] = expected
-          path.write_text(json.dumps(doc, indent=2, sort_keys=True) + '\n')
+          import hashlib, json, subprocess
+          doc = json.loads(Path('docs/workloads/source_import_map.json').read_text())
+          mismatches=[]
+          for row in doc['files']:
+              p=Path(row['target'])
+              if not p.is_file():
+                  mismatches.append(dict(target=row['target'], reviewed=row.get('integrated_sha256'), actual='MISSING', last_commit='MISSING'))
+                  continue
+              actual=hashlib.sha256(p.read_bytes()).hexdigest()
+              reviewed=row.get('integrated_sha256')
+              if actual != reviewed:
+                  last=subprocess.check_output(['git','log','-1','--format=%H','--',row['target']], text=True).strip()
+                  mismatches.append(dict(target=row['target'], reviewed=reviewed, actual=actual, last_commit=last))
+          print(json.dumps({'count':len(mismatches),'mismatches':mismatches}, indent=2, sort_keys=True))
+          if not mismatches:
+              raise SystemExit(0)
+          raise SystemExit(3)
           PY
-          python scripts/distillschedule/check_best_known_integration.py
-          git diff --check
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add docs/workloads/source_import_map.json
-          git commit -m 'fix(integration): record H3 native-action source adaptation'
-          git push origin HEAD:agent/dmd-joint-planner-20260907
