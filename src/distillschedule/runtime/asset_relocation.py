@@ -86,3 +86,30 @@ def relocation_identity() -> dict[str, str] | None:
     _bindings(receipt, sha)
     return {"path": str(Path(receipt).expanduser().resolve()), "sha256": sha,
             "payload_identity": "REQUIRES_EXISTING_CONTENT_GATES"}
+
+
+def verify_relocated_source_receipt(registered: dict, generated: dict) -> None:
+    """Permit only SHA-bound declared address changes in a source receipt.
+
+    The original receipt is immutable and still supplies the workload identity.
+    This validates metadata equivalence, not file contents: the existing source
+    loader must additionally hash every actual source file.
+    """
+    if relocation_identity() is None:
+        raise ValueError("source receipt relocation requires explicit opt-in")
+
+    def digest(value):
+        payload = {k: v for k, v in value.items() if k != "source_receipt_sha256"}
+        return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+    for value in (registered, generated):
+        if value.get("status") != "PASS" or value.get("source_receipt_sha256") != digest(value):
+            raise ValueError("source receipt digest or status mismatch")
+    relocated = json.loads(json.dumps(registered))
+    relocated["source_root"] = str(relocate_asset_path(registered["source_root"]))
+    relocated["pythonpath"] = [str(relocate_asset_path(p)) for p in registered["pythonpath"]]
+    for row in relocated["files"].values():
+        row["path"] = str(relocate_asset_path(row["path"]))
+    relocated["source_receipt_sha256"] = digest(relocated)
+    if relocated != generated:
+        raise ValueError("generated source receipt differs beyond the declared path relocation")

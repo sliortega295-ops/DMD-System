@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from distillschedule.runtime.asset_relocation import (
     RECEIPT_ENV, SHA_ENV, relocate_asset_path, relocation_identity,
+    verify_relocated_source_receipt,
 )
 
 
@@ -82,6 +83,49 @@ class AssetRelocationTests(unittest.TestCase):
     def test_digest_without_receipt_rejected(self):
         with patch.dict(os.environ, {SHA_ENV: "f" * 64}, clear=True), self.assertRaises(ValueError):
             relocate_asset_path("/original/asset")
+
+    @staticmethod
+    def source_digest(value):
+        payload = {k: v for k, v in value.items() if k != "source_receipt_sha256"}
+        return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+    def source_pair(self):
+        old = {"status": "PASS", "source_root": "/original/asset",
+               "pythonpath": ["/original/asset"], "commit": "fixed",
+               "files": {"model": {"path": "/original/asset/model.py", "sha256": "a" * 64, "bytes": 42}}}
+        old["source_receipt_sha256"] = self.source_digest(old)
+        new = json.loads(json.dumps(old))
+        new["source_root"] = str(self.root / "asset")
+        new["pythonpath"] = [str(self.root / "asset")]
+        new["files"]["model"]["path"] = str(self.root / "asset/model.py")
+        new["source_receipt_sha256"] = self.source_digest(new)
+        return old, new
+
+    def test_source_receipt_only_declared_path_relocation_passes(self):
+        old, new = self.source_pair()
+        before = json.dumps(old, sort_keys=True)
+        with patch.dict(os.environ, self.env(), clear=True):
+            verify_relocated_source_receipt(old, new)
+        self.assertEqual(json.dumps(old, sort_keys=True), before)
+
+    def test_source_receipt_change_is_not_a_path_relocation(self):
+        for field in ("commit", "file_sha", "file_bytes", "extra_field"):
+            old, new = self.source_pair()
+            if field == "commit": new["commit"] = "different"
+            elif field == "file_sha": new["files"]["model"]["sha256"] = "b" * 64
+            elif field == "file_bytes": new["files"]["model"]["bytes"] = 43
+            else: new["unexpected"] = True
+            new["source_receipt_sha256"] = self.source_digest(new)
+            with self.subTest(field=field), patch.dict(os.environ, self.env(), clear=True), self.assertRaises(ValueError):
+                verify_relocated_source_receipt(old, new)
+
+    def test_source_receipt_requires_authentic_digest_and_opt_in(self):
+        old, new = self.source_pair()
+        with patch.dict(os.environ, {}, clear=True), self.assertRaises(ValueError):
+            verify_relocated_source_receipt(old, new)
+        new["source_receipt_sha256"] = "0" * 64
+        with patch.dict(os.environ, self.env(), clear=True), self.assertRaises(ValueError):
+            verify_relocated_source_receipt(old, new)
 
 
 if __name__ == "__main__":

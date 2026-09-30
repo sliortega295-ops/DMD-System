@@ -262,6 +262,8 @@ bash "${ROOT}/scripts/distillschedule/prepare_livewan_crossscale_source.sh" \
   >"${NODE_LOG}/source_prepare.log" 2>&1
 python3 - "${SOURCE_RECEIPT}" "${GENERATED_SOURCE_RECEIPT}" <<'PY'
 import json
+import os
+import pathlib
 import sys
 
 registered_path, generated_path = sys.argv[1:]
@@ -269,7 +271,11 @@ registered = json.load(open(registered_path, encoding="utf-8"))
 generated = json.load(open(generated_path, encoding="utf-8"))
 if registered.get("status") != "PASS" or generated.get("status") != "PASS":
     raise SystemExit("source receipt is not PASS")
-if registered != generated:
+if os.environ.get("DISTILLSCHEDULE_HARDWARE_PROFILE") == "h100-8-b16":
+    sys.path.insert(0, str(pathlib.Path(os.environ["DMD_SYSTEM_ROOT"]) / "src"))
+    from distillschedule.runtime.asset_relocation import verify_relocated_source_receipt
+    verify_relocated_source_receipt(registered, generated)
+elif registered != generated:
     raise SystemExit(
         "generated source receipt differs from immutable registered receipt"
     )
