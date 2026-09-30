@@ -642,6 +642,11 @@ class GradReadyAsyncResidentEngine(ReferenceResidentEngine):
     def _drain_ready_buckets(self) -> None:
         import time
 
+        # A logical B16 update on eight physical ranks contains two B1
+        # backwards. The first contribution stays in the persistent views;
+        # only the final backward may issue the combined gradient buckets.
+        if not self._gradient_accumulation_boundary:
+            return
         torch = _torch()
         dist = torch.distributed
         while self._next_bucket_to_issue < len(self._buckets_by_index):
@@ -678,7 +683,10 @@ class GradReadyAsyncResidentEngine(ReferenceResidentEngine):
             loss.backward()
         finally:
             self._active_backward = False
-        expected = list(range(len(self._buckets_by_index)))
+        expected = (
+            list(range(len(self._buckets_by_index)))
+            if self._gradient_accumulation_boundary else []
+        )
         if self._issue_order != expected:
             missing = [
                 name

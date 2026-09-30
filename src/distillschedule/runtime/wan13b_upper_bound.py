@@ -20,7 +20,10 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 
-WORLD_SIZE = 16
+from .hardware_profile import runtime_physical_world_size
+
+
+WORLD_SIZE = runtime_physical_world_size()
 WAN13B_BLOCK_COUNT = 30
 GLOBAL_BATCH = 16
 LORA_RANK = 256
@@ -98,6 +101,36 @@ class Wan13BBootstrap:
         if name not in {"generator", "critic"}:
             raise KeyError(name)
         return self.manifest["components"][name]
+
+    def validate_model_assets(
+        self, model_root: str | Path, *, verify_payloads: bool = True
+    ) -> dict[str, Any]:
+        """Permit relocation only by the signed, content-addressed inventory.
+
+        The bootstrap's original absolute path is provenance, not a reason to
+        rewrite its immutable hash when moving the experiment to another host.
+        """
+        root = Path(model_root).resolve()
+        inventory = self.manifest.get("model_files")
+        if not isinstance(inventory, list) or not inventory:
+            raise ValueError("bootstrap lacks the immutable model inventory")
+        identity = hashlib.sha256(_canonical(inventory)).hexdigest()
+        if identity != self.manifest.get("model_identity_sha256"):
+            raise ValueError("bootstrap model inventory identity changed")
+        for row in inventory:
+            path = (root / row["path"]).resolve()
+            if not path.is_relative_to(root):
+                raise ValueError("model inventory path escapes the model root")
+            if not path.is_file() or path.stat().st_size != int(row["bytes"]):
+                raise ValueError(f"model payload missing or wrong size: {path}")
+            if verify_payloads and file_sha256(path) != row["sha256"]:
+                raise ValueError(f"model payload hash changed: {path}")
+        return {
+            "source_model_root": self.manifest["model_root"],
+            "live_model_root": str(root),
+            "model_identity_sha256": identity,
+            "content_validation": "SHA256_PASS" if verify_payloads else "SIZE_PASS_HASH_VERIFIED_BY_RANK0",
+        }
 
     def restore_trainables(self, module: Any, *, component: str) -> dict[str, Any]:
         try:
