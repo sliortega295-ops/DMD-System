@@ -220,6 +220,10 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + shlex.quote(args.expected_helios_transformer_sha256),
         "DISTILLSCHEDULE_WAN13B_GRAD_LORA_FUSED_EPILOGUE="
         + ("1" if args.grad_lora_fused_epilogue else "0"),
+        "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE="
+        + ("1" if args.generator_nograd_lora_cast_cache else "0"),
+        "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE="
+        + ("1" if args.generator_nograd_lora_fused_epilogue else "0"),
     ]
     if args.tf32_cublas_override is not None:
         exports.append("TORCH_ALLOW_TF32_CUBLAS_OVERRIDE=" + args.tf32_cublas_override)
@@ -253,12 +257,6 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
                 "DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS="
                 + str(args.lora_attribution_target_nograd_calls),
             )
-        )
-    if args.generator_nograd_lora_cast_cache:
-        exports.append("DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE=1")
-    if args.generator_nograd_lora_fused_epilogue:
-        exports.append(
-            "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE=1"
         )
     if args.mode == "trajectory":
         if args.trajectory_cycles not in {1, 2, 5, 50}:
