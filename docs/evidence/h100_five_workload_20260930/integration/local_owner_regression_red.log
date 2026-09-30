@@ -1,0 +1,224 @@
+......FFFFFFFFFFFFF.                                                     [100%]
+=================================== FAILURES ===================================
+_ test_role_pool_sketch_requires_every_declared_owner_not_every_world_rank[owners0-0] _
+
+owners = (0, 1, 2, 3), rank = 0
+
+    @pytest.mark.parametrize("owners,rank", [((0, 1, 2, 3), 0), ((4, 5, 6, 7), 0), ((4, 5, 6, 7), 7)])
+    def test_role_pool_sketch_requires_every_declared_owner_not_every_world_rank(owners, rank):
+>       sketch = collect_numeric_state_sketch(
+            torch=_role_pool_torch(_RolePoolDistributed(owners=owners, rank=rank)),
+            named_values=[("layer.weight", _FakeTensor([1.0, 2.0]), None)] if rank in owners else [],
+            primary_rank=min(owners), owner_ranks=owners,
+        )
+E       TypeError: collect_numeric_state_sketch() got an unexpected keyword argument 'owner_ranks'
+
+tests/test_refactor_trajectory_state_sketch.py:264: TypeError
+_ test_role_pool_sketch_requires_every_declared_owner_not_every_world_rank[owners1-0] _
+
+owners = (4, 5, 6, 7), rank = 0
+
+    @pytest.mark.parametrize("owners,rank", [((0, 1, 2, 3), 0), ((4, 5, 6, 7), 0), ((4, 5, 6, 7), 7)])
+    def test_role_pool_sketch_requires_every_declared_owner_not_every_world_rank(owners, rank):
+>       sketch = collect_numeric_state_sketch(
+            torch=_role_pool_torch(_RolePoolDistributed(owners=owners, rank=rank)),
+            named_values=[("layer.weight", _FakeTensor([1.0, 2.0]), None)] if rank in owners else [],
+            primary_rank=min(owners), owner_ranks=owners,
+        )
+E       TypeError: collect_numeric_state_sketch() got an unexpected keyword argument 'owner_ranks'
+
+tests/test_refactor_trajectory_state_sketch.py:264: TypeError
+_ test_role_pool_sketch_requires_every_declared_owner_not_every_world_rank[owners2-7] _
+
+owners = (4, 5, 6, 7), rank = 7
+
+    @pytest.mark.parametrize("owners,rank", [((0, 1, 2, 3), 0), ((4, 5, 6, 7), 0), ((4, 5, 6, 7), 7)])
+    def test_role_pool_sketch_requires_every_declared_owner_not_every_world_rank(owners, rank):
+>       sketch = collect_numeric_state_sketch(
+            torch=_role_pool_torch(_RolePoolDistributed(owners=owners, rank=rank)),
+            named_values=[("layer.weight", _FakeTensor([1.0, 2.0]), None)] if rank in owners else [],
+            primary_rank=min(owners), owner_ranks=owners,
+        )
+E       TypeError: collect_numeric_state_sketch() got an unexpected keyword argument 'owner_ranks'
+
+tests/test_refactor_trajectory_state_sketch.py:264: TypeError
+_ test_role_pool_sketch_does_not_weaken_owner_or_replica_gates[missing_owner-inventory differs] _
+
+failure = 'missing_owner', signature = 'inventory differs'
+
+    @pytest.mark.parametrize("failure,signature", [
+        ("missing_owner", "inventory differs"), ("owner_inventory", "inventory differs"),
+        ("owner_disagreement", "disagree"), ("nonowner_state", "non-owner"),
+        ("owner_declaration", "owner rank declaration"),
+    ])
+    def test_role_pool_sketch_does_not_weaken_owner_or_replica_gates(failure, signature):
+        owners = (0, 1, 2, 3)
+        with pytest.raises(AssertionError, match=signature):
+>           collect_numeric_state_sketch(
+                torch=_role_pool_torch(_RolePoolDistributed(owners=owners, failure=failure)),
+                named_values=[("layer.weight", _FakeTensor([1.0, 2.0]), None)],
+                primary_rank=0, owner_ranks=owners,
+            )
+E           TypeError: collect_numeric_state_sketch() got an unexpected keyword argument 'owner_ranks'
+
+tests/test_refactor_trajectory_state_sketch.py:289: TypeError
+_ test_role_pool_sketch_does_not_weaken_owner_or_replica_gates[owner_inventory-inventory differs] _
+
+failure = 'owner_inventory', signature = 'inventory differs'
+
+    @pytest.mark.parametrize("failure,signature", [
+        ("missing_owner", "inventory differs"), ("owner_inventory", "inventory differs"),
+        ("owner_disagreement", "disagree"), ("nonowner_state", "non-owner"),
+        ("owner_declaration", "owner rank declaration"),
+    ])
+    def test_role_pool_sketch_does_not_weaken_owner_or_replica_gates(failure, signature):
+        owners = (0, 1, 2, 3)
+        with pytest.raises(AssertionError, match=signature):
+>           collect_numeric_state_sketch(
+                torch=_role_pool_torch(_RolePoolDistributed(owners=owners, failure=failure)),
+                named_values=[("layer.weight", _FakeTensor([1.0, 2.0]), None)],
+                primary_rank=0, owner_ranks=owners,
+            )
+E           TypeError: collect_numeric_state_sketch() got an unexpected keyword argument 'owner_ranks'
+
+tests/test_refactor_trajectory_state_sketch.py:289: TypeError
+_ test_role_pool_sketch_does_not_weaken_owner_or_replica_gates[owner_disagreement-disagree] _
+
+failure = 'owner_disagreement', signature = 'disagree'
+
+    @pytest.mark.parametrize("failure,signature", [
+        ("missing_owner", "inventory differs"), ("owner_inventory", "inventory differs"),
+        ("owner_disagreement", "disagree"), ("nonowner_state", "non-owner"),
+        ("owner_declaration", "owner rank declaration"),
+    ])
+    def test_role_pool_sketch_does_not_weaken_owner_or_replica_gates(failure, signature):
+        owners = (0, 1, 2, 3)
+        with pytest.raises(AssertionError, match=signature):
+>           collect_numeric_state_sketch(
+                torch=_role_pool_torch(_RolePoolDistributed(owners=owners, failure=failure)),
+                named_values=[("layer.weight", _FakeTensor([1.0, 2.0]), None)],
+                primary_rank=0, owner_ranks=owners,
+            )
+E           TypeError: collect_numeric_state_sketch() got an unexpected keyword argument 'owner_ranks'
+
+tests/test_refactor_trajectory_state_sketch.py:289: TypeError
+_ test_role_pool_sketch_does_not_weaken_owner_or_replica_gates[nonowner_state-non-owner] _
+
+failure = 'nonowner_state', signature = 'non-owner'
+
+    @pytest.mark.parametrize("failure,signature", [
+        ("missing_owner", "inventory differs"), ("owner_inventory", "inventory differs"),
+        ("owner_disagreement", "disagree"), ("nonowner_state", "non-owner"),
+        ("owner_declaration", "owner rank declaration"),
+    ])
+    def test_role_pool_sketch_does_not_weaken_owner_or_replica_gates(failure, signature):
+        owners = (0, 1, 2, 3)
+        with pytest.raises(AssertionError, match=signature):
+>           collect_numeric_state_sketch(
+                torch=_role_pool_torch(_RolePoolDistributed(owners=owners, failure=failure)),
+                named_values=[("layer.weight", _FakeTensor([1.0, 2.0]), None)],
+                primary_rank=0, owner_ranks=owners,
+            )
+E           TypeError: collect_numeric_state_sketch() got an unexpected keyword argument 'owner_ranks'
+
+tests/test_refactor_trajectory_state_sketch.py:289: TypeError
+_ test_role_pool_sketch_does_not_weaken_owner_or_replica_gates[owner_declaration-owner rank declaration] _
+
+failure = 'owner_declaration', signature = 'owner rank declaration'
+
+    @pytest.mark.parametrize("failure,signature", [
+        ("missing_owner", "inventory differs"), ("owner_inventory", "inventory differs"),
+        ("owner_disagreement", "disagree"), ("nonowner_state", "non-owner"),
+        ("owner_declaration", "owner rank declaration"),
+    ])
+    def test_role_pool_sketch_does_not_weaken_owner_or_replica_gates(failure, signature):
+        owners = (0, 1, 2, 3)
+        with pytest.raises(AssertionError, match=signature):
+>           collect_numeric_state_sketch(
+                torch=_role_pool_torch(_RolePoolDistributed(owners=owners, failure=failure)),
+                named_values=[("layer.weight", _FakeTensor([1.0, 2.0]), None)],
+                primary_rank=0, owner_ranks=owners,
+            )
+E           TypeError: collect_numeric_state_sketch() got an unexpected keyword argument 'owner_ranks'
+
+tests/test_refactor_trajectory_state_sketch.py:289: TypeError
+___________ test_role_pool_sketch_rejects_invalid_ownership[owners0] ___________
+
+owners = ()
+
+    @pytest.mark.parametrize("owners", [(), (0, 0), (-1, 0), (0, 8), (1, 2)])
+    def test_role_pool_sketch_rejects_invalid_ownership(owners):
+        with pytest.raises(ValueError, match="owner"):
+>           collect_numeric_state_sketch(
+                torch=_role_pool_torch(_FakeDistributed()), named_values=[], owner_ranks=owners,
+            )
+E           TypeError: collect_numeric_state_sketch() got an unexpected keyword argument 'owner_ranks'
+
+tests/test_refactor_trajectory_state_sketch.py:299: TypeError
+___________ test_role_pool_sketch_rejects_invalid_ownership[owners1] ___________
+
+owners = (0, 0)
+
+    @pytest.mark.parametrize("owners", [(), (0, 0), (-1, 0), (0, 8), (1, 2)])
+    def test_role_pool_sketch_rejects_invalid_ownership(owners):
+        with pytest.raises(ValueError, match="owner"):
+>           collect_numeric_state_sketch(
+                torch=_role_pool_torch(_FakeDistributed()), named_values=[], owner_ranks=owners,
+            )
+E           TypeError: collect_numeric_state_sketch() got an unexpected keyword argument 'owner_ranks'
+
+tests/test_refactor_trajectory_state_sketch.py:299: TypeError
+___________ test_role_pool_sketch_rejects_invalid_ownership[owners2] ___________
+
+owners = (-1, 0)
+
+    @pytest.mark.parametrize("owners", [(), (0, 0), (-1, 0), (0, 8), (1, 2)])
+    def test_role_pool_sketch_rejects_invalid_ownership(owners):
+        with pytest.raises(ValueError, match="owner"):
+>           collect_numeric_state_sketch(
+                torch=_role_pool_torch(_FakeDistributed()), named_values=[], owner_ranks=owners,
+            )
+E           TypeError: collect_numeric_state_sketch() got an unexpected keyword argument 'owner_ranks'
+
+tests/test_refactor_trajectory_state_sketch.py:299: TypeError
+___________ test_role_pool_sketch_rejects_invalid_ownership[owners3] ___________
+
+owners = (0, 8)
+
+    @pytest.mark.parametrize("owners", [(), (0, 0), (-1, 0), (0, 8), (1, 2)])
+    def test_role_pool_sketch_rejects_invalid_ownership(owners):
+        with pytest.raises(ValueError, match="owner"):
+>           collect_numeric_state_sketch(
+                torch=_role_pool_torch(_FakeDistributed()), named_values=[], owner_ranks=owners,
+            )
+E           TypeError: collect_numeric_state_sketch() got an unexpected keyword argument 'owner_ranks'
+
+tests/test_refactor_trajectory_state_sketch.py:299: TypeError
+___________ test_role_pool_sketch_rejects_invalid_ownership[owners4] ___________
+
+owners = (1, 2)
+
+    @pytest.mark.parametrize("owners", [(), (0, 0), (-1, 0), (0, 8), (1, 2)])
+    def test_role_pool_sketch_rejects_invalid_ownership(owners):
+        with pytest.raises(ValueError, match="owner"):
+>           collect_numeric_state_sketch(
+                torch=_role_pool_torch(_FakeDistributed()), named_values=[], owner_ranks=owners,
+            )
+E           TypeError: collect_numeric_state_sketch() got an unexpected keyword argument 'owner_ranks'
+
+tests/test_refactor_trajectory_state_sketch.py:299: TypeError
+=========================== short test summary info ============================
+FAILED tests/test_refactor_trajectory_state_sketch.py::test_role_pool_sketch_requires_every_declared_owner_not_every_world_rank[owners0-0]
+FAILED tests/test_refactor_trajectory_state_sketch.py::test_role_pool_sketch_requires_every_declared_owner_not_every_world_rank[owners1-0]
+FAILED tests/test_refactor_trajectory_state_sketch.py::test_role_pool_sketch_requires_every_declared_owner_not_every_world_rank[owners2-7]
+FAILED tests/test_refactor_trajectory_state_sketch.py::test_role_pool_sketch_does_not_weaken_owner_or_replica_gates[missing_owner-inventory differs]
+FAILED tests/test_refactor_trajectory_state_sketch.py::test_role_pool_sketch_does_not_weaken_owner_or_replica_gates[owner_inventory-inventory differs]
+FAILED tests/test_refactor_trajectory_state_sketch.py::test_role_pool_sketch_does_not_weaken_owner_or_replica_gates[owner_disagreement-disagree]
+FAILED tests/test_refactor_trajectory_state_sketch.py::test_role_pool_sketch_does_not_weaken_owner_or_replica_gates[nonowner_state-non-owner]
+FAILED tests/test_refactor_trajectory_state_sketch.py::test_role_pool_sketch_does_not_weaken_owner_or_replica_gates[owner_declaration-owner rank declaration]
+FAILED tests/test_refactor_trajectory_state_sketch.py::test_role_pool_sketch_rejects_invalid_ownership[owners0]
+FAILED tests/test_refactor_trajectory_state_sketch.py::test_role_pool_sketch_rejects_invalid_ownership[owners1]
+FAILED tests/test_refactor_trajectory_state_sketch.py::test_role_pool_sketch_rejects_invalid_ownership[owners2]
+FAILED tests/test_refactor_trajectory_state_sketch.py::test_role_pool_sketch_rejects_invalid_ownership[owners3]
+FAILED tests/test_refactor_trajectory_state_sketch.py::test_role_pool_sketch_rejects_invalid_ownership[owners4]
+13 failed, 7 passed in 0.19s

@@ -1,0 +1,27 @@
+.................................................................        [100%]
+65 passed in 3.14s
+[Gloo] Rank [Gloo] Rank [Gloo] Rank 4[Gloo] Rank 10 is connected to 2 is connected to  is connected to 7 is connected to 77 peer ranks. 7[Gloo] Rank  peer ranks.  peer ranks. Expected number of connected peer ranks is :  peer ranks. 3Expected number of connected peer ranks is : Expected number of connected peer ranks is : 7Expected number of connected peer ranks is :  is connected to 77
+7[Gloo] Rank 7
+
+
+[Gloo] Rank [Gloo] Rank 5 peer ranks. 76 is connected to Expected number of connected peer ranks is :  is connected to  is connected to 7777 peer ranks. 
+ peer ranks.  peer ranks. Expected number of connected peer ranks is : Expected number of connected peer ranks is : Expected number of connected peer ranks is : 777
+
+
+[Gloo] Rank 0 is connected to 3 peer ranks. Expected number of connected peer ranks is : [Gloo] Rank 3[Gloo] Rank 2[Gloo] Rank 
+1 is connected to 3 is connected to 3 is connected to 3 peer ranks. 3 peer ranks. Expected number of connected peer ranks is :  peer ranks. Expected number of connected peer ranks is : 3Expected number of connected peer ranks is : 3
+3
+
+[Gloo] Rank 0 is connected to 3 peer ranks. Expected number of connected peer ranks is : 3
+[Gloo] Rank 1 is connected to 3[Gloo] Rank  peer ranks. [Gloo] Rank 3Expected number of connected peer ranks is : 2 is connected to 3 is connected to 3
+3 peer ranks.  peer ranks. Expected number of connected peer ranks is : Expected number of connected peer ranks is : 33
+
+CPU_OWNER_CANARY rank=4 PASS
+CPU_OWNER_CANARY rank=0 PASS
+CPU_OWNER_CANARY rank=1 PASS
+CPU_OWNER_CANARY rank=5 PASS
+CPU_OWNER_CANARY rank=7 PASSCPU_OWNER_CANARY rank=6 PASS
+
+CPU_OWNER_CANARY rank=3 PASS
+CPU_OWNER_CANARY rank=2 PASS
+CPU_CANARY_COMPLETE

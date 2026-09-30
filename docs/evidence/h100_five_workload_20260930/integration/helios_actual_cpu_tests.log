@@ -1,0 +1,10 @@
+Cloning into '/home/jiangzhikun/yongyan_liu/Helios-H100/repos/DMD-System-h100-helios-b16-20260930'...
+done.
+From /home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/sources/livewan_evidence_r1.bundle
+ * branch            HEAD       -> FETCH_HEAD
+Previous HEAD position was ea93fcf docs(h100): publish matched Wan native timing with numerical REVIEW
+Switched to a new branch 'agent/h100-helios-b16-20260930'
+a1802ec39fc2a575fb77c89087627cdd6ad28410
+............................................................             [100%]
+60 passed in 4.05s
+HELIOS_CPU_HELP_PASS_GPU_NOT_RUN

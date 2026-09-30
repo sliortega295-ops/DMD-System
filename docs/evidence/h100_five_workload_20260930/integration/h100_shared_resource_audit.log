@@ -1,0 +1,32 @@
+Wed Sep 30 19:44:24 UTC 2026
+index, utilization.gpu [%], memory.used [MiB]
+0, 100 %, 37782 MiB
+1, 100 %, 37756 MiB
+2, 100 %, 37752 MiB
+3, 100 %, 37790 MiB
+4, 100 %, 37760 MiB
+5, 100 %, 37752 MiB
+6, 99 %, 37776 MiB
+7, 100 %, 37778 MiB
+992881, [Not Found]
+992880, [Not Found]
+992882, [Not Found]
+992883, [Not Found]
+992885, [Not Found]
+992884, [Not Found]
+992886, [Not Found]
+992887, [Not Found]
+992888, [Not Found]
+992889, [Not Found]
+992891, [Not Found]
+1005023, [Not Found]
+992892, [Not Found]
+992893, [Not Found]
+992894, [Not Found]
+992895, [Not Found]
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+ea93fcfecf643cf4d8f55f16d81dcb62617bc8f8

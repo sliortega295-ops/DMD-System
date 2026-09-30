@@ -1,0 +1,15 @@
+asset gate not admitted: 5 missing/wrong-size files
+exit_code=1
+{
+  "status": "BLOCKED_INCOMPLETE_ASSETS",
+  "missing_or_wrong_size": [
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/assets/five_workload_h100_20260930/helios_frozen_r1/helios_nogan_logical/critic/master.f32",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/assets/five_workload_h100_20260930/helios_frozen_r1/helios_nogan_logical/critic/second_moment.f32",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/assets/five_workload_h100_20260930/helios_frozen_r1/helios_nogan_logical/generator/first_moment.f32",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/assets/five_workload_h100_20260930/helios_frozen_r1/helios_nogan_logical/generator/master.f32",
+    "/home/jiangzhikun/yongyan_liu/Helios-H100/assets/five_workload_h100_20260930/helios_frozen_r1/helios_nogan_logical/generator/second_moment.f32"
+  ],
+  "gpu_workload": "NOT_RUN",
+  "variant": "no-gan",
+  "exact_head": "a1802ec39fc2a575fb77c89087627cdd6ad28410"
+}
