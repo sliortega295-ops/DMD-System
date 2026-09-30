@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bind a completed native pair to one audited C29/C34 diagnostic descendant."""
+"""Bind a completed native pair to an audited diagnostic-only descendant."""
 from __future__ import annotations
 
 import argparse
@@ -49,7 +49,7 @@ def validate_native(gate: dict, pair: dict):
         or pair.get('status')!='PASS' or pair.get('formal_claimable') is not True
         or pair.get('timing_contract',{}).get('profiled') is not False
         or pair.get('expected_head')!=gate.get('expected_head')):
-        raise ValueError('native correctness/timing pair is not the completed C29/C34 source')
+        raise ValueError('native correctness/timing pair is not a completed supported source')
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from distillschedule.runtime.livewan_two_cycle_profile import (
-    enabled,apply_contract,plan_variant,NAME,VARIANT,C34_VARIANT)
+    enabled,apply_contract,plan_variant,NAME,VARIANT,C34_VARIANT,C35_VARIANT,C36_VARIANT)
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -28,6 +28,8 @@ def test_profile_default_off_and_cannot_enter_native(monkeypatch):
 @pytest.mark.parametrize('suffix,variant',[
     ('c29_continuous_b16_generator_rms_epilogue',VARIANT),
     ('c34_continuous_b16_residual_layout',C34_VARIANT),
+    ('c35_continuous_b16_score_gate',C35_VARIANT),
+    ('c36_continuous_b16_score_layernorm',C36_VARIANT),
 ])
 def test_profile_plan_diff_is_metadata_only(monkeypatch,suffix,variant):
     from distillschedule.core.config import load_plan
@@ -55,7 +57,7 @@ def test_profile_gate_rejects_changed_math_helpers():
     assert m.verify_worker_ast(before,after)['changed_functions']==['run_worker']
     with pytest.raises(ValueError):m.verify_worker_ast(before,before.replace('return 1','return 2'))
 
-@pytest.mark.parametrize('variant',[VARIANT,C34_VARIANT])
+@pytest.mark.parametrize('variant',[VARIANT,C34_VARIANT,C35_VARIANT,C36_VARIANT])
 def test_native_gate_must_be_unchanged_review_not_profile(variant):
     m=gate_module()
     g=dict(schema_version='distillschedule.livewan_two_cycle_timing_gate.v2',status='PASS',
@@ -78,6 +80,18 @@ def test_profile_rejects_intermediate_unaudited_plan(monkeypatch):
         monkeypatch.setenv(key,'/unread/'+key)
     plan=load_plan(ROOT/'configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c30_continuous_b16_generator_rms_critic_checkpoint.json').plan.to_dict()
     with pytest.raises(RuntimeError,match='intermediate'):
+        apply_contract(plan,mode='pipeline')
+
+
+def test_c36_profile_keeps_fail_closed_norm_contract(monkeypatch):
+    from distillschedule.core.config import load_plan
+    for key in ('LIVEWAN_STUDENT_CHECKPOINT','LIVEWAN_CRITIC_CHECKPOINT','LIVEWAN_TEACHER_CHECKPOINT',
+                'LIVEWAN_OPERATION_TRACE','LIVEWAN_SYSTEMS_BOOTSTRAP','DISTILLSCHEDULE_OUTPUT_DIR'):
+        monkeypatch.setenv(key,'/unread/'+key)
+    plan=load_plan(ROOT/'configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c36_continuous_b16_score_layernorm.json').plan.to_dict()
+    assert plan_variant(plan,mode='pipeline')==C36_VARIANT
+    plan['metadata']['score_layernorm']['source_sha256']='0'*64
+    with pytest.raises(RuntimeError,match='LayerNorm contract changed'):
         apply_contract(plan,mode='pipeline')
 
 def test_profile_load_gate_rejects_tamper_before_runtime(tmp_path):

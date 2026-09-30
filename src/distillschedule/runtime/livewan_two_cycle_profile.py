@@ -1,4 +1,4 @@
-"""Opt-in validated C29/C34 diagnostic capture, never a native timing arm.
+"""Opt-in validated C29/C34/C35/C36 capture, never a native timing arm.
 
 The original exact-head trajectory gate remains immutable. A separate profile
 receipt binds that gate to an audited instrumentation-only descendant.
@@ -14,7 +14,10 @@ from typing import Any
 NAME = "two_cycle_profile_b16_depth1_v2"
 VARIANT = "c29-continuous-b16-generator-rms-epilogue"
 C34_VARIANT = "c34-continuous-b16-residual-layout"
-SUPPORTED_VARIANTS = frozenset({VARIANT, C34_VARIANT})
+C35_VARIANT = "c35-continuous-b16-score-gate"
+C36_VARIANT = "c36-continuous-b16-score-layernorm"
+RESIDUAL_LAYOUT_VARIANTS = frozenset({C34_VARIANT, C35_VARIANT, C36_VARIANT})
+SUPPORTED_VARIANTS = frozenset({VARIANT, *RESIDUAL_LAYOUT_VARIANTS})
 SCHEMA = "distillschedule.livewan_two_cycle_profile_gate.v1"
 
 
@@ -29,10 +32,15 @@ def enabled(run_kind: str) -> bool:
 
 def plan_variant(plan: dict[str, Any], *, mode: str) -> str:
     from .livewan_crossscale_worker import (
-        _generator_rms_epilogue_enabled, _generator_residual_layout_enabled)
+        _generator_rms_epilogue_enabled, _generator_residual_layout_enabled,
+        _score_residual_gate_enabled, _score_layernorm_enabled)
 
     if mode != "pipeline" or not _generator_rms_epilogue_enabled(plan, mode=mode):
-        raise RuntimeError("two-cycle profile requires a validated C29/C34 pipeline")
+        raise RuntimeError("two-cycle profile requires a validated supported pipeline")
+    if _score_layernorm_enabled(plan, mode=mode):
+        return C36_VARIANT
+    if _score_residual_gate_enabled(plan, mode=mode):
+        return C35_VARIANT
     if _generator_residual_layout_enabled(plan, mode=mode):
         return C34_VARIANT
     if plan['metadata'].get('checkpoint_composition') is not None:
@@ -167,10 +175,10 @@ def summarize(*, run_root: Path, trace_path: Path, expected_head: str) -> dict[s
                 errors.append(f'rank{rank}: {key} delta')
         errors.extend(f'rank{rank}: {e}' for e in rms_errors(
             r.get('generator_rms_epilogue',{}), rank=rank, cycles=2,
-            fuse_cast_square=variant == C34_VARIANT))
+            fuse_cast_square=variant in RESIDUAL_LAYOUT_VARIANTS))
         errors.extend(f'rank{rank}: {e}' for e in cast_errors(
             r.get('generator_rollout_cast_cache',{}), rank=rank, cycles=2))
-        if variant == C34_VARIANT:
+        if variant in RESIDUAL_LAYOUT_VARIANTS:
             from .livewan_generator_modulation import runtime_receipt_errors as mod_errors
             from .livewan_generator_gate import runtime_receipt_errors as gate_errors
             from .livewan_attention_checkpoint import runtime_receipt_errors as sac_errors
@@ -183,6 +191,16 @@ def summarize(*, run_root: Path, trace_path: Path, expected_head: str) -> dict[s
                 r.get('generator_gate',{}), rank=rank, cycles=2, output_layout='row_major'))
             errors.extend(f'rank{rank}: {e}' for e in sac_errors(
                 r.get('critic_attention_checkpoint',{}), rank=rank, expected_calls=300))
+        if variant in {C35_VARIANT, C36_VARIANT}:
+            from .livewan_score_gate import runtime_receipt_errors as score_gate_errors
+            errors.extend(f'rank{rank}: {e}' for e in score_gate_errors(
+                r.get('score_residual_gate',{}), rank=rank,
+                inventory=r.get('call_inventory',{})))
+        if variant == C36_VARIANT:
+            from .livewan_score_layernorm import runtime_receipt_errors as norm_errors
+            errors.extend(f'rank{rank}: {e}' for e in norm_errors(
+                r.get('score_layernorm',{}), rank=rank,
+                inventory=r.get('call_inventory',{})))
         errors.extend(f'rank{rank}: {e}' for e in score_errors(r.get('score_rmsnorm_kernel',{}),rank=rank))
         if r.get('generator_runahead_transport',{}).get('execution_status') != 'PASS':
             errors.append(f'rank{rank}: transport failed')

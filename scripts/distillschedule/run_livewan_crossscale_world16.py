@@ -253,10 +253,10 @@ def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         exports["DISTILLSCHEDULE_NSYS_BIN"] = args.nsys_bin
     if args.profile_two_cycles:
         if (args.run_kind != "profile" or args.execution_mode != "pipeline"
-            or args.pipeline_variant not in {"c29-continuous-b16-generator-rms-epilogue", "c34-continuous-b16-residual-layout"}
+            or args.pipeline_variant not in {"c29-continuous-b16-generator-rms-epilogue", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm"}
             or args.two_cycle_seed is None or args.two_cycle_seed < 0
             or not args.two_cycle_arm_id):
-            raise ValueError("two-cycle profile requires validated C29/C34 pipeline and bound seed/arm")
+            raise ValueError("two-cycle profile requires validated supported pipeline and bound seed/arm")
         exports.update(LIVEWAN_PROFILE_TWO_CYCLES=1,
                        LIVEWAN_TWO_CYCLE_SEED=args.two_cycle_seed,
                        LIVEWAN_TWO_CYCLE_ARM_ID=args.two_cycle_arm_id)
