@@ -309,7 +309,11 @@ def test_trajectory_worker_keeps_legacy_c24_and_adds_explicit_mode() -> None:
         ROOT / "src/distillschedule/runtime/livewan_crossscale_worker.py"
     ).read_text()
     assert 'run_kind == "trajectory"' in source
-    assert 'trace.cycles == 3' in source
+    # Legacy profile keeps three cycles; qualified two-cycle profiling and the
+    # trajectory mode have independent, already-existing cycle contracts.
+    assert 'trace.cycles == (2 if profile_two_enabled(run_kind) else 3)' in source
+    from distillschedule.runtime.livewan_crossscale_worker import TRAJECTORY_ALLOWED_CYCLES
+    assert TRAJECTORY_ALLOWED_CYCLES == {1, 2, 5, 50}
     assert (
         "_apply_trajectory_contract(plan, cycles=trajectory_cycles, mode=mode)"
         in source
