@@ -8,6 +8,8 @@ RNG, synchronization, CPU tensor access or collective is introduced here.
 from __future__ import annotations
 
 import math
+import hashlib
+import inspect
 from typing import Any
 
 
@@ -19,6 +21,80 @@ CANARY_CONTRACT = dict(
     elementwise_affine=False, output_layout="row_major", eps=1e-6,
     numerical_gate="UNCHANGED_DEFAULT_P0_PARITY",
 )
+PLAN_CONTRACT = dict(
+    enabled=True, name="score_frozen_non_affine_bf16_layernorm_v1",
+    scope="score_ranks_only_critic_and_teacher", source_sha256=SOURCE_SHA256,
+    input_dtype="bfloat16", output_dtype="bfloat16", statistics_dtype="float32",
+    input_gradient_dtype="bfloat16", elementwise_affine=False, eps=1e-6,
+    output_layout="row_major", native_affine_and_unsupported_preserved=True,
+    numerical_gate="UNCHANGED_DEFAULT_P0_PARITY", application_calls_unchanged=True,
+)
+
+
+def install_frozen_score_layernorm(torch: Any) -> dict[str, Any]:
+    """Score-process-only opt-in; all other norm signatures keep their source."""
+    from wan.modules.model import WanLayerNorm
+
+    if hasattr(WanLayerNorm, "_distillschedule_score_layernorm"):
+        raise RuntimeError("Score LayerNorm already installed")
+    if hashlib.sha256(inspect.getsource(WanLayerNorm).encode()).hexdigest() != SOURCE_SHA256:
+        raise RuntimeError("Score LayerNorm source mismatch")
+    native = WanLayerNorm.forward
+    op, receipt = build(torch)
+    receipt.update(PLAN_CONTRACT, status="INSTALLED", install_status="PASS",
+        execution_status="PASS", production_installed=True,
+        total_norm_calls=0, selected_entries=0, native_fallback_calls=0,
+        native_fallback_histogram={})
+
+    def forward(norm: Any, x: Any) -> Any:
+        receipt["total_norm_calls"] += 1
+        if norm.weight is not None or norm.bias is not None:
+            reason = "affine_preserved"
+        elif not x.is_cuda:
+            reason = "device_preserved"
+        elif x.dtype != torch.bfloat16:
+            reason = "dtype_preserved"
+        elif x.ndim != 3 or x.shape[0] not in (1, 2) or x.shape[2] not in (1536, 5120):
+            reason = "shape_preserved"
+        elif x.stride() != (x.shape[1] * x.shape[2], x.shape[2], 1):
+            reason = "layout_preserved"
+        elif norm.eps != 1e-6:
+            reason = "epsilon_preserved"
+        else:
+            receipt["selected_entries"] += 1
+            return op(x, norm.eps)
+        receipt["native_fallback_calls"] += 1
+        h = receipt["native_fallback_histogram"]
+        h[reason] = h.get(reason, 0) + 1
+        return native(norm, x)
+
+    WanLayerNorm.forward = forward
+    WanLayerNorm._distillschedule_score_layernorm = receipt
+    return receipt
+
+
+def runtime_receipt_errors(receipt: dict[str, Any], *, rank: int,
+                           inventory: dict[str, int]) -> list[str]:
+    if rank < 8:
+        return [] if receipt.get("execution_status") == "NOT_APPLICABLE" else ["Score LayerNorm changed Generator"]
+    teacher = int(inventory.get("teacher/nograd/plain", 0))
+    critic_ng = int(inventory.get("critic/nograd/plain", 0))
+    critic_grad = int(inventory.get("critic/grad/checkpoint", 0))
+    # Pinned Teacher:40 blocks x3 norms +head. Critic:30x3 +head;
+    # block checkpoints replay their3 norms, while the root head does not.
+    expected = teacher * 121 + critic_ng * 91 + critic_grad * 181
+    if (any(receipt.get(k) != v for k, v in PLAN_CONTRACT.items())
+        or receipt.get("install_status") != "PASS"
+        or receipt.get("execution_status") != "PASS"
+        or receipt.get("contract_failures") != 0
+        or receipt.get("total_norm_calls") != expected or expected <= 0
+        or receipt.get("selected_entries", 0) <= 0
+        or receipt.get("forward_calls") != receipt.get("selected_entries")
+        or receipt.get("selected_entries", 0) + receipt.get("native_fallback_calls", 0) != expected
+        or sum(receipt.get("native_fallback_histogram", {}).values()) != receipt.get("native_fallback_calls")
+        or not 0 < receipt.get("backward_calls", 0) <= critic_grad * 61):
+        return ["Score LayerNorm source/scope/operation census incomplete"]
+    return []
 
 
 def validate(torch: Any, x: Any, eps: float) -> None:
