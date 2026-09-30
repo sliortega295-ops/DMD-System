@@ -53,6 +53,11 @@ from distillschedule.runtime.fsdp2_p0 import (  # noqa: E402
 )
 from runtime.gst_pool_contract import NegativePromptAsset  # noqa: E402
 from runtime.static_world16_trace import StaticWorld16Trace  # noqa: E402
+from distillschedule.runtime.wan13b_lora_grad_epilogue import (  # noqa: E402
+    grad_epilogue_requested,
+    runtime_precision_contract,
+    validate_grad_epilogue_receipts,
+)
 
 
 WORLD_SIZE = 16
@@ -145,6 +150,7 @@ def _configure_shared_mode_args(args: argparse.Namespace) -> None:
 
 
 def _validate_arm_environment(placement: str) -> dict[str, Any]:
+    grad_fused = grad_epilogue_requested()
     fused = (
         os.environ.get(
             "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE", "0"
@@ -161,7 +167,7 @@ def _validate_arm_environment(placement: str) -> dict[str, Any]:
         raise ValueError(
             "two-cycle Resident winner requires fused epilogue ON and cast cache OFF"
         )
-    if placement == FSDP_BASELINE and (fused or cast_cache):
+    if placement == FSDP_BASELINE and (fused or cast_cache or grad_fused):
         raise ValueError(
             "two-cycle world16-FSDP baseline requires fused epilogue and cast cache OFF"
         )
@@ -169,6 +175,7 @@ def _validate_arm_environment(placement: str) -> dict[str, Any]:
         "arm_contract": _expected_arm_contract(placement),
         "generator_nograd_lora_fused_epilogue": fused,
         "generator_nograd_lora_cast_cache": cast_cache,
+        "grad_lora_fused_epilogue": grad_fused,
     }
 
 
@@ -641,6 +648,7 @@ def main() -> int:
         trace_rollout_contract_sha256 = _canonical_hash(trace_rollout_contract)
         negative_asset = NegativePromptAsset.load(args.negative_prompt)
         matched_contract = {
+            **runtime_precision_contract(),
             "bootstrap_hash": bootstrap.manifest_hash,
             "model_identity_sha256": bootstrap.manifest["model_identity_sha256"],
             "trace_bundle_hash": trace.bundle_hash,
@@ -779,6 +787,8 @@ def main() -> int:
             for index, raw in enumerate(raw_cycles, start=1)
         ]
         fused_receipt = _validate_fused_receipt(build, placement=args.placement)
+        grad_receipt = validate_grad_epilogue_receipts(
+            build, requested=bool(arm["grad_lora_fused_epilogue"]))
 
         result.update(
             status="PASS",
@@ -793,6 +803,7 @@ def main() -> int:
             memory=base._memory(device),
             runtime_cache_keys=(sorted(runtime_cache) if runtime_cache is not None else []),
             fused_epilogue_receipt=fused_receipt,
+            grad_epilogue_receipt=grad_receipt,
             runtime_contract=runtime_contract,
             gradient_sync={
                 "generator_receipt_count": len(

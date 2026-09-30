@@ -179,6 +179,9 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--lora-attribution-target-nograd-calls", type=int, default=3)
     value.add_argument("--generator-nograd-lora-cast-cache", action="store_true")
     value.add_argument("--generator-nograd-lora-fused-epilogue", action="store_true")
+    value.add_argument("--grad-lora-fused-epilogue", action="store_true")
+    value.add_argument("--tf32-cublas-override", choices=("0", "1"), default=None,
+                       help="Explicit matched precision policy; never enable in only one arm.")
     value.add_argument("--trajectory-cycles", type=int, choices=(1, 2, 5, 50))
     value.add_argument("--trajectory-seed", type=int, default=20260903)
     value.add_argument("--trajectory-arm-id")
@@ -215,7 +218,13 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         f"DISTILLSCHEDULE_WAN13B_BOOTSTRAP_HASH={shlex.quote(args.bootstrap_hash)}",
         "DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256="
         + shlex.quote(args.expected_helios_transformer_sha256),
+        "DISTILLSCHEDULE_WAN13B_GRAD_LORA_FUSED_EPILOGUE="
+        + ("1" if args.grad_lora_fused_epilogue else "0"),
     ]
+    if args.tf32_cublas_override is not None:
+        exports.append("TORCH_ALLOW_TF32_CUBLAS_OVERRIDE=" + args.tf32_cublas_override)
+    if args.grad_lora_fused_epilogue and args.placement != "resident-async128-tree-chunk2048":
+        raise ValueError("grad epilogue is registered only for the Resident winner")
     if args.mode in {"timing", "diagnostic-timing", "profile", "two-cycle-timing"}:
         if args.correctness_receipt is None or not args.correctness_sha256:
             raise ValueError("low-overhead execution requires a pinned correctness receipt")

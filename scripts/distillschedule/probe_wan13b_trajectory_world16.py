@@ -64,6 +64,11 @@ from distillschedule.runtime.fsdp2_p0 import (  # noqa: E402
 )
 from runtime.gst_pool_contract import NegativePromptAsset  # noqa: E402
 from runtime.static_world16_trace import StaticWorld16Trace  # noqa: E402
+from distillschedule.runtime.wan13b_lora_grad_epilogue import (  # noqa: E402
+    grad_epilogue_requested,
+    runtime_precision_contract,
+    validate_grad_epilogue_receipts,
+)
 
 
 WORLD_SIZE = 16
@@ -370,11 +375,12 @@ def main() -> int:
         )
         == "1"
     )
+    grad_fused = grad_epilogue_requested()
     if args.placement == RESIDENT_WINNER and not fused_epilogue:
         raise ValueError("Resident trajectory is not the registered fused-epilogue winner")
     if args.placement == RESIDENT_WINNER and cast_cache:
         raise ValueError("Resident winner cannot enable the rejected cast cache")
-    if args.placement == FSDP_BASELINE and (fused_epilogue or cast_cache):
+    if args.placement == FSDP_BASELINE and (fused_epilogue or cast_cache or grad_fused):
         raise ValueError("world16-FSDP baseline cannot enable Resident-only LoRA arms")
     if not args.run_id.replace("-", "").replace("_", "").replace(".", "").isalnum():
         raise ValueError("unsafe run id")
@@ -667,6 +673,7 @@ def main() -> int:
                 expected_total_cycles=args.trajectory_cycles,
                 logical_step=10 + (cycle - 1) * 5,
                 matched_contract={
+                    **runtime_precision_contract(),
                     "bootstrap_hash": bootstrap.manifest_hash,
                     "model_identity_sha256": bootstrap.manifest["model_identity_sha256"],
                     "trace_bundle_hash": trace.bundle_hash,
@@ -687,6 +694,7 @@ def main() -> int:
                     "arm_contract": result["arm_contract"],
                     "generator_nograd_lora_fused_epilogue": str(fused_epilogue).lower(),
                     "generator_nograd_lora_cast_cache": str(cast_cache).lower(),
+                    "grad_lora_fused_epilogue": str(grad_fused).lower(),
                     "worker": "probe_wan13b_trajectory_world16.py",
                 },
                 sample_identities=sample_payloads,
@@ -748,6 +756,7 @@ def main() -> int:
         result.update(
             status="PASS",
             completed_cycles=args.trajectory_cycles,
+            grad_epilogue_receipt=validate_grad_epilogue_receipts(build, requested=grad_fused),
             updates={
                 "generator": args.trajectory_cycles,
                 "critic": 5 * args.trajectory_cycles,

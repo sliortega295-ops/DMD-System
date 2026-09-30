@@ -180,6 +180,7 @@ def _validate_arm(
     arm = row.get("arm_contract", {})
     fused = arm.get("generator_nograd_lora_fused_epilogue")
     cast_cache = arm.get("generator_nograd_lora_cast_cache")
+    grad_fused = arm.get("grad_lora_fused_epilogue", False)
     expected_name = (
         "RESIDENT_ASYNC128_TREE_CHUNK2048_FUSED_EPILOGUE"
         if placement == RESIDENT_WINNER
@@ -190,7 +191,7 @@ def _validate_arm(
     if placement == RESIDENT_WINNER:
         if fused is not True or cast_cache is not False:
             errors.append(f"rank{rank}: Resident fused/cast-cache flags changed")
-    elif fused is not False or cast_cache is not False:
+    elif fused is not False or cast_cache is not False or grad_fused is not False:
         errors.append(f"rank{rank}: FSDP enabled Resident-only LoRA arm")
 
     runtime = row.get("runtime_contract", {})
@@ -230,6 +231,11 @@ def _validate_arm(
             errors.append(f"rank{rank}: Critic entered Generator fused epilogue")
     elif generator.get("requested") or generator.get("enabled") or critic.get("enabled"):
         errors.append(f"rank{rank}: unrequested fused epilogue executed")
+    if grad_fused:
+        for role in ("generator", "critic"):
+            observed = row.get("grad_epilogue_receipt", {}).get(role, {})
+            if observed.get("enabled") is not True or int(observed.get("fused_invocation_count", 0)) <= 0:
+                errors.append(f"rank{rank}: {role} grad epilogue did not execute")
 
 
 def _teardown(
@@ -282,6 +288,7 @@ def main() -> int:
         "two_cycle_seed", "two_cycle_arm_id", "two_cycle_correctness_sha256",
         "two_cycle_trajectory_comparison_sha256",
         "generator_nograd_lora_fused_epilogue", "generator_nograd_lora_cast_cache",
+        "grad_lora_fused_epilogue", "tf32_cublas_override",
         "helios_transformer_sha256", "model_root",
     )
     launch_identities = {

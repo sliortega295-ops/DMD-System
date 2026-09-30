@@ -77,6 +77,11 @@ LORA_ATTRIBUTION_TARGET_RANK="${DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_TARGET_R
 LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS="${DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS:-3}"
 GENERATOR_NOGRAD_LORA_CAST_CACHE="${DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE:-0}"
 GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE="${DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE:-0}"
+GRAD_LORA_FUSED_EPILOGUE="${DISTILLSCHEDULE_WAN13B_GRAD_LORA_FUSED_EPILOGUE:-0}"
+[[ "${GRAD_LORA_FUSED_EPILOGUE}" == 0 || "${GRAD_LORA_FUSED_EPILOGUE}" == 1 ]] || exit 2
+if [[ "${GRAD_LORA_FUSED_EPILOGUE}" == 1 && "${PLACEMENT}" != resident-async128-tree-chunk2048 ]]; then
+  echo grad_epilogue_requires_registered_resident >&2; exit 2
+fi
 
 if [[ "${MODE}" == trajectory || "${MODE}" == two-cycle-timing ]]; then
   if [[ "${PLACEMENT}" == resident-async128-tree-chunk2048 ]]; then
@@ -327,6 +332,8 @@ lora_attribution_target_rank=${LORA_ATTRIBUTION_TARGET_RANK}
 lora_attribution_target_nograd_calls=${LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS}
 generator_nograd_lora_cast_cache=${GENERATOR_NOGRAD_LORA_CAST_CACHE}
 generator_nograd_lora_fused_epilogue=${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}
+grad_lora_fused_epilogue=${GRAD_LORA_FUSED_EPILOGUE}
+tf32_cublas_override=${TORCH_ALLOW_TF32_CUBLAS_OVERRIDE:-NOT_SET}
 ema_implementation=${ema_implementation}
 optimizer_implementation=${optimizer_implementation}
 gradient_clip_implementation=${gradient_clip_implementation}

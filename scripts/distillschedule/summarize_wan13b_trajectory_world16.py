@@ -315,6 +315,7 @@ def main() -> int:
         "run_id", "dmd_system_head", "trajectory_seed", "trajectory_arm_id",
         "trace_hash", "bootstrap_hash", "generator_nograd_lora_fused_epilogue",
         "generator_nograd_lora_cast_cache", "nccl_algo",
+        "grad_lora_fused_epilogue", "tf32_cublas_override",
     )
     manifest_identities = {
         tuple(manifest.get(key) for key in identity_keys) for manifest in manifests if manifest
@@ -381,6 +382,11 @@ def main() -> int:
             errors.append(f"rank{rank}: invalid final rank receipt: {error}")
             continue
         finals[rank] = final
+        if rows and rows[0].implementation.get("grad_lora_fused_epilogue") == "true":
+            for role in ("generator", "critic"):
+                observed = final.get("grad_epilogue_receipt", {}).get(role, {})
+                if observed.get("enabled") is not True or int(observed.get("fused_invocation_count", 0)) <= 0:
+                    errors.append(f"rank{rank}: {role} grad epilogue did not execute")
         if final.get("status") != "PASS" or final.get("rank") != rank:
             errors.append(f"rank{rank}: final rank receipt is not PASS")
         if final.get("placement") != args.placement or final.get("world_size") != WORLD_SIZE:
@@ -474,6 +480,9 @@ def main() -> int:
             "updates": raw_matched.get("updates"),
             "score_packing": raw_matched.get("score_packing", "").lower() == "true",
             "rollout_batch_size": int(raw_matched.get("rollout_batch_size", -1)),
+            **{key: raw_matched[key] for key in (
+                "tf32_cublas_override", "float32_matmul_precision",
+                "cuda_matmul_allow_tf32", "cudnn_allow_tf32") if key in raw_matched},
         }
         if raw_matched is not None
         else None
@@ -519,6 +528,7 @@ def main() -> int:
             "generator_nograd_lora_cast_cache": (
                 raw_implementation.get("generator_nograd_lora_cast_cache", "").lower() == "true"
             ),
+            "grad_lora_fused_epilogue": raw_implementation.get("grad_lora_fused_epilogue", "false") == "true",
             "worker": raw_implementation.get("worker"),
         }
         if raw_implementation is not None
@@ -543,6 +553,8 @@ def main() -> int:
             errors.append("trajectory fused-epilogue arm flag changed")
         if implementation_contract.get("generator_nograd_lora_cast_cache") is not False:
             errors.append("trajectory unexpectedly enabled rejected cast cache")
+        if args.placement == FSDP_BASELINE and implementation_contract["grad_lora_fused_epilogue"]:
+            errors.append("FSDP baseline enabled Resident grad epilogue")
 
     expected_anchor_cycles = sorted(
         {cycle for cycle in (1, 10, 25, 50, args.cycles) if cycle <= args.cycles}

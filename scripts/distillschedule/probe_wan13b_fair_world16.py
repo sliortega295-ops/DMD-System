@@ -70,6 +70,10 @@ from distillschedule.runtime.wan13b_lora_cast import (
     install_generator_nograd_lora_fused_epilogue,
     install_lora_operator_attribution,
 )
+from distillschedule.runtime.wan13b_lora_grad_epilogue import (
+    grad_epilogue_requested,
+    install_grad_lora_fused_epilogue,
+)
 
 
 def _build_model_fair(
@@ -79,6 +83,8 @@ def _build_model_fair(
     bootstrap: Any,
     device: torch.device,
 ) -> tuple[torch.nn.Module, dict[str, Any]]:
+    if grad_epilogue_requested() and args.placement != ASYNC_128_TREE_CHUNK2048_RESIDENT:
+        raise ValueError("grad epilogue canary is registered only for the Resident winner")
     seed = int(bootstrap.component(role)["seed"])
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(seed)
@@ -228,6 +234,7 @@ def _build_model_fair(
         role=role,
     )
     metadata["generator_nograd_lora_fused_epilogue"] = lora_fused_epilogue
+    metadata["grad_lora_fused_epilogue"] = install_grad_lora_fused_epilogue(model, role=role)
     lora_operator_attribution = install_lora_operator_attribution(
         model,
         role=role,
