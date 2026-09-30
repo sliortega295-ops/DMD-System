@@ -1,0 +1,11 @@
+{
+  "actual_torch_cpu_and_gloo.log": "502c684906970e6d9fb93b835b22dcc2f66e4264682c1a86ffd739c8ef60d01e",
+  "execution_handoff.json": "a9093684d1d57d6ba823d1212144eb3754db45ce91ab0651bed6724a90a73c88",
+  "h100_shared_resource_audit.log": "6b9228ea14af6af4576d5f5390156785418c604d7c3d98592300cf3ece20d21a",
+  "helios_actual_cpu_tests.log": "27e5e611bbc63c63235a78906ea10ad9168a331762325c65198daefb2266ba8f",
+  "helios_incomplete_assets.log": "db483cdab6349273b2051aadef95b1fd32bc30418595b1d519a000afb0111cb0",
+  "livewan_owner_cpu_canary_r2.json": "858fcf4aec55daac9140d8b0c6930e1a952e8009e1d52840007dca25bc3b8acc",
+  "livewan_owner_gloo_canary.py": "4aa86546636f3d61e21ef8f41887e1f5fb7069938a2bd16cbe328965b1e07c08",
+  "local_owner_regression_green.log": "5b81c83631e07ea189e4be6de108a1da1915186460e4debc0636e0efd7671a31",
+  "local_owner_regression_red.log": "4d7934f657a624b3279a773b4ce392eedbaa120b2c085d44e0678cb6b2ade63d"
+}

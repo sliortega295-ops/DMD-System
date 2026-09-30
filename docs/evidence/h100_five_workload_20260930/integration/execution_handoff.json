@@ -1,0 +1,67 @@
+{
+  "schema_version": "five_workload_h100_execution_handoff.v1",
+  "run_id": "five_workload_h100_20260930",
+  "status": "IN_PROGRESS_GPU_RESOURCE_BLOCKED",
+  "complete": false,
+  "target_hardware": "8xH100_80GB",
+  "logical_global_batch": 16,
+  "last_gpu_audit_utc": "2026-09-30T19:44:24Z",
+  "foreign_context_count": 16,
+  "foreign_processes_touched": false,
+  "base_training_environments_modified": false,
+  "current_adaptation_code_head": "a1802ec39fc2a575fb77c89087627cdd6ad28410",
+  "workloads": {
+    "wan1p3b": {
+      "status": "PASS_CONTROLLED_DIAGNOSTIC_NUMERIC_REVIEW",
+      "measured_head": "11dd0b155cc72572c907a79abc1a66cbdca25392",
+      "baseline_seconds": [
+        56.79785511549562,
+        56.78841750603169,
+        58.96011863835156
+      ],
+      "candidate_seconds": [
+        37.582740034908056,
+        37.50920685287565,
+        37.511148368008435
+      ],
+      "median_ratio": 1.5141593256,
+      "strict_claimable": false,
+      "report": "wan1p3b/report.md"
+    },
+    "livewan": {
+      "status": "BASELINE_TWO_CYCLE_PASS_C34_EVIDENCE_FIX_CPU_PASS_GPU_RERUN_NOT_RUN",
+      "previous_baseline_run": "livewan_h100_baseline_trajectory_r2",
+      "previous_head": "ea93fcfecf643cf4d8f55f16d81dcb62617bc8f8",
+      "previous_c34_run": "livewan_h100_c34_trajectory_r1",
+      "failure_type": "POST_CYCLE_STATE_SKETCH_OWNER_INVENTORY",
+      "cuda_or_cgroup_oom": false,
+      "evidence_fix_head": "a1802ec39fc2a575fb77c89087627cdd6ad28410",
+      "local_tests": "65_PASS",
+      "actual_torch_tests": "65_PASS",
+      "actual_eight_rank_cpu_gloo": "8/8_PASS",
+      "matched_timing": "NOT_RUN",
+      "resume": "fresh both-arm same-head trajectory before any paired timing"
+    },
+    "helios_nogan": {
+      "status": "CPU_60_TESTS_AND_WORKER_HELP_PASS_GPU_NOT_RUN",
+      "asset_gate": "BLOCKED_FIVE_OPTIMIZER_MASTER_FILES_STILL_TRANSFERRING",
+      "backbone_precast": "12/12_FULL_FILE_SHA_PASS",
+      "gpu_run": "NOT_RUN"
+    },
+    "helios_gan": {
+      "status": "CPU_60_TESTS_AND_WORKER_HELP_PASS_GPU_NOT_RUN",
+      "asset_gate": "PENDING_FROZEN_GAN_CHECKPOINT_TRANSFER",
+      "gpu_run": "NOT_RUN"
+    },
+    "h3_grid1000": {
+      "status": "NO_GO_INITIAL_STATE_AND_RNG_EVIDENCE_MISSING",
+      "gpu_run": "NOT_RUN",
+      "new_shared_h100_bootstrap": "WAITING_USER_CLARIFICATION_NOT_AUTHORIZED",
+      "semantics": "GRID1000_APPROXIMATE_NOT_EXACT_DMD"
+    }
+  },
+  "active_cpu_only_work": "Helios frozen assets remote-to-remote resumable SHA-gated transfer",
+  "gpu_claims": "No new hardware speedup claims for the four pending workloads",
+  "next_gate": "Confirm idle owned H100 GPUs; deploy LiveWan evidence-only fix, repeat both trajectory arms, compare fresh receipts, then three unprofiled matched pairs",
+  "forbidden": "Do not mix old baseline and fixed candidate heads; do not count CPU probe as model correctness; pause/drain own asset transfer before timing"
+}
