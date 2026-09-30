@@ -25,6 +25,7 @@ from distillschedule.evidence.trajectory_coarse import (
 from distillschedule.evidence.trajectory_state_sketch import (
     SCHEMA_VERSION as STATE_SKETCH_SCHEMA_VERSION,
 )
+from distillschedule.runtime.livewan_hardware import LiveWanHardware, livewan_hardware
 
 
 BASELINE_VARIANT = "b1"
@@ -67,10 +68,15 @@ def _load_summary(
     mode: str,
     variant: str,
     expected_head: str,
+    hardware: LiveWanHardware | None = None,
 ) -> dict[str, Any]:
+    hardware = hardware or livewan_hardware()
     resolved_path = path.resolve(strict=True)
     root = root.resolve(strict=True)
     value = json.loads(resolved_path.read_text(encoding="utf-8"))
+    hardware_errors = hardware.receipt_errors(value)
+    if hardware_errors:
+        raise ValueError(f"{mode} trajectory " + "; ".join(hardware_errors))
     required = {
         "schema_version": "distillschedule.livewan_trajectory_summary.v1",
         "status": "PASS",
@@ -80,8 +86,8 @@ def _load_summary(
         "execution_mode": mode,
         "pipeline_variant": variant,
         "cycles": 2,
-        "rank_cycle_receipts": 32,
-        "expected_rank_cycle_receipts": 32,
+        "rank_cycle_receipts": 2 * hardware.physical_world_size,
+        "expected_rank_cycle_receipts": 2 * hardware.physical_world_size,
         "final_versions": {"generator": 2, "critic": 10, "ema": 0},
         "formal_timing_eligible": False,
     }
@@ -106,7 +112,10 @@ def _validate_arm(
     mode: str,
     variant: str,
     expected_head: str,
+    hardware: LiveWanHardware | None = None,
 ) -> dict[str, Any]:
+    hardware = hardware or livewan_hardware()
+    hardware.validate_variant(mode=mode, variant=variant)
     root = root.resolve(strict=True)
     summary = _load_summary(
         summary_path,
@@ -114,10 +123,11 @@ def _validate_arm(
         mode=mode,
         variant=variant,
         expected_head=expected_head,
+        hardware=hardware,
     )
     manifests = [
         _launch_manifest(root / "launcher" / f"node_{node}" / "launch_manifest.txt")
-        for node in range(2)
+        for node in range(hardware.node_count)
     ]
     expected = {
         "head": expected_head,
@@ -128,6 +138,9 @@ def _validate_arm(
         "claim_boundary": "DIAGNOSTIC_ONLY",
     }
     for node, manifest in enumerate(manifests):
+        hardware_errors = hardware.manifest_errors(manifest)
+        if hardware_errors:
+            raise ValueError(f"{mode} node{node}: " + "; ".join(hardware_errors))
         for key, value in expected.items():
             if manifest.get(key) != value:
                 raise ValueError(f"{mode} node{node} launch manifest changed {key}")
@@ -145,11 +158,13 @@ def _validate_arm(
         raise ValueError(f"{mode} trajectory summary identity differs from launch")
 
     rows = []
-    for rank in range(16):
+    for rank in range(hardware.physical_world_size):
         path = root / "trajectory" / f"rank_{rank:03d}.jsonl"
         rank_rows = load_trajectory_jsonl(path)
         if len(rank_rows) != 2 or [row.cycle for row in rank_rows] != [1, 2]:
             raise ValueError(f"{mode} rank{rank} is not a complete two-cycle trajectory")
+        if hardware.is_h100 and any(row.rank != rank or row.world_size != hardware.physical_world_size for row in rank_rows):
+            raise ValueError(f"{mode} rank{rank} hardware rank/world identity changed")
         rows.extend(rank_rows)
     return {
         "rows": rows,
@@ -310,7 +325,9 @@ def main() -> int:
     parser.add_argument("--expected-head", required=True)
     parser.add_argument("--pipeline-variant", choices=(PIPELINE_VARIANT, "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"), default=PIPELINE_VARIANT)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--hardware-profile", choices=("a100-16-b16", "h100-8-b16"))
     args = parser.parse_args()
+    hardware = livewan_hardware(args.hardware_profile)
     if len(args.expected_head) != 40:
         raise ValueError("--expected-head must be a full Git SHA")
 
@@ -320,6 +337,7 @@ def main() -> int:
         mode="baseline",
         variant=BASELINE_VARIANT,
         expected_head=args.expected_head,
+        hardware=hardware,
     )
     pipeline = _validate_arm(
         args.pipeline_run_root,
@@ -327,6 +345,7 @@ def main() -> int:
         mode="pipeline",
         variant=args.pipeline_variant,
         expected_head=args.expected_head,
+        hardware=hardware,
     )
     if baseline["seed"] != pipeline["seed"]:
         raise ValueError("trajectory arm seeds differ")
@@ -373,7 +392,7 @@ def main() -> int:
         pipeline["rows"],
         state_comparisons=state_comparisons,
         expected_cycles=2,
-        expected_world_size=16,
+        expected_world_size=hardware.physical_world_size,
         comparison_kind="semantic",
         required_state_cycles=(1, 2),
     )
@@ -440,6 +459,10 @@ def main() -> int:
             "anchors": anchor_bindings["pipeline"],
         },
     }
+    if hardware.is_h100:
+        result.update(hardware_profile=hardware.to_dict(),
+                      physical_world_size=hardware.physical_world_size, logical_world_size=16)
+        result["source_binding"]["hardware_profile"] = hardware.to_dict()
     _atomic_json(args.output, result)
     print(json.dumps(result, indent=2, sort_keys=True))
     return (

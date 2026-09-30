@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from distillschedule.evidence.trajectory_coarse import load_trajectory_jsonl
+from distillschedule.runtime.livewan_hardware import livewan_hardware
 
 
 def parser() -> argparse.ArgumentParser:
@@ -18,6 +19,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--cycles", type=int, required=True)
     value.add_argument("--expected-head", required=True)
     value.add_argument("--output", type=Path, required=True)
+    value.add_argument("--hardware-profile", choices=("a100-16-b16", "h100-8-b16"))
     return value
 
 
@@ -39,6 +41,9 @@ def launch_manifest(path: Path) -> dict[str, str]:
 
 def main() -> int:
     args = parser().parse_args()
+    hardware = livewan_hardware(args.hardware_profile)
+    world_size = hardware.physical_world_size
+    scope_cycles = args.cycles * hardware.scope_multiplicity()
     if args.cycles not in {1, 2, 5, 50}:
         raise ValueError("trajectory cycles must be one of 1, 2, 5, or 50")
     errors: list[str] = []
@@ -50,7 +55,7 @@ def main() -> int:
     launch_run_ids: set[str] = set()
     launch_heads: set[str] = set()
     launch_seeds: set[int] = set()
-    for node in range(2):
+    for node in range(hardware.node_count):
         path = args.run_root / "launcher" / f"node_{node}" / "launch_manifest.txt"
         try:
             manifest = launch_manifest(path)
@@ -59,6 +64,7 @@ def main() -> int:
             continue
         if manifest.get("head") != args.expected_head:
             errors.append(f"node{node}: launch HEAD differs from expected HEAD")
+        errors.extend(f"node{node}: {error}" for error in hardware.manifest_errors(manifest))
         if manifest.get("trajectory_cycles") != str(args.cycles):
             errors.append(f"node{node}: launch trajectory cycle count changed")
         if manifest.get("claim_boundary") != "DIAGNOSTIC_ONLY":
@@ -101,7 +107,11 @@ def main() -> int:
     )
     if len(launch_variants) != 1 or pipeline_variant not in allowed_variants:
         errors.append("two-node trajectory physical-batch variant is invalid")
-    for rank in range(16):
+    try:
+        hardware.validate_variant(mode=execution_mode, variant=pipeline_variant)
+    except ValueError as error:
+        errors.append(str(error))
+    for rank in range(world_size):
         path = args.run_root / "trajectory" / f"rank_{rank:03d}.jsonl"
         try:
             rows = load_trajectory_jsonl(path)
@@ -114,6 +124,8 @@ def main() -> int:
             errors.append(f"rank{rank}: cycle sequence is not contiguous")
         if any(not row.finite or row.runtime_status != "PASS" for row in rows):
             errors.append(f"rank{rank}: non-finite or failed trajectory row")
+        if hardware.is_h100 and any(row.rank != rank or row.world_size != world_size for row in rows):
+            errors.append(f"rank{rank}: physical hardware rank/world identity changed")
         rank_rows[rank] = rows
 
         receipt_path = args.run_root / "receipts" / f"rank_{rank:03d}.json"
@@ -124,32 +136,33 @@ def main() -> int:
             continue
         if final.get("status") != "PASS" or final.get("run_kind") != "trajectory":
             errors.append(f"rank{rank}: final trajectory receipt is not PASS")
+        errors.extend(f"rank{rank}: {error}" for error in hardware.receipt_errors(final))
         if pipeline_variant in {"c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"}:
             from distillschedule.runtime.livewan_score_rmsnorm import runtime_receipt_errors
 
             errors.extend(f"rank{rank}: {error}" for error in runtime_receipt_errors(
-                dict(final.get("score_rmsnorm_kernel", {})), rank=rank))
+                dict(final.get("score_rmsnorm_kernel", {})), rank=hardware.receipt_rank(rank)))
         if pipeline_variant in {"c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"}:
             from distillschedule.runtime.livewan_generator_rms_epilogue import runtime_receipt_errors as rms_epilogue_errors
 
             errors.extend(f"rank{rank}: {error}" for error in rms_epilogue_errors(
-                dict(final.get("generator_rms_epilogue", {})), rank=rank, cycles=args.cycles,
+                dict(final.get("generator_rms_epilogue", {})), rank=hardware.receipt_rank(rank), cycles=scope_cycles,
                 fuse_cast_square=pipeline_variant in {"c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"}))
         if pipeline_variant in {"c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"}:
             from distillschedule.runtime.livewan_rollout_cast_cache import runtime_receipt_errors as cast_errors
 
             errors.extend(f"rank{rank}: {error}" for error in cast_errors(
-                dict(final.get("generator_rollout_cast_cache", {})), rank=rank, cycles=args.cycles))
+                dict(final.get("generator_rollout_cast_cache", {})), rank=hardware.receipt_rank(rank), cycles=scope_cycles))
         if pipeline_variant in {"c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"}:
             from distillschedule.runtime.livewan_generator_modulation import runtime_receipt_errors as modulation_errors
 
             errors.extend(f"rank{rank}: {error}" for error in modulation_errors(
-                dict(final.get("generator_modulation", {})), rank=rank, cycles=args.cycles))
+                dict(final.get("generator_modulation", {})), rank=hardware.receipt_rank(rank), cycles=scope_cycles))
         if pipeline_variant in {"c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"}:
             from distillschedule.runtime.livewan_generator_gate import runtime_receipt_errors as gate_errors
 
             errors.extend(f"rank{rank}: {error}" for error in gate_errors(
-                dict(final.get("generator_gate", {})), rank=rank, cycles=args.cycles,
+                dict(final.get("generator_gate", {})), rank=hardware.receipt_rank(rank), cycles=scope_cycles,
                 output_layout="row_major" if pipeline_variant == "c34-continuous-b16-residual-layout" else "native"))
         if pipeline_variant == "c27-continuous-b16-pinned-prompt-staging":
             from distillschedule.runtime.livewan_context_staging import runtime_receipt_errors as staging_errors
@@ -160,8 +173,8 @@ def main() -> int:
             from distillschedule.runtime.livewan_attention_checkpoint import runtime_receipt_errors as sac_errors
 
             errors.extend(f"rank{rank}: {error}" for error in sac_errors(
-                dict(final.get("critic_attention_checkpoint", {})), rank=rank,
-                expected_calls=args.cycles * 5 * 30))
+                dict(final.get("critic_attention_checkpoint", {})), rank=hardware.receipt_rank(rank),
+                expected_calls=args.cycles * hardware.critic_accumulations * 5 * 30))
         if final.get("final_versions") != {
             "generator": args.cycles,
             "critic": 5 * args.cycles,
@@ -171,7 +184,7 @@ def main() -> int:
         expected_commits = (
             (args.cycles, 5 * args.cycles)
             if execution_mode == "baseline"
-            else ((args.cycles, 0) if rank < 8 else (0, 5 * args.cycles))
+            else ((args.cycles, 0) if hardware.is_generator(rank) else (0, 5 * args.cycles))
         )
         if (
             int(final.get("physical_generator_commits", -1)),
@@ -243,7 +256,7 @@ def main() -> int:
         if isinstance(recorded, str):
             anchor_digests[cycle] = recorded
 
-    if len(rank_rows) == 16:
+    if len(rank_rows) == world_size and all(len(rows) == args.cycles for rows in rank_rows.values()):
         reference_contract = rank_rows[0][0].matched_contract
         for cycle in range(1, args.cycles + 1):
             expected_versions = {
@@ -254,7 +267,7 @@ def main() -> int:
             cycle_samples: list[str] = []
             cycle_rng: dict[str, str] = {}
             reference_call_census = rank_rows[0][cycle - 1].call_census
-            for rank in range(16):
+            for rank in range(world_size):
                 row = rank_rows[rank][cycle - 1]
                 if row.matched_contract != reference_contract:
                     errors.append(f"rank{rank}/cycle{cycle}: matched contract changed")
@@ -267,13 +280,13 @@ def main() -> int:
                 if row.implementation.get("execution_mode") != execution_mode:
                     errors.append(f"rank{rank}/cycle{cycle}: execution mode changed")
                 expected_physical = (
-                    ("1", "5", "5")
+                    ("1", str(5 * len(hardware.baseline_slots(rank))), "5")
                     if execution_mode == "baseline"
                     else (
                         ("1", "0" if rank < 8 else "10", "0" if rank < 8 else "5")
                         if pipeline_variant
                         == "c24-continuous-b16-score-modulation-b1-attribution"
-                        else ("2", "0" if rank < 8 else "5", "0" if rank < 8 else "5")
+                        else ("2", "0" if hardware.is_generator(rank) else str(5 * hardware.critic_accumulations), "0" if hardware.is_generator(rank) else "5")
                     )
                 )
                 observed_physical = tuple(
@@ -336,7 +349,7 @@ def main() -> int:
         "identity": identity,
         "cycles": args.cycles,
         "rank_cycle_receipts": sum(len(rows) for rows in rank_rows.values()),
-        "expected_rank_cycle_receipts": 16 * args.cycles,
+        "expected_rank_cycle_receipts": world_size * args.cycles,
         "final_versions": {
             "generator": args.cycles,
             "critic": 5 * args.cycles,
@@ -351,6 +364,9 @@ def main() -> int:
         "ordinary_numerical_drift_early_stop": False,
         "errors": errors,
     }
+    if hardware.is_h100:
+        result.update(hardware_profile=hardware.to_dict(), physical_world_size=world_size,
+                      logical_world_size=16)
     atomic_json(args.output, result)
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if not errors else 1

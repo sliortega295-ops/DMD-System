@@ -16,6 +16,8 @@ import os
 from pathlib import Path
 import socket
 
+from distillschedule.runtime.livewan_hardware import livewan_hardware
+
 
 WORLD_SIZE = 16
 GENERATOR_RANKS = tuple(range(8))
@@ -32,6 +34,19 @@ TRACE_BALANCED_SLOT_GROUPS_B32 = tuple(
     (first, second, first + 16, second + 16)
     for first, second in TRACE_BALANCED_SLOT_PAIRS
 )
+
+
+def _transport_layout(variant: str, *, profile: str | None = None):
+    """Physical communicators; logical slot identities remain batch16."""
+    hardware = livewan_hardware(profile)
+    hardware.validate_variant(mode="pipeline", variant=variant)
+    generator_ranks, score_ranks = (
+        (GENERATOR_RANKS_6G10S, SCORE_RANKS_6G10S)
+        if variant in {"6g10score", "6g10score-node-local", "6g10score-node-local-fused"}
+        else (hardware.generator_ranks, hardware.score_ranks)
+    )
+    waves = 4 if hardware.is_h100 or variant == "c23-continuous-b32" else 2
+    return hardware, generator_ranks, score_ranks, tuple(range(waves))
 
 
 def atomic_json(path: Path, value: object) -> None:
@@ -81,11 +96,9 @@ def main() -> int:
         default="b1",
     )
     args = parser.parse_args()
-    wave_indices = (
-        tuple(range(4))
-        if args.pipeline_variant == "c23-continuous-b32"
-        else tuple(range(2))
-    )
+    hardware, generator_ranks, score_ranks, wave_indices = _transport_layout(args.pipeline_variant)
+    world_size = hardware.physical_world_size
+    pool_size = hardware.generator_pool_size
     waves = len(wave_indices)
 
     import torch
@@ -93,25 +106,18 @@ def main() -> int:
 
     rank = int(os.environ["RANK"])
     local_rank = int(os.environ["LOCAL_RANK"])
-    if int(os.environ["WORLD_SIZE"]) != WORLD_SIZE:
-        raise RuntimeError("transport probe requires world16")
+    if int(os.environ["WORLD_SIZE"]) != world_size:
+        raise RuntimeError(f"transport probe requires physical world{world_size}")
     torch.cuda.set_device(local_rank)
     device = torch.device("cuda", local_rank)
     dist.init_process_group("nccl", timeout=timedelta(seconds=args.timeout_seconds))
-    generator_ranks, score_ranks = (
-        (GENERATOR_RANKS_6G10S, SCORE_RANKS_6G10S)
-        if args.pipeline_variant in {
-            "6g10score", "6g10score-node-local", "6g10score-node-local-fused"
-        }
-        else (GENERATOR_RANKS, SCORE_RANKS)
-    )
     generator_group = dist.new_group(ranks=list(generator_ranks), backend="nccl")
     score_group = dist.new_group(ranks=list(score_ranks), backend="nccl")
     phase_expanded_critic16 = args.pipeline_variant in {
         "phase-expanded-critic16",
         "phase-expanded-critic16-fused-lora-elision",
     }
-    critic_ranks = tuple(range(WORLD_SIZE)) if phase_expanded_critic16 else score_ranks
+    critic_ranks = tuple(range(world_size)) if phase_expanded_critic16 else score_ranks
     critic_group = (
         dist.new_group(ranks=list(critic_ranks), backend="nccl")
         if phase_expanded_critic16
@@ -131,7 +137,7 @@ def main() -> int:
             ranks=list(SCORE_LEADERS_6G10S), backend="nccl"
         )
     host_runahead_group = (
-        dist.new_group(ranks=list(range(WORLD_SIZE)), backend="gloo")
+        dist.new_group(ranks=list(range(world_size)), backend="gloo")
         if args.pipeline_variant
         in {
             "c19-host-runahead",
@@ -157,10 +163,10 @@ def main() -> int:
         "c24-continuous-b16-score-modulation-b1-attribution",
     }:
         pair_groups = [
-            dist.new_group(ranks=[lane, lane + 8], backend="nccl")
-            for lane in range(8)
+            dist.new_group(ranks=[lane, lane + pool_size], backend="nccl")
+            for lane in range(pool_size)
         ]
-        critic_shadow_pair_group = pair_groups[rank if rank < 8 else rank - 8]
+        critic_shadow_pair_group = pair_groups[hardware.lane(rank)]
 
     # Collectively initialize default world before asymmetric default-group P2P.
     dist.barrier()
@@ -175,16 +181,16 @@ def main() -> int:
     if host_runahead_group is not None:
         host_token = torch.ones(1, dtype=torch.int64, device="cpu")
         dist.all_reduce(host_token, group=host_runahead_group)
-        if int(host_token.item()) != WORLD_SIZE:
+        if int(host_token.item()) != world_size:
             raise RuntimeError("host run-ahead Gloo all-reduce mismatch")
     critic_shadow_sync_canary = None
     if critic_shadow_pair_group is not None:
-        lane = rank if rank < 8 else rank - 8
-        source_rank = lane + 8
+        lane = hardware.lane(rank)
+        source_rank = lane + pool_size
         value = torch.full(
             (4096,), float(source_rank + 1), dtype=torch.float32, device=device
         )
-        if rank < 8:
+        if hardware.is_generator(rank):
             value.zero_()
         dist.broadcast(
             value, src=source_rank, group=critic_shadow_pair_group
@@ -194,7 +200,7 @@ def main() -> int:
         ):
             raise RuntimeError("paired Critic-shadow broadcast mismatch")
         critic_shadow_sync_canary = {
-            "pair_ranks": [lane, lane + 8],
+            "pair_ranks": [lane, lane + pool_size],
             "source_rank": source_rank,
             "dtype": "torch.float32",
             "elements": value.numel(),
@@ -471,8 +477,8 @@ def main() -> int:
         dist.destroy_process_group()
         return 0
 
-    peer = rank + 8 if rank < 8 else rank - 8
-    lane = rank if rank < 8 else peer
+    peer = hardware.score_peer(rank)
+    lane = hardware.lane(rank)
     slot_pair = (
         (
             TRACE_BALANCED_SLOT_GROUPS_B32[lane]
@@ -505,11 +511,13 @@ def main() -> int:
         }
         else (lane, lane + 8)
     )
+    if hardware.is_h100:
+        slot_pair = hardware.pipeline_slots(lane)
     observed: list[int] = []
     observed_gradients: list[int] = []
     retained: list[torch.Tensor] = []
     deferred_gradient_work = None
-    if rank < 8:
+    if hardware.is_generator(rank):
         for wave in wave_indices:
             slot = slot_pair[wave]
             header = torch.tensor([rank, peer, wave, slot], device=device)
@@ -568,7 +576,7 @@ def main() -> int:
             for step in range(1, 5)
             for wave in wave_indices
         }
-        if rank < 8:
+        if hardware.is_generator(rank):
             for (step, wave), buffer in host_buffers.items():
                 buffer.fill_(float(rank * 100 + step * 10 + wave))
                 dist.isend(
@@ -611,7 +619,7 @@ def main() -> int:
         "hostname": socket.gethostname(),
         "peer": peer,
         "waves": waves,
-        "subgroup_size": 8,
+        "subgroup_size": pool_size,
         "default_world_initialized_collectively": True,
         "score_gradient_1_async": True,
         "return_payload_semantics": (
@@ -676,16 +684,19 @@ def main() -> int:
         "observed": observed,
         "observed_gradients": observed_gradients,
     }
+    if hardware.is_h100:
+        receipt.update(hardware_profile=hardware.to_dict(), physical_world_size=world_size,
+                       logical_world_size=16)
     atomic_json(args.output_dir / f"rank_{rank:03d}.json", receipt)
     dist.barrier()
     if rank == 0:
         rows = [
             json.loads((args.output_dir / f"rank_{member:03d}.json").read_text())
-            for member in range(WORLD_SIZE)
+            for member in range(world_size)
         ]
         observed_pairs = tuple(
             tuple(int(slot) for slot in rows[lane]["slot_pair"])
-            for lane in range(8)
+            for lane in range(pool_size)
         )
         expected_pairs = (
             (
@@ -720,6 +731,8 @@ def main() -> int:
             }
             else tuple((lane, lane + 8) for lane in range(8))
         )
+        if hardware.is_h100:
+            expected_pairs = tuple(hardware.pipeline_slots(lane) for lane in range(pool_size))
         atomic_json(
             args.output_dir / "summary.json",
             {
@@ -728,8 +741,8 @@ def main() -> int:
                     if all(row["status"] == "PASS" for row in rows)
                     and observed_pairs == expected_pairs
                     and all(
-                        tuple(rows[lane + 8]["slot_pair"]) == observed_pairs[lane]
-                        for lane in range(8)
+                        tuple(rows[lane + pool_size]["slot_pair"]) == observed_pairs[lane]
+                        for lane in range(pool_size)
                     )
                     and (
                         not phase_expanded_critic16

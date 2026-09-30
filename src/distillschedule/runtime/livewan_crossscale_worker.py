@@ -31,6 +31,7 @@ from distillschedule.evidence.trajectory_state_sketch import (
 from distillschedule.runtime.livewan_grad_reducer import (
     GradReadyAsyncGroupReducer,
 )
+from distillschedule.runtime.livewan_hardware import livewan_hardware
 from distillschedule.workloads.livewan_crossscale import (
     CRITIC_UPDATES,
     FULL5_STEPS,
@@ -101,6 +102,20 @@ def _pipeline_8x8_slot_pairs(
 
 
 def _pipeline_8x8_slot_groups(
+    plan: Mapping[str, Any],
+) -> tuple[tuple[int, ...], ...]:
+    """Map validated source slots onto the explicitly selected physical pools."""
+    source_groups = _source_pipeline_slot_groups(plan)
+    hardware = livewan_hardware()
+    if hardware.is_h100:
+        _require(int(plan["workload"]["shape"]["batch_size"]) == GLOBAL_BATCH,
+                 "H100 LiveWan requires the original logical B16 trace")
+        return tuple(hardware.pipeline_slots(lane)
+                     for lane in range(hardware.generator_pool_size))
+    return source_groups
+
+
+def _source_pipeline_slot_groups(
     plan: Mapping[str, Any],
 ) -> tuple[tuple[int, ...], ...]:
     """Resolve the exact B16 pair or registered B32 four-slot lane mapping."""
@@ -342,7 +357,9 @@ def _validate_trace_balanced_pairing(
         PHASE_EXPANDED_CRITIC16_POOL_POLICY,
     }:
         return
-    groups = _pipeline_8x8_slot_groups(plan)
+    # Source preregistration is audited in its original sixteen-rank coordinates.
+    # The explicit hardware adapter changes physical routing, not this trace.
+    groups = _source_pipeline_slot_groups(plan)
     current = (
         tuple((lane, lane + 8) for lane in range(8))
         if trace.global_batch == GLOBAL_BATCH
@@ -698,7 +715,7 @@ def _materialize_fsdp_units(model: Any) -> int:
 
 def _plan_role_ranks(plan: Mapping[str, Any], *, mode: str) -> tuple[tuple[int, ...], tuple[int, ...]]:
     if mode == "baseline":
-        ranks = tuple(range(WORLD_SIZE))
+        ranks = tuple(range(livewan_hardware().physical_world_size))
         return ranks, ranks
     groups = {str(row["name"]): tuple(int(rank) for rank in row["ranks"]) for row in plan["rank_groups"]}
     generator_ranks = groups.get("generator", ())
@@ -727,6 +744,14 @@ def _plan_role_ranks(plan: Mapping[str, Any], *, mode: str) -> tuple[tuple[int, 
     _require(expected is not None, "unknown pipeline pool policy")
     _require(generator_ranks == expected.generator_ranks, "Generator rank policy mismatch")
     _require(score_ranks == expected.score_ranks, "Score rank policy mismatch")
+    hardware = livewan_hardware()
+    if hardware.is_h100:
+        _require(policy == TRACE_BALANCED_POOL_POLICY,
+                 "H100 adaptation supports only the frozen C34 role-pool substrate")
+        _require(int(plan["workload"]["shape"]["batch_size"]) == GLOBAL_BATCH,
+                 "H100 role pools require logical global batch16")
+        return (tuple(range(hardware.generator_pool_size)),
+                tuple(range(hardware.generator_pool_size, hardware.physical_world_size)))
     return generator_ranks, score_ranks
 
 
@@ -734,7 +759,11 @@ def _plan_critic_ranks(
     plan: Mapping[str, Any], *, mode: str, score_ranks: Sequence[int]
 ) -> tuple[int, ...]:
     if mode == "baseline":
-        return tuple(range(WORLD_SIZE))
+        return tuple(range(livewan_hardware().physical_world_size))
+    if livewan_hardware().is_h100:
+        _require(plan.get("metadata", {}).get("pool_policy") == TRACE_BALANCED_POOL_POLICY,
+                 "unsupported H100 Critic placement")
+        return tuple(score_ranks)
     policy = str(plan.get("metadata", {}).get("pool_policy", ""))
     groups = {
         str(row["name"]): tuple(int(rank) for rank in row["ranks"])
@@ -1071,6 +1100,9 @@ def _load_two_cycle_timing_gate(
     }
     for key, expected in required.items():
         _require(value.get(key) == expected, f"two-cycle timing gate changed {key}")
+    if livewan_hardware().is_h100:
+        _require(value.get("hardware_profile") == livewan_hardware().to_dict(),
+                 "H100 timing requires newly established eight-physical-rank correctness evidence")
     numerical_review = dict(value.get("numerical_review", {}))
     _require(
         numerical_review.get("policy")
@@ -1111,7 +1143,7 @@ def _load_two_cycle_timing_gate(
         and len(str(comparison["sha256"])) == 64,
         "two-cycle cross-arm trajectory comparison is not PASS",
     )
-    return {
+    result = {
         "path": str(resolved),
         "sha256": expected_sha256,
         "schema_version": value["schema_version"],
@@ -1121,6 +1153,9 @@ def _load_two_cycle_timing_gate(
         "pipeline_variant": pipeline_variant,
         "status": value["status"],
     }
+    if livewan_hardware().is_h100:
+        result["hardware_profile"] = livewan_hardware().to_dict()
+    return result
 
 
 def _trajectory_critic_batch_ablation_enabled(
@@ -1330,16 +1365,18 @@ def build_models(
         else score_group
     )
     runahead_host_group = (
-        dist.new_group(ranks=list(range(WORLD_SIZE)), backend="gloo")
+        dist.new_group(ranks=list(range(livewan_hardware().physical_world_size)), backend="gloo")
         if _generator_runahead_transport_enabled(plan, mode=mode)
         else None
     )
     critic_shadow_sync_group = None
     if continuous_contract is not None:
+        hardware = livewan_hardware()
         pair_groups = [
-            dist.new_group(ranks=[lane, lane + 8]) for lane in range(8)
+            dist.new_group(ranks=[lane, hardware.score_peer(lane)])
+            for lane in range(hardware.generator_pool_size)
         ]
-        critic_shadow_sync_group = pair_groups[rank if rank < 8 else rank - 8]
+        critic_shadow_sync_group = pair_groups[hardware.lane(rank)]
     node_local_score = (
         mode == "pipeline"
         and pool_policy == "persistent_6g_10score_teacher_node_local_hierarchical"
@@ -1607,8 +1644,8 @@ def build_models(
             "cycles": int(continuous_contract["cycles"]),
             "lookahead_depth": int(continuous_contract["lookahead_depth"]),
             "critic_shadow_sync_group_ranks": [
-                rank if rank < 8 else rank - 8,
-                (rank if rank < 8 else rank - 8) + 8,
+                livewan_hardware().lane(rank),
+                livewan_hardware().score_peer(livewan_hardware().lane(rank)),
             ],
             "critic_shadow_sync_dtype": "torch.float32",
             "critic_shadow_sync_parameter_count": len(
@@ -1798,7 +1835,8 @@ def _warm_communicators(
     started = time.perf_counter()
     world = torch.ones(1, dtype=torch.int64, device=device)
     dist.all_reduce(world)
-    _require(int(world.cpu()) == WORLD_SIZE, "default communicator warm-up failed")
+    _require(int(world.cpu()) == livewan_hardware().physical_world_size,
+             "default communicator warm-up failed")
 
     warmed_groups: list[str] = ["world"]
     if bundle.generator_group is not None:
@@ -1852,7 +1890,7 @@ def _warm_communicators(
         token = torch.ones(1, dtype=torch.int64, device="cpu")
         dist.all_reduce(token, group=bundle.runahead_host_group)
         _require(
-            int(token.item()) == WORLD_SIZE,
+            int(token.item()) == livewan_hardware().physical_world_size,
             "run-ahead host communicator warm-up failed",
         )
         warmed_groups.append("runahead_host_gloo")
@@ -1870,11 +1908,11 @@ def _warm_communicators(
     if mode == "pipeline":
         generator_ranks = tuple(int(value) for value in bundle.metadata["generator_ranks"])
         score_ranks = tuple(int(value) for value in bundle.metadata["score_ranks"])
-        if generator_ranks == PIPELINE_8G8S_LAYOUT.generator_ranks:
-            pair_peer = rank + 8 if rank < 8 else rank - 8
+        if generator_ranks == tuple(range(livewan_hardware().generator_pool_size)):
+            pair_peer = livewan_hardware().score_peer(rank)
             sent = torch.tensor([rank], dtype=torch.int64, device=device)
             received = torch.empty_like(sent)
-            if rank < 8:
+            if livewan_hardware().is_generator(rank):
                 dist.send(sent, dst=pair_peer)
                 dist.recv(received, src=pair_peer)
             else:
@@ -2864,7 +2902,8 @@ def _trajectory_normalized_cycle_evidence(
     lossless.
     """
 
-    gathered: list[dict[str, Any] | None] = [None] * WORLD_SIZE
+    hardware = livewan_hardware()
+    gathered: list[dict[str, Any] | None] = [None] * hardware.physical_world_size
     torch.distributed.all_gather_object(
         gathered,
         {
@@ -2894,20 +2933,21 @@ def _trajectory_normalized_cycle_evidence(
     _require(bool(exact_global_call_census), "trajectory call census is empty")
 
     rows = tuple(
-        trace.row(cycle * FULL5_STEPS + step, rank)
+        trace.row(cycle * FULL5_STEPS + step, slot)
         for step in range(FULL5_STEPS)
+        for slot in hardware.baseline_slots(rank)
     )
-    generator_key = rows[0].operation_key
-    generator_values = loss_values.get(("generator", generator_key), [])
+    generator_values = [number for row in rows if row.cycle_step == 0
+                        for number in loss_values.get(("generator", row.operation_key), [])]
     critic_values = [
         number
         for row in rows
         for number in loss_values.get(("critic", row.operation_key), [])
     ]
-    _require(bool(generator_values), f"trajectory generator loss is missing for {generator_key}")
+    _require(bool(generator_values), f"trajectory generator loss is missing for physical rank {rank}")
     _require(
-        len(critic_values) == FULL5_STEPS,
-        f"trajectory Critic loss inventory for logical rank {rank} is not five",
+        len(critic_values) == FULL5_STEPS * len(hardware.baseline_slots(rank)),
+        f"trajectory Critic loss inventory for physical rank {rank} is incomplete",
     )
     _require(
         bool(optimizer_values["generator"]) and bool(optimizer_values["critic"]),
@@ -2992,7 +3032,7 @@ def _append_trajectory_cycle_receipt(
             workload="livewan_wan13b_teacher14b_sfdmd",
             variant=arm_id,
             rank=rank,
-            world_size=WORLD_SIZE,
+            world_size=livewan_hardware().physical_world_size,
             seed=seed,
             cycle=cycle_number,
             expected_total_cycles=trace.cycles,
@@ -3004,6 +3044,7 @@ def _append_trajectory_cycle_receipt(
                 "sample_policy": "80_SOURCE_ROWS_REUSED_FRESH_OPERATION_KEYED_RNG",
                 "trajectory_schema": "trajectory_coarse_v1",
                 "call_census_scope": "EXACT_GLOBAL_WORLD16_TOTALS",
+                **({"logical_world_size": "16"} if livewan_hardware().is_h100 else {}),
             },
             implementation={
                 "execution_mode": execution_mode,
@@ -3875,6 +3916,14 @@ def run_worker(
         else (TWO_CYCLE_TIMING_CYCLES if two_cycle_timing else continuous_cycles)
     )
     registered_batch = int(plan["workload"]["shape"]["batch_size"])
+    hardware = livewan_hardware()
+    if hardware.is_h100:
+        _require(registered_batch == GLOBAL_BATCH,
+                 "H100 adapter cannot load a B32 diagnostic trace")
+        _require(mode == "baseline" or continuous_contract is not None,
+                 "H100 pipeline requires the C34 continuous worker")
+        _require(mode == "baseline" or _generator_residual_layout_enabled(plan, mode=mode),
+                 "H100 pipeline adaptation is restricted to the frozen C34 implementation")
     trace = FormalTrace.load(
         plan["evidence"]["operation_trace"],
         expected_cycles=trace_cycles,
@@ -3937,6 +3986,9 @@ def run_worker(
         )
         node_rank = int(os.environ.get("DISTILLSCHEDULE_NODE_RANK", "0"))
         result["node_rank"] = node_rank
+        if hardware.is_h100:
+            result.update(hardware_profile=hardware.to_dict(),
+                          physical_world_size=hardware.physical_world_size, logical_world_size=WORLD_SIZE)
         atomic_json(output_dir / f"validate_only.node{node_rank}.json", result)
         return result
     _require(
@@ -3952,7 +4004,8 @@ def run_worker(
     rank = int(os.environ["RANK"])
     local_rank = int(os.environ["LOCAL_RANK"])
     world_size = int(os.environ["WORLD_SIZE"])
-    _require(world_size == WORLD_SIZE, "runtime is not world16")
+    _require(world_size == hardware.physical_world_size,
+             "runtime world differs from explicit LiveWan hardware profile")
     if not dist.is_initialized():
         dist.init_process_group("nccl")
     torch.cuda.set_device(local_rank)
@@ -4257,23 +4310,23 @@ def run_worker(
                 all_scales_one=True,
             )
     rollout_cast_cache = None
-    if _generator_rollout_cast_cache_enabled(plan, mode=mode) and rank < 8:
+    if _generator_rollout_cast_cache_enabled(plan, mode=mode) and hardware.is_generator(rank):
         from distillschedule.runtime.livewan_rollout_cast_cache import install as install_rollout_cast_cache
 
         rollout_cast_cache = install_rollout_cast_cache(torch, bundle.student)
     generator_rms_epilogue = None
-    if _generator_rms_epilogue_enabled(plan, mode=mode) and rank < 8:
+    if _generator_rms_epilogue_enabled(plan, mode=mode) and hardware.is_generator(rank):
         from distillschedule.runtime.livewan_generator_rms_epilogue import install as install_generator_rms
 
         generator_rms_epilogue = install_generator_rms(torch, bundle.student,
             fuse_cast_square=_generator_rms_cast_square_enabled(plan, mode=mode))
     generator_modulation = None
-    if _generator_modulation_enabled(plan, mode=mode) and rank < 8:
+    if _generator_modulation_enabled(plan, mode=mode) and hardware.is_generator(rank):
         from distillschedule.runtime.livewan_generator_modulation import install as install_g_modulation
 
         generator_modulation = install_g_modulation(torch, bundle.student)
     generator_gate = None
-    if _generator_gate_enabled(plan, mode=mode) and rank < 8:
+    if _generator_gate_enabled(plan, mode=mode) and hardware.is_generator(rank):
         from distillschedule.runtime.livewan_generator_gate import install as install_g_gate
 
         generator_gate = install_g_gate(torch, bundle.student,
@@ -4281,7 +4334,7 @@ def run_worker(
 
     loader = InputLoader(torch=torch, trace=trace)
     pinned_score_context = None
-    if _score_prompt_staging_enabled(plan, mode=mode) and rank >= 8:
+    if _score_prompt_staging_enabled(plan, mode=mode) and not hardware.is_generator(rank):
         from distillschedule.runtime.livewan_context_staging import install as install_context_staging
 
         pinned_score_context = install_context_staging(
@@ -4295,6 +4348,9 @@ def run_worker(
             if mode == "baseline"
             else len(balanced_slots(generator_ranks)[rank])
         )
+        if hardware.is_h100 and mode == "pipeline":
+            # Four logical waves reuse the two validated persistent streamers.
+            streamer_count = 2
         generator_streamers = _build_streamers(
             torch, student=bundle.student, count=streamer_count, device=device,
         )
@@ -4321,16 +4377,15 @@ def run_worker(
             dist=dist,
             group=bundle.runahead_host_group,
             rank=rank,
-            peer=rank + 8 if rank < 8 else rank - 8,
+            peer=hardware.score_peer(rank),
             device=device,
-            is_generator=rank < 8,
+            is_generator=hardware.is_generator(rank),
             shape=LATENT_SHAPE,
             dtype=torch.float32,
             cycles=continuous_cycles,
             cross_cycle_lookahead=continuous_cycles > 1,
-            waves_per_step=int(
-                plan["metadata"]["generator_runahead_transport"]["waves_per_step"]
-            ),
+            waves_per_step=(hardware.pipeline_waves if hardware.is_h100 else int(
+                plan["metadata"]["generator_runahead_transport"]["waves_per_step"])),
         )
         bundle.metadata["generator_runahead_transport_setup"] = {
             "enabled": True,
@@ -4349,7 +4404,7 @@ def run_worker(
             PairedCriticShadowSync,
         )
 
-        is_generator_rank = rank < 8
+        is_generator_rank = hardware.is_generator(rank)
         parameters = (
             bundle.critic_shadow_lora_params
             if is_generator_rank
@@ -4360,8 +4415,8 @@ def run_worker(
             dist=dist,
             group=bundle.critic_shadow_sync_group,
             rank=rank,
-            peer=rank + 8 if is_generator_rank else rank - 8,
-            score_rank=rank + 8 if is_generator_rank else rank,
+            peer=hardware.score_peer(rank),
+            score_rank=hardware.score_peer(rank) if is_generator_rank else rank,
             device=device,
             parameters=parameters,
             is_generator=is_generator_rank,
@@ -4699,7 +4754,7 @@ def run_worker(
     if _score_rmsnorm_kernel_enabled(plan, mode=mode):
         from distillschedule.runtime.livewan_score_rmsnorm import runtime_receipt_errors
 
-        _require(not runtime_receipt_errors(score_rmsnorm_kernel, rank=rank),
+        _require(not runtime_receipt_errors(score_rmsnorm_kernel, rank=hardware.receipt_rank(rank)),
                  "Score RMSNorm runtime contract/counters incomplete")
     local_final_versions = dict(versions)
     rollout_cast_cache_receipt = {"enabled": False, "execution_status": "DISABLED"}
@@ -4710,7 +4765,9 @@ def run_worker(
             rollout_cast_cache.receipt() if rollout_cast_cache is not None
             else {"enabled": True, "execution_status": "NOT_APPLICABLE"}
         )
-        _require(not cast_scope_errors(rollout_cast_cache_receipt, rank=rank, cycles=continuous_cycles),
+        _require(not cast_scope_errors(rollout_cast_cache_receipt,
+                     rank=hardware.receipt_rank(rank),
+                     cycles=continuous_cycles * hardware.scope_multiplicity()),
                  "C28 Generator rollout cast-cache lifecycle/count failed")
     generator_rms_epilogue_receipt = {"enabled": False, "execution_status": "DISABLED"}
     if _generator_rms_epilogue_enabled(plan, mode=mode):
@@ -4720,7 +4777,9 @@ def run_worker(
             generator_rms_epilogue.receipt() if generator_rms_epilogue is not None
             else {"enabled": True, "execution_status": "NOT_APPLICABLE"}
         )
-        _require(not rms_epilogue_errors(generator_rms_epilogue_receipt, rank=rank, cycles=continuous_cycles,
+        _require(not rms_epilogue_errors(generator_rms_epilogue_receipt,
+                     rank=hardware.receipt_rank(rank),
+                     cycles=continuous_cycles * hardware.scope_multiplicity(),
                      fuse_cast_square=_generator_rms_cast_square_enabled(plan, mode=mode)),
                  "C29 Generator no-grad RMS epilogue scope/call contract failed")
     score_prompt_staging_receipt = {"enabled": False, "execution_status": "DISABLED"}
@@ -4730,7 +4789,9 @@ def run_worker(
 
         generator_modulation_receipt = (generator_modulation.receipt() if generator_modulation is not None
             else {"enabled": True, "execution_status": "NOT_APPLICABLE"})
-        _require(not modulation_errors(generator_modulation_receipt, rank=rank, cycles=continuous_cycles),
+        _require(not modulation_errors(generator_modulation_receipt,
+                     rank=hardware.receipt_rank(rank),
+                     cycles=continuous_cycles * hardware.scope_multiplicity()),
                  "C32 Generator no-grad modulation scope/call contract failed")
     generator_gate_receipt = {"enabled": False, "execution_status": "DISABLED"}
     if _generator_gate_enabled(plan, mode=mode):
@@ -4738,7 +4799,9 @@ def run_worker(
 
         generator_gate_receipt = (generator_gate.receipt() if generator_gate is not None
             else {"enabled": True, "execution_status": "NOT_APPLICABLE"})
-        _require(not gate_errors(generator_gate_receipt, rank=rank, cycles=continuous_cycles,
+        _require(not gate_errors(generator_gate_receipt,
+                   rank=hardware.receipt_rank(rank),
+                   cycles=continuous_cycles * hardware.scope_multiplicity(),
                    output_layout="row_major" if _generator_residual_layout_enabled(plan, mode=mode) else "native"),
                  "C33 Generator no-grad residual gate scope/call contract failed")
     if _score_prompt_staging_enabled(plan, mode=mode):
@@ -4750,7 +4813,9 @@ def run_worker(
             if pinned_score_context is not None
             else {"enabled": True, "execution_status": "NOT_APPLICABLE"}
         )
-        _require(not staging_errors(score_prompt_staging_receipt, rank=rank, cycles=continuous_cycles),
+        _require(not staging_errors(score_prompt_staging_receipt,
+                     rank=hardware.receipt_rank(rank),
+                     cycles=continuous_cycles * hardware.scope_multiplicity()),
                  "C27 actual input staging census failed")
     version_tensor = torch.tensor(
         [versions["generator"], versions["critic"], versions["ema"]],
@@ -4905,7 +4970,7 @@ def run_worker(
         PHASE_EXPANDED_CRITIC16_POOL_POLICY,
     }:
         slot_pairs = _pipeline_8x8_slot_groups(plan)
-        lane = rank if rank < 8 else rank - 8
+        lane = hardware.lane(rank)
         slot_routing = {
             "policy": (
                 "trace_balanced_phase_expanded_critic16_v1"
@@ -4918,9 +4983,11 @@ def run_worker(
             ),
             "lane": lane,
             "logical_slots": list(slot_pairs[lane]),
-            "peer_rank": rank + 8 if rank < 8 else rank - 8,
+            "peer_rank": hardware.score_peer(rank),
             "all_pairs": [list(pair) for pair in slot_pairs],
         }
+        if hardware.is_h100:
+            slot_routing["policy"] = "h100_four_b1_waves_logical_b16_v1"
         if receipt_pool_policy == PHASE_EXPANDED_CRITIC16_POOL_POLICY:
             slot_routing["critic_slot"] = int(
                 slot_pairs[lane][1] if rank < 8 else slot_pairs[lane][0]
@@ -5010,6 +5077,10 @@ def run_worker(
         "build": bundle.metadata,
         "ema": {"updates_in_full5": 0, "status": "NOT_RUN_SEPARATE_GATE"},
     }
+    if hardware.is_h100:
+        receipt.update(hardware_profile=hardware.to_dict(),
+                       physical_world_size=hardware.physical_world_size,
+                       logical_world_size=WORLD_SIZE)
     if run_kind == "trajectory":
         receipt["trajectory"] = {
             "schema": "trajectory_coarse_v1",
@@ -5067,66 +5138,69 @@ def _run_baseline(
         with _profile_range(
             torch, run_kind=run_kind, label=f"livewan/baseline/step_{step}"
         ):
-            row = trace.row(global_step, rank)
             bundle.generator_optimizer.zero_grad(set_to_none=True)
             bundle.critic_optimizer.zero_grad(set_to_none=True)
-            with _profile_range(
-                torch, run_kind=run_kind,
-                label=f"livewan/baseline/step_{step}/student_rollout",
-            ):
-                prepared = prepare_rollout(
-                    torch, row=row, streamer=streamers[0], student=bundle.student,
-                    loader=loader, device=device,
-                )
-                _record_output(torch, evidence, row=row, x0=prepared.x0, run_kind=run_kind)
-            with _profile_range(
-                torch, run_kind=run_kind,
-                label=f"livewan/baseline/step_{step}/score_context",
-            ):
-                sample_context = prepare_score_sample_context(
-                    torch,
-                    bundle=bundle,
-                    raw_context=prepared.raw_context,
-                    include_teacher=step == 0,
-                )
-            if step == 0:
+            logical_slots = livewan_hardware().baseline_slots(rank)
+            sample_weight = 1.0 / len(logical_slots)
+            for logical_slot in logical_slots:
+                row = trace.row(global_step, logical_slot)
                 with _profile_range(
                     torch, run_kind=run_kind,
-                    label="livewan/baseline/step_0/dmd_score",
+                    label=f"livewan/baseline/step_{step}/student_rollout",
                 ):
-                    gradient = dmd_gradient_for_sample(
+                    prepared = prepare_rollout(
+                        torch, row=row, streamer=streamers[0], student=bundle.student,
+                        loader=loader, device=device,
+                    )
+                    _record_output(torch, evidence, row=row, x0=prepared.x0, run_kind=run_kind)
+                with _profile_range(
+                    torch, run_kind=run_kind,
+                    label=f"livewan/baseline/step_{step}/score_context",
+                ):
+                    sample_context = prepare_score_sample_context(
+                        torch,
+                        bundle=bundle,
+                        raw_context=prepared.raw_context,
+                        include_teacher=step == 0,
+                    )
+                if step == 0:
+                    with _profile_range(
+                        torch, run_kind=run_kind,
+                        label="livewan/baseline/step_0/dmd_score",
+                    ):
+                        gradient = dmd_gradient_for_sample(
+                            torch, bundle=bundle, score_context=score_context, row=row,
+                            x0=prepared.x0, sample_context=sample_context,
+                            context_lens=prepared.context_lens,
+                        )
+                        evidence.add_logical_score_calls("teacher/nograd/plain", 1)
+                        evidence.add_logical_score_calls("critic/nograd/plain", 1)
+                    with _profile_range(
+                        torch, run_kind=run_kind,
+                        label="livewan/baseline/step_0/generator_backward",
+                    ):
+                        losses = generator_backward_for_sample(
+                            torch, prepared=prepared, dmd_gradient=gradient, sample_weight=sample_weight,
+                        )
+                    if run_kind in {"correctness", "trajectory"}:
+                        evidence.loss_fingerprints.extend(
+                            {"operation_key": row.operation_key, "kind": "generator", **_tensor_fingerprint(torch, value)}
+                            for value in losses
+                        )
+                with _profile_range(
+                    torch, run_kind=run_kind,
+                    label=f"livewan/baseline/step_{step}/critic_backward",
+                ):
+                    critic_loss = critic_backward_for_sample(
                         torch, bundle=bundle, score_context=score_context, row=row,
                         x0=prepared.x0, sample_context=sample_context,
-                        context_lens=prepared.context_lens,
+                        context_lens=prepared.context_lens, sample_weight=sample_weight,
                     )
-                    evidence.add_logical_score_calls("teacher/nograd/plain", 1)
-                    evidence.add_logical_score_calls("critic/nograd/plain", 1)
-                with _profile_range(
-                    torch, run_kind=run_kind,
-                    label="livewan/baseline/step_0/generator_backward",
-                ):
-                    losses = generator_backward_for_sample(
-                        torch, prepared=prepared, dmd_gradient=gradient, sample_weight=1.0,
-                    )
+                    evidence.add_logical_score_calls("critic/grad/checkpoint", 1)
                 if run_kind in {"correctness", "trajectory"}:
-                    evidence.loss_fingerprints.extend(
-                        {"operation_key": row.operation_key, "kind": "generator", **_tensor_fingerprint(torch, value)}
-                        for value in losses
+                    evidence.loss_fingerprints.append(
+                        {"operation_key": row.operation_key, "kind": "critic", **_tensor_fingerprint(torch, critic_loss)}
                     )
-            with _profile_range(
-                torch, run_kind=run_kind,
-                label=f"livewan/baseline/step_{step}/critic_backward",
-            ):
-                critic_loss = critic_backward_for_sample(
-                    torch, bundle=bundle, score_context=score_context, row=row,
-                    x0=prepared.x0, sample_context=sample_context,
-                    context_lens=prepared.context_lens, sample_weight=1.0,
-                )
-                evidence.add_logical_score_calls("critic/grad/checkpoint", 1)
-            if run_kind in {"correctness", "trajectory"}:
-                evidence.loss_fingerprints.append(
-                    {"operation_key": row.operation_key, "kind": "critic", **_tensor_fingerprint(torch, critic_loss)}
-                )
             if step == 0:
                 with _profile_range(
                     torch, run_kind=run_kind,
@@ -5257,10 +5331,10 @@ def _run_baseline_trajectory(
             arm_id=arm_id,
             execution_mode="baseline",
             implementation={
-                "pool_topology": "WORLD16_SEQUENTIAL_FSDP2",
+                "pool_topology": "WORLD8_LOGICAL_B16_SEQUENTIAL_FSDP2" if livewan_hardware().is_h100 else "WORLD16_SEQUENTIAL_FSDP2",
                 "physical_role": "all_roles",
                 "critic_physical_batch_size": "1",
-                "critic_physical_backward_calls": "5",
+                "critic_physical_backward_calls": str(5 * len(livewan_hardware().baseline_slots(rank))),
                 "critic_optimizer_commits": "5",
             },
             versions=versions,
@@ -6357,18 +6431,25 @@ def _run_pipeline_8x8_b32(
     precomputed_first: PreparedRollout | None,
     critic_shadow_hot_sync: Any,
 ) -> None:
-    """Run one exact global-B32 cycle as two bounded B2 microbatches/lane.
+    """Run four B1 waves as two bounded B2 microbatches per physical lane.
 
     Four rank-qualified samples are consumed per fixed G/Score lane.  Only two
     persistent rollout streamers and one B2 Critic activation set are live at a
     time.  Generator gradients use four 0.25 contributions; Critic gradients
     use two B2 means scaled by 0.5 and are reduced only after the second B2.
     Both roles therefore retain one optimizer commit per logical update.
+    The default is the historical A100 B32 diagnostic. The explicit H100
+    adapter uses four lanes and the original logical B16 trace, not B32.
     """
 
     import torch.distributed as dist
 
-    _require(trace.global_batch == 32, "B32 worker received a non-B32 trace")
+    hardware = livewan_hardware()
+    profile_prefix = "livewan/pipeline_h100_b16" if hardware.is_h100 else "livewan/pipeline_b32"
+    record_losses = run_kind == "correctness" or (hardware.is_h100 and run_kind == "trajectory")
+    expected_batch = GLOBAL_BATCH if hardware.is_h100 else 32
+    _require(trace.global_batch == expected_batch,
+             "four-wave worker received the wrong logical trace batch")
     _require(
         runahead_host_transport is not None
         and critic_shadow_hot_sync is not None,
@@ -6378,11 +6459,12 @@ def _run_pipeline_8x8_b32(
         int(runahead_host_transport.waves_per_step) == 4,
         "B32 host transport does not own four waves",
     )
-    is_generator = rank < 8
-    peer = rank + 8 if is_generator else rank - 8
-    lane = rank if is_generator else rank - 8
+    is_generator = hardware.is_generator(rank)
+    peer = hardware.score_peer(rank)
+    lane = hardware.lane(rank)
     lane_slots = validate_slot_groups(
-        slot_groups_by_lane, batch=32, slots_per_lane=4
+        slot_groups_by_lane, lanes=hardware.generator_pool_size,
+        batch=expected_batch, slots_per_lane=4
     )[lane]
     _require(len(streamers) == 2 if is_generator else not streamers, "B32 streamer residency changed")
     _require(step_offset == cycle_index * FULL5_STEPS, "B32 cycle offset changed")
@@ -6436,7 +6518,7 @@ def _run_pipeline_8x8_b32(
                             torch,
                             run_kind=run_kind,
                             label=(
-                                "livewan/pipeline_b32/g/"
+                                f"{profile_prefix}/g/"
                                 f"step_{ahead_step}/host_stage_wait_wave_{wave}"
                             ),
                         ):
@@ -6447,7 +6529,7 @@ def _run_pipeline_8x8_b32(
                         torch,
                         run_kind=run_kind,
                         label=(
-                            "livewan/pipeline_b32/g/"
+                            f"{profile_prefix}/g/"
                             f"step_{ahead_step}/rollout_wave_{wave}"
                         ),
                     ):
@@ -6494,7 +6576,7 @@ def _run_pipeline_8x8_b32(
                     with _profile_range(
                         torch,
                         run_kind=run_kind,
-                        label=f"livewan/pipeline_b32/g/step_0/rollout_wave_{first_wave}",
+                        label=f"{profile_prefix}/g/step_0/rollout_wave_{first_wave}",
                     ):
                         first = prepare_rollout(
                             torch,
@@ -6532,7 +6614,7 @@ def _run_pipeline_8x8_b32(
                 with _profile_range(
                     torch,
                     run_kind=run_kind,
-                    label=f"livewan/pipeline_b32/g/step_0/rollout_wave_{second_wave}",
+                    label=f"{profile_prefix}/g/step_0/rollout_wave_{second_wave}",
                 ):
                     second = prepare_rollout(
                         torch,
@@ -6550,7 +6632,7 @@ def _run_pipeline_8x8_b32(
                 with _profile_range(
                     torch,
                     run_kind=run_kind,
-                    label=f"livewan/pipeline_b32/g/step_0/fake_velocity_wave_{first_wave}",
+                    label=f"{profile_prefix}/g/step_0/fake_velocity_wave_{first_wave}",
                 ):
                     shadow0 = prepare_score_sample_context(
                         torch,
@@ -6588,7 +6670,7 @@ def _run_pipeline_8x8_b32(
                 with _profile_range(
                     torch,
                     run_kind=run_kind,
-                    label=f"livewan/pipeline_b32/g/step_0/fake_velocity_wave_{second_wave}",
+                    label=f"{profile_prefix}/g/step_0/fake_velocity_wave_{second_wave}",
                 ):
                     shadow1 = prepare_score_sample_context(
                         torch,
@@ -6628,7 +6710,7 @@ def _run_pipeline_8x8_b32(
                 )
                 del first, second, shadow0, shadow1, fake0, fake1, real0, real1, grad0, grad1
 
-            if run_kind == "correctness":
+            if record_losses:
                 for row, losses in generator_loss_rows:
                     evidence.loss_fingerprints.extend(
                         {
@@ -6641,7 +6723,7 @@ def _run_pipeline_8x8_b32(
             with _profile_range(
                 torch,
                 run_kind=run_kind,
-                label="livewan/pipeline_b32/g/step_0/generator_commit",
+                label=f"{profile_prefix}/g/step_0/generator_commit",
             ):
                 generator_parameters = list(bundle.student.parameters())
                 sync = _mean_replicated_gradients(
@@ -6758,6 +6840,8 @@ def _run_pipeline_8x8_b32(
                 loss_scale=0.5,
                 reducer_accumulation=(microbatch, 2),
             )
+            if hardware.is_h100:
+                evidence.add_physical_critic_backward_calls(1)
             evidence.add_logical_score_calls("critic/grad/checkpoint", 2)
             critic_losses.extend(zip(pair_rows, losses))
             if teacher_send is not None:
@@ -6765,7 +6849,7 @@ def _run_pipeline_8x8_b32(
                 del teacher_payload
             del values, contexts, batched_context
 
-        if run_kind == "correctness":
+        if record_losses:
             for row, loss in critic_losses:
                 evidence.loss_fingerprints.append(
                     {
@@ -6777,7 +6861,7 @@ def _run_pipeline_8x8_b32(
         with _profile_range(
             torch,
             run_kind=run_kind,
-            label=f"livewan/pipeline_b32/score/step_{step}/critic_commit",
+            label=f"{profile_prefix}/score/step_{step}/critic_commit",
         ):
             sync = bundle.critic_gradient_reducer.finish()
             evidence.gradient_sync.append(
@@ -6864,14 +6948,17 @@ def _run_pipeline_8x8_continuous(
         runahead_host_transport is not None and critic_shadow_hot_sync is not None,
         "C21 continuous transports are incomplete",
     )
-    is_generator = rank < 8
-    lane = rank if is_generator else rank - 8
+    hardware = livewan_hardware()
+    is_generator = hardware.is_generator(rank)
+    lane = hardware.lane(rank)
     lane_slots = validate_slot_groups(
         slot_pairs_by_lane,
+        lanes=hardware.generator_pool_size,
         batch=trace.global_batch,
-        slots_per_lane=trace.global_batch // 8,
+        slots_per_lane=trace.global_batch // hardware.generator_pool_size,
     )[lane]
     batch32 = trace.global_batch == 32
+    four_wave_accumulation = batch32 or hardware.is_h100
     _require(
         not critic_b1_attribution or (trajectory_mode and not batch32),
         "C24 Critic-B1 attribution is restricted to trajectory B16",
@@ -6904,7 +6991,7 @@ def _run_pipeline_8x8_continuous(
             run_kind=run_kind,
             label=f"livewan/continuous/cycle_{cycle}/rank_{rank}",
         ):
-            if batch32:
+            if four_wave_accumulation:
                 _require(
                     not critic_step1_split_overlap,
                     "B32 cannot select the rejected C21-C1 schedule",
@@ -7008,7 +7095,7 @@ def _run_pipeline_8x8_continuous(
                 wait_started = time.perf_counter()
                 runahead_host_transport.wait_staged(
                     step=cycle * FULL5_STEPS + 4,
-                    wave=2 if batch32 else 0,
+                    wave=2 if four_wave_accumulation else 0,
                 )
                 evidence.generator_backpressure.append(
                     {
@@ -7130,7 +7217,7 @@ def _run_pipeline_8x8_continuous(
                 arm_id=trajectory_arm_id,
                 execution_mode="pipeline",
                 implementation={
-                    "pool_topology": "8G_8SCORE",
+                    "pool_topology": f"{hardware.generator_pool_size}G_{hardware.generator_pool_size}SCORE",
                     "physical_role": "generator" if is_generator else "score",
                     "schedule": "C24_CONTINUOUS_B16_DEPTH1",
                     "critic_physical_batch_size": (
@@ -7201,7 +7288,7 @@ def _run_pipeline_8x8_continuous(
         "lookahead_scope": "next_cycle_step0_wave0_rollout_only",
         "critic_step1_physical_schedule": (
             "two_b2_backward_accumulations_single_commit"
-            if batch32
+            if four_wave_accumulation
             else (
                 "wave0_b1_backward_then_wave1_b1_backward_single_commit"
                 if critic_step1_split_overlap
@@ -7214,7 +7301,7 @@ def _run_pipeline_8x8_continuous(
         ),
         "critic_physical_batch_size": 1 if critic_b1_attribution else 2,
         "critic_physical_backward_calls_per_step": (
-            2 if critic_b1_attribution else 1
+            2 if critic_b1_attribution or four_wave_accumulation else 1
         ),
         "global_batch": trace.global_batch,
         "waves_per_step": len(lane_slots),
@@ -7226,6 +7313,8 @@ def _run_pipeline_8x8_continuous(
         "role_total_wall_seconds": time.perf_counter() - started,
         "execution_status": "PASS",
     }
+    if hardware.is_h100:
+        evidence.continuous_pipeline["hardware_profile"] = hardware.to_dict()
     if run_kind == "profile" and os.environ.get("LIVEWAN_PROFILE_TWO_CYCLES", "0") == "1":
         evidence.continuous_pipeline["name"] = TWO_CYCLE_PROFILE_CONTINUOUS_NAME
         evidence.continuous_pipeline["training_quality_claimable"] = False

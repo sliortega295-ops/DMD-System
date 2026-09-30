@@ -10,7 +10,15 @@ EXPECTED_HEAD="${5:?exact DMD-System HEAD}"
 MASTER_ADDR="${6:?node0 address}"
 MASTER_PORT="${7:?rendezvous port}"
 
+HARDWARE_PROFILE="${DISTILLSCHEDULE_HARDWARE_PROFILE:-a100-16-b16}"
+case "${HARDWARE_PROFILE}" in
+  a100-16-b16) PHYSICAL_NNODES=2; PHYSICAL_WORLD_SIZE=16 ;;
+  h100-8-b16) PHYSICAL_NNODES=1; PHYSICAL_WORLD_SIZE=8 ;;
+  *) echo unknown_livewan_hardware_profile >&2; exit 2 ;;
+esac
+export DISTILLSCHEDULE_HARDWARE_PROFILE="${HARDWARE_PROFILE}"
 [[ "${NODE_RANK}" == 0 || "${NODE_RANK}" == 1 ]] || exit 2
+[[ "${NODE_RANK}" -lt "${PHYSICAL_NNODES}" ]] || { echo node_rank_outside_hardware_profile >&2; exit 2; }
 [[ "${RUN_KIND}" == validate || "${RUN_KIND}" == capacity || \
    "${RUN_KIND}" == correctness || \
    "${RUN_KIND}" == timing || "${RUN_KIND}" == profile || \
@@ -38,6 +46,12 @@ LOCK_FILE="${DISTILLSCHEDULE_NODE_LOCK:?set DISTILLSCHEDULE_NODE_LOCK}"
 SOURCE_ROOT="${LIVEWAN_WAN21_SOURCE:?set LIVEWAN_WAN21_SOURCE}"
 SOURCE_RECEIPT="${LIVEWAN_SOURCE_RECEIPT:?set LIVEWAN_SOURCE_RECEIPT}"
 PIPELINE_VARIANT="${LIVEWAN_PIPELINE_VARIANT:-b1}"
+if [[ "${HARDWARE_PROFILE}" == h100-8-b16 ]]; then
+  [[ ( "${EXECUTION_MODE}" == baseline && "${PIPELINE_VARIANT}" == b1 ) || \
+     ( "${EXECUTION_MODE}" == pipeline && "${PIPELINE_VARIANT}" == c34-continuous-b16-residual-layout ) ]] || {
+    echo h100_requires_baseline_b1_or_c34_b16 >&2; exit 2;
+  }
+fi
 PROFILE_TWO_CYCLES="${LIVEWAN_PROFILE_TWO_CYCLES:-0}"
 [[ "${PROFILE_TWO_CYCLES}" == 0 || "${PROFILE_TWO_CYCLES}" == 1 ]] || exit 2
 if [[ "${PROFILE_TWO_CYCLES}" == 1 ]]; then
@@ -173,6 +187,12 @@ if [[ "${RUN_KIND}" == timing || "${RUN_KIND}" == profile || \
   "${PYTHON}" - "${CORRECTNESS_RECEIPT}" "${EXPECTED_HEAD}" "${RUN_KIND}" <<'PY'
 import json, pathlib, sys
 value = json.loads(pathlib.Path(sys.argv[1]).read_text())
+import os
+if os.environ.get("DISTILLSCHEDULE_HARDWARE_PROFILE") == "h100-8-b16":
+    sys.path.insert(0, str(pathlib.Path(os.environ["DMD_SYSTEM_ROOT"]) / "src"))
+    from distillschedule.runtime.livewan_hardware import livewan_hardware
+    if value.get("hardware_profile") != livewan_hardware().to_dict():
+        raise SystemExit("H100 requires fresh hardware-qualified correctness evidence")
 expected_head = sys.argv[2]
 run_kind = sys.argv[3]
 if run_kind == "timing":
@@ -277,6 +297,11 @@ export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
   echo "run_kind=${RUN_KIND}"
   echo "execution_mode=${EXECUTION_MODE}"
   echo "pipeline_variant=${PIPELINE_VARIANT}"
+  if [[ "${HARDWARE_PROFILE}" == h100-8-b16 ]]; then
+    echo "hardware_profile=${HARDWARE_PROFILE}"
+    echo "physical_world_size=${PHYSICAL_WORLD_SIZE}"
+    echo "logical_world_size=16"
+  fi
   if [[ "${PROFILE_TWO_CYCLES}" == 1 ]]; then
     echo "profiled=true"
     echo "profile_cycles=2"
@@ -350,12 +375,16 @@ RESOLVED="${RUN_ROOT}/resolved_plan.node${NODE_RANK}.json"
 # or the default NCCL communicator is unusable.  The probe is intentionally
 # model-free and the node lock remains held throughout it.
 TOPOLOGY="${RUN_ROOT}/preflight/topology.json"
+TOPOLOGY_ARGS=()
+if [[ "${HARDWARE_PROFILE}" == h100-8-b16 ]]; then
+  TOPOLOGY_ARGS=(--expected-nodes 1 --expected-world-size 8)
+fi
 mkdir -p "${RUN_ROOT}/preflight"
 set +e
-"${TORCHRUN}" --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}" \
+"${TORCHRUN}" --nnodes="${PHYSICAL_NNODES}" --nproc-per-node=8 --node-rank="${NODE_RANK}" \
   --master-addr="${MASTER_ADDR}" --master-port="${MASTER_PORT}" \
   "${ROOT}/scripts/distillschedule/probe_world16_topology.py" \
-  --output "${TOPOLOGY}" >"${NODE_LOG}/topology_probe.log" 2>&1
+  --output "${TOPOLOGY}" "${TOPOLOGY_ARGS[@]}" >"${NODE_LOG}/topology_probe.log" 2>&1
 topology_status=$?
 set -e
 [[ ${topology_status} -eq 0 ]] || { echo topology_probe_failed >&2; exit "${topology_status}"; }
@@ -363,7 +392,7 @@ set -e
 if [[ "${EXECUTION_MODE}" == pipeline ]]; then
   TRANSPORT_DIR="${RUN_ROOT}/preflight/transport"
   set +e
-  "${TORCHRUN}" --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}" \
+  "${TORCHRUN}" --nnodes="${PHYSICAL_NNODES}" --nproc-per-node=8 --node-rank="${NODE_RANK}" \
     --master-addr="${MASTER_ADDR}" --master-port="$((MASTER_PORT + 1))" \
     "${ROOT}/scripts/distillschedule/probe_livewan_crossscale_transport.py" \
     --output-dir "${TRANSPORT_DIR}" --pipeline-variant "${PIPELINE_VARIANT}" \
@@ -426,7 +455,7 @@ else
     )
   fi
   workload=(
-    "${TORCHRUN}" --nnodes=2 --nproc-per-node=8 --node-rank="${NODE_RANK}"
+    "${TORCHRUN}" --nnodes="${PHYSICAL_NNODES}" --nproc-per-node=8 --node-rank="${NODE_RANK}"
     --master-addr="${MASTER_ADDR}" --master-port="$((MASTER_PORT + 2))"
     "${entrypoint[@]}"
   )

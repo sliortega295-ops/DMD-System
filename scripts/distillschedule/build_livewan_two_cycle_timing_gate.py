@@ -10,6 +10,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+from distillschedule.runtime.livewan_hardware import LiveWanHardware, livewan_hardware
+
 
 BASELINE_VARIANT = "b1"
 PIPELINE_VARIANT = "c24-continuous-b16-score-modulation"
@@ -62,9 +64,15 @@ def _trajectory(
     mode: str,
     variant: str,
     expected_head: str,
+    hardware: LiveWanHardware | None = None,
 ) -> dict[str, Any]:
+    hardware = hardware or livewan_hardware()
+    hardware.validate_variant(mode=mode, variant=variant)
     resolved_path = path.resolve(strict=True)
     value = _load(resolved_path)
+    hardware_errors = hardware.receipt_errors(value)
+    if hardware_errors:
+        raise ValueError(f"{mode} trajectory " + "; ".join(hardware_errors))
     required = {
         "schema_version": "distillschedule.livewan_trajectory_summary.v1",
         "status": "PASS",
@@ -73,8 +81,8 @@ def _trajectory(
         "execution_mode": mode,
         "pipeline_variant": variant,
         "cycles": 2,
-        "rank_cycle_receipts": 32,
-        "expected_rank_cycle_receipts": 32,
+        "rank_cycle_receipts": 2 * hardware.physical_world_size,
+        "expected_rank_cycle_receipts": 2 * hardware.physical_world_size,
         "final_versions": FINAL_VERSIONS,
         "formal_timing_eligible": False,
     }
@@ -148,9 +156,11 @@ def main() -> int:
     parser.add_argument("--expected-head", required=True)
     parser.add_argument("--pipeline-variant", choices=(PIPELINE_VARIANT, "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"), default=PIPELINE_VARIANT)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--hardware-profile", choices=("a100-16-b16", "h100-8-b16"))
     parser.add_argument("--integration-receipt", type=Path,
                         help="Optional canonical correctness coordinator receipt; bind, never waive native gates")
     args = parser.parse_args()
+    hardware = livewan_hardware(args.hardware_profile)
     if len(args.expected_head) != 40:
         raise ValueError("--expected-head must be a full Git SHA")
 
@@ -159,12 +169,14 @@ def main() -> int:
         mode="baseline",
         variant=BASELINE_VARIANT,
         expected_head=args.expected_head,
+        hardware=hardware,
     )
     pipeline = _trajectory(
         args.pipeline_trajectory_summary,
         mode="pipeline",
         variant=args.pipeline_variant,
         expected_head=args.expected_head,
+        hardware=hardware,
     )
     if baseline["seed"] != pipeline["seed"]:
         raise ValueError("trajectory seeds differ")
@@ -172,6 +184,9 @@ def main() -> int:
         raise ValueError("trajectory trace/bootstrap/source identity differs")
 
     comparison = _load(args.trajectory_comparison)
+    hardware_errors = hardware.receipt_errors(comparison)
+    if hardware_errors:
+        raise ValueError("trajectory comparison " + "; ".join(hardware_errors))
     state_rows = list(comparison.get("state_comparisons", ()))
     expected_state_rows = {
         (cycle, component)
@@ -187,7 +202,7 @@ def main() -> int:
         != "distillschedule.trajectory_coarse_comparison.v1"
         or comparison.get("comparison_kind") != "semantic"
         or comparison.get("expected_cycles") != 2
-        or comparison.get("expected_world_size") != 16
+        or comparison.get("expected_world_size") != hardware.physical_world_size
         or comparison.get("complete") is not True
         or dict(comparison.get("contract", {})).get("status") != "PASS"
         or dict(comparison.get("contract", {})).get("mismatches") != []
@@ -203,6 +218,8 @@ def main() -> int:
     reference = dict(comparison.get("reference", {}))
     candidate = dict(comparison.get("candidate", {}))
     source_binding = dict(comparison.get("source_binding", {}))
+    if hardware.is_h100 and source_binding.get("hardware_profile") != hardware.to_dict():
+        raise ValueError("trajectory comparison hardware source binding is not exact")
     source_baseline = dict(source_binding.get("baseline", {}))
     source_pipeline = dict(source_binding.get("pipeline", {}))
     numeric_eligibility = dict(comparison.get("numeric_eligibility", {}))
@@ -346,6 +363,9 @@ def main() -> int:
             },
         },
     }
+    if hardware.is_h100:
+        result.update(hardware_profile=hardware.to_dict(),
+                      physical_world_size=hardware.physical_world_size, logical_world_size=16)
     if args.integration_receipt is not None:
         from distillschedule.workloads.best_known.evidence import bind_livewan_gate
         result = bind_livewan_gate(result, _load(args.integration_receipt))

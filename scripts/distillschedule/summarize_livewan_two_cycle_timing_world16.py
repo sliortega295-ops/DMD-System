@@ -23,6 +23,7 @@ from distillschedule.runtime.livewan_crossscale_worker import (  # noqa: E402
     TWO_CYCLE_TIMING_CONTINUOUS_NAME,
     atomic_json,
 )
+from distillschedule.runtime.livewan_hardware import livewan_hardware  # noqa: E402
 
 
 WORLD_SIZE = 16
@@ -140,8 +141,16 @@ def main() -> int:
     parser.add_argument("--trace", type=Path, required=True)
     parser.add_argument("--expected-head", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--hardware-profile", choices=("a100-16-b16", "h100-8-b16"))
     args = parser.parse_args()
+    hardware = livewan_hardware(args.hardware_profile)
+    world_size = hardware.physical_world_size
+    scope_cycles = 2 * hardware.scope_multiplicity()
     errors: list[str] = []
+    try:
+        hardware.validate_variant(mode=args.execution_mode, variant=args.pipeline_variant)
+    except ValueError as error:
+        errors.append(str(error))
     allowed_variants = {BASELINE_VARIANT} if args.execution_mode == "baseline" else {PIPELINE_VARIANT, "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"}
     if args.pipeline_variant not in allowed_variants:
         errors.append("execution mode/physical implementation pair changed")
@@ -157,7 +166,7 @@ def main() -> int:
 
     manifests: list[dict[str, str]] = []
     effective_plan_shas: set[str] = set()
-    for node in range(2):
+    for node in range(hardware.node_count):
         launch_root = args.run_root / "launcher" / f"node_{node}"
         try:
             manifest = _manifest(launch_root / "launch_manifest.txt")
@@ -171,6 +180,7 @@ def main() -> int:
             errors.append(f"node{node}: launcher evidence missing/invalid: {error}")
             continue
         manifests.append(manifest)
+        errors.extend(f"node{node}: {error}" for error in hardware.manifest_errors(manifest))
         effective_plan_shas.add(effective_plan_sha)
         if int(dict(effective_plan.get("evidence", {})).get("steps", -1)) != 10:
             errors.append(f"node{node}: effective plan is not a 10-step/two-cycle plan")
@@ -216,7 +226,7 @@ def main() -> int:
 
     rows: list[dict[str, Any]] = []
     endpoint_rows: dict[int, dict[str, float]] = {}
-    for rank in range(WORLD_SIZE):
+    for rank in range(world_size):
         path = args.run_root / "receipts" / f"rank_{rank:03d}.json"
         try:
             row = json.loads(path.read_text(encoding="utf-8"))
@@ -224,6 +234,7 @@ def main() -> int:
             errors.append(f"rank{rank}: receipt missing/invalid: {error}")
             continue
         rows.append(row)
+        errors.extend(f"rank{rank}: {error}" for error in hardware.receipt_errors(row))
         if (
             row.get("status") != "PASS"
             or int(row.get("rank", -1)) != rank
@@ -242,7 +253,7 @@ def main() -> int:
         expected_commits = (
             (2, 10)
             if args.execution_mode == "baseline"
-            else ((2, 0) if rank in GENERATOR_RANKS else (0, 10))
+            else ((2, 0) if hardware.is_generator(rank) else (0, 10))
         )
         if (
             int(row.get("physical_generator_commits", -1)),
@@ -260,28 +271,28 @@ def main() -> int:
             from distillschedule.runtime.livewan_score_rmsnorm import runtime_receipt_errors
 
             errors.extend(f"rank{rank}: {error}" for error in runtime_receipt_errors(
-                dict(row.get("score_rmsnorm_kernel", {})), rank=rank))
+                dict(row.get("score_rmsnorm_kernel", {})), rank=hardware.receipt_rank(rank)))
         if args.pipeline_variant in {"c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"}:
             from distillschedule.runtime.livewan_generator_rms_epilogue import runtime_receipt_errors as rms_epilogue_errors
 
             errors.extend(f"rank{rank}: {error}" for error in rms_epilogue_errors(
-                dict(row.get("generator_rms_epilogue", {})), rank=rank, cycles=2,
+                dict(row.get("generator_rms_epilogue", {})), rank=hardware.receipt_rank(rank), cycles=scope_cycles,
                 fuse_cast_square=args.pipeline_variant in {"c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"}))
         if args.pipeline_variant in {"c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"}:
             from distillschedule.runtime.livewan_rollout_cast_cache import runtime_receipt_errors as cast_errors
 
             errors.extend(f"rank{rank}: {error}" for error in cast_errors(
-                dict(row.get("generator_rollout_cast_cache", {})), rank=rank, cycles=2))
+                dict(row.get("generator_rollout_cast_cache", {})), rank=hardware.receipt_rank(rank), cycles=scope_cycles))
         if args.pipeline_variant in {"c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"}:
             from distillschedule.runtime.livewan_generator_modulation import runtime_receipt_errors as modulation_errors
 
             errors.extend(f"rank{rank}: {error}" for error in modulation_errors(
-                dict(row.get("generator_modulation", {})), rank=rank, cycles=2))
+                dict(row.get("generator_modulation", {})), rank=hardware.receipt_rank(rank), cycles=scope_cycles))
         if args.pipeline_variant in {"c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"}:
             from distillschedule.runtime.livewan_generator_gate import runtime_receipt_errors as gate_errors
 
             errors.extend(f"rank{rank}: {error}" for error in gate_errors(
-                dict(row.get("generator_gate", {})), rank=rank, cycles=2,
+                dict(row.get("generator_gate", {})), rank=hardware.receipt_rank(rank), cycles=scope_cycles,
                 output_layout="row_major" if args.pipeline_variant == "c34-continuous-b16-residual-layout" else "native"))
         if args.pipeline_variant == "c27-continuous-b16-pinned-prompt-staging":
             from distillschedule.runtime.livewan_context_staging import runtime_receipt_errors as staging_errors
@@ -292,7 +303,7 @@ def main() -> int:
             from distillschedule.runtime.livewan_attention_checkpoint import runtime_receipt_errors as sac_errors
 
             errors.extend(f"rank{rank}: {error}" for error in sac_errors(
-                dict(row.get("critic_attention_checkpoint", {})), rank=rank, expected_calls=300))
+                dict(row.get("critic_attention_checkpoint", {})), rank=hardware.receipt_rank(rank), expected_calls=300 * hardware.critic_accumulations))
         cycle1 = dict(timing.get("cycle_1", {}))
         cycle2 = dict(timing.get("cycle_2", {}))
         if (
@@ -332,6 +343,8 @@ def main() -> int:
             or binding.get("status") != "PASS"
         ):
             errors.append(f"rank{rank}: correctness evidence binding changed")
+        if hardware.is_h100 and binding.get("hardware_profile") != hardware.to_dict():
+            errors.append(f"rank{rank}: correctness hardware binding changed")
         if row.get("effective_plan_sha256") not in effective_plan_shas:
             errors.append(f"rank{rank}: effective plan SHA changed")
 
@@ -344,7 +357,7 @@ def main() -> int:
                 if args.execution_mode == "baseline"
                 else (
                     {"generator": index, "critic": 0, "ema": 0}
-                    if rank in GENERATOR_RANKS
+                    if hardware.is_generator(rank)
                     else {"generator": 0, "critic": index * 5, "ema": 0}
                 )
             )
@@ -366,12 +379,12 @@ def main() -> int:
                 or continuous.get("cycles") != 2
                 or continuous.get("execution_status") != "PASS"
                 or continuous.get("critic_physical_batch_size") != 2
-                or continuous.get("critic_physical_backward_calls_per_step") != 1
+                or continuous.get("critic_physical_backward_calls_per_step") != hardware.critic_accumulations
                 or continuous.get("critic_step1_single_commit") is not True
                 or continuous.get("source_reuse_across_cycles") is not True
             ):
                 errors.append(f"rank{rank}: C24 continuous contract changed")
-            expected_role = "generator" if rank in GENERATOR_RANKS else "score"
+            expected_role = "generator" if hardware.is_generator(rank) else "score"
             if (
                 transport.get("execution_status") != "PASS"
                 or transport.get("role") != expected_role
@@ -380,7 +393,7 @@ def main() -> int:
             ):
                 errors.append(f"rank{rank}: depth-1 transport receipt changed")
             expected_sync_role = (
-                "generator_receiver" if rank in GENERATOR_RANKS else "score_source"
+                "generator_receiver" if hardware.is_generator(rank) else "score_source"
             )
             if (
                 hot_sync.get("execution_status") != "PASS"
@@ -390,8 +403,8 @@ def main() -> int:
             ):
                 errors.append(f"rank{rank}: C5 hot-sync receipt changed")
 
-    if len(rows) != WORLD_SIZE:
-        errors.append(f"rank receipt count={len(rows)}, expected=16")
+    if len(rows) != world_size:
+        errors.append(f"rank receipt count={len(rows)}, expected={world_size}")
     identities = {
         (
             row.get("trace_sha256"),
@@ -469,9 +482,9 @@ def main() -> int:
                     errors.append(f"rank{row.get('rank')}: non-finite {name}/{key}")
 
     critical_ranks = (
-        tuple(range(WORLD_SIZE))
+        tuple(range(world_size))
         if args.execution_mode == "baseline"
-        else SCORE_RANKS
+        else hardware.score_ranks
     )
     critical = [endpoint_rows[rank] for rank in critical_ranks if rank in endpoint_rows]
     if len(critical) != len(critical_ranks):
@@ -488,7 +501,7 @@ def main() -> int:
         "identity": identity,
         "seed": int(next(iter(seeds), -1)) if len(seeds) == 1 else None,
         "cycles_in_same_process": 2,
-        "world_size": 16,
+        "world_size": world_size,
         "global_batch": 16,
         "source_reuse_across_cycles": True,
         "logical_updates": FINAL_VERSIONS,
@@ -499,6 +512,8 @@ def main() -> int:
             "one post-cycle2 synchronize+barrier"
         ),
     }
+    if hardware.is_h100:
+        contract.update(hardware_profile=hardware.to_dict(), logical_world_size=16)
     result = {
         "schema_version": "distillschedule.livewan_two_cycle_timing_summary.v1",
         "status": "PASS" if not errors else "FAIL",
@@ -588,6 +603,9 @@ def main() -> int:
         ),
         "rank_count": len(rows),
     }
+    if hardware.is_h100:
+        result.update(hardware_profile=hardware.to_dict(), physical_world_size=world_size,
+                      logical_world_size=16)
     atomic_json(args.output, result)
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if not errors else 1
