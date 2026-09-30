@@ -6,9 +6,61 @@ roundings and gradients while emitting a row-major residual for native norms.
 """
 from __future__ import annotations
 
+import hashlib
+import inspect
+import textwrap
 from typing import Any
 
 SOURCE_SHA256 = "4665c81a5dfbb7b7b75590c94a9c3acb2027bf7474f708033d1d1c96583ce527"
+PLAN_CONTRACT = dict(
+    enabled=True, name="score_bf16_row_major_residual_gate_v1",
+    scope="score_ranks_only_critic_and_teacher", source_sha256=SOURCE_SHA256,
+    product_dtype="bfloat16", output_dtype="bfloat16", fma=False,
+    gate_requires_grad=False, output_layout="row_major", out_of_place=True,
+    native_layernorm_unchanged=True, application_calls_unchanged=True,
+)
+
+
+def install_score_gate(torch: Any) -> dict[str, Any]:
+    """Explicit Score-process installation; checkpoint replay uses the same op."""
+    from wanstreamer import blockcausal as bc
+    if hasattr(bc, "_distillschedule_score_gate"):
+        raise RuntimeError("Score residual gate already installed")
+    source = textwrap.dedent(inspect.getsource(bc._gate)).strip()
+    if hashlib.sha256(source.encode()).hexdigest() != SOURCE_SHA256:
+        raise RuntimeError("Score residual gate source mismatch")
+    op, receipt = build(torch)
+
+    def fused(x: Any, y: Any, g: Any, per_frame: bool, n_frames: int) -> Any:
+        if per_frame or n_frames != 1:
+            receipt["contract_failures"] += 1
+            raise RuntimeError("Score residual gate frame contract changed")
+        return op(x, y, g)
+
+    bc._gate = fused
+    receipt.update(PLAN_CONTRACT, status="INSTALLED", install_status="PASS",
+        execution_status="PASS", production_installed=True)
+    bc._distillschedule_score_gate = receipt
+    return receipt
+
+
+def runtime_receipt_errors(receipt: dict[str, Any], *, rank: int,
+                           inventory: dict[str, int]) -> list[str]:
+    if rank < 8:
+        return [] if receipt.get("execution_status") == "NOT_APPLICABLE" else ["Score gate changed Generator"]
+    ng_teacher = int(inventory.get("teacher/nograd/plain", 0)) * 80
+    ng_critic = int(inventory.get("critic/nograd/plain", 0)) * 60
+    grad_critic = int(inventory.get("critic/grad/checkpoint", 0)) * 60
+    expected = ng_teacher + ng_critic + 2 * grad_critic
+    if (any(receipt.get(k) != v for k,v in PLAN_CONTRACT.items())
+        or receipt.get("install_status") != "PASS"
+        or receipt.get("execution_status") != "PASS"
+        or receipt.get("contract_failures") != 0
+        or receipt.get("forward_calls") != expected
+        or receipt.get("backward_calls") != grad_critic
+        or expected <= 0 or grad_critic <= 0):
+        return ["Score residual gate runtime source/rounding/call contract failed"]
+    return []
 
 
 def validate(torch: Any, x: Any, y: Any, gate: Any) -> None:
@@ -104,12 +156,14 @@ def build(torch: Any) -> tuple[Any, dict[str, Any]]:
                 GB=gate.stride(0), GR=gate.shape[0], BLOCK=1024,
                 num_warps=4, enable_fp_fusion=False,
             )
-            ctx.save_for_backward(gate)
-            ctx.shape = tuple(x.shape)
+            # Count actual launches before a non-reentrant early-stop can
+            # interrupt saved-tensor processing during checkpoint replay.
             receipt["forward_calls"] += 1
             key = f"{tuple(x.shape)}/{tuple(x.stride())}/{tuple(y.stride())}/{tuple(gate.shape)}"
             h = receipt["shape_stride_histogram"]
             h[key] = h.get(key, 0) + 1
+            ctx.save_for_backward(gate)
+            ctx.shape = tuple(x.shape)
             return out
 
         @staticmethod

@@ -3441,6 +3441,19 @@ def _generator_residual_layout_enabled(plan: Mapping[str, Any], *, mode: str) ->
     return True
 
 
+def _score_residual_gate_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_score_gate import PLAN_CONTRACT
+
+    value = plan.get("metadata", {}).get("score_residual_gate")
+    if value is None:
+        return False
+    _require(mode == "pipeline" and value == PLAN_CONTRACT,
+             "C35 Score residual gate contract changed")
+    _require(_generator_residual_layout_enabled(plan, mode=mode),
+             "C35 requires unchanged C34 parent")
+    return True
+
+
 def _score_prompt_staging_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
     from distillschedule.runtime.livewan_context_staging import PLAN_CONTRACT
 
@@ -3751,6 +3764,7 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _generator_modulation_enabled(plan, mode=mode)
     _generator_gate_enabled(plan, mode=mode)
     _generator_residual_layout_enabled(plan, mode=mode)
+    _score_residual_gate_enabled(plan, mode=mode)
     _score_rope_kernel_enabled(plan, mode=mode)
     _score_attention_backend_enabled(plan, mode=mode)
     _generator_cross_kv_cache_enabled(plan, mode=mode)
@@ -4033,6 +4047,13 @@ def run_worker(
         else:
             score_rmsnorm_kernel = {"enabled": True, "role": "generator",
                 "execution_status": "NOT_APPLICABLE", "forward_calls": 0, "backward_calls": 0}
+    score_residual_gate = {"enabled": False, "execution_status": "DISABLED"}
+    if _score_residual_gate_enabled(plan, mode=mode):
+        if rank >= 8:
+            from distillschedule.runtime.livewan_score_gate import install_score_gate
+            score_residual_gate = install_score_gate(torch)
+        else:
+            score_residual_gate = {"enabled": True, "execution_status": "NOT_APPLICABLE"}
     score_rope_kernel = {
         "enabled": False,
         "name": "native_livewan_score_rope",
@@ -4701,6 +4722,10 @@ def run_worker(
 
         _require(not runtime_receipt_errors(score_rmsnorm_kernel, rank=rank),
                  "Score RMSNorm runtime contract/counters incomplete")
+    if _score_residual_gate_enabled(plan, mode=mode):
+        from distillschedule.runtime.livewan_score_gate import runtime_receipt_errors as score_gate_errors
+        _require(not score_gate_errors(score_residual_gate, rank=rank, inventory=inventory.counts),
+                 "C35 Score residual gate source/rounding/call contract failed")
     local_final_versions = dict(versions)
     rollout_cast_cache_receipt = {"enabled": False, "execution_status": "DISABLED"}
     if _generator_rollout_cast_cache_enabled(plan, mode=mode):
@@ -4971,6 +4996,7 @@ def run_worker(
         "critic_lora_kernel": critic_lora_kernel,
         "score_modulation_kernel": score_modulation_kernel,
         "score_rmsnorm_kernel": score_rmsnorm_kernel,
+        "score_residual_gate": score_residual_gate,
         "score_rope_kernel": score_rope_kernel,
         "score_attention_backend": score_attention_backend,
         "generator_cross_attention_kv_cache": generator_cross_kv_cache,
