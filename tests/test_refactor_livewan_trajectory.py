@@ -27,12 +27,35 @@ from distillschedule.runtime.livewan_crossscale_worker import (
     _trajectory_model_named_values,
     _trajectory_normalized_cycle_evidence,
     _trajectory_optimizer_named_values,
+    _trajectory_state_anchor,
 )
 
 
 ROOT = Path(__file__).resolve().parents[1]
 LIVEWAN = "1eabf43c777bc5b2816926ca998cd4e4c2dfa3d5"
 WAN21 = "9737cba9c1c3c4d04b33fcad41c111989865d315"
+
+
+def test_trajectory_anchor_declares_actual_role_owners(monkeypatch, tmp_path):
+    from distillschedule.runtime import livewan_crossscale_worker as worker
+    calls = []
+
+    def collect(**kwargs):
+        calls.append((kwargs["primary_rank"], tuple(kwargs["owner_ranks"])))
+        return {"test_only": True}
+
+    monkeypatch.setattr(worker, "collect_numeric_state_sketch", collect)
+    bundle = SimpleNamespace(
+        metadata={"generator_ranks": [0, 1, 2, 3], "critic_ranks": [4, 5, 6, 7]},
+        student=None, critic=None, critic_lora_params=[],
+        generator_optimizer=None, critic_optimizer=None,
+        generator_optimizer_parameter_names={}, critic_optimizer_parameter_names={},
+    )
+    _trajectory_state_anchor(
+        torch=SimpleNamespace(distributed=SimpleNamespace(barrier=lambda: None)),
+        rank=0, cycle=1, output_dir=tmp_path, bundle=bundle,
+    )
+    assert calls == [(0, (0, 1, 2, 3))] * 2 + [(4, (4, 5, 6, 7))] * 2
 
 
 def _source_trace(path: Path) -> None:
@@ -591,6 +614,7 @@ def test_pipeline_physical_b2_is_preserved_as_exact_global_census() -> None:
             return SimpleNamespace(
                 operation_key=f"cycle=0/step={global_step}/slot={rank}",
                 seeds={"rollout": global_step * 100 + rank},
+                cycle_step=global_step % 5,
             )
 
     result = _trajectory_normalized_cycle_evidence(
@@ -684,6 +708,7 @@ def test_rank_qualified_student_counts_need_not_divide_by_global_batch() -> None
             return SimpleNamespace(
                 operation_key=f"cycle=0/step={global_step}/slot={rank}",
                 seeds={"rollout": global_step * 100 + rank},
+                cycle_step=global_step % 5,
             )
 
     result = _trajectory_normalized_cycle_evidence(

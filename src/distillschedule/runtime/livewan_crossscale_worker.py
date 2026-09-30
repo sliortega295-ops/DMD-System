@@ -2805,6 +2805,7 @@ def _trajectory_state_anchor(
             named_values=_trajectory_model_named_values(bundle.student),
             samples_per_tensor=16,
             primary_rank=generator_primary,
+            owner_ranks=generator_ranks,
         ),
         "generator_adam": collect_numeric_state_sketch(
             torch=torch,
@@ -2814,6 +2815,7 @@ def _trajectory_state_anchor(
             ),
             samples_per_tensor=16,
             primary_rank=generator_primary,
+            owner_ranks=generator_ranks,
         ),
         "critic_trainable": collect_numeric_state_sketch(
             torch=torch,
@@ -2822,6 +2824,7 @@ def _trajectory_state_anchor(
             ),
             samples_per_tensor=16,
             primary_rank=critic_primary,
+            owner_ranks=critic_ranks,
         ),
         "critic_adam": collect_numeric_state_sketch(
             torch=torch,
@@ -2831,6 +2834,7 @@ def _trajectory_state_anchor(
             ),
             samples_per_tensor=16,
             primary_rank=critic_primary,
+            owner_ranks=critic_ranks,
         ),
     }
     anchor = {

@@ -198,6 +198,7 @@ def collect_numeric_state_sketch(
     max_tensors: int = 96,
     primary_rank: int = 0,
     object_collective_group: Any | None = None,
+    owner_ranks: Iterable[int] | None = None,
 ) -> dict[str, Any]:
     """Collect a canonical numeric sketch on every rank.
 
@@ -205,6 +206,12 @@ def collect_numeric_state_sketch(
     layout source is normally the corresponding FSDP2 DTensor parameter for a
     local Adam/EMA tensor; it is ``None`` when ``value`` itself describes the
     global layout.
+
+    Role-pool evidence may declare the model owners in process-group rank
+    coordinates. All ranks still enter the same existing object collective;
+    non-owners must contribute an empty inventory, and every declared owner
+    must contribute the same non-empty inventory. The default remains the
+    original all-ranks agreement contract.
     """
 
     dist = torch.distributed
@@ -214,6 +221,14 @@ def collect_numeric_state_sketch(
     world_size = int(dist.get_world_size(group=object_collective_group))
     if not 0 <= primary_rank < world_size:
         raise ValueError("numeric sketch primary rank is outside the process group")
+    owners = tuple(range(world_size)) if owner_ranks is None else tuple(owner_ranks)
+    if (
+        not owners or len(set(owners)) != len(owners)
+        or any(not isinstance(owner, int) or not 0 <= owner < world_size for owner in owners)
+        or primary_rank not in owners
+    ):
+        raise ValueError("numeric sketch owner ranks must be unique, in-group, and include primary")
+    owners = tuple(sorted(owners))
     local_items = sorted(
         (
             (canonical_state_name(name), value, layout_source)
@@ -238,20 +253,34 @@ def collect_numeric_state_sketch(
         for name, value, layout_source in (local_items[item_index],)
     ]
     local_envelope = {"inventory_names": inventory_names, "rows": local_rows}
+    if owner_ranks is not None:
+        local_envelope["owner_ranks"] = list(owners)
     gathered: list[dict[str, Any] | None] = [None] * world_size
     dist.all_gather_object(
         gathered,
         local_envelope,
         group=object_collective_group,
     )
+    for contributor_rank, contributor in enumerate(gathered):
+        if contributor is None:
+            raise AssertionError("numeric state sketch gather returned an empty rank")
+        if owner_ranks is not None and contributor.get("owner_ranks") != list(owners):
+            raise AssertionError("state sketch owner rank declaration differs across ranks")
+        if contributor_rank not in owners and (
+            contributor["inventory_names"] or contributor["rows"]
+        ):
+            raise AssertionError("state sketch non-owner contributed model state")
+        if any(int(row["contributor_rank"]) != contributor_rank for row in contributor["rows"]):
+            raise AssertionError("state sketch contributor rank differs from gather rank")
     inventories = {
-        tuple(str(name) for name in contributor["inventory_names"])
-        for contributor in gathered
-        if contributor is not None
+        tuple(str(name) for name in gathered[owner]["inventory_names"])
+        for owner in owners
     }
     if len(inventories) > 1:
         raise AssertionError("state sketch tensor inventory differs across owner ranks")
     global_inventory = next(iter(inventories)) if inventories else ()
+    if owner_ranks is not None and not global_inventory:
+        raise AssertionError("state sketch declared owners have an empty tensor inventory")
     by_name: dict[str, dict[str, Any]] = {}
     for contributor in gathered:
         if contributor is None:
@@ -289,7 +318,7 @@ def collect_numeric_state_sketch(
         row = by_name[name]
         if row["representation"] == "FULL_REPLICA":
             contributors = sorted(set(row["contributor_ranks"]))
-            expected_contributors = list(range(world_size))
+            expected_contributors = list(owners)
             if contributors != expected_contributors:
                 raise AssertionError(
                     f"full-replica state sketch did not verify every rank for {name}: "
@@ -320,7 +349,12 @@ def collect_numeric_state_sketch(
         "max_tensors": int(max_tensors),
         "world_size": world_size,
         "replica_reference_rank": int(primary_rank),
-        "replica_validation": "ALL_RANKS_CONTRIBUTE_SAMPLED_COORDINATES_MUST_MATCH",
+        "replica_validation": (
+            "ALL_RANKS_CONTRIBUTE_SAMPLED_COORDINATES_MUST_MATCH"
+            if owner_ranks is None
+            else "ALL_OWNER_RANKS_CONTRIBUTE_SAMPLED_COORDINATES_MUST_MATCH"
+        ),
+        **({"owner_ranks": list(owners)} if owner_ranks is not None else {}),
         "replica_agreement_scope": "SAMPLED_COORDINATES_NOT_FULL_TENSOR_PROOF",
         "inventory_tensor_count": len(global_inventory),
         "inventory_sha256": hashlib.sha256(
@@ -372,9 +406,19 @@ def compare_numeric_state_sketches(
             raise ValueError(f"{label} numeric sketch schema is not {SCHEMA_VERSION}")
         if value.get("coordinate_schema") != "canonical_tensor_name/global_flat_index/value_fp32":
             raise ValueError(f"{label} numeric sketch coordinate schema changed")
-        if value.get("replica_validation") != (
-            "ALL_RANKS_CONTRIBUTE_SAMPLED_COORDINATES_MUST_MATCH"
-        ):
+        validation = value.get("replica_validation")
+        if validation == "ALL_OWNER_RANKS_CONTRIBUTE_SAMPLED_COORDINATES_MUST_MATCH":
+            owners = value.get("owner_ranks", [])
+            if (
+                not owners or owners != sorted(set(owners))
+                or any(not isinstance(owner, int) or not 0 <= owner < value["world_size"] for owner in owners)
+                or value.get("replica_reference_rank") not in owners
+            ):
+                raise ValueError(f"{label} numeric sketch has invalid owner-rank evidence")
+            for tensor in value.get("tensors", ()):
+                if tensor["representation"] == "FULL_REPLICA" and tensor["contributor_ranks"] != owners:
+                    raise ValueError(f"{label} numeric sketch lacks every owner replica")
+        elif validation != "ALL_RANKS_CONTRIBUTE_SAMPLED_COORDINATES_MUST_MATCH":
             raise ValueError(f"{label} numeric sketch lacks sampled replica-agreement evidence")
         if value.get("replica_agreement_scope") != "SAMPLED_COORDINATES_NOT_FULL_TENSOR_PROOF":
             raise ValueError(f"{label} numeric sketch replica-agreement scope changed")

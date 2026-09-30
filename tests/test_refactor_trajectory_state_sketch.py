@@ -207,3 +207,103 @@ def test_full_replica_sketch_rejects_rank_disagreement() -> None:
             torch=torch,
             named_values=[("layer.weight", _FakeTensor([1.0, 2.0]), None)],
         )
+
+
+class _RolePoolDistributed(_FakeDistributed):
+    """Eight world contributors, with only four physical model owners."""
+
+    def __init__(self, *, owners: tuple[int, ...], rank: int = 0, failure: str = "") -> None:
+        super().__init__()
+        self.owners, self.rank, self.failure = owners, rank, failure
+
+    def get_rank(self, group: object | None = None) -> int:
+        return self.rank
+
+    def get_world_size(self, group: object | None = None) -> int:
+        return 8
+
+    def all_gather_object(self, output: list[object], value: object, group=None) -> None:
+        template = {
+            "name": "layer.weight", "shape": [2], "dtype": "torch.float32",
+            "numel": 2, "requested_indices": [0, 1], "values": {"0": 1.0, "1": 2.0},
+            "representation": "FULL_REPLICA",
+        }
+        for rank in range(8):
+            owns = rank in self.owners
+            row = {**copy.deepcopy(template), "contributor_rank": rank}
+            item = {
+                **copy.deepcopy(value),
+                "inventory_names": ["layer.weight"] if owns else [],
+                "rows": [row] if owns else [],
+            }
+            if rank == self.owners[-1]:
+                if self.failure == "missing_owner":
+                    item.update(inventory_names=[], rows=[])
+                elif self.failure == "owner_inventory":
+                    item["inventory_names"] = ["other.weight"]
+                elif self.failure == "owner_disagreement":
+                    item["rows"][0]["values"]["0"] = 99.0
+                elif self.failure == "owner_declaration":
+                    item["owner_ranks"] = [rank]
+            if self.failure == "nonowner_state" and rank == next(
+                rank for rank in range(8) if rank not in self.owners
+            ):
+                item.update(inventory_names=["layer.weight"], rows=[row])
+            output[rank] = item
+
+
+def _role_pool_torch(distributed):
+    return SimpleNamespace(
+        distributed=distributed, int64="torch.int64",
+        tensor=lambda values, **_kwargs: _FakeTensor(list(values)),
+    )
+
+
+@pytest.mark.parametrize("owners,rank", [((0, 1, 2, 3), 0), ((4, 5, 6, 7), 0), ((4, 5, 6, 7), 7)])
+def test_role_pool_sketch_requires_every_declared_owner_not_every_world_rank(owners, rank):
+    sketch = collect_numeric_state_sketch(
+        torch=_role_pool_torch(_RolePoolDistributed(owners=owners, rank=rank)),
+        named_values=[("layer.weight", _FakeTensor([1.0, 2.0]), None)] if rank in owners else [],
+        primary_rank=min(owners), owner_ranks=owners,
+    )
+    assert sketch["world_size"] == 8
+    assert sketch["owner_ranks"] == list(owners)
+    assert sketch["tensors"][0]["contributor_ranks"] == list(owners)
+    assert sketch["replica_validation"] == "ALL_OWNER_RANKS_CONTRIBUTE_SAMPLED_COORDINATES_MUST_MATCH"
+    reference = collect_numeric_state_sketch(
+        torch=_role_pool_torch(_FakeDistributed()),
+        named_values=[("layer.weight", _FakeTensor([1.0, 2.0]), None)],
+    )
+    comparison = compare_numeric_state_sketches(reference, sketch, cycle=1, component="generator_trainable")
+    assert comparison.normalized_l2 == 0.0
+
+
+@pytest.mark.parametrize("failure,signature", [
+    ("missing_owner", "inventory differs"), ("owner_inventory", "inventory differs"),
+    ("owner_disagreement", "disagree"), ("nonowner_state", "non-owner"),
+    ("owner_declaration", "owner rank declaration"),
+])
+def test_role_pool_sketch_does_not_weaken_owner_or_replica_gates(failure, signature):
+    owners = (0, 1, 2, 3)
+    with pytest.raises(AssertionError, match=signature):
+        collect_numeric_state_sketch(
+            torch=_role_pool_torch(_RolePoolDistributed(owners=owners, failure=failure)),
+            named_values=[("layer.weight", _FakeTensor([1.0, 2.0]), None)],
+            primary_rank=0, owner_ranks=owners,
+        )
+
+
+@pytest.mark.parametrize("owners", [(), (0, 0), (-1, 0), (0, 8), (1, 2)])
+def test_role_pool_sketch_rejects_invalid_ownership(owners):
+    with pytest.raises(ValueError, match="owner"):
+        collect_numeric_state_sketch(
+            torch=_role_pool_torch(_FakeDistributed()), named_values=[], owner_ranks=owners,
+        )
+
+
+def test_unspecified_owners_still_require_every_world_rank_inventory():
+    with pytest.raises(AssertionError, match="inventory differs"):
+        collect_numeric_state_sketch(
+            torch=_role_pool_torch(_RolePoolDistributed(owners=(0, 1, 2, 3))),
+            named_values=[("layer.weight", _FakeTensor([1.0, 2.0]), None)],
+        )
