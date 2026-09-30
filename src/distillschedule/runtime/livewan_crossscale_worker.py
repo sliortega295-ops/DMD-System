@@ -3054,6 +3054,7 @@ class RunEvidence:
     generator_backpressure: list[dict[str, Any]] = field(default_factory=list)
     critic_checkpoint_rng: dict[str, Any] = field(default_factory=dict)
     physical_critic_backward_calls: int = 0
+    critic_physical_calls_by_global_step: dict[str, int] = field(default_factory=dict)
 
     def add_logical_score_calls(self, key: str, count: int) -> None:
         _require(count > 0, "logical Score call count must be positive")
@@ -3467,6 +3468,22 @@ def _score_layernorm_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
     return True
 
 
+def _critic_step1_overlap_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_step1_overlap import PLAN_CONTRACT
+
+    value = plan.get("metadata", {}).get("critic_step1_overlap")
+    if value is None:
+        return False
+    _require(mode == "pipeline" and value == PLAN_CONTRACT,
+             "C37 early-wave scheduling contract changed")
+    _require(_score_layernorm_enabled(plan, mode=mode),
+             "C37 requires the unchanged C36 kernel parent")
+    _require(_continuous_pipeline_contract(plan, mode=mode) is not None
+             and int(plan["workload"]["shape"]["batch_size"]) == GLOBAL_BATCH,
+             "C37 requires continuous B16, not a new batch/topology")
+    return True
+
+
 def _score_prompt_staging_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
     from distillschedule.runtime.livewan_context_staging import PLAN_CONTRACT
 
@@ -3779,6 +3796,7 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _generator_residual_layout_enabled(plan, mode=mode)
     _score_residual_gate_enabled(plan, mode=mode)
     _score_layernorm_enabled(plan, mode=mode)
+    _critic_step1_overlap_enabled(plan, mode=mode)
     _score_rope_kernel_enabled(plan, mode=mode)
     _score_attention_backend_enabled(plan, mode=mode)
     _generator_cross_kv_cache_enabled(plan, mode=mode)
@@ -4630,6 +4648,7 @@ def run_worker(
                     critic_step1_split_overlap=(
                         continuous_contract.get("name")
                         == "continuous_full5_b16_depth1_step1_b1_overlap_v1"
+                        or _critic_step1_overlap_enabled(plan, mode=mode)
                     ),
                     critic_b1_attribution=critic_b1_attribution,
                     inventory=inventory,
@@ -4752,6 +4771,11 @@ def run_worker(
         from distillschedule.runtime.livewan_score_layernorm import runtime_receipt_errors as score_ln_errors
         _require(not score_ln_errors(score_layernorm, rank=rank, inventory=inventory.counts),
                  "C36 Score LayerNorm source/scope/operation census failed")
+    if _critic_step1_overlap_enabled(plan, mode=mode):
+        from distillschedule.runtime.livewan_step1_overlap import runtime_receipt_errors as step1_errors
+        _require(not step1_errors(evidence.continuous_pipeline, rank=rank,
+                                 cycles=continuous_cycles, inventory=inventory.counts),
+                 "C37 actual mixed-batch/per-step/single-commit census failed")
     rollout_cast_cache_receipt = {"enabled": False, "execution_status": "DISABLED"}
     if _generator_rollout_cast_cache_enabled(plan, mode=mode):
         from distillschedule.runtime.livewan_rollout_cast_cache import runtime_receipt_errors as cast_scope_errors
@@ -5542,6 +5566,7 @@ def _run_pipeline_8x8(
     critic_b2_only: bool = False,
     critic_b1_accumulate: bool = False,
     critic_step1_split_overlap: bool = False,
+    critic_inventory: CallInventory | None = None,
     score_context_from_trace: bool = False,
     slot_pairs_by_lane: Sequence[Sequence[int]] | None = None,
     full_context_lens_elision: bool = False,
@@ -6023,6 +6048,10 @@ def _run_pipeline_8x8(
                 for request in sends:
                     request.wait()
         else:
+            critic_physical_before = (
+                int(critic_inventory.counts.get("critic/grad/checkpoint", 0))
+                if critic_inventory is not None else 0
+            )
             if bundle.critic_gradient_reducer is not None:
                 bundle.critic_gradient_reducer.zero_grad()
             else:
@@ -6326,6 +6355,11 @@ def _run_pipeline_8x8(
                         ),
                     )
                     evidence.add_logical_score_calls("critic/grad/checkpoint", 1)
+            if critic_inventory is not None:
+                observed = int(critic_inventory.counts.get("critic/grad/checkpoint", 0)) - critic_physical_before
+                _require(observed == (2 if split_step1 else 1),
+                         "early-wave actual Critic forward count changed")
+                evidence.critic_physical_calls_by_global_step[str(global_step)] = observed
             if run_kind == "trajectory":
                 # Count completed physical backward invocations from the
                 # branch that actually ran.  Do not infer this from logical
@@ -6997,6 +7031,7 @@ def _run_pipeline_8x8_continuous(
                     critic_b2_only=not critic_b1_attribution,
                     critic_b1_accumulate=critic_b1_attribution,
                     critic_step1_split_overlap=critic_step1_split_overlap,
+                    critic_inventory=inventory if critic_step1_split_overlap else None,
                     score_context_from_trace=True,
                     slot_pairs_by_lane=slot_pairs_by_lane,
                     full_context_lens_elision=full_context_lens_elision,
@@ -7186,7 +7221,8 @@ def _run_pipeline_8x8_continuous(
                     "physical_role": "generator" if is_generator else "score",
                     "schedule": "C24_CONTINUOUS_B16_DEPTH1",
                     "critic_physical_batch_size": (
-                        "1" if critic_b1_attribution else "2"
+                        "mixed_step1_b1_other_b2" if critic_step1_split_overlap
+                        else ("1" if critic_b1_attribution else "2")
                     ),
                     "critic_physical_backward_calls": str(
                         evidence.physical_critic_backward_calls
@@ -7264,9 +7300,13 @@ def _run_pipeline_8x8_continuous(
                 )
             )
         ),
-        "critic_physical_batch_size": 1 if critic_b1_attribution else 2,
+        "critic_physical_batch_size": (
+            "mixed_step1_b1_other_b2" if critic_step1_split_overlap
+            else (1 if critic_b1_attribution else 2)
+        ),
         "critic_physical_backward_calls_per_step": (
-            2 if critic_b1_attribution else 1
+            [1, 2, 1, 1, 1] if critic_step1_split_overlap
+            else (2 if critic_b1_attribution else 1)
         ),
         "global_batch": trace.global_batch,
         "waves_per_step": len(lane_slots),
@@ -7278,6 +7318,14 @@ def _run_pipeline_8x8_continuous(
         "role_total_wall_seconds": time.perf_counter() - started,
         "execution_status": "PASS",
     }
+    if critic_step1_split_overlap:
+        evidence.continuous_pipeline["critic_physical_calls_by_cycle"] = (
+            [] if is_generator else [
+                [evidence.critic_physical_calls_by_global_step.get(str(cycle * FULL5_STEPS + step), 0)
+                 for step in range(FULL5_STEPS)]
+                for cycle in range(trace.cycles)
+            ]
+        )
     if run_kind == "profile" and os.environ.get("LIVEWAN_PROFILE_TWO_CYCLES", "0") == "1":
         evidence.continuous_pipeline["name"] = TWO_CYCLE_PROFILE_CONTINUOUS_NAME
         evidence.continuous_pipeline["training_quality_claimable"] = False

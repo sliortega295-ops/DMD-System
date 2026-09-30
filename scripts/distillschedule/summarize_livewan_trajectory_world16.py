@@ -95,7 +95,7 @@ def main() -> int:
         if execution_mode == "baseline"
         else {
             "c24-continuous-b16-score-modulation",
-            "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm",
+            "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap",
             "c24-continuous-b16-score-modulation-b1-attribution",
         }
     )
@@ -124,49 +124,54 @@ def main() -> int:
             continue
         if final.get("status") != "PASS" or final.get("run_kind") != "trajectory":
             errors.append(f"rank{rank}: final trajectory receipt is not PASS")
-        if pipeline_variant in {"c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm"}:
+        if pipeline_variant in {"c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap"}:
             from distillschedule.runtime.livewan_score_gate import runtime_receipt_errors as score_gate_errors
             errors.extend(f"rank{rank}: {error}" for error in score_gate_errors(
                 dict(final.get("score_residual_gate", {})), rank=rank,
                 inventory=dict(final.get("physical_call_inventory", {}))))
-        if pipeline_variant == "c36-continuous-b16-score-layernorm":
+        if pipeline_variant in {"c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap"}:
             from distillschedule.runtime.livewan_score_layernorm import runtime_receipt_errors as score_ln_errors
             errors.extend(f"rank{rank}: {error}" for error in score_ln_errors(
                 dict(final.get("score_layernorm", {})), rank=rank,
                 inventory=dict(final.get("physical_call_inventory", {}))))
-        if pipeline_variant in {"c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm"}:
+        if pipeline_variant == "c37-continuous-b16-step1-overlap":
+            from distillschedule.runtime.livewan_step1_overlap import runtime_receipt_errors as step1_errors
+            errors.extend(f"rank{rank}: {error}" for error in step1_errors(
+                dict(final.get("continuous_pipeline", {})), rank=rank, cycles=args.cycles,
+                inventory=dict(final.get("physical_call_inventory", {}))))
+        if pipeline_variant in {"c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap"}:
             from distillschedule.runtime.livewan_score_rmsnorm import runtime_receipt_errors
 
             errors.extend(f"rank{rank}: {error}" for error in runtime_receipt_errors(
                 dict(final.get("score_rmsnorm_kernel", {})), rank=rank))
-        if pipeline_variant in {"c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm"}:
+        if pipeline_variant in {"c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap"}:
             from distillschedule.runtime.livewan_generator_rms_epilogue import runtime_receipt_errors as rms_epilogue_errors
 
             errors.extend(f"rank{rank}: {error}" for error in rms_epilogue_errors(
                 dict(final.get("generator_rms_epilogue", {})), rank=rank, cycles=args.cycles,
-                fuse_cast_square=pipeline_variant in {"c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm"}))
-        if pipeline_variant in {"c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm"}:
+                fuse_cast_square=pipeline_variant in {"c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap"}))
+        if pipeline_variant in {"c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap"}:
             from distillschedule.runtime.livewan_rollout_cast_cache import runtime_receipt_errors as cast_errors
 
             errors.extend(f"rank{rank}: {error}" for error in cast_errors(
                 dict(final.get("generator_rollout_cast_cache", {})), rank=rank, cycles=args.cycles))
-        if pipeline_variant in {"c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm"}:
+        if pipeline_variant in {"c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap"}:
             from distillschedule.runtime.livewan_generator_modulation import runtime_receipt_errors as modulation_errors
 
             errors.extend(f"rank{rank}: {error}" for error in modulation_errors(
                 dict(final.get("generator_modulation", {})), rank=rank, cycles=args.cycles))
-        if pipeline_variant in {"c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm"}:
+        if pipeline_variant in {"c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap"}:
             from distillschedule.runtime.livewan_generator_gate import runtime_receipt_errors as gate_errors
 
             errors.extend(f"rank{rank}: {error}" for error in gate_errors(
                 dict(final.get("generator_gate", {})), rank=rank, cycles=args.cycles,
-                output_layout="row_major" if pipeline_variant in {"c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm"} else "native"))
+                output_layout="row_major" if pipeline_variant in {"c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap"} else "native"))
         if pipeline_variant == "c27-continuous-b16-pinned-prompt-staging":
             from distillschedule.runtime.livewan_context_staging import runtime_receipt_errors as staging_errors
 
             errors.extend(f"rank{rank}: {error}" for error in staging_errors(
                 dict(final.get("score_prompt_staging", {})), rank=rank, cycles=args.cycles))
-        if pipeline_variant in {"c26-continuous-b16-critic-attention-checkpoint", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm"}:
+        if pipeline_variant in {"c26-continuous-b16-critic-attention-checkpoint", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap"}:
             from distillschedule.runtime.livewan_attention_checkpoint import runtime_receipt_errors as sac_errors
 
             errors.extend(f"rank{rank}: {error}" for error in sac_errors(
@@ -280,10 +285,14 @@ def main() -> int:
                     ("1", "5", "5")
                     if execution_mode == "baseline"
                     else (
+                        ("mixed_step1_b1_other_b2", "0" if rank < 8 else "6", "0" if rank < 8 else "5")
+                        if pipeline_variant == "c37-continuous-b16-step1-overlap"
+                        else (
                         ("1", "0" if rank < 8 else "10", "0" if rank < 8 else "5")
                         if pipeline_variant
                         == "c24-continuous-b16-score-modulation-b1-attribution"
                         else ("2", "0" if rank < 8 else "5", "0" if rank < 8 else "5")
+                        )
                     )
                 )
                 observed_physical = tuple(

@@ -35,6 +35,8 @@ def plan_variant(plan: dict[str, Any], *, mode: str) -> str:
         _generator_rms_epilogue_enabled, _generator_residual_layout_enabled,
         _score_residual_gate_enabled, _score_layernorm_enabled)
 
+    if plan.get("metadata", {}).get("critic_step1_overlap") is not None:
+        raise RuntimeError("C37 scheduling has no qualified two-cycle profile gate")
     if mode != "pipeline" or not _generator_rms_epilogue_enabled(plan, mode=mode):
         raise RuntimeError("two-cycle profile requires a validated supported pipeline")
     if _score_layernorm_enabled(plan, mode=mode):
