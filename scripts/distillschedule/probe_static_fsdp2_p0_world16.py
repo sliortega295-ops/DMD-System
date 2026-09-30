@@ -20,6 +20,7 @@ import socket
 import sys
 import time
 import traceback
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
@@ -116,6 +117,12 @@ from distillschedule.runtime.fsdp2_p0 import (
     estimate_rollout_collective_groups,
     score_forward_real_pair,
 )
+from distillschedule.runtime.hardware_profile import (
+    HardwareProfile,
+    MicrobatchCommitEngine,
+    hardware_profile,
+    runtime_physical_world_size,
+)
 from distillschedule.runtime.fsdp2_nograd_persistence import (
     generator_nograd_persistent_unshard_scope,
 )
@@ -172,7 +179,7 @@ from runtime.static_fsdp2_p0_helios import run_generator_trace_rollout_batch
 from runtime.static_world16_trace import StaticWorld16Trace
 
 
-WORLD_SIZE = 16
+WORLD_SIZE = runtime_physical_world_size()
 TIMING_OMITTED = base.TIMING_OMITTED
 
 
@@ -441,10 +448,12 @@ def _run_nogan_generator_update_p0(
     runtime_cache: dict[str, Any] | None = None,
     deferred_finite_checks: list[torch.Tensor] | None = None,
     collect_scalars: bool = False,
+    expect_optimizer_commit: bool = True,
 ) -> dict[str, Any]:
     with diagnostics.scope("INPUT_H2D/generator_entry"):
         entry = trace.load_generator_entry(rank=rank, device=device)
     diagnostics.add_tensor_tree("generator_entry", entry, direction="H2D")
+    before_step = int(generator_engine.global_steps)
     before = (
         TIMING_OMITTED
         if not collect_diagnostics
@@ -565,6 +574,8 @@ def _run_nogan_generator_update_p0(
         generator_engine.backward(loss)
     with diagnostics.scope("OPTIMIZER_STEP/generator"):
         generator_engine.step()
+    if int(generator_engine.global_steps) != before_step + int(expect_optimizer_commit):
+        raise AssertionError("No-GAN P0 Generator microbatch commit drift")
     after = (
         TIMING_OMITTED
         if not collect_diagnostics
@@ -572,13 +583,17 @@ def _run_nogan_generator_update_p0(
             generator_engine.module, diagnostics, "generator_after"
         )
     )
-    if collect_diagnostics and before == after:
-        raise AssertionError("No-GAN P0 Generator trainables did not update")
+    if collect_diagnostics:
+        if expect_optimizer_commit and before == after:
+            raise AssertionError("No-GAN P0 Generator trainables did not update")
+        if not expect_optimizer_commit and before != after:
+            raise AssertionError("No-GAN P0 Generator changed before the logical commit")
     del entry, x0, gradient_mask, batch, fake, real_cond, real_uncond, gradient, auxiliary
     return {
         "logical_step": 10,
         "source_rank": rank,
         "physical_generator_step_after": int(generator_engine.global_steps),
+        "optimizer_committed": bool(expect_optimizer_commit),
         "local_trainable_before": before,
         "local_trainable_after": after,
         "rollout": rollout,
@@ -824,6 +839,7 @@ def _run_gan_critic_precomputed(
     collect_diagnostics: bool,
     collect_official_scalar_logs: bool,
     diagnostics: StaticProfileDiagnostics,
+    expect_optimizer_commit: bool = True,
 ) -> dict[str, Any]:
     from helios.utils.utils_helios_post import _critic_loss
 
@@ -846,7 +862,7 @@ def _run_gan_critic_precomputed(
         loss, logs = _critic_loss(fake_score_model=critic_engine.module, **kwargs)
     if not bool(logs.get("critic_optimizer_committed")):
         raise AssertionError("GAN P0 Critic did not commit")
-    if int(critic_engine.global_steps) != before + 1:
+    if int(critic_engine.global_steps) != before + int(expect_optimizer_commit):
         raise AssertionError("GAN P0 Critic optimizer step drift")
     return {
         "logical_step": step,
@@ -858,9 +874,236 @@ def _run_gan_critic_precomputed(
             else TIMING_OMITTED
         ),
         "score_forwards": 2,
-        "critic_optimizer_committed": True,
+        "critic_optimizer_committed": bool(expect_optimizer_commit),
+        "critic_logical_microbatch_boundary_reached": True,
         "generator_rollout_precomputed": True,
     }
+
+
+def _aggregate_logical_records(
+    records: list[dict[str, Any]], *, rank: int
+) -> dict[str, Any]:
+    """Keep legacy B1 receipts unchanged and expose both H100 logical rows."""
+    if not records:
+        raise AssertionError("a logical update has no source rows")
+    if len(records) == 1:
+        return records[0]
+    result = dict(records[-1])
+    result.update(
+        source_rank=rank,
+        source_ranks=[int(row["source_rank"]) for row in records],
+        logical_b1_microbatch_count=len(records),
+        microbatches=records,
+    )
+    for field in ("logical_score_requests", "physical_score_forwards", "score_forwards"):
+        if all(field in row for row in records):
+            result[field] = sum(int(row[field]) for row in records)
+    if "local_trainable_before" in records[0]:
+        result["local_trainable_before"] = records[0]["local_trainable_before"]
+    if all("rollout" in row for row in records):
+        rollouts = [row["rollout"] for row in records]
+        stages = {
+            stage: sum(int(row["stage_call_count"].get(stage, 0)) for row in rollouts)
+            for stage in range(3)
+        }
+        total = sum(int(row["call_count"]) for row in rollouts)
+        result["rollout"] = {
+            "call_count": total,
+            "logical_call_count": total,
+            "stage_call_count": stages,
+            "logical_stage_call_count": dict(stages),
+            "dummy_call_count": 0,
+            "microbatches": rollouts,
+            "logical_b1_microbatch_count": len(records),
+        }
+    if all("score_pack_parity" in row for row in records):
+        parity_rows = [row["score_pack_parity"] for row in records]
+        enabled = any(bool(row.get("enabled")) for row in parity_rows)
+        result["score_pack_parity"] = {
+            "enabled": enabled,
+            "status": (
+                "PASS" if enabled and all(row.get("status") == "PASS" for row in parity_rows)
+                else "NOT_RUN"
+            ),
+            "microbatches": parity_rows,
+        }
+    return result
+
+
+def _run_logical_generator_update_p0(
+    *,
+    args: Any,
+    rank: int,
+    hardware: HardwareProfile,
+    device: torch.device,
+    generator_engine: Any,
+    critic_engine: Any,
+    trace: StaticWorld16Trace,
+    cfg: Any,
+    negative: torch.Tensor,
+    collect_diagnostics: bool,
+    diagnostics: StaticProfileDiagnostics,
+    policy: StaticFSDP2P0Policy,
+    score_pack_parity_check: bool,
+    generator_free_memory: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Accumulate original rank-qualified B1 rows into one Generator commit."""
+    count = hardware.microbatch_count
+    engine = (
+        MicrobatchCommitEngine(generator_engine, microbatch_count=count)
+        if count > 1 else generator_engine
+    )
+    initial_step = int(generator_engine.global_steps)
+    records: list[dict[str, Any]] = []
+    for index, slot in enumerate(hardware.logical_slots(rank)):
+        expected_commit = index == count - 1
+        with engine.microbatch(index) if count > 1 else nullcontext():
+            commit_kwargs = {"expect_optimizer_commit": expected_commit} if count > 1 else {}
+            if args.variant == "gan":
+                kwargs = dict(
+                    args=args, rank=slot, device=device, generator_engine=engine,
+                    critic_engine=critic_engine, trace=trace, cfg=cfg, negative=negative,
+                    collect_diagnostics=collect_diagnostics, diagnostics=diagnostics,
+                    generator_free_memory_receipt=generator_free_memory,
+                    elide_official_generator_free_memory=bool(
+                        policy.elide_official_generator_free_memory
+                        and (args.timing_mode or args.profile_mode)
+                    ),
+                    **commit_kwargs,
+                )
+                if policy.pack_real_score_pair:
+                    with packed_gan_real_score_pair(parity_check=score_pack_parity_check) as packing:
+                        record = base._run_gan_generator_update(**kwargs)
+                    record.update(
+                        logical_score_requests=4,
+                        physical_score_forwards=packing.physical_dmd_score_forwards + 1,
+                        real_score_pair_packed=True,
+                        score_pack_parity=(
+                            packing.parity if packing.parity is not None
+                            else {"enabled": False, "status": "NOT_RUN"}
+                        ),
+                    )
+                else:
+                    record = base._run_gan_generator_update(**kwargs)
+                    record.update(
+                        logical_score_requests=4, physical_score_forwards=4,
+                        real_score_pair_packed=False,
+                        score_pack_parity={"enabled": False, "status": "DISABLED"},
+                    )
+            else:
+                record = _run_nogan_generator_update_p0(
+                    rank=slot, device=device, generator_engine=engine,
+                    critic_engine=critic_engine, trace=trace, negative=negative,
+                    collect_diagnostics=collect_diagnostics, diagnostics=diagnostics,
+                    policy=policy, score_pack_parity_check=score_pack_parity_check,
+                    **commit_kwargs,
+                )
+        expected_step = initial_step + int(expected_commit)
+        if int(generator_engine.global_steps) != expected_step:
+            raise AssertionError("Generator changed version before/after its outer boundary")
+        if int(record["source_rank"]) != slot:
+            raise AssertionError("Generator receipt changed the original logical slot")
+        if count > 1:
+            record.update(logical_slot=slot, physical_rank=rank,
+                          optimizer_committed=expected_commit)
+        records.append(record)
+    return _aggregate_logical_records(records, rank=rank)
+
+
+def _precompute_logical_critic_rollouts(
+    *,
+    rank: int,
+    hardware: HardwareProfile,
+    steps: tuple[int, ...],
+    device: torch.device,
+    generator_engine: Any,
+    trace: StaticWorld16Trace,
+    policy: StaticFSDP2P0Policy,
+    collect_diagnostics: bool,
+    diagnostics: StaticProfileDiagnostics,
+    rollout_parity_check: bool,
+) -> tuple[dict[int, dict[int, torch.Tensor]], list[dict[str, Any]], dict[str, Any]]:
+    outputs: dict[int, dict[int, torch.Tensor]] = {}
+    records: list[dict[str, Any]] = []
+    persistence_records: list[dict[str, Any]] = []
+    for slot in hardware.logical_slots(rank):
+        values, rows, persistence = _precompute_critic_rollouts(
+            rank=slot, steps=steps, device=device, generator_engine=generator_engine,
+            trace=trace, policy=policy, collect_diagnostics=collect_diagnostics,
+            diagnostics=diagnostics, rollout_parity_check=rollout_parity_check,
+        )
+        outputs[slot] = values
+        if hardware.microbatch_count > 1:
+            for row in rows:
+                row.update(logical_slot=slot, physical_rank=rank)
+        records.extend(rows)
+        persistence_records.append(persistence)
+    if len(persistence_records) == 1:
+        persistence = persistence_records[0]
+    else:
+        persistence = {
+            "enabled": all(bool(row.get("enabled")) for row in persistence_records),
+            "logical_b1_microbatch_count": len(persistence_records),
+            "rollout_batch_count": sum(int(row["rollout_batch_count"]) for row in persistence_records),
+            "microbatches": [
+                {"logical_slot": slot, "persistence": row}
+                for slot, row in zip(hardware.logical_slots(rank), persistence_records, strict=True)
+            ],
+        }
+    return outputs, records, persistence
+
+
+def _run_logical_critic_update_p0(
+    *,
+    args: Any,
+    rank: int,
+    hardware: HardwareProfile,
+    step: int,
+    rollout_outputs: dict[int, dict[int, torch.Tensor]],
+    device: torch.device,
+    critic_engine: Any,
+    trace: StaticWorld16Trace,
+    cfg: Any,
+    collect_diagnostics: bool,
+    diagnostics: StaticProfileDiagnostics,
+    policy: StaticFSDP2P0Policy,
+) -> dict[str, Any]:
+    """Keep the two GAN backwards per B1 row and commit after the outer GAS."""
+    count = hardware.microbatch_count
+    engine = (
+        MicrobatchCommitEngine(critic_engine, microbatch_count=count)
+        if count > 1 else critic_engine
+    )
+    initial_step = int(critic_engine.global_steps)
+    records: list[dict[str, Any]] = []
+    for index, slot in enumerate(hardware.logical_slots(rank)):
+        expected_commit = index == count - 1
+        with engine.microbatch(index) if count > 1 else nullcontext():
+            kwargs = dict(
+                rank=slot, step=step, x0=rollout_outputs[slot][step], device=device,
+                critic_engine=engine, trace=trace,
+                collect_diagnostics=collect_diagnostics, diagnostics=diagnostics,
+            )
+            if args.variant == "gan":
+                record = _run_gan_critic_precomputed(
+                    cfg=cfg,
+                    collect_official_scalar_logs=not (
+                        policy.elide_critic_scalar_logs and (args.timing_mode or args.profile_mode)
+                    ),
+                    **({"expect_optimizer_commit": expected_commit} if count > 1 else {}),
+                    **kwargs,
+                )
+            else:
+                record = _run_nogan_critic_precomputed(**kwargs)
+        if int(critic_engine.global_steps) != initial_step + int(expected_commit):
+            raise AssertionError("Critic changed version before/after its outer boundary")
+        if int(record["source_rank"]) != slot or int(record["logical_step"]) != step:
+            raise AssertionError("Critic receipt changed the original logical slot/step")
+        if count > 1:
+            record.update(logical_slot=slot, physical_rank=rank,
+                          optimizer_committed=expected_commit)
+        records.append(record)
+    return _aggregate_logical_records(records, rank=rank)
 
 
 def _parser() -> Any:
@@ -1125,6 +1368,9 @@ def _parser() -> Any:
 
 def main() -> int:
     args = _parser().parse_args()
+    hardware = hardware_profile()
+    if hardware.microbatch_count > 1 and args.rollout_batch_size != 1:
+        raise ValueError("H100 logical-batch16 migration requires two independent B1 rows")
     if args.timing_mode and args.profile_mode:
         raise ValueError("profiled runs are diagnostic and cannot be formal timing runs")
     diagnostic_single_critic = args.critic_only_step is not None
@@ -1134,8 +1380,8 @@ def main() -> int:
         raise ValueError("--critic-only-step requires No-GAN --profile-mode")
     if args.operation_source and not diagnostic_single_critic:
         raise ValueError("--operation-source requires --critic-only-step")
-    if not 0 <= args.operation_source_rank < WORLD_SIZE:
-        raise ValueError("--operation-source-rank must be in [0, 15]")
+    if not 0 <= args.operation_source_rank < hardware.physical_world_size:
+        raise ValueError("--operation-source-rank exceeds the selected physical world")
     if args.operation_source_target_bytes <= 0 or args.operation_source_max_events <= 0:
         raise ValueError("operation-source byte/event limits must be positive")
     if args.generator_nograd_residual_fusion and (
@@ -1264,8 +1510,11 @@ def main() -> int:
     rank = dist.get_rank()
     world = dist.get_world_size()
     local_rank = int(os.environ["LOCAL_RANK"])
-    if world != WORLD_SIZE:
-        raise AssertionError(f"P0 static FSDP2 requires world16, got {world}")
+    if world != hardware.physical_world_size:
+        raise AssertionError(
+            f"P0 hardware profile {hardware.name} requires physical world "
+            f"{hardware.physical_world_size}, got {world}"
+        )
     torch.cuda.set_device(local_rank)
     device = torch.device("cuda", local_rank)
     expected_allocator_conf = (
@@ -1287,6 +1536,15 @@ def main() -> int:
         "local_rank": local_rank,
         "hostname": socket.gethostname(),
         "world_size": world,
+        "hardware_profile": {
+            "name": hardware.name,
+            "physical_world_size": world,
+            "logical_global_batch": hardware.global_batch,
+            "logical_b1_microbatches_per_rank": hardware.microbatch_count,
+            "logical_slots": list(hardware.logical_slots(rank)),
+            "loss_scale_per_logical_b1": 1.0 / hardware.microbatch_count,
+            "rank_mapping": "slot = physical_rank + microbatch * physical_world_size",
+        },
         "timing_mode": bool(args.timing_mode),
         "profile_mode": bool(args.profile_mode),
         "p0_policy": {
@@ -1391,15 +1649,18 @@ def main() -> int:
         trace = StaticWorld16Trace(args.trace_bundle, variant=args.variant)
         if args.expected_trace_hash and trace.bundle_hash != args.expected_trace_hash:
             raise ValueError("trace bundle identity changed")
-        control_entries = [
-            trace.load_critic_entry(rank=rank, step=step, device="cpu")
-            for step in contract.logical_steps
-        ]
+        if int(trace.rank_control_validation["rank_count"]) != hardware.global_batch:
+            raise ValueError("trace must retain all sixteen original logical sample slots")
         from distillschedule.runtime.fsdp2_p0 import validate_rollout_entries
 
-        for group in chunked(control_entries, policy.rollout_batch_size):
-            validate_rollout_entries(group)
-        del control_entries
+        for slot in hardware.logical_slots(rank):
+            control_entries = [
+                trace.load_critic_entry(rank=slot, step=step, device="cpu")
+                for step in contract.logical_steps
+            ]
+            for group in chunked(control_entries, policy.rollout_batch_size):
+                validate_rollout_entries(group)
+            del control_entries
         result["contract"] = base.dataclasses_asdict(contract)
         result["identities"] = {
             "logical_manifest_hash": logical.manifest_hash,
@@ -1472,77 +1733,22 @@ def main() -> int:
             )
             dist.barrier()
 
-        if args.variant == "gan":
-            if policy.pack_real_score_pair:
-                with packed_gan_real_score_pair(
-                    parity_check=score_pack_parity_check
-                ) as gan_pack_state:
-                    generator_record = base._run_gan_generator_update(
-                        args=args,
-                        rank=rank,
-                        device=device,
-                        generator_engine=generator_engine,
-                        critic_engine=critic_engine,
-                        trace=trace,
-                        cfg=cfg,
-                        negative=negative,
-                        collect_diagnostics=collect_diagnostics,
-                        diagnostics=diagnostics,
-                        generator_free_memory_receipt=generator_free_memory,
-                        elide_official_generator_free_memory=bool(
-                            policy.elide_official_generator_free_memory
-                            and (args.timing_mode or args.profile_mode)
-                        ),
-                    )
-                generator_record.update(
-                    logical_score_requests=4,
-                    physical_score_forwards=(
-                        gan_pack_state.physical_dmd_score_forwards + 1
-                    ),
-                    real_score_pair_packed=True,
-                    score_pack_parity=(
-                        gan_pack_state.parity
-                        if gan_pack_state.parity is not None
-                        else {"enabled": False, "status": "NOT_RUN"}
-                    ),
-                )
-            else:
-                generator_record = base._run_gan_generator_update(
-                    args=args,
-                    rank=rank,
-                    device=device,
-                    generator_engine=generator_engine,
-                    critic_engine=critic_engine,
-                    trace=trace,
-                    cfg=cfg,
-                    negative=negative,
-                    collect_diagnostics=collect_diagnostics,
-                    diagnostics=diagnostics,
-                    generator_free_memory_receipt=generator_free_memory,
-                    elide_official_generator_free_memory=bool(
-                        policy.elide_official_generator_free_memory
-                        and (args.timing_mode or args.profile_mode)
-                    ),
-                )
-                generator_record.update(
-                    logical_score_requests=4,
-                    physical_score_forwards=4,
-                    real_score_pair_packed=False,
-                    score_pack_parity={"enabled": False, "status": "DISABLED"},
-                )
-        else:
-            generator_record = _run_nogan_generator_update_p0(
-                rank=rank,
-                device=device,
-                generator_engine=generator_engine,
-                critic_engine=critic_engine,
-                trace=trace,
-                negative=negative,
-                collect_diagnostics=collect_diagnostics,
-                diagnostics=diagnostics,
-                policy=policy,
-                score_pack_parity_check=score_pack_parity_check,
-            )
+        generator_record = _run_logical_generator_update_p0(
+            args=args,
+            rank=rank,
+            hardware=hardware,
+            device=device,
+            generator_engine=generator_engine,
+            critic_engine=critic_engine,
+            trace=trace,
+            cfg=cfg,
+            negative=negative,
+            collect_diagnostics=collect_diagnostics,
+            diagnostics=diagnostics,
+            policy=policy,
+            score_pack_parity_check=score_pack_parity_check,
+            generator_free_memory=generator_free_memory,
+        )
 
         execution_steps = (
             (int(args.critic_only_step),)
@@ -1553,8 +1759,9 @@ def main() -> int:
             rollout_outputs,
             rollout_records,
             generator_nograd_persistent_unshard,
-        ) = _precompute_critic_rollouts(
+        ) = _precompute_logical_critic_rollouts(
             rank=rank,
+            hardware=hardware,
             steps=execution_steps,
             device=device,
             generator_engine=generator_engine,
@@ -1587,33 +1794,19 @@ def main() -> int:
                 target_bytes=args.operation_source_target_bytes,
                 max_events=args.operation_source_max_events,
             ) as operation_source:
-                critic_record = (
-                    _run_gan_critic_precomputed(
-                        rank=rank,
-                        step=step,
-                        x0=rollout_outputs[step],
-                        device=device,
-                        critic_engine=critic_engine,
-                        trace=trace,
-                        cfg=cfg,
-                        collect_diagnostics=collect_diagnostics,
-                        collect_official_scalar_logs=not (
-                            policy.elide_critic_scalar_logs
-                            and (args.timing_mode or args.profile_mode)
-                        ),
-                        diagnostics=diagnostics,
-                    )
-                    if args.variant == "gan"
-                    else _run_nogan_critic_precomputed(
-                        rank=rank,
-                        step=step,
-                        x0=rollout_outputs[step],
-                        device=device,
-                        critic_engine=critic_engine,
-                        trace=trace,
-                        collect_diagnostics=collect_diagnostics,
-                        diagnostics=diagnostics,
-                    )
+                critic_record = _run_logical_critic_update_p0(
+                    args=args,
+                    rank=rank,
+                    hardware=hardware,
+                    step=step,
+                    rollout_outputs=rollout_outputs,
+                    device=device,
+                    critic_engine=critic_engine,
+                    trace=trace,
+                    cfg=cfg,
+                    collect_diagnostics=collect_diagnostics,
+                    diagnostics=diagnostics,
+                    policy=policy,
                 )
             if record_this_rank:
                 source_path = (
@@ -1686,7 +1879,7 @@ def main() -> int:
         physical_calls = int(rollout_records[0]["call_count"])
         rollout_estimate = estimate_rollout_collective_groups(
             physical_calls_per_rollout=physical_calls,
-            logical_rollouts=len(execution_steps),
+            logical_rollouts=len(execution_steps) * hardware.microbatch_count,
             batch_size=policy.rollout_batch_size,
         )
         result.update(
@@ -1700,10 +1893,10 @@ def main() -> int:
                 "elide_explicit_rollout_sync": policy.elide_explicit_rollout_sync,
                 "generator_update_empty_cache_count": int(
                     not policy.elide_explicit_rollout_sync
-                ),
+                ) * hardware.microbatch_count,
                 "generator_update_sync_count": int(
                     not policy.elide_explicit_rollout_sync
-                ),
+                ) * hardware.microbatch_count,
                 "critic_rollout_sync_count": sum(
                     int(bool(record.get("synchronize_after_rollout")))
                     for record in rollout_records

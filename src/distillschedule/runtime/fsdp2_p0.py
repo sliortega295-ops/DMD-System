@@ -20,8 +20,9 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Iterable, Mapping, Sequence
 
+from .hardware_profile import hardware_profile, runtime_physical_world_size
 
-WORLD_SIZE = 16
+WORLD_SIZE = runtime_physical_world_size()
 NODE_COUNT = 2
 GPUS_PER_NODE = 8
 SUPPORTED_ROLLOUT_BATCH_SIZES = (1, 2, 5)
@@ -226,29 +227,44 @@ class StaticFSDP2P0Policy:
         return "-".join((base, *suffixes))
 
 
-def mesh_shape_for_policy(policy: str, *, world_size: int = WORLD_SIZE) -> tuple[int, ...]:
-    if world_size != WORLD_SIZE:
-        raise ValueError(f"P0 Helios experiments require world16, got {world_size}")
-    if policy == "world16-fsdp":
-        return (WORLD_SIZE,)
-    if policy == "node-hsdp":
-        return (NODE_COUNT, GPUS_PER_NODE)
-    raise ValueError(f"unsupported mesh policy: {policy}")
+def mesh_shape_for_policy(
+    policy: str,
+    *,
+    world_size: int | None = None,
+    hardware_profile_name: str | None = None,
+) -> tuple[int, ...]:
+    hardware = hardware_profile(hardware_profile_name)
+    world_size = hardware.physical_world_size if world_size is None else world_size
+    if world_size != hardware.physical_world_size:
+        raise ValueError(
+            f"P0 hardware profile {hardware.name} requires physical world "
+            f"{hardware.physical_world_size}, got {world_size}"
+        )
+    return hardware.mesh_shape(policy)
 
 
-def create_device_mesh(policy: str, *, world_size: int = WORLD_SIZE) -> Any:
+def create_device_mesh(
+    policy: str,
+    *,
+    world_size: int | None = None,
+    hardware_profile_name: str | None = None,
+) -> Any:
     """Create the exact FSDP/HSDP mesh used by the P0 worker."""
 
     import torch.distributed as dist
     from torch.distributed.device_mesh import init_device_mesh
 
+    hardware = hardware_profile(hardware_profile_name)
+    world_size = hardware.physical_world_size if world_size is None else world_size
+    shape = mesh_shape_for_policy(
+        policy, world_size=world_size, hardware_profile_name=hardware.name
+    )
     if not dist.is_initialized() or dist.get_world_size() != world_size:
-        raise RuntimeError("the world16 process group must exist before mesh creation")
-    shape = mesh_shape_for_policy(policy, world_size=world_size)
+        raise RuntimeError("the selected physical process group must exist before mesh creation")
     if policy == "world16-fsdp":
         return init_device_mesh("cuda", shape, mesh_dim_names=("fsdp",))
-    # Row-major global ranks make each 8-rank shard group node-local:
-    # node0=[0..7], node1=[8..15]. Replica groups connect equal local ranks.
+    # A100: node0=[0..7], node1=[8..15]. H100: one node with shard groups
+    # [0..3] and [4..7]. Replica groups connect equal shard positions.
     return init_device_mesh(
         "cuda", shape, mesh_dim_names=("replicate", "shard")
     )
@@ -258,9 +274,10 @@ def apply_blockwise_fsdp2_policy(
     module: Any,
     *,
     mesh_policy: str,
-    world_size: int = WORLD_SIZE,
+    world_size: int | None = None,
     param_dtype: Any | None = None,
     reduce_dtype: Any | None = None,
+    hardware_profile_name: str | None = None,
 ) -> dict[str, Any]:
     """Shard all 40 Helios blocks bottom-up under FSDP or node-local HSDP."""
 
@@ -268,12 +285,16 @@ def apply_blockwise_fsdp2_policy(
     import torch.distributed as dist
     from torch.distributed.fsdp import MixedPrecisionPolicy, fully_shard
 
+    hardware = hardware_profile(hardware_profile_name)
+    world_size = hardware.physical_world_size if world_size is None else world_size
     if not dist.is_initialized() or dist.get_world_size() != world_size:
-        raise RuntimeError("world16 must be initialized before FSDP2")
+        raise RuntimeError("the selected physical world must be initialized before FSDP2")
     blocks = list(getattr(module, "blocks", ()))
     if len(blocks) != 40:
         raise AssertionError(f"Helios block count changed: {len(blocks)} != 40")
-    mesh = create_device_mesh(mesh_policy, world_size=world_size)
+    mesh = create_device_mesh(
+        mesh_policy, world_size=world_size, hardware_profile_name=hardware.name
+    )
     mp_policy = MixedPrecisionPolicy(
         param_dtype=param_dtype if param_dtype is not None else torch.bfloat16,
         reduce_dtype=reduce_dtype if reduce_dtype is not None else torch.float32,
@@ -302,8 +323,13 @@ def apply_blockwise_fsdp2_policy(
             else "FSDP2_COMPOSABLE_HYBRID_SHARD"
         ),
         "mesh_policy": mesh_policy,
-        "mesh_shape": list(mesh_shape_for_policy(mesh_policy, world_size=world_size)),
+        "mesh_shape": list(mesh_shape_for_policy(
+            mesh_policy, world_size=world_size, hardware_profile_name=hardware.name
+        )),
         "world_size": world_size,
+        "hardware_profile": hardware.name,
+        "logical_global_batch": hardware.global_batch,
+        "logical_b1_microbatches_per_rank": hardware.microbatch_count,
         "block_count": len(blocks),
         "wrap_policy": "40_BLOCKS_BOTTOM_UP_THEN_ROOT",
         "reshard_after_forward": True,

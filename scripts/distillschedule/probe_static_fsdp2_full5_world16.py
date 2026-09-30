@@ -35,6 +35,7 @@ from distillschedule.runtime.fsdp2_static import (
     contract_for_variant,
 )
 from distillschedule.runtime.nsys_range import StaticFSDP2Full5NsightRange
+from distillschedule.runtime.helios_generator_free_memory import generator_free_memory_scope
 from distillschedule.profiling.static_profile_diagnostics import StaticProfileDiagnostics
 from runtime.critic_pool_checkpoint import (
     LogicalCheckpointPackage,
@@ -300,6 +301,8 @@ def _gan_score_boundary_gradient(
     official_kwargs: dict[str, Any],
     collect_diagnostics: bool,
     diagnostics: StaticProfileDiagnostics,
+    generator_free_memory_receipt: dict[str, Any] | None = None,
+    elide_official_generator_free_memory: bool = False,
 ) -> tuple[torch.Tensor, dict[str, Any]]:
     """Compute d(DMD + w*GAN-G)/dx without mutating FSDP2 requires_grad state."""
 
@@ -311,11 +314,15 @@ def _gan_score_boundary_gradient(
         if parameter.grad is not None
     }
     leaf = generated_latent.detach().requires_grad_(True)
-    outputs = compute_distribution_matching_loss(
-        real_fake_score_model=score_model,
-        image_or_video=leaf,
-        **official_kwargs,
-    )
+    with generator_free_memory_scope(
+        generator_free_memory_receipt,
+        elide=elide_official_generator_free_memory,
+    ):
+        outputs = compute_distribution_matching_loss(
+            real_fake_score_model=score_model,
+            image_or_video=leaf,
+            **official_kwargs,
+        )
     if len(outputs) != 5:
         raise AssertionError("official GAN score return signature changed")
     dmd_loss, _ca, _dm, gan_g_loss, _logs = outputs
@@ -351,6 +358,9 @@ def _run_gan_generator_update(
     negative: torch.Tensor,
     collect_diagnostics: bool,
     diagnostics: StaticProfileDiagnostics,
+    generator_free_memory_receipt: dict[str, Any] | None = None,
+    elide_official_generator_free_memory: bool = False,
+    expect_optimizer_commit: bool = True,
 ) -> dict[str, Any]:
     with diagnostics.scope("INPUT_H2D/generator_entry"):
         entry = trace.load_generator_entry(rank=rank, device=device)
@@ -369,6 +379,12 @@ def _run_gan_generator_update(
             device=device,
             detailed_profile=False,
             collect_diagnostics=collect_diagnostics,
+            empty_cache_before_rollout=not bool(
+                getattr(args, "elide_explicit_rollout_sync", False)
+            ),
+            synchronize_after_rollout=not bool(
+                getattr(args, "elide_explicit_rollout_sync", False)
+            ),
         )
     with diagnostics.scope("FSDP_POST_FORWARD_RESHARD/generator"):
         pass
@@ -386,6 +402,10 @@ def _run_gan_generator_update(
         ),
         collect_diagnostics=collect_diagnostics,
         diagnostics=diagnostics,
+        generator_free_memory_receipt=generator_free_memory_receipt,
+        elide_official_generator_free_memory=(
+            elide_official_generator_free_memory
+        ),
     )
     # The Score helper already returned the normalized latent derivative.  Use
     # a SUM chain-rule surrogate, matching the validated GAN pipeline seam.
@@ -401,8 +421,10 @@ def _run_gan_generator_update(
         if not collect_diagnostics
         else _profile_fingerprint(generator_engine.module, diagnostics, "gan_generator_after")
     )
-    if collect_diagnostics and before == after:
+    if collect_diagnostics and expect_optimizer_commit and before == after:
         raise AssertionError("GAN FSDP2 Generator trainables did not update")
+    if collect_diagnostics and not expect_optimizer_commit and before != after:
+        raise AssertionError("GAN FSDP2 Generator changed before the logical commit")
     return {
         "logical_step": 1000,
         "source_rank": rank,
