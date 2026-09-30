@@ -45,6 +45,8 @@ def run_generator_update_trace_rollout(
     collect_diagnostics: bool = True,
     empty_cache_before_rollout: bool = True,
     synchronize_after_rollout: bool = True,
+    clean_runtime: bool = False,
+    runtime_cache: dict[str, Any] | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor | None, dict[str, Any]]:
     """Replay one grad-selected Generator-update sample without RNG sampling."""
 
@@ -76,21 +78,28 @@ def run_generator_update_trace_rollout(
         stage_range=[0, 1 / 3, 2 / 3, 1],
         gamma=1 / 3,
     )
-    sigmas = torch.linspace(
-        1.0, 1.0 / 1000, 1000, device=device, dtype=torch.float64
-    )
-    timesteps = sigmas * 1000
-    args = SimpleNamespace(
-        training_config=SimpleNamespace(
-            base_seq_len=256,
-            max_seq_len=4096,
-            base_shift=0.5,
-            max_shift=1.15,
-            saturation_ratio_min=0.3,
-            saturation_ratio_max=1.7,
-            saturation_ratio_clean_prob=0.1,
+    cache_key = f"rollout_constants/{device}"
+    cached = runtime_cache.get(cache_key) if runtime_cache is not None else None
+    if cached is None:
+        sigmas = torch.linspace(
+            1.0, 1.0 / 1000, 1000, device=device, dtype=torch.float64
         )
-    )
+        timesteps = sigmas * 1000
+        args = SimpleNamespace(
+            training_config=SimpleNamespace(
+                base_seq_len=256,
+                max_seq_len=4096,
+                base_shift=0.5,
+                max_shift=1.15,
+                saturation_ratio_min=0.3,
+                saturation_ratio_max=1.7,
+                saturation_ratio_clean_prob=0.1,
+            )
+        )
+        if runtime_cache is not None:
+            runtime_cache[cache_key] = (sigmas, timesteps, args)
+    else:
+        sigmas, timesteps, args = cached
     if detailed_profile:
         tracer: Any = NestedCallTracer(
             engine,
@@ -109,9 +118,10 @@ def run_generator_update_trace_rollout(
     model = _module(engine)
     model.enable_adapters()
     model.train()
-    if empty_cache_before_rollout:
-        torch.cuda.empty_cache()
-    torch.cuda.reset_peak_memory_stats(device)
+    if not clean_runtime:
+        if empty_cache_before_rollout:
+            torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats(device)
     (
         generated_x0,
         gradient_mask,
@@ -156,7 +166,7 @@ def run_generator_update_trace_rollout(
         operation_trace=entry.operation_trace,
         trace_prefix=f"step/{entry.logical_step}/generator",
     )
-    if synchronize_after_rollout:
+    if synchronize_after_rollout and not clean_runtime:
         torch.cuda.synchronize(device)
     if list(generated_x0.shape) != [1, 16, 9, 48, 80]:
         raise AssertionError("Generator returned a reduced or malformed x0")
@@ -210,8 +220,8 @@ def run_generator_update_trace_rollout(
         "output_dtype": str(generated_x0.dtype),
         "output_requires_grad": True,
         "gradient_mask_is_none": gradient_mask is None,
-        "empty_cache_before_rollout": bool(empty_cache_before_rollout),
-        "synchronize_after_rollout": bool(synchronize_after_rollout),
+        "empty_cache_before_rollout": bool(empty_cache_before_rollout and not clean_runtime),
+        "synchronize_after_rollout": bool(synchronize_after_rollout and not clean_runtime),
         "denoised_timestep_from": (
             float(torch.as_tensor(denoised_from).detach().flatten()[0].cpu())
             if collect_diagnostics
@@ -232,26 +242,37 @@ def run_generator_update_trace_rollout(
 
 
 def prepare_dmd_score_batch(
-    *, generated_x0: torch.Tensor, entry: GSTTraceEntry, device: torch.device
+    *,
+    generated_x0: torch.Tensor,
+    entry: GSTTraceEntry,
+    device: torch.device,
+    runtime_cache: dict[str, Any] | None = None,
 ) -> dict[str, torch.Tensor]:
     """Use traced Step15 DMD noise/timestep rather than consuming RNG."""
 
     from helios.utils.utils_base import apply_schedule_shift
 
     x0 = generated_x0.detach().to(device=device, dtype=torch.bfloat16)
-    sigmas = torch.linspace(
-        1.0, 1.0 / 1000, 1000, device=device, dtype=torch.float64
-    )
-    sigmas = apply_schedule_shift(
-        sigmas,
-        x0,
-        base_seq_len=256,
-        max_seq_len=4096,
-        base_shift=0.5,
-        max_shift=1.15,
-        time_shift_type="linear",
-    )
-    timesteps = sigmas * 1000
+    cache_key = f"shifted_schedule/{device}/{tuple(x0.shape)}"
+    cached = runtime_cache.get(cache_key) if runtime_cache is not None else None
+    if cached is None:
+        sigmas = torch.linspace(
+            1.0, 1.0 / 1000, 1000, device=device, dtype=torch.float64
+        )
+        sigmas = apply_schedule_shift(
+            sigmas,
+            x0,
+            base_seq_len=256,
+            max_seq_len=4096,
+            base_shift=0.5,
+            max_shift=1.15,
+            time_shift_type="linear",
+        )
+        timesteps = sigmas * 1000
+        if runtime_cache is not None:
+            runtime_cache[cache_key] = (sigmas, timesteps)
+    else:
+        sigmas, timesteps = cached
     timestep = entry.tensors["dmd_timestep"].to(device=device)
     noise = entry.tensors["dmd_noise"].to(
         device=device, dtype=torch.bfloat16
@@ -282,6 +303,7 @@ def score_forward(
     *,
     condition: torch.Tensor,
     adapter_enabled: bool,
+    validate_finite: bool = True,
 ) -> torch.Tensor:
     """One resident Student or Teacher Score call with explicit adapter mode."""
 
@@ -308,7 +330,7 @@ def score_forward(
     )[0]
     if prediction.requires_grad or prediction.grad_fn is not None:
         raise AssertionError("resident Score inference unexpectedly retained autograd")
-    if not torch.isfinite(prediction).all():
+    if validate_finite and not torch.isfinite(prediction).all():
         raise AssertionError("resident Score inference returned non-finite values")
     return prediction
 
@@ -320,6 +342,7 @@ def construct_dmd_gradient(
     fake_flow_cond: torch.Tensor,
     real_flow_cond: torch.Tensor,
     real_flow_uncond: torch.Tensor,
+    validate_finite: bool = True,
 ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
     gradient, auxiliary = dmd_input_gradient(
         estimated_clean=batch["generated_x0"],
@@ -336,6 +359,6 @@ def construct_dmd_gradient(
     )
     if gradient.requires_grad or gradient.grad_fn is not None:
         raise AssertionError("detached DMD boundary retained Score autograd")
-    if not torch.isfinite(gradient).all():
+    if validate_finite and not torch.isfinite(gradient).all():
         raise AssertionError("DMD gradient contains non-finite values")
     return gradient, auxiliary

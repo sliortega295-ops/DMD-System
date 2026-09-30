@@ -21,6 +21,10 @@ from typing import Any, Literal
 
 import torch
 
+from distillschedule.runtime.helios_residual_runtime import (
+    validate_chunked_residual_runtime,
+)
+
 from .critic_pool_trace import CriticPoolTrace, CriticPoolTraceEntry
 from .dmd_boundary import add_noise, critic_denoising_loss
 from .operation_trace import OperationTrace, tensor_sha256
@@ -85,6 +89,7 @@ def build_helios_pool_model(
     max_workers: int = 4,
     enable_gan: bool = False,
     chunked_residual_storage: str = "cpu_inplace",
+    missing_pyramid_patch_seed: int | None = None,
 ) -> tuple[torch.nn.Module, dict[str, Any]]:
     """Build the official BF16 backbone plus the Stage-3 FP32 LoRA inventory."""
 
@@ -102,8 +107,14 @@ def build_helios_pool_model(
         replace_rmsnorm_with_fp32,
         replace_rope_with_flash_rope,
     )
+    from helios.modules import transformer_helios
     from helios.modules.transformer_helios import HeliosTransformer3DModel
     from peft import LoraConfig
+
+    residual_runtime = validate_chunked_residual_runtime(
+        transformer_helios,
+        requested_storage=chunked_residual_storage,
+    )
 
     extra = dict(TRANSFORMER_ADDITIONAL_KWARGS)
     if role in ("critic", "teacher"):
@@ -155,6 +166,43 @@ def build_helios_pool_model(
         transformer_additional_kwargs=extra,
         **load_kwargs,
     )
+
+    # The public Wan Diffusers checkpoints do not contain Helios' three
+    # pyramid-patch convolutions.  Under low_cpu_mem_usage those missing
+    # modules remain on meta, so a later model.to(cuda) fails.  Keep the
+    # official Helios checkpoint path fail-closed by default; the isolated
+    # Wan1.3B systems experiment opts in to deterministic constructor-equivalent
+    # initialization for exactly these missing modules.
+    materialized_pyramid_patches: list[str] = []
+    if missing_pyramid_patch_seed is not None:
+        with torch.random.fork_rng(devices=[]):
+            torch.manual_seed(int(missing_pyramid_patch_seed))
+            for name in ("patch_short", "patch_mid", "patch_long"):
+                module = getattr(model, name, None)
+                if module is None:
+                    raise AssertionError(f"missing Helios pyramid module: {name}")
+                parameters = list(module.parameters())
+                meta = [parameter.device.type == "meta" for parameter in parameters]
+                if not parameters or not all(meta):
+                    if any(meta):
+                        raise AssertionError(f"partially materialized pyramid module: {name}")
+                    continue
+                module.to_empty(device="cpu")
+                reset = getattr(module, "reset_parameters", None)
+                if reset is None:
+                    raise AssertionError(f"pyramid module has no reset_parameters: {name}")
+                reset()
+                # Match the BF16 dtype requested from from_pretrained.  Missing
+                # checkpoint tensors do not participate in Diffusers' normal
+                # dtype conversion, so leaving constructor FP32 here would
+                # fail on the first BF16 latent convolution.
+                module.to(dtype=torch.bfloat16)
+                materialized_pyramid_patches.append(name)
+    remaining_meta = [name for name, value in model.named_parameters() if value.device.type == "meta"]
+    if remaining_meta:
+        raise RuntimeError(
+            "pretrained Transformer left meta parameters: " + ",".join(remaining_meta[:20])
+        )
     model = replace_rmsnorm_with_fp32(model)
     model = replace_all_norms_with_flash_norms(model)
     replace_rope_with_flash_rope()
@@ -251,7 +299,10 @@ def build_helios_pool_model(
         ),
         "split_modulation": True,
         "chunked_residual_storage": chunked_residual_storage,
+        "chunked_residual_runtime": residual_runtime,
         "gradient_checkpointing": role != "teacher",
+        "missing_pyramid_patch_seed": missing_pyramid_patch_seed,
+        "materialized_pyramid_patches": materialized_pyramid_patches,
         "mode": "train",
         "has_adapter": role != "teacher",
     }
@@ -489,6 +540,7 @@ def prepare_student_batch(
     generated_x0: torch.Tensor,
     loaded: LoadedPoolEntry,
     device: torch.device,
+    runtime_cache: dict[str, Any] | None = None,
 ) -> dict[str, torch.Tensor]:
     """Construct the exact trace-keyed noisy Student input and target."""
 
@@ -496,19 +548,26 @@ def prepare_student_batch(
 
     tensors = loaded.tensors
     generated_x0 = generated_x0.to(device=device, dtype=torch.bfloat16).detach()
-    sigmas = torch.linspace(
-        1.0, 1.0 / 1000, 1000, device=device, dtype=torch.float64
-    )
-    sigmas = apply_schedule_shift(
-        sigmas,
-        generated_x0,
-        base_seq_len=256,
-        max_seq_len=4096,
-        base_shift=0.5,
-        max_shift=1.15,
-        time_shift_type="linear",
-    )
-    timesteps = sigmas * 1000
+    cache_key = f"shifted_schedule/{device}/{tuple(generated_x0.shape)}"
+    cached = runtime_cache.get(cache_key) if runtime_cache is not None else None
+    if cached is None:
+        sigmas = torch.linspace(
+            1.0, 1.0 / 1000, 1000, device=device, dtype=torch.float64
+        )
+        sigmas = apply_schedule_shift(
+            sigmas,
+            generated_x0,
+            base_seq_len=256,
+            max_seq_len=4096,
+            base_shift=0.5,
+            max_shift=1.15,
+            time_shift_type="linear",
+        )
+        timesteps = sigmas * 1000
+        if runtime_cache is not None:
+            runtime_cache[cache_key] = (sigmas, timesteps)
+    else:
+        sigmas, timesteps = cached
     timestep = tensors["critic_timestep"].to(device=device)
     noise = tensors["critic_noise"].to(device=device, dtype=torch.bfloat16)
     noisy = add_noise(generated_x0, noise, timestep, sigmas, timesteps).detach()
@@ -531,6 +590,9 @@ def prepare_student_batch(
 def student_forward_loss(
     engine: Any,
     batch: dict[str, torch.Tensor],
+    *,
+    validate_finite: bool = True,
+    deferred_finite_checks: list[torch.Tensor] | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Run the GAN-disabled official Fake Score/Critic denoising objective."""
 
@@ -553,8 +615,13 @@ def student_forward_loss(
     loss = critic_denoising_loss(
         prediction, batch["critic_noise"], batch["generated_x0"]
     )
-    if not loss.requires_grad or loss.grad_fn is None or not torch.isfinite(loss):
-        raise AssertionError("Student Critic loss is not a finite autograd value")
+    if not loss.requires_grad or loss.grad_fn is None:
+        raise AssertionError("Student Critic loss lost its autograd graph")
+    finite = torch.isfinite(loss)
+    if validate_finite and not finite:
+        raise AssertionError("Student Critic loss is not finite")
+    if not validate_finite and deferred_finite_checks is not None:
+        deferred_finite_checks.append(finite)
     return prediction, loss
 
 

@@ -437,6 +437,10 @@ def _run_nogan_generator_update_p0(
     diagnostics: StaticProfileDiagnostics,
     policy: StaticFSDP2P0Policy,
     score_pack_parity_check: bool,
+    clean_runtime: bool = False,
+    runtime_cache: dict[str, Any] | None = None,
+    deferred_finite_checks: list[torch.Tensor] | None = None,
+    collect_scalars: bool = False,
 ) -> dict[str, Any]:
     with diagnostics.scope("INPUT_H2D/generator_entry"):
         entry = trace.load_generator_entry(rank=rank, device=device)
@@ -457,13 +461,21 @@ def _run_nogan_generator_update_p0(
             collect_diagnostics=collect_diagnostics,
             empty_cache_before_rollout=not policy.elide_explicit_rollout_sync,
             synchronize_after_rollout=not policy.elide_explicit_rollout_sync,
+            clean_runtime=clean_runtime,
+            runtime_cache=runtime_cache,
         )
-    batch = prepare_dmd_score_batch(generated_x0=x0, entry=entry, device=device)
+    batch = prepare_dmd_score_batch(
+        generated_x0=x0,
+        entry=entry,
+        device=device,
+        runtime_cache=runtime_cache,
+    )
     fake = score_forward(
         critic_engine.module,
         batch,
         condition=batch["encoder_hidden_states"],
         adapter_enabled=True,
+        validate_finite=deferred_finite_checks is None,
     )
     parity: dict[str, Any] = {"enabled": False}
     if policy.pack_real_score_pair:
@@ -479,12 +491,14 @@ def _run_nogan_generator_update_p0(
                 batch,
                 condition=batch["encoder_hidden_states"],
                 adapter_enabled=False,
+                validate_finite=deferred_finite_checks is None,
             )
             reference_uncond = score_forward(
                 critic_engine.module,
                 batch,
                 condition=negative,
                 adapter_enabled=False,
+                validate_finite=deferred_finite_checks is None,
             )
             cond_error = _score_pack_error(reference_cond, real_cond)
             uncond_error = _score_pack_error(reference_uncond, real_uncond)
@@ -527,12 +541,14 @@ def _run_nogan_generator_update_p0(
             batch,
             condition=batch["encoder_hidden_states"],
             adapter_enabled=False,
+            validate_finite=deferred_finite_checks is None,
         )
         real_uncond = score_forward(
             critic_engine.module,
             batch,
             condition=negative,
             adapter_enabled=False,
+            validate_finite=deferred_finite_checks is None,
         )
         physical_score_forwards = 3
     gradient, auxiliary = construct_dmd_gradient(
@@ -540,8 +556,11 @@ def _run_nogan_generator_update_p0(
         fake_flow_cond=fake,
         real_flow_cond=real_cond,
         real_flow_uncond=real_uncond,
+        validate_finite=deferred_finite_checks is None,
     )
     loss = detached_dmd_surrogate_loss(x0, gradient, gradient_mask)
+    if deferred_finite_checks is not None:
+        deferred_finite_checks.append(torch.isfinite(loss.detach()))
     with diagnostics.scope("FSDP_PRE_BACKWARD_ALL_GATHER/generator"):
         generator_engine.backward(loss)
     with diagnostics.scope("OPTIMIZER_STEP/generator"):
@@ -564,9 +583,13 @@ def _run_nogan_generator_update_p0(
         "local_trainable_after": after,
         "rollout": rollout,
         "surrogate_loss": (
-            diagnostics.diagnostic_scalar("generator_surrogate", loss)
-            if collect_diagnostics
-            else TIMING_OMITTED
+            float(loss.detach().float().cpu())
+            if collect_scalars
+            else (
+                diagnostics.diagnostic_scalar("generator_surrogate", loss)
+                if collect_diagnostics
+                else TIMING_OMITTED
+            )
         ),
         "logical_score_requests": 3,
         "physical_score_forwards": physical_score_forwards,
@@ -603,6 +626,9 @@ def _precompute_critic_rollouts(
     collect_diagnostics: bool,
     diagnostics: StaticProfileDiagnostics,
     rollout_parity_check: bool,
+    clean_runtime: bool = False,
+    runtime_cache: dict[str, Any] | None = None,
+    entry_outputs: dict[int, Any] | None = None,
 ) -> tuple[dict[int, torch.Tensor], list[dict[str, Any]], dict[str, Any]]:
     outputs: dict[int, torch.Tensor] = {}
     records: list[dict[str, Any]] = []
@@ -625,6 +651,8 @@ def _precompute_critic_rollouts(
                     f"critic_entry_rollout/step{step}", entry, direction="H2D"
                 )
                 entries.append(entry)
+                if entry_outputs is not None:
+                    entry_outputs[int(step)] = entry
             with diagnostics.scope(
                 f"FSDP_BATCHED_GENERATOR_ROLLOUT/batch{batch_index}/B{len(entries)}"
             ):
@@ -641,6 +669,8 @@ def _precompute_critic_rollouts(
                         policy.generator_nograd_static_context_cache
                     ),
                     synchronize_after_rollout=not policy.elide_explicit_rollout_sync,
+                    clean_runtime=clean_runtime,
+                    runtime_cache=runtime_cache,
                 )
             persistence["rollout_batch_count"] += 1
             persistence["rollout_memory"].append(
@@ -738,13 +768,28 @@ def _run_nogan_critic_precomputed(
     trace: StaticWorld16Trace,
     collect_diagnostics: bool,
     diagnostics: StaticProfileDiagnostics,
+    entry: Any | None = None,
+    runtime_cache: dict[str, Any] | None = None,
+    deferred_finite_checks: list[torch.Tensor] | None = None,
+    collect_scalars: bool = False,
 ) -> dict[str, Any]:
-    with diagnostics.scope(f"INPUT_H2D/critic_entry_update/step{step}"):
-        entry = trace.load_critic_entry(rank=rank, step=step, device=device)
+    if entry is None:
+        with diagnostics.scope(f"INPUT_H2D/critic_entry_update/step{step}"):
+            entry = trace.load_critic_entry(rank=rank, step=step, device=device)
     diagnostics.add_tensor_tree(f"critic_entry_update/step{step}", entry, direction="H2D")
-    batch = prepare_student_batch(generated_x0=x0, loaded=entry, device=device)
+    batch = prepare_student_batch(
+        generated_x0=x0,
+        loaded=entry,
+        device=device,
+        runtime_cache=runtime_cache,
+    )
     with diagnostics.scope("FSDP_PRE_FORWARD_ALL_GATHER/critic"):
-        _prediction, loss = student_forward_loss(critic_engine, batch)
+        _prediction, loss = student_forward_loss(
+            critic_engine,
+            batch,
+            validate_finite=deferred_finite_checks is None,
+            deferred_finite_checks=deferred_finite_checks,
+        )
     with diagnostics.scope("FSDP_PRE_BACKWARD_ALL_GATHER/critic"):
         critic_engine.backward(loss)
     with diagnostics.scope("OPTIMIZER_STEP/critic"):
@@ -754,9 +799,13 @@ def _run_nogan_critic_precomputed(
         "source_rank": rank,
         "physical_critic_step_after": int(critic_engine.global_steps),
         "loss": (
-            diagnostics.diagnostic_scalar(f"critic_step{step}", loss)
-            if collect_diagnostics
-            else TIMING_OMITTED
+            float(loss.detach().float().cpu())
+            if collect_scalars
+            else (
+                diagnostics.diagnostic_scalar(f"critic_step{step}", loss)
+                if collect_diagnostics
+                else TIMING_OMITTED
+            )
         ),
         "score_forwards": 1,
         "generator_rollout_precomputed": True,
