@@ -489,7 +489,7 @@ def main() -> int:
         if args.profile_mode and local_rank == 0:
             torch.cuda.nvtx.range_pop()
             torch.cuda.nvtx.range_push("WAN13B/G_ROLLOUTS")
-        rollout_outputs, rollout_records = p0._precompute_critic_rollouts(
+        rollout_outputs, rollout_records, _persistence = p0._precompute_critic_rollouts(
             rank=rank,
             steps=contract.logical_steps,
             device=device,

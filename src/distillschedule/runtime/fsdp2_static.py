@@ -15,6 +15,8 @@ import time
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from .hardware_profile import runtime_physical_world_size
+
 
 @dataclasses.dataclass(frozen=True)
 class StaticFSDP2Full5Contract:
@@ -457,7 +459,7 @@ class FSDP2EngineAdapter:
         self.lr_scheduler = scheduler
         self.global_steps = int(physical_step)
         self.global_samples = int(physical_step) * int(global_batch)
-        self.dp_world_size = 16
+        self.dp_world_size = runtime_physical_world_size()
         self._global_batch = int(global_batch)
         self._gradient_clip = float(gradient_clip)
         self._step_calls = 0
@@ -476,7 +478,10 @@ class FSDP2EngineAdapter:
         ]
         if not trainables:
             raise RuntimeError("FSDP2 engine has no trainable parameters")
-        torch.nn.utils.clip_grad_norm_(trainables, self._gradient_clip)
+        clip_norm = torch.nn.utils.clip_grad_norm_(trainables, self._gradient_clip)
+        if getattr(self, "_trajectory_capture_grad_norm", False):
+            norm = clip_norm.full_tensor() if hasattr(clip_norm, "full_tensor") else clip_norm
+            self.last_gradient_norm = float(norm.detach().float().cpu())
         self.optimizer.step()
         self.lr_scheduler.step()
         self.optimizer.zero_grad(set_to_none=True)
