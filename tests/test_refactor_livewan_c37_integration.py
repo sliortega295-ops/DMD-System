@@ -96,6 +96,56 @@ def test_physical_inventory_48_not_40_per_cycle():
     assert module._expected_inventory(trace, mode="baseline", pipeline_variant=VARIANT)[1]["critic/grad/checkpoint"] == 160
 
 
+@pytest.mark.parametrize("script", [
+    "summarize_livewan_trajectory_world16.py",
+    "summarize_livewan_two_cycle_timing_world16.py",
+])
+@pytest.mark.parametrize("physical_forwards", [10, 12])
+def test_summary_sac_gate_uses_actual_physical_forwards(script, physical_forwards):
+    """Execute each real summary's SAC validation expression, not a string check.
+
+    C36 remains 10 physical forwards/300 block checkpoints for two cycles;
+    C37 is 12/360. Source, replay, missing-inventory and offload gates remain strict.
+    """
+    import ast
+    from distillschedule.runtime.livewan_attention_checkpoint import (
+        INTERFACE_SHA256, PLAN_CONTRACT as SAC_CONTRACT,
+        runtime_receipt_errors as sac_errors,
+    )
+
+    path = ROOT / "scripts/distillschedule" / script
+    calls = [n for n in ast.walk(ast.parse(path.read_text()))
+             if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+             and n.func.id == "sac_errors"]
+    assert len(calls) == 1
+    code = compile(ast.Expression(calls[0]), str(path), "eval")
+    checkpoints = physical_forwards * 30
+    sac = dict(name=SAC_CONTRACT["name"],
+               source={"interface_sha256": INTERFACE_SHA256},
+               execution_status="PASS", production_installed=True,
+               self_attention_only=True, contract_failures=0,
+               checkpoint_calls=checkpoints, expected_checkpoint_calls=checkpoints,
+               original_fa_calls=checkpoints, replay_fa_cache_reads=checkpoints,
+               cpu_offload=False, allow_cache_entry_mutation=False)
+    receipt = dict(critic_attention_checkpoint=sac,
+                   physical_call_inventory={"critic/grad/checkpoint": physical_forwards})
+
+    def validate(value):
+        return eval(code, {"sac_errors": sac_errors, "rank": 8,
+                           "row": value, "final": value})
+
+    assert not validate(receipt)
+    for key, value in [("checkpoint_calls", checkpoints - 1),
+                       ("replay_fa_cache_reads", 0), ("cpu_offload", True),
+                       ("expected_checkpoint_calls", 300 if checkpoints == 360 else 360)]:
+        changed = copy.deepcopy(receipt)
+        changed["critic_attention_checkpoint"][key] = value
+        assert validate(changed), (script, key)
+    missing = copy.deepcopy(receipt)
+    missing.pop("physical_call_inventory")
+    assert validate(missing)
+
+
 def test_two_weighted_b1_backwards_equal_b2_mean_one_update():
     import torch
     generator = torch.Generator().manual_seed(19)

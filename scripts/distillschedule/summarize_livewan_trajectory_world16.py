@@ -176,7 +176,10 @@ def main() -> int:
 
             errors.extend(f"rank{rank}: {error}" for error in sac_errors(
                 dict(final.get("critic_attention_checkpoint", {})), rank=rank,
-                expected_calls=args.cycles * 5 * 30))
+                # C37 has six physical forwards per cycle, not five B2 calls.
+                # Its independent per-step census gate still rejects bad totals.
+                expected_calls=int(dict(final.get("physical_call_inventory", {}))
+                                   .get("critic/grad/checkpoint", -1)) * 30))
         if final.get("final_versions") != {
             "generator": args.cycles,
             "critic": 5 * args.cycles,

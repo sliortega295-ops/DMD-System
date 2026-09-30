@@ -308,7 +308,11 @@ def main() -> int:
             from distillschedule.runtime.livewan_attention_checkpoint import runtime_receipt_errors as sac_errors
 
             errors.extend(f"rank{rank}: {error}" for error in sac_errors(
-                dict(row.get("critic_attention_checkpoint", {})), rank=rank, expected_calls=300))
+                dict(row.get("critic_attention_checkpoint", {})), rank=rank,
+                # Use observed physical forwards; the independent inventory and
+                # C37 per-step gates below/above still enforce planned totals.
+                expected_calls=int(dict(row.get("physical_call_inventory", {}))
+                                   .get("critic/grad/checkpoint", -1)) * 30))
         cycle1 = dict(timing.get("cycle_1", {}))
         cycle2 = dict(timing.get("cycle_2", {}))
         if (
