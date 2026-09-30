@@ -53,6 +53,49 @@ def sha256(path: str | Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def source_prepare_script(*, repo_root: Path, receipt_path: Path, gate_path: Path) -> Path:
+    """Keep the immutable native source receipt's canonical paths on relocation.
+
+    Only an authorized diagnostic descendant may reuse its native parent's
+    byte-identical source preparation script. Training workers still execute
+    the new checkout, whose pinned upstream files are independently checked.
+    No receipt is rewritten and no native gate is relaxed.
+    """
+    import subprocess
+
+    gate = json.loads(gate_path.read_text())
+    receipt = json.loads(receipt_path.read_text())
+    source = gate.get('profile_source', {})
+    if (gate.get('status') != 'PASS_DIAGNOSTIC_ONLY'
+        or source.get('instrumentation_only') is not True
+        or gate.get('pipeline_variant') not in SUPPORTED_VARIANTS):
+        raise RuntimeError('canonical source preparation requires audited profile gate')
+    upstream = Path(receipt['pythonpath'][0])
+    if upstream.name != 'livewan' or upstream.parent.name != 'third_party':
+        raise RuntimeError('canonical LiveWan source root layout changed')
+    native_root = upstream.parent.parent
+    current = repo_root/'scripts/distillschedule/prepare_livewan_crossscale_source.sh'
+    native = native_root/'scripts/distillschedule/prepare_livewan_crossscale_source.sh'
+    for root, expected in ((repo_root, source['profile_head']),
+                           (native_root, source['workload_head'])):
+        head = subprocess.check_output(
+            ['git','-c',f'safe.directory={root}','-C',str(root),'rev-parse','HEAD'],
+            text=True).strip()
+        if head != expected:
+            raise RuntimeError('canonical source preparation checkout HEAD changed')
+    if sha256(current) != sha256(native):
+        raise RuntimeError('source preparation script is not byte-identical')
+    for row in receipt['files'].values():
+        original = Path(row['path'])
+        if sha256(original) != row['sha256']:
+            raise RuntimeError('registered source file changed')
+        if original.is_relative_to(upstream):
+            relocated = repo_root/'third_party/livewan'/original.relative_to(upstream)
+            if sha256(relocated) != row['sha256']:
+                raise RuntimeError('relocated upstream source differs from native')
+    return native
+
+
 def load_gate(*, path, expected_sha256, expected_head, mode, pipeline_variant,
               arm_id, seed, trace, bootstrap, source_receipt) -> dict[str, Any]:
     from .livewan_crossscale_worker import _load_two_cycle_timing_gate

@@ -88,3 +88,33 @@ def test_profile_load_gate_rejects_tamper_before_runtime(tmp_path):
     with pytest.raises(RuntimeError,match='identity'):load_gate(**args)
     args['expected_sha256']='0'*64
     with pytest.raises(RuntimeError,match='SHA'):load_gate(**args)
+
+
+def test_relocated_profile_retains_exact_native_source_receipt(tmp_path,monkeypatch):
+    import subprocess
+    from distillschedule.runtime.livewan_two_cycle_profile import source_prepare_script,sha256
+    native,current=tmp_path/'native',tmp_path/'profile'
+    relative=Path('scripts/distillschedule/prepare_livewan_crossscale_source.sh')
+    upstream_relative=Path('third_party/livewan/wanstreamer/blockcausal.py')
+    for root in (native,current):
+        (root/relative).parent.mkdir(parents=True)
+        (root/relative).write_text('immutable preparation source')
+        (root/upstream_relative).parent.mkdir(parents=True)
+        (root/upstream_relative).write_text('pinned upstream source')
+    receipt=tmp_path/'receipt.json'
+    receipt.write_text(json.dumps(dict(pythonpath=[str(native/'third_party/livewan')],
+        files=dict(block=dict(path=str(native/upstream_relative),sha256=sha256(native/upstream_relative))))))
+    gate=tmp_path/'gate.json'
+    gate.write_text(json.dumps(dict(status='PASS_DIAGNOSTIC_ONLY',pipeline_variant=C34_VARIANT,
+        profile_source=dict(instrumentation_only=True,profile_head='b'*40,workload_head='a'*40))))
+    monkeypatch.setattr(subprocess,'check_output',lambda cmd,**kw: ('a'*40 if str(native) in cmd else 'b'*40)+'\n')
+    before=receipt.read_bytes()
+    assert source_prepare_script(repo_root=current,receipt_path=receipt,gate_path=gate)==native/relative
+    assert receipt.read_bytes()==before
+    (current/upstream_relative).write_text('wrong source')
+    with pytest.raises(RuntimeError,match='relocated upstream'):
+        source_prepare_script(repo_root=current,receipt_path=receipt,gate_path=gate)
+    (current/upstream_relative).write_text('pinned upstream source')
+    (current/relative).write_text('modified preparation')
+    with pytest.raises(RuntimeError,match='byte-identical'):
+        source_prepare_script(repo_root=current,receipt_path=receipt,gate_path=gate)

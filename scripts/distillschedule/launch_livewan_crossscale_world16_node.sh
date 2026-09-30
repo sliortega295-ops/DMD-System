@@ -353,7 +353,17 @@ flock -n 9 || { echo gpu_lock_busy >&2; exit 73; }
 exec 8>"${SOURCE_ROOT}.prepare.lock"
 flock 8
 GENERATED_SOURCE_RECEIPT="${NODE_LOG}/source_receipt.generated.json"
-"${ROOT}/scripts/distillschedule/prepare_livewan_crossscale_source.sh" \
+SOURCE_PREPARE_SCRIPT="${ROOT}/scripts/distillschedule/prepare_livewan_crossscale_source.sh"
+if [[ "${PROFILE_TWO_CYCLES}" == 1 ]]; then
+  SOURCE_PREPARE_SCRIPT="$(PYTHONPATH="${ROOT}/src" python3 - "${ROOT}" "${SOURCE_RECEIPT}" "${CORRECTNESS_RECEIPT}" <<'PY'
+from pathlib import Path
+import sys
+from distillschedule.runtime.livewan_two_cycle_profile import source_prepare_script
+print(source_prepare_script(repo_root=Path(sys.argv[1]),receipt_path=Path(sys.argv[2]),gate_path=Path(sys.argv[3])))
+PY
+)"
+fi
+"${SOURCE_PREPARE_SCRIPT}" \
   --output "${SOURCE_ROOT}" --receipt "${GENERATED_SOURCE_RECEIPT}" \
   >"${NODE_LOG}/source_prepare.log" 2>&1
 python3 - "${SOURCE_RECEIPT}" "${GENERATED_SOURCE_RECEIPT}" <<'PY'
