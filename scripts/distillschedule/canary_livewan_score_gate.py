@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import statistics
 import sys
+import textwrap
 import traceback
 
 
@@ -48,7 +49,7 @@ def main():
         from distillschedule.runtime.livewan_score_gate import build, SOURCE_SHA256
         from distillschedule.runtime.p0_parity import require_tensor_parity
 
-        gate_sha = hashlib.sha256(inspect.getsource(bc._gate).encode()).hexdigest()
+        gate_sha = hashlib.sha256(textwrap.dedent(inspect.getsource(bc._gate)).strip().encode()).hexdigest()
         norm_sha = hashlib.sha256(inspect.getsource(WanLayerNorm).encode()).hexdigest()
         assert gate_sha == SOURCE_SHA256, gate_sha
         assert norm_sha == NORM_SHA, norm_sha

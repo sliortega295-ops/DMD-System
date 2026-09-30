@@ -64,3 +64,10 @@ def test_plan_only_needs_no_torch_or_assets(tmp_path):
     assert receipt["status"] == receipt["world16"] == "NOT_RUN"
     assert receipt["gate_tolerance"] == "BITWISE_OUTPUT_DX_DY"
     assert not receipt["production_installed"] and not out.exists()
+
+
+def test_gate_source_guard_matches_parent_normalization():
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "scripts/distillschedule/canary_livewan_score_gate.py").read_text()
+    assert "textwrap.dedent(inspect.getsource(bc._gate)).strip()" in source
+    assert "require_tensor_parity" in source and "compare_tensors" not in source
