@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bind a completed native pair to one audited C29 diagnostic descendant."""
+"""Bind a completed native pair to one audited C29/C34 diagnostic descendant."""
 from __future__ import annotations
 
 import argparse
@@ -12,7 +12,7 @@ import sys
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'src'))
-from distillschedule.runtime.livewan_two_cycle_profile import SCHEMA,VARIANT,sha256
+from distillschedule.runtime.livewan_two_cycle_profile import SCHEMA,SUPPORTED_VARIANTS,sha256
 
 ALLOWED={
     'src/distillschedule/runtime/livewan_crossscale_worker.py',
@@ -45,11 +45,11 @@ def validate_native(gate: dict, pair: dict):
         or gate.get('cycles')!=2 or gate.get('final_versions')!=dict(generator=2,critic=10,ema=0)
         or gate.get('numerical_review',{}).get('extreme_failure_count')!=0
         or gate.get('numerical_review',{}).get('policy')!='REJECT_EXTREME_ONLY_RECORD_ORDINARY_REVIEW'
-        or gate.get('arms',{}).get('pipeline',{}).get('pipeline_variant')!=VARIANT
+        or gate.get('arms',{}).get('pipeline',{}).get('pipeline_variant') not in SUPPORTED_VARIANTS
         or pair.get('status')!='PASS' or pair.get('formal_claimable') is not True
         or pair.get('timing_contract',{}).get('profiled') is not False
         or pair.get('expected_head')!=gate.get('expected_head')):
-        raise ValueError('native correctness/timing pair is not the completed C29 source')
+        raise ValueError('native correctness/timing pair is not the completed C29/C34 source')
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
@@ -79,7 +79,7 @@ def main():
         for anchor in data['artifact_binding']['anchors']:
             if sha256(anchor['path'])!=anchor['file_sha256']: raise SystemExit('anchor source changed')
     value=dict(schema_version=SCHEMA,status='PASS_DIAGNOSTIC_ONLY',cycles=2,
-        pipeline_variant=VARIANT,profile_authorized=True,formal_timing_authorized=False,
+        pipeline_variant=gate['arms']['pipeline']['pipeline_variant'],profile_authorized=True,formal_timing_authorized=False,
         heads=dict(baseline=parent,pipeline=parent,profile=args.expected_head),
         profile_source=dict(workload_head=parent,profile_head=args.expected_head,instrumentation_only=True,
             diff_paths=sorted(paths),diff_sha256=diff_sha,worker_ast=ast_receipt,
@@ -87,7 +87,7 @@ def main():
         native_gate=dict(path=str(args.native_gate),sha256=sha256(args.native_gate)),
         native_pair=dict(path=str(args.native_pair),sha256=sha256(args.native_pair)),
         identity=gate['identity'],seed=gate['seed'],
-        claim_boundary='Diagnostic profile only; native C29 50.6243125 s remains unchanged; strict numerics REVIEW.')
+        claim_boundary='Diagnostic profile only; bound native pair remains unchanged; strict numerics REVIEW.')
     args.output.parent.mkdir(parents=True,exist_ok=True)
     with args.output.open('x') as f:json.dump(value,f,indent=2);f.write('\n')
     print(json.dumps({'status':value['status'],'head':args.expected_head,'diff_sha256':diff_sha}))

@@ -42,7 +42,8 @@ PROFILE_TWO_CYCLES="${LIVEWAN_PROFILE_TWO_CYCLES:-0}"
 [[ "${PROFILE_TWO_CYCLES}" == 0 || "${PROFILE_TWO_CYCLES}" == 1 ]] || exit 2
 if [[ "${PROFILE_TWO_CYCLES}" == 1 ]]; then
   [[ "${RUN_KIND}" == profile && "${EXECUTION_MODE}" == pipeline && \
-     "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue && \
+     ( "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue || \
+       "${PIPELINE_VARIANT}" == c34-continuous-b16-residual-layout ) && \
      "${LIVEWAN_TWO_CYCLE_SEED:-}" =~ ^[0-9]+$ && -n "${LIVEWAN_TWO_CYCLE_ARM_ID:-}" ]] || exit 2
 fi
 TRAJECTORY_CYCLES="${LIVEWAN_TRAJECTORY_CYCLES:-0}"
@@ -334,7 +335,8 @@ else:
     if os.environ.get("LIVEWAN_PROFILE_TWO_CYCLES", "0") == "1":
         if (value.get("schema_version") != "distillschedule.livewan_two_cycle_profile_gate.v1"
             or value.get("cycles") != 2
-            or value.get("pipeline_variant") != "c29-continuous-b16-generator-rms-epilogue"):
+            or value.get("pipeline_variant") not in {"c29-continuous-b16-generator-rms-epilogue", "c34-continuous-b16-residual-layout"}
+            or value.get("pipeline_variant") != os.environ.get("LIVEWAN_PIPELINE_VARIANT")):
             raise SystemExit("two-cycle diagnostic gate changed")
 PY
 fi
