@@ -32,6 +32,7 @@ from distillschedule.runtime.livewan_grad_reducer import (
     GradReadyAsyncGroupReducer,
 )
 from distillschedule.runtime.livewan_hardware import livewan_hardware
+from distillschedule.runtime.asset_relocation import relocate_asset_path, relocation_identity
 from distillschedule.workloads.livewan_crossscale import (
     CRITIC_UPDATES,
     FULL5_STEPS,
@@ -328,7 +329,7 @@ class FormalTrace:
             "trace is not a steps x global-batch bijection",
         )
         prompts = dict(value["prompts"])
-        prompts_path = Path(prompts["path"]).expanduser().resolve()
+        prompts_path = relocate_asset_path(prompts["path"])
         _require(prompts_path.is_file(), "trace prompt bundle is missing")
         _require(sha256_file(prompts_path) == prompts["sha256"], "prompt bundle SHA mismatch")
         return cls(
@@ -431,7 +432,7 @@ class Bootstrap:
 
 def validate_source_receipt(bootstrap: Bootstrap, *, repo_root: Path) -> dict[str, Any]:
     item = dict(bootstrap.value["source_receipt"])
-    path = Path(item["path"]).expanduser().resolve()
+    path = relocate_asset_path(item["path"])
     value = json.loads(path.read_text(encoding="utf-8"))
     _require(value.get("status") == "PASS", "source receipt is not PASS")
     _require(value.get("livewan_commit") == LIVEWAN_COMMIT, "source receipt LiveWan mismatch")
@@ -440,7 +441,7 @@ def validate_source_receipt(bootstrap: Bootstrap, *, repo_root: Path) -> dict[st
     actual = hashlib.sha256(_canonical_without_sha(value, "source_receipt_sha256")).hexdigest()
     _require(actual == item["sha256"], "source receipt payload SHA mismatch")
     for row in value["files"].values():
-        source_path = Path(row["path"])
+        source_path = relocate_asset_path(row["path"])
         _require(source_path.is_file(), f"source receipt file missing: {source_path}")
         _require(sha256_file(source_path) == row["sha256"], f"source receipt file changed: {source_path}")
     livewan = repo_root / "third_party/livewan"
@@ -449,7 +450,7 @@ def validate_source_receipt(bootstrap: Bootstrap, *, repo_root: Path) -> dict[st
 
 
 def configure_python_sources(*, repo_root: Path, source_receipt: Mapping[str, Any]) -> None:
-    paths = [str(repo_root / "third_party/livewan"), str(source_receipt["source_root"])]
+    paths = [str(repo_root / "third_party/livewan"), str(relocate_asset_path(source_receipt["source_root"]))]
     for path in reversed(paths):
         if path not in sys.path:
             sys.path.insert(0, path)
@@ -565,7 +566,7 @@ def _load_student_state(torch: Any, model: Any, bootstrap: Bootstrap) -> dict[st
     spec = bootstrap.value.get("student_state")
     if spec is None:
         return {"kind": "base_weights", "sha256": bootstrap.value["student_base"]["sha256"]}
-    path = Path(spec["path"])
+    path = relocate_asset_path(spec["path"])
     _require(sha256_file(path) == spec["sha256"], "Student state SHA mismatch")
     # The pinned Stage-1 file is a complete zip-format state.  mmap keeps its
     # immutable storage file-backed while load_state_dict copies into the model;
@@ -1416,8 +1417,8 @@ def build_models(
     if owns_generator:
         torch.manual_seed(0)
         student = _wan_model(WanModel, size="1.3B", config=config)
-        student_root = Path(workload["generator"]["checkpoint"]).expanduser().resolve()
-        _require(student_root == Path(bootstrap.value["student_base"]["root"]), "plan/bootstrap Student root mismatch")
+        student_root = relocate_asset_path(workload["generator"]["checkpoint"])
+        _require(student_root == relocate_asset_path(bootstrap.value["student_base"]["root"]), "plan/bootstrap Student root mismatch")
         if bootstrap.value.get("student_state") is None:
             student.load_state_dict(_load_checkpoint(load_file, student_root), strict=True)
             state_receipt = {
@@ -1481,8 +1482,8 @@ def build_models(
         # Match LiveWan's final BF16 value exactly while avoiding a transient
         # full FP32 model plus full BF16 conversion copy on every rank.
         critic = _wan_model(WanModel, size="1.3B", config=config).to(torch.bfloat16)
-        critic_root = Path(workload["score"]["checkpoint"]).expanduser().resolve()
-        _require(critic_root == Path(bootstrap.value["critic_base"]["root"]), "plan/bootstrap Critic root mismatch")
+        critic_root = relocate_asset_path(workload["score"]["checkpoint"])
+        _require(critic_root == relocate_asset_path(bootstrap.value["critic_base"]["root"]), "plan/bootstrap Critic root mismatch")
         critic.load_state_dict(_load_checkpoint(load_file, critic_root), strict=True)
         critic.eval().requires_grad_(False)
         with torch.random.fork_rng(devices=[]):
@@ -1547,9 +1548,9 @@ def build_models(
     if split_dmd_shadow and owns_generator:
         torch.manual_seed(0)
         critic_shadow = _wan_model(WanModel, size="1.3B", config=config).to(torch.bfloat16)
-        critic_root = Path(workload["score"]["checkpoint"]).expanduser().resolve()
+        critic_root = relocate_asset_path(workload["score"]["checkpoint"])
         _require(
-            critic_root == Path(bootstrap.value["critic_base"]["root"]),
+            critic_root == relocate_asset_path(bootstrap.value["critic_base"]["root"]),
             "plan/bootstrap Critic-shadow root mismatch",
         )
         critic_shadow.load_state_dict(_load_checkpoint(load_file, critic_root), strict=True)
@@ -1583,8 +1584,8 @@ def build_models(
     if owns_score:
         torch.manual_seed(0)
         teacher = _wan_model(WanModel, size="14B", config=config).to(torch.bfloat16)
-        teacher_root = Path(workload["teacher"]["checkpoint"]).expanduser().resolve()
-        _require(teacher_root == Path(bootstrap.value["teacher_base"]["root"]), "plan/bootstrap Teacher root mismatch")
+        teacher_root = relocate_asset_path(workload["teacher"]["checkpoint"])
+        _require(teacher_root == relocate_asset_path(bootstrap.value["teacher_base"]["root"]), "plan/bootstrap Teacher root mismatch")
         teacher.load_state_dict(_load_checkpoint(load_file, teacher_root), strict=True)
         teacher.eval().requires_grad_(False)
         teacher_ranks = score_ranks
@@ -2004,7 +2005,7 @@ class InputLoader:
         return self.prompts["neg"][0].float().unsqueeze(0)
 
     def load(self, row: OperationTraceRow) -> tuple[Any, Any, int]:
-        value = self.torch.load(row.sample_path, map_location="cpu", weights_only=False)
+        value = self.torch.load(relocate_asset_path(row.sample_path), map_location="cpu", weights_only=False)
         latent = value["latents"].float()[:, : LATENT_SHAPE[2]]
         prompt_index = int(value["prompt_idx"])
         _require(
@@ -3166,6 +3167,9 @@ def _write_rank_receipt(
     value: Mapping[str, Any],
 ) -> Path:
     path = output_dir / "receipts" / f"rank_{rank:03d}.json"
+    relocation = relocation_identity()
+    if relocation is not None:
+        value = {**value, "asset_relocation": relocation}
     atomic_json(path, value)
     return path
 
@@ -3837,11 +3841,11 @@ def _validate_only(
     _validate_plan_identity(plan, mode=mode)
     for component in ("student_base", "critic_base", "teacher_base"):
         for row in bootstrap.value[component]["files"]:
-            path = Path(row["path"])
+            path = relocate_asset_path(row["path"])
             _require(path.is_file() and path.stat().st_size == int(row["bytes"]), f"asset missing: {path}")
             _require(sha256_file(path) == row["sha256"], f"checkpoint SHA mismatch: {path}")
     for row in {item.sample_path: item for item in trace.rows}.values():
-        path = Path(row.sample_path)
+        path = relocate_asset_path(row.sample_path)
         _require(path.is_file(), f"trace sample is missing: {path}")
         if row.sample_sha256 is not None:
             _require(sha256_file(path) == row.sample_sha256, f"trace sample SHA mismatch: {path}")
@@ -3989,6 +3993,9 @@ def run_worker(
         if hardware.is_h100:
             result.update(hardware_profile=hardware.to_dict(),
                           physical_world_size=hardware.physical_world_size, logical_world_size=WORLD_SIZE)
+        relocation = relocation_identity()
+        if relocation is not None:
+            result["asset_relocation"] = relocation
         atomic_json(output_dir / f"validate_only.node{node_rank}.json", result)
         return result
     _require(
