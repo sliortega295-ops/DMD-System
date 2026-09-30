@@ -430,9 +430,11 @@ def test_controller_forwards_bounded_lora_attribution_only_to_profile() -> None:
     assert "LoRA operator attribution requires --mode profile" in source
     assert "DISTILLSCHEDULE_WAN13B_LORA_OPERATOR_ATTRIBUTION=1" in source
     assert '"--generator-nograd-lora-cast-cache"' in source
-    assert "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE=1" in source
+    assert '"DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE="' in source
+    assert '("1" if args.generator_nograd_lora_cast_cache else "0")' in source
     assert '"--generator-nograd-lora-fused-epilogue"' in source
-    assert "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE=1" in source
+    assert '"DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE="' in source
+    assert '("1" if args.generator_nograd_lora_fused_epilogue else "0")' in source
 
 
 def test_tree_chunk2048_changes_only_pinned_modulation_chunk_granularity() -> None:
