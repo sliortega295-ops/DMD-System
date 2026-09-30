@@ -170,6 +170,9 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--bootstrap", required=True, type=Path)
     value.add_argument("--source-root", required=True, type=Path)
     value.add_argument("--source-receipt", required=True, type=Path)
+    value.add_argument("--source-prepare-root", type=Path,
+        help="opt-in immutable receipt's canonical byte-identical preparation checkout")
+    value.add_argument("--source-prepare-head", help="exact clean HEAD of --source-prepare-root")
     value.add_argument("--pyenv", type=Path, default=Path("/tmp/distillschedule-helios-official-torch210"))
     value.add_argument("--python-overlay", required=True, type=Path)
     value.add_argument(
@@ -234,6 +237,11 @@ def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
     }
     if args.flash_attn_kernel is not None:
         exports["DISTILLSCHEDULE_FLASH_ATTN_KERNEL"] = args.flash_attn_kernel
+    if args.source_prepare_root is not None or args.source_prepare_head is not None:
+        if args.source_prepare_root is None or len(args.source_prepare_head or "") != 40:
+            raise ValueError("canonical source preparation requires root and exact HEAD")
+        exports.update(LIVEWAN_SOURCE_PREPARE_ROOT=args.source_prepare_root,
+                       LIVEWAN_SOURCE_PREPARE_HEAD=args.source_prepare_head)
     if args.run_kind in {"timing", "profile", "two-cycle-timing"}:
         if args.correctness_receipt is None or not args.correctness_sha256:
             raise ValueError(f"{args.run_kind} requires a correctness/diagnostic receipt and SHA256")

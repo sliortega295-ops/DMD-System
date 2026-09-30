@@ -356,7 +356,16 @@ exec 8>"${SOURCE_ROOT}.prepare.lock"
 flock 8
 GENERATED_SOURCE_RECEIPT="${NODE_LOG}/source_receipt.generated.json"
 SOURCE_PREPARE_SCRIPT="${ROOT}/scripts/distillschedule/prepare_livewan_crossscale_source.sh"
-if [[ "${PROFILE_TWO_CYCLES}" == 1 ]]; then
+if [[ -n "${LIVEWAN_SOURCE_PREPARE_ROOT:-}" ]]; then
+  SOURCE_PREPARE_SCRIPT="$(PYTHONPATH="${ROOT}/src" python3 - "${ROOT}" "${SOURCE_RECEIPT}" "${LIVEWAN_SOURCE_PREPARE_ROOT}" "${EXPECTED_HEAD}" "${LIVEWAN_SOURCE_PREPARE_HEAD:?}" <<'PY'
+from pathlib import Path
+import sys
+from distillschedule.runtime.livewan_source_relocation import source_prepare_script
+print(source_prepare_script(repo_root=Path(sys.argv[1]),receipt_path=Path(sys.argv[2]),
+    canonical_root=Path(sys.argv[3]),current_head=sys.argv[4],canonical_head=sys.argv[5]))
+PY
+)"
+elif [[ "${PROFILE_TWO_CYCLES}" == 1 ]]; then
   SOURCE_PREPARE_SCRIPT="$(PYTHONPATH="${ROOT}/src" python3 - "${ROOT}" "${SOURCE_RECEIPT}" "${CORRECTNESS_RECEIPT}" <<'PY'
 from pathlib import Path
 import sys
@@ -405,6 +414,8 @@ export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
   echo "run_kind=${RUN_KIND}"
   echo "execution_mode=${EXECUTION_MODE}"
   echo "pipeline_variant=${PIPELINE_VARIANT}"
+  echo "source_prepare_root=${LIVEWAN_SOURCE_PREPARE_ROOT:-}"
+  echo "source_prepare_head=${LIVEWAN_SOURCE_PREPARE_HEAD:-}"
   if [[ "${PROFILE_TWO_CYCLES}" == 1 ]]; then
     echo "profiled=true"
     echo "profile_cycles=2"
