@@ -30,7 +30,11 @@ nvidia-smi --query-gpu=name --format=csv,noheader | awk '!/H100/ {bad=1} END {ex
 nvidia-smi > "$RUN/logs/nvidia_before.txt"
 cat /sys/fs/cgroup/memory.events > "$RUN/logs/cgroup_before.txt"
 cat /sys/fs/cgroup/memory.current > "$RUN/logs/cgroup_current_before.txt"
-cat /sys/fs/cgroup/memory.peak > "$RUN/logs/cgroup_peak_before.txt"
+if [[ -r /sys/fs/cgroup/memory.peak ]]; then
+  cat /sys/fs/cgroup/memory.peak > "$RUN/logs/cgroup_peak_before.txt"
+else
+  printf 'NOT_AVAILABLE_ON_THIS_KERNEL\n' > "$RUN/logs/cgroup_peak_before.txt"
+fi
 export DISTILLSCHEDULE_HARDWARE_PROFILE=h100-8-b16
 export PYTHONPATH="$REPO/src:$REPO:$HELIOS"
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 OMP_NUM_THREADS=1
@@ -73,7 +77,11 @@ for _ in $(seq 1 30); do
 done
 cat /sys/fs/cgroup/memory.events > "$RUN/logs/cgroup_after.txt"
 cat /sys/fs/cgroup/memory.current > "$RUN/logs/cgroup_current_after.txt"
-cat /sys/fs/cgroup/memory.peak > "$RUN/logs/cgroup_peak_after.txt"
+if [[ -r /sys/fs/cgroup/memory.peak ]]; then
+  cat /sys/fs/cgroup/memory.peak > "$RUN/logs/cgroup_peak_after.txt"
+else
+  printf 'NOT_AVAILABLE_ON_THIS_KERNEL\n' > "$RUN/logs/cgroup_peak_after.txt"
+fi
 nvidia-smi > "$RUN/logs/nvidia_after.txt"
 nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv,noheader > "$RUN/logs/gpu_processes_after.txt"
 "$PYTHON" - "$RUN" "$RC" "$EXPECTED_HEAD" <<'PY'
