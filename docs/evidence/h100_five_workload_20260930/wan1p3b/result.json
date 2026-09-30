@@ -1,0 +1,382 @@
+{
+  "claim_boundary": "controlled scheduling/placement diagnostic, not strict numerical-equivalence claim; no profiled time",
+  "completed_utc": "2026-09-30T16:58:00.617710+00:00",
+  "denominator": "max physical-rank cycle2 native wall; 8 H100s, logical B16, one G + five C + five EMA",
+  "exact_head": "11dd0b155cc72572c907a79abc1a66cbdca25392",
+  "geometric_mean_paired_speedup": 1.5321023900199995,
+  "median_paired_speedup": 1.5139860922353254,
+  "numerical_status": "REVIEW",
+  "paired_speedups": [
+    1.51127499119915,
+    1.5139860922353254,
+    1.5718025494691594
+  ],
+  "profiled": false,
+  "ratio_of_medians": 1.514159325602944,
+  "records": [
+    {
+      "arm": "baseline",
+      "cycle1_warmup_seconds": 64.75864384137094,
+      "cycle2_seconds": 56.79785511549562,
+      "pair": 0,
+      "placement": "world16-fsdp",
+      "run_id": "wan_h100_baseline_timing_pair0_r1",
+      "summary": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/wan_h100_baseline_timing_pair0_r1/summary.json",
+      "summary_sha256": "e218a2a0ce0b0fb5bfe0c1ab1db571cf0d228adc9bd0892ae377a34210db5400"
+    },
+    {
+      "arm": "candidate",
+      "cycle1_warmup_seconds": 40.07862834073603,
+      "cycle2_seconds": 37.582740034908056,
+      "pair": 0,
+      "placement": "resident-async128-tree-chunk2048",
+      "run_id": "wan_h100_candidate_timing_pair0_r1",
+      "summary": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/wan_h100_candidate_timing_pair0_r1/summary.json",
+      "summary_sha256": "2f725882c3126cc4b241968d827217908a7c83cdabc50ec16643775ceca429a2"
+    },
+    {
+      "arm": "candidate",
+      "cycle1_warmup_seconds": 40.24634805228561,
+      "cycle2_seconds": 37.50920685287565,
+      "pair": 1,
+      "placement": "resident-async128-tree-chunk2048",
+      "run_id": "wan_h100_candidate_timing_pair1_r1",
+      "summary": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/wan_h100_candidate_timing_pair1_r1/summary.json",
+      "summary_sha256": "359006723919b5bdf52487a3dc50051ac478daacbf602f1d2cf3ce5472bc9bd4"
+    },
+    {
+      "arm": "baseline",
+      "cycle1_warmup_seconds": 64.45519255846739,
+      "cycle2_seconds": 56.78841750603169,
+      "pair": 1,
+      "placement": "world16-fsdp",
+      "run_id": "wan_h100_baseline_timing_pair1_r1",
+      "summary": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/wan_h100_baseline_timing_pair1_r1/summary.json",
+      "summary_sha256": "925a3d0f1480e30db1a1ee604de3e9f5f15ffe0a65ef2faec5d3683f8a22ed42"
+    },
+    {
+      "arm": "baseline",
+      "cycle1_warmup_seconds": 66.66284987516701,
+      "cycle2_seconds": 58.96011863835156,
+      "pair": 2,
+      "placement": "world16-fsdp",
+      "run_id": "wan_h100_baseline_timing_pair2_r1",
+      "summary": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/wan_h100_baseline_timing_pair2_r1/summary.json",
+      "summary_sha256": "6f1df8e0b7b7fe9cfff351d8785bea05c84552dc8eb21f9d6cb77e1848f5324a"
+    },
+    {
+      "arm": "candidate",
+      "cycle1_warmup_seconds": 40.19796752743423,
+      "cycle2_seconds": 37.511148368008435,
+      "pair": 2,
+      "placement": "resident-async128-tree-chunk2048",
+      "run_id": "wan_h100_candidate_timing_pair2_r1",
+      "summary": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/wan_h100_candidate_timing_pair2_r1/summary.json",
+      "summary_sha256": "9395077f75d4c139edc44e365372424280a84a41452a4ced4f90dfad9b5a0029"
+    }
+  ],
+  "stats": {
+    "baseline": {
+      "cv": 0.02175270175091248,
+      "mean_seconds": 57.515463753292956,
+      "median_seconds": 56.79785511549562,
+      "stdev_seconds": 1.251116729090799,
+      "trials": [
+        56.79785511549562,
+        56.78841750603169,
+        58.96011863835156
+      ]
+    },
+    "candidate": {
+      "cv": 0.0011164483744516705,
+      "mean_seconds": 37.53436508526405,
+      "median_seconds": 37.511148368008435,
+      "stdev_seconds": 0.04190518088551859,
+      "trials": [
+        37.582740034908056,
+        37.50920685287565,
+        37.511148368008435
+      ]
+    }
+  },
+  "status": "PASS_CONTROLLED_DIAGNOSTIC",
+  "strict_claimable_for_paired_timing": false,
+  "strict_full_state_parity": "NOT_RUN",
+  "schema": "distillschedule.h100_wan_matched_result.v1",
+  "run_id": "wan_h100_paired_timing_r1",
+  "physical_gpus": 8,
+  "logical_global_batch": 16,
+  "mapping": "physical rank r consumes original independent B1 slots r and r+8; loss/2; one commit",
+  "semantic_status": "PASS",
+  "numerical": {
+    "status": "REVIEW",
+    "rollouts": 160,
+    "rollout_strict_failures": 160,
+    "normalized_l2_median": 0.013491474092006683,
+    "normalized_l2_max": 0.01582547463476658,
+    "cosine_min": 0.9998152256011963,
+    "sampled_state_components": [
+      {
+        "candidate_dtype": "torch.float32",
+        "candidate_shape": [
+          1536
+        ],
+        "component": "critic_adam",
+        "cosine": 0.9999998807907104,
+        "cosine_policy": "standard",
+        "finite": true,
+        "kind": "sampled_state",
+        "max_abs": 1.1906695362995379e-07,
+        "max_abs_limit": 0.05000380426645279,
+        "mean_abs": 2.1354553680907884e-09,
+        "mean_relative": 0.0008820132934488356,
+        "normalized_l2": 0.0005894576897844672,
+        "reference_dtype": "torch.float32",
+        "reference_peak_abs": 0.0003805064770858735,
+        "reference_shape": [
+          1536
+        ],
+        "same_dtype": true,
+        "same_shape": true,
+        "status": "PASS",
+        "thresholds": {
+          "max_abs_atol": 0.05,
+          "max_abs_rtol": 0.01,
+          "mean_relative": 0.005,
+          "min_cosine": 0.9999,
+          "normalized_l2": 0.005
+        }
+      },
+      {
+        "candidate_dtype": "torch.float32",
+        "candidate_shape": [
+          1536
+        ],
+        "component": "critic_trainable",
+        "cosine": 1.0,
+        "cosine_policy": "standard",
+        "finite": true,
+        "kind": "sampled_state",
+        "max_abs": 2.1442497200041544e-07,
+        "max_abs_limit": 0.05011710152029991,
+        "mean_abs": 3.8737391072629634e-09,
+        "mean_relative": 2.5126089440163923e-06,
+        "normalized_l2": 4.371268914837856e-06,
+        "reference_dtype": "torch.float32",
+        "reference_peak_abs": 0.011710220947861671,
+        "reference_shape": [
+          1536
+        ],
+        "same_dtype": true,
+        "same_shape": true,
+        "status": "PASS",
+        "thresholds": {
+          "max_abs_atol": 0.05,
+          "max_abs_rtol": 0.01,
+          "mean_relative": 0.005,
+          "min_cosine": 0.9999,
+          "normalized_l2": 0.005
+        }
+      },
+      {
+        "candidate_dtype": "torch.float32",
+        "candidate_shape": [
+          1536
+        ],
+        "component": "generator_adam",
+        "cosine": 0.9999996423721313,
+        "cosine_policy": "standard",
+        "finite": true,
+        "kind": "sampled_state",
+        "max_abs": 1.093540049623698e-07,
+        "max_abs_limit": 0.0500008650124073,
+        "mean_abs": 1.3871589432667975e-09,
+        "mean_relative": 0.0007440147455781698,
+        "normalized_l2": 0.0008283287170343101,
+        "reference_dtype": "torch.float32",
+        "reference_peak_abs": 8.654365956317633e-05,
+        "reference_shape": [
+          1536
+        ],
+        "same_dtype": true,
+        "same_shape": true,
+        "status": "PASS",
+        "thresholds": {
+          "max_abs_atol": 0.05,
+          "max_abs_rtol": 0.01,
+          "mean_relative": 0.005,
+          "min_cosine": 0.9999,
+          "normalized_l2": 0.005
+        }
+      },
+      {
+        "candidate_dtype": "torch.float32",
+        "candidate_shape": [
+          1536
+        ],
+        "component": "generator_ema",
+        "cosine": 1.0000004768371582,
+        "cosine_policy": "standard",
+        "finite": true,
+        "kind": "sampled_state",
+        "max_abs": 8.276757625935716e-07,
+        "max_abs_limit": 0.050130028277635574,
+        "mean_abs": 3.8957925774241176e-09,
+        "mean_relative": 2.473719405315933e-06,
+        "normalized_l2": 9.778172170626931e-06,
+        "reference_dtype": "torch.float32",
+        "reference_peak_abs": 0.013002713210880756,
+        "reference_shape": [
+          1536
+        ],
+        "same_dtype": true,
+        "same_shape": true,
+        "status": "PASS",
+        "thresholds": {
+          "max_abs_atol": 0.05,
+          "max_abs_rtol": 0.01,
+          "mean_relative": 0.005,
+          "min_cosine": 0.9999,
+          "normalized_l2": 0.005
+        }
+      },
+      {
+        "candidate_dtype": "torch.float32",
+        "candidate_shape": [
+          1536
+        ],
+        "component": "generator_trainable",
+        "cosine": 1.0000004768371582,
+        "cosine_policy": "standard",
+        "finite": true,
+        "kind": "sampled_state",
+        "max_abs": 3.761711013794411e-07,
+        "max_abs_limit": 0.05013854429125786,
+        "mean_abs": 4.126557318073765e-09,
+        "mean_relative": 2.5011881916725542e-06,
+        "normalized_l2": 6.933550594112603e-06,
+        "reference_dtype": "torch.float32",
+        "reference_peak_abs": 0.013854306191205978,
+        "reference_shape": [
+          1536
+        ],
+        "same_dtype": true,
+        "same_shape": true,
+        "status": "PASS",
+        "thresholds": {
+          "max_abs_atol": 0.05,
+          "max_abs_rtol": 0.01,
+          "mean_relative": 0.005,
+          "min_cosine": 0.9999,
+          "normalized_l2": 0.005
+        }
+      }
+    ],
+    "strict_full_state_parity": "NOT_RUN",
+    "thresholds_relaxed": false,
+    "drift_cause": "UNRESOLVED; do not label as harmless numerical noise"
+  },
+  "raw_trials": [
+    {
+      "pair": 0,
+      "arm": "baseline",
+      "placement": "world16-fsdp",
+      "run_id": "wan_h100_baseline_timing_pair0_r1",
+      "cycle1_warmup_seconds": 64.75864384137094,
+      "cycle2_seconds": 56.79785511549562,
+      "summary_sha256": "e218a2a0ce0b0fb5bfe0c1ab1db571cf0d228adc9bd0892ae377a34210db5400",
+      "construction_seconds_max_rank": 107.15007037110627,
+      "reported_max_allocated_gib": 5.523980140686035,
+      "reported_max_reserved_gib": 7.87109375,
+      "end_snapshot_min_driver_free_gib": 69.61029052734375,
+      "cgroup_oom_delta": 0
+    },
+    {
+      "pair": 0,
+      "arm": "candidate",
+      "placement": "resident-async128-tree-chunk2048",
+      "run_id": "wan_h100_candidate_timing_pair0_r1",
+      "cycle1_warmup_seconds": 40.07862834073603,
+      "cycle2_seconds": 37.582740034908056,
+      "summary_sha256": "2f725882c3126cc4b241968d827217908a7c83cdabc50ec16643775ceca429a2",
+      "construction_seconds_max_rank": 102.28754178900272,
+      "reported_max_allocated_gib": 21.954764366149902,
+      "reported_max_reserved_gib": 22.384765625,
+      "end_snapshot_min_driver_free_gib": 54.78802490234375,
+      "cgroup_oom_delta": 0
+    },
+    {
+      "pair": 1,
+      "arm": "candidate",
+      "placement": "resident-async128-tree-chunk2048",
+      "run_id": "wan_h100_candidate_timing_pair1_r1",
+      "cycle1_warmup_seconds": 40.24634805228561,
+      "cycle2_seconds": 37.50920685287565,
+      "summary_sha256": "359006723919b5bdf52487a3dc50051ac478daacbf602f1d2cf3ce5472bc9bd4",
+      "construction_seconds_max_rank": 104.47454090043902,
+      "reported_max_allocated_gib": 21.954764366149902,
+      "reported_max_reserved_gib": 22.384765625,
+      "end_snapshot_min_driver_free_gib": 54.78802490234375,
+      "cgroup_oom_delta": 0
+    },
+    {
+      "pair": 1,
+      "arm": "baseline",
+      "placement": "world16-fsdp",
+      "run_id": "wan_h100_baseline_timing_pair1_r1",
+      "cycle1_warmup_seconds": 64.45519255846739,
+      "cycle2_seconds": 56.78841750603169,
+      "summary_sha256": "925a3d0f1480e30db1a1ee604de3e9f5f15ffe0a65ef2faec5d3683f8a22ed42",
+      "construction_seconds_max_rank": 104.43881284445524,
+      "reported_max_allocated_gib": 5.523980140686035,
+      "reported_max_reserved_gib": 7.87109375,
+      "end_snapshot_min_driver_free_gib": 69.61029052734375,
+      "cgroup_oom_delta": 0
+    },
+    {
+      "pair": 2,
+      "arm": "baseline",
+      "placement": "world16-fsdp",
+      "run_id": "wan_h100_baseline_timing_pair2_r1",
+      "cycle1_warmup_seconds": 66.66284987516701,
+      "cycle2_seconds": 58.96011863835156,
+      "summary_sha256": "6f1df8e0b7b7fe9cfff351d8785bea05c84552dc8eb21f9d6cb77e1848f5324a",
+      "construction_seconds_max_rank": 97.59008265379816,
+      "reported_max_allocated_gib": 5.523980140686035,
+      "reported_max_reserved_gib": 7.87109375,
+      "end_snapshot_min_driver_free_gib": 69.61029052734375,
+      "cgroup_oom_delta": 0
+    },
+    {
+      "pair": 2,
+      "arm": "candidate",
+      "placement": "resident-async128-tree-chunk2048",
+      "run_id": "wan_h100_candidate_timing_pair2_r1",
+      "cycle1_warmup_seconds": 40.19796752743423,
+      "cycle2_seconds": 37.511148368008435,
+      "summary_sha256": "9395077f75d4c139edc44e365372424280a84a41452a4ced4f90dfad9b5a0029",
+      "construction_seconds_max_rank": 101.36655078269541,
+      "reported_max_allocated_gib": 21.954764366149902,
+      "reported_max_reserved_gib": 22.384765625,
+      "end_snapshot_min_driver_free_gib": 54.78802490234375,
+      "cgroup_oom_delta": 0
+    }
+  ],
+  "memory_scope": "Reported PyTorch counters at rank receipt, NOT construction peak. Baseline per-call peak resets may narrow scope; not a matched phase-level capacity attribution. Driver-free values are end snapshots, not run minima.",
+  "host_memory_peak": "NOT_MEASURED; memory.peak absent, shared cgroup current is not a per-run peak",
+  "profiling": "NOT_RUN",
+  "other_workloads": {
+    "helios_no_gan": "ASSET_PREPARATION",
+    "helios_gan": "ASSET_PREPARATION",
+    "livewan": "ASSET_PREPARATION",
+    "h3_grid1000": "BLOCKED_EXACT_INITIAL_16_SLOT_STATE_RNG"
+  },
+  "evidence_hashes": {
+    "wan_h100_baseline_timing_pair0_r1/summary.json": "e218a2a0ce0b0fb5bfe0c1ab1db571cf0d228adc9bd0892ae377a34210db5400",
+    "wan_h100_candidate_timing_pair0_r1/summary.json": "2f725882c3126cc4b241968d827217908a7c83cdabc50ec16643775ceca429a2",
+    "wan_h100_candidate_timing_pair1_r1/summary.json": "359006723919b5bdf52487a3dc50051ac478daacbf602f1d2cf3ce5472bc9bd4",
+    "wan_h100_baseline_timing_pair1_r1/summary.json": "925a3d0f1480e30db1a1ee604de3e9f5f15ffe0a65ef2faec5d3683f8a22ed42",
+    "wan_h100_baseline_timing_pair2_r1/summary.json": "6f1df8e0b7b7fe9cfff351d8785bea05c84552dc8eb21f9d6cb77e1848f5324a",
+    "wan_h100_candidate_timing_pair2_r1/summary.json": "9395077f75d4c139edc44e365372424280a84a41452a4ced4f90dfad9b5a0029"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "result.json": "c90511248771c5f735be747884fa4496c939c71637f008e874e8842c9c62d3c8",
+  "manifest.json": "a29da0181707484fdd41a2047ebe491941c28161c15e9d3b366242855031cc54",
+  "paired_result.json": "d02212951403689e6a089de81b259d87ce5e8e5f4c2f3f6fe1b8dc90d2f7c288",
+  "report.md": "0943d1bb1d2c4b93f40a036ddcbc84485481f60d21aa55aea1d0ce17e57bb41e",
+  "comparison.json": "14cf6fb9fffafcb51e3a38a50027930e854475288002450661a37a5343d8c204",
+  "trials.csv": "bbb79b38b5aed58838da8e53c4d39ff734452ad98a65748f2ada54a59543e4e3",
+  "raw_summaries/wan_h100_baseline_timing_pair2_r1/summary.json": "6f1df8e0b7b7fe9cfff351d8785bea05c84552dc8eb21f9d6cb77e1848f5324a",
+  "raw_summaries/wan_h100_baseline_timing_pair0_r1/summary.json": "e218a2a0ce0b0fb5bfe0c1ab1db571cf0d228adc9bd0892ae377a34210db5400",
+  "raw_summaries/wan_h100_resident_correctness_r1/summary.json": "f135b5b8a6f061e97ebfb5c15fbeb374ff5eb212397236a8f923c06ac260567d",
+  "raw_summaries/wan_h100_candidate_timing_pair2_r1/summary.json": "9395077f75d4c139edc44e365372424280a84a41452a4ced4f90dfad9b5a0029",
+  "raw_summaries/wan_h100_candidate_timing_pair0_r1/summary.json": "2f725882c3126cc4b241968d827217908a7c83cdabc50ec16643775ceca429a2",
+  "raw_summaries/wan_h100_candidate_timing_pair1_r1/summary.json": "359006723919b5bdf52487a3dc50051ac478daacbf602f1d2cf3ce5472bc9bd4",
+  "raw_summaries/wan_h100_baseline_timing_pair1_r1/summary.json": "925a3d0f1480e30db1a1ee604de3e9f5f15ffe0a65ef2faec5d3683f8a22ed42",
+  "raw_summaries/wan_h100_fsdp_correctness_r2/summary.json": "8583bf85cea997d49a867a0444b866f28d149ad5ac597d921fa51b9a2aff9876"
+}

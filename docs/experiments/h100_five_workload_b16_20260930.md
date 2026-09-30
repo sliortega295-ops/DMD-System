@@ -36,6 +36,35 @@ rollouts plus topology-independent sampled final state. Sampled state is not
 full-state proof. Numerical REVIEW permits only controlled diagnostic timing,
 as in the original coarse-trajectory experiment, not strict-equivalence claims.
 
-Model workload capacity, correctness comparison, timing, and profiling remain
-NOT_RUN until their actual receipts exist. Other workloads have independent
-asset/runtime gates; no speedup is inferred from the tiny accumulation canary.
+## Completed Wan1.3B result (2026-09-30)
+
+The exact measured source is `11dd0b155cc72572c907a79abc1a66cbdca25392`;
+subsequent LiveWan/Helios compatibility commits are not retroactively used as
+this measurement identity. Both real model arms and all six unprofiled timing
+runs have 8/8 physical-worker PASS covering the original 16 logical slots.
+
+| Arm | Pair0 | Pair1 | Pair2 | Median | CV |
+|---|---:|---:|---:|---:|---:|
+| FSDP8 baseline | 56.797855115 | 56.788417506 | 58.960118638 | 56.797855115 | 2.175% |
+| Resident async128/tree/chunk2048 | 37.582740035 | 37.509206853 | 37.511148368 | 37.511148368 | 0.112% |
+
+Ratio of medians: **1.514159x**, controlled diagnostic only. Strict rollout
+parity fails 160/160 unchanged gates; numeric status REVIEW, not proven benign
+noise. Five sampled final-state components PASS; full-state parity NOT_RUN.
+No new CUDA/cgroup OOM, and all run teardown receipts show no GPU process.
+Profiling is NOT_RUN. The measured denominator is cycle2 after same-process
+cycle1 warmup, not startup and not Nsight.
+
+[Full report and raw summaries](../evidence/h100_five_workload_20260930/wan1p3b/report.md),
+[JSON](../evidence/h100_five_workload_20260930/wan1p3b/result.json),
+[raw timings](../evidence/h100_five_workload_20260930/wan1p3b/trials.csv).
+
+## Remaining matrix
+
+Helios No-GAN/GAN and LiveWan retain independent asset/runtime gates and are
+NOT_RUN as model benchmarks. CPU reconstruction of both Helios base precast
+packages is complete: all 12 full-file SHA hashes match A100, no GPU used.
+LiveWan's missing checkpoint/cache/source payload transfer is in progress.
+H3 is NO-GO until exact original canonical16-slot initial LoRA/RNG evidence is
+available; seed equality or partial state sketches cannot substitute for it.
+No speedup is inferred for the other four workloads.

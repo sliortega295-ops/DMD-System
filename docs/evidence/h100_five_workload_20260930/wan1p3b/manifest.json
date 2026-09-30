@@ -1,0 +1,29 @@
+{
+  "claimable_cycle": 2,
+  "comparison": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/wan_h100_comparison_r1/comparison.json",
+  "comparison_sha256": "14cf6fb9fffafcb51e3a38a50027930e854475288002450661a37a5343d8c204",
+  "cycle1": "same-process warmup, excluded",
+  "head": "11dd0b155cc72572c907a79abc1a66cbdca25392",
+  "locks": "launcher holds project/node GPU locks through each audit/construction/run/teardown",
+  "logical_global_batch": 16,
+  "numerical_status": "REVIEW",
+  "order": [
+    [
+      "baseline",
+      "candidate"
+    ],
+    [
+      "candidate",
+      "baseline"
+    ],
+    [
+      "baseline",
+      "candidate"
+    ]
+  ],
+  "physical_world_size": 8,
+  "profiled": false,
+  "started_utc": "2026-09-30T16:36:07.631946+00:00",
+  "strict_full_state_parity": "NOT_RUN",
+  "timing_claim": "controlled diagnostic; numerical drift remains REVIEW when applicable"
+}

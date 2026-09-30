@@ -1,0 +1,105 @@
+{
+  "claim_boundary": "controlled scheduling/placement diagnostic, not strict numerical-equivalence claim; no profiled time",
+  "completed_utc": "2026-09-30T16:58:00.617710+00:00",
+  "denominator": "max physical-rank cycle2 native wall; 8 H100s, logical B16, one G + five C + five EMA",
+  "exact_head": "11dd0b155cc72572c907a79abc1a66cbdca25392",
+  "geometric_mean_paired_speedup": 1.5321023900199995,
+  "median_paired_speedup": 1.5139860922353254,
+  "numerical_status": "REVIEW",
+  "paired_speedups": [
+    1.51127499119915,
+    1.5139860922353254,
+    1.5718025494691594
+  ],
+  "profiled": false,
+  "ratio_of_medians": 1.514159325602944,
+  "records": [
+    {
+      "arm": "baseline",
+      "cycle1_warmup_seconds": 64.75864384137094,
+      "cycle2_seconds": 56.79785511549562,
+      "pair": 0,
+      "placement": "world16-fsdp",
+      "run_id": "wan_h100_baseline_timing_pair0_r1",
+      "summary": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/wan_h100_baseline_timing_pair0_r1/summary.json",
+      "summary_sha256": "e218a2a0ce0b0fb5bfe0c1ab1db571cf0d228adc9bd0892ae377a34210db5400"
+    },
+    {
+      "arm": "candidate",
+      "cycle1_warmup_seconds": 40.07862834073603,
+      "cycle2_seconds": 37.582740034908056,
+      "pair": 0,
+      "placement": "resident-async128-tree-chunk2048",
+      "run_id": "wan_h100_candidate_timing_pair0_r1",
+      "summary": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/wan_h100_candidate_timing_pair0_r1/summary.json",
+      "summary_sha256": "2f725882c3126cc4b241968d827217908a7c83cdabc50ec16643775ceca429a2"
+    },
+    {
+      "arm": "candidate",
+      "cycle1_warmup_seconds": 40.24634805228561,
+      "cycle2_seconds": 37.50920685287565,
+      "pair": 1,
+      "placement": "resident-async128-tree-chunk2048",
+      "run_id": "wan_h100_candidate_timing_pair1_r1",
+      "summary": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/wan_h100_candidate_timing_pair1_r1/summary.json",
+      "summary_sha256": "359006723919b5bdf52487a3dc50051ac478daacbf602f1d2cf3ce5472bc9bd4"
+    },
+    {
+      "arm": "baseline",
+      "cycle1_warmup_seconds": 64.45519255846739,
+      "cycle2_seconds": 56.78841750603169,
+      "pair": 1,
+      "placement": "world16-fsdp",
+      "run_id": "wan_h100_baseline_timing_pair1_r1",
+      "summary": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/wan_h100_baseline_timing_pair1_r1/summary.json",
+      "summary_sha256": "925a3d0f1480e30db1a1ee604de3e9f5f15ffe0a65ef2faec5d3683f8a22ed42"
+    },
+    {
+      "arm": "baseline",
+      "cycle1_warmup_seconds": 66.66284987516701,
+      "cycle2_seconds": 58.96011863835156,
+      "pair": 2,
+      "placement": "world16-fsdp",
+      "run_id": "wan_h100_baseline_timing_pair2_r1",
+      "summary": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/wan_h100_baseline_timing_pair2_r1/summary.json",
+      "summary_sha256": "6f1df8e0b7b7fe9cfff351d8785bea05c84552dc8eb21f9d6cb77e1848f5324a"
+    },
+    {
+      "arm": "candidate",
+      "cycle1_warmup_seconds": 40.19796752743423,
+      "cycle2_seconds": 37.511148368008435,
+      "pair": 2,
+      "placement": "resident-async128-tree-chunk2048",
+      "run_id": "wan_h100_candidate_timing_pair2_r1",
+      "summary": "/home/jiangzhikun/yongyan_liu/Helios-H100/research_artifacts/five_workload_h100_20260930/wan_h100_candidate_timing_pair2_r1/summary.json",
+      "summary_sha256": "9395077f75d4c139edc44e365372424280a84a41452a4ced4f90dfad9b5a0029"
+    }
+  ],
+  "stats": {
+    "baseline": {
+      "cv": 0.02175270175091248,
+      "mean_seconds": 57.515463753292956,
+      "median_seconds": 56.79785511549562,
+      "stdev_seconds": 1.251116729090799,
+      "trials": [
+        56.79785511549562,
+        56.78841750603169,
+        58.96011863835156
+      ]
+    },
+    "candidate": {
+      "cv": 0.0011164483744516705,
+      "mean_seconds": 37.53436508526405,
+      "median_seconds": 37.511148368008435,
+      "stdev_seconds": 0.04190518088551859,
+      "trials": [
+        37.582740034908056,
+        37.50920685287565,
+        37.511148368008435
+      ]
+    }
+  },
+  "status": "PASS_CONTROLLED_DIAGNOSTIC",
+  "strict_claimable_for_paired_timing": false,
+  "strict_full_state_parity": "NOT_RUN"
+}
