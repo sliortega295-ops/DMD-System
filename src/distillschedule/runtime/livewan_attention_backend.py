@@ -87,6 +87,7 @@ def _install_flash_attn2(
     requested_name: str,
     role_label: str,
     allowed_input_dtypes: set[tuple[Any, Any, Any]],
+    kernel_binding: tuple[Any, Path, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Install the pinned dense FA2 kernel under an exact per-role contract.
 
@@ -126,14 +127,22 @@ def _install_flash_attn2(
             f"expected {EXPECTED_FLASH_ATTENTION_SHA256}, observed {source_hashes}"
         )
 
-    flash_attn2, kernel_root = _load_flash_attn2()
+    if kernel_binding is None:
+        flash_attn2, kernel_root = _load_flash_attn2()
+        artifact_identity = {
+            "artifact_metadata_sha256": EXPECTED_METADATA_SHA256,
+            "artifact_package_sha256": EXPECTED_PACKAGE_SHA256,
+            "artifact_extension_sha256": EXPECTED_EXTENSION_SHA256,
+        }
+    else:
+        # C38 supplies an already hash-verified, API-compatible dense backend.
+        # Preserve the original helper's validation/casts and bookkeeping.
+        flash_attn2, kernel_root, artifact_identity = kernel_binding
     receipt: dict[str, Any] = {
         "enabled": True,
         "name": requested_name,
         "source_flash_attention_sha256": EXPECTED_FLASH_ATTENTION_SHA256,
-        "artifact_metadata_sha256": EXPECTED_METADATA_SHA256,
-        "artifact_package_sha256": EXPECTED_PACKAGE_SHA256,
-        "artifact_extension_sha256": EXPECTED_EXTENSION_SHA256,
+        **artifact_identity,
         "artifact_root": str(kernel_root),
         "function_patched": True,
         "install_status": "PASS",

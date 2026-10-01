@@ -3339,6 +3339,14 @@ def _c30_checkpoint_composition_enabled(plan: Mapping[str, Any], *, mode: str) -
     from distillschedule.runtime.livewan_generator_gate import PLAN_CONTRACT as GATE, LAYOUT_PLAN_CONTRACT as LAYOUT
 
     metadata = plan.get("metadata", {})
+    if metadata.get("score_attention_backend", {}).get("name") == "score_flash_attn3_unmasked_bf16_split1_v1":
+        from distillschedule.runtime.livewan_score_fa3 import SAC_CONTRACT
+        # Same GPU-only SAC mechanism; a different pinned attention operator.
+        # No C37 early-wave schedule is mixed into this C36-parent experiment.
+        _require(metadata.get("critic_step1_overlap") is None
+                 and metadata.get("score_layernorm") is not None,
+                 "C38 requires unchanged C36 scheduling/kernel parent")
+        SAC = SAC_CONTRACT
     value = metadata.get("checkpoint_composition")
     if value is None:
         return False
@@ -3504,6 +3512,10 @@ def _score_prompt_staging_enabled(plan: Mapping[str, Any], *, mode: str) -> bool
 def _critic_attention_checkpoint_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
     from distillschedule.runtime.livewan_attention_checkpoint import PLAN_CONTRACT
 
+    if plan.get("metadata", {}).get("score_attention_backend", {}).get("name") == "score_flash_attn3_unmasked_bf16_split1_v1":
+        from distillschedule.runtime.livewan_score_fa3 import SAC_CONTRACT
+        PLAN_CONTRACT = SAC_CONTRACT
+
     value = plan.get("metadata", {}).get("critic_attention_checkpoint")
     if value is None:
         return False
@@ -3561,6 +3573,14 @@ def _score_attention_backend_enabled(plan: Mapping[str, Any], *, mode: str) -> b
         and metadata.get("score_rope_kernel", {}).get("enabled") is True,
         "Score attention backend requires the validated C15 substrate",
     )
+    if backend.get("name") == "score_flash_attn3_unmasked_bf16_split1_v1":
+        from distillschedule.runtime.livewan_score_fa3 import BACKEND_CONTRACT, SAC_CONTRACT
+        _require(dict(backend) == BACKEND_CONTRACT
+                 and metadata.get("critic_attention_checkpoint") == SAC_CONTRACT
+                 and metadata.get("critic_step1_overlap") is None
+                 and _score_layernorm_enabled(plan, mode=mode),
+                 "C38 pinned Score FA3/C36 parent contract changed")
+        return True
     expected = {
         "enabled": True,
         "name": "score_flash_attn2_unmasked_bf16_v1",
@@ -4139,12 +4159,17 @@ def run_worker(
     }
     if _score_attention_backend_enabled(plan, mode=mode):
         _, score_ranks = _plan_role_ranks(plan, mode=mode)
+        is_score_fa3 = plan["metadata"]["score_attention_backend"]["name"] == "score_flash_attn3_unmasked_bf16_split1_v1"
         if rank in score_ranks:
             from distillschedule.runtime.livewan_attention_backend import (
                 install_score_flash_attn2,
             )
 
-            score_attention_backend = install_score_flash_attn2(torch)
+            if is_score_fa3:
+                from distillschedule.runtime.livewan_score_fa3 import install_score_flash_attn3
+                score_attention_backend = install_score_flash_attn3(torch)
+            else:
+                score_attention_backend = install_score_flash_attn2(torch)
             score_attention_backend.update(
                 role="score",
                 execution_status="PASS",
@@ -4176,6 +4201,9 @@ def run_worker(
                 "shape_histogram": {},
                 "contract_failure_count": 0,
             }
+            if is_score_fa3:
+                from distillschedule.runtime.livewan_score_fa3 import BACKEND_CONTRACT
+                score_attention_backend.update(BACKEND_CONTRACT)
     generator_cross_kv_cache = {
         "enabled": False,
         "name": "native_livewan_generator_cross_kv",
@@ -4524,8 +4552,13 @@ def run_worker(
             from distillschedule.runtime.livewan_attention_backend import _load_flash_attn2
             from distillschedule.runtime.livewan_attention_checkpoint import CriticAttentionCheckpointProxy
 
-            flash_module, _ = _load_flash_attn2()
-            critic_attention_proxy = CriticAttentionCheckpointProxy(bc.ckpt, torch, flash_module)
+            if plan["metadata"]["score_attention_backend"]["name"] == "score_flash_attn3_unmasked_bf16_split1_v1":
+                from distillschedule.runtime.livewan_score_fa3 import load_flash_attn3, CriticFA3CheckpointProxy
+                flash_module, _ = load_flash_attn3()
+                critic_attention_proxy = CriticFA3CheckpointProxy(bc.ckpt, torch, flash_module)
+            else:
+                flash_module, _ = _load_flash_attn2()
+                critic_attention_proxy = CriticAttentionCheckpointProxy(bc.ckpt, torch, flash_module)
             bc.ckpt = critic_attention_proxy
         else:
             critic_attention_receipt = {"enabled": True, "execution_status": "NOT_APPLICABLE", "checkpoint_calls": 0}
