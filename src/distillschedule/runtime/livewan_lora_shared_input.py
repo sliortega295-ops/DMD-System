@@ -35,6 +35,14 @@ def eligible(torch: Any, x: Any) -> bool:
 
 def runtime_receipt_errors(receipt: dict[str, Any], *, rank: int) -> list[str]:
     errors = []
+    if rank not in range(16):
+        errors.append("C40 world16 rank changed")
+    # Split DMD already places a frozen Critic shadow on G ranks. This is
+    # Score work, not the Generator's own Linear implementation. It uses the
+    # same forward specialization, but must never acquire a backward graph.
+    expected_role = "generator_shadow" if rank < 8 else "score"
+    if receipt.get("role") != expected_role or receipt.get("module_count") != 180:
+        errors.append("C40 Critic/shadow role or module inventory changed")
     if receipt.get("name") != PLAN_KERNEL_CONTRACT["name"]:
         errors.append("C40 LoRA specialization identity missing")
     if receipt.get("shared_autocast_input") is not True:
@@ -47,10 +55,14 @@ def runtime_receipt_errors(receipt: dict[str, Any], *, rank: int) -> list[str]:
             errors.append(f"C40 {key} changed")
     if shared.get("gradient_accumulation_dtype") != "float32":
         errors.append("C40 input gradient precision changed")
-    for key in ("forward_calls", "backward_calls"):
-        count = shared.get(key, -1)
-        if not isinstance(count, int) or (count > 0) != (rank >= 8):
-            errors.append(f"C40 {key} actual runtime count mismatch")
+    forward = shared.get("forward_calls", -1)
+    if type(forward) is not int or forward <= 0:
+        errors.append("C40 forward_calls actual runtime count mismatch")
+    elif forward != receipt.get("autocast_input_dtype_histogram", {}).get("torch.float32"):
+        errors.append("C40 eligible FP32 input census mismatch")
+    backward = shared.get("backward_calls", -1)
+    if type(backward) is not int or (backward != 0 if rank < 8 else backward <= 0):
+        errors.append("C40 backward_calls actual runtime count mismatch")
     return errors
 
 

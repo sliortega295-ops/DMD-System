@@ -73,12 +73,37 @@ def test_plan_is_one_factor_and_rejects_changed_gradient_precision(monkeypatch, 
 
 def test_runtime_gate_requires_observed_forward_and_backward_not_config_only():
     row = dict(name=PLAN_KERNEL_CONTRACT["name"], shared_autocast_input=True,
+        role="score", module_count=180,
+        autocast_input_dtype_histogram={"torch.float32": 300},
         shared_input_kernel=dict(production_installed=True, contract_failures=0,
             gradient_accumulation_dtype="float32", forward_calls=300, backward_calls=100))
     assert not runtime_receipt_errors(row, rank=8)
     row["shared_input_kernel"]["backward_calls"] = 0
     assert runtime_receipt_errors(row, rank=8)
-    row["shared_input_kernel"]["forward_calls"] = 0
+    row["role"] = "generator_shadow"
     assert not runtime_receipt_errors(row, rank=0)
+    row["shared_input_kernel"]["forward_calls"] = 0
+    assert runtime_receipt_errors(row, rank=0)
     row["shared_input_kernel"]["gradient_accumulation_dtype"] = "bfloat16"
     assert runtime_receipt_errors(row, rank=0)
+
+
+@pytest.mark.parametrize("rank", range(16))
+def test_split_dmd_frozen_shadow_has_forward_but_no_backward(rank):
+    # Reproduce the preserved world16 r1 ledger, not inferred config counts.
+    forward, backward = (480, 0) if rank < 8 else (2400, 1170)
+    row = dict(name=PLAN_KERNEL_CONTRACT["name"], shared_autocast_input=True,
+        role="generator_shadow" if rank < 8 else "score", module_count=180,
+        autocast_input_dtype_histogram={"torch.float32": forward},
+        shared_input_kernel=dict(production_installed=True, contract_failures=0,
+            gradient_accumulation_dtype="float32", forward_calls=forward,
+            backward_calls=backward))
+    assert not runtime_receipt_errors(row, rank=rank)
+    row["role"] = "score" if rank < 8 else "generator_shadow"
+    assert runtime_receipt_errors(row, rank=rank)
+    row["role"] = "generator_shadow" if rank < 8 else "score"
+    row["shared_input_kernel"]["backward_calls"] = 1 if rank < 8 else 0
+    assert runtime_receipt_errors(row, rank=rank)
+    row["shared_input_kernel"]["backward_calls"] = backward
+    row["autocast_input_dtype_histogram"]["torch.float32"] += 1
+    assert runtime_receipt_errors(row, rank=rank)
