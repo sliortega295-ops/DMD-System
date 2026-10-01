@@ -4019,6 +4019,8 @@ def run_worker(
     from wanstreamer import blockcausal as bc
 
     rank = int(os.environ["RANK"])
+    from distillschedule.runtime.livewan_profile_operations import OperationMarkers
+    operation_markers = OperationMarkers(run_kind=run_kind, rank=rank, environ=os.environ)
     local_rank = int(os.environ["LOCAL_RANK"])
     world_size = int(os.environ["WORLD_SIZE"])
     _require(world_size == WORLD_SIZE, "runtime is not world16")
@@ -4610,6 +4612,8 @@ def run_worker(
         # NVTX range.  Formal/correctness runs never execute this delay.
         time.sleep(10.0)
         dist.barrier()
+    # Diagnostic-only emit_nvtx entry fence is outside the Full5 boundary.
+    operation_markers.start(torch)
     torch.cuda.synchronize(device)
     timing_start_event = torch.cuda.Event(enable_timing=True) if two_cycle_timing else None
     if timing_start_event is not None:
@@ -4794,6 +4798,8 @@ def run_worker(
     dist.barrier()
     timing_stop_ns = time.perf_counter_ns()
     full5_wall = time.perf_counter() - start
+    # Likewise close after all Full5 endpoints, never between model calls.
+    operation_markers.stop()
     if is_profile:
         dist.barrier()
         torch.cuda.cudart().cudaProfilerStop()
@@ -5109,6 +5115,7 @@ def run_worker(
         "full5_wall_seconds": full5_wall,
         "two_cycle_timing": two_cycle_timing_receipt,
         "two_cycle_profile": two_cycle_profile_gate,
+        "profile_operation_markers": operation_markers.receipt(),
         "profiled": False if two_cycle_timing else is_profile,
         "construction_wall_seconds": build_wall,
         "setup_memory": setup_memory,

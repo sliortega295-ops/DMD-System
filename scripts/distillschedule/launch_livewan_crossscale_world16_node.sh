@@ -216,12 +216,12 @@ elif [[ "${PIPELINE_VARIANT}" == c26-continuous-b16-critic-attention-checkpoint 
     echo "missing_flash_attn2_artifact=${DISTILLSCHEDULE_FLASH_ATTN_KERNEL}" >&2; exit 3;
   }
 elif [[ "${PIPELINE_VARIANT}" == c39-continuous-b16-step0-delivery ]]; then
-  [[ "${RUN_KIND}" == trajectory || "${RUN_KIND}" == two-cycle-timing ]] || {
+  [[ "${RUN_KIND}" == trajectory || "${RUN_KIND}" == two-cycle-timing || ( "${RUN_KIND}" == profile && "${LIVEWAN_PROFILE_TWO_CYCLES:-0}" == 1 ) ]] || {
     echo c39_requires_qualified_native_or_trajectory >&2; exit 2;
   }
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c39_continuous_b16_step0_delivery.json"
 elif [[ "${PIPELINE_VARIANT}" == c38-continuous-b16-score-fa3 ]]; then
-  [[ "${RUN_KIND}" == trajectory || "${RUN_KIND}" == two-cycle-timing ]] || {
+  [[ "${RUN_KIND}" == trajectory || "${RUN_KIND}" == two-cycle-timing || ( "${RUN_KIND}" == profile && "${LIVEWAN_PROFILE_TWO_CYCLES:-0}" == 1 ) ]] || {
     echo c38_requires_qualified_native_or_trajectory >&2; exit 2;
   }
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c38_continuous_b16_score_fa3.json"
@@ -356,7 +356,7 @@ else:
     if os.environ.get("LIVEWAN_PROFILE_TWO_CYCLES", "0") == "1":
         if (value.get("schema_version") != "distillschedule.livewan_two_cycle_profile_gate.v1"
             or value.get("cycles") != 2
-            or value.get("pipeline_variant") not in {"c29-continuous-b16-generator-rms-epilogue", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm"}
+            or value.get("pipeline_variant") not in {"c29-continuous-b16-generator-rms-epilogue", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c38-continuous-b16-score-fa3", "c39-continuous-b16-step0-delivery"}
             or value.get("pipeline_variant") != os.environ.get("LIVEWAN_PIPELINE_VARIANT")):
             raise SystemExit("two-cycle diagnostic gate changed")
 PY

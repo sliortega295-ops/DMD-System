@@ -1,4 +1,4 @@
-"""Opt-in validated C29/C34/C35/C36 capture, never a native timing arm.
+"""Opt-in validated C29/C34/C35/C36/C38/C39 capture, never a native timing arm.
 
 The original exact-head trajectory gate remains immutable. A separate profile
 receipt binds that gate to an audited instrumentation-only descendant.
@@ -16,7 +16,10 @@ VARIANT = "c29-continuous-b16-generator-rms-epilogue"
 C34_VARIANT = "c34-continuous-b16-residual-layout"
 C35_VARIANT = "c35-continuous-b16-score-gate"
 C36_VARIANT = "c36-continuous-b16-score-layernorm"
-RESIDUAL_LAYOUT_VARIANTS = frozenset({C34_VARIANT, C35_VARIANT, C36_VARIANT})
+C38_VARIANT = "c38-continuous-b16-score-fa3"
+C39_VARIANT = "c39-continuous-b16-step0-delivery"
+FA3_VARIANTS = frozenset({C38_VARIANT, C39_VARIANT})
+RESIDUAL_LAYOUT_VARIANTS = frozenset({C34_VARIANT, C35_VARIANT, C36_VARIANT, *FA3_VARIANTS})
 SUPPORTED_VARIANTS = frozenset({VARIANT, *RESIDUAL_LAYOUT_VARIANTS})
 SCHEMA = "distillschedule.livewan_two_cycle_profile_gate.v1"
 
@@ -33,12 +36,25 @@ def enabled(run_kind: str) -> bool:
 def plan_variant(plan: dict[str, Any], *, mode: str) -> str:
     from .livewan_crossscale_worker import (
         _generator_rms_epilogue_enabled, _generator_residual_layout_enabled,
-        _score_residual_gate_enabled, _score_layernorm_enabled)
+        _score_residual_gate_enabled, _score_layernorm_enabled,
+        _score_attention_backend_enabled)
+    from .livewan_step0_delivery import enabled as delivery_enabled
 
     if plan.get("metadata", {}).get("critic_step1_overlap") is not None:
         raise RuntimeError("C37 scheduling has no qualified two-cycle profile gate")
     if mode != "pipeline" or not _generator_rms_epilogue_enabled(plan, mode=mode):
         raise RuntimeError("two-cycle profile requires a validated supported pipeline")
+    if delivery_enabled(plan, mode=mode):
+        if not _score_attention_backend_enabled(plan, mode=mode) or (
+            plan["metadata"]["score_attention_backend"]["name"]
+            != "score_flash_attn3_unmasked_bf16_split1_v1"
+        ):
+            raise RuntimeError("C39 diagnostic requires exact C38 FA3 parent")
+        return C39_VARIANT
+    if (plan.get("metadata", {}).get("score_attention_backend", {}).get("name")
+        == "score_flash_attn3_unmasked_bf16_split1_v1"):
+        _score_attention_backend_enabled(plan, mode=mode)
+        return C38_VARIANT
     if _score_layernorm_enabled(plan, mode=mode):
         return C36_VARIANT
     if _score_residual_gate_enabled(plan, mode=mode):
@@ -183,7 +199,10 @@ def summarize(*, run_root: Path, trace_path: Path, expected_head: str) -> dict[s
         if variant in RESIDUAL_LAYOUT_VARIANTS:
             from .livewan_generator_modulation import runtime_receipt_errors as mod_errors
             from .livewan_generator_gate import runtime_receipt_errors as gate_errors
-            from .livewan_attention_checkpoint import runtime_receipt_errors as sac_errors
+            if variant in FA3_VARIANTS:
+                from .livewan_score_fa3 import runtime_receipt_errors as sac_errors
+            else:
+                from .livewan_attention_checkpoint import runtime_receipt_errors as sac_errors
             from .livewan_c30_contract import C34_PLAN_CONTRACT
             if r.get('checkpoint_composition') != C34_PLAN_CONTRACT:
                 errors.append(f'rank{rank}: C34 composition changed')
@@ -193,16 +212,35 @@ def summarize(*, run_root: Path, trace_path: Path, expected_head: str) -> dict[s
                 r.get('generator_gate',{}), rank=rank, cycles=2, output_layout='row_major'))
             errors.extend(f'rank{rank}: {e}' for e in sac_errors(
                 r.get('critic_attention_checkpoint',{}), rank=rank, expected_calls=300))
-        if variant in {C35_VARIANT, C36_VARIANT}:
+        if variant in {C35_VARIANT, C36_VARIANT, *FA3_VARIANTS}:
             from .livewan_score_gate import runtime_receipt_errors as score_gate_errors
             errors.extend(f'rank{rank}: {e}' for e in score_gate_errors(
                 r.get('score_residual_gate',{}), rank=rank,
                 inventory=r.get('call_inventory',{})))
-        if variant == C36_VARIANT:
+        if variant in {C36_VARIANT, *FA3_VARIANTS}:
             from .livewan_score_layernorm import runtime_receipt_errors as norm_errors
             errors.extend(f'rank{rank}: {e}' for e in norm_errors(
                 r.get('score_layernorm',{}), rank=rank,
                 inventory=r.get('call_inventory',{})))
+        if variant in FA3_VARIANTS:
+            from .livewan_score_fa3 import backend_receipt_errors
+            errors.extend(f'rank{rank}: {e}' for e in backend_receipt_errors(
+                r.get('score_attention_backend', {}), rank=rank))
+        if variant == C39_VARIANT:
+            from .livewan_step0_delivery import runtime_receipt_errors, transport_receipt_errors
+            errors.extend(runtime_receipt_errors(r.get('step0_delivery', {}), rank=rank, cycles=2))
+            errors.extend(transport_receipt_errors(
+                r.get('generator_runahead_transport', {}), rank=rank, cycles=2))
+        marker = r.get('profile_operation_markers', {})
+        if marker.get('enabled'):
+            selected = rank in marker.get('selected_ranks', [])
+            if (marker.get('rank') != rank or marker.get('active') is not False
+                or marker.get('tensor_values_read') is not False
+                or marker.get('model_call_sync_added') is not False
+                or marker.get('claim_boundary') != 'DIAGNOSTIC_ONLY_NOT_NATIVE_TIMING'
+                or (marker.get('entries'), marker.get('exits')) != ((1, 1) if selected else (0, 0))
+                or marker.get('execution_status') != ('PASS' if selected else 'NOT_APPLICABLE')):
+                errors.append(f'rank{rank}: operation marker lifecycle failed')
         errors.extend(f'rank{rank}: {e}' for e in score_errors(r.get('score_rmsnorm_kernel',{}),rank=rank))
         if r.get('generator_runahead_transport',{}).get('execution_status') != 'PASS':
             errors.append(f'rank{rank}: transport failed')

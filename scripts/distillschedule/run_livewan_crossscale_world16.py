@@ -189,6 +189,10 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--profile-two-cycles", action="store_true",
                        help="C29 diagnostic only, source-bound to an existing two-cycle gate")
     value.add_argument("--ncu-bin", type=Path)
+    value.add_argument("--profile-operation-markers", action="store_true",
+        help="diagnostic-only issuing-thread autograd NVTX, never native timing")
+    value.add_argument("--profile-operation-ranks", default="0,8",
+        help="comma-separated global ranks for operator annotations")
     value.add_argument("--ncu-node-rank", type=int, choices=(0, 1), default=1)
     value.add_argument("--ncu-local-rank", type=int, choices=range(8), default=0)
     value.add_argument("--ncu-kernel-regex", default="flash_fwd_kernel")
@@ -248,8 +252,19 @@ def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         exports["LIVEWAN_PAIR_CORRECTNESS_RECEIPT"] = args.correctness_receipt
         exports["LIVEWAN_PAIR_CORRECTNESS_SHA256"] = args.correctness_sha256
     if (args.pipeline_variant in {"c37-continuous-b16-step1-overlap", "c38-continuous-b16-score-fa3", 'c39-continuous-b16-step0-delivery'}
-        and args.run_kind not in {"trajectory", "two-cycle-timing"}):
+        and args.run_kind not in {"trajectory", "two-cycle-timing"}
+        and not (args.profile_two_cycles and args.run_kind == "profile"
+                 and args.pipeline_variant in {"c38-continuous-b16-score-fa3", "c39-continuous-b16-step0-delivery"})):
         raise ValueError("C37 is restricted to qualification trajectory and native two-cycle timing")
+    if args.profile_operation_markers:
+        if not args.profile_two_cycles or args.run_kind != "profile":
+            raise ValueError("operation markers require source-bound two-cycle diagnostic profile")
+        marker_env = {"LIVEWAN_PROFILE_OPERATION_MARKERS": "1",
+                      "LIVEWAN_PROFILE_OPERATION_RANKS": args.profile_operation_ranks}
+        ranks = [int(v) for v in args.profile_operation_ranks.split(",")]
+        if not ranks or len(set(ranks)) != len(ranks) or any(not 0 <= v < 16 for v in ranks):
+            raise ValueError("invalid operation marker ranks")
+        exports.update(marker_env)
     if args.run_kind == "profile":
         if args.nsys_bin is None:
             raise ValueError("profile requires --nsys-bin")

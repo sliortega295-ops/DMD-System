@@ -17,11 +17,13 @@ from distillschedule.runtime.livewan_two_cycle_profile import SCHEMA,SUPPORTED_V
 ALLOWED={
     'src/distillschedule/runtime/livewan_crossscale_worker.py',
     'src/distillschedule/runtime/livewan_two_cycle_profile.py',
+    'src/distillschedule/runtime/livewan_profile_operations.py',
     'scripts/distillschedule/build_livewan_two_cycle_profile_gate.py',
     'scripts/distillschedule/run_livewan_crossscale_world16.py',
     'scripts/distillschedule/launch_livewan_crossscale_world16_node.sh',
     'scripts/distillschedule/summarize_livewan_continuous_world16.py',
     'tests/test_refactor_livewan_two_cycle_profile.py',
+    'tests/test_refactor_livewan_profile_operations.py',
     'tests/test_refactor_livewan_crossscale_profile.py',
 }
 WORKER='src/distillschedule/runtime/livewan_crossscale_worker.py'
