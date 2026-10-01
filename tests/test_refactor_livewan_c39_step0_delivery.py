@@ -58,6 +58,58 @@ def test_contract_fail_closed(plans, field, value):
         worker._validate_plan_identity(p, mode="pipeline")
 
 
+@pytest.mark.parametrize("batch,depth", [(32, 1), (16, 2)])
+def test_actual_workload_not_only_metadata_is_checked(plans, batch, depth):
+    p = copy.deepcopy(plans[1])
+    p["workload"]["shape"]["batch_size"] = batch
+    p["metadata"]["continuous_pipeline"]["lookahead_depth"] = depth
+    with pytest.raises(RuntimeError):
+        enabled(p, mode="pipeline")
+
+
+@pytest.mark.parametrize("rank", [0, 8])
+@pytest.mark.parametrize("early_delivery", [False, True])
+def test_real_continuous_entry_forwards_validated_opt_in(
+    monkeypatch, rank, early_delivery,
+):
+    """Execute the real CPU entry up to the GPU runner, not source matching.
+
+    This catches an unbound plan lookup before a costly model construction.
+    The sentinel intentionally stops before any model/GPU execution; this is
+    a routing test, not a substitute for world16 workload correctness.
+    """
+    calls = []
+
+    class ReachedModelRunner(Exception):
+        pass
+
+    def reached_model_runner(**kwargs):
+        calls.append(kwargs)
+        raise ReachedModelRunner
+
+    monkeypatch.setattr(worker, "_run_pipeline_8x8", reached_model_runner)
+    with pytest.raises(ReachedModelRunner):
+        worker._run_pipeline_8x8_continuous(
+            torch=None, rank=rank,
+            trace=SimpleNamespace(cycles=2, global_batch=16),
+            loader=None, bundle=None, streamers=(), score_context=None,
+            run_kind="two-cycle-timing", evidence=worker.RunEvidence(),
+            versions={"generator": 0, "critic": 0, "ema": 0}, device=None,
+            runahead_host_transport=object(), critic_shadow_hot_sync=object(),
+            slot_pairs_by_lane=tuple((i, i + 8) for i in range(8)),
+            full_context_lens_elision=True,
+            critic_step1_split_overlap=False, critic_b1_attribution=False,
+            inventory=worker.CallInventory(), cycle_endpoint_records=[],
+            step0_early_delivery=early_delivery,
+        )
+    assert len(calls) == 1
+    assert calls[0]["rank"] == rank
+    assert calls[0]["step0_early_delivery"] is early_delivery
+    assert calls[0]["critic_b2_only"] is True
+    assert calls[0]["critic_step1_split_overlap"] is False
+    assert calls[0]["step_offset"] == 0
+
+
 def test_default_transport_keys_unchanged_and_tags_unique():
     get = PinnedHostRunaheadTransport.expected_keys.fget
     old = SimpleNamespace(cycles=2, cross_cycle_lookahead=True)
@@ -104,6 +156,7 @@ def test_reordered_transport_does_not_reorder_math_or_commit():
     assert "sends = ()" in s and "teacher0_work.wait()" in s
     assert s.index("teacher0_work.wait()") < s.index('label=f"livewan/pipeline/score/step_{step}/critic_commit"')
     assert "step0_wave1_early_delivery=step0_early_delivery" in inspect.getsource(worker.run_worker)
+    assert "step0_early_delivery=step0_early_delivery" in inspect.getsource(worker.run_worker)
 
 
 def test_controller_and_launcher_route_child():

@@ -27,7 +27,9 @@ def enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
     if dict(contract) != CONTRACT:
         raise RuntimeError("C39 step0 delivery contract changed")
     if (mode != "pipeline"
+        or plan.get("workload", {}).get("shape", {}).get("batch_size") != 16
         or not metadata.get("continuous_pipeline", {}).get("enabled")
+        or metadata.get("continuous_pipeline", {}).get("lookahead_depth") != 1
         or not metadata.get("generator_runahead_transport", {}).get("enabled")
         or metadata.get("split_dmd_shadow", {}).get("enabled") is not True
         or metadata.get("full_context_lens_elision") is not True):

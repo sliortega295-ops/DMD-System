@@ -4690,6 +4690,7 @@ def run_worker(
                         or _critic_step1_overlap_enabled(plan, mode=mode)
                     ),
                     critic_b1_attribution=critic_b1_attribution,
+                    step0_early_delivery=step0_early_delivery,
                     inventory=inventory,
                     trajectory_writer=trajectory_writer,
                     trajectory_seed=(
@@ -7005,6 +7006,7 @@ def _run_pipeline_8x8_continuous(
     critic_step1_split_overlap: bool,
     critic_b1_attribution: bool,
     inventory: CallInventory,
+    step0_early_delivery: bool = False,
     trajectory_writer: AppendOnlyTrajectoryWriter | None = None,
     trajectory_seed: int | None = None,
     trajectory_arm_id: str | None = None,
@@ -7043,8 +7045,6 @@ def _run_pipeline_8x8_continuous(
     )
     is_generator = rank < 8
     lane = rank if is_generator else rank - 8
-    from distillschedule.runtime.livewan_step0_delivery import enabled as step0_delivery_enabled
-    step0_early_delivery = step0_delivery_enabled(plan, mode="pipeline")
     lane_slots = validate_slot_groups(
         slot_pairs_by_lane,
         batch=trace.global_batch,
