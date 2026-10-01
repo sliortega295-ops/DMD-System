@@ -1614,6 +1614,11 @@ def main() -> int:
         },
     }
     try:
+        # GAN diagnostics also import Helios. Resolve the registered backend
+        # before any hook can trigger the frozen Hopper auto-detection.
+        result["attention_backend"] = _attention_backend_receipt(
+            args.attention_backend
+        )
         critic_scalar_logs = install_critic_scalar_log_elision(
             enabled=bool(policy.elide_critic_scalar_logs and args.variant == "gan")
         )
@@ -1625,9 +1630,6 @@ def main() -> int:
             )
         )
         result["generator_free_memory"] = generator_free_memory
-        result["attention_backend"] = _attention_backend_receipt(
-            args.attention_backend
-        )
         contract = contract_for_variant(args.variant)
         nsys_range = StaticFSDP2Full5NsightRange.from_env(
             variant=args.variant,

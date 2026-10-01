@@ -158,3 +158,14 @@ def test_non_h100_worker_keeps_original_import_path():
     guard = next(node for node in ast.walk(function) if isinstance(node, ast.If) and 'DISTILLSCHEDULE_HARDWARE_PROFILE' in ast.unparse(node.test))
     assert 'h100-8-b16' in ast.unparse(guard.test)
     assert 'import_registered_attention_backend' in ast.unparse(guard)
+
+
+def test_registered_backend_is_bound_before_gan_hooks_can_import_helios():
+    import ast
+    root = Path(__file__).resolve().parents[1]
+    tree = ast.parse((root / 'scripts/distillschedule/probe_static_fsdp2_p0_world16.py').read_text())
+    main = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'main')
+    names = {'_attention_backend_receipt', 'install_critic_scalar_log_elision', 'prepare_generator_free_memory_receipt'}
+    calls = sorted((node.lineno, node.func.id) for node in ast.walk(main)
+                   if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in names)
+    assert [name for _, name in calls][0] == '_attention_backend_receipt'
