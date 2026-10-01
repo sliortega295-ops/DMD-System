@@ -82,13 +82,15 @@ class AttentionCheckpointContexts:
     It stores no tensors. Production installation is intentionally separate.
     """
     def __init__(self, torch: Any, op: Any, identity: dict[str, Any], *, self_attention_only: bool = False,
-                 metadata_reader: Any = None, receipt_name: str = PLAN_CONTRACT["name"]):
+                 metadata_reader: Any = None, receipt_name: str = PLAN_CONTRACT["name"],
+                 additional_policy_factory: Any = None):
         self.torch = torch
         self.op = op
         self.identity = identity
         self.self_attention_only = self_attention_only
         self.metadata_reader = attention_metadata if metadata_reader is None else metadata_reader
         self.receipt_name = receipt_name
+        self.additional_policy_factory = additional_policy_factory
         self.checkpoints: list[dict[str, Any]] = []
 
     def __call__(self):
@@ -96,9 +98,15 @@ class AttentionCheckpointContexts:
 
         ledger: dict[str, Any] = {"original": [], "replay_calls": 0, "failures": 0}
         self.checkpoints.append(ledger)
+        additional_policy = (
+            self.additional_policy_factory()
+            if self.additional_policy_factory is not None else None
+        )
 
         def policy(ctx: Any, op: Any, *args: Any, **kwargs: Any):
             if op != self.op:
+                if additional_policy is not None:
+                    return additional_policy(ctx, op, *args, **kwargs)
                 return CheckpointPolicy.PREFER_RECOMPUTE
             try:
                 metadata = self.metadata_reader(self.torch, args, kwargs)

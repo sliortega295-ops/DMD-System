@@ -3812,6 +3812,8 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _score_rmsnorm_kernel_enabled(plan, mode=mode)
     _c30_checkpoint_composition_enabled(plan, mode=mode)
     _critic_attention_checkpoint_enabled(plan, mode=mode)
+    from distillschedule.runtime.livewan_ffn_down_checkpoint import enabled as ffn_down_enabled
+    ffn_down_enabled(plan, mode=mode)
     _score_prompt_staging_enabled(plan, mode=mode)
     _generator_rollout_cast_cache_enabled(plan, mode=mode)
     _generator_rms_epilogue_enabled(plan, mode=mode)
@@ -4560,6 +4562,9 @@ def run_worker(
         }
     critic_attention_proxy = None
     critic_attention_receipt = {"enabled": False, "execution_status": "DISABLED"}
+    from distillschedule.runtime.livewan_ffn_down_checkpoint import enabled as ffn_down_enabled
+    critic_ffn_down_enabled = ffn_down_enabled(plan, mode=mode)
+    critic_ffn_down_receipt = {"enabled": False, "execution_status": "DISABLED"}
     if _critic_attention_checkpoint_enabled(plan, mode=mode):
         if rank in _plan_role_ranks(plan, mode=mode)[1]:
             from distillschedule.runtime.livewan_attention_backend import _load_flash_attn2
@@ -4568,13 +4573,19 @@ def run_worker(
             if plan["metadata"]["score_attention_backend"]["name"] == "score_flash_attn3_unmasked_bf16_split1_v1":
                 from distillschedule.runtime.livewan_score_fa3 import load_flash_attn3, CriticFA3CheckpointProxy
                 flash_module, _ = load_flash_attn3()
-                critic_attention_proxy = CriticFA3CheckpointProxy(bc.ckpt, torch, flash_module)
+                if critic_ffn_down_enabled:
+                    from distillschedule.runtime.livewan_ffn_down_checkpoint import CriticFFNDownCheckpointProxy
+                    critic_attention_proxy = CriticFFNDownCheckpointProxy(bc.ckpt, torch, flash_module)
+                else:
+                    critic_attention_proxy = CriticFA3CheckpointProxy(bc.ckpt, torch, flash_module)
             else:
                 flash_module, _ = _load_flash_attn2()
                 critic_attention_proxy = CriticAttentionCheckpointProxy(bc.ckpt, torch, flash_module)
             bc.ckpt = critic_attention_proxy
         else:
             critic_attention_receipt = {"enabled": True, "execution_status": "NOT_APPLICABLE", "checkpoint_calls": 0}
+            if critic_ffn_down_enabled:
+                critic_ffn_down_receipt = {"enabled": True, "execution_status": "NOT_APPLICABLE", "checkpoint_calls": 0}
     inventory = CallInventory()
     trajectory_writer = (
         AppendOnlyTrajectoryWriter(
@@ -5015,6 +5026,9 @@ def run_worker(
         _require(bundle.critic is not None, "C26 Score checkpoint lacks Critic")
         critic_attention_receipt = critic_attention_proxy.receipt(
             expected_calls=int(inventory.counts.get("critic/grad/checkpoint", 0)) * len(bundle.critic.blocks))
+        if critic_ffn_down_enabled:
+            critic_ffn_down_receipt = critic_attention_proxy.ffn_down_receipt(
+                expected_calls=int(inventory.counts.get("critic/grad/checkpoint", 0)) * len(bundle.critic.blocks))
     if critic_checkpoint_proxy is not None:
         _require(bundle.critic is not None, "Score checkpoint proxy lacks Critic")
         expected_checkpoint_calls = int(
@@ -5111,6 +5125,7 @@ def run_worker(
         "critic_checkpoint_rng": evidence.critic_checkpoint_rng,
         "checkpoint_composition": plan.get("metadata", {}).get("checkpoint_composition"),
         "critic_attention_checkpoint": critic_attention_receipt,
+        "critic_ffn_down_checkpoint": critic_ffn_down_receipt,
         "score_prompt_staging": score_prompt_staging_receipt,
         "generator_rollout_cast_cache": rollout_cast_cache_receipt,
         "generator_rms_epilogue": generator_rms_epilogue_receipt,
