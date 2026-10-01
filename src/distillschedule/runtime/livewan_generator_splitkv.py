@@ -39,8 +39,9 @@ def enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
             != "score_flash_attn3_unmasked_bf16_split1_v1"
             or metadata.get("critic_ffn_down_checkpoint") is not None
             or metadata.get("critic_step1_overlap") is not None
-            or metadata.get("score_shared_lora_input") is not None
-            or metadata.get("step0_delivery") is not None):
+            or metadata.get("critic_lora_kernel", {}).get("name")
+            != "scale_one_autocast_bf16_input_elision_v1"
+            or metadata.get("step0_wave1_early_delivery") is not None):
         raise RuntimeError("C49 requires the unchanged C38 parent, not other candidates")
     return True
 

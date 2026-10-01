@@ -63,6 +63,19 @@ def test_plan_fail_closed(plans,field,value):
     with pytest.raises(RuntimeError):m.enabled(p,mode="pipeline")
 
 
+@pytest.mark.parametrize("field,value", [
+    ("step0_wave1_early_delivery", {"enabled": True}),
+    ("critic_step1_overlap", {"enabled": True}),
+    ("critic_ffn_down_checkpoint", {"enabled": True}),
+    ("critic_lora_kernel", {"name": "scale_one_autocast_shared_bf16_input_v1"}),
+])
+def test_c49_mixed_candidates_rejected(plans, field, value):
+    plan = copy.deepcopy(plans[1])
+    plan["metadata"][field] = value
+    with pytest.raises(RuntimeError):
+        m.enabled(plan, mode="pipeline")
+
+
 def dummy_kvcache(q,k,v,**kwargs):
     return q
 
