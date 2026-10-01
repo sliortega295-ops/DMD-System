@@ -55,7 +55,13 @@ def _file_sha256(path: Path) -> str:
 def _attention_backend_receipt(expected: str) -> dict[str, Any]:
     """Fail closed on the attention implementation imported by this worker."""
 
-    from helios.modules.helios_kernels import attention_dispatch
+    import_binding = None
+    if os.environ.get("DISTILLSCHEDULE_HARDWARE_PROFILE") == "h100-8-b16":
+        from distillschedule.runtime.helios_attention_import import import_registered_attention_backend
+
+        attention_dispatch, import_binding = import_registered_attention_backend(expected)
+    else:
+        from helios.modules.helios_kernels import attention_dispatch
 
     local_kernels = os.environ.get("LOCAL_KERNELS", "")
     function = attention_dispatch.flash_attn_func
@@ -69,6 +75,8 @@ def _attention_backend_receipt(expected: str) -> dict[str, Any]:
         "extension_path": None,
         "extension_sha256": None,
     }
+    if import_binding is not None:
+        receipt["registered_import"] = import_binding
     if expected == "sdpa":
         if local_kernels:
             raise AssertionError("SDPA control inherited LOCAL_KERNELS")
