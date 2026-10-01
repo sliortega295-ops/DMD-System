@@ -3814,6 +3814,8 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _critic_attention_checkpoint_enabled(plan, mode=mode)
     from distillschedule.runtime.livewan_ffn_down_checkpoint import enabled as ffn_down_enabled
     ffn_down_enabled(plan, mode=mode)
+    from distillschedule.runtime.livewan_generator_splitkv import enabled as splitkv_enabled
+    splitkv_enabled(plan, mode=mode)
     _score_prompt_staging_enabled(plan, mode=mode)
     _generator_rollout_cast_cache_enabled(plan, mode=mode)
     _generator_rms_epilogue_enabled(plan, mode=mode)
@@ -4275,7 +4277,9 @@ def run_worker(
                 install_generator_flash_attn2,
             )
 
-            generator_attention_backend = install_generator_flash_attn2(torch)
+            from distillschedule.runtime.livewan_generator_splitkv import enabled as splitkv_enabled
+            generator_attention_backend = install_generator_flash_attn2(
+                torch, readonly_splitkv=splitkv_enabled(plan, mode=mode))
             generator_attention_backend.update(
                 role="generator",
                 execution_status="PASS",
@@ -4310,6 +4314,14 @@ def run_worker(
                 "output_cast_count": 0,
                 "contract_failure_count": 0,
             }
+    from distillschedule.runtime.livewan_generator_splitkv import enabled as splitkv_enabled
+    if splitkv_enabled(plan, mode=mode) and rank not in generator_ranks:
+        from distillschedule.runtime.livewan_generator_splitkv import CONTRACT as SPLITKV
+        generator_attention_backend["readonly_splitkv"] = {
+            "enabled": True, "name": SPLITKV["name"], "contract": dict(SPLITKV),
+            "execution_status": "NOT_APPLICABLE", "production_installed": False,
+            "eligible_nograd_calls": 0,
+        }
     before_oom = cgroup_oom_counts()
     torch.cuda.reset_peak_memory_stats(device)
     build_started = time.perf_counter()
