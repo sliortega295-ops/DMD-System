@@ -155,7 +155,9 @@ def test_controller_routes_exact_child_and_shell_header_accepts_it(tmp_path, kin
     r = subprocess.run(args, capture_output=True, check=True, text=True, timeout=15)
     assert all(VARIANT in " ".join(v) for v in json.loads(r.stdout)["commands"])
     shell = (ROOT / "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh").read_text()
-    assert shell[:shell.index('PYTHON=')].count(VARIANT) >= 3
+    # PYTHON is initialized before policy validation; stop at PLAN routing,
+    # not the early environment setup.
+    assert shell[:shell.index('  PLAN=')].count(VARIANT) >= 3
     assert 'livewan_wan13b_14b_sf_dmd_c44_continuous_b16_critic_ffn_down_cache.json' in shell
 
 
