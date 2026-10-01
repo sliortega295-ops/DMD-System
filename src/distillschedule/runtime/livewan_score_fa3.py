@@ -81,7 +81,9 @@ def load_flash_attn3() -> tuple[Any, Path]:
     finally:
         sys.path.remove(str(root))
     source = Path(inspect.getfile(module.flash_attn_func.__globals__["FlashAttnFunc"])).resolve()
-    if not source.is_relative_to(root) or _sha256_file(source) != INTERFACE_SHA256:
+    # Hugging Face snapshot entries resolve into the sibling content-addressed
+    # blobs directory. Bind to the exact verified entry, not a directory prefix.
+    if source != (root / "flash_attn_interface.py").resolve() or _sha256_file(source) != INTERFACE_SHA256:
         raise RuntimeError("C38 FA3 imported from an unregistered source")
     return module, root
 
