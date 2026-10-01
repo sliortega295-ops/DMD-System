@@ -267,6 +267,7 @@ def _profiled_score_forward(
     *,
     condition: torch.Tensor,
     adapter_enabled: bool,
+    validate_finite: bool = True,
 ) -> torch.Tensor:
     batch_size = int(batch["hidden_states"].shape[0])
     return _nvtx_call(
@@ -276,6 +277,7 @@ def _profiled_score_forward(
         batch,
         condition=condition,
         adapter_enabled=adapter_enabled,
+        validate_finite=validate_finite,
     )
 
 

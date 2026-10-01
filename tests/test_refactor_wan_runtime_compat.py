@@ -127,6 +127,45 @@ class WanRuntimeCompatibilityTests(unittest.TestCase):
             self.assertIsNone(ast.literal_eval(defaults["runtime_cache"]))
             self.assertIsNone(ast.literal_eval(defaults["deferred_finite_checks"]))
 
+    def test_hardened_score_wrapper_preserves_finite_validation_option(self) -> None:
+        path = "scripts/distillschedule/probe_static_fsdp2_p0_world16_hardened.py"
+        model, condition, prediction = object(), object(), object()
+        batch = {"hidden_states": SimpleNamespace(shape=(1, 16, 9, 48, 80))}
+        calls, markers = [], []
+
+        def original_score(model_arg, batch_arg, *, condition, adapter_enabled,
+                           validate_finite=True):
+            calls.append((model_arg, batch_arg, condition, adapter_enabled,
+                          validate_finite))
+            return prediction
+
+        torch = SimpleNamespace(cuda=SimpleNamespace(
+            is_available=lambda: True,
+            nvtx=SimpleNamespace(
+                range_push=lambda label: markers.append(("push", label)),
+                range_pop=lambda: markers.append(("pop",)),
+            ),
+        ))
+        argv = []
+        namespace = {"torch": torch, "sys": SimpleNamespace(argv=argv),
+                     "_original_score_forward": original_score}
+        executable_function(path, "_nvtx_call", namespace)
+        run = executable_function(path, "_profiled_score_forward", namespace)
+        for profile in (False, True):
+            argv[:] = ["worker", "--profile-mode"] if profile else ["worker"]
+            for option in ({}, {"validate_finite": True}, {"validate_finite": False}):
+                with self.subTest(profile=profile, option=option):
+                    calls.clear()
+                    markers.clear()
+                    result = run(model, batch, condition=condition,
+                                 adapter_enabled=False, **option)
+                    self.assertIs(result, prediction)
+                    self.assertEqual(calls, [(model, batch, condition, False,
+                                             option.get("validate_finite", True))])
+                    self.assertEqual(markers, [
+                        ("push", "P0_SCORE/nogan/B1/adapter-0"), ("pop",)
+                    ] if profile else [])
+
     def test_persistent_unshard_and_triple_return_are_preserved(self) -> None:
         path = "scripts/distillschedule/probe_static_fsdp2_p0_world16.py"
         node = function(path, "_precompute_critic_rollouts")
