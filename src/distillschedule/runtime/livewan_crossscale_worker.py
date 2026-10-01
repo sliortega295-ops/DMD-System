@@ -3048,6 +3048,7 @@ class RunEvidence:
     score_context_prefetch: dict[str, Any] = field(default_factory=dict)
     split_dmd_shadow: dict[str, Any] = field(default_factory=dict)
     generator_runahead_transport: dict[str, Any] = field(default_factory=dict)
+    step0_delivery: dict[str, Any] = field(default_factory=dict)
     continuous_pipeline: dict[str, Any] = field(default_factory=dict)
     critic_shadow_hot_sync: dict[str, Any] = field(default_factory=dict)
     score_receive_waits: list[dict[str, Any]] = field(default_factory=list)
@@ -3822,6 +3823,8 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _generator_cross_kv_cache_enabled(plan, mode=mode)
     _generator_attention_backend_enabled(plan, mode=mode)
     _critic_checkpoint_rng_elision_enabled(plan, mode=mode)
+    from distillschedule.runtime.livewan_step0_delivery import enabled as step0_delivery_enabled
+    step0_delivery_enabled(plan, mode=mode)
     if (
         str(plan.get("metadata", {}).get("pool_policy", ""))
         == PHASE_EXPANDED_CRITIC16_POOL_POLICY
@@ -4395,6 +4398,8 @@ def run_worker(
     )
     runahead_host_transport = None
     runahead_host_enabled = _generator_runahead_transport_enabled(plan, mode=mode)
+    from distillschedule.runtime.livewan_step0_delivery import enabled as step0_delivery_enabled
+    step0_early_delivery = step0_delivery_enabled(plan, mode=mode)
     if runahead_host_enabled and run_kind != "capacity":
         from distillschedule.runtime.livewan_host_runahead import (
             PinnedHostRunaheadTransport,
@@ -4419,6 +4424,7 @@ def run_worker(
             waves_per_step=int(
                 plan["metadata"]["generator_runahead_transport"]["waves_per_step"]
             ),
+            step0_wave1_early_delivery=step0_early_delivery,
         )
         bundle.metadata["generator_runahead_transport_setup"] = {
             "enabled": True,
@@ -5085,6 +5091,7 @@ def run_worker(
         "generator_cross_attention_kv_cache": generator_cross_kv_cache,
         "generator_attention_backend": generator_attention_backend,
         "generator_runahead_transport": evidence.generator_runahead_transport,
+        "step0_delivery": evidence.step0_delivery,
         "continuous_pipeline": evidence.continuous_pipeline,
         "critic_shadow_hot_sync": evidence.critic_shadow_hot_sync,
         "score_receive_waits": evidence.score_receive_waits,
@@ -5611,6 +5618,7 @@ def _run_pipeline_8x8(
     precomputed_first: PreparedRollout | None = None,
     critic_shadow_hot_sync: Any | None = None,
     finalize_host_transport: bool = True,
+    step0_early_delivery: bool = False,
 ) -> None:
     import torch.distributed as dist
 
@@ -5658,6 +5666,23 @@ def _run_pipeline_8x8(
         if runahead_host_transport is not None
         else {"enabled": False, "execution_status": "DISABLED"}
     )
+    if step0_early_delivery:
+        _require(
+            split_dmd_shadow and runahead_host_transport is not None
+            and runahead_host_transport.step0_wave1_early_delivery
+            and score_context_from_trace and full_context_lens_elision,
+            "C39 step0 delivery requires exact split-DMD host/local-context path",
+        )
+        if not evidence.step0_delivery:
+            evidence.step0_delivery = {
+                "enabled": True,
+                "name": "step0_wave1_pinned_early_delivery_v1",
+                "role": "generator" if is_generator else "score",
+                "early_latent_sends": 0,
+                "early_latent_receives": 0,
+                "async_teacher0_sends": 0,
+                "teacher0_send_waits": 0,
+            }
     if runahead_host_transport is not None:
         _require(
             rollout_runahead
@@ -5916,6 +5941,19 @@ def _run_pipeline_8x8(
                     elide_full_context_lens=full_context_lens_elision,
                 )
             _record_output(torch, evidence, row=rows[1], x0=second.x0, run_kind=run_kind)
+            if step == 0 and step0_early_delivery:
+                # Only this detached wave1 latent travels on the independent
+                # host group. Crossing CUDA send/recv order on the default
+                # NCCL group would deadlock with the Teacher0 return.
+                with _profile_range(
+                    torch, run_kind=run_kind,
+                    label="livewan/pipeline/g/step_0/early_host_wave_1",
+                ):
+                    runahead_host_transport.enqueue_send(
+                        step=global_step, wave=1, tensor=second.x0,
+                    )
+                evidence.step0_delivery["early_latent_sends"] += 1
+                evidence.transport_bytes += pair_bytes
             if step == 0:
                 if split_dmd_shadow:
                     with _profile_range(
@@ -5953,13 +5991,16 @@ def _run_pipeline_8x8(
                     grad0 = _combine_dmd_gradient(
                         torch, x0=first.x0, flow=flow0, v_real=real0, v_fake=fake0
                     )
-                    sends = _send_pair(
-                        destination=peer,
-                        prepared=second,
-                        asynchronous=True,
-                        send_context=not score_context_from_trace,
-                    )
-                    evidence.transport_bytes += pair_bytes
+                    if step0_early_delivery:
+                        sends = ()
+                    else:
+                        sends = _send_pair(
+                            destination=peer,
+                            prepared=second,
+                            asynchronous=True,
+                            send_context=not score_context_from_trace,
+                        )
+                        evidence.transport_bytes += pair_bytes
                     with _profile_range(
                         torch,
                         run_kind=run_kind,
@@ -6198,7 +6239,14 @@ def _run_pipeline_8x8(
                     evidence.add_logical_score_calls("teacher/nograd/plain", 1)
                     if not split_dmd_shadow:
                         evidence.add_logical_score_calls("critic/nograd/plain", 1)
-                    dist.send(returned0.contiguous(), dst=peer)
+                    if step0_early_delivery:
+                        # Retain both storage and Work until the final wait,
+                        # rather than forcing Score to wait for G's fake0.
+                        teacher0_send = returned0.contiguous()
+                        teacher0_work = dist.isend(teacher0_send, dst=peer)
+                        evidence.step0_delivery["async_teacher0_sends"] += 1
+                    else:
+                        dist.send(returned0.contiguous(), dst=peer)
                 evidence.transport_bytes += returned0.numel() * returned0.element_size()
             if cycle_index > 0 and step == 0:
                 _require(
@@ -6213,10 +6261,12 @@ def _run_pipeline_8x8(
                 torch, run_kind=run_kind,
                 label=f"livewan/pipeline/score/step_{step}/recv_wave_1",
             ):
-                if runahead_host_transport is not None and step > 0:
+                if runahead_host_transport is not None and (step > 0 or step0_early_delivery):
                     second_x0 = runahead_host_transport.receive_to_device(
                         step=global_step, wave=1
                     )
+                    if step == 0:
+                        evidence.step0_delivery["early_latent_receives"] += 1
                     second_context = None
                 else:
                     second_x0, second_context = _recv_pair(
@@ -6415,6 +6465,14 @@ def _run_pipeline_8x8(
                 # work is complete; deleting it earlier would make the
                 # transport lifetime implementation-dependent.
                 del grad1_send
+                if step0_early_delivery:
+                    with _profile_range(
+                        torch, run_kind=run_kind,
+                        label="livewan/pipeline/score/step_0/teacher0_send_wait",
+                    ):
+                        teacher0_work.wait()
+                    evidence.step0_delivery["teacher0_send_waits"] += 1
+                    del teacher0_send
             if run_kind in {"correctness", "trajectory"}:
                 for row, loss in zip(rows, (loss0, loss1)):
                     evidence.loss_fingerprints.append(
@@ -6985,6 +7043,8 @@ def _run_pipeline_8x8_continuous(
     )
     is_generator = rank < 8
     lane = rank if is_generator else rank - 8
+    from distillschedule.runtime.livewan_step0_delivery import enabled as step0_delivery_enabled
+    step0_early_delivery = step0_delivery_enabled(plan, mode="pipeline")
     lane_slots = validate_slot_groups(
         slot_pairs_by_lane,
         batch=trace.global_batch,
@@ -7076,6 +7136,7 @@ def _run_pipeline_8x8_continuous(
                     precomputed_first=precomputed_first,
                     critic_shadow_hot_sync=critic_shadow_hot_sync,
                     finalize_host_transport=False,
+                    step0_early_delivery=step0_early_delivery,
                 )
         role_returned = time.perf_counter()
         if two_cycle_timing:

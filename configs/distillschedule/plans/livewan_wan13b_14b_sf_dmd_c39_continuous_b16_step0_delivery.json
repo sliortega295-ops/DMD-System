@@ -1,0 +1,27 @@
+{
+  "include": [
+    "livewan_wan13b_14b_sf_dmd_c38_continuous_b16_score_fa3.json"
+  ],
+  "id": "livewan-wan13b-14b-sfdmd-c39-step0-delivery",
+  "metadata": {
+    "step0_wave1_early_delivery": {
+      "enabled": true,
+      "name": "step0_wave1_pinned_early_delivery_v1",
+      "scope": "continuous_b16_split_dmd_step0_wave1_only",
+      "latent_transport": "existing_pinned_cpu_gloo",
+      "teacher0_return": "async_cuda_nccl_retained_until_commit",
+      "enqueue_position": "after_rollout1_before_fake0",
+      "global_batch": 16,
+      "payload_dtype": "float32",
+      "payload_shape": [
+        1,
+        16,
+        21,
+        46,
+        80
+      ],
+      "depth1_lookahead_unchanged": true,
+      "math_rng_and_calls_preserved": true
+    }
+  }
+}

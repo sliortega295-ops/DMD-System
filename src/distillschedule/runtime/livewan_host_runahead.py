@@ -8,8 +8,9 @@ those already-produced float32 latents through a dedicated Gloo group:
 CUDA producer stream -> pinned CPU -> Gloo -> pinned CPU -> CUDA consumer stream.
 
 The copy is ordered with CUDA events and a single bounded sender thread.  It
-does not synchronize the producing stream, alter the tensor value, or touch
-step 0's differentiable DMD exchange.
+does not synchronize the producing stream or alter the tensor value. Default
+behavior leaves step0 untouched. C39 explicitly registers its detached wave1
+latent on the same independent host path; differentiable G graphs stay on G.
 """
 
 from __future__ import annotations
@@ -23,8 +24,10 @@ RUNAHEAD_STEPS = (1, 2, 3, 4)
 RUNAHEAD_TAG_BASE = 27100
 
 
-def runahead_tag(step: int, wave: int, *, waves_per_step: int = 2) -> int:
-    if step <= 0:
+def runahead_tag(
+    step: int, wave: int, *, waves_per_step: int = 2, allow_step0_wave1: bool = False
+) -> int:
+    if step <= 0 and not (step == 0 and wave == 1 and allow_step0_wave1 and waves_per_step == 2):
         raise ValueError(f"invalid run-ahead step: {step}")
     if waves_per_step not in {2, 4}:
         raise ValueError(f"invalid run-ahead wave count: {waves_per_step}")
@@ -47,6 +50,7 @@ class PinnedHostRunaheadTransport:
     cycles: int = 1
     cross_cycle_lookahead: bool = False
     waves_per_step: int = 2
+    step0_wave1_early_delivery: bool = False
     buffers: dict[tuple[int, int], Any] = field(default_factory=dict)
     receive_works: dict[tuple[int, int], Any] = field(default_factory=dict)
     copy_events: dict[tuple[int, int], Any] = field(default_factory=dict)
@@ -61,6 +65,8 @@ class PinnedHostRunaheadTransport:
             raise RuntimeError("continuous run-ahead requires the registered lookahead")
         if self.waves_per_step not in {2, 4}:
             raise RuntimeError("run-ahead transport wave count is not registered")
+        if self.step0_wave1_early_delivery and self.waves_per_step != 2:
+            raise RuntimeError("C39 step0 delivery is restricted to B16/two waves")
         self.shape = tuple(int(value) for value in self.shape)
         if not self.shape or any(value <= 0 for value in self.shape):
             raise RuntimeError("run-ahead transport shape is invalid")
@@ -92,7 +98,7 @@ class PinnedHostRunaheadTransport:
                     self.buffers[key],
                     src=self.peer,
                     group=self.group,
-                    tag=runahead_tag(*key, waves_per_step=self.waves_per_step),
+                    tag=self._tag(key),
                 )
 
     @property
@@ -108,7 +114,15 @@ class PinnedHostRunaheadTransport:
         }
         if self.cross_cycle_lookahead:
             keys.update((cycle * 5, 0) for cycle in range(1, self.cycles))
+        if getattr(self, "step0_wave1_early_delivery", False):
+            keys.update((cycle * 5, 1) for cycle in range(self.cycles))
         return keys
+
+    def _tag(self, key: tuple[int, int]) -> int:
+        return runahead_tag(
+            *key, waves_per_step=self.waves_per_step,
+            allow_step0_wave1=self.step0_wave1_early_delivery,
+        )
 
     def _send_after_copy(self, key: tuple[int, int], event: Any, source: Any) -> None:
         self.torch.cuda.set_device(self.device)
@@ -117,7 +131,7 @@ class PinnedHostRunaheadTransport:
             self.buffers[key],
             dst=self.peer,
             group=self.group,
-            tag=runahead_tag(*key, waves_per_step=self.waves_per_step),
+            tag=self._tag(key),
         )
         work.wait()
         # ``source`` deliberately remains captured until the D2H copy and Gloo
@@ -187,7 +201,7 @@ class PinnedHostRunaheadTransport:
 
     def receipt(self) -> Mapping[str, Any]:
         event_count = len(self.sent_keys if self.is_generator else self.received_keys)
-        return {
+        result = {
             "enabled": True,
             "name": "pinned_cpu_gloo_latent_v1",
             "role": "generator" if self.is_generator else "score",
@@ -217,9 +231,16 @@ class PinnedHostRunaheadTransport:
             "d2h_bytes": int(len(self.sent_keys) * self.payload_bytes),
             "h2d_bytes": int(len(self.received_keys) * self.payload_bytes),
             "tags": [
-                runahead_tag(step, wave, waves_per_step=self.waves_per_step)
+                self._tag((step, wave))
                 for step, wave in sorted(self.expected_keys)
             ],
             "sender_threads": 1 if self.is_generator else 0,
             "preposted_receives": not self.is_generator,
         }
+        if self.step0_wave1_early_delivery:
+            result.update(
+                step0_wave1_early_delivery=True,
+                scope="continuous_critic_steps_and_next_wave0_plus_step0_wave1",
+                step0_transport="wave0_cuda_nccl_wave1_pinned_gloo_teacher_cuda_nccl",
+            )
+        return result
