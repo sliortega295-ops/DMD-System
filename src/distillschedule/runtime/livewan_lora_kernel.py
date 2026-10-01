@@ -97,6 +97,7 @@ def install_scale_one_lora_epilogue(
     *,
     fused_cast_add: bool = False,
     autocast_input_elision: bool = False,
+    shared_autocast_input: bool = False,
     fused_min_numel: int = 8_000_000,
 ) -> dict[str, Any]:
     """Install a pinned scale-one LoRA specialization.
@@ -110,11 +111,14 @@ def install_scale_one_lora_epilogue(
 
     if fused_cast_add and autocast_input_elision:
         raise RuntimeError("LiveWan LoRA kernel candidates are mutually exclusive")
+    if shared_autocast_input and not autocast_input_elision:
+        raise RuntimeError("C40 requires the existing BF16 autocast contract")
     requested_name = (
         "scale_one_fused_cast_add_v1"
         if fused_cast_add
         else (
-            "scale_one_autocast_bf16_input_elision_v1"
+            ("scale_one_autocast_shared_bf16_input_v1" if shared_autocast_input
+             else "scale_one_autocast_bf16_input_elision_v1")
             if autocast_input_elision
             else "scale_one_identity_epilogue_v1"
         )
@@ -147,18 +151,39 @@ def install_scale_one_lora_epilogue(
             raise RuntimeError("LiveWan fused LoRA epilogue threshold changed")
         fused_epilogue, fused_receipt = _build_fused_cast_add(torch)
 
+    shared_input = None
+    shared_eligible = None
+    shared_receipt: dict[str, Any] = {}
+    if shared_autocast_input:
+        from distillschedule.runtime.livewan_lora_shared_input import build, eligible
+        shared_input, shared_receipt = build(torch)
+        shared_receipt["production_installed"] = True
+        shared_eligible = eligible
+
     runtime_receipt = {
         "autocast_input_elision": autocast_input_elision,
         "autocast_input_elision_invocation_count": 0,
         "autocast_input_dtype_histogram": {},
         "autocast_contract_failure_count": 0,
     }
+    if shared_autocast_input:
+        runtime_receipt.update(shared_autocast_input=True,
+            shared_input_kernel=shared_receipt, shared_grad_leaf_preserved_count=0)
 
     def scale_one_forward(self: Any, x: Any) -> Any:
-        y = self.base(x)
+        base_input, preconverted_lora_input = x, None
+        if shared_input is not None and self.enabled:
+            if not torch.is_autocast_enabled("cuda") or torch.get_autocast_dtype("cuda") != torch.bfloat16:
+                runtime_receipt["autocast_contract_failure_count"] += 1
+                raise RuntimeError("C40 requires active CUDA BF16 autocast before conversion")
+            if shared_eligible(torch, x):
+                base_input, preconverted_lora_input = shared_input(x)
+            elif torch.is_grad_enabled() and x.requires_grad and x.is_leaf:
+                runtime_receipt["shared_grad_leaf_preserved_count"] += 1
+        y = self.base(base_input)
         if not self.enabled:
             return y
-        lora_input = x
+        lora_input = x if preconverted_lora_input is None else preconverted_lora_input
         if autocast_input_elision:
             try:
                 cuda_autocast_enabled = torch.is_autocast_enabled("cuda")

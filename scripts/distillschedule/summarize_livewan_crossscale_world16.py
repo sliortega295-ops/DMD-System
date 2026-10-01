@@ -573,8 +573,13 @@ def main() -> int:
                 errors.append(f"rank{rank}: Critic LoRA fused-epilogue mode mismatch")
             autocast_elision_expected = (
                 critic_lora_kernel_contract.get("name")
-                == "scale_one_autocast_bf16_input_elision_v1"
+                in {"scale_one_autocast_bf16_input_elision_v1",
+                    "scale_one_autocast_shared_bf16_input_v1"}
             )
+            if critic_lora_kernel_contract.get("name") == "scale_one_autocast_shared_bf16_input_v1":
+                from distillschedule.runtime.livewan_lora_shared_input import runtime_receipt_errors
+                errors.extend(f"rank{rank}: {error}" for error in
+                    runtime_receipt_errors(lora_kernel_receipt, rank=rank))
             if (
                 lora_kernel_receipt.get("autocast_input_elision")
                 is not autocast_elision_expected

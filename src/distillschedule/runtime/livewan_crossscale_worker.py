@@ -3272,6 +3272,9 @@ def _critic_lora_scale_one_enabled(plan: Mapping[str, Any], *, mode: str) -> boo
             fused_min_numel=8_000_000,
             triton_block_size=256,
         )
+    elif name == "scale_one_autocast_shared_bf16_input_v1":
+        from distillschedule.runtime.livewan_lora_shared_input import PLAN_KERNEL_CONTRACT
+        expected = PLAN_KERNEL_CONTRACT
     elif name == "scale_one_autocast_bf16_input_elision_v1":
         expected.update(
             name=name,
@@ -4055,8 +4058,10 @@ def run_worker(
             torch,
             fused_cast_add=(kernel_name == "scale_one_fused_cast_add_v1"),
             autocast_input_elision=(
-                kernel_name == "scale_one_autocast_bf16_input_elision_v1"
+                kernel_name in {"scale_one_autocast_bf16_input_elision_v1",
+                                "scale_one_autocast_shared_bf16_input_v1"}
             ),
+            shared_autocast_input=(kernel_name == "scale_one_autocast_shared_bf16_input_v1"),
             fused_min_numel=8_000_000,
         )
     score_modulation_kernel = {

@@ -1,12 +1,57 @@
-"""C40 standalone canary; never installed by a plan or on import.
+"""C40 opt-in shared cast; no installation or GPU import at module import.
 
 CUDA BF16 autocast already converts FP32 Score inputs twice: frozen base and
-LoRA-A. Share the payload without summing input gradients in BF16. The custom
+LoRA-A on nonleaf inputs. Share the payload without summing their input gradients in BF16. The custom
 cast has two alias outputs; their BF16 gradients are independently cast and
 added in FP32 exactly as in the parent. No parameter or optimizer change.
 """
 from __future__ import annotations
 from typing import Any
+
+VARIANT = "c40-continuous-b16-score-shared-input"
+PLAN_KERNEL_CONTRACT = {
+    "enabled": True,
+    "name": "scale_one_autocast_shared_bf16_input_v1",
+    "scale": 1.0,
+    "base_input_output_dtype": "bfloat16",
+    "lora_parameter_compute_dtype": "float32",
+    "source_forward_sha256": "70d00d496aa2bd8ea06d64e6b04af873644eff52539396f74ec586a4cbbe97a3",
+    "math_change": "share_existing_bf16_input_cast_preserve_fp32_branch_gradient_sum",
+    "autocast_dtype": "bfloat16",
+    "required_lora_output_dtype": "bfloat16",
+    "gradient_accumulation_dtype": "float32",
+    "grad_leaf_input_policy": "unchanged_parent_autocast",
+    "shape_scope": "cuda_contiguous_rank3_b1_b2_width1536",
+}
+
+
+def eligible(torch: Any, x: Any) -> bool:
+    # CUDA autocast can cache a grad leaf conversion, accumulating its branches
+    # in BF16. Never substitute our two-branch FP32 rule for that parent graph.
+    return (x.is_cuda and x.dtype == torch.float32 and x.ndim == 3
+        and x.is_contiguous() and x.shape[0] in (1, 2) and x.shape[-1] == 1536
+        and not (torch.is_grad_enabled() and x.requires_grad and x.is_leaf))
+
+
+def runtime_receipt_errors(receipt: dict[str, Any], *, rank: int) -> list[str]:
+    errors = []
+    if receipt.get("name") != PLAN_KERNEL_CONTRACT["name"]:
+        errors.append("C40 LoRA specialization identity missing")
+    if receipt.get("shared_autocast_input") is not True:
+        errors.append("C40 shared input disabled")
+    shared = receipt.get("shared_input_kernel", {})
+    if shared.get("production_installed") is not True:
+        errors.append("C40 shared kernel not installed")
+    for key in ("contract_failures",):
+        if shared.get(key) != 0:
+            errors.append(f"C40 {key} changed")
+    if shared.get("gradient_accumulation_dtype") != "float32":
+        errors.append("C40 input gradient precision changed")
+    for key in ("forward_calls", "backward_calls"):
+        count = shared.get(key, -1)
+        if not isinstance(count, int) or (count > 0) != (rank >= 8):
+            errors.append(f"C40 {key} actual runtime count mismatch")
+    return errors
 
 
 def build(torch: Any):
@@ -32,7 +77,7 @@ def build(torch: Any):
             "=f,f,f", [a, b], dtype=tl.float32, is_pure=True, pack=1)
         tl.store(OUT + i, result, i < N)
 
-    receipt = dict(name="score_lora_shared_bf16_input_canary_v1",
+    receipt = dict(name="score_lora_shared_bf16_input_v1",
         production_installed=False, forward_calls=0, backward_calls=0,
         contract_failures=0, gradient_accumulation_dtype="float32",
         compute_dtype="existing_cuda_bf16_autocast", weight_storage_dtype="float32")

@@ -1,0 +1,22 @@
+{
+  "include": [
+    "livewan_wan13b_14b_sf_dmd_c38_continuous_b16_score_fa3.json"
+  ],
+  "id": "livewan-wan13b-14b-sfdmd-c40-continuous-b16-score-shared-input",
+  "metadata": {
+    "critic_lora_kernel": {
+      "enabled": true,
+      "name": "scale_one_autocast_shared_bf16_input_v1",
+      "scale": 1.0,
+      "base_input_output_dtype": "bfloat16",
+      "lora_parameter_compute_dtype": "float32",
+      "source_forward_sha256": "70d00d496aa2bd8ea06d64e6b04af873644eff52539396f74ec586a4cbbe97a3",
+      "math_change": "share_existing_bf16_input_cast_preserve_fp32_branch_gradient_sum",
+      "autocast_dtype": "bfloat16",
+      "required_lora_output_dtype": "bfloat16",
+      "gradient_accumulation_dtype": "float32",
+      "grad_leaf_input_policy": "unchanged_parent_autocast",
+      "shape_scope": "cuda_contiguous_rank3_b1_b2_width1536"
+    }
+  }
+}

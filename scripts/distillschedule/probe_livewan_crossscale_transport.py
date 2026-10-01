@@ -76,7 +76,7 @@ def main() -> int:
             "phase-expanded-critic16-fused-lora-elision",
             "score-b2",
             "6g10score", "6g10score-node-local",
-            "6g10score-node-local-fused", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery',
+            "6g10score-node-local-fused", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input',
         ),
         default="b1",
     )
@@ -142,7 +142,7 @@ def main() -> int:
             "c23-continuous-b32",
             "c24-continuous-b16-score-modulation",
             "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap",
-            "c24-continuous-b16-score-modulation-b1-attribution", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery',
+            "c24-continuous-b16-score-modulation-b1-attribution", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input',
         }
         else None
     )
@@ -154,7 +154,7 @@ def main() -> int:
         "c23-continuous-b32",
         "c24-continuous-b16-score-modulation",
         "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap",
-        "c24-continuous-b16-score-modulation-b1-attribution", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery',
+        "c24-continuous-b16-score-modulation-b1-attribution", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input',
     }:
         pair_groups = [
             dist.new_group(ranks=[lane, lane + 8], backend="nccl")
@@ -225,7 +225,7 @@ def main() -> int:
             "c23-continuous-b32",
             "c24-continuous-b16-score-modulation",
             "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap",
-            "c24-continuous-b16-score-modulation-b1-attribution", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery',
+            "c24-continuous-b16-score-modulation-b1-attribution", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input',
         }
         and rank in critic_ranks
     ):
@@ -254,7 +254,7 @@ def main() -> int:
             "c23-continuous-b32",
             "c24-continuous-b16-score-modulation",
             "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap",
-            "c24-continuous-b16-score-modulation-b1-attribution", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery',
+            "c24-continuous-b16-score-modulation-b1-attribution", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input',
         }:
             reducer.backward_accumulate(
                 canary_loss * 0.5,
@@ -501,7 +501,7 @@ def main() -> int:
             "c24-continuous-b16-score-modulation",
             "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap",
             "c24-continuous-b16-score-modulation-b1-attribution",
-            "phase-expanded-critic16", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery',
+            "phase-expanded-critic16", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input',
         }
         else (lane, lane + 8)
     )
@@ -630,7 +630,7 @@ def main() -> int:
                 "c23-continuous-b32",
                 "c24-continuous-b16-score-modulation",
                 "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap",
-                "c24-continuous-b16-score-modulation-b1-attribution", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery',
+                "c24-continuous-b16-score-modulation-b1-attribution", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input',
             }
             else "final_dmd_gradient_float32"
         ),
@@ -663,7 +663,7 @@ def main() -> int:
                 "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap",
                 "c24-continuous-b16-score-modulation-b1-attribution",
                 "phase-expanded-critic16",
-                "phase-expanded-critic16-fused-lora-elision", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery',
+                "phase-expanded-critic16-fused-lora-elision", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input',
             }
             else "cuda_p2p_float32"
         ),
@@ -716,7 +716,7 @@ def main() -> int:
                 "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap",
                 "c24-continuous-b16-score-modulation-b1-attribution",
                 "phase-expanded-critic16",
-                "phase-expanded-critic16-fused-lora-elision", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery',
+                "phase-expanded-critic16-fused-lora-elision", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input',
             }
             else tuple((lane, lane + 8) for lane in range(8))
         )
@@ -750,7 +750,7 @@ def main() -> int:
                             "c23-continuous-b32",
                             "c24-continuous-b16-score-modulation",
                             "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap",
-                            "c24-continuous-b16-score-modulation-b1-attribution", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery',
+                            "c24-continuous-b16-score-modulation-b1-attribution", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input',
                         }
                         or all(
                             row.get("host_runahead_canary", {}).get("status") == "PASS"
@@ -769,7 +769,7 @@ def main() -> int:
                             "c23-continuous-b32",
                             "c24-continuous-b16-score-modulation",
                             "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap",
-                            "c24-continuous-b16-score-modulation-b1-attribution", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery',
+                            "c24-continuous-b16-score-modulation-b1-attribution", 'c38-continuous-b16-score-fa3', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input',
                         }
                         or all(
                             row.get("critic_shadow_sync_canary", {}).get("status")
