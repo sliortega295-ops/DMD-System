@@ -1,4 +1,7 @@
 from types import SimpleNamespace
+import os
+from pathlib import Path
+import subprocess
 
 import pytest
 
@@ -71,3 +74,26 @@ def test_version_mismatch_and_invalid_flag():
         marker.start(SimpleNamespace(__version__="2.9"))
     with pytest.raises(RuntimeError, match="flag"):
         OperationMarkers(run_kind="profile", rank=8, environ={FLAG: "true"})
+
+
+@pytest.mark.parametrize("variant,accepted", [
+    ("c36-continuous-b16-score-layernorm", True),
+    ("c38-continuous-b16-score-fa3", True),
+    ("c39-continuous-b16-step0-delivery", True),
+    ("c37-continuous-b16-step1-overlap", False),
+])
+def test_executable_profile_launcher_header(variant, accepted):
+    # Execute the actual shell preflight guard; never reach a GPU/model command.
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "scripts/distillschedule/launch_livewan_crossscale_world16_node.sh").read_text()
+    prefix = source.split('TRAJECTORY_CYCLES=', 1)[0] + '\n echo PROFILE_HEADER_ACCEPTED\n'
+    env = dict(os.environ, DMD_SYSTEM_ROOT=str(root), LIVEWAN_PYTHON_OVERLAY="/unread",
+        DISTILLSCHEDULE_OUTPUT_DIR="/unread", LIVEWAN_WAN21_SOURCE="/unread",
+        LIVEWAN_SOURCE_RECEIPT="/unread", LIVEWAN_PIPELINE_VARIANT=variant,
+        LIVEWAN_PROFILE_TWO_CYCLES="1", LIVEWAN_TWO_CYCLE_SEED="20260830",
+        LIVEWAN_TWO_CYCLE_ARM_ID="bound-native-arm")
+    result = subprocess.run(["bash", "-c", prefix, "header", "0", "canary", "profile",
+        "pipeline", "a" * 40, "127.0.0.1", "29900"], env=env,
+        text=True, capture_output=True)
+    assert (result.returncode == 0) is accepted, result.stderr
+    assert ("PROFILE_HEADER_ACCEPTED" in result.stdout) is accepted

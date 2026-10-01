@@ -45,7 +45,9 @@ if [[ "${PROFILE_TWO_CYCLES}" == 1 ]]; then
      ( "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue || \
        "${PIPELINE_VARIANT}" == c34-continuous-b16-residual-layout || \
        "${PIPELINE_VARIANT}" == c35-continuous-b16-score-gate || \
-       "${PIPELINE_VARIANT}" == c36-continuous-b16-score-layernorm ) && \
+       "${PIPELINE_VARIANT}" == c36-continuous-b16-score-layernorm || \
+       "${PIPELINE_VARIANT}" == c38-continuous-b16-score-fa3 || \
+       "${PIPELINE_VARIANT}" == c39-continuous-b16-step0-delivery ) && \
      "${LIVEWAN_TWO_CYCLE_SEED:-}" =~ ^[0-9]+$ && -n "${LIVEWAN_TWO_CYCLE_ARM_ID:-}" ]] || exit 2
 fi
 TRAJECTORY_CYCLES="${LIVEWAN_TRAJECTORY_CYCLES:-0}"
