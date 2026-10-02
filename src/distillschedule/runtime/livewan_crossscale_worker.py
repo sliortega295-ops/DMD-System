@@ -3357,6 +3357,12 @@ def _c30_checkpoint_composition_enabled(plan: Mapping[str, Any], *, mode: str) -
     _require(mode == "pipeline" and value in (PLAN_CONTRACT, C31_PLAN_CONTRACT, C32_PLAN_CONTRACT, C33_PLAN_CONTRACT, C34_PLAN_CONTRACT),
              "C30 explicit composition contract changed")
     expected_rms = RMS if value == PLAN_CONTRACT else CAST_SQUARE_PLAN_CONTRACT
+    from distillschedule.runtime.livewan_generator_fused_rms import (
+        CONTRACT as FUSED_RMS, enabled as fused_rms_enabled)
+    if metadata.get("generator_rms_epilogue") == FUSED_RMS:
+        _require(value == C34_PLAN_CONTRACT and fused_rms_enabled(plan, mode=mode),
+                 "C51 requires C49 checkpoint/layout parent unchanged")
+        expected_rms = FUSED_RMS
     _require(metadata.get("critic_attention_checkpoint") == SAC
              and metadata.get("generator_rms_epilogue") == expected_rms
              and metadata.get("generator_rollout_cast_cache") == CAST
@@ -3392,13 +3398,16 @@ def _generator_rollout_cast_cache_enabled(plan: Mapping[str, Any], *, mode: str)
 def _generator_rms_epilogue_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
     from distillschedule.runtime.livewan_generator_rms_epilogue import (
         PLAN_CONTRACT, CAST_SQUARE_PLAN_CONTRACT)
+    from distillschedule.runtime.livewan_generator_fused_rms import CONTRACT as FUSED_RMS, enabled as fused_rms_enabled
 
     value = plan.get("metadata", {}).get("generator_rms_epilogue")
     if value is None:
         return False
-    _require(mode == "pipeline" and dict(value) in (PLAN_CONTRACT, CAST_SQUARE_PLAN_CONTRACT),
+    _require(mode == "pipeline" and dict(value) in (PLAN_CONTRACT, CAST_SQUARE_PLAN_CONTRACT, FUSED_RMS),
              "C29 Generator RMS epilogue contract changed")
-    if value == CAST_SQUARE_PLAN_CONTRACT:
+    if value == FUSED_RMS:
+        _require(fused_rms_enabled(plan, mode=mode), "C51 fused RMS parent changed")
+    if value in (CAST_SQUARE_PLAN_CONTRACT, FUSED_RMS):
         _require(_c30_checkpoint_composition_enabled(plan, mode=mode),
                  "C31 requires explicit C30 plus cast-square composition")
     _require(_generator_rollout_cast_cache_enabled(plan, mode=mode),
@@ -3415,6 +3424,7 @@ def _generator_rms_cast_square_enabled(plan: Mapping[str, Any], *, mode: str) ->
 
 def _generator_modulation_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
     from distillschedule.runtime.livewan_generator_modulation import PLAN_CONTRACT
+    from distillschedule.runtime.livewan_generator_fused_rms import enabled as fused_rms_enabled
 
     value = plan.get("metadata", {}).get("generator_modulation")
     if value is None:
@@ -3422,7 +3432,8 @@ def _generator_modulation_enabled(plan: Mapping[str, Any], *, mode: str) -> bool
     _require(mode == "pipeline" and value == PLAN_CONTRACT,
              "C32 Generator modulation contract changed")
     _require(_c30_checkpoint_composition_enabled(plan, mode=mode)
-             and _generator_rms_cast_square_enabled(plan, mode=mode),
+             and (_generator_rms_cast_square_enabled(plan, mode=mode)
+                  or fused_rms_enabled(plan, mode=mode)),
              "C32 requires explicit unchanged C31 parent")
     return True
 
@@ -4375,10 +4386,14 @@ def run_worker(
         rollout_cast_cache = install_rollout_cast_cache(torch, bundle.student)
     generator_rms_epilogue = None
     if _generator_rms_epilogue_enabled(plan, mode=mode) and rank < 8:
-        from distillschedule.runtime.livewan_generator_rms_epilogue import install as install_generator_rms
-
-        generator_rms_epilogue = install_generator_rms(torch, bundle.student,
-            fuse_cast_square=_generator_rms_cast_square_enabled(plan, mode=mode))
+        from distillschedule.runtime.livewan_generator_fused_rms import enabled as fused_rms_enabled
+        if fused_rms_enabled(plan, mode=mode):
+            from distillschedule.runtime.livewan_generator_fused_rms import install as install_fused_rms
+            generator_rms_epilogue = install_fused_rms(torch, bundle.student)
+        else:
+            from distillschedule.runtime.livewan_generator_rms_epilogue import install as install_generator_rms
+            generator_rms_epilogue = install_generator_rms(torch, bundle.student,
+                fuse_cast_square=_generator_rms_cast_square_enabled(plan, mode=mode))
     generator_modulation = None
     if _generator_modulation_enabled(plan, mode=mode) and rank < 8:
         from distillschedule.runtime.livewan_generator_modulation import install as install_g_modulation

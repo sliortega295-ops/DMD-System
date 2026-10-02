@@ -1,0 +1,28 @@
+{
+  "include": [
+    "livewan_wan13b_14b_sf_dmd_c49_generator_readonly_splitkv.json"
+  ],
+  "id": "livewan_wan13b_14b_sf_dmd_c51_generator_fused_rms",
+  "metadata": {
+    "generator_rms_epilogue": {
+      "enabled": true,
+      "name": "generator_nograd_fused_rms_row_v1",
+      "scope": "single_prepare_rollout_generator_only",
+      "input_dtype": "bfloat16",
+      "affine_dtype": "float32",
+      "output_dtype": "float32",
+      "intermediate_bf16_rounding": true,
+      "grad_path_changed": false,
+      "source_class_sha256": "31bf960deb2ee55c33ed4656a0ca3e9e4e9632cd41fd04a8677e70e86edbff2e",
+      "native_pow_mean_preserved": false,
+      "native_mean_preserved": false,
+      "fp32_square_preserved": true,
+      "fused_cast_square": true,
+      "accumulation_dtype": "float32",
+      "reduction_tree_changed": true,
+      "semantic_math_changed": false,
+      "num_warps": 4,
+      "row_block_size": 2048
+    }
+  }
+}
