@@ -864,7 +864,10 @@ def _run_gan_critic_precomputed(
         x0,
         critic_engine,
     )
-    kwargs["collect_scalar_logs"] = bool(collect_official_scalar_logs)
+    # The unmodified pinned helper has no scalar-policy keyword and already
+    # collects the official logs. Only the opt-in elision hook accepts False.
+    if not collect_official_scalar_logs:
+        kwargs["collect_scalar_logs"] = False
     before = int(critic_engine.global_steps)
     with diagnostics.scope("FSDP_PRE_FORWARD_ALL_GATHER/critic"):
         loss, logs = _critic_loss(fake_score_model=critic_engine.module, **kwargs)

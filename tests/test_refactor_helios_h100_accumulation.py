@@ -18,6 +18,11 @@ from distillschedule.runtime.hardware_profile import (
     MicrobatchCommitEngine,
     hardware_profile,
 )
+from distillschedule.runtime.helios_critic_scalar_logs import (
+    TIMING_OMITTED,
+    install_critic_scalar_log_elision,
+    source_sha256,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -76,7 +81,94 @@ class Engine:
         self.boundaries.append(is_boundary)
 
 
+class ScalarLog:
+    def __init__(self, value):
+        self.value = value
+        self.item_count = 0
+
+    def detach(self):
+        return self
+
+    def item(self):
+        self.item_count += 1
+        return self.value
+
+
+def _critic_loss(
+    *,
+    fake_score_model,
+    critic_engine,
+    scalar_values,
+    pipeline_micro_wave: int = None,
+):
+    """Legacy-signature fixture exercises the real source-pinned rewriter."""
+    denoising_loss, gan_D_loss, r1_loss, r2_loss = scalar_values
+    critic_engine.backward(6.0)
+    critic_engine.step()
+    return 6.0, {
+        "denoising_loss": denoising_loss.detach().item(),
+        "gan_D_loss": gan_D_loss.detach().item(),
+        "r1_loss": r1_loss.detach().item(),
+        "r2_loss": r2_loss.detach().item(),
+        "critic_optimizer_committed": True,
+    }
+
+
 class HeliosH100AccumulationTests(unittest.TestCase):
+    def _run_scalar_api_case(self, *, install_patch, collect):
+        raw = Engine("C", 1000, [])
+        values = [ScalarLog(i) for i in range(4)]
+        module = SimpleNamespace(_critic_loss=_critic_loss)
+        receipt = install_critic_scalar_log_elision(
+            enabled=install_patch,
+            module=module,
+            expected_source_sha256=source_sha256(_critic_loss),
+        )
+        run = load_function("_run_gan_critic_precomputed", {
+            "TIMING_OMITTED": TIMING_OMITTED,
+            "critic_official_kwargs": lambda *args:
+                {"critic_engine": raw, "scalar_values": values},
+        })
+        trace = SimpleNamespace(
+            load_critic_entry=lambda **kwargs: SimpleNamespace(operation_trace=None),
+            source=lambda **kwargs: None,
+        )
+        diagnostics = SimpleNamespace(
+            scope=lambda *args: nullcontext(),
+            add_tensor_tree=lambda *args, **kwargs: None,
+        )
+        with patch.dict(sys.modules, {"helios.utils.utils_helios_post": module}):
+            result = run(
+                rank=0, step=1000, x0=None, device=None, critic_engine=raw,
+                trace=trace, cfg=None, collect_diagnostics=False,
+                collect_official_scalar_logs=collect, diagnostics=diagnostics,
+            )
+        self.assertEqual(raw.backward_values, [6.0])
+        self.assertEqual(raw.global_steps, 1001)
+        self.assertTrue(result["critic_optimizer_committed"])
+        return values, receipt
+
+    def test_gan_legacy_scalar_api_default_collection_needs_no_keyword(self):
+        values, receipt = self._run_scalar_api_case(install_patch=False, collect=True)
+        self.assertEqual([value.item_count for value in values], [1] * 4)
+        self.assertFalse(receipt["enabled"])
+
+    def test_gan_patched_scalar_api_default_still_collects_all_four(self):
+        values, receipt = self._run_scalar_api_case(install_patch=True, collect=True)
+        self.assertEqual([value.item_count for value in values], [1] * 4)
+        self.assertEqual(receipt["collected_scalar_count"], 4)
+        self.assertEqual(receipt["elided_scalar_count"], 0)
+
+    def test_gan_patched_scalar_api_explicit_elision_preserves_commit(self):
+        values, receipt = self._run_scalar_api_case(install_patch=True, collect=False)
+        self.assertEqual([value.item_count for value in values], [0] * 4)
+        self.assertEqual(receipt["collected_scalar_count"], 0)
+        self.assertEqual(receipt["elided_scalar_count"], 4)
+
+    def test_gan_scalar_api_elision_without_registered_hook_fails_closed(self):
+        with self.assertRaisesRegex(TypeError, "collect_scalar_logs"):
+            self._run_scalar_api_case(install_patch=False, collect=False)
+
     def test_mesh8_and_hsdp2x4_require_explicit_profile(self):
         self.assertEqual(mesh_shape_for_policy("world16-fsdp"), (16,))
         self.assertEqual(mesh_shape_for_policy("node-hsdp"), (2, 8))
