@@ -264,6 +264,73 @@ def test_actual_eight_physical_receipts_sixteen_child_rows_are_diagnostic_pass(t
     assert value["full5_seconds_max_rank"] == 2.
 
 
+def systems_gan_fixture(root):
+    """Actual canonical bootstrap uses early Adam state, not Adam step1000."""
+    frozen = fixture(root, "gan")
+    checkpoint_path = root / "assets/checkpoint/manifest.json"
+    checkpoint = json.loads(checkpoint_path.read_text())
+    checkpoint.pop("manifest_hash")
+    checkpoint["systems_only_control"] = {
+        "classification": "systems_only_gan_bootstrap", "official_checkpoint_1000": False,
+        "source_faithful_continuation": False,
+        "logical_schedule_versions": frozen["contract"]["initial_versions"],
+        "logical_control_window": frozen["contract"]["logical_steps"],
+    }
+    physical = {"generator": 2, "critic": 10}
+    for role, step in physical.items():
+        checkpoint["components"][role].update(optimizer_step=step, parameter_version=step)
+    checkpoint = signed(checkpoint, "manifest_hash")
+    write(checkpoint_path, checkpoint)
+    frozen["logical_hash"] = checkpoint["manifest_hash"]
+    launch = json.loads((root / "manifests/launch.json").read_text())
+    launch["frozen"] = frozen
+    write(root / "manifests/launch.json", launch)
+    for rank in range(8):
+        path = root / f"execution/ranks/rank_{rank:02d}.json"
+        row = json.loads(path.read_text())
+        row["identities"]["logical_manifest_hash"] = checkpoint["manifest_hash"]
+        for role in physical:
+            delta = frozen["contract"]["initial_versions"][role] - physical[role]
+            field = role + "_physical_step"
+            row["initial"][field] -= delta; row["final"][field] -= delta
+            records = [row[role]] if role == "generator" else row[role]
+            for record in records:
+                for child in record["microbatches"]:
+                    child[f"physical_{role}_step_after"] -= delta
+            audit = row["final"]["training_state_audit"][role]
+            audit["physical_step"] -= delta
+            for gradient in audit["gradient_steps"]:
+                gradient["physical_step_before"] -= delta
+        write(path, row)
+    seal(root)
+    return frozen
+
+
+def test_systems_only_gan_keeps_actual_adam_and_logical_versions_separate(tmp_path):
+    frozen = systems_gan_fixture(tmp_path)
+    value = result(tmp_path, frozen)
+    assert value["status"] == "PASS", value["errors"]
+    assert value["physical_initial_versions"] == {"generator": 2, "critic": 10, "ema": 800}
+    assert value["physical_final_versions"] == {"generator": 3, "critic": 15, "ema": 801}
+    assert value["logical_final_versions"] == {"generator": 201, "critic": 1005, "ema": 801}
+    assert value["initialization_class"] == "systems_only_gan_bootstrap"
+    assert not value["strict_claimable"]
+
+
+@pytest.mark.parametrize("change,message", [
+    (lambda row: row["final"].update(generator_logical_version=3), "logical versions"),
+    (lambda row: row["critic"][0]["microbatches"][1].update(physical_critic_step_after=12), "physical version"),
+    (lambda row: row["final"]["training_state_audit"]["generator"].update(physical_step=201), "physical version"),
+    (lambda row: row["initial"].update(generator_physical_step=200), "actual generator version"),
+])
+def test_systems_only_gan_still_rejects_commit_and_version_drift(tmp_path, change, message):
+    frozen = systems_gan_fixture(tmp_path)
+    mutate(tmp_path, 0, change)
+    value = result(tmp_path, frozen)
+    assert value["status"] == "FAIL"
+    assert any(message in error for error in value["errors"]), value["errors"]
+
+
 @pytest.mark.parametrize("change, message", [
     (lambda r: r["generator"]["microbatches"].pop(), "generator children"),
     (lambda r: r["generator"]["microbatches"][0].update(optimizer_committed=True), "commit"),

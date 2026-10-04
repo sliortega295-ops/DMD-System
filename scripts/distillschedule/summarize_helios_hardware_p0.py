@@ -443,6 +443,31 @@ def summarize(run_root: Path, *, expected_head: str, frozen_policy: dict[str, An
         traces, checkpoint = {}, {}
     all_slots = []
     initial, final = contract["initial_versions"], contract["final_versions"]
+    # Canonical GAN systems-only bootstrap restores earlier Adam counters,
+    # while its immutable metadata maps the official logical window to 1000.
+    # Audit both namespaces independently; never relabel or mutate Adam state.
+    physical_initial = {
+        role: checkpoint.get("components", {}).get(role, {}).get("optimizer_step")
+        for role in ("generator", "critic")
+    }
+    physical_initial["ema"] = checkpoint.get("ema", {}).get("optimization_step")
+    if any(type(value) is not int or value < 0 for value in physical_initial.values()):
+        errors.append("immutable checkpoint physical optimizer/EMA counters invalid")
+    physical_offset = any(physical_initial[role] != initial[role] for role in ("generator", "critic"))
+    if physical_offset:
+        control = checkpoint.get("systems_only_control", {})
+        if (variant != "gan" or control.get("classification") != "systems_only_gan_bootstrap"
+                or control.get("logical_schedule_versions") != initial
+                or control.get("logical_control_window") != contract["logical_steps"]
+                or control.get("official_checkpoint_1000") is not False
+                or control.get("source_faithful_continuation") is not False):
+            errors.append("physical/logical offset lacks immutable systems-only GAN control binding")
+    if physical_initial["ema"] != initial["ema"]:
+        errors.append("immutable checkpoint actual EMA start changed")
+    physical_final = {
+        role: start + final[role] - initial[role] if type(start) is int else None
+        for role, start in physical_initial.items()
+    }
     binding_hash = digest({"schema": "distillschedule.static_world16_trace.v1", "variant": variant,
                            "bundle_hash": frozen["trace_hash"], "logical_steps": contract["logical_steps"], "rank_slots": list(range(16))})
     reference_required = bool(policy["generator_nograd_cross_kv_cache"] or policy["generator_nograd_static_context_cache"])
@@ -486,7 +511,7 @@ def summarize(run_root: Path, *, expected_head: str, frozen_policy: dict[str, An
             errors.append("launcher mode must be validate, correctness or timing")
         for field, role in (("generator_physical_step", "generator"), ("critic_physical_step", "critic"), ("ema_step", "ema")):
             expected_initial = checkpoint.get("components", {}).get(role, {}).get("optimizer_step") if role != "ema" else checkpoint.get("ema", {}).get("optimization_step")
-            if expected_initial != initial[role] or row.get("initial", {}).get(field) != expected_initial or row.get("final", {}).get(field) != final[role]:
+            if row.get("initial", {}).get(field) != expected_initial or row.get("final", {}).get(field) != physical_final[role]:
                 errors.append(f"{label}: initial/final actual {role} version changed")
         if row.get("final", {}).get("generator_logical_version") != final["generator"] or row.get("final", {}).get("critic_logical_version") != final["critic"]:
             errors.append(f"{label}: final logical versions changed")
@@ -514,7 +539,9 @@ def summarize(run_root: Path, *, expected_head: str, frozen_policy: dict[str, An
                         errors.append(f"{label}: {role} child slot/source/step changed")
                     if child.get("optimizer_committed") is not bool(index):
                         errors.append(f"{label}: {role} child commit before outer boundary")
-                    if child.get(f"physical_{role}_step_after") != initial[role] + (offset if role == "critic" else 0) + index:
+                    expected_child_step = (physical_initial[role] + (offset if role == "critic" else 0) + index
+                                           if type(physical_initial[role]) is int else None)
+                    if child.get(f"physical_{role}_step_after") != expected_child_step:
                         errors.append(f"{label}: {role} child actual physical version drift")
                     if child.get(score_key) != score_count:
                         errors.append(f"{label}: {role} actual Score call inventory changed")
@@ -584,7 +611,7 @@ def summarize(run_root: Path, *, expected_head: str, frozen_policy: dict[str, An
                 errors.append(f"{label}/{role}: FSDP actual topology/dtype/reshard/offload contract changed")
             if mode == "correctness":
                 audit = row.get("final", {}).get("training_state_audit", {}).get(role, {})
-                if audit.get("physical_step") != final[role]:
+                if audit.get("physical_step") != physical_final[role]:
                     errors.append(f"{label}/{role}: final training state physical version changed")
                 for group in ("parameters", "optimizer"):
                     _finite_group(audit.get(group, {}), f"{label}/{role}/{group}", errors)
@@ -592,7 +619,9 @@ def summarize(run_root: Path, *, expected_head: str, frozen_policy: dict[str, An
                 if len(gradients) != (1 if role == "generator" else 5):
                     errors.append(f"{label}/{role}: actual gradient/optimizer commit census changed")
                 for index, gradient in enumerate(gradients):
-                    if gradient.get("physical_step_before") != initial[role] + index:
+                    expected_gradient_step = (physical_initial[role] + index
+                                              if type(physical_initial[role]) is int else None)
+                    if gradient.get("physical_step_before") != expected_gradient_step:
                         errors.append(f"{label}/{role}: gradient audit version drift")
                     _finite_group(gradient.get("gradient", {}), f"{label}/{role}/gradient{index}", errors)
         _audit_persistence(row, slots=slots, policy=policy, label=label, errors=errors)
@@ -607,6 +636,9 @@ def summarize(run_root: Path, *, expected_head: str, frozen_policy: dict[str, An
             "run_id": manifest.get("run_id"), "run_root": str(run_root.resolve()), "variant": variant, "mode": mode,
             "arm": frozen["arm"], "expected_head": expected_head, "hardware_profile": HARDWARE,
             "physical_rank_count": len(rows), "logical_global_batch": 16, "logical_slots": sorted(all_slots),
+            "physical_initial_versions": physical_initial, "physical_final_versions": physical_final,
+            "logical_initial_versions": initial, "logical_final_versions": final,
+            "initialization_class": "systems_only_gan_bootstrap" if physical_offset else "logical_and_physical_versions_aligned",
             "policy": policy, "policy_fingerprint": frozen["policy_fingerprint"], "asset_fingerprint": manifest.get("asset_fingerprint"),
             "numeric_comparison": "NOT_RUN", "required_numeric_receipts": "NOT_RUN_FULL_CROSS_ARM_LOSS_GRADIENT_MODEL_OPTIMIZER_EMA_COMPARISON",
             "loss_numeric_evidence": "NOT_RECORDED" if any(r["status"] != "RECORDED_FINITE" for r in loss_evidence) else "RECORDED_FINITE" if loss_evidence else "NOT_RUN",
