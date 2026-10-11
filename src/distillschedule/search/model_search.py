@@ -16,7 +16,18 @@ from .simulator import simulate
 
 def search_plans(problem: PlanningProblem, costs: CostModel, *, seed: int = 0,
                  max_proposals: int = 10000, timeout_seconds: float = 600,
-                 exhaustive: bool = False) -> dict[str, Any]:
+                 exhaustive: bool = False, algorithm: str = "metropolis",
+                 beam_width: int = 0, structural_decisions=None,
+                 prune: bool = True) -> dict[str, Any]:
+    require(algorithm in {"metropolis", "hierarchical"}, "unknown search algorithm")
+    if algorithm == "hierarchical":
+        require(not exhaustive, "hierarchical search and exhaustive oracle are separate modes")
+        from .hierarchical import search_hierarchical
+        return search_hierarchical(problem, costs, max_proposals=max_proposals,
+            timeout_seconds=timeout_seconds, beam_width=beam_width,
+            structural_decisions=structural_decisions, prune=prune)
+    require(beam_width == 0 and structural_decisions is None and prune,
+            "frontier/pruning flags require hierarchical search")
     require(type(max_proposals) is int and 1 <= max_proposals <= 100000, "proposal budget must be 1..100000")
     require(math.isfinite(timeout_seconds) and 0 < timeout_seconds <= 600, "search deadline must be <=600 seconds")
     costs.bind(problem.binding, problem_scope=problem.evidence_scope)
