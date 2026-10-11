@@ -1,0 +1,19 @@
+name: native-adapter-source-snapshot
+on:
+  push:
+    branches: [agent/parameterized-native-wan-20261011]
+    paths: [.github/workflows/native-adapter-source-snapshot.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Export exact tracked source
+        run: git archive --format=tar.gz HEAD > /tmp/native-adapter-source.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-adapter-source-${{ github.sha }}
+          path: /tmp/native-adapter-source.tar.gz
+          retention-days: 3
