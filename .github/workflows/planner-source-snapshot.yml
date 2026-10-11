@@ -1,0 +1,23 @@
+name: planner-source-snapshot
+on:
+  push:
+    branches: [agent/parameterized-hierarchical-planner-20261011]
+    paths: [.github/workflows/planner-source-snapshot.yml]
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          submodules: false
+      - name: Export tracked source only, without Git metadata or credentials
+        run: git archive --format=tar.gz --output="$RUNNER_TEMP/planner-source.tar.gz" HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: planner-source-${{ github.sha }}
+          path: ${{ runner.temp }}/planner-source.tar.gz
+          retention-days: 3
