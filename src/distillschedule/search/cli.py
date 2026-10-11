@@ -24,7 +24,7 @@ def main(argv: list[str]) -> int:
     p.add_argument("--input", type=Path, required=True, help="profile_input.v1 ownership/NVTX manifest")
     p.add_argument("--output", type=Path, required=True)
     p = subs.add_parser("search", help="Registered or calibrated model-based search, no workload math changes")
-    p.add_argument("--workload", required=True)
+    p.add_argument("--workload", help="Required for registered and model-based workload search")
     p.add_argument("--profile", type=Path)
     p.add_argument("--assets-config", type=Path)
     p.add_argument("--output", type=Path)
@@ -34,7 +34,7 @@ def main(argv: list[str]) -> int:
     p.add_argument("--resume", action="store_true")
     p.add_argument("--historical-profile-prior", action="store_true",
                    help="Explicitly allow a same-workload historical contract/source/assets/cycle as ranking hints only; measurements still match exactly")
-    p.add_argument("--strategy", choices=("registered", "model-based"), default="registered")
+    p.add_argument("--strategy", choices=("registered", "model-based", "cycle-frontier"), default="registered")
     p.add_argument("--problem", type=Path, help="Adapter-produced, versioned planning problem")
     p.add_argument("--planning-layout", type=Path, help="Measured native layout; adapter constructs the problem")
     p.add_argument("--emit-native-plan", type=Path, help="Lower calibrated model result; does not launch GPUs")
@@ -46,12 +46,39 @@ def main(argv: list[str]) -> int:
     p.add_argument("--max-proposals", type=int, default=10000)
     p.add_argument("--search-timeout", type=float, default=600)
     p.add_argument("--exhaustive", action="store_true", help="Bounded CPU oracle, not GPU brute force")
+    p.add_argument("--search-algorithm", choices=("metropolis", "hierarchical"), default="metropolis",
+                   help="Opt-in hierarchical decision search; native contracts remain unchanged")
+    p.add_argument("--beam-width", type=int, default=0,
+                   help="Hierarchical frontier cap; 0 disables heuristic beam truncation")
+    p.add_argument("--structural-decisions", nargs="+",
+                   help="Explicit outer decision names; all remaining choices stay jointly searchable")
+    p.add_argument("--no-search-pruning", action="store_true",
+                   help="Disable equivalent-domain and time-bound pruning for CPU ablations")
     args = parser.parse_args(argv)
     try:
         if args.action == "profile":
             result = parse_profile(_object(args.input))
             write_new_json(args.output, result)
+        elif args.strategy == "cycle-frontier":
+            require(args.problem is not None, "cycle-frontier requires a CPU cycle --problem")
+            require(args.workload is None and args.cost_model is None and args.planning_layout is None
+                    and args.profile is None and args.assets_config is None and not args.execute_native
+                    and args.emit_native_plan is None and args.validation_dir is None and not args.resume
+                    and not args.historical_profile_prior and not args.exhaustive
+                    and args.structural_decisions is None and args.search_algorithm == "metropolis",
+                    "cycle-frontier is CPU-only and cannot accept native/model search flags")
+            from .cycle_cli import plan_cycle
+            result = plan_cycle(_object(args.problem), max_states=args.max_proposals,
+                                beam_width=args.beam_width, timeout_seconds=args.search_timeout,
+                                prune=not args.no_search_pruning)
+            if args.output:
+                write_new_json(args.output, result)
         elif args.strategy == "model-based":
+            require(args.search_algorithm == "hierarchical" or
+                    (args.beam_width == 0 and args.structural_decisions is None and not args.no_search_pruning),
+                    "frontier/pruning flags require hierarchical search")
+            require(not (args.exhaustive and args.search_algorithm == "hierarchical"),
+                    "hierarchical search and exhaustive oracle are separate modes")
             from .model_cli import model_based_search
             result = model_based_search(args)
             if args.output:
@@ -60,6 +87,9 @@ def main(argv: list[str]) -> int:
                 else:
                     write_new_json(args.output, result)
         elif args.dry_run:
+            require(args.search_algorithm == "metropolis" and args.beam_width == 0
+                    and args.structural_decisions is None and not args.no_search_pruning,
+                    "algorithm flags require model-based strategy")
             require(not args.execute_native and args.validation_dir is None,
                     "generated-plan execution flags require model-based strategy")
             require(1 <= args.max_trials <= 8, "v1 budget is 1..8")
@@ -77,6 +107,9 @@ def main(argv: list[str]) -> int:
             if args.output:
                 write_new_json(args.output, result)
         else:
+            require(args.search_algorithm == "metropolis" and args.beam_width == 0
+                    and args.structural_decisions is None and not args.no_search_pruning,
+                    "algorithm flags require model-based strategy")
             require(not args.execute_native and args.validation_dir is None,
                     "generated-plan execution flags require model-based strategy")
             require(args.workload in PILOTS, "CPU-only registration; GPU search NOT_RUN for this workload")
@@ -98,6 +131,6 @@ def main(argv: list[str]) -> int:
             result = session.run(runner)
         print(json.dumps(result, indent=2, sort_keys=True, allow_nan=False))
         return 0
-    except (ValueError, KeyError, OSError, RuntimeError, sqlite3.Error) as error:
+    except (ValueError, TypeError, KeyError, OSError, RuntimeError, sqlite3.Error) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 2

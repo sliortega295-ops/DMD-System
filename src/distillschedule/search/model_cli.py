@@ -36,6 +36,8 @@ def model_based_search(args):
         require(args.dry_run, "model-based search requires an adapter-produced --problem")
         return {"status": "PASS_CPU_CAPABILITY_INVENTORY", "workload": args.workload,
                 "source_head": git_head(root), "canonical_profile_sha256": fingerprint(profile),
+                "search_algorithm": getattr(args, "search_algorithm", "metropolis"),
+                "parameterized_native_workload": "REQUIRES_SEPARATE_ADAPTER_VALIDATION",
                 "semantics": profile["semantics"], "implementation_library": implementation_inventory(root),
                 "gpu_execution": "NOT_RUN", "claimable_speedup": False,
                 "native_lowering": "GENERATED_COMPOSITION_AFTER_CALIBRATION" if supported else "NOT_IMPLEMENTED_FOR_GENERATED_PLANS",
@@ -59,7 +61,11 @@ def model_based_search(args):
     costs = CostModel.from_dict(_object(args.cost_model))
     costs.verify_receipts()
     result = search_plans(problem, costs, seed=args.search_seed, max_proposals=args.max_proposals,
-                          timeout_seconds=args.search_timeout, exhaustive=args.exhaustive)
+                          timeout_seconds=args.search_timeout, exhaustive=args.exhaustive,
+                          algorithm=getattr(args, "search_algorithm", "metropolis"),
+                          beam_width=getattr(args, "beam_width", 0),
+                          structural_decisions=getattr(args, "structural_decisions", None),
+                          prune=not getattr(args, "no_search_pruning", False))
     result["native_lowering"] = ("COMPOSITION_AVAILABLE_AFTER_NATIVE_INPUT_VALIDATION"
         if adapter and problem.lowering.get("adapter") in getattr(adapter,"ADAPTERS",(adapter.ADAPTER,)) else "NOT_IMPLEMENTED_FOR_GENERATED_PLANS")
     result["native_trial_budget"] = {"total": budget, "baseline": 1, "incumbent": 1,
