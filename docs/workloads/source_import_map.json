@@ -373,9 +373,16 @@
           "new_integrated_sha256": "006a5a6a99277e2dc348eb44c65e00c3c3a3b4fb9e4d9bb170d12ef1f93133ca",
           "previous_integrated_sha256": "2699577d50df586579ad652c7b30f107424808273ccfe11445d43adac05938b3",
           "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        },
+        {
+          "base_integration_head": "e2f6adba0e77ae4a7e68cae86a6e3869f7ac85ca",
+          "new_integrated_sha256": "73c174a4ff7865226b03492e9da07b23d2cf4b7fbd360ed4684d772148db4aa9",
+          "previous_integrated_sha256": "006a5a6a99277e2dc348eb44c65e00c3c3a3b4fb9e4d9bb170d12ef1f93133ca",
+          "reason": "Use the original sampler with task-bound geometry and stage budgets; preserve exact legacy defaults.",
+          "source_commit": "49fac3397141d239504790a0c5faebfe2738c06c"
         }
       ],
-      "integrated_sha256": "006a5a6a99277e2dc348eb44c65e00c3c3a3b4fb9e4d9bb170d12ef1f93133ca",
+      "integrated_sha256": "73c174a4ff7865226b03492e9da07b23d2cf4b7fbd360ed4684d772148db4aa9",
       "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
       "source_path": "runtime/gst_pool_helios.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -388,9 +395,16 @@
           "new_integrated_sha256": "f44579ab6959eff7a835f3771cb1f3f4f08f9ffd1b5d8da2ebb4549208b4d3a8",
           "previous_integrated_sha256": "2e9338ca864c519d87dab5bcabf2ccac51a359a180923d5af4a2ff4e08875614",
           "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        },
+        {
+          "base_integration_head": "e2f6adba0e77ae4a7e68cae86a6e3869f7ac85ca",
+          "new_integrated_sha256": "4c5e820841b129fe01d2766bc949aa06d46c7f7b4c59cb9b60e9900218969e6c",
+          "previous_integrated_sha256": "f44579ab6959eff7a835f3771cb1f3f4f08f9ffd1b5d8da2ebb4549208b4d3a8",
+          "reason": "Use the original sampler with task-bound geometry and stage budgets; preserve exact legacy defaults.",
+          "source_commit": "49fac3397141d239504790a0c5faebfe2738c06c"
         }
       ],
-      "integrated_sha256": "f44579ab6959eff7a835f3771cb1f3f4f08f9ffd1b5d8da2ebb4549208b4d3a8",
+      "integrated_sha256": "4c5e820841b129fe01d2766bc949aa06d46c7f7b4c59cb9b60e9900218969e6c",
       "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
       "source_path": "runtime/static_fsdp2_p0_helios.py",
       "source_repository": "sliortega295-ops/DMD-System",
