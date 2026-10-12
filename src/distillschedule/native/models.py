@@ -103,8 +103,14 @@ def load_models(task: NativeTask) -> tuple[nn.ModuleDict, dict[str, Any]]:
                     # Hash real input files, not only user-provided identity strings.
                     from distillschedule.workloads.best_known.registry import file_sha256
                     sources[role] = {p.name: file_sha256(p) for p in [root / "config.json", *payloads]}
-                    model = WanTransformer3DModel.from_pretrained(str(root), local_files_only=True,
-                                                                use_safetensors=True, low_cpu_mem_usage=False)
+                    # Wan's native FP32-preservation contract requires the low-memory loader.
+                    # Keep source precision until the one-shot native precision mapping below.
+                    model, info = WanTransformer3DModel.from_pretrained(
+                        str(root), local_files_only=True, use_safetensors=True,
+                        low_cpu_mem_usage=True, torch_dtype=torch.float32, output_loading_info=True)
+                    ensure(all(not info.get(key) for key in
+                               ("missing_keys", "unexpected_keys", "mismatched_keys", "error_msgs")),
+                           f"incomplete native checkpoint for {role}: {info}")
                 cfg = model.config
                 ensure(cfg.in_channels == task.channels and cfg.out_channels == task.channels,
                        "Wan latent channels mismatch; I2V/concatenated-history input is not admitted")
@@ -129,8 +135,13 @@ class ModelAdapter:
         self.dtype = getattr(torch, task.dtype)
         if self.device.type == "cuda":
             ensure(torch.cuda.is_available(), "CUDA explicitly requested but unavailable")
+        keep_fp32 = set()
+        for model in self.models.values():
+            patterns = tuple(getattr(model, "_keep_in_fp32_modules", ()) or ())
+            keep_fp32.update(id(p) for name, p in model.named_parameters()
+                             if any(pattern in name.split(".") for pattern in patterns))
         if self.device.type == "cuda":
-            frozen = sum(p.numel() * (4 if self.dtype == torch.float32 else 2)
+            frozen = sum(p.numel() * (4 if self.dtype == torch.float32 or id(p) in keep_fp32 else 2)
                          for p in self.models.parameters() if not p.requires_grad)
             trainable = sum(p.numel() * 4 for p in self.models.parameters() if p.requires_grad)
             free, _ = torch.cuda.mem_get_info(self.device)
@@ -138,7 +149,7 @@ class ModelAdapter:
                    "native resident parameter/optimizer lower bound exceeds current GPU capacity")
         # Move base weights at declared precision; LoRA master and compute remain FP32.
         def move(value):
-            dtype = torch.float32 if value.requires_grad else self.dtype
+            dtype = torch.float32 if value.requires_grad or id(value) in keep_fp32 else self.dtype
             return value.to(device=self.device, dtype=dtype) if value.is_floating_point() else value.to(self.device)
         # Module.to(dtype=BF16) followed by float() would already round LoRA masters.
         # Apply the mixed-precision rule once, before optimizers or graphs exist.

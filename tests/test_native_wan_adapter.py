@@ -88,3 +88,28 @@ def test_native_geometry_failure_not_silent_resize():
 def test_wan_channel_mismatch_rejected():
     with pytest.raises(ValueError,match='channels mismatch'):
         NativeEngine(task(channels=8,fake_updates=1))
+
+
+def test_partial_native_checkpoint_cannot_initialize_missing_weights(tmp_path):
+    from safetensors.torch import load_file
+    model=WanTransformer3DModel(**CONFIG)
+    model.save_pretrained(tmp_path/'model',safe_serialization=True)
+    path=next((tmp_path/'model').glob('*.safetensors'))
+    state=load_file(str(path));state.pop('proj_out.weight')
+    save_file(state,str(path),metadata={"format":"pt"})
+    save_file({'prompt_embeds':torch.randn(8,4,16)},tmp_path/'conditions.safetensors')
+    t=replace(task(fake_updates=1),fixture=False,model_config=None,
+              checkpoints={r:str(tmp_path/'model') for r in ('generator','critic','teacher')},
+              conditions_path=str(tmp_path/'conditions.safetensors'))
+    with pytest.raises(ValueError,match='incomplete native checkpoint'):
+        NativeEngine(t)
+
+
+def test_wan_bf16_preserves_native_fp32_parameters():
+    e=NativeEngine(task(dtype='bfloat16',fake_updates=1,denoising_steps=2))
+    for model in e.adapter.models.values():
+        keep=model._keep_in_fp32_modules
+        for name,p in model.named_parameters():
+            expected=torch.float32 if p.requires_grad or any(k in name.split('.') for k in keep) else torch.bfloat16
+            assert p.dtype==expected, name
+    assert e.run_cycle()['versions']=={'generator':1,'critic':1,'ema':0}
