@@ -572,6 +572,7 @@ def main() -> int:
                 clean_runtime=clean_runtime,
                 runtime_cache=runtime_cache,
                 entry_outputs=critic_entries,
+                merged_shadow_parity_check=shadow_enabled,
             )
             critic_records: list[dict[str, Any]] = []
             critic_grad_norms: list[float | None] = []
@@ -771,7 +772,8 @@ def main() -> int:
             grad_epilogue_receipt=validate_grad_epilogue_receipts(build, requested=grad_fused),
             modulated_norm_fusion_receipt=validate_norm(build, enabled=norm_fused),
             generator_rollout_merged_shadow_receipt=validate_shadow(
-                build, enabled=shadow_enabled, cycles=args.trajectory_cycles
+                build, enabled=shadow_enabled, cycles=args.trajectory_cycles,
+                diagnostic_reference=shadow_enabled,
             ),
             updates={
                 "generator": args.trajectory_cycles,

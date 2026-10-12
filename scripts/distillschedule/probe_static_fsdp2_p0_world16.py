@@ -397,6 +397,7 @@ def _precompute_critic_rollouts(
     clean_runtime: bool = False,
     runtime_cache: dict[str, Any] | None = None,
     entry_outputs: dict[int, Any] | None = None,
+    merged_shadow_parity_check: bool = False,
 ) -> tuple[dict[int, torch.Tensor], list[dict[str, Any]]]:
     outputs: dict[int, torch.Tensor] = {}
     records: list[dict[str, Any]] = []
@@ -437,6 +438,29 @@ def _precompute_critic_rollouts(
             finally:
                 if shadow is not None:
                     shadow.end_rollout()
+        if merged_shadow_parity_check:
+            if shadow is None or len(entries) != 1:
+                raise AssertionError("merged reference diagnostic requires opted-in shadow B1")
+            # Correctness only; deliberately absent from both native timers.
+            # Count these physical DiT calls separately, never hide/reset them.
+            from distillschedule.runtime.p0_parity import require_tensor_parity
+
+            reference_outputs, reference_record = run_generator_trace_rollout_batch(
+                model=generator_engine.module, loaded_entries=entries,
+                device=device, collect_diagnostics=False,
+                clean_runtime=clean_runtime, runtime_cache=runtime_cache,
+            )
+            for key in ("call_count", "logical_call_count", "stage_call_count", "logical_stage_call_count", "dummy_call_count"):
+                if reference_record[key] != record[key]:
+                    raise AssertionError(f"merged/source B1 physical inventory changed: {key}")
+            shadow.receipt["diagnostic_reference_model_call_count"] += reference_record["call_count"]
+            shadow.receipt["diagnostic_reference_entry_count"] += 1
+            parity = require_tensor_parity(reference_outputs[0], generated[0], label="post-G merged B1 rollout")
+            shadow.receipt["diagnostic_reference_parity"].append({
+                "identity": {"version": int(generator_engine.global_steps), "logical_steps": list(step_group)},
+                **parity,
+            })
+            del reference_outputs, reference_record
         parity_rows: list[dict[str, Any]] = []
         if rollout_parity_check and len(entries) > 1:
             for entry, candidate in zip(entries, generated, strict=True):

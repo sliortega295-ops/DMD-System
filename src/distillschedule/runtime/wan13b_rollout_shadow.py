@@ -101,6 +101,9 @@ class MergedRolloutShadow:
             "refresh_versions": [],
             "rollout_entry_count": 0,
             "model_call_count": 0,
+            "diagnostic_reference_model_call_count": 0,
+            "diagnostic_reference_entry_count": 0,
+            "diagnostic_reference_parity": [],
             "entries": [],
             "active": False,
         }
@@ -176,7 +179,8 @@ def install(source: Any, *, role: str, placement: str) -> dict[str, Any]:
     return controller.receipt
 
 
-def validate(build: dict[str, Any], *, enabled: bool, cycles: int) -> dict[str, Any]:
+def validate(build: dict[str, Any], *, enabled: bool, cycles: int,
+             diagnostic_reference: bool = False) -> dict[str, Any]:
     generator = build.get("generator", {}).get("metadata", {}).get("generator_rollout_merged_shadow", {})
     critic = build.get("critic", {}).get("metadata", {}).get("generator_rollout_merged_shadow", {})
     if enabled:
@@ -194,6 +198,17 @@ def validate(build: dict[str, Any], *, enabled: bool, cycles: int) -> dict[str, 
                   for cycle in range(cycles) for step in range(10, 15)]
         if entries != wanted:
             raise AssertionError("merged shadow sample/step routing changed")
+        reference_calls = 27 * cycles if diagnostic_reference else 0
+        reference_entries = 5 * cycles if diagnostic_reference else 0
+        for key, expected in (("diagnostic_reference_model_call_count", reference_calls),
+                              ("diagnostic_reference_entry_count", reference_entries)):
+            if generator.get(key, 0) != expected:
+                raise AssertionError(f"merged shadow diagnostic census changed {key}")
+        parity_rows = generator.get("diagnostic_reference_parity", [])
+        if len(parity_rows) != reference_entries or any(row.get("status") != "PASS" for row in parity_rows):
+            raise AssertionError("post-commit merged shadow reference parity failed/missing")
+        if diagnostic_reference and [row.get("identity") for row in parity_rows] != wanted:
+            raise AssertionError("post-commit parity is not bound to G3/G4 and each B1 step")
         if critic.get("enabled") or critic.get("disabled_reason") != "GENERATOR_ONLY":
             raise AssertionError("Critic must not use merged execution weights")
     elif generator.get("enabled") or critic.get("enabled"):
@@ -201,9 +216,12 @@ def validate(build: dict[str, Any], *, enabled: bool, cycles: int) -> dict[str, 
     return {"enabled": enabled, "generator": generator, "critic": critic}
 
 
-def expected_epilogue_counts(*, cycles: int, shadow_enabled: bool) -> dict[str, int]:
+def expected_epilogue_counts(*, cycles: int, shadow_enabled: bool,
+                             diagnostic_reference: bool = False) -> dict[str, int]:
     # Original generator no-grad census is 28 calls/cycle; exactly 27 are the
     # five post-commit rollouts. Only the remaining call keeps PEFT epilogues.
     calls = (1 if shadow_enabled else 28) * cycles
+    if shadow_enabled and diagnostic_reference:
+        calls += 27 * cycles
     return {"model_call_count": calls, "fused_invocation_count": 305 * calls,
             "reference_fallback_count": 4 * calls}

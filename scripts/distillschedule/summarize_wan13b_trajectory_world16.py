@@ -261,14 +261,16 @@ def _validate_runtime_build(
         from distillschedule.runtime.wan13b_rollout_shadow import expected_epilogue_counts
 
         shadow_enabled = bool(final.get("generator_rollout_merged_shadow_receipt", {}).get("enabled", False))
-        expected_counts = expected_epilogue_counts(cycles=cycles, shadow_enabled=shadow_enabled)
+        expected_counts = expected_epilogue_counts(
+            cycles=cycles, shadow_enabled=shadow_enabled, diagnostic_reference=shadow_enabled
+        )
         if generator.get("requested") is not True or generator.get("enabled") is not True:
             errors.append(f"rank{rank}: fused epilogue is not enabled")
         for key, expected in expected_counts.items():
             if int(generator.get(key, -1)) != expected:
                 errors.append(f"rank{rank}: fused epilogue {key} changed")
         if generator.get("reference_fallback_reasons") != {
-            "BASE_DTYPE_torch.float32": (4 if shadow_enabled else 112) * cycles
+            "BASE_DTYPE_torch.float32": expected_counts["reference_fallback_count"]
         }:
             errors.append(f"rank{rank}: fused epilogue fallback reason changed")
         if critic.get("enabled") is not False or critic.get("disabled_reason") != "GENERATOR_ONLY":
@@ -297,6 +299,7 @@ def _validate_runtime_build(
             build,
             enabled=bool(final.get("generator_rollout_merged_shadow_receipt", {}).get("enabled", False)),
             cycles=cycles,
+            diagnostic_reference=bool(final.get("generator_rollout_merged_shadow_receipt", {}).get("enabled", False)),
         )
     except AssertionError as error:
         errors.append(f"rank{rank}: {error}")

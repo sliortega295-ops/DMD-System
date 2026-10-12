@@ -143,6 +143,9 @@ def test_shadow_and_epilogue_census_are_joint_not_weakened():
     assert expected_epilogue_counts(cycles=2, shadow_enabled=True) == {
         "model_call_count": 2, "fused_invocation_count": 610, "reference_fallback_count": 8,
     }
+    assert expected_epilogue_counts(cycles=2, shadow_enabled=True, diagnostic_reference=True) == {
+        "model_call_count": 56, "fused_invocation_count": 17080, "reference_fallback_count": 224,
+    }
     generator = {
         "requested": True, "enabled": True, "refresh_count": 2,
         "rollout_entry_count": 10, "model_call_count": 54,
@@ -156,6 +159,20 @@ def test_shadow_and_epilogue_census_are_joint_not_weakened():
         "critic": {"metadata": {"generator_rollout_merged_shadow": {"enabled": False, "disabled_reason": "GENERATOR_ONLY"}}},
     }
     assert validate(build, enabled=True, cycles=2)["enabled"]
+    with pytest.raises(AssertionError, match="diagnostic census"):
+        validate(build, enabled=True, cycles=2, diagnostic_reference=True)
+    generator["diagnostic_reference_model_call_count"] = 54
+    generator["diagnostic_reference_entry_count"] = 10
+    generator["diagnostic_reference_parity"] = [
+        {"identity": identity, "status": "PASS"} for identity in generator["entries"]
+    ]
+    assert validate(build, enabled=True, cycles=2, diagnostic_reference=True)["enabled"]
+    generator["diagnostic_reference_parity"][0]["status"] = "FAIL"
+    with pytest.raises(AssertionError, match="parity failed"):
+        validate(build, enabled=True, cycles=2, diagnostic_reference=True)
+    generator["diagnostic_reference_model_call_count"] = 0
+    generator["diagnostic_reference_entry_count"] = 0
+    generator["diagnostic_reference_parity"] = []
     generator["model_call_count"] = 53
     with pytest.raises(AssertionError, match="model_call_count"):
         validate(build, enabled=True, cycles=2)
@@ -209,3 +226,7 @@ def test_routing_is_only_the_five_post_generator_rollouts():
     assert "shadow.begin_rollout(" in function
     assert "finally:" in function and "shadow.end_rollout()" in function
     assert "_distillschedule_merged_rollout_shadow" not in before + after
+    assert "require_tensor_parity(" in function
+    assert "diagnostic_reference_model_call_count" in function
+    timing = (root / "scripts/distillschedule/probe_wan13b_two_cycle_timing_world16.py").read_text()
+    assert "merged_shadow_parity_check=True" not in timing
