@@ -182,6 +182,7 @@ def _validate_arm(
     cast_cache = arm.get("generator_nograd_lora_cast_cache")
     grad_fused = arm.get("grad_lora_fused_epilogue", False)
     norm_fused = arm.get("modulated_norm_fusion", False)
+    shadow_enabled = arm.get("generator_rollout_merged_shadow", False)
     expected_name = (
         "RESIDENT_ASYNC128_TREE_CHUNK2048_FUSED_EPILOGUE"
         if placement == RESIDENT_WINNER
@@ -192,7 +193,7 @@ def _validate_arm(
     if placement == RESIDENT_WINNER:
         if fused is not True or cast_cache is not False:
             errors.append(f"rank{rank}: Resident fused/cast-cache flags changed")
-    elif fused is not False or cast_cache is not False or grad_fused is not False or norm_fused:
+    elif fused is not False or cast_cache is not False or grad_fused is not False or norm_fused or shadow_enabled:
         errors.append(f"rank{rank}: FSDP enabled Resident-only LoRA arm")
 
     runtime = row.get("runtime_contract", {})
@@ -216,17 +217,15 @@ def _validate_arm(
     generator = receipt.get("generator", {})
     critic = receipt.get("critic", {})
     if placement == RESIDENT_WINNER:
-        expected_counts = {
-            "model_call_count": 56,
-            "fused_invocation_count": 17_080,
-            "reference_fallback_count": 224,
-        }
+        from distillschedule.runtime.wan13b_rollout_shadow import expected_epilogue_counts
+
+        expected_counts = expected_epilogue_counts(cycles=2, shadow_enabled=bool(shadow_enabled))
         if generator.get("requested") is not True or generator.get("enabled") is not True:
             errors.append(f"rank{rank}: fused epilogue is not enabled")
         for key, expected in expected_counts.items():
             if int(generator.get(key, -1)) != expected:
                 errors.append(f"rank{rank}: fused epilogue {key} changed")
-        if generator.get("reference_fallback_reasons") != {"BASE_DTYPE_torch.float32": 224}:
+        if generator.get("reference_fallback_reasons") != {"BASE_DTYPE_torch.float32": 8 if shadow_enabled else 224}:
             errors.append(f"rank{rank}: unexpected fused fallback census/reason")
         if critic.get("enabled") is not False or critic.get("disabled_reason") != "GENERATOR_ONLY":
             errors.append(f"rank{rank}: Critic entered Generator fused epilogue")
@@ -247,6 +246,19 @@ def _validate_arm(
                 errors.append(f"rank{rank}: {role} normalization fusion missing/fallback")
     elif norm_receipt.get("enabled"):
         errors.append(f"rank{rank}: unrequested normalization fusion executed")
+    shadow_receipt = row.get("generator_rollout_merged_shadow_receipt", {})
+    if shadow_enabled:
+        observed = shadow_receipt.get("generator", {})
+        expected = {"enabled": True, "refresh_count": 2, "model_call_count": 54,
+                    "rollout_entry_count": 10, "refresh_versions": [3, 4],
+                    "shadow_lora_parameter_count": 0, "active": False}
+        if shadow_receipt.get("enabled") is not True:
+            errors.append(f"rank{rank}: missing merged shadow evidence")
+        for key, value in expected.items():
+            if observed.get(key) != value:
+                errors.append(f"rank{rank}: merged shadow {key} changed")
+    elif shadow_receipt.get("enabled"):
+        errors.append(f"rank{rank}: unrequested merged shadow executed")
 
 
 def _teardown(
@@ -301,6 +313,7 @@ def main() -> int:
         "generator_nograd_lora_fused_epilogue", "generator_nograd_lora_cast_cache",
         "grad_lora_fused_epilogue", "tf32_cublas_override",
         "modulated_norm_fusion",
+        "generator_rollout_merged_shadow",
         "helios_transformer_sha256", "model_root",
     )
     launch_identities = {
@@ -345,6 +358,11 @@ def main() -> int:
             errors.append("invalid normalization fusion launch flag")
         if row.get("arm_contract", {}).get("modulated_norm_fusion", False) is not (norm_flag == "1"):
             errors.append(f"rank{rank}: normalization fusion launch/arm binding changed")
+        shadow_flag = manifests[0].get("generator_rollout_merged_shadow", "0")
+        if shadow_flag not in {"0", "1"}:
+            errors.append("invalid merged shadow launch flag")
+        if row.get("arm_contract", {}).get("generator_rollout_merged_shadow", False) is not (shadow_flag == "1"):
+            errors.append(f"rank{rank}: merged shadow launch/arm binding changed")
         comparison = row.get("trajectory_comparison_binding", {})
         trajectory_comparison_hashes.add(comparison.get("sha256"))
         if (

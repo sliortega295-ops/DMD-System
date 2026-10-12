@@ -414,17 +414,29 @@ def _precompute_critic_rollouts(
         with diagnostics.scope(
             f"FSDP_BATCHED_GENERATOR_ROLLOUT/batch{batch_index}/B{len(entries)}"
         ):
-            generated, record = run_generator_trace_rollout_batch(
-                model=generator_engine.module,
-                loaded_entries=entries,
-                device=device,
-                detailed_profile=False,
-                record_output_sha256=collect_diagnostics,
-                collect_diagnostics=collect_diagnostics,
-                diagnostics_scope=diagnostics.scope,
-                clean_runtime=clean_runtime,
-                runtime_cache=runtime_cache,
+            shadow = getattr(
+                generator_engine.module, "_distillschedule_merged_rollout_shadow", None
             )
+            if shadow is not None:
+                shadow.begin_rollout(
+                    version=int(generator_engine.global_steps),
+                    logical_steps=tuple(step_group),
+                )
+            try:
+                generated, record = run_generator_trace_rollout_batch(
+                    model=shadow if shadow is not None else generator_engine.module,
+                    loaded_entries=entries,
+                    device=device,
+                    detailed_profile=False,
+                    record_output_sha256=collect_diagnostics,
+                    collect_diagnostics=collect_diagnostics,
+                    diagnostics_scope=diagnostics.scope,
+                    clean_runtime=clean_runtime,
+                    runtime_cache=runtime_cache,
+                )
+            finally:
+                if shadow is not None:
+                    shadow.end_rollout()
         parity_rows: list[dict[str, Any]] = []
         if rollout_parity_check and len(entries) > 1:
             for entry, candidate in zip(entries, generated, strict=True):

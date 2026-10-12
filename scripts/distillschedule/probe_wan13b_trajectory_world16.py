@@ -379,6 +379,11 @@ def main() -> int:
     from distillschedule.runtime.wan13b_norm_policy import requested as norm_requested, validate as validate_norm
 
     norm_fused = norm_requested()
+    from distillschedule.runtime.wan13b_rollout_shadow import requested as shadow_requested, validate as validate_shadow
+
+    shadow_enabled = shadow_requested()
+    if shadow_enabled and (args.placement != RESIDENT_WINNER or norm_fused):
+        raise ValueError("merged shadow requires the one-factor Resident control")
     if norm_fused and args.placement != RESIDENT_WINNER:
         raise ValueError("FSDP control cannot enable Resident normalization fusion")
     if args.placement == RESIDENT_WINNER and not fused_epilogue:
@@ -701,6 +706,7 @@ def main() -> int:
                     "generator_nograd_lora_cast_cache": str(cast_cache).lower(),
                     "grad_lora_fused_epilogue": str(grad_fused).lower(),
                     "modulated_norm_fusion": str(norm_fused).lower(),
+                    "generator_rollout_merged_shadow": str(shadow_enabled).lower(),
                     "worker": "probe_wan13b_trajectory_world16.py",
                 },
                 sample_identities=sample_payloads,
@@ -764,6 +770,9 @@ def main() -> int:
             completed_cycles=args.trajectory_cycles,
             grad_epilogue_receipt=validate_grad_epilogue_receipts(build, requested=grad_fused),
             modulated_norm_fusion_receipt=validate_norm(build, enabled=norm_fused),
+            generator_rollout_merged_shadow_receipt=validate_shadow(
+                build, enabled=shadow_enabled, cycles=args.trajectory_cycles
+            ),
             updates={
                 "generator": args.trajectory_cycles,
                 "critic": 5 * args.trajectory_cycles,

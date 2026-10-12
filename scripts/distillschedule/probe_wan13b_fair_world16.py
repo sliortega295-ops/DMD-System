@@ -114,6 +114,13 @@ def _build_model_fair(
     model.to(device)
     torch.cuda.synchronize(device)
 
+    from distillschedule.runtime.wan13b_rollout_shadow import install as install_shadow
+
+    # Clone before instance-local state, PEFT epilogue and diagnostic wrappers.
+    metadata["generator_rollout_merged_shadow"] = install_shadow(
+        model, role=role, placement=args.placement
+    )
+
     if args.placement == ROLLOUT_FUSED_RESIDENT and role == "generator":
         shadow = copy.deepcopy(model)
         shadow.requires_grad_(False)

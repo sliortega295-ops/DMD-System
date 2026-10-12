@@ -154,6 +154,11 @@ def _validate_arm_environment(placement: str) -> dict[str, Any]:
     from distillschedule.runtime.wan13b_norm_policy import requested as norm_requested
 
     norm_fused = norm_requested()
+    from distillschedule.runtime.wan13b_rollout_shadow import requested as shadow_requested
+
+    shadow_enabled = shadow_requested()
+    if shadow_enabled and (placement != RESIDENT_WINNER or norm_fused):
+        raise ValueError("merged shadow requires the one-factor Resident control")
     if norm_fused and placement != RESIDENT_WINNER:
         raise ValueError("FSDP control cannot enable Resident normalization fusion")
     fused = (
@@ -182,6 +187,7 @@ def _validate_arm_environment(placement: str) -> dict[str, Any]:
         "generator_nograd_lora_cast_cache": cast_cache,
         "grad_lora_fused_epilogue": grad_fused,
         "modulated_norm_fusion": norm_fused,
+        "generator_rollout_merged_shadow": shadow_enabled,
     }
 
 
@@ -219,7 +225,9 @@ def _load_correctness_binding(
     if value.get("implementation_fingerprint") != _canonical_hash(implementation):
         raise ValueError("correctness implementation fingerprint is invalid")
     for key, expected in expected_arm.items():
-        observed_flag = implementation.get(key, False) if key == "modulated_norm_fusion" else implementation.get(key)
+        observed_flag = implementation.get(key, False) if key in {
+            "modulated_norm_fusion", "generator_rollout_merged_shadow"
+        } else implementation.get(key)
         if observed_flag != expected:
             raise ValueError(f"correctness receipt arm contract changed: {key}")
     if matched.get("trace_replay_policy") != "FIXED_FIVE_STEP_COHORT_REPLAY":
@@ -470,14 +478,24 @@ def _validate_fused_receipt(
     if placement == RESIDENT_WINNER:
         if generator.get("requested") is not True or generator.get("enabled") is not True:
             raise AssertionError("Resident winner fused epilogue is not enabled")
-        if int(generator.get("model_call_count", -1)) != 56:
-            raise AssertionError("Resident winner must execute 56 no-grad model calls")
-        if int(generator.get("fused_invocation_count", -1)) != 17_080:
-            raise AssertionError("Resident winner fused invocation census changed")
-        if int(generator.get("reference_fallback_count", -1)) != 224:
-            raise AssertionError("Resident winner reference-fallback census changed")
+        shadow_enabled = bool(build.get("generator", {}).get("metadata", {}).get(
+            "generator_rollout_merged_shadow", {}).get("enabled", False))
+        if shadow_enabled:
+            from distillschedule.runtime.wan13b_rollout_shadow import expected_epilogue_counts
+
+            expected_counts = expected_epilogue_counts(cycles=2, shadow_enabled=True)
+            for key, expected in expected_counts.items():
+                if generator.get(key) != expected:
+                    raise AssertionError(f"training-model epilogue census changed {key}")
+        else:
+            if int(generator.get("model_call_count", -1)) != 56:
+                raise AssertionError("Resident winner must execute 56 no-grad model calls")
+            if int(generator.get("fused_invocation_count", -1)) != 17_080:
+                raise AssertionError("Resident winner fused invocation census changed")
+            if int(generator.get("reference_fallback_count", -1)) != 224:
+                raise AssertionError("Resident winner reference-fallback census changed")
         if generator.get("reference_fallback_reasons") != {
-            "BASE_DTYPE_torch.float32": 224
+            "BASE_DTYPE_torch.float32": 8 if shadow_enabled else 224
         }:
             raise AssertionError("Resident winner has an unexpected fallback reason")
         if critic.get("enabled") is not False or critic.get("disabled_reason") != "GENERATOR_ONLY":
@@ -799,6 +817,11 @@ def main() -> int:
         from distillschedule.runtime.wan13b_norm_policy import validate as validate_norm
 
         norm_receipt = validate_norm(build, enabled=bool(arm["modulated_norm_fusion"]))
+        from distillschedule.runtime.wan13b_rollout_shadow import validate as validate_shadow
+
+        shadow_receipt = validate_shadow(
+            build, enabled=bool(arm["generator_rollout_merged_shadow"]), cycles=2
+        )
 
         result.update(
             status="PASS",
@@ -815,6 +838,7 @@ def main() -> int:
             fused_epilogue_receipt=fused_receipt,
             grad_epilogue_receipt=grad_receipt,
             modulated_norm_fusion_receipt=norm_receipt,
+            generator_rollout_merged_shadow_receipt=shadow_receipt,
             runtime_contract=runtime_contract,
             gradient_sync={
                 "generator_receipt_count": len(

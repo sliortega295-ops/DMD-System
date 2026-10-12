@@ -182,6 +182,8 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--grad-lora-fused-epilogue", action="store_true")
     value.add_argument("--modulated-norm-fusion", action="store_true",
                        help="Default-off width1536 source-qualified normalization canary.")
+    value.add_argument("--generator-rollout-merged-shadow", action="store_true",
+                       help="Default-off, independent post-G B1 merged execution replica.")
     value.add_argument("--tf32-cublas-override", choices=("0", "1"), default=None,
                        help="Explicit matched precision policy; never enable in only one arm.")
     value.add_argument("--trajectory-cycles", type=int, choices=(1, 2, 5, 50))
@@ -224,6 +226,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + ("1" if args.grad_lora_fused_epilogue else "0"),
         "DISTILLSCHEDULE_WAN13B_MODULATED_NORM_FUSION="
         + ("1" if getattr(args, "modulated_norm_fusion", False) else "0"),
+        "DISTILLSCHEDULE_WAN13B_GENERATOR_ROLLOUT_MERGED_SHADOW="
+        + ("1" if getattr(args, "generator_rollout_merged_shadow", False) else "0"),
         "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE="
         + ("1" if args.generator_nograd_lora_cast_cache else "0"),
         "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE="
@@ -235,6 +239,11 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         raise ValueError("grad epilogue is registered only for the Resident winner")
     if getattr(args, "modulated_norm_fusion", False) and args.placement != "resident-async128-tree-chunk2048":
         raise ValueError("norm fusion is registered only for the Resident control")
+    if getattr(args, "generator_rollout_merged_shadow", False):
+        if args.placement != "resident-async128-tree-chunk2048":
+            raise ValueError("merged shadow requires the registered Resident control")
+        if getattr(args, "modulated_norm_fusion", False):
+            raise ValueError("first shadow canary changes only one major mechanism")
     if args.mode in {"timing", "diagnostic-timing", "profile", "two-cycle-timing"}:
         if args.correctness_receipt is None or not args.correctness_sha256:
             raise ValueError("low-overhead execution requires a pinned correctness receipt")

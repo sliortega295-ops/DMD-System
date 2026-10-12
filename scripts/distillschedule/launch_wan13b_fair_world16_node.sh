@@ -79,6 +79,13 @@ GENERATOR_NOGRAD_LORA_CAST_CACHE="${DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA
 GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE="${DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE:-0}"
 GRAD_LORA_FUSED_EPILOGUE="${DISTILLSCHEDULE_WAN13B_GRAD_LORA_FUSED_EPILOGUE:-0}"
 MODULATED_NORM_FUSION="${DISTILLSCHEDULE_WAN13B_MODULATED_NORM_FUSION:-0}"
+GENERATOR_ROLLOUT_MERGED_SHADOW="${DISTILLSCHEDULE_WAN13B_GENERATOR_ROLLOUT_MERGED_SHADOW:-0}"
+[[ "${GENERATOR_ROLLOUT_MERGED_SHADOW}" == 0 || "${GENERATOR_ROLLOUT_MERGED_SHADOW}" == 1 ]] || exit 2
+if [[ "${GENERATOR_ROLLOUT_MERGED_SHADOW}" == 1 ]]; then
+  [[ "${PLACEMENT}" == resident-async128-tree-chunk2048 && "${MODULATED_NORM_FUSION}" == 0 ]] || {
+    echo merged_shadow_requires_one_factor_resident_control >&2; exit 2;
+  }
+fi
 [[ "${MODULATED_NORM_FUSION}" == 0 || "${MODULATED_NORM_FUSION}" == 1 ]] || exit 2
 if [[ "${MODULATED_NORM_FUSION}" == 1 && "${PLACEMENT}" != resident-async128-tree-chunk2048 ]]; then
   echo norm_fusion_requires_registered_resident_control >&2
@@ -340,6 +347,7 @@ generator_nograd_lora_cast_cache=${GENERATOR_NOGRAD_LORA_CAST_CACHE}
 generator_nograd_lora_fused_epilogue=${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}
 grad_lora_fused_epilogue=${GRAD_LORA_FUSED_EPILOGUE}
 modulated_norm_fusion=${MODULATED_NORM_FUSION}
+generator_rollout_merged_shadow=${GENERATOR_ROLLOUT_MERGED_SHADOW}
 tf32_cublas_override=${TORCH_ALLOW_TF32_CUBLAS_OVERRIDE:-NOT_SET}
 ema_implementation=${ema_implementation}
 optimizer_implementation=${optimizer_implementation}
