@@ -1,0 +1,90 @@
+name: apply-parameterized-native-source
+on:
+  push:
+    branches: [agent/parameterized-native-backend-20261011]
+    paths: [.github/workflows/_apply-native-source.yml]
+permissions:
+  contents: write
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Apply hash-bound source, record adaptation and validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, lzma, pathlib, subprocess
+          root = pathlib.Path('.').resolve()
+          def git(*args):
+              return subprocess.check_output(['git', *args], text=True).strip()
+          base = '3db79d384aa89a4a1d371f077abb6eb0bf66e438'
+          bootstrap = {'.github/workflows/_apply-native-source.yml', *[f'.native-bootstrap/part{i:02d}.xz' for i in range(4)]}
+          changed = set(git('diff', '--name-only', base, 'HEAD').splitlines())
+          if changed != bootstrap:
+              raise SystemExit(f'Unexpected changes since source snapshot: {changed}')
+          raw = lzma.decompress(b''.join(pathlib.Path(f'.native-bootstrap/part{i:02d}.xz').read_bytes() for i in range(4)))
+          if hashlib.sha256(raw).hexdigest() != 'f4fb214bf65294c5ab118a4e58314cc673595d0abaaceec1d9a776f187b9eb0e':
+              raise SystemExit('Source payload checksum mismatch')
+          data = json.loads(raw)
+          if data['base'] != base or len(data['files']) != 18:
+              raise SystemExit('Invalid payload contract')
+          targets = []
+          for item in data['files']:
+              path = pathlib.Path(item['path'])
+              if path.is_absolute() or '..' in path.parts or '.git' in path.parts or path.is_symlink():
+                  raise SystemExit('Unsafe source path')
+              if root not in (root / path).resolve().parents:
+                  raise SystemExit('Source path escapes checkout')
+              actual = hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+              if actual != item['previous_sha256']:
+                  raise SystemExit(f'Preimage differs for {path}')
+              targets.append(str(path))
+          for item in data['files']:
+              path = pathlib.Path(item['path'])
+              if item['content'] is None:
+                  path.unlink()
+              else:
+                  path.parent.mkdir(parents=True, exist_ok=True)
+                  path.write_text(item['content'], encoding='utf-8')
+          for name in bootstrap:
+              pathlib.Path(name).unlink()
+          git('config', 'user.name', 'github-actions[bot]')
+          git('config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com')
+          git('add', '-A', '--', *targets, *sorted(bootstrap))
+          git('diff', '--cached', '--check')
+          git('commit', '-m', 'feat(native): connect parameterized flow-DMD, Wan adapter and measured frontier plans')
+          code_commit = git('rev-parse', 'HEAD')
+          path = pathlib.Path('docs/workloads/source_import_map.json')
+          document = json.loads(path.read_text())
+          row = next(r for r in document['files'] if r['target'] == 'src/distillschedule/cli.py')
+          old = '9b3270037e4efe17337ca099422a48e37ae07e660ca6a9f6fc7db7261184364a'
+          if row['integrated_sha256'] != old:
+              raise SystemExit('Unexpected prior CLI provenance')
+          new = hashlib.sha256(pathlib.Path(row['target']).read_bytes()).hexdigest()
+          row.setdefault('adaptations', []).append({
+              'base_integration_head': '31d4d02fb31dfee7c06baea10dd33393b010b3cc',
+              'previous_integrated_sha256': old, 'new_integrated_sha256': new,
+              'source_commit': code_commit,
+              'reason': 'Add an opt-in parameterized native subcommand; canonical workload routes, profiles and kernels remain unchanged.'})
+          row['integrated_sha256'] = new
+          path.write_text(json.dumps(document, indent=2, sort_keys=True) + '\n')
+          git('add', str(path))
+          git('commit', '-m', 'fix(integration): bind optional native CLI adaptation to its source commit')
+          print('Native implementation commit:', code_commit)
+          print('Publication HEAD:', git('rev-parse', 'HEAD'))
+          PY
+          python -m pip install -e '.[test]'
+          python -m compileall -q src/distillschedule/native
+          python -m pytest -q tests/test_refactor_native_task_contract.py tests/test_refactor_frontier_schedule.py
+          python scripts/distillschedule/check_best_known_integration.py
+          git diff --check
+          git push origin HEAD:agent/parameterized-native-backend-20261011
