@@ -29,3 +29,25 @@ def test_fusion_flag_without_actual_fused_work_rejected():
     s=WanStrategy('resident',2048,True);b=build(s)
     b['generator']['metadata']['generator_nograd_lora_fused_epilogue']['fused_invocation_count']=0
     with pytest.raises(ValueError,match='no elements'):validate_build(s,b,executed=True)
+
+
+def test_full_reference_comparison_never_calls_review_pass(tmp_path):
+    import json
+    torch=pytest.importorskip('torch')
+    pytest.importorskip('safetensors')
+    from safetensors.torch import save_file
+    from distillschedule.workloads.best_known.registry import file_sha256
+    from distillschedule.strategies.wan_evidence import compare_runs
+    for directory,offset in [('base',0.0),('same',0.0),('different',1.0)]:
+        root=tmp_path/directory;root.mkdir()
+        state=root/'state.safetensors';save_file({'parameter':torch.tensor([1.+offset,2.])},str(state))
+        evidence={k:{'path':str(state),'sha256':file_sha256(state)}
+                  for k in ('generator','critic','generator_optimizer','critic_optimizer','ema')}
+        for rank in range(16):
+            row={'rank':rank,'status':'COMPLETED_ORIGINAL_WAN_WORK','identity':{'fixture':'SYNTHETIC_RECEIPTS'},
+                 'task':{},'initial_versions':{},'final_versions':{},'cycles':[{'call_census':{'fixture':True}}]*2,
+                 'state_evidence':evidence}
+            (root/f'rank_{rank:02d}.json').write_text(json.dumps(row))
+    assert compare_runs(tmp_path/'base',tmp_path/'same')['status']=='PASS'
+    result=compare_runs(tmp_path/'base',tmp_path/'different')
+    assert result['status']=='REVIEW' and len(result['failed_tensors'])==5

@@ -160,7 +160,17 @@ def run(path,*,node_rank,master_addr,master_port,execute=False,resume=False,time
         result=launch('confirmation',['run','--plan',str(planpath),'--output',str(root/'confirmation')])
         peer=_await(root/f'confirmation-node{1-node_rank}.json',timeout_seconds)
         require(result==peer['returncode']==0,'selected plan native execution failed',path='wan.campaign')
-        return {'status':'COMPLETED_PARAMETERIZED_ORIGINAL_BACKEND_CAMPAIGN','plan':str(planpath),
+        comparison_path=root/'matched-comparison.json'
+        if node_rank==0 and not comparison_path.exists():
+            try:
+                from .wan_evidence import compare_runs
+                comparison=compare_runs(root/doc['jobs'][0]['id'],root/'confirmation')
+            except (ValueError,KeyError,OSError,RuntimeError) as error:
+                comparison={'status':'UNVERIFIED','error':str(error),'claimable_speedup':False}
+            _json(comparison_path,comparison)
+        comparison=_await(comparison_path,timeout_seconds)
+        return {'status':'COMPLETED_WITH_REFERENCE_PARITY' if comparison['status']=='PASS'
+                else 'COMPLETED_WITH_NUMERICAL_REVIEW','plan':str(planpath),
                 'native_launches':len(ledger['launches']),'gpu_execution':'NATIVE_RUN',
-                'claimable_speedup':False,'numerical_quality':'MATCHED_COMPARISON_AND_QUALITY_STILL_REQUIRED'}
+                'reference_comparison':comparison,'claimable_speedup':False,'quality_validation':'NOT_RUN'}
     finally:lock.unlink()

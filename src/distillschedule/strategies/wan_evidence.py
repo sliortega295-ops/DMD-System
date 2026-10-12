@@ -48,3 +48,52 @@ def validate_cycle(task, trace, result):
         normalized.append(actual)
     return {'status':'PASS_TRACE_DERIVED_CALL_CENSUS','operations':keys,'inventories':normalized,
             'g_updates':1,'critic_updates':task.fake_updates,'ema_updates':len(task.ema_after)}
+
+
+def compare_runs(reference_root,candidate_root,*,rtol=1e-5,atol=1e-7):
+    """Compare original full trainable/Adam/EMA evidence, not just loss scalars.
+
+    REVIEW is preserved, not promoted to equivalence. These default thresholds
+    match the existing parameterized native state comparator; callers cannot
+    silently relax them to obtain a passing campaign.
+    """
+    import json
+    import math
+    from pathlib import Path
+    import torch
+    from safetensors import safe_open
+    from distillschedule.workloads.best_known.registry import file_sha256
+    require(all(type(x) in (int,float) and math.isfinite(x) and x>=0 for x in (rtol,atol)),
+            'invalid comparison tolerance',path='wan.compare')
+    left=[json.loads((Path(reference_root)/f'rank_{r:02d}.json').read_text()) for r in range(16)]
+    right=[json.loads((Path(candidate_root)/f'rank_{r:02d}.json').read_text()) for r in range(16)]
+    for rank,(a,b) in enumerate(zip(left,right,strict=True)):
+        require(a['rank']==b['rank']==rank and a['status']==b['status']=='COMPLETED_ORIGINAL_WAN_WORK'
+                and a['identity']==b['identity'] and a['task']==b['task']
+                and a['initial_versions']==b['initial_versions'] and a['final_versions']==b['final_versions'],
+                'cannot compare unmatched or incomplete native executions',path='wan.compare')
+        require(len(a['cycles'])==len(b['cycles']) and all(
+            x['call_census']==y['call_census'] for x,y in zip(a['cycles'],b['cycles'],strict=True)),
+            'compared executions changed logical model work',path='wan.compare')
+    rows=[]
+    for name in ('generator','critic','generator_optimizer','critic_optimizer','ema'):
+        a=left[0]['state_evidence'][name];b=right[0]['state_evidence'][name]
+        for value in (a,b):
+            require(file_sha256(Path(value['path']))==value['sha256'],'state artifact changed',path='wan.compare')
+        with safe_open(a['path'],framework='pt',device='cpu') as x, safe_open(b['path'],framework='pt',device='cpu') as y:
+            require(set(x.keys())==set(y.keys()),'state tensor inventories differ',path='wan.compare')
+            for key in x.keys():
+                v,w=x.get_tensor(key),y.get_tensor(key)
+                require(v.shape==w.shape and v.dtype==w.dtype,'state shape/dtype changed',path='wan.compare')
+                finite=bool(torch.isfinite(v).all() and torch.isfinite(w).all())
+                close=finite and torch.allclose(v,w,rtol=rtol,atol=atol)
+                difference=(v.float()-w.float()).abs()
+                rows.append({'state':name,'tensor':key,'pass':bool(close),'finite':finite,
+                             'max_abs':float(difference.max()) if finite else None,
+                             'mean_abs':float(difference.mean()) if finite else None})
+    require(rows,'no numerical state evidence',path='wan.compare')
+    return {'status':'PASS' if all(r['pass'] for r in rows) else 'REVIEW',
+            'rtol':rtol,'atol':atol,'tensor_count':len(rows),'failed_tensors':[r for r in rows if not r['pass']],
+            'max_abs':max((r['max_abs'] for r in rows if r['max_abs'] is not None),default=None),
+            'scope':'FULL_TRAINABLE_ADAM_EMA_AFTER_MATCHED_TWO_CYCLE_REPLAY','quality_validation':'NOT_RUN',
+            'claimable_speedup':False}
