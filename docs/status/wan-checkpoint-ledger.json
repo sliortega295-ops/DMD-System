@@ -1,0 +1,7 @@
+{
+  "applied": {
+    "03-trace-geometry.patch.xz": "f2c8110d76b3658391145b5301d3405b1c2b00e141f51980d71cdf942745747c"
+  },
+  "gpu_validation": "NOT_RUN",
+  "scope": "CPU source/dispatch tests; no speedup claim"
+}
