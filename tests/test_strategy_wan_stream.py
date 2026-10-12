@@ -101,10 +101,13 @@ def test_bind_next_cohort_keeps_engines_and_state(tmp_path, fixture):
     session = NS(task=task, trace=None, finite=[], runtime_cache={'old_input': object()},
                  strategy=NS(validate_for=lambda t: None), g=objects[0], c=objects[1], ema=objects[2])
     chosen = ('g', 'r0', 'r1', 'r2', 'c0', 'c1', 'e1', 'c2')
+    bind_cohort(session, task, doc, 0, chosen)
     event = bind_cohort(session, task, doc, 1, chosen)
     assert [session.g, session.c, session.ema] == objects
     assert session.task.first_step == 9 and not session.runtime_cache
     assert event['operation_order'][-1] == 'e2'
+    with pytest.raises(ValueError, match='advance exactly once'):
+        bind_cohort(session, task, doc, 1, chosen)
     session.finite.append(False)
     with pytest.raises(ValueError, match='unconsumed'):
         bind_cohort(session, task, doc, 0, chosen)

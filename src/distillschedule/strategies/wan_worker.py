@@ -73,7 +73,6 @@ def load_assets(task, spec, *, rank):
             'bootstrap/model root mismatch', path='wan.assets')
     model_dir = Path(spec.model_root).resolve() / 'transformer'
     require((model_dir / 'config.json').is_file(), 'original transformer config missing', path='wan.assets')
-    # Bind actual files as well as the bootstrap's original identity string.
     weights = sorted(model_dir.glob('*.safetensors'))
     require(weights, 'original local safetensors weights required', path='wan.assets')
     model_files = [model_dir / 'config.json', *weights, *sorted(model_dir.glob('*.index.json'))]
@@ -95,7 +94,7 @@ def _json(path, payload):
 
 
 def execute_cycles(session, *, cycles, mode, torch, distributed, observer=None,
-                   operation_order=None, progress=None, validate_result=None, clock=time.perf_counter_ns):
+                   operation_order=None, progress=None, validate_result=None, before_cycle=None, clock=time.perf_counter_ns):
     """Shared tested orchestration; original handlers perform all model math."""
     require(type(cycles) is int and 2 <= cycles <= 64, 'bounded two-or-more cycle run required', path='wan.worker')
     require(mode in {'calibrate', 'run'} and (mode == 'calibrate') == (observer is not None),
@@ -103,16 +102,25 @@ def execute_cycles(session, *, cycles, mode, torch, distributed, observer=None,
     initial = session.versions(); warm = None; records = []
     for cycle in range(1, cycles + 1):
         before = session.versions()
+        cohort = None; current_order = operation_order
+        wall_start = clock() if before_cycle is not None else None
+        if before_cycle is not None:
+            require(mode == 'run', 'fresh cohorts cannot masquerade as fixed-trace calibration', path='wan.worker')
+            engines = (session.g, session.c, session.ema)
+            cohort = before_cycle(cycle, session)
+            require(session.versions() == before and all(a is b for a, b in
+                    zip(engines, (session.g, session.c, session.ema))),
+                    'cohort transition reset model/optimizer/EMA', path='wan.worker')
+            current_order = tuple(cohort['operation_order'])
         if cycle == 2:
             warm = before
         scope = None if observer is None else lambda op, c=cycle: observer.stage(c, op.operation_id)
-        prepared = session.prepare(operation_scope=scope, operation_order=operation_order)
+        prepared = session.prepare(operation_scope=scope, operation_order=current_order)
         distributed.barrier(); torch.cuda.synchronize(session.device)
         start = clock()
         result = prepared.run()
         torch.cuda.synchronize(session.device)
         duration = clock() - start
-        # Finite tensor values and cross-rank accounting are outside the timer.
         checks = session.finite
         finite = bool(torch.stack(checks).all().detach().cpu()) if checks else True
         require(finite, 'native finite check failed', path='wan.worker')
@@ -131,6 +139,9 @@ def execute_cycles(session, *, cycles, mode, torch, distributed, observer=None,
                   'calibration_perturbed': observer is not None, 'finite': finite}
         if validate_result is not None:
             record['call_census'] = validate_result(result)
+        if cohort is not None:
+            record['cohort'] = dict(cohort['receipt'])
+            record['input_and_execution_wall_ns'] = clock() - wall_start
         records.append(record)
         if progress is not None:
             progress(records, expected)
@@ -188,7 +199,7 @@ def save_final_state(session, output):
     return evidence
 
 
-def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cycles=2):
+def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cycles=2, stream_path=None):
     """Called under torchrun; no implicit launch, external commands, or downloads."""
     require(isinstance(task, OriginalWanTask) and isinstance(assets, OriginalWanAssets),
             'validated task/assets required', path='wan.worker')
@@ -203,8 +214,13 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
         document = validate_plan(task, plan_path)
         strategy = WanStrategy.from_dict(document['selected']['strategy'])
     strategy.validate_for(task)
+    stream = None
+    if stream_path is not None:
+        require(mode == 'run', 'cohort training requires a selected plan, not a calibration arm', path='wan.worker')
+        from .wan_stream import load_stream
+        stream = load_stream(task, stream_path)
+        require(cycles == len(stream['cohorts']), 'training cycles must match the complete fresh input sequence', path='wan.worker')
     root = Path(output).resolve(); root.mkdir(parents=True, exist_ok=True)
-    # Exclusive rank marker catches accidental resume/reuse of an existing run.
     claim = root / f'rank_{rank:02d}.claim'
     with claim.open('x') as f:
         f.write(f'{socket.gethostname()} {os.getpid()}\n')
@@ -222,7 +238,6 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                     'eight visible CUDA devices per node required', path='wan.worker')
             require(not dist.is_initialized(), 'strategy must be selected before NCCL initialization', path='wan.worker')
             torch.cuda.set_device(local_rank); device = torch.device('cuda', local_rank)
-            # Rank-qualified local assets are verified before any model construction.
             bootstrap, trace, negative, asset_identity = load_assets(task, assets, rank=rank)
             fair = load_original_backend(repository_root())
             from distillschedule.search.wan_implementation import verify_execution_precision
@@ -242,7 +257,6 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                         'host': socket.gethostname(), 'local_rank': local_rank}
             if document is not None:
                 require(document['identity'] == identity, 'source/assets differ from planned calibration', path='wan.worker')
-                # Verify this rank's runtime/hardware against the selected measured arm.
                 from .wan_planning import load_collections, _read
                 _, variants = load_collections(task, [c['path'] for c in document['collections']])
                 variant = next(v for s, v, _ in variants if s.backend == strategy.backend)
@@ -252,7 +266,8 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                         'runtime/hardware changed: recalibration required', path='wan.worker')
             dist.init_process_group('nccl', timeout=timedelta(minutes=15)); initialized = True
             seen = [None] * 16
-            dist.all_gather_object(seen, {'identity': identity, 'strategy': strategy.to_dict()})
+            dist.all_gather_object(seen, {'identity': identity, 'strategy': strategy.to_dict(),
+                                        'stream_sha256': None if stream is None else stream['stream_sha256']})
             require(all(row == seen[0] for row in seen), 'rank task/strategy/asset mismatch', path='wan.worker')
             negative_tensor = negative.embedding.to(device=device, dtype=torch.bfloat16)
             from distillschedule.profiling.static_profile_diagnostics import StaticProfileDiagnostics
@@ -267,7 +282,7 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                 observer = OriginalWanCalibrator(task=task, initial_versions=session.versions(),
                     work=trace_work(task, trace), torch=torch, distributed=dist, device=device,
                     rank=rank, implementation=strategy, source_head=source_head)
-            else:
+            elif stream is None:
                 free, _ = torch.cuda.mem_get_info(device)
                 predicted = next(r for r in document['selected']['memory'] if r['rank'] == rank)
                 require(predicted['peak_bytes'] <= free + torch.cuda.memory_allocated(device),
@@ -278,9 +293,23 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                 if observer is not None:
                     receipt['calibration'] = observer.snapshot()
                 _json(path, receipt)
+            before_cycle = None
+            if stream is not None:
+                from .wan_stream import bind_cohort
+                receipt.update(stream_sha256=stream['stream_sha256'],
+                    policy_transfer='SAME_GEOMETRY_STRATEGY_ONLY_NO_TIME_OR_CAPACITY_PREDICTION',
+                    stream_source=str(Path(stream_path).resolve()))
+                def before_cycle(cycle, current):
+                    event = bind_cohort(current, task, stream, cycle-1, tuple(document['selected']['order']))
+                    peers = [None] * 16
+                    dist.all_gather_object(peers, {'cohort': event['receipt'], 'versions': current.versions(),
+                                                  'order': event['operation_order']})
+                    require(all(p == peers[0] for p in peers), 'rank cohort/order/version mismatch', path='wan.worker')
+                    return event
             result = execute_cycles(session, cycles=cycles, mode=mode, torch=torch, distributed=dist,
                 observer=observer, operation_order=None if document is None else tuple(document['selected']['order']),
-                progress=progress, validate_result=lambda raw: validate_cycle(task, trace, raw))
+                before_cycle=before_cycle, progress=progress,
+                validate_result=lambda raw: validate_cycle(session.task, session.trace, raw))
             receipt.update(result)
             receipt['backend_effects'] = validate_build(strategy, session.build, executed=True)
             if observer is not None:
@@ -290,7 +319,8 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
             receipt.update(status='COMPLETED_ORIGINAL_WAN_WORK', gpu_execution='NATIVE_CUDA_RUN',
                 plan_sha256=None if document is None else document['plan_sha256'],
                 numerical_comparison='REQUIRES_MATCHED_REFERENCE', quality_validation='NOT_RUN',
-                measurement_scope='TWO_CYCLE_REPLAY_OF_FIXED_TRACE' if cycles == 2 else 'REPEATED_FIXED_TRACE',
+                measurement_scope=('FRESH_COHORT_SEQUENCE_PERSISTENT_OPTIMIZERS' if stream is not None else
+                                   ('TWO_CYCLE_REPLAY_OF_FIXED_TRACE' if cycles == 2 else 'REPEATED_FIXED_TRACE')),
                 formal_speedup_eligible=False)
             _json(path, receipt)
             return receipt
@@ -302,6 +332,5 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
         raise
     finally:
         if initialized:
-            # No failure-path barrier; torchrun handles peer failure/teardown.
             import torch.distributed as dist
             dist.destroy_process_group()

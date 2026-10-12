@@ -156,13 +156,17 @@ def bind_cohort(session, base_task, document, index, selected_order):
     """Called only between completed cycles; never constructs or resets engines."""
     from .wan_trace import load_original_trace
     require(not session.finite, 'unconsumed backward/finite state at cohort switch', path='wan.stream')
+    previous = getattr(session, '_stream_binding', None)
+    require((previous is None and index == 0 and session.task == base_task) or
+            (previous == (document['stream_sha256'], index-1) and index > 0
+             and session.task == task_at(base_task, index-1)),
+            'cohort transition must advance exactly once without changing task/stream', path='wan.stream')
     entry = document['cohorts'][index]; current = task_at(base_task, index)
     require(entry['task'] == current.to_dict(), 'stream task changed', path='wan.stream')
     trace = load_original_trace(current, entry['trace_bundle'], expected_hash=entry['trace_hash'])
     session.strategy.validate_for(current)
     session.task, session.trace = current, trace
-    # Drop shape/input-derived Python caches conservatively; model, optimizer,
-    # gradient buckets and EMA retain their physical storage and versions.
+    session._stream_binding = (document['stream_sha256'], index)
     if session.runtime_cache is not None:
         session.runtime_cache.clear()
     return {'operation_order': order_for_cohort(selected_order, current),
