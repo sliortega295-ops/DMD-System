@@ -118,11 +118,9 @@ def prepare_parameterized_wan_cycle(
             "trace/source steps differ; do not truncate an old Full5 trace", path=path)
     require(tuple(trace_contract["ema_after"]) == ema_after,
             "EMA policy differs from the declared trace contract", path=path)
-    # The unchanged generator helper loads and labels the generator entry at 10.
-    # Do not advertise arbitrary source offsets until that helper is adapted.
-    require(source_steps and source_steps[0] == 10
-            and trace_contract["generator_source_step"] == 10,
-            "native Generator helper remains anchored at source step 10", path=path)
+    require(source_steps and type(trace_contract["generator_source_step"]) is int
+            and trace_contract["generator_source_step"] == source_steps[0],
+            "Generator source step must match the admitted trace", path=path)
     require(getattr(trace, "variant", None) == "no-gan", "GAN needs its own native adapter", path=path)
     require(type(trace_contract["world_size"]) is int and trace_contract["world_size"] == 16
             and type(rank) is int and 0 <= rank < 16,

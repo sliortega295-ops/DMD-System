@@ -81,6 +81,14 @@ def _build_model_fair(
 ) -> tuple[torch.nn.Module, dict[str, Any]]:
     from distillschedule.search.wan_implementation import verify_execution_precision
     planner_precision = verify_execution_precision(torch)
+    native_task = getattr(args, "original_wan_task", None)
+    if native_task is not None:
+        from distillschedule.strategies.wan_task import OriginalWanTask
+        if not isinstance(native_task, OriginalWanTask):
+            raise TypeError("original_wan_task must be a validated native task")
+        if int(bootstrap.manifest["lora_rank"]) != native_task.lora_rank:
+            raise ValueError("native task/loaded bootstrap rank mismatch")
+    requested_rank = 256 if native_task is None else native_task.lora_rank
     seed = int(bootstrap.component(role)["seed"])
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(seed)
@@ -90,7 +98,7 @@ def _build_model_fair(
                 model_root=args.model_root,
                 subfolder="transformer",
                 precast_model_root=None,
-                lora_rank=256,
+                lora_rank=requested_rank,
                 enable_gan=False,
                 chunked_residual_storage="cuda_out_of_place",
                 missing_pyramid_patch_seed=base.WAN13B_PYRAMID_PATCH_SEED,
