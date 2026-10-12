@@ -57,6 +57,12 @@ def assemble(task, rank_paths, output, *, reserve_bytes=2**31):
                 and row['strategy']==strategy.to_dict(), 'mismatched native calibration',path='wan.calibration')
         require(row.get('finite') is True and row.get('gpu_execution')=='NATIVE_CUDA_RUN',
                 'missing native execution/finite checks',path='wan.calibration')
+        require(row.get('backend_effects',{}).get('status')=='PASS_BACKEND_EFFECTS'
+                and row['backend_effects'].get('actual_compute_observed') is True,
+                'selected backend effects were not verified',path='wan.calibration')
+        require(len(row.get('cycles',[]))==2 and all(
+            cycle.get('call_census',{}).get('status')=='PASS_TRACE_DERIVED_CALL_CENSUS'
+            for cycle in row['cycles']), 'native sampler inventory missing',path='wan.calibration')
         c=row['calibration']
         require(c['status']=='PASS' and c['evidence_scope']=='MEASURED'
                 and c['pending_output'] is None and c['retained_input_bytes_at_finish']==0,

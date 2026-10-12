@@ -95,7 +95,7 @@ def _json(path, payload):
 
 
 def execute_cycles(session, *, cycles, mode, torch, distributed, observer=None,
-                   operation_order=None, progress=None, clock=time.perf_counter_ns):
+                   operation_order=None, progress=None, validate_result=None, clock=time.perf_counter_ns):
     """Shared tested orchestration; original handlers perform all model math."""
     require(type(cycles) is int and 2 <= cycles <= 64, 'bounded two-or-more cycle run required', path='wan.worker')
     require(mode in {'calibrate', 'run'} and (mode == 'calibrate') == (observer is not None),
@@ -129,6 +129,8 @@ def execute_cycles(session, *, cycles, mode, torch, distributed, observer=None,
                   'prepared': prepared.receipt(), 'rollouts': result['rollouts'],
                   'generator': result['generator'], 'critic': result['critic'],
                   'calibration_perturbed': observer is not None, 'finite': finite}
+        if validate_result is not None:
+            record['call_census'] = validate_result(result)
         records.append(record)
         if progress is not None:
             progress(records, expected)
@@ -225,11 +227,15 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
             fair = load_original_backend(repository_root())
             from distillschedule.search.wan_implementation import verify_execution_precision
             verify_execution_precision(torch)
+            runtime_seed = int(bootstrap.component('generator')['seed']) + 1000003 + rank
+            import random
+            random.seed(runtime_seed); torch.manual_seed(runtime_seed); torch.cuda.manual_seed_all(runtime_seed)
             import subprocess
             source_head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=repository_root(), text=True).strip()
             identity = {'source_head': source_head, 'source_fingerprint': source_fingerprint(),
                         'task_sha256': task.digest, 'assets': asset_identity}
             runtime = runtime_info(torch)
+            runtime['rank_seed'] = runtime_seed
             prop = torch.cuda.get_device_properties(device)
             hardware = {'gpu_name': prop.name, 'uuid': str(getattr(prop, 'uuid', 'UNAVAILABLE')),
                         'total_memory': prop.total_memory, 'capability': [prop.major, prop.minor],
@@ -253,7 +259,9 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
             session = OriginalWanSession(task=task, strategy=strategy, fair=fair, bootstrap=bootstrap,
                 model_root=assets.model_root, device=device, rank=rank, trace=trace, negative=negative_tensor,
                 diagnostics=StaticProfileDiagnostics(enabled=False, rank=rank))
-            receipt.update(identity=identity, runtime=runtime, hardware=hardware, build=session.build)
+            from .wan_evidence import validate_build, validate_cycle
+            effects = validate_build(strategy, session.build)
+            receipt.update(identity=identity, runtime=runtime, hardware=hardware, build=session.build, backend_effects=effects)
             _json(path, receipt)
             if mode == 'calibrate':
                 observer = OriginalWanCalibrator(task=task, initial_versions=session.versions(),
@@ -272,8 +280,9 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                 _json(path, receipt)
             result = execute_cycles(session, cycles=cycles, mode=mode, torch=torch, distributed=dist,
                 observer=observer, operation_order=None if document is None else tuple(document['selected']['order']),
-                progress=progress)
+                progress=progress, validate_result=lambda raw: validate_cycle(task, trace, raw))
             receipt.update(result)
+            receipt['backend_effects'] = validate_build(strategy, session.build, executed=True)
             if observer is not None:
                 receipt['calibration'] = observer.finish()
             receipt['state_evidence'] = save_final_state(session, root)

@@ -19,10 +19,10 @@ from .wan_worker import OriginalWanAssets
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='distillctl workloads native [original-Wan]')
     sub = parser.add_subparsers(dest='command', required=True)
-    for name in ('validate', 'calibrate', 'assemble', 'plan', 'run'):
+    for name in ('validate', 'calibrate', 'assemble', 'plan', 'run', 'prepare-campaign', 'campaign'):
         p = sub.add_parser(name)
         p.add_argument('--task', type=Path, required=True)
-        p.add_argument('--output', type=Path, required=name != 'validate')
+        p.add_argument('--output', type=Path, required=name not in ('validate','campaign'))
         if name in ('calibrate', 'run'):
             p.add_argument('--assets', type=Path, required=True)
             p.add_argument('--execute', action='store_true')
@@ -32,6 +32,17 @@ def main(argv=None):
             else:
                 p.add_argument('--plan', type=Path, required=True)
                 p.add_argument('--cycles', type=int, default=2)
+        if name == 'prepare-campaign':
+            p.add_argument('--assets', type=Path, required=True)
+            p.add_argument('--without-fusion', action='store_true')
+            p.add_argument('--max-launches', type=int, default=8)
+        if name == 'campaign':
+            p.add_argument('--campaign', type=Path, required=True)
+            p.add_argument('--node-rank', type=int, required=True)
+            p.add_argument('--master-addr', required=True)
+            p.add_argument('--master-port', type=int, required=True)
+            p.add_argument('--execute', action='store_true')
+            p.add_argument('--resume', action='store_true')
         if name == 'assemble':
             p.add_argument('--rank-receipts', type=Path, nargs='+', required=True)
             p.add_argument('--reserve-bytes', type=int, default=2**31)
@@ -53,6 +64,17 @@ def main(argv=None):
             result['native_execution'] = 'NOT_RUN_REQUIRES_EXPLICIT_EXECUTE'
             if args.command == 'validate' and args.output:
                 write_new_json(args.output, result)
+        elif args.command == 'prepare-campaign':
+            from .wan_campaign import prepare
+            assets = OriginalWanAssets.from_dict(json.loads(args.assets.read_text()))
+            result = prepare(task, assets, args.output, include_fusion=not args.without_fusion,
+                             max_launches=args.max_launches)
+        elif args.command == 'campaign':
+            from .wan_campaign import run, verify
+            from distillschedule.core.contracts import require
+            require(verify(args.campaign)['task_sha256'] == task.digest, 'campaign/task mismatch', path='wan.campaign')
+            result = run(args.campaign, node_rank=args.node_rank, master_addr=args.master_addr,
+                         master_port=args.master_port, execute=args.execute, resume=args.resume)
         elif args.command == 'assemble':
             from .wan_planning import assemble
             result = assemble(task, args.rank_receipts, args.output, reserve_bytes=args.reserve_bytes)
