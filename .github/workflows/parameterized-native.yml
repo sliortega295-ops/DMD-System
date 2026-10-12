@@ -1,0 +1,43 @@
+name: parameterized-native
+on:
+  pull_request:
+    paths:
+      - src/distillschedule/native/**
+      - src/distillschedule/cli.py
+      - src/distillschedule/search/frontier_schedule.py
+      - tests/test_native_*.py
+      - tests/test_refactor_native_task_contract.py
+      - .github/workflows/parameterized-native.yml
+  push:
+    branches: [agent/parameterized-native-backend-20261011]
+    paths: [.github/workflows/parameterized-native.yml]
+permissions:
+  contents: read
+jobs:
+  native-cpu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pip install -e '.[test,native-wan]'
+      - name: Real tensors and real Wan architecture (CPU, random tiny weights; no Hub downloads)
+        env:
+          PYTHONPATH: src:.
+          HF_HUB_OFFLINE: '1'
+          TRANSFORMERS_OFFLINE: '1'
+          OMP_NUM_THREADS: '1'
+        run: python -m pytest -q tests/test_native_parameterized_execution.py tests/test_native_wan_adapter.py tests/test_refactor_native_task_contract.py tests/test_refactor_frontier_schedule.py --junitxml=native-tests.xml
+      - name: Integration and source audit
+        run: python scripts/distillschedule/check_best_known_integration.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: parameterized-native-cpu-${{ github.sha }}
+          path: native-tests.xml
+          retention-days: 14

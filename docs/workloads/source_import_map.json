@@ -1007,7 +1007,16 @@
       "target": "scripts/distillschedule/launch_minimax_h3_best_node.sh"
     },
     {
-      "integrated_sha256": "9b3270037e4efe17337ca099422a48e37ae07e660ca6a9f6fc7db7261184364a",
+      "adaptations": [
+        {
+          "base_integration_head": "31d4d02fb31dfee7c06baea10dd33393b010b3cc",
+          "new_integrated_sha256": "4771c2dd0aca0d35dfc6c92b35664304a4a09d148701a937a3d6b338aa2e4adc",
+          "previous_integrated_sha256": "9b3270037e4efe17337ca099422a48e37ae07e660ca6a9f6fc7db7261184364a",
+          "reason": "Add an opt-in parameterized native subcommand; canonical workload routes, profiles and kernels remain unchanged.",
+          "source_commit": "ba4da395617f36d08060fe5cd6e1ed7f83209cd2"
+        }
+      ],
+      "integrated_sha256": "4771c2dd0aca0d35dfc6c92b35664304a4a09d148701a937a3d6b338aa2e4adc",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/cli.py",
       "source_repository": "integration-pr26",

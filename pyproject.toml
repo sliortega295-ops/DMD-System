@@ -17,6 +17,8 @@ config = ["omegaconf>=2.3"]
 helios = ["omegaconf>=2.3"]
 profiling = ["matplotlib>=3.7", "numpy>=1.24"]
 test = ["pytest>=7", "omegaconf>=2.3"]
+native = ["torch>=2.5", "safetensors>=0.4"]
+native-wan = ["torch>=2.5", "safetensors>=0.4", "diffusers==0.35.2", "accelerate>=1.1,<2"]
 
 [project.scripts]
 distillctl = "distillschedule.cli:main"
