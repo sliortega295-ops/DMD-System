@@ -200,7 +200,8 @@ def test_real_peft_pyramid_conv3d_adapters_use_peft_delta_layout():
 
 
 @pytest.mark.parametrize("enabled", [False, True])
-def test_controller_explicit_opt_in_and_isolated_ssh_tty(enabled):
+@pytest.mark.parametrize("norm", [False, True])
+def test_controller_explicit_opt_in_and_isolated_ssh_tty(enabled, norm):
     root = Path(__file__).resolve().parents[1]
     command = [sys.executable, str(root / "scripts/distillschedule/run_wan13b_fair_world16.py"),
         "--run-id", "shadow-plan", "--mode", "trajectory",
@@ -211,6 +212,8 @@ def test_controller_explicit_opt_in_and_isolated_ssh_tty(enabled):
         "--tf32-cublas-override", "1", "--ssh-tty", "--dry-run"]
     if enabled:
         command.append("--generator-rollout-merged-shadow")
+    if norm:
+        command.append("--modulated-norm-fusion")
     plan = json.loads(subprocess.check_output(command, env=dict(os.environ, PYTHONPATH=str(root / "src")), text=True))
     for row in plan["commands"]:
         assert "-tt" in row

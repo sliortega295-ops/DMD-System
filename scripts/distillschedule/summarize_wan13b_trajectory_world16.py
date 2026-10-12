@@ -349,8 +349,8 @@ def main() -> int:
     shadow_requested = manifests[0].get("generator_rollout_merged_shadow", "0") == "1"
     if norm_requested and args.placement != RESIDENT_WINNER:
         errors.append("normalization fusion is not registered for this placement")
-    if shadow_requested and (args.placement != RESIDENT_WINNER or norm_requested):
-        errors.append("merged shadow is registered only for the one-factor Resident arm")
+    if shadow_requested and args.placement != RESIDENT_WINNER:
+        errors.append("merged shadow is registered only for the Resident arm")
     identity_keys = (
         "run_id", "dmd_system_head", "trajectory_seed", "trajectory_arm_id",
         "trace_hash", "bootstrap_hash", "generator_nograd_lora_fused_epilogue",

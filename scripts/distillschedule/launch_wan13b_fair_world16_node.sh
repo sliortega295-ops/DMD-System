@@ -82,8 +82,8 @@ MODULATED_NORM_FUSION="${DISTILLSCHEDULE_WAN13B_MODULATED_NORM_FUSION:-0}"
 GENERATOR_ROLLOUT_MERGED_SHADOW="${DISTILLSCHEDULE_WAN13B_GENERATOR_ROLLOUT_MERGED_SHADOW:-0}"
 [[ "${GENERATOR_ROLLOUT_MERGED_SHADOW}" == 0 || "${GENERATOR_ROLLOUT_MERGED_SHADOW}" == 1 ]] || exit 2
 if [[ "${GENERATOR_ROLLOUT_MERGED_SHADOW}" == 1 ]]; then
-  [[ "${PLACEMENT}" == resident-async128-tree-chunk2048 && "${MODULATED_NORM_FUSION}" == 0 ]] || {
-    echo merged_shadow_requires_one_factor_resident_control >&2; exit 2;
+  [[ "${PLACEMENT}" == resident-async128-tree-chunk2048 ]] || {
+    echo merged_shadow_requires_registered_resident_control >&2; exit 2;
   }
 fi
 [[ "${MODULATED_NORM_FUSION}" == 0 || "${MODULATED_NORM_FUSION}" == 1 ]] || exit 2

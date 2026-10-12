@@ -242,8 +242,6 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
     if getattr(args, "generator_rollout_merged_shadow", False):
         if args.placement != "resident-async128-tree-chunk2048":
             raise ValueError("merged shadow requires the registered Resident control")
-        if getattr(args, "modulated_norm_fusion", False):
-            raise ValueError("first shadow canary changes only one major mechanism")
     if args.mode in {"timing", "diagnostic-timing", "profile", "two-cycle-timing"}:
         if args.correctness_receipt is None or not args.correctness_sha256:
             raise ValueError("low-overhead execution requires a pinned correctness receipt")

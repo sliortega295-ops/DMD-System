@@ -382,8 +382,8 @@ def main() -> int:
     from distillschedule.runtime.wan13b_rollout_shadow import requested as shadow_requested, validate as validate_shadow
 
     shadow_enabled = shadow_requested()
-    if shadow_enabled and (args.placement != RESIDENT_WINNER or norm_fused):
-        raise ValueError("merged shadow requires the one-factor Resident control")
+    if shadow_enabled and args.placement != RESIDENT_WINNER:
+        raise ValueError("merged shadow requires the registered Resident control")
     if norm_fused and args.placement != RESIDENT_WINNER:
         raise ValueError("FSDP control cannot enable Resident normalization fusion")
     if args.placement == RESIDENT_WINNER and not fused_epilogue:
