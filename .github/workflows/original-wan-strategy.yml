@@ -7,6 +7,7 @@ on:
       - 'src/distillschedule/runtime/wan_cycle_plan.py'
       - 'tests/test_strategy_wan_*.py'
       - '.github/workflows/original-wan-strategy.yml'
+      - 'pyproject.toml'
   pull_request:
     paths:
       - 'src/distillschedule/strategies/**'
@@ -14,6 +15,7 @@ on:
       - 'src/distillschedule/runtime/wan_cycle_plan.py'
       - 'tests/test_strategy_wan_*.py'
       - '.github/workflows/original-wan-strategy.yml'
+      - 'pyproject.toml'
 permissions:
   contents: read
 jobs:

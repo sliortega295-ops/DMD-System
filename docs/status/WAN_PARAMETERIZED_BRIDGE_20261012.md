@@ -1,42 +1,34 @@
-# Wan parameterized native-action bridge — local checkpoint, 2026-10-12
+# Wan original-protocol parameterized strategy integration (2026-10-12)
 
-## Status
-Implementation and CPU handler tests only. NOT pushed to GitHub. No GPU run.
-Starting upstream source: `088b8ad53f16051577aebb5d75eb6e2f5370fc13`.
+## Publication and validation
 
-## Completed step
-`runtime/wan_cycle_plan.py` now has one native handler binding implementation
-shared by the unchanged Full5 entry and an explicitly contracted parameterized
-entry. Both call the original `_run_nogan_generator_update_p0`,
-`_precompute_critic_rollouts`, `_run_nogan_critic_precomputed`, and `ema.step`.
-No Euler protocol, model, loss, optimizer or new launcher was added.
-Critic result retention and collection now use the declared count, not 5.
+The 10 source increments have been published on
+`agent/original-wan-strategy-20261012` starting from
+`088b8ad53f16051577aebb5d75eb6e2f5370fc13`.
+The bridge is opt-in and uses the original Wan1.3B Helios-pyramid no-GAN
+model and optimizer helpers; it does not replace them with the separate
+Euler test protocol. Five canonical profiles and naive FSDP2 reference remain
+unchanged.
 
-The new entry checks the original no-GAN protocol, source-step identity,
-explicit EMA positions, physical B1, world16, nonpersistent unshard and
-operation-qualified trace declaration. It rejects truncating a Full5 trace to
-pretend it describes a new task. The original generator helper still assumes
-source entry 10, so the new entry explicitly preserves that limit.
+The local CPU strategy and parameterized dispatch suite: **138 passed**.
+The GitHub Actions job on the first published revision had 137 passed and one
+missing-NumPy environment failure; the next revision declares NumPy in the
+native optional dependencies and reruns the unchanged suite.
+These are interface and CPU checks, **not** original-model multi-GPU
+correctness, capacity, numerical equivalence, or speed evidence.
 
-## Validation
-87 tests passed: new parameterized bridge tests plus existing Wan prepared
-execution and parameterized-cycle tests. Tests use CPU native-handler fixtures,
-not Wan tensors or distributed collectives. They cover counts 1/2/3/5/8,
-window 1/full, EMA all/none/last, Full5 dispatch equality, source/backend
-rejections and missing native optimizer commits. These tests do not establish
-original-model numerical parity or new GPU parameter support.
+## Implemented surface
 
-## Remaining work (critical)
-The parameterized entry is not yet exposed by production launchers. Existing
-StaticWorld16Trace, worker census, import-bound helpers and native calibration
-still have Full5/shape assumptions. Add an actual validated parameterized trace
-adapter, then connect existing placement/async-reducer/chunk/epilogue choices
-before construction, corresponding cost collection and worker execution.
-Do not mark new shapes or update frequencies GPU-supported merely because
-this binding accepts a metadata contract. Do not claim all targets achieved.
+- Original protocol input contract: frame/height/width lattice, G1/Fn,
+  LoRA rank, stage-specific denoising horizon, and EMA cadence.
+- Trace admission checks sixteen rank-qualified payloads and geometry against
+  a matched native bootstrap; existing Full5 traces cannot be truncated to
+  impersonate a different task. Trace capture remains external.
+- Existing world16 FSDP and Resident/async128/Tree layouts, modulation chunks,
+  and no-grad LoRA epilogue enter a capability-gated candidate set.
+- Validated generated orders lower through existing Wan math and actual worker
+  functions. Two-node campaigns enforce finite GPU trial budgets and keep
+  out-of-tolerance numerical results as REVIEW.
 
-## Resume discipline
-Restore authenticated GitHub write or the development workspace connection.
-Inspect remote branch and apply this isolated patch without overwriting others.
-Commit/push/verify this step before another large edit. Preserve canonical
-profiles, old evidence identities and the naive-FSDP2 baseline. No force push.
+See `docs/workloads/parameterized_original_wan.md` for supported semantics,
+commands, candidate restrictions, and remaining GPU/trace-capture work.

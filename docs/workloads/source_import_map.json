@@ -277,9 +277,10 @@
           "base_integration_head": "088b8ad53f16051577aebb5d75eb6e2f5370fc13",
           "new_integrated_sha256": "6368948969be164db0d5196449f9609b9b800c0fa7f7a25dea3cadac79ae2b38",
           "previous_integrated_sha256": "d83eeba2196a0d0eb96d66e441439da8185bb271492b85f5a70cc0390d400aa6",
-          "publication_status": "LOCAL_COMMIT_PENDING_GITHUB_PUSH",
+          "publication_status": "PUBLISHED_GITHUB_BRANCH",
+          "publication_branch": "agent/original-wan-strategy-20261012",
           "reason": "Opt-in original Wan task geometry/rank binding; legacy defaults, original math and canonical profiles preserved.",
-          "source_commit": "a56749742d8103bb19c3ff95ce2b693ec913a807"
+          "source_commit": "7e189e7ad24154e86192dfcdcaf167caf9d29d17"
         }
       ],
       "integrated_sha256": "6368948969be164db0d5196449f9609b9b800c0fa7f7a25dea3cadac79ae2b38",
@@ -339,9 +340,10 @@
           "base_integration_head": "088b8ad53f16051577aebb5d75eb6e2f5370fc13",
           "new_integrated_sha256": "01d2bf18f1161e6d7410bc5f599cf9d0ddc3df76ce145c0d187838d537bb0e12",
           "previous_integrated_sha256": "b9e702919d19d6d4da88ca87394891887508d9f644dbcaa17f854478ebc4f872",
-          "publication_status": "LOCAL_COMMIT_PENDING_GITHUB_PUSH",
+          "publication_status": "PUBLISHED_GITHUB_BRANCH",
+          "publication_branch": "agent/original-wan-strategy-20261012",
           "reason": "Opt-in original Wan task geometry/rank binding; legacy defaults, original math and canonical profiles preserved.",
-          "source_commit": "a56749742d8103bb19c3ff95ce2b693ec913a807"
+          "source_commit": "7e189e7ad24154e86192dfcdcaf167caf9d29d17"
         }
       ],
       "integrated_sha256": "01d2bf18f1161e6d7410bc5f599cf9d0ddc3df76ce145c0d187838d537bb0e12",
@@ -398,9 +400,10 @@
           "base_integration_head": "088b8ad53f16051577aebb5d75eb6e2f5370fc13",
           "new_integrated_sha256": "f281774e6527bda77de5537cdfd9e6bff5bd09ca7e2719c6c25f38d8d39a65f4",
           "previous_integrated_sha256": "006a5a6a99277e2dc348eb44c65e00c3c3a3b4fb9e4d9bb170d12ef1f93133ca",
-          "publication_status": "LOCAL_COMMIT_PENDING_GITHUB_PUSH",
+          "publication_status": "PUBLISHED_GITHUB_BRANCH",
+          "publication_branch": "agent/original-wan-strategy-20261012",
           "reason": "Opt-in original Wan task geometry/rank binding; legacy defaults, original math and canonical profiles preserved.",
-          "source_commit": "a56749742d8103bb19c3ff95ce2b693ec913a807"
+          "source_commit": "7e189e7ad24154e86192dfcdcaf167caf9d29d17"
         }
       ],
       "integrated_sha256": "f281774e6527bda77de5537cdfd9e6bff5bd09ca7e2719c6c25f38d8d39a65f4",
@@ -421,9 +424,10 @@
           "base_integration_head": "088b8ad53f16051577aebb5d75eb6e2f5370fc13",
           "new_integrated_sha256": "8f29bd2167e6fa08ae2c40a4c9cd814ec7c390a3c8596d9bf8ed3c6bce1fc188",
           "previous_integrated_sha256": "f44579ab6959eff7a835f3771cb1f3f4f08f9ffd1b5d8da2ebb4549208b4d3a8",
-          "publication_status": "LOCAL_COMMIT_PENDING_GITHUB_PUSH",
+          "publication_status": "PUBLISHED_GITHUB_BRANCH",
+          "publication_branch": "agent/original-wan-strategy-20261012",
           "reason": "Opt-in original Wan task geometry/rank binding; legacy defaults, original math and canonical profiles preserved.",
-          "source_commit": "a56749742d8103bb19c3ff95ce2b693ec913a807"
+          "source_commit": "7e189e7ad24154e86192dfcdcaf167caf9d29d17"
         }
       ],
       "integrated_sha256": "8f29bd2167e6fa08ae2c40a4c9cd814ec7c390a3c8596d9bf8ed3c6bce1fc188",
@@ -481,9 +485,10 @@
           "base_integration_head": "088b8ad53f16051577aebb5d75eb6e2f5370fc13",
           "new_integrated_sha256": "62dff96366837ba5d705cec5b309cac90af1ef344d0dd00ae3c89115cfabc032",
           "previous_integrated_sha256": "a59e54758bcd9d722ad4473ce1855b77a3f4a442229033a73d72ceb5584b9bb2",
-          "publication_status": "LOCAL_COMMIT_PENDING_GITHUB_PUSH",
+          "publication_status": "PUBLISHED_GITHUB_BRANCH",
+          "publication_branch": "agent/original-wan-strategy-20261012",
           "reason": "Opt-in original Wan task geometry/rank binding; legacy defaults, original math and canonical profiles preserved.",
-          "source_commit": "a56749742d8103bb19c3ff95ce2b693ec913a807"
+          "source_commit": "7e189e7ad24154e86192dfcdcaf167caf9d29d17"
         }
       ],
       "integrated_sha256": "62dff96366837ba5d705cec5b309cac90af1ef344d0dd00ae3c89115cfabc032",
