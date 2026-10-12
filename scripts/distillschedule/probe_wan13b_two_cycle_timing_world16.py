@@ -491,6 +491,17 @@ def _validate_fused_receipt(
     )
     if not isinstance(generator, dict) or not isinstance(critic, dict):
         raise AssertionError("missing fused-epilogue runtime receipt")
+    from distillschedule.runtime.wan13b_layout_ablation import requested as layout_requested, check as check_layout
+    if layout_requested():
+        check_layout(placement, enabled=True, flags={})
+        for role, receipt in (("generator", generator), ("critic", critic)):
+            if receipt.get("requested") is not False or receipt.get("enabled") is not False:
+                raise AssertionError(f"layout-only {role} must report fused epilogue disabled")
+            if any(int(receipt.get(key, 0)) for key in (
+                "fused_invocation_count", "model_call_count", "reference_fallback_count"
+            )):
+                raise AssertionError(f"layout-only {role} unexpectedly executed fused epilogue")
+        return {"generator": generator, "critic": critic}
     if placement == RESIDENT_WINNER:
         if generator.get("requested") is not True or generator.get("enabled") is not True:
             raise AssertionError("Resident winner fused epilogue is not enabled")
