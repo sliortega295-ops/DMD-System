@@ -548,8 +548,24 @@ def install_generator_nograd_lora_fused_epilogue(
             lora_a = _child.lora_A[adapter]
             lora_b = _child.lora_B[adapter]
             dropout = _child.lora_dropout[adapter]
-            cast_x = _child._cast_input_dtype(x, lora_a.weight.dtype)
-            update = lora_b(lora_a(dropout(cast_x)))
+            graph_controller = getattr(model, "_distillschedule_rollout_cuda_graph", None)
+            input_fused = _enabled(os.environ.get("DISTILLSCHEDULE_WAN13B_FUSED_INPUT_LORA_A"))
+            use_input_fused = (
+                input_fused and graph_controller is not None
+                and graph_controller.receipt["active"] and x.dtype == _torch().bfloat16
+                and x.shape[-1] == 1536 and x.numel() // 1536 >= 4096
+                and tuple(lora_a.weight.shape) == (256, 1536)
+                and x.is_contiguous() and lora_a.weight.is_contiguous()
+                and lora_a.bias is None and not getattr(dropout, "p", 0)
+            )
+            if use_input_fused:
+                from .wan13b_input_lora_gemm import fused_input_lora_a
+                intermediate = fused_input_lora_a(x, lora_a.weight)
+                update = lora_b(intermediate)
+                receipt["input_gemm_capture_invocation_count"] = receipt.get("input_gemm_capture_invocation_count", 0) + 1
+            else:
+                cast_x = _child._cast_input_dtype(x, lora_a.weight.dtype)
+                update = lora_b(lora_a(dropout(cast_x)))
             fallback_reason = None
             torch = _torch()
             if result.dtype != torch.bfloat16:

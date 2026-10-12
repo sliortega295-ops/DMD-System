@@ -715,6 +715,7 @@ def main() -> int:
                     "modulated_norm_fusion": str(norm_fused).lower(),
                     "generator_rollout_merged_shadow": str(shadow_enabled).lower(),
                     "generator_rollout_cuda_graph": str(graph_enabled).lower(),
+                    "fused_input_lora_a": str(os.environ.get("DISTILLSCHEDULE_WAN13B_FUSED_INPUT_LORA_A", "0") == "1").lower(),
                     "worker": "probe_wan13b_trajectory_world16.py",
                 },
                 sample_identities=sample_payloads,

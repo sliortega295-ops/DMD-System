@@ -618,6 +618,7 @@ def main() -> int:
             "modulated_norm_fusion": raw_implementation.get("modulated_norm_fusion", "false") == "true",
             "generator_rollout_merged_shadow": raw_implementation.get("generator_rollout_merged_shadow", "false") == "true",
             "generator_rollout_cuda_graph": raw_implementation.get("generator_rollout_cuda_graph", "false") == "true",
+            "fused_input_lora_a": raw_implementation.get("fused_input_lora_a", "false") == "true",
             "worker": raw_implementation.get("worker"),
         }
         if raw_implementation is not None
