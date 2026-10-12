@@ -15,7 +15,8 @@ from typing import Any
 WORLD_SIZE = 16
 RESIDENT_WINNER = "resident-async128-tree-chunk2048"
 FSDP_BASELINE = "world16-fsdp"
-REGISTERED_PLACEMENTS = frozenset({RESIDENT_WINNER, FSDP_BASELINE})
+RESIDENT_REFERENCE = "resident"
+REGISTERED_PLACEMENTS = frozenset({RESIDENT_WINNER, FSDP_BASELINE, RESIDENT_REFERENCE})
 EXPECTED_VERSIONS = (
     {"generator": 3, "critic": 15, "ema": 15},
     {"generator": 4, "critic": 20, "ema": 20},
@@ -180,11 +181,13 @@ def _validate_arm(
     arm = row.get("arm_contract", {})
     fused = arm.get("generator_nograd_lora_fused_epilogue")
     cast_cache = arm.get("generator_nograd_lora_cast_cache")
-    expected_name = (
-        "RESIDENT_ASYNC128_TREE_CHUNK2048_FUSED_EPILOGUE"
-        if placement == RESIDENT_WINNER
-        else "WORLD16_FSDP_BASELINE"
-    )
+    grad_fused = arm.get("grad_lora_fused_epilogue", False)
+    norm_fused = arm.get("modulated_norm_fusion", False)
+    expected_name = {
+        RESIDENT_WINNER: "RESIDENT_ASYNC128_TREE_CHUNK2048_FUSED_EPILOGUE",
+        FSDP_BASELINE: "WORLD16_FSDP_BASELINE",
+        RESIDENT_REFERENCE: "RESIDENT_REPLICATED_REFERENCE",
+    }[placement]
     if arm.get("arm_contract") != expected_name:
         errors.append(f"rank{rank}: arm contract changed")
     if placement == RESIDENT_WINNER:

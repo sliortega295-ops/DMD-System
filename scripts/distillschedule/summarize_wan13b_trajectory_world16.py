@@ -20,7 +20,8 @@ WORLD_SIZE = 16
 REGISTERED_CYCLE_COUNTS = frozenset({1, 2, 5, 50})
 RESIDENT_WINNER = "resident-async128-tree-chunk2048"
 FSDP_BASELINE = "world16-fsdp"
-REGISTERED_PLACEMENTS = frozenset({RESIDENT_WINNER, FSDP_BASELINE})
+RESIDENT_REFERENCE = "resident"
+REGISTERED_PLACEMENTS = frozenset({RESIDENT_WINNER, FSDP_BASELINE, RESIDENT_REFERENCE})
 EXPECTED_ROLLOUT_OPERATIONS = (
     "step/10/generator/rollout",
     *(f"step/{step}/critic/rollout" for step in range(10, 15)),
@@ -244,6 +245,13 @@ def _validate_runtime_build(
             modulation = metadata.get("modulation_chunk_runtime", {})
             if modulation.get("effective_tokens") != [2048] or modulation.get("block_count") != 30 or modulation.get("all_blocks_match") is not True:
                 errors.append(f"rank{rank}/{role}: modulation chunk2048 contract changed")
+        if placement == RESIDENT_REFERENCE:
+            if placement_receipt.get("backend") != "FULL_REPLICA_GPU_RESIDENT_MANUAL_GRAD_SYNC":
+                errors.append(f"rank{rank}/{role}: Resident reference is not a complete replica")
+            if component.get("engine", {}).get("gradient_sync") != "WORLD16_MANUAL_SUM_THEN_DIVIDE_ALL_REDUCE":
+                errors.append(f"rank{rank}/{role}: Resident reference gradient synchronization changed")
+            if metadata.get("modulation_chunk_runtime", {}).get("effective_tokens") != [512]:
+                errors.append(f"rank{rank}/{role}: Resident reference native chunk512 changed")
     if len(runtime_hashes) != 1:
         errors.append(f"rank{rank}: Generator/Critic residual runtime identities differ")
 
@@ -526,11 +534,11 @@ def main() -> int:
     )
     if len(implementation_hashes) != 1:
         errors.append("rank/cycle implementation identities differ")
-    expected_arm = (
-        "RESIDENT_ASYNC128_TREE_CHUNK2048_FUSED_EPILOGUE"
-        if args.placement == RESIDENT_WINNER
-        else "WORLD16_FSDP_BASELINE"
-    )
+    expected_arm = {
+        RESIDENT_WINNER: "RESIDENT_ASYNC128_TREE_CHUNK2048_FUSED_EPILOGUE",
+        FSDP_BASELINE: "WORLD16_FSDP_BASELINE",
+        RESIDENT_REFERENCE: "RESIDENT_REPLICATED_REFERENCE",
+    }[args.placement]
     if implementation_contract is not None and implementation_contract.get("arm_contract") != expected_arm:
         errors.append("trajectory implementation arm contract changed")
     if implementation_contract is not None:
@@ -543,6 +551,8 @@ def main() -> int:
             errors.append("trajectory fused-epilogue arm flag changed")
         if implementation_contract.get("generator_nograd_lora_cast_cache") is not False:
             errors.append("trajectory unexpectedly enabled rejected cast cache")
+        if args.placement in {FSDP_BASELINE, RESIDENT_REFERENCE} and implementation_contract.get("grad_lora_fused_epilogue", False):
+            errors.append("reference baseline enabled Resident grad epilogue")
 
     expected_anchor_cycles = sorted(
         {cycle for cycle in (1, 10, 25, 50, args.cycles) if cycle <= args.cycles}

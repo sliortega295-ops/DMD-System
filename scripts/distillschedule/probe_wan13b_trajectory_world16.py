@@ -72,6 +72,7 @@ ANCHOR_CYCLES = frozenset({1, 10, 25, 50})
 REGISTERED_CYCLE_COUNTS = frozenset({1, 2, 5, 50})
 RESIDENT_WINNER = "resident-async128-tree-chunk2048"
 FSDP_BASELINE = "world16-fsdp"
+RESIDENT_REFERENCE = "resident"
 
 
 def _rollout_operations() -> tuple[str, ...]:
@@ -356,7 +357,7 @@ def main() -> int:
         raise ValueError("trajectory cycles must be one of 1, 2, 5, or 50")
     if args.trajectory_seed < 0:
         raise ValueError("trajectory seed must be non-negative")
-    if args.placement not in {RESIDENT_WINNER, FSDP_BASELINE}:
+    if args.placement not in {RESIDENT_WINNER, FSDP_BASELINE, RESIDENT_REFERENCE}:
         raise ValueError("trajectory placement is not a registered comparison arm")
     fused_epilogue = (
         os.environ.get(
@@ -374,8 +375,8 @@ def main() -> int:
         raise ValueError("Resident trajectory is not the registered fused-epilogue winner")
     if args.placement == RESIDENT_WINNER and cast_cache:
         raise ValueError("Resident winner cannot enable the rejected cast cache")
-    if args.placement == FSDP_BASELINE and (fused_epilogue or cast_cache):
-        raise ValueError("world16-FSDP baseline cannot enable Resident-only LoRA arms")
+    if args.placement in {FSDP_BASELINE, RESIDENT_REFERENCE} and (fused_epilogue or cast_cache):
+        raise ValueError("reference baselines cannot enable Resident-only LoRA arms")
     if not args.run_id.replace("-", "").replace("_", "").replace(".", "").isalnum():
         raise ValueError("unsafe run id")
     dist.init_process_group("nccl")
@@ -407,11 +408,11 @@ def main() -> int:
         "trajectory_arm_id": args.trajectory_arm_id,
         "diagnostic_only": True,
         "formal_timing_eligible": False,
-        "arm_contract": (
-            "RESIDENT_ASYNC128_TREE_CHUNK2048_FUSED_EPILOGUE"
-            if args.placement == RESIDENT_WINNER
-            else "WORLD16_FSDP_BASELINE"
-        ),
+        "arm_contract": {
+            RESIDENT_WINNER: "RESIDENT_ASYNC128_TREE_CHUNK2048_FUSED_EPILOGUE",
+            FSDP_BASELINE: "WORLD16_FSDP_BASELINE",
+            RESIDENT_REFERENCE: "RESIDENT_REPLICATED_REFERENCE",
+        }[args.placement],
     }
     try:
         # NCCL_ALGO=Tree is part of the registered Resident winner, but NCCL

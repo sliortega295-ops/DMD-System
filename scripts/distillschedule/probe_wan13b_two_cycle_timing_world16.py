@@ -66,9 +66,11 @@ SOURCE_STEPS = tuple(range(10, 15))
 TIMED_CYCLES = 2
 RESIDENT_WINNER = "resident-async128-tree-chunk2048"
 FSDP_BASELINE = "world16-fsdp"
-REGISTERED_PLACEMENTS = frozenset({RESIDENT_WINNER, FSDP_BASELINE})
+RESIDENT_REFERENCE = "resident"
+REGISTERED_PLACEMENTS = frozenset({RESIDENT_WINNER, FSDP_BASELINE, RESIDENT_REFERENCE})
 RESIDENT_ARM_CONTRACT = "RESIDENT_ASYNC128_TREE_CHUNK2048_FUSED_EPILOGUE"
 FSDP_ARM_CONTRACT = "WORLD16_FSDP_BASELINE"
+RESIDENT_REFERENCE_CONTRACT = "RESIDENT_REPLICATED_REFERENCE"
 
 
 def _rollout_operations() -> tuple[str, ...]:
@@ -139,6 +141,8 @@ def _expected_arm_contract(placement: str) -> str:
         return RESIDENT_ARM_CONTRACT
     if placement == FSDP_BASELINE:
         return FSDP_ARM_CONTRACT
+    if placement == RESIDENT_REFERENCE:
+        return RESIDENT_REFERENCE_CONTRACT
     raise ValueError(f"unregistered two-cycle placement: {placement}")
 
 
@@ -168,9 +172,9 @@ def _validate_arm_environment(placement: str) -> dict[str, Any]:
         raise ValueError(
             "two-cycle Resident winner requires fused epilogue ON and cast cache OFF"
         )
-    if placement == FSDP_BASELINE and (fused or cast_cache):
+    if placement in {FSDP_BASELINE, RESIDENT_REFERENCE} and (fused or cast_cache):
         raise ValueError(
-            "two-cycle world16-FSDP baseline requires fused epilogue and cast cache OFF"
+            "two-cycle reference baselines require fused epilogue and cast cache OFF"
         )
     return {
         "arm_contract": _expected_arm_contract(placement),
@@ -535,6 +539,13 @@ def _validate_build_contract(
                 raise AssertionError(f"{role}: modulation chunk is not 2048")
             if modulation.get("block_count") != 30 or modulation.get("all_blocks_match") is not True:
                 raise AssertionError(f"{role}: modulation block census changed")
+        if placement == RESIDENT_REFERENCE:
+            if placement_receipt.get("backend") != "FULL_REPLICA_GPU_RESIDENT_MANUAL_GRAD_SYNC":
+                raise AssertionError(f"{role}: Resident reference is not a complete replica")
+            if component.get("engine", {}).get("gradient_sync") != "WORLD16_MANUAL_SUM_THEN_DIVIDE_ALL_REDUCE":
+                raise AssertionError(f"{role}: Resident reference gradient synchronization changed")
+            if metadata.get("modulation_chunk_runtime", {}).get("effective_tokens") != [512]:
+                raise AssertionError(f"{role}: Resident reference native chunk512 changed")
     if len(runtime_hashes) != 1:
         raise AssertionError("Generator/Critic residual runtime sources differ")
     static = build.get("static_residency", {})

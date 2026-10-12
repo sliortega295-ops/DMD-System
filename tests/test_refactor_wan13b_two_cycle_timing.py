@@ -127,6 +127,58 @@ def test_two_cycle_worker_populates_every_shared_builder_mode_flag() -> None:
     }
 
 
+def test_plain_resident_is_registered_without_enabling_winner_clean_runtime() -> None:
+    namespace: dict[str, object] = {
+        "RESIDENT_WINNER": "resident-async128-tree-chunk2048",
+        "FSDP_BASELINE": "world16-fsdp",
+        "RESIDENT_REFERENCE": "resident",
+        "RESIDENT_ARM_CONTRACT": "RESIDENT_ASYNC128_TREE_CHUNK2048_FUSED_EPILOGUE",
+        "FSDP_ARM_CONTRACT": "WORLD16_FSDP_BASELINE",
+        "RESIDENT_REFERENCE_CONTRACT": "RESIDENT_REPLICATED_REFERENCE",
+    }
+    module = ast.Module(
+        body=[_function(WORKER, "_clean_runtime"), _function(WORKER, "_expected_arm_contract")],
+        type_ignores=[],
+    )
+    ast.fix_missing_locations(module)
+    exec(compile(module, str(WORKER), "exec"), namespace)
+    assert namespace["_expected_arm_contract"]("resident") == "RESIDENT_REPLICATED_REFERENCE"
+    assert namespace["_clean_runtime"]("resident") is False
+    assert namespace["_clean_runtime"]("world16-fsdp") is False
+    assert namespace["_clean_runtime"]("resident-async128-tree-chunk2048") is True
+
+
+def test_plain_resident_environment_rejects_optimized_epilogue(monkeypatch: Any) -> None:
+    namespace: dict[str, object] = {
+        "Any": Any,
+        "os": os,
+        "RESIDENT_WINNER": "resident-async128-tree-chunk2048",
+        "FSDP_BASELINE": "world16-fsdp",
+        "RESIDENT_REFERENCE": "resident",
+        "grad_epilogue_requested": lambda: False,
+        "_expected_arm_contract": lambda placement: "RESIDENT_REPLICATED_REFERENCE",
+    }
+    module = ast.Module(body=[_function(WORKER, "_validate_arm_environment")], type_ignores=[])
+    ast.fix_missing_locations(module)
+    exec(compile(module, str(WORKER), "exec"), namespace)
+    for key in (
+        "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE",
+        "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE",
+        "DISTILLSCHEDULE_WAN13B_MODULATED_NORM_FUSION",
+    ):
+        monkeypatch.setenv(key, "0")
+    arm = namespace["_validate_arm_environment"]("resident")
+    assert arm["arm_contract"] == "RESIDENT_REPLICATED_REFERENCE"
+    assert all(value is False for key, value in arm.items() if key != "arm_contract")
+    monkeypatch.setenv("DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE", "1")
+    try:
+        namespace["_validate_arm_environment"]("resident")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("plain Resident accepted an optimized epilogue")
+
+
 def test_controller_and_launcher_register_fail_closed_two_cycle_mode() -> None:
     controller = CONTROLLER.read_text()
     launcher = LAUNCHER.read_text()
@@ -516,6 +568,36 @@ def test_two_cycle_summarizer_uses_cycle2_world_max_and_reconciles_16_ranks(tmp_
         "payload_cohort_replayed": True,
         "ordered_rank_slot_mapping_replayed": True,
     }
+
+
+def test_plain_resident_summarizer_preserves_native_arm_and_cycle2_denominator(tmp_path: Path) -> None:
+    run_root, output = _synthetic_run(tmp_path)
+    for node in (0, 1):
+        path = run_root / "launcher" / f"node_{node}" / "launch_manifest.txt"
+        path.write_text(path.read_text().replace("placement=world16-fsdp", "placement=resident"))
+    for rank in range(16):
+        path = run_root / "execution" / "ranks" / f"rank_{rank:02d}.json"
+        value = json.loads(path.read_text())
+        value["placement"] = "resident"
+        value["arm_contract"]["arm_contract"] = "RESIDENT_REPLICATED_REFERENCE"
+        value["implementation_fingerprint"] = _digest(value["arm_contract"])
+        value["configuration_fingerprint"] = _digest({
+            "workload_fingerprint": value["workload_fingerprint"],
+            "implementation_fingerprint": value["implementation_fingerprint"],
+        })
+        path.write_text(json.dumps(value) + "\n")
+    completed = subprocess.run(
+        [sys.executable, str(SUMMARIZER), "--run-root", str(run_root),
+         "--placement", "resident", "--expected-head", HEAD, "--output", str(output)],
+        check=False, capture_output=True, text=True,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    value = json.loads(output.read_text())
+    assert value["status"] == "PASS"
+    assert value["cycle_1"]["claimable"] is False
+    assert value["cycle_2"]["world_max_seconds"] == 9.15
+    assert value["speed_claim_denominator"] == "CYCLE2_WORLD_MAX_ONLY"
+    assert value["implementation_contract"]["arm_contract"] == "RESIDENT_REPLICATED_REFERENCE"
 
 
 def test_two_cycle_summarizer_rejects_duplicate_cycle_or_nan(tmp_path: Path) -> None:

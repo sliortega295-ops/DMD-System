@@ -417,11 +417,11 @@ def main() -> int:
     if not 1 <= args.ssh_port <= 65535:
         raise ValueError("--ssh-port must be in [1, 65535]")
     if args.mode in {"trajectory", "two-cycle-timing"}:
-        allowed = {"resident-async128-tree-chunk2048", "world16-fsdp"}
+        allowed = {"resident-async128-tree-chunk2048", "world16-fsdp", "resident"}
         if args.placement not in allowed:
             raise ValueError(
-                f"{args.mode} supports only the registered Resident winner and "
-                "world16-FSDP baseline"
+                f"{args.mode} supports only the registered Resident winner, "
+                "Resident reference, and world16-FSDP baseline"
             )
         if args.placement == "resident-async128-tree-chunk2048":
             if not args.generator_nograd_lora_fused_epilogue:

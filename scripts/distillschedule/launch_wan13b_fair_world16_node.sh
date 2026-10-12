@@ -84,7 +84,7 @@ if [[ "${MODE}" == trajectory || "${MODE}" == two-cycle-timing ]]; then
        "${GENERATOR_NOGRAD_LORA_CAST_CACHE}" == 0 ]] || {
       echo registered_resident_winner_contract_mismatch >&2; exit 2;
     }
-  elif [[ "${PLACEMENT}" == world16-fsdp ]]; then
+  elif [[ "${PLACEMENT}" == world16-fsdp || "${PLACEMENT}" == resident ]]; then
     [[ "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" == 0 && \
        "${GENERATOR_NOGRAD_LORA_CAST_CACHE}" == 0 ]] || {
       echo registered_fsdp_baseline_contract_mismatch >&2; exit 2;
