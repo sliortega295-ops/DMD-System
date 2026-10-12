@@ -62,6 +62,11 @@ def run_generator_trace_rollout_batch(
     from helios.scheduler.scheduling_helios import HeliosScheduler
     from helios.utils.utils_helios_post import run_generator
 
+    from distillschedule.strategies.wan_trace import rollout_spec_for
+    specs = tuple(rollout_spec_for(e.operation_trace) for e in loaded_entries)
+    if not specs or any(s != specs[0] for s in specs[1:]):
+        raise ValueError("cannot batch different pyramid task contracts")
+    rollout_spec = specs[0]
     loaded = make_batched_loaded_entry(tuple(loaded_entries))
     tensors = loaded.tensors
     validation = loaded.operation_trace.validation
@@ -113,8 +118,8 @@ def run_generator_trace_rollout_batch(
     if detailed_profile:
         tracer = NestedCallTracer(
             model,
-            base_height=48,
-            base_width=80,
+            base_height=rollout_spec.latent_shape[-2],
+            base_width=rollout_spec.latent_shape[-1],
             num_stages=3,
             synchronize=lambda: torch.cuda.synchronize(device),
             before_call=lambda: torch.cuda.reset_peak_memory_stats(device),
@@ -124,8 +129,8 @@ def run_generator_trace_rollout_batch(
     else:
         tracer = LightweightNestedCallAudit(
             model,
-            base_height=48,
-            base_width=80,
+            base_height=rollout_spec.latent_shape[-2],
+            base_width=rollout_spec.latent_shape[-1],
             num_stages=3,
         )
     physical_call = ForceNoGradCalls(tracer)
@@ -165,8 +170,8 @@ def run_generator_trace_rollout_batch(
             history_sizes=[16, 2, 1],
             is_enable_stage2=True,
             stage2_num_stages=3,
-            stage2_num_inference_steps_list=[2, 2, 2],
-            denoising_step_list=[1000, 750, 500, 250],
+            stage2_num_inference_steps_list=list(rollout_spec.stage_steps),
+            denoising_step_list=list(rollout_spec.denoising_timesteps),
             last_step_only=False,
             last_section_grad_only=False,
             return_sim_step=False,
@@ -175,7 +180,7 @@ def run_generator_trace_rollout_batch(
             timestep_shift=5.0,
             use_dynamic_shifting=True,
             time_shift_type="linear",
-            num_critic_input_frames=9,
+            num_critic_input_frames=rollout_spec.latent_shape[2],
             num_rollout_sections=1,
             is_skip_first_section=False,
             is_amplify_first_chunk=True,
@@ -194,10 +199,11 @@ def run_generator_trace_rollout_batch(
     if synchronize_after_rollout and not clean_runtime:
         torch.cuda.synchronize(device)
     batch_size = len(loaded.members)
-    if list(generated_x0.shape) != [batch_size, 16, 9, 48, 80]:
+    expected_shape = [batch_size, *rollout_spec.latent_shape[1:]]
+    if list(generated_x0.shape) != expected_shape:
         raise AssertionError(
             "batched Generator returned a malformed x0: "
-            f"{list(generated_x0.shape)} != {[batch_size, 16, 9, 48, 80]}"
+            f"{list(generated_x0.shape)} != {expected_shape}"
         )
     if generated_x0.dtype != torch.bfloat16:
         raise AssertionError("batched Generator wire contract requires BF16 x0")

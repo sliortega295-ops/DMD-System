@@ -53,6 +53,8 @@ def run_generator_update_trace_rollout(
     from helios.scheduler.scheduling_helios import HeliosScheduler
     from helios.utils.utils_helios_post import run_generator
 
+    from distillschedule.strategies.wan_trace import rollout_spec_for
+    rollout_spec = rollout_spec_for(entry.operation_trace)
     tensors = entry.tensors
     operation = entry.operation_trace.operation(entry.rollout_operation)
     control = operation["control"]
@@ -103,8 +105,8 @@ def run_generator_update_trace_rollout(
     if detailed_profile:
         tracer: Any = NestedCallTracer(
             engine,
-            base_height=48,
-            base_width=80,
+            base_height=rollout_spec.latent_shape[-2],
+            base_width=rollout_spec.latent_shape[-1],
             num_stages=3,
             synchronize=lambda: torch.cuda.synchronize(device),
             before_call=lambda: torch.cuda.reset_peak_memory_stats(device),
@@ -113,7 +115,7 @@ def run_generator_update_trace_rollout(
         )
     else:
         tracer = LightweightNestedCallAudit(
-            engine, base_height=48, base_width=80, num_stages=3
+            engine, base_height=rollout_spec.latent_shape[-2], base_width=rollout_spec.latent_shape[-1], num_stages=3
         )
     model = _module(engine)
     model.enable_adapters()
@@ -140,8 +142,8 @@ def run_generator_update_trace_rollout(
         history_sizes=[16, 2, 1],
         is_enable_stage2=True,
         stage2_num_stages=3,
-        stage2_num_inference_steps_list=[2, 2, 2],
-        denoising_step_list=[1000, 750, 500, 250],
+        stage2_num_inference_steps_list=list(rollout_spec.stage_steps),
+        denoising_step_list=list(rollout_spec.denoising_timesteps),
         last_step_only=False,
         last_section_grad_only=False,
         return_sim_step=False,
@@ -150,7 +152,7 @@ def run_generator_update_trace_rollout(
         timestep_shift=5.0,
         use_dynamic_shifting=True,
         time_shift_type="linear",
-        num_critic_input_frames=9,
+        num_critic_input_frames=rollout_spec.latent_shape[2],
         num_rollout_sections=1,
         is_skip_first_section=False,
         is_amplify_first_chunk=True,
@@ -168,7 +170,7 @@ def run_generator_update_trace_rollout(
     )
     if synchronize_after_rollout and not clean_runtime:
         torch.cuda.synchronize(device)
-    if list(generated_x0.shape) != [1, 16, 9, 48, 80]:
+    if tuple(generated_x0.shape) != rollout_spec.latent_shape:
         raise AssertionError("Generator returned a reduced or malformed x0")
     if generated_x0.dtype != torch.bfloat16:
         raise AssertionError("Generator-update output must be BF16")
