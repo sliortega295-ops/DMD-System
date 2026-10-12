@@ -197,7 +197,7 @@ def _cgroup_delta(run_root: Path, *, node: int, errors: list[str]) -> dict[str, 
 
 
 def _validate_runtime_build(
-    final: dict[str, Any], *, placement: str, cycles: int, rank: int, errors: list[str]
+    final: dict[str, Any], *, placement: str, cycles: int, rank: int, errors: list[str], layout_only: bool = False
 ) -> dict[str, Any]:
     build = final.get("build", {})
     static = build.get("static_residency", {})
@@ -257,7 +257,7 @@ def _validate_runtime_build(
         .get("metadata", {})
         .get("generator_nograd_lora_fused_epilogue", {})
     )
-    if placement == RESIDENT_WINNER:
+    if placement == RESIDENT_WINNER and not layout_only:
         from distillschedule.runtime.wan13b_rollout_shadow import expected_epilogue_counts
 
         shadow_enabled = bool(final.get("generator_rollout_merged_shadow_receipt", {}).get("enabled", False))
@@ -502,7 +502,8 @@ def main() -> int:
         else:
             hosts[hostname].append(local_rank)
         runtime_receipts.append(
-            _validate_runtime_build(final, placement=args.placement, cycles=args.cycles, rank=rank, errors=errors)
+            _validate_runtime_build(final, placement=args.placement, cycles=args.cycles, rank=rank, errors=errors,
+                                    layout_only=all(row.implementation.get("layout_only_ablation", "false") == "true" for row in rows))
         )
 
     if len(rank_rows) != WORLD_SIZE or len(finals) != WORLD_SIZE:
