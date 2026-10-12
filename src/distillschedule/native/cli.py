@@ -10,6 +10,19 @@ from distillschedule.workloads.best_known.registry import write_new_json
 
 
 def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    routing = argparse.ArgumentParser(add_help=False)
+    routing.add_argument("--task", type=Path)
+    known, _ = routing.parse_known_args(argv)
+    if known.task is not None:
+        try:
+            raw = json.loads(known.task.read_text())
+            if isinstance(raw, dict) and raw.get("schema_version") == "distillschedule.original_wan_task.v1":
+                from distillschedule.strategies.wan_cli import main as original_wan_main
+                return original_wan_main(argv)
+        except (OSError, ValueError) as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
     parser=argparse.ArgumentParser(prog="distillctl workloads native")
     sub=parser.add_subparsers(dest="command",required=True)
     for name in ("validate","calibrate","plan","run"):
