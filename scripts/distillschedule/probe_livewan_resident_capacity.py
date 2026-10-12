@@ -17,6 +17,7 @@ import subprocess
 import sys
 import time
 import traceback
+from types import SimpleNamespace
 
 
 def main():
@@ -25,6 +26,8 @@ def main():
     p.add_argument("--bootstrap", type=Path, required=True)
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--optimizer-device", choices=("cuda", "cpu"), default="cuda")
+    p.add_argument("--real-forward-capacity", action="store_true",
+                   help="one real B1 rollout and Teacher CFG score; no backward, update or timing")
     args = p.parse_args()
     if os.environ.get("LIVEWAN_CAPACITY_LOCK_HELD") != "1":
         raise RuntimeError("caller must hold the node GPU lock")
@@ -57,6 +60,7 @@ def main():
         "torch": torch.__version__, "cuda": torch.version.cuda,
         "world16_training": "NOT_RUN", "timing": "NOT_RUN", "snapshots": [],
         "optimizer_device": args.optimizer_device,
+        "real_forward_capacity": args.real_forward_capacity,
         "cgroup_before": events.read_text()}
     start = time.monotonic()
     role = "before_construction"
@@ -108,6 +112,36 @@ def main():
         role = "teacher_full_cuda_materialization"
         teacher.to(device)
         torch.cuda.synchronize(device); snap(role)
+        if args.optimizer_device == "cpu":
+            result["cpu_optimizers"] = {"student": opt_g.receipt(), "critic": opt_c.receipt()}
+        if args.real_forward_capacity:
+            from distillschedule.runtime.livewan_crossscale_worker import (
+                InputLoader, _build_streamers, prepare_rollout, build_score_context,
+                prepare_score_sample_context, dmd_gradient_for_sample,
+            )
+            bundle = SimpleNamespace(student=student, critic=critic, teacher=teacher,
+                                     critic_shadow=None)
+            role = "real_b1_input_and_score_context"
+            loader = InputLoader(torch=torch, trace=trace)
+            score_context = build_score_context(torch, bundle=bundle, loader=loader, device=device)
+            streamer = _build_streamers(torch, student=student, count=1, device=device)[0]
+            snap(role)
+            role = "real_student_nograd_rollout"
+            row = trace.row(0, 0)
+            prepared = prepare_rollout(torch, row=row, streamer=streamer, student=student,
+                                       loader=loader, device=device)
+            torch.cuda.synchronize(device); snap(role)
+            role = "real_teacher_cfg_and_fake_dmd_score"
+            sample_context = prepare_score_sample_context(
+                torch, bundle=bundle, raw_context=prepared.raw_context, include_teacher=True)
+            gradient = dmd_gradient_for_sample(torch, bundle=bundle, score_context=score_context,
+                row=row, x0=prepared.x0, sample_context=sample_context,
+                context_lens=prepared.context_lens)
+            if not torch.isfinite(gradient).all():
+                raise RuntimeError("real capacity score is non-finite")
+            torch.cuda.synchronize(device); snap(role)
+            result["real_row"] = {"operation_key": row.operation_key,
+                                  "world_frames": row.world_frames, "new_blocks": row.new_blocks}
         result["status"] = "CONSTRUCTION_PASS_NO_TRAINING"
     except torch.cuda.OutOfMemoryError as exc:
         result.update(status="FAIL_CUDA_OOM", failure_stage=role,
