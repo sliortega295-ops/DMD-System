@@ -1,0 +1,29 @@
+{
+  "schema_version": "distillschedule.native_flow_task.v1",
+  "protocol": "euler_last_step_detached_dmd_post_g_independent_fake_v1",
+  "backend": "diffusers-wan",
+  "fixture": false,
+  "device": "cuda:0",
+  "dtype": "bfloat16",
+  "video_height": 384,
+  "video_width": 640,
+  "video_frames": 33,
+  "channels": 16,
+  "text_tokens": 512,
+  "text_dim": 4096,
+  "fake_updates": 1,
+  "denoising_steps": 8,
+  "lora_rank": 32,
+  "lora_alpha": 32,
+  "target_modules": ["to_q", "to_k", "to_v", "to_out.0"],
+  "microbatch": 1,
+  "accumulation": 1,
+  "checkpoints": {
+    "generator": "/REPLACE/local-diffusers-wan-student-transformer",
+    "critic": "/REPLACE/local-diffusers-wan-fake-transformer",
+    "teacher": "/REPLACE/local-diffusers-wan-teacher-transformer"
+  },
+  "conditions_path": "/REPLACE/conditions.safetensors",
+  "max_retained_bytes": 1073741824,
+  "gpu_reserve_bytes": 2147483648
+}

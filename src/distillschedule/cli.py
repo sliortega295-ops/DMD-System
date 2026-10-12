@@ -124,6 +124,9 @@ def _run(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else list(argv)
+    if argv[:2] == ["workloads", "native"]:
+        from distillschedule.native.cli import main as native_main
+        return native_main(argv[2:])
     if argv and argv[0] == "workloads":
         from distillschedule.workloads.best_known.cli import main as workloads_main
         return workloads_main(argv[1:])

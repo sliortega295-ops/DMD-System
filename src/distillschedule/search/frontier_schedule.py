@@ -52,7 +52,8 @@ def schedule_frontier(graph: ExecutionGraph, bindings: Mapping[str, BindingRule]
                       costs: CostModel, *, states: Sequence[StateAllocation] = (),
                       lifetimes: Sequence[Lifetime] = (), memory_limits: Mapping[int, int],
                       max_states: int = 50000, beam_width: int = 0,
-                      timeout_seconds: float = 60, prune: bool = True) -> dict[str, Any]:
+                      timeout_seconds: float = 60, prune: bool = True,
+                      retained_limits: Mapping[int, int] | None = None) -> dict[str, Any]:
     """Minimize one bound DAG's makespan; ties retain lower peak-memory labels.
 
     Costs/resource reservations include internal compute/communication overlap.
@@ -67,6 +68,9 @@ def schedule_frontier(graph: ExecutionGraph, bindings: Mapping[str, BindingRule]
     require(type(prune) is bool, "prune must be boolean")
     require(memory_limits and all(type(r) is int and r >= 0 and type(b) is int and b > 0
                                  for r, b in memory_limits.items()), "invalid memory limits")
+    retained_limits = {} if retained_limits is None else dict(retained_limits)
+    require(set(retained_limits) <= set(memory_limits) and
+            all(type(b) is int and b >= 0 for b in retained_limits.values()), "invalid retained limits")
     ops = graph.operations
     require(0 < len(ops) <= 512, "frontier solver requires 1..512 explicit operations")
     require(all(o.condition is None for o in ops), "resolve branch predicates before scheduling")
@@ -165,13 +169,16 @@ def schedule_frontier(graph: ExecutionGraph, bindings: Mapping[str, BindingRule]
         running = tuple(sorted(running))
         active = done
         live = list(static)
+        retained_live = [0 for _ in ranks]
         for i, _ in running:
             active |= 1 << i
             live = [a + b for a, b in zip(live, scratch[i])]
         for producer, consumers, size, entry in leases:
             if ((active if entry else done) & producer) and done & consumers != consumers:
                 live = [a + b for a, b in zip(live, size)]
-        if any(a > b for a, b in zip(live, limit)):
+                retained_live = [a + b for a, b in zip(retained_live, size)]
+        if any(a > b for a, b in zip(live, limit)) or any(
+                retained_live[i] > retained_limits[r] for i, r in enumerate(ranks) if r in retained_limits):
             stats["capacity_pruned"] += 1
             return
         label = _Label(label.now, done, running, tuple(max(a, b) for a, b in zip(label.peaks, live)), label.history)
