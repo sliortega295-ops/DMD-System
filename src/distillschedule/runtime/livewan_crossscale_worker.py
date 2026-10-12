@@ -672,6 +672,7 @@ class ModelBundle:
     score_group_size: int
     critic_group_size: int
     metadata: dict[str, Any]
+    teacher_cpu_staging: Any | None = None
 
 
 def _parameter_sequence_sha256(torch: Any, parameters: Sequence[Any]) -> str:
@@ -1081,6 +1082,7 @@ def _load_two_cycle_timing_gate(
     trace: FormalTrace,
     bootstrap: Bootstrap,
     source_receipt: Mapping[str, Any],
+    baseline_placement: Any = None,
 ) -> dict[str, Any]:
     """Validate the exact-head correctness evidence authorizing native timing."""
 
@@ -1091,6 +1093,19 @@ def _load_two_cycle_timing_gate(
         "two-cycle timing correctness gate SHA256 changed",
     )
     value = json.loads(resolved.read_text(encoding="utf-8"))
+    if baseline_placement is not None and baseline_placement.name != "legacy-hybrid":
+        from distillschedule.runtime.livewan_baseline_placement import validate_timing_gate
+        _require(mode == "baseline" and pipeline_variant == "b1", "placement timing requires B1 sequential")
+        validate_timing_gate(value, spec=baseline_placement, expected_head=expected_head,
+            identity={"trace_sha256": trace.sha256, "bootstrap_sha256": bootstrap.sha256,
+                      "source_receipt_sha256": source_receipt["source_receipt_sha256"]},
+            arm_id=arm_id, seed=seed)
+        return {"path": str(resolved), "sha256": expected_sha256,
+                "schema_version": value["schema_version"], "status": "PASS",
+                "baseline_placement": baseline_placement.receipt(),
+                "correctness_summary_sha256": value["correctness_summary"]["sha256"],
+                "trajectory_comparison_sha256": value["comparison"]["sha256"],
+                "arm_id": arm_id, "pipeline_variant": pipeline_variant}
     required = {
         "schema_version": "distillschedule.livewan_two_cycle_timing_gate.v2",
         "status": "PASS",
@@ -1349,6 +1364,9 @@ def build_models(
     from wan.modules.model import WanModel
     from wanstreamer.fsdp import shard_model
     from wanstreamer.lora import inject_lora
+    from distillschedule.runtime.livewan_baseline_placement import from_plan
+
+    baseline_spec = from_plan(plan)
 
     _require(mode in {"baseline", "pipeline"}, "unknown execution mode")
     config = WAN_CONFIGS["t2v-1.3B"]
@@ -1406,6 +1424,8 @@ def build_models(
         "critic_shadow": None,
         "teacher": None,
     }
+    if baseline_spec.name != "legacy-hybrid":
+        metadata["baseline_placement"] = baseline_spec.receipt()
     student = critic = critic_shadow = teacher = None
     opt_g = opt_c = None
     generator_optimizer_parameter_names: dict[int, str] = {}
@@ -1413,6 +1433,7 @@ def build_models(
     lora_params: list[Any] = []
     shadow_lora_params: list[Any] = []
     critic_gradient_reducer = None
+    teacher_cpu_staging = None
 
     if owns_generator:
         torch.manual_seed(0)
@@ -1433,9 +1454,9 @@ def build_models(
             state_receipt["load_policy"] = "complete_stage1_direct_mmap"
         fsdp_groups = 0
         phase_expanded = pool_policy == PHASE_EXPANDED_CRITIC16_POOL_POLICY
-        if mode == "baseline":
+        if mode == "baseline" and baseline_spec.student_fsdp:
             mesh = _make_mesh(torch, generator_ranks, generator_group)
-            shard_model(student, mesh=mesh, reshard_after_forward=False)
+            shard_model(student, mesh=mesh, reshard_after_forward=baseline_spec.student_reshard)
             student.to(device)
             fsdp_groups = _configure_fsdp_reduction(student, group_size=len(generator_ranks))
         else:
@@ -1466,8 +1487,8 @@ def build_models(
         )
         metadata["student"] = {
             "placement": (
-                "world16_fsdp2_keep_unsharded"
-                if mode == "baseline"
+                ("world16_fsdp2_full_shard" if baseline_spec.student_reshard else "world16_fsdp2_keep_unsharded")
+                if mode == "baseline" and baseline_spec.student_fsdp
                 else "gpu_resident_replica"
             ),
             "state": state_receipt,
@@ -1496,11 +1517,18 @@ def build_models(
         )
         phase_expanded = pool_policy == PHASE_EXPANDED_CRITIC16_POOL_POLICY
         critic_fsdp_groups = 0
-        if phase_expanded:
+        baseline_critic_fsdp = mode == "baseline" and baseline_spec.critic_fsdp
+        if phase_expanded or baseline_critic_fsdp:
             critic_mesh = _make_mesh(torch, critic_ranks, critic_group)
-            shard_model(critic, mesh=critic_mesh, reshard_after_forward=False)
+            shard_model(critic, mesh=critic_mesh, reshard_after_forward=baseline_critic_fsdp)
+            if baseline_critic_fsdp:
+                # fully_shard replaces registered Parameters with DTensors.
+                # Never optimize stale pre-sharding LoRA Parameter references.
+                lora_params = [p for p in critic.parameters() if p.requires_grad]
+                _require(sum(p.numel() for p in lora_params) == lora_numel,
+                         "sharding changed the logical Critic LoRA inventory")
         critic.to(device)
-        if phase_expanded:
+        if phase_expanded or baseline_critic_fsdp:
             critic_fsdp_groups = _configure_fsdp_reduction(
                 critic, group_size=len(critic_ranks)
             )
@@ -1522,8 +1550,8 @@ def build_models(
             torch.cuda.synchronize(device)
         metadata["critic"] = {
             "placement": (
-                "world16_fsdp2_keep_unsharded"
-                if phase_expanded
+                ("world16_fsdp2_full_shard" if baseline_critic_fsdp else "world16_fsdp2_keep_unsharded")
+                if phase_expanded or baseline_critic_fsdp
                 else "gpu_resident_replica"
             ),
             "fsdp_group_count": critic_fsdp_groups,
@@ -1536,7 +1564,7 @@ def build_models(
             "initial_version": int(bootstrap.versions["critic"]),
             "optimizer": critic_optimizer_receipt,
         }
-        if phase_expanded:
+        if phase_expanded or baseline_critic_fsdp:
             metadata["critic_gradient_sync"] = {
                 "policy": "fsdp2_reduce_scatter",
                 "group_ranks": list(critic_ranks),
@@ -1581,7 +1609,29 @@ def build_models(
         }
         gc.collect()
 
-    if owns_score:
+    if owns_score and mode == "baseline" and baseline_spec.teacher_offload == "cpu-block":
+        from wanstreamer.fsdp import attach_causal_modules
+        from distillschedule.runtime.livewan_baseline_placement import FrozenTeacherCPUStaging
+        # Cold construction only: limit large CPU materializations to 2 ranks
+        # per node while preserving the exact source/model initialization.
+        for wave in range(4):
+            if (rank % 8) // 2 == wave:
+                torch.manual_seed(0)
+                teacher = _wan_model(WanModel, size="14B", config=config).to(torch.bfloat16)
+                teacher_root = Path(workload["teacher"]["checkpoint"]).expanduser().resolve()
+                _require(teacher_root == Path(bootstrap.value["teacher_base"]["root"]), "plan/bootstrap Teacher root mismatch")
+                teacher.load_state_dict(_load_checkpoint(load_file, teacher_root), strict=True)
+                teacher.eval().requires_grad_(False)
+                teacher_cpu_staging = FrozenTeacherCPUStaging(
+                    torch, teacher, device=device, attach_causal_modules=attach_causal_modules)
+                metadata["teacher"] = {
+                    "placement": "cpu_backed_immutable_weights_gpu_unit_execution",
+                    "mesh_ranks": [], "fsdp_group_count": 0,
+                    "cpu_staging": teacher_cpu_staging.receipt(),
+                }
+                gc.collect()
+            dist.barrier()
+    elif owns_score:
         torch.manual_seed(0)
         teacher = _wan_model(WanModel, size="14B", config=config).to(torch.bfloat16)
         teacher_root = relocate_asset_path(workload["teacher"]["checkpoint"])
@@ -1598,13 +1648,16 @@ def build_models(
             )
             teacher_ranks = PIPELINE_6G10S_SCORE_NODE_GROUPS[group_index]
             teacher_group = score_node_groups[group_index]
-        teacher_mesh = _make_mesh(torch, teacher_ranks, teacher_group)
-        shard_model(teacher, mesh=teacher_mesh, reshard_after_forward=True)
+        teacher_sharded = mode != "baseline" or baseline_spec.teacher_fsdp
+        if teacher_sharded:
+            teacher_mesh = _make_mesh(torch, teacher_ranks, teacher_group)
+            shard_model(teacher, mesh=teacher_mesh, reshard_after_forward=True)
         teacher.to(device)
-        fsdp_groups = _configure_fsdp_reduction(teacher, group_size=len(teacher_ranks))
+        fsdp_groups = (_configure_fsdp_reduction(teacher, group_size=len(teacher_ranks))
+                       if teacher_sharded else 0)
         metadata["teacher"] = {
-            "placement": f"fsdp2_group{len(teacher_ranks)}_reshard",
-            "mesh_ranks": list(teacher_ranks),
+            "placement": (f"fsdp2_group{len(teacher_ranks)}_reshard" if teacher_sharded else "gpu_resident_replica"),
+            "mesh_ranks": list(teacher_ranks) if teacher_sharded else [],
             "fsdp_group_count": fsdp_groups,
         }
         gc.collect()
@@ -1702,6 +1755,7 @@ def build_models(
         score_group_size=len(score_ranks),
         critic_group_size=len(critic_ranks),
         metadata=metadata,
+        teacher_cpu_staging=teacher_cpu_staging,
     )
 
 
@@ -3911,6 +3965,12 @@ def run_worker(
         two_cycle_arm_id = os.environ.get("LIVEWAN_TWO_CYCLE_ARM_ID", "")
         _require(two_cycle_seed >= 0 and two_cycle_arm_id != "", "two-cycle profile identity missing")
         apply_contract(plan, mode=mode)
+    from distillschedule.runtime.livewan_baseline_placement import apply_contract as apply_baseline_placement, check_collective_trace
+    baseline_spec = apply_baseline_placement(
+        plan, mode=mode,
+        name=os.environ.get("LIVEWAN_BASELINE_PLACEMENT", "legacy-hybrid"),
+        teacher_offload=os.environ.get("LIVEWAN_TEACHER_PARAMETER_OFFLOAD", "off"),
+    )
     _validate_plan_identity(plan, mode=mode)
     continuous_contract = _continuous_pipeline_contract(plan, mode=mode)
     continuous_cycles = (
@@ -3938,6 +3998,7 @@ def run_worker(
         expected_global_batch=registered_batch,
     )
     _validate_trace_balanced_pairing(plan, trace)
+    check_collective_trace(baseline_spec, trace.rows)
     bootstrap = Bootstrap.load(plan["evidence"]["checkpoint"], trace=trace)
     if run_kind == "trajectory" or two_cycle_timing or profile_two_cycles:
         trace_payload = json.loads(trace.path.read_text(encoding="utf-8"))
@@ -3975,6 +4036,7 @@ def run_worker(
             trace=trace,
             bootstrap=bootstrap,
             source_receipt=source_receipt,
+            baseline_placement=baseline_spec,
         )
     if profile_two_cycles:
         from distillschedule.runtime.livewan_two_cycle_profile import load_gate
@@ -4280,6 +4342,9 @@ def run_worker(
     bundle = build_models(
         torch=torch, plan=plan, bootstrap=bootstrap, mode=mode, rank=rank, device=device,
     )
+    if baseline_spec.name != "legacy-hybrid":
+        from distillschedule.runtime.livewan_baseline_placement import verify_models
+        bundle.metadata["baseline_placement_runtime"] = verify_models(baseline_spec, bundle)
     bundle.metadata["cuda_library_setup"] = cuda_library_setup
     if _critic_lora_scale_one_enabled(plan, mode=mode):
         lora_model = (
@@ -5004,6 +5069,10 @@ def run_worker(
                 slot_pairs[lane][1] if rank < 8 else slot_pairs[lane][0]
             )
     workload_cycles = int(trace.cycles)
+    if bundle.teacher_cpu_staging is not None:
+        bundle.metadata["teacher"]["cpu_staging"] = bundle.teacher_cpu_staging.receipt()
+    if baseline_spec.name != "legacy-hybrid":
+        bundle.metadata["baseline_placement"] = baseline_spec.receipt()
     receipt = {
         "status": "PASS",
         "rank": rank,
@@ -5144,6 +5213,10 @@ def _run_baseline(
     step_offset: int = 0,
 ) -> None:
     _require(bundle.student is not None and bundle.critic is not None and bundle.teacher is not None, "baseline needs all roles")
+    from distillschedule.runtime.livewan_baseline_placement import BaselinePlacement
+    policy = bundle.metadata.get("baseline_placement", {})
+    baseline_spec = BaselinePlacement(policy.get("name", "legacy-hybrid"),
+                                      policy.get("teacher_parameter_offload", "off"))
     for step in range(FULL5_STEPS):
         global_step = step_offset + step
         with _profile_range(
@@ -5218,6 +5291,11 @@ def _run_baseline(
                     label="livewan/baseline/step_0/generator_commit",
                 ):
                     generator_parameters = list(bundle.student.parameters())
+                    if not baseline_spec.student_fsdp:
+                        sync = _mean_replicated_gradients(
+                            torch, generator_parameters, group=bundle.generator_group,
+                            group_size=bundle.generator_group_size, bucket_mib=128)
+                        evidence.gradient_sync.append({"step": global_step, "role": "generator", **sync})
                     generator_pre_clip = (
                         _state_metrics(torch, [parameter.grad for parameter in generator_parameters])
                         if run_kind == "correctness" else None
@@ -5234,10 +5312,10 @@ def _run_baseline(
                 torch, run_kind=run_kind,
                 label=f"livewan/baseline/step_{step}/critic_commit",
             ):
-                sync = _mean_replicated_gradients(
-                    torch, bundle.critic_lora_params, group=bundle.score_group,
-                    group_size=bundle.score_group_size, bucket_mib=128,
-                )
+                sync = ({"policy": "fsdp2_reduce_scatter_sum_divide_16"}
+                        if baseline_spec.critic_fsdp else _mean_replicated_gradients(
+                            torch, bundle.critic_lora_params, group=bundle.score_group,
+                            group_size=bundle.score_group_size, bucket_mib=128))
                 evidence.gradient_sync.append({"step": global_step, "role": "critic", **sync})
                 critic_pre_clip = (
                     _state_metrics(torch, [parameter.grad for parameter in bundle.critic_lora_params])
