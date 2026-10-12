@@ -51,12 +51,7 @@ def validate_cycle(task, trace, result):
 
 
 def compare_runs(reference_root,candidate_root,*,rtol=1e-5,atol=1e-7):
-    """Compare original full trainable/Adam/EMA evidence, not just loss scalars.
-
-    REVIEW is preserved, not promoted to equivalence. These default thresholds
-    match the existing parameterized native state comparator; callers cannot
-    silently relax them to obtain a passing campaign.
-    """
+    """Compare matched full trainable/Adam/EMA evidence, retaining REVIEW."""
     import json
     import math
     from pathlib import Path
@@ -72,6 +67,12 @@ def compare_runs(reference_root,candidate_root,*,rtol=1e-5,atol=1e-7):
                 and a['identity']==b['identity'] and a['task']==b['task']
                 and a['initial_versions']==b['initial_versions'] and a['final_versions']==b['final_versions'],
                 'cannot compare unmatched or incomplete native executions',path='wan.compare')
+        require(a.get('stream_sha256') == b.get('stream_sha256')
+                and a.get('measurement_scope') == b.get('measurement_scope'),
+                'cannot compare different cohort streams or execution scopes', path='wan.compare')
+        if a.get('stream_sha256') is not None:
+            require(all(x.get('cohort') == y.get('cohort') for x,y in zip(a['cycles'],b['cycles'])),
+                    'cohort identities or absolute source steps differ', path='wan.compare')
         require(len(a['cycles'])==len(b['cycles']) and all(
             x['call_census']==y['call_census'] for x,y in zip(a['cycles'],b['cycles'],strict=True)),
             'compared executions changed logical model work',path='wan.compare')
@@ -95,5 +96,6 @@ def compare_runs(reference_root,candidate_root,*,rtol=1e-5,atol=1e-7):
     return {'status':'PASS' if all(r['pass'] for r in rows) else 'REVIEW',
             'rtol':rtol,'atol':atol,'tensor_count':len(rows),'failed_tensors':[r for r in rows if not r['pass']],
             'max_abs':max((r['max_abs'] for r in rows if r['max_abs'] is not None),default=None),
-            'scope':'FULL_TRAINABLE_ADAM_EMA_AFTER_MATCHED_TWO_CYCLE_REPLAY','quality_validation':'NOT_RUN',
+            'scope':('FULL_TRAINABLE_ADAM_EMA_AFTER_MATCHED_FRESH_COHORTS' if left[0].get('stream_sha256')
+                     else 'FULL_TRAINABLE_ADAM_EMA_AFTER_MATCHED_FIXED_TRACE'), 'quality_validation':'NOT_RUN',
             'claimable_speedup':False}

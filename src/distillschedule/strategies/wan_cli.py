@@ -19,11 +19,11 @@ from .wan_worker import OriginalWanAssets
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='distillctl workloads native [original-Wan]')
     sub = parser.add_subparsers(dest='command', required=True)
-    for name in ('validate', 'calibrate', 'assemble', 'plan', 'run', 'prepare-campaign', 'campaign', 'capture-inputs', 'prepare-task', 'auto-run'):
+    for name in ('validate', 'calibrate', 'assemble', 'plan', 'run', 'prepare-campaign', 'campaign', 'capture-inputs', 'prepare-task', 'auto-run', 'prepare-stream', 'train-stream'):
         p = sub.add_parser(name)
         p.add_argument('--task', type=Path, required=True)
         p.add_argument('--output', type=Path, required=name not in ('validate','campaign'))
-        if name in ('calibrate', 'run'):
+        if name in ('calibrate', 'run', 'train-stream'):
             p.add_argument('--assets', type=Path, required=True)
             p.add_argument('--execute', action='store_true')
             if name == 'calibrate':
@@ -31,7 +31,10 @@ def main(argv=None):
                                help='admitted primitive strategy JSON from validate, not a recipe name')
             else:
                 p.add_argument('--plan', type=Path, required=True)
-                p.add_argument('--cycles', type=int, default=2)
+                if name == 'run':
+                    p.add_argument('--cycles', type=int, default=2)
+                else:
+                    p.add_argument('--stream', type=Path, required=True)
         if name in ('capture-inputs', 'prepare-task', 'auto-run'):
             p.add_argument('--sources', type=Path, required=True)
             p.add_argument('--training-config', type=Path, required=True)
@@ -41,6 +44,11 @@ def main(argv=None):
                 p.add_argument('--without-fusion', action='store_true')
                 p.add_argument('--max-launches', type=int, default=8)
                 p.add_argument('--resume', action='store_true')
+        if name == 'prepare-stream':
+            p.add_argument('--sources', type=Path, required=True)
+            p.add_argument('--training-config', type=Path, required=True)
+            p.add_argument('--execute', action='store_true')
+            p.add_argument('--resume', action='store_true')
         if name == 'auto-run':
             p.add_argument('--node-rank', type=int, required=True)
             p.add_argument('--master-addr', required=True)
@@ -74,11 +82,22 @@ def main(argv=None):
             importlib.metadata.version('triton'); has_triton = True
         except importlib.metadata.PackageNotFoundError:
             has_triton = False
-        if args.command == 'validate' or (args.command in {'calibrate', 'run'} and not args.execute):
+        if args.command == 'validate' or (args.command in {'calibrate', 'run', 'train-stream'} and not args.execute):
             result = capability_report(task, triton_available=has_triton)
             result['native_execution'] = 'NOT_RUN_REQUIRES_EXPLICIT_EXECUTE'
             if args.command == 'validate' and args.output:
                 write_new_json(args.output, result)
+        elif args.command == 'prepare-stream':
+            from .wan_stream import WanCohortSources, prepare_stream
+            result = prepare_stream(task, WanCohortSources.from_dict(json.loads(args.sources.read_text())),
+                                    args.training_config, args.output, execute=args.execute, resume=args.resume)
+        elif args.command == 'train-stream':
+            from .wan_stream import load_stream
+            from .wan_worker import run_worker
+            stream = load_stream(task, args.stream)
+            assets = OriginalWanAssets.from_dict(json.loads(args.assets.read_text()))
+            result = run_worker(task, assets, output=args.output, mode='run', plan_path=args.plan,
+                                cycles=len(stream['cohorts']), stream_path=args.stream)
         elif args.command in ('capture-inputs', 'prepare-task', 'auto-run'):
             from .wan_inputs import WanInputSources, preflight_sources
             from .wan_capture import capture, read_training_config
