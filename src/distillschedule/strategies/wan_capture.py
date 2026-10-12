@@ -60,6 +60,23 @@ def read_training_config(path):
     require(isinstance(value, dict) and isinstance(value.get('training_config'), dict),
             'original training_config mapping required', path='wan.capture')
     c = value['training_config']
+    template = repository_root() / 'configs/distillschedule/templates/helios_stage3_384x640.yaml'
+    reference = yaml.safe_load(template.read_text())['training_config']
+    input_keys = {
+        'is_random_drop', 'random_drop_i2v_ratio', 'random_drop_v2v_ratio', 'random_drop_t2v_ratio',
+        'corrupt_mode_history', 'corrupt_mode_prob_history', 'is_frame_independent_corrupt_history',
+        'is_chunk_independent_corrupt_history', 'noise_corrupt_ratio_history_short',
+        'noise_corrupt_ratio_history_mid', 'noise_corrupt_ratio_history_long',
+        'noise_corrupt_clean_prob_history', 'downsample_min_corrupt_ratio_history',
+        'downsample_max_corrupt_ratio_history',
+        *(role+'_'+key for role in ('generator', 'critic') for key in
+          ('dynamic_alpha', 'dynamic_beta', 'dynamic_sample_type', 'dynamic_step')),
+    }
+    require(set(c) <= set(reference) | {'random_drop_i2v_ratio'} and set(reference) <= set(c),
+            'capture accepts the original training_config, not unknown or missing algorithm settings', path='wan.capture')
+    changed = [key for key in reference if key not in input_keys and c[key] != reference[key]]
+    require(not changed, 'non-input training changes are not implemented by this capture adapter: '+str(changed),
+            path='wan.capture')
     # Capture matches the existing one-section, normal globally synchronized path.
     require(c.get('is_use_gt_history') is True and c.get('is_enable_stage2') is True
             and c.get('stage2_num_stages') == 3 and not c.get('is_use_gan', False)
@@ -94,12 +111,9 @@ def prepare_history(native, task, sample, config):
         noise_corrupt_clean_prob=config['noise_corrupt_clean_prob_history'],
         downsample_min_corrupt_ratio=config['downsample_min_corrupt_ratio_history'],
         downsample_max_corrupt_ratio=config['downsample_max_corrupt_ratio_history'])
-    if config['is_add_saturation']:
-        short, mid, long = native.history.add_saturation_to_history_latents(
-            short, mid, long, task.latent_shape[2], is_keep_x0=True,
-            saturation_ratio_min=config['saturation_ratio_min'],
-            saturation_ratio_max=config['saturation_ratio_max'],
-            saturation_clean_prob=config['saturation_ratio_clean_prob'])
+    # Original GT-history losses corrupt history here; saturation is only
+    # applied inside run_generator's non-GT preparation branch. Never add it
+    # merely because the shared training configuration has is_add_saturation.
     require(not all(bool(x.sum() == 0) for x in (short, mid, long)),
             'all-zero history uses the unsupported rank-local amplified branch; '
             'no silent resampling or disabling of dropout is allowed', path='wan.capture')

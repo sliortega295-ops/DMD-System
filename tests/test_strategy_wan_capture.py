@@ -60,7 +60,6 @@ def test_native_capture_new_cohort_replays_original_schedule(tmp_path, native, u
     trace = load_original_trace(task, report['trace_bundle'], expected_hash=report['expected_trace_hash'])
     assert trace.logical_steps == task.source_steps
     assert report['rank_validation']['cross_rank_call_count_parity']
-    # Verify source tensors are loadable through the ORIGINAL payload API.
     loaded = trace._load(0)
     assert loaded.tensor('sample/0/primary/target').shape == task.latent_shape[1:]
     prefixes = [f'step/{task.first_step}/generator', f'step/{task.first_step}/critic']
@@ -100,3 +99,30 @@ def test_amplified_zero_history_is_not_resampled(tmp_path, native):
     with input_stream(17, 'zero'):
         with pytest.raises(ValueError, match='all-zero'):
             prepare_history(native, task, sample, cfg)
+
+
+def test_config_cannot_silently_change_loss_or_optimizer(tmp_path):
+    import yaml
+    path = config_file(tmp_path)
+    assert read_training_config(path)['is_random_drop'] is False
+    value = yaml.safe_load(path.read_text())
+    value['training_config']['learning_rate'] *= 10
+    path.write_text(yaml.safe_dump(value))
+    with pytest.raises(ValueError, match='non-input training changes'):
+        read_training_config(path)
+
+
+def test_gt_history_does_not_apply_non_gt_saturation(tmp_path, native, monkeypatch):
+    from distillschedule.strategies.wan_capture import prepare_history
+    task = OriginalWanTask(video_height=64, video_width=64, video_frames=5)
+    cfg = read_training_config(config_file(tmp_path))
+    assert cfg['is_add_saturation'] is True
+    seen = []
+    def forbidden(*args, **kwargs):
+        seen.append(True)
+        raise AssertionError('native GT-history must not apply non-GT saturation')
+    monkeypatch.setattr(native.history, 'add_saturation_to_history_latents', forbidden)
+    sample = (torch.ones(16,1,8,8),torch.ones(16,19,8,8),torch.ones(16,2,8,8))
+    with input_stream(17, 'native-gt'):
+        result = prepare_history(native, task, sample, cfg)
+    assert not seen and result['history_short'].shape == (1,16,2,8,8)
