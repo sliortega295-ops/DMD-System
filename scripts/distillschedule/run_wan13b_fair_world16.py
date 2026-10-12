@@ -188,7 +188,9 @@ def parser() -> argparse.ArgumentParser:
                        help="Default-off exact post-G B1 Resident CUDA Graph replay.")
     value.add_argument("--tf32-cublas-override", choices=("0", "1"), default=None,
                        help="Explicit matched precision policy; never enable in only one arm.")
-    value.add_argument("--trajectory-cycles", type=int, choices=(1, 2, 5, 50))
+    value.add_argument("--trajectory-cycles", type=int, choices=(1, 2, 5, 20, 30, 50))
+    value.add_argument("--shadow-trajectory-study", action="store_true")
+    value.add_argument("--shadow-stochastic-rounding", action="store_true")
     value.add_argument("--trajectory-seed", type=int, default=20260903)
     value.add_argument("--trajectory-arm-id")
     value.add_argument("--two-cycle-seed", type=int, default=20260903)
@@ -216,7 +218,15 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         / "scripts/distillschedule/launch_wan13b_fair_world16_node.sh"
     )
     wrapper = args.remote_root / "scripts/distillschedule/remote_stage_wrapper.sh"
+    study = getattr(args, "shadow_trajectory_study", False)
+    sr = getattr(args, "shadow_stochastic_rounding", False)
+    if study and (args.mode not in {"trajectory", "two-cycle-timing"} or args.placement != "resident-async128-tree-chunk2048" or getattr(args, "generator_rollout_cuda_graph", False)):
+        raise ValueError("shadow study requires Resident trajectory/native timing without Graph")
+    if sr and not (study and getattr(args, "generator_rollout_merged_shadow", False)):
+        raise ValueError("stochastic rounding requires enabled study shadow")
     exports = [
+        "DISTILLSCHEDULE_WAN13B_SHADOW_TRAJECTORY_STUDY=" + ("1" if study else "0"),
+        "DISTILLSCHEDULE_WAN13B_SHADOW_STOCHASTIC_ROUNDING=" + ("1" if sr else "0"),
         f"DMD_SYSTEM_ROOT={shlex.quote(str(args.remote_root))}",
         f"HELIOS_RUNTIME_ROOT={shlex.quote(str(args.helios_runtime_root))}",
         f"DISTILLSCHEDULE_WAN13B_MODEL_ROOT={shlex.quote(str(args.model_root))}",
@@ -281,8 +291,8 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
             )
         )
     if args.mode == "trajectory":
-        if args.trajectory_cycles not in {1, 2, 5, 50}:
-            raise ValueError("trajectory cycles must be one of 1, 2, 5, or 50")
+        if args.trajectory_cycles not in {1, 2, 5, 50} and not (study and args.trajectory_cycles in {20, 30}):
+            raise ValueError("trajectory cycles must be one of 1, 2, 5, or 50; 20/30 require shadow study")
         if not args.trajectory_arm_id:
             raise ValueError("trajectory mode requires --trajectory-arm-id")
         exports.extend(

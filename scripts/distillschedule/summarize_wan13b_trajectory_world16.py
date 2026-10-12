@@ -17,7 +17,7 @@ from distillschedule.evidence.trajectory_state_sketch import (
 
 
 WORLD_SIZE = 16
-REGISTERED_CYCLE_COUNTS = frozenset({1, 2, 5, 50})
+REGISTERED_CYCLE_COUNTS = frozenset({1, 2, 5, 20, 30, 50})
 RESIDENT_WINNER = "resident-async128-tree-chunk2048"
 FSDP_BASELINE = "world16-fsdp"
 REGISTERED_PLACEMENTS = frozenset({RESIDENT_WINNER, FSDP_BASELINE})
@@ -247,6 +247,11 @@ def _validate_runtime_build(
     if len(runtime_hashes) != 1:
         errors.append(f"rank{rank}: Generator/Critic residual runtime identities differ")
 
+    study_receipt = final.get("shadow_trajectory_study_receipt", {})
+    study = study_receipt.get("enabled", False)
+    if study:
+        if study_receipt.get("completed_cycles") != cycles or study_receipt.get("probe_model_call_count") != (6 * cycles if rank == 0 else 0):
+            errors.append(f"rank{rank}: shadow study cycle/probe census changed")
     generator = (
         build.get("generator", {})
         .get("metadata", {})
@@ -262,7 +267,8 @@ def _validate_runtime_build(
 
         shadow_enabled = bool(final.get("generator_rollout_merged_shadow_receipt", {}).get("enabled", False))
         expected_counts = expected_epilogue_counts(
-            cycles=cycles, shadow_enabled=shadow_enabled, diagnostic_reference=shadow_enabled,
+            cycles=cycles, shadow_enabled=shadow_enabled, diagnostic_reference=shadow_enabled and not study,
+            diagnostic_probe_calls=(6 * cycles if study and rank == 0 else 0),
             graph_receipt=build.get("generator", {}).get("metadata", {}).get("generator_rollout_cuda_graph", {}),
         )
         if generator.get("requested") is not True or generator.get("enabled") is not True:
@@ -300,7 +306,7 @@ def _validate_runtime_build(
             build,
             enabled=bool(final.get("generator_rollout_merged_shadow_receipt", {}).get("enabled", False)),
             cycles=cycles,
-            diagnostic_reference=bool(final.get("generator_rollout_merged_shadow_receipt", {}).get("enabled", False)),
+            diagnostic_reference=bool(final.get("generator_rollout_merged_shadow_receipt", {}).get("enabled", False)) and not study,
         )
     except AssertionError as error:
         errors.append(f"rank{rank}: {error}")
@@ -358,6 +364,11 @@ def main() -> int:
             errors.append(f"node{node}: invalid merged shadow launch flag")
         if manifest.get("generator_rollout_cuda_graph", "0") not in {"0", "1"}:
             errors.append(f"node{node}: invalid CUDA Graph launch flag")
+    study_requested = manifests[0].get("shadow_trajectory_study", "0") == "1"
+    if args.cycles in {20, 30} and not study_requested:
+        errors.append("20/30 cycles require explicit shadow trajectory study")
+    if study_requested and (args.placement != RESIDENT_WINNER or manifests[0].get("generator_rollout_cuda_graph", "0") != "0"):
+        errors.append("shadow study requires Resident without Graph")
     norm_requested = manifests[0].get("modulated_norm_fusion", "0") == "1"
     shadow_requested = manifests[0].get("generator_rollout_merged_shadow", "0") == "1"
     graph_requested = manifests[0].get("generator_rollout_cuda_graph", "0") == "1"
@@ -375,6 +386,7 @@ def main() -> int:
         "modulated_norm_fusion",
         "generator_rollout_merged_shadow",
         "generator_rollout_cuda_graph",
+        "shadow_trajectory_study", "shadow_stochastic_rounding",
     )
     manifest_identities = {
         tuple(manifest.get(key) for key in identity_keys) for manifest in manifests if manifest
@@ -454,7 +466,17 @@ def main() -> int:
             observed = trajectory_row.implementation.get("generator_rollout_merged_shadow", "false")
             if observed not in {"false", "true"} or (observed == "true") != shadow_requested:
                 errors.append(f"rank{rank}: merged shadow launch/trajectory binding changed")
+        if final.get("shadow_trajectory_study_receipt", {}).get("enabled", False) != study_requested:
+            errors.append(f"rank{rank}: launch/study runtime binding changed")
+        for name in ("shadow_trajectory_study", "shadow_stochastic_rounding"):
+            wanted = manifests[0].get(name, "0") == "1"
+            if any((row.implementation.get(name, "false") == "true") != wanted for row in rows):
+                errors.append(f"rank{rank}: {name} launch/trajectory binding changed")
         shadow_receipt = final.get("generator_rollout_merged_shadow_receipt", {})
+        if shadow_requested:
+            wanted_rounding = "STOCHASTIC_BF16" if manifests[0].get("shadow_stochastic_rounding", "0") == "1" else "ROUND_TO_NEAREST"
+            if shadow_receipt.get("generator", {}).get("rounding", "ROUND_TO_NEAREST") != wanted_rounding:
+                errors.append(f"rank{rank}: shadow rounding launch/runtime changed")
         if shadow_receipt.get("enabled", False) is not shadow_requested:
             errors.append(f"rank{rank}: merged shadow launch/runtime binding changed")
         if shadow_requested and not shadow_receipt:
@@ -618,6 +640,8 @@ def main() -> int:
             "modulated_norm_fusion": raw_implementation.get("modulated_norm_fusion", "false") == "true",
             "generator_rollout_merged_shadow": raw_implementation.get("generator_rollout_merged_shadow", "false") == "true",
             "generator_rollout_cuda_graph": raw_implementation.get("generator_rollout_cuda_graph", "false") == "true",
+            "shadow_trajectory_study": raw_implementation.get("shadow_trajectory_study", "false") == "true",
+            "shadow_stochastic_rounding": raw_implementation.get("shadow_stochastic_rounding", "false") == "true",
             "worker": raw_implementation.get("worker"),
         }
         if raw_implementation is not None
@@ -645,9 +669,8 @@ def main() -> int:
         if args.placement == FSDP_BASELINE and implementation_contract["grad_lora_fused_epilogue"]:
             errors.append("FSDP baseline enabled Resident grad epilogue")
 
-    expected_anchor_cycles = sorted(
-        {cycle for cycle in (1, 10, 25, 50, args.cycles) if cycle <= args.cycles}
-    )
+    from distillschedule.runtime.wan13b_shadow_trajectory_study import anchors as study_anchors
+    expected_anchor_cycles = list(study_anchors(args.cycles))
     anchors: list[dict[str, Any]] = []
     for cycle in expected_anchor_cycles:
         path = args.run_root / "execution" / "trajectory" / "anchors" / f"cycle_{cycle:02d}_global.json"

@@ -27,7 +27,7 @@ def test_trajectory_is_an_explicit_nonlegacy_mode() -> None:
     assert '"${MODE}" == trajectory' in launcher
     assert "probe_wan13b_trajectory_world16.py" in launcher
     assert "DISTILLSCHEDULE_TRAJECTORY_CYCLES" in launcher
-    assert '"--trajectory-cycles", type=int, choices=(1, 2, 5, 50)' in controller
+    assert '"--trajectory-cycles", type=int, choices=(1, 2, 5, 20, 30, 50)' in controller
     assert "probe_wan13b_fair_world16.py" in launcher
 
 
@@ -262,6 +262,6 @@ def test_trajectory_comparator_is_tied_to_numeric_sketch_schema() -> None:
     ast.parse(source)
     assert "STATE_SKETCH_SCHEMA_VERSION" in source
     assert "compare_numeric_state_sketches" in source
-    assert 'choices=(1, 2, 5, 50)' in source
+    assert 'choices=(1, 2, 5, 20, 30, 50)' in source
     assert 'return (1, 10, 25, 50)' in source
     assert 'required_state_cycles=anchors' in source

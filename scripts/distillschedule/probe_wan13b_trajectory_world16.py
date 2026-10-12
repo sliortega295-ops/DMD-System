@@ -357,8 +357,11 @@ def main() -> int:
     args.timing_mode = False
     args.profile_mode = False
     args.trajectory_mode = True
-    if args.trajectory_cycles not in REGISTERED_CYCLE_COUNTS:
-        raise ValueError("trajectory cycles must be one of 1, 2, 5, or 50")
+    from distillschedule.runtime.wan13b_shadow_trajectory_study import (
+        study_requested, anchors as study_anchors, ShadowTrajectoryStudy, flag, ROUNDING_ENV)
+    study = study_requested()
+    if args.trajectory_cycles not in REGISTERED_CYCLE_COUNTS and not (study and args.trajectory_cycles in {20, 30}):
+        raise ValueError("trajectory cycles must be one of 1, 2, 5, or 50; 20/30 require shadow study")
     if args.trajectory_seed < 0:
         raise ValueError("trajectory seed must be non-negative")
     if args.placement not in {RESIDENT_WINNER, FSDP_BASELINE}:
@@ -385,6 +388,10 @@ def main() -> int:
     from distillschedule.runtime.wan13b_rollout_cuda_graph import requested as graph_requested, validate as validate_graph
 
     graph_enabled = graph_requested()
+    if study and (args.placement != RESIDENT_WINNER or graph_enabled):
+        raise ValueError("shadow noise study requires Resident without CUDA Graph")
+    if flag(ROUNDING_ENV) and not (study and shadow_enabled):
+        raise ValueError("stochastic rounding requires an enabled study shadow")
     if graph_enabled and (args.placement != RESIDENT_WINNER or shadow_enabled):
         raise ValueError("CUDA Graph requires Resident without merged weights")
     if shadow_enabled and args.placement != RESIDENT_WINNER:
@@ -538,6 +545,8 @@ def main() -> int:
             raise AssertionError("trajectory bootstrap versions changed")
         result["build"] = build
         result["initial_memory"] = base._memory(device)
+        observer = ShadowTrajectoryStudy(rank=rank, output=args.output_dir, generator_engine=generator_engine,
+                                         critic_engine=critic_engine) if study else None
 
         dist.barrier()
         started = time.perf_counter()
@@ -577,7 +586,7 @@ def main() -> int:
                 clean_runtime=clean_runtime,
                 runtime_cache=runtime_cache,
                 entry_outputs=critic_entries,
-                merged_shadow_parity_check=shadow_enabled,
+                merged_shadow_parity_check=shadow_enabled and not study,
                 cuda_graph_parity_check=graph_enabled,
             )
             critic_records: list[dict[str, Any]] = []
@@ -665,9 +674,12 @@ def main() -> int:
                 raise AssertionError("trajectory is missing consumed trace payload identity")
             sample_payloads = (generator_payload, *critic_payloads)
 
+            if study:
+                torch.cuda.synchronize(device)
+            training_window_wall = time.perf_counter() - cycle_started
             state_fingerprints: dict[str, str] = {}
             anchor_artifact = None
-            if cycle in ANCHOR_CYCLES or cycle == args.trajectory_cycles:
+            if cycle in (study_anchors(args.trajectory_cycles) if study else ANCHOR_CYCLES) or cycle == args.trajectory_cycles:
                 state_fingerprints, anchor_artifact = _state_anchor(
                     cycle=cycle,
                     rank=rank,
@@ -715,6 +727,8 @@ def main() -> int:
                     "modulated_norm_fusion": str(norm_fused).lower(),
                     "generator_rollout_merged_shadow": str(shadow_enabled).lower(),
                     "generator_rollout_cuda_graph": str(graph_enabled).lower(),
+                    "shadow_trajectory_study": str(study).lower(),
+                    "shadow_stochastic_rounding": str(flag(ROUNDING_ENV)).lower(),
                     "worker": "probe_wan13b_trajectory_world16.py",
                 },
                 sample_identities=sample_payloads,
@@ -756,10 +770,16 @@ def main() -> int:
                 runtime_status="PASS" if finite else "NONFINITE",
             )
             writer.append(cycle_receipt)
+            if observer is not None:
+                observer.after_cycle(cycle=cycle, trace=trace, device=device, p0=p0,
+                                     clean_runtime=clean_runtime, runtime_cache=runtime_cache)
+            if rank == 0 and study:
+                print(f"SHADOW_STUDY_TRAINING cycle={cycle} wall={training_window_wall:.6f} G={expected_g} C={expected_c} EMA={expected_ema}", flush=True)
             cycle_summaries.append(
                 {
                     "cycle": cycle,
                     "wall_seconds_diagnostic": time.perf_counter() - cycle_started,
+                    "training_window_wall_seconds_diagnostic": training_window_wall,
                     "versions": {"generator": expected_g, "critic": expected_c, "ema": expected_ema},
                     "losses": dict(cycle_receipt.losses),
                     "gradient_norms": dict(cycle_receipt.gradient_norms),
@@ -780,7 +800,7 @@ def main() -> int:
             modulated_norm_fusion_receipt=validate_norm(build, enabled=norm_fused),
             generator_rollout_merged_shadow_receipt=validate_shadow(
                 build, enabled=shadow_enabled, cycles=args.trajectory_cycles,
-                diagnostic_reference=shadow_enabled,
+                diagnostic_reference=shadow_enabled and not study,
             ),
             generator_rollout_cuda_graph_receipt=validate_graph(
                 build, enabled=graph_enabled, cycles=args.trajectory_cycles,
@@ -796,6 +816,7 @@ def main() -> int:
                 "critic": int(critic_engine.global_steps),
                 "ema": int(ema.optimization_step),
             },
+            shadow_trajectory_study_receipt=observer.receipt if observer is not None else {"enabled": False},
             diagnostic_wall_seconds=time.perf_counter() - started,
             cycle_summaries=cycle_summaries,
             final_memory=base._memory(device),

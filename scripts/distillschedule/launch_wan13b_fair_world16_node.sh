@@ -60,7 +60,7 @@ if [[ "${MODE}" == trajectory ]]; then
   WORKER="${ROOT}/scripts/distillschedule/probe_wan13b_trajectory_world16.py"
   [[ "${TRAJECTORY_CYCLES}" == 1 || "${TRAJECTORY_CYCLES}" == 2 || \
      "${TRAJECTORY_CYCLES}" == 5 || \
-     "${TRAJECTORY_CYCLES}" == 50 ]] || exit 2
+     "${TRAJECTORY_CYCLES}" == 50 || ( "${DISTILLSCHEDULE_WAN13B_SHADOW_TRAJECTORY_STUDY:-0}" == 1 && ( "${TRAJECTORY_CYCLES}" == 20 || "${TRAJECTORY_CYCLES}" == 30 ) ) ]] || exit 2
   [[ "${TRAJECTORY_SEED}" =~ ^[0-9]+$ && -n "${TRAJECTORY_ARM_ID}" ]] || exit 2
 fi
 if [[ "${MODE}" == two-cycle-timing ]]; then
@@ -137,10 +137,13 @@ import json, pathlib, sys
 value = json.loads(pathlib.Path(sys.argv[1]).read_text())
 arm_id = sys.argv[2]
 correctness = json.loads(pathlib.Path(sys.argv[3]).read_text())
+sys.path.insert(0, str(pathlib.Path(__import__("os").environ["DMD_SYSTEM_ROOT"]) / "src"))
+from distillschedule.runtime.wan13b_shadow_trajectory_study import accepted_timing_cycles
+source_cycles = accepted_timing_cycles(value, expected_head=correctness.get("expected_head"), arm_id=arm_id)
 required = {
     "schema_version": "distillschedule.trajectory_coarse_comparison.v1",
     "comparison_kind": "semantic",
-    "expected_cycles": 2,
+    "expected_cycles": source_cycles,
     "expected_world_size": 16,
     "complete": True,
 }
@@ -204,11 +207,16 @@ two_cycle_seed, two_cycle_arm_id = int(sys.argv[8]), sys.argv[9]
 if mode == "two-cycle-timing":
     if value.get("schema_version") != "distillschedule.wan13b_trajectory_summary.v1":
         raise SystemExit("two-cycle timing requires a trajectory correctness summary")
+    import os
+    sys.path.insert(0, str(pathlib.Path(os.environ["DMD_SYSTEM_ROOT"]) / "src"))
+    from distillschedule.runtime.wan13b_shadow_trajectory_study import accepted_timing_cycles
+    comparison = json.loads(pathlib.Path(os.environ["DISTILLSCHEDULE_WAN13B_TRAJECTORY_COMPARISON_RECEIPT"]).read_text())
+    source_cycles = accepted_timing_cycles(comparison, expected_head=expected_head, arm_id=two_cycle_arm_id)
     required = {
-        "status": "PASS", "placement": placement, "cycles": 2,
+        "status": "PASS", "placement": placement, "cycles": source_cycles,
         "rank_count": 16, "expected_head": expected_head,
         "diagnostic_only": True, "formal_timing_eligible": False,
-        "final_versions": {"generator": 4, "critic": 20, "ema": 20},
+        "final_versions": {"generator": 2 + source_cycles, "critic": 10 + 5 * source_cycles, "ema": 10 + 5 * source_cycles},
     }
     for key, expected in required.items():
         if value.get(key) != expected:
@@ -354,6 +362,8 @@ generator_nograd_lora_cast_cache=${GENERATOR_NOGRAD_LORA_CAST_CACHE}
 generator_nograd_lora_fused_epilogue=${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}
 grad_lora_fused_epilogue=${GRAD_LORA_FUSED_EPILOGUE}
 modulated_norm_fusion=${MODULATED_NORM_FUSION}
+shadow_trajectory_study=${DISTILLSCHEDULE_WAN13B_SHADOW_TRAJECTORY_STUDY:-0}
+shadow_stochastic_rounding=${DISTILLSCHEDULE_WAN13B_SHADOW_STOCHASTIC_ROUNDING:-0}
 generator_rollout_merged_shadow=${GENERATOR_ROLLOUT_MERGED_SHADOW}
 generator_rollout_cuda_graph=${GENERATOR_ROLLOUT_CUDA_GRAPH}
 tf32_cublas_override=${TORCH_ALLOW_TF32_CUBLAS_OVERRIDE:-NOT_SET}

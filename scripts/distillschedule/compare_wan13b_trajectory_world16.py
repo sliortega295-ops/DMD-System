@@ -37,7 +37,10 @@ def _anchor_cycles(cycles: int) -> tuple[int, ...]:
         return (1, 5)
     if cycles == 50:
         return (1, 10, 25, 50)
-    raise ValueError("trajectory cycles must be one of 1, 2, 5, or 50")
+    if cycles in {20, 30}:
+        from distillschedule.runtime.wan13b_shadow_trajectory_study import anchors
+        return anchors(cycles)
+    raise ValueError("trajectory cycles must be one of 1, 2, 5, 20, 30, or 50")
 
 
 def _load_rows(run_root: Path) -> list[Any]:
@@ -83,7 +86,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reference-run-root", type=Path, required=True)
     parser.add_argument("--candidate-run-root", type=Path, required=True)
-    parser.add_argument("--cycles", type=int, choices=(1, 2, 5, 50), required=True)
+    parser.add_argument("--cycles", type=int, choices=(1, 2, 5, 20, 30, 50), required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
 

@@ -160,6 +160,8 @@ def _validate_arm_environment(placement: str) -> dict[str, Any]:
     from distillschedule.runtime.wan13b_rollout_cuda_graph import requested as graph_requested
 
     graph_enabled = graph_requested()
+    from distillschedule.runtime.wan13b_shadow_trajectory_study import flag, ROUNDING_ENV
+    stochastic_rounding = flag(ROUNDING_ENV)
     if graph_enabled and (placement != RESIDENT_WINNER or shadow_enabled):
         raise ValueError("CUDA Graph requires Resident without merged weights")
     if shadow_enabled and placement != RESIDENT_WINNER:
@@ -194,6 +196,7 @@ def _validate_arm_environment(placement: str) -> dict[str, Any]:
         "modulated_norm_fusion": norm_fused,
         "generator_rollout_merged_shadow": shadow_enabled,
         "generator_rollout_cuda_graph": graph_enabled,
+        "shadow_stochastic_rounding": stochastic_rounding,
     }
 
 
@@ -206,12 +209,15 @@ def _load_correctness_binding(
     if observed != args.expected_correctness_hash:
         raise ValueError("two-cycle correctness receipt SHA-256 changed")
     value = json.loads(args.correctness_receipt.read_text())
-    expected_final = {"generator": 4, "critic": 20, "ema": 20}
+    from distillschedule.runtime.wan13b_shadow_trajectory_study import accepted_timing_cycles
+    comparison = json.loads(args.trajectory_comparison_receipt.read_text())
+    source_cycles = accepted_timing_cycles(comparison, expected_head=args.expected_head, arm_id=args.timing_arm_id)
+    expected_final = {"generator": 2 + source_cycles, "critic": 10 + 5 * source_cycles, "ema": 10 + 5 * source_cycles}
     required = {
         "schema_version": "distillschedule.wan13b_trajectory_summary.v1",
         "status": "PASS",
         "placement": args.placement,
-        "cycles": TIMED_CYCLES,
+        "cycles": source_cycles,
         "rank_count": WORLD_SIZE,
         "final_versions": expected_final,
         "diagnostic_only": True,
@@ -232,7 +238,7 @@ def _load_correctness_binding(
         raise ValueError("correctness implementation fingerprint is invalid")
     for key, expected in expected_arm.items():
         observed_flag = implementation.get(key, False) if key in {
-            "modulated_norm_fusion", "generator_rollout_merged_shadow", "generator_rollout_cuda_graph"
+            "modulated_norm_fusion", "generator_rollout_merged_shadow", "generator_rollout_cuda_graph", "shadow_stochastic_rounding"
         } else implementation.get(key)
         if observed_flag != expected:
             raise ValueError(f"correctness receipt arm contract changed: {key}")
@@ -274,10 +280,12 @@ def _load_trajectory_comparison_binding(
     if observed != args.expected_trajectory_comparison_hash:
         raise ValueError("trajectory comparison receipt SHA-256 changed")
     value = json.loads(args.trajectory_comparison_receipt.read_text())
+    from distillschedule.runtime.wan13b_shadow_trajectory_study import accepted_timing_cycles
+    source_cycles = accepted_timing_cycles(value, expected_head=args.expected_head, arm_id=args.timing_arm_id)
     required = {
         "schema_version": "distillschedule.trajectory_coarse_comparison.v1",
         "comparison_kind": "semantic",
-        "expected_cycles": 2,
+        "expected_cycles": source_cycles,
         "expected_world_size": 16,
         "complete": True,
     }

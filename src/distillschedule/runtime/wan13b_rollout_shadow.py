@@ -34,6 +34,10 @@ class MergedRolloutShadow:
             # The real Generator also trains three pyramid Conv3d adapters.
             # PEFT's exact get_delta_weight owns their convolutional layout.
             linear_type = LoraLayer
+        from .wan13b_shadow_trajectory_study import ROUNDING_ENV, flag, study_requested
+        self.stochastic_rounding = flag(ROUNDING_ENV)
+        if self.stochastic_rounding and not study_requested():
+            raise ValueError("stochastic rounding requires the explicit shadow trajectory study")
         self.source = source
         layers = [(name, child) for name, child in source.named_modules()
                   if isinstance(child, linear_type)]
@@ -92,6 +96,8 @@ class MergedRolloutShadow:
                 for name, layer in layers
             ],
             "source_lora_dtype": "torch.float32",
+            "rounding": "STOCHASTIC_BF16" if self.stochastic_rounding else "ROUND_TO_NEAREST",
+            "rounding_rng": "INDEPENDENT_SEED_RANK_VERSION_LAYER_GENERATOR" if self.stochastic_rounding else "NOT_USED",
             "shadow_parameter_bytes": sum(p.numel() * p.element_size()
                                           for p in self.model.parameters()),
             "shadow_lora_parameter_count": sum("lora_" in name for name, _ in
@@ -129,7 +135,18 @@ class MergedRolloutShadow:
                     # Always rebuild from the immutable original base, never unmerge.
                     # get_delta_weight preserves PEFT scaling and fan_in/fan_out.
                     delta = source.get_delta_weight(adapter)
-                    destination.weight.copy_(source.base_layer.weight.float().add(delta))
+                    ideal = source.base_layer.weight.float().add(delta)
+                    if self.stochastic_rounding and destination.weight.dtype == torch.bfloat16:
+                        from .wan13b_shadow_trajectory_study import rounding_seed, stochastic_bf16
+                        import torch.distributed as dist
+                        rank = dist.get_rank() if dist.is_initialized() else 0
+                        seed = int(os.environ.get("DISTILLSCHEDULE_TRAJECTORY_SEED",
+                                   os.environ.get("DISTILLSCHEDULE_TWO_CYCLE_SEED", "20260903")))
+                        rng = torch.Generator(device=ideal.device)
+                        rng.manual_seed(rounding_seed(seed=seed, rank=rank, version=version, layer=name))
+                        destination.weight.copy_(stochastic_bf16(ideal, generator=rng))
+                    else:
+                        destination.weight.copy_(ideal)
             self.current_source_version = version
             self.receipt["refresh_count"] += 1
             self.receipt["refresh_versions"].append(version)
@@ -218,7 +235,8 @@ def validate(build: dict[str, Any], *, enabled: bool, cycles: int,
 
 def expected_epilogue_counts(*, cycles: int, shadow_enabled: bool,
                              diagnostic_reference: bool = False,
-                             graph_receipt: dict[str, Any] | None = None) -> dict[str, int]:
+                             graph_receipt: dict[str, Any] | None = None,
+                             diagnostic_probe_calls: int = 0) -> dict[str, int]:
     # Original generator no-grad census is 28 calls/cycle; exactly 27 are the
     # five post-commit rollouts. Only the remaining call keeps PEFT epilogues.
     calls = (1 if shadow_enabled else 28) * cycles
@@ -232,5 +250,6 @@ def expected_epilogue_counts(*, cycles: int, shadow_enabled: bool,
         calls = cycles + int(graph_receipt["warmup_model_call_count"]) + int(
             graph_receipt["capture_model_call_count"]) + int(
             graph_receipt["diagnostic_reference_model_call_count"])
+    calls += diagnostic_probe_calls
     return {"model_call_count": calls, "fused_invocation_count": 305 * calls,
             "reference_fallback_count": 4 * calls}
