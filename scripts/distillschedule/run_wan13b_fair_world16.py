@@ -449,6 +449,13 @@ def main() -> int:
         raise ValueError("--bootstrap-hash must be SHA256")
     if not 1 <= args.ssh_port <= 65535:
         raise ValueError("--ssh-port must be in [1, 65535]")
+    if args.fused_input_lora_a and (
+        not args.generator_rollout_cuda_graph
+        or not args.generator_nograd_lora_fused_epilogue
+        or args.placement != "resident-async128-tree-chunk2048"
+        or args.tf32_cublas_override != "1"
+    ):
+        raise ValueError("fused input LoRA-A requires the registered Resident graph, epilogue, and TF32 override")
     if args.mode in {"trajectory", "two-cycle-timing"}:
         allowed = {"resident-async128-tree-chunk2048", "world16-fsdp"}
         if args.placement not in allowed:
