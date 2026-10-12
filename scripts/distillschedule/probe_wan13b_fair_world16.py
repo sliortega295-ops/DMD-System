@@ -254,6 +254,12 @@ def _build_model_fair(
     metadata["generator_rollout_cuda_graph"] = install_graph(
         model, role=role, placement=args.placement
     )
+    from distillschedule.runtime.wan13b_score_cuda_graph import install as install_score_graph
+
+    metadata["score_cuda_graph"] = install_score_graph(
+        model, role=role, placement=args.placement,
+        reference_checks=not (args.timing_mode or args.profile_mode),
+    )
     lora_operator_attribution = install_lora_operator_attribution(
         model,
         role=role,

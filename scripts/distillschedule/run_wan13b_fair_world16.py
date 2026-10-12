@@ -184,6 +184,7 @@ def parser() -> argparse.ArgumentParser:
                        help="Default-off width1536 source-qualified normalization canary.")
     value.add_argument("--generator-rollout-merged-shadow", action="store_true",
                        help="Default-off, independent post-G B1 merged execution replica.")
+    value.add_argument("--score-cuda-graph", action="store_true", help="Default-off detached Critic/Teacher Score graphs; Resident only.")
     value.add_argument("--fused-input-lora-a", action="store_true", help="Default-off BF16 input load plus FP32 LoRA-A TF32-RNA GEMM, post-G graph only.")
     value.add_argument("--generator-rollout-cuda-graph", action="store_true",
                        help="Default-off exact post-G B1 Resident CUDA Graph replay.")
@@ -231,6 +232,7 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + ("1" if getattr(args, "modulated_norm_fusion", False) else "0"),
         "DISTILLSCHEDULE_WAN13B_GENERATOR_ROLLOUT_MERGED_SHADOW="
         + ("1" if getattr(args, "generator_rollout_merged_shadow", False) else "0"),
+        "DISTILLSCHEDULE_WAN13B_SCORE_CUDA_GRAPH=" + ("1" if getattr(args, "score_cuda_graph", False) else "0"),
         "DISTILLSCHEDULE_WAN13B_FUSED_INPUT_LORA_A=" + ("1" if getattr(args, "fused_input_lora_a", False) else "0"),
         "DISTILLSCHEDULE_WAN13B_GENERATOR_ROLLOUT_CUDA_GRAPH="
         + ("1" if getattr(args, "generator_rollout_cuda_graph", False) else "0"),
@@ -449,6 +451,8 @@ def main() -> int:
         raise ValueError("--bootstrap-hash must be SHA256")
     if not 1 <= args.ssh_port <= 65535:
         raise ValueError("--ssh-port must be in [1, 65535]")
+    if args.score_cuda_graph and args.placement != "resident-async128-tree-chunk2048":
+        raise ValueError("Score graphs require the registered Resident control")
     if args.fused_input_lora_a and (
         not args.generator_rollout_cuda_graph
         or not args.generator_nograd_lora_fused_epilogue

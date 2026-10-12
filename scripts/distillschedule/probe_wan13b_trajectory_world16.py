@@ -716,6 +716,7 @@ def main() -> int:
                     "generator_rollout_merged_shadow": str(shadow_enabled).lower(),
                     "generator_rollout_cuda_graph": str(graph_enabled).lower(),
                     "fused_input_lora_a": str(os.environ.get("DISTILLSCHEDULE_WAN13B_FUSED_INPUT_LORA_A", "0") == "1").lower(),
+                    "score_cuda_graph": str(os.environ.get("DISTILLSCHEDULE_WAN13B_SCORE_CUDA_GRAPH", "0") == "1").lower(),
                     "worker": "probe_wan13b_trajectory_world16.py",
                 },
                 sample_identities=sample_payloads,
@@ -774,7 +775,9 @@ def main() -> int:
 
         torch.cuda.synchronize(device)
         dist.barrier()
+        from distillschedule.runtime.wan13b_score_cuda_graph import validate_build as validate_score_graph
         result.update(
+            score_cuda_graph_receipt=validate_score_graph(build, cycles=args.trajectory_cycles, reference_checks=True),
             status="PASS",
             completed_cycles=args.trajectory_cycles,
             grad_epilogue_receipt=validate_grad_epilogue_receipts(build, requested=grad_fused),

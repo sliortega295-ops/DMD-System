@@ -195,6 +195,7 @@ def _validate_arm_environment(placement: str) -> dict[str, Any]:
         "generator_rollout_merged_shadow": shadow_enabled,
         "generator_rollout_cuda_graph": graph_enabled,
         "fused_input_lora_a": os.environ.get("DISTILLSCHEDULE_WAN13B_FUSED_INPUT_LORA_A", "0") == "1",
+        "score_cuda_graph": os.environ.get("DISTILLSCHEDULE_WAN13B_SCORE_CUDA_GRAPH", "0") == "1",
     }
 
 
@@ -233,7 +234,7 @@ def _load_correctness_binding(
         raise ValueError("correctness implementation fingerprint is invalid")
     for key, expected in expected_arm.items():
         observed_flag = implementation.get(key, False) if key in {
-            "modulated_norm_fusion", "generator_rollout_merged_shadow", "generator_rollout_cuda_graph", "fused_input_lora_a"
+            "modulated_norm_fusion", "generator_rollout_merged_shadow", "generator_rollout_cuda_graph", "fused_input_lora_a", "score_cuda_graph"
         } else implementation.get(key)
         if observed_flag != expected:
             raise ValueError(f"correctness receipt arm contract changed: {key}")
@@ -829,7 +830,10 @@ def main() -> int:
         graph_receipt = validate_graph(
             build, enabled=bool(arm["generator_rollout_cuda_graph"]), cycles=2)
 
+        from distillschedule.runtime.wan13b_score_cuda_graph import validate_build as validate_score_graph
+        score_graph_receipt = validate_score_graph(build, cycles=2, reference_checks=False)
         result.update(
+            score_cuda_graph_receipt=score_graph_receipt,
             status="PASS",
             construction_seconds=construction_seconds,
             initial_versions=initial_versions,
