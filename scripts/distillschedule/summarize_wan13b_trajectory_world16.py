@@ -644,8 +644,10 @@ def main() -> int:
         expected_fused = args.placement == RESIDENT_WINNER and not implementation_contract.get("layout_only_ablation",False)
         if implementation_contract.get("generator_nograd_lora_fused_epilogue") is not expected_fused:
             errors.append("trajectory fused-epilogue arm flag changed")
-        if implementation_contract.get("generator_nograd_lora_cast_cache") is not False:
-            errors.append("trajectory unexpectedly enabled rejected cast cache")
+        from distillschedule.runtime.wan13b_cast_graph_composition import check as check_cast_composition
+        try:
+            check_cast_composition(args.placement, cast_cache=implementation_contract.get("generator_nograd_lora_cast_cache",False), fused=implementation_contract.get("generator_nograd_lora_fused_epilogue",False), graph=implementation_contract.get("generator_rollout_cuda_graph",False), input_gemm=implementation_contract.get("fused_input_lora_a",False), shadow=implementation_contract.get("generator_rollout_merged_shadow",False))
+        except ValueError as exc: errors.append(str(exc))
         if args.placement == FSDP_BASELINE and implementation_contract["grad_lora_fused_epilogue"]:
             errors.append("FSDP baseline enabled Resident grad epilogue")
 

@@ -396,8 +396,8 @@ def main() -> int:
     check_layout(args.placement,enabled=layout_only,flags={"fused":fused_epilogue,"grad":grad_fused,"norm":norm_fused,"graph":graph_enabled,"shadow":shadow_enabled,"cast":cast_cache,"input":os.environ.get("DISTILLSCHEDULE_WAN13B_FUSED_INPUT_LORA_A","0")=="1","score":os.environ.get("DISTILLSCHEDULE_WAN13B_SCORE_CUDA_GRAPH","0")=="1"})
     if args.placement == RESIDENT_WINNER and not fused_epilogue and not layout_only:
         raise ValueError("Resident trajectory is not the registered fused-epilogue winner")
-    if args.placement == RESIDENT_WINNER and cast_cache:
-        raise ValueError("Resident winner cannot enable the rejected cast cache")
+    from distillschedule.runtime.wan13b_cast_graph_composition import check as check_cast_composition
+    cast_composition = check_cast_composition(args.placement, cast_cache=cast_cache, fused=fused_epilogue, graph=graph_enabled, input_gemm=os.environ.get("DISTILLSCHEDULE_WAN13B_FUSED_INPUT_LORA_A", "0") == "1", shadow=shadow_enabled)
     if args.placement == FSDP_BASELINE and (fused_epilogue or cast_cache or grad_fused):
         raise ValueError("world16-FSDP baseline cannot enable Resident-only LoRA arms")
     if not args.run_id.replace("-", "").replace("_", "").replace(".", "").isalnum():
@@ -781,6 +781,8 @@ def main() -> int:
         torch.cuda.synchronize(device)
         dist.barrier()
         from distillschedule.runtime.wan13b_score_cuda_graph import validate_build as validate_score_graph
+        from distillschedule.runtime.wan13b_cast_graph_composition import validate_build as validate_cast_composition
+        result["cast_graph_composition_receipt"] = validate_cast_composition(build, enabled=cast_composition)
         from distillschedule.runtime.wan13b_critic_grad_graph import validate_build as validate_critic_graph
         result.update(
             critic_grad_cuda_graph_receipt=validate_critic_graph(build, cycles=args.trajectory_cycles, reference_checks=True),

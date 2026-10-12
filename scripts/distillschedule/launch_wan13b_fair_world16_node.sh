@@ -115,7 +115,7 @@ fi
 if [[ "${MODE}" == trajectory || "${MODE}" == two-cycle-timing ]]; then
   if [[ "${PLACEMENT}" == resident-async128-tree-chunk2048 ]]; then
     [[ ( "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" == 1 || "${LAYOUT_ONLY_ABLATION}" == 1 ) && \
-       "${GENERATOR_NOGRAD_LORA_CAST_CACHE}" == 0 ]] || {
+       ( "${GENERATOR_NOGRAD_LORA_CAST_CACHE}" == 0 || ( "${GENERATOR_ROLLOUT_CUDA_GRAPH}" == 1 && "${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}" == 1 && "${FUSED_INPUT_LORA_A}" == 0 && "${GENERATOR_ROLLOUT_MERGED_SHADOW}" == 0 ) ) ]] || {
       echo registered_resident_winner_contract_mismatch >&2; exit 2;
     }
   elif [[ "${PLACEMENT}" == world16-fsdp ]]; then

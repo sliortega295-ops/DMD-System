@@ -459,8 +459,8 @@ def install_generator_nograd_lora_fused_epilogue(
     if not requested:
         receipt["disabled_reason"] = "NOT_REQUESTED"
         return receipt
-    if _enabled(os.environ.get(CAST_CACHE_ENV)):
-        raise RuntimeError("cast cache and fused epilogue must be tested separately")
+    if _enabled(os.environ.get(CAST_CACHE_ENV)) and not _enabled(os.environ.get("DISTILLSCHEDULE_WAN13B_GENERATOR_ROLLOUT_CUDA_GRAPH")):
+        raise RuntimeError("cast cache and fused epilogue require explicit rollout-graph composition")
     if _enabled(os.environ.get(ATTRIBUTION_ENV)):
         raise RuntimeError("operator attribution and fused epilogue are separate runs")
     if role != "generator":

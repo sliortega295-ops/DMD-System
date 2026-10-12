@@ -193,11 +193,17 @@ def _validate_arm(
         errors.append(f"rank{rank}: arm contract changed")
     if placement == RESIDENT_WINNER:
         expected_fused=not arm.get("layout_only_ablation",False)
-        if fused is not expected_fused or cast_cache is not False:
+        if fused is not expected_fused:
             errors.append(f"rank{rank}: Resident fused/cast-cache flags changed")
     elif fused is not False or cast_cache is not False or grad_fused is not False or norm_fused or shadow_enabled or graph_enabled:
         errors.append(f"rank{rank}: FSDP enabled Resident-only LoRA arm")
 
+    from distillschedule.runtime.wan13b_cast_graph_composition import check as check_cast_composition
+    try:
+        check_cast_composition(placement, cast_cache=bool(cast_cache), fused=bool(fused), graph=bool(graph_enabled), input_gemm=bool(arm.get("fused_input_lora_a",False)), shadow=bool(shadow_enabled))
+    except ValueError as exc: errors.append(f"rank{rank}: {exc}")
+    if cast_cache and not row.get("cast_graph_composition_receipt",{}).get("enabled"):
+        errors.append(f"rank{rank}: cast composition execution receipt missing")
     from distillschedule.runtime.wan13b_layout_ablation import check as check_layout
     try:
         check_layout(placement,enabled=bool(arm.get("layout_only_ablation",False)),flags={k:arm.get(k,False) for k in ("generator_nograd_lora_fused_epilogue","generator_nograd_lora_cast_cache","grad_lora_fused_epilogue","modulated_norm_fusion","generator_rollout_merged_shadow","generator_rollout_cuda_graph","fused_input_lora_a","score_cuda_graph","critic_grad_cuda_graph")})

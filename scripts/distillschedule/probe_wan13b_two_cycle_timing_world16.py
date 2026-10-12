@@ -182,7 +182,9 @@ def _validate_arm_environment(placement: str) -> dict[str, Any]:
     from distillschedule.runtime.wan13b_layout_ablation import requested as layout_requested, check as check_layout
     layout_only=layout_requested()
     check_layout(placement,enabled=layout_only,flags={"fused":fused,"grad":grad_fused,"norm":norm_fused,"graph":graph_enabled,"shadow":shadow_enabled,"cast":cast_cache,"input":os.environ.get("DISTILLSCHEDULE_WAN13B_FUSED_INPUT_LORA_A","0")=="1","score":os.environ.get("DISTILLSCHEDULE_WAN13B_SCORE_CUDA_GRAPH","0")=="1"})
-    if placement == RESIDENT_WINNER and ((not fused and not layout_only) or cast_cache):
+    from distillschedule.runtime.wan13b_cast_graph_composition import check as check_cast_composition
+    check_cast_composition(placement, cast_cache=cast_cache, fused=fused, graph=graph_enabled, input_gemm=os.environ.get("DISTILLSCHEDULE_WAN13B_FUSED_INPUT_LORA_A", "0") == "1", shadow=shadow_enabled)
+    if placement == RESIDENT_WINNER and (not fused and not layout_only):
         raise ValueError(
             "two-cycle Resident winner requires fused epilogue ON and cast cache OFF"
         )
@@ -838,8 +840,11 @@ def main() -> int:
 
         from distillschedule.runtime.wan13b_score_cuda_graph import validate_build as validate_score_graph
         score_graph_receipt = validate_score_graph(build, cycles=2, reference_checks=False)
+        from distillschedule.runtime.wan13b_cast_graph_composition import validate_build as validate_cast_composition
+        cast_composition_receipt = validate_cast_composition(build, enabled=arm["generator_nograd_lora_cast_cache"])
         from distillschedule.runtime.wan13b_critic_grad_graph import validate_build as validate_critic_graph
         result.update(
+            cast_graph_composition_receipt=cast_composition_receipt,
             critic_grad_cuda_graph_receipt=validate_critic_graph(build, cycles=2, reference_checks=False),
             score_cuda_graph_receipt=score_graph_receipt,
             status="PASS",

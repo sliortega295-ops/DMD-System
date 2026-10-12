@@ -480,8 +480,8 @@ def main() -> int:
                 raise ValueError(
                     f"Resident {args.mode} requires the registered fused-epilogue winner"
                 )
-            if args.generator_nograd_lora_cast_cache:
-                raise ValueError("Resident winner does not include the rejected cast cache")
+            from distillschedule.runtime.wan13b_cast_graph_composition import check as check_cast_composition
+            check_cast_composition(args.placement, cast_cache=args.generator_nograd_lora_cast_cache, fused=args.generator_nograd_lora_fused_epilogue, graph=args.generator_rollout_cuda_graph, input_gemm=args.fused_input_lora_a, shadow=args.generator_rollout_merged_shadow)
         elif (
             args.generator_nograd_lora_fused_epilogue
             or args.generator_nograd_lora_cast_cache

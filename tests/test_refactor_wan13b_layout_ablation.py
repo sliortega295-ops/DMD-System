@@ -15,7 +15,8 @@ def test_reject_kernel_or_graph_factors():
         with pytest.raises(ValueError):check("resident-async128-tree-chunk2048",enabled=True,flags={flag:True})
 def test_original_default_guard_retained():
     source=(ROOT/"scripts/distillschedule/probe_wan13b_two_cycle_timing_world16.py").read_text()
-    assert "((not fused and not layout_only) or cast_cache)" in source
+    assert "(not fused and not layout_only)" in source
+    assert "check_cast_composition" in source
     assert "layout_only_ablation" in source
     for name in ("probe_wan13b_trajectory_world16.py","summarize_wan13b_trajectory_world16.py","summarize_wan13b_two_cycle_timing_world16.py"):
         ast.parse((ROOT/"scripts/distillschedule"/name).read_text())
