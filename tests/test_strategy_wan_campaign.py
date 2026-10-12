@@ -43,3 +43,40 @@ def test_changed_implementation_invalidates_campaign(tmp_path):
     c=prepare(OriginalWanTask(),assets(),tmp_path/'out')
     Path(c['jobs'][0]['implementation']).write_text('{}')
     with pytest.raises(ValueError,match='strategy changed'):verify(tmp_path/'out/campaign.json')
+
+
+def test_two_node_controller_flow_and_resume_with_injected_workers(tmp_path,monkeypatch):
+    """Controller-only test: injected workers do NOT perform tensor/GPU work."""
+    from concurrent.futures import ThreadPoolExecutor
+    import threading
+    import distillschedule.strategies.wan_campaign as module
+    import distillschedule.strategies.wan_evidence as evidence
+    c=prepare(OriginalWanTask(),assets(),tmp_path/'out')
+    spawned=[];guard=threading.Lock()
+    class Process:
+        def __init__(self,command,**kwargs):
+            rank=int(next(v.split('=')[1] for v in command if v.startswith('--node-rank=')))
+            dest=Path(command[command.index('--output')+1]);dest.mkdir(parents=True,exist_ok=True)
+            with guard:spawned.append((rank,command))
+            for r in range(8*rank,8*rank+8):
+                (dest/f'rank_{r:02d}.json').write_text(json.dumps({'fixture':'INJECTED_WORKER_NO_GPU','rank':r}))
+        def wait(self,timeout=None):return 0
+    monkeypatch.setattr(module.subprocess,'Popen',Process)
+    def assemble_fixture(task,paths,output):
+        assert len(paths)==16 and all(p.is_file() for p in paths)
+        Path(output).mkdir();(Path(output)/'collection.json').write_text('{"fixture":true}')
+    monkeypatch.setattr(module,'assemble',assemble_fixture)
+    monkeypatch.setattr(module,'plan',lambda task,paths:{'fixture':True,'observed_collections':len(paths)})
+    monkeypatch.setattr(evidence,'compare_runs',lambda *args:{'status':'PASS','fixture':'NO_NUMERICAL_DATA'})
+    def one(rank,resume=False):return run(tmp_path/'out/campaign.json',node_rank=rank,master_addr='fixture-host',
+                                        master_port=29401,execute=True,resume=resume)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        result=list(pool.map(one,(0,1)))
+    assert len(spawned)==16  # eight distributed launches, two local torchrun parents per launch
+    assert all(r['native_launches']==8 for r in result)
+    assert all(r['status']=='COMPLETED_WITH_REFERENCE_PARITY' for r in result)
+    assert json.loads((tmp_path/'out/selected-plan.json').read_text())['observed_collections']==7
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        again=list(pool.map(lambda r:one(r,True),(0,1)))
+    assert len(spawned)==16 and all(r['native_launches']==8 for r in again)
+    with pytest.raises(ValueError,match='already attempted'):one(0)

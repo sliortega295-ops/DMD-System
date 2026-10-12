@@ -1,0 +1,41 @@
+name: original-wan-strategy-cpu
+on:
+  push:
+    paths:
+      - 'src/distillschedule/strategies/**'
+      - 'src/distillschedule/native/cli.py'
+      - 'src/distillschedule/runtime/wan_cycle_plan.py'
+      - 'tests/test_strategy_wan_*.py'
+      - '.github/workflows/original-wan-strategy.yml'
+  pull_request:
+    paths:
+      - 'src/distillschedule/strategies/**'
+      - 'src/distillschedule/native/cli.py'
+      - 'src/distillschedule/runtime/wan_cycle_plan.py'
+      - 'tests/test_strategy_wan_*.py'
+      - '.github/workflows/original-wan-strategy.yml'
+permissions:
+  contents: read
+jobs:
+  cpu-original-backend-interfaces:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pip install -e '.[test,native]'
+      - name: Original protocol, planner and injected native interfaces (no GPU)
+        run: python -m pytest -q tests/test_strategy_wan_*.py tests/test_refactor_wan_parameterized_bridge.py --junitxml=original-wan-tests.xml
+      - name: Preserve original canonical integration
+        run: python scripts/distillschedule/check_best_known_integration.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: original-wan-cpu-${{ github.sha }}
+          path: original-wan-tests.xml
