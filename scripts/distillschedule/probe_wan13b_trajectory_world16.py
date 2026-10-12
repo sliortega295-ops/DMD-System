@@ -391,7 +391,10 @@ def main() -> int:
         raise ValueError("merged shadow requires the registered Resident control")
     if norm_fused and args.placement != RESIDENT_WINNER:
         raise ValueError("FSDP control cannot enable Resident normalization fusion")
-    if args.placement == RESIDENT_WINNER and not fused_epilogue:
+    from distillschedule.runtime.wan13b_layout_ablation import requested as layout_requested, check as check_layout
+    layout_only=layout_requested()
+    check_layout(args.placement,enabled=layout_only,flags={"fused":fused_epilogue,"grad":grad_fused,"norm":norm_fused,"graph":graph_enabled,"shadow":shadow_enabled,"cast":cast_cache,"input":os.environ.get("DISTILLSCHEDULE_WAN13B_FUSED_INPUT_LORA_A","0")=="1","score":os.environ.get("DISTILLSCHEDULE_WAN13B_SCORE_CUDA_GRAPH","0")=="1"})
+    if args.placement == RESIDENT_WINNER and not fused_epilogue and not layout_only:
         raise ValueError("Resident trajectory is not the registered fused-epilogue winner")
     if args.placement == RESIDENT_WINNER and cast_cache:
         raise ValueError("Resident winner cannot enable the rejected cast cache")
@@ -429,7 +432,7 @@ def main() -> int:
         "diagnostic_only": True,
         "formal_timing_eligible": False,
         "arm_contract": (
-            "RESIDENT_ASYNC128_TREE_CHUNK2048_FUSED_EPILOGUE"
+            ("RESIDENT_ASYNC128_TREE_CHUNK2048_LAYOUT_ONLY" if layout_only else "RESIDENT_ASYNC128_TREE_CHUNK2048_FUSED_EPILOGUE")
             if args.placement == RESIDENT_WINNER
             else "WORLD16_FSDP_BASELINE"
         ),
@@ -716,6 +719,7 @@ def main() -> int:
                     "generator_rollout_merged_shadow": str(shadow_enabled).lower(),
                     "generator_rollout_cuda_graph": str(graph_enabled).lower(),
                     "fused_input_lora_a": str(os.environ.get("DISTILLSCHEDULE_WAN13B_FUSED_INPUT_LORA_A", "0") == "1").lower(),
+                    "layout_only_ablation": str(layout_only).lower(),
                     "score_cuda_graph": str(os.environ.get("DISTILLSCHEDULE_WAN13B_SCORE_CUDA_GRAPH", "0") == "1").lower(),
                     "worker": "probe_wan13b_trajectory_world16.py",
                 },

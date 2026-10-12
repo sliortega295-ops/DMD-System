@@ -134,7 +134,8 @@ def _clean_runtime(placement: str) -> bool:
 
 def _expected_arm_contract(placement: str) -> str:
     if placement == RESIDENT_WINNER:
-        return RESIDENT_ARM_CONTRACT
+        from distillschedule.runtime.wan13b_layout_ablation import requested, ARM
+        return ARM if requested() else RESIDENT_ARM_CONTRACT
     if placement == FSDP_BASELINE:
         return FSDP_ARM_CONTRACT
     raise ValueError(f"unregistered two-cycle placement: {placement}")
@@ -178,7 +179,10 @@ def _validate_arm_environment(placement: str) -> dict[str, Any]:
         )
         == "1"
     )
-    if placement == RESIDENT_WINNER and (not fused or cast_cache):
+    from distillschedule.runtime.wan13b_layout_ablation import requested as layout_requested, check as check_layout
+    layout_only=layout_requested()
+    check_layout(placement,enabled=layout_only,flags={"fused":fused,"grad":grad_fused,"norm":norm_fused,"graph":graph_enabled,"shadow":shadow_enabled,"cast":cast_cache,"input":os.environ.get("DISTILLSCHEDULE_WAN13B_FUSED_INPUT_LORA_A","0")=="1","score":os.environ.get("DISTILLSCHEDULE_WAN13B_SCORE_CUDA_GRAPH","0")=="1"})
+    if placement == RESIDENT_WINNER and ((not fused and not layout_only) or cast_cache):
         raise ValueError(
             "two-cycle Resident winner requires fused epilogue ON and cast cache OFF"
         )
@@ -187,6 +191,7 @@ def _validate_arm_environment(placement: str) -> dict[str, Any]:
             "two-cycle world16-FSDP baseline requires fused epilogue and cast cache OFF"
         )
     return {
+        "layout_only_ablation": layout_only,
         "arm_contract": _expected_arm_contract(placement),
         "generator_nograd_lora_fused_epilogue": fused,
         "generator_nograd_lora_cast_cache": cast_cache,
@@ -234,7 +239,7 @@ def _load_correctness_binding(
         raise ValueError("correctness implementation fingerprint is invalid")
     for key, expected in expected_arm.items():
         observed_flag = implementation.get(key, False) if key in {
-            "modulated_norm_fusion", "generator_rollout_merged_shadow", "generator_rollout_cuda_graph", "fused_input_lora_a", "score_cuda_graph"
+            "modulated_norm_fusion", "generator_rollout_merged_shadow", "generator_rollout_cuda_graph", "fused_input_lora_a", "score_cuda_graph", "layout_only_ablation"
         } else implementation.get(key)
         if observed_flag != expected:
             raise ValueError(f"correctness receipt arm contract changed: {key}")

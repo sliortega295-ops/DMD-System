@@ -185,18 +185,23 @@ def _validate_arm(
     shadow_enabled = arm.get("generator_rollout_merged_shadow", False)
     graph_enabled = arm.get("generator_rollout_cuda_graph", False)
     expected_name = (
-        "RESIDENT_ASYNC128_TREE_CHUNK2048_FUSED_EPILOGUE"
+        ("RESIDENT_ASYNC128_TREE_CHUNK2048_LAYOUT_ONLY" if arm.get("layout_only_ablation",False) else "RESIDENT_ASYNC128_TREE_CHUNK2048_FUSED_EPILOGUE")
         if placement == RESIDENT_WINNER
         else "WORLD16_FSDP_BASELINE"
     )
     if arm.get("arm_contract") != expected_name:
         errors.append(f"rank{rank}: arm contract changed")
     if placement == RESIDENT_WINNER:
-        if fused is not True or cast_cache is not False:
+        expected_fused=not arm.get("layout_only_ablation",False)
+        if fused is not expected_fused or cast_cache is not False:
             errors.append(f"rank{rank}: Resident fused/cast-cache flags changed")
     elif fused is not False or cast_cache is not False or grad_fused is not False or norm_fused or shadow_enabled or graph_enabled:
         errors.append(f"rank{rank}: FSDP enabled Resident-only LoRA arm")
 
+    from distillschedule.runtime.wan13b_layout_ablation import check as check_layout
+    try:
+        check_layout(placement,enabled=bool(arm.get("layout_only_ablation",False)),flags={k:arm.get(k,False) for k in ("generator_nograd_lora_fused_epilogue","generator_nograd_lora_cast_cache","grad_lora_fused_epilogue","modulated_norm_fusion","generator_rollout_merged_shadow","generator_rollout_cuda_graph","fused_input_lora_a","score_cuda_graph")})
+    except ValueError as exc:errors.append(f"rank{rank}: {exc}")
     runtime = row.get("runtime_contract", {})
     expected_runtime = {
         "ema_implementation": "reference",
@@ -217,7 +222,7 @@ def _validate_arm(
     receipt = row.get("fused_epilogue_receipt", {})
     generator = receipt.get("generator", {})
     critic = receipt.get("critic", {})
-    if placement == RESIDENT_WINNER:
+    if placement == RESIDENT_WINNER and not arm.get("layout_only_ablation",False):
         from distillschedule.runtime.wan13b_rollout_shadow import expected_epilogue_counts
 
         expected_counts = expected_epilogue_counts(
@@ -327,7 +332,7 @@ def main() -> int:
         "grad_lora_fused_epilogue", "tf32_cublas_override",
         "modulated_norm_fusion",
         "generator_rollout_merged_shadow",
-        "generator_rollout_cuda_graph",
+        "generator_rollout_cuda_graph", "layout_only_ablation", "score_cuda_graph", "fused_input_lora_a",
         "helios_transformer_sha256", "model_root",
     )
     launch_identities = {

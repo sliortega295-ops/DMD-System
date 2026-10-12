@@ -619,6 +619,7 @@ def main() -> int:
             "generator_rollout_merged_shadow": raw_implementation.get("generator_rollout_merged_shadow", "false") == "true",
             "generator_rollout_cuda_graph": raw_implementation.get("generator_rollout_cuda_graph", "false") == "true",
             "fused_input_lora_a": raw_implementation.get("fused_input_lora_a", "false") == "true",
+            "layout_only_ablation": raw_implementation.get("layout_only_ablation", "false") == "true",
             "score_cuda_graph": raw_implementation.get("score_cuda_graph", "false") == "true",
             "worker": raw_implementation.get("worker"),
         }
@@ -628,7 +629,7 @@ def main() -> int:
     if len(implementation_hashes) != 1:
         errors.append("rank/cycle implementation identities differ")
     expected_arm = (
-        "RESIDENT_ASYNC128_TREE_CHUNK2048_FUSED_EPILOGUE"
+        ("RESIDENT_ASYNC128_TREE_CHUNK2048_LAYOUT_ONLY" if implementation_contract and implementation_contract.get("layout_only_ablation",False) else "RESIDENT_ASYNC128_TREE_CHUNK2048_FUSED_EPILOGUE")
         if args.placement == RESIDENT_WINNER
         else "WORLD16_FSDP_BASELINE"
     )
@@ -639,7 +640,7 @@ def main() -> int:
             errors.append("trajectory implementation placement changed")
         if not implementation_contract.get("trajectory_arm_id"):
             errors.append("trajectory implementation arm id is missing")
-        expected_fused = args.placement == RESIDENT_WINNER
+        expected_fused = args.placement == RESIDENT_WINNER and not implementation_contract.get("layout_only_ablation",False)
         if implementation_contract.get("generator_nograd_lora_fused_epilogue") is not expected_fused:
             errors.append("trajectory fused-epilogue arm flag changed")
         if implementation_contract.get("generator_nograd_lora_cast_cache") is not False:
@@ -647,6 +648,11 @@ def main() -> int:
         if args.placement == FSDP_BASELINE and implementation_contract["grad_lora_fused_epilogue"]:
             errors.append("FSDP baseline enabled Resident grad epilogue")
 
+    if implementation_contract is not None:
+        from distillschedule.runtime.wan13b_layout_ablation import check as check_layout
+        try:
+            check_layout(args.placement,enabled=implementation_contract.get("layout_only_ablation",False),flags={k:implementation_contract.get(k,False) for k in ("generator_nograd_lora_fused_epilogue","generator_nograd_lora_cast_cache","grad_lora_fused_epilogue","modulated_norm_fusion","generator_rollout_merged_shadow","generator_rollout_cuda_graph","fused_input_lora_a","score_cuda_graph")})
+        except ValueError as exc:errors.append(str(exc))
     expected_anchor_cycles = sorted(
         {cycle for cycle in (1, 10, 25, 50, args.cycles) if cycle <= args.cycles}
     )

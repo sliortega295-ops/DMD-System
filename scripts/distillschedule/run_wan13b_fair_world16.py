@@ -159,6 +159,7 @@ def parser() -> argparse.ArgumentParser:
         "--expected-helios-transformer-sha256",
         default="5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
     )
+    value.add_argument("--layout-only-ablation", action="store_true")
     value.add_argument("--correctness-receipt", type=Path)
     value.add_argument("--correctness-sha256")
     value.add_argument(
@@ -241,6 +242,7 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE="
         + ("1" if args.generator_nograd_lora_fused_epilogue else "0"),
     ]
+    exports.append("DISTILLSCHEDULE_WAN13B_LAYOUT_ONLY_ABLATION=" + ("1" if getattr(args,"layout_only_ablation",False) else "0"))
     if args.tf32_cublas_override is not None:
         exports.append("TORCH_ALLOW_TF32_CUBLAS_OVERRIDE=" + args.tf32_cublas_override)
     if args.grad_lora_fused_epilogue and args.placement != "resident-async128-tree-chunk2048":
@@ -451,6 +453,8 @@ def main() -> int:
         raise ValueError("--bootstrap-hash must be SHA256")
     if not 1 <= args.ssh_port <= 65535:
         raise ValueError("--ssh-port must be in [1, 65535]")
+    from distillschedule.runtime.wan13b_layout_ablation import check as check_layout
+    check_layout(args.placement, enabled=args.layout_only_ablation, flags={key:getattr(args,key,False) for key in ("generator_nograd_lora_fused_epilogue","grad_lora_fused_epilogue","modulated_norm_fusion","generator_rollout_merged_shadow","generator_rollout_cuda_graph","score_cuda_graph","fused_input_lora_a","generator_nograd_lora_cast_cache")})
     if args.score_cuda_graph and args.placement != "resident-async128-tree-chunk2048":
         raise ValueError("Score graphs require the registered Resident control")
     if args.fused_input_lora_a and (
@@ -468,7 +472,7 @@ def main() -> int:
                 "world16-FSDP baseline"
             )
         if args.placement == "resident-async128-tree-chunk2048":
-            if not args.generator_nograd_lora_fused_epilogue:
+            if not args.generator_nograd_lora_fused_epilogue and not args.layout_only_ablation:
                 raise ValueError(
                     f"Resident {args.mode} requires the registered fused-epilogue winner"
                 )
