@@ -720,6 +720,7 @@ def main() -> int:
                     "generator_rollout_cuda_graph": str(graph_enabled).lower(),
                     "fused_input_lora_a": str(os.environ.get("DISTILLSCHEDULE_WAN13B_FUSED_INPUT_LORA_A", "0") == "1").lower(),
                     "layout_only_ablation": str(layout_only).lower(),
+                    "critic_grad_cuda_graph": str(os.environ.get("DISTILLSCHEDULE_WAN13B_CRITIC_GRAD_CUDA_GRAPH", "0") == "1").lower(),
                     "score_cuda_graph": str(os.environ.get("DISTILLSCHEDULE_WAN13B_SCORE_CUDA_GRAPH", "0") == "1").lower(),
                     "worker": "probe_wan13b_trajectory_world16.py",
                 },
@@ -780,7 +781,9 @@ def main() -> int:
         torch.cuda.synchronize(device)
         dist.barrier()
         from distillschedule.runtime.wan13b_score_cuda_graph import validate_build as validate_score_graph
+        from distillschedule.runtime.wan13b_critic_grad_graph import validate_build as validate_critic_graph
         result.update(
+            critic_grad_cuda_graph_receipt=validate_critic_graph(build, cycles=args.trajectory_cycles, reference_checks=True),
             score_cuda_graph_receipt=validate_score_graph(build, cycles=args.trajectory_cycles, reference_checks=True),
             status="PASS",
             completed_cycles=args.trajectory_cycles,

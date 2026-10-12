@@ -620,6 +620,7 @@ def main() -> int:
             "generator_rollout_cuda_graph": raw_implementation.get("generator_rollout_cuda_graph", "false") == "true",
             "fused_input_lora_a": raw_implementation.get("fused_input_lora_a", "false") == "true",
             "layout_only_ablation": raw_implementation.get("layout_only_ablation", "false") == "true",
+            "critic_grad_cuda_graph": raw_implementation.get("critic_grad_cuda_graph", "false") == "true",
             "score_cuda_graph": raw_implementation.get("score_cuda_graph", "false") == "true",
             "worker": raw_implementation.get("worker"),
         }
@@ -651,7 +652,7 @@ def main() -> int:
     if implementation_contract is not None:
         from distillschedule.runtime.wan13b_layout_ablation import check as check_layout
         try:
-            check_layout(args.placement,enabled=implementation_contract.get("layout_only_ablation",False),flags={k:implementation_contract.get(k,False) for k in ("generator_nograd_lora_fused_epilogue","generator_nograd_lora_cast_cache","grad_lora_fused_epilogue","modulated_norm_fusion","generator_rollout_merged_shadow","generator_rollout_cuda_graph","fused_input_lora_a","score_cuda_graph")})
+            check_layout(args.placement,enabled=implementation_contract.get("layout_only_ablation",False),flags={k:implementation_contract.get(k,False) for k in ("generator_nograd_lora_fused_epilogue","generator_nograd_lora_cast_cache","grad_lora_fused_epilogue","modulated_norm_fusion","generator_rollout_merged_shadow","generator_rollout_cuda_graph","fused_input_lora_a","score_cuda_graph","critic_grad_cuda_graph")})
         except ValueError as exc:errors.append(str(exc))
     expected_anchor_cycles = sorted(
         {cycle for cycle in (1, 10, 25, 50, args.cycles) if cycle <= args.cycles}

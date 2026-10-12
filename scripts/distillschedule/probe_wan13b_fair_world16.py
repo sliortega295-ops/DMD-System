@@ -260,6 +260,11 @@ def _build_model_fair(
         model, role=role, placement=args.placement,
         reference_checks=not (args.timing_mode or args.profile_mode),
     )
+    from distillschedule.runtime.wan13b_critic_grad_graph import install as install_critic_grad_graph
+    metadata["critic_grad_cuda_graph"] = install_critic_grad_graph(
+        model, role=role, placement=args.placement,
+        reference_checks=not (args.timing_mode or args.profile_mode),
+    )
     lora_operator_attribution = install_lora_operator_attribution(
         model,
         role=role,

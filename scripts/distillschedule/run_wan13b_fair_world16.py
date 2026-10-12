@@ -185,6 +185,7 @@ def parser() -> argparse.ArgumentParser:
                        help="Default-off width1536 source-qualified normalization canary.")
     value.add_argument("--generator-rollout-merged-shadow", action="store_true",
                        help="Default-off, independent post-G B1 merged execution replica.")
+    value.add_argument("--critic-grad-cuda-graph", action="store_true", help="Default-off Resident Critic forward/backward graph canary.")
     value.add_argument("--score-cuda-graph", action="store_true", help="Default-off detached Critic/Teacher Score graphs; Resident only.")
     value.add_argument("--fused-input-lora-a", action="store_true", help="Default-off BF16 input load plus FP32 LoRA-A TF32-RNA GEMM, post-G graph only.")
     value.add_argument("--generator-rollout-cuda-graph", action="store_true",
@@ -233,6 +234,7 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         + ("1" if getattr(args, "modulated_norm_fusion", False) else "0"),
         "DISTILLSCHEDULE_WAN13B_GENERATOR_ROLLOUT_MERGED_SHADOW="
         + ("1" if getattr(args, "generator_rollout_merged_shadow", False) else "0"),
+        "DISTILLSCHEDULE_WAN13B_CRITIC_GRAD_CUDA_GRAPH=" + ("1" if getattr(args, "critic_grad_cuda_graph", False) else "0"),
         "DISTILLSCHEDULE_WAN13B_SCORE_CUDA_GRAPH=" + ("1" if getattr(args, "score_cuda_graph", False) else "0"),
         "DISTILLSCHEDULE_WAN13B_FUSED_INPUT_LORA_A=" + ("1" if getattr(args, "fused_input_lora_a", False) else "0"),
         "DISTILLSCHEDULE_WAN13B_GENERATOR_ROLLOUT_CUDA_GRAPH="
@@ -454,7 +456,9 @@ def main() -> int:
     if not 1 <= args.ssh_port <= 65535:
         raise ValueError("--ssh-port must be in [1, 65535]")
     from distillschedule.runtime.wan13b_layout_ablation import check as check_layout
-    check_layout(args.placement, enabled=args.layout_only_ablation, flags={key:getattr(args,key,False) for key in ("generator_nograd_lora_fused_epilogue","grad_lora_fused_epilogue","modulated_norm_fusion","generator_rollout_merged_shadow","generator_rollout_cuda_graph","score_cuda_graph","fused_input_lora_a","generator_nograd_lora_cast_cache")})
+    check_layout(args.placement, enabled=args.layout_only_ablation, flags={key:getattr(args,key,False) for key in ("generator_nograd_lora_fused_epilogue","grad_lora_fused_epilogue","modulated_norm_fusion","generator_rollout_merged_shadow","generator_rollout_cuda_graph","score_cuda_graph", "critic_grad_cuda_graph","fused_input_lora_a","generator_nograd_lora_cast_cache")})
+    if args.critic_grad_cuda_graph and args.placement != "resident-async128-tree-chunk2048":
+        raise ValueError("Critic grad CUDA graph requires full Resident placement")
     if args.score_cuda_graph and args.placement != "resident-async128-tree-chunk2048":
         raise ValueError("Score graphs require the registered Resident control")
     if args.fused_input_lora_a and (

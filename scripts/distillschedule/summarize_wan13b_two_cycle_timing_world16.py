@@ -200,7 +200,7 @@ def _validate_arm(
 
     from distillschedule.runtime.wan13b_layout_ablation import check as check_layout
     try:
-        check_layout(placement,enabled=bool(arm.get("layout_only_ablation",False)),flags={k:arm.get(k,False) for k in ("generator_nograd_lora_fused_epilogue","generator_nograd_lora_cast_cache","grad_lora_fused_epilogue","modulated_norm_fusion","generator_rollout_merged_shadow","generator_rollout_cuda_graph","fused_input_lora_a","score_cuda_graph")})
+        check_layout(placement,enabled=bool(arm.get("layout_only_ablation",False)),flags={k:arm.get(k,False) for k in ("generator_nograd_lora_fused_epilogue","generator_nograd_lora_cast_cache","grad_lora_fused_epilogue","modulated_norm_fusion","generator_rollout_merged_shadow","generator_rollout_cuda_graph","fused_input_lora_a","score_cuda_graph","critic_grad_cuda_graph")})
     except ValueError as exc:errors.append(f"rank{rank}: {exc}")
     runtime = row.get("runtime_contract", {})
     expected_runtime = {
@@ -332,7 +332,7 @@ def main() -> int:
         "grad_lora_fused_epilogue", "tf32_cublas_override",
         "modulated_norm_fusion",
         "generator_rollout_merged_shadow",
-        "generator_rollout_cuda_graph", "layout_only_ablation", "score_cuda_graph", "fused_input_lora_a",
+        "generator_rollout_cuda_graph", "layout_only_ablation", "score_cuda_graph", "critic_grad_cuda_graph", "fused_input_lora_a",
         "helios_transformer_sha256", "model_root",
     )
     launch_identities = {
