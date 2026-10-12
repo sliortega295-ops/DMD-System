@@ -398,6 +398,7 @@ def _precompute_critic_rollouts(
     runtime_cache: dict[str, Any] | None = None,
     entry_outputs: dict[int, Any] | None = None,
     merged_shadow_parity_check: bool = False,
+    cuda_graph_parity_check: bool = False,
 ) -> tuple[dict[int, torch.Tensor], list[dict[str, Any]]]:
     outputs: dict[int, torch.Tensor] = {}
     records: list[dict[str, Any]] = []
@@ -418,14 +419,18 @@ def _precompute_critic_rollouts(
             shadow = getattr(
                 generator_engine.module, "_distillschedule_merged_rollout_shadow", None
             )
-            if shadow is not None:
-                shadow.begin_rollout(
+            graph = getattr(generator_engine.module, "_distillschedule_rollout_cuda_graph", None)
+            if shadow is not None and graph is not None:
+                raise AssertionError("merged shadow and CUDA Graph cannot share rollout scope")
+            rollout_executor = shadow if shadow is not None else graph
+            if rollout_executor is not None:
+                rollout_executor.begin_rollout(
                     version=int(generator_engine.global_steps),
                     logical_steps=tuple(step_group),
                 )
             try:
                 generated, record = run_generator_trace_rollout_batch(
-                    model=shadow if shadow is not None else generator_engine.module,
+                    model=rollout_executor if rollout_executor is not None else generator_engine.module,
                     loaded_entries=entries,
                     device=device,
                     detailed_profile=False,
@@ -436,11 +441,13 @@ def _precompute_critic_rollouts(
                     runtime_cache=runtime_cache,
                 )
             finally:
-                if shadow is not None:
-                    shadow.end_rollout()
-        if merged_shadow_parity_check:
-            if shadow is None or len(entries) != 1:
-                raise AssertionError("merged reference diagnostic requires opted-in shadow B1")
+                if rollout_executor is not None:
+                    rollout_executor.end_rollout()
+        if merged_shadow_parity_check or cuda_graph_parity_check:
+            if rollout_executor is None or len(entries) != 1:
+                raise AssertionError("rollout reference diagnostic requires opted-in executor B1")
+            if bool(merged_shadow_parity_check) != (shadow is not None) or bool(cuda_graph_parity_check) != (graph is not None):
+                raise AssertionError("reference diagnostic executor identity changed")
             # Correctness only; deliberately absent from both native timers.
             # Count these physical DiT calls separately, never hide/reset them.
             from distillschedule.runtime.p0_parity import require_tensor_parity
@@ -453,10 +460,10 @@ def _precompute_critic_rollouts(
             for key in ("call_count", "logical_call_count", "stage_call_count", "logical_stage_call_count", "dummy_call_count"):
                 if reference_record[key] != record[key]:
                     raise AssertionError(f"merged/source B1 physical inventory changed: {key}")
-            shadow.receipt["diagnostic_reference_model_call_count"] += reference_record["call_count"]
-            shadow.receipt["diagnostic_reference_entry_count"] += 1
-            parity = require_tensor_parity(reference_outputs[0], generated[0], label="post-G merged B1 rollout")
-            shadow.receipt["diagnostic_reference_parity"].append({
+            rollout_executor.receipt["diagnostic_reference_model_call_count"] += reference_record["call_count"]
+            rollout_executor.receipt["diagnostic_reference_entry_count"] += 1
+            parity = require_tensor_parity(reference_outputs[0], generated[0], label="post-G exact-source B1 rollout")
+            rollout_executor.receipt["diagnostic_reference_parity"].append({
                 "identity": {"version": int(generator_engine.global_steps), "logical_steps": list(step_group)},
                 **parity,
             })

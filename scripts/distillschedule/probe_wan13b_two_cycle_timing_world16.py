@@ -157,6 +157,11 @@ def _validate_arm_environment(placement: str) -> dict[str, Any]:
     from distillschedule.runtime.wan13b_rollout_shadow import requested as shadow_requested
 
     shadow_enabled = shadow_requested()
+    from distillschedule.runtime.wan13b_rollout_cuda_graph import requested as graph_requested
+
+    graph_enabled = graph_requested()
+    if graph_enabled and (placement != RESIDENT_WINNER or shadow_enabled):
+        raise ValueError("CUDA Graph requires Resident without merged weights")
     if shadow_enabled and placement != RESIDENT_WINNER:
         raise ValueError("merged shadow requires the registered Resident control")
     if norm_fused and placement != RESIDENT_WINNER:
@@ -188,6 +193,7 @@ def _validate_arm_environment(placement: str) -> dict[str, Any]:
         "grad_lora_fused_epilogue": grad_fused,
         "modulated_norm_fusion": norm_fused,
         "generator_rollout_merged_shadow": shadow_enabled,
+        "generator_rollout_cuda_graph": graph_enabled,
     }
 
 
@@ -226,7 +232,7 @@ def _load_correctness_binding(
         raise ValueError("correctness implementation fingerprint is invalid")
     for key, expected in expected_arm.items():
         observed_flag = implementation.get(key, False) if key in {
-            "modulated_norm_fusion", "generator_rollout_merged_shadow"
+            "modulated_norm_fusion", "generator_rollout_merged_shadow", "generator_rollout_cuda_graph"
         } else implementation.get(key)
         if observed_flag != expected:
             raise ValueError(f"correctness receipt arm contract changed: {key}")
@@ -480,22 +486,17 @@ def _validate_fused_receipt(
             raise AssertionError("Resident winner fused epilogue is not enabled")
         shadow_enabled = bool(build.get("generator", {}).get("metadata", {}).get(
             "generator_rollout_merged_shadow", {}).get("enabled", False))
-        if shadow_enabled:
-            from distillschedule.runtime.wan13b_rollout_shadow import expected_epilogue_counts
+        from distillschedule.runtime.wan13b_rollout_shadow import expected_epilogue_counts
 
-            expected_counts = expected_epilogue_counts(cycles=2, shadow_enabled=True)
-            for key, expected in expected_counts.items():
-                if generator.get(key) != expected:
-                    raise AssertionError(f"training-model epilogue census changed {key}")
-        else:
-            if int(generator.get("model_call_count", -1)) != 56:
-                raise AssertionError("Resident winner must execute 56 no-grad model calls")
-            if int(generator.get("fused_invocation_count", -1)) != 17_080:
-                raise AssertionError("Resident winner fused invocation census changed")
-            if int(generator.get("reference_fallback_count", -1)) != 224:
-                raise AssertionError("Resident winner reference-fallback census changed")
+        graph_receipt = build.get("generator", {}).get("metadata", {}).get(
+            "generator_rollout_cuda_graph", {})
+        expected_counts = expected_epilogue_counts(
+            cycles=2, shadow_enabled=shadow_enabled, graph_receipt=graph_receipt)
+        for key, expected in expected_counts.items():
+            if generator.get(key) != expected:
+                raise AssertionError(f"training-model epilogue census changed {key}")
         if generator.get("reference_fallback_reasons") != {
-            "BASE_DTYPE_torch.float32": 8 if shadow_enabled else 224
+            "BASE_DTYPE_torch.float32": expected_counts["reference_fallback_count"]
         }:
             raise AssertionError("Resident winner has an unexpected fallback reason")
         if critic.get("enabled") is not False or critic.get("disabled_reason") != "GENERATOR_ONLY":
@@ -822,6 +823,10 @@ def main() -> int:
         shadow_receipt = validate_shadow(
             build, enabled=bool(arm["generator_rollout_merged_shadow"]), cycles=2
         )
+        from distillschedule.runtime.wan13b_rollout_cuda_graph import validate as validate_graph
+
+        graph_receipt = validate_graph(
+            build, enabled=bool(arm["generator_rollout_cuda_graph"]), cycles=2)
 
         result.update(
             status="PASS",
@@ -839,6 +844,7 @@ def main() -> int:
             grad_epilogue_receipt=grad_receipt,
             modulated_norm_fusion_receipt=norm_receipt,
             generator_rollout_merged_shadow_receipt=shadow_receipt,
+            generator_rollout_cuda_graph_receipt=graph_receipt,
             runtime_contract=runtime_contract,
             gradient_sync={
                 "generator_receipt_count": len(

@@ -80,6 +80,13 @@ GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE="${DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_
 GRAD_LORA_FUSED_EPILOGUE="${DISTILLSCHEDULE_WAN13B_GRAD_LORA_FUSED_EPILOGUE:-0}"
 MODULATED_NORM_FUSION="${DISTILLSCHEDULE_WAN13B_MODULATED_NORM_FUSION:-0}"
 GENERATOR_ROLLOUT_MERGED_SHADOW="${DISTILLSCHEDULE_WAN13B_GENERATOR_ROLLOUT_MERGED_SHADOW:-0}"
+GENERATOR_ROLLOUT_CUDA_GRAPH="${DISTILLSCHEDULE_WAN13B_GENERATOR_ROLLOUT_CUDA_GRAPH:-0}"
+[[ "${GENERATOR_ROLLOUT_CUDA_GRAPH}" == 0 || "${GENERATOR_ROLLOUT_CUDA_GRAPH}" == 1 ]] || exit 2
+if [[ "${GENERATOR_ROLLOUT_CUDA_GRAPH}" == 1 ]]; then
+  [[ "${PLACEMENT}" == resident-async128-tree-chunk2048 && "${GENERATOR_ROLLOUT_MERGED_SHADOW}" == 0 ]] || {
+    echo cuda_graph_requires_resident_without_merged_weights >&2; exit 2;
+  }
+fi
 [[ "${GENERATOR_ROLLOUT_MERGED_SHADOW}" == 0 || "${GENERATOR_ROLLOUT_MERGED_SHADOW}" == 1 ]] || exit 2
 if [[ "${GENERATOR_ROLLOUT_MERGED_SHADOW}" == 1 ]]; then
   [[ "${PLACEMENT}" == resident-async128-tree-chunk2048 ]] || {
@@ -348,6 +355,7 @@ generator_nograd_lora_fused_epilogue=${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}
 grad_lora_fused_epilogue=${GRAD_LORA_FUSED_EPILOGUE}
 modulated_norm_fusion=${MODULATED_NORM_FUSION}
 generator_rollout_merged_shadow=${GENERATOR_ROLLOUT_MERGED_SHADOW}
+generator_rollout_cuda_graph=${GENERATOR_ROLLOUT_CUDA_GRAPH}
 tf32_cublas_override=${TORCH_ALLOW_TF32_CUBLAS_OVERRIDE:-NOT_SET}
 ema_implementation=${ema_implementation}
 optimizer_implementation=${optimizer_implementation}

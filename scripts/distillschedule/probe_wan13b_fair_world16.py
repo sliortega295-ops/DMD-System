@@ -247,6 +247,13 @@ def _build_model_fair(
     metadata["modulated_norm_fusion"] = install_norm_policy(
         role=role, placement=args.placement, device=device
     )
+    from distillschedule.runtime.wan13b_rollout_cuda_graph import install as install_graph
+
+    # Captures are lazy and see the existing instance-local clean/LoRA/norm path.
+    # Only the post-G rollout dispatcher uses them; train forward is unchanged.
+    metadata["generator_rollout_cuda_graph"] = install_graph(
+        model, role=role, placement=args.placement
+    )
     lora_operator_attribution = install_lora_operator_attribution(
         model,
         role=role,

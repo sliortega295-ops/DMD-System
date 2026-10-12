@@ -226,8 +226,8 @@ def test_routing_is_only_the_five_post_generator_rollouts():
     before, function = source.split("def _precompute_critic_rollouts(", 1)
     function, after = function.split("\ndef _", 1)
     assert "_distillschedule_merged_rollout_shadow" in function
-    assert "shadow.begin_rollout(" in function
-    assert "finally:" in function and "shadow.end_rollout()" in function
+    assert "rollout_executor.begin_rollout(" in function
+    assert "finally:" in function and "rollout_executor.end_rollout()" in function
     assert "_distillschedule_merged_rollout_shadow" not in before + after
     assert "require_tensor_parity(" in function
     assert "diagnostic_reference_model_call_count" in function

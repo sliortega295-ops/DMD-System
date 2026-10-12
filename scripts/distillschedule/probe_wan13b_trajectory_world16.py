@@ -382,6 +382,11 @@ def main() -> int:
     from distillschedule.runtime.wan13b_rollout_shadow import requested as shadow_requested, validate as validate_shadow
 
     shadow_enabled = shadow_requested()
+    from distillschedule.runtime.wan13b_rollout_cuda_graph import requested as graph_requested, validate as validate_graph
+
+    graph_enabled = graph_requested()
+    if graph_enabled and (args.placement != RESIDENT_WINNER or shadow_enabled):
+        raise ValueError("CUDA Graph requires Resident without merged weights")
     if shadow_enabled and args.placement != RESIDENT_WINNER:
         raise ValueError("merged shadow requires the registered Resident control")
     if norm_fused and args.placement != RESIDENT_WINNER:
@@ -573,6 +578,7 @@ def main() -> int:
                 runtime_cache=runtime_cache,
                 entry_outputs=critic_entries,
                 merged_shadow_parity_check=shadow_enabled,
+                cuda_graph_parity_check=graph_enabled,
             )
             critic_records: list[dict[str, Any]] = []
             critic_grad_norms: list[float | None] = []
@@ -708,6 +714,7 @@ def main() -> int:
                     "grad_lora_fused_epilogue": str(grad_fused).lower(),
                     "modulated_norm_fusion": str(norm_fused).lower(),
                     "generator_rollout_merged_shadow": str(shadow_enabled).lower(),
+                    "generator_rollout_cuda_graph": str(graph_enabled).lower(),
                     "worker": "probe_wan13b_trajectory_world16.py",
                 },
                 sample_identities=sample_payloads,
@@ -774,6 +781,10 @@ def main() -> int:
             generator_rollout_merged_shadow_receipt=validate_shadow(
                 build, enabled=shadow_enabled, cycles=args.trajectory_cycles,
                 diagnostic_reference=shadow_enabled,
+            ),
+            generator_rollout_cuda_graph_receipt=validate_graph(
+                build, enabled=graph_enabled, cycles=args.trajectory_cycles,
+                diagnostic_reference=graph_enabled,
             ),
             updates={
                 "generator": args.trajectory_cycles,

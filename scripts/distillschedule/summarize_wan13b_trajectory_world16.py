@@ -262,7 +262,8 @@ def _validate_runtime_build(
 
         shadow_enabled = bool(final.get("generator_rollout_merged_shadow_receipt", {}).get("enabled", False))
         expected_counts = expected_epilogue_counts(
-            cycles=cycles, shadow_enabled=shadow_enabled, diagnostic_reference=shadow_enabled
+            cycles=cycles, shadow_enabled=shadow_enabled, diagnostic_reference=shadow_enabled,
+            graph_receipt=build.get("generator", {}).get("metadata", {}).get("generator_rollout_cuda_graph", {}),
         )
         if generator.get("requested") is not True or generator.get("enabled") is not True:
             errors.append(f"rank{rank}: fused epilogue is not enabled")
@@ -304,11 +305,21 @@ def _validate_runtime_build(
     except AssertionError as error:
         errors.append(f"rank{rank}: {error}")
         shadow_receipt = {"status": "FAIL", "error": str(error)}
+    from distillschedule.runtime.wan13b_rollout_cuda_graph import validate as validate_graph
+
+    graph_enabled = bool(final.get("generator_rollout_cuda_graph_receipt", {}).get("enabled", False))
+    try:
+        graph_receipt = validate_graph(build, enabled=graph_enabled, cycles=cycles,
+                                       diagnostic_reference=graph_enabled)
+    except AssertionError as error:
+        errors.append(f"rank{rank}: {error}")
+        graph_receipt = {"status": "FAIL", "error": str(error)}
     return {
         "helios_transformer_sha256": next(iter(runtime_hashes)) if len(runtime_hashes) == 1 else None,
         "fused_epilogue": generator,
         "modulated_norm_fusion": norm_receipt,
         "generator_rollout_merged_shadow": shadow_receipt,
+        "generator_rollout_cuda_graph": graph_receipt,
     }
 
 
@@ -345,8 +356,13 @@ def main() -> int:
             errors.append(f"node{node}: invalid normalization fusion launch flag")
         if manifest.get("generator_rollout_merged_shadow", "0") not in {"0", "1"}:
             errors.append(f"node{node}: invalid merged shadow launch flag")
+        if manifest.get("generator_rollout_cuda_graph", "0") not in {"0", "1"}:
+            errors.append(f"node{node}: invalid CUDA Graph launch flag")
     norm_requested = manifests[0].get("modulated_norm_fusion", "0") == "1"
     shadow_requested = manifests[0].get("generator_rollout_merged_shadow", "0") == "1"
+    graph_requested = manifests[0].get("generator_rollout_cuda_graph", "0") == "1"
+    if graph_requested and (args.placement != RESIDENT_WINNER or shadow_requested):
+        errors.append("CUDA Graph requires Resident without merged weights")
     if norm_requested and args.placement != RESIDENT_WINNER:
         errors.append("normalization fusion is not registered for this placement")
     if shadow_requested and args.placement != RESIDENT_WINNER:
@@ -358,6 +374,7 @@ def main() -> int:
         "grad_lora_fused_epilogue", "tf32_cublas_override",
         "modulated_norm_fusion",
         "generator_rollout_merged_shadow",
+        "generator_rollout_cuda_graph",
     )
     manifest_identities = {
         tuple(manifest.get(key) for key in identity_keys) for manifest in manifests if manifest
@@ -442,6 +459,15 @@ def main() -> int:
             errors.append(f"rank{rank}: merged shadow launch/runtime binding changed")
         if shadow_requested and not shadow_receipt:
             errors.append(f"rank{rank}: requested merged shadow has no runtime proof")
+        for trajectory_row in rows:
+            observed = trajectory_row.implementation.get("generator_rollout_cuda_graph", "false")
+            if observed not in {"false", "true"} or (observed == "true") != graph_requested:
+                errors.append(f"rank{rank}: CUDA Graph launch/trajectory binding changed")
+        graph_receipt = final.get("generator_rollout_cuda_graph_receipt", {})
+        if graph_receipt.get("enabled", False) is not graph_requested:
+            errors.append(f"rank{rank}: CUDA Graph launch/runtime binding changed")
+        if graph_requested and not graph_receipt:
+            errors.append(f"rank{rank}: requested CUDA Graph has no runtime proof")
         if rows and rows[0].implementation.get("grad_lora_fused_epilogue") == "true":
             for role in ("generator", "critic"):
                 observed = final.get("grad_epilogue_receipt", {}).get(role, {})
@@ -591,6 +617,7 @@ def main() -> int:
             "grad_lora_fused_epilogue": raw_implementation.get("grad_lora_fused_epilogue", "false") == "true",
             "modulated_norm_fusion": raw_implementation.get("modulated_norm_fusion", "false") == "true",
             "generator_rollout_merged_shadow": raw_implementation.get("generator_rollout_merged_shadow", "false") == "true",
+            "generator_rollout_cuda_graph": raw_implementation.get("generator_rollout_cuda_graph", "false") == "true",
             "worker": raw_implementation.get("worker"),
         }
         if raw_implementation is not None

@@ -217,11 +217,20 @@ def validate(build: dict[str, Any], *, enabled: bool, cycles: int,
 
 
 def expected_epilogue_counts(*, cycles: int, shadow_enabled: bool,
-                             diagnostic_reference: bool = False) -> dict[str, int]:
+                             diagnostic_reference: bool = False,
+                             graph_receipt: dict[str, Any] | None = None) -> dict[str, int]:
     # Original generator no-grad census is 28 calls/cycle; exactly 27 are the
     # five post-commit rollouts. Only the remaining call keeps PEFT epilogues.
     calls = (1 if shadow_enabled else 28) * cycles
     if shadow_enabled and diagnostic_reference:
         calls += 27 * cycles
+    if graph_receipt and graph_receipt.get("enabled"):
+        if shadow_enabled:
+            raise AssertionError("merged weights and exact graph replay are separate arms")
+        # Replays launch all original kernels without running Python PEFT hooks.
+        # Do not reset/hide raw hooks: account warmup and capture calls explicitly.
+        calls = cycles + int(graph_receipt["warmup_model_call_count"]) + int(
+            graph_receipt["capture_model_call_count"]) + int(
+            graph_receipt["diagnostic_reference_model_call_count"])
     return {"model_call_count": calls, "fused_invocation_count": 305 * calls,
             "reference_fallback_count": 4 * calls}
