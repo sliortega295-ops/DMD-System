@@ -29,14 +29,16 @@ class MergedRolloutShadow:
         import torch
 
         if linear_type is None:
-            from peft.tuners.lora.layer import Linear
+            from peft.tuners.lora.layer import LoraLayer
 
-            linear_type = Linear
+            # The real Generator also trains three pyramid Conv3d adapters.
+            # PEFT's exact get_delta_weight owns their convolutional layout.
+            linear_type = LoraLayer
         self.source = source
         layers = [(name, child) for name, child in source.named_modules()
                   if isinstance(child, linear_type)]
         if not layers:
-            raise ValueError("merged rollout shadow found no LoRA Linear modules")
+            raise ValueError("merged rollout shadow found no LoRA modules")
         adapters: dict[str, str] = {}
         for name, layer in layers:
             active = tuple(layer.active_adapters)
@@ -58,9 +60,10 @@ class MergedRolloutShadow:
         allowed = {id(parameter) for _, layer in layers
                    for container in (layer.lora_A, layer.lora_B)
                    for parameter in container.parameters()}
-        if any(parameter.requires_grad and id(parameter) not in allowed
-               for parameter in source.parameters()):
-            raise ValueError("trainable non-LoRA parameter cannot use static shadow")
+        unexpected = [name for name, parameter in source.named_parameters()
+                      if parameter.requires_grad and id(parameter) not in allowed]
+        if unexpected:
+            raise ValueError(f"trainable non-LoRA parameters cannot use static shadow: {unexpected}")
 
         # Called before any instance-local forward/state/audit wrappers are installed.
         self.model = copy.deepcopy(source)
@@ -82,6 +85,12 @@ class MergedRolloutShadow:
             "training_master_unchanged": True,
             "optimizer_reducer_ema_unchanged": True,
             "lora_layer_count": len(layers),
+            "merged_module_inventory": [
+                {"name": name, "class": type(layer).__name__,
+                 "base_dtype": str(layer.base_layer.weight.dtype),
+                 "base_shape": list(layer.base_layer.weight.shape)}
+                for name, layer in layers
+            ],
             "source_lora_dtype": "torch.float32",
             "shadow_parameter_bytes": sum(p.numel() * p.element_size()
                                           for p in self.model.parameters()),

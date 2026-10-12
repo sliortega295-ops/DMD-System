@@ -161,6 +161,15 @@ def main() -> int:
         result["status"] = "PASS" if parity["status"] == "PASS" and minimum_driver_free >= 2*2**30 else "FAIL"
     except BaseException as error:
         result.update(error=str(error), traceback=traceback.format_exc())
+        if "torch" in locals() and torch.cuda.is_initialized():
+            free, total = torch.cuda.mem_get_info()
+            result["failure_memory"] = {
+                "allocated_gib": torch.cuda.memory_allocated()/2**30,
+                "reserved_gib": torch.cuda.memory_reserved()/2**30,
+                "peak_allocated_gib": torch.cuda.max_memory_allocated()/2**30,
+                "peak_reserved_gib": torch.cuda.max_memory_reserved()/2**30,
+                "driver_free_gib": free/2**30,
+            }
     finally:
         if process_group:
             torch.distributed.destroy_process_group()

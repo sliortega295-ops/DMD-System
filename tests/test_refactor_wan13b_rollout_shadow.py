@@ -161,6 +161,27 @@ def test_shadow_and_epilogue_census_are_joint_not_weakened():
         validate(build, enabled=True, cycles=2)
 
 
+def test_real_peft_pyramid_conv3d_adapters_use_peft_delta_layout():
+    torch = pytest.importorskip("torch")
+    pytest.importorskip("peft")
+    from peft.tuners.lora.layer import Conv3d
+
+    base = torch.nn.Conv3d(2, 3, kernel_size=(1, 2, 2), dtype=torch.float32)
+    layer = Conv3d(base, "default", r=2, lora_alpha=2, lora_dropout=0, init_lora_weights=False)
+    layer.base_layer.requires_grad_(False)
+    source = torch.nn.Sequential(layer)
+    shadow = MergedRolloutShadow(source)
+    shadow.begin_rollout(version=3, logical_steps=(10,))
+    with torch.no_grad():
+        expected_weight = base.weight + layer.get_delta_weight("default")
+        torch.testing.assert_close(shadow.model[0].weight, expected_weight, rtol=0, atol=0)
+        x = torch.randn(1, 2, 2, 4, 4)
+        torch.testing.assert_close(shadow(x), torch.nn.functional.conv3d(x, expected_weight, base.bias), rtol=0, atol=0)
+    shadow.end_rollout()
+    assert shadow.receipt["merged_module_inventory"][0]["class"] == "Conv3d"
+    assert shadow.receipt["shadow_lora_parameter_count"] == 0
+
+
 @pytest.mark.parametrize("enabled", [False, True])
 def test_controller_explicit_opt_in_and_isolated_ssh_tty(enabled):
     root = Path(__file__).resolve().parents[1]
