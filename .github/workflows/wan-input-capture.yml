@@ -1,0 +1,37 @@
+name: original-wan-input-capture
+on:
+  push:
+    branches: [agent/original-wan-strategy-20261012]
+    paths: ['src/distillschedule/strategies/**', 'tests/test_strategy_wan_*', '.github/workflows/wan-input-capture.yml']
+  pull_request:
+    paths: ['src/distillschedule/strategies/**', 'tests/test_strategy_wan_*', '.github/workflows/wan-input-capture.yml']
+permissions:
+  contents: read
+jobs:
+  native-source-cpu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pip install -e '.[test,native-wan]' ftfy==6.3.1 einops==0.8.1
+      - name: Import actual native scheduler and input primitives
+        run: python -c 'from distillschedule.strategies.wan_capture import native_primitives; native_primitives()'
+      - name: Capture new features and replay original native sampler on CPU
+        run: python -m pytest -q tests/test_strategy_wan_inputs.py tests/test_strategy_wan_capture.py --junitxml=wan-capture.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wan-input-capture-${{ github.sha }}
+          path: wan-capture.xml
+          retention-days: 14
