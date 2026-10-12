@@ -179,6 +179,40 @@ def test_plain_resident_environment_rejects_optimized_epilogue(monkeypatch: Any)
         raise AssertionError("plain Resident accepted an optimized epilogue")
 
 
+def test_plain_resident_diagnostic_grad_norm_capture_preserves_optimizer_math() -> None:
+    import pytest
+    torch = pytest.importorskip("torch")
+    from distillschedule.runtime.wan13b_upper_bound import ReplicatedTrainableAllReduceEngine
+
+    torch.manual_seed(19)
+    reference = torch.nn.Linear(3, 2)
+    diagnostic = torch.nn.Linear(3, 2)
+    diagnostic.load_state_dict(reference.state_dict())
+    engines = []
+    expected_norm = None
+    for module, capture in ((reference, False), (diagnostic, True)):
+        optimizer = torch.optim.AdamW(module.parameters(), lr=0.01)
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda _: 1.0)
+        engine = ReplicatedTrainableAllReduceEngine(module, optimizer, scheduler, physical_step=2)
+        engine._synchronize_trainable_gradients = lambda: {}
+        engine._trajectory_capture_grad_norm = capture
+        module(torch.ones(1, 3)).sum().backward()
+        expected_norm = float(torch.linalg.vector_norm(torch.stack([
+            torch.linalg.vector_norm(p.grad) for p in module.parameters()
+        ])))
+        engine.step()
+        engines.append(engine)
+    assert not hasattr(engines[0], "last_gradient_norm")
+    assert engines[1].last_gradient_norm == expected_norm
+    assert engines[0].global_steps == engines[1].global_steps == 3
+    for left, right in zip(reference.parameters(), diagnostic.parameters(), strict=True):
+        assert torch.equal(left, right)
+        left_state = engines[0].optimizer.state[left]
+        right_state = engines[1].optimizer.state[right]
+        for key in left_state:
+            assert torch.equal(left_state[key], right_state[key])
+
+
 def test_controller_and_launcher_register_fail_closed_two_cycle_mode() -> None:
     controller = CONTROLLER.read_text()
     launcher = LAUNCHER.read_text()
