@@ -1591,7 +1591,7 @@ def build_models(
         }
         gc.collect()
 
-    if owns_score and mode == "baseline" and baseline_spec.teacher_offload == "cpu-block":
+    if owns_score and mode == "baseline" and baseline_spec.name == "full-resident":
         from wanstreamer.fsdp import attach_causal_modules
         from distillschedule.runtime.livewan_baseline_placement import FrozenTeacherCPUStaging
         # Cold construction only: limit large CPU materializations to 2 ranks
@@ -1604,13 +1604,20 @@ def build_models(
                 _require(teacher_root == Path(bootstrap.value["teacher_base"]["root"]), "plan/bootstrap Teacher root mismatch")
                 teacher.load_state_dict(_load_checkpoint(load_file, teacher_root), strict=True)
                 teacher.eval().requires_grad_(False)
-                teacher_cpu_staging = FrozenTeacherCPUStaging(
-                    torch, teacher, device=device, attach_causal_modules=attach_causal_modules)
-                metadata["teacher"] = {
-                    "placement": "cpu_backed_immutable_weights_gpu_unit_execution",
-                    "mesh_ranks": [], "fsdp_group_count": 0,
-                    "cpu_staging": teacher_cpu_staging.receipt(),
-                }
+                if baseline_spec.teacher_offload == "cpu-block":
+                    teacher_cpu_staging = FrozenTeacherCPUStaging(
+                        torch, teacher, device=device, attach_causal_modules=attach_causal_modules)
+                    metadata["teacher"] = {
+                        "placement": "cpu_backed_immutable_weights_gpu_unit_execution",
+                        "mesh_ranks": [], "fsdp_group_count": 0,
+                        "cpu_staging": teacher_cpu_staging.receipt(),
+                    }
+                else:
+                    teacher.to(device)
+                    metadata["teacher"] = {
+                        "placement": "gpu_resident_replica", "mesh_ranks": [],
+                        "fsdp_group_count": 0, "construction_wave_size_per_node": 2,
+                    }
                 gc.collect()
             dist.barrier()
     elif owns_score:
