@@ -125,6 +125,8 @@ def parser() -> argparse.ArgumentParser:
         "legacy-hybrid", "full-resident", "world16-fsdp",
         "world16-fsdp-student-retained"))
     value.add_argument("--teacher-parameter-offload", default="off", choices=("off", "cpu-block"))
+    value.add_argument("--optimizer-device", default="cuda", choices=("cuda", "cpu"))
+    value.add_argument("--student-rollout-padding", default="off", choices=("off", "max-noop"))
     value.add_argument(
         "--pipeline-variant",
         choices=(
@@ -244,6 +246,8 @@ def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "LIVEWAN_EXPECTED_HEAD": args.expected_head,
         "LIVEWAN_BASELINE_PLACEMENT": args.baseline_placement,
         "LIVEWAN_TEACHER_PARAMETER_OFFLOAD": args.teacher_parameter_offload,
+        "LIVEWAN_OPTIMIZER_DEVICE": args.optimizer_device,
+        "LIVEWAN_STUDENT_ROLLOUT_PADDING": args.student_rollout_padding,
     }
     if args.flash_attn_kernel is not None:
         exports["DISTILLSCHEDULE_FLASH_ATTN_KERNEL"] = args.flash_attn_kernel
@@ -442,7 +446,8 @@ def main() -> int:
     import sys
     sys.path.insert(0, sys_path)
     from distillschedule.runtime.livewan_baseline_placement import BaselinePlacement
-    spec = BaselinePlacement(args.baseline_placement, args.teacher_parameter_offload)
+    spec = BaselinePlacement(args.baseline_placement, args.teacher_parameter_offload,
+                             args.optimizer_device, args.student_rollout_padding)
     if spec.name != "legacy-hybrid" and args.execution_mode != "baseline":
         raise ValueError("baseline placement requires baseline execution mode")
     if not args.run_id.replace("-", "").replace("_", "").replace(".", "").isalnum():

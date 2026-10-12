@@ -24,6 +24,7 @@ def main():
     p.add_argument("--repo-root", type=Path, required=True)
     p.add_argument("--bootstrap", type=Path, required=True)
     p.add_argument("--output", type=Path, required=True)
+    p.add_argument("--optimizer-device", choices=("cuda", "cpu"), default="cuda")
     args = p.parse_args()
     if os.environ.get("LIVEWAN_CAPACITY_LOCK_HELD") != "1":
         raise RuntimeError("caller must hold the node GPU lock")
@@ -55,6 +56,7 @@ def main():
         "source_receipt_sha256": receipt["source_receipt_sha256"],
         "torch": torch.__version__, "cuda": torch.version.cuda,
         "world16_training": "NOT_RUN", "timing": "NOT_RUN", "snapshots": [],
+        "optimizer_device": args.optimizer_device,
         "cgroup_before": events.read_text()}
     start = time.monotonic()
     role = "before_construction"
@@ -74,7 +76,12 @@ def main():
         else:
             student.load_state_dict(_load_checkpoint(load_file, Path(raw["student_base"]["root"])))
         student.to(device).train()
-        opt_g = torch.optim.AdamW(student.parameters(), lr=2e-6, betas=(0., .99),
+        if args.optimizer_device == "cpu":
+            from distillschedule.runtime.livewan_cpu_optimizer import CPUAdamW
+            optimizer_factory = lambda parameters, **kw: CPUAdamW(torch, parameters, **kw)
+        else:
+            optimizer_factory = torch.optim.AdamW
+        opt_g = optimizer_factory(student.parameters(), lr=2e-6, betas=(0., .99),
                                  weight_decay=0., eps=1e-8, foreach=True)
         materialize_adam_state(torch, opt_g, step=int(raw["optimizer"]["generator_step"]))
         gc.collect(); snap(role)
@@ -88,7 +95,7 @@ def main():
             params, modules, numel = inject_lora(critic, rank=32)
         result["critic_lora"] = {"rank": 32, "modules": modules, "numel": numel}
         critic.to(device)
-        opt_c = torch.optim.AdamW(params, lr=4e-5, betas=(0., .99),
+        opt_c = optimizer_factory(params, lr=4e-5, betas=(0., .99),
                                  weight_decay=0., eps=1e-8, foreach=True)
         materialize_adam_state(torch, opt_c, step=int(raw["optimizer"]["critic_step"]))
         gc.collect(); snap(role)

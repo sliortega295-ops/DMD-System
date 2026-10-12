@@ -478,6 +478,7 @@ def cgroup_oom_counts() -> dict[str, int]:
 @dataclass
 class CallInventory:
     counts: dict[str, int] = field(default_factory=dict)
+    padding_counts: dict[str, int] = field(default_factory=dict)
 
     def add(self, role: str, grad_enabled: bool, grad_checkpoint: bool) -> None:
         kind = "grad" if grad_enabled else "nograd"
@@ -490,8 +491,15 @@ class CallInventory:
         original = blockcausal.block_forward
 
         def wrapped(model: Any, *args: Any, **kwargs: Any):
+            from distillschedule.runtime.livewan_collective_padding import padding_call_active
             role = roles.get(id(model), "unknown")
-            self.add(role, torch.is_grad_enabled(), bool(kwargs.get("grad_checkpoint", False)))
+            if padding_call_active():
+                _require(role == "student" and not torch.is_grad_enabled()
+                         and not kwargs.get("grad_checkpoint", False), "invalid padding call")
+                key = "student/nograd/plain"
+                self.padding_counts[key] = self.padding_counts.get(key, 0) + 1
+            else:
+                self.add(role, torch.is_grad_enabled(), bool(kwargs.get("grad_checkpoint", False)))
             return original(model, *args, **kwargs)
 
         blockcausal.block_forward = wrapped
@@ -571,6 +579,8 @@ def _configure_fsdp_reduction(model: Any, *, group_size: int) -> int:
 
 
 def materialize_adam_state(torch: Any, optimizer: Any, *, step: int = 0) -> dict[str, int]:
+    if hasattr(optimizer, "materialize_state"):
+        return optimizer.materialize_state(step=step)
     optimizer.state.clear()
     tensors = 0
     local_numel = 0
@@ -1436,7 +1446,12 @@ def build_models(
             {"fused": True} if optimizer_impl == "fused_adamw" else {"foreach": True}
         )
         generator_named_parameters = list(student.named_parameters())
-        opt_g = torch.optim.AdamW(
+        if baseline_spec.optimizer_device == "cpu":
+            from distillschedule.runtime.livewan_cpu_optimizer import CPUAdamW
+            optimizer_factory = lambda parameters, **kw: CPUAdamW(torch, parameters, **kw)
+        else:
+            optimizer_factory = torch.optim.AdamW
+        opt_g = optimizer_factory(
             [parameter for _name, parameter in generator_named_parameters],
             lr=2e-6, betas=(0.0, 0.99),
             weight_decay=0.0, eps=1e-8, **optimizer_kwargs,
@@ -1494,7 +1509,12 @@ def build_models(
             critic_fsdp_groups = _configure_fsdp_reduction(
                 critic, group_size=len(critic_ranks)
             )
-        opt_c = torch.optim.AdamW(
+        if baseline_spec.optimizer_device == "cpu":
+            from distillschedule.runtime.livewan_cpu_optimizer import CPUAdamW
+            critic_optimizer_factory = lambda parameters, **kw: CPUAdamW(torch, parameters, **kw)
+        else:
+            critic_optimizer_factory = torch.optim.AdamW
+        opt_c = critic_optimizer_factory(
             lora_params, lr=4e-5, betas=(0.0, 0.99),
             weight_decay=0.0, eps=1e-8, foreach=True,
         )
@@ -2102,6 +2122,10 @@ def prepare_rollout(
         streamer.set_world(z_teacher[:, :, : row.world_frames])
         generator = torch.Generator(device=device).manual_seed(row.seeds["rollout"])
         blocks, recs = streamer.rollout_record(row.new_blocks, generator=generator)
+        padding = getattr(student, "_livewan_collective_padding", None)
+        if padding is not None:
+            from wanstreamer import blockcausal
+            padding.pad(blockcausal=blockcausal, streamer=streamer, row=row, recs=recs)
     new = torch.cat([value.detach() for value in blocks], dim=2)
     x0 = torch.cat([z_teacher[:, :, : row.world_frames], new], dim=2)
     _require(tuple(x0.shape) == LATENT_SHAPE, f"rollout shape mismatch at {row.operation_key}")
@@ -4008,6 +4032,8 @@ def run_worker(
         plan, mode=mode,
         name=os.environ.get("LIVEWAN_BASELINE_PLACEMENT", "legacy-hybrid"),
         teacher_offload=os.environ.get("LIVEWAN_TEACHER_PARAMETER_OFFLOAD", "off"),
+        optimizer_device=os.environ.get("LIVEWAN_OPTIMIZER_DEVICE", "cuda"),
+        student_padding=os.environ.get("LIVEWAN_STUDENT_ROLLOUT_PADDING", "off"),
     )
     _validate_plan_identity(plan, mode=mode)
     continuous_contract = _continuous_pipeline_contract(plan, mode=mode)
@@ -4404,6 +4430,11 @@ def run_worker(
     if baseline_spec.name != "legacy-hybrid":
         from distillschedule.runtime.livewan_baseline_placement import verify_models
         bundle.metadata["baseline_placement_runtime"] = verify_models(baseline_spec, bundle)
+    if baseline_spec.student_padding == "max-noop":
+        from distillschedule.runtime.livewan_collective_padding import StudentRolloutPadding
+        _require(bundle.student is not None, "padding Student missing")
+        object.__setattr__(bundle.student, "_livewan_collective_padding",
+                           StudentRolloutPadding(torch, trace.rows))
     bundle.metadata["cuda_library_setup"] = cuda_library_setup
     if _critic_lora_scale_one_enabled(plan, mode=mode):
         lora_model = (
@@ -5159,6 +5190,15 @@ def run_worker(
     workload_cycles = int(trace.cycles)
     if bundle.teacher_cpu_staging is not None:
         bundle.metadata["teacher"]["cpu_staging"] = bundle.teacher_cpu_staging.receipt()
+    student_padding_receipt = None
+    if baseline_spec.student_padding == "max-noop":
+        student_padding_receipt = bundle.student._livewan_collective_padding.receipt()
+        _require(student_padding_receipt["extra_physical_forward_calls"] ==
+                 inventory.padding_counts.get("student/nograd/plain", 0),
+                 "observed padding forward inventory differs from plan")
+    if baseline_spec.optimizer_device == "cpu":
+        bundle.metadata["student"]["cpu_optimizer"] = bundle.generator_optimizer.receipt()
+        bundle.metadata["critic"]["cpu_optimizer"] = bundle.critic_optimizer.receipt()
     if baseline_spec.name != "legacy-hybrid":
         bundle.metadata["baseline_placement"] = baseline_spec.receipt()
     receipt = {
@@ -5182,7 +5222,11 @@ def run_worker(
         "initial_versions": bootstrap.versions,
         "final_versions": versions,
         "call_inventory": inventory.counts,
-        "physical_call_inventory": inventory.counts,
+        "physical_call_inventory": {**inventory.counts,
+            **{f"padding/{key}": value for key, value in inventory.padding_counts.items()}},
+        "padding_call_inventory": inventory.padding_counts,
+        "student_collective_padding": student_padding_receipt,
+        "call_inventory_scope": "APPLICATION_ONLY_EXCLUDES_EXPLICIT_DISCARDED_PADDING",
         "logical_call_inventory": logical_call_inventory,
         "score_physical_batch_size": _score_physical_batch_size(plan, mode=mode),
         "critic_physical_batch_size": _critic_physical_batch_size(plan, mode=mode),
@@ -5305,7 +5349,9 @@ def _run_baseline(
     from distillschedule.runtime.livewan_baseline_placement import BaselinePlacement
     policy = bundle.metadata.get("baseline_placement", {})
     baseline_spec = BaselinePlacement(policy.get("name", "legacy-hybrid"),
-                                      policy.get("teacher_parameter_offload", "off"))
+                                      policy.get("teacher_parameter_offload", "off"),
+                                      policy.get("optimizer_device", "cuda"),
+                                      policy.get("student_rollout_padding", "off"))
     for step in range(FULL5_STEPS):
         global_step = step_offset + step
         with _profile_range(
@@ -5506,7 +5552,9 @@ def _run_baseline_trajectory(
             arm_id=arm_id,
             execution_mode="baseline",
             implementation={
-                "pool_topology": "WORLD16_SEQUENTIAL_FSDP2",
+                "pool_topology": ("WORLD16_SEQUENTIAL_FSDP2" if
+                    bundle.metadata.get("baseline_placement", {}).get("name", "legacy-hybrid") == "legacy-hybrid"
+                    else "WORLD16_SEQUENTIAL_" + bundle.metadata["baseline_placement"]["name"]),
                 "physical_role": "all_roles",
                 "critic_physical_batch_size": "1",
                 "critic_physical_backward_calls": "5",

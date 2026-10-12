@@ -23,12 +23,22 @@ TEACHER_OFFLOAD = ("off", "cpu-block")
 class BaselinePlacement:
     name: str = "legacy-hybrid"
     teacher_offload: str = "off"
+    optimizer_device: str = "cuda"
+    student_padding: str = "off"
 
     def __post_init__(self) -> None:
         if self.name not in PLACEMENTS or self.teacher_offload not in TEACHER_OFFLOAD:
             raise ValueError("unknown LiveWan baseline placement/offload")
         if self.teacher_offload != "off" and self.name != "full-resident":
             raise ValueError("Teacher CPU staging requires the full-resident arm")
+        if self.optimizer_device not in {"cuda", "cpu"}:
+            raise ValueError("unknown optimizer device")
+        if self.optimizer_device == "cpu" and self.name != "full-resident":
+            raise ValueError("CPU optimizer is restricted to the resident baseline")
+        if self.student_padding not in {"off", "max-noop"}:
+            raise ValueError("unknown Student padding policy")
+        if self.student_padding != "off" and self.name != "world16-fsdp":
+            raise ValueError("Student padding requires the strict world16 FSDP baseline")
 
     @property
     def student_fsdp(self) -> bool:
@@ -59,10 +69,14 @@ class BaselinePlacement:
             "parameter_dtype_policy": "PRESERVE_ORIGINAL",
             "gradient_mean": "SUM_THEN_DIVIDE_16",
             "activation_offload": False,
-            "optimizer_offload": False,
+            "optimizer_offload": self.optimizer_device == "cpu",
+            "optimizer_device": self.optimizer_device,
+            "student_rollout_padding": self.student_padding,
             "pipeline": False,
             "physical_batch_per_rank": 1,
-            "pure_resident": self.name == "full-resident" and self.teacher_offload == "off",
+            "all_model_weights_resident": self.name == "full-resident" and self.teacher_offload == "off",
+            "pure_resident": (self.name == "full-resident" and self.teacher_offload == "off"
+                              and self.optimizer_device == "cuda"),
         }
 
 
@@ -71,6 +85,8 @@ def from_plan(plan: Mapping[str, Any]) -> BaselinePlacement:
     result = BaselinePlacement(
         str(value.get("name", "legacy-hybrid")),
         str(value.get("teacher_parameter_offload", "off")),
+        str(value.get("optimizer_device", "cuda")),
+        str(value.get("student_rollout_padding", "off")),
     )
     if value and value != result.receipt():
         raise ValueError("LiveWan baseline placement contract changed")
@@ -78,8 +94,9 @@ def from_plan(plan: Mapping[str, Any]) -> BaselinePlacement:
 
 
 def apply_contract(plan: dict[str, Any], *, mode: str, name: str,
-                   teacher_offload: str) -> BaselinePlacement:
-    result = BaselinePlacement(name, teacher_offload)
+                   teacher_offload: str, optimizer_device: str = "cuda",
+                   student_padding: str = "off") -> BaselinePlacement:
+    result = BaselinePlacement(name, teacher_offload, optimizer_device, student_padding)
     if name == "legacy-hybrid":
         return result  # No default plan mutation, including its fingerprint.
     if mode != "baseline" or plan["metadata"]["execution_mode"] != "baseline":
@@ -104,6 +121,10 @@ def apply_contract(plan: dict[str, Any], *, mode: str, name: str,
 def check_collective_trace(spec: BaselinePlacement, rows: Any) -> None:
     """FULL_SHARD cannot issue unequal forward AG inventories across ranks."""
     if not spec.student_reshard:
+        return
+    if spec.student_padding == "max-noop":
+        if any(not 4 <= int(row.new_blocks) <= 6 for row in rows):
+            raise RuntimeError("FAIL_FSDP_PADDING_TRACE")
         return
     steps: dict[int, set[int]] = {}
     for row in rows:
@@ -174,6 +195,20 @@ def validate_timing_gate(value: Mapping[str, Any], *, spec: BaselinePlacement,
                     or build.get("baseline_placement") != spec.receipt()
                     or build.get("baseline_placement_runtime", {}).get("status") != "PASS"):
                     raise ValueError(f"placement correctness rank{rank} changed")
+                if spec.optimizer_device == "cpu":
+                    for role, expected_steps in (("student", 2), ("critic", 10)):
+                        optimizer = build.get(role, {}).get("cpu_optimizer", {})
+                        if (optimizer.get("state_device") != "cpu"
+                            or optimizer.get("steps") != expected_steps
+                            or optimizer.get("gradient_d2h_bytes", 0) <= 0
+                            or optimizer.get("updated_parameter_h2d_bytes", 0) <= 0):
+                            raise ValueError(f"rank{rank} CPU optimizer was not verified")
+                if spec.student_padding == "max-noop":
+                    padding = receipt.get("student_collective_padding", {})
+                    records = padding.get("records", [])
+                    if len(records) != 10 or any(r["aligned_nograd_forward_calls"] !=
+                        1+5*r["maximum_new_blocks"] for r in records):
+                        raise ValueError(f"rank{rank} collective padding was not verified")
                 if spec.teacher_offload == "cpu-block":
                     staging = build.get("teacher", {}).get("cpu_staging", {})
                     if (staging.get("active_units_at_receipt") != 0

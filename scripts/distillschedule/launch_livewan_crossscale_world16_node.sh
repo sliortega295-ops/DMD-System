@@ -343,7 +343,9 @@ elif run_kind == "two-cycle-timing":
         sys.path.insert(0, str(pathlib.Path(os.environ["DMD_SYSTEM_ROOT"]) / "src"))
         from distillschedule.runtime.livewan_baseline_placement import BaselinePlacement, validate_timing_gate
         spec = BaselinePlacement(os.environ["LIVEWAN_BASELINE_PLACEMENT"],
-            os.environ.get("LIVEWAN_TEACHER_PARAMETER_OFFLOAD", "off"))
+            os.environ.get("LIVEWAN_TEACHER_PARAMETER_OFFLOAD", "off"),
+            os.environ.get("LIVEWAN_OPTIMIZER_DEVICE", "cuda"),
+            os.environ.get("LIVEWAN_STUDENT_ROLLOUT_PADDING", "off"))
         validate_timing_gate(value, spec=spec, expected_head=expected_head,
             arm_id=os.environ["LIVEWAN_TWO_CYCLE_ARM_ID"],
             seed=int(os.environ["LIVEWAN_TWO_CYCLE_SEED"]))
@@ -466,6 +468,8 @@ export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
   echo "pipeline_variant=${PIPELINE_VARIANT}"
   echo "baseline_placement=${LIVEWAN_BASELINE_PLACEMENT:-legacy-hybrid}"
   echo "teacher_parameter_offload=${LIVEWAN_TEACHER_PARAMETER_OFFLOAD:-off}"
+  echo "optimizer_device=${LIVEWAN_OPTIMIZER_DEVICE:-cuda}"
+  echo "student_rollout_padding=${LIVEWAN_STUDENT_ROLLOUT_PADDING:-off}"
   echo "source_prepare_root=${LIVEWAN_SOURCE_PREPARE_ROOT:-}"
   echo "source_prepare_head=${LIVEWAN_SOURCE_PREPARE_HEAD:-}"
   if [[ "${PROFILE_TWO_CYCLES}" == 1 ]]; then

@@ -32,10 +32,13 @@ def main():
     p.add_argument("--candidate-head", required=True)
     p.add_argument("--placement", required=True)
     p.add_argument("--teacher-offload", default="off")
+    p.add_argument("--optimizer-device", default="cuda", choices=("cuda", "cpu"))
+    p.add_argument("--student-rollout-padding", default="off", choices=("off", "max-noop"))
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--timing-gate", type=Path, required=True)
     args = p.parse_args()
-    spec = BaselinePlacement(args.placement, args.teacher_offload)
+    spec = BaselinePlacement(args.placement, args.teacher_offload,
+                             args.optimizer_device, args.student_rollout_padding)
     arms = []
     for root, head in ((args.reference_root, args.reference_head),
                        (args.candidate_root, args.candidate_head)):
@@ -83,7 +86,9 @@ def main():
         manifest = dict(line.split("=", 1) for line in (args.candidate_root / "launcher" / f"node_{node}" /
             "launch_manifest.txt").read_text().splitlines() if "=" in line)
         if (manifest.get("baseline_placement") != spec.name or
-            manifest.get("teacher_parameter_offload") != spec.teacher_offload):
+            manifest.get("teacher_parameter_offload") != spec.teacher_offload or
+            manifest.get("optimizer_device", "cuda") != spec.optimizer_device or
+            manifest.get("student_rollout_padding", "off") != spec.student_padding):
             raise ValueError("candidate placement differs from its launch manifest")
     gate = {"schema_version": "distillschedule.livewan_baseline_placement_timing_gate.v1",
         "status": "PASS", "claimable_for_two_cycle_timing": True, "cycles": 2,
