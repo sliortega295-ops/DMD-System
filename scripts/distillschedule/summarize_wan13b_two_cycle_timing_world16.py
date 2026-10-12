@@ -181,6 +181,7 @@ def _validate_arm(
     fused = arm.get("generator_nograd_lora_fused_epilogue")
     cast_cache = arm.get("generator_nograd_lora_cast_cache")
     grad_fused = arm.get("grad_lora_fused_epilogue", False)
+    norm_fused = arm.get("modulated_norm_fusion", False)
     expected_name = (
         "RESIDENT_ASYNC128_TREE_CHUNK2048_FUSED_EPILOGUE"
         if placement == RESIDENT_WINNER
@@ -191,7 +192,7 @@ def _validate_arm(
     if placement == RESIDENT_WINNER:
         if fused is not True or cast_cache is not False:
             errors.append(f"rank{rank}: Resident fused/cast-cache flags changed")
-    elif fused is not False or cast_cache is not False or grad_fused is not False:
+    elif fused is not False or cast_cache is not False or grad_fused is not False or norm_fused:
         errors.append(f"rank{rank}: FSDP enabled Resident-only LoRA arm")
 
     runtime = row.get("runtime_contract", {})
@@ -236,6 +237,16 @@ def _validate_arm(
             observed = row.get("grad_epilogue_receipt", {}).get(role, {})
             if observed.get("enabled") is not True or int(observed.get("fused_invocation_count", 0)) <= 0:
                 errors.append(f"rank{rank}: {role} grad epilogue did not execute")
+    norm_receipt = row.get("modulated_norm_fusion_receipt", {})
+    if norm_fused:
+        if norm_receipt.get("enabled") is not True:
+            errors.append(f"rank{rank}: requested normalization fusion has no runtime proof")
+        for role in ("generator", "critic"):
+            observed = norm_receipt.get("roles", {}).get(role, {})
+            if not observed.get("enabled") or int(observed.get("backward_kernel_call_count", 0)) <= 0 or observed.get("reference_fallback_count") != 0:
+                errors.append(f"rank{rank}: {role} normalization fusion missing/fallback")
+    elif norm_receipt.get("enabled"):
+        errors.append(f"rank{rank}: unrequested normalization fusion executed")
 
 
 def _teardown(
@@ -289,6 +300,7 @@ def main() -> int:
         "two_cycle_trajectory_comparison_sha256",
         "generator_nograd_lora_fused_epilogue", "generator_nograd_lora_cast_cache",
         "grad_lora_fused_epilogue", "tf32_cublas_override",
+        "modulated_norm_fusion",
         "helios_transformer_sha256", "model_root",
     )
     launch_identities = {
@@ -328,6 +340,11 @@ def main() -> int:
             errors.append(f"rank{rank}: source HEAD changed")
         if row.get("world_size") != WORLD_SIZE or row.get("placement") != args.placement:
             errors.append(f"rank{rank}: world/placement identity changed")
+        norm_flag = manifests[0].get("modulated_norm_fusion", "0")
+        if norm_flag not in {"0", "1"}:
+            errors.append("invalid normalization fusion launch flag")
+        if row.get("arm_contract", {}).get("modulated_norm_fusion", False) is not (norm_flag == "1"):
+            errors.append(f"rank{rank}: normalization fusion launch/arm binding changed")
         comparison = row.get("trajectory_comparison_binding", {})
         trajectory_comparison_hashes.add(comparison.get("sha256"))
         if (

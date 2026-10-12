@@ -78,6 +78,12 @@ LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS="${DISTILLSCHEDULE_WAN13B_LORA_ATTRIBUTION_
 GENERATOR_NOGRAD_LORA_CAST_CACHE="${DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE:-0}"
 GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE="${DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE:-0}"
 GRAD_LORA_FUSED_EPILOGUE="${DISTILLSCHEDULE_WAN13B_GRAD_LORA_FUSED_EPILOGUE:-0}"
+MODULATED_NORM_FUSION="${DISTILLSCHEDULE_WAN13B_MODULATED_NORM_FUSION:-0}"
+[[ "${MODULATED_NORM_FUSION}" == 0 || "${MODULATED_NORM_FUSION}" == 1 ]] || exit 2
+if [[ "${MODULATED_NORM_FUSION}" == 1 && "${PLACEMENT}" != resident-async128-tree-chunk2048 ]]; then
+  echo norm_fusion_requires_registered_resident_control >&2
+  exit 2
+fi
 [[ "${GRAD_LORA_FUSED_EPILOGUE}" == 0 || "${GRAD_LORA_FUSED_EPILOGUE}" == 1 ]] || exit 2
 if [[ "${GRAD_LORA_FUSED_EPILOGUE}" == 1 && "${PLACEMENT}" != resident-async128-tree-chunk2048 ]]; then
   echo grad_epilogue_requires_registered_resident >&2; exit 2
@@ -333,6 +339,7 @@ lora_attribution_target_nograd_calls=${LORA_ATTRIBUTION_TARGET_NOGRAD_CALLS}
 generator_nograd_lora_cast_cache=${GENERATOR_NOGRAD_LORA_CAST_CACHE}
 generator_nograd_lora_fused_epilogue=${GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE}
 grad_lora_fused_epilogue=${GRAD_LORA_FUSED_EPILOGUE}
+modulated_norm_fusion=${MODULATED_NORM_FUSION}
 tf32_cublas_override=${TORCH_ALLOW_TF32_CUBLAS_OVERRIDE:-NOT_SET}
 ema_implementation=${ema_implementation}
 optimizer_implementation=${optimizer_implementation}

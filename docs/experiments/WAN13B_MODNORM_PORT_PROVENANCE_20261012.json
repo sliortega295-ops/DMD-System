@@ -1,0 +1,58 @@
+{
+  "native_source_sha256": "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
+  "status": "PRIMITIVE_PARITY_PASS_WORLD16_NOT_RUN",
+  "files": [
+    {
+      "source_file": "/home/lyy/Helios/DMD-System/worktrees/helios-nogan-bgemm-port-20261005/src/distillschedule/runtime/helios_modulated_norm_fusion.py",
+      "source_sha256": "4c5325d564df54b1f9e024076a3176f5a4e10e9fd4e60c764e4231fe213d56e6",
+      "ported_file": "src/distillschedule/runtime/wan13b_modulated_norm_fusion.py",
+      "port_changes": [
+        "module names scoped to Wan experiment",
+        "registered width 5120 ->1536",
+        "row tile8192 ->2048 and row warps8 ->4"
+      ],
+      "ported_sha256": "a777a6f3c34026fa29fb43759b8dafa6f09ba308f10b9ed9ba8bc912412ba4b6"
+    },
+    {
+      "source_file": "/home/lyy/Helios/DMD-System/worktrees/helios-nogan-bgemm-port-20261005/src/distillschedule/runtime/helios_modulated_norm_kernel.py",
+      "source_sha256": "38f615574bd0031058c81d3ad8e13287625a944a39028093789f72f0616fe493",
+      "ported_file": "src/distillschedule/runtime/wan13b_modulated_norm_kernel.py",
+      "port_changes": [
+        "module names scoped to Wan experiment",
+        "registered width 5120 ->1536",
+        "row tile8192 ->2048 and row warps8 ->4",
+        "accept pinned tensor4d component stride 6xwidth; same passed-stride kernel indexing"
+      ],
+      "ported_sha256": "6336c7b00283ef2e47b47a56bc916852315b6cf7ab5299407a72699c9c63bc10"
+    },
+    {
+      "source_file": "/home/lyy/Helios/DMD-System/worktrees/helios-nogan-bgemm-port-20261005/src/distillschedule/runtime/helios_fused_layernorm_kernel.py",
+      "source_sha256": "b91dfce7f143497fcce7d1f89f5b30956ed0e8f4e5aa303205b6df300cb6bafa",
+      "ported_file": "src/distillschedule/runtime/wan13b_fused_layernorm_kernel.py",
+      "port_changes": [
+        "module names scoped to Wan experiment",
+        "registered width 5120 ->1536",
+        "row tile8192 ->2048 and row warps8 ->4"
+      ],
+      "ported_sha256": "e1e1cc675f2503cc6bc8e0f1c16639362420ddd1c400e601b6a1c3776a440f91"
+    },
+    {
+      "source_file": "/home/lyy/Helios/DMD-System/worktrees/helios-nogan-bgemm-port-20261005/src/distillschedule/runtime/helios_fused_layernorm_backward_kernel.py",
+      "source_sha256": "c89fb0500061f1f420480821ca74d89ba6368e6f36df355c03e736cfe984d8a9",
+      "ported_file": "src/distillschedule/runtime/wan13b_fused_layernorm_backward_kernel.py",
+      "port_changes": [
+        "module names scoped to Wan experiment",
+        "registered width 5120 ->1536",
+        "row tile8192 ->2048 and row warps8 ->4"
+      ],
+      "ported_sha256": "094c9b35a77a28eb75428c857af8210d249e1aecc2ac91a894fe807d3c910a10"
+    }
+  ],
+  "test_results": {
+    "cpu_focused": "74 PASS; 36 GPU tests skipped with CUDA_VISIBLE_DEVICES empty",
+    "gpu_focused": "44 PASS",
+    "native_custom_function_cases": "9/9 PASS; output/hidden-gradient/timestep-gradient DEFAULT_P0_PARITY unchanged",
+    "source": "modnorm_full_primitive_r3.json",
+    "end_to_end_speedup": "NOT_RUN"
+  }
+}

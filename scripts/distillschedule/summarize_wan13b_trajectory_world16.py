@@ -276,9 +276,25 @@ def _validate_runtime_build(
             errors.append(f"rank{rank}: Critic entered Generator fused epilogue")
     elif generator.get("requested") or generator.get("enabled") or critic.get("enabled"):
         errors.append(f"rank{rank}: FSDP correctness run enabled Resident-only epilogue")
+    from distillschedule.runtime.wan13b_norm_policy import validate as validate_norm
+    norm_enabled = bool(final.get("modulated_norm_fusion_receipt", {}).get("enabled", False))
+    if "modulated_norm_fusion_receipt" in final:
+        try:
+            norm_receipt = validate_norm(build, enabled=norm_enabled)
+        except AssertionError as error:
+            errors.append(f"rank{rank}: {error}")
+            norm_receipt = {"enabled": norm_enabled, "status": "FAIL", "error": str(error)}
+    else:
+        norm_receipt = {"enabled": False, "status": "NOT_REQUESTED_LEGACY_RECEIPT"}
+        if any(
+            build.get(role, {}).get("metadata", {}).get("modulated_norm_fusion", {}).get("enabled")
+            for role in ("generator", "critic")
+        ):
+            errors.append(f"rank{rank}: enabled normalization fusion has no final receipt")
     return {
         "helios_transformer_sha256": next(iter(runtime_hashes)) if len(runtime_hashes) == 1 else None,
         "fused_epilogue": generator,
+        "modulated_norm_fusion": norm_receipt,
     }
 
 
@@ -311,11 +327,17 @@ def main() -> int:
             errors.append(f"node{node}: launch trajectory cycle count changed")
         if manifest.get("placement") != args.placement:
             errors.append(f"node{node}: launch placement changed")
+        if manifest.get("modulated_norm_fusion", "0") not in {"0", "1"}:
+            errors.append(f"node{node}: invalid normalization fusion launch flag")
+    norm_requested = manifests[0].get("modulated_norm_fusion", "0") == "1"
+    if norm_requested and args.placement != RESIDENT_WINNER:
+        errors.append("normalization fusion is not registered for this placement")
     identity_keys = (
         "run_id", "dmd_system_head", "trajectory_seed", "trajectory_arm_id",
         "trace_hash", "bootstrap_hash", "generator_nograd_lora_fused_epilogue",
         "generator_nograd_lora_cast_cache", "nccl_algo",
         "grad_lora_fused_epilogue", "tf32_cublas_override",
+        "modulated_norm_fusion",
     )
     manifest_identities = {
         tuple(manifest.get(key) for key in identity_keys) for manifest in manifests if manifest
@@ -382,6 +404,15 @@ def main() -> int:
             errors.append(f"rank{rank}: invalid final rank receipt: {error}")
             continue
         finals[rank] = final
+        for trajectory_row in rows:
+            observed = trajectory_row.implementation.get("modulated_norm_fusion", "false")
+            if observed not in {"false", "true"} or (observed == "true") != norm_requested:
+                errors.append(f"rank{rank}: normalization fusion launch/trajectory binding changed")
+        norm_receipt = final.get("modulated_norm_fusion_receipt", {})
+        if norm_receipt.get("enabled", False) is not norm_requested:
+            errors.append(f"rank{rank}: normalization fusion launch/runtime binding changed")
+        if norm_requested and not norm_receipt:
+            errors.append(f"rank{rank}: requested normalization fusion has no runtime proof")
         if rows and rows[0].implementation.get("grad_lora_fused_epilogue") == "true":
             for role in ("generator", "critic"):
                 observed = final.get("grad_epilogue_receipt", {}).get(role, {})
@@ -529,6 +560,7 @@ def main() -> int:
                 raw_implementation.get("generator_nograd_lora_cast_cache", "").lower() == "true"
             ),
             "grad_lora_fused_epilogue": raw_implementation.get("grad_lora_fused_epilogue", "false") == "true",
+            "modulated_norm_fusion": raw_implementation.get("modulated_norm_fusion", "false") == "true",
             "worker": raw_implementation.get("worker"),
         }
         if raw_implementation is not None

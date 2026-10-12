@@ -1,0 +1,617 @@
+from __future__ import annotations
+
+import copy
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+import torch
+
+from distillschedule.runtime.wan13b_modulated_norm_fusion import (
+    install_exact_modulated_norm_epilogue,
+)
+from distillschedule.runtime.p0_parity import tensor_parity_metrics
+
+
+def _materialize(table, temb, index, start=None, end=None):
+    del start, end
+    return (table[:, index, :] + temb[:, index, :].float()).unsqueeze(1)
+
+
+def _rebuild_temb(descriptor, inputs):
+    assert descriptor == ("tensor", ())
+    assert len(inputs) == 1
+    return inputs[0]
+
+
+class _SourceChunkedNorm(torch.autograd.Function):
+    @staticmethod
+    def forward(
+        ctx,
+        hidden,
+        norm,
+        table,
+        scale_index,
+        shift_index,
+        chunk_tokens,
+        descriptor,
+        *temb_inputs,
+    ):
+        ctx.norm = norm
+        ctx.scale_shift_table = table
+        ctx.scale_index = int(scale_index)
+        ctx.shift_index = int(shift_index)
+        ctx.chunk_tokens = int(chunk_tokens)
+        ctx.descriptor = descriptor
+        ctx.sequence_length = int(hidden.shape[1])
+        ctx.save_for_backward(hidden, *temb_inputs)
+        temb = _rebuild_temb(descriptor, temb_inputs)
+        chunks = []
+        for start in range(0, ctx.sequence_length, ctx.chunk_tokens):
+            end = min(ctx.sequence_length, start + ctx.chunk_tokens)
+            scale = _materialize(table, temb, ctx.scale_index, start, end)
+            shift = _materialize(table, temb, ctx.shift_index, start, end)
+            chunks.append(
+                (
+                    norm(hidden[:, start:end].float()) * (1 + scale) + shift
+                ).to(hidden.dtype)
+            )
+        return torch.cat(chunks, dim=1)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        hidden, *temb_inputs = ctx.saved_tensors
+        hidden_grad = torch.empty_like(hidden)
+        temb_grad = torch.zeros_like(temb_inputs[0])
+        for start in range(0, ctx.sequence_length, ctx.chunk_tokens):
+            end = min(ctx.sequence_length, start + ctx.chunk_tokens)
+            hidden_chunk = hidden[:, start:end].detach().requires_grad_(True)
+            temb = temb_inputs[0].detach().requires_grad_(True)
+            with torch.enable_grad():
+                scale = _materialize(
+                    ctx.scale_shift_table, temb, ctx.scale_index, start, end
+                )
+                shift = _materialize(
+                    ctx.scale_shift_table, temb, ctx.shift_index, start, end
+                )
+                output = (
+                    ctx.norm(hidden_chunk.float()) * (1 + scale) + shift
+                ).to(hidden.dtype)
+            chunk_grad, chunk_temb_grad = torch.autograd.grad(
+                output,
+                (hidden_chunk, temb),
+                grad_output[:, start:end],
+            )
+            hidden_grad[:, start:end].copy_(chunk_grad)
+            temb_grad.add_(chunk_temb_grad)
+        return hidden_grad, None, None, None, None, None, None, temb_grad
+
+
+_SOURCE_FORWARD = _SourceChunkedNorm.forward
+_SOURCE_BACKWARD = _SourceChunkedNorm.backward
+
+
+def _module():
+    class FreshSourceChunkedNorm(torch.autograd.Function):
+        forward = staticmethod(_SOURCE_FORWARD)
+        backward = staticmethod(_SOURCE_BACKWARD)
+
+    return SimpleNamespace(
+        __file__=__file__,
+        _TembAwareChunkedNorm=FreshSourceChunkedNorm,
+        _materialize_scale_shift_component=_materialize,
+        _rebuild_temb=_rebuild_temb,
+    )
+
+
+def _run(function, hidden, norm, table, temb):
+    return function.apply(
+        hidden,
+        norm,
+        table,
+        1,
+        2,
+        3,
+        ("tensor", ()),
+        temb,
+    )
+
+
+def test_install_is_default_off() -> None:
+    module = _module()
+    original_forward = module._TembAwareChunkedNorm.forward
+    receipt = install_exact_modulated_norm_epilogue(
+        enabled=False,
+        role="generator",
+        transformer_module=module,
+        fused_epilogue=lambda *_args: None,
+    )
+    assert receipt["enabled"] is False
+    assert receipt["disabled_reason"] == "NOT_REQUESTED"
+    assert module._TembAwareChunkedNorm.forward is original_forward
+
+
+def test_forward_and_gradients_are_exact_and_source_backward_is_unchanged() -> None:
+    torch.manual_seed(31)
+    module = _module()
+    function = module._TembAwareChunkedNorm
+    norm_reference = torch.nn.LayerNorm(8, elementwise_affine=False)
+    norm_candidate = copy.deepcopy(norm_reference)
+    table = torch.randn(1, 6, 8, dtype=torch.float32)
+    hidden_reference = torch.randn(1, 7, 8, dtype=torch.bfloat16).requires_grad_()
+    hidden_candidate = hidden_reference.detach().clone().requires_grad_()
+    temb_reference = torch.randn(1, 6, 8, dtype=torch.bfloat16).requires_grad_()
+    temb_candidate = temb_reference.detach().clone().requires_grad_()
+    upstream = torch.randn_like(hidden_reference)
+
+    expected = _run(
+        function, hidden_reference, norm_reference, table, temb_reference
+    )
+    expected.backward(upstream)
+    source_backward = function.backward
+
+    def fused(normalized, scale, shift, output):
+        output.copy_((normalized * (1 + scale) + shift).to(output.dtype))
+        return output
+
+    receipt = install_exact_modulated_norm_epilogue(
+        enabled=True,
+        role="generator",
+        transformer_module=module,
+        fused_epilogue=fused,
+    )
+    actual = _run(function, hidden_candidate, norm_candidate, table, temb_candidate)
+    actual.backward(upstream)
+
+    assert torch.equal(expected, actual)
+    assert torch.equal(hidden_reference.grad, hidden_candidate.grad)
+    assert torch.equal(temb_reference.grad, temb_candidate.grad)
+    assert function.backward is source_backward
+    assert receipt["enabled"] is True
+    assert receipt["fused_call_count"] == 1
+    assert receipt["fused_chunk_count"] == 3
+    assert receipt["reference_fallback_count"] == 0
+
+
+@pytest.mark.parametrize("batch_size", [1, 3])
+def test_table_component_materialization_is_exact(batch_size: int) -> None:
+    torch.manual_seed(41)
+    module = _module()
+    function = module._TembAwareChunkedNorm
+    norm_reference = torch.nn.LayerNorm(8, elementwise_affine=False)
+    norm_candidate = copy.deepcopy(norm_reference)
+    table = torch.randn(1, 6, 8, dtype=torch.float32)
+    hidden_reference = torch.randn(
+        batch_size, 7, 8, dtype=torch.bfloat16
+    ).requires_grad_()
+    hidden_candidate = hidden_reference.detach().clone().requires_grad_()
+    temb_reference = torch.randn(
+        batch_size, 6, 8, dtype=torch.bfloat16
+    ).requires_grad_()
+    temb_candidate = temb_reference.detach().clone().requires_grad_()
+    upstream = torch.randn_like(hidden_reference)
+
+    expected = _run(
+        function, hidden_reference, norm_reference, table, temb_reference
+    )
+    expected.backward(upstream)
+
+    def fused_epilogue(normalized, scale, shift, output):
+        output.copy_((normalized * (1 + scale) + shift).to(output.dtype))
+        return output
+
+    def fused_materialization(
+        normalized,
+        source_table,
+        scale_index,
+        shift_index,
+        scale_component,
+        shift_component,
+        output,
+    ):
+        scale = source_table[:, scale_index, :].unsqueeze(1) + scale_component.float()
+        shift = source_table[:, shift_index, :].unsqueeze(1) + shift_component.float()
+        output.copy_((normalized * (1 + scale) + shift).to(output.dtype))
+        return output
+
+    receipt = install_exact_modulated_norm_epilogue(
+        enabled=True,
+        role="generator",
+        fuse_materialization=True,
+        transformer_module=module,
+        fused_epilogue=fused_epilogue,
+        fused_materialization=fused_materialization,
+    )
+    actual = _run(function, hidden_candidate, norm_candidate, table, temb_candidate)
+    actual.backward(upstream)
+
+    assert torch.equal(expected, actual)
+    assert torch.equal(hidden_reference.grad, hidden_candidate.grad)
+    assert torch.equal(temb_reference.grad, temb_candidate.grad)
+    assert receipt["materialization_requested"] is True
+    assert receipt["materialization_fused_call_count"] == 1
+    assert receipt["materialization_fused_chunk_count"] == 3
+    assert receipt["reference_fallback_count"] == 0
+    assert receipt["scope"] == (
+        "ALL_ROLE_REGISTERED_B1_B3_MODULATED_NORM_FORWARD_EPILOGUE"
+    )
+
+
+def test_explicit_backward_matches_source_under_frozen_p0_gate() -> None:
+    torch.manual_seed(47)
+    module = _module()
+    function = module._TembAwareChunkedNorm
+    norm_reference = torch.nn.LayerNorm(8, elementwise_affine=False)
+    norm_candidate = copy.deepcopy(norm_reference)
+    table = torch.randn(1, 6, 8, dtype=torch.float32)
+    hidden_reference = torch.randn(1, 7, 8, dtype=torch.bfloat16).requires_grad_()
+    hidden_candidate = hidden_reference.detach().clone().requires_grad_()
+    temb_reference = torch.randn(1, 6, 8, dtype=torch.bfloat16).requires_grad_()
+    temb_candidate = temb_reference.detach().clone().requires_grad_()
+    upstream = torch.randn_like(hidden_reference)
+
+    expected = _run(
+        function, hidden_reference, norm_reference, table, temb_reference
+    )
+    expected.backward(upstream)
+    source_backward = function.backward
+
+    def fused_epilogue(normalized, scale, shift, output):
+        output.copy_((normalized * (1 + scale) + shift).to(output.dtype))
+        return output
+
+    receipt = install_exact_modulated_norm_epilogue(
+        enabled=True,
+        role="generator",
+        fuse_backward=True,
+        transformer_module=module,
+        fused_epilogue=fused_epilogue,
+    )
+    actual = _run(function, hidden_candidate, norm_candidate, table, temb_candidate)
+    actual.backward(upstream)
+
+    assert torch.equal(expected, actual)
+    assert tensor_parity_metrics(
+        hidden_reference.grad, hidden_candidate.grad
+    )["status"] == "PASS"
+    assert tensor_parity_metrics(
+        temb_reference.grad, temb_candidate.grad
+    )["status"] == "PASS"
+    assert function.backward is not source_backward
+    assert receipt["backward_requested"] is True
+    assert receipt["backward_call_count"] == 1
+    assert receipt["backward_chunk_count"] == 3
+    assert receipt["backward_layout_counts"] == {"tensor_3d": 3, "tensor": 3}
+    assert receipt["backward_hidden_element_count"] == hidden_candidate.numel()
+
+
+def test_fused_layernorm_path_matches_source_and_keeps_explicit_backward() -> None:
+    torch.manual_seed(53)
+    module = _module()
+    function = module._TembAwareChunkedNorm
+    norm_reference = torch.nn.LayerNorm(8, elementwise_affine=False)
+    norm_candidate = copy.deepcopy(norm_reference)
+    table = torch.randn(1, 6, 8, dtype=torch.float32)
+    hidden_reference = torch.randn(1, 7, 8, dtype=torch.bfloat16).requires_grad_()
+    hidden_candidate = hidden_reference.detach().clone().requires_grad_()
+    temb_reference = torch.randn(1, 6, 8, dtype=torch.bfloat16).requires_grad_()
+    temb_candidate = temb_reference.detach().clone().requires_grad_()
+    upstream = torch.randn_like(hidden_reference)
+
+    expected = _run(
+        function, hidden_reference, norm_reference, table, temb_reference
+    )
+    expected.backward(upstream)
+
+    def fused_layernorm(
+        hidden,
+        source_table,
+        scale_index,
+        shift_index,
+        scale_component,
+        shift_component,
+        output,
+        *,
+        eps,
+    ):
+        normalized = torch.nn.functional.layer_norm(
+            hidden.float(), (hidden.shape[-1],), eps=eps
+        )
+        scale = (
+            source_table[:, scale_index, :].unsqueeze(1)
+            + scale_component.float()
+        )
+        shift = (
+            source_table[:, shift_index, :].unsqueeze(1)
+            + shift_component.float()
+        )
+        output.copy_((normalized * (1 + scale) + shift).to(output.dtype))
+        return output
+
+    receipt = install_exact_modulated_norm_epilogue(
+        enabled=True,
+        role="generator",
+        fuse_materialization=True,
+        fuse_backward=True,
+        fuse_layernorm=True,
+        transformer_module=module,
+        fused_layernorm=fused_layernorm,
+    )
+    actual = _run(function, hidden_candidate, norm_candidate, table, temb_candidate)
+    actual.backward(upstream)
+
+    assert torch.equal(expected, actual)
+    assert tensor_parity_metrics(
+        hidden_reference.grad, hidden_candidate.grad
+    )["status"] == "PASS"
+    assert tensor_parity_metrics(
+        temb_reference.grad, temb_candidate.grad
+    )["status"] == "PASS"
+    assert receipt["layernorm_requested"] is True
+    assert receipt["layernorm_fused_call_count"] == 1
+    assert receipt["layernorm_fused_chunk_count"] == 3
+    assert receipt["materialization_fused_call_count"] == 1
+    assert receipt["backward_call_count"] == 1
+    assert receipt["reference_fallback_count"] == 0
+
+
+def test_fused_layernorm_backward_path_matches_explicit_reference() -> None:
+    torch.manual_seed(59)
+    module = _module()
+    function = module._TembAwareChunkedNorm
+    norm_reference = torch.nn.LayerNorm(8, elementwise_affine=False)
+    norm_candidate = copy.deepcopy(norm_reference)
+    table = torch.randn(1, 6, 8, dtype=torch.float32)
+    hidden_reference = torch.randn(1, 7, 8, dtype=torch.bfloat16).requires_grad_()
+    hidden_candidate = hidden_reference.detach().clone().requires_grad_()
+    temb_reference = torch.randn(1, 6, 8, dtype=torch.bfloat16).requires_grad_()
+    temb_candidate = temb_reference.detach().clone().requires_grad_()
+    upstream = torch.randn_like(hidden_reference)
+
+    expected = _run(
+        function, hidden_reference, norm_reference, table, temb_reference
+    )
+    expected.backward(upstream)
+
+    def fused_layernorm(
+        hidden,
+        source_table,
+        scale_index,
+        shift_index,
+        scale_component,
+        shift_component,
+        output,
+        *,
+        eps,
+    ):
+        normalized = torch.nn.functional.layer_norm(
+            hidden.float(), (hidden.shape[-1],), eps=eps
+        )
+        scale = (
+            source_table[:, scale_index, :].unsqueeze(1)
+            + scale_component.float()
+        )
+        shift = (
+            source_table[:, shift_index, :].unsqueeze(1)
+            + shift_component.float()
+        )
+        output.copy_((normalized * (1 + scale) + shift).to(output.dtype))
+        return output
+
+    def fused_hidden_backward(
+        hidden,
+        grad_output,
+        source_table,
+        scale_index,
+        scale_component,
+        hidden_gradient,
+        mean_output,
+        rstd_output,
+        *,
+        eps,
+    ):
+        hidden_float = hidden.float()
+        normalized, mean, rstd = torch.native_layer_norm(
+            hidden_float,
+            [hidden.shape[-1]],
+            None,
+            None,
+            eps,
+        )
+        scale = (
+            source_table[:, scale_index, :].unsqueeze(1)
+            + scale_component.float()
+        )
+        grad_normalized = grad_output.float() * (1 + scale)
+        gradient, _weight, _bias = torch.ops.aten.native_layer_norm_backward.default(
+            grad_normalized,
+            hidden_float,
+            [hidden.shape[-1]],
+            mean,
+            rstd,
+            None,
+            None,
+            [True, False, False],
+        )
+        hidden_gradient.copy_(gradient.to(hidden_gradient.dtype))
+        mean_output.copy_(mean.squeeze(-1))
+        rstd_output.copy_(rstd.squeeze(-1))
+        return hidden_gradient
+
+    def fused_reduced_gradient(
+        hidden,
+        grad_output,
+        mean,
+        rstd,
+        component_gradient,
+        scale_index,
+        shift_index,
+    ):
+        normalized = (hidden.float() - mean.unsqueeze(-1)) * rstd.unsqueeze(-1)
+        component_gradient[:, scale_index, :].copy_(
+            (grad_output.float() * normalized)
+            .sum(dim=1)
+            .to(component_gradient.dtype)
+        )
+        component_gradient[:, shift_index, :].copy_(
+            grad_output.float().sum(dim=1).to(component_gradient.dtype)
+        )
+        return component_gradient
+
+    def fused_tensor4d_gradient(
+        hidden,
+        grad_output,
+        mean,
+        rstd,
+        component_gradient,
+        scale_index,
+        shift_index,
+    ):
+        normalized = (hidden.float() - mean.unsqueeze(-1)) * rstd.unsqueeze(-1)
+        component_gradient[:, :, scale_index, :].copy_(
+            (grad_output.float() * normalized).to(component_gradient.dtype)
+        )
+        component_gradient[:, :, shift_index, :].copy_(
+            grad_output.to(component_gradient.dtype)
+        )
+        return component_gradient
+
+    receipt = install_exact_modulated_norm_epilogue(
+        enabled=True,
+        role="generator",
+        fuse_materialization=True,
+        fuse_backward=True,
+        fuse_layernorm=True,
+        fuse_backward_kernel=True,
+        transformer_module=module,
+        fused_layernorm=fused_layernorm,
+        fused_hidden_backward=fused_hidden_backward,
+        fused_reduced_component_gradient=fused_reduced_gradient,
+        fused_tensor4d_component_gradient=fused_tensor4d_gradient,
+    )
+    actual = _run(function, hidden_candidate, norm_candidate, table, temb_candidate)
+    actual.backward(upstream)
+
+    assert torch.equal(expected, actual)
+    assert tensor_parity_metrics(
+        hidden_reference.grad, hidden_candidate.grad
+    )["status"] == "PASS"
+    assert tensor_parity_metrics(
+        temb_reference.grad, temb_candidate.grad
+    )["status"] == "PASS"
+    assert receipt["backward_kernel_requested"] is True
+    assert receipt["backward_kernel_call_count"] == 1
+    assert receipt["backward_hidden_kernel_launch_count"] == 3
+    assert receipt["backward_component_kernel_launch_count"] == 3
+    assert receipt["backward_kernel_reference_fallback_count"] == 0
+
+
+def test_primitive_is_source_qualified_and_has_no_implicit_launcher_enable() -> None:
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "src/distillschedule/runtime/wan13b_modulated_norm_fusion.py").read_text()
+    assert "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886" in source
+    assert 'fallback("UNSUPPORTED_WIDTH"' in source
+    assert "if not enabled:" in source
+    assert "fuse_backward_kernel: bool = False" in source
+    # These ports are still standalone: copying them must not activate an arm.
+    launcher = (root / "scripts/distillschedule/launch_wan13b_fair_world16_node.sh").read_text()
+    assert "wan13b_modulated_norm_fusion" not in launcher
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA-only Triton parity")
+@pytest.mark.parametrize("batch_size", [1, 3])
+@pytest.mark.parametrize("sequence_length", [1, 511, 512])
+@pytest.mark.parametrize("broadcast_modulation", [False, True])
+def test_real_triton_kernel_is_bitwise_exact(
+    sequence_length: int, broadcast_modulation: bool, batch_size: int
+) -> None:
+    from distillschedule.runtime.wan13b_modulated_norm_kernel import (
+        fused_modulated_norm_epilogue,
+    )
+
+    generator = torch.Generator(device="cuda").manual_seed(37)
+    normalized = torch.randn(
+        (batch_size, sequence_length, 1536),
+        device="cuda",
+        dtype=torch.float32,
+        generator=generator,
+    )
+    modulation_length = 1 if broadcast_modulation else sequence_length
+    scale = torch.randn(
+        (batch_size, modulation_length, 1536),
+        device="cuda",
+        dtype=torch.float32,
+        generator=generator,
+    )
+    shift = torch.randn_like(scale)
+    if broadcast_modulation:
+        scale = scale.expand_as(normalized)
+        shift = shift.expand_as(normalized)
+    expected = (normalized * (1 + scale) + shift).to(torch.bfloat16)
+    actual = torch.empty_like(expected)
+    fused_modulated_norm_epilogue(normalized, scale, shift, actual)
+    torch.cuda.synchronize()
+    assert torch.equal(expected, actual)
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA-only Triton parity")
+@pytest.mark.parametrize("batch_size", [1, 3])
+@pytest.mark.parametrize("sequence_length", [1, 127, 512])
+@pytest.mark.parametrize("broadcast_modulation", [False, True])
+@pytest.mark.parametrize("table_dtype", [torch.bfloat16, torch.float32])
+def test_real_materialization_kernel_is_bitwise_exact(
+    sequence_length: int,
+    broadcast_modulation: bool,
+    table_dtype: torch.dtype,
+    batch_size: int,
+) -> None:
+    from distillschedule.runtime.wan13b_modulated_norm_kernel import (
+        fused_modulated_norm_materialization,
+    )
+
+    generator = torch.Generator(device="cuda").manual_seed(43 + sequence_length)
+    normalized = torch.randn(
+        (batch_size, sequence_length, 1536),
+        device="cuda",
+        dtype=torch.float32,
+        generator=generator,
+    )
+    table = torch.randn(
+        (1, 6, 1536),
+        device="cuda",
+        dtype=table_dtype,
+        generator=generator,
+    )
+    if broadcast_modulation:
+        temb = torch.randn(
+            (batch_size, 6, 1536),
+            device="cuda",
+            dtype=torch.bfloat16,
+            generator=generator,
+        )
+        scale_component = temb[:, 1, :].unsqueeze(1).expand_as(normalized)
+        shift_component = temb[:, 2, :].unsqueeze(1).expand_as(normalized)
+    else:
+        temb = torch.randn(
+            (batch_size, sequence_length, 6, 1536),
+            device="cuda",
+            dtype=torch.bfloat16,
+            generator=generator,
+        )
+        scale_component = temb[:, :, 1, :]
+        shift_component = temb[:, :, 2, :]
+    scale = table[:, 1, :].unsqueeze(1) + scale_component.float()
+    shift = table[:, 2, :].unsqueeze(1) + shift_component.float()
+    expected = (normalized * (1 + scale) + shift).to(torch.bfloat16)
+    actual = torch.empty_like(expected)
+    fused_modulated_norm_materialization(
+        normalized,
+        table,
+        1,
+        2,
+        scale_component,
+        shift_component,
+        actual,
+    )
+    torch.cuda.synchronize()
+    assert torch.equal(expected, actual)

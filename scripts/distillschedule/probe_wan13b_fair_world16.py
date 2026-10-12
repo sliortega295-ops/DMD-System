@@ -235,6 +235,11 @@ def _build_model_fair(
     )
     metadata["generator_nograd_lora_fused_epilogue"] = lora_fused_epilogue
     metadata["grad_lora_fused_epilogue"] = install_grad_lora_fused_epilogue(model, role=role)
+    from distillschedule.runtime.wan13b_norm_policy import install as install_norm_policy
+
+    metadata["modulated_norm_fusion"] = install_norm_policy(
+        role=role, placement=args.placement, device=device
+    )
     lora_operator_attribution = install_lora_operator_attribution(
         model,
         role=role,

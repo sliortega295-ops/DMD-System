@@ -151,6 +151,11 @@ def _configure_shared_mode_args(args: argparse.Namespace) -> None:
 
 def _validate_arm_environment(placement: str) -> dict[str, Any]:
     grad_fused = grad_epilogue_requested()
+    from distillschedule.runtime.wan13b_norm_policy import requested as norm_requested
+
+    norm_fused = norm_requested()
+    if norm_fused and placement != RESIDENT_WINNER:
+        raise ValueError("FSDP control cannot enable Resident normalization fusion")
     fused = (
         os.environ.get(
             "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE", "0"
@@ -176,6 +181,7 @@ def _validate_arm_environment(placement: str) -> dict[str, Any]:
         "generator_nograd_lora_fused_epilogue": fused,
         "generator_nograd_lora_cast_cache": cast_cache,
         "grad_lora_fused_epilogue": grad_fused,
+        "modulated_norm_fusion": norm_fused,
     }
 
 
@@ -213,7 +219,8 @@ def _load_correctness_binding(
     if value.get("implementation_fingerprint") != _canonical_hash(implementation):
         raise ValueError("correctness implementation fingerprint is invalid")
     for key, expected in expected_arm.items():
-        if implementation.get(key) != expected:
+        observed_flag = implementation.get(key, False) if key == "modulated_norm_fusion" else implementation.get(key)
+        if observed_flag != expected:
             raise ValueError(f"correctness receipt arm contract changed: {key}")
     if matched.get("trace_replay_policy") != "FIXED_FIVE_STEP_COHORT_REPLAY":
         raise ValueError("correctness receipt trace replay policy changed")
@@ -789,6 +796,9 @@ def main() -> int:
         fused_receipt = _validate_fused_receipt(build, placement=args.placement)
         grad_receipt = validate_grad_epilogue_receipts(
             build, requested=bool(arm["grad_lora_fused_epilogue"]))
+        from distillschedule.runtime.wan13b_norm_policy import validate as validate_norm
+
+        norm_receipt = validate_norm(build, enabled=bool(arm["modulated_norm_fusion"]))
 
         result.update(
             status="PASS",
@@ -804,6 +814,7 @@ def main() -> int:
             runtime_cache_keys=(sorted(runtime_cache) if runtime_cache is not None else []),
             fused_epilogue_receipt=fused_receipt,
             grad_epilogue_receipt=grad_receipt,
+            modulated_norm_fusion_receipt=norm_receipt,
             runtime_contract=runtime_contract,
             gradient_sync={
                 "generator_receipt_count": len(
