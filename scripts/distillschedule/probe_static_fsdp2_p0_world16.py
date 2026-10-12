@@ -574,9 +574,10 @@ def _run_nogan_generator_update_p0(
     )
     if collect_diagnostics and before == after:
         raise AssertionError("No-GAN P0 Generator trainables did not update")
+    generator_source_step = int(entry.logical_step)
     del entry, x0, gradient_mask, batch, fake, real_cond, real_uncond, gradient, auxiliary
     return {
-        "logical_step": 10,
+        "logical_step": generator_source_step,
         "source_rank": rank,
         "physical_generator_step_after": int(generator_engine.global_steps),
         "local_trainable_before": before,

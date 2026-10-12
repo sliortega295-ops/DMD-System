@@ -67,6 +67,7 @@ class Wan13BBootstrap:
         *,
         expected_hash: str | None = None,
         verify_payloads: bool = True,
+        expected_lora_rank: int = LORA_RANK,
     ) -> "Wan13BBootstrap":
         root_path = Path(root).resolve()
         path = root_path / "manifest.json"
@@ -83,7 +84,9 @@ class Wan13BBootstrap:
             raise ValueError("Wan1.3B bootstrap identity differs from launcher")
         if int(value.get("block_count", -1)) != WAN13B_BLOCK_COUNT:
             raise ValueError("bootstrap is not the audited 30-block Wan1.3B model")
-        if int(value.get("lora_rank", -1)) != LORA_RANK:
+        if type(expected_lora_rank) is not int or not 1 <= expected_lora_rank <= 256:
+            raise ValueError("unsupported explicit bootstrap LoRA rank")
+        if int(value.get("lora_rank", -1)) != expected_lora_rank:
             raise ValueError("bootstrap LoRA rank changed")
         for component in ("generator", "critic"):
             spec = value["components"][component]

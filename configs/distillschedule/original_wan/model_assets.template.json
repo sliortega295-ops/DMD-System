@@ -1,0 +1,5 @@
+{
+  "model_root": "./assets/Wan2.1-T2V-1.3B",
+  "bootstrap": "./assets/wan-bootstrap-rank256",
+  "negative_prompt": "./assets/wan-negative-prompt"
+}

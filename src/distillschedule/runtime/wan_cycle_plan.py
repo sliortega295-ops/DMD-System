@@ -4,18 +4,25 @@ The dispatcher is shared with other native adapters; there is no alternate
 model, loss, optimizer or rollout implementation in this module.
 """
 from contextlib import nullcontext
-from typing import Any
+from typing import Any, Mapping
 
 from distillschedule.core.contracts import require
 from distillschedule.core.enums import OperationKind as Kind
 from .cycle_plan import build_cycle_graph, rollout_window_order
+from .parameterized_cycle import (
+    build_parameterized_cycle_graph,
+    parameterized_window_order,
+)
 from .role_runner import StaticRoleRunner
 from .version_sync import VersionLedger
 
 
 class WanPreparedCycle:
-    def __init__(self, prepared, records, read_versions):
+    def __init__(self, prepared, records, read_versions, *, critic_updates=5):
+        require(type(critic_updates) is int and 1 <= critic_updates <= 64,
+                "invalid native Critic count", path="wan.cycle")
         self.prepared, self.records, self.read_versions = prepared, records, read_versions
+        self.critic_updates = critic_updates
         self.native_validation_error = None
 
     def run(self):
@@ -24,7 +31,7 @@ class WanPreparedCycle:
             self.native_validation_error = "native engine commits disagree with dispatched plan"
             require(False, self.native_validation_error, path="wan.cycle.versions")
         return {"generator": results["g"], "rollouts": self.records,
-                "critic": [results[f"c{i}"] for i in range(5)]}
+                "critic": [results[f"c{i}"] for i in range(self.critic_updates)]}
 
     def receipt(self):
         value = self.prepared.receipt()
@@ -70,6 +77,93 @@ def prepare_wan_cycle(*, p0: Any, source_steps: tuple[int, ...], max_live_rollou
         return {"generator": int(generator_engine.global_steps), "critic": int(critic_engine.global_steps),
                 "ema": int(ema.optimization_step)}
     graph = build_cycle_graph(source_steps=source_steps, initial_versions=versions(), ema_after=(0,1,2,3,4))
+    return _bind_wan_cycle(
+        graph=graph, order=rollout_window_order(graph, max_live_rollouts=max_live_rollouts),
+        p0=p0, rank=rank, device=device, generator_engine=generator_engine,
+        critic_engine=critic_engine, ema=ema, trace=trace, negative=negative,
+        diagnostics=diagnostics, policy=policy, clean_runtime=clean_runtime,
+        runtime_cache=runtime_cache, deferred_finite_checks=deferred_finite_checks,
+        collect_scalars=collect_scalars, observe_grad_norm=observe_grad_norm,
+        operation_scope=operation_scope, read_versions=versions)
+
+
+def prepare_parameterized_wan_cycle(
+    *, p0: Any, source_steps: tuple[int, ...], ema_after: tuple[int, ...],
+    max_live_rollouts: int, trace_contract: Mapping[str, Any],
+    rank, device, generator_engine, critic_engine, ema, trace, negative,
+    diagnostics, policy, clean_runtime, runtime_cache, deferred_finite_checks,
+    collect_scalars=False, observe_grad_norm=None, operation_scope=None,
+    operation_order: tuple[str, ...] | None = None,
+) -> WanPreparedCycle:
+    """Use the *original* native helpers under an explicit new trace contract.
+
+    This binds existing mathematics; it does not invent a new sampler/loss.
+    A caller must supply a parameterized trace adapter that has independently
+    validated its payloads and native control flow. The old StaticWorld16Trace
+    and canonical timing/trajectory launchers retain their fixed contracts.
+    Consequently this API alone does not enable new-shape/new-frequency GPU runs.
+    """
+    path = "wan.parameterized_cycle"
+    require(isinstance(trace_contract, Mapping), "explicit trace contract required", path=path)
+    expected_keys = {"schema_version", "protocol", "source_steps", "generator_source_step",
+                     "ema_after", "physical_batch", "world_size", "input_binding"}
+    require(set(trace_contract) == expected_keys, "incomplete/unknown trace contract fields", path=path)
+    require(trace_contract["schema_version"] == "distillschedule.wan_prepared_trace_contract.v1",
+            "unsupported Wan trace contract", path=path)
+    require(trace_contract["protocol"] == "wan_native_nogan_post_g_independent_rollouts",
+            "not the native Wan no-GAN protocol", path=path)
+    require(trace_contract["input_binding"] == "validated_operation_qualified_trace",
+            "a global RNG seed is not a bound trace", path=path)
+    require(tuple(trace_contract["source_steps"]) == source_steps
+            and tuple(getattr(trace, "logical_steps", ())) == source_steps,
+            "trace/source steps differ; do not truncate an old Full5 trace", path=path)
+    require(tuple(trace_contract["ema_after"]) == ema_after,
+            "EMA policy differs from the declared trace contract", path=path)
+    require(source_steps and type(trace_contract["generator_source_step"]) is int
+            and trace_contract["generator_source_step"] == source_steps[0],
+            "Generator source step must match the admitted trace", path=path)
+    require(getattr(trace, "variant", None) == "no-gan", "GAN needs its own native adapter", path=path)
+    require(type(trace_contract["world_size"]) is int and trace_contract["world_size"] == 16
+            and type(rank) is int and 0 <= rank < 16,
+            "native Wan engine still requires world16", path=path)
+    require(type(trace_contract["physical_batch"]) is int and trace_contract["physical_batch"] == 1
+            and policy.rollout_batch_size == 1, "native Wan helper requires physical B1", path=path)
+    require(not policy.generator_nograd_persistent_unshard,
+            "persistent unshard requires a multi-action residency scope", path=path)
+    def versions():
+        return {"generator": int(generator_engine.global_steps), "critic": int(critic_engine.global_steps),
+                "ema": int(ema.optimization_step)}
+    graph = build_parameterized_cycle_graph(source_steps=source_steps, initial_versions=versions(),
+                                             ema_after=ema_after)
+    default_order = parameterized_window_order(graph, max_live_rollouts=max_live_rollouts)
+    order = default_order if operation_order is None else tuple(operation_order)
+    live = set()
+    for key in order:
+        if key.startswith("r"):
+            live.add(key)
+        elif key.startswith("c"):
+            live.discard("r" + key[1:])
+        require(len(live) <= max_live_rollouts, "order exceeds retained-rollout budget", path=path)
+    # StaticRoleRunner below checks exact operation inventory, dependencies and
+    # versions; malformed/repeated/omitted actions cannot bypass this bound.
+    return _bind_wan_cycle(
+        graph=graph, order=order,
+        p0=p0, rank=rank, device=device, generator_engine=generator_engine,
+        critic_engine=critic_engine, ema=ema, trace=trace, negative=negative,
+        diagnostics=diagnostics, policy=policy, clean_runtime=clean_runtime,
+        runtime_cache=runtime_cache, deferred_finite_checks=deferred_finite_checks,
+        collect_scalars=collect_scalars, observe_grad_norm=observe_grad_norm,
+        operation_scope=operation_scope, read_versions=versions)
+
+
+def _bind_wan_cycle(*, graph, order, p0, rank, device, generator_engine, critic_engine,
+                    ema, trace, negative, diagnostics, policy, clean_runtime,
+                    runtime_cache, deferred_finite_checks, collect_scalars,
+                    observe_grad_norm, operation_scope, read_versions):
+    """One set of native handlers for both legacy and parameterized programs."""
+    critic_ids = tuple(op.operation_id for op in graph.operations if op.kind == Kind.CRITIC_UPDATE)
+    count = len(critic_ids)
+    require(critic_ids == tuple(f"c{i}" for i in range(count)), "invalid Critic action identities", path="wan.cycle")
     records = []
     common = dict(rank=rank, device=device, trace=trace, collect_diagnostics=False,
                   diagnostics=diagnostics, runtime_cache=runtime_cache)
@@ -114,7 +208,6 @@ def prepare_wan_cycle(*, p0: Any, source_steps: tuple[int, ...], max_live_rollou
             ema.step()
     handlers = {Kind.GENERATOR_UPDATE.value:gupdate, Kind.CRITIC_ROLLOUT.value:rollout,
                 Kind.CRITIC_UPDATE.value:update, Kind.EMA_UPDATE.value:ema_update}
-    runner = StaticRoleRunner("native_runtime", handlers, versions=VersionLedger(versions()))
-    prepared = runner.prepare(graph, order=rollout_window_order(graph, max_live_rollouts=max_live_rollouts),
-                              retain_outputs=("g", *(f"c{i}" for i in range(5))))
-    return WanPreparedCycle(prepared, records, versions)
+    runner = StaticRoleRunner("native_runtime", handlers, versions=VersionLedger(read_versions()))
+    prepared = runner.prepare(graph, order=order, retain_outputs=("g", *critic_ids))
+    return WanPreparedCycle(prepared, records, read_versions, critic_updates=count)

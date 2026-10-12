@@ -1,0 +1,9 @@
+{
+  "model_root": "REPLACE_WITH_MODEL_ROOT",
+  "bootstrap": "REPLACE_WITH_MATCHED_BOOTSTRAP",
+  "expected_bootstrap_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "trace_bundle": "REPLACE_WITH_MATCHED_TRACE_BUNDLE",
+  "expected_trace_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "negative_prompt": "REPLACE_WITH_NEGATIVE_PROMPT_ASSET",
+  "schema_version": "distillschedule.original_wan_assets.v1"
+}

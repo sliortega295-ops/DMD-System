@@ -272,7 +272,18 @@
       "target": "scripts/distillschedule/launch_wan13b_fair_world16_node.sh"
     },
     {
-      "integrated_sha256": "d83eeba2196a0d0eb96d66e441439da8185bb271492b85f5a70cc0390d400aa6",
+      "adaptations": [
+        {
+          "base_integration_head": "088b8ad53f16051577aebb5d75eb6e2f5370fc13",
+          "new_integrated_sha256": "6368948969be164db0d5196449f9609b9b800c0fa7f7a25dea3cadac79ae2b38",
+          "previous_integrated_sha256": "d83eeba2196a0d0eb96d66e441439da8185bb271492b85f5a70cc0390d400aa6",
+          "publication_status": "PUBLISHED_GITHUB_BRANCH",
+          "publication_branch": "agent/original-wan-strategy-20261012",
+          "reason": "Opt-in original Wan task geometry/rank binding; legacy defaults, original math and canonical profiles preserved.",
+          "source_commit": "7e189e7ad24154e86192dfcdcaf167caf9d29d17"
+        }
+      ],
+      "integrated_sha256": "6368948969be164db0d5196449f9609b9b800c0fa7f7a25dea3cadac79ae2b38",
       "integration_note": " | Joint planner opt-in Wan composition/precision wiring, legacy defaults unchanged; GPU revalidation pending.",
       "source_commit": "67b2880901abece947732ba5de45a5c2685ab274",
       "source_path": "scripts/distillschedule/probe_wan13b_fair_world16.py",
@@ -324,7 +335,18 @@
       "target": "src/distillschedule/runtime/wan13b_lora_epilogue.py"
     },
     {
-      "integrated_sha256": "b9e702919d19d6d4da88ca87394891887508d9f644dbcaa17f854478ebc4f872",
+      "adaptations": [
+        {
+          "base_integration_head": "088b8ad53f16051577aebb5d75eb6e2f5370fc13",
+          "new_integrated_sha256": "01d2bf18f1161e6d7410bc5f599cf9d0ddc3df76ce145c0d187838d537bb0e12",
+          "previous_integrated_sha256": "b9e702919d19d6d4da88ca87394891887508d9f644dbcaa17f854478ebc4f872",
+          "publication_status": "PUBLISHED_GITHUB_BRANCH",
+          "publication_branch": "agent/original-wan-strategy-20261012",
+          "reason": "Opt-in original Wan task geometry/rank binding; legacy defaults, original math and canonical profiles preserved.",
+          "source_commit": "7e189e7ad24154e86192dfcdcaf167caf9d29d17"
+        }
+      ],
+      "integrated_sha256": "01d2bf18f1161e6d7410bc5f599cf9d0ddc3df76ce145c0d187838d537bb0e12",
       "source_commit": "67b2880901abece947732ba5de45a5c2685ab274",
       "source_path": "src/distillschedule/runtime/wan13b_upper_bound.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -373,9 +395,18 @@
           "new_integrated_sha256": "006a5a6a99277e2dc348eb44c65e00c3c3a3b4fb9e4d9bb170d12ef1f93133ca",
           "previous_integrated_sha256": "2699577d50df586579ad652c7b30f107424808273ccfe11445d43adac05938b3",
           "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        },
+        {
+          "base_integration_head": "088b8ad53f16051577aebb5d75eb6e2f5370fc13",
+          "new_integrated_sha256": "f281774e6527bda77de5537cdfd9e6bff5bd09ca7e2719c6c25f38d8d39a65f4",
+          "previous_integrated_sha256": "006a5a6a99277e2dc348eb44c65e00c3c3a3b4fb9e4d9bb170d12ef1f93133ca",
+          "publication_status": "PUBLISHED_GITHUB_BRANCH",
+          "publication_branch": "agent/original-wan-strategy-20261012",
+          "reason": "Opt-in original Wan task geometry/rank binding; legacy defaults, original math and canonical profiles preserved.",
+          "source_commit": "7e189e7ad24154e86192dfcdcaf167caf9d29d17"
         }
       ],
-      "integrated_sha256": "006a5a6a99277e2dc348eb44c65e00c3c3a3b4fb9e4d9bb170d12ef1f93133ca",
+      "integrated_sha256": "f281774e6527bda77de5537cdfd9e6bff5bd09ca7e2719c6c25f38d8d39a65f4",
       "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
       "source_path": "runtime/gst_pool_helios.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -388,9 +419,18 @@
           "new_integrated_sha256": "f44579ab6959eff7a835f3771cb1f3f4f08f9ffd1b5d8da2ebb4549208b4d3a8",
           "previous_integrated_sha256": "2e9338ca864c519d87dab5bcabf2ccac51a359a180923d5af4a2ff4e08875614",
           "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        },
+        {
+          "base_integration_head": "088b8ad53f16051577aebb5d75eb6e2f5370fc13",
+          "new_integrated_sha256": "8f29bd2167e6fa08ae2c40a4c9cd814ec7c390a3c8596d9bf8ed3c6bce1fc188",
+          "previous_integrated_sha256": "f44579ab6959eff7a835f3771cb1f3f4f08f9ffd1b5d8da2ebb4549208b4d3a8",
+          "publication_status": "PUBLISHED_GITHUB_BRANCH",
+          "publication_branch": "agent/original-wan-strategy-20261012",
+          "reason": "Opt-in original Wan task geometry/rank binding; legacy defaults, original math and canonical profiles preserved.",
+          "source_commit": "7e189e7ad24154e86192dfcdcaf167caf9d29d17"
         }
       ],
-      "integrated_sha256": "f44579ab6959eff7a835f3771cb1f3f4f08f9ffd1b5d8da2ebb4549208b4d3a8",
+      "integrated_sha256": "8f29bd2167e6fa08ae2c40a4c9cd814ec7c390a3c8596d9bf8ed3c6bce1fc188",
       "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
       "source_path": "runtime/static_fsdp2_p0_helios.py",
       "source_repository": "sliortega295-ops/DMD-System",
@@ -440,9 +480,18 @@
           "previous_integrated_sha256": "24fe6a5ede551af63d19fd4360de9997dd0c1c6dd853f1f3157d5c221a9258f9",
           "reason": "Connect Helios variants to opt-in measured component plans and native two-cycle execution; canonical helpers/profiles/results unchanged.",
           "source_commit": "5171065c6efc558fe4d7d394a2fb2976bb5c6b31"
+        },
+        {
+          "base_integration_head": "088b8ad53f16051577aebb5d75eb6e2f5370fc13",
+          "new_integrated_sha256": "62dff96366837ba5d705cec5b309cac90af1ef344d0dd00ae3c89115cfabc032",
+          "previous_integrated_sha256": "a59e54758bcd9d722ad4473ce1855b77a3f4a442229033a73d72ceb5584b9bb2",
+          "publication_status": "PUBLISHED_GITHUB_BRANCH",
+          "publication_branch": "agent/original-wan-strategy-20261012",
+          "reason": "Opt-in original Wan task geometry/rank binding; legacy defaults, original math and canonical profiles preserved.",
+          "source_commit": "7e189e7ad24154e86192dfcdcaf167caf9d29d17"
         }
       ],
-      "integrated_sha256": "a59e54758bcd9d722ad4473ce1855b77a3f4a442229033a73d72ceb5584b9bb2",
+      "integrated_sha256": "62dff96366837ba5d705cec5b309cac90af1ef344d0dd00ae3c89115cfabc032",
       "source_commit": "d865cdc0e5d7ee99fbe6102a5965de08c8c81b9d",
       "source_path": "scripts/distillschedule/probe_static_fsdp2_p0_world16.py",
       "source_repository": "sliortega295-ops/DMD-System",

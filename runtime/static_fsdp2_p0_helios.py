@@ -63,6 +63,8 @@ def run_generator_trace_rollout_batch(
     from helios.utils.utils_helios_post import run_generator
 
     loaded = make_batched_loaded_entry(tuple(loaded_entries))
+    from distillschedule.strategies.wan_task import rollout_geometry
+    geometry = rollout_geometry(loaded.operation_trace)
     tensors = loaded.tensors
     validation = loaded.operation_trace.validation
     expected_call_count = int(validation["call_count"])
@@ -113,8 +115,8 @@ def run_generator_trace_rollout_batch(
     if detailed_profile:
         tracer = NestedCallTracer(
             model,
-            base_height=48,
-            base_width=80,
+            base_height=geometry.latent_shape[-2],
+            base_width=geometry.latent_shape[-1],
             num_stages=3,
             synchronize=lambda: torch.cuda.synchronize(device),
             before_call=lambda: torch.cuda.reset_peak_memory_stats(device),
@@ -124,8 +126,8 @@ def run_generator_trace_rollout_batch(
     else:
         tracer = LightweightNestedCallAudit(
             model,
-            base_height=48,
-            base_width=80,
+            base_height=geometry.latent_shape[-2],
+            base_width=geometry.latent_shape[-1],
             num_stages=3,
         )
     physical_call = ForceNoGradCalls(tracer)
@@ -165,8 +167,8 @@ def run_generator_trace_rollout_batch(
             history_sizes=[16, 2, 1],
             is_enable_stage2=True,
             stage2_num_stages=3,
-            stage2_num_inference_steps_list=[2, 2, 2],
-            denoising_step_list=[1000, 750, 500, 250],
+            stage2_num_inference_steps_list=list(geometry.stage2_inference_steps),
+            denoising_step_list=list(geometry.denoising_step_list),
             last_step_only=False,
             last_section_grad_only=False,
             return_sim_step=False,
@@ -175,7 +177,7 @@ def run_generator_trace_rollout_batch(
             timestep_shift=5.0,
             use_dynamic_shifting=True,
             time_shift_type="linear",
-            num_critic_input_frames=9,
+            num_critic_input_frames=geometry.latent_shape[2],
             num_rollout_sections=1,
             is_skip_first_section=False,
             is_amplify_first_chunk=True,
@@ -194,10 +196,10 @@ def run_generator_trace_rollout_batch(
     if synchronize_after_rollout and not clean_runtime:
         torch.cuda.synchronize(device)
     batch_size = len(loaded.members)
-    if list(generated_x0.shape) != [batch_size, 16, 9, 48, 80]:
+    if list(generated_x0.shape) != [batch_size, *geometry.latent_shape[1:]]:
         raise AssertionError(
             "batched Generator returned a malformed x0: "
-            f"{list(generated_x0.shape)} != {[batch_size, 16, 9, 48, 80]}"
+            f"{list(generated_x0.shape)} != {[batch_size, *geometry.latent_shape[1:]]}"
         )
     if generated_x0.dtype != torch.bfloat16:
         raise AssertionError("batched Generator wire contract requires BF16 x0")
