@@ -80,9 +80,15 @@ def test_two_cycle_worker_is_a_dedicated_timing_path() -> None:
     assert '"FIXED_FIVE_STEP_COHORT_REPLAY"' in source
     assert "expected_trace_rollout_call_inventory(" in source
     assert '"trace_rollout_contract_sha256"' in source
-    assert '"model_call_count", -1)) != 56' in source
-    assert '"fused_invocation_count", -1)) != 17_080' in source
-    assert '"reference_fallback_count", -1)) != 224' in source
+    assert "expected_epilogue_counts(" in source
+    from distillschedule.runtime.wan13b_rollout_shadow import expected_epilogue_counts
+
+    # The default arm is unchanged; replay/cold work now has a distinct census
+    # instead of pretending that Python hooks execute during graph replay.
+    assert expected_epilogue_counts(cycles=2, shadow_enabled=False) == {
+        "model_call_count": 56, "fused_invocation_count": 17_080,
+        "reference_fallback_count": 224,
+    }
 
     workload = _function(WORKER, "_run_workload_cycle")
     calls = [node for node in ast.walk(workload) if isinstance(node, ast.Call)]
