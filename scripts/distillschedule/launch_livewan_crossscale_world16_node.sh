@@ -329,7 +329,7 @@ if [[ "${RUN_KIND}" == timing || "${RUN_KIND}" == profile || \
   [[ -f "${CORRECTNESS_RECEIPT}" && "${CORRECTNESS_SHA256}" =~ ^[0-9a-f]{64}$ ]] || exit 3
   [[ "$(sha256sum "${CORRECTNESS_RECEIPT}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || exit 3
   "${PYTHON}" - "${CORRECTNESS_RECEIPT}" "${EXPECTED_HEAD}" "${RUN_KIND}" <<'PY'
-import json, pathlib, sys
+import json, os, pathlib, sys
 value = json.loads(pathlib.Path(sys.argv[1]).read_text())
 expected_head = sys.argv[2]
 run_kind = sys.argv[3]
@@ -339,6 +339,15 @@ if run_kind == "timing":
     if set(value.get("heads", {}).values()) != {expected_head}:
         raise SystemExit("paired correctness gate uses a different source HEAD")
 elif run_kind == "two-cycle-timing":
+    if os.environ.get("LIVEWAN_BASELINE_PLACEMENT", "legacy-hybrid") != "legacy-hybrid":
+        sys.path.insert(0, str(pathlib.Path(os.environ["DMD_SYSTEM_ROOT"]) / "src"))
+        from distillschedule.runtime.livewan_baseline_placement import BaselinePlacement, validate_timing_gate
+        spec = BaselinePlacement(os.environ["LIVEWAN_BASELINE_PLACEMENT"],
+            os.environ.get("LIVEWAN_TEACHER_PARAMETER_OFFLOAD", "off"))
+        validate_timing_gate(value, spec=spec, expected_head=expected_head,
+            arm_id=os.environ["LIVEWAN_TWO_CYCLE_ARM_ID"],
+            seed=int(os.environ["LIVEWAN_TWO_CYCLE_SEED"]))
+        raise SystemExit(0)
     required = {
         "schema_version": "distillschedule.livewan_two_cycle_timing_gate.v2",
         "status": "PASS",
@@ -455,6 +464,8 @@ export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
   echo "run_kind=${RUN_KIND}"
   echo "execution_mode=${EXECUTION_MODE}"
   echo "pipeline_variant=${PIPELINE_VARIANT}"
+  echo "baseline_placement=${LIVEWAN_BASELINE_PLACEMENT:-legacy-hybrid}"
+  echo "teacher_parameter_offload=${LIVEWAN_TEACHER_PARAMETER_OFFLOAD:-off}"
   echo "source_prepare_root=${LIVEWAN_SOURCE_PREPARE_ROOT:-}"
   echo "source_prepare_head=${LIVEWAN_SOURCE_PREPARE_HEAD:-}"
   if [[ "${PROFILE_TWO_CYCLES}" == 1 ]]; then

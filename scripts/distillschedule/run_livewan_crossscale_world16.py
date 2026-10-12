@@ -121,6 +121,10 @@ def parser() -> argparse.ArgumentParser:
         required=True,
     )
     value.add_argument("--execution-mode", choices=("baseline", "pipeline"), required=True)
+    value.add_argument("--baseline-placement", default="legacy-hybrid", choices=(
+        "legacy-hybrid", "full-resident", "world16-fsdp",
+        "world16-fsdp-student-retained"))
+    value.add_argument("--teacher-parameter-offload", default="off", choices=("off", "cpu-block"))
     value.add_argument(
         "--pipeline-variant",
         choices=(
@@ -238,6 +242,8 @@ def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "LIVEWAN_SOURCE_RECEIPT": args.source_receipt,
         "LIVEWAN_PIPELINE_VARIANT": args.pipeline_variant,
         "LIVEWAN_EXPECTED_HEAD": args.expected_head,
+        "LIVEWAN_BASELINE_PLACEMENT": args.baseline_placement,
+        "LIVEWAN_TEACHER_PARAMETER_OFFLOAD": args.teacher_parameter_offload,
     }
     if args.flash_attn_kernel is not None:
         exports["DISTILLSCHEDULE_FLASH_ATTN_KERNEL"] = args.flash_attn_kernel
@@ -432,6 +438,13 @@ def summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
 
 def main() -> int:
     args = parser().parse_args()
+    sys_path = str(Path(__file__).resolve().parents[2] / "src")
+    import sys
+    sys.path.insert(0, sys_path)
+    from distillschedule.runtime.livewan_baseline_placement import BaselinePlacement
+    spec = BaselinePlacement(args.baseline_placement, args.teacher_parameter_offload)
+    if spec.name != "legacy-hybrid" and args.execution_mode != "baseline":
+        raise ValueError("baseline placement requires baseline execution mode")
     if not args.run_id.replace("-", "").replace("_", "").replace(".", "").isalnum():
         raise ValueError("unsafe run id")
     if len(args.expected_head) != 40:
