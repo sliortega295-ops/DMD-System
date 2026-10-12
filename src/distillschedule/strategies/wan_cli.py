@@ -19,7 +19,7 @@ from .wan_worker import OriginalWanAssets
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='distillctl workloads native [original-Wan]')
     sub = parser.add_subparsers(dest='command', required=True)
-    for name in ('validate', 'calibrate', 'assemble', 'plan', 'run', 'prepare-campaign', 'campaign'):
+    for name in ('validate', 'calibrate', 'assemble', 'plan', 'run', 'prepare-campaign', 'campaign', 'capture-inputs', 'prepare-task'):
         p = sub.add_parser(name)
         p.add_argument('--task', type=Path, required=True)
         p.add_argument('--output', type=Path, required=name not in ('validate','campaign'))
@@ -32,6 +32,15 @@ def main(argv=None):
             else:
                 p.add_argument('--plan', type=Path, required=True)
                 p.add_argument('--cycles', type=int, default=2)
+        if name in ('capture-inputs', 'prepare-task'):
+            p.add_argument('--sources', type=Path, required=True)
+            p.add_argument('--training-config', type=Path, required=True)
+            p.add_argument('--execute', action='store_true')
+            if name == 'prepare-task':
+                p.add_argument('--model-assets', type=Path, required=True)
+                p.add_argument('--without-fusion', action='store_true')
+                p.add_argument('--max-launches', type=int, default=8)
+                p.add_argument('--resume', action='store_true')
         if name == 'prepare-campaign':
             p.add_argument('--assets', type=Path, required=True)
             p.add_argument('--without-fusion', action='store_true')
@@ -64,6 +73,21 @@ def main(argv=None):
             result['native_execution'] = 'NOT_RUN_REQUIRES_EXPLICIT_EXECUTE'
             if args.command == 'validate' and args.output:
                 write_new_json(args.output, result)
+        elif args.command in ('capture-inputs', 'prepare-task'):
+            from .wan_inputs import WanInputSources, preflight_sources
+            from .wan_capture import capture, read_training_config
+            sources = WanInputSources.from_dict(json.loads(args.sources.read_text()))
+            if args.command == 'prepare-task':
+                from .wan_prepare import prepare
+                result = prepare(task, sources, json.loads(args.model_assets.read_text()),
+                                 args.training_config, args.output, execute=args.execute, resume=args.resume,
+                                 include_fusion=not args.without_fusion, max_launches=args.max_launches)
+            elif args.execute:
+                result = capture(task, sources, args.training_config, args.output)
+            else:
+                read_training_config(args.training_config)
+                result = preflight_sources(task, sources)
+                result['capture'] = 'NOT_RUN_REQUIRES_EXPLICIT_EXECUTE'
         elif args.command == 'prepare-campaign':
             from .wan_campaign import prepare
             assets = OriginalWanAssets.from_dict(json.loads(args.assets.read_text()))
