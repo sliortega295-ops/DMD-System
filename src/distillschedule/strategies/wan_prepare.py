@@ -6,12 +6,30 @@ required: changing LoRA rank must not silently reset a trained adapter.
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from pathlib import Path
 
 from distillschedule.core.contracts import require
 from distillschedule.workloads.best_known.registry import file_sha256, fingerprint, write_new_json
 from .wan_inputs import WanInputSources, preflight_sources
 from .wan_task import OriginalWanTask
+
+
+def publish_new_json(path, value):
+    """Atomic no-overwrite publication for peer-visible readiness/failure records."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, name = tempfile.mkstemp(prefix='.'+path.name+'.', dir=path.parent)
+    temporary = Path(name)
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as handle:
+            json.dump(value, handle, sort_keys=True, allow_nan=False)
+            handle.write('\n'); handle.flush(); os.fsync(handle.fileno())
+        # Link is atomic, same filesystem, and refuses an existing final record.
+        os.link(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def validate_model_assets(task, value):
@@ -67,7 +85,6 @@ def prepare(task, sources, model_assets, training_config, output, *,
     else:
         root.mkdir(parents=True)
         write_new_json(root/'preparation.json', {'identity':identity, 'preparation_sha256':key})
-    # Exclusive lock avoids two callers racing to capture or create a campaign.
     lock = root/'prepare.lock'
     with lock.open('x') as handle:
         handle.write(key+'\n')
@@ -98,7 +115,6 @@ def prepare(task, sources, model_assets, training_config, output, *,
             require(not campaign_path.parent.exists(), 'incomplete campaign preserved; inspect before recovery', path='wan.prepare')
             campaign = prepare_campaign(task, assets, campaign_path.parent,
                                         include_fusion=include_fusion, max_launches=max_launches)
-        # Recheck all source bytes after preparation, not only filenames.
         require(validate_model_assets(task, model_assets)==model and sources.inventory()['digest']==inventory['digest']
                 and file_sha256(Path(training_config))==identity['training_config_sha256']
                 and source_fingerprint()==identity['source_fingerprint'], 'source changed during preparation', path='wan.prepare')
@@ -109,7 +125,7 @@ def prepare(task, sources, model_assets, training_config, output, *,
         if (root/'ready.json').exists():
             require(json.loads((root/'ready.json').read_text())==ready, 'ready receipt changed', path='wan.prepare')
         else:
-            write_new_json(root/'ready.json', ready)
+            publish_new_json(root/'ready.json', ready)
         return ready
     finally:
         lock.unlink()
