@@ -93,6 +93,7 @@ def prepare_parameterized_wan_cycle(
     rank, device, generator_engine, critic_engine, ema, trace, negative,
     diagnostics, policy, clean_runtime, runtime_cache, deferred_finite_checks,
     collect_scalars=False, observe_grad_norm=None, operation_scope=None,
+    operation_order: tuple[str, ...] | None = None,
 ) -> WanPreparedCycle:
     """Use the *original* native helpers under an explicit new trace contract.
 
@@ -134,8 +135,19 @@ def prepare_parameterized_wan_cycle(
                 "ema": int(ema.optimization_step)}
     graph = build_parameterized_cycle_graph(source_steps=source_steps, initial_versions=versions(),
                                              ema_after=ema_after)
+    default_order = parameterized_window_order(graph, max_live_rollouts=max_live_rollouts)
+    order = default_order if operation_order is None else tuple(operation_order)
+    live = set()
+    for key in order:
+        if key.startswith("r"):
+            live.add(key)
+        elif key.startswith("c"):
+            live.discard("r" + key[1:])
+        require(len(live) <= max_live_rollouts, "order exceeds retained-rollout budget", path=path)
+    # StaticRoleRunner below checks exact operation inventory, dependencies and
+    # versions; malformed/repeated/omitted actions cannot bypass this bound.
     return _bind_wan_cycle(
-        graph=graph, order=parameterized_window_order(graph, max_live_rollouts=max_live_rollouts),
+        graph=graph, order=order,
         p0=p0, rank=rank, device=device, generator_engine=generator_engine,
         critic_engine=critic_engine, ema=ema, trace=trace, negative=negative,
         diagnostics=diagnostics, policy=policy, clean_runtime=clean_runtime,

@@ -54,11 +54,11 @@ class OriginalWanSession:
     def versions(self):
         return dict(generator=int(self.g.global_steps),critic=int(self.c.global_steps),ema=int(self.ema.optimization_step))
 
-    def prepare(self, *, operation_scope=None):
+    def prepare(self, *, operation_scope=None, operation_order=None):
         return prepare_parameterized_wan_cycle(p0=self.fair.base.p0,
             source_steps=self.task.source_steps,ema_after=self.task.ema_after,
             trace_contract=self.task.trace_contract(),max_live_rollouts=self.strategy.rollout_window,
             rank=self.rank,device=self.device,generator_engine=self.g,critic_engine=self.c,ema=self.ema,
             trace=self.trace,negative=self.negative,diagnostics=self.diagnostics,policy=self.policy,
             clean_runtime=self.clean,runtime_cache=self.runtime_cache,deferred_finite_checks=self.finite,
-            operation_scope=operation_scope)
+            operation_scope=operation_scope,operation_order=operation_order)
