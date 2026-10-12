@@ -86,7 +86,7 @@ def main():
             model=model, n_frames=21, n_world=21-blocks*3,
             cache=SimpleNamespace(num_tokens=21, evictions=0), ctx=None,
             ctx_lens=None, rope=None, dtype=torch.float32, time_scale=1000.)
-        recs = [[{"z": z, "block_start": i*3}]] * blocks
+        recs = [[{"z": z, "block_start": i*3}] for i in range(blocks)]
         inventory = CallInventory()
         with inventory.install(torch=torch, blockcausal=bc, roles={id(model): "student"}):
             with torch.no_grad():
