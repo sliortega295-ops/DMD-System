@@ -45,15 +45,27 @@ def tensors(value):
         for v in value: yield from tensors(v)
 
 
+def physical_tensor(t):
+    from torch.distributed.tensor import DTensor
+    return t.to_local() if isinstance(t, DTensor) else t
+
+
+def full_tensor(t):
+    from torch.distributed.tensor import DTensor
+    return t.full_tensor() if isinstance(t, DTensor) else t
+
+
 def storage_key(t):
-    return (str(t.device), t.untyped_storage().data_ptr(), t.untyped_storage().nbytes())
+    local = physical_tensor(t)
+    return (str(local.device), local.untyped_storage().data_ptr(), local.untyped_storage().nbytes())
 
 
 def storage_bytes(value):
-    return sum({storage_key(t): t.untyped_storage().nbytes() for t in tensors(value)}.values())
+    return sum({storage_key(t): physical_tensor(t).untyped_storage().nbytes() for t in tensors(value)}.values())
 
 
 def tensor_signature(t):
+    t=full_tensor(t)
     v=t.detach().contiguous().cpu()
     return fingerprint({'shape':list(t.shape),'stride':list(t.stride()),'dtype':str(t.dtype),
         'bytes':hashlib.sha256(v.reshape(-1).view(torch.uint8).numpy().tobytes()).hexdigest()})
@@ -279,7 +291,7 @@ class Session:
             saved={}; excluded={storage_key(t) for t in tensors((self.state,self.feeds))}
             def pack(t):
                 k=storage_key(t)
-                if k not in excluded: saved[k]=t.untyped_storage().nbytes()
+                if k not in excluded: saved[k]=physical_tensor(t).untyped_storage().nbytes()
                 return t
             self.synchronize()
             if measure and self.device.type=='cuda':
@@ -298,7 +310,7 @@ class Session:
             self.synchronize(); duration=max(1,time.perf_counter_ns()-start)
             for t in tensors(value):
                 k=storage_key(t)
-                if k not in excluded: saved[k]=t.untyped_storage().nbytes()
+                if k not in excluded: saved[k]=physical_tensor(t).untyped_storage().nbytes()
             retained=sum(saved.values())
             workspace=0
             if measure and self.device.type=='cuda':
@@ -326,7 +338,7 @@ class Session:
 
     def result_state(self, outputs):
         def clone(v):
-            if isinstance(v,torch.Tensor): return v.detach().cpu().clone()
+            if isinstance(v,torch.Tensor): return full_tensor(v).detach().cpu().clone()
             if isinstance(v,nn.Module): return clone(unwrap_module(v).state_dict())
             if isinstance(v,torch.optim.Optimizer): return clone(v.state_dict())
             if isinstance(v,Mapping): return {str(k):clone(x) for k,x in v.items()}

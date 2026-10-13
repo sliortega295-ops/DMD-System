@@ -93,19 +93,29 @@ def inventory(workload, *, limit=16):
     original = tuple(c.id for c in workload.program.calls) + ('__open_finish__',)
     modes = [('post_backward', 0)]
     if ddp_order_admitted(workload, original): modes += [('ddp_overlap', 1), ('ddp_overlap', 128)]
+    from .sharded import rejection as sharding_rejection, MODES as sharded_modes
+    reason = sharding_rejection(workload)
+    admit_sharding = reason is None and len(modes) > 1
     result = []
-    # Interleave communication variants, so small budgets do not exclude every
-    # DDP candidate merely because local checkpoint combinations came first.
+    # Interleave layouts before checkpoint depth, so a finite budget still
+    # contains both replication and sharding when the workload supports them.
     for option in local['candidates']:
-        for mode, mb in modes:
+        choices = list(modes)
+        if admit_sharding and not option['share_immutable']:
+            choices.extend((mode, 0) for mode in sharded_modes)
+        for mode, mb in choices:
             if len(result) < limit:
                 result.append({'backend':BACKEND, 'local':option, 'reduction':mode, 'bucket_cap_mb':mb})
-    total = local['total_candidates'] * len(modes)
+    from .torch_backend import sharing_inventory
+    unshared_count = local['total_candidates'] // (2 if sharing_inventory(workload) else 1)
+    total = local['total_candidates'] * len(modes) + (2*unshared_count if admit_sharding else 0)
     return {'candidates':result, 'total_candidates':total, 'exhaustive':len(result)==total,
-            'capabilities':local['capabilities']+['post_backward_mean','ddp_async_mean'],
-            'layout':'replicated', 'cross_call_overlap':False,
+            'capabilities':local['capabilities']+['post_backward_mean','ddp_async_mean']+
+                           (list(sharded_modes) if admit_sharding else []),
+            'layout':'data_parallel_replicated_or_sharded', 'cross_call_overlap':False,
             'reused_hook':'distillschedule.runtime.wan13b_fair.ddp_sum_then_divide_hook',
-            'unsupported':['automatic FSDP/HSDP','role pool partition','unequal rank batches','higher-order parameter gradients']}
+            'sharding_rejection':reason if reason else (None if admit_sharding else 'FORWARD_BACKWARD_CONTEXT'),
+            'unsupported':['automatic HSDP','role pool partition','unequal rank batches','higher-order parameter gradients']}
 
 
 class ReplicaLifecycle:
@@ -197,4 +207,6 @@ def make_session(workload, implementation):
     require(isinstance(implementation,dict) and 'local' in implementation, 'replica option required',path='open.replicated')
     # Standard Session retains all original functions, optimizer objects, version
     # updates and RNG scopes. Only a generic execution lifecycle is attached.
-    return Session(workload,implementation['local'],lifecycle=ReplicaLifecycle(workload,implementation))
+    from .sharded import ShardedLifecycle, MODES
+    lifecycle = ShardedLifecycle if implementation.get('reduction') in MODES else ReplicaLifecycle
+    return Session(workload,implementation['local'],lifecycle=lifecycle(workload,implementation))

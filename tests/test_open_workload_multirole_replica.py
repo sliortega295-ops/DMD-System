@@ -109,7 +109,8 @@ def multirole_worker(rank, rendezvous, output, frequency, width, frames):
         # enumeration prefix. Choice of mechanisms is a test matrix, not a recipe.
         chosen=[local_options[0],next(o for o in local_options if o['share_immutable'] and
                                      len(o['checkpoint_bindings'])==3)]
-        options=[o for o in inventory(workload,limit=48)['candidates'] if o['local'] in chosen]
+        options=[o for o in inventory(workload,limit=64)['candidates'] if o['local'] in chosen
+                 and not o['reduction'].startswith('fsdp2_')]
         assert len(options)==6
         for option in options:
             session=make_session(workload,option);outputs=session.run()

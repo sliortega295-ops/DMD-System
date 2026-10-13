@@ -21,7 +21,7 @@ def planning_worker(rank, rendezvous, root):
         backend=ExecutionBackend(w);root=Path(root)
         c=calibrate(w,root/'cal',max_candidates=12,samples=1,max_program_runs=14)
         assert c['replicas']==2 and len(c['variants'])==12
-        assert c['inventory']['exhaustive']
+        assert c['inventory']['exhaustive']==(c['inventory']['total_candidates']==12)
         p=backend.select_plan(lambda:plan(root/'cal/calibration.json',memory_limit_bytes=10**7))
         backend.publish(root/'plan.json',p)
         assert len(p['selected']['memory'])==2
@@ -29,7 +29,8 @@ def planning_worker(rank, rendezvous, root):
         result,session,outputs=run(w,root/'plan.json',root/'exec')
         assert result['status']=='PASS_SELECTED_PROGRAM'
         assert result['replicas']==2 and result['gpu_execution']=='NOT_RUN'
-        assert all(r['effects']['gradient_collectives']>0 for r in result['rank_executions'])
+        assert all(r['effects'].get('fsdp_sharded_parameters',0)>0 or
+                   r['effects']['gradient_collectives']>0 for r in result['rank_executions'])
         assert len(c['identity']['replicas']['ranks'])==2
         # Only one replica changes data: all replicas must reject the stale plan,
         # not let the other rank enter model collectives with incompatible inputs.

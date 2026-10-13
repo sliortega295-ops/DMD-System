@@ -64,8 +64,9 @@ class ExecutionBackend:
     def graph(self, implementation):
         if not self.distributed: return self.workload.program.compile()
         from .replica_contract import execution_graph
+        reduction=implementation['reduction']
         return execution_graph(self.workload.program, self.workload.replica_semantics,
-                               implementation['reduction'])
+                               'ddp_overlap' if reduction.startswith('fsdp2_') else reduction)
 
     def compare(self,expected,actual,**kwargs):
         from .torch_backend import compare
@@ -86,6 +87,13 @@ class ExecutionBackend:
             extra=2*sum(p.numel()*p.element_size() for key in session.lifecycle.module_keys
                         for p in session.state[key].parameters() if p.requires_grad)
         row['bucket_storage_bound_bytes']=extra
+        if session.lifecycle.option['reduction'].startswith('fsdp2_'):
+            # Tensor accounting cannot see all flattened all-gather workspaces on
+            # CPU. Include an explicit conservative staging allowance; not RSS.
+            staging=2*session.lifecycle.full_parameter_bytes
+            row['fsdp_staging_allowance_bytes']=staging
+            row['profile']={key:{**value,'workspace_bytes':value['workspace_bytes']+staging}
+                            for key,value in row['profile'].items()}
         row['static_bytes']+=extra
         rows=self.consensus(row)
         require(all(set(r['profile'])==set(row['profile']) for r in rows),

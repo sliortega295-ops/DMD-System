@@ -36,7 +36,10 @@ def worker(rank, filename, output, count, width, length):
             assert compare(global_state,state['state'],rtol=2e-5,atol=2e-7)['status']=='PASS'
             if reference is None: reference=state
             assert compare(reference,state,rtol=2e-5,atol=2e-7)['status']=='PASS'
-            assert s.effects['gradient_collectives']>0 and s.effects['replica_state_consensus']
+            assert s.effects['replica_state_consensus']
+            if impl['reduction'].startswith('fsdp2_'):
+                assert s.effects['fsdp_sharded_parameters']>0
+            else: assert s.effects['gradient_collectives']>0
             if impl['local']['share_immutable']:
                 a=s.state['learner'];a=a.module if hasattr(a,'module') else a
                 assert a.base.weight is s.state['guide'].base.weight
