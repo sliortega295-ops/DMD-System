@@ -44,7 +44,7 @@ from distillschedule.runtime.wan13b_upper_bound import (
     FreshTrainableEMA, Wan13BBootstrap, WAN13B_PYRAMID_PATCH_SEED, materialize_adam_state,
 )
 from runtime.critic_pool_helios import (
-    build_helios_pool_model, prepare_student_batch, student_forward_loss,
+    build_helios_pool_model, configure_offline_helios, prepare_student_batch, student_forward_loss,
     run_generator_trace_rollout,
 )
 from runtime.dmd_boundary import detached_dmd_surrogate_loss
@@ -175,6 +175,7 @@ def main():
         trace=StaticWorld16Trace(args.trace_bundle,variant='no-gan')
         if trace.bundle_hash!=args.expected_trace_hash: raise ValueError('trace identity mismatch')
         negative_asset=NegativePromptAsset.load(args.negative_prompt)
+        configure_offline_helios()
         from helios.modules.transformer_helios import HeliosTransformer3DModel
         transformer_source=Path(inspect.getsourcefile(HeliosTransformer3DModel))
         if hashlib.sha256(transformer_source.read_bytes()).hexdigest()!=TRANSFORMER_SHA:
