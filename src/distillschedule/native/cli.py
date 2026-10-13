@@ -11,6 +11,9 @@ from distillschedule.workloads.best_known.registry import write_new_json
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "program":
+        from distillschedule.open_workload.cli import main as program_main
+        return program_main(argv[1:])
     routing = argparse.ArgumentParser(add_help=False)
     routing.add_argument("--task", type=Path)
     known, _ = routing.parse_known_args(argv)
