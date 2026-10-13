@@ -17,8 +17,11 @@ class StaticParameterPlacement:
     parameter: torch.nn.Parameter
     tp_placement: str
     partition_dim: int | None
+    pp_replicated: bool = False
 
     def __post_init__(self):
+        if type(self.pp_replicated) is not bool:
+            raise ValueError('PP replication must be explicitly declared as a bool')
         if self.tp_placement not in ('replicated', 'output', 'input'):
             raise ValueError('every trainable requires an explicit TP placement')
         if self.partition_dim != {'replicated': None, 'output': 0, 'input': 1}[self.tp_placement]:
@@ -64,7 +67,7 @@ class StaticDataParallelState:
     model_group is the TP4 x PP2 group for ONE DP replica. It must not include
     both DP copies or count each replicated LoRA A/B four times.
     """
-    def __init__(self, placements, *, dp_group, model_group, max_norm):
+    def __init__(self, placements, *, dp_group, model_group, max_norm, pp_group=None):
         if (not dist.is_initialized() or dist.get_world_size(dp_group)!=2
                 or dist.get_world_size(model_group)!=8):
             raise ValueError('requires explicit DP2 and one TP4xPP2 model group')
@@ -73,6 +76,10 @@ class StaticDataParallelState:
         self.placements=tuple(placements)
         if len({id(x.parameter) for x in self.placements}) != len(self.placements):
             raise ValueError('duplicate trainable placement')
+        if any(x.pp_replicated for x in self.placements):
+            if pp_group is None or dist.get_world_size(pp_group) != 2:
+                raise ValueError('PP-shared prefix parameters require an explicit PP2 group')
+        self.pp_group = pp_group
         self.dp_group,self.model_group,self.max_norm=dp_group,model_group,float(max_norm)
         self.accumulations=0
         self.commits=0
@@ -96,6 +103,13 @@ class StaticDataParallelState:
         parameters=[x.parameter for x in self.placements]
         if any(p.grad is None or p.grad.dtype != torch.float32 for p in parameters):
             raise ValueError('all declared FP32 LoRA gradients must be present')
+        # A trainable prefix (text/timestep conditioning) may serve both PP
+        # halves. Its two gradient contributions must be SUMmed, not averaged.
+        # All stages bind the same canonical prefix names/order explicitly.
+        for item in self.placements:
+            if item.pp_replicated:
+                dist.all_reduce(item.parameter.grad, op=dist.ReduceOp.SUM,
+                                group=self.pp_group)
         for parameter in parameters:
             dist.all_reduce(parameter.grad,op=dist.ReduceOp.SUM,group=self.dp_group)
             parameter.grad.div_(2)
@@ -104,6 +118,8 @@ class StaticDataParallelState:
             term=item.parameter.grad.square().sum()
             if item.tp_placement=='replicated':
                 term=term/4
+            if item.pp_replicated:
+                term=term/2
             local.add_(term)
         dist.all_reduce(local,op=dist.ReduceOp.SUM,group=self.model_group)
         norm=local.sqrt()
@@ -119,5 +135,7 @@ class StaticDataParallelState:
         return dict(microbatch_size=1,microbatches_per_DP=8,DP=2,global_batch=16,
             reduction='DP_SUM_POST_DIVIDE2_AFTER_MICROBATCH_MEAN8',
             grad_norm='TP4_PP2_SUM_WITH_REPLICATED_TP_DEDUPLICATION',
+            pp_shared_trainables=sum(x.pp_replicated for x in self.placements),
+            pp_shared_gradient_rule='PP_SUM_BEFORE_DP_MEAN; NORM_COUNTS_ONE_PP_COPY',
             commits=self.commits,pending_microbatches=self.accumulations,
             timing='NOT_RUN_COMPONENT_ONLY')
