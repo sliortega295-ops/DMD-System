@@ -63,6 +63,12 @@ class ExternalLossGPipe(ScheduleGPipe):
         self._initialize_stage(arg_mbs[0], kwarg_mbs[0])
         sends = []
         for i in range(8):
+            if self._stage.is_first:
+                # Chunking creates non-leaf views. PyTorch's stage backward
+                # reads their .grad to return native upstream input gradients.
+                for tensor in arg_mbs[i]:
+                    if isinstance(tensor, torch.Tensor) and tensor.requires_grad:
+                        tensor.retain_grad()
             for work in _sorted_batch_p2p(self._stage.get_fwd_recv_ops(i), desc='fwd_recv').values():
                 _wait_batch_p2p(work)
             self._stage.forward_one_chunk(i, arg_mbs[i], kwarg_mbs[i], save_forward_output=True)
@@ -71,6 +77,9 @@ class ExternalLossGPipe(ScheduleGPipe):
             _wait_batch_p2p(work)
 
     def backward_losses(self, losses=None):
+        self._backward_losses(losses, gradient_divisor=8)
+
+    def _backward_losses(self, losses, *, gradient_divisor):
         if not self.pending:
             raise RuntimeError('no pending external-loss GPipe forward')
         if self._stage.is_last:
@@ -89,9 +98,36 @@ class ExternalLossGPipe(ScheduleGPipe):
             sends.extend(_sorted_batch_p2p(self._stage.get_bwd_send_ops(i), desc='bwd_send').values())
         for work in sends:
             _wait_batch_p2p(work)
-        self._stage.perform_reduce_grad(8)
+        self._stage.perform_reduce_grad(gradient_divisor)
         self.pending = False
         self.completed_batches += 1
+
+    def backward_output_gradient(self, gradient):
+        """The native batch loss already averages eight samples: no /8 again."""
+        if (not isinstance(gradient, torch.Tensor)
+                or tuple(gradient.shape) != (8 * self.final_output_shape[0],
+                                              *self.final_output_shape[1:])):
+            raise ValueError('external output gradient violates the final batch signature')
+        losses = None
+        if self._stage.is_last:
+            with torch.enable_grad():
+                losses = [(output * part.detach()).sum() for output, part in zip(
+                    self.last_stage_microbatch_outputs(), gradient.chunk(8), strict=True)]
+        self._backward_losses(losses, gradient_divisor=1)
+
+    def first_stage_input_gradients(self, input_count):
+        if self.pending or not self._stage.is_first:
+            raise RuntimeError('input gradients exist only after first-stage backward')
+        result = []
+        for index in range(input_count):
+            parts = [self._stage.bwd_cache[i][index] for i in range(8)]
+            if all(p is None for p in parts):
+                result.append(None)
+            elif any(p is None for p in parts):
+                raise ValueError('inconsistent native input gradient across microbatches')
+            else:
+                result.append(torch.cat(parts))
+        return result
 
     def last_stage_microbatch_outputs(self):
         if not self.pending or not self._stage.is_last:
