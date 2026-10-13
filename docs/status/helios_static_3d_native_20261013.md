@@ -21,8 +21,9 @@ optimization. Native CPU tests do not imply a GPU capacity result.
 The new CPU checkpoint fixtures observed expected-red missing-binding
 failures, then exercise real nonzero Adam slices, sparse EMA dtype/recurrence,
 and BF16 Linear/Conv3d forward/backward with FP32 master gradients.
-GPU capacity/timing: **NOT_RUN at this commit**, pending both-node CPU gates
-and a clean-source, under-lock owned world16 launch.
+GPU capacity/timing at the original implementation commit was pending. The
+subsequent actual owned launch is recorded below; CPU tests alone are not
+being promoted to a capacity PASS.
 Numerical trajectory revalidation: **DEFERRED**, not a numerical PASS.
 
 The source step10 checkpoint records provenance trace `bd97ddc9...96f12f`,
@@ -32,3 +33,34 @@ launcher admits checkpoint and execution trace separately. The static
 worker now requires both, rather than incorrectly equating historical
 checkpoint provenance with current inputs. A wrong checkpoint-provenance
 SHA still fails closed. No checkpoint or trace payload is edited.
+
+## Actual world16 capacity result
+
+- Run: `helios_nogan_native_static_tp4dp2pp2_c2_20261013_r1`.
+- Executed source: `b1749becc6226d4e99095676042d64bd55601b3c`.
+- Manifest SHA256:
+  `26e29a68d56912cf7e6a9a2faa2a6651c28b35d9e41d383724a5245971e4558f`.
+- **BLOCKED_CAPACITY_CUDA_OOM**, cycle 1, Generator gradient rollout,
+  PP stage 0. Native B1 latent was `[1,16,9,24,40]`.
+- Allocation failed at the original source expression
+  `scale_shift_table.unsqueeze(0) + temb.float()` (536 MiB requested).
+  Exact transformer block ordinal was not instrumented and is **UNKNOWN**.
+- Maximum allocated/reserved: **36.7465 / 37.5488 GiB**; observed minimum
+  driver free at failure: **346.375 MiB**.
+- No complete cycle or C2 time, and no final rank PASS receipts. The peer
+  aborted; it is not independently classified as CUDA OOM.
+- Both node owners verified cleanup PASS; cgroup `oom` and `oom_kill`
+  deltas were zero on both nodes. No host OOM is claimed.
+- GPipe retains eight independent B1 graphs per DP replica. This is a
+  lifecycle observation, not a measured byte-level memory decomposition.
+- Workload, global batch, native modulation, checkpoint policy, precision,
+  update order, and all inputs were left unchanged. No DMD-specific kernel,
+  caching, merge, offload, or reduced microbatch count was used to make the
+  static baseline fit.
+
+Persistent evidence:
+`research_artifacts/DMD-System/main_experiments_20261013/reports/helios_nogan_native_static_3d_capacity_r1.{json,md}`
+and the detailed world16 report in the same directory. Failure logs and owner
+receipts are preserved on the shared project storage. Under the accepted
+main-experiment plan this arm is recorded as a real capacity failure while
+other workload bindings are audited; no incomplete time enters the table.
