@@ -12,7 +12,7 @@ from typing import Any
 from distillschedule.core.contracts import require
 from distillschedule.runtime.parameterized_cycle import build_parameterized_cycle_graph
 from distillschedule.search.cost_model import ComponentContract,CostModel,OperationCost
-from distillschedule.search.frontier_schedule import schedule_frontier
+from distillschedule.search.service import BoundCandidate, select
 from distillschedule.search.plan_ir import BindingRule,StateAllocation,Lifetime
 from distillschedule.workloads.best_known.registry import fingerprint,file_sha256,write_new_json,repository_root
 from .wan_strategy import WanStrategy,implementations
@@ -150,7 +150,7 @@ def plan(task, paths, *, max_states=50000,beam_width=0,timeout_seconds=60,memory
     doc,variants=load_collections(task,paths)
     graph=build_parameterized_cycle_graph(source_steps=task.source_steps,
         initial_versions=doc['warm_initial_versions'],ema_after=task.ema_after)
-    ranks=tuple(range(16));ranked=[];rejected=[]
+    ranks=tuple(range(16));ranked=[];rejected=[];bound=[]
     for strategy,v,costs in variants:
         limit=v['memory_limit_bytes']
         if memory_limit_bytes is not None:
@@ -165,11 +165,14 @@ def plan(task, paths, *, max_states=50000,beam_width=0,timeout_seconds=60,memory
         lives=tuple(Lifetime(f'output-r{i}',f'r{i}',(f'c{i}',),ranks,v['output_bytes'][f'r{i}'],'producer_exit')
                     for i in range(task.fake_updates))
         state=(StateAllocation('state',ranks,v['static_bytes'],('native_runtime',),False,'original-native-state'),)
-        result=schedule_frontier(graph,rules,costs,states=state,lifetimes=lives,
-            memory_limits={r:limit for r in ranks},max_states=max_states,beam_width=beam_width,
-            timeout_seconds=timeout_seconds)
-        if result['status']!='PASS_CPU_SCHEDULE':
-            rejected.append({'strategy':strategy.to_dict(),'schedule':result});continue
+        bound.append(BoundCandidate(strategy.backend.id,strategy.to_dict(),graph,rules,costs,state,lives,
+                     {r:limit for r in ranks},'original-wan-world16'))
+    searched=select(bound,max_states=max_states,beam_width=beam_width,timeout_seconds=timeout_seconds)
+    for result in searched['rejected']:
+        rejected.append({'strategy':result['implementation'],'schedule':result})
+    for result in searched['ranked']:
+        strategy=WanStrategy.from_dict(result['implementation'])
+        costs=next(c for candidate,_,c in variants if candidate.backend==strategy.backend)
         live=peak=0
         for key in result['order']:
             live+=1 if key.startswith('r') else (-1 if key.startswith('c') else 0);peak=max(peak,live)
