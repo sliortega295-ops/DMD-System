@@ -90,7 +90,11 @@ class NativeStaticPPProxy(nn.Module):
                 value = value.expand(8, *value.shape[1:])
             if value.shape[0] != 8:
                 raise ValueError('native cohort lost eight independent sample rows: '+name)
-            result.append(value)
+            # PP validates strides as well as shape/dtype. A shared B1
+            # condition expands with stride0, whereas per-sample conditions
+            # arrive contiguous; canonicalize their transport, preserving
+            # values and autograd, before reusing a static schedule.
+            result.append(value.contiguous())
         return tuple(result)
 
     def _prepare(self, inputs, first_step, grad):
