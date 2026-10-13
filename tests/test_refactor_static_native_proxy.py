@@ -17,7 +17,10 @@ class _Block(torch.nn.Module):
         self.linear = torch.nn.Linear(5, 5, dtype=torch.bfloat16)
 
     def forward(self, hidden, encoder, timestep_proj, rotary):
-        return (self.linear(hidden) + encoder + timestep_proj * rotary).tanh()
+        # RoPE metadata has no upstream differentiable owner. In particular,
+        # a kernel may return no derivative for its fixed frequencies. PP
+        # must not require such a derivative or suppress genuine inputs.
+        return (self.linear(hidden) + encoder + timestep_proj * rotary.detach()).tanh()
 
 
 class _Native(torch.nn.Module):
@@ -118,6 +121,10 @@ def _run(rank, rendezvous, cooperative=False):
             assert torch.equal(actual, expected)
         assert proxy.receipt()['actual_stage_B1_forward_count'] == 24
         assert proxy.receipt()['pending_backward_schedules'] == 0
+        transport = proxy.receipt()['gradient_transport']
+        assert len(transport) == 1
+        assert transport[0]['constant_boundary_inputs'] == ['rotary_emb']
+        assert transport[0]['transport_only_zero_grad_count'] == (8 if rank == 1 else 0)
         assert not torch.cuda.is_initialized()
     finally:
         dist.destroy_process_group()

@@ -2,6 +2,7 @@
 import copy
 from datetime import timedelta
 
+import pytest
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
@@ -77,3 +78,24 @@ def _external_loss_worker(rank, rendezvous):
 
 def test_actual_gpipe8_other_roles_before_generator_checkpoint_backward(tmp_path):
     mp.spawn(_external_loss_worker, args=(str(tmp_path / 'gloo_external_gpipe'),), nprocs=2, join=True)
+
+
+def test_constant_boundary_wire_zero_does_not_suppress_real_gradient():
+    from distillschedule.runtime.static_gpipe_external_loss import _complete_boundary_gradients
+    buffers = (torch.zeros(1, 3, requires_grad=True), torch.ones(1, 3))
+    actual_gradient = torch.full_like(buffers[0], .3)
+    completed, count = _complete_boundary_gradients((actual_gradient, None), buffers,
+        constant_inputs={1}, names=('hidden_states', 'rotary_emb'))
+    assert completed[0] is actual_gradient
+    assert torch.equal(completed[1], torch.zeros_like(buffers[1]))
+    assert count == 1
+
+
+def test_missing_differentiable_boundary_gradient_fails_with_field_name():
+    from distillschedule.runtime.static_gpipe_external_loss import _complete_boundary_gradients
+    with pytest.raises(ValueError, match='missing differentiable.*encoder_hidden_states'):
+        _complete_boundary_gradients((None,), (torch.ones(1, 3, requires_grad=True),),
+            constant_inputs=set(), names=('encoder_hidden_states',))
+    with pytest.raises(ValueError, match='constant acquired a gradient owner'):
+        _complete_boundary_gradients((None,), (torch.ones(1, 3, requires_grad=True),),
+            constant_inputs={0}, names=('rotary_emb',))

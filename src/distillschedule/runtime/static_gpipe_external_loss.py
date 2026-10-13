@@ -19,6 +19,32 @@ def _external_loss_only(*_args):
     raise RuntimeError('DMD loss must be supplied after the separate Score forwards')
 
 
+def _complete_boundary_gradients(gradients, buffers, *, constant_inputs, names):
+    """Supply wire zeros only for admitted inputs with no upstream owner.
+
+    Torch 2.10 PP mirrors every forward receive with a backward send, even
+    when the original tensor is a constant. A wire zero satisfies that fixed
+    transport protocol; stage0 autograd discards it for its constant output.
+    A missing differentiable input must remain an error, not a zero gradient.
+    """
+    if not (len(gradients) == len(buffers) == len(names)):
+        raise ValueError('native PP boundary gradient arity changed')
+    completed, zeros = [], 0
+    for index, (gradient, buffer, name) in enumerate(zip(gradients, buffers, names, strict=True)):
+        if index in constant_inputs:
+            if buffer.requires_grad or gradient is not None:
+                raise ValueError('declared constant acquired a gradient owner: '+name)
+            gradient = torch.zeros_like(buffer)
+            zeros += 1
+        elif gradient is None:
+            raise ValueError('missing differentiable native PP boundary gradient: '+name)
+        if (gradient.shape != buffer.shape or gradient.dtype != buffer.dtype
+                or gradient.device != buffer.device):
+            raise ValueError('native PP boundary gradient signature changed: '+name)
+        completed.append(gradient)
+    return tuple(completed), zeros
+
+
 class ExternalLossGPipe(ScheduleGPipe):
     """Retains eight B1 graphs; exactly one mean8 backward/update boundary.
 
@@ -26,7 +52,8 @@ class ExternalLossGPipe(ScheduleGPipe):
     code may construct the same detached score inputs. No optimizer step, DP
     synchronization, caching, role sharing or sample selection happens here.
     """
-    def __init__(self, stage, final_output_example):
+    def __init__(self, stage, final_output_example, *, constant_boundary_inputs=(),
+                 boundary_input_names=()):
         if torch.__version__ != '2.10.0+cu128':
             raise ValueError('private GPipe seam is admitted only for Torch 2.10.0+cu128')
         super().__init__(stage, n_microbatches=8, loss_fn=_external_loss_only, scale_grads=True)
@@ -34,6 +61,9 @@ class ExternalLossGPipe(ScheduleGPipe):
         self.completed_batches = 0
         self.final_output_shape = tuple(final_output_example.shape)
         self.final_output_dtype = final_output_example.dtype
+        self.constant_boundary_inputs = frozenset(constant_boundary_inputs)
+        self.boundary_input_names = tuple(boundary_input_names)
+        self.transport_only_zero_grad_count = 0
 
     def forward_batch(self, *args, **kwargs):
         if self.pending:
@@ -61,6 +91,10 @@ class ExternalLossGPipe(ScheduleGPipe):
             raise ValueError('forward-only external-loss pass must retain output graphs')
         arg_mbs, kwarg_mbs = self._check_inputs(arg_mbs, kwarg_mbs, None, None)
         self._initialize_stage(arg_mbs[0], kwarg_mbs[0])
+        if self._stage.is_last:
+            for received in self._stage.args_recv_info.values():
+                for index in self.constant_boundary_inputs:
+                    received[index].buffer.requires_grad_(False)
         sends = []
         for i in range(8):
             if self._stage.is_first:
@@ -95,6 +129,13 @@ class ExternalLossGPipe(ScheduleGPipe):
                 _wait_batch_p2p(work)
             self._stage.backward_one_chunk(i, loss=losses[i] if self._stage.is_last else None,
                                            last_backward=i == 7)
+            if self._stage.is_last:
+                received = self._stage.args_recv_info[i]
+                completed, count = _complete_boundary_gradients(self._stage.bwd_cache[i],
+                    tuple(r.buffer for r in received), constant_inputs=self.constant_boundary_inputs,
+                    names=self.boundary_input_names)
+                self._stage.bwd_cache[i] = completed
+                self.transport_only_zero_grad_count += count
             sends.extend(_sorted_batch_p2p(self._stage.get_bwd_send_ops(i), desc='bwd_send').values())
         for work in sends:
             _wait_batch_p2p(work)
@@ -143,12 +184,16 @@ class ExternalLossGPipe(ScheduleGPipe):
             gradient_scaling='MICROBATCH_MEAN8_BEFORE_DP2_MEAN',
             completed_forward_backward_batches=self.completed_batches,
             pending_external_backward=self.pending,
+            constant_boundary_inputs=[self.boundary_input_names[i]
+                                      for i in sorted(self.constant_boundary_inputs)],
+            transport_only_zero_grad_count=self.transport_only_zero_grad_count,
             upstream_gpipe_source_sha256=hashlib.sha256(inspect.getsource(ScheduleGPipe).encode()).hexdigest(),
             native_model_binding='NOT_RUN_COMPONENT_ONLY', native_timing='NOT_RUN')
 
 
 def build_external_loss_gpipe(stage_module, *, stage_index, group, device,
-                              input_args, output_args, final_output_args):
+                              input_args, output_args, final_output_args,
+                              constant_boundary_inputs=(), boundary_input_names=None):
     if not dist.is_initialized() or dist.get_world_size(group) != 2:
         raise ValueError('requires explicit PP2')
     if stage_index not in (0, 1) or dist.get_rank(group) != stage_index:
@@ -158,6 +203,18 @@ def build_external_loss_gpipe(stage_module, *, stage_index, group, device,
             or len(final_output_args) != 1
             or final_output_args[0].shape[0] != 1):
         raise ValueError('requires one actual tensor output per B1 stage')
+    boundary = output_args if stage_index == 0 else input_args
+    if (not isinstance(constant_boundary_inputs, tuple)
+            or any(type(i) is not int or not 0 <= i < len(boundary)
+                   for i in constant_boundary_inputs)
+            or len(set(constant_boundary_inputs)) != len(constant_boundary_inputs)):
+        raise ValueError('constant boundary inputs require explicit unique field indices')
+    names = (tuple('input_'+str(i) for i in range(len(boundary)))
+             if boundary_input_names is None else boundary_input_names)
+    if (not isinstance(names, tuple) or len(names) != len(boundary)
+            or any(not isinstance(n, str) or not n for n in names)):
+        raise ValueError('all native boundary fields must be named')
     stage = PipelineStage(stage_module, stage_index, 2, torch.device(device),
         input_args=input_args, output_args=output_args, group=group)
-    return ExternalLossGPipe(stage, final_output_args[0])
+    return ExternalLossGPipe(stage, final_output_args[0],
+        constant_boundary_inputs=constant_boundary_inputs, boundary_input_names=names)

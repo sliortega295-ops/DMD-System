@@ -13,18 +13,19 @@ import torch.distributed as dist
 from torch import nn
 
 from .static_gpipe_autograd import NativeBatchGPipeAutograd
-from .static_gpipe_external_loss import build_external_loss_gpipe
+from .static_gpipe_external_loss import ExternalLossGPipe, build_external_loss_gpipe
 from .static_native_pp_stage import NativeSourcePPStage
 from .static_pipeline import build_static_gpipe
 
 
 class _StageCall(nn.Module):
-    def __init__(self, stage, metadata, first_step):
+    def __init__(self, stage, metadata, first_step, boundary_gradient_required=None):
         super().__init__()
         # Each live checkpoint graph retains its native block arguments. The
         # stage itself is shared only within this one physical role, not G/C.
         self.stage = stage
         self.metadata, self.first_step = metadata, first_step
+        self.boundary_gradient_required = boundary_gradient_required
         self.calls = self.grad_calls = 0
 
     def forward(self, *args):
@@ -33,7 +34,13 @@ class _StageCall(nn.Module):
         self.calls += 1
         self.grad_calls += int(torch.is_grad_enabled())
         if self.stage.stage_index == 0:
-            return self.stage(*args, is_first_denoising_step=self.first_step)
+            fields = self.stage(*args, is_first_denoising_step=self.first_step)
+            if self.boundary_gradient_required is not None:
+                for name, tensor, required in zip(self.stage.TRANSPORT_FIELDS, fields,
+                                                  self.boundary_gradient_required, strict=True):
+                    if tensor.requires_grad != required:
+                        raise ValueError('native PP boundary gradient owner changed: '+name)
+            return fields
         context = dict(self.metadata)
         context.update(zip(self.stage.TRANSPORT_FIELDS, args, strict=True))
         context = self.stage.split.blocks(self.stage.model, context,
@@ -98,22 +105,27 @@ class NativeStaticPPProxy(nn.Module):
         return tuple(result)
 
     def _prepare(self, inputs, first_step, grad):
-        key = json.dumps(dict(args=[(list(t.shape[1:]), str(t.dtype)) for t in inputs],
+        key = json.dumps(dict(args=[(list(t.shape[1:]), str(t.dtype), t.requires_grad) for t in inputs],
                               first_step=first_step, grad=grad), sort_keys=True)
         if key in self._schedules:
             return self._schedules[key]
-        micro = tuple(t[:1].detach() for t in inputs)
+        micro = tuple(t[:1].detach().requires_grad_(grad and t.requires_grad) for t in inputs)
         packet = [None]
         boundary = None
         if self.stage.stage_index == 0:
-            with torch.no_grad():
+            with torch.set_grad_enabled(grad):
                 context = self.stage.split.prefix(self.native_model, *micro,
                     return_dict=False, is_first_denoising_step=first_step)
             metadata = {k: v for k, v in context.items() if k not in self.stage.TRANSPORT_FIELDS}
             if any(isinstance(v, torch.Tensor) for v in metadata.values()):
                 raise ValueError('unregistered native prefix tensor in stage metadata')
+            required = [bool(context[n].requires_grad) for n in self.stage.TRANSPORT_FIELDS]
+            # Hidden-state ownership also includes the trainable native blocks
+            # before this boundary. Each actual stage0 call audits the result.
+            required[0] |= grad and any(p.requires_grad for p in
+                self.native_model.blocks[self.stage.start:self.stage.stop].parameters())
             packet[0] = dict(metadata=metadata, fields=[(list(context[n].shape), str(context[n].dtype))
-                                for n in self.stage.TRANSPORT_FIELDS])
+                                for n in self.stage.TRANSPORT_FIELDS], boundary_gradient_required=required)
             boundary = tuple(context[n].detach().contiguous() for n in self.stage.TRANSPORT_FIELDS)
         dist.broadcast_object_list(packet, src=dist.get_global_rank(self.pp_group, 0),
                                    group=self.pp_group, device=self.device)
@@ -122,12 +134,15 @@ class NativeStaticPPProxy(nn.Module):
             boundary = tuple(torch.empty(shape, dtype=dtypes[dtype], device=self.device)
                              for shape, dtype in packet[0]['fields'])
         output_example = inputs[0][:1].detach()
-        module = _StageCall(self.stage, packet[0]['metadata'], first_step)
+        required = tuple(packet[0]['boundary_gradient_required']) if grad else None
+        module = _StageCall(self.stage, packet[0]['metadata'], first_step, required)
         options = dict(stage_index=self.stage.stage_index, group=self.pp_group,
             device=self.device, input_args=micro if self.stage.stage_index == 0 else boundary,
             output_args=boundary if self.stage.stage_index == 0 else (output_example,))
         if grad:
-            schedule = build_external_loss_gpipe(module, **options, final_output_args=(output_example,))
+            schedule = build_external_loss_gpipe(module, **options, final_output_args=(output_example,),
+                constant_boundary_inputs=tuple(i for i, needed in enumerate(required) if not needed),
+                boundary_input_names=self.stage.TRANSPORT_FIELDS)
             run = NativeBatchGPipeAutograd(schedule, stage_index=self.stage.stage_index,
                                           group=self.pp_group, device=self.device)
         else:
@@ -184,4 +199,6 @@ class NativeStaticPPProxy(nn.Module):
             microbatch_size=1, microbatches=8, pending_backward_schedules=pending,
             peak_allocated_observed_bytes=self.peak_allocated_observed,
             peak_reserved_observed_bytes=self.peak_reserved_observed,
+            gradient_transport=[s.receipt() for s, _ in self._schedules.values()
+                                if isinstance(s, ExternalLossGPipe)],
             stage=self.stage.receipt(), merged_lora=False, DMD_optimizations=False)

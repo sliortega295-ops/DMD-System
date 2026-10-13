@@ -41,11 +41,24 @@ multi-role external Score loss, pyramid input gradients, and rank-local native
 samplers. A separate actual-runtime fresh-process import/asset gate is required
 before a GPU launch. CPU fixture timings are not training timings.
 
-The native world16 two-cycle capacity run and C2 baseline timing are **NOT_RUN**
-at this commit. Numerical trajectory revalidation is deferred by the user, not
+Native world16 attempts R3/R4 failed before finishing cycle1 at stride and
+boundary-gradient transport seams, respectively; they are preserved and are
+not timing results. Both node owners cleaned up with no new OOM. The native
+two-cycle capacity gate and C2 baseline timing are **NOT_COMPLETED** at this
+commit. Numerical trajectory revalidation is deferred by the user, not
 promoted to PASS. A completed launch additionally requires 16 final receipts,
 unchanged call/update/sample/version contracts, finite values, no new OOM and
 both sealed node-owner cleanup receipts.
+
+The PP bridge records actual prefix gradient ownership and checks it on
+every stage0 call. Torch2.10 requires a backward wire for even constant
+forward fields; only declared constants receive transport-only zeros. Missing
+differentiable hidden/conditioning gradients still fail with the field name.
+The constant-RoPE regression reproduced the missing-gradient error before the
+change. Seven focused real CPU tests passed on each node, including chained
+native input gradients and rejection of a missing differentiable gradient.
+The specific missing field of the preserved R4 native failure is unknown;
+its old error did not name the field. Fresh native validation remains required.
 
 Evidence root:
 `/home/lyy/Helios/research_artifacts/DMD-System/main_experiments_20261013/`.
