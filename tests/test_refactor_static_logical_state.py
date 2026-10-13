@@ -109,3 +109,20 @@ def test_logical_ema_preserves_source_dtype_recurrence_and_owned_subset(tmp_path
     assert ema.optimization_step == 11
     assert ema.receipt()['initial_optimization_step'] == 10
     assert not torch.cuda.is_initialized()
+
+
+def test_checkpoint_provenance_is_not_the_new_execution_trace(tmp_path):
+    import hashlib
+    from runtime.critic_pool_checkpoint import LogicalCheckpointPackage, _canonical_json
+
+    source_trace, execution_trace = 'a'*64, 'b'*64
+    manifest = dict(schema_version='distillschedule.logical_checkpoint.v3',
+        global_step=10, input_trace_hash=source_trace, ema=dict(optimization_step=10),
+        components={role:dict(parameter_version=version, scheduler_state=dict(last_epoch=version))
+                    for role, version in [('generator',2),('critic',10)]})
+    manifest['manifest_hash'] = hashlib.sha256(_canonical_json(manifest)).hexdigest()
+    (tmp_path/'manifest.json').write_text(json.dumps(manifest))
+    restored = LogicalCheckpointPackage.load(tmp_path, expected_trace_hash=source_trace)
+    assert restored.manifest['input_trace_hash'] == source_trace != execution_trace
+    with pytest.raises(ValueError, match='operation trace disagree'):
+        LogicalCheckpointPackage.load(tmp_path, expected_trace_hash=execution_trace)

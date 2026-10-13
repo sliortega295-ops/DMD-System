@@ -24,3 +24,11 @@ and BF16 Linear/Conv3d forward/backward with FP32 master gradients.
 GPU capacity/timing: **NOT_RUN at this commit**, pending both-node CPU gates
 and a clean-source, under-lock owned world16 launch.
 Numerical trajectory revalidation: **DEFERRED**, not a numerical PASS.
+
+The source step10 checkpoint records provenance trace `bd97ddc9...96f12f`,
+whereas the already-validated future execution trace is `654d4901...46d3`.
+These are two distinct pinned identities, just as the original FSDP2
+launcher admits checkpoint and execution trace separately. The static
+worker now requires both, rather than incorrectly equating historical
+checkpoint provenance with current inputs. A wrong checkpoint-provenance
+SHA still fails closed. No checkpoint or trace payload is edited.

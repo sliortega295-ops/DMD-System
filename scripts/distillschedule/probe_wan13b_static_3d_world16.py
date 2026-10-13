@@ -190,6 +190,7 @@ def main():
     ap.add_argument('--workload',choices=('wan13b','helios-nogan'),default='wan13b')
     for flag in ('score-model-root','precast-generator-root','precast-score-root'):
         ap.add_argument('--'+flag)
+    ap.add_argument('--expected-checkpoint-trace-hash')
     ap.add_argument('--validate-only',action='store_true')
     args=ap.parse_args()
     rank=int(os.environ.get('RANK','0')); local=int(os.environ.get('LOCAL_RANK','0'))
@@ -209,11 +210,14 @@ def main():
         if logical:
             if not all((args.score_model_root,args.precast_generator_root,args.precast_score_root)):
                 raise ValueError('14B static reference requires original role roots and validated precast assets')
-            boot=LogicalCheckpointPackage.load(args.bootstrap, expected_trace_hash=args.expected_trace_hash)
+            if not args.expected_checkpoint_trace_hash:
+                raise ValueError('checkpoint provenance trace must be pinned separately from execution trace')
+            boot=LogicalCheckpointPackage.load(args.bootstrap, expected_trace_hash=args.expected_checkpoint_trace_hash)
             if boot.manifest_hash != args.expected_bootstrap_hash:
                 raise ValueError('logical checkpoint identity changed')
         else:
-            if any((args.score_model_root,args.precast_generator_root,args.precast_score_root)):
+            if any((args.score_model_root,args.precast_generator_root,args.precast_score_root,
+                    args.expected_checkpoint_trace_hash)):
                 raise ValueError('Wan bootstrap cannot borrow Helios role roots')
             boot=Wan13BBootstrap.load(args.bootstrap, expected_hash=args.expected_bootstrap_hash)
         trace=StaticWorld16Trace(args.trace_bundle,variant='no-gan')
@@ -234,6 +238,7 @@ def main():
         source_ranks=tuple(layout.logical_sample_rank(dp,i) for i in range(8))
         row.update(layout=layout.receipt(),coordinate=dict(pp=pp,dp=dp,tp=tp),source_ranks=source_ranks,
             workload=args.workload,lora_master_dtype='FP32',lora_compute_dtype='BF16' if logical else 'FP32',
+            checkpoint_provenance_trace_hash=args.expected_checkpoint_trace_hash,
             bootstrap_hash=boot.manifest_hash,trace_hash=trace.bundle_hash,
             static_layout='TP4_DP2_PP2',DMD_optimizations=False,merged_lora_count=0,
             transformer_source_sha256=TRANSFORMER_SHA,model_config_sha256=hashlib.sha256(model_config.read_bytes()).hexdigest(),
