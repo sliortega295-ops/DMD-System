@@ -70,6 +70,7 @@ def calibrate(workload,output,*,max_candidates=8,samples=2,max_program_runs=32,r
     variants=[];failed=[];actual=1
     try:
         for index,implementation in enumerate(inventory['candidates']):
+            candidate_graph=backend.validated(lambda:backend.graph(implementation),'candidate graph')
             profiles=[];rank_observations=[];static=0;effects=None;gate=None
             for _ in range(samples):
                 actual+=1
@@ -107,7 +108,8 @@ def calibrate(workload,output,*,max_candidates=8,samples=2,max_program_runs=32,r
             cost_path=directory/'costs.json';backend.publish(cost_path,costs.to_dict())
             variants.append({'id':fingerprint(implementation),'implementation':implementation,
                              'cost_model':str(cost_path),'cost_sha256':file_sha256(cost_path),
-                             'retained_bytes':retained,'static_bytes':static,'effects':effects,'reference_gate':gate})
+                             'retained_bytes':retained,'static_bytes':static,'effects':effects,'reference_gate':gate,
+                             'graph':candidate_graph.to_dict()})
         require(variants,'no numerically admitted implementation',path='open.calibrate')
         require(backend.identity()==identity and source_identity()==source,'workload/source changed during calibration',path='open.calibrate')
         manifest={'schema_version':SCHEMA,'identity':identity,'source':source,'hardware':hardware,
@@ -130,8 +132,8 @@ def load_calibration(path):
     require(type(world) is int and 1<=world<=1024,'invalid replica count',path='open.plan')
     ranks=tuple(range(world)); resources=tuple(f'gpu:{r}' for r in ranks)
     result=[]
-    graph=graph_from_dict(manifest['graph'])
     for row in manifest['variants']:
+        graph=graph_from_dict(row.get('graph',manifest['graph']))
         require(file_sha256(Path(row['cost_model']))==row['cost_sha256'],'changed component costs',path='open.plan')
         costs=CostModel.from_dict(_read(row['cost_model']));costs.verify_receipts()
         require(row['id']==fingerprint(row['implementation']) and row['reference_gate']['status']=='PASS',
@@ -220,6 +222,8 @@ def run(workload,plan_path,output,*,rtol=1e-5,atol=1e-7):
     selected=document['selected'];matches=[v for v in variants if v[0]['id']==selected['candidate_id']]
     require(len(matches)==1 and selected['implementation']==matches[0][0]['implementation'],'unmeasured implementation',path='open.run')
     row,g,rules,costs,lives=matches[0]
+    require(backend.graph(row['implementation']).to_dict()==g.to_dict(),
+            'execution constraints differ from native backend',path='open.run')
     order=verify_order(selected,g,rules,costs,lives,row['static_bytes'],document['memory_limit_bytes'])
     root=Path(output).resolve();backend.mkdir(root)
     try:

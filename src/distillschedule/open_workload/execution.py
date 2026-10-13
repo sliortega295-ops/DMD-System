@@ -61,6 +61,12 @@ class ExecutionBackend:
         from .torch_backend import Session
         return Session(self.workload,implementation)
 
+    def graph(self, implementation):
+        if not self.distributed: return self.workload.program.compile()
+        from .replica_contract import execution_graph
+        return execution_graph(self.workload.program, self.workload.replica_semantics,
+                               implementation['reduction'])
+
     def compare(self,expected,actual,**kwargs):
         from .torch_backend import compare
         result=compare(expected,actual,**kwargs)

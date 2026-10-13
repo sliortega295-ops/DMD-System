@@ -6,7 +6,6 @@ averaged; input/latent gradients remain on their original autograd path. Each
 rank executes the same program with its own feeds. No FSDP/pool claim is made.
 """
 from __future__ import annotations
-from dataclasses import dataclass
 from typing import Callable
 import torch
 import torch.distributed as dist
@@ -127,6 +126,9 @@ class ReplicaLifecycle:
                     'unknown executable reduction capability', path='open.replicated')
         checked(validate, 'implementation admission')
         identity(self.workload)
+        from .replica_contract import execution_graph
+        session.graph = checked(lambda: execution_graph(self.workload.program,
+            self.workload.replica_semantics, self.option['reduction']), 'execution graph')
         self.module_keys=tuple(sorted(set(self.workload.replica_semantics.module_bindings.values())))
         if self.option['reduction']=='ddp_overlap':
             from distillschedule.runtime.wan13b_fair import _DDPCommState, ddp_sum_then_divide_hook
@@ -157,6 +159,14 @@ class ReplicaLifecycle:
         self.backward_count+=1
         if self.option['reduction']!='post_backward': return
         parameters=[p for key in self.module_keys for p in unwrap_module(session.state[key]).parameters() if p.requires_grad]
+        def validate_gradients():
+            for parameter in parameters:
+                grad = parameter.grad
+                require(grad is None or (grad.layout == torch.strided and not grad.requires_grad
+                        and grad.shape == parameter.shape and grad.dtype == parameter.dtype
+                        and bool(torch.isfinite(grad).all())),
+                        'only finite dense first-order parameter gradients admitted', path='open.replicated')
+        checked(validate_gradients, 'parameter gradients')
         # None on one replica means zero contribution, not an omitted collective.
         flags=torch.tensor([int(p.grad is not None) for p in parameters],device=session.device,dtype=torch.int64)
         dist.all_reduce(flags,op=dist.ReduceOp.SUM)

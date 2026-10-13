@@ -7,7 +7,7 @@ which reduction implementation or bucket size to use. Arbitrary autograd.grad
 on trainable parameters and unequal-rank batches need different contracts.
 """
 from __future__ import annotations
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Mapping
 from distillschedule.core.contracts import require
 
@@ -43,6 +43,10 @@ class ReplicaSemantics:
             elif c.grad == 'grad' and not c.writes and not c.backward_of:
                 require(not (set(c.reads) & trainable),
                         'trainable forward is missing its module interface', path='open.replica')
+        optimizers = {k for k, value in workload.state.items()
+                      if isinstance(value, torch.optim.Optimizer)}
+        require(all(not (set(calls[k].writes) & (trainable | optimizers)) for k in self.backward_calls),
+                'parameter backward and model/optimizer update must be separate calls', path='open.replica')
         # Every optimizer parameter must belong to the registered models. No
         # mutation of hidden/external tensors can be given replica semantics.
         params = {id(p) for k in trainable for p in workload.state[k].parameters() if p.requires_grad}
@@ -61,3 +65,49 @@ class ReplicaSemantics:
     def to_dict(self):
         return {'module_bindings': dict(self.module_bindings), 'backward_calls': list(self.backward_calls),
                 'local_batch_size': self.local_batch_size, 'objective': self.objective}
+
+
+def ddp_completion_edges(program, semantics):
+    """Conservative reducer-context lifetimes derived from semantic forwards.
+
+    The reference call order must already be executable. Add ONLY ordering
+    constraints, never computation or a new update. These edges prevent search
+    from starting a second forward before the first backward has completed.
+    """
+    ancestors = {}
+    for call in program.calls:
+        parents = set(call.inputs) & set(ancestors)
+        ancestry = set(parents)
+        for parent in parents: ancestry.update(ancestors[parent])
+        ancestors[call.id] = ancestry
+    active = {}; completed = {}; edges = set()
+    for call in program.calls:
+        module = semantics.module_bindings.get(call.binding)
+        if module is not None:
+            require(module not in active, 'DDP reference overwrites an outstanding forward', path='open.replica')
+            if module in completed: edges.add((completed[module], call.id))
+            if call.grad == 'grad': active[module] = call.id
+            else: completed[module] = call.id
+        if call.id in semantics.backward_calls:
+            for module, forward in tuple(active.items()):
+                if forward in ancestors[call.id]:
+                    completed[module] = call.id
+                    del active[module]
+        require(not (set(call.writes) & set(active)),
+                'DDP parameter update precedes backward completion', path='open.replica')
+    require(not active, 'DDP forward has no declared parameter backward', path='open.replica')
+    return tuple(sorted(edges))
+
+
+def execution_graph(program, semantics, reduction):
+    graph = program.compile()
+    if reduction == 'post_backward': return graph
+    require(reduction == 'ddp_overlap', 'unknown reducer', path='open.replica')
+    from distillschedule.core.graph import Dependency, ExecutionGraph
+    edges = list(graph.dependencies)
+    existing = {(edge.source, edge.target) for edge in edges}
+    for source, target in ddp_completion_edges(program, semantics):
+        if (source, target) not in existing:
+            edges.append(Dependency(source, target, 'reducer_context_completion'))
+    return ExecutionGraph(graph.operations, tuple(edges),
+        {**graph.metadata, 'execution_constraint': 'ddp_forward_backward_context_v1'})
