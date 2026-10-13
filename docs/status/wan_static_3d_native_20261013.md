@@ -1,4 +1,4 @@
-# Wan native static 3D baseline — pending cluster validation
+# Wan native static 3D baseline — native two-cycle result
 
 This isolated branch implements the requested **ReaLHF-like placement
 baseline**, not ReaLHF itself and not a timing simulation. No default profile
@@ -62,3 +62,18 @@ its old error did not name the field. Fresh native validation remains required.
 
 Evidence root:
 `/home/lyy/Helios/research_artifacts/DMD-System/main_experiments_20261013/`.
+
+## Completed native R5 result
+
+Run `wan_native_static_tp4dp2pp2_c2_20261013_r5`, actual HEAD
+`bbc2f242e12f43e2602c98ce21f3a15ab9953750`: **16/16 final receipts PASS**.
+C1 95.972804195 s; **C2 84.569314884 s**. Final G4/C20/EMA20.
+Peak allocated/reserved 33.088/33.739 GiB. Both node owners cleaned up;
+no new cgroup OOM; no profiler. Full native call/update/finite/sample gates
+passed. The earlier pending statements describe their historical commits,
+not this completed R5 run. Numerical trajectory revalidation remains deferred.
+
+Historical FSDP2/DMD-System C2 values are cross-HEAD context; they must not
+be presented as a same-HEAD paired speedup without matching source receipts.
+The retained detailed report is
+`reports/wan_native_static_tp4dp2pp2_c2_20261013_r5_world16_detailed_r1.json`.

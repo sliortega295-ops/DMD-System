@@ -38,6 +38,10 @@ from distillschedule.runtime.static_native_pp_stage import NativeSourcePPStage
 from distillschedule.runtime.static_native_proxy import NativeStaticPPProxy
 from distillschedule.runtime.static_native_cooperative import run_native_B1_cohort
 from distillschedule.runtime.static_tp_model import bind_wan_helios_tp4
+from distillschedule.runtime.static_logical_state import (
+    StaticLogicalEMA, bind_helios_bf16_lora_compute, mirror_fsdp_frozen_compute_dtype,
+    restore_logical_static_optimizer,
+)
 from distillschedule.runtime.static_trace_cohort import cohort_entry
 from distillschedule.runtime.fsdp2_static import configure_fsdp2_checkpointing
 from distillschedule.runtime.wan13b_upper_bound import (
@@ -53,6 +57,7 @@ from runtime.gst_pool_helios import (
 )
 from runtime.gst_pool_contract import NegativePromptAsset
 from runtime.official_baseline import suspend_transformers_zero3_init
+from runtime.critic_pool_checkpoint import LogicalCheckpointPackage, load_logical_master_into_trainables
 from runtime.static_world16_trace import StaticWorld16Trace
 
 TRANSFORMER_SHA = '5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886'
@@ -83,13 +88,18 @@ def memory(device):
 
 
 class Native3DEngine:
-    def __init__(self, module, state, *, lr, physical_step):
+    def __init__(self, module, state, *, lr, physical_step, package=None, component=None, tp_rank=None):
         self.module, self.state = module, state
         self.optimizer = torch.optim.AdamW([x.parameter for x in state.placements],
             lr=lr, betas=(0.,.999), eps=1e-8, weight_decay=1e-3)
         self.lr_scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lambda _: 1.)
-        self.optimizer_restore = materialize_adam_state(optimizer=self.optimizer,
-            scheduler=self.lr_scheduler, physical_step=physical_step)
+        if package is None:
+            self.optimizer_restore = materialize_adam_state(optimizer=self.optimizer,
+                scheduler=self.lr_scheduler, physical_step=physical_step)
+        else:
+            self.optimizer_restore = restore_logical_static_optimizer(optimizer=self.optimizer,
+                scheduler=self.lr_scheduler, placements=state.placements, package=package,
+                component=component, tp_rank=tp_rank)
         self.global_steps, self.step_calls = physical_step, 0
         self.grad_norms = []
 
@@ -112,15 +122,31 @@ class Native3DEngine:
 
 def build_role(args, boot, role, device, pp, tp_group, pp_group, dp_group, model_group):
     start = time.perf_counter()
-    with torch.random.fork_rng(devices=[]):
-        torch.manual_seed(int(boot.component(role)['seed']))
+    logical = args.workload == 'helios-nogan'
+    if logical:
+        root = args.model_root if role == 'generator' else args.score_model_root
+        subfolder = 'transformer_ode' if role == 'generator' else 'transformer'
+        precast = args.precast_generator_root if role == 'generator' else args.precast_score_root
         with suspend_transformers_zero3_init():
-            native, metadata = build_helios_pool_model(role=role, model_root=args.model_root,
-                subfolder='transformer', lora_rank=256, enable_gan=False,
-                chunked_residual_storage='cuda_out_of_place',
-                missing_pyramid_patch_seed=WAN13B_PYRAMID_PATCH_SEED)
-    if len(native.blocks) != 30: raise ValueError('actual Wan30 model required')
-    restore = boot.restore_trainables(native, component=role)
+            native, metadata = build_helios_pool_model(role=role, model_root=root,
+                subfolder=subfolder, precast_model_root=precast, lora_rank=256, enable_gan=False,
+                chunked_residual_storage='cuda_out_of_place')
+        restore = load_logical_master_into_trainables(native, boot, component=role,
+            verify_payload_sha256=(dist.get_rank() == 0))
+        frozen_precision = mirror_fsdp_frozen_compute_dtype(native)
+        expected_blocks = 40
+    else:
+        with torch.random.fork_rng(devices=[]):
+            torch.manual_seed(int(boot.component(role)['seed']))
+            with suspend_transformers_zero3_init():
+                native, metadata = build_helios_pool_model(role=role, model_root=args.model_root,
+                    subfolder='transformer', lora_rank=256, enable_gan=False,
+                    chunked_residual_storage='cuda_out_of_place',
+                    missing_pyramid_patch_seed=WAN13B_PYRAMID_PATCH_SEED)
+        restore = boot.restore_trainables(native, component=role)
+        frozen_precision = dict(frozen_compute_dtype='BF16', converted_constant_tensors=0)
+        expected_blocks = 30
+    if len(native.blocks) != expected_blocks: raise ValueError('actual source-bound architecture required')
     # This DMD-specific representation is not part of the static reference.
     native._distillschedule_split_modulation = False
     for block in native.blocks: block._distillschedule_split_modulation = False
@@ -128,7 +154,7 @@ def build_role(args, boot, role, device, pp, tp_group, pp_group, dp_group, model
     root_names = tuple(n for n,p in native.named_parameters() if p.requires_grad and not n.startswith('blocks.'))
     tp_receipt = bind_wan_helios_tp4(native, group=tp_group,
                                   expected_transformer_source_sha256=TRANSFORMER_SHA)
-    split = create_admitted_forward_split(native, expected_source_sha256=TRANSFORMER_SHA, expected_blocks=30)
+    split = create_admitted_forward_split(native, expected_source_sha256=TRANSFORMER_SHA, expected_blocks=expected_blocks)
     with torch.no_grad():
         template = split.prefix(native, torch.zeros(1,16,1,4,4,dtype=torch.bfloat16),
             torch.tensor([500.],dtype=torch.float64), torch.zeros(1,3,4096,dtype=torch.bfloat16), return_dict=False)
@@ -136,17 +162,21 @@ def build_role(args, boot, role, device, pp, tp_group, pp_group, dp_group, model
         remove_root_modules=('norm_out','proj_out') if pp == 0 else
             ('condition_embedder','patch_embedding','patch_short','patch_mid','patch_long'))
     del template
+    compute_precision = (bind_helios_bf16_lora_compute(native) if logical else
+                         dict(master_dtype='FP32', forward_compute_dtype='FP32', merged_count=0))
     native.to(device)
     proxy = NativeStaticPPProxy(stage, pp_group=pp_group, device=device, role=role)
     actual_names = dict(native.named_parameters())
     placements = placed_trainables(native, replicated_root_names=tuple(n for n in root_names if n in actual_names))
     state = StaticDataParallelState(placements, dp_group=dp_group, model_group=model_group, max_norm=1.)
     engine = Native3DEngine(proxy, state, lr=2e-6 if role=='generator' else 4e-7,
-                           physical_step=int(boot.component(role)['optimizer_step']))
+                           physical_step=int(boot.component(role)['optimizer_step']),
+                           package=boot if logical else None, component=role, tp_rank=dist.get_rank(tp_group))
     gc.collect(); torch.cuda.empty_cache(); torch.cuda.synchronize(device)
     return engine, dict(role=role, cold_construction_seconds=time.perf_counter()-start,
         source_metadata=metadata, bootstrap_restore=restore, TP=tp_receipt, PP=stage.receipt(),
         optimizer=engine.optimizer_restore, after_setup=memory(device),
+        compute_precision=compute_precision, frozen_precision=frozen_precision,
         static_baseline_split_modulation=False,
         placements=[dict(name=x.name,tp=x.tp_placement,partition_dim=x.partition_dim) for x in placements])
 
@@ -157,6 +187,9 @@ def main():
                  'trace-bundle','expected-trace-hash','negative-prompt','output-dir'):
         ap.add_argument('--'+flag,required=True)
     ap.add_argument('--seed',type=int,default=20260903)
+    ap.add_argument('--workload',choices=('wan13b','helios-nogan'),default='wan13b')
+    for flag in ('score-model-root','precast-generator-root','precast-score-root'):
+        ap.add_argument('--'+flag)
     ap.add_argument('--validate-only',action='store_true')
     args=ap.parse_args()
     rank=int(os.environ.get('RANK','0')); local=int(os.environ.get('LOCAL_RANK','0'))
@@ -172,7 +205,17 @@ def main():
         for k,v in os.environ.items():
             if k.startswith(('DISTILLSCHEDULE_WAN13B_','H3_')) and v not in ('','0','off','false'):
                 raise ValueError('DMD optimization env leaked into static baseline: '+k)
-        boot=Wan13BBootstrap.load(args.bootstrap, expected_hash=args.expected_bootstrap_hash)
+        logical = args.workload == 'helios-nogan'
+        if logical:
+            if not all((args.score_model_root,args.precast_generator_root,args.precast_score_root)):
+                raise ValueError('14B static reference requires original role roots and validated precast assets')
+            boot=LogicalCheckpointPackage.load(args.bootstrap, expected_trace_hash=args.expected_trace_hash)
+            if boot.manifest_hash != args.expected_bootstrap_hash:
+                raise ValueError('logical checkpoint identity changed')
+        else:
+            if any((args.score_model_root,args.precast_generator_root,args.precast_score_root)):
+                raise ValueError('Wan bootstrap cannot borrow Helios role roots')
+            boot=Wan13BBootstrap.load(args.bootstrap, expected_hash=args.expected_bootstrap_hash)
         trace=StaticWorld16Trace(args.trace_bundle,variant='no-gan')
         if trace.bundle_hash!=args.expected_trace_hash: raise ValueError('trace identity mismatch')
         negative_asset=NegativePromptAsset.load(args.negative_prompt)
@@ -181,14 +224,16 @@ def main():
         transformer_source=Path(inspect.getsourcefile(HeliosTransformer3DModel))
         if hashlib.sha256(transformer_source.read_bytes()).hexdigest()!=TRANSFORMER_SHA:
             raise ValueError('actual external native transformer source changed')
-        model_config=Path(args.model_root)/'transformer/config.json'
+        model_config=Path(args.model_root)/('transformer_ode' if logical else 'transformer')/'config.json'
         model_identity=json.loads(model_config.read_text())
-        if model_identity['num_layers']!=30 or model_identity['num_attention_heads']!=12:
-            raise ValueError('actual Wan checkpoint architecture changed')
+        blocks,heads=(40,40) if logical else (30,12)
+        if model_identity['num_layers']!=blocks or model_identity['num_attention_heads']!=heads:
+            raise ValueError('actual checkpoint architecture changed')
         layout=Static3DLayout()
         pp,dp,tp=layout.coordinate(rank)
         source_ranks=tuple(layout.logical_sample_rank(dp,i) for i in range(8))
         row.update(layout=layout.receipt(),coordinate=dict(pp=pp,dp=dp,tp=tp),source_ranks=source_ranks,
+            workload=args.workload,lora_master_dtype='FP32',lora_compute_dtype='BF16' if logical else 'FP32',
             bootstrap_hash=boot.manifest_hash,trace_hash=trace.bundle_hash,
             static_layout='TP4_DP2_PP2',DMD_optimizations=False,merged_lora_count=0,
             transformer_source_sha256=TRANSFORMER_SHA,model_config_sha256=hashlib.sha256(model_config.read_bytes()).hexdigest(),
@@ -213,11 +258,16 @@ def main():
         dist.barrier()
         where='critic construction'
         critic,c_build=build_role(args,boot,'critic',device,pp,tp_group,pp_group,dp_group,model_group)
-        ema=FreshTrainableEMA(generator.module,optimization_step=int(boot.manifest['ema']['optimization_step']),
-            decay=float(boot.manifest['ema']['decay']),update_after_step=int(boot.manifest['ema']['update_after_step']))
+        if logical:
+            ema=StaticLogicalEMA(placements=generator.state.placements, package=boot,
+                                tp_rank=tp, device=device)
+        else:
+            ema=FreshTrainableEMA(generator.module,optimization_step=int(boot.manifest['ema']['optimization_step']),
+                decay=float(boot.manifest['ema']['decay']),update_after_step=int(boot.manifest['ema']['update_after_step']))
         negative=negative_asset.embedding.to(device=device,dtype=torch.bfloat16)
         row['build']=dict(generator=g_build,critic=c_build)
         row['after_setup']=memory(device)
+        if logical: row['ema_restore']=ema.receipt()
         for cycle_index in (1,2):
             g_before=generator.module.receipt();c_before=critic.module.receipt()
             losses=[]; census=[]; identities=[]

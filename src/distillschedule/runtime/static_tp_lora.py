@@ -171,6 +171,7 @@ class _PlacedLinear(nn.Module):
             value = bias.detach().chunk(4)[rank] if placement == 'output' else bias.detach()
             self.bias = nn.Parameter(value.clone(), requires_grad=not frozen)
         self.group, self.exchange = group, exchange
+        self.compute_dtype = None  # Wan keeps its native FP32 LoRA compute.
         self.static_tp_placement = placement
         self.static_tp_partition_dim = {'output': 0, 'input': 1}.get(placement)
         self.in_features, self.out_features = self.weight.shape[1], self.weight.shape[0]
@@ -180,7 +181,13 @@ class _PlacedLinear(nn.Module):
             x = _CopyToTP.apply(x, self.group)
         # A row base bias is replicated, and must be added AFTER the SUM.
         bias = None if self.exchange == 'row_output_sum' else self.bias
-        result = F.linear(x, self.weight, bias)
+        weight = self.weight
+        if self.compute_dtype is not None:
+            if self.compute_dtype != torch.bfloat16 or self.weight.dtype != torch.float32:
+                raise ValueError('only explicit BF16 compute / FP32 LoRA master is admitted')
+            x, weight = x.to(self.compute_dtype), weight.to(self.compute_dtype)
+            bias = bias.to(self.compute_dtype) if bias is not None else None
+        result = F.linear(x, weight, bias)
         if self.exchange in ('row_output_sum', 'lora_a_output_sum'):
             result = _ReduceFromTP.apply(result, self.group)
         if self.exchange == 'row_output_sum' and self.bias is not None:
