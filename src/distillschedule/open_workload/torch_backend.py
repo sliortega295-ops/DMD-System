@@ -96,6 +96,7 @@ class Workload:
     # This is not an instruction to share them; the capability library decides.
     immutable_modules: tuple[str, ...] = ()
     identity_extra: Mapping[str, Any] = field(default_factory=dict)
+    replica_semantics: Any = None
 
     def validate(self):
         require(isinstance(self.program,Program),'Program required',path='open.workload')
@@ -128,6 +129,10 @@ class Workload:
             require(not any(isinstance(v,(nn.Module,torch.optim.Optimizer,torch.Tensor))
                             for v in (*captured.nonlocals.values(),*captured.globals.values())),
                     'model/tensor state captured outside ctx.state or ctx.inputs',path='open.workload')
+        if self.replica_semantics is not None:
+            from .replica_contract import ReplicaSemantics
+            require(isinstance(self.replica_semantics, ReplicaSemantics), 'typed replica semantics required', path='open.workload')
+            self.replica_semantics.validate(self)
         return self
 
     @property
@@ -143,13 +148,21 @@ class Workload:
                 'bindings':{k:code_signature(f) for k,f in self.bindings.items()},
                 'model_code':{k.__module__+'.'+k.__qualname__:code_signature(k) for k in classes},
                 'immutable_modules':list(self.immutable_modules), 'extra':dict(self.identity_extra),
-                'torch':torch.__version__,'device':str(self.device)}
+                'torch':torch.__version__,'device':str(self.device),
+                **({'replica_semantics':self.replica_semantics.to_dict()} if self.replica_semantics is not None else {})}
+
+
+def unwrap_module(value):
+    # Preserve semantic parameter names after a framework-owned DDP wrapper.
+    from torch.nn.parallel import DistributedDataParallel
+    return value.module if isinstance(value, DistributedDataParallel) else value
 
 
 def resolve_module(state,path):
     root,_,rest=path.partition('.')
     require(root in state and isinstance(state[root],nn.Module),'immutable module root missing',path='open.state')
-    return state[root].get_submodule(rest) if rest else state[root]
+    module = unwrap_module(state[root])
+    return module.get_submodule(rest) if rest else module
 
 
 def sharing_inventory(workload):
@@ -212,7 +225,7 @@ class Context:
 
 
 class Session:
-    def __init__(self, workload: Workload, implementation):
+    def __init__(self, workload: Workload, implementation, *, lifecycle=None):
         workload.validate()
         require(set(implementation)=={'share_immutable','checkpoint_bindings','backend'}
                 and implementation['backend']=='torch-callable-resident-v1'
@@ -237,6 +250,11 @@ class Session:
         self.initial_storage=storage_bytes((self.state,self.feeds))
         self.static_bytes=self.initial_storage
         self._ran=False
+        self.lifecycle = lifecycle
+        if lifecycle is not None:
+            lifecycle.prepare(self)
+            self.initial_storage = storage_bytes((self.state, self.feeds))
+            self.static_bytes = self.initial_storage
 
     def synchronize(self):
         if self.device.type=='cuda': torch.cuda.synchronize(self.device)
@@ -247,6 +265,7 @@ class Session:
         by_id={c.id:c for c in self.workload.program.calls}
         def dispatch(ctx):
             c=by_id[ctx.operation.operation_id]
+            if self.lifecycle is not None: self.lifecycle.before_call(self, c)
             args={k:self.feeds[k] if k in self.feeds else ctx.values[k] for k in c.inputs}
             states={k:self.state[k] for k in ctx.operation.required_versions}
             inputs=tuple(args.values()); input_keys=tuple(args)
@@ -275,6 +294,7 @@ class Session:
             if c.grad=='no_grad':
                 from torch.utils._pytree import tree_map
                 value=tree_map(lambda v:v.detach() if isinstance(v,torch.Tensor) else v,value)
+            if self.lifecycle is not None: self.lifecycle.after_call(self, c)
             self.synchronize(); duration=max(1,time.perf_counter_ns()-start)
             for t in tensors(value):
                 k=storage_key(t)
@@ -292,7 +312,9 @@ class Session:
             self.profile['__open_finish__']={'duration_ns':0,'retained_bytes':0,'workspace_bytes':0}
         runner=StaticRoleRunner('open_runtime',{'call':dispatch,'barrier':finish},versions=VersionLedger(self.graph.metadata['initial_versions']))
         prepared=runner.prepare(self.graph,order=tuple(order or (*[c.id for c in self.workload.program.calls],'__open_finish__')),retain_outputs=self.workload.program.outputs)
+        if self.lifecycle is not None: self.lifecycle.before_run(self, prepared.order if hasattr(prepared, 'order') else tuple(order or (*[c.id for c in self.workload.program.calls], '__open_finish__')))
         started=time.perf_counter_ns();outputs=prepared.run();self.synchronize()
+        if self.lifecycle is not None: self.lifecycle.finish(self)
         for path,values in self._immutable.items():
             require({n:tensor_signature(p) for n,p in resolve_module(self.state,path).named_parameters()}==values,
                     'declared immutable parameters changed',path='open.runtime')
@@ -305,12 +327,12 @@ class Session:
     def result_state(self, outputs):
         def clone(v):
             if isinstance(v,torch.Tensor): return v.detach().cpu().clone()
-            if isinstance(v,nn.Module): return clone(v.state_dict())
+            if isinstance(v,nn.Module): return clone(unwrap_module(v).state_dict())
             if isinstance(v,torch.optim.Optimizer): return clone(v.state_dict())
             if isinstance(v,Mapping): return {str(k):clone(x) for k,x in v.items()}
             if isinstance(v,(list,tuple)): return [clone(x) for x in v]
             return v
-        return clone({'state':self.state,'outputs':outputs,'grads':{k:{n:p.grad for n,p in v.named_parameters()}
+        return clone({'state':self.state,'outputs':outputs,'grads':{k:{n:p.grad for n,p in unwrap_module(v).named_parameters()}
                      for k,v in self.state.items() if isinstance(v,nn.Module)}})
 
 
