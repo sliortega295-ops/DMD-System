@@ -171,6 +171,8 @@ class _PlacedLinear(nn.Module):
             value = bias.detach().chunk(4)[rank] if placement == 'output' else bias.detach()
             self.bias = nn.Parameter(value.clone(), requires_grad=not frozen)
         self.group, self.exchange = group, exchange
+        self.static_tp_placement = placement
+        self.static_tp_partition_dim = {'output': 0, 'input': 1}.get(placement)
         self.in_features, self.out_features = self.weight.shape[1], self.weight.shape[0]
 
     def forward(self, x):
