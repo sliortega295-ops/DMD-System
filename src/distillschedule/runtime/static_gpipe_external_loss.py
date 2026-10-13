@@ -117,8 +117,9 @@ def build_external_loss_gpipe(stage_module, *, stage_index, group, device,
         raise ValueError('requires explicit PP2')
     if stage_index not in (0, 1) or dist.get_rank(group) != stage_index:
         raise ValueError('PP coordinate mismatch')
-    if (not isinstance(stage_module, torch.nn.Module) or len(output_args) != 1
-            or output_args[0].shape[0] != 1 or len(final_output_args) != 1
+    if (not isinstance(stage_module, torch.nn.Module) or not output_args
+            or any(not isinstance(v, torch.Tensor) or v.shape[0] != 1 for v in output_args)
+            or len(final_output_args) != 1
             or final_output_args[0].shape[0] != 1):
         raise ValueError('requires one actual tensor output per B1 stage')
     stage = PipelineStage(stage_module, stage_index, 2, torch.device(device),
