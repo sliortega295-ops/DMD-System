@@ -72,6 +72,7 @@ class InstrumentationMode(StringEnum):
 
 
 class OperationKind(StringEnum):
+    CALL = "call"
     GENERATOR_ROLLOUT = "generator_rollout"
     SCORE_FAKE = "score_fake"
     SCORE_REAL_CONDITIONAL = "score_real_conditional"
