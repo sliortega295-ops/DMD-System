@@ -77,7 +77,8 @@ def memory(device):
         driver_free=free, driver_total=total,
         RSS_bytes=int(Path('/proc/self/statm').read_text().split()[1])*os.sysconf('SC_PAGE_SIZE'),
         cgroup_current=int(Path('/sys/fs/cgroup/memory.current').read_text()),
-        cgroup_peak=int(Path('/sys/fs/cgroup/memory.peak').read_text()),
+        cgroup_peak=(int(Path('/sys/fs/cgroup/memory.peak').read_text())
+                     if Path('/sys/fs/cgroup/memory.peak').exists() else None),
         cgroup_events={k: int(v) for k,v in events.items()})
 
 
