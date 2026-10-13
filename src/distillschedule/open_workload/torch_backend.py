@@ -35,6 +35,8 @@ def tensors(value):
         yield value
     elif isinstance(value, nn.Module):
         yield from value.parameters(); yield from value.buffers()
+        for p in value.parameters():
+            if p.grad is not None: yield p.grad
     elif isinstance(value, torch.optim.Optimizer):
         yield from tensors(value.state)
     elif isinstance(value, Mapping):
@@ -77,7 +79,9 @@ def code_signature(fn):
     try: text=inspect.getsource(obj)
     except (OSError,TypeError):
         raise ValueError('bind inspectable Python functions/classes, not opaque or interactive closures')
-    return hashlib.sha256(text.encode()).hexdigest()
+    closure = inspect.getclosurevars(fn).nonlocals if inspect.isfunction(fn) else {}
+    # Immutable scalar closure values are part of the actual code binding.
+    return fingerprint({'source':text,'closure':signature(closure)})
 
 
 @dataclass
@@ -106,6 +110,17 @@ class Workload:
         for path in self.immutable_modules:
             module=resolve_module(self.state,path)
             require(all(not p.requires_grad for p in module.parameters()),'immutable module has trainable parameters',path='open.workload')
+        require(all(p.grad is None for obj in self.state.values() if isinstance(obj,nn.Module)
+                    for p in obj.parameters()), 'entry must be an explicit zero-gradient boundary',path='open.workload')
+        owners={}
+        for key,obj in self.state.items():
+            if not isinstance(obj,nn.Module): continue
+            for p in obj.parameters():
+                if p.requires_grad:
+                    storage=storage_key(p)
+                    require(storage not in owners or owners[storage]==key,
+                            'trainable storage aliased across logical models',path='open.workload')
+                    owners[storage]=key
         # Replayed closures must use ctx.state, not capture a second model/optimizer.
         for fn in self.bindings.values():
             require(inspect.isfunction(fn),'bindings must be inspectable functions using ctx.state',path='open.workload')
@@ -179,7 +194,7 @@ def candidates(workload, *, limit=16):
 def random_scope(seed,key,device):
     derived=int(fingerprint({'seed':seed,'logical_call':key})[:16],16)%(2**63)
     py=random.getstate()
-    devices=[device.index or torch.cuda.current_device()] if device.type=='cuda' else []
+    devices=[device.index if device.index is not None else torch.cuda.current_device()] if device.type=='cuda' else []
     try:
         with torch.random.fork_rng(devices=devices):
             torch.random.default_generator.manual_seed(derived); random.seed(derived)
@@ -240,7 +255,8 @@ class Session:
                 nonlocal invocations
                 invocations+=1
                 if invocations>1: self.effects['recompute_calls']+=1
-                return self.workload.bindings[c.binding](Context(dict(zip(input_keys,values)),states,c.attributes))
+                with random_scope(self.workload.seed,c.id,self.device):
+                    return self.workload.bindings[c.binding](Context(dict(zip(input_keys,values)),states,c.attributes))
             saved={}; excluded={storage_key(t) for t in tensors((self.state,self.feeds))}
             def pack(t):
                 k=storage_key(t)
@@ -250,12 +266,15 @@ class Session:
             if measure and self.device.type=='cuda':
                 before=torch.cuda.memory_allocated(self.device); torch.cuda.reset_peak_memory_stats(self.device)
             start=time.perf_counter_ns()
-            with random_scope(self.workload.seed,c.id,self.device),torch.set_grad_enabled(c.grad!='no_grad'):
+            with torch.set_grad_enabled(c.grad!='no_grad'):
                 with torch.autograd.graph.saved_tensors_hooks(pack,lambda t:t):
                     if c.replay_safe and c.binding in self.implementation['checkpoint_bindings']:
                         self.effects['checkpoint_calls']+=1
                         value=checkpoint(invoke,*inputs,use_reentrant=False,preserve_rng_state=True)
                     else: value=invoke(*inputs)
+            if c.grad=='no_grad':
+                from torch.utils._pytree import tree_map
+                value=tree_map(lambda v:v.detach() if isinstance(v,torch.Tensor) else v,value)
             self.synchronize(); duration=max(1,time.perf_counter_ns()-start)
             for t in tensors(value):
                 k=storage_key(t)
@@ -269,8 +288,10 @@ class Session:
             self.static_bytes=max(self.static_bytes,storage_bytes((self.state,self.feeds)))
             self.profile[c.id]={'duration_ns':duration,'retained_bytes':retained,'workspace_bytes':workspace}
             return value
-        runner=StaticRoleRunner('open_runtime',{'call':dispatch},versions=VersionLedger(self.graph.metadata['initial_versions']))
-        prepared=runner.prepare(self.graph,order=tuple(order or self.graph.topological_order()),retain_outputs=self.workload.program.outputs)
+        def finish(ctx):
+            self.profile['__open_finish__']={'duration_ns':0,'retained_bytes':0,'workspace_bytes':0}
+        runner=StaticRoleRunner('open_runtime',{'call':dispatch,'barrier':finish},versions=VersionLedger(self.graph.metadata['initial_versions']))
+        prepared=runner.prepare(self.graph,order=tuple(order or (*[c.id for c in self.workload.program.calls],'__open_finish__')),retain_outputs=self.workload.program.outputs)
         started=time.perf_counter_ns();outputs=prepared.run();self.synchronize()
         for path,values in self._immutable.items():
             require({n:tensor_signature(p) for n,p in resolve_module(self.state,path).named_parameters()}==values,

@@ -23,7 +23,7 @@ def test_arbitrary_frequency_and_roundtrip(n):
     assert bw.required_versions['student']==0
     assert {'s','t','loss'}<=set(bw.metadata['inputs'])
     assert g.metadata['final_versions']=={'student':1,'teacher':0,'grad':2}
-    assert len(g.operations)==5+n
+    assert len(g.operations)==6+n
 
 
 def test_late_backward_cannot_read_mutated_parameters():
@@ -35,7 +35,7 @@ def test_late_backward_cannot_read_mutated_parameters():
 
 def test_independent_calls_are_not_forced_to_source_order():
     g=Program((Call('a','f',reads=('a',)),Call('b','f',reads=('b',))),{'a':0,'b':0}).compile()
-    assert not g.dependencies
+    assert all(e.target=="__open_finish__" for e in g.dependencies)
 
 
 def test_raw_and_war_added_automatically():

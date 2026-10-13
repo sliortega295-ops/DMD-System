@@ -74,9 +74,10 @@ class Program:
 
     def __post_init__(self):
         require(self.schema_version == "distillschedule.open_program.v1", "unknown program schema", path="program")
-        require(0 < len(self.calls) <= 512, "program requires 1..512 instantiated calls", path="program")
+        require(0 < len(self.calls) <= 511, "program requires 1..511 instantiated calls", path="program")
         require(all(isinstance(c, Call) for c in self.calls), "typed calls required", path="program")
         ids = [c.id for c in self.calls]
+        require("__open_finish__" not in ids, "reserved terminal ID", path="program")
         require(len(set(ids)) == len(ids), "duplicate call IDs", path="program")
         require(len(set(self.feeds)) == len(self.feeds) and not set(self.feeds) & set(ids),
                 "feeds must be unique and disjoint from calls", path="program")
@@ -135,13 +136,19 @@ class Program:
                         require(state not in provenance[call.id] or provenance[call.id][state] == version,
                                 "mixed parameter versions in one differentiable value", path="program")
                         provenance[call.id][state] = version
-                provenance[call.id].update(needed)
+                for state, version in needed.items():
+                    require(state not in provenance[call.id] or provenance[call.id][state] == version,
+                            "mixed parameter versions in differentiable inputs", path="program")
+                    provenance[call.id][state] = version
             for state in call.writes:
                 current[state] = produced[state]
                 writers[state] = call.id
                 readers[state] = set()
             seen[call.id] = call
-        # Returned values must survive to the end, not be released by the runner.
+        # A zero-work terminal anchors returned storage until all work completes.
+        operations.append(Operation("__open_finish__", len(operations), "open_runtime", OperationKind.BARRIER,
+            GradientMode.NO_GRAD, metadata={"inputs": list(self.outputs)}))
+        edges.update((c.id, "__open_finish__") for c in self.calls)
         graph = ExecutionGraph(tuple(operations), tuple(Dependency(a, b) for a, b in sorted(edges)),
             {"initial_versions": dict(self.initial_versions), "final_versions": current,
              "program_schema": self.schema_version, "parameters": dict(self.parameters)})
