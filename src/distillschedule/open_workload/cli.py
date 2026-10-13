@@ -46,6 +46,8 @@ def main(argv=None):
             q.add_argument('--factory',required=True)
             q.add_argument('--parameters',type=Path,required=True)
             q.add_argument('--execute',action='store_true')
+            q.add_argument('--distributed',choices=('gloo','nccl'),help='join an explicitly allocated torchrun group')
+            q.add_argument('--group-timeout',type=int,default=180)
         if name in ('calibrate','auto'):
             q.add_argument('--max-candidates',type=int,default=8)
             q.add_argument('--samples',type=int,default=2)
@@ -57,10 +59,25 @@ def main(argv=None):
         if name=='plan': q.add_argument('--calibration',type=Path,required=True)
         if name=='run': q.add_argument('--plan',type=Path,required=True)
     args=p.parse_args(argv)
+    owned_group=False
     try:
         if args.command!='plan' and not args.execute:
             print(json.dumps({'status':'NOT_EXECUTED','reason':'factory is user code; --execute required','model_constructed':False}))
             return 0
+        if getattr(args,'distributed',None):
+            import os
+            from datetime import timedelta
+            import torch
+            import torch.distributed as dist
+            require(1<=args.group_timeout<=3600,'invalid collective timeout',path='open.cli')
+            require(all(k in os.environ for k in ('RANK','WORLD_SIZE','LOCAL_RANK'))
+                    and int(os.environ['WORLD_SIZE'])>=2,'torchrun rank environment required',path='open.cli')
+            if args.distributed=='nccl':
+                require(torch.cuda.is_available(),'CUDA/NCCL requested but unavailable',path='open.cli')
+                torch.cuda.set_device(int(os.environ['LOCAL_RANK']))
+            if not dist.is_initialized():
+                dist.init_process_group(args.distributed,timeout=timedelta(seconds=args.group_timeout));owned_group=True
+            require(str(dist.get_backend())==args.distributed,'process group backend mismatch',path='open.cli')
         from .planning import calibrate,plan,run
         if args.command=='plan':
             result=plan(args.calibration,memory_limit_bytes=args.memory_limit_bytes,max_states=args.max_states,beam_width=args.beam_width)
@@ -68,11 +85,18 @@ def main(argv=None):
         else:
             parameters=json.loads(args.parameters.read_text())
             require(isinstance(parameters,dict),'parameter object required',path='open.cli')
-            workload=load_factory(args.factory,parameters)
+            # Factories remain model/semantic bindings. All ranks report a bad
+            # factory before another rank starts DDP initialization.
+            import torch.distributed as dist
+            if dist.is_initialized() and dist.get_world_size()>1:
+                from .replicated import checked
+                workload=checked(lambda:load_factory(args.factory,parameters),'factory construction')
+            else: workload=load_factory(args.factory,parameters)
+            from .execution import ExecutionBackend
+            backend=ExecutionBackend(workload)
             if args.command=='describe':
-                from .torch_backend import candidates
                 result={'program':workload.program.to_dict(),'graph':workload.program.compile().to_dict(),
-                        'capabilities':candidates(workload),'gpu_execution':'NOT_RUN'}
+                        'capabilities':backend.inventory(args.max_candidates if hasattr(args,'max_candidates') else 16),'gpu_execution':'NOT_RUN'}
             elif args.command=='calibrate':
                 result=calibrate(workload,args.output,max_candidates=args.max_candidates,samples=args.samples,max_program_runs=args.max_program_runs)
             elif args.command=='run':
@@ -80,22 +104,25 @@ def main(argv=None):
             else:
                 # Two additional executions are the independent reference and
                 # selected-plan confirmation, not free out-of-budget trials.
-                from .torch_backend import candidates
-                required=3+args.samples*len(candidates(workload,limit=args.max_candidates)['candidates'])
+                required=3+args.samples*len(backend.inventory(args.max_candidates)['candidates'])
                 require(required<=args.max_program_runs,'auto budget includes calibration and two confirmation runs',path='open.cli')
-                root=args.output.resolve();root.mkdir(parents=True,exist_ok=False)
+                root=args.output.resolve();backend.mkdir(root)
                 calibration=calibrate(workload,root/'calibration',max_candidates=args.max_candidates,
                             samples=args.samples,max_program_runs=args.max_program_runs-2)
-                selected=plan(root/'calibration/calibration.json',memory_limit_bytes=args.memory_limit_bytes,
-                              max_states=args.max_states,beam_width=args.beam_width)
-                write_new_json(root/'plan.json',selected)
+                selected=backend.select_plan(lambda:plan(root/'calibration/calibration.json',memory_limit_bytes=args.memory_limit_bytes,
+                              max_states=args.max_states,beam_width=args.beam_width))
+                backend.publish(root/'plan.json',selected)
                 result,_,_=run(workload,root/'plan.json',root/'execution')
                 result['program_runs']=calibration['budget']['actual']+2
-                write_new_json(root/'result.json',result)
+                backend.publish(root/'result.json',result)
         print(json.dumps(result,indent=2,sort_keys=True,allow_nan=False))
         return 0 if result.get('status')!='REVIEW_SELECTED_PROGRAM' else 3
     except (ValueError,TypeError,KeyError,OSError,RuntimeError) as exc:
         print(f'ERROR: {exc}',file=sys.stderr);return 2
+    finally:
+        if owned_group:
+            import torch.distributed as dist
+            dist.destroy_process_group()
 
 
 if __name__=='__main__': raise SystemExit(main())
