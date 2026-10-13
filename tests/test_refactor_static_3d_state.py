@@ -78,3 +78,16 @@ def test_explicit_tp_bootstrap_slice_and_unplaced_trainable_rejection():
         placed_trainables(torch.nn.Linear(3,2))
     with pytest.raises(ValueError,match='partition dimension'):
         StaticParameterPlacement('bad',parameter,'output',1)
+
+
+def test_native_root_lora_requires_exact_explicit_replication_names():
+    from distillschedule.runtime.static_3d_state import placed_trainables
+    import pytest
+    root=torch.nn.Linear(3,2,dtype=torch.float32)
+    placements=placed_trainables(root,replicated_root_names=('weight','bias'))
+    assert {p.name for p in placements}=={'weight','bias'}
+    assert all(p.tp_placement=='replicated' and not p.pp_replicated for p in placements)
+    with pytest.raises(ValueError,match='duplicate'):
+        placed_trainables(root,replicated_root_names=('weight','weight'))
+    with pytest.raises(ValueError,match='missing'):
+        placed_trainables(root,replicated_root_names=('weight','unknown'))

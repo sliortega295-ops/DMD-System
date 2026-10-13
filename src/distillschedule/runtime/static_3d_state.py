@@ -30,7 +30,7 @@ class StaticParameterPlacement:
             raise ValueError('the unmerged baseline LoRA trainables must be FP32')
 
 
-def placed_trainables(model):
+def placed_trainables(model, *, replicated_root_names=()):
     """Only declared PEFT child placements are accepted; no guessed fallback."""
     from .static_tp_lora import _PlacedLinear
     parameter_names = {id(p): n for n, p in model.named_parameters() if p.requires_grad}
@@ -41,6 +41,14 @@ def placed_trainables(model):
                 if p.requires_grad:
                     result.append(StaticParameterPlacement(parameter_names[id(p)],p,
                         module.static_tp_placement,module.static_tp_partition_dim))
+    if len(set(replicated_root_names)) != len(replicated_root_names):
+        raise ValueError('duplicate explicitly replicated root trainable')
+    by_name = dict(model.named_parameters())
+    known = {id(item.parameter) for item in result}
+    for name in replicated_root_names:
+        if name not in by_name or id(by_name[name]) in known:
+            raise ValueError('root trainable missing or already assigned a TP layout')
+        result.append(StaticParameterPlacement(name, by_name[name], 'replicated', None))
     if len({id(x.parameter) for x in result}) != len(parameter_names):
         raise ValueError('trainable outside the declared TP/PP placement: explicit binding required')
     return sorted(result,key=lambda x:x.name)

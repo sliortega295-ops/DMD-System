@@ -69,7 +69,7 @@ class NativeSourcePPStage(nn.Module):
             if context.get('enable_navit', False):
                 raise ValueError('NaViT was not admitted by this transport')
             context = self.split.blocks(self.model, context, self.start, self.stop)
-            fields = tuple(context[name] for name in self.TRANSPORT_FIELDS)
+            fields = tuple(context[name].contiguous() for name in self.TRANSPORT_FIELDS)
             if any(not isinstance(v, torch.Tensor) for v in fields):
                 raise ValueError('actual native conditioning violated tensor transport')
             return fields
