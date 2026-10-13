@@ -131,33 +131,38 @@ class MatchedProgram:
         yield from visit(0,{}, {},{}, {})
 
 
-def call_cost_contract(matched,operation,option):
+def call_cost_contract(matched,operation,option,selection):
     op=next(o for o in matched.program.graph.operations if o.operation_id==operation)
     return ComponentContract(f"program.{matched.program.calls[operation].operator}",
         {"program_sha256":matched.program.digest,"call":matched.program.calls[operation].to_dict(),
          "logical_operation":op.operation_id,"required_versions":dict(op.required_versions)},
         {"declared":matched.program.calls[operation].properties.get("dtype","native")},
         {"ranks":list(option.ranks),"resources":list(option.resources)},
-        option.to_dict(),{"native_identity":json_copy(matched.program.identity),"scope":"isolated_bound_call"})
+        option.to_dict(),{"native_identity":json_copy(matched.program.identity),
+            "selection_context":{k:v.key for k,v in selection.items()},
+            "scope":"matched_full_binding_context"})
 
 
 def compile_cases(matched,models,memory_limits,*,max_combinations=256):
     """Use the same solver cases as original-model planners; no synthetic defaults.
 
-    `models` maps (operation_id, option_key) to a measured/synthetic-for-tests
+    `models` maps (operation_id, option_key, selection_digest) to a cost model.
+    This conservative context prevents mixing a checkpoint backward cost with
+    an eager forward. Each model is measured/synthetic-for-tests
     CostModel with that exact contract. Missing measurements never become zero.
     """
     options=list(matched.combinations(max_combinations+1))
     require(len(options)<=max_combinations,"binding combinations exceed budget; increase budget explicitly",path="program.compile")
     require(options,"no compatible capability combination",path="program.compile")
     for selected in options:
+        context=fingerprint({k:v.key for k,v in selected.items()})
         states={};leases={};rules={};records=[];binding=None;scope=None
         for key,option in selected.items():
-            require((key,option.key) in models,f"UNCALIBRATED {key}/{option.key}",path="program.compile")
-            model=models[key,option.key];model.verify_receipts()
+            require((key,option.key,context) in models,f"UNCALIBRATED {key}/{option.key}",path="program.compile")
+            model=models[key,option.key,context];model.verify_receipts()
             if binding is None:binding=dict(model.binding);scope=model.scope
             require(dict(model.binding)==binding and model.scope==scope,"mixed calibration identities",path="program.compile")
-            contract=call_cost_contract(matched,key,option);cost=model.get_component(contract)
+            contract=call_cost_contract(matched,key,option,selected);cost=model.get_component(contract)
             records.append(cost)
             require(cost.workspace_bytes_per_rank==option.workspace_upper_bound,
                     "workspace model does not match bound implementation",path="program.compile")
