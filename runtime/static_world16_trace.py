@@ -12,6 +12,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+from distillschedule.runtime.wan13b_execution import admit_execution
+
 import torch
 
 from .critic_pool_helios import LoadedPoolEntry
@@ -109,20 +111,22 @@ class StaticGeneratorEntry:
 
 
 class StaticWorld16Trace:
-    def __init__(self, root: str | Path, *, variant: str) -> None:
+    def __init__(self, root: str | Path, *, variant: str, execution: Any = None) -> None:
         if variant not in {"no-gan", "gan"}:
             raise ValueError(variant)
         self.root = Path(root).resolve()
+        self.execution = admit_execution(execution)
+        self.world_size = self.execution.world_size
         self.variant = variant
         self.gan = variant == "gan"
         self.logical_steps = tuple(range(1000, 1005)) if self.gan else tuple(range(10, 15))
         bundle = load_operation_trace_bundle_manifest(self.root, verify=True)
-        if bundle is None or len(bundle.get("ranks", ())) != WORLD_SIZE:
-            raise ValueError("static FSDP2 requires one authoritative rank16 trace bundle")
+        if bundle is None or len(bundle.get("ranks", ())) != self.world_size:
+            raise ValueError(f"static FSDP2 requires the authoritative rank{self.world_size} trace bundle")
         self.bundle_hash = str(bundle["bundle_hash"])
         self._control: dict[int, OperationTrace] = {}
         self._loaded: dict[int, OperationTrace] = {}
-        for rank in range(WORLD_SIZE):
+        for rank in range(self.world_size):
             trace_root = resolve_rank_trace_root(self.root, rank)
             manifest = json.loads((trace_root / "trace.json").read_text())
             self._control[rank] = OperationTrace(root=trace_root, manifest=manifest, tensors={})
@@ -133,17 +137,18 @@ class StaticWorld16Trace:
         self.binding_hash = hashlib.sha256(
             _canonical(
                 {
-                    "schema": "distillschedule.static_world16_trace.v1",
+                    "schema": ("distillschedule.static_world16_trace.v1" if self.world_size == 16
+                               else "distillschedule.static_world8_trace.v1"),
                     "variant": variant,
                     "bundle_hash": self.bundle_hash,
                     "logical_steps": list(self.logical_steps),
-                    "rank_slots": list(range(WORLD_SIZE)),
+                    "rank_slots": list(range(self.world_size)),
                 }
             )
         ).hexdigest()
 
     def _load(self, rank: int) -> OperationTrace:
-        if not 0 <= rank < WORLD_SIZE:
+        if not 0 <= rank < self.world_size:
             raise IndexError(rank)
         value = self._loaded.get(rank)
         if value is None:
@@ -213,7 +218,7 @@ class StaticWorld16Trace:
                 self._physical_signature(
                     self._control[rank].operation(f"step/{step}/critic/rollout")
                 )
-                for rank in range(WORLD_SIZE)
+                for rank in range(self.world_size)
             ]
             if any(value != values[0] for value in values[1:]):
                 raise ValueError(f"Step{step} Critic physical call sequence diverges by rank")
@@ -222,7 +227,7 @@ class StaticWorld16Trace:
             self._physical_signature(
                 self._control[rank].operation(f"step/{first}/generator/rollout")
             )
-            for rank in range(WORLD_SIZE)
+            for rank in range(self.world_size)
         ]
         if any(value != values[0] for value in values[1:]):
             raise ValueError("Generator physical call sequence diverges by rank")

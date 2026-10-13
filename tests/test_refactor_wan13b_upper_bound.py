@@ -104,7 +104,7 @@ def test_resident_control_syncs_only_present_trainable_gradients() -> None:
     ).read_text()
     assert "if parameter.requires_grad and parameter.grad is not None" in source
     assert "dist.all_reduce_coalesced" in source
-    assert "gradient.mul_(1.0 / WORLD_SIZE)" in source
+    assert "gradient.mul_(1.0 / self.dp_world_size)" in source
     assert "clip_grad_norm_" in source
     assert source.index("_synchronize_trainable_gradients()") < source.index(
         "clip_grad_norm_(trainables"

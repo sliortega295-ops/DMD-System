@@ -83,6 +83,8 @@ def _build_model_fair(
     bootstrap: Any,
     device: torch.device,
 ) -> tuple[torch.nn.Module, dict[str, Any]]:
+    from distillschedule.runtime.wan13b_execution import admit_execution
+    execution = admit_execution(getattr(args, "distributed_execution", None))
     if grad_epilogue_requested() and args.placement != ASYNC_128_TREE_CHUNK2048_RESIDENT:
         raise ValueError("grad epilogue canary is registered only for the Resident winner")
     seed = int(bootstrap.component(role)["seed"])
@@ -128,7 +130,7 @@ def _build_model_fair(
         object.__setattr__(model, "_distillschedule_rollout_shadow", shadow)
 
     if args.placement == FSDP_PLACEMENT:
-        placement = apply_wan13b_fair_fsdp2_policy(model)
+        placement = apply_wan13b_fair_fsdp2_policy(model, execution=execution)
     elif args.placement in RESIDENT_PLACEMENTS:
         parameters = list(model.parameters())
         if any(hasattr(value, "device_mesh") for value in parameters):
@@ -172,7 +174,7 @@ def _build_model_fair(
                     else "FULL_REPLICA_GPU_RESIDENT_MANUAL_GRAD_SYNC"
                 )
             ),
-            "world_size": base.WORLD_SIZE,
+            "world_size": execution.world_size,
             "block_count": base.WAN13B_BLOCK_COUNT,
             "wrap_policy": (
                 "LORA_ONLY_ZERO2"

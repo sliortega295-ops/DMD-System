@@ -52,7 +52,7 @@ def test_fair_fsdp_preserves_original_dtypes_and_matches_mean_convention() -> No
     assert "reduce_dtype=torch.float32" in source
     assert "cast_forward_inputs=False" in source
     assert "set_force_sum_reduction_for_comms(True)" in source
-    assert "set_gradient_divide_factor(float(WORLD_SIZE))" in source
+    assert "set_gradient_divide_factor(execution.gradient_divisor)" in source
     assert '"PRESERVE_ORIGINAL_PER_PARAMETER"' in source
 
 

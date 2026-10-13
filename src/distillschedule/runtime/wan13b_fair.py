@@ -17,6 +17,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from .wan13b_execution import admit_execution
+
 from .wan13b_upper_bound import (
     FreshTrainableEMA,
     GLOBAL_BATCH,
@@ -287,13 +289,15 @@ def install_resident_clean_model_state(module: Any) -> ResidentCleanModelState:
     return state
 
 
-def apply_wan13b_fair_fsdp2_policy(module: Any) -> dict[str, Any]:
+def apply_wan13b_fair_fsdp2_policy(module: Any, *, execution: Any = None) -> dict[str, Any]:
     """FULL_SHARD while preserving original BF16-base/FP32-LoRA dtypes."""
 
     torch = _torch()
     dist = torch.distributed
-    if not dist.is_initialized() or dist.get_world_size() != WORLD_SIZE:
-        raise RuntimeError("fair Wan FSDP2 policy requires world16")
+    execution = admit_execution(execution)
+    if not dist.is_initialized():
+        raise RuntimeError("fair Wan FSDP2 policy requires an initialized group")
+    execution.validate_live_world(dist.get_world_size())
     from torch.distributed.device_mesh import init_device_mesh
     from torch.distributed.fsdp import FSDPModule, MixedPrecisionPolicy, fully_shard
 
@@ -302,7 +306,7 @@ def apply_wan13b_fair_fsdp2_policy(module: Any) -> dict[str, Any]:
         raise AssertionError(
             f"Wan block count changed: {len(blocks)} != {WAN13B_BLOCK_COUNT}"
         )
-    mesh = init_device_mesh("cuda", (WORLD_SIZE,), mesh_dim_names=("fsdp",))
+    mesh = init_device_mesh("cuda", (execution.world_size,), mesh_dim_names=("fsdp",))
     policy = MixedPrecisionPolicy(
         param_dtype=None,
         reduce_dtype=torch.float32,
@@ -326,7 +330,7 @@ def apply_wan13b_fair_fsdp2_policy(module: Any) -> dict[str, Any]:
     for child in module.modules():
         if isinstance(child, FSDPModule):
             child.set_force_sum_reduction_for_comms(True)
-            child.set_gradient_divide_factor(float(WORLD_SIZE))
+            child.set_gradient_divide_factor(execution.gradient_divisor)
             fsdp_group_count += 1
     torch.cuda.synchronize()
 
@@ -345,7 +349,7 @@ def apply_wan13b_fair_fsdp2_policy(module: Any) -> dict[str, Any]:
         raise AssertionError(f"FSDP2 frozen base does not retain BF16: {frozen_dtypes}")
     return {
         "backend": "FSDP2_COMPOSABLE_FULL_SHARD",
-        "world_size": WORLD_SIZE,
+        "world_size": execution.world_size,
         "block_count": len(blocks),
         "wrap_policy": "30_BLOCKS_BOTTOM_UP_THEN_ROOT",
         "reshard_after_forward": True,
@@ -699,10 +703,10 @@ class GradReadyAsyncResidentEngine(ReferenceResidentEngine):
             bucket.work.wait()
         torch.cuda.current_stream().wait_stream(self._comm_stream)
         for bucket in self._buckets_by_index:
-            bucket.flat.mul_(1.0 / WORLD_SIZE)
+            bucket.flat.mul_(1.0 / self.dp_world_size)
         receipt = {
             "backend": "GRAD_READY_ASYNC_FLAT_ALL_REDUCE",
-            "world_size": WORLD_SIZE,
+            "world_size": self.dp_world_size,
             "reduction": "SUM_THEN_DIVIDE_WORLD_SIZE",
             "overlap_with_backward": True,
             "trainable_gradient_tensors": len(self._parameter_bucket),
@@ -742,7 +746,7 @@ class GradReadyAsyncResidentEngine(ReferenceResidentEngine):
         self.optimizer.step()
         self.lr_scheduler.step()
         self.global_steps += 1
-        self.global_samples += GLOBAL_BATCH
+        self.global_samples += self._global_batch
         self._step_calls += 1
         self.zero_grad()
 
@@ -1243,11 +1247,17 @@ def build_fair_engine(
     weight_decay: float,
     audit_gradients: bool = False,
     resident_ddp_bucket_mb: int = 128,
+    execution: Any = None,
 ) -> tuple[Any, dict[str, Any]]:
     """Build one engine without changing optimizer hyperparameters or state."""
 
     if placement not in FAIR_PLACEMENTS:
         raise ValueError(f"unsupported fair placement: {placement}")
+    execution = admit_execution(execution)
+    if execution.world_size != WORLD_SIZE and placement not in {
+        FSDP_PLACEMENT, ASYNC_128_TREE_CHUNK2048_RESIDENT,
+    }:
+        raise ValueError("world8 admits only FSDP2 and the unchanged Resident winner")
     if placement == FSDP_PLACEMENT:
         engine, metadata = build_fresh_engine(
             module=module,
@@ -1258,6 +1268,7 @@ def build_fair_engine(
             eps=eps,
             weight_decay=weight_decay,
             audit_gradients=audit_gradients,
+            execution=execution,
         )
         metadata = dict(metadata)
         metadata.update(
@@ -1366,6 +1377,7 @@ def build_fair_engine(
                 physical_step=physical_step,
                 async_bucket_bytes=flat_bucket_mb * 1024 * 1024,
                 audit_gradients=audit_gradients,
+                execution=execution,
             )
             gradient_sync = "WORLD16_GRAD_READY_ASYNC_SUM_THEN_DIVIDE_ALL_REDUCE"
         elif flat_bucket_mb is not None:

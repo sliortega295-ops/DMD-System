@@ -19,6 +19,8 @@ import json
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from .wan13b_execution import admit_execution
+
 
 WORLD_SIZE = 16
 WAN13B_BLOCK_COUNT = 30
@@ -184,6 +186,7 @@ class ReplicatedTrainableAllReduceEngine:
         gradient_clip: float = 1.0,
         bucket_bytes: int = 128 * 1024 * 1024,
         audit_gradients: bool = False,
+        execution: Any = None,
     ) -> None:
         if bucket_bytes <= 0:
             raise ValueError("bucket_bytes must be positive")
@@ -191,8 +194,10 @@ class ReplicatedTrainableAllReduceEngine:
         self.optimizer = optimizer
         self.lr_scheduler = scheduler
         self.global_steps = int(physical_step)
-        self.global_samples = int(physical_step) * GLOBAL_BATCH
-        self.dp_world_size = WORLD_SIZE
+        self.execution = admit_execution(execution)
+        self._global_batch = self.execution.global_batch
+        self.global_samples = int(physical_step) * self._global_batch
+        self.dp_world_size = self.execution.world_size
         self._gradient_clip = float(gradient_clip)
         self._bucket_bytes = int(bucket_bytes)
         self._audit_gradients = bool(audit_gradients)
@@ -226,8 +231,9 @@ class ReplicatedTrainableAllReduceEngine:
     def _synchronize_trainable_gradients(self) -> dict[str, Any]:
         torch = _torch()
         dist = torch.distributed
-        if not dist.is_initialized() or dist.get_world_size() != WORLD_SIZE:
-            raise RuntimeError("resident gradient synchronization requires world16")
+        if not dist.is_initialized():
+            raise RuntimeError("resident gradient synchronization requires an initialized group")
+        self.execution.validate_live_world(dist.get_world_size())
         named = [
             (name, parameter.grad)
             for name, parameter in self.module.named_parameters()
@@ -237,7 +243,7 @@ class ReplicatedTrainableAllReduceEngine:
             raise RuntimeError("resident engine has no active trainable gradients")
         names = tuple(name for name, _ in named)
         if self._audit_gradients:
-            inventories: list[Any] = [None] * WORLD_SIZE
+            inventories: list[Any] = [None] * self.dp_world_size
             dist.all_gather_object(inventories, names)
             if any(tuple(value) != names for value in inventories):
                 raise AssertionError("trainable gradient inventory differs by rank")
@@ -249,9 +255,9 @@ class ReplicatedTrainableAllReduceEngine:
             # control and is intentionally limited to trainable LoRA gradients.
             dist.all_reduce_coalesced(bucket, op=dist.ReduceOp.SUM)
             for gradient in bucket:
-                gradient.mul_(1.0 / WORLD_SIZE)
+                gradient.mul_(1.0 / self.dp_world_size)
         receipt = {
-            "world_size": WORLD_SIZE,
+            "world_size": self.dp_world_size,
             "reduction": "SUM_THEN_DIVIDE_WORLD_SIZE",
             "trainable_gradient_tensors": len(gradients),
             "gradient_bytes": sum(
@@ -277,7 +283,7 @@ class ReplicatedTrainableAllReduceEngine:
         self.lr_scheduler.step()
         self.optimizer.zero_grad(set_to_none=True)
         self.global_steps += 1
-        self.global_samples += GLOBAL_BATCH
+        self.global_samples += self._global_batch
         self._step_calls += 1
 
     def zero_grad(self) -> None:
@@ -298,9 +304,8 @@ class ReplicatedTrainableAllReduceEngine:
     def train_micro_batch_size_per_gpu() -> int:
         return 1
 
-    @staticmethod
-    def train_batch_size() -> int:
-        return GLOBAL_BATCH
+    def train_batch_size(self) -> int:
+        return self._global_batch
 
     @property
     def step_calls(self) -> int:
@@ -317,9 +322,11 @@ def build_fresh_engine(
     eps: float,
     weight_decay: float,
     audit_gradients: bool = False,
+    execution: Any = None,
 ) -> tuple[Any, dict[str, Any]]:
     if placement not in PLACEMENTS:
         raise ValueError(f"unsupported Wan1.3B placement: {placement}")
+    execution = admit_execution(execution)
     torch = _torch()
     trainables = list(_named_trainables(module).values())
     if not trainables:
@@ -342,6 +349,7 @@ def build_fresh_engine(
             scheduler,
             physical_step=physical_step,
             audit_gradients=audit_gradients,
+            execution=execution,
         )
     else:
         from distillschedule.runtime.fsdp2_static import FSDP2EngineAdapter
@@ -351,7 +359,8 @@ def build_fresh_engine(
             optimizer,
             scheduler,
             physical_step=physical_step,
-            global_batch=GLOBAL_BATCH,
+            global_batch=execution.global_batch,
+            dp_world_size=execution.world_size,
             gradient_clip=1.0,
         )
     return engine, {

@@ -314,13 +314,16 @@ class FSDP2EngineAdapter:
         physical_step: int,
         global_batch: int = 16,
         gradient_clip: float = 1.0,
+        dp_world_size: int = 16,
     ) -> None:
         self.module = module
         self.optimizer = optimizer
         self.lr_scheduler = scheduler
         self.global_steps = int(physical_step)
         self.global_samples = int(physical_step) * int(global_batch)
-        self.dp_world_size = 16
+        if isinstance(dp_world_size, bool) or dp_world_size not in (8, 16):
+            raise ValueError("explicit FSDP2 DP world size must be 8 or 16")
+        self.dp_world_size = int(dp_world_size)
         self._global_batch = int(global_batch)
         self._gradient_clip = float(gradient_clip)
         self._step_calls = 0
