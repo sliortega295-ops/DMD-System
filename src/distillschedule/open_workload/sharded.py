@@ -10,7 +10,7 @@ from collections import defaultdict
 import torch
 import torch.distributed as dist
 from distillschedule.core.contracts import require
-from .replicated import ReplicaLifecycle, checked, gather, identity, ddp_order_admitted
+from .replicated import ReplicaLifecycle, checked, gather, identity, ddp_order_admitted, BACKEND
 from .replica_contract import execution_graph
 from .torch_backend import storage_key, physical_tensor, signature
 from distillschedule.workloads.best_known.registry import fingerprint
@@ -55,7 +55,8 @@ class ShardedLifecycle(ReplicaLifecycle):
         require(all(x==options[0] for x in options),'ranks selected different implementations',path='open.fsdp')
         def validate():
             require(set(self.option)=={'backend','local','reduction','bucket_cap_mb'}
-                    and self.option['reduction'] in MODES and self.option['bucket_cap_mb']==0
+                    and self.option['backend']==BACKEND and self.option['reduction'] in MODES
+                    and type(self.option['bucket_cap_mb']) is int and self.option['bucket_cap_mb']==0
                     and not self.option['local']['share_immutable'],
                     'unadmitted sharded combination',path='open.fsdp')
             require(rejection(self.workload) is None, str(rejection(self.workload)),path='open.fsdp')

@@ -44,11 +44,15 @@ requires explicit --execute; no implicit Hub download or cluster allocation.
 
 ## Actual boundaries
 
-The open callable execution backend is currently single-device resident and
-serial. It supports arbitrary conforming callable DAGs, NOT arbitrary automatic
-FSDP/HSDP or cross-pool scheduling of unknown models. The original distributed
-backends keep their own lowering/capability restrictions; sharing a search
-service does not magically make a new model compatible with those backends.
+The open callable backend now executes local programs and explicitly allocated
+multi-process data-parallel programs. For admitted module-forward contracts it
+matches replicated post-backward reduction, DDP asynchronous reduction and FSDP2
+reshard/keep-forward layouts. These use the SAME Program, calibrator, search
+service and call executor, with extra completion edges for reducer lifetimes.
+See [Distributed open workloads](open_workload_distributed.md) for exact
+contracts, tested execution, examples and remaining restrictions. Generic HSDP,
+role-pool partition and cross-pool execution are not implemented. The original
+workload-specific routes remain available; no five-model GPU parity is implied.
 
 `immutable_modules` and `replay_safe` are semantic promises verified where
 possible, not automatic inference of all Python side effects. All relevant
@@ -65,4 +69,4 @@ not claimed GPU speedups. A successful small-model test is not full pretrained
 Wan/Helios/H3/LiveWan numerical or quality evidence.
 
 This branch is stacked on PR #33 and preserves its original-protocol routes.
-The full multi-device capability migration remains a separate unsatisfied goal.
+The full five-workload capability migration and GPU validation remain unsatisfied goals.

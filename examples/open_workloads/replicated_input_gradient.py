@@ -32,12 +32,16 @@ def step(ctx):
 
 
 def build(config):
+    # `width` is the feature-channel width kept for the original example ABI.
     width, frames, updates = config['width'], config['frames'], config['updates']
+    height, image_width = config.get('height', 3), config.get('image_width', 3)
+    if not all(type(v) is int and v > 0 for v in (width, frames, updates, height, image_width)):
+        raise ValueError('positive integer channel, temporal, spatial and update dimensions required')
     with torch.random.fork_rng():
         torch.manual_seed(321)
         generator = nn.Conv3d(width, width, 1)
         frozen_critic = nn.Conv3d(width, width, 1).requires_grad_(False)
-        x = torch.randn(1, width, frames, 3, 3)
+        x = torch.randn(1, width, frames, height, image_width)
     rank=torch.distributed.get_rank() if torch.distributed.is_initialized() else 0
     x=x+rank*.1
     device=torch.device(config.get('device','cpu'))
