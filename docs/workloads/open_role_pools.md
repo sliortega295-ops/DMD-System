@@ -277,3 +277,16 @@ correctness checks, **not** claims that the chosen configuration wins on A100
 or H100, nor that original Helios/H3/LiveWan protocols have been migrated.
 GPU/NCCL collective ordering, 14B model capacity, BF16 mixed Score precision,
 score-train FSDP, and actual training speedups remain NOT_RUN/unsupported.
+
+
+### Collective-safe capability rejection
+
+Before constructing FSDP2 meshes, all allocated ranks agree on the actual
+parameter-owner and requires-grad admission. A mismatched frozen Score layout
+does not leave Generator ranks waiting in P2P: the corresponding candidate is
+recorded as `NATIVE_CAPABILITY_REJECTED`, its attempted execution still counts
+towards the calibration budget, and measured valid replicated candidates can
+remain eligible. Runtime loss, transport, CUDA and OOM failures are **not**
+silently treated as capability rejections. The four-process Gloo regression
+tests mixed direct-root parameters, safe cleanup and continued common search;
+this is not proof that arbitrary model-factory exceptions are collective-safe.

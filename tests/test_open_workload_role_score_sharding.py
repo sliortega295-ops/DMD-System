@@ -190,3 +190,53 @@ def _mixed_worker(rank,rendezvous,output):
 def test_bf16_frozen_score_and_fp32_norm_keep_precision_in_score_pool(tmp_path):
     mp.spawn(_mixed_worker,args=(str(tmp_path/'rdzv'),str(tmp_path)),nprocs=4,join=True)
     assert all(json.loads((tmp_path/f'mixed-{rank}.json').read_text())['ok'] for rank in range(4))
+
+
+class UnsupportedFrozenScore(torch.nn.Module):
+    """Mixed direct-root and leaf parameters: unsafe for current FSDP owners."""
+    def __init__(self):
+        super().__init__()
+        self.backbone=torch.nn.Linear(4,2).to(torch.bfloat16)
+        self.root_scale=torch.nn.Parameter(torch.ones(2,dtype=torch.float32),requires_grad=False)
+        self.requires_grad_(False)
+
+    def forward(self,latent):
+        return self.backbone(latent.to(torch.bfloat16)).float()*self.root_scale
+
+
+def unsupported_frozen_factory(role,device):
+    if role=='generator':return make_model(role,device)
+    with torch.random.fork_rng():
+        torch.manual_seed(97)
+        model=UnsupportedFrozenScore()
+    return model.to(device)
+
+
+def _rejection_worker(rank,rdzv,out):
+    from distillschedule.open_workload.role_planning import calibrate,search
+    torch.set_num_threads(1)
+    dist.init_process_group('gloo',init_method='file://'+rdzv,rank=rank,world_size=4,
+                            timeout=timedelta(seconds=70))
+    try:
+        task=RoleTask(4,(2,4),score_updates=0)
+        hw=AllocatedWorld((2**26,)*4,(0,0,1,1))
+        f=RoleFunctions(unsupported_frozen_factory,make_opt,sample,generate,guidance,
+                        data_identity='f'*64,score_parameters_frozen=True)
+        record=calibrate(task,hw,f,Path(out)/'cal',generator_bytes=3000,score_bytes=3000,
+                         max_candidates=2,max_native_runs=3)
+        assert record['budget']['calibration_runs']==2
+        assert len(record['candidates'])==1
+        assert record['candidates'][0]['layout']['score_parallelism']=='replicated'
+        rejected=[x for x in record['candidate_inventory']['rejected']
+                  if x['reason']=='NATIVE_CAPABILITY_REJECTED']
+        assert len(rejected)==1 and rejected[0]['layout']['score_parallelism']=='fsdp2_frozen'
+        assert 'mixed dtype frozen Score requires' in rejected[0]['detail']
+        if rank==0:
+            chosen=search(Path(out)/'cal/calibration.json')['selected']
+            assert chosen['implementation']['score_parallelism']=='replicated'
+    finally:
+        dist.destroy_process_group()
+
+
+def test_incompatible_score_fsdp_is_pruned_without_distributed_hang(tmp_path):
+    mp.spawn(_rejection_worker,args=(str(tmp_path/'rdzv'),str(tmp_path)),nprocs=4,join=True)
