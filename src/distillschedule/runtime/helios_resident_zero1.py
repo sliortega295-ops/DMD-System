@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import json
 import weakref
+import hashlib
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -48,6 +50,51 @@ def zero1_master_partitions(engine: Any) -> list[Any]:
     raise TypeError('unrecognized GPU ZeRO-1 master-partition API')
 
 
+@contextmanager
+def gpu_zero1_bf16_route_compat(*, engine_module=None, torch_module=None):
+    """Fix the installed 0.18.4 BFLOAT16/DDP_BFLOAT16 selector collision.
+
+    Both constants are 'bf16', so the earlier DDP branch incorrectly calls
+    FP16_UnfusedOptimizer even for GPU ZeRO-1 with FP32 accumulation. Route only
+    this exact configuration to DeepSpeed's existing BF16_Optimizer constructor.
+    No site-packages file, optimizer math, dtype, collective or loss is changed.
+    """
+    if engine_module is None:
+        import deepspeed
+        import deepspeed.runtime.engine as engine_module
+        if deepspeed.__version__ != '0.18.4':
+            raise RuntimeError('resident route compatibility requires reviewed DeepSpeed 0.18.4')
+    if torch_module is None:
+        import torch as torch_module
+    cls = engine_module.DeepSpeedEngine
+    original = cls._configure_fp16_optimizer
+    if getattr(original, '_distillschedule_resident_zero1_route', False):
+        raise RuntimeError('nested resident initialization route scopes are forbidden')
+    source = getattr(engine_module, '__file__', None)
+    audit = dict(enabled=engine_module.BFLOAT16 == engine_module.DDP_BFLOAT16,
+        api='DeepSpeedEngine._configure_fp16_optimizer -> _configure_bf16_optimizer',
+        scope='initialization_only_gpu_zero1_bf16_compute_fp32_accumulation', routed_calls=0,
+        source_sha256=hashlib.sha256(Path(source).read_bytes()).hexdigest() if source else 'CPU_TEST_DOUBLE',
+        shared_environment_files_modified=False, changes_optimizer_math=False)
+    def route(self, optimizer, low_precision_dtype):
+        if (self.zero_optimization_stage() == 1 and not self.zero_cpu_offload()
+            and low_precision_dtype == torch_module.bfloat16
+            and self.get_data_types() == (torch_module.bfloat16, torch_module.float32)):
+            audit['routed_calls'] += 1
+            return self._configure_bf16_optimizer(optimizer)
+        return original(self, optimizer, low_precision_dtype)
+    route._distillschedule_resident_zero1_route = True
+    if audit['enabled']:
+        cls._configure_fp16_optimizer = route
+    try:
+        yield audit
+    finally:
+        if audit['enabled']:
+            if cls._configure_fp16_optimizer is not route:
+                raise RuntimeError('DeepSpeed optimizer route changed inside the guarded scope')
+            cls._configure_fp16_optimizer = original
+
+
 def build_resident_zero1_engine(
     *, module: Any, package: Any, component: str, lr: float,
     betas: tuple[float, float], eps: float, weight_decay: float,
@@ -66,9 +113,10 @@ def build_resident_zero1_engine(
                                   weight_decay=weight_decay)
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda _: 1.0)
     config = resident_zero1_config()
-    engine, _, _, _ = deepspeed.initialize(model=module, optimizer=optimizer,
-        lr_scheduler=scheduler, model_parameters=trainables, config=config,
-        dist_init_required=False)
+    with gpu_zero1_bf16_route_compat() as route_audit:
+        engine, _, _, _ = deepspeed.initialize(model=module, optimizer=optimizer,
+            lr_scheduler=scheduler, model_parameters=trainables, config=config,
+            dist_init_required=False)
     if engine.zero_optimization_stage() != 1 or getattr(engine.optimizer, 'partition_gradients', False):
         raise AssertionError('resident reference requires ZeRO-1, never ZeRO-2/3')
     if getattr(engine.optimizer, 'cpu_offload', False):
@@ -104,6 +152,7 @@ def build_resident_zero1_engine(
         optimizer_implementation='PYTORCH_ADAMW', trainable_master_dtype='torch.float32',
         model_compute_dtype='torch.bfloat16', communication_dtype='torch.float32',
         gradient_accumulation_dtype='torch.float32', actual_optimizer_class=type(engine.optimizer).__name__,
+        initialization_api_compatibility=route_audit,
         physical_b1_rows_per_rank=2, loss_scale_per_row=0.5, config=config,
         optimizer_dispatch_warmup={'enabled': False, 'disabled_reason': 'REFERENCE'})
 

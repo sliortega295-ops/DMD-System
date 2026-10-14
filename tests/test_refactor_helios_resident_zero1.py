@@ -69,3 +69,41 @@ def test_native_bf16_optimizer_api_keeps_real_master_identity():
     assert not hasattr(native, 'single_partition_of_fp32_groups')
     with pytest.raises(TypeError):
         m.zero1_master_partitions(SimpleNamespace(optimizer=object()))
+
+
+def test_installed_selector_collision_routes_only_gpu_zero1_and_restores():
+    m = runtime()
+    class Engine:
+        stage = 1
+        cpu = False
+        def zero_optimization_stage(self): return self.stage
+        def zero_cpu_offload(self): return self.cpu
+        def get_data_types(self): return ('bf16', 'fp32')
+        def _configure_fp16_optimizer(self, opt, dtype): return 'UNSHARDED_UNFUSED'
+        def _configure_bf16_optimizer(self, opt): return 'GPU_BF16_ZERO1'
+    module = SimpleNamespace(DeepSpeedEngine=Engine, BFLOAT16='bf16', DDP_BFLOAT16='bf16')
+    torch = SimpleNamespace(bfloat16='bf16', float32='fp32')
+    e = Engine()
+    original = Engine._configure_fp16_optimizer
+    assert e._configure_fp16_optimizer(None, 'bf16') == 'UNSHARDED_UNFUSED'
+    with m.gpu_zero1_bf16_route_compat(engine_module=module,torch_module=torch) as audit:
+        assert e._configure_fp16_optimizer(None, 'bf16') == 'GPU_BF16_ZERO1'
+        e.stage=2
+        assert e._configure_fp16_optimizer(None, 'bf16') == 'UNSHARDED_UNFUSED'
+        e.stage=1;e.cpu=True
+        assert e._configure_fp16_optimizer(None, 'bf16') == 'UNSHARDED_UNFUSED'
+        assert audit['routed_calls'] == 1
+    assert Engine._configure_fp16_optimizer is original
+
+
+def test_route_is_restored_after_initialization_exception():
+    m=runtime()
+    class Engine:
+        def _configure_fp16_optimizer(self,*args): return None
+    module=SimpleNamespace(DeepSpeedEngine=Engine,BFLOAT16='bf16',DDP_BFLOAT16='bf16')
+    original=Engine._configure_fp16_optimizer
+    with pytest.raises(ValueError):
+        with m.gpu_zero1_bf16_route_compat(engine_module=module,
+                torch_module=SimpleNamespace(bfloat16='bf16',float32='fp32')):
+            raise ValueError('preserved initialization failure')
+    assert Engine._configure_fp16_optimizer is original
