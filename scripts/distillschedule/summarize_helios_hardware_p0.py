@@ -57,7 +57,7 @@ def _env_key(field: str) -> str:
 
 def freeze_policy(root: Path, *, variant: str, arm: str) -> dict[str, Any]:
     """Read the locked winner and render a complete, explicit worker policy."""
-    _require(arm in ("baseline", "best"), "arm must be baseline or best")
+    _require(arm in ("baseline", "best", "resident"), "arm must be baseline, best or resident")
     profile = load_profile("helios14b_nogan_best" if variant == "no-gan" else "helios14b_gan_best", root=root)
     contract = _jsonable(dataclasses.asdict(contract_for_variant(variant)))
     _require(profile["contract"]["variant"] == variant, "variant/profile mismatch")
@@ -89,6 +89,9 @@ def freeze_policy(root: Path, *, variant: str, arm: str) -> dict[str, Any]:
         p0 = StaticFSDP2P0Policy()
         extra = {"attention_backend": "sdpa", "generator_nograd_lora_fused_epilogue": False, "all_role_lora_scale1_add": False}
     policy = dict(dataclasses.asdict(p0), **extra, generator_residual_storage="cuda_out_of_place", critic_residual_storage="cuda_out_of_place", id=p0.id)
+    if arm == "resident":
+        policy["parameter_placement"] = "gpu-resident-zero1"
+        policy["id"] += "/gpu-resident-zero1"
     _require(policy["rollout_batch_size"] == 1 and policy["pack_real_score_pair"] is False, "H100 migration must preserve B1 and packing OFF")
     _require(profile["memory"]["ema_device"] == "cuda", "winner EMA contract changed")
     for field, value in policy.items():
@@ -102,12 +105,12 @@ def freeze_policy(root: Path, *, variant: str, arm: str) -> dict[str, Any]:
                DISTILLSCHEDULE_CRITIC_ONLY_STEP="", DISTILLSCHEDULE_OPERATION_SOURCE="off")
     trace_key = "trace"
     logical_key = "logical_checkpoint"
-    return {"arm": arm, "variant": variant, "winner": profile["contract"]["winner"] if arm == "best" else "P0_all_performance_options_off",
+    return {"arm": arm, "variant": variant, "winner": profile["contract"]["winner"] if arm == "best" else "FULL_GPU_RESIDENT_ZERO1_REFERENCE" if arm == "resident" else "P0_all_performance_options_off",
             "profile_id": profile["id"], "profile_sha256": digest(profile), "policy": policy,
             "policy_fingerprint": digest(policy), "contract": contract,
             "trace_hash": profile["required_assets"][trace_key]["logical_hash"],
             "logical_hash": profile["required_assets"][logical_key]["logical_hash"],
-            "mesh_shape": [2, 4] if policy["mesh_policy"] == "node-hsdp" else [8],
+            "mesh_shape": [] if arm == "resident" else [2, 4] if policy["mesh_policy"] == "node-hsdp" else [8],
             "environment": env, "unset_environment": profile["runtime"]["unset_environment"]}
 
 
@@ -588,9 +591,13 @@ def summarize(run_root: Path, *, expected_head: str, frozen_policy: dict[str, An
                 errors.append(f"{label}: actual GPU EMA finite checksum/version evidence missing")
         build = row.get("build", {})
         residency = build.get("static_residency", {})
-        if any(residency.get(k) is not v for k, v in {"both_backbones_sharded_for_full5": True, "parameter_offload": False,
+        resident = policy.get("parameter_placement") == "gpu-resident-zero1"
+        if any(residency.get(k) is not v for k, v in {"both_backbones_sharded_for_full5": not resident, "parameter_offload": False,
                                                    "frozen_parameter_streaming": False, "role_transition": False, "process_group_rebuild_in_full5": False}.items()):
             errors.append(f"{label}: offload/streaming/role transition is not zero")
+        if resident and (residency.get("both_backbones_full_parameter_gpu_resident") is not True
+                         or residency.get("optimizer_state_placement") != "GPU_ZERO1_PARTITIONS"):
+            errors.append(f"{label}: actual full GPU parameter residency/ZeRO-1 state contract failed")
         for role in ("generator", "critic"):
             model = build.get(role, {})
             metadata, fsdp = model.get("metadata", {}), model.get("fsdp2", {})
@@ -607,7 +614,22 @@ def summarize(run_root: Path, *, expected_head: str, frozen_policy: dict[str, An
                              "logical_global_batch": 16, "logical_b1_microbatches_per_rank": 2, "block_count": 40, "reshard_after_forward": True,
                              "param_compute_dtype": "torch.bfloat16", "reduce_dtype": "torch.float32", "cpu_parameter_offload": False,
                              "parameter_streaming": False, "transition": False}
-            if any(fsdp.get(k) != v for k, v in expected_fsdp.items()):
+            if resident:
+                actual = model.get("resident", {})
+                expected = {"backend": "FULL_PARAMETER_GPU_RESIDENT_ZERO1", "world_size": 8,
+                    "logical_global_batch": 16, "physical_b1_rows_per_rank": 2,
+                    "full_parameters_on_gpu": True, "parameter_offload": False,
+                    "activation_offload": False, "optimizer_cpu_offload": False,
+                    "parameter_streaming": False, "model_swap": False,
+                    "model_compute_dtype": "torch.bfloat16", "gradient_communication_dtype": "torch.float32"}
+                restore = model.get("optimizer_restore", {})
+                if fsdp.get("enabled") is not False or any(actual.get(k) != v for k,v in expected.items()):
+                    errors.append(f"{label}/{role}: replicated GPU parameter contract failed")
+                if (restore.get("config", {}).get("zero_optimization", {}).get("stage") != 1
+                    or restore.get("optimizer_cpu_offload") is not False
+                    or restore.get("trainable_master_dtype") != "torch.float32"):
+                    errors.append(f"{label}/{role}: GPU ZeRO-1 master/state restore contract failed")
+            elif any(fsdp.get(k) != v for k, v in expected_fsdp.items()):
                 errors.append(f"{label}/{role}: FSDP actual topology/dtype/reshard/offload contract changed")
             if mode == "correctness":
                 audit = row.get("final", {}).get("training_state_audit", {}).get(role, {})
@@ -758,7 +780,7 @@ def main() -> int:
     parser.add_argument("--expected-head", required=True)
     parser.add_argument("--hardware-profile", choices=(HARDWARE,), default=HARDWARE)
     parser.add_argument("--variant", choices=("no-gan", "gan"))
-    parser.add_argument("--arm", choices=("baseline", "best"))
+    parser.add_argument("--arm", choices=("baseline", "best", "resident"))
     parser.add_argument("--mode", choices=("validate", "correctness", "timing"))
     parser.add_argument("--run-id")
     parser.add_argument("--asset-gate", type=Path)

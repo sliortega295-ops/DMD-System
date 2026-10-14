@@ -135,6 +135,9 @@ from distillschedule.runtime.fsdp2_nograd_persistence import (
     generator_nograd_persistent_unshard_scope,
 )
 from distillschedule.runtime.fsdp2_static import FSDP2ShardEMA, build_fsdp2_engine, configure_fsdp2_checkpointing, contract_for_variant
+from distillschedule.runtime.helios_resident_zero1 import (
+    ResidentZero1ShardEMA, build_resident_zero1_engine,
+)
 from distillschedule.runtime.helios_cross_kv_cache import (
     install_generator_nograd_cross_kv_cache,
 )
@@ -321,10 +324,12 @@ def _build_static_model(
     fsdp_first_construction = policy.mesh_policy == "node-hsdp"
     if not fsdp_first_construction:
         model.to(device)
-    sharding = apply_blockwise_fsdp2_policy(
-        model,
-        mesh_policy=policy.mesh_policy,
-        world_size=WORLD_SIZE,
+    resident = args.parameter_placement == "gpu-resident-zero1"
+    sharding = (
+        {"enabled": False, "reason": "FULL_PARAMETER_GPU_RESIDENT_REFERENCE"}
+        if resident else apply_blockwise_fsdp2_policy(
+            model, mesh_policy=policy.mesh_policy, world_size=WORLD_SIZE,
+        )
     )
     if role == "generator":
         warmup_generator_nograd_residual_fusion(
@@ -362,7 +367,16 @@ def _build_static_model(
         "modulation_chunks": modulation_chunks,
         "checkpoint_policy": checkpoint_policy,
         "fsdp2": sharding,
+        **({"resident": {
+            "backend": "FULL_PARAMETER_GPU_RESIDENT_ZERO1", "world_size": 8,
+            "logical_global_batch": 16, "physical_b1_rows_per_rank": 2,
+            "full_parameters_on_gpu": True, "parameter_offload": False,
+            "activation_offload": False, "optimizer_cpu_offload": False,
+            "parameter_streaming": False, "model_swap": False,
+            "model_compute_dtype": "torch.bfloat16", "gradient_communication_dtype": "torch.float32",
+        }} if resident else {}),
         "construction_order": (
+            "CPU_LOGICAL_RESTORE_THEN_FULL_GPU_MODEL" if resident else
             "CPU_RESTORE_THEN_BLOCKWISE_FSDP_DEVICE_SHARD"
             if fsdp_first_construction
             else "FULL_DEVICE_MATERIALIZE_THEN_BLOCKWISE_FSDP_SHARD"
@@ -396,7 +410,9 @@ def _build_engines(
         policy=policy,
     )
     dist.barrier()
-    generator_engine, generator_restore = build_fsdp2_engine(
+    builder = (build_resident_zero1_engine
+               if args.parameter_placement == "gpu-resident-zero1" else build_fsdp2_engine)
+    generator_engine, generator_restore = builder(
         module=generator,
         package=package,
         component="generator",
@@ -406,7 +422,7 @@ def _build_engines(
         weight_decay=1e-3,
         optimizer_dispatch_warmup=policy.optimizer_dispatch_warmup,
     )
-    critic_engine, critic_restore = build_fsdp2_engine(
+    critic_engine, critic_restore = builder(
         module=critic,
         package=package,
         component="critic",
@@ -420,7 +436,10 @@ def _build_engines(
         "generator": {**generator_build, "optimizer_restore": generator_restore},
         "critic": {**critic_build, "optimizer_restore": critic_restore},
         "static_residency": {
-            "both_backbones_sharded_for_full5": True,
+            "both_backbones_sharded_for_full5": args.parameter_placement == "fsdp2",
+            **({"both_backbones_full_parameter_gpu_resident": True,
+                "optimizer_state_placement": "GPU_ZERO1_PARTITIONS"}
+               if args.parameter_placement == "gpu-resident-zero1" else {}),
             "mesh_policy": policy.mesh_policy,
             "parameter_offload": False,
             "frozen_parameter_streaming": False,
@@ -1122,6 +1141,7 @@ def _parser() -> Any:
 
     value = base.parser()
     value.description = __doc__
+    value.add_argument("--parameter-placement", choices=("fsdp2", "gpu-resident-zero1"), default="fsdp2")
     value.add_argument(
         "--mesh-policy",
         choices=("world16-fsdp", "node-hsdp"),
@@ -1380,6 +1400,11 @@ def _parser() -> Any:
 def main() -> int:
     args = _parser().parse_args()
     hardware = hardware_profile()
+    if args.parameter_placement == "gpu-resident-zero1":
+        if hardware.name != "h100-8-b16" or args.mesh_policy != "world16-fsdp":
+            raise ValueError("registered full-resident reference requires h100-8-b16")
+        if args.profile_mode or args.ema_device != "cuda":
+            raise ValueError("resident reference requires unprofiled CUDA EMA")
     if hardware.microbatch_count > 1 and args.rollout_batch_size != 1:
         raise ValueError("H100 logical-batch16 migration requires two independent B1 rows")
     if args.timing_mode and args.profile_mode:
@@ -1517,6 +1542,15 @@ def main() -> int:
             args.elide_official_generator_free_memory
         ),
     )
+    if args.parameter_placement == "gpu-resident-zero1" and (
+        policy != StaticFSDP2P0Policy()
+        or args.attention_backend != "sdpa"
+        or args.generator_nograd_lora_fused_epilogue
+        or args.all_role_lora_scale1_add
+        or args.generator_residual_storage != "cuda_out_of_place"
+        or args.critic_residual_storage != "cuda_out_of_place"
+    ):
+        raise ValueError("full-resident reference forbids unrelated performance/offload options")
     dist.init_process_group("nccl")
     rank = dist.get_rank()
     world = dist.get_world_size()
@@ -1616,6 +1650,10 @@ def main() -> int:
             ),
         },
     }
+    if args.parameter_placement == "gpu-resident-zero1":
+        result["parameter_placement"] = args.parameter_placement
+        result["p0_policy"]["parameter_placement"] = args.parameter_placement
+        result["p0_policy"]["id"] += "/gpu-resident-zero1"
     try:
         # GAN diagnostics also import Helios. Resolve the registered backend
         # before any hook can trigger the frozen Hopper auto-detection.
@@ -1699,7 +1737,9 @@ def main() -> int:
             device=device,
             policy=policy,
         )
-        ema = FSDP2ShardEMA.load_from_logical(
+        ema_type = (ResidentZero1ShardEMA
+                    if args.parameter_placement == "gpu-resident-zero1" else FSDP2ShardEMA)
+        ema = ema_type.load_from_logical(
             generator_engine.module,
             logical.root,
             device=args.ema_device,

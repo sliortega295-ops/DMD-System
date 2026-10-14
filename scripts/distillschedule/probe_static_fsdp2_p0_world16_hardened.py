@@ -38,6 +38,7 @@ from distillschedule.runtime.p0_parity import (
     tensor_parity_metrics,
 )
 from distillschedule.profiling.fsdp2_operation_markers import install_fsdp2_operation_markers
+from distillschedule.runtime.helios_resident_zero1 import zero1_gradient_tensors, zero1_optimizer_tensors
 import runtime.gan_score_packing as _gan_score_packing
 import runtime.gst_pool_helios as _gst_pool_helios
 from runtime.static_world16_trace import StaticWorld16Trace as _StaticWorld16Trace
@@ -205,9 +206,12 @@ def _group_audit(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 def _gradient_audit(component: str, engine: Any) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
-    for name, parameter in engine.module.named_parameters():
-        if parameter.requires_grad and parameter.grad is not None:
-            rows.append(_tensor_audit(name, parameter.grad))
+    if getattr(engine, "_distillschedule_resident_zero1", False):
+        rows = [_tensor_audit(name, tensor) for name, tensor in zero1_gradient_tensors(engine)]
+    else:
+        for name, parameter in engine.module.named_parameters():
+            if parameter.requires_grad and parameter.grad is not None:
+                rows.append(_tensor_audit(name, parameter.grad))
     record = {
         "physical_step_before": int(engine.global_steps),
         "gradient": _group_audit(rows),
@@ -227,13 +231,16 @@ def _training_state_audit(component: str, engine: Any) -> dict[str, Any]:
         for name, parameter in engine.module.named_parameters()
         if parameter.requires_grad
     }
+    resident = getattr(engine, "_distillschedule_resident_zero1", False)
     for name, parameter in trainables.items():
         parameters.append(_tensor_audit(name, parameter))
-        state = engine.optimizer.state.get(parameter, {})
+        state = {} if resident else engine.optimizer.state.get(parameter, {})
         for state_name in ("exp_avg", "exp_avg_sq"):
             value = state.get(state_name)
             if value is not None and torch.is_tensor(value):
                 optimizer_rows.append(_tensor_audit(f"{name}/{state_name}", value))
+    if resident:
+        optimizer_rows = [_tensor_audit(name, tensor) for name, tensor in zero1_optimizer_tensors(engine)]
     return {
         "physical_step": int(engine.global_steps),
         "parameters": _group_audit(parameters),
@@ -323,11 +330,12 @@ def _hardened_precompute(*args: Any, **kwargs: Any):
 
 impl._precompute_critic_rollouts = _hardened_precompute
 _original_build_engine = impl.build_fsdp2_engine
+_original_build_resident_engine = impl.build_resident_zero1_engine
 
 
-def _capture_engine(*args: Any, **kwargs: Any):
+def _capture_with_builder(builder: Any, *args: Any, **kwargs: Any):
     global _BLOCK_MARKER_METADATA
-    engine, metadata = _original_build_engine(*args, **kwargs)
+    engine, metadata = builder(*args, **kwargs)
     component = str(kwargs.get("component", "unknown"))
     _ENGINES[component] = engine
     _GRADIENT_AUDITS.setdefault(component, [])
@@ -346,7 +354,16 @@ def _capture_engine(*args: Any, **kwargs: Any):
     return engine, metadata
 
 
+def _capture_engine(*args: Any, **kwargs: Any):
+    return _capture_with_builder(_original_build_engine, *args, **kwargs)
+
+
+def _capture_resident_engine(*args: Any, **kwargs: Any):
+    return _capture_with_builder(_original_build_resident_engine, *args, **kwargs)
+
+
 impl.build_fsdp2_engine = _capture_engine
+impl.build_resident_zero1_engine = _capture_resident_engine
 _original_atomic_json = impl.base._atomic_json
 
 

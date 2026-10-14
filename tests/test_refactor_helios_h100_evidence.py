@@ -241,6 +241,37 @@ def result(root, frozen):
     return module.summarize(root, expected_head=HEAD, frozen_policy=frozen)
 
 
+def test_resident_requires_actual_full_gpu_models_and_zero1_state(tmp_path):
+    """Schema fixture only; it must not pass by pretending residency is FSDP."""
+    frozen = fixture(tmp_path, arm="resident")
+    assert frozen["policy"]["parameter_placement"] == "gpu-resident-zero1"
+    assert frozen["mesh_shape"] == []
+    assert result(tmp_path, frozen)["status"] == "FAIL"
+    for rank in range(8):
+        p = tmp_path / f"execution/ranks/rank_{rank:02d}.json"
+        row = json.loads(p.read_text())
+        row["build"]["static_residency"].update(
+            both_backbones_sharded_for_full5=False,
+            both_backbones_full_parameter_gpu_resident=True,
+            optimizer_state_placement="GPU_ZERO1_PARTITIONS")
+        for role in ("generator", "critic"):
+            model = row["build"][role]
+            model["fsdp2"] = {"enabled": False}
+            model["resident"] = {"backend": "FULL_PARAMETER_GPU_RESIDENT_ZERO1", "world_size": 8,
+                "logical_global_batch": 16, "physical_b1_rows_per_rank": 2,
+                "full_parameters_on_gpu": True, "parameter_offload": False,
+                "activation_offload": False, "optimizer_cpu_offload": False,
+                "parameter_streaming": False, "model_swap": False,
+                "model_compute_dtype": "torch.bfloat16", "gradient_communication_dtype": "torch.float32"}
+            model["optimizer_restore"] = {"config": {"zero_optimization": {"stage": 1}},
+                "optimizer_cpu_offload": False, "trainable_master_dtype": "torch.float32"}
+        write(p, row)
+    seal(tmp_path)
+    assert result(tmp_path, frozen)["status"] == "PASS"
+    mutate(tmp_path, 0, lambda r: r["build"]["critic"]["optimizer_restore"].update(optimizer_cpu_offload=True))
+    assert result(tmp_path, frozen)["status"] == "FAIL"
+
+
 def mutate(root, rank, action, *, reseal=True):
     path = root / f"execution/ranks/rank_{rank:02d}.json"
     row = json.loads(path.read_text())
