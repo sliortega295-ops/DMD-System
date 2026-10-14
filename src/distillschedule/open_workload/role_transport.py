@@ -36,6 +36,7 @@ class RoleFunctions:
     score_loss: Callable[[nn.Module, torch.Tensor, Any], torch.Tensor]
     score_train_loss: Callable[[nn.Module, torch.Tensor, Any], torch.Tensor] | None = None
     data_identity: str = ''  # source/cohort SHA, NOT a preselected layout
+    role_storage_estimate_bytes: dict[str,int] | None = None
 
     def validate(self, task):
         require(all(callable(x) for x in (self.make_model, self.make_optimizer,
@@ -45,6 +46,10 @@ class RoleFunctions:
                 path='role.bindings')
         require((self.score_train_loss is None) == (task.score_updates==0),
                 'score update semantics and function mismatch', path='role.bindings')
+        if self.role_storage_estimate_bytes is not None:
+            require(set(self.role_storage_estimate_bytes)=={'generator','score'} and
+                    all(type(v) is int and v>0 for v in self.role_storage_estimate_bytes.values()),
+                    'role model residency estimates must be positive for both roles',path='role.bindings')
 
 
 def _parameters(module):

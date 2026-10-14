@@ -37,6 +37,10 @@ def load_factory(name,parameters):
 
 
 def main(argv=None):
+    argv=list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] in {'role-describe','role-auto','role-plan','role-run'}:
+        from .role_cli import main as role_main
+        return role_main(argv)
     p=argparse.ArgumentParser(prog='distillctl workloads native program')
     sub=p.add_subparsers(dest='command',required=True)
     for name in ('describe','calibrate','plan','run','auto','hardware'):

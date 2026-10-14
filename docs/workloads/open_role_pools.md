@@ -101,3 +101,59 @@ rejects a candidate unless saved tensors were actually packed, prefetched,
 and used in the backward on the producer ranks. GPU residency predictions from
 tracked role state and declared transport are conservative **in scope**, not a
 complete upper bound for unobserved intermediate autograd/allocator memory.
+
+## Public new-workload entry (factory, parameters, no optimization recipes)
+
+For a new conforming two-role training algorithm, implement a trusted local
+`build(parameters)` factory that returns `(RoleTask, RoleFunctions)`. Functions
+specify model constructors, optimizers, data/cohort identity, generator forward,
+Score objective and (optionally) a single later Score parameter update; they do
+**not** prescribe pool sizes, checkpoint/offload policies or scheduler winners.
+`role_storage_estimate_bytes` supplies only conservative per-role static memory
+facts so the planner can reject impossible model placements before execution.
+It does not guarantee CUDA activation or allocator peak capacity.
+
+An example previously unknown to the planner is
+`examples/open_workloads/unseen_score_pipeline.py:build` with parameters in
+`examples/open_workloads/unseen_score_pipeline.json` (small Conv3D, no training
+speed/quality claim). To describe the semantic graph (trusted factory is run):
+
+```bash
+python scripts/distillctl.py workloads native program role-describe \
+  --factory examples/open_workloads/unseen_score_pipeline.py:build \
+  --parameters examples/open_workloads/unseen_score_pipeline.json --execute
+```
+
+To calibrate, search and execute automatically under an **already allocated**
+CPU/Gloo group:
+
+```bash
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 python -m torch.distributed.run \
+  --standalone --nproc-per-node=2 scripts/distillctl.py \
+  workloads native program role-auto \
+  --factory examples/open_workloads/unseen_score_pipeline.py:build \
+  --parameters examples/open_workloads/unseen_score_pipeline.json \
+  --distributed gloo --memory-limit-bytes 10000000 \
+  --host-memory-limit-bytes 10000000 --max-candidates 3 \
+  --samples 1 --max-native-runs 4 --output /tmp/role-auto --execute
+```
+
+`role-auto` emits content-bound component receipts, a common frontier/DP plan,
+selected runtime evidence and a summary; changing frames, call count or the
+inspectable factory invalidates previous calibration. `role-plan` can operate on
+calibration metadata without loading models. `role-run` verifies the saved
+search/identity again before executing it. `--disable-offload` excludes CPU
+saved-activation offload; without `--execute` no user factory or model is run.
+On already allocated A100/H100 multi-rank NCCL, use `--distributed nccl`
+and supply device-appropriate CUDA model/data factories; automatic VRAM headroom
+uses the reserve, but cross-role CUDA P2P, pinned offload and 14B training are
+**NOT YET GPU VALIDATED**. No spontaneous GPU allocation or scheduler submission
+is performed. This CLI represents **one** supported producer-latent→Score-VJP
+family, not a compiler for arbitrary GAN/DiffSynth/H3 video protocols.
+
+Automated CPU integration includes a genuinely new Conv3D workload whose input
+sizes and microbatch frequency are changed without editing planner logic, real
+two-rank Gloo producer/Score P2P, optimizer work, measured candidate selection,
+and rejection when changed task/data attempts to replay old plan receipts.
+This is an interface/execution validation, not an independent full model DMD
+numerical or video-quality reference.
