@@ -50,7 +50,7 @@ def _read(path):
     return value
 
 
-def calibrate(workload,output,*,max_candidates=8,samples=2,max_program_runs=32,rtol=1e-5,atol=1e-7):
+def calibrate(workload,output,*,max_candidates=8,samples=2,max_program_runs=32,rtol=1e-5,atol=1e-7,profile_hardware=None):
     from .execution import ExecutionBackend
     from .checkpoint_policy import native_effect_evidence
     backend=ExecutionBackend(workload)
@@ -60,6 +60,20 @@ def calibrate(workload,output,*,max_candidates=8,samples=2,max_program_runs=32,r
     needed=1+samples*len(inventory['candidates'])
     require(type(max_program_runs) is int and needed<=max_program_runs,'budget must include reference and all calibration samples',path='open.calibrate')
     identity=backend.identity();hardware=backend.hardware();source=source_identity()
+    # CUDA has an opt-out rather than requiring users to hand-profile A100/H100.
+    # Scratch-only H2D and NCCL probes precede paired training measurements.
+    # They are diagnostics; their isolated times are never substituted for
+    # actual native model/optimizer call observations in the cost model.
+    require(profile_hardware is None or type(profile_hardware) is bool,
+            'profile_hardware must be a boolean', path='open.calibrate')
+    enabled = workload.device.type == 'cuda' if profile_hardware is None else profile_hardware
+    if enabled:
+        from .hardware_probe import probe
+        observations = backend.consensus(probe(workload.device, distributed=backend.distributed))
+        hardware_probe = {'status': 'MEASURED_ISOLATED_GPU_PROBES' if workload.device.type=='cuda'
+                          else 'NOT_GPU_PROFILE', 'ranks':observations}
+    else:
+        hardware_probe = {'status':'NOT_REQUESTED', 'ranks':[]}
     root=Path(output).resolve();backend.mkdir(root)
     # A real git source when available; an archive has an explicit non-Git label.
     result=subprocess.run(['git','rev-parse','HEAD'],cwd=repository_root(),text=True,capture_output=True)
@@ -108,7 +122,10 @@ def calibrate(workload,output,*,max_candidates=8,samples=2,max_program_runs=32,r
                     'operation_contract_sha256':contract.digest,'component_contract':contract.to_dict(),
                     'device':backend.device,'replicas':backend.world,'instrumentation':'call boundary timing and saved-storage accounting',
                     'capacity_scope':'CUDA allocator plus tracked tensors' if workload.device.type=='cuda' else 'tracked tensor storage only; not CPU RSS',
-                    'claimable_speedup':False,'rank_observations':[
+                    'claimable_speedup':False,'timing_source':'synchronized_host_wall_ns',
+                    'gpu_event_diagnostic_ns':[[sample[r]['profile'][op.operation_id].get('cuda_event_ns')
+                                               for r in range(backend.world)] for sample in rank_observations],
+                    'rank_observations':[
                         [sample[r]['profile'][op.operation_id] for r in range(backend.world)]
                         for sample in rank_observations]}
                 p=directory/f'op-{i}.json';backend.publish(p,raw)
@@ -126,6 +143,7 @@ def calibrate(workload,output,*,max_candidates=8,samples=2,max_program_runs=32,r
         require(variants,'no numerically admitted implementation',path='open.calibrate')
         require(backend.identity()==identity and source_identity()==source,'workload/source changed during calibration',path='open.calibrate')
         manifest={'schema_version':SCHEMA,'identity':identity,'source':source,'hardware':hardware,
+                  'hardware_probe':hardware_probe,
                   'graph':workload.program.compile().to_dict(),'variants':variants,'failed':failed,
                   'inventory':inventory,'budget':{'maximum':max_program_runs,'actual':actual},
                   'source_commit_available':head!='0'*40,'reference_order':[c.id for c in workload.program.calls],

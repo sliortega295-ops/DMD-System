@@ -49,6 +49,8 @@ def main(argv=None):
             q.add_argument('--distributed',choices=('gloo','nccl'),help='join an explicitly allocated torchrun group')
             q.add_argument('--group-timeout',type=int,default=180)
         if name in ('calibrate','auto'):
+            q.add_argument('--no-hardware-probe',action='store_true',
+                           help='disable bounded, automatic A100/H100 H2D/NCCL microprofiling')
             q.add_argument('--max-candidates',type=int,default=8)
             q.add_argument('--samples',type=int,default=2)
             q.add_argument('--max-program-runs',type=int,default=32)
@@ -98,7 +100,9 @@ def main(argv=None):
                 result={'program':workload.program.to_dict(),'graph':workload.program.compile().to_dict(),
                         'capabilities':backend.inventory(args.max_candidates if hasattr(args,'max_candidates') else 16),'gpu_execution':'NOT_RUN'}
             elif args.command=='calibrate':
-                result=calibrate(workload,args.output,max_candidates=args.max_candidates,samples=args.samples,max_program_runs=args.max_program_runs)
+                result=calibrate(workload,args.output,max_candidates=args.max_candidates,
+                                 samples=args.samples,max_program_runs=args.max_program_runs,
+                                 profile_hardware=False if args.no_hardware_probe else None)
             elif args.command=='run':
                 result,_,_=run(workload,args.plan,args.output)
             else:
@@ -108,7 +112,8 @@ def main(argv=None):
                 require(required<=args.max_program_runs,'auto budget includes calibration and two confirmation runs',path='open.cli')
                 root=args.output.resolve();backend.mkdir(root)
                 calibration=calibrate(workload,root/'calibration',max_candidates=args.max_candidates,
-                            samples=args.samples,max_program_runs=args.max_program_runs-2)
+                            samples=args.samples,max_program_runs=args.max_program_runs-2,
+                            profile_hardware=False if args.no_hardware_probe else None)
                 selected=backend.select_plan(lambda:plan(root/'calibration/calibration.json',memory_limit_bytes=args.memory_limit_bytes,
                               max_states=args.max_states,beam_width=args.beam_width))
                 backend.publish(root/'plan.json',selected)
