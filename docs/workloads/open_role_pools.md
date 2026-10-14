@@ -244,3 +244,36 @@ optimizer state **before** FSDP installation. The independent reference
 starts from the same preinitialized Adam moments; full reconstructed sharded
 `exp_avg` and `exp_avg_sq`, not only parameters, are compared after a native
 cross-role update. These tests are CPU/Gloo: no A100/H100 result is implied.
+
+## Automatic frozen-Score pool FSDP2 (CPU/Gloo validated)
+
+For a Score model whose **actual** parameters are all immutable, the workload
+factory can declare `RoleFunctions(score_parameters_frozen=True)`. This is a
+verified training-semantic fact, **not a request to select FSDP**: the runtime
+checks that all Score parameters have `requires_grad=False` before installing a
+shard. A declared Score optimizer/update is incompatible and rejected. With
+this fact the normal `role-auto` enumeration now considers both replicated and
+`fsdp2_frozen` Score pools automatically, with their actual measured costs.
+The workload does not prescribe the winning pool, nor is the optimizer/loss
+altered to force admission.
+
+Score FSDP2 uses the already-created Score subgroup, keeps its backbone sharded
+outside forward, and all-gathers it through native FSDP2 on each native Score
+call. Each Score rank must receive the same number of forwards, and the
+currently proven FIFO lowering requires equal-sized G and Score pools with
+one producer/receiver pair per rank. This prevents an uneven producer from
+waiting for a Score gradient while another Score shard is still waiting to
+enter the same collective. The Generator-pool `fsdp2_keep_forward` and frozen
+Score FSDP2 choices can coexist under these constraints. A Score parameter
+update, unequal role-pool sizes, or unresolved collective ordering are rejected
+instead of silently reverting to replication.
+
+Four-process CPU/Gloo functional tests exercise Score-only sharding and dual
+Generator+Score sharding with real cross-pool input VJP, original Generator
+Adam, and independent global-batch numerical references. A separate measured
+calibration → common selection → persistent two-cycle execution check uses
+unknown-model callables and checks source-bound plan replay. These are CPU
+correctness checks, **not** claims that the chosen configuration wins on A100
+or H100, nor that original Helios/H3/LiveWan protocols have been migrated.
+GPU/NCCL collective ordering, 14B model capacity, BF16 mixed Score precision,
+score-train FSDP, and actual training speedups remain NOT_RUN/unsupported.
