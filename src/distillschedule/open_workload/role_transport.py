@@ -33,6 +33,7 @@ class RoleFunctions:
     generator_forward: Callable[[nn.Module, Any], torch.Tensor]
     score_loss: Callable[[nn.Module, torch.Tensor, Any], torch.Tensor]
     score_train_loss: Callable[[nn.Module, torch.Tensor, Any], torch.Tensor] | None = None
+    data_identity: str = ''  # source/cohort SHA, NOT a preselected layout
 
     def validate(self, task):
         require(all(callable(x) for x in (self.make_model, self.make_optimizer,
@@ -120,7 +121,10 @@ class RolePoolExecutor:
         identities=[None for _ in range(group_size)]
         dist.all_gather_object(identities,_model_identity(module),group=group)
         require(len(set(identities))==1,'role replica model initializations differ',path='role.runtime')
+        from .torch_backend import storage_bytes
+        initial_bytes=storage_bytes((module,optimizer))
         optimizer.zero_grad(set_to_none=True)
+        dist.barrier()
         started=time.perf_counter_ns()
         send_work=[]
         local_score_data=[]
@@ -190,6 +194,8 @@ class RolePoolExecutor:
         if self.device.type=='cuda':torch.cuda.synchronize(self.device)
         # All-gather small receipts only (no weights or model tensors transmitted).
         local={'rank':self.rank,'role':self.role,'events':self.events,
+               'initial_storage_bytes':initial_bytes,
+               'final_storage_bytes':storage_bytes((module,optimizer)),
                'max_inflight':peak,'elapsed_ns':time.perf_counter_ns()-started,
                'model_sha256':_model_identity(module),'generator_version':1,
                'score_version':task.score_updates,

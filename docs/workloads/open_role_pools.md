@@ -40,3 +40,35 @@ search/selection, native CUDA/NCCL validation, cross-node 16-GPU performance,
 full original model semantics, CPU offload/prefetch, and asynchronous
 communication/copy profiling require their own admission. Do not call the
 supported CPU transport proof a measured A100/H100 speedup.
+
+## Measured common-search integration
+
+`role_planning.calibrate()` enumerates budgeted role pools/windows from the
+current allocated rank capacities, constructs only the model for each rank's
+selected role, and performs actual full-cycle Gloo/NCCL role execution. All
+rank receipts include native model-state identity, model/optimizer storage and
+wall time. Observed per-layout full-cycle wall durations and a 0-duration finish
+are stored as content-hashed `CostModel` component receipts; calibration fails if
+repeated initial-state replays diverge. A declared input/cohort identity and
+inspectable callable source are mandatory. Old costs must match source, hardware,
+training semantics and data identity.
+
+`role_planning.search()` uses the EXISTING shared `search.service.select` and
+event-frontier solver on measured **whole-cycle envelopes** plus source-bound
+physical G/Score state, declared transport occupancy and per-rank capacity. The
+native execution supports bounded FIFO windows; it does **not** lower arbitrary
+DP event interleavings. Internal G/Score overlap comes from native nonblocking
+communication and is already INCLUDED in observed cycle wall time. The planned
+cycle is not the sum of serial G/S call times, and no synthetic overlap discount
+is applied. `run_selected()` verifies the ranked choice and source-bound receipts
+before executing the selected real native worker. Hardware changes invalidate
+these costs rather than assuming A100 and H100 have identical winners.
+
+The measured cost is a *diagnostic native cost*, not a verified speedup: the
+original pretrained-model numerical reference, model-specific DMD quality,
+optimizer/EMA trajectory and CUDA/NCCL performance still require independent
+validation. Tensor/storage accounting does not bound all unseen autograd
+activations, CUDA allocator behavior, future changing inputs or nonlinear
+transfers. This new role interface does not automatically translate original
+Wan, Helios, H3 or LiveWan training semantics; those require adapters that
+declare and invoke their **actual** original functions.
