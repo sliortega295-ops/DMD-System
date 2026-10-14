@@ -193,6 +193,9 @@ class NativeStaticPPProxy(nn.Module):
                 torch.cuda.max_memory_reserved(self.device))
 
     def receipt(self):
+        for schedule, _ in self._schedules.values():
+            if isinstance(schedule, ExternalLossGPipe):
+                schedule.retire_unreachable_graph()
         pending = sum(bool(getattr(s, 'pending', False)) for s, _ in self._schedules.values())
         calls = sum(s._stage.submod.calls for s, _ in self._schedules.values())
         grad_calls = sum(s._stage.submod.grad_calls for s, _ in self._schedules.values())

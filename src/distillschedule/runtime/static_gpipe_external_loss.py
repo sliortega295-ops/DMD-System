@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import inspect
+import weakref
 
 import torch
 import torch.distributed as dist
@@ -62,6 +63,8 @@ class ExternalLossGPipe(ScheduleGPipe):
         super().__init__(stage, n_microbatches=pipeline_microbatches, loss_fn=_external_loss_only, scale_grads=True)
         self.pending = False
         self.completed_batches = 0
+        self.discarded_unreachable_forward_batches = 0
+        self._external_graph_ref = None
         self.final_output_shape = tuple(final_output_example.shape)
         self.final_output_dtype = final_output_example.dtype
         self.constant_boundary_inputs = frozenset(constant_boundary_inputs)
@@ -69,6 +72,7 @@ class ExternalLossGPipe(ScheduleGPipe):
         self.transport_only_zero_grad_count = 0
 
     def forward_batch(self, *args, **kwargs):
+        self.retire_unreachable_graph()
         if self.pending:
             raise RuntimeError('previous external-loss backward is still pending')
         if not torch.is_grad_enabled():
@@ -87,6 +91,32 @@ class ExternalLossGPipe(ScheduleGPipe):
         dist.broadcast(transported, src=dist.get_global_rank(self._stage.group, 1),
                        group=self._stage.group)
         return output if self._stage.is_last else transported
+
+    def bind_external_graph(self, context):
+        """Observe, but never retain, the native outer autograd node.
+
+        A later native no-grad denoising call can sever the selected earlier
+        pyramid graph. Ordinary autograd then releases it without backward;
+        the explicit PP schedule must release its corresponding inner cache.
+        """
+        if not self.pending or self._external_graph_ref is not None:
+            raise RuntimeError('external graph registration requires one pending forward')
+        self._external_graph_ref = weakref.ref(context)
+
+    def retire_unreachable_graph(self):
+        """Release only a graph that native autograd has already discarded.
+
+        No backward, zeros, collective, evaluation or update is synthesized.
+        A live/unknown owner remains pending and the normal gate rejects it.
+        """
+        if (not self.pending or self._external_graph_ref is None
+                or self._external_graph_ref() is not None):
+            return False
+        self._stage.clear_runtime_states()
+        self.pending = False
+        self._external_graph_ref = None
+        self.discarded_unreachable_forward_batches += 1
+        return True
 
     def _step_microbatches(self, arg_mbs=None, kwarg_mbs=None, target_mbs=None,
                           losses=None, return_outputs=True):
@@ -144,6 +174,7 @@ class ExternalLossGPipe(ScheduleGPipe):
             _wait_batch_p2p(work)
         self._stage.perform_reduce_grad(gradient_divisor)
         self.pending = False
+        self._external_graph_ref = None
         self.completed_batches += 1
 
     def backward_output_gradient(self, gradient):
@@ -188,6 +219,7 @@ class ExternalLossGPipe(ScheduleGPipe):
             gradient_scaling=('MICROBATCH_MEAN8_BEFORE_DP2_MEAN' if self.native_microbatches == 8
                               else 'OUTER_EXPLICIT_MEAN8_BEFORE_DP2_MEAN'),
             completed_forward_backward_batches=self.completed_batches,
+            discarded_unreachable_forward_batches=self.discarded_unreachable_forward_batches,
             pending_external_backward=self.pending,
             constant_boundary_inputs=[self.boundary_input_names[i]
                                       for i in sorted(self.constant_boundary_inputs)],

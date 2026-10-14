@@ -23,6 +23,7 @@ class _NativeBatchBoundary(torch.autograd.Function):
         detached = [t.detach().requires_grad_(t.requires_grad) for t in inputs]
         with torch.enable_grad():
             output = owner.schedule.forward_batch(*detached)
+        owner.schedule.bind_external_graph(ctx)
         return output.detach()
 
     @staticmethod

@@ -383,6 +383,10 @@ def main():
             g_calls=g_after['application_forward_per_logical_sample']-g_before['application_forward_per_logical_sample']
             c_calls=c_after['application_forward_per_logical_sample']-c_before['application_forward_per_logical_sample']
             expected_g_B1=sum(int(x['inventory']['call_count'])*x['dispatcher']['logical_samples'] for x in census)
+            row['post_cycle_census'] = dict(cycle=cycle_index, generator_before=g_before,
+                generator_after=g_after, critic_before=c_before, critic_after=c_after,
+                generator_calls=g_calls, expected_generator_B1_calls=expected_g_B1,
+                critic_calls=c_calls, expected_critic_calls=3+len(logical_steps))
             if g_calls*8!=expected_g_B1 or c_calls!=3+len(logical_steps) or g_after['pending_backward_schedules'] or c_after['pending_backward_schedules']:
                 raise ValueError('actual native PP DiT application census mismatch')
             if (g_after['grad_forward_per_logical_sample']-g_before['grad_forward_per_logical_sample']!=3
