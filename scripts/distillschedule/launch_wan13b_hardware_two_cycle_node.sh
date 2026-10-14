@@ -16,10 +16,21 @@ HELIOS=${DISTILLSCHEDULE_HELIOS_ROOT:?set frozen Helios source snapshot}
 RUN=$ROOT/research_artifacts/five_workload_h100_20260930/$RUN_ID
 mkdir -p "$ROOT/locks"
 # Both locks stay open through construction, evidence extraction and teardown.
-exec 9>"$ROOT/locks/helios_world8_gpu.lock"
-flock -n -E 75 9
-exec 8>/tmp/distillschedule_gpu_node.lock
-flock -n -E 75 8
+# An owned campaign may already hold these exact open-file descriptions.
+case "${DISTILLSCHEDULE_INHERITED_GPU_LOCKS:-0}" in
+  0)
+    exec 9>"$ROOT/locks/helios_world8_gpu.lock"
+    flock -n -E 75 9
+    exec 8>/tmp/distillschedule_gpu_node.lock
+    flock -n -E 75 8
+    ;;
+  1)
+    "$PYTHON" "$REPO/scripts/distillschedule/verify_inherited_gpu_locks.py" \
+      --project-root "$ROOT" --project-fd 9 --node-fd 8 --asset-fd 7
+    ;;
+  *) echo invalid_inherited_gpu_locks_flag >&2; exit 2 ;;
+esac
+unset DISTILLSCHEDULE_INHERITED_GPU_LOCKS
 test ! -e "$RUN"
 mkdir -p "$RUN/logs" "$RUN/manifests"
 test "$(git -C "$REPO" rev-parse HEAD)" = "$EXPECTED_HEAD"

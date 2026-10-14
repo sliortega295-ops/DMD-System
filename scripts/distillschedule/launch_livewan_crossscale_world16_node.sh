@@ -248,14 +248,36 @@ fi
 mkdir -p "${NODE_LOG}" "${RUN_ROOT}"
 mkdir -p "$(dirname "${SOURCE_ROOT}")"
 [[ ! -e "${NODE_LOG}/launch_manifest.txt" ]] || { echo run_id_already_used >&2; exit 82; }
-exec 9>"${LOCK_FILE}"
-flock -n 9 || { echo gpu_lock_busy >&2; exit 73; }
+case "${DISTILLSCHEDULE_INHERITED_GPU_LOCKS:-0}" in
+  0)
+    exec 9>"${LOCK_FILE}"
+    flock -n 9 || { echo gpu_lock_busy >&2; exit 73; }
+    LIVEWAN_SOURCE_PREPARE_FD=8
+    ;;
+  1)
+    [[ "${HARDWARE_PROFILE}" == h100-8-b16 && "${LOCK_FILE}" == /tmp/distillschedule_gpu_node.lock ]] || {
+      echo inherited_locks_require_registered_h100_node >&2; exit 2;
+    }
+    "${PYTHON}" "${ROOT}/scripts/distillschedule/verify_inherited_gpu_locks.py" \
+      --project-root "${DISTILLSCHEDULE_CAMPAIGN_ROOT:?set owned campaign root}" \
+      --project-fd 9 --node-fd 8 --asset-fd 7
+    # FD8 owns the parent node lease: source preparation must not replace or
+    # unlock it. This independent descriptor protects only the source cache.
+    LIVEWAN_SOURCE_PREPARE_FD=11
+    ;;
+  *) echo invalid_inherited_gpu_locks_flag >&2; exit 2 ;;
+esac
+unset DISTILLSCHEDULE_INHERITED_GPU_LOCKS DISTILLSCHEDULE_CAMPAIGN_ROOT
 [[ -z "$(nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | sed '/^[[:space:]]*$/d')" ]] || {
   echo gpu_processes_present >&2; exit 81;
 }
 
-exec 8>"${SOURCE_ROOT}.prepare.lock"
-flock 8
+if [[ "$LIVEWAN_SOURCE_PREPARE_FD" == 11 ]]; then
+  exec 11>"${SOURCE_ROOT}.prepare.lock"
+else
+  exec 8>"${SOURCE_ROOT}.prepare.lock"
+fi
+flock "$LIVEWAN_SOURCE_PREPARE_FD"
 GENERATED_SOURCE_RECEIPT="${NODE_LOG}/source_receipt.generated.json"
 bash "${ROOT}/scripts/distillschedule/prepare_livewan_crossscale_source.sh" \
   --output "${SOURCE_ROOT}" --receipt "${GENERATED_SOURCE_RECEIPT}" \
@@ -280,7 +302,7 @@ elif registered != generated:
         "generated source receipt differs from immutable registered receipt"
     )
 PY
-flock -u 8
+flock -u "$LIVEWAN_SOURCE_PREPARE_FD"
 
 export PATH="${PYENV}/bin:${PATH}"
 export PYTHONPATH="${PYTHON_OVERLAY}:${ROOT}/src:${ROOT}:${ROOT}/third_party/livewan:${SOURCE_ROOT}"
