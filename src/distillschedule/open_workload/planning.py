@@ -253,6 +253,13 @@ def run(workload,plan_path,output,*,rtol=1e-5,atol=1e-7):
     require(len(set(backend.consensus(sha)))==1,'rank plan selection differs',path='open.run')
     require(manifest['identity']==document['identity']==backend.identity(),'workload parameters, inputs, code or state changed',path='open.run')
     require(backend.hardware()==manifest['hardware'],'runtime environment changed',path='open.run')
+    if workload.device.type=='cuda':
+        from .hardware_probe import plan_memory_limit
+        budget=document.get('hardware_memory_budget',{})
+        reserve=budget.get('reserve_bytes',0)
+        plan_memory_limit(workload.device,distributed=backend.distributed,
+            consensus=backend.consensus,requested=document['memory_limit_bytes'],
+            reserve_bytes=reserve)
     require(workload.program.compile().to_dict()==manifest['graph'],'wrong callable program',path='open.run')
     selected=document['selected'];matches=[v for v in variants if v[0]['id']==selected['candidate_id']]
     require(len(matches)==1 and selected['implementation']==matches[0][0]['implementation'],'unmeasured implementation',path='open.run')

@@ -55,7 +55,11 @@ def main(argv=None):
             q.add_argument('--samples',type=int,default=2)
             q.add_argument('--max-program-runs',type=int,default=32)
         if name in ('plan','auto'):
-            q.add_argument('--memory-limit-bytes',type=int,required=True)
+            q.add_argument('--memory-limit-bytes',type=int,required=name=='plan',
+                           help='optional for CUDA auto: infer conservative free+allocated budget; required for CPU')
+            if name=='auto':
+                q.add_argument('--gpu-reserve-gib',type=int,default=2,
+                               help='real GPU reserve (0..16 GiB), applied before automatic layout search')
             q.add_argument('--max-states',type=int,default=50000)
             q.add_argument('--beam-width',type=int,default=0)
         if name=='plan': q.add_argument('--calibration',type=Path,required=True)
@@ -110,15 +114,27 @@ def main(argv=None):
                 # selected-plan confirmation, not free out-of-budget trials.
                 required=3+args.samples*len(backend.inventory(args.max_candidates)['candidates'])
                 require(required<=args.max_program_runs,'auto budget includes calibration and two confirmation runs',path='open.cli')
+                from .hardware_probe import plan_memory_limit
+                budget = plan_memory_limit(workload.device,distributed=backend.distributed,
+                    consensus=backend.consensus,requested=args.memory_limit_bytes,
+                    reserve_bytes=args.gpu_reserve_gib * 2**30)
+                # Same device/rank budget is consumed for both search and native
+                # admission; re-evaluated against current headroom on replay.
+                limit_bytes=budget['limit_bytes']
                 root=args.output.resolve();backend.mkdir(root)
                 calibration=calibrate(workload,root/'calibration',max_candidates=args.max_candidates,
                             samples=args.samples,max_program_runs=args.max_program_runs-2,
                             profile_hardware=False if args.no_hardware_probe else None)
-                selected=backend.select_plan(lambda:plan(root/'calibration/calibration.json',memory_limit_bytes=args.memory_limit_bytes,
+                selected=backend.select_plan(lambda:plan(root/'calibration/calibration.json',memory_limit_bytes=limit_bytes,
                               max_states=args.max_states,beam_width=args.beam_width))
+                from distillschedule.workloads.best_known.registry import fingerprint
+                selected['hardware_memory_budget'] = budget
+                selected.pop('plan_sha256')
+                selected['plan_sha256']=fingerprint(selected)
                 backend.publish(root/'plan.json',selected)
                 result,_,_=run(workload,root/'plan.json',root/'execution')
                 result['program_runs']=calibration['budget']['actual']+2
+                result['memory_budget']=budget
                 backend.publish(root/'result.json',result)
         print(json.dumps(result,indent=2,sort_keys=True,allow_nan=False))
         return 0 if result.get('status')!='REVIEW_SELECTED_PROGRAM' else 3

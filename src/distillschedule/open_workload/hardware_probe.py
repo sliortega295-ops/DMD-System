@@ -143,3 +143,47 @@ def probe(device, *, distributed: bool, config: ProbeConfig | None = None) -> di
                               'CUDA event scopes cannot replace Nsight critical-path analysis']}
     record['digest'] = fingerprint(record)
     return record
+
+
+def plan_memory_limit(device, *, distributed: bool, consensus, requested: int | None = None,
+                      reserve_bytes: int = 2 * 2**30) -> dict[str, Any]:
+    """Safe, current-allocation-specific admission budget for A100/H100.
+
+    Include tensors already allocated by the workload factory as well as
+    allocator-reserved reusable cache; free VRAM alone is not comparable
+    with the planner's total static+workspace estimate.
+    Return the minimum headroom across all ranks; never infer GPU capacity from
+    an A100/H100 product label. On CPU the caller must provide a memory limit.
+    """
+    import torch
+    device = torch.device(device)
+    require(type(reserve_bytes) is int and 0 <= reserve_bytes <= 16 * 2**30,
+            'GPU reserve must be 0..16 GiB', path='open.hardware')
+    require(requested is None or (type(requested) is int and requested > 0),
+            'positive explicit memory limit required', path='open.hardware')
+    if device.type != 'cuda':
+        require(requested is not None,
+                'CPU memory limit must be explicit (CPU tensor storage is not RSS)', path='open.hardware')
+        return {'limit_bytes':requested, 'source':'explicit_cpu_tracked_tensor_storage',
+                'rank_budgets':[], 'reserve_bytes':0}
+    require(torch.cuda.is_available(), 'CUDA capacity requires actual GPU', path='open.hardware')
+    free, total = torch.cuda.mem_get_info(device)
+    allocated = torch.cuda.memory_allocated(device)
+    reserved = torch.cuda.memory_reserved(device)
+    require(0 <= allocated <= reserved and free + reserved <= total,
+            'CUDA allocator capacity snapshot inconsistent', path='open.hardware')
+    local = {'free_bytes':int(free),'total_bytes':int(total),
+             'torch_allocated_bytes':int(allocated),
+             'torch_reserved_bytes':int(reserved),
+             'conservative_limit_bytes':int(free + reserved - reserve_bytes)}
+    records = consensus(local) if distributed else [local]
+    require(records and all(type(row.get('conservative_limit_bytes')) is int
+                            and row['conservative_limit_bytes'] > 0 for row in records),
+            'not enough real free CUDA memory after reserve', path='open.hardware')
+    allowed = min(row['conservative_limit_bytes'] for row in records)
+    require(requested is None or requested <= allowed,
+            'explicit budget exceeds observed minimum GPU capacity', path='open.hardware')
+    return {'limit_bytes':allowed if requested is None else requested,
+            'source':'automatic_min_free_plus_allocator_reserved_after_reserve' if requested is None
+                      else 'explicit_bounded_by_live_gpu_headroom',
+            'rank_budgets':records, 'reserve_bytes':reserve_bytes}

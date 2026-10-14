@@ -104,3 +104,36 @@ Parameter `.backward()` and optimizer updates must be separate semantic calls;
 input/latent gradients are not averaged. Unequal per-rank batches, hidden
 stateful closures, sparse/higher-order parameter gradients and undeclared
 side effects require additional contracts. Numerical mismatches remain REVIEW.
+
+## A100/H100 hardware-specific calibration (opt-in public backend)
+
+For an already allocated A100/H100 CUDA/NCCL group, the same `program auto`
+command performs bounded native candidate calibration on the **current** GPUs.
+It fingerprints GPU family/SM (A100 SM80, H100 SM90), total VRAM, device UUID,
+Torch/CUDA/NCCL runtime and allocated rank topology. Cost receipts cannot be
+replayed on another accelerator/environment without new measurements. GPU
+family is a **capability identity**, not an instruction to pick a fixed winner.
+
+Actual per-call costs remain the synchronized **host wall** times (including
+completion fences and measured NCCL effects); separate CUDA events expose
+on-stream GPU execution time. Automatically collected, scratch-only 4 MiB
+pinned H2D and 1/8 MiB NCCL all-reduce samples are saved under
+`calibration.json:hardware_probe`. Those microbenchmarks **never** replace
+actual generator/backward/optimizer cost data or claim to represent an
+end-to-end communication critical path. Use `--no-hardware-probe` to disable
+the diagnostic probes while preserving actual candidate timing.
+
+In CUDA `auto`, `--memory-limit-bytes` is optional. The default budget is the
+minimum per-rank currently free + current process allocator-reserved reusable
+VRAM, minus a 2 GiB reserve. Use `--gpu-reserve-gib N` (0..16) to adjust
+reserve, or provide an explicit smaller `--memory-limit-bytes`. The budget and
+per-rank snapshot are retained in the plan; execution checks current real
+headroom again before attempting a selected CUDA plan. CPU still requires an
+explicit memory budget (tracked tensors are not whole-process RSS).
+
+These features do NOT supply an H100-only kernel, automatic role-pool
+partitioning, layerwise bandwidth roofline, full GPU Nsight trace or verified
+A100/H100 numerical throughput. Hardware-specific strategy selection is
+conditioned on **real** candidate measurements, not assumed winners. Mixed
+GPU models within a rank group and inter-node transport require dedicated
+admission and GPU verification before performance claims.
