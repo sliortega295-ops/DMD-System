@@ -35,7 +35,7 @@ jobs:
         run: python -m pytest -q tests/test_open_workload_role_transport.py
       - name: Generator and Score pool FSDP2 with actual P2P/VJP/Adam reference
         env: {OMP_NUM_THREADS: '1', MKL_NUM_THREADS: '1'}
-        run: python -m pytest -q tests/test_open_workload_role_sharding.py tests/test_open_workload_role_score_sharding.py tests/test_open_workload_role_trainable_score.py
+        run: python -m pytest -q tests/test_open_workload_role_sharding.py tests/test_open_workload_role_score_sharding.py tests/test_open_workload_role_trainable_score.py tests/test_open_workload_role_composition.py
       - name: Repeated Score commits preserve original input semantics and Adam
         env: {OMP_NUM_THREADS: '1', MKL_NUM_THREADS: '1'}
         run: python -m pytest -q tests/test_open_workload_role_updates.py
