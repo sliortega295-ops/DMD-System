@@ -115,6 +115,7 @@ class RolePoolExecutor:
         self.group=None
         self.events=[]
         self.module=None;self.optimizer=None
+        self._generator_mesh=None;self._sharding={'role':'replicated'}
         self._prepared=False;self._closed=False;self._failed=False;self._busy=False
         self._cycle=0
         self._versions={'generator':0,'score':0,'optimizer_g':0,'gradient_g':0,'optimizer_s':0}
@@ -154,6 +155,10 @@ class RolePoolExecutor:
         identities=[None for _ in range(group_size)]
         dist.all_gather_object(identities,_model_identity(module),group=group)
         require(len(set(identities))==1,'role replica model initializations differ',path='role.runtime')
+        if layout.generator_parallelism=='fsdp2_keep_forward':
+            from .role_sharding import install_generator
+            module,optimizer,self._generator_mesh,self._sharding=install_generator(
+                module,optimizer,self.device,layout.generator)
         self.module,self.optimizer=module,optimizer
         self.gen_group,self.score_group=gen_group,score_group
         self.group=group
@@ -196,6 +201,11 @@ class RolePoolExecutor:
                 if group!=dist.GroupMember.NON_GROUP_MEMBER:
                     dist.destroy_process_group(group)
         self._closed=True
+        if self._generator_mesh is not None:
+            # Score ranks are not mesh members and have no subgroup to release.
+            if self.rank in self.layout.generator and dist.is_initialized():
+                dist.destroy_process_group(self._generator_mesh.get_group())
+            self._generator_mesh=None
         self.module=None;self.optimizer=None;self.group=None
 
     def _run_cycle(self):
@@ -225,7 +235,11 @@ class RolePoolExecutor:
                 if offloader is not None:offloader.prefetch()
                 recv_work.wait();sent.wait()
                 _validate_tensor(grad,task,'returned latent gradient')
-                with torch.enable_grad():latent.backward(grad)
+                # FSDP's reduce-scatter averages across its shard group. The
+                # input VJP is already divided by GLOBAL logical microbatch
+                # count; compensate once before invoking native autograd.
+                vjp=(grad*group_size if layout.generator_parallelism=='fsdp2_keep_forward' else grad)
+                with torch.enable_grad():latent.backward(vjp)
                 self._event('generator_vjp_backward',i)
                 if offloader is not None:
                     offload_records.append(offloader.statistics)
@@ -254,7 +268,10 @@ class RolePoolExecutor:
                 # Drop producer-loop aliases; the in-flight entry owns storage.
                 del latent,grad,received,sent,outbound,offloader
             while inflight:flush()
-            _sync_gradients(module,gen_group,group_size)
+            # Sharded FSDP2 gradients have ALREADY been reduce-scattered.
+            # A second allreduce would corrupt the Adam update.
+            if layout.generator_parallelism=='replicated':
+                _sync_gradients(module,gen_group,group_size)
             optimizer.step();optimizer.zero_grad(set_to_none=True)
             self._event('generator_commit',None)
         else:
@@ -308,6 +325,11 @@ class RolePoolExecutor:
         # All-gather small receipts only (no weights or model tensors transmitted).
         cuda_peak=(torch.cuda.max_memory_allocated(self.device)
                    if self.device.type=='cuda' else None)
+        if self.role=='generator' and layout.generator_parallelism=='fsdp2_keep_forward':
+            from .role_sharding import sharded_model_identity
+            model_digest=sharded_model_identity(module,gen_group,group_size)
+        else:
+            model_digest=_model_identity(module)
         local={'rank':self.rank,'role':self.role,'events':self.events,
                'activation_policy':layout.activation_policy,
                'offload':{'packed_tensors':sum(x['packed_tensors'] for x in offload_records),
@@ -323,7 +345,7 @@ class RolePoolExecutor:
                'initial_storage_bytes':initial_bytes,
                'final_storage_bytes':storage_bytes((module,optimizer)),
                'max_inflight':peak,'elapsed_ns':time.perf_counter_ns()-started,
-               'model_sha256':_model_identity(module),
+               'model_sha256':model_digest,'sharding':self._sharding,
                'generator_version':graph.metadata['final_versions']['generator'],
                'score_version':graph.metadata['final_versions']['score'],
                'cycle':self._cycle,

@@ -175,3 +175,29 @@ A bigger explicit `max_candidates` budget enumerates all legal combinations.
 Supported physical topology remains contiguous rank cuts; arbitrary role
 reshuffles, hetero-GPU model remapping and dynamic role migrations are not
 implemented. CUDA/NCCL effectiveness requires real A100/H100 profiling.
+
+## Opt-in Generator-pool FSDP2 (bounded native prototype)
+
+The same role-pool runtime can now instantiate a real PyTorch FSDP2 mesh
+inside the Generator pool while Score stays replicated. The explicit P2P
+Score-latent VJP returns to the original Generator graph. Optimizer parameter
+identities and initialized Adam moments are migrated using the existing
+generic FSDP2 helper. All role ranks create the DeviceMesh in a common order.
+
+Admission requires more than one Generator rank, equal per-rank microbatch
+counts, a window that holds all local forwards before any backward, and
+resident saved activations. Only homogeneous dense, contiguous parameters
+and supported pointwise optimizer layouts are admitted. This conservative
+phase-order restriction prevents divergent FSDP collective schedules.
+FSDP2's default group-average is compensated exactly once at the Generator
+VJP backward boundary. A second gradient allreduce is forbidden.
+
+The four-process CPU/Gloo test checks sharded params, score P2P, true input
+VJP and Generator/Score Adam updates against an independently computed
+global-microbatch reference. `allow_generator_fsdp=True` explicitly enables
+additional search candidates; the existing default family is unchanged.
+
+This does NOT establish A100/H100/NCCL correctness, heterogeneous BF16/FP32
+root grouping, Score sharding, sharded activation offload, or reliable 14B
+allgather capacity. Candidate admission retains the full dense Generator
+footprint until device-specific memory peaks have been measured.

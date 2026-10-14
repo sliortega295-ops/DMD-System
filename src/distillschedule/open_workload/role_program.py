@@ -124,16 +124,20 @@ class PoolLayout:
     score: tuple[int, ...]
     window: int
     activation_policy: str = 'resident'
+    generator_parallelism: str = 'replicated'
 
     def to_dict(self):
         return {'generator':list(self.generator),'score':list(self.score),
-                'window':self.window,'activation_policy':self.activation_policy}
+                'window':self.window,'activation_policy':self.activation_policy,
+                'generator_parallelism':self.generator_parallelism}
 
     @classmethod
     def from_dict(cls, obj):
-        require(isinstance(obj,Mapping) and set(obj)=={'generator','score','window','activation_policy'},
+        require(isinstance(obj,Mapping) and set(obj) in ({'generator','score','window','activation_policy'},
+              {'generator','score','window','activation_policy','generator_parallelism'}),
                 'invalid pool layout',path='role.layout')
-        return cls(tuple(obj['generator']),tuple(obj['score']),obj['window'],obj['activation_policy'])
+        return cls(tuple(obj['generator']),tuple(obj['score']),obj['window'],obj['activation_policy'],
+                   obj.get('generator_parallelism','replicated'))
 
     def validate(self, task,hardware):
         require(self.activation_policy in {'resident','cpu_offload_prefetch'},
@@ -146,6 +150,18 @@ class PoolLayout:
                 set(self.generator).isdisjoint(self.score) and
                 set(self.generator)|set(self.score)==set(range(hardware.world)),
                 'each allocated device must belong to exactly one role',path='role.layout')
+        require(self.generator_parallelism in {'replicated','fsdp2_keep_forward'},
+                'unimplemented role sharding strategy',path='role.layout')
+        if self.generator_parallelism=='fsdp2_keep_forward':
+            # Every Generator shard must issue the same number of forwards
+            # before ANY backward; otherwise FSDP and P2P collectives can
+            # interleave in incompatible orders.
+            n=len(self.generator)
+            require(n>1 and task.microbatches % n==0 and
+                    task.microbatches//n <= self.window and
+                    self.activation_policy=='resident',
+                    'FSDP2 requires equal Generator work, full local forward window and resident activations',
+                    path='role.layout')
         if self.activation_policy=='cpu_offload_prefetch':
             require(all(hardware.host_capacities[r]>0 for r in self.generator),
                     'offload requires declared host capacity on every producer rank',path='role.layout')
@@ -176,12 +192,14 @@ def transport_bytes_by_rank(task, layout):
 
 
 def enumerate_layouts(task, hardware, *, generator_bytes, score_bytes,
-                      safety_bytes=0, max_candidates=128, allow_offload=False):
+                      safety_bytes=0, max_candidates=128, allow_offload=False,
+                      allow_generator_fsdp=False):
     """Bounded legal choices from hardware capacity, no workload-name lookup."""
     require(all(type(x) is int and x>=0 for x in (generator_bytes,score_bytes,safety_bytes)),
             'invalid role storage bounds',path='role.layout')
     require(type(max_candidates) is int and max_candidates>0,'invalid candidate bound',path='role.layout')
-    require(type(allow_offload) is bool,'invalid offload capability',path='role.layout')
+    require(type(allow_offload) is bool and type(allow_generator_fsdp) is bool,
+            'invalid layout capability flags',path='role.layout')
     feasible=[];rejected=[]
     # Two bounded physical families: contiguous rank cuts and balanced
     # per-node cuts. The latter keeps both roles on each physical node when
@@ -212,9 +230,15 @@ def enumerate_layouts(task, hardware, *, generator_bytes, score_bytes,
         for window in range(1,min(4,task.microbatches)+1):
             policies=('resident','cpu_offload_prefetch') if allow_offload else ('resident',)
             for policy in policies:
-                c=PoolLayout(generator,score,window,policy)
-                # Model-state and known transfer bounds only. True autograd
-                # workspace is observed again during native CUDA calibration.
+              layouts=('replicated', 'fsdp2_keep_forward') if allow_generator_fsdp else ('replicated',)
+              for parallelism in layouts:
+                c=PoolLayout(generator,score,window,policy,parallelism)
+                if parallelism!='replicated':
+                    try:c.validate(task,hardware)
+                    except ValueError:
+                        rejected.append({'layout':c.to_dict(),'reason':'FSDP_COLLECTIVE_ORDER'});continue
+                # Until allgather/activation peak is validated on A100/H100,
+                # do NOT admit optimistic sharded footprint reductions.
                 transport=transport_bytes_by_rank(task,c)
                 if any(hardware.capacities[r]<generator_bytes+safety_bytes+transport[r]
                        for r in c.generator) or any(
@@ -243,13 +267,14 @@ def enumerate_layouts(task, hardware, *, generator_bytes, score_bytes,
             return (2.0*(len(c.generator)-1)/max(1,hardware.world-2),
                     .8*(c.window-1)/max(1,max_window-1),
                     .8*int(c.activation_policy=='cpu_offload_prefetch'),
-                    .9*local_fraction(c))
+                    .9*local_fraction(c),
+                    .9*int(c.generator_parallelism=='fsdp2_keep_forward'))
         def distance(a,b):
             return sum((x-y)**2 for x,y in zip(coord(a),coord(b)))
         # A legal baseline starts at the nearest feasible, roughly half/half
         # resident, window=1; if capacity forbids it, choose the closest legal.
         def baseline_key(c):
-            return (c.activation_policy!='resident',
+            return (c.activation_policy!='resident', c.generator_parallelism!='replicated',
                     abs(2*len(c.generator)-hardware.world), c.window,
                     -local_fraction(c),tuple(c.generator))
         chosen=[min(feasible,key=baseline_key)]
@@ -265,4 +290,4 @@ def enumerate_layouts(task, hardware, *, generator_bytes, score_bytes,
         rejected.extend({'layout':c.to_dict(),'reason':'SEARCH_BUDGET'} for c in remaining)
     return {'candidates':tuple(choices),'rejected':tuple(rejected),
             'enumeration_complete':not any(x['reason']=='SEARCH_BUDGET' for x in rejected),
-            'family':'contiguous_and_node_local_two_role_pools_v2'}
+            'family':'contiguous_and_node_local_with_optional_fsdp2_generator_v3'}
