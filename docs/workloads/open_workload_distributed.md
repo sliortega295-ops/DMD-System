@@ -153,3 +153,17 @@ The `--deep-profile` flag is not a substitute for Nsight Systems on multi-GPU
 critical paths or Nsight Compute on kernel roofline/MFU. Those require external
 tools and valid access to the actual A100/H100 cluster. MFU is not inferred
 from torch.profiler's partial FLOP coverage.
+
+### Profile-guided bottleneck and upper-bound report
+
+A metadata-only `program plan` now emits `opportunity_report` for its selected
+measured candidate: per-call median wall time, share of the currently SERIAL
+plan, maximum-to-median rank slowdown and per-call Amdahl *what-if* bounds for
+halving or eliminating that call. Binding-level cost shares reveal whether the
+large opportunity is in a forward, backward, communication-containing update,
+or data movement; the report does not claim to isolate NCCL without profiling.
+Amdahl numbers use the **observed**, single-allocation model and assume all
+other work unchanged. They are not measured speedups, not the upper bound of a
+future cross-role overlapping plan, and do not count incomplete FLOPs as MFU.
+Selectively run `--deep-profile` for the most expensive unclear call, rather
+than optimizing small kernels opportunistically or tracing every candidate.

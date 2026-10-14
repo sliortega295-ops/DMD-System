@@ -204,6 +204,10 @@ def plan(calibration,*,memory_limit_bytes,max_states=50000,beam_width=0,timeout_
               'search':result,'memory_limit_bytes':memory_limit_bytes,'device':manifest['device'],
               'enumeration_complete':manifest['inventory']['exhaustive'],'replicas':manifest.get('replicas',1),
               'gpu_execution':'NOT_RUN_BY_SEARCH','claimable_speedup':False}
+    chosen=next((v for v in variants if v[0]['id']==document['selected']['candidate_id']),None)
+    require(chosen is not None, 'selected candidate cost absent', path='open.plan')
+    from .opportunity import report as opportunity_report
+    document['opportunity_report']=opportunity_report(document['selected'],*chosen[:4],manifest)
     document['plan_sha256']=fingerprint(document)
     return document
 
