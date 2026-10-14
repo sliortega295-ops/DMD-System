@@ -98,6 +98,8 @@ def main(argv=None):
             p.add_argument('--samples',type=int,default=1)
             p.add_argument('--max-native-runs',type=int,default=8)
             p.add_argument('--disable-offload',action='store_true')
+            p.add_argument('--allow-generator-fsdp',action='store_true',
+                           help='admit native FSDP2 Generator-pool alternatives')
         if name in ('role-run','role-plan'):p.add_argument('--plan' if name=='role-run' else '--calibration',type=Path,required=True)
     args=parser.parse_args(argv)
     owned=False
@@ -143,7 +145,8 @@ def main(argv=None):
             calibration=calibrate(task,hardware,bindings,root/'calibration',device=device,
                 generator_bytes=reserve['generator'],score_bytes=reserve['score'],
                 max_candidates=args.max_candidates,samples=args.samples,max_native_runs=args.max_native_runs,
-                allow_offload=not args.disable_offload)
+                allow_offload=not args.disable_offload,
+                allow_generator_fsdp=args.allow_generator_fsdp)
             # Only rank zero writes the common plan. The runtime rechecks all
             # source/hardware/semantics identities prior to ANY selected update.
             if dist.get_rank()==0:

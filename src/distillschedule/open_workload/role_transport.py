@@ -158,7 +158,7 @@ class RolePoolExecutor:
         if layout.generator_parallelism=='fsdp2_keep_forward':
             from .role_sharding import install_generator
             module,optimizer,self._generator_mesh,self._sharding=install_generator(
-                module,optimizer,self.device,layout.generator)
+                module,optimizer,self.device,layout.generator,gen_group)
         self.module,self.optimizer=module,optimizer
         self.gen_group,self.score_group=gen_group,score_group
         self.group=group
@@ -198,14 +198,16 @@ class RolePoolExecutor:
         if self._closed:return
         if self._prepared and dist.is_initialized():
             for group in (self.gen_group,self.score_group):
-                if group!=dist.GroupMember.NON_GROUP_MEMBER:
+                # FSDP2 parameter metadata retains the named mesh communicator.
+                # Native Torch 2.10 may cache that mesh between bounded trials.
+                # Keep the Generator subgroup alive until the parent torchrun
+                # world closes; destroy ordinary replica/Score groups normally.
+                if group!=dist.GroupMember.NON_GROUP_MEMBER and not (
+                    group is self.gen_group and self.layout.generator_parallelism=='fsdp2_keep_forward'):
                     dist.destroy_process_group(group)
         self._closed=True
-        if self._generator_mesh is not None:
-            # Score ranks are not mesh members and have no subgroup to release.
-            if self.rank in self.layout.generator and dist.is_initialized():
-                dist.destroy_process_group(self._generator_mesh.get_group())
-            self._generator_mesh=None
+        # The DeviceMesh shares gen_group (no second subgroup).
+        self._generator_mesh=None
         self.module=None;self.optimizer=None;self.group=None
 
     def _run_cycle(self):

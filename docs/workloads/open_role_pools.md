@@ -201,3 +201,21 @@ This does NOT establish A100/H100/NCCL correctness, heterogeneous BF16/FP32
 root grouping, Score sharding, sharded activation offload, or reliable 14B
 allgather capacity. Candidate admission retains the full dense Generator
 footprint until device-specific memory peaks have been measured.
+
+### Bounded role-FSDP2 calibration and communicator lifetime
+
+`role_planning.calibrate(..., allow_generator_fsdp=True)` admits the
+above strictly defined FSDP2 alternatives into the **same measured candidate
+search**; the public `role-auto --allow-generator-fsdp` flag enables it.
+Mixed-dtype roots are still refused and all unvalidated GPU capacities retain
+the conservative dense full-parameter memory requirement.
+
+The sharded Generator DeviceMesh reuses the already created role group; it
+does not create a second communicator. PyTorch 2.10 can cache DTensor mesh
+names across calibration arms, so a bounded sharded Generator group is kept
+alive until the parent `torchrun` WORLD is destroyed, instead of prematurely
+removing its named process group. An independent 4-process/Gloo test runs
+calibration across different role layouts, then a real sharded candidate
+through two fresh-input cycles, verifying final model and Adam presence.
+This does not yet implement model-weight restart checkpoints or A100/H100
+CUDA validation.

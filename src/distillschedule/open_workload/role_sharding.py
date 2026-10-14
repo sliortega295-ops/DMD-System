@@ -31,15 +31,22 @@ def admit(model, optimizer):
     return shard_roots
 
 
-def install_generator(model,optimizer,device,generator_ranks):
-    """ALL ranks must call the DeviceMesh constructor, including Score ranks."""
+def install_generator(model,optimizer,device,generator_ranks,generator_group):
+    """Reuse the role group collectively created before any model wrapping.
+
+    Using DeviceMesh.from_group avoids creating a second communicator and
+    prevents stale group names when trying several calibration candidates.
+    """
     from torch.distributed.device_mesh import DeviceMesh
     from torch.distributed.fsdp import FSDPModule
     ranks=tuple(generator_ranks)
     require(dist.is_initialized() and len(ranks)>=2,'generator shards require a group',path='role.sharding')
-    mesh=DeviceMesh(torch.device(device).type,torch.tensor(ranks,dtype=torch.int32))
     if dist.get_rank() not in ranks:
-        return model,optimizer,mesh,{'role':'score_unsharded'}
+        return model,optimizer,None,{'role':'score_unsharded'}
+    require(generator_group!=dist.GroupMember.NON_GROUP_MEMBER,
+            'Generator shard has no physical group',path='role.sharding')
+    mesh=DeviceMesh.from_group(generator_group,torch.device(device).type,
+                               mesh=torch.tensor(ranks,dtype=torch.int32))
     shard_roots=admit(model,optimizer)
     session=SimpleNamespace(state={'model':model,'optimizer':optimizer},device=torch.device(device))
     param_bytes,count,moments=shard_roots(session,('model',),mesh,reshard_after_forward=False)

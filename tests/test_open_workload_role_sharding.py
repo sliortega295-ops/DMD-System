@@ -71,3 +71,54 @@ def _worker(rank,rdzv,folder):
 def test_four_process_fsdp2_g_score_vjp_matches_global_adam(tmp_path):
     mp.spawn(_worker,args=(str(tmp_path/'rdzv'),str(tmp_path)),nprocs=4,join=True)
     assert all(json.loads((tmp_path/f'rank-{r}.json').read_text())['pass'] for r in range(4))
+
+
+def _calibrated_worker(rank,rdzv,root):
+    from distillschedule.open_workload.role_planning import calibrate,search
+    from test_open_workload_role_continuous import cycle_data,reference
+    torch.set_num_threads(1)
+    dist.init_process_group('gloo',init_method='file://'+rdzv,rank=rank,world_size=4,
+                            timeout=timedelta(seconds=65))
+    try:
+        task=RoleTask(4,(2,4),score_updates=1)
+        hw=AllocatedWorld((2**26,)*4,(0,0,1,1))
+        fn=RoleFunctions(make_model,make_opt,sample,generate,guidance,score_train,
+                         data_identity='c'*64,sample_at=cycle_data)
+        report=calibrate(task,hw,fn,Path(root)/'cal',generator_bytes=3000,
+                         score_bytes=3000,max_candidates=3,max_native_runs=4,
+                         allow_generator_fsdp=True)
+        sharded=[x for x in report['candidates']
+                 if x['layout']['generator_parallelism']=='fsdp2_keep_forward']
+        assert sharded
+        if rank==0:
+            planned=search(Path(root)/'cal/calibration.json')
+            assert any(x['implementation']['generator_parallelism']=='fsdp2_keep_forward'
+                       for x in planned['search']['ranked'])
+        dist.barrier()
+        # Calibrated, executable sharded candidate is deliberately exercised;
+        # do not claim that a CPU timer automatically preferred this layout.
+        layout=PoolLayout.from_dict(sharded[0]['layout'])
+        runner=RolePoolExecutor(task,layout,hw,fn,device='cpu')
+        try:
+            for cycle in range(2):
+                receipt,model,optim=runner.run()
+            assert receipt['final_versions']['generator']==2
+            if runner.role=='generator':
+                from torch.distributed.tensor import DTensor
+                actual={k:(v.full_tensor() if isinstance(v,DTensor) else v).detach().cpu()
+                        for k,v in model.state_dict().items()}
+            else:
+                actual={k:v.detach().cpu() for k,v in model.state_dict().items()}
+            expected=reference(task,2)[runner.role][0].state_dict()
+            assert all(torch.allclose(v,expected[k],rtol=3e-5,atol=3e-6)
+                       for k,v in actual.items())
+            assert optim.state
+        finally:
+            runner.close()
+    finally:
+        dist.destroy_process_group()
+
+
+def test_calibrate_sharded_pool_and_continue_two_training_cycles(tmp_path):
+    mp.spawn(_calibrated_worker,args=(str(tmp_path/'rdzv'),str(tmp_path)),
+             nprocs=4,join=True)

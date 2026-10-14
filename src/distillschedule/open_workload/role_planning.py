@@ -48,7 +48,7 @@ def code_identity(bindings:RoleFunctions):
 def source_identity():
     root=repository_root()
     files=tuple(root/'src/distillschedule/open_workload'/name for name in
-        ('role_program.py','role_transport.py','role_planning.py','role_offload.py'))
+        ('role_program.py','role_transport.py','role_planning.py','role_offload.py','role_sharding.py'))
     return fingerprint({p.name:file_sha256(p) for p in files})
 
 
@@ -114,7 +114,8 @@ def _contract(task,layout,phase):
 
 def calibrate(task:RoleTask,hardware:AllocatedWorld,bindings:RoleFunctions,output,*,
               device='cpu',generator_bytes=0,score_bytes=0,safety_bytes=0,
-              max_candidates=4,samples=1,max_native_runs=10,allow_offload=False):
+              max_candidates=4,samples=1,max_native_runs=10,allow_offload=False,
+              allow_generator_fsdp=False):
     """Each candidate executes actual torch autograd/P2P/optimizer, not a mock."""
     require(dist.is_initialized() and dist.get_world_size()==hardware.world,
             'process group must be allocated before calibrating pools',path='role.calibrate')
@@ -122,7 +123,7 @@ def calibrate(task:RoleTask,hardware:AllocatedWorld,bindings:RoleFunctions,outpu
             'invalid native calibration budget',path='role.calibrate')
     inventory=enumerate_layouts(task,hardware,generator_bytes=generator_bytes,
         score_bytes=score_bytes,safety_bytes=safety_bytes,max_candidates=max_candidates,
-        allow_offload=allow_offload)
+        allow_offload=allow_offload,allow_generator_fsdp=allow_generator_fsdp)
     require(samples*len(inventory['candidates'])+1<=max_native_runs,
             'all measured variants plus confirmation must fit the execution budget',path='role.calibrate')
     identity=_run_identity(task,hardware,bindings,device)
