@@ -90,9 +90,10 @@ def gpu_zero1_bf16_route_compat(*, engine_module=None, torch_module=None):
         yield audit
     finally:
         if audit['enabled']:
-            if cls._configure_fp16_optimizer is not route:
-                raise RuntimeError('DeepSpeed optimizer route changed inside the guarded scope')
+            changed = cls._configure_fp16_optimizer is not route
             cls._configure_fp16_optimizer = original
+            if changed:
+                raise RuntimeError('DeepSpeed optimizer route changed inside the guarded scope')
 
 
 def build_resident_zero1_engine(
