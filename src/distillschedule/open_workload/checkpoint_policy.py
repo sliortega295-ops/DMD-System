@@ -30,7 +30,15 @@ def operations(policy):
 
 
 def contexts(policy, saved, excluded, effects):
-    """Measure actual cache storage under SAC; never keep extra tensor references."""
+    """Measure real native saves; explicit replay visits are version-dependent.
+
+    PyTorch can satisfy checkpoint backward directly from saved native outputs
+    without invoking the policy on recompute (observed on CPU Torch 2.14).
+    Therefore selective_save_requests is the observed cache-admission event;
+    selective_replay_hits counts only policy callbacks actually visited and
+    must never be synthesized from requests. Native forward-op counts and full
+    gradient/optimizer parity provide the separate recompute-effect gate.
+    """
     from .torch_backend import tensors, storage_key, physical_tensor
     ops = operations(policy)
     require(ops, 'native selective operations unavailable', path='open.checkpoint')
