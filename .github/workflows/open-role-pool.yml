@@ -29,13 +29,16 @@ jobs:
       - run: python -m pip install -e '.[test,native]'
       - name: Role graph and saved-state autograd
         env: {OMP_NUM_THREADS: '1', MKL_NUM_THREADS: '1'}
-        run: python -m pytest -q tests/test_open_workload_role_program.py tests/test_open_workload_role_candidate_diversity.py tests/test_open_workload_role_offload.py
+        run: python -m pytest -q tests/test_open_workload_role_program.py tests/test_open_workload_role_candidate_diversity.py tests/test_open_workload_role_offload.py tests/test_open_workload_role_async_contract.py
       - name: Real multiprocess P2P/VJP/pipeline and Score optimizer
         env: {OMP_NUM_THREADS: '1', MKL_NUM_THREADS: '1'}
         run: python -m pytest -q tests/test_open_workload_role_transport.py
       - name: Calibrate then search via common solver, run chosen layout
         env: {OMP_NUM_THREADS: '1', MKL_NUM_THREADS: '1'}
         run: python -m pytest -q tests/test_open_workload_role_planning.py
+      - name: Frozen Score and continuous model/Adam state with independent references
+        env: {OMP_NUM_THREADS: '1', MKL_NUM_THREADS: '1'}
+        run: python -m pytest -q tests/test_open_workload_role_memory.py tests/test_open_workload_role_continuous.py
       - name: Public unknown-workload CLI (torchrun -> calibrate -> select -> run)
         env: {OMP_NUM_THREADS: '1', MKL_NUM_THREADS: '1'}
         run: python -m pytest -q tests/test_open_workload_role_cli.py

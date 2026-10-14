@@ -75,6 +75,17 @@ def test_unknown_role_factory_real_multirank_auto_then_rejects_changed_task(tmp_
     assert plan['selected']['implementation']['window']>=1
     assert {r['role'] for r in receipt['ranks']}=={'generator','score'}
     assert all(r['host_leases_closed'] for r in receipt['ranks'])
+    # Public saved-plan execution, not a private executor call: selected model
+    # and optimizer survive three explicit fresh-cohort cycles.
+    continuing=tmp_path/'continuing'
+    again=invoke_torchrun(tmp_path,['role-run',*standard,'--plan',str(output/'plan.json'),
+                                  '--cycles','3','--output',str(continuing)])
+    assert again.returncode==0,again.stdout[-7000:]
+    final=json.loads((continuing/'execution.json').read_text())
+    assert final['cycles_executed']==3 and final['final_versions']['generator']==3
+    assert final['training_state']=='PERSISTED_IN_PROCESS_NOT_CHECKPOINT_RESTART'
+    assert [r['initial_versions']['generator'] for r in final['cycle_summaries']]==[0,1,2]
+    assert len(list(continuing.glob('cycle-*.json')))==3
     # Changing model/shape parameters invalidates the measured task, not a
     # reason to reuse another workload's observed fastest layout.
     new={**json.loads(PARAMETERS.read_text()),'frames':4}

@@ -25,6 +25,12 @@ def sample(index,role,device):
     return torch.full(shape,.1*(index+1) if role=='generator' else .03*(index+2),device=device)
 
 
+def sample_at(cycle,index,role,device):
+    # Preserve cycle zero exactly; later cycles bind different logical inputs.
+    # A real dataset adapter supplies its own stable cycle/sample mapping.
+    return sample(index,role,device)+(cycle*.01)
+
+
 def generator_forward(module,latent):return module(latent)
 
 
@@ -45,5 +51,5 @@ def build(parameters):
     functions=RoleFunctions(make_model,make_optimizer,sample,generator_forward,score_loss,
         score_train_loss if task.score_updates else None,
         data_identity=fingerprint({'data':'synthetic_declared_C3D_example','parameters':parameters}),
-        role_storage_estimate_bytes={'generator':20000,'score':20000})
+        role_storage_estimate_bytes={'generator':20000,'score':20000},sample_at=sample_at)
     return task,functions

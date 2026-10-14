@@ -119,3 +119,34 @@ def test_role_gradient_provider_is_explicit_and_unambiguous():
     graph=task.program(initial_versions=prior).compile()
     assert graph.metadata['final_versions']['generator']==5
     assert graph.metadata['final_versions']['score']==3
+
+
+def selected_worker(rank,rdzv,out):
+    from distillschedule.open_workload.role_planning import calibrate,search,run_selected
+    from distillschedule.workloads.best_known.registry import write_new_json
+    torch.set_num_threads(1)
+    dist.init_process_group('gloo',init_method='file://'+rdzv,rank=rank,world_size=2,
+                            timeout=timedelta(seconds=80))
+    try:
+        task=RoleTask(3,(2,4),score_updates=1)
+        f=RoleFunctions(make_model,make_opt,sample,generate,None,score_train,
+            data_identity='c'*64,score_input_gradient=analytic_input_gradient,sample_at=cycle_data)
+        hw=AllocatedWorld((2**25,)*2,host_capacities=(2**25,)*2)
+        manifest=calibrate(task,hw,f,Path(out)/'cal',generator_bytes=1000,score_bytes=1000,
+                           max_candidates=2,samples=1,max_native_runs=3,allow_offload=True)
+        assert manifest['budget']['calibration_runs']==2
+        if rank==0:write_new_json(Path(out)/'plan.json',search(Path(out)/'cal/calibration.json'))
+        dist.barrier()
+        result,model,opt=run_selected(task,hw,f,Path(out)/'plan.json',Path(out)/'train',cycles=3)
+        role='generator' if rank in result['layout']['generator'] else 'score'
+        reference_model,reference_optimizer=reference(task,3)[role]
+        tree_equal(model.state_dict(),reference_model.state_dict())
+        tree_equal(opt.state_dict(),reference_optimizer.state_dict())
+        assert result['final_versions']['generator']==3 and result['final_versions']['score']==3
+        assert all(row['gradient_source']=='constructed_no_grad' for row in result['ranks'])
+        assert len(list((Path(out)/'train').glob('cycle-*.json')))==3
+    finally:dist.destroy_process_group()
+
+
+def test_measured_selected_plan_preserves_continuous_trajectory(tmp_path):
+    mp.spawn(selected_worker,args=(str(tmp_path/'rdzv'),str(tmp_path)),nprocs=2,join=True)
