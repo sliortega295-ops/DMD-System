@@ -138,6 +138,7 @@ from distillschedule.runtime.fsdp2_static import FSDP2ShardEMA, build_fsdp2_engi
 from distillschedule.runtime.helios_resident_zero1 import (
     ResidentZero1ShardEMA, build_resident_zero1_engine,
 )
+from distillschedule.runtime.helios_official_role_swap import OfficialRoleSwap
 from distillschedule.runtime.helios_cross_kv_cache import (
     install_generator_nograd_cross_kv_cache,
 )
@@ -324,7 +325,7 @@ def _build_static_model(
     fsdp_first_construction = policy.mesh_policy == "node-hsdp"
     if not fsdp_first_construction:
         model.to(device)
-    resident = args.parameter_placement == "gpu-resident-zero1"
+    resident = args.parameter_placement in ("gpu-resident-zero1", "official-role-swap-zero1")
     sharding = (
         {"enabled": False, "reason": "FULL_PARAMETER_GPU_RESIDENT_REFERENCE"}
         if resident else apply_blockwise_fsdp2_policy(
@@ -346,6 +347,7 @@ def _build_static_model(
     gc.collect()
     host_trimmed = trim_host_allocator()
     torch.cuda.empty_cache()
+    metadata_offload = args.parameter_placement == "official-role-swap-zero1"
     return model, {
         "metadata": metadata,
         "logical_restore": logical_restore,
@@ -370,9 +372,9 @@ def _build_static_model(
         **({"resident": {
             "backend": "FULL_PARAMETER_GPU_RESIDENT_ZERO1", "world_size": 8,
             "logical_global_batch": 16, "physical_b1_rows_per_rank": 2,
-            "full_parameters_on_gpu": True, "parameter_offload": False,
+            "full_parameters_on_gpu": not metadata_offload, "parameter_offload": metadata_offload,
             "activation_offload": False, "optimizer_cpu_offload": False,
-            "parameter_streaming": False, "model_swap": False,
+            "parameter_streaming": False, "model_swap": metadata_offload,
             "model_compute_dtype": "torch.bfloat16", "gradient_communication_dtype": "torch.float32",
         }} if resident else {}),
         "construction_order": (
@@ -394,6 +396,31 @@ def _build_engines(
     device: torch.device,
     policy: StaticFSDP2P0Policy,
 ) -> tuple[Any, Any, dict[str, Any]]:
+    if args.parameter_placement == "official-role-swap-zero1":
+        swap = OfficialRoleSwap()
+        engines, records = {}, {}
+        for role, lr in (("generator", 2e-6), ("critic", 4e-7)):
+            model, build = _build_static_model(args=args, role=role, package=package,
+                                               device=device, policy=policy)
+            engine, restore = build_resident_zero1_engine(module=model, package=package,
+                component=role, lr=lr, betas=(0.0, 0.999), eps=1e-8, weight_decay=1e-3)
+            swap.register(engine, role=role)
+            swap.move_to_cpu(engine)
+            engines[role] = engine
+            records[role] = {**build, "optimizer_restore": restore,
+                             "construction_memory_after_role_offload": base._memory(device)}
+            dist.barrier()
+        args._official_role_swap = swap
+        return engines["generator"], engines["critic"], {
+            **records, "static_residency": {
+                "both_backbones_sharded_for_full5": False,
+                "both_backbones_full_parameter_gpu_resident": False,
+                "optimizer_state_placement": "GPU_ZERO1_PARTITIONS",
+                "mesh_policy": policy.mesh_policy, "parameter_offload": True,
+                "frozen_parameter_streaming": False, "role_transition": True,
+                "process_group_rebuild_in_full5": False,
+                "construction_order": "G_MODEL_ENGINE_RESTORE_OFFLOAD_THEN_SCORE_MODEL_ENGINE_RESTORE_OFFLOAD"},
+            "official_role_swap": swap.receipt()}
     generator, generator_build = _build_static_model(
         args=args,
         role="generator",
@@ -476,7 +503,10 @@ def _run_nogan_generator_update_p0(
     deferred_finite_checks: list[torch.Tensor] | None = None,
     collect_scalars: bool = False,
     expect_optimizer_commit: bool = True,
+    role_swap: Any = None,
 ) -> dict[str, Any]:
+    if role_swap is not None:
+        role_swap.activate("generator", device)
     with diagnostics.scope("INPUT_H2D/generator_entry"):
         entry = trace.load_generator_entry(rank=rank, device=device)
     diagnostics.add_tensor_tree("generator_entry", entry, direction="H2D")
@@ -506,6 +536,8 @@ def _run_nogan_generator_update_p0(
         device=device,
         runtime_cache=runtime_cache,
     )
+    if role_swap is not None:
+        role_swap.activate("critic", device)
     fake = score_forward(
         critic_engine.module,
         batch,
@@ -595,6 +627,8 @@ def _run_nogan_generator_update_p0(
         validate_finite=deferred_finite_checks is None,
     )
     loss = detached_dmd_surrogate_loss(x0, gradient, gradient_mask)
+    if role_swap is not None:
+        role_swap.activate("generator", device)
     if deferred_finite_checks is not None:
         deferred_finite_checks.append(torch.isfinite(loss.detach()))
     with diagnostics.scope("FSDP_PRE_BACKWARD_ALL_GATHER/generator"):
@@ -1026,6 +1060,7 @@ def _run_logical_generator_update_p0(
                     critic_engine=critic_engine, trace=trace, negative=negative,
                     collect_diagnostics=collect_diagnostics, diagnostics=diagnostics,
                     policy=policy, score_pack_parity_check=score_pack_parity_check,
+                    role_swap=getattr(args, "_official_role_swap", None),
                     **commit_kwargs,
                 )
         expected_step = initial_step + int(expected_commit)
@@ -1141,7 +1176,7 @@ def _parser() -> Any:
 
     value = base.parser()
     value.description = __doc__
-    value.add_argument("--parameter-placement", choices=("fsdp2", "gpu-resident-zero1"), default="fsdp2")
+    value.add_argument("--parameter-placement", choices=("fsdp2", "gpu-resident-zero1", "official-role-swap-zero1"), default="fsdp2")
     value.add_argument(
         "--mesh-policy",
         choices=("world16-fsdp", "node-hsdp"),
@@ -1400,7 +1435,7 @@ def _parser() -> Any:
 def main() -> int:
     args = _parser().parse_args()
     hardware = hardware_profile()
-    if args.parameter_placement == "gpu-resident-zero1":
+    if args.parameter_placement in ("gpu-resident-zero1", "official-role-swap-zero1"):
         if hardware.name != "h100-8-b16" or args.mesh_policy != "world16-fsdp":
             raise ValueError("registered full-resident reference requires h100-8-b16")
         if args.profile_mode or args.ema_device != "cuda":
@@ -1542,7 +1577,7 @@ def main() -> int:
             args.elide_official_generator_free_memory
         ),
     )
-    if args.parameter_placement == "gpu-resident-zero1" and (
+    if args.parameter_placement in ("gpu-resident-zero1", "official-role-swap-zero1") and (
         policy != StaticFSDP2P0Policy()
         or args.attention_backend != "sdpa"
         or args.generator_nograd_lora_fused_epilogue
@@ -1650,10 +1685,10 @@ def main() -> int:
             ),
         },
     }
-    if args.parameter_placement == "gpu-resident-zero1":
+    if args.parameter_placement in ("gpu-resident-zero1", "official-role-swap-zero1"):
         result["parameter_placement"] = args.parameter_placement
         result["p0_policy"]["parameter_placement"] = args.parameter_placement
-        result["p0_policy"]["id"] += "/gpu-resident-zero1"
+        result["p0_policy"]["id"] += "/" + args.parameter_placement
     try:
         # GAN diagnostics also import Helios. Resolve the registered backend
         # before any hook can trigger the frozen Hopper auto-detection.
@@ -1738,7 +1773,7 @@ def main() -> int:
             policy=policy,
         )
         ema_type = (ResidentZero1ShardEMA
-                    if args.parameter_placement == "gpu-resident-zero1" else FSDP2ShardEMA)
+                    if args.parameter_placement in ("gpu-resident-zero1", "official-role-swap-zero1") else FSDP2ShardEMA)
         ema = ema_type.load_from_logical(
             generator_engine.module,
             logical.root,
@@ -1808,24 +1843,31 @@ def main() -> int:
             if diagnostic_single_critic
             else contract.logical_steps
         )
-        (
-            rollout_outputs,
-            rollout_records,
-            generator_nograd_persistent_unshard,
-        ) = _precompute_logical_critic_rollouts(
-            rank=rank,
-            hardware=hardware,
-            steps=execution_steps,
-            device=device,
-            generator_engine=generator_engine,
-            trace=trace,
-            policy=policy,
-            collect_diagnostics=collect_diagnostics,
-            diagnostics=diagnostics,
-            rollout_parity_check=(
-                (not args.timing_mode) and (not args.profile_mode)
-            ),
-        )
+        role_swap = getattr(args, "_official_role_swap", None)
+        if role_swap is not None:
+            rollout_outputs, rollout_records = {}, []
+            generator_nograd_persistent_unshard = {
+                "enabled": False, "rollout_batch_count": 0,
+                "reason": "OFFICIAL_PER_STEP_G_SCORE_SWITCH"}
+        else:
+            (
+                rollout_outputs,
+                rollout_records,
+                generator_nograd_persistent_unshard,
+            ) = _precompute_logical_critic_rollouts(
+                rank=rank,
+                hardware=hardware,
+                steps=execution_steps,
+                device=device,
+                generator_engine=generator_engine,
+                trace=trace,
+                policy=policy,
+                collect_diagnostics=collect_diagnostics,
+                diagnostics=diagnostics,
+                rollout_parity_check=(
+                    (not args.timing_mode) and (not args.profile_mode)
+                ),
+            )
         if args.profile_mode and diagnostic_single_critic:
             torch.cuda.synchronize(device)
             dist.barrier()
@@ -1838,6 +1880,16 @@ def main() -> int:
         ema_records: list[dict[str, Any]] = []
         operation_source_records: list[dict[str, Any]] = []
         for step in execution_steps:
+            if role_swap is not None:
+                role_swap.activate("generator", device)
+                rollout_outputs, rows, _persistence = _precompute_logical_critic_rollouts(
+                    rank=rank, hardware=hardware, steps=(step,), device=device,
+                    generator_engine=generator_engine, trace=trace, policy=policy,
+                    collect_diagnostics=collect_diagnostics, diagnostics=diagnostics,
+                    rollout_parity_check=False)
+                rollout_records.extend(rows)
+                generator_nograd_persistent_unshard["rollout_batch_count"] += len(rows)
+                role_swap.activate("critic", device)
             record_this_rank = bool(
                 args.operation_source and rank == args.operation_source_rank
             )
@@ -1989,7 +2041,8 @@ def main() -> int:
                 "five ordered Critic commits and required EMA"
             ),
             transition_count=0,
-            model_swap_count=0,
+            model_swap_count=(sum(v["events"] for v in role_swap.transfers.values())
+                              if role_swap is not None else 0),
             parameter_streaming_count=0,
             external_rollout_engine_used=False,
             gan_score_fusion=(
@@ -1998,6 +2051,9 @@ def main() -> int:
                 else "disabled"
             ),
         )
+        if role_swap is not None:
+            result["official_role_swap"] = role_swap.receipt()
+            result["build"]["official_role_swap"] = role_swap.receipt()
         base._atomic_json(output, result)
         dist.barrier()
         return 0

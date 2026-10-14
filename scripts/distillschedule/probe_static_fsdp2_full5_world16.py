@@ -362,6 +362,9 @@ def _run_gan_generator_update(
     elide_official_generator_free_memory: bool = False,
     expect_optimizer_commit: bool = True,
 ) -> dict[str, Any]:
+    role_swap = getattr(args, "_official_role_swap", None)
+    if role_swap is not None:
+        role_swap.activate("generator", device)
     with diagnostics.scope("INPUT_H2D/generator_entry"):
         entry = trace.load_generator_entry(rank=rank, device=device)
     diagnostics.add_tensor_tree("generator_entry", entry, direction="H2D")
@@ -388,6 +391,8 @@ def _run_gan_generator_update(
         )
     with diagnostics.scope("FSDP_POST_FORWARD_RESHARD/generator"):
         pass
+    if role_swap is not None:
+        role_swap.activate("critic", device)
     gradient, losses = _gan_score_boundary_gradient(
         score_model=critic_engine.module,
         generated_latent=x0,
@@ -410,6 +415,8 @@ def _run_gan_generator_update(
     # The Score helper already returned the normalized latent derivative.  Use
     # a SUM chain-rule surrogate, matching the validated GAN pipeline seam.
     surrogate = (x0.float() * gradient.float()).sum()
+    if role_swap is not None:
+        role_swap.activate("generator", device)
     with diagnostics.scope("FSDP_PRE_BACKWARD_ALL_GATHER/generator"):
         generator_engine.backward(surrogate)
     with diagnostics.scope("FSDP_REDUCE_SCATTER/generator"):

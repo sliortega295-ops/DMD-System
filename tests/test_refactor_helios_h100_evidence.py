@@ -23,6 +23,20 @@ SPEC.loader.exec_module(module)
 HEAD = "a" * 40
 
 
+def test_official_swap_is_an_explicit_separate_policy_not_resident():
+    for variant in ("no-gan", "gan"):
+        swap = module.freeze_policy(ROOT, variant=variant, arm="official-swap")
+        resident = module.freeze_policy(ROOT, variant=variant, arm="resident")
+        assert swap["policy"]["parameter_placement"] == "official-role-swap-zero1"
+        assert swap["mesh_shape"] == []
+        assert swap["contract"] == resident["contract"]
+        assert swap["trace_hash"] == resident["trace_hash"]
+        assert swap["logical_hash"] == resident["logical_hash"]
+        assert swap["policy_fingerprint"] != resident["policy_fingerprint"]
+        assert swap["policy"]["rollout_batch_size"] == 1
+        assert swap["policy"]["pack_real_score_pair"] is False
+
+
 def write(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, sort_keys=True) + "\n")

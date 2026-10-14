@@ -57,7 +57,7 @@ def _env_key(field: str) -> str:
 
 def freeze_policy(root: Path, *, variant: str, arm: str) -> dict[str, Any]:
     """Read the locked winner and render a complete, explicit worker policy."""
-    _require(arm in ("baseline", "best", "resident"), "arm must be baseline, best or resident")
+    _require(arm in ("baseline", "best", "resident", "official-swap"), "unregistered hardware arm")
     profile = load_profile("helios14b_nogan_best" if variant == "no-gan" else "helios14b_gan_best", root=root)
     contract = _jsonable(dataclasses.asdict(contract_for_variant(variant)))
     _require(profile["contract"]["variant"] == variant, "variant/profile mismatch")
@@ -92,6 +92,9 @@ def freeze_policy(root: Path, *, variant: str, arm: str) -> dict[str, Any]:
     if arm == "resident":
         policy["parameter_placement"] = "gpu-resident-zero1"
         policy["id"] += "/gpu-resident-zero1"
+    if arm == "official-swap":
+        policy["parameter_placement"] = "official-role-swap-zero1"
+        policy["id"] += "/official-role-swap-zero1"
     _require(policy["rollout_batch_size"] == 1 and policy["pack_real_score_pair"] is False, "H100 migration must preserve B1 and packing OFF")
     _require(profile["memory"]["ema_device"] == "cuda", "winner EMA contract changed")
     for field, value in policy.items():
@@ -105,12 +108,12 @@ def freeze_policy(root: Path, *, variant: str, arm: str) -> dict[str, Any]:
                DISTILLSCHEDULE_CRITIC_ONLY_STEP="", DISTILLSCHEDULE_OPERATION_SOURCE="off")
     trace_key = "trace"
     logical_key = "logical_checkpoint"
-    return {"arm": arm, "variant": variant, "winner": profile["contract"]["winner"] if arm == "best" else "FULL_GPU_RESIDENT_ZERO1_REFERENCE" if arm == "resident" else "P0_all_performance_options_off",
+    return {"arm": arm, "variant": variant, "winner": profile["contract"]["winner"] if arm == "best" else "OFFICIAL_HELIOS_ROLE_SWAP_ZERO1_REFERENCE" if arm == "official-swap" else "FULL_GPU_RESIDENT_ZERO1_REFERENCE" if arm == "resident" else "P0_all_performance_options_off",
             "profile_id": profile["id"], "profile_sha256": digest(profile), "policy": policy,
             "policy_fingerprint": digest(policy), "contract": contract,
             "trace_hash": profile["required_assets"][trace_key]["logical_hash"],
             "logical_hash": profile["required_assets"][logical_key]["logical_hash"],
-            "mesh_shape": [] if arm == "resident" else [2, 4] if policy["mesh_policy"] == "node-hsdp" else [8],
+            "mesh_shape": [] if arm in ("resident", "official-swap") else [2, 4] if policy["mesh_policy"] == "node-hsdp" else [8],
             "environment": env, "unset_environment": profile["runtime"]["unset_environment"]}
 
 
@@ -572,6 +575,9 @@ def summarize(run_root: Path, *, expected_head: str, frozen_policy: dict[str, An
         batches = row.get("rollout_batches", [])
         coverage = [(batch.get("logical_slot"), batch.get("logical_steps")) for batch in batches]
         expected_coverage = [(slot, [step]) for slot in slots for step in contract["logical_steps"]]
+        swap = policy.get("parameter_placement") == "official-role-swap-zero1"
+        if swap:
+            expected_coverage = [(slot, [step]) for step in contract["logical_steps"] for slot in slots]
         if len(batches) != 10 or coverage != expected_coverage:
             errors.append(f"{label}: actual B1 rollout coverage must be two slots x five steps")
         for batch in batches:
@@ -591,11 +597,11 @@ def summarize(run_root: Path, *, expected_head: str, frozen_policy: dict[str, An
                 errors.append(f"{label}: actual GPU EMA finite checksum/version evidence missing")
         build = row.get("build", {})
         residency = build.get("static_residency", {})
-        resident = policy.get("parameter_placement") == "gpu-resident-zero1"
-        if any(residency.get(k) is not v for k, v in {"both_backbones_sharded_for_full5": not resident, "parameter_offload": False,
-                                                   "frozen_parameter_streaming": False, "role_transition": False, "process_group_rebuild_in_full5": False}.items()):
+        resident = policy.get("parameter_placement") in ("gpu-resident-zero1", "official-role-swap-zero1")
+        if any(residency.get(k) is not v for k, v in {"both_backbones_sharded_for_full5": not resident, "parameter_offload": swap,
+                                                   "frozen_parameter_streaming": False, "role_transition": swap, "process_group_rebuild_in_full5": False}.items()):
             errors.append(f"{label}: offload/streaming/role transition is not zero")
-        if resident and (residency.get("both_backbones_full_parameter_gpu_resident") is not True
+        if resident and (residency.get("both_backbones_full_parameter_gpu_resident") is not (not swap)
                          or residency.get("optimizer_state_placement") != "GPU_ZERO1_PARTITIONS"):
             errors.append(f"{label}: actual full GPU parameter residency/ZeRO-1 state contract failed")
         for role in ("generator", "critic"):
@@ -618,9 +624,9 @@ def summarize(run_root: Path, *, expected_head: str, frozen_policy: dict[str, An
                 actual = model.get("resident", {})
                 expected = {"backend": "FULL_PARAMETER_GPU_RESIDENT_ZERO1", "world_size": 8,
                     "logical_global_batch": 16, "physical_b1_rows_per_rank": 2,
-                    "full_parameters_on_gpu": True, "parameter_offload": False,
+                    "full_parameters_on_gpu": not swap, "parameter_offload": swap,
                     "activation_offload": False, "optimizer_cpu_offload": False,
-                    "parameter_streaming": False, "model_swap": False,
+                    "parameter_streaming": False, "model_swap": swap,
                     "model_compute_dtype": "torch.bfloat16", "gradient_communication_dtype": "torch.float32"}
                 restore = model.get("optimizer_restore", {})
                 if fsdp.get("enabled") is not False or any(actual.get(k) != v for k,v in expected.items()):
@@ -646,8 +652,21 @@ def summarize(run_root: Path, *, expected_head: str, frozen_policy: dict[str, An
                     if gradient.get("physical_step_before") != expected_gradient_step:
                         errors.append(f"{label}/{role}: gradient audit version drift")
                     _finite_group(gradient.get("gradient", {}), f"{label}/{role}/gradient{index}", errors)
-        _audit_persistence(row, slots=slots, policy=policy, label=label, errors=errors)
-        if any(row.get(k) != 0 for k in ("transition_count", "model_swap_count", "parameter_streaming_count")) or row.get("external_rollout_engine_used") is not False:
+        if swap:
+            mover = row.get("official_role_swap", {})
+            traffic = mover.get("application_parameter_copy_bytes", {})
+            if (mover.get("backend") != "OFFICIAL_HELIOS_WHOLE_ROLE_SWAP_GPU_ZERO1"
+                or mover.get("official_manager_fragment_sha256") != "a47f363141b284977e4c7424f9a53970c2df829010d80f397fecc74e3a87cc5b"
+                or mover.get("optimizer_cpu_offload") is not False
+                or mover.get("activation_offload") is not False
+                or mover.get("trainable_alias_checks", 0) < 1
+                or mover.get("final_role_devices") != {"generator": "cpu", "critic": "cuda"}
+                or any(traffic.get(direction, {}).get("bytes", 0) <= 0 for direction in ("H2D", "D2H"))
+                or row.get("model_swap_count") != sum(traffic.get(direction, {}).get("events", 0) for direction in ("H2D", "D2H"))):
+                errors.append(f"{label}: official role-swap storage/alias/transfer evidence failed")
+        else:
+            _audit_persistence(row, slots=slots, policy=policy, label=label, errors=errors)
+        if any(row.get(k) != 0 for k in (("transition_count", "parameter_streaming_count") if swap else ("transition_count", "model_swap_count", "parameter_streaming_count"))) or row.get("external_rollout_engine_used") is not False:
             errors.append(f"{label}: offload/transition/model swap inventory changed")
         if not _finite(row.get("full5_seconds")) or row.get("full5_seconds", 0) <= 0 or type(row.get("timing_start_unix_ns")) is not int or type(row.get("timing_stop_unix_ns")) is not int or row.get("timing_stop_unix_ns", 0) <= row.get("timing_start_unix_ns", 0):
             errors.append(f"{label}: actual Full5 timer missing or invalid")
@@ -780,7 +799,7 @@ def main() -> int:
     parser.add_argument("--expected-head", required=True)
     parser.add_argument("--hardware-profile", choices=(HARDWARE,), default=HARDWARE)
     parser.add_argument("--variant", choices=("no-gan", "gan"))
-    parser.add_argument("--arm", choices=("baseline", "best", "resident"))
+    parser.add_argument("--arm", choices=("baseline", "best", "resident", "official-swap"))
     parser.add_argument("--mode", choices=("validate", "correctness", "timing"))
     parser.add_argument("--run-id")
     parser.add_argument("--asset-gate", type=Path)
