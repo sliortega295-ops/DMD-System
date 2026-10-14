@@ -94,3 +94,34 @@ def sharded_model_identity(model,group,group_size):
     hashes=[None]*group_size
     dist.all_gather_object(hashes,local,group=group)
     return fingerprint(hashes)
+
+
+def install_frozen_score(model,device,score_ranks,score_group):
+    """Shard only a verified immutable Score backbone in its OWN process mesh.
+
+    Score model parameters are never stepped and input-VJP is still computed on
+    the receiving rank. This is not an optimizer-state migration, and does not
+    silently freeze a trainable Score or create a fake optimizer.
+    """
+    from torch.distributed.device_mesh import DeviceMesh
+    from torch.distributed.fsdp import fully_shard,FSDPModule
+    from torch.distributed.tensor import DTensor
+    ranks=tuple(score_ranks)
+    require(dist.is_initialized() and len(ranks)>1 and dist.get_rank() in ranks,
+            'Score FSDP2 needs its allocated subgroup',path='role.sharding')
+    require(score_group!=dist.GroupMember.NON_GROUP_MEMBER,
+            'Score subgroup is unavailable',path='role.sharding')
+    params=tuple(model.parameters())
+    require(params and all(not p.requires_grad and p.ndim>0 and
+            p.is_contiguous() and not isinstance(p,DTensor) for p in params),
+            'frozen Score sharding requires immutable dense parameters',path='role.sharding')
+    require(len({p.dtype for p in params})==1,
+            'mixed dtype frozen Score requires separately declared FSDP owners',path='role.sharding')
+    mesh=DeviceMesh.from_group(score_group,torch.device(device).type,
+                               mesh=torch.tensor(ranks,dtype=torch.int32))
+    param_bytes=sum(p.numel()*p.element_size() for p in params)
+    fully_shard(model,mesh=mesh,reshard_after_forward=True)
+    require(isinstance(model,FSDPModule) and all(isinstance(p,DTensor) for p in model.parameters()),
+            'Score FSDP2 sharding did not install',path='role.sharding')
+    return model,mesh,{'role':'score_frozen_sharded','parameter_bytes':param_bytes,
+                       'world':len(ranks),'immutable':True,'reshard_after_forward':True}

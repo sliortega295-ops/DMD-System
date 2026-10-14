@@ -118,7 +118,9 @@ def main(argv=None):
         if args.command=='role-describe':
             result={'task':task.to_dict(),'program':task.program().to_dict(),
                     'factory':code,'role_estimates':bindings.role_storage_estimate_bytes,
-                    'data_identity':bindings.data_identity,'gpu_execution':'NOT_RUN'}
+                    'data_identity':bindings.data_identity,
+                    'score_parameters_frozen':bindings.score_parameters_frozen,
+                    'gpu_execution':'NOT_RUN'}
             print(json.dumps(result,sort_keys=True));return 0
         import torch
         import torch.distributed as dist

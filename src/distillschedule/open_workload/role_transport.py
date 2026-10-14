@@ -43,6 +43,9 @@ class RoleFunctions:
     # Semantic dataset access by cycle and local logical microbatch, not a
     # scheduler hint. Required to advance beyond a single diagnostic cohort.
     sample_at: Callable[[int, int, str, torch.device], Any] | None = None
+    # Training fact, not an optimization recipe. Verified against the model's
+    # actual requires_grad flags before a frozen Score FSDP2 option can run.
+    score_parameters_frozen: bool = False
 
     def validate(self, task):
         require(all(callable(x) for x in (self.make_model, self.make_optimizer,
@@ -57,6 +60,9 @@ class RoleFunctions:
                 path='role.bindings')
         require((self.score_train_loss is None) == (task.score_updates==0),
                 'score update semantics and function mismatch', path='role.bindings')
+        require(type(self.score_parameters_frozen) is bool and
+                (not self.score_parameters_frozen or task.score_updates==0),
+                'frozen Score cannot have optimizer updates',path='role.bindings')
         if self.role_storage_estimate_bytes is not None:
             require(set(self.role_storage_estimate_bytes)=={'generator','score'} and
                     all(type(v) is int and v>0 for v in self.role_storage_estimate_bytes.values()),
@@ -115,7 +121,7 @@ class RolePoolExecutor:
         self.group=None
         self.events=[]
         self.module=None;self.optimizer=None
-        self._generator_mesh=None;self._sharding={'role':'replicated'}
+        self._generator_mesh=None;self._score_mesh=None;self._sharding={'role':'replicated'}
         self._prepared=False;self._closed=False;self._failed=False;self._busy=False
         self._cycle=0
         self._versions={'generator':0,'score':0,'optimizer_g':0,'gradient_g':0,'optimizer_s':0}
@@ -155,7 +161,16 @@ class RolePoolExecutor:
         identities=[None for _ in range(group_size)]
         dist.all_gather_object(identities,_model_identity(module),group=group)
         require(len(set(identities))==1,'role replica model initializations differ',path='role.runtime')
-        if layout.generator_parallelism=='fsdp2_keep_forward':
+        if self.role=='score' and self.bindings.score_parameters_frozen:
+            require(all(not p.requires_grad for p in module.parameters()),
+                    'declared frozen Score has trainable parameters',path='role.runtime')
+        if layout.score_parallelism=='fsdp2_frozen' and self.role=='score':
+            require(self.bindings.score_parameters_frozen,
+                    'Score pool FSDP2 requires verified frozen Score semantics',path='role.runtime')
+            from .role_sharding import install_frozen_score
+            module,self._score_mesh,self._sharding=install_frozen_score(
+                module,self.device,layout.score,score_group)
+        if layout.generator_parallelism=='fsdp2_keep_forward' and self.role=='generator':
             from .role_sharding import install_generator
             module,optimizer,self._generator_mesh,self._sharding=install_generator(
                 module,optimizer,self.device,layout.generator,gen_group)
@@ -203,11 +218,12 @@ class RolePoolExecutor:
                 # Keep the Generator subgroup alive until the parent torchrun
                 # world closes; destroy ordinary replica/Score groups normally.
                 if group!=dist.GroupMember.NON_GROUP_MEMBER and not (
-                    group is self.gen_group and self.layout.generator_parallelism=='fsdp2_keep_forward'):
+                    (group is self.gen_group and self.layout.generator_parallelism=='fsdp2_keep_forward') or
+                    (group is self.score_group and self.layout.score_parallelism=='fsdp2_frozen')):
                     dist.destroy_process_group(group)
         self._closed=True
         # The DeviceMesh shares gen_group (no second subgroup).
-        self._generator_mesh=None
+        self._generator_mesh=None;self._score_mesh=None
         self.module=None;self.optimizer=None;self.group=None
 
     def _run_cycle(self):
@@ -327,9 +343,10 @@ class RolePoolExecutor:
         # All-gather small receipts only (no weights or model tensors transmitted).
         cuda_peak=(torch.cuda.max_memory_allocated(self.device)
                    if self.device.type=='cuda' else None)
-        if self.role=='generator' and layout.generator_parallelism=='fsdp2_keep_forward':
+        if (self.role=='generator' and layout.generator_parallelism=='fsdp2_keep_forward') or (
+             self.role=='score' and layout.score_parallelism=='fsdp2_frozen'):
             from .role_sharding import sharded_model_identity
-            model_digest=sharded_model_identity(module,gen_group,group_size)
+            model_digest=sharded_model_identity(module,gen_group if self.role=='generator' else score_group,group_size)
         else:
             model_digest=_model_identity(module)
         local={'rank':self.rank,'role':self.role,'events':self.events,

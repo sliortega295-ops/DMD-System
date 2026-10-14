@@ -73,6 +73,7 @@ def _run_identity(task,hardware,bindings,device):
     value={'source_head':revision,'source_fingerprint':source_identity(),
            'task_sha256':task.digest,'semantic_graph_sha256':task.program().digest,
            'source_functions_sha256':code_identity(bindings),
+           'score_parameters_frozen':bindings.score_parameters_frozen,
            'data_identity':bindings.data_identity,'hardware':identities}
     return value
 
@@ -123,7 +124,8 @@ def calibrate(task:RoleTask,hardware:AllocatedWorld,bindings:RoleFunctions,outpu
             'invalid native calibration budget',path='role.calibrate')
     inventory=enumerate_layouts(task,hardware,generator_bytes=generator_bytes,
         score_bytes=score_bytes,safety_bytes=safety_bytes,max_candidates=max_candidates,
-        allow_offload=allow_offload,allow_generator_fsdp=allow_generator_fsdp)
+        allow_offload=allow_offload,allow_generator_fsdp=allow_generator_fsdp,
+        allow_frozen_score_fsdp=bindings.score_parameters_frozen)
     require(samples*len(inventory['candidates'])+1<=max_native_runs,
             'all measured variants plus confirmation must fit the execution budget',path='role.calibrate')
     identity=_run_identity(task,hardware,bindings,device)
