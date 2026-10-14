@@ -46,6 +46,9 @@ class RoleFunctions:
     # Training fact, not an optimization recipe. Verified against the model's
     # actual requires_grad flags before a frozen Score FSDP2 option can run.
     score_parameters_frozen: bool = False
+    # Required for >1 Score update: original algorithm supplies an explicit
+    # cycle/update/sample binding instead of silently replaying the old cohort.
+    score_update_input: Callable[[Any], tuple[torch.Tensor, Any]] | None = None
 
     def validate(self, task):
         require(all(callable(x) for x in (self.make_model, self.make_optimizer,
@@ -56,8 +59,13 @@ class RoleFunctions:
                 'declare exactly one scalar loss or constructed latent gradient',path='role.bindings')
         require(self.sample_at is None or callable(self.sample_at),
                 'sample_at must be a semantic data callable',path='role.bindings')
-        require(task.score_updates in (0,1), 'repeated score updates need an explicit fresh-input semantic adapter',
+        require(self.score_update_input is None or callable(self.score_update_input),
+                'score_update_input must be a semantic data callable',path='role.bindings')
+        require(task.score_updates<=1 or self.score_update_input is not None,
+                'repeated score updates require explicit score_update_input semantics',
                 path='role.bindings')
+        require(self.score_update_input is None or task.score_updates>0,
+                'score_update_input declared without Score updates',path='role.bindings')
         require((self.score_train_loss is None) == (task.score_updates==0),
                 'score update semantics and function mismatch', path='role.bindings')
         require(type(self.score_parameters_frozen) is bool and
@@ -340,16 +348,8 @@ class RolePoolExecutor:
         # Score parameter/version update MUST follow all generator VJP use.
         dist.barrier()
         if self.role=='score' and task.score_updates:
-            for source,i in local_score_data:
-                with torch.enable_grad():
-                    loss=self.bindings.score_train_loss(module,source,self._sample(i,'score'))
-                    require(isinstance(loss,torch.Tensor) and loss.ndim==0 and bool(torch.isfinite(loss)),
-                            'score train objective must be scalar/finite',path='role.runtime')
-                    (loss/task.microbatches).backward()
-                self._event('score_train_backward',i)
-            _sync_gradients(module,score_group,group_size)
-            optimizer.step();optimizer.zero_grad(set_to_none=True)
-            self._event('score_commit',None)
+            from .role_score import execute_updates
+            transport_peak=max(transport_peak,execute_updates(self,local_score_data))
         dist.barrier()
         if self.device.type=='cuda':torch.cuda.synchronize(self.device)
         # All-gather small receipts only (no weights or model tensors transmitted).

@@ -35,7 +35,7 @@ def code_identity(bindings:RoleFunctions):
     """Callable source fingerprints, not user supplied winner/recipe aliases."""
     files={}
     for name in ('make_model','make_optimizer','sample','generator_forward','score_loss','score_train_loss',
-                 'score_input_gradient','sample_at'):
+                 'score_input_gradient','sample_at','score_update_input'):
         fn=getattr(bindings,name)
         if fn is None:continue
         require(inspect.isfunction(fn),'role factory functions must be inspectable Python functions',path='role.identity')
@@ -48,7 +48,7 @@ def code_identity(bindings:RoleFunctions):
 def source_identity():
     root=repository_root()
     files=tuple(root/'src/distillschedule/open_workload'/name for name in
-        ('role_program.py','role_transport.py','role_planning.py','role_offload.py','role_sharding.py'))
+        ('role_program.py','role_transport.py','role_planning.py','role_offload.py','role_sharding.py','role_score.py'))
     return fingerprint({p.name:file_sha256(p) for p in files})
 
 
