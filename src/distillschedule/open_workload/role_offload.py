@@ -8,7 +8,7 @@ and does not prove pinned-bandwidth or accelerator overlap on A100/H100.
 """
 from __future__ import annotations
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import weakref
 import torch
 from distillschedule.core.contracts import require
@@ -23,13 +23,15 @@ class HostBudget:
     def reserve(self, size):
         require(type(self.limit) is int and self.limit>0,
                 'positive explicit per-rank host budget required',path='role.offload')
+        require(type(size) is int and size>=0, 'invalid host reservation',path='role.offload')
         require(self.used+size<=self.limit,
                 'offloaded autograd activations exceed host budget',path='role.offload')
         self.used+=size;self.peak=max(self.peak,self.used)
 
     def release(self, size):
+        require(type(size) is int and 0<=size<=self.used,
+                'host lease accounting underflow',path='role.offload')
         self.used-=size
-        require(self.used>=0,'host lease accounting underflow',path='role.offload')
 
 
 @dataclass
@@ -41,6 +43,7 @@ class SavedLease:
     completed: object = None
     prefetched: torch.Tensor | None = None
     prefetched_event: object = None
+    host_read_events: list = field(default_factory=list)
 
 
 class ActivationOffloader:
@@ -64,6 +67,10 @@ class ActivationOffloader:
             if self.device.type=='cuda':
                 host=torch.empty_like(tensor.detach(),device='cpu',pin_memory=True,
                                       memory_format=torch.preserve_format)
+                # Ordering and allocator lifetime are distinct requirements.
+                # pack() runs on the producing forward stream. record_stream
+                # below alone does NOT wait for the tensor's writes to finish.
+                self._stream.wait_stream(torch.cuda.current_stream(self.device))
                 with torch.cuda.stream(self._stream):
                     host.copy_(tensor.detach(),non_blocking=True)
                     event=torch.cuda.Event();event.record(self._stream)
@@ -72,6 +79,9 @@ class ActivationOffloader:
                 host=tensor.detach().to('cpu',copy=True)
                 event=None
         except BaseException:
+            # A failed event/record operation may follow an enqueued D2H copy.
+            # Do not drop its pinned destination while the copy is in flight.
+            if self._stream is not None:self._stream.synchronize()
             self.budget.release(byte_count)
             raise
         lease=SavedLease(weakref.ref(tensor),tensor._version,host,self.device,event)
@@ -81,6 +91,7 @@ class ActivationOffloader:
 
     def unpack(self, item):
         if not isinstance(item,SavedLease):return item
+        require(not self.closed,'unpack after host lease release',path='role.offload')
         source=item.original()
         require(source is None or source._version==item.version,
                 'a saved tensor was modified in-place before backward',path='role.offload')
@@ -92,7 +103,12 @@ class ActivationOffloader:
                 item.prefetched.record_stream(stream)
                 return item.prefetched
             stream.wait_event(item.completed)
-            return item.host.to(self.device,non_blocking=True)
+            value=item.host.to(self.device,non_blocking=True)
+            # This H2D copy runs on the backward stream, not self._stream.
+            # close() must wait for it before returning the pinned host lease.
+            event=torch.cuda.Event();event.record(stream)
+            item.host_read_events.append(event)
+            return value
         return item.prefetched if item.prefetched is not None else item.host
 
     def prefetch(self):
@@ -106,7 +122,8 @@ class ActivationOffloader:
                     event=torch.cuda.Event();event.record(self._stream)
                 item.prefetched=staged;item.prefetched_event=event
             else:
-                item.prefetched=item.host.clone()
+                # CPU fixtures need no second host copy; keep budget truthful.
+                item.prefetched=item.host
             self.prefetched+=1
 
     @contextmanager
@@ -120,6 +137,8 @@ class ActivationOffloader:
         # A CUDA stream may still read pinned staging buffers when the selected
         # VJP finishes. Synchronize before releasing host leases to avoid UAF.
         if self._stream is not None:self._stream.synchronize()
+        for item in self.leases:
+            for event in item.host_read_events:event.synchronize()
         self.budget.release(self.packed_bytes)
         self.closed=True
         self.leases.clear()
