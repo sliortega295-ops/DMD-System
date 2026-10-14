@@ -66,7 +66,10 @@ def execute_updates(executor, retained):
                         and bool(torch.isfinite(loss)) and loss.requires_grad,
                         'Score train objective must be finite scalar with gradients',
                         path='role.score_update')
-                (loss/task.microbatches).backward()
+                # Native FSDP2 MEAN-reduces parameter gradients. Cancel that
+                # mean once because the objective is already GLOBAL normalized.
+                factor = len(layout.score) if layout.score_parallelism=='fsdp2_train' else 1
+                (loss*(factor/task.microbatches)).backward()
             executor._event('score_train_backward', index)
             executor.events[-1]['score_update'] = update
             # Never keep one update's autograd graph or transformed input in
@@ -74,7 +77,8 @@ def execute_updates(executor, retained):
             del loss, source, conditions
             if provider is not None:
                 del provided, context
-        _sync_gradients(module, executor.score_group, len(layout.score))
+        if layout.score_parallelism=='replicated':
+            _sync_gradients(module, executor.score_group, len(layout.score))
         optimizer.step()
         optimizer.zero_grad(set_to_none=True)
         executor._event('score_commit', None)

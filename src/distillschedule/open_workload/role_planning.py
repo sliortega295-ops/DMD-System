@@ -125,7 +125,8 @@ def calibrate(task:RoleTask,hardware:AllocatedWorld,bindings:RoleFunctions,outpu
     inventory=enumerate_layouts(task,hardware,generator_bytes=generator_bytes,
         score_bytes=score_bytes,safety_bytes=safety_bytes,max_candidates=max_candidates,
         allow_offload=allow_offload,allow_generator_fsdp=allow_generator_fsdp,
-        allow_frozen_score_fsdp=bindings.score_parameters_frozen)
+        allow_frozen_score_fsdp=bindings.score_parameters_frozen,
+        allow_trainable_score_fsdp=(task.score_updates>0 and bindings.score_input_gradient is not None))
     require(samples*len(inventory['candidates'])+1<=max_native_runs,
             'all measured variants plus confirmation must fit the execution budget',path='role.calibrate')
     identity=_run_identity(task,hardware,bindings,device)

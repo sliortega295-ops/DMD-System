@@ -33,9 +33,12 @@ jobs:
       - name: Real multiprocess P2P/VJP/pipeline and Score optimizer
         env: {OMP_NUM_THREADS: '1', MKL_NUM_THREADS: '1'}
         run: python -m pytest -q tests/test_open_workload_role_transport.py
-      - name: Generator pool FSDP2 with actual P2P/VJP/Adam reference
+      - name: Generator and Score pool FSDP2 with actual P2P/VJP/Adam reference
         env: {OMP_NUM_THREADS: '1', MKL_NUM_THREADS: '1'}
-        run: python -m pytest -q tests/test_open_workload_role_sharding.py tests/test_open_workload_role_score_sharding.py
+        run: python -m pytest -q tests/test_open_workload_role_sharding.py tests/test_open_workload_role_score_sharding.py tests/test_open_workload_role_trainable_score.py
+      - name: Repeated Score commits preserve original input semantics and Adam
+        env: {OMP_NUM_THREADS: '1', MKL_NUM_THREADS: '1'}
+        run: python -m pytest -q tests/test_open_workload_role_updates.py
       - name: Calibrate then search via common solver, run chosen layout
         env: {OMP_NUM_THREADS: '1', MKL_NUM_THREADS: '1'}
         run: python -m pytest -q tests/test_open_workload_role_planning.py

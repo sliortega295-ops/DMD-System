@@ -182,6 +182,13 @@ class RolePoolExecutor:
                         'Score pool FSDP2 requires verified frozen Score semantics',path='role.runtime')
                 from .role_sharding import admit_frozen_score
                 admit_frozen_score(module)
+            if self.role=='score' and layout.score_parallelism=='fsdp2_train':
+                require(task.score_updates>0 and not self.bindings.score_parameters_frozen
+                        and self.bindings.score_input_gradient is not None,
+                        'trainable Score FSDP2 needs original no-grad constructed gradient semantics',
+                        path='role.runtime')
+                from .role_sharding import admit
+                admit(module,optimizer)
             if self.role=='generator' and layout.generator_parallelism=='fsdp2_keep_forward':
                 from .role_sharding import admit
                 admit(module,optimizer)
@@ -190,6 +197,10 @@ class RolePoolExecutor:
             from .role_sharding import install_frozen_score
             module,self._score_mesh,self._sharding=install_frozen_score(
                 module,self.device,layout.score,score_group)
+        if layout.score_parallelism=='fsdp2_train' and self.role=='score':
+            from .role_sharding import install_trainable_score
+            module,optimizer,self._score_mesh,self._sharding=install_trainable_score(
+                module,optimizer,self.device,layout.score,score_group)
         if layout.generator_parallelism=='fsdp2_keep_forward' and self.role=='generator':
             from .role_sharding import install_generator
             module,optimizer,self._generator_mesh,self._sharding=install_generator(
@@ -356,7 +367,7 @@ class RolePoolExecutor:
         cuda_peak=(torch.cuda.max_memory_allocated(self.device)
                    if self.device.type=='cuda' else None)
         if (self.role=='generator' and layout.generator_parallelism=='fsdp2_keep_forward') or (
-             self.role=='score' and layout.score_parallelism=='fsdp2_frozen'):
+             self.role=='score' and layout.score_parallelism in ('fsdp2_frozen','fsdp2_train')):
             from .role_sharding import sharded_model_identity
             model_digest=sharded_model_identity(module,gen_group if self.role=='generator' else score_group,group_size)
         else:

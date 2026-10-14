@@ -165,7 +165,7 @@ class PoolLayout:
                     self.activation_policy=='resident',
                     'FSDP2 requires equal Generator work, full local forward window and resident activations',
                     path='role.layout')
-        require(self.score_parallelism in {'replicated','fsdp2_frozen'},
+        require(self.score_parallelism in {'replicated','fsdp2_frozen','fsdp2_train'},
                 'unknown Score parameter layout',path='role.layout')
         if self.score_parallelism=='fsdp2_frozen':
             # Native FSDP2 Score all-gathers are collective on the Score pool.
@@ -176,6 +176,12 @@ class PoolLayout:
                     len(self.generator)==len(self.score) and
                     task.microbatches%len(self.score)==0,
                     'frozen Score FSDP2 requires no Score updates and balanced paired calls',
+                    path='role.layout')
+        if self.score_parallelism=='fsdp2_train':
+            require(task.score_updates>0 and len(self.score)>1 and
+                    len(self.generator)==len(self.score) and
+                    task.microbatches%len(self.score)==0,
+                    'trainable Score FSDP2 requires updates and balanced paired calls',
                     path='role.layout')
         if self.activation_policy=='cpu_offload_prefetch':
             require(all(hardware.host_capacities[r]>0 for r in self.generator),
@@ -208,13 +214,15 @@ def transport_bytes_by_rank(task, layout):
 
 def enumerate_layouts(task, hardware, *, generator_bytes, score_bytes,
                       safety_bytes=0, max_candidates=128, allow_offload=False,
-                      allow_generator_fsdp=False,allow_frozen_score_fsdp=False):
+                      allow_generator_fsdp=False,allow_frozen_score_fsdp=False,
+                      allow_trainable_score_fsdp=False):
     """Bounded legal choices from hardware capacity, no workload-name lookup."""
     require(all(type(x) is int and x>=0 for x in (generator_bytes,score_bytes,safety_bytes)),
             'invalid role storage bounds',path='role.layout')
     require(type(max_candidates) is int and max_candidates>0,'invalid candidate bound',path='role.layout')
     require(type(allow_offload) is bool and type(allow_generator_fsdp) is bool
-            and type(allow_frozen_score_fsdp) is bool,
+            and type(allow_frozen_score_fsdp) is bool
+            and type(allow_trainable_score_fsdp) is bool,
             'invalid layout capability flags',path='role.layout')
     feasible=[];rejected=[]
     # Two bounded physical families: contiguous rank cuts and balanced
@@ -248,7 +256,8 @@ def enumerate_layouts(task, hardware, *, generator_bytes, score_bytes,
             for policy in policies:
               layouts=('replicated', 'fsdp2_keep_forward') if allow_generator_fsdp else ('replicated',)
               for parallelism in layouts:
-               score_layouts=('replicated','fsdp2_frozen') if allow_frozen_score_fsdp else ('replicated',)
+               score_layouts=('replicated',) + (('fsdp2_frozen',) if allow_frozen_score_fsdp else ())
+               if allow_trainable_score_fsdp:score_layouts+=('fsdp2_train',)
                for score_parallelism in score_layouts:
                 c=PoolLayout(generator,score,window,policy,parallelism,score_parallelism)
                 if parallelism!='replicated' or score_parallelism!='replicated':
@@ -287,7 +296,7 @@ def enumerate_layouts(task, hardware, *, generator_bytes, score_bytes,
                     .8*int(c.activation_policy=='cpu_offload_prefetch'),
                     .9*local_fraction(c),
                     .9*int(c.generator_parallelism=='fsdp2_keep_forward'),
-                    .9*int(c.score_parallelism=='fsdp2_frozen'))
+                    .9*int(c.score_parallelism!='replicated'))
         def distance(a,b):
             return sum((x-y)**2 for x,y in zip(coord(a),coord(b)))
         # A legal baseline starts at the nearest feasible, roughly half/half

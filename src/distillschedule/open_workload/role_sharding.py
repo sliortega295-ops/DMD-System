@@ -42,7 +42,7 @@ def admit(model, optimizer):
     return shard_roots
 
 
-def install_generator(model,optimizer,device,generator_ranks,generator_group):
+def _install_trainable(model,optimizer,device,ranks,group,*,role,reshard_after_forward):
     """Reuse the role group collectively created before any model wrapping.
 
     Using DeviceMesh.from_group avoids creating a second communicator and
@@ -50,19 +50,18 @@ def install_generator(model,optimizer,device,generator_ranks,generator_group):
     """
     from torch.distributed.device_mesh import DeviceMesh
     from torch.distributed.fsdp import FSDPModule
-    ranks=tuple(generator_ranks)
-    require(dist.is_initialized() and len(ranks)>=2,'generator shards require a group',path='role.sharding')
-    if dist.get_rank() not in ranks:
-        return model,optimizer,None,{'role':'score_unsharded'}
-    require(generator_group!=dist.GroupMember.NON_GROUP_MEMBER,
-            'Generator shard has no physical group',path='role.sharding')
-    mesh=DeviceMesh.from_group(generator_group,torch.device(device).type,
+    ranks=tuple(ranks)
+    require(dist.is_initialized() and len(ranks)>=2,'trainable role shards require a group',path='role.sharding')
+    require(dist.get_rank() in ranks,'rank outside declared role shard group',path='role.sharding')
+    require(group!=dist.GroupMember.NON_GROUP_MEMBER,
+            'trainable role shard has no physical group',path='role.sharding')
+    mesh=DeviceMesh.from_group(group,torch.device(device).type,
                                mesh=torch.tensor(ranks,dtype=torch.int32))
     shard_roots=admit(model,optimizer)
     dtypes={p.dtype for p in model.parameters()}
     if len(dtypes)==1:
         session=SimpleNamespace(state={'model':model,'optimizer':optimizer},device=torch.device(device))
-        param_bytes,count,moments=shard_roots(session,('model',),mesh,reshard_after_forward=False)
+        param_bytes,count,moments=shard_roots(session,('model',),mesh,reshard_after_forward=reshard_after_forward)
         dtype_groups=1
     else:
         # Existing native FSDP2 optimizer/Adam migration is reused for every
@@ -73,16 +72,27 @@ def install_generator(model,optimizer,device,generator_ranks,generator_group):
         keys=tuple(f'param_group_{i}' for i in range(len(owners)))
         state={'optimizer':optimizer, **dict(zip(keys,owners))}
         session=SimpleNamespace(state=state,device=torch.device(device))
-        param_bytes,count,moments=shard_roots(session,keys,mesh,reshard_after_forward=False)
-        fully_shard(model,mesh=mesh,reshard_after_forward=False)
+        param_bytes,count,moments=shard_roots(session,keys,mesh,reshard_after_forward=reshard_after_forward)
+        fully_shard(model,mesh=mesh,reshard_after_forward=reshard_after_forward)
         dtype_groups=len(owners)
-    require(isinstance(model,FSDPModule),'FSDP2 generator module not installed',path='role.sharding')
+    require(isinstance(model,FSDPModule),'FSDP2 role module not installed',path='role.sharding')
     # Keep default FSDP2 mean reduction. Setting gradient_divide_factor(1)
     # uses PREMUL_SUM, unsupported on Gloo. The producer VJP boundary cancels
     # the native mean without ever reducing the same gradient twice.
-    return model,optimizer,mesh,{'role':'generator_sharded','parameter_bytes':param_bytes,
+    return model,optimizer,mesh,{'role':role+'_sharded','parameter_bytes':param_bytes,
         'parameters':count,'migrated_optimizer_tensors':moments,'world':len(ranks),
         'vjp_pre_backward_factor':len(ranks),'dtype_groups':dtype_groups}
+
+
+def install_generator(model,optimizer,device,generator_ranks,generator_group):
+    return _install_trainable(model,optimizer,device,generator_ranks,generator_group,
+                              role='generator',reshard_after_forward=False)
+
+
+def install_trainable_score(model,optimizer,device,score_ranks,score_group):
+    """Reuse actual FSDP2 optimizer migration, never create fresh Adam moments."""
+    return _install_trainable(model,optimizer,device,score_ranks,score_group,
+                              role='score_trainable',reshard_after_forward=True)
 
 
 def sharded_model_identity(model,group,group_size):
