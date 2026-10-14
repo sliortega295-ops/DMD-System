@@ -80,9 +80,9 @@ def test_reject_external_model_closure():
 
 def test_candidates_are_not_a_workload_name_map():
     w=build()
-    assert len(candidates(w)['candidates'])==4
+    assert len(candidates(w)['candidates'])==8
     w.immutable_modules=()
-    assert len(candidates(w)['candidates'])==2
+    assert len(candidates(w)['candidates'])==4
     assert candidates(w,limit=1)['exhaustive'] is False
 
 

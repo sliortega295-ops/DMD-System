@@ -50,7 +50,7 @@ def test_new_external_video_gan_graph_no_scheduler_changes(tmp_path,updates,fram
     f=tmp_path/'unseen_video.py';f.write_text(FACTORY)
     p=tmp_path/'params.json';p.write_text(json.dumps(dict(updates=updates,frames=frames,width=width)))
     rc=main(['auto','--factory',str(f)+':build','--parameters',str(p),'--output',str(tmp_path/'run'),
-             '--samples','1','--max-program-runs','8','--memory-limit-bytes','1000000','--execute'])
+             '--samples','1','--max-candidates','5','--max-program-runs','8','--memory-limit-bytes','1000000','--execute'])
     assert rc==0
     report=json.loads((tmp_path/'run/result.json').read_text())
     assert report['reference_gate']['status']=='PASS'

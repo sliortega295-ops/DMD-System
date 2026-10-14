@@ -196,23 +196,36 @@ def candidates(workload, *, limit=16):
     require(type(limit) is int and limit>=1,'candidate budget required',path='open.capabilities')
     groups=sorted({c.binding for c in workload.program.calls if c.replay_safe})
     shares=(False,True) if sharing_inventory(workload) else (False,)
-    total=len(shares)*2**len(groups)
+    from .checkpoint_policy import POLICIES, operations
+    policies=tuple(p for p in POLICIES if operations(p))
+    total=len(shares)*(1+(1+len(policies))*(2**len(groups)-1))
     result=[]
-    # Reference first, then balanced alternatives. Report incomplete enumeration.
-    selections=[()] + [(g,) for g in groups]
-    if len(groups)>1: selections.append(tuple(groups))
+    # Baseline and ordinary singleton/full checkpoint choices first; then give
+    # selective policies budget before lower-priority combinatorial subsets.
+    primary=[()] + [(g,) for g in groups]
+    if len(groups)>1: primary.append(tuple(groups))
     rest=itertools.chain.from_iterable(itertools.combinations(groups,n) for n in range(2,len(groups)))
     visited=set()
-    for selected in itertools.chain(selections,rest):
-        if selected in visited: continue
-        visited.add(selected)
-        if len(result)>=limit: break
+    def append(selected,policy):
+        key=(selected,policy)
+        if key in visited: return
+        visited.add(key)
         for share in shares:
-            if len(result)<limit:
-                result.append({'share_immutable':share,'checkpoint_bindings':list(selected),'backend':'torch-callable-resident-v1'})
+            if len(result)>=limit: return
+            option={'share_immutable':share,'checkpoint_bindings':list(selected),'backend':'torch-callable-resident-v1'}
+            if policy!='recompute': option['checkpoint_policy']=policy
+            result.append(option)
+    for selected in primary: append(selected,'recompute')
+    for policy in policies:
+        for selected in primary:
+            if selected: append(selected,policy)
+    for selected in rest:
+        if len(result)>=limit: break
+        for policy in ('recompute',*policies): append(selected,policy)
     return {'candidates':result,'total_candidates':total,'exhaustive':len(result)==total,
-            'capabilities':['reference','nonreentrant_checkpoint','immutable_parameter_alias'],
+            'capabilities':['reference','nonreentrant_checkpoint','immutable_parameter_alias',*policies],
             'layout':'single-device-resident','cross_call_overlap':False}
+
 
 
 @contextmanager
@@ -239,7 +252,12 @@ class Context:
 class Session:
     def __init__(self, workload: Workload, implementation, *, lifecycle=None):
         workload.validate()
-        require(set(implementation)=={'share_immutable','checkpoint_bindings','backend'}
+        from .checkpoint_policy import POLICIES, operations
+        policy=implementation.get('checkpoint_policy','recompute')
+        require(set(implementation) in ({'share_immutable','checkpoint_bindings','backend'},
+                    {'share_immutable','checkpoint_bindings','backend','checkpoint_policy'})
+                and (policy=='recompute' or (policy in POLICIES and operations(policy)
+                     and bool(implementation['checkpoint_bindings'])))
                 and implementation['backend']=='torch-callable-resident-v1'
                 and type(implementation['share_immutable']) is bool
                 and (not implementation['share_immutable'] or bool(sharing_inventory(workload)))
@@ -301,7 +319,12 @@ class Session:
                 with torch.autograd.graph.saved_tensors_hooks(pack,lambda t:t):
                     if c.replay_safe and c.binding in self.implementation['checkpoint_bindings']:
                         self.effects['checkpoint_calls']+=1
-                        value=checkpoint(invoke,*inputs,use_reentrant=False,preserve_rng_state=True)
+                        policy=self.implementation.get('checkpoint_policy','recompute')
+                        options={}
+                        if policy!='recompute':
+                            from .checkpoint_policy import contexts
+                            options['context_fn']=lambda:contexts(policy,saved,excluded,self.effects)
+                        value=checkpoint(invoke,*inputs,use_reentrant=False,preserve_rng_state=True,**options)
                     else: value=invoke(*inputs)
             if c.grad=='no_grad':
                 from torch.utils._pytree import tree_map
