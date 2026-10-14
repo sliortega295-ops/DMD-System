@@ -60,7 +60,7 @@ def identity(workload):
     return {'world_size':dist.get_world_size(), 'ranks':rows, 'digest':fingerprint(rows)}
 
 
-def ddp_order_admitted(workload, order):
+def ddp_order_admitted(workload, order, context_modules=None):
     """Reducer contexts cannot be overwritten by another outstanding forward.
 
     Generic post-backward reduction remains available for valid programs outside
@@ -77,6 +77,7 @@ def ddp_order_admitted(workload, order):
         if key == '__open_finish__': continue
         c = calls[key]
         module = workload.replica_semantics.module_bindings.get(c.binding)
+        if context_modules is not None and module not in context_modules: module = None
         if module is not None:
             if module in active: return False
             if c.grad == 'grad': active[module] = key
@@ -97,25 +98,33 @@ def inventory(workload, *, limit=16, topology=None):
     reason = sharding_rejection(workload)
     admit_sharding = reason is None and len(modes) > 1
     hybrid_modes = HSDP_MODES if topology and topology['hsdp_admitted'] else ()
+    from .mixed_layout import domains, enumerate_assignments, assignment_count, option as mixed_option
+    domain = domains(workload, topology)
+    mixed_count = assignment_count(domain)
     result = []
-    # Interleave layouts before checkpoint depth, so a finite budget still
-    # contains both replication and sharding when the workload supports them.
-    for option in local['candidates']:
+    # Uniform layouts are kept first for compatibility; nonuniform root layouts
+    # then precede further local policy combinations. Budget truncation is explicit.
+    for local_option in local['candidates']:
         choices = list(modes)
-        if admit_sharding and not option['share_immutable']:
+        if admit_sharding and not local_option['share_immutable']:
             choices.extend((mode, 0) for mode in (*sharded_modes, *hybrid_modes))
         for mode, mb in choices:
             if len(result) < limit:
-                item = {'backend':BACKEND, 'local':option, 'reduction':mode, 'bucket_cap_mb':mb}
-                if mode in hybrid_modes:
-                    item['node_groups'] = topology['node_groups']
+                item = {'backend':BACKEND, 'local':local_option, 'reduction':mode, 'bucket_cap_mb':mb}
+                if mode in hybrid_modes: item['node_groups'] = topology['node_groups']
                 result.append(item)
+        if not local_option['share_immutable']:
+            for assignment in enumerate_assignments(domain):
+                if len(result) >= limit: break
+                result.append(mixed_option(local_option, assignment, topology))
+        if len(result) >= limit: break
     from .torch_backend import sharing_inventory
     unshared_count = local['total_candidates'] // (2 if sharing_inventory(workload) else 1)
-    total = local['total_candidates'] * len(modes) + ((len(sharded_modes)+len(hybrid_modes))*unshared_count if admit_sharding else 0)
+    total = local['total_candidates'] * len(modes) + unshared_count * (mixed_count +
+                (len(sharded_modes)+len(hybrid_modes) if admit_sharding else 0))
     return {'candidates':result, 'total_candidates':total, 'exhaustive':len(result)==total,
             'capabilities':local['capabilities']+['post_backward_mean','ddp_async_mean']+
-                           (list(sharded_modes)+list(hybrid_modes) if admit_sharding else []),
+                           (list(sharded_modes)+list(hybrid_modes) if admit_sharding else [])+(['per_module'] if mixed_count else []),
             'layout':'data_parallel_replicated_or_sharded', 'cross_call_overlap':False,
             'reused_hook':'distillschedule.runtime.wan13b_fair.ddp_sum_then_divide_hook',
             'sharding_rejection':reason if reason else (None if admit_sharding else 'FORWARD_BACKWARD_CONTEXT'),
@@ -131,7 +140,7 @@ class ReplicaLifecycle:
     def prepare(self, session):
         # Check the full selection before a DDP constructor can issue collectives.
         options=gather(self.option)
-        require(all(x==options[0] for x in options),'ranks selected different implementations', path='open.replicated')
+        require(all(x==options[0] for x in options), 'ranks selected different implementations', path='open.replicated')
         def validate():
             require(set(self.option)=={'backend','local','reduction','bucket_cap_mb'}
                     and self.option['backend']==BACKEND, 'invalid replica backend', path='open.replicated')
@@ -212,6 +221,9 @@ def make_session(workload, implementation):
     require(isinstance(implementation,dict) and 'local' in implementation, 'replica option required',path='open.replicated')
     # Standard Session retains all original functions, optimizer objects, version
     # updates and RNG scopes. Only a generic execution lifecycle is attached.
+    from .mixed_layout import MixedLifecycle, MODE as MIXED
+    if implementation.get('reduction') == MIXED:
+        return Session(workload, implementation['local'], lifecycle=MixedLifecycle(workload, implementation))
     from .sharded import ShardedLifecycle, MODES, HSDP_MODES
     lifecycle = ShardedLifecycle if implementation.get('reduction') in (*MODES, *HSDP_MODES) else ReplicaLifecycle
     return Session(workload,implementation['local'],lifecycle=lifecycle(workload,implementation))

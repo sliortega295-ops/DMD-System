@@ -67,6 +67,9 @@ class ExecutionBackend:
         if not self.distributed: return self.workload.program.compile()
         from .replica_contract import execution_graph
         reduction=implementation['reduction']
+        if reduction == 'per_module':
+            from .mixed_layout import graph
+            return graph(self.workload,implementation)
         return execution_graph(self.workload.program, self.workload.replica_semantics,
                                'ddp_overlap' if reduction.startswith(('fsdp2_', 'hsdp2_')) else reduction)
 
@@ -88,8 +91,10 @@ class ExecutionBackend:
         if session.lifecycle.option['reduction']=='ddp_overlap':
             extra=2*sum(p.numel()*p.element_size() for key in session.lifecycle.module_keys
                         for p in session.state[key].parameters() if p.requires_grad)
+        if session.lifecycle.option['reduction']=='per_module':
+            extra=session.lifecycle.bucket_storage_bound_bytes
         row['bucket_storage_bound_bytes']=extra
-        if session.lifecycle.option['reduction'].startswith(('fsdp2_', 'hsdp2_')):
+        if session.lifecycle.option['reduction'].startswith(('fsdp2_', 'hsdp2_')) or session.lifecycle.option['reduction']=='per_module':
             # Tensor accounting cannot see all flattened all-gather workspaces on
             # CPU. Include an explicit conservative staging allowance; not RSS.
             staging=2*session.lifecycle.full_parameter_bytes

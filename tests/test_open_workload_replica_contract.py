@@ -15,7 +15,7 @@ def with_replica():
 def test_replica_is_semantics_not_candidate_selection():
     w=with_replica()
     assert w.identity['replica_semantics']['objective']=='equal_rank_mean'
-    assert len(candidates(w)['candidates'])==4
+    assert candidates(w) == candidates(build(n=2))
     assert 'backend' not in w.replica_semantics.to_dict()
 
 

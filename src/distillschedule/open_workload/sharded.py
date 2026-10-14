@@ -19,14 +19,14 @@ MODES = ('fsdp2_reshard', 'fsdp2_keep_forward')
 HSDP_MODES = ('hsdp2_reshard', 'hsdp2_keep_forward')
 
 
-def rejection(workload):
+def rejection(workload, module_keys=None):
     try:
         from torch.distributed.fsdp import fully_shard
         from torch.distributed.tensor import DTensor
     except ImportError: return 'FSDP2_UNAVAILABLE'
     version=tuple(int(v) for v in torch.__version__.split('+')[0].split('.')[:2])
     if workload.device.type=='cpu' and version<(2,10):return 'CPU_FSDP2_REQUIRES_TORCH_2_10'
-    keys=set(workload.replica_semantics.module_bindings.values())
+    keys=set(workload.replica_semantics.module_bindings.values()) if module_keys is None else set(module_keys)
     for key in keys:
         params=list(workload.state[key].parameters())
         if len({p.dtype for p in params})!=1:return 'MIXED_PARAMETER_DTYPES_REQUIRE_SEPARATE_GROUPING'
@@ -50,6 +50,41 @@ def rejection(workload):
     return None
 
 
+def shard_roots(session, module_keys, mesh, *, reshard_after_forward):
+    """Common native installation; untouched optimizer groups/moments stay intact."""
+    from torch.distributed.fsdp import fully_shard
+    from torch.distributed.tensor import DTensor, distribute_tensor
+    replacements = {}; parameter_bytes = 0; count = 0
+    for key in module_keys:
+        model = session.state[key]
+        original = dict(model.named_parameters())
+        parameter_bytes += sum(p.numel()*p.element_size() for p in original.values())
+        fully_shard(model, mesh=mesh, reshard_after_forward=reshard_after_forward)
+        for name, parameter in model.named_parameters():
+            require(isinstance(parameter, DTensor), 'FSDP did not install distributed parameters', path='open.fsdp')
+            replacements[id(original[name])] = parameter
+            count += 1
+    migrated = 0
+    for optimizer in session.state.values():
+        if not isinstance(optimizer, torch.optim.Optimizer): continue
+        state = defaultdict(dict)
+        for old, values in optimizer.state.items():
+            if id(old) not in replacements:
+                state[old] = values
+                continue
+            new = replacements[id(old)]; state[new] = {}
+            for name, value in values.items():
+                if isinstance(value, torch.Tensor) and value.ndim > 0:
+                    state[new][name] = distribute_tensor(value.detach().to(session.device),
+                                                        new.device_mesh, new.placements)
+                    migrated += 1
+                else: state[new][name] = value
+        optimizer.state = state
+        for group in optimizer.param_groups:
+            group['params'] = [replacements.get(id(p), p) for p in group['params']]
+    return parameter_bytes, count, migrated
+
+
 class ShardedLifecycle(ReplicaLifecycle):
     def prepare(self,session):
         options=gather(self.option)
@@ -68,8 +103,6 @@ class ShardedLifecycle(ReplicaLifecycle):
         session.graph=checked(lambda:execution_graph(self.workload.program,
             self.workload.replica_semantics,'ddp_overlap'),'FSDP call boundaries')
         from torch.distributed.device_mesh import init_device_mesh, DeviceMesh
-        from torch.distributed.fsdp import fully_shard
-        from torch.distributed.tensor import DTensor, distribute_tensor
         if hybrid:
             from .topology import discover
             topology = discover()
@@ -80,32 +113,9 @@ class ShardedLifecycle(ReplicaLifecycle):
         else:
             topology = None
             mesh = init_device_mesh(session.device.type,(self.world,))
-        replacements={};sharded_count=0
-        self.full_parameter_bytes=0
-        for key in self.module_keys:
-            model=session.state[key]
-            original=dict(model.named_parameters())
-            self.full_parameter_bytes+=sum(p.numel()*p.element_size() for p in original.values())
-            fully_shard(model,mesh=mesh,reshard_after_forward=self.option['reduction'].endswith('_reshard'))
-            for name,p in model.named_parameters():
-                require(isinstance(p,DTensor),'FSDP did not install distributed parameters',path='open.fsdp')
-                replacements[id(original[name])]=p;sharded_count+=1
-        # FSDP2 replaces Parameter identities. Retarget existing optimizer groups
-        # and redistribute their moments; constructing an empty Adam is incorrect.
-        migrated=0
-        for optimizer in session.state.values():
-            if not isinstance(optimizer,torch.optim.Optimizer):continue
-            new_state=defaultdict(dict)
-            for old,state in optimizer.state.items():
-                new=replacements.get(id(old),old);new_state[new]={}
-                for key,value in state.items():
-                    if isinstance(value,torch.Tensor) and value.ndim>0 and isinstance(new,DTensor):
-                        new_state[new][key]=distribute_tensor(value.detach().to(session.device),new.device_mesh,new.placements)
-                        migrated+=1
-                    else:new_state[new][key]=value
-            optimizer.state=new_state
-            for group in optimizer.param_groups:
-                group['params']=[replacements.get(id(p),p) for p in group['params']]
+        self.full_parameter_bytes, sharded_count, migrated = shard_roots(
+            session, self.module_keys, mesh,
+            reshard_after_forward=self.option['reduction'].endswith('_reshard'))
         session.effects.update(distributed=True,world_size=self.world,reduction=self.option['reduction'],
             fsdp_sharded_parameters=sharded_count,optimizer_moments_migrated=migrated,
             parameter_layout='HSDP2_Replicate_Shard0' if hybrid else 'FSDP2_Shard0',

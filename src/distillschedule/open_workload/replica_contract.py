@@ -67,7 +67,7 @@ class ReplicaSemantics:
                 'local_batch_size': self.local_batch_size, 'objective': self.objective}
 
 
-def ddp_completion_edges(program, semantics):
+def ddp_completion_edges(program, semantics, context_modules=None):
     """Conservative reducer-context lifetimes derived from semantic forwards.
 
     The reference call order must already be executable. Add ONLY ordering
@@ -83,6 +83,7 @@ def ddp_completion_edges(program, semantics):
     active = {}; completed = {}; edges = set()
     for call in program.calls:
         module = semantics.module_bindings.get(call.binding)
+        if context_modules is not None and module not in context_modules: module = None
         if module is not None:
             require(module not in active, 'DDP reference overwrites an outstanding forward', path='open.replica')
             if module in completed: edges.add((completed[module], call.id))
@@ -99,14 +100,14 @@ def ddp_completion_edges(program, semantics):
     return tuple(sorted(edges))
 
 
-def execution_graph(program, semantics, reduction):
+def execution_graph(program, semantics, reduction, context_modules=None):
     graph = program.compile()
     if reduction == 'post_backward': return graph
     require(reduction == 'ddp_overlap', 'unknown reducer', path='open.replica')
     from distillschedule.core.graph import Dependency, ExecutionGraph
     edges = list(graph.dependencies)
     existing = {(edge.source, edge.target) for edge in edges}
-    for source, target in ddp_completion_edges(program, semantics):
+    for source, target in ddp_completion_edges(program, semantics, context_modules):
         if (source, target) not in existing:
             edges.append(Dependency(source, target, 'reducer_context_completion'))
     return ExecutionGraph(graph.operations, tuple(edges),
