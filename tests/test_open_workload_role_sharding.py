@@ -122,3 +122,81 @@ def _calibrated_worker(rank,rdzv,root):
 def test_calibrate_sharded_pool_and_continue_two_training_cycles(tmp_path):
     mp.spawn(_calibrated_worker,args=(str(tmp_path/'rdzv'),str(tmp_path)),
              nprocs=4,join=True)
+
+
+class MixedGenerator(torch.nn.Module):
+    """Frozen BF16 backbone and independently trainable FP32 adapter."""
+    def __init__(self):
+        super().__init__()
+        self.backbone=torch.nn.Linear(3,4).to(torch.bfloat16)
+        for p in self.backbone.parameters():p.requires_grad_(False)
+        self.adapter=torch.nn.Linear(3,4)
+    def forward(self,x):
+        return self.backbone(x.to(torch.bfloat16)).float()+self.adapter(x.float())
+
+
+def mixed_model(role,device):
+    with torch.random.fork_rng():
+        torch.manual_seed(31 if role=='generator' else 53)
+        model=MixedGenerator() if role=='generator' else torch.nn.Linear(4,2)
+    return model.to(device)
+
+
+def mixed_opt(role,model):
+    return torch.optim.Adam((p for p in model.parameters() if p.requires_grad),lr=.005)
+
+
+def mixed_global_reference(task):
+    g=mixed_model('generator','cpu');score=mixed_model('score','cpu')
+    optim=mixed_opt('generator',g)
+    for i in range(task.microbatches):
+        value=g(sample(i,'generator','cpu'))
+        remote=value.detach().requires_grad_(True)
+        vjp=torch.autograd.grad(guidance(score,remote,sample(i,'score','cpu')),remote)[0]
+        value.backward(vjp/task.microbatches)
+    optim.step();optim.zero_grad(set_to_none=True)
+    return {k:v.detach().clone() for k,v in g.state_dict().items()}
+
+
+def _mixed_rank(rank,rdzv,root):
+    torch.set_num_threads(1)
+    dist.init_process_group('gloo',init_method='file://'+rdzv,rank=rank,world_size=4,
+                            timeout=timedelta(seconds=65))
+    runner=None
+    try:
+        t=RoleTask(4,(2,4),score_updates=0)
+        layout=PoolLayout((0,2),(1,3),2,'resident','fsdp2_keep_forward')
+        hw=AllocatedWorld((2**26,)*4,(0,0,1,1))
+        f=RoleFunctions(mixed_model,mixed_opt,sample,generate,guidance)
+        runner=RolePoolExecutor(t,layout,hw,f,device='cpu')
+        receipt,model,_=runner.run()
+        if runner.role=='generator':
+            from torch.distributed.tensor import DTensor
+            actual={k:(v.full_tensor() if isinstance(v,DTensor) else v).detach().cpu()
+                    for k,v in model.state_dict().items()}
+            reference=mixed_global_reference(t)
+            assert all(torch.allclose(v,reference[k],rtol=3e-4,atol=3e-5)
+                       for k,v in actual.items())
+            assert receipt['ranks'][rank]['sharding']['dtype_groups']==2
+            assert set(p.dtype for p in model.parameters())=={torch.bfloat16,torch.float32}
+        Path(root,f'mixed-{rank}.json').write_text(json.dumps({'ok':True}))
+    finally:
+        if runner is not None:runner.close()
+        dist.destroy_process_group()
+
+
+def test_frozen_bf16_backbone_and_fp32_adapter_shard_without_dtype_conversion(tmp_path):
+    mp.spawn(_mixed_rank,args=(str(tmp_path/'rdzv'),str(tmp_path)),nprocs=4,join=True)
+    assert all(json.loads((tmp_path/f'mixed-{r}.json').read_text())['ok'] for r in range(4))
+
+
+def test_unsupported_mixed_ownership_is_rejected_instead_of_cast():
+    from distillschedule.open_workload.role_sharding import admit
+    class BadOwner(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.direct=torch.nn.Parameter(torch.ones(2,3))
+            self.child=torch.nn.Linear(3,4).to(torch.bfloat16)
+    model=BadOwner();optim=torch.optim.Adam(model.parameters(),lr=0.001)
+    with pytest.raises(ValueError,match='mixed-dtype FSDP requires distinct'):
+        admit(model,optim)

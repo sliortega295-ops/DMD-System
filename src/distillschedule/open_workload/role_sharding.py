@@ -20,9 +20,20 @@ def admit(model, optimizer):
     require(isinstance(model,torch.nn.Module) and isinstance(optimizer,torch.optim.Optimizer),
             'FSDP2 requires an original model and optimizer',path='role.sharding')
     params=list(model.parameters())
-    require(params and len({p.dtype for p in params})==1
-            and all(p.ndim>0 and p.is_contiguous() and not isinstance(p,DTensor) for p in params),
-            'FSDP2 role path requires homogeneous dense contiguous parameters',path='role.sharding')
+    require(params and all(p.ndim>0 and p.is_contiguous() and not isinstance(p,DTensor)
+                           for p in params),
+            'FSDP2 role path requires dense contiguous parameters',path='role.sharding')
+    if len({p.dtype for p in params})>1:
+        # Preserve BF16 frozen backbone and FP32 trainable adapters as separate
+        # homogeneous parameter groups; never cast weights to force admission.
+        owners=[(name,child) for name,child in model.named_modules() if name and
+                list(child.parameters(recurse=False))]
+        require(not list(model.parameters(recurse=False)) and owners and
+                all(len({p.dtype for p in child.parameters(recurse=False)})==1
+                    and len(list(child.parameters()))==len(list(child.parameters(recurse=False)))
+                    for _,child in owners) and
+                len({id(p) for _,child in owners for p in child.parameters(recurse=False)})==len(params),
+                'mixed-dtype FSDP requires distinct homogeneous parameter submodules',path='role.sharding')
     require(type(optimizer) in (torch.optim.Adam,torch.optim.AdamW,torch.optim.SGD),
             'original optimizer unsupported by FSDP2 migration',path='role.sharding')
     for parameter,slots in optimizer.state.items():
@@ -48,15 +59,30 @@ def install_generator(model,optimizer,device,generator_ranks,generator_group):
     mesh=DeviceMesh.from_group(generator_group,torch.device(device).type,
                                mesh=torch.tensor(ranks,dtype=torch.int32))
     shard_roots=admit(model,optimizer)
-    session=SimpleNamespace(state={'model':model,'optimizer':optimizer},device=torch.device(device))
-    param_bytes,count,moments=shard_roots(session,('model',),mesh,reshard_after_forward=False)
+    dtypes={p.dtype for p in model.parameters()}
+    if len(dtypes)==1:
+        session=SimpleNamespace(state={'model':model,'optimizer':optimizer},device=torch.device(device))
+        param_bytes,count,moments=shard_roots(session,('model',),mesh,reshard_after_forward=False)
+        dtype_groups=1
+    else:
+        # Existing native FSDP2 optimizer/Adam migration is reused for every
+        # homogeneous leaf group. The outer root supplies ordering hooks.
+        from torch.distributed.fsdp import fully_shard
+        owners=[child for name,child in model.named_modules() if name and
+                list(child.parameters(recurse=False))]
+        keys=tuple(f'param_group_{i}' for i in range(len(owners)))
+        state={'optimizer':optimizer, **dict(zip(keys,owners))}
+        session=SimpleNamespace(state=state,device=torch.device(device))
+        param_bytes,count,moments=shard_roots(session,keys,mesh,reshard_after_forward=False)
+        fully_shard(model,mesh=mesh,reshard_after_forward=False)
+        dtype_groups=len(owners)
     require(isinstance(model,FSDPModule),'FSDP2 generator module not installed',path='role.sharding')
     # Keep default FSDP2 mean reduction. Setting gradient_divide_factor(1)
     # uses PREMUL_SUM, unsupported on Gloo. The producer VJP boundary cancels
     # the native mean without ever reducing the same gradient twice.
     return model,optimizer,mesh,{'role':'generator_sharded','parameter_bytes':param_bytes,
         'parameters':count,'migrated_optimizer_tensors':moments,'world':len(ranks),
-        'vjp_pre_backward_factor':len(ranks)}
+        'vjp_pre_backward_factor':len(ranks),'dtype_groups':dtype_groups}
 
 
 def sharded_model_identity(model,group,group_size):

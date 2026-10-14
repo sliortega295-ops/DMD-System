@@ -219,3 +219,20 @@ calibration across different role layouts, then a real sharded candidate
 through two fresh-input cycles, verifying final model and Adam presence.
 This does not yet implement model-weight restart checkpoints or A100/H100
 CUDA validation.
+
+### BF16 frozen base + FP32 adapter (newly validated restricted subgrouping)
+
+Generator-pool FSDP2 now admits mixed model parameter dtypes **only** when
+the root is parameter-free and all parameter owners are distinct homogeneous
+leaf submodules (e.g. a frozen BF16 backbone and a separate trainable FP32
+adapter). The existing FSDP2 tensor/optimizer migration is invoked for each
+leaf before the outer root is registered. The planner never casts a base
+parameter or changes the adapter's optimizer state to force compatibility.
+
+A real four-process CPU/Gloo test compares the mixed-dtype sharded model's
+trainable FP32 update and unchanged BF16 backbone against an independent
+global-batch oracle. Models with root-owned mixed parameters, unsupported
+nested ownership, cross-root aliases, arbitrary LoRA injection or CUDA AMP
+remain explicitly outside this bounded adapter. Production A100/H100, 14B
+allgather workspace and GPU mixed-precision numerical/quality evidence:
+NOT_RUN.
