@@ -167,3 +167,15 @@ other work unchanged. They are not measured speedups, not the upper bound of a
 future cross-role overlapping plan, and do not count incomplete FLOPs as MFU.
 Selectively run `--deep-profile` for the most expensive unclear call, rather
 than optimizing small kernels opportunistically or tracing every candidate.
+
+#### Standalone A100/H100 probe without loading 14B model weights
+
+On an existing single GPU: `python scripts/distillctl.py workloads native
+program hardware --output /shared/gpu-profile.json --execute`. For multi-GPU
+communication, launch the **same command** under an existing 2-node torchrun
+allocation with `--distributed nccl` and one local GPU per rank. It performs
+bounded scratch H2D and NCCL all-reduce operations, collecting a per-rank
+hardware-fingerprint/probe receipt. It does not initialize Wan/Helios/H3
+weights, attempt any optimization, or pretend that a microbenchmark is a
+complete training-workload cost model. CPU testing is supported but labeled
+`NOT_GPU_PROFILE` rather than claiming an A100/H100 measurement.

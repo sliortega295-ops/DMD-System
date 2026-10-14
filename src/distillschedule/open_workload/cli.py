@@ -39,15 +39,21 @@ def load_factory(name,parameters):
 def main(argv=None):
     p=argparse.ArgumentParser(prog='distillctl workloads native program')
     sub=p.add_subparsers(dest='command',required=True)
-    for name in ('describe','calibrate','plan','run','auto'):
+    for name in ('describe','calibrate','plan','run','auto','hardware'):
         q=sub.add_parser(name)
         q.add_argument('--output',type=Path,required=name!='describe')
-        if name!='plan':
+        if name not in ('plan','hardware'):
             q.add_argument('--factory',required=True)
             q.add_argument('--parameters',type=Path,required=True)
             q.add_argument('--execute',action='store_true')
             q.add_argument('--distributed',choices=('gloo','nccl'),help='join an explicitly allocated torchrun group')
             q.add_argument('--group-timeout',type=int,default=180)
+        if name=='hardware':
+            q.add_argument('--execute',action='store_true',
+                           help='run bounded hardware probes without constructing a workload')
+            q.add_argument('--distributed',choices=('gloo','nccl'))
+            q.add_argument('--group-timeout',type=int,default=180)
+            q.add_argument('--probe-samples',type=int,default=3)
         if name in ('calibrate','auto'):
             q.add_argument('--no-hardware-probe',action='store_true',
                            help='disable bounded, automatic A100/H100 H2D/NCCL microprofiling')
@@ -88,7 +94,28 @@ def main(argv=None):
                 dist.init_process_group(args.distributed,timeout=timedelta(seconds=args.group_timeout));owned_group=True
             require(str(dist.get_backend())==args.distributed,'process group backend mismatch',path='open.cli')
         from .planning import calibrate,plan,run
-        if args.command=='plan':
+        if args.command=='hardware':
+            import torch
+            import torch.distributed as dist
+            from .hardware_probe import probe, ProbeConfig
+            device=torch.device('cuda',torch.cuda.current_device()) if args.distributed=='nccl' else torch.device('cpu')
+            local=probe(device,distributed=dist.is_initialized() and dist.get_world_size()>1,
+                        config=ProbeConfig(samples=args.probe_samples))
+            if dist.is_initialized() and dist.get_world_size()>1:
+                from .replicated import gather,checked
+                ranks=gather(local)
+                result={'schema_version':'distillschedule.hardware_profile_collection.v1',
+                        'status':'MEASURED_GPU_ALLOCATION' if device.type=='cuda' else 'NOT_GPU_PROFILE',
+                        'rank_profiles':ranks, 'claimable_speedup':False,
+                        'gpu_execution':'CUDA_PROBE_ONLY' if device.type=='cuda' else 'NOT_RUN'}
+                checked(lambda:write_new_json(args.output,result) if dist.get_rank()==0 else None,
+                        'hardware profile publication')
+            else:
+                result={'schema_version':'distillschedule.hardware_profile_collection.v1',
+                        'status':local['status'], 'rank_profiles':[local],
+                        'claimable_speedup':False,'gpu_execution':local['gpu_execution']}
+                write_new_json(args.output,result)
+        elif args.command=='plan':
             result=plan(args.calibration,memory_limit_bytes=args.memory_limit_bytes,max_states=args.max_states,beam_width=args.beam_width)
             write_new_json(args.output,result)
         else:
