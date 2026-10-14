@@ -28,10 +28,21 @@ RUN="$PROJECT_ROOT/research_artifacts/five_workload_h100_20260930/$RUN_ID"
 mkdir -p "$PROJECT_ROOT/locks"
 # Project and node locks stay open across audit, construction, run, summary,
 # timeout cleanup and teardown. Cooperating launchers use the same node lock.
-exec 9>"$PROJECT_ROOT/locks/helios_world8_gpu.lock"
-flock -n -E 75 9
-exec 8>/tmp/distillschedule_gpu_node.lock
-flock -n -E 75 8
+case "${DISTILLSCHEDULE_INHERITED_GPU_LOCKS:-0}" in
+  0)
+    exec 9>"$PROJECT_ROOT/locks/helios_world8_gpu.lock"
+    flock -n -E 75 9
+    exec 8>/tmp/distillschedule_gpu_node.lock
+    flock -n -E 75 8
+    ;;
+  1)
+    # Keep one campaign lease across fresh-process arms and construction gaps.
+    # Reject missing/wrong descriptors rather than bypassing the lock audit.
+    "$PYTHON" "$REPO/scripts/distillschedule/verify_inherited_gpu_locks.py" \
+      --project-root "$PROJECT_ROOT"
+    ;;
+  *) echo "invalid inherited GPU lock mode" >&2; exit 2 ;;
+esac
 [[ ! -e "$RUN" ]] || { echo "immutable run ID already exists: $RUN" >&2; exit 82; }
 mkdir -p "$(dirname "$RUN")"
 mkdir "$RUN"
