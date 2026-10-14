@@ -10,7 +10,9 @@ from test_open_workload_execution import build
 def test_real_measurements_to_dp_to_native_execution(tmp_path):
     w=build(n=2)
     m=calibrate(w,tmp_path/'costs',samples=1)
-    assert len(m['variants'])==8 and m['budget']['actual']==9
+    assert len(m['variants'])==6 and m['budget']['actual']==9
+    assert len(m['failed'])==2 and all(row['reason']=='INAPPLICABLE_NATIVE_SELECTIVE_CAPABILITY' for row in m['failed'])
+    assert all(row['native_capability_evidence']['active'] for row in m['variants'])
     p=plan(tmp_path/'costs/calibration.json',memory_limit_bytes=1_000_000)
     write_new_json(tmp_path/'plan.json',p)
     out,session,values=run(w,tmp_path/'plan.json',tmp_path/'run')

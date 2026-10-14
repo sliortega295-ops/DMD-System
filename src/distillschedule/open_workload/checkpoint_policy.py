@@ -69,3 +69,25 @@ def contexts(policy, saved, excluded, effects):
         with ObserveCache(), forward:
             yield
     return measured_forward(), replay
+
+
+def native_effect_evidence(implementation, effects):
+    """Fail closed on strategies whose target native op did not actually run.
+
+    The candidate inventory is intentionally conservative and may include an
+    operator which is supported by installed PyTorch but absent from a user's
+    program. Admission uses measured native forward saves/bytes on every rank.
+    PyTorch 2.14 can skip replay callbacks, so replay hits are NOT a gate.
+    """
+    policy = implementation.get('checkpoint_policy', 'recompute')
+    if policy == 'recompute':
+        return {'status': 'NOT_REQUIRED', 'policy': policy, 'active': True}
+    rows = effects.get('replica_effects', [effects])
+    evidence = [{'native_save_requests': int(row.get('selective_save_requests', 0)),
+                 'native_cached_bytes': int(row.get('selective_native_cache_bytes', 0)),
+                 'explicit_replay_callbacks': int(row.get('selective_replay_hits', 0))}
+                for row in rows]
+    active = bool(evidence) and all(row['native_save_requests'] > 0 and
+                                    row['native_cached_bytes'] > 0 for row in evidence)
+    return {'status': 'ACTIVE_NATIVE_SELECTIVE_SAVE' if active else 'INAPPLICABLE_NATIVE_OP',
+            'policy': policy, 'active': active, 'rank_evidence': evidence}

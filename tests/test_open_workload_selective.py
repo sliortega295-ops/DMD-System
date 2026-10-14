@@ -133,3 +133,19 @@ def worker(rank,rendezvous,output):
 def test_selective_attention_composes_with_real_ddp_and_fsdp(tmp_path):
     mp.spawn(worker,args=(str(tmp_path/'rdzv'),str(tmp_path)),nprocs=2,join=True)
     assert json.loads((tmp_path/'rank0.json').read_text())['variants']==5
+
+
+def test_inapplicable_native_attention_is_pruned_not_optimistically_selected(tmp_path):
+    # Same execution ABI but an unrelated Linear model: aten attention exists in
+    # PyTorch and cannot justify an active save_attention optimization.
+    from test_open_workload_execution import build
+    from distillschedule.open_workload.planning import calibrate,plan
+    w=build(n=1)
+    manifest=calibrate(w,tmp_path/'cal',samples=1,max_candidates=8,max_program_runs=9)
+    skipped=[row for row in manifest['failed'] if row['reason']=='INAPPLICABLE_NATIVE_SELECTIVE_CAPABILITY']
+    assert len(skipped)==2
+    assert all(row['native_evidence']['policy']=='save_attention' and
+               row['native_evidence']['rank_evidence'][0]['native_save_requests']==0 for row in skipped)
+    assert all(row['native_capability_evidence']['active'] for row in manifest['variants'])
+    p=plan(tmp_path/'cal/calibration.json',memory_limit_bytes=10**7)
+    assert all(row['implementation'].get('checkpoint_policy')!='save_attention' for row in p['search']['ranked'])

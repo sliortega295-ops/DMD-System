@@ -50,6 +50,7 @@ def _read(path):
 
 def calibrate(workload,output,*,max_candidates=8,samples=2,max_program_runs=32,rtol=1e-5,atol=1e-7):
     from .execution import ExecutionBackend
+    from .checkpoint_policy import native_effect_evidence
     backend=ExecutionBackend(workload)
     require(type(samples) is int and 1<=samples<=16,'invalid calibration sample count',path='open.calibrate')
     require(type(max_candidates) is int and 1<=max_candidates<=128,'invalid candidate budget',path='open.calibrate')
@@ -72,14 +73,23 @@ def calibrate(workload,output,*,max_candidates=8,samples=2,max_program_runs=32,r
         for index,implementation in enumerate(inventory['candidates']):
             candidate_graph=backend.validated(lambda:backend.graph(implementation),'candidate graph')
             profiles=[];rank_observations=[];static=0;effects=None;gate=None
+            rejected_effect=None
             for _ in range(samples):
                 actual+=1
                 session=backend.session(implementation);out=session.run(measure=True)
                 gate=backend.compare(expected,session.result_state(out),rtol=rtol,atol=atol)
                 if gate['status']!='PASS': break
                 backend.observations(session);rank_observations.append(backend.last_observations)
-                profiles.append(session.profile);static=max(static,session.static_bytes);effects=session.effects
+                effects=session.effects
+                native_gate=native_effect_evidence(implementation,effects)
+                if not native_gate['active']:
+                    rejected_effect=native_gate
+                    break
+                profiles.append(session.profile);static=max(static,session.static_bytes)
                 del out,session
+            if rejected_effect is not None:
+                failed.append({'implementation':implementation, 'reason':'INAPPLICABLE_NATIVE_SELECTIVE_CAPABILITY',
+                               'native_evidence':rejected_effect});continue
             if gate['status']!='PASS':
                 failed.append({'implementation':implementation,'reference_comparison':gate});continue
             directory=root/f'candidate-{index}';backend.mkdir(directory)
@@ -109,6 +119,7 @@ def calibrate(workload,output,*,max_candidates=8,samples=2,max_program_runs=32,r
             variants.append({'id':fingerprint(implementation),'implementation':implementation,
                              'cost_model':str(cost_path),'cost_sha256':file_sha256(cost_path),
                              'retained_bytes':retained,'static_bytes':static,'effects':effects,'reference_gate':gate,
+                             'native_capability_evidence':native_effect_evidence(implementation,effects),
                              'graph':candidate_graph.to_dict()})
         require(variants,'no numerically admitted implementation',path='open.calibrate')
         require(backend.identity()==identity and source_identity()==source,'workload/source changed during calibration',path='open.calibrate')
@@ -138,6 +149,10 @@ def load_calibration(path):
         costs=CostModel.from_dict(_read(row['cost_model']));costs.verify_receipts()
         require(row['id']==fingerprint(row['implementation']) and row['reference_gate']['status']=='PASS',
                 'unverified implementation',path='open.plan')
+        from .checkpoint_policy import native_effect_evidence
+        require(row.get('native_capability_evidence')==native_effect_evidence(row['implementation'],row['effects'])
+                and row['native_capability_evidence']['active'],
+                'unobserved or changed native capability evidence',path='open.plan')
         rules={}
         for op in graph.operations:
             matches=[r for r in costs.records if r.evidence['component_contract']['work']['operation']==op.operation_id]
@@ -230,10 +245,15 @@ def run(workload,plan_path,output,*,rtol=1e-5,atol=1e-7):
         reference=backend.session(backend.inventory(1)['candidates'][0]);out=reference.run()
         expected=reference.result_state(out);del reference,out
         session=backend.session(row['implementation']);out=session.run(order)
+        from .checkpoint_policy import native_effect_evidence
+        actual_native=backend.consensus(native_effect_evidence(row['implementation'],session.effects))
+        require(all(x['active'] for x in actual_native),
+                'selected native capability was not exercised on every rank',path='open.run')
         gate=backend.compare(expected,session.result_state(out),rtol=rtol,atol=atol)
         result={**session.receipt,'plan_sha256':sha,'reference_gate':gate,
                 'status':'PASS_SELECTED_PROGRAM' if gate['status']=='PASS' else 'REVIEW_SELECTED_PROGRAM',
                 'selected_implementation':row['implementation'],'executed_order':list(order),
+                'native_capability_evidence':actual_native,
                 'quality_validation':'NOT_RUN','scope':'common callable ABI; not proof of original DMD protocol parity'}
         if backend.distributed:
             result={**result,'rank_executions':backend.consensus(result),'replicas':backend.world}
