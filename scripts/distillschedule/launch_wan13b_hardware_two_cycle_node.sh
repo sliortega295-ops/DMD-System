@@ -8,7 +8,7 @@ fi
 ROOT=$1 RUN_ID=$2 MODE=$3 PLACEMENT=$4 EXPECTED_HEAD=$5 ASSETS=$6
 shift 6
 case "$MODE" in capacity|correctness|timing) ;; *) exit 2 ;; esac
-case "$PLACEMENT" in world16-fsdp|resident-async128-tree-chunk2048) ;; *) exit 2 ;; esac
+case "$PLACEMENT" in resident|world16-fsdp|resident-async128-tree-chunk2048) ;; *) exit 2 ;; esac
 [[ "$RUN_ID" =~ ^[a-zA-Z0-9_.-]+$ ]] || exit 2
 REPO=$(cd "$(dirname "$0")/../.." && pwd)
 PYTHON=${DISTILLSCHEDULE_PYTHON:?set isolated Python executable}
@@ -55,12 +55,12 @@ export DISTILLSCHEDULE_WAN13B_EMA_IMPLEMENTATION=reference
 export DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE=0
 export DISTILLSCHEDULE_WAN13B_LORA_OPERATOR_ATTRIBUTION=0
 unset DISTILLSCHEDULE_STATIC_FSDP2_NSYS_EXACT_RANGE
-if [[ "$PLACEMENT" == world16-fsdp ]]; then
-  unset NCCL_ALGO
-  export DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE=0
-else
+if [[ "$PLACEMENT" == resident-async128-tree-chunk2048 ]]; then
   export NCCL_ALGO=Tree
   export DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE=1
+else
+  unset NCCL_ALGO
+  export DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE=0
 fi
 COMMAND=("$PYTHON" -m torch.distributed.run --standalone --nproc-per-node=8
   "$REPO/scripts/distillschedule/probe_wan13b_two_cycle_timing_world16.py"
