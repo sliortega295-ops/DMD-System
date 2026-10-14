@@ -32,8 +32,15 @@ def test_two_logical_rows_share_parameter_versions_and_one_commit():
 
     def generator(**kw):
         events.append(("generator", kw["rank"], kw["generator_engine"].global_steps))
+        before = kw["generator_engine"].global_steps
         kw["generator_engine"].backward(2.0)
         kw["generator_engine"].step()
+        # Execute the shared Helios helper's real commit-audit convention.
+        # The first B1 contribution must declare no commit; the second commits.
+        expected = kw.get("expect_optimizer_commit", True)
+        if kw["generator_engine"].global_steps != before + int(expected):
+            raise AssertionError("No-GAN P0 Generator microbatch commit drift")
+        events.append(("commit_expected", kw["rank"], expected))
         return {"source_rank": kw["rank"]}
 
     def rollout(**kw):
@@ -74,6 +81,8 @@ def test_two_logical_rows_share_parameter_versions_and_one_commit():
     assert [r["logical_slot"] for r in rows["logical_samples"]] == [3, 11]
     assert [e for e in events if e[0] == "generator"] == [("generator", 3, 2), ("generator", 11, 2)]
     assert [e for e in events if e[0] == "rollout"] == [("rollout", 3, 3), ("rollout", 11, 3)]
+    assert [e for e in events if e[0] == "commit_expected"] == [
+        ("commit_expected", 3, False), ("commit_expected", 11, True)]
     for step in range(10, 15):
         assert [e for e in events if e[0] == "critic" and e[1] == step] == [
             ("critic", step, 3, step), ("critic", step, 11, step)]

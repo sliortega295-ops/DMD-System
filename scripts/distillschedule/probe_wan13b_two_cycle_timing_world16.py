@@ -342,6 +342,7 @@ def _run_workload_cycle(
                 collect_scalars=False, diagnostics=diagnostics, policy=policy,
                 score_pack_parity_check=False, clean_runtime=clean_runtime,
                 runtime_cache=runtime_cache, deferred_finite_checks=deferred_finite_checks,
+                expect_optimizer_commit=index == len(slots) - 1,
             )
         rows[slot] = {"logical_slot": slot, "generator": generator_record, "critic": []}
     for slot in slots:
