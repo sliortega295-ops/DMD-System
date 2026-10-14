@@ -139,10 +139,12 @@ def main():
                 'ORIGINAL_AR8_G1F1_INACTIVE_GAN_PREDICATE')
         seed_all(42); rec['memory'].append({'phase': 'before_CPU_load', **memory()}); started=time.monotonic()
         if args.tiny:
-            dit = MiniMaxH3DiT(num_layers=2, token_refiner_num_layers=1, hidden_size=24,
-                              num_attention_heads=2, attention_head_dim=12, ffn_hidden_size=48,
-                              timestep_input_dim=8, time_embed_hidden_size=24, time_embed_dim=12,
-                              adaln_out_features=432, final_adaln_out_features=48, rope_inv_freq_len=2).to(torch.bfloat16)
+            # Head96 is Flash-compatible (unlike the old diagnostic Head12)
+            # and keeps the native 3-axis rotary geometry: 16*6 == 96.
+            dit = MiniMaxH3DiT(num_layers=2, token_refiner_num_layers=1, hidden_size=192,
+                              num_attention_heads=2, attention_head_dim=96, ffn_hidden_size=384,
+                              timestep_input_dim=8, time_embed_hidden_size=24, time_embed_dim=192,
+                              adaln_out_features=3456, final_adaln_out_features=384, rope_inv_freq_len=16).to(torch.bfloat16)
             config.lora_rank = config.lora_alpha = 2
             raws = []
             for slot in slots:
