@@ -8,6 +8,7 @@ parallel placement changes; no DMD kernel/cache/merge/reorder flags admitted.
 from __future__ import annotations
 
 import argparse
+from contextlib import ExitStack
 import gc
 import hashlib
 import inspect
@@ -194,7 +195,7 @@ def build_role(args, boot, role, device, pp, tp_group, pp_group, dp_group, model
         placements=[dict(name=x.name,tp=x.tp_placement,partition_dim=x.partition_dim) for x in placements])
 
 
-def main():
+def _main(geometry_stack):
     ap=argparse.ArgumentParser()
     for flag in ('run-id','expected-head','model-root','bootstrap','expected-bootstrap-hash',
                  'trace-bundle','expected-trace-hash','negative-prompt','output-dir'):
@@ -262,6 +263,9 @@ def main():
             if any(grid_fields):raise ValueError('grid identities cannot silently change a canonical workload')
             trace=StaticWorld16Trace(args.trace_bundle,variant='no-gan')
         if trace.bundle_hash!=args.expected_trace_hash: raise ValueError('trace identity mismatch')
+        if grid_spec is not None:
+            from distillschedule.runtime.wan13b_grid_geometry import bind_grid_rollout_geometry
+            row['rollout_geometry'] = bind_grid_rollout_geometry(geometry_stack, ROOT, grid_spec)
         logical_steps=tuple(trace.logical_steps)
         first_step=logical_steps[0]
         negative_asset=NegativePromptAsset.load(args.negative_prompt)
@@ -422,6 +426,11 @@ def main():
         print(json.dumps(row),flush=True);raise
     finally:
         if dist.is_initialized():dist.destroy_process_group()
+
+
+def main():
+    with ExitStack() as geometry_stack:
+        return _main(geometry_stack)
 
 
 if __name__=='__main__':raise SystemExit(main())

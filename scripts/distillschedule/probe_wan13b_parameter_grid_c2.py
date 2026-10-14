@@ -9,6 +9,7 @@ trace substitution is allowed. No source-only test is a GPU timing receipt.
 from __future__ import annotations
 
 import argparse
+from contextlib import ExitStack
 import hashlib
 import importlib.util
 import json
@@ -118,6 +119,9 @@ def check_grid_graphs(build, arm, *, spec, inventory):
         entries = [dict(version=3+i, logical_steps=[s]) for i in range(2) for s in spec.logical_steps]
         if gen.get('entries') != entries:
             raise ValueError('grid graph consumed wrong step/version/input')
+        shapes = {tuple(r['latent_spatial_shape']) for r in gen.get('cache_entries', [])}
+        if shapes != set(spec.spatial_shapes):
+            raise ValueError('grid CUDA Graph actual pyramid shape mismatch')
     elif gen.get('enabled'):
         raise ValueError('baseline unexpectedly enabled rollout graphs')
     if arm['critic_grad_cuda_graph']:
@@ -131,7 +135,7 @@ def check_grid_graphs(build, arm, *, spec, inventory):
     return dict(generator=gen, critic=critic)
 
 
-def main():
+def _main(geometry_stack):
     a = parser().parse_args()
     validate_only = a.validate_only
     if subprocess.check_output(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'], text=True).strip() != a.expected_head:
@@ -143,6 +147,8 @@ def main():
     spec = workload_spec(a.workload); a.timing_seed = spec.seed
     a.world_size = 16; a.distributed_execution = WanGridDistributedExecution(fake_updates=spec.fake_updates)
     factory, native = load_worker(); native._configure_shared_mode_args(a)
+    from distillschedule.runtime.wan13b_grid_geometry import bind_grid_rollout_geometry
+    geometry = bind_grid_rollout_geometry(geometry_stack, ROOT, spec)
     arm = native._validate_arm_environment(a.placement)
     if arm['generator_rollout_merged_shadow']:
         raise ValueError('systemically biased merged weights excluded')
@@ -162,7 +168,8 @@ def main():
                workload=spec.receipt(), bootstrap_hash=boot.manifest_hash,
                trace_hash=trace.bundle_hash, trace_admission_sha256=sha(a.trace_admission),
                profiler='NOT_RUN', numerical_status='DEFERRED_BY_USER_NOT_NUMERICAL_PASS',
-               merged_lora_count=0, arm_contract=arm, trace_rollout_inventory=inventory)
+               merged_lora_count=0, arm_contract=arm, trace_rollout_inventory=inventory,
+               rollout_geometry=geometry)
     if validate_only:
         if torch.cuda.is_initialized(): raise ValueError('CPU admission initialized CUDA')
         print(json.dumps(dict(row, status='PASS_CPU_GRID_ADMISSION_GPU_NOT_RUN', cuda_initialized=False)))
@@ -204,6 +211,11 @@ def main():
         factory.atomic(path,row);raise
     finally:
         if dist.is_initialized():dist.destroy_process_group()
+
+
+def main():
+    with ExitStack() as geometry_stack:
+        return _main(geometry_stack)
 
 
 if __name__=='__main__':
