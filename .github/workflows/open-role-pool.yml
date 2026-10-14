@@ -29,7 +29,7 @@ jobs:
       - run: python -m pip install -e '.[test,native]'
       - name: Role graph and saved-state autograd
         env: {OMP_NUM_THREADS: '1', MKL_NUM_THREADS: '1'}
-        run: python -m pytest -q tests/test_open_workload_role_program.py tests/test_open_workload_role_offload.py
+        run: python -m pytest -q tests/test_open_workload_role_program.py tests/test_open_workload_role_candidate_diversity.py tests/test_open_workload_role_offload.py
       - name: Real multiprocess P2P/VJP/pipeline and Score optimizer
         env: {OMP_NUM_THREADS: '1', MKL_NUM_THREADS: '1'}
         run: python -m pytest -q tests/test_open_workload_role_transport.py

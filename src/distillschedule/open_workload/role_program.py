@@ -159,7 +159,7 @@ def enumerate_layouts(task, hardware, *, generator_bytes, score_bytes,
             'invalid role storage bounds',path='role.layout')
     require(type(max_candidates) is int and max_candidates>0,'invalid candidate bound',path='role.layout')
     require(type(allow_offload) is bool,'invalid offload capability',path='role.layout')
-    choices=[];rejected=[]
+    feasible=[];rejected=[]
     # Contiguous cuts are the currently executable family (e.g. 8G+8S).
     for cut in range(1,hardware.world):
         for window in range(1,min(4,task.microbatches)+1):
@@ -178,9 +178,40 @@ def enumerate_layouts(task, hardware, *, generator_bytes, score_bytes,
                         hardware.host_capacities[r]<2*window*task.bytes_per_latent
                         for r in c.generator):
                     rejected.append({'layout':c.to_dict(),'reason':'HOST_CAPACITY'});continue
-                if len(choices)<max_candidates:choices.append(c)
-                else:rejected.append({'layout':c.to_dict(),'reason':'SEARCH_BUDGET'})
-    require(choices,'no feasible role pools under declared capacities',path='role.layout')
+                feasible.append(c)
+    require(feasible,'no feasible role pools under declared capacities',path='role.layout')
+    # Previous prefix truncation sampled all windows of cut=1 before ever
+    # considering cut=world//2, so a 16-GPU budget of four tried ONLY 1G+15S.
+    # Diversity-based deterministic sampling is merely a SEARCH EXPLORATION
+    # order, never an assertion that a balanced split or offload is fastest.
+    # Keep exhaustive enumeration unchanged when the bound admits all choices.
+    if len(feasible)<=max_candidates:
+        choices=feasible
+    else:
+        max_window=min(4,task.microbatches)
+        def coord(c):
+            return (2.0*(len(c.generator)-1)/max(1,hardware.world-2),
+                    .8*(c.window-1)/max(1,max_window-1),
+                    .8*int(c.activation_policy=='cpu_offload_prefetch'))
+        def distance(a,b):
+            return sum((x-y)**2 for x,y in zip(coord(a),coord(b)))
+        # A legal baseline starts at the nearest feasible, roughly half/half
+        # resident, window=1; if capacity forbids it, choose the closest legal.
+        def baseline_key(c):
+            return (c.activation_policy!='resident',
+                    abs(2*len(c.generator)-hardware.world), c.window,
+                    tuple(c.generator))
+        chosen=[min(feasible,key=baseline_key)]
+        remaining=[c for c in feasible if c!=chosen[0]]
+        while len(chosen)<max_candidates and remaining:
+            # Maximize distance to the already tested family, including splits,
+            # windows and activation lifecycle; stable tie-breaking is required
+            # so every distributed rank enumerates the same candidates.
+            next_choice=min(remaining,key=lambda c:(
+                -min(distance(c,s) for s in chosen), baseline_key(c)))
+            chosen.append(next_choice);remaining.remove(next_choice)
+        choices=chosen
+        rejected.extend({'layout':c.to_dict(),'reason':'SEARCH_BUDGET'} for c in remaining)
     return {'candidates':tuple(choices),'rejected':tuple(rejected),
             'enumeration_complete':not any(x['reason']=='SEARCH_BUDGET' for x in rejected),
             'family':'contiguous_covering_two_role_pools_v1'}

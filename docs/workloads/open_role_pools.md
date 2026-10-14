@@ -157,3 +157,21 @@ two-rank Gloo producer/Score P2P, optimizer work, measured candidate selection,
 and rejection when changed task/data attempts to replay old plan receipts.
 This is an interface/execution validation, not an independent full model DMD
 numerical or video-quality reference.
+
+## Bounded candidate coverage on a 16-GPU allocation
+
+Small calibration budgets must not be interpreted as searching only the first
+contiguous split. Formerly a four-candidate limit tried only variations of
+`1G+15Score`, excluding `8G+8Score` regardless of the hardware and workload.
+The generic enumerator now first checks the **actual per-rank role capacity**,
+then deterministically samples across generator/score fractions, in-flight
+windows and available host-offload policies using farthest-point coverage.
+It starts with a feasible approximately-balanced resident window-1 baseline,
+then maximizes diversity in the bounded family. Neither a balanced split nor
+an offload choice is assumed to be fastest; every admitted choice must be
+calibrated and numerically checked. The remaining legal choices are reported as
+`SEARCH_BUDGET`, not conflated with `ROLE_CAPACITY` or `HOST_CAPACITY`.
+A bigger explicit `max_candidates` budget enumerates all legal combinations.
+Supported physical topology remains contiguous rank cuts; arbitrary role
+reshuffles, hetero-GPU model remapping and dynamic role migrations are not
+implemented. CUDA/NCCL effectiveness requires real A100/H100 profiling.
