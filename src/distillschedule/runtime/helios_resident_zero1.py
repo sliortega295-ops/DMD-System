@@ -50,6 +50,28 @@ def zero1_master_partitions(engine: Any) -> list[Any]:
     raise TypeError('unrecognized GPU ZeRO-1 master-partition API')
 
 
+def initialize_native_bf16_scaling_api(optimizer: Any) -> list[str]:
+    """Supply the unscaled BF16 defaults missing from 0.18.4's legacy class.
+
+    The new ZeROOptimizer.scale_if_loss/needs_scaler API expects these fields;
+    BF16_Optimizer does not initialize them. Use stock unity LossScaler, not a
+    replacement backward or an FP16/dynamic scaling policy.
+    """
+    from deepspeed.runtime.fp16.loss_scaler import LossScaler
+    defaults = {'custom_loss_scaler': False, 'torch_autocast_gradscaler': None,
+                'loss_scaler': LossScaler(1.0)}
+    added = []
+    for name, value in defaults.items():
+        if not hasattr(optimizer, name):
+            setattr(optimizer, name, value)
+            added.append(name)
+    if optimizer.custom_loss_scaler or optimizer.torch_autocast_gradscaler is not None:
+        raise AssertionError('native BF16 reference cannot enable custom/FP16 loss scaling')
+    if optimizer.loss_scaler.loss_scale != 1.0:
+        raise AssertionError('native BF16 reference requires exact unity loss scale')
+    return added
+
+
 @contextmanager
 def gpu_zero1_bf16_route_compat(*, engine_module=None, torch_module=None):
     """Fix the installed 0.18.4 BFLOAT16/DDP_BFLOAT16 selector collision.
@@ -81,7 +103,10 @@ def gpu_zero1_bf16_route_compat(*, engine_module=None, torch_module=None):
             and low_precision_dtype == torch_module.bfloat16
             and self.get_data_types() == (torch_module.bfloat16, torch_module.float32)):
             audit['routed_calls'] += 1
-            return self._configure_bf16_optimizer(optimizer)
+            result = self._configure_bf16_optimizer(optimizer)
+            if type(result).__name__ == 'BF16_Optimizer':
+                audit['unscaled_bf16_api_fields_initialized'] = initialize_native_bf16_scaling_api(result)
+            return result
         return original(self, optimizer, low_precision_dtype)
     route._distillschedule_resident_zero1_route = True
     if audit['enabled']:

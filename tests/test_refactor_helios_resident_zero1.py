@@ -107,3 +107,20 @@ def test_route_is_restored_after_initialization_exception():
                 torch_module=SimpleNamespace(bfloat16='bf16',float32='fp32')):
             raise ValueError('preserved initialization failure')
     assert Engine._configure_fp16_optimizer is original
+
+
+def test_native_bf16_uses_stock_unity_scaler_with_exact_loss_and_gradient():
+    torch=pytest.importorskip('torch')
+    pytest.importorskip('deepspeed')
+    from deepspeed.runtime.base_optimizer import ZeROOptimizer
+    m=runtime()
+    legacy=type('BF16_Optimizer',(),{})()
+    assert not hasattr(legacy,'custom_loss_scaler')
+    assert set(m.initialize_native_bf16_scaling_api(legacy)) == {
+        'custom_loss_scaler','torch_autocast_gradscaler','loss_scaler'}
+    assert ZeROOptimizer.needs_scaler(legacy) is False
+    x=torch.tensor(1.25,requires_grad=True)
+    y=ZeROOptimizer.scale_if_loss(legacy,x)
+    assert torch.equal(x,y)
+    y.backward();assert x.grad.item()==1.0
+    assert m.initialize_native_bf16_scaling_api(legacy)==[]
