@@ -136,3 +136,18 @@ def offload_worker(rank,world,layout,task,rdzv,out):
         Path(out,f'offload{rank}.json').write_text(json.dumps({
             **receipt['ranks'][rank]['offload'],'model_matches_reference':matches}))
     finally:dist.destroy_process_group()
+
+
+def test_noncontiguous_node_local_pool_preserves_real_vjp_and_adam(tmp_path):
+    """A node-local partition must lower to real P2P instead of only planning."""
+    task=RoleTask(6,(2,4),score_updates=1)
+    hw=AllocatedWorld((2**25,)*4,(0,0,1,1))
+    from distillschedule.open_workload.role_program import enumerate_layouts
+    candidates=enumerate_layouts(task,hw,generator_bytes=1000,score_bytes=1000,max_candidates=80)
+    layout=next(p for p in candidates['candidates'] if p.generator==(0,2)
+                and p.score==(1,3) and p.window==2)
+    mp.spawn(worker,args=(4,layout,task,str(tmp_path/'rdzv'),str(tmp_path)),nprocs=4,join=True)
+    for rank in range(4):
+        receipt=json.loads((tmp_path/f'rank{rank}.json').read_text())
+        assert receipt['gradients']==task.microbatches
+        assert receipt['pool']==layout.to_dict()

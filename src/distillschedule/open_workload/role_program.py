@@ -160,12 +160,36 @@ def enumerate_layouts(task, hardware, *, generator_bytes, score_bytes,
     require(type(max_candidates) is int and max_candidates>0,'invalid candidate bound',path='role.layout')
     require(type(allow_offload) is bool,'invalid offload capability',path='role.layout')
     feasible=[];rejected=[]
-    # Contiguous cuts are the currently executable family (e.g. 8G+8S).
+    # Two bounded physical families: contiguous rank cuts and balanced
+    # per-node cuts. The latter keeps both roles on each physical node when
+    # possible; it does not assume this will outperform cross-node pools.
+    nodes = tuple(sorted({node for node in hardware.node_ids}))
+    node_ranks = {node:tuple(r for r,n in enumerate(hardware.node_ids) if n==node)
+                  for node in nodes}
+    def partitions(cut):
+        contiguous = tuple(range(cut))
+        yield contiguous
+        if len(nodes)<2 or cut<len(nodes) or hardware.world-cut<len(nodes):return
+        # Allocate at least one rank per role per node and distribute the
+        # remaining G ranks proportionally to available local capacity.
+        per_node={node:1 for node in nodes}
+        available={node:len(node_ranks[node])-2 for node in nodes}
+        if any(v<0 for v in available.values()):return
+        for _ in range(cut-len(nodes)):
+            eligible=[node for node in nodes if available[node]>0]
+            if not eligible:return
+            # Balanced deterministic water filling, stable over all ranks.
+            best=min(eligible,key=lambda n:(per_node[n]/len(node_ranks[n]),n))
+            per_node[best]+=1;available[best]-=1
+        local=tuple(sorted(r for node in nodes for r in node_ranks[node][:per_node[node]]))
+        if local!=contiguous:yield local
     for cut in range(1,hardware.world):
+      for generator in partitions(cut):
+        score=tuple(r for r in range(hardware.world) if r not in generator)
         for window in range(1,min(4,task.microbatches)+1):
             policies=('resident','cpu_offload_prefetch') if allow_offload else ('resident',)
             for policy in policies:
-                c=PoolLayout(tuple(range(cut)),tuple(range(cut,hardware.world)),window,policy)
+                c=PoolLayout(generator,score,window,policy)
                 # Model-state and known transfer bounds only. True autograd
                 # workspace is observed again during native CUDA calibration.
                 per_g=generator_bytes+safety_bytes+window*task.bytes_per_latent*(
@@ -189,10 +213,15 @@ def enumerate_layouts(task, hardware, *, generator_bytes, score_bytes,
         choices=feasible
     else:
         max_window=min(4,task.microbatches)
+        def local_fraction(c):
+            return sum(int(any(hardware.node_ids[r]==node for r in c.generator) and
+                           any(hardware.node_ids[r]==node for r in c.score))
+                       for node in nodes)/len(nodes)
         def coord(c):
             return (2.0*(len(c.generator)-1)/max(1,hardware.world-2),
                     .8*(c.window-1)/max(1,max_window-1),
-                    .8*int(c.activation_policy=='cpu_offload_prefetch'))
+                    .8*int(c.activation_policy=='cpu_offload_prefetch'),
+                    .9*local_fraction(c))
         def distance(a,b):
             return sum((x-y)**2 for x,y in zip(coord(a),coord(b)))
         # A legal baseline starts at the nearest feasible, roughly half/half
@@ -200,7 +229,7 @@ def enumerate_layouts(task, hardware, *, generator_bytes, score_bytes,
         def baseline_key(c):
             return (c.activation_policy!='resident',
                     abs(2*len(c.generator)-hardware.world), c.window,
-                    tuple(c.generator))
+                    -local_fraction(c),tuple(c.generator))
         chosen=[min(feasible,key=baseline_key)]
         remaining=[c for c in feasible if c!=chosen[0]]
         while len(chosen)<max_candidates and remaining:
@@ -214,4 +243,4 @@ def enumerate_layouts(task, hardware, *, generator_bytes, score_bytes,
         rejected.extend({'layout':c.to_dict(),'reason':'SEARCH_BUDGET'} for c in remaining)
     return {'candidates':tuple(choices),'rejected':tuple(rejected),
             'enumeration_complete':not any(x['reason']=='SEARCH_BUDGET' for x in rejected),
-            'family':'contiguous_covering_two_role_pools_v1'}
+            'family':'contiguous_and_node_local_two_role_pools_v2'}

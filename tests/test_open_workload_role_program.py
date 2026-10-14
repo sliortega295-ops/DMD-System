@@ -29,7 +29,8 @@ def test_graph_changes_as_data_or_frequency_changes():
 def test_hardware_enumerates_nonhardcoded_split_and_pipeline_window():
     task=RoleTask(4,(2,16));h=AllocatedWorld((2000,)*8,(0,0,0,0,1,1,1,1))
     r=enumerate_layouts(task,h,generator_bytes=500,score_bytes=700,max_candidates=100)
-    assert {c.generator for c in r['candidates']}=={tuple(range(i)) for i in range(1,8)}
+    assert {tuple(range(i)) for i in range(1,8)} <= {c.generator for c in r['candidates']}
+    assert (0,1,4,5) in {c.generator for c in r['candidates']}
     assert (tuple(range(4)),tuple(range(4,8)),2) in [(c.generator,c.score,c.window) for c in r['candidates']]
     assert all(c.validate(task,h) for c in r['candidates'])
     assert PoolLayout((0,1),(2,3),2).owners(3)==(1,3)

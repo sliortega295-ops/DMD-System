@@ -37,3 +37,16 @@ def test_infeasible_balanced_pool_admits_only_real_legal_layouts():
     result=enumerate_layouts(task,hw,generator_bytes=1000,score_bytes=500,max_candidates=2)
     assert all(len(p.generator)==1 for p in result['candidates'])
     assert all(x['reason'] in {'ROLE_CAPACITY','SEARCH_BUDGET'} for x in result['rejected'])
+
+
+def test_node_local_split_enters_small_world16_budget_without_forcing_winner():
+    task=RoleTask(8,(1,2,4,8))
+    hw=AllocatedWorld((2**28,)*16,tuple([0]*8+[1]*8))
+    r=enumerate_layouts(task,hw,generator_bytes=2000,score_bytes=2000,max_candidates=8)
+    plans=r['candidates']
+    assert any(p.generator==(0,1,2,3,8,9,10,11) and p.score==(4,5,6,7,12,13,14,15)
+               for p in plans), [p.to_dict() for p in plans]
+    assert any(p.generator==tuple(range(8)) for p in plans)
+    assert len(plans)==8
+    assert tuple(p.to_dict() for p in plans)==tuple(p.to_dict() for p in enumerate_layouts(
+        task,hw,generator_bytes=2000,score_bytes=2000,max_candidates=8)['candidates'])
