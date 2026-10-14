@@ -34,6 +34,12 @@ requires explicit --execute; no implicit Hub download or cluster allocation.
   Adapters/optimizers remain separate; mutable parameter aliases are rejected.
 - Calibration runs the actual supplied math from paired cloned model/Adam
   states. Numerical mismatches are REVIEW, never relabeled PASS.
+- Native save-attention/save-matmul variants require **observed** matching
+  operator calls and retained bytes on every rank; unavailable options are
+  recorded as inapplicable rather than ranked as optimizations. Checkpoint
+  replay callbacks are not required: PyTorch 2.14 may reuse saved native
+  results without replay dispatch. Native forward-operation counts plus full
+  gradient/optimizer parity test that recomputation is genuinely avoided.
 - `search/service.py` reuses the existing event-frontier DP/beam across admitted
   candidates. It is independent of model names, loss functions and update ratios.
 - The selected sequence runs through PreparedRolePlan. Stored timing and memory

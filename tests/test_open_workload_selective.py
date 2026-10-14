@@ -149,3 +149,29 @@ def test_inapplicable_native_attention_is_pruned_not_optimistically_selected(tmp
     assert all(row['native_capability_evidence']['active'] for row in manifest['variants'])
     p=plan(tmp_path/'cal/calibration.json',memory_limit_bytes=10**7)
     assert all(row['implementation'].get('checkpoint_policy')!='save_attention' for row in p['search']['ranked'])
+
+
+def test_native_capability_requires_real_effects_on_every_rank():
+    from distillschedule.open_workload.checkpoint_policy import native_effect_evidence
+    impl={'checkpoint_policy':'save_attention'}
+    admitted={'selective_save_requests':3,'selective_native_cache_bytes':8192}
+    excluded={'selective_save_requests':0,'selective_native_cache_bytes':0}
+    row=native_effect_evidence(impl,{'replica_effects':[admitted,excluded]})
+    assert row['status']=='INAPPLICABLE_NATIVE_OP' and not row['active']
+    assert len(row['rank_evidence'])==2
+    assert native_effect_evidence(impl,{'replica_effects':[admitted,admitted]})['active']
+    assert native_effect_evidence({}, {'replica_effects':[excluded]})['status']=='NOT_REQUIRED'
+
+
+def test_calibration_cannot_relabel_ineffective_native_cache(tmp_path):
+    from distillschedule.open_workload.planning import calibrate,plan
+    w=workload()
+    m=calibrate(w,tmp_path/'cal',samples=1,max_candidates=4,max_program_runs=5)
+    assert len(m['variants'])==4
+    path=tmp_path/'cal/calibration.json'
+    doc=json.loads(path.read_text())
+    target=next(row for row in doc['variants'] if row['implementation'].get('checkpoint_policy')=='save_attention')
+    target['native_capability_evidence']['active']=False
+    path.write_text(json.dumps(doc))
+    with pytest.raises(ValueError,match='native capability evidence'):
+        plan(path,memory_limit_bytes=10**7)
