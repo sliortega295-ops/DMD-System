@@ -3,6 +3,7 @@ import importlib.util
 from pathlib import Path
 
 import pytest
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -22,6 +23,7 @@ def test_config_has_full_parameters_and_gpu_only_state():
     assert c['gradient_accumulation_steps'] == 1
     assert c['bf16']['enabled'] is True
     assert c['communication_data_type'] == 'fp32'
+    assert c['data_types']['grad_accum_dtype'] == 'fp32'
     assert c['gradient_clipping'] == 1.0
     assert c['zero_optimization']['stage'] == 1
     assert 'offload_optimizer' not in c['zero_optimization']
@@ -56,3 +58,14 @@ def test_runtime_does_not_call_parameter_sharding_or_cpu_offload():
     assert 'parameter_streaming' in source
     assert 'restore_zero1_optimizer_partition_from_logical(' in source
     assert 'average' in source
+
+
+def test_native_bf16_optimizer_api_keeps_real_master_identity():
+    m = runtime()
+    master = object()
+    native = type('BF16_Optimizer', (), {})()
+    native.fp32_groups_flat_partition = [master]
+    assert m.zero1_master_partitions(SimpleNamespace(optimizer=native))[0] is master
+    assert not hasattr(native, 'single_partition_of_fp32_groups')
+    with pytest.raises(TypeError):
+        m.zero1_master_partitions(SimpleNamespace(optimizer=object()))

@@ -21,6 +21,7 @@ def resident_zero1_config() -> dict[str, Any]:
         'gradient_accumulation_steps': 1,
         'bf16': {'enabled': True},
         'communication_data_type': 'fp32',
+        'data_types': {'grad_accum_dtype': 'fp32'},
         'gradient_clipping': 1.0,
         'zero_allow_untested_optimizer': True,
         'zero_optimization': {
@@ -33,6 +34,18 @@ def resident_zero1_config() -> dict[str, Any]:
         'steps_per_print': 1000000,
         'wall_clock_breakdown': False,
     }
+
+
+def zero1_master_partitions(engine: Any) -> list[Any]:
+    zero = engine.optimizer
+    if hasattr(zero, 'single_partition_of_fp32_groups'):
+        return zero.single_partition_of_fp32_groups
+    # DeepSpeed 0.18.4 selects native BF16_Optimizer for GPU-only stage1 +
+    # FP32 accumulation. It owns the same flat FP32 master/Adam partitions
+    # under a different API name; never silently switch accumulation to BF16.
+    if type(zero).__name__ == 'BF16_Optimizer' and hasattr(zero, 'fp32_groups_flat_partition'):
+        return zero.fp32_groups_flat_partition
+    raise TypeError('unrecognized GPU ZeRO-1 master-partition API')
 
 
 def build_resident_zero1_engine(
@@ -56,17 +69,33 @@ def build_resident_zero1_engine(
     engine, _, _, _ = deepspeed.initialize(model=module, optimizer=optimizer,
         lr_scheduler=scheduler, model_parameters=trainables, config=config,
         dist_init_required=False)
-    if engine.zero_optimization_stage() != 1 or engine.optimizer.partition_gradients:
+    if engine.zero_optimization_stage() != 1 or getattr(engine.optimizer, 'partition_gradients', False):
         raise AssertionError('resident reference requires ZeRO-1, never ZeRO-2/3')
-    if engine.optimizer.cpu_offload:
+    if getattr(engine.optimizer, 'cpu_offload', False):
         raise AssertionError('resident reference optimizer unexpectedly uses CPU offload')
+    accumulation = getattr(engine.optimizer, 'gradient_accumulation_dtype',
+                           getattr(engine.optimizer, 'grad_acc_dtype', None))
+    if accumulation != torch.float32:
+        raise AssertionError('resident reference must accumulate logical B1 gradients in FP32')
+    masters = zero1_master_partitions(engine)
+    if any(p.dtype != torch.float32 or p.device.type != 'cuda' for p in masters):
+        raise AssertionError('resident master partitions must remain FP32 on GPU')
     for name, p in engine.module.named_parameters():
         if p.device.type != 'cuda' or hasattr(p, 'device_mesh') or hasattr(p, 'ds_tensor'):
             raise AssertionError(f'{component}/{name}: parameters are not fully GPU resident')
         if p.dtype != torch.bfloat16:
             raise AssertionError(f'{component}/{name}: original FSDP BF16 compute contract changed')
-    restore = restore_zero1_optimizer_partition_from_logical(engine, package,
-        component=component, partition_rank=torch.distributed.get_rank(), dp_world_size=8)
+    alias = not hasattr(engine.optimizer, 'single_partition_of_fp32_groups')
+    if alias:
+        # Receipt-backed, process-local restore ABI only. The original loader
+        # writes these actual tensors; no optimizer method/algorithm is replaced.
+        engine.optimizer.single_partition_of_fp32_groups = masters
+    try:
+        restore = restore_zero1_optimizer_partition_from_logical(engine, package,
+            component=component, partition_rank=torch.distributed.get_rank(), dp_world_size=8)
+    finally:
+        if alias:
+            del engine.optimizer.single_partition_of_fp32_groups
     # Registry only, not a Module child: registering engine here would recurse.
     object.__setattr__(module, '_distillschedule_resident_engine_ref', weakref.ref(engine))
     engine._distillschedule_resident_zero1 = True
@@ -74,6 +103,7 @@ def build_resident_zero1_engine(
         optimizer_cpu_offload=False, parameter_offload=False, parameter_streaming=False,
         optimizer_implementation='PYTORCH_ADAMW', trainable_master_dtype='torch.float32',
         model_compute_dtype='torch.bfloat16', communication_dtype='torch.float32',
+        gradient_accumulation_dtype='torch.float32', actual_optimizer_class=type(engine.optimizer).__name__,
         physical_b1_rows_per_rank=2, loss_scale_per_row=0.5, config=config,
         optimizer_dispatch_warmup={'enabled': False, 'disabled_reason': 'REFERENCE'})
 
@@ -82,7 +112,13 @@ def zero1_gradient_tensors(engine: Any) -> list[tuple[str, Any]]:
     """Actual reduced GPU partitions, not absent BF16 parameter.grad views."""
     import torch
     rows = []
-    for group, values in engine.optimizer.averaged_gradients.items():
+    zero = engine.optimizer
+    if type(zero).__name__ == 'BF16_Optimizer':
+        groups = [(i, [t for t, active in zip(values, zero.fp32_groups_has_gradients[i], strict=True) if active])
+                  for i, values in enumerate(zero.fp32_groups_gradients)]
+    else:
+        groups = zero.averaged_gradients.items()
+    for group, values in groups:
         for index, tensor in enumerate(values or ()):
             if not torch.is_tensor(tensor) or tensor.device.type != 'cuda':
                 raise AssertionError('ZeRO-1 gradient audit found non-GPU/missing data')
@@ -96,7 +132,7 @@ def zero1_optimizer_tensors(engine: Any) -> list[tuple[str, Any]]:
     import torch
     zero = engine.optimizer
     rows = []
-    for group, master in enumerate(zero.single_partition_of_fp32_groups):
+    for group, master in enumerate(zero1_master_partitions(engine)):
         if master.dtype != torch.float32 or master.device.type != 'cuda':
             raise AssertionError('ZeRO-1 master must remain FP32 on GPU')
         state = zero.optimizer.state[master]
@@ -155,7 +191,7 @@ class ResidentZero1ShardEMA:
                       for n in metadata['tracked_names']}
         if set(normalized) != set(trainables):
             raise ValueError('EMA and logical trainable inventory differ')
-        masters = engine.optimizer.single_partition_of_fp32_groups
+        masters = zero1_master_partitions(engine)
         if len(masters) != 1:
             raise ValueError('registered logical restore requires one optimizer group')
         self = cls()
