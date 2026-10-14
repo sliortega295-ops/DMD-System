@@ -92,6 +92,7 @@ class AllocatedWorld:
     """Hardware facts. The workload factory never chooses a pool split."""
     capacities: tuple[int, ...]
     node_ids: tuple[int, ...] = ()
+    host_capacities: tuple[int, ...] = ()
 
     def __post_init__(self):
         require(len(self.capacities)>=2 and
@@ -103,6 +104,12 @@ class AllocatedWorld:
                 all(type(v) is int and v>=0 for v in self.node_ids),
                 'one node identity per allocated rank required', path='role.hardware')
 
+        if not self.host_capacities:
+            object.__setattr__(self, 'host_capacities', tuple(0 for _ in self.capacities))
+        require(len(self.host_capacities)==len(self.capacities) and
+                all(type(x) is int and x>=0 for x in self.host_capacities),
+                'explicit nonnegative per-rank host budgets required',path='role.hardware')
+
     @property
     def world(self):return len(self.capacities)
 
@@ -112,17 +119,21 @@ class PoolLayout:
     generator: tuple[int, ...]
     score: tuple[int, ...]
     window: int
+    activation_policy: str = 'resident'
 
     def to_dict(self):
-        return {'generator':list(self.generator),'score':list(self.score),'window':self.window}
+        return {'generator':list(self.generator),'score':list(self.score),
+                'window':self.window,'activation_policy':self.activation_policy}
 
     @classmethod
     def from_dict(cls, obj):
-        require(isinstance(obj,Mapping) and set(obj)=={'generator','score','window'},
+        require(isinstance(obj,Mapping) and set(obj)=={'generator','score','window','activation_policy'},
                 'invalid pool layout',path='role.layout')
-        return cls(tuple(obj['generator']),tuple(obj['score']),obj['window'])
+        return cls(tuple(obj['generator']),tuple(obj['score']),obj['window'],obj['activation_policy'])
 
     def validate(self, task,hardware):
+        require(self.activation_policy in {'resident','cpu_offload_prefetch'},
+                'unknown activation lifetime policy',path='role.layout')
         require(self.generator and self.score and type(self.window) is int
                 and 1<=self.window<=min(4,task.microbatches),
                 'unsupported physical pool or window', path='role.layout')
@@ -131,6 +142,9 @@ class PoolLayout:
                 set(self.generator).isdisjoint(self.score) and
                 set(self.generator)|set(self.score)==set(range(hardware.world)),
                 'each allocated device must belong to exactly one role',path='role.layout')
+        if self.activation_policy=='cpu_offload_prefetch':
+            require(all(hardware.host_capacities[r]>0 for r in self.generator),
+                    'offload requires declared host capacity on every producer rank',path='role.layout')
         return self
 
     def owners(self, index):
@@ -139,25 +153,33 @@ class PoolLayout:
 
 
 def enumerate_layouts(task, hardware, *, generator_bytes, score_bytes,
-                      safety_bytes=0, max_candidates=128):
+                      safety_bytes=0, max_candidates=128, allow_offload=False):
     """Bounded legal choices from hardware capacity, no workload-name lookup."""
     require(all(type(x) is int and x>=0 for x in (generator_bytes,score_bytes,safety_bytes)),
             'invalid role storage bounds',path='role.layout')
     require(type(max_candidates) is int and max_candidates>0,'invalid candidate bound',path='role.layout')
+    require(type(allow_offload) is bool,'invalid offload capability',path='role.layout')
     choices=[];rejected=[]
     # Contiguous cuts are the currently executable family (e.g. 8G+8S).
     for cut in range(1,hardware.world):
         for window in range(1,min(4,task.microbatches)+1):
-            c=PoolLayout(tuple(range(cut)),tuple(range(cut,hardware.world)),window)
-            # One forward graph per in-flight local producer microbatch, plus a
-            # conservatively budgeted score-side received latent and VJP.
-            per_g=generator_bytes + safety_bytes + window*task.bytes_per_latent*2
-            per_s=score_bytes + safety_bytes + task.bytes_per_latent*3
-            if any(hardware.capacities[r]<per_g for r in c.generator) or any(
-                    hardware.capacities[r]<per_s for r in c.score):
-                rejected.append({'layout':c.to_dict(),'reason':'ROLE_CAPACITY'});continue
-            if len(choices)<max_candidates:choices.append(c)
-            else:rejected.append({'layout':c.to_dict(),'reason':'SEARCH_BUDGET'} )
+            policies=('resident','cpu_offload_prefetch') if allow_offload else ('resident',)
+            for policy in policies:
+                c=PoolLayout(tuple(range(cut)),tuple(range(cut,hardware.world)),window,policy)
+                # Model-state and known transfer bounds only. True autograd
+                # workspace is observed again during native CUDA calibration.
+                per_g=generator_bytes+safety_bytes+window*task.bytes_per_latent*(
+                    1 if policy=='cpu_offload_prefetch' else 2)
+                per_s=score_bytes+safety_bytes+task.bytes_per_latent*3
+                if any(hardware.capacities[r]<per_g for r in c.generator) or any(
+                        hardware.capacities[r]<per_s for r in c.score):
+                    rejected.append({'layout':c.to_dict(),'reason':'ROLE_CAPACITY'});continue
+                if policy=='cpu_offload_prefetch' and any(
+                        hardware.host_capacities[r]<2*window*task.bytes_per_latent
+                        for r in c.generator):
+                    rejected.append({'layout':c.to_dict(),'reason':'HOST_CAPACITY'});continue
+                if len(choices)<max_candidates:choices.append(c)
+                else:rejected.append({'layout':c.to_dict(),'reason':'SEARCH_BUDGET'})
     require(choices,'no feasible role pools under declared capacities',path='role.layout')
     return {'candidates':tuple(choices),'rejected':tuple(rejected),
             'enumeration_complete':not any(x['reason']=='SEARCH_BUDGET' for x in rejected),

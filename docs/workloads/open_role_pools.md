@@ -72,3 +72,32 @@ activations, CUDA allocator behavior, future changing inputs or nonlinear
 transfers. This new role interface does not automatically translate original
 Wan, Helios, H3 or LiveWan training semantics; those require adapters that
 declare and invoke their **actual** original functions.
+
+## Saved-activation CPU offload and prefetch (opt-in candidate)
+
+`PoolLayout.activation_policy` is a planner choice (`resident` or
+`cpu_offload_prefetch`), not a workload hint. Admission requires explicit
+positive CPU host capacity on each producer rank. A `HostBudget` guards the
+aggregate actual saved-tensor bytes across all in-flight Generator graphs.
+PyTorch `saved_tensors_hooks` stages saved intermediate tensors to CPU without
+relocating resident module weights, and checks in-place version mutations where
+the original storage is still alive. On CUDA, an explicit copy stream writes to
+pinned host memory and records copy completion events; a producer may begin
+prefetching retained saved activations before waiting for the Score VJP. The
+backward stream waits on completion, and pinned leases are released only after
+all associated transfers are complete. The Score input-gradient still travels
+via explicit native P2P and is applied to the original Generator graph.
+
+CPU/Gloo tests exercise the same hook and return-gradient math against the
+independent global-batch Adam reference. CPU copies are synchronous correctness
+fixtures: only CUDA can exercise actual async pinned-transfer overlap. GPU/NCCL
+A100/H100 validity, pinned-memory budget under the host NUMA topology and
+large video attention replay are **NOT_RUN**. No fallback silently enables
+reduced batch/steps or changes Score gradient semantics when capacity is absent.
+
+`role_planning.calibrate(..., allow_offload=True)` considers offload only with
+compatible host resource facts, measures it as a distinct native layout, and
+rejects a candidate unless saved tensors were actually packed, prefetched,
+and used in the backward on the producer ranks. GPU residency predictions from
+tracked role state and declared transport are conservative **in scope**, not a
+complete upper bound for unobserved intermediate autograd/allocator memory.

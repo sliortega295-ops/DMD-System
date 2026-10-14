@@ -51,3 +51,18 @@ def test_refuse_overlap_unassigned_gpu_and_invalid_transport():
     for x in [PoolLayout((0,1),(1,2,3),1),PoolLayout((0,),(1,2),1),
               PoolLayout((),(0,1,2,3),1),PoolLayout((0,1),(2,3),3)]:
         with pytest.raises(ValueError):x.validate(t,h)
+
+
+def test_host_budget_gates_offload_but_never_forces_it():
+    t=RoleTask(3,(2,4));h=AllocatedWorld((4000,4000),host_capacities=(4096,4096))
+    report=enumerate_layouts(t,h,generator_bytes=600,score_bytes=500,
+                             allow_offload=True,max_candidates=8)
+    assert {c.activation_policy for c in report['candidates']}=={'resident','cpu_offload_prefetch'}
+    for c in report['candidates']:
+        assert c.validate(t,h)
+        assert PoolLayout.from_dict(c.to_dict())==c
+    no_host=AllocatedWorld((4000,4000))
+    report=enumerate_layouts(t,no_host,generator_bytes=600,score_bytes=500,
+                             allow_offload=True,max_candidates=8)
+    assert all(c.activation_policy=='resident' for c in report['candidates'])
+    assert any(r['reason']=='HOST_CAPACITY' for r in report['rejected'])

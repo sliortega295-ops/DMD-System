@@ -47,7 +47,7 @@ def code_identity(bindings:RoleFunctions):
 def source_identity():
     root=repository_root()
     files=tuple(root/'src/distillschedule/open_workload'/name for name in
-        ('role_program.py','role_transport.py','role_planning.py'))
+        ('role_program.py','role_transport.py','role_planning.py','role_offload.py'))
     return fingerprint({p.name:file_sha256(p) for p in files})
 
 
@@ -58,6 +58,7 @@ def _run_identity(task,hardware,bindings,device):
     props={'device':str(torch.device(device)),'torch':torch.__version__,
            'backend':str(dist.get_backend()),'world_size':dist.get_world_size(),
            'capacity_bytes':list(hardware.capacities),'node_ids':list(hardware.node_ids),
+           'host_capacity_bytes':list(hardware.host_capacities),
            'platform':platform.platform(),'cuda_version':torch.version.cuda}
     if torch.device(device).type=='cuda':
         p=torch.cuda.get_device_properties(device)
@@ -112,14 +113,15 @@ def _contract(task,layout,phase):
 
 def calibrate(task:RoleTask,hardware:AllocatedWorld,bindings:RoleFunctions,output,*,
               device='cpu',generator_bytes=0,score_bytes=0,safety_bytes=0,
-              max_candidates=4,samples=1,max_native_runs=10):
+              max_candidates=4,samples=1,max_native_runs=10,allow_offload=False):
     """Each candidate executes actual torch autograd/P2P/optimizer, not a mock."""
     require(dist.is_initialized() and dist.get_world_size()==hardware.world,
             'process group must be allocated before calibrating pools',path='role.calibrate')
     require(type(samples) is int and 1<=samples<=8 and type(max_native_runs) is int,
             'invalid native calibration budget',path='role.calibrate')
     inventory=enumerate_layouts(task,hardware,generator_bytes=generator_bytes,
-        score_bytes=score_bytes,safety_bytes=safety_bytes,max_candidates=max_candidates)
+        score_bytes=score_bytes,safety_bytes=safety_bytes,max_candidates=max_candidates,
+        allow_offload=allow_offload)
     require(samples*len(inventory['candidates'])+1<=max_native_runs,
             'all measured variants plus confirmation must fit the execution budget',path='role.calibrate')
     identity=_run_identity(task,hardware,bindings,device)
@@ -134,6 +136,12 @@ def calibrate(task:RoleTask,hardware:AllocatedWorld,bindings:RoleFunctions,outpu
             measured.append(result)
         # Exact-rerun state invariance within the SAME layout; cross-layout
         # numerical equivalence and generated video quality remain separate gates.
+        if layout.activation_policy=='cpu_offload_prefetch':
+            require(all(r['offload']['packed_tensors']>0 and
+                        r['offload']['prefetch_tensors']>0 and
+                        r['offload']['unpacked_tensors']>0 and r['host_leases_closed']
+                        for x in measured for r in x['ranks'] if r['role']=='generator'),
+                    'no actual saved-activation offload/prefetch effect',path='role.calibrate')
         roles=[[(r['role'],r['model_sha256']) for r in x['ranks']]
                for x in measured]
         require(all(x==roles[0] for x in roles),'nondeterministic calibration outcomes',path='role.calibrate')
@@ -171,7 +179,8 @@ def calibrate(task:RoleTask,hardware:AllocatedWorld,bindings:RoleFunctions,outpu
                        'outcome_hash':fingerprint(roles[0]),
                        'numerical_reference':'REQUIRES_INDEPENDENT_BASELINE'})
     manifest={'schema_version':SCHEMA,'task':task.to_dict(),'identity':identity,
-              'hardware':{'capacities':list(hardware.capacities),'node_ids':list(hardware.node_ids)},
+              'hardware':{'capacities':list(hardware.capacities),'node_ids':list(hardware.node_ids),
+                          'host_capacities':list(hardware.host_capacities)},
               'candidates':models,'candidate_inventory':{
                   'rejected':list(inventory['rejected']),
                   'enumeration_complete':inventory['enumeration_complete'],
@@ -195,7 +204,9 @@ def search(calibration_path,*,max_states=50000,beam_width=0,timeout_seconds=60):
     require(manifest.get('schema_version')==SCHEMA and manifest['identity']['source_fingerprint']==source_identity(),
             'changed role calibration/source',path='role.plan')
     task=RoleTask.from_dict(manifest['task'])
-    hw=AllocatedWorld(tuple(manifest['hardware']['capacities']),tuple(manifest['hardware']['node_ids']))
+    hw=AllocatedWorld(tuple(manifest['hardware']['capacities']),
+                      tuple(manifest['hardware']['node_ids']),
+                      tuple(manifest['hardware']['host_capacities']))
     candidates=[]
     for row in manifest['candidates']:
         layout=PoolLayout.from_dict(row['layout']).validate(task,hw)
@@ -210,7 +221,8 @@ def search(calibration_path,*,max_states=50000,beam_width=0,timeout_seconds=60):
                                 manifest['identity']['source_functions_sha256']),
                 # Conservative pool transport storage, NOT a claim to fully model
                 # arbitrary CUDA autograd activation or allocator peak memory.
-                StateAllocation('transport_G',layout.generator,2*layout.window*task.bytes_per_latent,
+                StateAllocation('transport_G',layout.generator,(1 if layout.activation_policy==
+                               'cpu_offload_prefetch' else 2)*layout.window*task.bytes_per_latent,
                                 ('generator',),False,task.digest),
                 StateAllocation('transport_S',layout.score,3*task.bytes_per_latent,
                                 ('score',),False,task.digest))

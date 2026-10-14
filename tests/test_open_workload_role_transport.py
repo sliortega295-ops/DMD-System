@@ -104,3 +104,35 @@ def test_bad_grad_and_output_shape_rejected():
     task=RoleTask(2,(2,4))
     with pytest.raises(ValueError):_validate_tensor(torch.ones(2,5),task,'bad')
     with pytest.raises(ValueError):_validate_tensor(torch.full((2,4),float('nan')),task,'nan')
+
+
+@pytest.mark.parametrize('world,cut,updates',[(2,1,0),(2,1,1),(3,2,1)])
+def test_cpu_saved_tensor_offload_in_actual_role_pool(tmp_path,world,cut,updates):
+    layout=PoolLayout(tuple(range(cut)),tuple(range(cut,world)),2,'cpu_offload_prefetch')
+    task=RoleTask(4,(2,4),score_updates=updates)
+    mp.spawn(offload_worker,args=(world,layout,task,str(tmp_path/'rdzv'),str(tmp_path)),
+             nprocs=world,join=True)
+    for rank in layout.generator:
+        row=json.loads((tmp_path/f'offload{rank}.json').read_text())
+        assert row['packed_tensors']>0 and row['prefetch_tensors']>0
+        assert row['unpacked_tensors']>0 and row['peak_host_bytes']>0
+        assert row['model_matches_reference']
+
+
+def offload_worker(rank,world,layout,task,rdzv,out):
+    torch.set_num_threads(1)
+    dist.init_process_group('gloo',init_method='file://'+rdzv,rank=rank,world_size=world,
+                            timeout=timedelta(seconds=50))
+    try:
+        hw=AllocatedWorld((2**25,)*world,host_capacities=(2**25,)*world)
+        bindings=RoleFunctions(make_model,make_opt,sample,generate,guidance,
+                               score_train if task.score_updates else None)
+        receipt,module,_=RolePoolExecutor(task,layout,hw,bindings,device='cpu').run()
+        baseline=independent_reference(task)
+        role='generator' if rank in layout.generator else 'score'
+        matches=all(torch.allclose(v.detach(),baseline[role][k],atol=1e-7,rtol=1e-6)
+                    for k,v in module.state_dict().items())
+        assert matches and receipt['status']=='PASS_ROLE_POOL_EXECUTION'
+        Path(out,f'offload{rank}.json').write_text(json.dumps({
+            **receipt['ranks'][rank]['offload'],'model_matches_reference':matches}))
+    finally:dist.destroy_process_group()

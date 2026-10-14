@@ -12,6 +12,7 @@ advance until all their dependent VJPs are finished.
 """
 from __future__ import annotations
 from collections import deque
+from contextlib import nullcontext
 from dataclasses import dataclass
 from typing import Any, Callable
 import time
@@ -22,6 +23,7 @@ import torch.distributed as dist
 from distillschedule.core.contracts import require
 from distillschedule.workloads.best_known.registry import fingerprint
 from .role_program import RoleTask, PoolLayout, AllocatedWorld
+from .role_offload import HostBudget, ActivationOffloader
 
 
 @dataclass(frozen=True)
@@ -79,7 +81,7 @@ def _model_identity(module):
 
 class RolePoolExecutor:
     def __init__(self, task:RoleTask, layout:PoolLayout, hardware:AllocatedWorld,
-                 bindings:RoleFunctions, *, device=None, offload_factory=None):
+                 bindings:RoleFunctions, *, device=None):
         require(dist.is_available() and dist.is_initialized() and dist.get_world_size()==hardware.world,
                 'explicit initialized world process group required',path='role.runtime')
         layout.validate(task,hardware);bindings.validate(task)
@@ -95,7 +97,6 @@ class RolePoolExecutor:
                 'CPU/Gloo or one CUDA/NCCL device per rank required',path='role.runtime')
         self.role='generator' if self.rank in layout.generator else 'score'
         self.group=None
-        self.offload_factory=offload_factory
         self.events=[]
 
     def _event(self, action, i=None):
@@ -127,22 +128,31 @@ class RolePoolExecutor:
         dist.barrier()
         started=time.perf_counter_ns()
         send_work=[]
+        host_budget=HostBudget(self.hardware.host_capacities[self.rank])
+        offload_records=[]
         local_score_data=[]
         peak=0
         if self.role=='generator':
             inflight=deque()
             def flush():
-                i, latent, grad, recv_work, sent, source = inflight.popleft()
+                i, latent, grad, recv_work, sent, source, offloader = inflight.popleft()
+                if offloader is not None:offloader.prefetch()
                 recv_work.wait();sent.wait()
                 _validate_tensor(grad,task,'returned latent gradient')
                 with torch.enable_grad():latent.backward(grad)
                 self._event('generator_vjp_backward',i)
+                if offloader is not None:
+                    offload_records.append(offloader.statistics)
+                    offloader.close()
             for i in range(task.microbatches):
                 owner,consumer=layout.owners(i)
                 if owner!=self.rank:continue
                 while len(inflight)>=layout.window:flush()
+                offloader=(ActivationOffloader(self.device,module,host_budget)
+                           if layout.activation_policy=='cpu_offload_prefetch' else None)
                 with torch.enable_grad():
-                    latent=self.bindings.generator_forward(module,self.bindings.sample(i,'generator',self.device))
+                    with offloader.hooks() if offloader is not None else nullcontext():
+                        latent=self.bindings.generator_forward(module,self.bindings.sample(i,'generator',self.device))
                 _validate_tensor(latent,task,'generator output')
                 require(latent.requires_grad,'generator must produce an autograd-carrying latent',path='role.runtime')
                 # Pre-post response receive; NCCL tag-less point-to-point FIFO.
@@ -150,7 +160,7 @@ class RolePoolExecutor:
                 received=dist.irecv(grad,src=consumer)
                 outbound=latent.detach().contiguous()
                 sent=dist.isend(outbound,dst=consumer)
-                inflight.append((i,latent,grad,received,sent,outbound))
+                inflight.append((i,latent,grad,received,sent,outbound,offloader))
                 self._event('generator_forward_send',i)
                 peak=max(peak,len(inflight))
             while inflight:flush()
@@ -194,6 +204,13 @@ class RolePoolExecutor:
         if self.device.type=='cuda':torch.cuda.synchronize(self.device)
         # All-gather small receipts only (no weights or model tensors transmitted).
         local={'rank':self.rank,'role':self.role,'events':self.events,
+               'activation_policy':layout.activation_policy,
+               'offload':{'packed_tensors':sum(x['packed_tensors'] for x in offload_records),
+                          'host_bytes_packed':sum(x['packed_host_bytes'] for x in offload_records),
+                          'prefetch_tensors':sum(x['prefetched_tensors'] for x in offload_records),
+                          'unpacked_tensors':sum(x['unpacked_tensors'] for x in offload_records),
+                          'peak_host_bytes':host_budget.peak,
+                          'true_cuda_async_copy':self.device.type=='cuda' and bool(offload_records)},
                'initial_storage_bytes':initial_bytes,
                'final_storage_bytes':storage_bytes((module,optimizer)),
                'max_inflight':peak,'elapsed_ns':time.perf_counter_ns()-started,
@@ -201,7 +218,7 @@ class RolePoolExecutor:
                'score_version':task.score_updates,
                'input_gradients':sum(x['action']=='score_receive_vjp_send' for x in self.events),
                'gradient_transport':'explicit_tensor_vjp_p2p_no_remote_autograd',
-               'offload':'NOT_CONFIGURED' if self.offload_factory is None else 'NOT_IMPLEMENTED'}
+               'host_leases_closed':host_budget.used==0}
         rows=[None]*self.hardware.world
         dist.all_gather_object(rows,local)
         require({x['rank'] for x in rows}==set(range(self.hardware.world)),
