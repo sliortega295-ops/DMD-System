@@ -22,7 +22,7 @@ from torch import nn
 import torch.distributed as dist
 from distillschedule.core.contracts import require
 from distillschedule.workloads.best_known.registry import fingerprint
-from .role_program import RoleTask, PoolLayout, AllocatedWorld
+from .role_program import RoleTask, PoolLayout, AllocatedWorld, transport_bytes_by_rank
 from .role_offload import HostBudget, ActivationOffloader
 
 
@@ -30,7 +30,7 @@ from .role_offload import HostBudget, ActivationOffloader
 class RoleFunctions:
     """User-supplied math and inputs; never placement, timing or schedule hints."""
     make_model: Callable[[str, torch.device], nn.Module]
-    make_optimizer: Callable[[str, nn.Module], torch.optim.Optimizer]
+    make_optimizer: Callable[[str, nn.Module], torch.optim.Optimizer | None]
     sample: Callable[[int, str, torch.device], Any]
     generator_forward: Callable[[nn.Module, Any], torch.Tensor]
     score_loss: Callable[[nn.Module, torch.Tensor, Any], torch.Tensor]
@@ -117,11 +117,14 @@ class RolePoolExecutor:
         module=self.bindings.make_model(self.role,self.device)
         require(isinstance(module,nn.Module),'model factory must return a torch Module',path='role.runtime')
         module=module.to(self.device)
-        optimizer=self.bindings.make_optimizer(self.role,module)
-        require(isinstance(optimizer,torch.optim.Optimizer),
-                'optimizer factory must return a torch Optimizer',path='role.runtime')
-        params=_parameters(module)
-        require(params,'role has no trainable parameters',path='role.runtime')
+        # Frozen guidance still differentiates its INPUT, not its parameters.
+        # Do not fabricate trainable parameters/an optimizer to admit that role.
+        updating=self.role=='generator' or task.score_updates>0
+        optimizer=self.bindings.make_optimizer(self.role,module) if updating else None
+        if updating:
+            require(isinstance(optimizer,torch.optim.Optimizer),
+                    'updating role needs a torch Optimizer',path='role.runtime')
+            require(_parameters(module),'updating role has no trainable parameters',path='role.runtime')
         # No parameter/model sharing across roles is assumed. Within each role,
         # fail closed if replicas did not start from identical weights.
         identities=[None for _ in range(group_size)]
@@ -129,14 +132,15 @@ class RolePoolExecutor:
         require(len(set(identities))==1,'role replica model initializations differ',path='role.runtime')
         from .torch_backend import storage_bytes
         initial_bytes=storage_bytes((module,optimizer))
-        optimizer.zero_grad(set_to_none=True)
+        if optimizer is not None:optimizer.zero_grad(set_to_none=True)
+        if self.device.type=='cuda':torch.cuda.reset_peak_memory_stats(self.device)
         dist.barrier()
         started=time.perf_counter_ns()
         send_work=[]
         host_budget=HostBudget(self.hardware.host_capacities[self.rank])
         offload_records=[]
         local_score_data=[]
-        peak=0
+        peak=0;transport_peak=0
         if self.role=='generator':
             inflight=deque()
             def flush():
@@ -168,6 +172,10 @@ class RolePoolExecutor:
                 inflight.append((i,latent,grad,received,sent,outbound,offloader))
                 self._event('generator_forward_send',i)
                 peak=max(peak,len(inflight))
+                transport_peak=max(transport_peak,storage_bytes(
+                    [(x[1],x[2],x[5]) for x in inflight]))
+                # Drop producer-loop aliases; the in-flight entry owns storage.
+                del latent,grad,received,sent,outbound,offloader
             while inflight:flush()
             _sync_gradients(module,gen_group,group_size)
             optimizer.step();optimizer.zero_grad(set_to_none=True)
@@ -191,7 +199,11 @@ class RolePoolExecutor:
                 send_work.append((dist.isend(gradient,dst=producer),gradient))
                 if task.score_updates:local_score_data.append((latent.detach(),i))
                 self._event('score_receive_vjp_send',i)
+                transport_peak=max(transport_peak,storage_bytes(
+                    (latent,source,gradient,[x[1] for x in send_work],local_score_data)))
             for work,_ in send_work:work.wait()
+            send_work.clear()
+            if 'gradient' in locals():del gradient,source,latent,loss
         # Score parameter/version update MUST follow all generator VJP use.
         dist.barrier()
         if self.role=='score' and task.score_updates:
@@ -208,6 +220,8 @@ class RolePoolExecutor:
         dist.barrier()
         if self.device.type=='cuda':torch.cuda.synchronize(self.device)
         # All-gather small receipts only (no weights or model tensors transmitted).
+        cuda_peak=(torch.cuda.max_memory_allocated(self.device)
+                   if self.device.type=='cuda' else None)
         local={'rank':self.rank,'role':self.role,'events':self.events,
                'activation_policy':layout.activation_policy,
                'offload':{'packed_tensors':sum(x['packed_tensors'] for x in offload_records),
@@ -216,6 +230,10 @@ class RolePoolExecutor:
                           'unpacked_tensors':sum(x['unpacked_tensors'] for x in offload_records),
                           'peak_host_bytes':host_budget.peak,
                           'true_cuda_async_copy':self.device.type=='cuda' and bool(offload_records)},
+               'transport_peak_bytes':transport_peak,
+               'transport_bound_bytes':transport_bytes_by_rank(task,layout)[self.rank],
+               'cuda_peak_allocated_bytes':cuda_peak,
+               'capacity_scope':'known transport bound plus measured CUDA allocator peak; not unseen-shape guarantee',
                'initial_storage_bytes':initial_bytes,
                'final_storage_bytes':storage_bytes((module,optimizer)),
                'max_inflight':peak,'elapsed_ns':time.perf_counter_ns()-started,
@@ -228,6 +246,11 @@ class RolePoolExecutor:
         dist.all_gather_object(rows,local)
         require({x['rank'] for x in rows}==set(range(self.hardware.world)),
                 'missing rank receipt',path='role.runtime')
+        require(all(r['transport_peak_bytes']<=r['transport_bound_bytes'] for r in rows),
+                'observed transport exceeds declared bound',path='role.capacity')
+        require(all(r['cuda_peak_allocated_bytes'] is None or
+                    r['cuda_peak_allocated_bytes']<=self.hardware.capacities[r['rank']] for r in rows),
+                'observed CUDA peak exceeds allocated capacity',path='role.capacity')
         for role,ranks in (('generator',layout.generator),('score',layout.score)):
             digests={rows[r]['model_sha256'] for r in ranks}
             require(len(digests)==1,f'{role} replicas diverged',path='role.runtime')

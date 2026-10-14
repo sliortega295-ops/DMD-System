@@ -38,7 +38,7 @@ def test_hardware_enumerates_nonhardcoded_split_and_pipeline_window():
 
 def test_capacity_rejection_and_bounded_enumeration_are_truthful():
     t=RoleTask(5,(16,16))
-    h=AllocatedWorld((5000,)*4)
+    h=AllocatedWorld((10000,)*4)
     r=enumerate_layouts(t,h,generator_bytes=200,score_bytes=500,max_candidates=3)
     assert 0<len(r['candidates'])<=3
     assert r['enumeration_complete'] is False
@@ -48,7 +48,7 @@ def test_capacity_rejection_and_bounded_enumeration_are_truthful():
 
 
 def test_refuse_overlap_unassigned_gpu_and_invalid_transport():
-    t=RoleTask(2,(2,8));h=AllocatedWorld((5000,)*4)
+    t=RoleTask(2,(2,8));h=AllocatedWorld((10000,)*4)
     for x in [PoolLayout((0,1),(1,2,3),1),PoolLayout((0,),(1,2),1),
               PoolLayout((),(0,1,2,3),1),PoolLayout((0,1),(2,3),3)]:
         with pytest.raises(ValueError):x.validate(t,h)

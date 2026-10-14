@@ -24,7 +24,7 @@ from distillschedule.search.cost_model import CostModel, OperationCost, Componen
 from distillschedule.search.plan_ir import BindingRule, StateAllocation
 from distillschedule.search.service import BoundCandidate, select
 from distillschedule.workloads.best_known.registry import fingerprint,file_sha256,repository_root,write_new_json
-from .role_program import RoleTask, PoolLayout, AllocatedWorld, enumerate_layouts
+from .role_program import RoleTask, PoolLayout, AllocatedWorld, enumerate_layouts, transport_bytes_by_rank
 from .role_transport import RoleFunctions, RolePoolExecutor
 
 SCHEMA='distillschedule.measured_role_pool_calibration.v1'
@@ -132,8 +132,11 @@ def calibrate(task:RoleTask,hardware:AllocatedWorld,bindings:RoleFunctions,outpu
     for idx,layout in enumerate(inventory['candidates']):
         measured=[]
         for _ in range(samples):
-            result,_,_=RolePoolExecutor(task,layout,hardware,bindings,device=device).run()
+            result,model,optimizer=RolePoolExecutor(task,layout,hardware,bindings,device=device).run()
             measured.append(result)
+            # Do not keep a previous candidate's optimizer/weights alive while
+            # constructing the next candidate (notably on 40GB devices).
+            del model,optimizer
         # Exact-rerun state invariance within the SAME layout; cross-layout
         # numerical equivalence and generated video quality remain separate gates.
         if layout.activation_policy=='cpu_offload_prefetch':
@@ -159,7 +162,7 @@ def calibrate(task:RoleTask,hardware:AllocatedWorld,bindings:RoleFunctions,outpu
                  'kind':'native_operation','operation_contract_sha256':contract.digest,
                  'component_contract':contract.to_dict(),'rank_observations':measured,
                  'device':str(device),'aggregate':'max_rank_full_cycle_wall_ns',
-                 'capacity_scope':'role_model_storage_plus_declared_inflight_transport',
+                 'capacity_scope':'known_transport_bound_and_observed_cuda_peak',
                  'claimable_speedup':False,'quality_validation':'NOT_RUN'}
             path=directory/f'{phase}.json'
             if dist.get_rank()==0:write_new_json(path,raw)
@@ -175,6 +178,9 @@ def calibrate(task:RoleTask,hardware:AllocatedWorld,bindings:RoleFunctions,outpu
             for x in measured for r in x['ranks'] if r['role']==role) for role in ('generator','score')}
         models.append({'layout':layout.to_dict(),'cost_path':str(cost_path),
                        'cost_sha256':file_sha256(cost_path),
+                       'memory_floor_bytes':{str(r):max(
+                           x['ranks'][r]['cuda_peak_allocated_bytes'] or 0 for x in measured)
+                           for r in range(hardware.world)},
                        'static_bytes':static,'samples_ns':[x['wall_ns'] for x in measured],
                        'outcome_hash':fingerprint(roles[0]),
                        'numerical_reference':'REQUIRES_INDEPENDENT_BASELINE'})
@@ -215,24 +221,29 @@ def search(calibration_path,*,max_states=50000,beam_width=0,timeout_seconds=60):
         costs=CostModel.from_dict(_load(row['cost_path']));costs.verify_receipts()
         require(costs.binding==_binding(manifest['identity'],task),'mixed calibration identity',path='role.plan')
         graph=cycle_graph(task);ranks=tuple(range(hw.world))
-        states=(StateAllocation('role_G',layout.generator,row['static_bytes']['generator'],('generator',),False,
-                                manifest['identity']['source_functions_sha256']),
-                StateAllocation('role_S',layout.score,row['static_bytes']['score'],('score',),False,
-                                manifest['identity']['source_functions_sha256']),
-                # Conservative pool transport storage, NOT a claim to fully model
-                # arbitrary CUDA autograd activation or allocator peak memory.
-                StateAllocation('transport_G',layout.generator,(1 if layout.activation_policy==
-                               'cpu_offload_prefetch' else 2)*layout.window*task.bytes_per_latent,
-                                ('generator',),False,task.digest),
-                StateAllocation('transport_S',layout.score,3*task.bytes_per_latent,
-                                ('score',),False,task.digest))
+        transport=transport_bytes_by_rank(task,layout)
+        # Rank-specific queues matter for asymmetric pools. Never give every
+        # Score rank a constant three-latent allowance independent of its work.
+        states=[]
+        for role,pool in (('generator',layout.generator),('score',layout.score)):
+            amounts=[]
+            for rank in pool:
+                known=row['static_bytes'][role]+transport[rank]
+                observed=int(row['memory_floor_bytes'][str(rank)])
+                require(observed>=0,'invalid observed GPU peak',path='role.plan')
+                amounts.append(max(known,observed))
+            # PlanIR uses uniform bytes per rank inside one StateAllocation.
+            # Keep the pool maximum, never an average that hides rank skew.
+            states.append(StateAllocation('memory_'+role,pool,max(amounts),
+                (role,),False,manifest['identity']['source_functions_sha256']))
+        states=tuple(states)
         rules={}
         for key in ('prepare_g','prepare_s','measured_native_cycle','finish'):
             contract=_contract(task,layout,key)
             costs.get_component(contract)
             occupied=layout.generator if key=='prepare_g' else layout.score if key=='prepare_s' else ranks
-            active=('role_G','transport_G') if key=='prepare_g' else (
-                ('role_S','transport_S') if key=='prepare_s' else ())
+            active=('memory_generator',) if key=='prepare_g' else (
+                ('memory_score',) if key=='prepare_s' else ())
             rules[key]=BindingRule(key,{},contract.digest,occupied,
                 tuple('gpu:'+str(r) for r in occupied),active,contract.digest)
         candidates.append(BoundCandidate(fingerprint(layout.to_dict()),layout.to_dict(),graph,rules,costs,states,

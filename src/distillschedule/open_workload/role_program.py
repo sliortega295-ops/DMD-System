@@ -152,6 +152,25 @@ class PoolLayout:
                 self.score[index%len(self.score)])
 
 
+
+def transport_bytes_by_rank(task, layout):
+    """Bound known FIFO tensor storage, NOT arbitrary model activations.
+
+    A Generator slot retains the output, a possible contiguous send copy and
+    a VJP receive buffer, regardless of saved-activation offload. Score keeps
+    all send buffers until the drain and, if updating, its local input cohort.
+    Two extra Score buffers cover the current input and unscaled VJP. Native
+    CUDA peak accounting supplements this bound for model workspaces.
+    """
+    size=task.bytes_per_latent
+    counts_g={r:0 for r in layout.generator};counts_s={r:0 for r in layout.score}
+    for i in range(task.microbatches):
+        g,s=layout.owners(i);counts_g[g]+=1;counts_s[s]+=1
+    return {**{r:3*min(layout.window,n)*size for r,n in counts_g.items()},
+            **{r:(n*(1+int(task.score_updates>0))+2)*size if n else 0
+               for r,n in counts_s.items()}}
+
+
 def enumerate_layouts(task, hardware, *, generator_bytes, score_bytes,
                       safety_bytes=0, max_candidates=128, allow_offload=False):
     """Bounded legal choices from hardware capacity, no workload-name lookup."""
@@ -192,11 +211,10 @@ def enumerate_layouts(task, hardware, *, generator_bytes, score_bytes,
                 c=PoolLayout(generator,score,window,policy)
                 # Model-state and known transfer bounds only. True autograd
                 # workspace is observed again during native CUDA calibration.
-                per_g=generator_bytes+safety_bytes+window*task.bytes_per_latent*(
-                    1 if policy=='cpu_offload_prefetch' else 2)
-                per_s=score_bytes+safety_bytes+task.bytes_per_latent*3
-                if any(hardware.capacities[r]<per_g for r in c.generator) or any(
-                        hardware.capacities[r]<per_s for r in c.score):
+                transport=transport_bytes_by_rank(task,c)
+                if any(hardware.capacities[r]<generator_bytes+safety_bytes+transport[r]
+                       for r in c.generator) or any(
+                        hardware.capacities[r]<score_bytes+safety_bytes+transport[r] for r in c.score):
                     rejected.append({'layout':c.to_dict(),'reason':'ROLE_CAPACITY'});continue
                 if policy=='cpu_offload_prefetch' and any(
                         hardware.host_capacities[r]<2*window*task.bytes_per_latent
