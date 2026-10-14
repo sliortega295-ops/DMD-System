@@ -107,7 +107,7 @@ class SlotRNG:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--placement', choices=('resident', 'fsdp'), required=True)
+    parser.add_argument('--placement', choices=('resident', 'fsdp', 'candidate'), required=True)
     parser.add_argument('--mode', choices=('correctness', 'timing'), required=True)
     parser.add_argument('--config', required=True, type=Path)
     parser.add_argument('--cache-manifest', required=True, type=Path)
@@ -175,7 +175,7 @@ def main():
         for role in ('student','fake_score'):
             for p in adapter.role_parameters(role): p.requires_grad_(True)
         started=time.monotonic()
-        if args.placement == 'fsdp':
+        if args.placement in ('fsdp','candidate'):
             mesh = init_device_mesh('cuda',(world,),mesh_dim_names=('shard',))
             mp = MixedPrecisionPolicy(param_dtype=None,reduce_dtype=torch.float32,output_dtype=None,cast_forward_inputs=False)
             for module in list(dit.token_refiner.blocks)+list(dit.blocks)+[dit,discriminator]:
@@ -244,6 +244,16 @@ def main():
             optimizers[role].step();optimizers[role].zero_grad(set_to_none=True);commits[role]+=1
         trainers=[DMD2Trainer(adapter,discriminator,config,lambda *a: (_ for _ in ()).throw(RuntimeError('UNSTAGED_COMMIT'))) for _ in slots]
         logical_rng=SlotRNG(slots)
+        from runtime.h3_diffsynth_fsdp_attention_reuse import FSDPAttentionReuse
+        import h3_dmd2 as native_dmd
+        import diffsynth.models.minimax_h3_dit as native_module
+        reuse=FSDPAttentionReuse(native_dmd,native_module,adapter,trainers,slots,enabled=args.placement=='candidate')
+        def slot_scope(slot):
+            from contextlib import contextmanager
+            @contextmanager
+            def scoped():
+                with logical_rng.scope(slot),reuse.scope(slot):yield
+            return scoped()
         rec['precision']={'base_storage':'BF16','LoRA_storage':'FP32','autocast':'BF16_cache_enabled_false','reduction':'FP32_SUM_then_div8'}
         rec['memory'].append({'phase':'after_setup',**memory()});write(args.receipt_dir/f'rank_{rank:02d}_setup.json',rec)
         expected={'student':18,'fake_score':4,'teacher':2,'student_grad':2,'fake_score_grad':2,'student_backward':2,'critic_backward':2}
@@ -252,7 +262,7 @@ def main():
             dist.barrier();torch.cuda.synchronize(device);start=time.perf_counter()
             with torch.autocast(device_type='cuda',dtype=torch.bfloat16,cache_enabled=False):
                 metrics=run_native_microbatches(trainers,batches,backward=backward,commit=commit,
-                                               rng_scope=logical_rng.scope,logical_slots=slots)
+                                               rng_scope=slot_scope,logical_slots=slots)
             torch.cuda.synchronize(device);dist.barrier();stop=time.perf_counter()
             require(dict(census)==expected,'FAIL_CENSUS:'+str(dict(census)))
             require(all(v['generator_step']==v['critic_step']==cycle+1 and not v['gan_active'] for v in metrics),
@@ -260,7 +270,9 @@ def main():
             require({r:commits[r]-before_commits.get(r,0) for r in ('student','critic')}=={'student':1,'critic':1},'ONE_COMMIT_PER_LOGICAL_ROLE')
             rec['cycles'].append({'cycle':cycle+1,'timer':{'start':start,'stop':stop,'seconds':stop-start},
                                   'performance_denominator':cycle==1 and not args.tiny,
-                                  'actual_census':dict(census),'metrics':metrics,'memory_after_timer':memory()})
+                                  'actual_census':dict(census),'metrics':metrics,'memory_after_timer':memory(),
+                                  'attention_reuse':reuse.finish_cycle()})
+            if cycle==0:reuse.begin_next_cycle()
         require(not any(p.grad is not None for n,p in adapter.named_parameters() if '.adapters.' not in n),'FROZEN_BASE_GRADIENT')
         rec.update(status='PASS_REAL_NATIVE_AR8_G1F1_LOGICAL_B16' if not args.tiny else 'PASS_TINY_NATIVE_INTEGRATION_ONLY',
                    actual_optimizer_counts=dict(commits),final_versions={'student':2,'fake':2,'ema':0},
