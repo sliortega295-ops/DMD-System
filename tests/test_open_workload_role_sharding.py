@@ -143,7 +143,14 @@ def mixed_model(role,device):
 
 
 def mixed_opt(role,model):
-    return torch.optim.Adam((p for p in model.parameters() if p.requires_grad),lr=.005)
+    opt=torch.optim.Adam((p for p in model.parameters() if p.requires_grad),lr=.005)
+    if role=='generator':
+        # Warm optimizer state BEFORE native FSDP2 installation. Parameter
+        # replacement must redistribute Adam moments instead of clearing them.
+        for param in model.parameters():
+            if param.requires_grad:param.grad=torch.full_like(param,.05)
+        opt.step();opt.zero_grad(set_to_none=True)
+    return opt
 
 
 def mixed_global_reference(task):
@@ -155,7 +162,10 @@ def mixed_global_reference(task):
         vjp=torch.autograd.grad(guidance(score,remote,sample(i,'score','cpu')),remote)[0]
         value.backward(vjp/task.microbatches)
     optim.step();optim.zero_grad(set_to_none=True)
-    return {k:v.detach().clone() for k,v in g.state_dict().items()}
+    return ({k:v.detach().clone() for k,v in g.state_dict().items()},
+            [{k:v.detach().clone() if isinstance(v,torch.Tensor) else v
+              for k,v in optim.state[param].items()}
+             for param in optim.param_groups[0]['params']])
 
 
 def _mixed_rank(rank,rdzv,root):
@@ -169,14 +179,19 @@ def _mixed_rank(rank,rdzv,root):
         hw=AllocatedWorld((2**26,)*4,(0,0,1,1))
         f=RoleFunctions(mixed_model,mixed_opt,sample,generate,guidance)
         runner=RolePoolExecutor(t,layout,hw,f,device='cpu')
-        receipt,model,_=runner.run()
+        receipt,model,optimizer=runner.run()
         if runner.role=='generator':
             from torch.distributed.tensor import DTensor
             actual={k:(v.full_tensor() if isinstance(v,DTensor) else v).detach().cpu()
                     for k,v in model.state_dict().items()}
-            reference=mixed_global_reference(t)
+            reference,adam=mixed_global_reference(t)
             assert all(torch.allclose(v,reference[k],rtol=3e-4,atol=3e-5)
                        for k,v in actual.items())
+            for param,original in zip(optimizer.param_groups[0]['params'],adam):
+                for key in ('exp_avg','exp_avg_sq'):
+                    shard=optimizer.state[param][key]
+                    assert torch.allclose(shard.full_tensor().detach().cpu(),
+                                          original[key],rtol=3e-4,atol=3e-5)
             assert receipt['ranks'][rank]['sharding']['dtype_groups']==2
             assert set(p.dtype for p in model.parameters())=={torch.bfloat16,torch.float32}
         Path(root,f'mixed-{rank}.json').write_text(json.dumps({'ok':True}))

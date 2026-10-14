@@ -236,3 +236,11 @@ nested ownership, cross-root aliases, arbitrary LoRA injection or CUDA AMP
 remain explicitly outside this bounded adapter. Production A100/H100, 14B
 allgather workspace and GPU mixed-precision numerical/quality evidence:
 NOT_RUN.
+
+### Warm Adam moment preservation
+
+Mixed BF16/FP32 sharding is additionally tested with nonempty Generator
+optimizer state **before** FSDP installation. The independent reference
+starts from the same preinitialized Adam moments; full reconstructed sharded
+`exp_avg` and `exp_avg_sq`, not only parameters, are compared after a native
+cross-role update. These tests are CPU/Gloo: no A100/H100 result is implied.
