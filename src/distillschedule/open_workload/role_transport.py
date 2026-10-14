@@ -143,6 +143,7 @@ class RolePoolExecutor:
         # Collective group creation order MUST be identical on every rank.
         gen_group=dist.new_group(ranks=list(layout.generator))
         score_group=dist.new_group(ranks=list(layout.score))
+        self.gen_group,self.score_group=gen_group,score_group
         group=gen_group if self.role=='generator' else score_group
         group_size=len(layout.generator if self.role=='generator' else layout.score)
         module=self.bindings.make_model(self.role,self.device)
@@ -160,13 +161,24 @@ class RolePoolExecutor:
         # fail closed if replicas did not start from identical weights.
         identities=[None for _ in range(group_size)]
         dist.all_gather_object(identities,_model_identity(module),group=group)
-        require(len(set(identities))==1,'role replica model initializations differ',path='role.runtime')
-        if self.role=='score' and self.bindings.score_parameters_frozen:
-            require(all(not p.requires_grad for p in module.parameters()),
-                    'declared frozen Score has trainable parameters',path='role.runtime')
+        from .replicated import checked
+        checked(lambda: require(len(set(identities))==1,
+              'role replica model initializations differ',path='role.runtime'),
+              'role replica identity admission')
+        def native_admission():
+            if self.role=='score' and self.bindings.score_parameters_frozen:
+                require(all(not p.requires_grad for p in module.parameters()),
+                        'declared frozen Score has trainable parameters',path='role.runtime')
+            if self.role=='score' and layout.score_parallelism=='fsdp2_frozen':
+                require(self.bindings.score_parameters_frozen,
+                        'Score pool FSDP2 requires verified frozen Score semantics',path='role.runtime')
+                from .role_sharding import admit_frozen_score
+                admit_frozen_score(module)
+            if self.role=='generator' and layout.generator_parallelism=='fsdp2_keep_forward':
+                from .role_sharding import admit
+                admit(module,optimizer)
+        checked(native_admission,'role native layout admission')
         if layout.score_parallelism=='fsdp2_frozen' and self.role=='score':
-            require(self.bindings.score_parameters_frozen,
-                    'Score pool FSDP2 requires verified frozen Score semantics',path='role.runtime')
             from .role_sharding import install_frozen_score
             module,self._score_mesh,self._sharding=install_frozen_score(
                 module,self.device,layout.score,score_group)
@@ -211,15 +223,15 @@ class RolePoolExecutor:
         """Release only groups owned here, after a completed cycle has drained."""
         require(not self._busy,'cannot close an active role executor',path='role.runtime')
         if self._closed:return
-        if self._prepared and dist.is_initialized():
-            for group in (self.gen_group,self.score_group):
+        if dist.is_initialized():
+            for group in (getattr(self,'gen_group',None),getattr(self,'score_group',None)):
                 # FSDP2 parameter metadata retains the named mesh communicator.
                 # Native Torch 2.10 may cache that mesh between bounded trials.
                 # Keep the Generator subgroup alive until the parent torchrun
                 # world closes; destroy ordinary replica/Score groups normally.
-                if group!=dist.GroupMember.NON_GROUP_MEMBER and not (
-                    (group is self.gen_group and self.layout.generator_parallelism=='fsdp2_keep_forward') or
-                    (group is self.score_group and self.layout.score_parallelism=='fsdp2_frozen')):
+                if group is not None and group!=dist.GroupMember.NON_GROUP_MEMBER and not (
+                    (group is self.gen_group and self._generator_mesh is not None) or
+                    (group is self.score_group and self._score_mesh is not None)):
                     dist.destroy_process_group(group)
         self._closed=True
         # The DeviceMesh shares gen_group (no second subgroup).

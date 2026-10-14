@@ -132,17 +132,31 @@ def calibrate(task:RoleTask,hardware:AllocatedWorld,bindings:RoleFunctions,outpu
     root=Path(output).resolve()
     if dist.get_rank()==0:root.mkdir(parents=True,exist_ok=False)
     dist.barrier()
-    models=[]
+    models=[];native_rejected=[];attempts=0
     for idx,layout in enumerate(inventory['candidates']):
         measured=[]
+        rejected_reason=None
         for _ in range(samples):
+            attempts+=1
             executor=RolePoolExecutor(task,layout,hardware,bindings,device=device)
-            try:result,model,optimizer=executor.run()
+            try:
+                result,model,optimizer=executor.run()
+            except ValueError as exc:
+                # Only a WORLD-synchronized native capability rejection is safe
+                # to skip. Never swallow native loss, CUDA, transport or OOM errors.
+                if 'role native layout admission' not in str(exc):raise
+                rejected_reason=str(exc)
             finally:executor.close()
+            if rejected_reason is not None:break
             measured.append(result)
             # Do not keep a previous candidate's optimizer/weights alive while
             # constructing the next candidate (notably on 40GB devices).
             del model,optimizer
+        if rejected_reason is not None:
+            native_rejected.append({'layout':layout.to_dict(),
+                                    'reason':'NATIVE_CAPABILITY_REJECTED',
+                                    'detail':rejected_reason})
+            continue
         # Exact-rerun state invariance within the SAME layout; cross-layout
         # numerical equivalence and generated video quality remain separate gates.
         if layout.activation_policy=='cpu_offload_prefetch':
@@ -190,15 +204,16 @@ def calibrate(task:RoleTask,hardware:AllocatedWorld,bindings:RoleFunctions,outpu
                        'static_bytes':static,'samples_ns':[x['wall_ns'] for x in measured],
                        'outcome_hash':fingerprint(roles[0]),
                        'numerical_reference':'REQUIRES_INDEPENDENT_BASELINE'})
+    require(models,'no native role-pool candidate passed capability admission',path='role.calibrate')
     manifest={'schema_version':SCHEMA,'task':task.to_dict(),'identity':identity,
               'hardware':{'capacities':list(hardware.capacities),'node_ids':list(hardware.node_ids),
                           'host_capacities':list(hardware.host_capacities)},
               'candidates':models,'candidate_inventory':{
-                  'rejected':list(inventory['rejected']),
+                  'rejected':list(inventory['rejected'])+native_rejected,
                   'enumeration_complete':inventory['enumeration_complete'],
                   'family':inventory['family']},
-              'budget':{'maximum':max_native_runs,'calibration_runs':samples*len(models),
-                        'remaining_for_confirmation':max_native_runs-samples*len(models)},
+              'budget':{'maximum':max_native_runs,'calibration_runs':attempts,
+                        'remaining_for_confirmation':max_native_runs-attempts},
               'evidence_scope':'MEASURED_GLOO' if torch.device(device).type=='cpu' else 'MEASURED_NCCL_NOT_INDEPENDENTLY_VALIDATED',
               'gpu_execution':'NOT_RUN' if torch.device(device).type=='cpu' else 'NATIVE_CUDA_CALIBRATION',
               'claimable_speedup':False}

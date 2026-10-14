@@ -96,6 +96,27 @@ def sharded_model_identity(model,group,group_size):
     return fingerprint(hashes)
 
 
+def admit_frozen_score(model):
+    """Validate exact Score FSDP2 parameter owners before any collectives."""
+    from torch.distributed.tensor import DTensor
+    params=tuple(model.parameters())
+    require(params and all(not p.requires_grad and p.ndim>0 and
+            p.is_contiguous() and not isinstance(p,DTensor) for p in params),
+            'frozen Score sharding requires immutable dense parameters',path='role.sharding')
+    mixed=len({p.dtype for p in params})>1
+    owners=[]
+    if mixed:
+        owners=[child for name,child in model.named_modules() if name and
+                list(child.parameters(recurse=False))]
+        require(not list(model.parameters(recurse=False)) and owners and
+                all(len({p.dtype for p in child.parameters(recurse=False)})==1
+                    and len(list(child.parameters()))==len(list(child.parameters(recurse=False)))
+                    for child in owners) and
+                len({id(p) for child in owners for p in child.parameters(recurse=False)})==len(params),
+                'mixed dtype frozen Score requires distinct homogeneous leaf owners',path='role.sharding')
+    return params,owners,mixed
+
+
 def install_frozen_score(model,device,score_ranks,score_group):
     """Shard only a verified immutable Score backbone in its OWN process mesh.
 
@@ -111,23 +132,7 @@ def install_frozen_score(model,device,score_ranks,score_group):
             'Score FSDP2 needs its allocated subgroup',path='role.sharding')
     require(score_group!=dist.GroupMember.NON_GROUP_MEMBER,
             'Score subgroup is unavailable',path='role.sharding')
-    params=tuple(model.parameters())
-    require(params and all(not p.requires_grad and p.ndim>0 and
-            p.is_contiguous() and not isinstance(p,DTensor) for p in params),
-            'frozen Score sharding requires immutable dense parameters',path='role.sharding')
-    mixed=len({p.dtype for p in params})>1
-    owners=[]
-    if mixed:
-        # Preserve BF16 frozen backbone and FP32 normalization without casting
-        # or pretending unsupported nested parameter ownership is safe.
-        owners=[child for name,child in model.named_modules() if name and
-                list(child.parameters(recurse=False))]
-        require(not list(model.parameters(recurse=False)) and owners and
-                all(len({p.dtype for p in child.parameters(recurse=False)})==1
-                    and len(list(child.parameters()))==len(list(child.parameters(recurse=False)))
-                    for child in owners) and
-                len({id(p) for child in owners for p in child.parameters(recurse=False)})==len(params),
-                'mixed dtype frozen Score requires distinct homogeneous leaf owners',path='role.sharding')
+    params,owners,mixed=admit_frozen_score(model)
     mesh=DeviceMesh.from_group(score_group,torch.device(device).type,
                                mesh=torch.tensor(ranks,dtype=torch.int32))
     param_bytes=sum(p.numel()*p.element_size() for p in params)
