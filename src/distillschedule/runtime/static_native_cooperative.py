@@ -157,8 +157,12 @@ def run_native_B1_cohort(model, sample_function, *, device, timeout_seconds=600,
             if len(finished) == cohort_size:
                 break
             calls = [cohort[i] for i in range(cohort_size)]
-            packed = _pack_B1_kwargs(calls)
             with torch.set_grad_enabled(calls[0].grad):
+                # Packing is part of the same native grad scope as the call.
+                # A no-grad input may still reference a prior pyramid graph;
+                # concatenating it outside this scope creates spurious edges
+                # that the forward-only PP input cache would retain.
+                packed = _pack_B1_kwargs(calls)
                 output = model(**packed)
                 if (not isinstance(output, tuple) or len(output) != 1
                         or not isinstance(output[0], torch.Tensor) or output[0].shape[0] != cohort_size):
