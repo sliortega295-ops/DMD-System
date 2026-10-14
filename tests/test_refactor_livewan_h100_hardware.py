@@ -298,7 +298,7 @@ class LiveWanH100HardwareTests(unittest.TestCase):
         model = SimpleNamespace(parameters=lambda: [])
         bundle = SimpleNamespace(student=model, critic=model, teacher=model,
             generator_optimizer=gopt, critic_optimizer=copt, critic_lora_params=[],
-            score_group=None, score_group_size=8)
+            score_group=None, score_group_size=8, metadata={})
         def prepare(_torch, **kw):
             r = kw["row"]
             prepared_rows.append((r.logical_step, r.logical_slot, gopt.commits, copt.commits))
@@ -328,6 +328,44 @@ class LiveWanH100HardwareTests(unittest.TestCase):
             self.assertEqual(c_calls[step*2:step*2+2], [(step, 3, .5, step), (step, 11, .5, step)])
         self.assertEqual((gopt.commits, copt.commits), (1, 5))
         self.assertEqual(versions, {"generator": 1, "critic": 5, "ema": 0})
+
+    def test_actual_full_resident_normalizes_after_two_independent_b1_rows(self):
+        from distillschedule.runtime.livewan_baseline_placement import BaselinePlacement
+        h = livewan_hardware("h100-8-b16")
+        gopt, copt = Optimizer(), Optimizer()
+        model = SimpleNamespace(parameters=lambda: [])
+        gradients, syncs, slots = [], [], []
+        with ExitStack() as stack:
+            stack.enter_context(patch.dict(os.environ, {"DISTILLSCHEDULE_HARDWARE_PROFILE": h.name}))
+            spec = BaselinePlacement("full-resident")
+            self.assertEqual(spec.receipt()["gradient_mean"], "SUM_THEN_DIVIDE_8")
+            self.assertEqual(spec.receipt()["loss_scale_per_logical_b1"], .5)
+            bundle = SimpleNamespace(student=model, critic=model, teacher=model,
+                generator_optimizer=gopt, critic_optimizer=copt, critic_lora_params=[],
+                generator_group="G", generator_group_size=8, score_group="C", score_group_size=8,
+                metadata={"baseline_placement": spec.receipt()})
+            torch = self._dependencies(stack)
+            def prepare(_torch, **kw):
+                r=kw["row"]; slots.append((r.logical_step,r.logical_slot))
+                return SimpleNamespace(row=r, x0=Tensor(), raw_context=Tensor(), context_lens=None)
+            def backward(_torch, **kw):
+                gradients.append((kw["prepared"].row.logical_slot,kw["sample_weight"]))
+                return []
+            def sync(_torch, *_args, **kw):
+                syncs.append((kw["group"],kw["group_size"]))
+                return {"group_size":kw["group_size"]}
+            stack.enter_context(patch.object(worker,"prepare_rollout",prepare))
+            stack.enter_context(patch.object(worker,"dmd_gradient_for_sample",lambda *_a, **_k: Tensor()))
+            stack.enter_context(patch.object(worker,"generator_backward_for_sample",backward))
+            stack.enter_context(patch.object(worker,"critic_backward_for_sample",lambda *_a, **_k: 0))
+            stack.enter_context(patch.object(worker,"_mean_replicated_gradients",sync))
+            worker._run_baseline(torch=torch,rank=3,trace=SimpleNamespace(row=row),loader=object(),
+                bundle=bundle,streamers=[object()],score_context=object(),run_kind="timing",
+                evidence=worker.RunEvidence(),versions={"generator":0,"critic":0,"ema":0},device=None)
+        self.assertEqual(gradients,[(3,.5),(11,.5)])
+        self.assertEqual(slots,[(s,r) for s in range(5) for r in (3,11)])
+        self.assertEqual(syncs,[("G",8)]+[("C",8)]*5)
+        self.assertEqual((gopt.commits,copt.commits),(1,5))
 
 
 if __name__ == "__main__":

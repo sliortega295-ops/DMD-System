@@ -47,7 +47,9 @@ class BaselinePlacement:
         return self.name != "full-resident"
 
     def receipt(self) -> dict[str, Any]:
-        return {
+        from .livewan_hardware import livewan_hardware
+        hardware = livewan_hardware()
+        result = {
             "name": self.name,
             "teacher_parameter_offload": self.teacher_offload,
             "student_fsdp": self.student_fsdp,
@@ -57,13 +59,18 @@ class BaselinePlacement:
             "teacher_fsdp": self.teacher_fsdp,
             "teacher_reshard_after_forward": self.teacher_fsdp,
             "parameter_dtype_policy": "PRESERVE_ORIGINAL",
-            "gradient_mean": "SUM_THEN_DIVIDE_16",
+            "gradient_mean": f"SUM_THEN_DIVIDE_{hardware.physical_world_size}",
             "activation_offload": False,
             "optimizer_offload": False,
             "pipeline": False,
             "physical_batch_per_rank": 1,
             "pure_resident": self.name == "full-resident" and self.teacher_offload == "off",
         }
+        if hardware.is_h100:
+            result.update(hardware_profile=hardware.to_dict(),
+                          logical_b1_rows_per_physical_rank=2,
+                          loss_scale_per_logical_b1=0.5)
+        return result
 
 
 def from_plan(plan: Mapping[str, Any]) -> BaselinePlacement:
@@ -141,6 +148,8 @@ def verify_models(spec: BaselinePlacement, bundle: Any) -> dict[str, Any]:
 def validate_timing_gate(value: Mapping[str, Any], *, spec: BaselinePlacement,
                          expected_head: str, identity: Mapping[str, str] | None = None,
                          arm_id: str | None = None, seed: int | None = None) -> None:
+    from .livewan_hardware import livewan_hardware
+    hardware = livewan_hardware()
     expected = {
         "schema_version": "distillschedule.livewan_baseline_placement_timing_gate.v1",
         "status": "PASS", "claimable_for_two_cycle_timing": True,
@@ -149,6 +158,8 @@ def validate_timing_gate(value: Mapping[str, Any], *, spec: BaselinePlacement,
         "baseline_placement": spec.receipt(),
         "numerical_policy": "REJECT_EXTREME_ONLY_RECORD_ORDINARY_REVIEW",
     }
+    if hardware.is_h100:
+        expected["hardware_profile"] = hardware.to_dict()
     if identity is not None: expected["identity"] = dict(identity)
     if arm_id is not None: expected["arm_id"] = arm_id
     if seed is not None: expected["seed"] = seed
@@ -163,10 +174,12 @@ def validate_timing_gate(value: Mapping[str, Any], *, spec: BaselinePlacement,
         body = json.loads(path.read_text())
         if key == "correctness_summary":
             if (body.get("status") != "PASS" or body.get("head") != expected_head
-                or body.get("rank_cycle_receipts") != 32 or body.get("cycles") != 2
+                or body.get("rank_cycle_receipts") != 2 * hardware.physical_world_size or body.get("cycles") != 2
                 or body.get("final_versions") != expected["final_versions"]):
                 raise ValueError("placement correctness run is incomplete")
-            for rank in range(16):
+            if hardware.is_h100 and hardware.receipt_errors(body):
+                raise ValueError("placement correctness hardware/independent B16 scope changed")
+            for rank in range(hardware.physical_world_size):
                 receipt = json.loads((path.parent / "receipts" / f"rank_{rank:03d}.json").read_text())
                 build = receipt.get("build", {})
                 if (receipt.get("status") != "PASS" or receipt.get("rank") != rank
