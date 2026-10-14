@@ -1,0 +1,164 @@
+"""Semantic, model-name independent two-role gradient path.
+
+A user declares generator/score functions and their optimizer boundaries, never a
+GPU split or fastest policy. The physical pool layout/window is chosen later.
+This admits a specific *gradient interface*: differentiable tensor from a
+producer, scalar score objective, explicit VJP returned to producer, then one
+producer optimizer commit. It is not a translator for arbitrary Python code.
+"""
+from __future__ import annotations
+from dataclasses import dataclass, field
+from typing import Any, Mapping
+import math
+
+from distillschedule.core.contracts import require
+from distillschedule.workloads.program import Program, Call
+from distillschedule.workloads.best_known.registry import fingerprint
+
+
+@dataclass(frozen=True)
+class RoleTask:
+    """Training semantics; fields do not encode an optimization choice."""
+    microbatches: int
+    output_shape: tuple[int, ...]
+    dtype: str = 'float32'
+    score_updates: int = 0
+    parameters: Mapping[str, Any] = field(default_factory=dict)
+    schema_version: str = 'distillschedule.two_role_gradient.v1'
+
+    def __post_init__(self):
+        require(self.schema_version == 'distillschedule.two_role_gradient.v1',
+                'unsupported role protocol', path='role.task')
+        require(type(self.microbatches) is int and 1 <= self.microbatches <= 128,
+                'invalid microbatch count', path='role.task')
+        require(isinstance(self.output_shape, (list, tuple)) and self.output_shape and
+                all(type(v) is int and v > 0 for v in self.output_shape),
+                'explicit transported latent shape required', path='role.task')
+        object.__setattr__(self, 'output_shape', tuple(self.output_shape))
+        require(self.dtype in {'float32', 'bfloat16'}, 'unsupported gradient dtype', path='role.task')
+        require(type(self.score_updates) is int and 0 <= self.score_updates <= 64,
+                'invalid score update count', path='role.task')
+        fingerprint(dict(self.parameters))
+
+    @property
+    def bytes_per_latent(self):
+        return math.prod(self.output_shape) * (4 if self.dtype == 'float32' else 2)
+
+    def to_dict(self):
+        return {'schema_version': self.schema_version, 'microbatches': self.microbatches,
+                'output_shape': list(self.output_shape), 'dtype': self.dtype,
+                'score_updates': self.score_updates, 'parameters': dict(self.parameters)}
+
+    @property
+    def digest(self):
+        return fingerprint(self.to_dict())
+
+    @classmethod
+    def from_dict(cls, document):
+        require(isinstance(document, Mapping) and set(document)==
+                {'schema_version','microbatches','output_shape','dtype','score_updates','parameters'},
+                'unknown or missing role task fields', path='role.task')
+        return cls(**document)
+
+    def program(self):
+        """Build true version/gradient edges without a model-name optimizer recipe."""
+        calls=[]
+        for index in range(self.microbatches):
+            i=str(index)
+            calls += [
+                Call('g'+i, 'generator_forward', reads=('generator',), grad='grad',
+                     attributes={'batch':index}),
+                Call('f'+i, 'send_activation',inputs=('g'+i,),grad='grad'),
+                Call('s'+i, 'score_vjp',inputs=('f'+i,),reads=('score',),grad='grad'),
+                Call('r'+i, 'return_vjp',inputs=('s'+i,),grad='grad'),
+                Call('b'+i,'generator_backward',inputs=('r'+i,'g'+i),
+                     reads=('generator','gradient_g'),writes=('gradient_g',),
+                     backward_of=('g'+i,),grad='grad'),
+            ]
+        calls.append(Call('commit_g','generator_commit',reads=('generator','optimizer_g','gradient_g'),
+                          writes=('generator','optimizer_g','gradient_g'),
+                          after=tuple('b'+str(i) for i in range(self.microbatches))))
+        for i in range(self.score_updates):
+            calls.append(Call('score_update'+str(i),'score_update',
+                reads=('score','optimizer_s'),writes=('score','optimizer_s'),
+                after=('commit_g',) if i == 0 else ('score_update'+str(i-1),)))
+        return Program(tuple(calls),
+            {'generator':0,'score':0,'optimizer_g':0,'gradient_g':0,'optimizer_s':0},
+            (),(),{'task_sha256':self.digest})
+
+
+@dataclass(frozen=True)
+class AllocatedWorld:
+    """Hardware facts. The workload factory never chooses a pool split."""
+    capacities: tuple[int, ...]
+    node_ids: tuple[int, ...] = ()
+
+    def __post_init__(self):
+        require(len(self.capacities)>=2 and
+                all(type(v) is int and v>0 for v in self.capacities),
+                'need at least two allocated devices with capacity', path='role.hardware')
+        if not self.node_ids:
+            object.__setattr__(self, 'node_ids', tuple(0 for _ in self.capacities))
+        require(len(self.node_ids)==len(self.capacities) and
+                all(type(v) is int and v>=0 for v in self.node_ids),
+                'one node identity per allocated rank required', path='role.hardware')
+
+    @property
+    def world(self):return len(self.capacities)
+
+
+@dataclass(frozen=True)
+class PoolLayout:
+    generator: tuple[int, ...]
+    score: tuple[int, ...]
+    window: int
+
+    def to_dict(self):
+        return {'generator':list(self.generator),'score':list(self.score),'window':self.window}
+
+    @classmethod
+    def from_dict(cls, obj):
+        require(isinstance(obj,Mapping) and set(obj)=={'generator','score','window'},
+                'invalid pool layout',path='role.layout')
+        return cls(tuple(obj['generator']),tuple(obj['score']),obj['window'])
+
+    def validate(self, task,hardware):
+        require(self.generator and self.score and type(self.window) is int
+                and 1<=self.window<=min(4,task.microbatches),
+                'unsupported physical pool or window', path='role.layout')
+        require(len(set(self.generator))==len(self.generator) and
+                len(set(self.score))==len(self.score) and
+                set(self.generator).isdisjoint(self.score) and
+                set(self.generator)|set(self.score)==set(range(hardware.world)),
+                'each allocated device must belong to exactly one role',path='role.layout')
+        return self
+
+    def owners(self, index):
+        return (self.generator[index%len(self.generator)],
+                self.score[index%len(self.score)])
+
+
+def enumerate_layouts(task, hardware, *, generator_bytes, score_bytes,
+                      safety_bytes=0, max_candidates=128):
+    """Bounded legal choices from hardware capacity, no workload-name lookup."""
+    require(all(type(x) is int and x>=0 for x in (generator_bytes,score_bytes,safety_bytes)),
+            'invalid role storage bounds',path='role.layout')
+    require(type(max_candidates) is int and max_candidates>0,'invalid candidate bound',path='role.layout')
+    choices=[];rejected=[]
+    # Contiguous cuts are the currently executable family (e.g. 8G+8S).
+    for cut in range(1,hardware.world):
+        for window in range(1,min(4,task.microbatches)+1):
+            c=PoolLayout(tuple(range(cut)),tuple(range(cut,hardware.world)),window)
+            # One forward graph per in-flight local producer microbatch, plus a
+            # conservatively budgeted score-side received latent and VJP.
+            per_g=generator_bytes + safety_bytes + window*task.bytes_per_latent*2
+            per_s=score_bytes + safety_bytes + task.bytes_per_latent*3
+            if any(hardware.capacities[r]<per_g for r in c.generator) or any(
+                    hardware.capacities[r]<per_s for r in c.score):
+                rejected.append({'layout':c.to_dict(),'reason':'ROLE_CAPACITY'});continue
+            if len(choices)<max_candidates:choices.append(c)
+            else:rejected.append({'layout':c.to_dict(),'reason':'SEARCH_BUDGET'} )
+    require(choices,'no feasible role pools under declared capacities',path='role.layout')
+    return {'candidates':tuple(choices),'rejected':tuple(rejected),
+            'enumeration_complete':not any(x['reason']=='SEARCH_BUDGET' for x in rejected),
+            'family':'contiguous_covering_two_role_pools_v1'}
