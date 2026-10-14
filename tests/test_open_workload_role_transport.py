@@ -151,3 +151,21 @@ def test_noncontiguous_node_local_pool_preserves_real_vjp_and_adam(tmp_path):
         receipt=json.loads((tmp_path/f'rank{rank}.json').read_text())
         assert receipt['gradients']==task.microbatches
         assert receipt['pool']==layout.to_dict()
+
+
+def test_node_local_pool_with_activation_offload_matches_reference(tmp_path):
+    """Noncontiguous ranks must preserve saved tensors through VJP return."""
+    task=RoleTask(6,(2,4),score_updates=1)
+    hw=AllocatedWorld((2**25,)*4,(0,0,1,1),(2**25,)*4)
+    from distillschedule.open_workload.role_program import enumerate_layouts
+    layouts=enumerate_layouts(task,hw,generator_bytes=1000,score_bytes=1000,
+                              max_candidates=200,allow_offload=True)['candidates']
+    layout=next(p for p in layouts if p.generator==(0,2) and p.score==(1,3)
+                and p.window==2 and p.activation_policy=='cpu_offload_prefetch')
+    mp.spawn(offload_worker,args=(4,layout,task,str(tmp_path/'rdzv'),str(tmp_path)),
+             nprocs=4,join=True)
+    for rank in layout.generator:
+        row=json.loads((tmp_path/f'offload{rank}.json').read_text())
+        assert row['model_matches_reference']
+        assert row['packed_tensors']>0 and row['prefetch_tensors']>0
+        assert row['unpacked_tensors']>0 and row['peak_host_bytes']>0
