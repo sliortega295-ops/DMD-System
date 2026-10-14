@@ -15,7 +15,7 @@ from .fsdp2_p0 import _is_shared_index_key, _share_identical_tensors, _stack_ten
 
 class StaticCohortOperationTrace:
     def __init__(self, members, *, cohort_size=8):
-        if type(cohort_size) is not int or cohort_size not in (2, 8) or len(members) != cohort_size:
+        if type(cohort_size) is not int or cohort_size not in (1, 2, 8) or len(members) != cohort_size:
             raise ValueError('static PP2 group needs its admitted independent trace members')
         self.members = tuple(members)
         self.manifest = dict(members[0].operation_trace.manifest)
@@ -37,7 +37,7 @@ class StaticCohortOperationTrace:
 
 def cohort_entry(members, *, role, cohort_size=8):
     if (role not in ('generator', 'critic') or type(cohort_size) is not int
-            or cohort_size not in (2, 8) or len(members) != cohort_size):
+            or cohort_size not in (1, 2, 8) or len(members) != cohort_size):
         raise ValueError('requires the admitted exact same-operation rank-qualified entries')
     members = tuple(members)
     step = (members[0].logical_step if role == 'generator' else members[0].pool_entry.logical_step)

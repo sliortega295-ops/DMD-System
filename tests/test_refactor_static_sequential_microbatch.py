@@ -122,9 +122,9 @@ def test_group_mean_scaling_requires_all_eight_samples_before_commit():
     assert parameter.grad == torch.tensor(4.5)
     with pytest.raises(ValueError, match='eight'):
         state.mean_microbatch_group_loss(parameter, group_size=2)
-    for count in (1, 4, True):
+    for count in (0, 4, True):
         state.accumulations = 0
-        with pytest.raises(ValueError, match='two or eight'):
+        with pytest.raises(ValueError, match='one, two or eight'):
             state.mean_microbatch_group_loss(parameter, group_size=count)
 
 

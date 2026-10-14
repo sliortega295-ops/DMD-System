@@ -36,6 +36,7 @@ from distillschedule.runtime.static_3d_state import StaticDataParallelState, pla
 from distillschedule.runtime.static_native_forward import create_admitted_forward_split
 from distillschedule.runtime.static_native_pp_stage import NativeSourcePPStage
 from distillschedule.runtime.static_native_proxy import NativeStaticPPProxy
+from distillschedule.runtime.static_native_serial_proxy import NativeSerialPPProxy
 from distillschedule.runtime.static_native_cooperative import run_native_B1_cohort
 from distillschedule.runtime.static_tp_model import bind_wan_helios_tp4
 from distillschedule.runtime.static_logical_state import (
@@ -107,10 +108,10 @@ class Native3DEngine:
 
     def backward(self, loss):
         count = self.module.static_cohort_batch_size
-        if count == 2:
-            # Four mean2 backward calls make exactly one mean8 contribution.
+        if count in (1, 2):
+            # Eight mean1 / four mean2 calls make one mean8 contribution.
             # The output-gradient bridge performs no second division.
-            loss = self.state.mean_microbatch_group_loss(loss, group_size=2)
+            loss = self.state.mean_microbatch_group_loss(loss, group_size=count)
         loss.backward()
         self.module.note_memory_peak()
         # The native batch loss already averages eight B1 samples. The GPipe
@@ -171,8 +172,11 @@ def build_role(args, boot, role, device, pp, tp_group, pp_group, dp_group, model
     compute_precision = (bind_helios_bf16_lora_compute(native) if logical else
                          dict(master_dtype='FP32', forward_compute_dtype='FP32', merged_count=0))
     native.to(device)
-    proxy = NativeStaticPPProxy(stage, pp_group=pp_group, device=device, role=role,
-        pipeline_microbatches=2 if args.pipeline_memory_policy == 'group2-accumulate8' else 8)
+    if args.pipeline_memory_policy == 'serial1-accumulate8':
+        proxy = NativeSerialPPProxy(stage, pp_group=pp_group, device=device, role=role)
+    else:
+        proxy = NativeStaticPPProxy(stage, pp_group=pp_group, device=device, role=role,
+            pipeline_microbatches=2 if args.pipeline_memory_policy == 'group2-accumulate8' else 8)
     actual_names = dict(native.named_parameters())
     placements = placed_trainables(native, replicated_root_names=tuple(n for n in root_names if n in actual_names))
     state = StaticDataParallelState(placements, dp_group=dp_group, model_group=model_group, max_norm=1.)
@@ -195,7 +199,7 @@ def main():
         ap.add_argument('--'+flag,required=True)
     ap.add_argument('--seed',type=int,default=20260903)
     ap.add_argument('--workload',choices=('wan13b','helios-nogan'),default='wan13b')
-    ap.add_argument('--pipeline-memory-policy',choices=('gpipe8','group2-accumulate8'),default='gpipe8')
+    ap.add_argument('--pipeline-memory-policy',choices=('gpipe8','group2-accumulate8','serial1-accumulate8'),default='gpipe8')
     for flag in ('score-model-root','precast-generator-root','precast-score-root'):
         ap.add_argument('--'+flag)
     ap.add_argument('--expected-checkpoint-trace-hash')
@@ -244,7 +248,7 @@ def main():
         layout=Static3DLayout()
         pp,dp,tp=layout.coordinate(rank)
         source_ranks=tuple(layout.logical_sample_rank(dp,i) for i in range(8))
-        group_size = 2 if args.pipeline_memory_policy == 'group2-accumulate8' else 8
+        group_size = {'gpipe8':8, 'group2-accumulate8':2, 'serial1-accumulate8':1}[args.pipeline_memory_policy]
         source_groups = tuple(source_ranks[i:i+group_size] for i in range(0, 8, group_size))
         row.update(layout=layout.receipt(),coordinate=dict(pp=pp,dp=dp,tp=tp),source_ranks=source_ranks,
             pipeline_memory_policy=args.pipeline_memory_policy,

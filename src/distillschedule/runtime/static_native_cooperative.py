@@ -104,8 +104,8 @@ def run_native_B1_cohort(model, sample_function, *, device, timeout_seconds=600,
     """
     if timeout_seconds <= 0:
         raise ValueError('positive bounded native sampler timeout required')
-    if type(cohort_size) is not int or cohort_size not in (2, 8):
-        raise ValueError('PP2 cohort must contain two or eight independent B1 samples')
+    if type(cohort_size) is not int or cohort_size not in (1, 2, 8):
+        raise ValueError('PP2 cohort must contain one, two or eight independent B1 samples')
     device = torch.device(device)
     stream = torch.cuda.current_stream(device) if device.type == 'cuda' else None
     initial_grad = torch.is_grad_enabled()
@@ -184,4 +184,5 @@ def run_native_B1_cohort(model, sample_function, *, device, timeout_seconds=600,
     return tuple(results), dict(logical_samples=cohort_size, rendezvous_calls=ordinal,
         per_sample_call_counts=[finished[i] for i in range(cohort_size)],
         rank_local_controls_preserved=True, training_RNG_consumed_by_dispatcher=False,
-        physical_model_batch=1, model_boundary=f'GPipe{cohort_size}_B1_NOT_BATCH{cohort_size}_DIT')
+        physical_model_batch=1, model_boundary=('SERIAL_B1_PP2_NOT_GPIPE1' if cohort_size == 1
+            else f'GPipe{cohort_size}_B1_NOT_BATCH{cohort_size}_DIT'))
