@@ -192,6 +192,21 @@ def main():
         require(not set(map(id,adapter.role_parameters('student')))&set(map(id,adapter.role_parameters('fake_score'))),
                 'DISJOINT_NATIVE_ADAPTERS')
         optimizers, parameters = make_optimizers(adapter,discriminator,config)
+        dtype_rows = {}; last_index = len(dit.blocks)-1
+        for name, layer in adapter.layers:
+            if not any(name.startswith(f'blocks.{index}.') for index in (0,last_index//2,last_index)):
+                continue
+            def dtype_gate(module, inputs, name=name):
+                role = module.role
+                if role == 'teacher': return
+                pair = module.adapters[role]
+                observed = {'layer':name, 'role':role, 'grad_enabled':torch.is_grad_enabled(),
+                            'input':str(inputs[0].dtype), 'base':str(module.base.weight.dtype),
+                            'A':str(pair['A'].weight.dtype), 'B':str(pair['B'].weight.dtype)}
+                require(observed['base']=='torch.bfloat16' and observed['A']==observed['B']=='torch.float32',
+                        'ACTUAL_UNSHARDED_NATIVE_LORA_DTYPE')
+                dtype_rows[(name,role,torch.is_grad_enabled())] = observed
+            layer.register_forward_pre_hook(dtype_gate)
         batches=[]
         for raw in raws:
             positive,negative=prepare_batch(raw,config.teacher_cfg_scale)
@@ -249,6 +264,7 @@ def main():
         require(not any(p.grad is not None for n,p in adapter.named_parameters() if '.adapters.' not in n),'FROZEN_BASE_GRADIENT')
         rec.update(status='PASS_REAL_NATIVE_AR8_G1F1_LOGICAL_B16' if not args.tiny else 'PASS_TINY_NATIVE_INTEGRATION_ONLY',
                    actual_optimizer_counts=dict(commits),final_versions={'student':2,'fake':2,'ema':0},
+                   actual_runtime_dtype_receipts=list(dtype_rows.values()),
                    formal_seconds=rec['cycles'][1]['timer']['seconds'] if not args.tiny else None)
         write(args.receipt_dir/f'rank_{rank:02d}.json',rec)
     except BaseException as exc:
