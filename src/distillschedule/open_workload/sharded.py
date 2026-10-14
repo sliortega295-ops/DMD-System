@@ -16,6 +16,7 @@ from .torch_backend import storage_key, physical_tensor, signature
 from distillschedule.workloads.best_known.registry import fingerprint
 
 MODES = ('fsdp2_reshard', 'fsdp2_keep_forward')
+HSDP_MODES = ('hsdp2_reshard', 'hsdp2_keep_forward')
 
 
 def rejection(workload):
@@ -53,9 +54,11 @@ class ShardedLifecycle(ReplicaLifecycle):
     def prepare(self,session):
         options=gather(self.option)
         require(all(x==options[0] for x in options),'ranks selected different implementations',path='open.fsdp')
+        hybrid = self.option['reduction'] in HSDP_MODES
         def validate():
-            require(set(self.option)=={'backend','local','reduction','bucket_cap_mb'}
-                    and self.option['backend']==BACKEND and self.option['reduction'] in MODES
+            keys = {'backend','local','reduction','bucket_cap_mb'} | ({'node_groups'} if hybrid else set())
+            require(set(self.option)==keys
+                    and self.option['backend']==BACKEND and self.option['reduction'] in (*MODES, *HSDP_MODES)
                     and type(self.option['bucket_cap_mb']) is int and self.option['bucket_cap_mb']==0
                     and not self.option['local']['share_immutable'],
                     'unadmitted sharded combination',path='open.fsdp')
@@ -64,17 +67,26 @@ class ShardedLifecycle(ReplicaLifecycle):
         self.module_keys=tuple(sorted(set(self.workload.replica_semantics.module_bindings.values())))
         session.graph=checked(lambda:execution_graph(self.workload.program,
             self.workload.replica_semantics,'ddp_overlap'),'FSDP call boundaries')
-        from torch.distributed.device_mesh import init_device_mesh
+        from torch.distributed.device_mesh import init_device_mesh, DeviceMesh
         from torch.distributed.fsdp import fully_shard
         from torch.distributed.tensor import DTensor, distribute_tensor
-        mesh=init_device_mesh(session.device.type,(self.world,))
+        if hybrid:
+            from .topology import discover
+            topology = discover()
+            require(topology['hsdp_admitted'] and self.option['node_groups'] == topology['node_groups'],
+                    'HSDP plan does not match current allocated nodes', path='open.fsdp')
+            mesh = DeviceMesh(session.device.type, torch.tensor(topology['node_groups']),
+                              mesh_dim_names=('replicate', 'shard'))
+        else:
+            topology = None
+            mesh = init_device_mesh(session.device.type,(self.world,))
         replacements={};sharded_count=0
         self.full_parameter_bytes=0
         for key in self.module_keys:
             model=session.state[key]
             original=dict(model.named_parameters())
             self.full_parameter_bytes+=sum(p.numel()*p.element_size() for p in original.values())
-            fully_shard(model,mesh=mesh,reshard_after_forward=self.option['reduction']=='fsdp2_reshard')
+            fully_shard(model,mesh=mesh,reshard_after_forward=self.option['reduction'].endswith('_reshard'))
             for name,p in model.named_parameters():
                 require(isinstance(p,DTensor),'FSDP did not install distributed parameters',path='open.fsdp')
                 replacements[id(original[name])]=p;sharded_count+=1
@@ -96,8 +108,9 @@ class ShardedLifecycle(ReplicaLifecycle):
                 group['params']=[replacements.get(id(p),p) for p in group['params']]
         session.effects.update(distributed=True,world_size=self.world,reduction=self.option['reduction'],
             fsdp_sharded_parameters=sharded_count,optimizer_moments_migrated=migrated,
-            parameter_layout='FSDP2_Shard0',frozen_only_models='resident',
-            reshard_after_forward=self.option['reduction']=='fsdp2_reshard')
+            parameter_layout='HSDP2_Replicate_Shard0' if hybrid else 'FSDP2_Shard0',
+            mesh_shape=list(mesh.shape), allocated_topology=topology, frozen_only_models='resident',
+            reshard_after_forward=self.option['reduction'].endswith('_reshard'))
 
     def before_run(self,session,order):
         orders=gather(tuple(order))

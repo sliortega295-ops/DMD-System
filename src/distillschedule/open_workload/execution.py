@@ -21,6 +21,8 @@ class ExecutionBackend:
         self.key='torch-callable-replicated-v1' if self.distributed else 'torch-callable-resident-v1'
         self.device=workload.device.type if self.distributed else str(workload.device)
         if self.distributed:
+            from .topology import discover
+            self.topology = discover()
             from .replicated import checked
             checked(lambda: require(workload.replica_semantics is not None,
                                     'distributed execution requires replica semantics',path='open.backend'), 'semantics')
@@ -42,14 +44,14 @@ class ExecutionBackend:
         from .planning import hardware_identity
         value=hardware_identity(self.workload.device)
         if not self.distributed: return value
-        return {'replicas':self.consensus(value),'world_size':self.world}
+        return {'replicas':self.consensus(value),'world_size':self.world,'topology':self.topology}
 
     def inventory(self,limit):
         if not self.distributed:
             from .torch_backend import candidates
             return candidates(self.workload,limit=limit)
         from .replicated import inventory,checked
-        result=checked(lambda: inventory(self.workload,limit=limit),'capability matching')
+        result=checked(lambda: inventory(self.workload,limit=limit,topology=self.topology),'capability matching')
         rows=self.consensus(result)
         require(all(r==result for r in rows),'rank candidate inventories differ',path='open.backend')
         return result
@@ -66,7 +68,7 @@ class ExecutionBackend:
         from .replica_contract import execution_graph
         reduction=implementation['reduction']
         return execution_graph(self.workload.program, self.workload.replica_semantics,
-                               'ddp_overlap' if reduction.startswith('fsdp2_') else reduction)
+                               'ddp_overlap' if reduction.startswith(('fsdp2_', 'hsdp2_')) else reduction)
 
     def compare(self,expected,actual,**kwargs):
         from .torch_backend import compare
@@ -87,7 +89,7 @@ class ExecutionBackend:
             extra=2*sum(p.numel()*p.element_size() for key in session.lifecycle.module_keys
                         for p in session.state[key].parameters() if p.requires_grad)
         row['bucket_storage_bound_bytes']=extra
-        if session.lifecycle.option['reduction'].startswith('fsdp2_'):
+        if session.lifecycle.option['reduction'].startswith(('fsdp2_', 'hsdp2_')):
             # Tensor accounting cannot see all flattened all-gather workspaces on
             # CPU. Include an explicit conservative staging allowance; not RSS.
             staging=2*session.lifecycle.full_parameter_bytes
