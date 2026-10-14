@@ -92,6 +92,7 @@ def main(argv=None):
             p.add_argument('--memory-limit-bytes',type=int)
             p.add_argument('--host-memory-limit-bytes',type=int)
             p.add_argument('--gpu-reserve-gib',type=int,default=2)
+        if name=='role-run':p.add_argument('--cycles',type=int,default=1)
         if name=='role-auto':
             p.add_argument('--max-candidates',type=int,default=4)
             p.add_argument('--samples',type=int,default=1)
@@ -159,7 +160,7 @@ def main(argv=None):
                     'gpu_execution':execution['gpu_execution'],'claimable_speedup':False}
             if dist.get_rank()==0:write_new_json(root/'result.json',result)
         else:
-            execution,_,_=run_selected(task,hardware,bindings,args.plan,root,device=device)
+            execution,_,_=run_selected(task,hardware,bindings,args.plan,root,device=device,cycles=args.cycles)
             result={'status':execution['status'],'plan_path':str(args.plan),
                     'selected_implementation':execution['layout'],
                     'gpu_execution':execution['gpu_execution'],'claimable_speedup':False}

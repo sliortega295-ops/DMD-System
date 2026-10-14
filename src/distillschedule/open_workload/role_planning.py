@@ -34,7 +34,8 @@ PLAN='distillschedule.measured_role_pool_plan.v1'
 def code_identity(bindings:RoleFunctions):
     """Callable source fingerprints, not user supplied winner/recipe aliases."""
     files={}
-    for name in ('make_model','make_optimizer','sample','generator_forward','score_loss','score_train_loss'):
+    for name in ('make_model','make_optimizer','sample','generator_forward','score_loss','score_train_loss',
+                 'score_input_gradient','sample_at'):
         fn=getattr(bindings,name)
         if fn is None:continue
         require(inspect.isfunction(fn),'role factory functions must be inspectable Python functions',path='role.identity')
@@ -132,7 +133,9 @@ def calibrate(task:RoleTask,hardware:AllocatedWorld,bindings:RoleFunctions,outpu
     for idx,layout in enumerate(inventory['candidates']):
         measured=[]
         for _ in range(samples):
-            result,model,optimizer=RolePoolExecutor(task,layout,hardware,bindings,device=device).run()
+            executor=RolePoolExecutor(task,layout,hardware,bindings,device=device)
+            try:result,model,optimizer=executor.run()
+            finally:executor.close()
             measured.append(result)
             # Do not keep a previous candidate's optimizer/weights alive while
             # constructing the next candidate (notably on 40GB devices).
@@ -262,9 +265,12 @@ def search(calibration_path,*,max_states=50000,beam_width=0,timeout_seconds=60):
     return result
 
 
-def run_selected(task,hardware,bindings,plan_path,output,*,device='cpu'):
+def run_selected(task,hardware,bindings,plan_path,output,*,device='cpu',cycles=1):
     require(dist.is_initialized() and dist.get_world_size()==hardware.world,
             'selected role pool needs allocated process group',path='role.run')
+    require(type(cycles) is int and 1<=cycles<=1024 and
+            (cycles==1 or bindings.sample_at is not None),
+            'explicit sample_at is required for bounded continuous execution',path='role.run')
     p=_load(plan_path);signed=dict(p);sha=signed.pop('plan_sha256',None)
     require(p.get('schema_version')==PLAN and sha==fingerprint(signed),
             'changed role plan',path='role.run')
@@ -282,10 +288,21 @@ def run_selected(task,hardware,bindings,plan_path,output,*,device='cpu'):
     root=Path(output).resolve()
     if dist.get_rank()==0:root.mkdir(parents=True,exist_ok=False)
     dist.barrier()
-    receipt,module,optimizer=RolePoolExecutor(task,layout,hardware,bindings,device=device).run()
-    receipt.update({'selected_plan_sha256':sha,'measured_calibration':p['calibration'],
-                    'numerical_reference':'REQUIRES_INDEPENDENT_BASELINE',
-                    'claimable_speedup':False})
+    executor=RolePoolExecutor(task,layout,hardware,bindings,device=device)
+    summaries=[]
+    try:
+        for cycle in range(cycles):
+            receipt,module,optimizer=executor.run()
+            receipt.update({'selected_plan_sha256':sha,'measured_calibration':p['calibration'],
+                            'numerical_reference':'REQUIRES_INDEPENDENT_BASELINE',
+                            'claimable_speedup':False})
+            if dist.get_rank()==0:write_new_json(root/f'cycle-{cycle:06d}.json',receipt)
+            summaries.append({'cycle':cycle,'wall_ns':receipt['wall_ns'],
+                              'initial_versions':receipt['initial_versions'],
+                              'final_versions':receipt['final_versions']})
+    finally:executor.close()
+    receipt.update({'cycles_executed':cycles,'cycle_summaries':summaries,
+                    'training_state':'PERSISTED_IN_PROCESS_NOT_CHECKPOINT_RESTART'})
     if dist.get_rank()==0:write_new_json(root/'execution.json',receipt)
     dist.barrier()
     return receipt,module,optimizer

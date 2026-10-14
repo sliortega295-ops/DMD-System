@@ -60,7 +60,7 @@ class RoleTask:
                 'unknown or missing role task fields', path='role.task')
         return cls(**document)
 
-    def program(self):
+    def program(self, initial_versions=None):
         """Build true version/gradient edges without a model-name optimizer recipe."""
         calls=[]
         for index in range(self.microbatches):
@@ -82,9 +82,13 @@ class RoleTask:
             calls.append(Call('score_update'+str(i),'score_update',
                 reads=('score','optimizer_s'),writes=('score','optimizer_s'),
                 after=('commit_g',) if i == 0 else ('score_update'+str(i-1),)))
-        return Program(tuple(calls),
-            {'generator':0,'score':0,'optimizer_g':0,'gradient_g':0,'optimizer_s':0},
-            (),(),{'task_sha256':self.digest})
+        versions={'generator':0,'score':0,'optimizer_g':0,'gradient_g':0,'optimizer_s':0}
+        if initial_versions is not None:
+            require(set(initial_versions)==set(versions) and
+                    all(type(v) is int and v>=0 for v in initial_versions.values()),
+                    'invalid continuing role versions',path='role.task')
+            versions=dict(initial_versions)
+        return Program(tuple(calls),versions,(),(),{'task_sha256':self.digest})
 
 
 @dataclass(frozen=True)
