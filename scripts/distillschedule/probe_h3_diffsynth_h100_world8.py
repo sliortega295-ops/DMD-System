@@ -274,6 +274,17 @@ def main():
                                   'attention_reuse':reuse.finish_cycle()})
             if cycle==0:reuse.begin_next_cycle()
         require(not any(p.grad is not None for n,p in adapter.named_parameters() if '.adapters.' not in n),'FROZEN_BASE_GRADIENT')
+        if args.tiny:
+            def local_cpu(value):
+                if hasattr(value,'to_local'):value=value.to_local()
+                return value.detach().cpu().contiguous()
+            states={'parameters':{n:local_cpu(p) for n,p in adapter.named_parameters() if '.adapters.' in n},
+                    'Adam':{role:[{k:local_cpu(v) for k,v in state.items() if isinstance(v,torch.Tensor)}
+                                  for state in optimizer.state.values()] for role,optimizer in optimizers.items()}}
+            state_path=args.receipt_dir/f'rank_{rank:02d}_tiny_trainable_state.pt'
+            require(not state_path.exists(),'IMMUTABLE_TINY_STATE_PATH');torch.save(states,state_path)
+            rec['tiny_state_sha256']=sha(state_path)
+            rec['tiny_state_scope']='remote small architecture only; after both timer boundaries; not a full-model checkpoint'
         rec.update(status='PASS_REAL_NATIVE_AR8_G1F1_LOGICAL_B16' if not args.tiny else 'PASS_TINY_NATIVE_INTEGRATION_ONLY',
                    actual_optimizer_counts=dict(commits),final_versions={'student':2,'fake':2,'ema':0},
                    actual_runtime_dtype_receipts=list(dtype_rows.values()),
