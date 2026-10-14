@@ -14,9 +14,9 @@ import torch.distributed as dist
 class _NativeBatchBoundary(torch.autograd.Function):
     @staticmethod
     def forward(ctx, owner, trigger, *inputs):
-        if any(not isinstance(t, torch.Tensor) or t.ndim == 0 or t.shape[0] != 8
+        if any(not isinstance(t, torch.Tensor) or t.ndim == 0 or t.shape[0] != owner.schedule.native_microbatches
                for t in inputs):
-            raise ValueError('explicit eight-sample tensors required at GPipe boundary')
+            raise ValueError('explicit admitted sample tensors required at GPipe boundary')
         ctx.owner = owner
         ctx.needs_native_grad = tuple(t.requires_grad for t in inputs)
         ctx.input_metadata = tuple((tuple(t.shape), t.dtype, t.device) for t in inputs)

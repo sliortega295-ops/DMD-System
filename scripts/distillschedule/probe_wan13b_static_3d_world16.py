@@ -106,11 +106,17 @@ class Native3DEngine:
     def __call__(self, *args, **kwargs): return self.module(*args, **kwargs)
 
     def backward(self, loss):
+        count = self.module.static_cohort_batch_size
+        if count == 2:
+            # Four mean2 backward calls make exactly one mean8 contribution.
+            # The output-gradient bridge performs no second division.
+            loss = self.state.mean_microbatch_group_loss(loss, group_size=2)
         loss.backward()
         self.module.note_memory_peak()
         # The native batch loss already averages eight B1 samples. The GPipe
         # output-gradient bridge deliberately performs no second division.
-        self.state.note_gpipe_mean_backward()
+        if count == 8:
+            self.state.note_gpipe_mean_backward()
 
     def step(self):
         norm = self.state.synchronize_and_clip()
@@ -165,7 +171,8 @@ def build_role(args, boot, role, device, pp, tp_group, pp_group, dp_group, model
     compute_precision = (bind_helios_bf16_lora_compute(native) if logical else
                          dict(master_dtype='FP32', forward_compute_dtype='FP32', merged_count=0))
     native.to(device)
-    proxy = NativeStaticPPProxy(stage, pp_group=pp_group, device=device, role=role)
+    proxy = NativeStaticPPProxy(stage, pp_group=pp_group, device=device, role=role,
+        pipeline_microbatches=2 if args.pipeline_memory_policy == 'group2-accumulate8' else 8)
     actual_names = dict(native.named_parameters())
     placements = placed_trainables(native, replicated_root_names=tuple(n for n in root_names if n in actual_names))
     state = StaticDataParallelState(placements, dp_group=dp_group, model_group=model_group, max_norm=1.)
@@ -188,6 +195,7 @@ def main():
         ap.add_argument('--'+flag,required=True)
     ap.add_argument('--seed',type=int,default=20260903)
     ap.add_argument('--workload',choices=('wan13b','helios-nogan'),default='wan13b')
+    ap.add_argument('--pipeline-memory-policy',choices=('gpipe8','group2-accumulate8'),default='gpipe8')
     for flag in ('score-model-root','precast-generator-root','precast-score-root'):
         ap.add_argument('--'+flag)
     ap.add_argument('--expected-checkpoint-trace-hash')
@@ -236,7 +244,11 @@ def main():
         layout=Static3DLayout()
         pp,dp,tp=layout.coordinate(rank)
         source_ranks=tuple(layout.logical_sample_rank(dp,i) for i in range(8))
+        group_size = 2 if args.pipeline_memory_policy == 'group2-accumulate8' else 8
+        source_groups = tuple(source_ranks[i:i+group_size] for i in range(0, 8, group_size))
         row.update(layout=layout.receipt(),coordinate=dict(pp=pp,dp=dp,tp=tp),source_ranks=source_ranks,
+            pipeline_memory_policy=args.pipeline_memory_policy,
+            pipeline_microbatches_per_invocation=group_size,gradient_accumulation_groups_per_update=8//group_size,
             workload=args.workload,lora_master_dtype='FP32',lora_compute_dtype='BF16' if logical else 'FP32',
             checkpoint_provenance_trace_hash=args.expected_checkpoint_trace_hash,
             bootstrap_hash=boot.manifest_hash,trace_hash=trace.bundle_hash,
@@ -278,50 +290,54 @@ def main():
             losses=[]; census=[]; identities=[]
             dist.barrier();torch.cuda.synchronize(device);torch.cuda.reset_peak_memory_stats(device)
             begin=time.perf_counter()
-            where='generator native gradient rollout'
-            members=[trace.load_generator_entry(rank=r,device=device) for r in source_ranks]
-            entry=cohort_entry(members,role='generator')
-            generator.module.enable_adapters();generator.module.train()
-            results, dispatch=run_native_B1_cohort(generator.module,
-                lambda view,i:run_generator_update_trace_rollout(engine=view,entry=members[i],device=device,
-                    detailed_profile=False,collect_diagnostics=False),device=device)
-            x0=torch.cat([result[0] for result in results])
-            if any(result[1] is not None for result in results):
-                raise ValueError('native Generator trace unexpectedly selected a gradient mask')
-            mask=None
-            census.append(dict(role='generator',step=10,inventory=results[0][2],
-                rank_qualified_inventories=[result[2] for result in results],dispatcher=dispatch))
-            identities.extend([f'cycle{cycle_index}/generator/step10/rank{r}' for r in source_ranks])
-            where='generator DMD score roles'
-            batch=prepare_dmd_score_batch(generated_x0=x0,entry=entry,device=device)
-            fake=score_forward(critic.module,batch,condition=batch['encoder_hidden_states'],adapter_enabled=True,validate_finite=False)
-            real_cond=score_forward(critic.module,batch,condition=batch['encoder_hidden_states'],adapter_enabled=False,validate_finite=False)
-            real_uncond=score_forward(critic.module,batch,condition=negative,adapter_enabled=False,validate_finite=False)
-            gradient,_aux=construct_dmd_gradient(batch=batch,fake_flow_cond=fake,real_flow_cond=real_cond,real_flow_uncond=real_uncond,validate_finite=False)
-            loss=detached_dmd_surrogate_loss(x0,gradient,mask);losses.append(loss.detach())
-            where='generator native checkpoint backward'; generator.backward(loss)
-            where='generator optimizer';generator.step()
-            del members,entry,x0,mask,batch,fake,real_cond,real_uncond,gradient,_aux,loss,results
-            for step in range(10,15):
-                where=f'critic{step} native Generator rollout'
-                members=[trace.load_critic_entry(rank=r,step=step,device=device) for r in source_ranks]
+            for group_index, sources in enumerate(source_groups):
+                where=f'generator native gradient rollout group{group_index}'
+                members=[trace.load_generator_entry(rank=r,device=device) for r in sources]
+                entry=cohort_entry(members,role='generator',cohort_size=group_size)
                 generator.module.enable_adapters();generator.module.train()
-                results,dispatch=run_native_B1_cohort(generator.module,
-                    lambda view,i:run_generator_trace_rollout(model=view,loaded=members[i],device=device,
-                        detailed_profile=False,record_output_sha256=False,collect_diagnostics=False),device=device)
-                outputs=tuple(result[0] for result in results)
-                census.append(dict(role='critic',step=step,inventory=results[0][1],
-                    rank_qualified_inventories=[result[1] for result in results],dispatcher=dispatch))
-                identities.extend([f'cycle{cycle_index}/critic/step{step}/rank{r}' for r in source_ranks])
-                entry=cohort_entry(members,role='critic');x0=torch.cat(outputs)
-                batch=prepare_student_batch(generated_x0=x0,loaded=entry,device=device)
-                where=f'critic{step} native gradient forward'
-                _,loss=student_forward_loss(critic,batch,validate_finite=False)
-                losses.append(loss.detach())
-                where=f'critic{step} native checkpoint backward';critic.backward(loss)
+                results, dispatch=run_native_B1_cohort(generator.module,
+                    lambda view,i:run_generator_update_trace_rollout(engine=view,entry=members[i],device=device,
+                        detailed_profile=False,collect_diagnostics=False),device=device,cohort_size=group_size)
+                x0=torch.cat([result[0] for result in results])
+                if any(result[1] is not None for result in results):
+                    raise ValueError('native Generator trace unexpectedly selected a gradient mask')
+                mask=None
+                census.append(dict(role='generator',step=10,inventory=results[0][2],
+                    rank_qualified_inventories=[result[2] for result in results],dispatcher=dispatch,
+                    logical_source_ranks=list(sources),group_index=group_index))
+                identities.extend([f'cycle{cycle_index}/generator/step10/rank{r}' for r in sources])
+                where=f'generator DMD score roles group{group_index}'
+                batch=prepare_dmd_score_batch(generated_x0=x0,entry=entry,device=device)
+                fake=score_forward(critic.module,batch,condition=batch['encoder_hidden_states'],adapter_enabled=True,validate_finite=False)
+                real_cond=score_forward(critic.module,batch,condition=batch['encoder_hidden_states'],adapter_enabled=False,validate_finite=False)
+                real_uncond=score_forward(critic.module,batch,condition=negative,adapter_enabled=False,validate_finite=False)
+                gradient,_aux=construct_dmd_gradient(batch=batch,fake_flow_cond=fake,real_flow_cond=real_cond,real_flow_uncond=real_uncond,validate_finite=False)
+                loss=detached_dmd_surrogate_loss(x0,gradient,mask);losses.append(loss.detach())
+                where=f'generator native checkpoint backward group{group_index}'; generator.backward(loss)
+                del members,entry,x0,mask,batch,fake,real_cond,real_uncond,gradient,_aux,loss,results
+            where='generator optimizer';generator.step()
+            for step in range(10,15):
+                for group_index, sources in enumerate(source_groups):
+                    where=f'critic{step} native Generator rollout group{group_index}'
+                    members=[trace.load_critic_entry(rank=r,step=step,device=device) for r in sources]
+                    generator.module.enable_adapters();generator.module.train()
+                    results,dispatch=run_native_B1_cohort(generator.module,
+                        lambda view,i:run_generator_trace_rollout(model=view,loaded=members[i],device=device,
+                            detailed_profile=False,record_output_sha256=False,collect_diagnostics=False),device=device,cohort_size=group_size)
+                    outputs=tuple(result[0] for result in results)
+                    census.append(dict(role='critic',step=step,inventory=results[0][1],
+                        rank_qualified_inventories=[result[1] for result in results],dispatcher=dispatch,
+                        logical_source_ranks=list(sources),group_index=group_index))
+                    identities.extend([f'cycle{cycle_index}/critic/step{step}/rank{r}' for r in sources])
+                    entry=cohort_entry(members,role='critic',cohort_size=group_size);x0=torch.cat(outputs)
+                    batch=prepare_student_batch(generated_x0=x0,loaded=entry,device=device)
+                    where=f'critic{step} native gradient forward group{group_index}'
+                    _,loss=student_forward_loss(critic,batch,validate_finite=False)
+                    losses.append(loss.detach())
+                    where=f'critic{step} native checkpoint backward group{group_index}';critic.backward(loss)
+                    del members,outputs,entry,x0,batch,loss,results
                 where=f'critic{step} optimizer';critic.step()
                 where=f'critic{step} EMA';ema.step()
-                del members,outputs,entry,x0,batch,loss,results
             torch.cuda.synchronize(device);dist.barrier(); wall=time.perf_counter()-begin
             # All value extraction, census serialization, and world validation
             # are OUTSIDE the native timer. No profiler or anchor probe.
@@ -332,14 +348,15 @@ def main():
             g_after=generator.module.receipt(); c_after=critic.module.receipt()
             g_calls=g_after['application_forward_per_logical_sample']-g_before['application_forward_per_logical_sample']
             c_calls=c_after['application_forward_per_logical_sample']-c_before['application_forward_per_logical_sample']
-            expected_g=sum(int(x['inventory']['call_count']) for x in census)
-            if g_calls!=expected_g or c_calls!=8 or g_after['pending_backward_schedules'] or c_after['pending_backward_schedules']:
+            expected_g_B1=sum(int(x['inventory']['call_count'])*x['dispatcher']['logical_samples'] for x in census)
+            if g_calls*8!=expected_g_B1 or c_calls!=8 or g_after['pending_backward_schedules'] or c_after['pending_backward_schedules']:
                 raise ValueError('actual native PP DiT application census mismatch')
             if (g_after['grad_forward_per_logical_sample']-g_before['grad_forward_per_logical_sample']!=3
                     or c_after['grad_forward_per_logical_sample']-c_before['grad_forward_per_logical_sample']!=5):
                 raise ValueError('selected gradient-forward census changed')
             if len(identities)!=48 or len(set(identities))!=48: raise ValueError('DP replica sample identity corrupted')
-            item=dict(cycle=cycle_index,wall_seconds=wall,finite_losses=finite,losses=[float(l.cpu()) for l in losses],
+            reported_losses=torch.stack(losses).reshape(6,8//group_size).mean(dim=1).cpu().tolist()
+            item=dict(cycle=cycle_index,wall_seconds=wall,finite_losses=finite,losses=reported_losses,
                 generator_calls=g_calls,critic_calls=c_calls,actual_B1_stage_G_calls=g_calls*8,
                 actual_B1_stage_C_calls=c_calls*8,source_sample_identities=identities,rollout_census=census,
                 memory=memory(device),generator_optimizer_updates=1,critic_optimizer_updates=5,ema_updates=5,

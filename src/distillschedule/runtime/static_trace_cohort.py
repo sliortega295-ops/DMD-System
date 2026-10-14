@@ -14,9 +14,9 @@ from .fsdp2_p0 import _is_shared_index_key, _share_identical_tensors, _stack_ten
 
 
 class StaticCohortOperationTrace:
-    def __init__(self, members):
-        if len(members) != 8:
-            raise ValueError('static DP replica needs eight independent trace members')
+    def __init__(self, members, *, cohort_size=8):
+        if type(cohort_size) is not int or cohort_size not in (2, 8) or len(members) != cohort_size:
+            raise ValueError('static PP2 group needs its admitted independent trace members')
         self.members = tuple(members)
         self.manifest = dict(members[0].operation_trace.manifest)
         self.root = members[0].operation_trace.root
@@ -35,13 +35,14 @@ class StaticCohortOperationTrace:
                 else _stack_tensors(values))
 
 
-def cohort_entry(members, *, role):
-    if role not in ('generator', 'critic') or len(members) != 8:
-        raise ValueError('requires eight exact same-operation rank-qualified entries')
+def cohort_entry(members, *, role, cohort_size=8):
+    if (role not in ('generator', 'critic') or type(cohort_size) is not int
+            or cohort_size not in (2, 8) or len(members) != cohort_size):
+        raise ValueError('requires the admitted exact same-operation rank-qualified entries')
     members = tuple(members)
     step = (members[0].logical_step if role == 'generator' else members[0].pool_entry.logical_step)
     ranks = [m.source_id if role == 'generator' else m.pool_entry.source_trace_rank for m in members]
-    if len(set(ranks)) != 8:
+    if len(set(ranks)) != cohort_size:
         raise ValueError('TP/PP collaborators must not duplicate logical samples')
     if any((m.logical_step if role == 'generator' else m.pool_entry.logical_step) != step for m in members):
         raise ValueError('different logical updates cannot be combined')
@@ -53,7 +54,7 @@ def cohort_entry(members, *, role):
                for n in tensor_names}
     identity = hashlib.sha256(json.dumps([m.identity_sha256 if role == 'generator'
                 else m.pool_entry.identity_sha256 for m in members]).encode()).hexdigest()
-    trace = StaticCohortOperationTrace(members)
+    trace = StaticCohortOperationTrace(members, cohort_size=cohort_size)
     # The native samplers have already consumed each member's original
     # control. Do not substitute the first member's rank-local decisions.
     return SimpleNamespace(tensors=tensors, operation_trace=trace, logical_step=step,

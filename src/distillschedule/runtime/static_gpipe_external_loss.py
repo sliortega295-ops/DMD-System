@@ -53,10 +53,13 @@ class ExternalLossGPipe(ScheduleGPipe):
     synchronization, caching, role sharing or sample selection happens here.
     """
     def __init__(self, stage, final_output_example, *, constant_boundary_inputs=(),
-                 boundary_input_names=()):
+                 boundary_input_names=(), pipeline_microbatches=8):
         if torch.__version__ != '2.10.0+cu128':
             raise ValueError('private GPipe seam is admitted only for Torch 2.10.0+cu128')
-        super().__init__(stage, n_microbatches=8, loss_fn=_external_loss_only, scale_grads=True)
+        if type(pipeline_microbatches) is not int or pipeline_microbatches not in (2, 8):
+            raise ValueError('PP2 invocation admits two or eight B1 microbatches')
+        self.native_microbatches = pipeline_microbatches
+        super().__init__(stage, n_microbatches=pipeline_microbatches, loss_fn=_external_loss_only, scale_grads=True)
         self.pending = False
         self.completed_batches = 0
         self.final_output_shape = tuple(final_output_example.shape)
@@ -75,11 +78,11 @@ class ExternalLossGPipe(ScheduleGPipe):
         output = super().step(*args, **kwargs)
         self.pending = True
         shape = self.final_output_shape
-        if self._stage.is_last and (tuple(output.shape) != (8 * shape[0], *shape[1:])
+        if self._stage.is_last and (tuple(output.shape) != (self.native_microbatches * shape[0], *shape[1:])
                                    or output.dtype != self.final_output_dtype):
             raise ValueError('actual last-stage output violates its admitted final signature')
         transported = (output.detach().contiguous().clone() if self._stage.is_last
-            else torch.empty((8 * shape[0], *shape[1:]),
+            else torch.empty((self.native_microbatches * shape[0], *shape[1:]),
                              dtype=self.final_output_dtype, device=self._stage.device))
         dist.broadcast(transported, src=dist.get_global_rank(self._stage.group, 1),
                        group=self._stage.group)
@@ -96,7 +99,7 @@ class ExternalLossGPipe(ScheduleGPipe):
                 for index in self.constant_boundary_inputs:
                     received[index].buffer.requires_grad_(False)
         sends = []
-        for i in range(8):
+        for i in range(self.native_microbatches):
             if self._stage.is_first:
                 # Chunking creates non-leaf views. PyTorch's stage backward
                 # reads their .grad to return native upstream input gradients.
@@ -111,24 +114,24 @@ class ExternalLossGPipe(ScheduleGPipe):
             _wait_batch_p2p(work)
 
     def backward_losses(self, losses=None):
-        self._backward_losses(losses, gradient_divisor=8)
+        self._backward_losses(losses, gradient_divisor=self.native_microbatches)
 
     def _backward_losses(self, losses, *, gradient_divisor):
         if not self.pending:
             raise RuntimeError('no pending external-loss GPipe forward')
         if self._stage.is_last:
-            if (not isinstance(losses, (tuple, list)) or len(losses) != 8
+            if (not isinstance(losses, (tuple, list)) or len(losses) != self.native_microbatches
                     or any(not isinstance(loss, torch.Tensor) or loss.ndim != 0
                            or not loss.requires_grad for loss in losses)):
-                raise ValueError('last stage requires eight independent scalar B1 losses')
+                raise ValueError('last stage requires the admitted independent scalar B1 losses')
         elif losses is not None:
             raise ValueError('only the last PP stage owns the scalar loss graphs')
         sends = []
-        for i in range(8):
+        for i in range(self.native_microbatches):
             for work in _sorted_batch_p2p(self._stage.get_bwd_recv_ops(i), desc='bwd_recv').values():
                 _wait_batch_p2p(work)
             self._stage.backward_one_chunk(i, loss=losses[i] if self._stage.is_last else None,
-                                           last_backward=i == 7)
+                                           last_backward=i == self.native_microbatches - 1)
             if self._stage.is_last:
                 received = self._stage.args_recv_info[i]
                 completed, count = _complete_boundary_gradients(self._stage.bwd_cache[i],
@@ -146,14 +149,14 @@ class ExternalLossGPipe(ScheduleGPipe):
     def backward_output_gradient(self, gradient):
         """The native batch loss already averages eight samples: no /8 again."""
         if (not isinstance(gradient, torch.Tensor)
-                or tuple(gradient.shape) != (8 * self.final_output_shape[0],
+                or tuple(gradient.shape) != (self.native_microbatches * self.final_output_shape[0],
                                               *self.final_output_shape[1:])):
             raise ValueError('external output gradient violates the final batch signature')
         losses = None
         if self._stage.is_last:
             with torch.enable_grad():
                 losses = [(output * part.detach()).sum() for output, part in zip(
-                    self.last_stage_microbatch_outputs(), gradient.chunk(8), strict=True)]
+                    self.last_stage_microbatch_outputs(), gradient.chunk(self.native_microbatches), strict=True)]
         self._backward_losses(losses, gradient_divisor=1)
 
     def first_stage_input_gradients(self, input_count):
@@ -161,7 +164,7 @@ class ExternalLossGPipe(ScheduleGPipe):
             raise RuntimeError('input gradients exist only after first-stage backward')
         result = []
         for index in range(input_count):
-            parts = [self._stage.bwd_cache[i][index] for i in range(8)]
+            parts = [self._stage.bwd_cache[i][index] for i in range(self.native_microbatches)]
             if all(p is None for p in parts):
                 result.append(None)
             elif any(p is None for p in parts):
@@ -179,9 +182,11 @@ class ExternalLossGPipe(ScheduleGPipe):
         return tuple(self._stage.output_chunks)
 
     def receipt(self):
-        return dict(torch_version=torch.__version__, microbatch_size=1, microbatches=8,
-            schedule='GPipe_FORWARD8_SCORE_ROLES_THEN_BACKWARD8',
-            gradient_scaling='MICROBATCH_MEAN8_BEFORE_DP2_MEAN',
+        return dict(torch_version=torch.__version__, microbatch_size=1, microbatches=self.native_microbatches,
+            schedule=('GPipe_FORWARD8_SCORE_ROLES_THEN_BACKWARD8' if self.native_microbatches == 8
+                      else 'GPipe_FORWARD2_SCORE_ROLES_BACKWARD2_OUTER_ACCUMULATE8'),
+            gradient_scaling=('MICROBATCH_MEAN8_BEFORE_DP2_MEAN' if self.native_microbatches == 8
+                              else 'OUTER_EXPLICIT_MEAN8_BEFORE_DP2_MEAN'),
             completed_forward_backward_batches=self.completed_batches,
             pending_external_backward=self.pending,
             constant_boundary_inputs=[self.boundary_input_names[i]
@@ -193,7 +198,8 @@ class ExternalLossGPipe(ScheduleGPipe):
 
 def build_external_loss_gpipe(stage_module, *, stage_index, group, device,
                               input_args, output_args, final_output_args,
-                              constant_boundary_inputs=(), boundary_input_names=None):
+                              constant_boundary_inputs=(), boundary_input_names=None,
+                              pipeline_microbatches=8):
     if not dist.is_initialized() or dist.get_world_size(group) != 2:
         raise ValueError('requires explicit PP2')
     if stage_index not in (0, 1) or dist.get_rank(group) != stage_index:
@@ -217,4 +223,5 @@ def build_external_loss_gpipe(stage_module, *, stage_index, group, device,
     stage = PipelineStage(stage_module, stage_index, 2, torch.device(device),
         input_args=input_args, output_args=output_args, group=group)
     return ExternalLossGPipe(stage, final_output_args[0],
-        constant_boundary_inputs=constant_boundary_inputs, boundary_input_names=names)
+        constant_boundary_inputs=constant_boundary_inputs, boundary_input_names=names,
+        pipeline_microbatches=pipeline_microbatches)

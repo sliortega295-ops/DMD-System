@@ -93,8 +93,9 @@ def _pack_B1_kwargs(calls):
     return result
 
 
-def run_native_B1_cohort(model, sample_function, *, device, timeout_seconds=600):
-    """Return eight native sampler results in their immutable sample order.
+def run_native_B1_cohort(model, sample_function, *, device, timeout_seconds=600,
+                         cohort_size=8):
+    """Return two or eight native sampler results in immutable sample order.
 
     ``sample_function(model_view, index)`` executes the original B1 sampler.
     Its per-sample autograd graphs remain attached through concatenation and
@@ -103,6 +104,8 @@ def run_native_B1_cohort(model, sample_function, *, device, timeout_seconds=600)
     """
     if timeout_seconds <= 0:
         raise ValueError('positive bounded native sampler timeout required')
+    if type(cohort_size) is not int or cohort_size not in (2, 8):
+        raise ValueError('PP2 cohort must contain two or eight independent B1 samples')
     device = torch.device(device)
     stream = torch.cuda.current_stream(device) if device.type == 'cuda' else None
     initial_grad = torch.is_grad_enabled()
@@ -124,15 +127,15 @@ def run_native_B1_cohort(model, sample_function, *, device, timeout_seconds=600)
         except BaseException as error:
             messages.put(('error', error))
 
-    for index in range(8):
+    for index in range(cohort_size):
         thread = threading.Thread(target=worker, args=(index,),
                                   name=f'native-B1-sampler-{index}', daemon=True)
         threads.append(thread); thread.start()
-    results, finished, ordinal = [None]*8, {}, 0
+    results, finished, ordinal = [None]*cohort_size, {}, 0
     try:
-        while len(finished) != 8:
+        while len(finished) != cohort_size:
             cohort = {}
-            while len(cohort) != 8:
+            while len(cohort) != cohort_size:
                 left = deadline - time.monotonic()
                 if left <= 0:
                     raise TimeoutError('bounded native B1 cohort timeout')
@@ -144,23 +147,23 @@ def run_native_B1_cohort(model, sample_function, *, device, timeout_seconds=600)
                     if count != ordinal or index in finished or cohort:
                         raise ValueError('native B1 call count diverges across samples')
                     finished[index], results[index] = count, result
-                    if len(finished) == 8:
+                    if len(finished) == cohort_size:
                         break
                     continue
                 call = payload
                 if finished or call.ordinal != ordinal or call.sample in cohort:
                     raise ValueError('native B1 call count/order diverges across samples')
                 cohort[call.sample] = call
-            if len(finished) == 8:
+            if len(finished) == cohort_size:
                 break
-            calls = [cohort[i] for i in range(8)]
+            calls = [cohort[i] for i in range(cohort_size)]
             packed = _pack_B1_kwargs(calls)
             with torch.set_grad_enabled(calls[0].grad):
                 output = model(**packed)
                 if (not isinstance(output, tuple) or len(output) != 1
-                        or not isinstance(output[0], torch.Tensor) or output[0].shape[0] != 8):
-                    raise ValueError('native GPipe8 proxy returned an invalid cohort output')
-                parts = [(output[0].narrow(0, i, 1),) for i in range(8)]
+                        or not isinstance(output[0], torch.Tensor) or output[0].shape[0] != cohort_size):
+                    raise ValueError('native GPipe proxy returned an invalid cohort output')
+                parts = [(output[0].narrow(0, i, 1),) for i in range(cohort_size)]
             for call, part in zip(calls, parts, strict=True):
                 call.result = part; call.ready.set()
             ordinal += 1
@@ -178,7 +181,7 @@ def run_native_B1_cohort(model, sample_function, *, device, timeout_seconds=600)
             thread.join(timeout=1)
     if any(thread.is_alive() for thread in threads):
         raise RuntimeError('native B1 sampler thread did not complete teardown')
-    return tuple(results), dict(logical_samples=8, rendezvous_calls=ordinal,
-        per_sample_call_counts=[finished[i] for i in range(8)],
+    return tuple(results), dict(logical_samples=cohort_size, rendezvous_calls=ordinal,
+        per_sample_call_counts=[finished[i] for i in range(cohort_size)],
         rank_local_controls_preserved=True, training_RNG_consumed_by_dispatcher=False,
-        physical_model_batch=1, model_boundary='GPipe8_B1_NOT_BATCH8_DIT')
+        physical_model_batch=1, model_boundary=f'GPipe{cohort_size}_B1_NOT_BATCH{cohort_size}_DIT')

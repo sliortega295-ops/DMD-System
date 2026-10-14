@@ -57,7 +57,7 @@ class NativeStaticPPProxy(nn.Module):
         'indices_latents_history_mid', 'indices_latents_history_long',
         'latents_history_short', 'latents_history_mid', 'latents_history_long')
 
-    def __init__(self, stage, *, pp_group, device, role):
+    def __init__(self, stage, *, pp_group, device, role, pipeline_microbatches=8):
         super().__init__()
         if not isinstance(stage, NativeSourcePPStage) or role not in ('generator', 'critic'):
             raise ValueError('requires a source-admitted Wan role stage')
@@ -69,7 +69,9 @@ class NativeStaticPPProxy(nn.Module):
         self.application_calls = self.grad_application_calls = 0
         self.peak_allocated_observed = self.peak_reserved_observed = 0
         self._distillschedule_has_adapter = True
-        self.static_cohort_batch_size = 8
+        if type(pipeline_microbatches) is not int or pipeline_microbatches not in (2, 8):
+            raise ValueError('PP2 invocation admits two or eight B1 microbatches')
+        self.static_cohort_batch_size = pipeline_microbatches
 
     @property
     def native_model(self):
@@ -83,6 +85,7 @@ class NativeStaticPPProxy(nn.Module):
 
     def _cohort_inputs(self, values):
         result = []
+        count = getattr(self, 'static_cohort_batch_size', 8)
         for name in self.INPUT_NAMES:
             value = values.get(name)
             if value is None:
@@ -94,9 +97,9 @@ class NativeStaticPPProxy(nn.Module):
             if name.startswith('indices_') and value.ndim == 1:
                 value = value.unsqueeze(0)
             if value.shape[0] == 1:
-                value = value.expand(8, *value.shape[1:])
-            if value.shape[0] != 8:
-                raise ValueError('native cohort lost eight independent sample rows: '+name)
+                value = value.expand(count, *value.shape[1:])
+            if value.shape[0] != count:
+                raise ValueError('native invocation lost its admitted independent sample rows: '+name)
             # PP validates strides as well as shape/dtype. A shared B1
             # condition expands with stride0, whereas per-sample conditions
             # arrive contiguous; canonicalize their transport, preserving
@@ -142,11 +145,13 @@ class NativeStaticPPProxy(nn.Module):
         if grad:
             schedule = build_external_loss_gpipe(module, **options, final_output_args=(output_example,),
                 constant_boundary_inputs=tuple(i for i, needed in enumerate(required) if not needed),
-                boundary_input_names=self.stage.TRANSPORT_FIELDS)
+                boundary_input_names=self.stage.TRANSPORT_FIELDS,
+                pipeline_microbatches=self.static_cohort_batch_size)
             run = NativeBatchGPipeAutograd(schedule, stage_index=self.stage.stage_index,
                                           group=self.pp_group, device=self.device)
         else:
-            _stage, schedule = build_static_gpipe(module, **options)
+            _stage, schedule = build_static_gpipe(module, **options,
+                                                pipeline_microbatches=self.static_cohort_batch_size)
             run = None
         self._schedules[key] = (schedule, run)
         return schedule, run
@@ -191,12 +196,16 @@ class NativeStaticPPProxy(nn.Module):
         pending = sum(bool(getattr(s, 'pending', False)) for s, _ in self._schedules.values())
         calls = sum(s._stage.submod.calls for s, _ in self._schedules.values())
         grad_calls = sum(s._stage.submod.grad_calls for s, _ in self._schedules.values())
-        if calls != 8 * self.application_calls or grad_calls != 8 * self.grad_application_calls:
+        count = self.static_cohort_batch_size
+        if calls != count * self.application_calls or grad_calls != count * self.grad_application_calls:
             raise ValueError('actual B1 stage forward census differs from native cohort calls')
-        return dict(role=self.role, application_forward_per_logical_sample=self.application_calls,
-            grad_forward_per_logical_sample=self.grad_application_calls,
+        if calls % 8 or grad_calls % 8:
+            raise ValueError('logical DP receipt requires all eight independent samples')
+        return dict(role=self.role, application_forward_per_logical_sample=calls // 8,
+            grad_forward_per_logical_sample=grad_calls // 8,
             actual_stage_B1_forward_count=calls, actual_stage_B1_grad_forward_count=grad_calls,
             microbatch_size=1, microbatches=8, pending_backward_schedules=pending,
+            pipeline_microbatches_per_invocation=count, logical_microbatches_per_DP=8,
             peak_allocated_observed_bytes=self.peak_allocated_observed,
             peak_reserved_observed_bytes=self.peak_reserved_observed,
             gradient_transport=[s.receipt() for s, _ in self._schedules.values()

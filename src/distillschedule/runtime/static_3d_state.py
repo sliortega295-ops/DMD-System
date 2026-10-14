@@ -98,6 +98,20 @@ class StaticDataParallelState:
         self.accumulations += 1
         return loss/8
 
+    def mean_microbatch_group_loss(self, loss, *, group_size):
+        """Accumulate four GPipe2 means without changing the mean8 update.
+
+        The external-loss bridge does not divide the output gradient again.
+        An update remains forbidden until all eight independent B1 samples
+        have contributed; DP SUM/2 and clipping remain at that one boundary.
+        """
+        if type(group_size) is not int or group_size not in (2, 8):
+            raise ValueError('PP2 group mean requires two or eight B1 samples')
+        if loss.ndim != 0 or self.accumulations + group_size > 8:
+            raise ValueError('cannot exceed the eight scalar B1 sample contributions')
+        self.accumulations += group_size
+        return loss * (group_size / 8)
+
     def note_gpipe_mean_backward(self):
         """GPipe scale_grads=True already divided by eight: do not do it twice."""
         if self.accumulations != 0:
