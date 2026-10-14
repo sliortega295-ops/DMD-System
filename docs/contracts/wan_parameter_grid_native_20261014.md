@@ -26,3 +26,20 @@ model or distributed GPU acceptance result.
 
 Current status: source/CPU preparation; full native generation, Torch CPU
 tests, held-node admission and real GPU matrix results pending.
+# Shared-source static3D arm
+
+The same grid spec and native trace can be passed to
+`probe_wan13b_static_3d_world16.py --workload wan13b-grid`, with explicit
+workload/source-admission paths and hashes. Defaults for canonical Wan and
+Helios remain unchanged. Each DP replica still consumes eight independent B1
+samples, TP4×DP2×PP2 remains fixed, and mean8/DP2 clipping/Adam/EMA boundaries
+are unchanged. Ratios and calls derive from this trace, not canonical F5 counts.
+This optional binding is NOT a targetGPU or timing result.
+
+The newly approved historical A100 normal/global-synchronized benchmark scope
+excludes rank-local amplified-history exits. Source-generation receipts must
+disclose this restriction and differential-check every generated stage against
+the original normal branch. It is NOT full native local-exception equivalence.
+Every paired arm consumes the same fresh trace. Do not overwrite the earlier
+failed unrestricted-native generation or reuse resized old tensor payloads.
+

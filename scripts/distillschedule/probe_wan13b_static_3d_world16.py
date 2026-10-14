@@ -60,6 +60,8 @@ from runtime.gst_pool_contract import NegativePromptAsset
 from runtime.official_baseline import suspend_transformers_zero3_init
 from runtime.critic_pool_checkpoint import LogicalCheckpointPackage, load_logical_master_into_trainables
 from runtime.static_world16_trace import StaticWorld16Trace
+from runtime.wan_parameter_grid_trace import WanParameterGridTrace
+from distillschedule.runtime.wan13b_parameter_grid import WanParameterGridSpec
 
 TRANSFORMER_SHA = '5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886'
 
@@ -198,7 +200,10 @@ def main():
                  'trace-bundle','expected-trace-hash','negative-prompt','output-dir'):
         ap.add_argument('--'+flag,required=True)
     ap.add_argument('--seed',type=int,default=20260903)
-    ap.add_argument('--workload',choices=('wan13b','helios-nogan'),default='wan13b')
+    ap.add_argument('--workload',choices=('wan13b','helios-nogan','wan13b-grid'),default='wan13b')
+    for flag in ('grid-workload', 'expected-grid-workload-hash', 'grid-trace-admission',
+                 'expected-grid-trace-admission-hash'):
+        ap.add_argument('--'+flag)
     ap.add_argument('--pipeline-memory-policy',choices=('gpipe8','group2-accumulate8','serial1-accumulate8'),default='gpipe8')
     for flag in ('score-model-root','precast-generator-root','precast-score-root'):
         ap.add_argument('--'+flag)
@@ -232,8 +237,33 @@ def main():
                     args.expected_checkpoint_trace_hash)):
                 raise ValueError('Wan bootstrap cannot borrow Helios role roots')
             boot=Wan13BBootstrap.load(args.bootstrap, expected_hash=args.expected_bootstrap_hash)
-        trace=StaticWorld16Trace(args.trace_bundle,variant='no-gan')
+        grid_fields=(args.grid_workload,args.expected_grid_workload_hash,
+                     args.grid_trace_admission,args.expected_grid_trace_admission_hash)
+        grid_spec=None
+        if args.workload=='wan13b-grid':
+            if not all(grid_fields):raise ValueError('grid workload and source-generation identities required')
+            if hashlib.sha256(Path(args.grid_workload).read_bytes()).hexdigest()!=args.expected_grid_workload_hash:
+                raise ValueError('grid workload identity changed')
+            if hashlib.sha256(Path(args.grid_trace_admission).read_bytes()).hexdigest()!=args.expected_grid_trace_admission_hash:
+                raise ValueError('grid trace generation identity changed')
+            spec_values=json.loads(Path(args.grid_workload).read_text())
+            spec_values['pyramid_budget']=tuple(spec_values['pyramid_budget'])
+            grid_spec=WanParameterGridSpec(**spec_values)
+            admission=json.loads(Path(args.grid_trace_admission).read_text())
+            if (admission['status']!='PASS_FRESH_NATIVE_PARAMETER_GRID_TRACE'
+                    or admission['bundle_hash']!=args.expected_trace_hash
+                    or admission['workload_fingerprint']!=grid_spec.receipt()['fingerprint']):
+                raise ValueError('grid native source generation not admitted')
+            if args.seed!=grid_spec.seed:raise ValueError('grid seed changed')
+            trace=WanParameterGridTrace(args.trace_bundle,workload=grid_spec)
+            row.update(grid_workload=grid_spec.receipt(),grid_trace_admission_sha256=args.expected_grid_trace_admission_hash,
+                benchmark_control_scope=admission.get('benchmark_control_scope','FULL_NATIVE_CONTROL_SCOPE'))
+        else:
+            if any(grid_fields):raise ValueError('grid identities cannot silently change a canonical workload')
+            trace=StaticWorld16Trace(args.trace_bundle,variant='no-gan')
         if trace.bundle_hash!=args.expected_trace_hash: raise ValueError('trace identity mismatch')
+        logical_steps=tuple(trace.logical_steps)
+        first_step=logical_steps[0]
         negative_asset=NegativePromptAsset.load(args.negative_prompt)
         configure_offline_helios()
         from helios.modules.transformer_helios import HeliosTransformer3DModel
@@ -306,10 +336,10 @@ def main():
                 if any(result[1] is not None for result in results):
                     raise ValueError('native Generator trace unexpectedly selected a gradient mask')
                 mask=None
-                census.append(dict(role='generator',step=10,inventory=results[0][2],
+                census.append(dict(role='generator',step=first_step,inventory=results[0][2],
                     rank_qualified_inventories=[result[2] for result in results],dispatcher=dispatch,
                     logical_source_ranks=list(sources),group_index=group_index))
-                identities.extend([f'cycle{cycle_index}/generator/step10/rank{r}' for r in sources])
+                identities.extend([f'cycle{cycle_index}/generator/step{first_step}/rank{r}' for r in sources])
                 where=f'generator DMD score roles group{group_index}'
                 batch=prepare_dmd_score_batch(generated_x0=x0,entry=entry,device=device)
                 fake=score_forward(critic.module,batch,condition=batch['encoder_hidden_states'],adapter_enabled=True,validate_finite=False)
@@ -320,7 +350,7 @@ def main():
                 where=f'generator native checkpoint backward group{group_index}'; generator.backward(loss)
                 del members,entry,x0,mask,batch,fake,real_cond,real_uncond,gradient,_aux,loss,results
             where='generator optimizer';generator.step()
-            for step in range(10,15):
+            for step in logical_steps:
                 for group_index, sources in enumerate(source_groups):
                     where=f'critic{step} native Generator rollout group{group_index}'
                     members=[trace.load_critic_entry(rank=r,step=step,device=device) for r in sources]
@@ -353,17 +383,18 @@ def main():
             g_calls=g_after['application_forward_per_logical_sample']-g_before['application_forward_per_logical_sample']
             c_calls=c_after['application_forward_per_logical_sample']-c_before['application_forward_per_logical_sample']
             expected_g_B1=sum(int(x['inventory']['call_count'])*x['dispatcher']['logical_samples'] for x in census)
-            if g_calls*8!=expected_g_B1 or c_calls!=8 or g_after['pending_backward_schedules'] or c_after['pending_backward_schedules']:
+            if g_calls*8!=expected_g_B1 or c_calls!=3+len(logical_steps) or g_after['pending_backward_schedules'] or c_after['pending_backward_schedules']:
                 raise ValueError('actual native PP DiT application census mismatch')
             if (g_after['grad_forward_per_logical_sample']-g_before['grad_forward_per_logical_sample']!=3
-                    or c_after['grad_forward_per_logical_sample']-c_before['grad_forward_per_logical_sample']!=5):
+                    or c_after['grad_forward_per_logical_sample']-c_before['grad_forward_per_logical_sample']!=len(logical_steps)):
                 raise ValueError('selected gradient-forward census changed')
-            if len(identities)!=48 or len(set(identities))!=48: raise ValueError('DP replica sample identity corrupted')
-            reported_losses=torch.stack(losses).reshape(6,8//group_size).mean(dim=1).cpu().tolist()
+            sample_count=8*(1+len(logical_steps))
+            if len(identities)!=sample_count or len(set(identities))!=sample_count: raise ValueError('DP replica sample identity corrupted')
+            reported_losses=torch.stack(losses).reshape(1+len(logical_steps),8//group_size).mean(dim=1).cpu().tolist()
             item=dict(cycle=cycle_index,wall_seconds=wall,finite_losses=finite,losses=reported_losses,
                 generator_calls=g_calls,critic_calls=c_calls,actual_B1_stage_G_calls=g_calls*8,
                 actual_B1_stage_C_calls=c_calls*8,source_sample_identities=identities,rollout_census=census,
-                memory=memory(device),generator_optimizer_updates=1,critic_optimizer_updates=5,ema_updates=5,
+                memory=memory(device),generator_optimizer_updates=1,critic_optimizer_updates=len(logical_steps),ema_updates=len(logical_steps),
                 versions=dict(generator=generator.global_steps,critic=critic.global_steps,ema=ema.optimization_step))
             row['cycles'].append(item)
             write(root/'cycles'/f'rank_{rank:03d}_cycle_{cycle_index}.json',item)
