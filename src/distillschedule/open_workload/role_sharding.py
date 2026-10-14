@@ -115,13 +115,27 @@ def install_frozen_score(model,device,score_ranks,score_group):
     require(params and all(not p.requires_grad and p.ndim>0 and
             p.is_contiguous() and not isinstance(p,DTensor) for p in params),
             'frozen Score sharding requires immutable dense parameters',path='role.sharding')
-    require(len({p.dtype for p in params})==1,
-            'mixed dtype frozen Score requires separately declared FSDP owners',path='role.sharding')
+    mixed=len({p.dtype for p in params})>1
+    owners=[]
+    if mixed:
+        # Preserve BF16 frozen backbone and FP32 normalization without casting
+        # or pretending unsupported nested parameter ownership is safe.
+        owners=[child for name,child in model.named_modules() if name and
+                list(child.parameters(recurse=False))]
+        require(not list(model.parameters(recurse=False)) and owners and
+                all(len({p.dtype for p in child.parameters(recurse=False)})==1
+                    and len(list(child.parameters()))==len(list(child.parameters(recurse=False)))
+                    for child in owners) and
+                len({id(p) for child in owners for p in child.parameters(recurse=False)})==len(params),
+                'mixed dtype frozen Score requires distinct homogeneous leaf owners',path='role.sharding')
     mesh=DeviceMesh.from_group(score_group,torch.device(device).type,
                                mesh=torch.tensor(ranks,dtype=torch.int32))
     param_bytes=sum(p.numel()*p.element_size() for p in params)
+    for child in owners:
+        fully_shard(child,mesh=mesh,reshard_after_forward=True)
     fully_shard(model,mesh=mesh,reshard_after_forward=True)
     require(isinstance(model,FSDPModule) and all(isinstance(p,DTensor) for p in model.parameters()),
             'Score FSDP2 sharding did not install',path='role.sharding')
     return model,mesh,{'role':'score_frozen_sharded','parameter_bytes':param_bytes,
-                       'world':len(ranks),'immutable':True,'reshard_after_forward':True}
+                       'world':len(ranks),'immutable':True,'reshard_after_forward':True,
+                       'dtype_groups':len(owners) if mixed else 1}

@@ -129,3 +129,64 @@ def _planned_worker(rank,rendezvous,output):
 
 def test_calibration_and_selected_multicycle_for_frozen_score_fsdp2(tmp_path):
     mp.spawn(_planned_worker,args=(str(tmp_path/'rdzv'),str(tmp_path)),nprocs=4,join=True)
+
+
+class MixedFrozenScore(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.backbone=torch.nn.Linear(4,2).to(torch.bfloat16)
+        self.norm=torch.nn.LayerNorm(2)
+        self.requires_grad_(False)
+
+    def forward(self, latent):
+        return self.norm(self.backbone(latent.to(torch.bfloat16)).float())
+
+
+def mixed_frozen_factory(role,device):
+    if role == 'generator': return make_model(role,device)
+    with torch.random.fork_rng():
+        torch.manual_seed(97)
+        score=MixedFrozenScore()
+    return score.to(device)
+
+
+def _mixed_worker(rank,rendezvous,output):
+    torch.set_num_threads(1)
+    dist.init_process_group('gloo',init_method='file://'+rendezvous,rank=rank,
+                            world_size=4,timeout=timedelta(seconds=70))
+    runner=None
+    try:
+        task=RoleTask(4,(2,4),score_updates=0)
+        hw=AllocatedWorld((2**26,)*4,(0,0,1,1))
+        layout=PoolLayout((0,2),(1,3),2,'resident','replicated','fsdp2_frozen')
+        fn=RoleFunctions(mixed_frozen_factory,make_opt,sample,generate,guidance,
+                         score_parameters_frozen=True)
+        runner=RolePoolExecutor(task,layout,hw,fn,device='cpu')
+        receipt,model,opt=runner.run()
+        if runner.role=='score':
+            assert opt is None
+            assert set(p.dtype for p in model.parameters())=={torch.bfloat16,torch.float32}
+            assert receipt['ranks'][rank]['sharding']['dtype_groups']==2
+        ref_g=mixed_frozen_factory('generator','cpu');ref_s=mixed_frozen_factory('score','cpu')
+        ref_opt=make_opt('generator',ref_g)
+        for i in range(task.microbatches):
+            result=generate(ref_g,sample(i,'generator','cpu'))
+            remote=result.detach().clone().requires_grad_(True)
+            vjp=torch.autograd.grad(guidance(ref_s,remote,sample(i,'score','cpu')),remote)[0]
+            result.backward(vjp/task.microbatches)
+        ref_opt.step()
+        expected=(ref_g if runner.role=='generator' else ref_s).state_dict()
+        from torch.distributed.tensor import DTensor
+        actual={key:(v.full_tensor() if isinstance(v,DTensor) else v).detach().cpu()
+                for key,v in model.state_dict().items()}
+        assert all(torch.allclose(v,expected[k].detach().cpu(),rtol=8e-4,atol=8e-5)
+                   for k,v in actual.items())
+        Path(output,f'mixed-{rank}.json').write_text(json.dumps({'ok':True}))
+    finally:
+        if runner is not None:runner.close()
+        dist.destroy_process_group()
+
+
+def test_bf16_frozen_score_and_fp32_norm_keep_precision_in_score_pool(tmp_path):
+    mp.spawn(_mixed_worker,args=(str(tmp_path/'rdzv'),str(tmp_path)),nprocs=4,join=True)
+    assert all(json.loads((tmp_path/f'mixed-{rank}.json').read_text())['ok'] for rank in range(4))
