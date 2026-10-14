@@ -39,6 +39,8 @@ def hardware_identity(device):
     if str(device).startswith('cuda'):
         p=torch.cuda.get_device_properties(device)
         value.update(name=p.name,total_memory=p.total_memory,capability=[p.major,p.minor])
+    from .hardware_probe import hardware_facts
+    value['accelerator'] = hardware_facts(device)
     return value
 
 

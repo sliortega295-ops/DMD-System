@@ -314,6 +314,13 @@ class Session:
             self.synchronize()
             if measure and self.device.type=='cuda':
                 before=torch.cuda.memory_allocated(self.device); torch.cuda.reset_peak_memory_stats(self.device)
+            start_event = end_event = None
+            if measure and self.device.type == 'cuda':
+                # GPU device time is a diagnostic; conservative scheduling cost
+                # remains host wall time through the synchronization boundary.
+                start_event = torch.cuda.Event(enable_timing=True)
+                end_event = torch.cuda.Event(enable_timing=True)
+                start_event.record(torch.cuda.current_stream(self.device))
             start=time.perf_counter_ns()
             with torch.set_grad_enabled(c.grad!='no_grad'):
                 with torch.autograd.graph.saved_tensors_hooks(pack,lambda t:t):
@@ -330,7 +337,11 @@ class Session:
                 from torch.utils._pytree import tree_map
                 value=tree_map(lambda v:v.detach() if isinstance(v,torch.Tensor) else v,value)
             if self.lifecycle is not None: self.lifecycle.after_call(self, c)
+            if end_event is not None:
+                end_event.record(torch.cuda.current_stream(self.device))
             self.synchronize(); duration=max(1,time.perf_counter_ns()-start)
+            gpu_event_ns = (max(1,int(round(start_event.elapsed_time(end_event)*1_000_000)))
+                            if start_event is not None else None)
             for t in tensors(value):
                 k=storage_key(t)
                 if k not in excluded: saved[k]=physical_tensor(t).untyped_storage().nbytes()
@@ -342,6 +353,12 @@ class Session:
                 workspace=max(0,torch.cuda.max_memory_allocated(self.device)-before-retained)
             self.static_bytes=max(self.static_bytes,storage_bytes((self.state,self.feeds)))
             self.profile[c.id]={'duration_ns':duration,'retained_bytes':retained,'workspace_bytes':workspace}
+            if gpu_event_ns is not None:
+                self.profile[c.id].update(cuda_event_ns=gpu_event_ns,
+                    timing_method='synchronized_cuda_event_and_host_wall',
+                    # Host wall time, which includes NCCL completion at this
+                    # call boundary, is the optimization objective.
+                    scheduling_time_source='host_wall_ns')
             return value
         def finish(ctx):
             self.profile['__open_finish__']={'duration_ns':0,'retained_bytes':0,'workspace_bytes':0}
