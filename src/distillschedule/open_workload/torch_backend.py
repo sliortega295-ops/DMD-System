@@ -8,7 +8,7 @@ backends are admitted separately by the common planning service.
 """
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from copy import deepcopy
 from dataclasses import dataclass, field
 import hashlib
@@ -304,7 +304,9 @@ class Session:
                 nonlocal invocations
                 invocations+=1
                 if invocations>1: self.effects['recompute_calls']+=1
-                with random_scope(self.workload.seed,c.id,self.device):
+                trace_context = (torch.profiler.record_function('distillschedule.call.'+c.id)
+                                 if getattr(self,'deep_trace_labels',False) else nullcontext())
+                with trace_context, random_scope(self.workload.seed,c.id,self.device):
                     return self.workload.bindings[c.binding](Context(dict(zip(input_keys,values)),states,c.attributes))
             saved={}; excluded={storage_key(t) for t in tensors((self.state,self.feeds))}
             def pack(t):

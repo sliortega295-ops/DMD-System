@@ -63,6 +63,9 @@ def main(argv=None):
             q.add_argument('--max-states',type=int,default=50000)
             q.add_argument('--beam-width',type=int,default=0)
         if name=='plan': q.add_argument('--calibration',type=Path,required=True)
+        if name in ('auto','run'):
+            q.add_argument('--deep-profile',action='store_true',
+                           help='trace only selected execution; not part of measured search costs')
         if name=='run': q.add_argument('--plan',type=Path,required=True)
     args=p.parse_args(argv)
     owned_group=False
@@ -108,7 +111,7 @@ def main(argv=None):
                                  samples=args.samples,max_program_runs=args.max_program_runs,
                                  profile_hardware=False if args.no_hardware_probe else None)
             elif args.command=='run':
-                result,_,_=run(workload,args.plan,args.output)
+                result,_,_=run(workload,args.plan,args.output,deep_profile=args.deep_profile)
             else:
                 # Two additional executions are the independent reference and
                 # selected-plan confirmation, not free out-of-budget trials.
@@ -132,7 +135,7 @@ def main(argv=None):
                 selected.pop('plan_sha256')
                 selected['plan_sha256']=fingerprint(selected)
                 backend.publish(root/'plan.json',selected)
-                result,_,_=run(workload,root/'plan.json',root/'execution')
+                result,_,_=run(workload,root/'plan.json',root/'execution',deep_profile=args.deep_profile)
                 result['program_runs']=calibration['budget']['actual']+2
                 result['memory_budget']=budget
                 backend.publish(root/'result.json',result)

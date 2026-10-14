@@ -240,7 +240,7 @@ def verify_order(selected,graph,rules,costs,lives,static,limit):
     return order
 
 
-def run(workload,plan_path,output,*,rtol=1e-5,atol=1e-7):
+def run(workload,plan_path,output,*,rtol=1e-5,atol=1e-7,deep_profile=False):
     from .execution import ExecutionBackend
     backend=ExecutionBackend(workload)
     def read_plan():
@@ -271,7 +271,17 @@ def run(workload,plan_path,output,*,rtol=1e-5,atol=1e-7):
     try:
         reference=backend.session(backend.inventory(1)['candidates'][0]);out=reference.run()
         expected=reference.result_state(out);del reference,out
-        session=backend.session(row['implementation']);out=session.run(order)
+        session=backend.session(row['implementation'])
+        require(type(deep_profile) is bool, 'invalid deep-profile flag', path='open.run')
+        traces=[]
+        if deep_profile:
+            from .deep_profile import selected_plan_trace
+            session.deep_trace_labels=True
+            out,trace=selected_plan_trace(lambda:session.run(order),root,
+                                          rank=backend.rank,device=workload.device)
+            traces=backend.consensus(trace)
+        else:
+            out=session.run(order)
         from .checkpoint_policy import native_effect_evidence
         actual_native=backend.consensus(native_effect_evidence(row['implementation'],session.effects))
         require(all(x['active'] for x in actual_native),
@@ -281,6 +291,8 @@ def run(workload,plan_path,output,*,rtol=1e-5,atol=1e-7):
                 'status':'PASS_SELECTED_PROGRAM' if gate['status']=='PASS' else 'REVIEW_SELECTED_PROGRAM',
                 'selected_implementation':row['implementation'],'executed_order':list(order),
                 'native_capability_evidence':actual_native,
+                'profiler_traces':traces,
+                'timing_claim':'PROFILER_TRACE_NOT_BENCHMARK' if deep_profile else 'UNPROFILED_SELECTED_EXECUTION',
                 'quality_validation':'NOT_RUN','scope':'common callable ABI; not proof of original DMD protocol parity'}
         if backend.distributed:
             result={**result,'rank_executions':backend.consensus(result),'replicas':backend.world}

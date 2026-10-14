@@ -137,3 +137,19 @@ A100/H100 numerical throughput. Hardware-specific strategy selection is
 conditioned on **real** candidate measurements, not assumed winners. Mixed
 GPU models within a rank group and inter-node transport require dedicated
 admission and GPU verification before performance claims.
+
+### Deep trace only after selecting a validated plan
+
+`--deep-profile` on `program auto` or `program run` wraps only the selected
+execution, not every calibration candidate. It emits a per-rank PyTorch Kineto
+Chrome/Perfetto trace (`torch-profiler-rankXXXX.json`) with logical-call labels,
+CPU/CUDA operator activity and native memory events. Paths and SHA256 digests
+are embedded in `execution.json` and never reused as speedup evidence. This
+flag adds instrumentation overhead; run a separate **unprofiled**, matched
+train/optimizer/EMA validation when reporting speedups. CUDA traces require
+supported local PyTorch/CUPTI installation; if unavailable, fail explicitly.
+
+The `--deep-profile` flag is not a substitute for Nsight Systems on multi-GPU
+critical paths or Nsight Compute on kernel roofline/MFU. Those require external
+tools and valid access to the actual A100/H100 cluster. MFU is not inferred
+from torch.profiler's partial FLOP coverage.
