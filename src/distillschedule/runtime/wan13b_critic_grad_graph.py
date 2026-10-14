@@ -149,7 +149,9 @@ def install(source: Any, *, role: str, placement: str,
 
 
 def validate_build(build: dict[str, Any], *, cycles: int,
-                   reference_checks: bool) -> dict[str, Any]:
+                   reference_checks: bool, updates_per_cycle: int = 5) -> dict[str, Any]:
+    if type(updates_per_cycle) is not int or updates_per_cycle not in (1, 3, 5):
+        raise ValueError("unregistered explicit grid update ratio")
     g = build.get("generator", {}).get("metadata", {}).get("critic_grad_cuda_graph", {})
     c = build.get("critic", {}).get("metadata", {}).get("critic_grad_cuda_graph", {})
     if g.get("enabled"):
@@ -158,9 +160,9 @@ def validate_build(build: dict[str, Any], *, cycles: int,
         if c.get("enabled"):
             raise AssertionError("Unrequested Critic grad graph executed")
         return dict(generator=g, critic=c)
-    for key, value in dict(enabled=True, replay_calls=5*cycles,
-                           backward_replay_calls=5*cycles,
-                           reference_calls=5*cycles if reference_checks else 0).items():
+    for key, value in dict(enabled=True, replay_calls=updates_per_cycle*cycles,
+                           backward_replay_calls=updates_per_cycle*cycles,
+                           reference_calls=updates_per_cycle*cycles if reference_checks else 0).items():
         if c.get(key) != value:
             raise AssertionError(f"Critic graph census changed {key}")
     entries = c.get("capture_entries", 0)
