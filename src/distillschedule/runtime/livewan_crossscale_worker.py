@@ -3929,6 +3929,18 @@ def _validate_only(
     }
 
 
+def _validation_trajectory_cycles(run_kind: str, environ: Mapping[str, str]) -> int:
+    """Validate the explicit trajectory trace without changing any run defaults."""
+    if run_kind != "validate":
+        return 0
+    cycles = int(environ.get("LIVEWAN_TRAJECTORY_CYCLES", "0"))
+    _require(
+        cycles == 0 or cycles in TRAJECTORY_ALLOWED_CYCLES,
+        "validation trajectory cycles must be 0, 1, 2, 5, or 50",
+    )
+    return cycles
+
+
 def run_worker(
     *,
     plan_path: str | Path,
@@ -3948,12 +3960,13 @@ def run_worker(
         "C24 Critic-B1 attribution is diagnostic trajectory-only",
     )
     trajectory_cycles = 0
+    validation_trajectory_cycles = _validation_trajectory_cycles(run_kind, os.environ)
     trajectory_seed = 0
     trajectory_arm_id = ""
     two_cycle_timing = run_kind == "two-cycle-timing"
     two_cycle_seed = 0
     two_cycle_arm_id = ""
-    if run_kind == "trajectory":
+    if run_kind == "trajectory" or validation_trajectory_cycles:
         trajectory_cycles = int(os.environ.get("LIVEWAN_TRAJECTORY_CYCLES", "0"))
         trajectory_seed = int(os.environ.get("LIVEWAN_TRAJECTORY_SEED", "0"))
         trajectory_arm_id = os.environ.get("LIVEWAN_TRAJECTORY_ARM_ID", "")
@@ -3999,7 +4012,7 @@ def run_worker(
     )
     trace_cycles = (
         trajectory_cycles
-        if run_kind == "trajectory"
+        if run_kind == "trajectory" or validation_trajectory_cycles
         else (TWO_CYCLE_TIMING_CYCLES if two_cycle_timing else continuous_cycles)
     )
     registered_batch = int(plan["workload"]["shape"]["batch_size"])
@@ -4019,7 +4032,7 @@ def run_worker(
     _validate_trace_balanced_pairing(plan, trace)
     check_collective_trace(baseline_spec, trace.rows)
     bootstrap = Bootstrap.load(plan["evidence"]["checkpoint"], trace=trace)
-    if run_kind == "trajectory" or two_cycle_timing or profile_two_cycles:
+    if run_kind == "trajectory" or validation_trajectory_cycles or two_cycle_timing or profile_two_cycles:
         trace_payload = json.loads(trace.path.read_text(encoding="utf-8"))
         _require(
             int(trace_payload.get("seed", -1))
