@@ -46,6 +46,30 @@ def validate_backend_probe(*, backend, placement, asset_dir, mode, export,
         raise ValueError('EXPLICIT_ISOLATED_FA3_ASSET_IDENTITY_REQUIRED')
 
 
+def snapshot_slot_rng(states):
+    """Hash already-saved CPU RNG states; never query CUDA or copy a tensor."""
+    import torch
+    import json
+    rows = {}
+    for slot, state in states.items():
+        row = {}
+        for name in ('torch', 'cuda'):
+            value = state[name]
+            if value is None:
+                row[name] = None
+            else:
+                if value.device.type != 'cpu':
+                    raise ValueError('RNG_RECEIPT_REQUIRES_ALREADY_SAVED_CPU_STATE')
+                row[name] = hashlib.sha256(value.contiguous().numpy().tobytes()).hexdigest()
+        numpy = state['numpy']
+        row['numpy'] = hashlib.sha256(numpy[1].tobytes() +
+            repr((numpy[0], str(numpy[1].dtype), numpy[1].shape, *numpy[2:])).encode()).hexdigest()
+        row['python'] = hashlib.sha256(repr(state['python']).encode()).hexdigest()
+        row['combined_sha256'] = hashlib.sha256(json.dumps(row, sort_keys=True).encode()).hexdigest()
+        rows[str(slot)] = row
+    return rows
+
+
 def _sha(path):
     digest = hashlib.sha256()
     with Path(path).open("rb") as handle:

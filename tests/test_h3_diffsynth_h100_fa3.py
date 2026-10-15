@@ -2,6 +2,7 @@ import hashlib
 from pathlib import Path
 import tempfile
 from types import SimpleNamespace, ModuleType
+import importlib.util
 import unittest
 from unittest.mock import patch
 
@@ -189,3 +190,28 @@ class BackendProbeAdmissionTests(unittest.TestCase):
                         {'asset_dir':None}):
             with self.subTest(changes=changes), self.assertRaises(ValueError):
                 self.candidate(**changes)
+
+
+@unittest.skipUnless(importlib.util.find_spec('torch'), 'actual Torch CPU required')
+class RNGReceiptTests(unittest.TestCase):
+    def test_real_cpu_rng_identity_without_advancing_any_generator(self):
+        import torch
+        import numpy as np
+        import random
+        state={'torch':torch.get_rng_state(),'cuda':None,
+               'python':random.getstate(),'numpy':np.random.get_state()}
+        before=torch.get_rng_state().clone()
+        a=binding.snapshot_slot_rng({3:state,11:state})
+        b=binding.snapshot_slot_rng({3:state,11:state})
+        self.assertEqual(a,b)
+        self.assertEqual(a['3'],a['11'])
+        self.assertTrue(torch.equal(before,torch.get_rng_state()))
+        changed={**state,'torch':state['torch'].clone()}
+        changed['torch'][0]^=1
+        self.assertNotEqual(a,binding.snapshot_slot_rng({3:changed,11:state}))
+        self.assertFalse(torch.cuda.is_initialized())
+
+    def test_non_cpu_rng_receipt_rejected_without_a_device_copy(self):
+        state={'torch':SimpleNamespace(device=SimpleNamespace(type='cuda'))}
+        with self.assertRaisesRegex(ValueError,'ALREADY_SAVED_CPU'):
+            binding.snapshot_slot_rng({0:state})

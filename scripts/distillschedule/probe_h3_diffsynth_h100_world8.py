@@ -318,6 +318,9 @@ def main():
             optimizers[role].step();optimizers[role].zero_grad(set_to_none=True);commits[role]+=1
         trainers=[DMD2Trainer(adapter,discriminator,config,lambda *a: (_ for _ in ()).throw(RuntimeError('UNSTAGED_COMMIT'))) for _ in slots]
         logical_rng=SlotRNG(slots)
+        if args.backend_after_native_warmup:
+            from runtime.h3_diffsynth_h100_fa3 import snapshot_slot_rng
+            rec['slot_rng_initial'] = snapshot_slot_rng(logical_rng.states)
         from runtime.h3_diffsynth_fsdp_attention_reuse import FSDPAttentionReuse
         import h3_dmd2 as native_dmd
         import diffsynth.models.minimax_h3_dit as native_module
@@ -364,8 +367,10 @@ def main():
             if cycle == 0 and args.backend_after_native_warmup:
                 # Diagnostic-only real C1 snapshot, outside all cycle timers.
                 # C2 still exports actual outputs for this functional probe.
+                rec['cycles'][-1]['slot_rng_after'] = snapshot_slot_rng(logical_rng.states)
                 c1 = {**evidence.receipt(), 'identities':{key:rec[key] for key in
                       ('rank','logical_slots','samples','initial_LoRA_sha256','precision')},
+                      'slot_rng_after':rec['cycles'][-1]['slot_rng_after'],
                       'predictions':list(evidence.rows),
                       'trainable_state':evidence.export_trainable_state(adapter,optimizers,
                                             name='pre_switch_C1_trainable_state.pt')}
@@ -374,12 +379,16 @@ def main():
                     from runtime.h3_diffsynth_correctness_artifacts import compare_artifacts
                     ref = json.loads((args.pre_switch_C1_reference /
                         f'rank_{rank:02d}_parity/pre_switch_C1_manifest.json').read_text())
+                    require(ref['slot_rng_after'] == c1['slot_rng_after'],
+                            'NATIVE_C1_RNG_STATE_MISMATCH_NO_BACKEND_SWITCH')
                     gate = compare_artifacts(ref, c1)
                     write(evidence.directory/'pre_switch_C1_vs_reference.json', gate)
                     rec['pre_switch_C1_strict_parity'] = {k:v for k,v in gate.items() if k!='rows'}
                     accepted = torch.tensor(int(gate['status']=='PASS'), device=device, dtype=torch.int32)
                     dist.all_reduce(accepted, op=dist.ReduceOp.MIN)
                     require(bool(accepted.item()), 'COMMON_NATIVE_C1_STATE_FAILED_NO_BACKEND_SWITCH')
+            elif args.backend_after_native_warmup:
+                rec['cycles'][-1]['slot_rng_after'] = snapshot_slot_rng(logical_rng.states)
             if cycle == 0 and args.warmup_parity_artifacts:
                 # Original C1 is the excluded warmup. Capture/check its real
                 # values and state only after its timer; C2 stays uninstrumented.
