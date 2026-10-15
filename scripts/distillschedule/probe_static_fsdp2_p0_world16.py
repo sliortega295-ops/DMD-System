@@ -1525,8 +1525,9 @@ def main() -> int:
         or args.mesh_policy != "world16-fsdp"
         or args.rollout_batch_size != 1
     ):
-        raise ValueError(
-            "Generator no-grad persistent unshard requires GAN world16 FSDP2 B1"
+        from summarize_helios_hardware_p0 import validate_registered_h100_retention_request
+        validate_registered_h100_retention_request(
+            args.variant, args.mesh_policy, args.rollout_batch_size,
         )
     if args.operation_source and args.selective_flash_checkpoint_stride:
         raise ValueError(

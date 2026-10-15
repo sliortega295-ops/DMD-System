@@ -24,6 +24,7 @@ from typing import Any, Mapping
 ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / "src"), str(ROOT)]
 from distillschedule.runtime.fsdp2_p0 import StaticFSDP2P0Policy
+from distillschedule.runtime.hardware_profile import hardware_profile
 from distillschedule.runtime.fsdp2_static import contract_for_variant
 from distillschedule.workloads.best_known.registry import (
     HELIOS_SHA, _object, _require, file_sha256, fingerprint, load_profile,
@@ -760,6 +761,26 @@ def validate_h100_retention_capability(path: Path, frozen: Mapping[str, Any]) ->
             "status": "PASS_LIBRARY_API_ONLY", "real_Helios_capacity": "NOT_RUN_BY_PRIMITIVE"}
 
 
+def validate_registered_h100_retention_request(
+    variant: str, mesh_policy: str, rollout_batch_size: int,
+) -> dict[str, Any]:
+    """Admit only the existing source-bound H100 exception to legacy CLI guards."""
+    _require(
+        variant == "no-gan" and mesh_policy == "node-hsdp" and rollout_batch_size == 1
+        and hardware_profile().name == HARDWARE,
+        "Generator no-grad persistent unshard requires GAN world16 FSDP2 B1 "
+        "or the registered H100 No-GAN node-HSDP 2x4 B1 experiment",
+    )
+    frozen = freeze_policy(ROOT, variant=variant, arm="h100-nograd-retain")
+    _require(frozen["mesh_shape"] == [2, 4]
+             and frozen["policy"]["mesh_policy"] == mesh_policy
+             and frozen["policy"]["rollout_batch_size"] == rollout_batch_size,
+             "registered H100 retention topology changed")
+    path = os.environ.get("DISTILLSCHEDULE_HELIOS_H100_RETENTION_API_RECEIPT")
+    _require(bool(path), "registered H100 retention requires the exact capability GPU receipt")
+    return validate_h100_retention_capability(Path(path), frozen)
+
+
 def prepare_launch(args: argparse.Namespace) -> None:
     frozen = freeze_policy(ROOT, variant=args.variant, arm=args.arm)
     retention_capability = None
@@ -794,6 +815,8 @@ def prepare_launch(args: argparse.Namespace) -> None:
     _require(args.hf_home.is_dir(), "explicit relocated HF_HOME missing")
     if frozen["policy"]["attention_backend"] == "local-fa2":
         environment["LOCAL_KERNELS"] = "kernels-community/flash-attn2=" + assets["flash_attn_kernel"]
+    if retention_capability is not None:
+        environment["DISTILLSCHEDULE_HELIOS_H100_RETENTION_API_RECEIPT"] = retention_capability["path"]
     unset = list(set(frozen["unset_environment"] + ["DISTILLSCHEDULE_STATIC_FSDP2_NSYS_EXACT_RANGE", "DISTILLSCHEDULE_STATIC_FSDP2_NSYS_RECEIPT_DIR"]))
     if "LOCAL_KERNELS" in environment:
         unset.remove("LOCAL_KERNELS")
