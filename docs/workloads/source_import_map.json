@@ -1047,9 +1047,16 @@
           "previous_integrated_sha256": "7f68fc93234bb39681a4ae97f3bfcb43118a4af109a831b49a8fd7e8c5929f1c",
           "reason": "Gate H3 prepared-action calibration/native timing while preserving the canonical H3 invocation and winner profile.",
           "source_commit": "d730a89b11efe21074f411a865b3feda44f818f3"
+        },
+        {
+          "base_integration_head": "0abc0b6d1435b6fe293dea59cf32345b590cd48a",
+          "new_integrated_sha256": "890367b77b66e55ba5e39768202179490e6a5558026f1e9c5b662a06b457faf7",
+          "previous_integrated_sha256": "a95ed4b8479e0d101b05c84d6c341bb258dff66d8d7aeb1eb9fd1ecaf4a194b5",
+          "reason": "Use the typed H3 v3 request/cache validator before model construction; admit only explicit CPU-staged/trim or CUDA/no-trim choices and retain canonical CPU defaults, clean-source, lock, ownership and teardown gates.",
+          "source_commit": "d12334398ca57246adfd1473473affd2184ff03f"
         }
       ],
-      "integrated_sha256": "a95ed4b8479e0d101b05c84d6c341bb258dff66d8d7aeb1eb9fd1ecaf4a194b5",
+      "integrated_sha256": "890367b77b66e55ba5e39768202179490e6a5558026f1e9c5b662a06b457faf7",
       "source_commit": "integration-pr26",
       "source_path": "scripts/distillschedule/launch_minimax_h3_best_node.sh",
       "source_repository": "integration-pr26",
@@ -1085,9 +1092,16 @@
           "new_integrated_sha256": "6d66ec5cc2bf7a9bd2187d11d11b9579df5dcf9e5d0e0ec0328c7081ccb7cb04",
           "previous_integrated_sha256": "601cea3e2f1eccc171463b57f8dc079eb1b8bd36ef0bb5e792ddb333f049c182",
           "reason": "Bounded profile-guided search and native two-cycle adapter closure; canonical recipes unchanged. See docs/workloads/profile_guided_search.md."
+        },
+        {
+          "base_integration_head": "0abc0b6d1435b6fe293dea59cf32345b590cd48a",
+          "new_integrated_sha256": "a7e97885c837eede19638079ac265e7528aec8882867f35e19885ad84f137a38",
+          "previous_integrated_sha256": "6d66ec5cc2bf7a9bd2187d11d11b9579df5dcf9e5d0e0ec0328c7081ccb7cb04",
+          "reason": "Route unified native candidate/calibration assembly through the existing CLI and preserve action-qualified H3 admission for both legacy and explicit cache/request identities; no new trainer or canonical profile change.",
+          "source_commit": "d12334398ca57246adfd1473473affd2184ff03f"
         }
       ],
-      "integrated_sha256": "6d66ec5cc2bf7a9bd2187d11d11b9579df5dcf9e5d0e0ec0328c7081ccb7cb04",
+      "integrated_sha256": "a7e97885c837eede19638079ac265e7528aec8882867f35e19885ad84f137a38",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/cli.py",
       "source_repository": "integration-pr26",
@@ -1114,9 +1128,16 @@
           "previous_integrated_sha256": "e4a2ce254ecc0bd6a0d549c9a95f1097e25e265a26161082ddc4debd182132d5",
           "reason": "Route opt-in Helios measured component/native plans through existing best-known dispatch without altering canonical profiles.",
           "source_commit": "5171065c6efc558fe4d7d394a2fb2976bb5c6b31"
+        },
+        {
+          "base_integration_head": "0abc0b6d1435b6fe293dea59cf32345b590cd48a",
+          "new_integrated_sha256": "00226368fb25b6ec671e17e07aeb552c5f396f83ec32942f9aab26ed944f85b9",
+          "previous_integrated_sha256": "d891c6496a70a761867c2da1b685ec4347dec2c6dbc432ba167dac5f6526b16a",
+          "reason": "Route unified native candidate/calibration assembly through the existing CLI and preserve action-qualified H3 admission for both legacy and explicit cache/request identities; no new trainer or canonical profile change.",
+          "source_commit": "d12334398ca57246adfd1473473affd2184ff03f"
         }
       ],
-      "integrated_sha256": "d891c6496a70a761867c2da1b685ec4347dec2c6dbc432ba167dac5f6526b16a",
+      "integrated_sha256": "00226368fb25b6ec671e17e07aeb552c5f396f83ec32942f9aab26ed944f85b9",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/dispatch.py",
       "source_repository": "integration-pr26",
