@@ -94,6 +94,8 @@ def main(argv=None):
             p.add_argument('--gpu-reserve-gib',type=int,default=2)
         if name=='role-run':p.add_argument('--cycles',type=int,default=1)
         if name=='role-auto':
+            p.add_argument('--cost-mode',choices=('measured_cycle','components'),default='measured_cycle',
+                           help='components predicts resident replica FIFO windows from window-one anchors')
             p.add_argument('--max-candidates',type=int,default=4)
             p.add_argument('--samples',type=int,default=1)
             p.add_argument('--max-native-runs',type=int,default=8)
@@ -148,7 +150,7 @@ def main(argv=None):
                 generator_bytes=reserve['generator'],score_bytes=reserve['score'],
                 max_candidates=args.max_candidates,samples=args.samples,max_native_runs=args.max_native_runs,
                 allow_offload=not args.disable_offload,
-                allow_generator_fsdp=args.allow_generator_fsdp)
+                allow_generator_fsdp=args.allow_generator_fsdp,cost_mode=args.cost_mode)
             # Only rank zero writes the common plan. The runtime rechecks all
             # source/hardware/semantics identities prior to ANY selected update.
             if dist.get_rank()==0:

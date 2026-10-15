@@ -378,6 +378,7 @@ class RolePoolExecutor:
                 transport_peak=max(transport_peak,execute_updates(self,local_score_data))
         dist.barrier()
         if self.device.type=='cuda':torch.cuda.synchronize(self.device)
+        compute_transport_wall_ns=time.perf_counter_ns()-started
         # All-gather small receipts only (no weights or model tensors transmitted).
         cuda_peak=(torch.cuda.max_memory_allocated(self.device)
                    if self.device.type=='cuda' else None)
@@ -391,6 +392,7 @@ class RolePoolExecutor:
             model_digest=_model_identity(module)
         local={'rank':self.rank,'role':self.role,'events':self.events,
                'components':components.result(),
+               'compute_transport_wall_ns':compute_transport_wall_ns,
                'activation_policy':layout.activation_policy,
                'offload':{'packed_tensors':sum(x['packed_tensors'] for x in offload_records),
                           'host_bytes_packed':sum(x['packed_host_bytes'] for x in offload_records),
@@ -433,5 +435,6 @@ class RolePoolExecutor:
                 'cycle':self._cycle,'initial_versions':dict(self._versions),
                 'final_versions':dict(graph.metadata['final_versions']),
                 'wall_ns':max(x['elapsed_ns'] for x in rows),
+                'compute_transport_wall_ns':max(x['compute_transport_wall_ns'] for x in rows),
                 'gpu_execution':'NATIVE_CUDA_RUN_NOT_VALIDATED' if self.device.type=='cuda' else 'NOT_RUN',
                 'quality_validation':'NOT_RUN','claimable_speedup':False},module,optimizer

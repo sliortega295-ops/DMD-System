@@ -95,7 +95,12 @@ def schedule_frontier(graph: ExecutionGraph, bindings: Mapping[str, BindingRule]
         require(b.operation == op.operation_id and not b.when, "bindings must be fully resolved (empty when)")
         require(b.ranks and len(set(b.ranks)) == len(b.ranks) and set(b.ranks) <= set(ranks), "invalid execution ranks")
         require(b.resources and len(set(b.resources)) == len(b.resources), "invalid resource reservations")
-        if op.kind not in {OperationKind.VERSION_SYNC, OperationKind.BARRIER}:
+        if op.kind == OperationKind.TENSOR_TRANSFER:
+            require(len(b.ranks)==2 and {f"dma:{r}" for r in b.ranks} <= set(b.resources),
+                    "tensor transfer must reserve both endpoint DMA resources")
+            require(bool({f"pair:{b.ranks[0]}:{b.ranks[1]}",f"pair:{b.ranks[1]}:{b.ranks[0]}"} & set(b.resources)),
+                    "tensor transfer must reserve its physical link")
+        elif op.kind not in {OperationKind.VERSION_SYNC, OperationKind.BARRIER}:
             require({f"gpu:{r}" for r in b.ranks} <= set(b.resources), "model work must reserve its GPUs")
         require(set(b.states) <= set(state_map), "unknown physical storage")
         claim = set(b.resources)

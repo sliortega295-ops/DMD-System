@@ -48,7 +48,7 @@ def code_identity(bindings:RoleFunctions):
 def source_identity():
     root=repository_root()
     files=tuple(root/'src/distillschedule/open_workload'/name for name in
-        ('role_program.py','role_transport.py','role_planning.py','role_offload.py','role_sharding.py','role_score.py'))
+        ('role_program.py','role_transport.py','role_planning.py','role_offload.py','role_sharding.py','role_score.py','role_profiling.py','role_prediction.py'))
     return fingerprint({p.name:file_sha256(p) for p in files})
 
 
@@ -116,8 +116,15 @@ def _contract(task,layout,phase):
 def calibrate(task:RoleTask,hardware:AllocatedWorld,bindings:RoleFunctions,output,*,
               device='cpu',generator_bytes=0,score_bytes=0,safety_bytes=0,
               max_candidates=4,samples=1,max_native_runs=10,allow_offload=False,
-              allow_generator_fsdp=False):
+              allow_generator_fsdp=False,cost_mode='measured_cycle'):
     """Each candidate executes actual torch autograd/P2P/optimizer, not a mock."""
+    require(cost_mode in ('measured_cycle','components'),'unknown role cost mode',path='role.calibrate')
+    if cost_mode=='components':
+        require(not allow_generator_fsdp,'FSDP needs measured_cycle cost mode in this release',path='role.calibrate')
+        from .role_prediction import calibrate as component_calibrate
+        return component_calibrate(task,hardware,bindings,output,device=device,
+            generator_bytes=generator_bytes,score_bytes=score_bytes,safety_bytes=safety_bytes,
+            max_candidates=max_candidates,samples=samples,max_native_runs=max_native_runs)
     require(dist.is_initialized() and dist.get_world_size()==hardware.world,
             'process group must be allocated before calibrating pools',path='role.calibrate')
     require(type(samples) is int and 1<=samples<=8 and type(max_native_runs) is int,
@@ -229,6 +236,11 @@ def _load(path):
 
 def search(calibration_path,*,max_states=50000,beam_width=0,timeout_seconds=60):
     manifest=_load(calibration_path)
+    from .role_prediction import SCHEMA as COMPONENT_SCHEMA
+    if manifest.get('schema_version')==COMPONENT_SCHEMA:
+        from .role_prediction import search as component_search
+        return component_search(calibration_path,max_states=max_states,
+                                beam_width=beam_width,timeout_seconds=timeout_seconds)
     require(manifest.get('schema_version')==SCHEMA and manifest['identity']['source_fingerprint']==source_identity(),
             'changed role calibration/source',path='role.plan')
     task=RoleTask.from_dict(manifest['task'])
@@ -298,7 +310,7 @@ def run_selected(task,hardware,bindings,plan_path,output,*,device='cpu',cycles=1
     calibration=_load(p['calibration'])
     require(calibration['identity']==p['identity']==_run_identity(task,hardware,bindings,device),
             'role source/hardware/data identity changed',path='role.run')
-    expected=search(p['calibration'])
+    expected=search(p['calibration'],**p.get('search_settings',{}))
     required=('candidate_id','implementation','predicted_makespan_ns','graph_sha256',
               'cost_model_sha256','order','timeline','memory')
     require(all(p['selected'].get(key)==expected['selected'].get(key) for key in required),
@@ -312,6 +324,21 @@ def run_selected(task,hardware,bindings,plan_path,output,*,device='cpu',cycles=1
     try:
         for cycle in range(cycles):
             receipt,module,optimizer=executor.run()
+            if p.get('cost_mode')=='components':
+                from .role_prediction import validate_execution,confirm_state
+                gate=validate_execution(task,layout,receipt)
+                predicted=p['selected']['predicted_makespan_ns']
+                observed=receipt['compute_transport_wall_ns']
+                gate.update(predicted_ns=predicted,observed_ns=observed,
+                            relative_error=(abs(observed-predicted)/max(1,observed)),
+                            measured_before_selection=p['prediction_provenance'][
+                                p['selected']['candidate_id']]['was_full_cycle_measured'])
+                gate['model_check']='PASS_25_PERCENT' if gate['relative_error']<=.25 else 'REVIEW_MODEL_ERROR'
+                gate['state_check']=confirm_state(p,receipt,module,optimizer,cycle)
+                receipt['component_prediction_check']=gate
+                if gate['state_check']['status']=='REVIEW_ANCHOR_STATE_MISMATCH':
+                    if dist.get_rank()==0:write_new_json(root/'review.json',receipt)
+                    raise ValueError('component plan state differs from measured anchor; REVIEW required')
             receipt.update({'selected_plan_sha256':sha,'measured_calibration':p['calibration'],
                             'numerical_reference':'REQUIRES_INDEPENDENT_BASELINE',
                             'claimable_speedup':False})
