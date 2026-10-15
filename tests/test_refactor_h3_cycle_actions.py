@@ -224,15 +224,25 @@ def test_failure_evidence_io_error_does_not_mask_native_error(tmp_path, monkeypa
     ("joint-h3v2-d2-n128-w3", "2", "correctness", False),
     ("joint-h3v1-d2-n128", "3", "correctness", False),
     ("joint-h3v1-d2-n128", "", "correctness", True),
+    ("joint-h3v3-h480-w832-f124-cuda_no_trim-d2-n128", "", "correctness", True),
+    ("joint-h3v3-h480-w832-f124-cuda_no_trim-d2-n128", "1", "correctness", False),
+    ("joint-h3v3-h480-w832-f124-cuda_no_trim-d2-n128-r3", "3", "correctness", True),
 ])
-def test_real_launcher_identity_guard_without_gpu(candidate, window, mode, passes):
+def test_real_launcher_identity_guard_without_gpu(candidate, window, mode, passes, tmp_path):
     import os
     import subprocess
+    import sys
+    import json
     from pathlib import Path
+    from distillschedule.search.h3_implementation import H3Implementation
+    runtime = H3Implementation.parse(candidate).lower_profile()['runtime']
+    config = tmp_path / 'config.json'
+    config.write_text(json.dumps(runtime['model_config']))
     text = (Path(__file__).resolve().parents[1] / "scripts/distillschedule/launch_minimax_h3_best_node.sh").read_text()
     # Execute the actual whole candidate guard, not a copied regex/model.
     text = text[text.index('if [[ -n "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID:-}"'):text.index('mkdir -p "$RUN_ROOT')]
-    result = subprocess.run(["bash", "-c", text], env={**os.environ,
+    result = subprocess.run(["bash", "-ec", text], env={**os.environ, **runtime['environment'],
+        "PYTHON": sys.executable, "CONFIG": str(config),
         "DISTILLSCHEDULE_SEARCH_CANDIDATE_ID": candidate, "H3_PLANNER_ROLLOUT_WINDOW": window,
         "MODE": mode, "H3_PLANNER_TWO_CYCLE": "1", "H3_PLANNER_CLOCK": "host_fenced",
         "H3_PLANNER_CALIBRATION": "0"})

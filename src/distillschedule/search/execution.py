@@ -38,6 +38,8 @@ def resolve_candidate(workload: str, candidate_id: str, *, root: Path | None = N
 
 def validated_profile(receipt: dict[str, Any], *, root: Path) -> dict[str, Any]:
     if "model_plan" in receipt:
+        require(receipt["model_plan"]["problem"].get("workload") == receipt["profile_id"],
+                "selected planning problem and native dispatch workload differ")
         from .model_adapters import adapter_for
         adapter_for(receipt["profile_id"]).validate_lowered_plan(receipt)
     c = get_candidate(receipt["profile_id"], receipt["search_candidate"]["id"])
@@ -85,7 +87,7 @@ def rebind_plan(receipt: dict[str, Any], *, run_id: str,
     from .registry import candidates
     from .wan_implementation import is_generated, WanImplementation
     from .livewan_implementation import PREFIX as LIVEWAN_PREFIX, LiveWanImplementation
-    from .h3_implementation import PREFIX as H3_PREFIX, H3Implementation
+    from .h3_implementation import H3Implementation
     candidate_id = receipt["search_candidate"]["id"]
     if "model_plan" in receipt:
         from .model_adapters import adapter_for
@@ -102,8 +104,13 @@ def rebind_plan(receipt: dict[str, Any], *, run_id: str,
         reference_id, peer = WanImplementation("fsdp", 512, False, window).id, WanImplementation("resident", 2048, True, window).id
     elif candidate_id.startswith(LIVEWAN_PREFIX):
         reference_id, peer = LiveWanImplementation("fsdp").id, LiveWanImplementation("pipeline").id
-    elif candidate_id.startswith(H3_PREFIX):
-        reference_id, peer = H3Implementation(2, 128).id, H3Implementation(1, 128).id
+    elif candidate_id.startswith("joint-h3"):
+        from dataclasses import replace
+        impl = H3Implementation.parse(candidate_id)
+        reference_id = replace(impl, prefetch_depth=2, lora_epilogue_block_n=128,
+            cache_policy="cpu_staged_trim" if impl.cache_policy != "legacy_cpu_staged" else impl.cache_policy).id
+        peer = (replace(impl, prefetch_depth=1, lora_epilogue_block_n=128).id
+                if impl.cache_policy == "legacy_cpu_staged" or impl.id == reference_id else impl.id)
     elif candidate_id.startswith("joint-helios1-"):
         from .helios_action_costs import anchors
         reference_id, peer = (i.id for i in anchors(receipt["profile_id"]))
@@ -149,9 +156,15 @@ class NativeTrialRunner:
         from .wan_implementation import is_generated
         require(is_generated(self.reference.id) == is_generated(self.bootstrap_peer.id),
                 "cannot mix generated precision contract and legacy search arms")
-        for family in ("joint-livewan1-", "joint-h3v1-", "joint-helios1-"):
+        for family in ("joint-livewan1-", "joint-h3", "joint-helios1-"):
             require(self.reference.id.startswith(family) == self.bootstrap_peer.id.startswith(family),
                     "cannot mix generated native family and legacy arms")
+        if self.reference.id.startswith("joint-h3"):
+            from .h3_implementation import H3Implementation
+            ref, peer = (H3Implementation.parse(c.id) for c in (self.reference, self.bootstrap_peer))
+            require(ref.request == peer.request and (ref.rollout_window is None) == (peer.rollout_window is None)
+                    and (ref.cache_policy == "legacy_cpu_staged") == (peer.cache_policy == "legacy_cpu_staged"),
+                    "H3 anchor pair must share request/shape and macro/action evidence contract")
         require(fingerprint(assets["assets"]) == identity["asset_fingerprint"], "asset identity mismatch")
         self.prepared: dict[str, dict[str, Any]] = {}
         self.trajectories: dict[str, dict[str, Any]] = {}
@@ -279,7 +292,11 @@ class NativeTrialRunner:
         self._require_admitted(candidate)
         from .wan_implementation import is_generated
         require((candidate.workload == WAN and is_generated(candidate.id)) or
-                candidate.id.startswith(("joint-livewan1-", "joint-h3v1-", "joint-helios1-")), "native calibration adapter unavailable")
+                candidate.id.startswith(("joint-livewan1-", "joint-h3", "joint-helios1-")), "native calibration adapter unavailable")
+        if candidate.id.startswith("joint-h3"):
+            from .h3_implementation import H3Implementation
+            require(H3Implementation.parse(candidate.id).rollout_window is None,
+                    "H3 action calibration requires the action-qualified collector/assembler")
         directory.mkdir(exist_ok=False)
         self._observe_model_runtime(candidate)
         prepared = self._prepare(candidate)

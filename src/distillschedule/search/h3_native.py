@@ -69,6 +69,9 @@ def summarize_native_two_cycle(receipts: Sequence[Mapping[str, Any]], *, expecte
         require(len(cycles) == 2 and [c.get("cycle") for c in cycles] == [1, 2],
                 f"H3 rank{rank} two cycles incomplete")
         for cycle, item in enumerate(cycles, 1):
+            if impl.cache_policy != "legacy_cpu_staged":
+                from .h3_implementation import validate_cache_registration
+                validate_cache_registration(item.get("fa3_replay_cache_registration"), impl)
             for key, expected in {"status": "PASS_NATIVE_RUNTIME_CONTRACTS",
                                   "updates": dict(student=1, fake=5, ema=0),
                                   "cumulative_updates": dict(student=cycle, fake=5 * cycle, ema=0),
@@ -250,6 +253,9 @@ def compare_native_two_cycle(reference: Sequence[Mapping[str, Any]], candidate: 
     require(bool(reference) and bool(candidate), "H3 pair receipts missing")
     summaries = [summarize_native_two_cycle(rows, expected_head=expected_head, candidate_id=rows[0].get("candidate_id"))
                  for rows in (reference, candidate)]
+    require(H3Implementation.parse(summaries[0]["candidate_id"]).request ==
+            H3Implementation.parse(summaries[1]["candidate_id"]).request,
+            "H3 comparison cannot mix workload requests/shapes")
     require(not any(s["calibration_only"] for s in summaries), "H3 correctness pair cannot use calibration receipts")
     action_pair = any(H3Implementation.parse(s["candidate_id"]).rollout_window is not None for s in summaries)
     ranks = []

@@ -87,8 +87,8 @@ def _fixture(tmp_path, monkeypatch, workload, impl):
     run = tmp_path / "cpu-calibration"
     run.mkdir()
     identity = dict(source_head=HEAD, asset_fingerprint="a" * 64,
-        semantic_fingerprint=fingerprint(semantic_contract(load_profile(workload))),
-        precision_fingerprint=fingerprint(precision_contract(workload)),
+        semantic_fingerprint=fingerprint(semantic_contract(impl.request.profile() if workload == H3 else load_profile(workload))),
+        precision_fingerprint=fingerprint(precision_contract(workload, h3_request=impl.request if workload == H3 else None)),
         **observed_binding(_observations(), source_head=HEAD))
     receipt = dict(profile_id=workload, mode="calibration", run_id=run.name,
         integration_head=HEAD, asset_fingerprint=identity["asset_fingerprint"],
@@ -124,7 +124,10 @@ def _fixture(tmp_path, monkeypatch, workload, impl):
     if workload == H3:
         summary = summarize_native_two_cycle(raw_rows, expected_head=HEAD, candidate_id=impl.id)
         summary["native_evidence"] = read_native_receipts(run)[1]
-        comparison = compare_native_two_cycle(_with_rng(_receipts()),
+        from dataclasses import replace
+        reference = replace(impl, prefetch_depth=2, lora_epilogue_block_n=128,
+            cache_policy="cpu_staged_trim" if impl.cache_policy != "legacy_cpu_staged" else impl.cache_policy)
+        comparison = compare_native_two_cycle(_with_rng(_receipts(reference)),
             _with_rng(_receipts(impl)), expected_head=HEAD)
     else:
         summary = dict(schema_version="distillschedule.livewan_two_cycle_timing_summary.v1",

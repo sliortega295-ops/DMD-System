@@ -37,9 +37,11 @@ def _correctness_binding(receipt: dict[str, Any]) -> None:
     for key, value in expected.items():
         _require(data.get("integration_binding", {}).get(key) == value,
                  f"correctness report lacks current integration binding: {key}")
-    if receipt.get("search_candidate", {}).get("id", "").startswith("joint-h3v2-"):
-        from distillschedule.search.h3_action_admission import validate_action_admission
-        validate_action_admission(data, receipt, repository_root())
+    if receipt.get("search_candidate", {}).get("id", "").startswith("joint-h3"):
+        from distillschedule.search.h3_implementation import H3Implementation
+        if H3Implementation.parse(receipt["search_candidate"]["id"]).rollout_window is not None:
+            from distillschedule.search.h3_action_admission import validate_action_admission
+            validate_action_admission(data, receipt, repository_root())
     if receipt.get("search_candidate", {}).get("id", "").startswith("joint-helios1-"):
         from distillschedule.search.helios_native import validate_admission
         validate_admission(data, receipt, repository_root())

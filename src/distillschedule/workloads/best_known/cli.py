@@ -9,6 +9,9 @@ from .registry import list_profiles, load_profile, resolve_profile, verify_asset
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
+    if argv and argv[0] in {"candidates", "calibrate", "assemble-calibration"}:
+        from distillschedule.search.workflow_cli import main as workflow_main
+        return workflow_main(argv)
     if argv and argv[0] in {"profile", "search"}:
         from distillschedule.search.cli import main as search_main
         return search_main(argv)

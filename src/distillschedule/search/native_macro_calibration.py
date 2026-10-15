@@ -23,7 +23,7 @@ def assemble_native(receipt, preparation, identity, runtime_identity_evidence):
     for field, key in (("source_head", "integration_head"), ("asset_fingerprint", "asset_fingerprint"),
                        ("semantic_fingerprint", "workload_semantics_hash")):
         require(identity[field] == receipt[key], "calibration source/assets/semantics changed")
-    precision = fingerprint(precision_contract(w))
+    precision = fingerprint(precision_contract(w, h3_request=impl.request if w == H3 else None))
     require(identity["precision_fingerprint"] == precision, "calibration precision changed")
     verify_measurement_runtime({"runtime_identity_evidence": runtime_identity_evidence}, identity)
     require(preparation["source_head"] == identity["source_head"] and preparation["candidate_id"] == impl.id,
@@ -135,3 +135,134 @@ def assemble_native(receipt, preparation, identity, runtime_identity_evidence):
         layout_fragment=binding(target/"layout-fragment.json"),operation_costs=binding(target/"operation-costs.json"),
         provenance=binding(target/"provenance.json"),formal_timing_eligible=False,speedup=None,
         operation_count=len(records),stage_world_max_seconds={op.operation_id:records[i].duration_ns/1e9 for i,op in enumerate(graph.operations)})
+
+
+def _read_assembly(results, *, expected_head):
+    """Reconcile joined metadata to hashed native observations, never timing hints."""
+    from distillschedule.workloads.best_known.registry import _object
+
+    def bound(ref):
+        path = Path(ref["path"])
+        require(path.is_file() and file_sha256(path) == ref["sha256"], "native calibration source hash changed")
+        return _object(path)
+
+    fragments, models, sources = [], [], []
+    for path in results:
+        path = Path(path)
+        result = _object(path)
+        require(result.get("status") == "PASS_NATIVE_MACRO_CALIBRATION"
+                and result.get("rank_count") == 16 and result.get("source_head") == expected_head
+                and result.get("formal_timing_eligible") is False, "invalid native macro calibration result")
+        fragment = bound(result["layout_fragment"])
+        require(fragment.get("schema_version") == "distillschedule.native_macro_layout_fragment.v1"
+                and fragment.get("adapter") == ADAPTER and fragment.get("memory_definition") == MEMORY
+                and fragment.get("status") == "PASS" and fragment.get("profiled") is False,
+                "invalid native macro calibration fragment")
+        cid, workload = result["implementation_id"], fragment["workload"]
+        impl = implementation_type(workload).parse(cid)
+        require(set(fragment["implementations"]) == {cid}, "calibration fragment implementation changed")
+        model = CostModel.from_dict(bound(result["operation_costs"]))
+        require(model.scope == "MEASURED" and dict(model.binding) == fragment["binding"]
+                and model.binding["source_head"] == expected_head, "native calibration binding differs")
+        model.verify_receipts()
+        provenance = bound(fragment["provenance"])
+        require(fragment["provenance"] == result["provenance"], "native provenance differs")
+        bound(provenance["correctness"])
+        comparison = bound(provenance["comparison"])
+        from .runtime_identity import verify_measurement_runtime
+        verify_measurement_runtime({"runtime_identity_evidence": provenance["runtime_identity_evidence"]},
+                                   model.binding)
+        if workload == H3:
+            from .h3_native_bridge import validate_comparison
+            validate_comparison(comparison)
+        else:
+            from .native import validate_native_comparison
+            validate_native_comparison(comparison)
+        # Resource/teardown files may be non-JSON; hash every original source.
+        observations, native_h3_rows = {}, []
+        for ref in provenance["native_sources"]:
+            source = Path(ref["path"])
+            require(source.is_file() and file_sha256(source) == ref["sha256"], "native source receipt changed")
+            if source.suffix != ".json":
+                continue
+            raw = _object(source)
+            if workload == H3 and raw.get("schema_version") == "distillschedule.h3_native_two_cycle.v1":
+                native_h3_rows.append(raw)
+            cal = raw.get("stage_calibration") if workload == H3 else raw
+            if not isinstance(cal, dict) or cal.get("schema_version") != "distillschedule.async_range_calibration.v1":
+                continue
+            rank = cal["rank"]
+            require(cal["source_head"] == expected_head and cal["implementation"] == cid,
+                    "native calibration rank source/implementation changed")
+            if workload == LIVEWAN and impl.placement == "pipeline" and rank < 8:
+                require(not cal["commit_boundaries"], "Generator rank cannot supply Score clock")
+                continue
+            require(rank not in observations, "duplicate native calibration rank")
+            observations[rank] = observed_operations(workload, cal)
+        owners = tuple(range(8, 16)) if workload == LIVEWAN and impl.placement == "pipeline" else RANKS
+        require(set(observations) == set(owners), "native calibration clock owners incomplete")
+        if workload == H3:
+            from .h3_native import summarize_native_two_cycle
+            summary = summarize_native_two_cycle(native_h3_rows, expected_head=expected_head, candidate_id=cid)
+            require(summary["calibration_only"], "native component sources are not calibration runs")
+        graph = native_graph(workload)
+        require(len(model.records) == len(graph.operations), "native macro operation inventory differs")
+        for index, op in enumerate(graph.operations):
+            key = fingerprint(operation_contract(workload, op, impl,
+                              precision_fingerprint=model.binding["precision_fingerprint"]))
+            record = model.get(key)
+            samples = [observations[r][index]["duration_ns"] for r in owners]
+            require(record is not None and record.samples_ns == (max(samples),),
+                    "native macro costs differ from actual rank observations")
+        fragments.append(fragment)
+        models.append(model)
+        sources.append(dict(path=str(path.resolve()), sha256=file_sha256(path)))
+    require(len(fragments) >= 2, "two distinct native calibration anchors required")
+    first = fragments[0]
+    require(all(f["workload"] == first["workload"] and f["binding"] == first["binding"] for f in fragments),
+            "cannot join calibration from different workloads/requests/assets/hardware/source")
+    implementations = {}
+    for fragment in fragments:
+        require(not (set(implementations) & set(fragment["implementations"])), "duplicate calibrated implementation")
+        implementations.update(fragment["implementations"])
+    limits = {str(r): min(f["memory_limits"][str(r)] for f in fragments) for r in RANKS}
+    layout = dict(schema_version="distillschedule.native_macro_layout.v1", adapter=ADAPTER,
+        workload=first["workload"], binding=first["binding"], status="PASS", profiled=False,
+        memory_definition=MEMORY, memory_limits=limits, implementations=implementations,
+        seed_implementations=list(implementations)[:2], calibration_results=sources)
+    records = tuple(record for model in models for record in model.records)
+    return layout, CostModel(first["binding"], records)
+
+
+def validate_assembled_layout(layout):
+    references = layout["calibration_results"]
+    for ref in references:
+        require(file_sha256(Path(ref["path"])) == ref["sha256"], "calibration result hash changed")
+    expected, _ = _read_assembly([Path(r["path"]) for r in references],
+                               expected_head=layout["binding"]["source_head"])
+    require(layout == expected, "assembled native layout differs from source calibrations")
+
+
+def validate_assembled_costs(layout, costs):
+    _, expected = _read_assembly([Path(r["path"]) for r in layout["calibration_results"]],
+                                expected_head=layout["binding"]["source_head"])
+    require(costs.digest == expected.digest, "selected native costs differ from assembled source observations")
+
+
+def assemble_calibrations(results, *, output, expected_head, root=None):
+    from distillschedule.workloads.best_known.registry import git_head, repository_root
+    from .native_macro_adapter import build_problem
+    root = root or repository_root()
+    require(git_head(root) == expected_head, "assembly source HEAD changed")
+    output = Path(output)
+    require(output.resolve() != root.resolve() and root.resolve() not in output.resolve().parents,
+            "native evidence must be outside the source checkout")
+    layout, costs = _read_assembly(results, expected_head=expected_head)
+    output.mkdir(parents=True, exist_ok=False)
+    path = output / "layout.json"
+    write_new_json(path, layout)
+    problem = build_problem(path, root=root)
+    costs.bind(problem.binding, problem_scope=problem.evidence_scope)
+    write_new_json(output / "problem.json", problem.to_dict())
+    write_new_json(output / "cost-model.json", costs.to_dict())
+    return problem, costs
