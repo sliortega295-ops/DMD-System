@@ -140,6 +140,11 @@ def main():
     parser.add_argument('--deterministic-kernels', action='store_true')
     parser.add_argument('--nograd-retain-main-blocks', type=int, default=0)
     parser.add_argument('--audit-rollout-allgathers', action='store_true')
+    parser.add_argument('--attention-backend', choices=('native', 'fa3', 'fa3-nograd'), default='native')
+    parser.add_argument('--fa3-assets', type=Path)
+    parser.add_argument('--fa3-deterministic-backward', action='store_true')
+    parser.add_argument('--backend-after-native-warmup', action='store_true')
+    parser.add_argument('--pre-switch-C1-reference', type=Path)
     args = parser.parse_args()
     cycle_count = controlled_cycle_count(args.mode, args.one_cycle_correctness)
     require(args.attention_cache_gpu_tail_blocks >= 0 and args.attention_cache_gpu_budget_gib > 0,
@@ -152,6 +157,13 @@ def main():
             'COLLECTIVE_DIAGNOSTICS_OUTSIDE_FORMAL_TIMING_ONLY')
     require(not args.nograd_retain_main_blocks or args.attention_cache_gpu_tail_blocks == 0,
             'DO_NOT_COMBINE_TWO_HBM_RESIDENCY_MECHANISMS')
+    from runtime.h3_diffsynth_h100_fa3 import validate_backend_probe
+    validate_backend_probe(backend=args.attention_backend, placement=args.placement,
+        asset_dir=args.fa3_assets, mode=args.mode, export=args.export_parity_artifacts,
+        one_cycle=args.one_cycle_correctness, deterministic=args.deterministic_kernels,
+        deterministic_backward=args.fa3_deterministic_backward,
+        common_native_warmup=args.backend_after_native_warmup,
+        reference=args.pre_switch_C1_reference, retained_blocks=args.nograd_retain_main_blocks)
     require(not args.export_parity_artifacts or args.mode == 'correctness', 'PARITY_EXPORT_CORRECTNESS_ONLY')
     require(not (args.export_parity_artifacts and args.warmup_parity_artifacts), 'ONE_PARITY_CAPTURE_SCOPE')
     require(not args.warmup_parity_artifacts or args.mode == 'timing', 'WARMUP_GATE_BEFORE_TIMING_ONLY')
@@ -309,6 +321,7 @@ def main():
         from runtime.h3_diffsynth_fsdp_attention_reuse import FSDPAttentionReuse
         import h3_dmd2 as native_dmd
         import diffsynth.models.minimax_h3_dit as native_module
+        backend_receipts = []
         reuse=FSDPAttentionReuse(native_dmd,native_module,adapter,trainers,slots,enabled=args.placement=='candidate',
                                 gpu_tail_blocks=args.attention_cache_gpu_tail_blocks,
                                 gpu_budget_bytes=args.attention_cache_gpu_budget_gib*(1<<30))
@@ -327,6 +340,12 @@ def main():
         rec['memory'].append({'phase':'after_setup',**memory()});write(args.receipt_dir/f'rank_{rank:02d}_setup.json',rec)
         expected={'student':18,'fake_score':4,'teacher':2,'student_grad':2,'fake_score_grad':2,'student_backward':2,'critic_backward':2}
         for cycle in range(cycle_count):
+            if cycle == 1 and args.backend_after_native_warmup:
+                from runtime.h3_diffsynth_h100_fa3 import configure_native_attention
+                backend_receipts.append(configure_native_attention(args.attention_backend,
+                    placement=args.placement, asset_dir=args.fa3_assets,
+                    deterministic_backward=args.fa3_deterministic_backward,
+                    record_calls=True))
             census.clear();before_commits=dict(commits);torch.cuda.reset_peak_memory_stats(device)
             dist.barrier();torch.cuda.synchronize(device);start=time.perf_counter()
             with torch.autocast(device_type='cuda',dtype=torch.bfloat16,cache_enabled=False):
@@ -342,6 +361,25 @@ def main():
                                   'actual_census':dict(census),'metrics':metrics,'memory_after_timer':memory(),
                                   'attention_reuse':reuse.finish_cycle(),
                                   'nograd_parameter_reuse':weight_reuse.finish_cycle()})
+            if cycle == 0 and args.backend_after_native_warmup:
+                # Diagnostic-only real C1 snapshot, outside all cycle timers.
+                # C2 still exports actual outputs for this functional probe.
+                c1 = {**evidence.receipt(), 'identities':{key:rec[key] for key in
+                      ('rank','logical_slots','samples','initial_LoRA_sha256','precision')},
+                      'predictions':list(evidence.rows),
+                      'trainable_state':evidence.export_trainable_state(adapter,optimizers,
+                                            name='pre_switch_C1_trainable_state.pt')}
+                write(evidence.directory/'pre_switch_C1_manifest.json', c1)
+                if args.pre_switch_C1_reference is not None:
+                    from runtime.h3_diffsynth_correctness_artifacts import compare_artifacts
+                    ref = json.loads((args.pre_switch_C1_reference /
+                        f'rank_{rank:02d}_parity/pre_switch_C1_manifest.json').read_text())
+                    gate = compare_artifacts(ref, c1)
+                    write(evidence.directory/'pre_switch_C1_vs_reference.json', gate)
+                    rec['pre_switch_C1_strict_parity'] = {k:v for k,v in gate.items() if k!='rows'}
+                    accepted = torch.tensor(int(gate['status']=='PASS'), device=device, dtype=torch.int32)
+                    dist.all_reduce(accepted, op=dist.ReduceOp.MIN)
+                    require(bool(accepted.item()), 'COMMON_NATIVE_C1_STATE_FAILED_NO_BACKEND_SWITCH')
             if cycle == 0 and args.warmup_parity_artifacts:
                 # Original C1 is the excluded warmup. Capture/check its real
                 # values and state only after its timer; C2 stays uninstrumented.
@@ -393,6 +431,7 @@ def main():
             rec['tiny_state_sha256']=sha(state_path)
             rec['tiny_state_scope']='remote small architecture only; after executed cycle timers; not a full-model checkpoint'
         rec.update(status='PASS_REAL_NATIVE_AR8_G1F1_LOGICAL_B16' if not args.tiny else 'PASS_TINY_NATIVE_INTEGRATION_ONLY',
+                   attention_backend_receipts=backend_receipts,
                    actual_optimizer_counts=dict(commits),
                    final_versions={'student':trainers[0].generator_step,'fake':trainers[0].critic_step,'ema':0},
                    actual_runtime_dtype_receipts=list(dtype_rows.values()),
