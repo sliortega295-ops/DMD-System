@@ -11,7 +11,8 @@ import time
 from typing import Any
 
 from .registry import (file_sha256, fingerprint, git_head, load_profile, source_layout, repository_root,
-                       verify_assets, write_new_json, _require)
+                       verify_assets, write_new_json, _require, validate_resolved_asset_binding,
+                       verify_python_path_overlays)
 
 
 def clean_environment(node: dict[str, Any]) -> dict[str, str]:
@@ -47,13 +48,14 @@ def _correctness_binding(receipt: dict[str, Any]) -> None:
         validate_admission(data, receipt, repository_root())
 
 
-def validate_local(receipt: dict[str, Any], *, root: Path) -> dict[str, Any]:
+def validate_local(receipt: dict[str, Any], *, root: Path, node_rank: int | None = None) -> dict[str, Any]:
     if "search_candidate" in receipt:
         from distillschedule.search.execution import validated_profile
         profile = validated_profile(receipt, root=root)
     else:
         profile = load_profile(receipt["profile_id"], root=root)
     _require(fingerprint(profile) == receipt["profile_sha256"], "resolved profile changed")
+    validate_resolved_asset_binding(receipt, profile)
     _require(git_head(root) == receipt["integration_head"], "integration HEAD changed")
     # Legacy workers reject tracked dirt too; include untracked Python/configs
     # so an uncommitted module cannot shadow the validated checkout.
@@ -78,6 +80,10 @@ def validate_local(receipt: dict[str, Any], *, root: Path) -> dict[str, Any]:
         _require(node["command"][1] == str(Path(node["repo_root"])/profile["runtime"]["launcher"]), "noncanonical launcher")
     layout = source_layout(root, profile, verify_upstreams=True)
     verified = verify_assets(profile, receipt["asset_config"])
+    dependencies = []
+    if any(n.get("python_path_overlays") for n in receipt["asset_config"]["nodes"]):
+        _require(type(node_rank) is int and node_rank in (0, 1), "dependency overlays require explicit local node_rank")
+        dependencies = verify_python_path_overlays(receipt["asset_config"]["nodes"][node_rank])
     _correctness_binding(receipt)
     if receipt["profile_id"] == "livewan_crossscale_pipeline_best":
         a = receipt["asset_config"]["assets"]
@@ -90,7 +96,7 @@ def validate_local(receipt: dict[str, Any], *, root: Path) -> dict[str, Any]:
         for row in source["files"].values():
             p = Path(row["path"])
             _require(p.is_file() and file_sha256(p) == row["sha256"], "LiveWan prepared source bytes changed")
-    return {"status": "PASS", "source_layout": layout, "assets": verified,
+    return {"status": "PASS", "source_layout": layout, "assets": verified, "python_path_overlays": dependencies,
             "scope": "CPU_SOURCE_AND_ASSET_ONLY", "gpu": "NOT_RUN_ON_INTEGRATION_BRANCH"}
 
 
@@ -109,7 +115,7 @@ def execute_node(payload: dict[str, Any]) -> int:
     _require(index in (0, 1), "invalid node rank")
     node = receipt["nodes"][index]
     root = Path(node["repo_root"])
-    checked = validate_local(receipt, root=root)
+    checked = validate_local(receipt, root=root, node_rank=index)
     out = Path(receipt["asset_config"]["run_root"]) / receipt["run_id"]
     out.mkdir(parents=True, exist_ok=True)
     write_new_json(out / f"effective-contract.node{index}.json", {**receipt, "local_validation": checked})

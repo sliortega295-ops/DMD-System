@@ -12,7 +12,7 @@ import subprocess
 import sys
 
 from distillschedule.workloads.best_known.registry import (
-    _object, fingerprint, git_head, load_assets, repository_root, write_new_json,
+    _object, fingerprint, git_head, load_assets, repository_root, write_new_json, asset_identity,
 )
 from .contracts import require, semantic_contract
 from .h3_implementation import H3, H3Implementation
@@ -99,7 +99,7 @@ def calibrate(args):
     require(not subprocess.check_output(["git", "-C", str(root), "status", "--porcelain"], text=True).strip(),
             "native calibration requires a clean committed checkout")
     assets = load_assets(args.assets_config, plans[0]["fully_resolved_profile"])
-    identity = dict(source_head=head, asset_fingerprint=fingerprint(assets["assets"]),
+    identity = dict(source_head=head, asset_fingerprint=fingerprint(asset_identity(assets)),
                     semantic_fingerprint=next(iter(semantics)), precision_fingerprint=next(iter(precisions)))
     runner = NativeTrialRunner(workload=args.workload, identity=identity, assets=assets, output=args.output,
         run_prefix=args.run_id, reference_id=args.candidate[0], bootstrap_peer=args.candidate[1],

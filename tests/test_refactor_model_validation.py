@@ -171,7 +171,8 @@ def test_livewan_identity_uses_actual_native_loader_environment(monkeypatch):
     node = {"repo_root": str(root), "python": sys.executable,
             "environment": {"PYTHONPATH": "/explicit/native/import/path"}}
     receipt = {"profile_id": "livewan_crossscale_pipeline_best",
-               "integration_head": head, "nodes": [node, node]}
+               "integration_head": head, "nodes": [node, node],
+               "asset_config": {"nodes": [{}, {}]}}
     monkeypatch.setenv("LD_LIBRARY_PATH", "/inherited/wrong-libraries")
     monkeypatch.setattr(execution, "validated_profile", lambda *a, **kw: {})
     original = runtime_identity.subprocess.check_output

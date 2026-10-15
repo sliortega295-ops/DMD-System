@@ -157,13 +157,32 @@ def validate_asset_config(value: dict[str, Any], profile: Mapping[str, Any]) -> 
     _require(nodes[0].get("host") != nodes[1].get("host"), "nodes must use different SSH hosts")
     for n in nodes:
         _require({"host", "repo_root", "python_env"}.issubset(n)
-                 and not set(n) - {"host", "repo_root", "python_env", "ssh_port", "address_family"},
-                 "node must specify host, repo_root, python_env; only SSH port/family are optional")
+                 and not set(n) - {"host", "repo_root", "python_env", "ssh_port", "address_family", "python_path_overlays"},
+                 "node must specify host, repo_root, python_env; optional transport and dependency overlays only")
         _require(type(n.get("ssh_port", 22)) is int and 1 <= n.get("ssh_port", 22) <= 65535, "invalid SSH port")
         _require(n.get("address_family", "auto") in {"auto", "ipv4", "ipv6"}, "invalid SSH address family")
         _require(bool(re.fullmatch(r"[A-Za-z0-9_.@:-]+", str(n["host"]))) and not n["host"].startswith("-"), "unsafe SSH host")
         for k in ["repo_root", "python_env"]:
             _require(isinstance(n[k], str) and Path(n[k]).is_absolute(), f"node {k} must be absolute")
+        overlays = n.get("python_path_overlays", [])
+        _require(isinstance(overlays, list), "python_path_overlays must be an explicit ordered list")
+        _require(not overlays or profile["id"] == "minimax_h3_grid1000_best",
+                 "dependency overlays currently supported only by the H3 native launcher")
+        paths = []
+        for overlay in overlays:
+            _require(isinstance(overlay, dict) and set(overlay) == {"path", "identity_file", "sha256"},
+                     "dependency overlay needs exactly path, identity_file, sha256")
+            path = overlay["path"]
+            _require(isinstance(path, str) and Path(path).is_absolute() and Path(path) != Path('/')
+                     and '..' not in Path(path).parts and os.pathsep not in path and '\0' not in path,
+                     "dependency overlay path must be an absolute Python path entry")
+            name = overlay["identity_file"]
+            _require(isinstance(name, str) and name not in {'', '.'} and not Path(name).is_absolute()
+                     and '..' not in Path(name).parts and '\0' not in name,
+                     "dependency overlay identity_file must be relative inside the overlay")
+            _require(bool(SHA256_RE.fullmatch(str(overlay["sha256"]))), "dependency overlay needs SHA256")
+            paths.append(str(Path(path)))
+        _require(len(paths) == len(set(paths)), "duplicate dependency overlay path")
     for k in ["run_root", "node_local_cache_root"]:
         _require(isinstance(value.get(k), str) and Path(value[k]).is_absolute()
                  and Path(value[k]) not in (Path('/'), Path('/home/lyy')),
@@ -188,6 +207,57 @@ def validate_asset_config(value: dict[str, Any], profile: Mapping[str, Any]) -> 
             identity = Path(spec.get("identity_file", profile["required_assets"][name].get("identity_file", "")))
             _require(str(identity) not in {"", "."} and not identity.is_absolute() and '..' not in identity.parts, f"directory asset {name} needs a relative identity_file")
     return value
+
+
+def asset_identity(assets: Mapping[str, Any]) -> Any:
+    """Keep legacy fingerprints; bind opt-in dependency choices into all costs.
+
+    Node order and overlay order are significant. Transport/output paths stay
+    out of the identity, as before. No overlay is inferred from the caller's
+    environment, and no historical cost can be reused after one is added.
+    """
+    overlays = [n.get("python_path_overlays", []) for n in assets.get("nodes", [])]
+    return ({"assets": assets["assets"], "python_path_overlays_by_node": overlays}
+            if any(overlays) else assets["assets"])
+
+
+def verify_python_path_overlays(node: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Verify the local node only: another node's /tmp need not be mounted."""
+    result = []
+    for overlay in node.get("python_path_overlays", []):
+        path = Path(overlay["path"])
+        identity = path / overlay["identity_file"]
+        _require(path.is_dir() and identity.is_file() and file_sha256(identity) == overlay["sha256"],
+                 f"dependency overlay fingerprint mismatch: {path}")
+        result.append({**overlay, "resolved_identity_file": str(identity.resolve()),
+                       "scope": "IDENTITY_FILE_ONLY_NOT_ALL_PACKAGE_BYTES"})
+    return result
+
+
+def _python_path(profile: Mapping[str, Any], node: Mapping[str, Any], env: Mapping[str, str]) -> str:
+    root = Path(node["repo_root"])
+    pp = [str(root / "src"), str(root)]
+    if profile["model_family"] in {"helios", "wan2.1"}:
+        pp.append(env["HELIOS_RUNTIME_ROOT"])
+    if profile["id"] == "minimax_h3_grid1000_best":
+        pp += [env["LIGHTX2V_ROOT"], str(Path(env["LIGHTX2V_ROOT"]) / "lightx2v_train")]
+        if env.get("H3_DIFFUSERS_SOURCE"):
+            pp.insert(0, str(Path(env["H3_DIFFUSERS_SOURCE"]) / "src"))
+    if profile["id"] == "livewan_crossscale_pipeline_best":
+        pp = [env["LIVEWAN_PYTHON_OVERLAY"], *pp, str(root / "third_party/livewan"), env["LIVEWAN_WAN21_SOURCE"]]
+    return os.pathsep.join([o["path"] for o in node.get("python_path_overlays", [])] + pp)
+
+
+def validate_resolved_asset_binding(receipt: Mapping[str, Any], profile: Mapping[str, Any]) -> None:
+    """Recheck serialized dependency metadata without importing any package."""
+    assets = validate_asset_config(receipt["asset_config"], profile)
+    _require(receipt["asset_fingerprint"] == fingerprint(asset_identity(assets)), "resolved asset/dependency identity changed")
+    _require(len(receipt["nodes"]) == len(assets["nodes"]), "resolved node count changed")
+    for node, spec in zip(receipt["nodes"], assets["nodes"]):
+        _require(node["repo_root"] == spec["repo_root"]
+                 and node["python"] == str(Path(spec["python_env"]) / "bin/python"), "resolved source/python binding changed")
+        _require(node["environment"]["PYTHONPATH"] == _python_path(profile, spec, node["environment"]),
+                 "resolved dependency PYTHONPATH changed")
 
 
 def verify_assets(profile: Mapping[str, Any], assets: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -259,7 +329,7 @@ def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: P
         receipt["scope"] = "SOURCE_ONLY_NOT_RUNNABLE"
         return receipt
     assets = load_assets(assets_path, profile)
-    receipt["asset_fingerprint"] = fingerprint(assets["assets"])
+    receipt["asset_fingerprint"] = fingerprint(asset_identity(assets))
     receipt["asset_config"] = assets
     receipt["scope"] = "RESOLVED_NOT_EXECUTED"
     correctness = assets.get("correctness")
@@ -326,16 +396,7 @@ def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: P
         if comparison:
             env["DISTILLSCHEDULE_WAN13B_TRAJECTORY_COMPARISON_RECEIPT"] = comparison["path"]
             env["DISTILLSCHEDULE_WAN13B_TRAJECTORY_COMPARISON_SHA256"] = comparison["sha256"]
-        pp = [str(rr/"src"), str(rr)]
-        if profile["model_family"] in {"helios", "wan2.1"}:
-            pp.append(env["HELIOS_RUNTIME_ROOT"])
-        if workload == "minimax_h3_grid1000_best":
-            pp += [env["LIGHTX2V_ROOT"], str(Path(env["LIGHTX2V_ROOT"])/"lightx2v_train")]
-            if env.get("H3_DIFFUSERS_SOURCE"):
-                pp.insert(0, str(Path(env["H3_DIFFUSERS_SOURCE"])/"src"))
-        if workload == "livewan_crossscale_pipeline_best":
-            pp = [env["LIVEWAN_PYTHON_OVERLAY"], *pp, str(rr/"third_party/livewan"), env["LIVEWAN_WAN21_SOURCE"]]
-        env["PYTHONPATH"] = os.pathsep.join(pp)
+        env["PYTHONPATH"] = _python_path(profile, n, env)
         repl = {"node_rank":str(i), "run_id":run_id, "mode":native_mode, "head":head,
                 "master_addr":assets["master_addr"], "master_port":str(assets["master_port"]),
                 "output_dir":env.get("H3_OUTPUT_DIR",output),

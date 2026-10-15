@@ -11,7 +11,7 @@ from typing import Any
 
 from distillschedule.workloads.best_known.registry import (
     fingerprint, git_head, load_profile, repository_root, resolve_configuration,
-    write_new_json, file_sha256,
+    write_new_json, file_sha256, asset_identity, validate_resolved_asset_binding,
 )
 from .contracts import Candidate, require, semantic_contract, validate_measurement
 from .registry import WAN, candidate_profile, get_candidate
@@ -50,6 +50,8 @@ def validated_profile(receipt: dict[str, Any], *, root: Path) -> dict[str, Any]:
     require(receipt.get("workload_semantics_hash") == fingerprint(semantic_contract(p)), "search semantics changed")
     require(receipt.get("execution_fingerprint") == fingerprint(c.to_dict()), "search execution identity changed")
     require(fingerprint(receipt["fully_resolved_profile"]) == fingerprint(p), "serialized profile was altered")
+    if "asset_config" in receipt:
+        validate_resolved_asset_binding(receipt, p)
     return p
 
 
@@ -165,7 +167,7 @@ class NativeTrialRunner:
             require(ref.request == peer.request and (ref.rollout_window is None) == (peer.rollout_window is None)
                     and (ref.cache_policy == "legacy_cpu_staged") == (peer.cache_policy == "legacy_cpu_staged"),
                     "H3 anchor pair must share request/shape and macro/action evidence contract")
-        require(fingerprint(assets["assets"]) == identity["asset_fingerprint"], "asset identity mismatch")
+        require(fingerprint(asset_identity(assets)) == identity["asset_fingerprint"], "asset identity mismatch")
         self.prepared: dict[str, dict[str, Any]] = {}
         self.trajectories: dict[str, dict[str, Any]] = {}
 
@@ -232,7 +234,7 @@ class NativeTrialRunner:
             value = json.loads(cache.read_text())
             require(value["source_head"] == self.identity["source_head"] and value["candidate_id"] == c.id,
                     "preparation source/candidate changed")
-            require(fingerprint(value["assets"]["assets"]) == self.identity["asset_fingerprint"],
+            require(fingerprint(asset_identity(value["assets"])) == self.identity["asset_fingerprint"],
                     "preparation asset identity changed")
             self.prepared[c.id] = value
         if c.id in self.prepared:
