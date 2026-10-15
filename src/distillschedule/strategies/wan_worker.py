@@ -62,6 +62,24 @@ def topology(environment):
     return rank, local
 
 
+def gather_metadata(distributed, value, metadata_group):
+    """Control-plane objects must not use the Tree-only gradient NCCL group."""
+    require(metadata_group is not None and distributed.get_backend(metadata_group) == 'gloo',
+            'metadata requires an explicit Gloo process group', path='wan.worker')
+    rows = [None] * 16
+    distributed.all_gather_object(rows, value, group=metadata_group)
+    return rows
+
+
+def destroy_process_groups(distributed, metadata_group):
+    """Attempt tensor-group cleanup even if control-plane teardown fails."""
+    try:
+        if metadata_group is not None:
+            distributed.destroy_process_group(metadata_group)
+    finally:
+        distributed.destroy_process_group()
+
+
 def load_assets(task, spec, *, rank):
     """Validate source assets before constructing the large model."""
     from distillschedule.runtime.wan13b_upper_bound import Wan13BBootstrap
@@ -233,7 +251,7 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                'task': task.to_dict(), 'strategy': strategy.to_dict(), 'gpu_execution': 'NOT_RUN',
                'claimable_speedup': False, 'host': socket.gethostname()}
     _json(path, receipt)
-    observer = None; initialized = False
+    observer = None; initialized = False; metadata_group = None
     try:
         with strategy_environment(strategy):
             import torch
@@ -273,9 +291,11 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                 require(old['runtime'] == runtime and old['hardware'] == hardware,
                         'runtime/hardware changed: recalibration required', path='wan.worker')
             dist.init_process_group('nccl', timeout=timedelta(minutes=15)); initialized = True
-            seen = [None] * 16
-            dist.all_gather_object(seen, {'identity': identity, 'strategy': strategy.to_dict(),
-                                        'stream_sha256': None if stream is None else stream['stream_sha256']})
+            # CPU identity/trace bookkeeping is outside cycle timers. NCCL
+            # remains unchanged for real tensor/FSDP/reducer communication.
+            metadata_group = dist.new_group(backend='gloo', timeout=timedelta(minutes=15))
+            seen = gather_metadata(dist, {'identity': identity, 'strategy': strategy.to_dict(),
+                'stream_sha256': None if stream is None else stream['stream_sha256']}, metadata_group)
             require(all(row == seen[0] for row in seen), 'rank task/strategy/asset mismatch', path='wan.worker')
             negative_tensor = negative.embedding.to(device=device, dtype=torch.bfloat16)
             from distillschedule.profiling.static_profile_diagnostics import StaticProfileDiagnostics
@@ -311,9 +331,8 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                     stream_source=str(Path(stream_path).resolve()))
                 def before_cycle(cycle, current):
                     event = bind_cohort(current, task, stream, cycle-1, tuple(document['selected']['order']))
-                    peers = [None] * 16
-                    dist.all_gather_object(peers, {'cohort': event['receipt'], 'versions': current.versions(),
-                                                  'order': event['operation_order']})
+                    peers = gather_metadata(dist, {'cohort': event['receipt'], 'versions': current.versions(),
+                        'order': event['operation_order']}, metadata_group)
                     require(all(p == peers[0] for p in peers), 'rank cohort/order/version mismatch', path='wan.worker')
                     return event
             result = execute_cycles(session, cycles=cycles, mode=mode, torch=torch, distributed=dist,
@@ -343,4 +362,4 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
     finally:
         if initialized:
             import torch.distributed as dist
-            dist.destroy_process_group()
+            destroy_process_groups(dist, metadata_group)
