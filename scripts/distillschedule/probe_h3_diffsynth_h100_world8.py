@@ -143,20 +143,25 @@ def main():
     parser.add_argument('--nograd-host-bounds', action='store_true')
     parser.add_argument('--lora-input-cast-elision', action='store_true')
     parser.add_argument('--lora-unit-inplace', action='store_true')
+    parser.add_argument('--checkpoint-boundary-cpu', action='store_true')
     parser.add_argument('--attention-backend', choices=('native', 'fa3', 'fa3-nograd', 'fa3-rollout'), default='native')
     parser.add_argument('--fa3-assets', type=Path)
     parser.add_argument('--fa3-deterministic-backward', action='store_true')
     parser.add_argument('--backend-after-native-warmup', action='store_true')
     parser.add_argument('--pre-switch-C1-reference', type=Path)
     args = parser.parse_args()
+    require(not args.checkpoint_boundary_cpu or (args.placement == 'resident' and
+            args.attention_backend == 'native'), 'BOUNDARY_CPU_IS_NAMED_NATIVE_RESIDENT_FALLBACK')
+    lora_placement_supported = (args.placement == 'candidate' or
+                                (args.placement == 'resident' and args.checkpoint_boundary_cpu))
     require(not args.nograd_host_bounds or (args.placement == 'candidate' and
             args.attention_backend == 'native' and not args.nograd_retain_main_blocks and
             not args.attention_cache_gpu_tail_blocks), 'HOST_BOUNDS_IS_SEPARATE_NATIVE_FA2_RUNTIME_ARM')
-    require(not args.lora_input_cast_elision or (args.placement == 'candidate' and
+    require(not args.lora_input_cast_elision or (lora_placement_supported and
             args.attention_backend == 'native' and not args.nograd_host_bounds and
             not args.nograd_retain_main_blocks and not args.attention_cache_gpu_tail_blocks),
             'LORA_INPUT_CAST_IS_SEPARATE_NATIVE_FA2_RUNTIME_ARM')
-    require(not args.lora_unit_inplace or (args.placement == 'candidate' and
+    require(not args.lora_unit_inplace or (lora_placement_supported and
             args.attention_backend == 'native' and not args.nograd_host_bounds and
             not args.nograd_retain_main_blocks and not args.attention_cache_gpu_tail_blocks),
             'LORA_UNIT_SUM_IS_SEPARATE_NATIVE_FA2_RUNTIME_ARM')
@@ -207,10 +212,13 @@ def main():
            'mode': 'TINY_NATIVE_INTEGRATION_ONLY' if args.tiny else args.mode,
            'cycles_requested': cycle_count, 'one_cycle_correctness_only': args.one_cycle_correctness,
            'status': 'NOT_RUN', 'memory': [], 'cycles': [], 'census': {}, 'phase': 'setup',
-           'parameter_offload': False, 'activation_offload': False, 'model_swap': False,
+           'parameter_offload': False, 'activation_offload': args.checkpoint_boundary_cpu, 'model_swap': False,
            'sigma_distribution': 'UNCHANGED_CONTINUOUS_SHIFTED_LOGIT_NORMAL', 'EMA_updates': 0,
            'strict_cross_arm_numerical_parity': 'NOT_RUN'}
     phase = 'setup'; last_block = {'index': None}; census = collections.Counter(); commits = collections.Counter()
+    boundary = None
+    if args.checkpoint_boundary_cpu:
+        rec['named_capacity_fallback'] = 'resident_native_checkpoint_boundary_cpu'
     try:
         config = DMD2Config(**json.loads(args.config.read_text()))
         require(config.num_inference_steps == 8 and config.critic_updates == 1 and config.gan_start_step == 500,
@@ -352,6 +360,14 @@ def main():
                         lambda value, weight: select_input(value, weight, lora_input_cast.counts))
             lora_sum = UnitScaleInplaceLoRA(native_dmd, adapter, enabled=True, input_selector=selector)
         import diffsynth.models.minimax_h3_dit as native_module
+        if args.checkpoint_boundary_cpu:
+            from runtime.h3_diffsynth_checkpoint_boundary_cpu import NativeCheckpointBoundaryCPU
+            def active_boundary_role():
+                roles = {layer.role for _, layer in adapter.layers}
+                require(len(roles) == 1, 'BOUNDARY_UNIFORM_ADAPTER_ROLE')
+                return next(iter(roles))
+            boundary = NativeCheckpointBoundaryCPU(native_module, dit.blocks,
+                                                   active_boundary_role, enabled=True)
         from runtime.h3_diffsynth_nograd_host_bounds import install as install_host_bounds
         host_bounds = install_host_bounds(native_module, dit, enabled=args.nograd_host_bounds)
         backend_receipts = []
@@ -417,6 +433,8 @@ def main():
                 require(counts['elided_unit_multiply'] == counts['inplace_base_add'] ==
                         counts['physical_dual_lora_forward'], 'NATIVE_LORA_UNIT_SUM_COUNTER_MISMATCH')
                 rec['cycles'][-1]['lora_unit_sum'] = receipt
+            if boundary is not None:
+                rec['cycles'][-1]['checkpoint_boundary'] = boundary.finish_cycle()
             if cycle == 0 and args.backend_after_native_warmup:
                 # Diagnostic-only real C1 snapshot, outside all cycle timers.
                 # C2 still exports actual outputs for this functional probe.
@@ -501,11 +519,15 @@ def main():
                    if not args.tiny and args.mode=='timing' else None)
         write(args.receipt_dir/f'rank_{rank:02d}.json',rec)
     except BaseException as exc:
+        if boundary is not None:
+            rec['checkpoint_boundary_at_failure'] = boundary.snapshot()
         rec.update(status='FAIL',failure_type='CUDA_OOM' if isinstance(exc,torch.OutOfMemoryError) else 'OTHER_RUNTIME_ERROR',
                    failure_phase=phase,last_block=last_block['index'],error_type=type(exc).__name__,error=str(exc),
                    traceback=traceback.format_exc(),census_at_failure=dict(census),commits_at_failure=dict(commits),memory_at_failure=memory())
         write(args.receipt_dir/f'rank_{rank:02d}_failure.json',rec);raise
     finally:
+        if boundary is not None:
+            boundary.close()
         if dist.is_initialized():dist.destroy_process_group()
 
 
