@@ -3,8 +3,9 @@
 An anchor measures native calls at window=1 once per admitted physical pool.
 The unchanged native FIFO backend lowers other windows. No component is reused
 across different models, inputs, precision, hardware, pools or parameter layout.
-The first admitted family is balanced replicated/resident pools. Isolated link
-costs do not describe NIC contention; predictions MUST be confirmed separately.
+Replicated/resident pools may be asymmetric. Each physical pool needs its own
+anchor; only FIFO windows share costs. Isolated link costs do not describe NIC
+contention; predictions MUST be confirmed separately.
 """
 from dataclasses import replace
 from pathlib import Path
@@ -27,9 +28,8 @@ def admission(task, layout, hardware):
     layout.validate(task, hardware)
     require(layout.activation_policy=='resident' and
             layout.generator_parallelism==layout.score_parallelism=='replicated' and
-            len(layout.generator)==len(layout.score) and
-            task.microbatches>=len(layout.generator) and task.microbatches<=48,
-            'component prediction admits balanced replicated resident pools with 1..48 microbatches',
+            max(len(layout.generator),len(layout.score))<=task.microbatches<=48,
+            'component prediction admits active replicated resident pools with 1..48 microbatches',
             path='role.predict')
 
 
@@ -48,6 +48,61 @@ def generator_order(indices, window):
         order.append(f'g{i}');pending.append(i)
     order.extend(f'b{i}' for i in pending)
     return order
+
+
+def select_anchor_targets(task, hardware, admitted, *, max_candidates, samples, max_native_runs):
+    """Budgeted diverse physical anchors, then windows at unchanged inputs.
+
+    This is an exploration order, never a model-name or GPU-family winner.
+    Reserve one independent confirmation and at least one held-out target per
+    anchor where possible. Do not spend every slot on window-one anchors.
+    """
+    require(type(max_candidates) is int and 1<=max_candidates<=128 and
+            type(samples) is int and 1<=samples<=8 and
+            type(max_native_runs) is int and max_native_runs>=samples+2,
+            'reference, component anchor and confirmation exceed budget',path='role.predict')
+    groups={}
+    seen=set();omitted=[]
+    for layout in admitted:
+        admission(task,layout,hardware)
+        native_order=tuple(tuple(generator_order(
+            [i for i in range(task.microbatches) if layout.owners(i)[0]==rank],layout.window))
+            for rank in layout.generator)
+        signature=(fingerprint(projection(layout)),native_order)
+        if signature in seen:
+            omitted.append({'layout':layout.to_dict(),'reason':'EQUIVALENT_NATIVE_FIFO'})
+            continue
+        seen.add(signature)
+        groups.setdefault(signature[0],[]).append(layout)
+    require(groups,'no component-predictable native layouts',path='role.predict')
+    for targets in groups.values():targets.sort(key=lambda x:x.window)
+    representatives={key:values[0] for key,values in groups.items()}
+    require(all(c.window==1 for c in representatives.values()),
+            'each physical projection needs its window-one anchor',path='role.predict')
+    def crossing(c):
+        return sum(hardware.node_ids[g]!=hardware.node_ids[s]
+                   for g,s in (c.owners(i) for i in range(task.microbatches)))/task.microbatches
+    def baseline(key):
+        c=representatives[key]
+        return (abs(len(c.generator)-len(c.score)),crossing(c),tuple(c.generator))
+    def distance(left,right):
+        a,b=representatives[left],representatives[right]
+        return ((len(a.generator)-len(b.generator))/hardware.world)**2 + (crossing(a)-crossing(b))**2
+    maximum=min(len(groups),(max_native_runs-1)//(samples+1),max(1,max_candidates//2))
+    chosen=[min(groups,key=baseline)]
+    while len(chosen)<maximum:
+        remaining=[key for key in groups if key not in chosen]
+        chosen.append(min(remaining,key=lambda key:(-min(distance(key,v) for v in chosen),baseline(key))))
+    targets=[]
+    for index in range(max(len(groups[k]) for k in chosen)):
+        for key in chosen:
+            if index<len(groups[key]) and len(targets)<max_candidates:
+                targets.append(groups[key][index])
+    selected={fingerprint(c.to_dict()) for c in targets}
+    omitted.extend({'layout':c.to_dict(),'reason':'ANCHOR_OR_TARGET_BUDGET'}
+                   for values in groups.values() for c in values
+                   if fingerprint(c.to_dict()) not in selected)
+    return targets,omitted
 
 
 def contract(task, layout, key):
@@ -80,6 +135,13 @@ def graph_for(task, layout, hardware):
         indices=[i for i in range(task.microbatches) if layout.owners(i)[0]==g]
         chain=generator_order(indices,layout.window)
         edges.update(zip(chain,chain[1:]))
+    for score in layout.score:
+        # The native Score loop receives in logical-index order, including
+        # when successive inputs come from DIFFERENT producers. A per-producer
+        # edge alone wrongly allows Score to consume whichever input is ready.
+        # Waiting for the previous return transfer is a conservative half-duplex
+        # envelope, not a claim that native isend is blocking.
+        indices=[i for i in range(task.microbatches) if layout.owners(i)[1]==score]
         for left,right in zip(indices,indices[1:]):
             edges.add((f'r{left}',f'a{right}'))
     add('commit_g','generator_commit',layout.generator,
@@ -164,10 +226,11 @@ def calibrate(task,hardware,bindings,output,*,device='cpu',generator_bytes=0,sco
             rejected.append({'layout':layout.to_dict(),'reason':str(exc)});continue
         if layout not in admitted:admitted.append(layout)
     require(admitted,'no component-predictable native layouts',path='role.predict')
-    # Cover each physical pool once before adding further windows. This bounds
-    # search while allowing one anchor to evaluate several unseen windows.
-    admitted.sort(key=lambda x:(x.window,tuple(x.generator)))
-    chosen=admitted[:max_candidates]
+    # Physical pool changes need their OWN measured components. Honor native
+    # trial budgets before constructing any model, not after enumeration.
+    chosen,omitted=select_anchor_targets(task,hardware,admitted,
+        max_candidates=max_candidates,samples=samples,max_native_runs=max_native_runs)
+    rejected.extend(omitted)
     groups={}
     for c in chosen:groups.setdefault(fingerprint(projection(c)),[]).append(c)
     require((samples+1)*len(groups)+1<=max_native_runs,
@@ -304,7 +367,7 @@ def search(calibration_path,*,max_states=50000,beam_width=0,timeout_seconds=60):
             'search_settings':{'max_states':max_states,'beam_width':beam_width,'timeout_seconds':timeout_seconds},
             'prediction_provenance':provenance,'numerical_reference':'REQUIRES_INDEPENDENT_BASELINE',
             'assumptions':['same indexed compute costs across FIFO windows',
-                           'isolated links serialize each pair; shared-NIC contention not modeled',
+                           'isolated links with conservative Score-receiver FIFO; shared-NIC contention not modeled',
                            'native FIFO precedences, not arbitrary optimized event dispatch'],
             'claimable_speedup':False,'gpu_execution':'NOT_RUN_BY_SEARCH'}
     result['plan_sha256']=fingerprint(result)

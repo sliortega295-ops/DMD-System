@@ -60,7 +60,7 @@ def test_cost_projection_excludes_window_but_binds_real_pool_and_input():
     assert contract(task,a,'forward:0').digest==contract(task,replace(a,window=2),'forward:0').digest
     assert contract(task,a,'forward:0').digest!=contract(RoleTask(4,(2,8)),a,'forward:0').digest
     assert contract(task,a,'forward:0').digest!=contract(task,PoolLayout((0,2),(1,3),1),'forward:0').digest
-    with pytest.raises(ValueError,match='balanced replicated resident'):
+    with pytest.raises(ValueError,match='active replicated resident'):
         graph_for(task,PoolLayout((0,),(1,),1,'cpu_offload_prefetch'),
                   AllocatedWorld((10**6,)*2,host_capacities=(10**6,)*2))
 
