@@ -19,9 +19,9 @@ class ExactValueParityTests(unittest.TestCase):
     def test_equal_values_do_not_use_inexact_cosine_reduction(self):
         import torch
         x = torch.tensor([.1, .2, .3, -.6], dtype=torch.float32)
-        # A real3M-element video prediction produced0.9998921156 against
+        # A real large video prediction produced0.9998921156 against
         # itself. Reproduce that reduction error without a large test payload.
-        with patch('torch.nn.functional.cosine_similarity', return_value=torch.tensor(.9998921)) as cosine:
+        with patch('torch.nn.functional.cosine_similarity', return_value=torch.tensor([.9998921])) as cosine:
             metric = tensor_parity_metrics(x, x.clone())
         self.assertEqual(metric['status'], 'PASS')
         self.assertEqual(metric['cosine'], 1.0)
@@ -33,7 +33,7 @@ class ExactValueParityTests(unittest.TestCase):
         import torch
         x = torch.tensor([.1, .2, .3, -.6], dtype=torch.float32)
         y = x.clone(); y[0] += .0001
-        with patch('torch.nn.functional.cosine_similarity', return_value=torch.tensor(.9998)) as cosine:
+        with patch('torch.nn.functional.cosine_similarity', return_value=torch.tensor([.9998])) as cosine:
             metric = tensor_parity_metrics(x, y)
         self.assertEqual(metric['status'], 'FAIL')
         cosine.assert_called_once()
