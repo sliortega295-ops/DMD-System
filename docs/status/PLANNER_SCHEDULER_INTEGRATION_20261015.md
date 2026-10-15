@@ -71,3 +71,18 @@ sequence and resource budget. Full calibration → search → native confirmatio
 requires up to five serial two-cycle world16 runs for the two-anchor example.
 A single CUDA candidate replay validates only candidate execution wiring, not
 the complete measured search cycle or a new performance claim.
+# Follow-up: deployment dependencies and CPU isolation
+
+After the initial source delivery, a remote CPU fixture inherited an unsupported
+`DISTILLSCHEDULE_RUN_KIND`. Commit `2f74af2` isolates that fixture explicitly and
+adds polluted-environment and negative runtime-gate regressions; it does not
+relax the observer's execution-mode check. The original remote outcome was
+98 passed / 1 failed on each node, not a whole-suite PASS.
+
+Commit `88fd19d` adds portable, explicit per-node dependency overlays to H3
+assets. Only path/relative identity file/SHA256 are admitted; no site-specific
+paths or implicit experiment hooks enter the library. Dependency identities
+bind calibration, costs, replay and serialized plans. Default canonical profile
+bytes/asset fingerprints remain unchanged. Local targeted validation including
+schema/tamper/local-node/old-cost regressions: **355 passed**. Dependency import
+and GPU execution on the final merged source still require separate real gates.
