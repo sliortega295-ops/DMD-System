@@ -141,6 +141,7 @@ def main():
     parser.add_argument('--nograd-retain-main-blocks', type=int, default=0)
     parser.add_argument('--audit-rollout-allgathers', action='store_true')
     parser.add_argument('--nograd-host-bounds', action='store_true')
+    parser.add_argument('--lora-input-cast-elision', action='store_true')
     parser.add_argument('--attention-backend', choices=('native', 'fa3', 'fa3-nograd', 'fa3-rollout'), default='native')
     parser.add_argument('--fa3-assets', type=Path)
     parser.add_argument('--fa3-deterministic-backward', action='store_true')
@@ -150,6 +151,10 @@ def main():
     require(not args.nograd_host_bounds or (args.placement == 'candidate' and
             args.attention_backend == 'native' and not args.nograd_retain_main_blocks and
             not args.attention_cache_gpu_tail_blocks), 'HOST_BOUNDS_IS_SEPARATE_NATIVE_FA2_RUNTIME_ARM')
+    require(not args.lora_input_cast_elision or (args.placement == 'candidate' and
+            args.attention_backend == 'native' and not args.nograd_host_bounds and
+            not args.nograd_retain_main_blocks and not args.attention_cache_gpu_tail_blocks),
+            'LORA_INPUT_CAST_IS_SEPARATE_NATIVE_FA2_RUNTIME_ARM')
     cycle_count = controlled_cycle_count(args.mode, args.one_cycle_correctness)
     require(args.attention_cache_gpu_tail_blocks >= 0 and args.attention_cache_gpu_budget_gib > 0,
             'BOUNDED_NATIVE_GPU_CACHE_POLICY')
@@ -332,6 +337,8 @@ def main():
             rec['slot_rng_initial'] = snapshot_slot_rng(logical_rng.states)
         from runtime.h3_diffsynth_fsdp_attention_reuse import FSDPAttentionReuse
         import h3_dmd2 as native_dmd
+        from runtime.h3_diffsynth_lora_input_cast import install as install_lora_input_cast
+        lora_input_cast = install_lora_input_cast(native_dmd, enabled=args.lora_input_cast_elision)
         import diffsynth.models.minimax_h3_dit as native_module
         from runtime.h3_diffsynth_nograd_host_bounds import install as install_host_bounds
         host_bounds = install_host_bounds(native_module, dit, enabled=args.nograd_host_bounds)
@@ -382,6 +389,14 @@ def main():
                 require(receipt['cycle_delta'].get('cached_bounds_hits', 0) > 0,
                         'NATIVE_NOGRAD_BOUNDS_CACHE_NOT_EXERCISED')
                 rec['cycles'][-1]['nograd_host_bounds'] = receipt
+            if lora_input_cast is not None:
+                receipt = lora_input_cast.finish_cycle()
+                delta = receipt['cycle_delta']
+                require(delta.get('cuda_grad_elided', 0) > 0 and delta.get('cuda_nograd_elided', 0) > 0,
+                        'NATIVE_CUDA_LORA_CAST_ELISION_NOT_EXERCISED_IN_BOTH_PATHS')
+                require(not any(k.startswith('cpu_') and v for k,v in delta.items()),
+                        'NATIVE_LORA_CAST_UNEXPECTED_CPU_EXECUTION')
+                rec['cycles'][-1]['lora_input_cast_elision'] = receipt
             if cycle == 0 and args.backend_after_native_warmup:
                 # Diagnostic-only real C1 snapshot, outside all cycle timers.
                 # C2 still exports actual outputs for this functional probe.
