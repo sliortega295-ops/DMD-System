@@ -144,12 +144,17 @@ def main():
     parser.add_argument('--lora-input-cast-elision', action='store_true')
     parser.add_argument('--lora-unit-inplace', action='store_true')
     parser.add_argument('--checkpoint-boundary-cpu', action='store_true')
+    parser.add_argument('--resident-adaln-cpu-blocks', type=int, choices=(0, 16), default=0)
     parser.add_argument('--attention-backend', choices=('native', 'fa3', 'fa3-nograd', 'fa3-rollout'), default='native')
     parser.add_argument('--fa3-assets', type=Path)
     parser.add_argument('--fa3-deterministic-backward', action='store_true')
     parser.add_argument('--backend-after-native-warmup', action='store_true')
     parser.add_argument('--pre-switch-C1-reference', type=Path)
     args = parser.parse_args()
+    require(not args.resident_adaln_cpu_blocks or (args.placement == 'resident' and
+            args.checkpoint_boundary_cpu and args.attention_backend == 'native' and
+            args.lora_input_cast_elision and args.lora_unit_inplace),
+            'ADALN_CPU_IS_NAMED_RESIDENT_CAPACITY_FALLBACK')
     require(not args.checkpoint_boundary_cpu or (args.placement == 'resident' and
             args.attention_backend == 'native'), 'BOUNDARY_CPU_IS_NAMED_NATIVE_RESIDENT_FALLBACK')
     lora_placement_supported = (args.placement == 'candidate' or
@@ -212,13 +217,17 @@ def main():
            'mode': 'TINY_NATIVE_INTEGRATION_ONLY' if args.tiny else args.mode,
            'cycles_requested': cycle_count, 'one_cycle_correctness_only': args.one_cycle_correctness,
            'status': 'NOT_RUN', 'memory': [], 'cycles': [], 'census': {}, 'phase': 'setup',
-           'parameter_offload': False, 'activation_offload': args.checkpoint_boundary_cpu, 'model_swap': False,
+           'parameter_offload': bool(args.resident_adaln_cpu_blocks),
+           'activation_offload': args.checkpoint_boundary_cpu, 'model_swap': False,
            'sigma_distribution': 'UNCHANGED_CONTINUOUS_SHIFTED_LOGIT_NORMAL', 'EMA_updates': 0,
            'strict_cross_arm_numerical_parity': 'NOT_RUN'}
     phase = 'setup'; last_block = {'index': None}; census = collections.Counter(); commits = collections.Counter()
     boundary = None
+    adaln_staging = None
     if args.checkpoint_boundary_cpu:
         rec['named_capacity_fallback'] = 'resident_native_checkpoint_boundary_cpu'
+    if args.resident_adaln_cpu_blocks:
+        rec['named_capacity_fallback'] = 'resident_boundary_cpu_frozen_adaln16_pinned_staging'
     try:
         config = DMD2Config(**json.loads(args.config.read_text()))
         require(config.num_inference_steps == 8 and config.critic_updates == 1 and config.gan_start_step == 500,
@@ -271,6 +280,15 @@ def main():
                 module.set_force_sum_reduction_for_comms(True);module.set_gradient_divide_factor(float(world))
         else:
             adapter.to(device);discriminator.to(device)
+            if args.resident_adaln_cpu_blocks:
+                from runtime.h3_diffsynth_resident_adaln_cpu import FrozenAdaLNCPUStaging
+                def adaln_role():
+                    roles = {layer.role for _, layer in adapter.layers}
+                    require(len(roles) == 1, 'UNIFORM_STAGED_ADALN_ROLE')
+                    return next(iter(roles))
+                count = min(args.resident_adaln_cpu_blocks, len(dit.blocks))
+                adaln_staging = FrozenAdaLNCPUStaging(dit.blocks, adaln_role, count=count)
+                rec['resident_adaln_CPU_setup'] = adaln_staging.snapshot()
         rec['construction_seconds_excluded'] = time.monotonic()-started
         adapter.select('teacher');discriminator.requires_grad_(False)
         gc.collect();torch.cuda.empty_cache()
@@ -435,6 +453,8 @@ def main():
                 rec['cycles'][-1]['lora_unit_sum'] = receipt
             if boundary is not None:
                 rec['cycles'][-1]['checkpoint_boundary'] = boundary.finish_cycle()
+            if adaln_staging is not None:
+                rec['cycles'][-1]['resident_adaln_CPU'] = adaln_staging.finish_cycle()
             if cycle == 0 and args.backend_after_native_warmup:
                 # Diagnostic-only real C1 snapshot, outside all cycle timers.
                 # C2 still exports actual outputs for this functional probe.
@@ -519,6 +539,8 @@ def main():
                    if not args.tiny and args.mode=='timing' else None)
         write(args.receipt_dir/f'rank_{rank:02d}.json',rec)
     except BaseException as exc:
+        if adaln_staging is not None:
+            rec['resident_adaln_CPU_at_failure'] = adaln_staging.snapshot()
         if boundary is not None:
             rec['checkpoint_boundary_at_failure'] = boundary.snapshot()
         rec.update(status='FAIL',failure_type='CUDA_OOM' if isinstance(exc,torch.OutOfMemoryError) else 'OTHER_RUNTIME_ERROR',
@@ -526,6 +548,8 @@ def main():
                    traceback=traceback.format_exc(),census_at_failure=dict(census),commits_at_failure=dict(commits),memory_at_failure=memory())
         write(args.receipt_dir/f'rank_{rank:02d}_failure.json',rec);raise
     finally:
+        if adaln_staging is not None:
+            adaln_staging.close()
         if boundary is not None:
             boundary.close()
         if dist.is_initialized():dist.destroy_process_group()
