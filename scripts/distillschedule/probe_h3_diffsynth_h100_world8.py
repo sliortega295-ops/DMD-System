@@ -126,7 +126,9 @@ def main():
     parser.add_argument('--export-parity-artifacts', action='store_true')
     parser.add_argument('--warmup-parity-artifacts', action='store_true')
     parser.add_argument('--warmup-parity-reference', type=Path)
+    parser.add_argument('--warmup-only-reference', type=Path)
     parser.add_argument('--one-cycle-correctness', action='store_true')
+    parser.add_argument('--deterministic-kernels', action='store_true')
     args = parser.parse_args()
     cycle_count = controlled_cycle_count(args.mode, args.one_cycle_correctness)
     require(args.attention_cache_gpu_tail_blocks >= 0 and args.attention_cache_gpu_budget_gib > 0,
@@ -139,6 +141,12 @@ def main():
     require(args.warmup_parity_reference is None or args.warmup_parity_artifacts, 'REFERENCE_REQUIRES_WARMUP_GATE')
     require(not args.one_cycle_correctness or args.export_parity_artifacts,
             'ONE_CYCLE_REQUIRES_ACTUAL_PARITY_EVIDENCE')
+    from runtime.h3_diffsynth_execution_policy import (configure_deterministic_runtime,
+                                                      validate_deterministic_timing_gate)
+    validate_deterministic_timing_gate(args.deterministic_kernels, args.mode,
+                                      args.warmup_parity_artifacts,
+                                      args.warmup_parity_reference, args.warmup_only_reference)
+    execution_policy = configure_deterministic_runtime(args.deterministic_kernels)
     rank, local, world = [int(os.environ[name]) for name in ('RANK', 'LOCAL_RANK', 'WORLD_SIZE')]
     require(world == 8 and local == rank and int(os.environ['LOCAL_WORLD_SIZE']) == 8, 'PHYSICAL_WORLD8_NODE_LOCAL')
     require(os.environ.get('H3_W6_RUN_GPU_LOCK_HELD') == '1', 'EXPLICIT_OWNED_CONTROLLER_REQUIRED')
@@ -150,6 +158,7 @@ def main():
     rec = {'rank': rank, 'local_rank': local, 'physical_world': world, 'logical_global_batch': 16,
            'logical_slots': slots, 'hostname': socket.gethostname(), 'placement': args.placement,
            'worker_sha256': sha(__file__), 'source_receipt_sha256': SOURCE_SHA,
+           'execution_policy': execution_policy,
            'comparison_boundary': 'H100_INTERNAL_CPU_FP32_LORA_COMMON_START_NOT_A100_ZER03_REPLAY',
            'mode': 'TINY_NATIVE_INTEGRATION_ONLY' if args.tiny else args.mode,
            'cycles_requested': cycle_count, 'one_cycle_correctness_only': args.one_cycle_correctness,
@@ -318,9 +327,10 @@ def main():
                 write(evidence.directory/'warmup_manifest.json',warmup)
                 evidence.active = False
                 valid = True
-                if args.warmup_parity_reference is not None:
+                warmup_reference = args.warmup_parity_reference or args.warmup_only_reference
+                if warmup_reference is not None:
                     from runtime.h3_diffsynth_correctness_artifacts import compare_artifacts
-                    reference = json.loads((args.warmup_parity_reference/f'rank_{rank:02d}_parity/warmup_manifest.json').read_text())
+                    reference = json.loads((warmup_reference/f'rank_{rank:02d}_parity/warmup_manifest.json').read_text())
                     parity = compare_artifacts(reference,warmup)
                     write(evidence.directory/'warmup_vs_reference.json',parity)
                     valid = parity['status']=='PASS'
