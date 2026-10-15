@@ -138,12 +138,20 @@ def main():
     parser.add_argument('--warmup-only-reference', type=Path)
     parser.add_argument('--one-cycle-correctness', action='store_true')
     parser.add_argument('--deterministic-kernels', action='store_true')
+    parser.add_argument('--nograd-retain-main-blocks', type=int, default=0)
+    parser.add_argument('--audit-rollout-allgathers', action='store_true')
     args = parser.parse_args()
     cycle_count = controlled_cycle_count(args.mode, args.one_cycle_correctness)
     require(args.attention_cache_gpu_tail_blocks >= 0 and args.attention_cache_gpu_budget_gib > 0,
             'BOUNDED_NATIVE_GPU_CACHE_POLICY')
     require(args.placement == 'candidate' or args.attention_cache_gpu_tail_blocks == 0,
             'GPU_CACHE_REQUIRES_NATIVE_REUSE_CANDIDATE')
+    require(args.nograd_retain_main_blocks == 0 or args.placement in ('fsdp', 'candidate'),
+            'NOGRAD_RETENTION_REQUIRES_EXISTING_FSDP_PLACEMENT')
+    require(not args.audit_rollout_allgathers or args.mode == 'correctness',
+            'COLLECTIVE_DIAGNOSTICS_OUTSIDE_FORMAL_TIMING_ONLY')
+    require(not args.nograd_retain_main_blocks or args.attention_cache_gpu_tail_blocks == 0,
+            'DO_NOT_COMBINE_TWO_HBM_RESIDENCY_MECHANISMS')
     require(not args.export_parity_artifacts or args.mode == 'correctness', 'PARITY_EXPORT_CORRECTNESS_ONLY')
     require(not (args.export_parity_artifacts and args.warmup_parity_artifacts), 'ONE_PARITY_CAPTURE_SCOPE')
     require(not args.warmup_parity_artifacts or args.mode == 'timing', 'WARMUP_GATE_BEFORE_TIMING_ONLY')
@@ -304,6 +312,11 @@ def main():
         reuse=FSDPAttentionReuse(native_dmd,native_module,adapter,trainers,slots,enabled=args.placement=='candidate',
                                 gpu_tail_blocks=args.attention_cache_gpu_tail_blocks,
                                 gpu_budget_bytes=args.attention_cache_gpu_budget_gib*(1<<30))
+        from runtime.h3_diffsynth_rollout_residency import NativeNoGradParameterReuse
+        weight_reuse = NativeNoGradParameterReuse(native_dmd, adapter,
+                        retained_main_blocks=args.nograd_retain_main_blocks,
+                        logical_slot=lambda: logical_rng.active,
+                        audit_collectives=args.audit_rollout_allgathers)
         def slot_scope(slot):
             from contextlib import contextmanager
             @contextmanager
@@ -327,7 +340,8 @@ def main():
             rec['cycles'].append({'cycle':cycle+1,'timer':{'start':start,'stop':stop,'seconds':stop-start},
                                   'performance_denominator':cycle==1 and not args.tiny and args.mode=='timing',
                                   'actual_census':dict(census),'metrics':metrics,'memory_after_timer':memory(),
-                                  'attention_reuse':reuse.finish_cycle()})
+                                  'attention_reuse':reuse.finish_cycle(),
+                                  'nograd_parameter_reuse':weight_reuse.finish_cycle()})
             if cycle == 0 and args.warmup_parity_artifacts:
                 # Original C1 is the excluded warmup. Capture/check its real
                 # values and state only after its timer; C2 stays uninstrumented.
@@ -349,7 +363,8 @@ def main():
                 valid_tensor = torch.tensor(int(valid),device=device,dtype=torch.int32)
                 dist.all_reduce(valid_tensor,op=dist.ReduceOp.MIN)
                 require(bool(valid_tensor.item()),'FULL_MODEL_WARMUP_STRICT_PARITY_FAILED_NO_TIMING')
-            if cycle+1<cycle_count:reuse.begin_next_cycle()
+            if cycle+1<cycle_count:
+                reuse.begin_next_cycle();weight_reuse.begin_next_cycle()
         require(not any(p.grad is not None for n,p in adapter.named_parameters() if '.adapters.' not in n),'FROZEN_BASE_GRADIENT')
         if args.export_parity_artifacts or args.warmup_parity_artifacts:
             rec['full_parity_artifacts'] = {**evidence.receipt(),
