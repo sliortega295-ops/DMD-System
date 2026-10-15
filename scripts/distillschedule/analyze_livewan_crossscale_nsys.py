@@ -379,11 +379,12 @@ def analyze_node(path: Path, node: int, *, physical_world_size: int = 16) -> dic
             }
             phases = []
             role_prefixes = (
-                ("livewan/pipeline/g/", "livewan/pipeline_runahead/g/")
+                ("livewan/pipeline/g/", "livewan/pipeline_runahead/g/", "livewan/pipeline_h100_b16/g/")
                 if rank < physical_world_size // 2
-                else ("livewan/pipeline/score/", "livewan/pipeline_runahead/score/")
+                else ("livewan/pipeline/score/", "livewan/pipeline_runahead/score/", "livewan/pipeline_h100_b16/score/")
             )
-            for label, start, end in nvtx_by_pid[pid]:
+            occurrence = Counter()
+            for label, start, end in sorted(nvtx_by_pid[pid], key=lambda row:(row[1],row[2],row[0])):
                 if (
                     label.startswith(role_prefixes)
                     and start >= outer_start
@@ -392,6 +393,7 @@ def analyze_node(path: Path, node: int, *, physical_world_size: int = 16) -> dic
                     window = (start, end)
                     phases.append({
                         "label": label,
+                        "occurrence": occurrence[label],
                         **_metric(window, intervals),
                         "collectives": _collective_metric(
                             window,
@@ -399,6 +401,7 @@ def analyze_node(path: Path, node: int, *, physical_world_size: int = 16) -> dic
                             intervals["compute"],
                         ),
                     })
+                    occurrence[label] += 1
             phases.sort(key=_phase_sort_key)
 
             collectives = {}
@@ -421,6 +424,16 @@ def analyze_node(path: Path, node: int, *, physical_world_size: int = 16) -> dic
                     "sum_duration_ns": row["sum_duration_ns"],
                     "union_ns": _duration(row["intervals"]),
                 }
+            cycle_rows = []
+            for label, start, end in nvtx_by_pid[pid]:
+                prefix = "livewan/continuous/cycle_"
+                if label.startswith(prefix) and label.endswith(f"/rank_{rank}"):
+                    cycle = int(label[len(prefix):].split("/",1)[0])
+                    if not outer_start <= start < end <= outer_end:
+                        raise RuntimeError("cycle range escapes its rank envelope")
+                    cycle_rows.append({"cycle":cycle,**_metric((start,end),intervals)})
+            if physical_world_size == 8 and sorted(row['cycle'] for row in cycle_rows) != [0,1]:
+                raise RuntimeError("H100 profile requires both real native cycle NVTX ranges")
             ranks.append({
                 "node": node,
                 "rank": rank,
@@ -433,6 +446,7 @@ def analyze_node(path: Path, node: int, *, physical_world_size: int = 16) -> dic
                 "collectives": collectives,
                 "copies": copies,
                 "phases": phases,
+                "cycles": sorted(cycle_rows,key=lambda row:row['cycle']),
             })
         classified = {key: sum(row['copies'][direction][key] for row in ranks
                               for direction in ('h2d','d2h','d2d','other'))
@@ -486,15 +500,15 @@ def aggregate(nodes: list[dict], *, physical_world_size: int = 16) -> dict:
         role: _summaries([row for row in ranks if row["role"] == role], keys)
         for role in ("generator", "score")
     }
-    phases: dict[str, list[dict]] = defaultdict(list)
+    phases: dict[tuple[str, int], list[dict]] = defaultdict(list)
     for rank in ranks:
         for phase in rank["phases"]:
-            phases[phase["label"]].append(phase)
+            phases[(phase["label"],phase.get("occurrence",0))].append(phase)
     phase_summary = []
-    for label, rows in sorted(phases.items()):
+    for (label, occurrence), rows in sorted(phases.items()):
         if len(rows) != physical_world_size // 2:
             raise RuntimeError(f"phase {label}: expected {physical_world_size // 2} process-qualified ranges, found {len(rows)}")
-        phase_summary.append({"label": label, "rank_count": len(rows), **{
+        phase_summary.append({"label": label, "occurrence": occurrence, "rank_count": len(rows), **{
             key: {
                 "sum_ns": sum(int(row[key]) for row in rows),
                 "median_ns": int(statistics.median(int(row[key]) for row in rows)),

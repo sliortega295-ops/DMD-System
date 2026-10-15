@@ -118,7 +118,10 @@ CREATE TABLE CUPTI_ACTIVITY_KIND_MEMCPY(start INTEGER,end INTEGER,deviceId INTEG
         label=f"livewan/full5/pipeline/rank_{rank}"
         db.execute("INSERT INTO StringIds VALUES (?,?)", (100+rank,label))
         db.execute("INSERT INTO NVTX_EVENTS VALUES (?,?,?,?,?)", (None,100+rank,0,100,pid+1))
-        phase="livewan/pipeline/g/test" if rank<4 else "livewan/pipeline/score/test"
+        for cycle,(lo,hi) in enumerate(((0,45),(45,100))):
+            db.execute("INSERT INTO NVTX_EVENTS VALUES (?,?,?,?,?)",
+                       (f"livewan/continuous/cycle_{cycle}/rank_{rank}",None,lo,hi,pid+1))
+        phase="livewan/pipeline_h100_b16/g/test" if rank<4 else "livewan/pipeline_h100_b16/score/test"
         db.execute("INSERT INTO NVTX_EVENTS VALUES (?,?,?,?,?)",(phase,None,0,100,pid+1))
         db.execute("INSERT INTO CUPTI_ACTIVITY_KIND_KERNEL VALUES (?,?,?,?,?)",(10,30,rank,pid,3 if unresolved and rank==0 else 1))
         db.execute("INSERT INTO CUPTI_ACTIVITY_KIND_KERNEL VALUES (?,?,?,?,?)",(20,40,rank,pid,2))
@@ -141,6 +144,36 @@ def test_h100_analyzer_keeps_four_four_roles_and_enum_directions(tmp_path):
     for row in result["per_rank"]:
         assert row["wall_ns"]==100 and row["compute_union_ns"]==20
         assert row["nccl_exposed_vs_compute_ns"]==10 and row["no_traced_gpu_activity_ns"]==59
+        assert [cycle['cycle'] for cycle in row['cycles']]==[0,1]
+
+
+def test_real_h100_prefix_repeated_local_step_labels_not_overwritten(tmp_path):
+    module=analyzer();db=tmp_path/'node.sqlite';make_db(db)
+    with sqlite3.connect(db) as c:
+        for rank in range(8):
+            phase='livewan/pipeline_h100_b16/'+('g/' if rank<4 else 'score/')+'test'
+            c.execute('DELETE FROM NVTX_EVENTS WHERE text=? AND globalTid=?',(phase,((1000+rank)<<24)+1))
+            for lo,hi in ((0,45),(45,100)):
+                c.execute('INSERT INTO NVTX_EVENTS VALUES (?,?,?,?,?)',(phase,None,lo,hi,((1000+rank)<<24)+1))
+    node=module.analyze_node(db,0,physical_world_size=8)
+    result=module.aggregate([node],physical_world_size=8)
+    assert len(result['phases'])==4
+    assert sorted(row['occurrence'] for row in result['phases'])==[0,0,1,1]
+    assert all(row['rank_count']==4 for row in result['phases'])
+    with sqlite3.connect(db) as c:
+        c.execute('DELETE FROM NVTX_EVENTS WHERE text=? AND start=45 AND globalTid=?',
+                  ('livewan/pipeline_h100_b16/score/test',(1007<<24)+1))
+    partial=module.analyze_node(db,0,physical_world_size=8)
+    with pytest.raises(RuntimeError,match='expected 4'):
+        module.aggregate([partial],physical_world_size=8)
+
+
+def test_missing_actual_second_cycle_is_not_full_two_cycle_capture(tmp_path):
+    module=analyzer();db=tmp_path/'node.sqlite';make_db(db)
+    with sqlite3.connect(db) as c:
+        c.execute("DELETE FROM NVTX_EVENTS WHERE text='livewan/continuous/cycle_1/rank_0'")
+    with pytest.raises(RuntimeError,match='both real native cycle'):
+        module.analyze_node(db,0,physical_world_size=8)
 
 
 @pytest.mark.parametrize("ranks,enums,error",[(range(7),True,"outer rank coverage"),(range(8),False,"direction enums")])
