@@ -21,7 +21,8 @@ import statistics
 from typing import Iterable
 
 
-COPY_KIND = {1: "h2d", 2: "d2h", 3: "d2d", 8: "d2d", 10: "d2d"}
+# Fallback only for old exports lacking the enum; never guess array/P2P copies.
+COPY_KIND = {1: "h2d", 2: "d2h", 8: "d2d"}
 COLLECTIVES = ("all_gather", "reduce_scatter", "all_reduce", "p2p", "broadcast", "other_nccl")
 
 
@@ -226,21 +227,35 @@ def _validate_schema(db: sqlite3.Connection, node: int) -> None:
             raise RuntimeError(f"node{node}: {table} missing columns {absent}")
 
 
-def analyze_node(path: Path, node: int) -> dict:
+def analyze_node(path: Path, node: int, *, physical_world_size: int = 16) -> dict:
+    if physical_world_size not in (8, 16) or node not in range(physical_world_size // 8):
+        raise ValueError("unregistered physical mesh/node")
     db = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     db.execute("PRAGMA query_only=ON")
     try:
         _validate_schema(db, node)
         strings = _strings(db)
+        copy_kind_map = dict(COPY_KIND)
+        copy_enum = {}
+        if "ENUM_CUDA_MEMCPY_OPER" in _tables(db):
+            copy_kind_map = {}
+            for kind, name, label in db.execute("SELECT id,name,label FROM ENUM_CUDA_MEMCPY_OPER"):
+                copy_enum[int(kind)] = {"name": name, "label": label}
+                copy_kind_map[int(kind)] = {"Host-to-Device": "h2d", "Device-to-Host": "d2h",
+                                        "Device-to-Device": "d2d"}.get(label, "other")
+        elif physical_world_size == 8:
+            raise RuntimeError("H100 profile requires actual memcpy direction enums")
         kernel_columns = _columns(db, "CUPTI_ACTIVITY_KIND_KERNEL")
         name_column = "demangledName" if "demangledName" in kernel_columns else "shortName"
         nvtx_by_pid: dict[int, list[tuple[str, int, int]]] = defaultdict(list)
         outer_by_rank: dict[int, tuple[int, int, int]] = {}
-        for text, start, end, global_tid in db.execute(
-            "SELECT text,start,end,globalTid FROM NVTX_EVENTS "
-            "WHERE text IS NOT NULL AND start IS NOT NULL AND end IS NOT NULL AND end>start"
+        has_text_id = "textId" in _columns(db, "NVTX_EVENTS")
+        text_id_column = "textId" if has_text_id else "NULL"
+        for text, text_id, start, end, global_tid in db.execute(
+            f"SELECT text,{text_id_column},start,end,globalTid FROM NVTX_EVENTS "
+            "WHERE start IS NOT NULL AND end IS NOT NULL AND end>start"
         ):
-            label = str(text)
+            label = str(text or strings.get(text_id, ""))
             pid = _process_id(int(global_tid))
             row = (label, int(start), int(end))
             nvtx_by_pid[pid].append(row)
@@ -310,13 +325,18 @@ def analyze_node(path: Path, node: int) -> dict:
             state["intervals"][category].append(part)
             duration = part[1] - part[0]
             state["kernel_sum_ns"] += duration
-            if not name or name.startswith("UNRESOLVED_STRING_ID_"):
+            if not name or "unresolved" in name.lower():
                 state["unresolved_ns"] += duration
             if category == "nccl":
                 kind = _collective(name)
                 state["collective_intervals"][kind].append(part)
                 state["collective_events"][kind] += 1
 
+        raw_copy_count, raw_copy_bytes, raw_copy_duration = db.execute(
+            "SELECT COUNT(*),COALESCE(SUM(bytes),0),COALESCE(SUM(end-start),0) "
+            "FROM CUPTI_ACTIVITY_KIND_MEMCPY"
+        ).fetchone()
+        scoped_copy_count = scoped_copy_bytes = scoped_copy_duration = 0
         for start, end, num_bytes, copy_kind, global_pid, device_id in db.execute(
             "SELECT start,end,bytes,copyKind,globalPid,deviceId "
             "FROM CUPTI_ACTIVITY_KIND_MEMCPY WHERE end>? AND start<?",
@@ -328,7 +348,10 @@ def analyze_node(path: Path, node: int) -> dict:
             part = _clip((int(start), int(end)), state["outer"])
             if not part:
                 continue
-            direction = COPY_KIND.get(int(copy_kind), "other")
+            scoped_copy_count += 1
+            scoped_copy_bytes += int(num_bytes or 0)
+            scoped_copy_duration += part[1] - part[0]
+            direction = copy_kind_map.get(int(copy_kind), "other")
             state["intervals"]["copy"].append(part)
             row = state["copy_rows"][direction]
             row["events"] += 1
@@ -357,7 +380,7 @@ def analyze_node(path: Path, node: int) -> dict:
             phases = []
             role_prefixes = (
                 ("livewan/pipeline/g/", "livewan/pipeline_runahead/g/")
-                if rank < 8
+                if rank < physical_world_size // 2
                 else ("livewan/pipeline/score/", "livewan/pipeline_runahead/score/")
             )
             for label, start, end in nvtx_by_pid[pid]:
@@ -402,7 +425,7 @@ def analyze_node(path: Path, node: int) -> dict:
                 "node": node,
                 "rank": rank,
                 "device": local_device,
-                "role": "generator" if rank < 8 else "score",
+                "role": "generator" if rank < physical_world_size // 2 else "score",
                 "global_pid": pid,
                 **_metric(outer, intervals),
                 "unresolved_kernel_duration_ratio": state["unresolved_ns"]
@@ -411,7 +434,22 @@ def analyze_node(path: Path, node: int) -> dict:
                 "copies": copies,
                 "phases": phases,
             })
-        return {"node": node, "sqlite": str(path), "ranks": ranks}
+        classified = {key: sum(row['copies'][direction][key] for row in ranks
+                              for direction in ('h2d','d2h','d2d','other'))
+                      for key in ('events','bytes','sum_duration_ns')}
+        assert classified == dict(events=scoped_copy_count,bytes=scoped_copy_bytes,
+                                  sum_duration_ns=scoped_copy_duration)
+        remainder = dict(events=raw_copy_count-scoped_copy_count,
+                         bytes=raw_copy_bytes-scoped_copy_bytes,
+                         sum_duration_ns=raw_copy_duration-scoped_copy_duration)
+        assert min(remainder.values()) >= 0
+        return {"node": node, "sqlite": str(path), "ranks": ranks,
+                "copy_reconciliation": dict(
+                    raw=dict(events=raw_copy_count,bytes=raw_copy_bytes,sum_duration_ns=raw_copy_duration),
+                    selected_rank_windows=classified, outside_rank_windows_or_unassigned=remainder,
+                    residual=dict(events=0,bytes=0,sum_duration_ns=0),
+                    boundary="bytes/events count each intersecting copy once; sum duration clipped to rank NVTX; remainder includes temporal clipping and nonselected activity, not source attribution"),
+                "physical_world_size": physical_world_size, "copy_kind_enum": copy_enum}
     finally:
         db.close()
 
@@ -433,8 +471,12 @@ def _summaries(rows: list[dict], keys: tuple[str, ...]) -> dict:
     return result
 
 
-def aggregate(nodes: list[dict]) -> dict:
+def aggregate(nodes: list[dict], *, physical_world_size: int = 16) -> dict:
+    if physical_world_size not in (8, 16) or len(nodes) != physical_world_size // 8:
+        raise ValueError("profile node count/physical mesh mismatch")
     ranks = [row for node in nodes for row in node["ranks"]]
+    if sorted(row["rank"] for row in ranks) != list(range(physical_world_size)):
+        raise ValueError("profile rank coverage mismatch")
     keys = (
         "wall_ns", "compute_union_ns", "nccl_union_ns", "nccl_hidden_by_compute_ns",
         "nccl_exposed_vs_compute_ns", "copy_union_ns", "copy_exposed_vs_compute_ns",
@@ -450,8 +492,8 @@ def aggregate(nodes: list[dict]) -> dict:
             phases[phase["label"]].append(phase)
     phase_summary = []
     for label, rows in sorted(phases.items()):
-        if len(rows) != 8:
-            raise RuntimeError(f"phase {label}: expected 8 process-qualified ranges, found {len(rows)}")
+        if len(rows) != physical_world_size // 2:
+            raise RuntimeError(f"phase {label}: expected {physical_world_size // 2} process-qualified ranges, found {len(rows)}")
         phase_summary.append({"label": label, "rank_count": len(rows), **{
             key: {
                 "sum_ns": sum(int(row[key]) for row in rows),
@@ -524,13 +566,20 @@ def _write_csv(path: Path, rows: list[dict]) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--node0-sqlite", required=True, type=Path)
-    parser.add_argument("--node1-sqlite", required=True, type=Path)
+    parser.add_argument("--node1-sqlite", type=Path)
+    parser.add_argument("--physical-world-size", choices=(8,16), type=int, default=16)
     parser.add_argument("--output-dir", required=True, type=Path)
     args = parser.parse_args()
-    nodes = [analyze_node(args.node0_sqlite, 0), analyze_node(args.node1_sqlite, 1)]
-    result = aggregate(nodes)
+    if (args.physical_world_size == 16) != (args.node1_sqlite is not None):
+        parser.error("world16 requires two distinct nodes; world8 requires node0 only")
+    if args.node1_sqlite is not None and args.node1_sqlite.samefile(args.node0_sqlite):
+        parser.error("node0/node1 cannot be the same SQLite")
+    nodes = [analyze_node(args.node0_sqlite, 0, physical_world_size=args.physical_world_size)]
+    if args.node1_sqlite is not None:
+        nodes.append(analyze_node(args.node1_sqlite, 1, physical_world_size=args.physical_world_size))
+    result = aggregate(nodes,physical_world_size=args.physical_world_size)
     valid = (
-        result["rank_count"] == 16
+        result["rank_count"] == args.physical_world_size
         and max(row["unresolved_kernel_duration_ratio"] for row in result["per_rank"]) < 0.01
     )
     document = {

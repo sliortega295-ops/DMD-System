@@ -4001,7 +4001,8 @@ def run_worker(
         name=os.environ.get("LIVEWAN_PIPELINE_TEACHER_PLACEMENT", "legacy-sharded"),
     )
     if pipeline_teacher_spec.enabled:
-        _require(run_kind in {"validate", "capacity", "correctness", "trajectory", "two-cycle-timing"},
+        _require(run_kind in {"validate", "capacity", "correctness", "trajectory", "two-cycle-timing"}
+                 or (run_kind == "profile" and profile_two_cycles),
                  "resident pipeline Teacher requires its two-cycle correctness/timing path")
     _validate_plan_identity(plan, mode=mode)
     continuous_contract = _continuous_pipeline_contract(plan, mode=mode)
