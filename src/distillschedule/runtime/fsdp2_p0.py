@@ -75,8 +75,11 @@ class StaticFSDP2P0Policy:
     generator_nograd_persistent_unshard: bool = False
     generator_nograd_persistent_unshard_flush_allocator_cache: bool = True
     cuda_allocator_expandable_segments: bool = False
+    # Admission context only; not serialized as an execution knob. Default
+    # A100 behavior remains unchanged. Actual H100 launchers bind this profile.
+    hardware_profile_name: dataclasses.InitVar[str | None] = None
 
-    def __post_init__(self) -> None:
+    def __post_init__(self, hardware_profile_name: str | None) -> None:
         if self.mesh_policy not in SUPPORTED_MESH_POLICIES:
             raise ValueError(f"unsupported mesh policy: {self.mesh_policy}")
         if self.rollout_batch_size not in SUPPORTED_ROLLOUT_BATCH_SIZES:
@@ -114,11 +117,19 @@ class StaticFSDP2P0Policy:
             raise ValueError(
                 "Generator no-grad static-context reuse is restricted to B1"
             )
+        retention_mesh_supported = self.mesh_policy == "world16-fsdp"
+        if self.generator_nograd_persistent_unshard and self.mesh_policy == "node-hsdp":
+            hw = hardware_profile(hardware_profile_name)
+            retention_mesh_supported = (
+                hw.name == "h100-8-b16" and hw.physical_world_size == 8
+                and hw.mesh_shape(self.mesh_policy) == (2, 4)
+            )
         if self.generator_nograd_persistent_unshard and (
-            self.rollout_batch_size != 1 or self.mesh_policy != "world16-fsdp"
+            self.rollout_batch_size != 1 or not retention_mesh_supported
         ):
             raise ValueError(
-                "Generator no-grad persistent unshard requires world16 FSDP2 B1"
+                "Generator no-grad persistent unshard requires world16 FSDP2 B1 "
+                "or explicitly validated H100 node-HSDP 2x4 B1"
             )
         if (
             not self.generator_nograd_persistent_unshard_flush_allocator_cache

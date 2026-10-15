@@ -1,0 +1,16 @@
+{
+  "schema_version": "distillschedule.helios_h100_nograd_retention.v1",
+  "id": "helios-h100-nograd-retain-v1",
+  "base_arm": "best",
+  "variant": "no-gan",
+  "capability_evidence": {
+    "run_id": "helios_hsdp_retention_api_GPU_r1",
+    "sha256": "52f9b287011e681861731055b4b37ea7d65ab4cb39eb8ad0792025a7b0c23966",
+    "torch_family": "2.10",
+    "mesh_shape": [2, 4],
+    "scope": "LIBRARY_API_ONLY_REAL_HELIOS_CAPACITY_NOT_RUN"
+  },
+  "overrides": {
+    "generator_nograd_persistent_unshard": true
+  }
+}

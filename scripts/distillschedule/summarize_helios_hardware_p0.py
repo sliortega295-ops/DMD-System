@@ -19,7 +19,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / "src"), str(ROOT)]
@@ -57,14 +57,30 @@ def _env_key(field: str) -> str:
 
 def freeze_policy(root: Path, *, variant: str, arm: str) -> dict[str, Any]:
     """Read the locked winner and render a complete, explicit worker policy."""
-    _require(arm in ("baseline", "best", "resident", "official-swap"), "unregistered hardware arm")
+    _require(arm in ("baseline", "best", "resident", "official-swap", "h100-nograd-retain"), "unregistered hardware arm")
+    experiment = None
+    if arm == "h100-nograd-retain":
+        _require(variant == "no-gan", "H100 no-grad retention probe is No-GAN only")
+        experiment = _object(root / "configs/distillschedule/experiments/helios_h100_nograd_retain_v1.json")
+        _require(experiment == {
+            "schema_version": "distillschedule.helios_h100_nograd_retention.v1",
+            "id": "helios-h100-nograd-retain-v1",
+            "base_arm": "best", "variant": "no-gan",
+            "capability_evidence": {
+                "run_id": "helios_hsdp_retention_api_GPU_r1",
+                "sha256": "52f9b287011e681861731055b4b37ea7d65ab4cb39eb8ad0792025a7b0c23966",
+                "torch_family": "2.10", "mesh_shape": [2, 4],
+                "scope": "LIBRARY_API_ONLY_REAL_HELIOS_CAPACITY_NOT_RUN",
+            },
+            "overrides": {"generator_nograd_persistent_unshard": True},
+        }, "unreviewed H100 retention experiment or additional policy changes")
     profile = load_profile("helios14b_nogan_best" if variant == "no-gan" else "helios14b_gan_best", root=root)
     contract = _jsonable(dataclasses.asdict(contract_for_variant(variant)))
     _require(profile["contract"]["variant"] == variant, "variant/profile mismatch")
     _require(profile["contract"]["initial_versions"] == contract["initial_versions"] and profile["contract"]["final_versions"] == contract["final_versions"], "frozen version contract changed")
     defaults = dataclasses.asdict(StaticFSDP2P0Policy())
     env = dict(profile["runtime"]["environment"])
-    if arm == "best":
+    if arm in ("best", "h100-nograd-retain"):
         values = dict(defaults, mesh_policy=profile["topology"]["placement"])
         for field, default in defaults.items():
             if field in ("mesh_policy", "rollout_batch_size", "pack_real_score_pair", "rollout_backend"):
@@ -81,7 +97,9 @@ def freeze_policy(root: Path, *, variant: str, arm: str) -> dict[str, Any]:
                 values[field] = raw
         values["rollout_batch_size"] = profile["topology"]["rollout_batch_size"]
         values["pack_real_score_pair"] = profile["contract"]["score_packing"]
-        p0 = StaticFSDP2P0Policy(**values)
+        if experiment is not None:
+            values.update(experiment["overrides"])
+        p0 = StaticFSDP2P0Policy(**values, hardware_profile_name=HARDWARE)
         extra = {"attention_backend": env[_env_key("attention_backend")],
                  "generator_nograd_lora_fused_epilogue": env[_env_key("generator_nograd_lora_fused_epilogue")] == "on",
                  "all_role_lora_scale1_add": env[_env_key("all_role_lora_scale1_add")] == "on"}
@@ -108,13 +126,17 @@ def freeze_policy(root: Path, *, variant: str, arm: str) -> dict[str, Any]:
                DISTILLSCHEDULE_CRITIC_ONLY_STEP="", DISTILLSCHEDULE_OPERATION_SOURCE="off")
     trace_key = "trace"
     logical_key = "logical_checkpoint"
-    return {"arm": arm, "variant": variant, "winner": profile["contract"]["winner"] if arm == "best" else "OFFICIAL_HELIOS_ROLE_SWAP_ZERO1_REFERENCE" if arm == "official-swap" else "FULL_GPU_RESIDENT_ZERO1_REFERENCE" if arm == "resident" else "P0_all_performance_options_off",
+    frozen = {"arm": arm, "variant": variant, "winner": "EXPERIMENT_NOT_PROMOTED:helios-h100-nograd-retain-v1" if experiment is not None else profile["contract"]["winner"] if arm == "best" else "OFFICIAL_HELIOS_ROLE_SWAP_ZERO1_REFERENCE" if arm == "official-swap" else "FULL_GPU_RESIDENT_ZERO1_REFERENCE" if arm == "resident" else "P0_all_performance_options_off",
             "profile_id": profile["id"], "profile_sha256": digest(profile), "policy": policy,
             "policy_fingerprint": digest(policy), "contract": contract,
             "trace_hash": profile["required_assets"][trace_key]["logical_hash"],
             "logical_hash": profile["required_assets"][logical_key]["logical_hash"],
             "mesh_shape": [] if arm in ("resident", "official-swap") else [2, 4] if policy["mesh_policy"] == "node-hsdp" else [8],
             "environment": env, "unset_environment": profile["runtime"]["unset_environment"]}
+    if experiment is not None:
+        frozen["experiment"] = experiment
+        frozen["experiment_fingerprint"] = digest(experiment)
+    return frozen
 
 
 def policy_arguments(policy: dict[str, Any]) -> list[str]:
@@ -710,8 +732,41 @@ def validate_timing_gate(path: Path, expected_sha256: str, *, expected_head: str
     return {"path": str(path.resolve()), "sha256": expected_sha256, "strict_claimable": False, "measurement_scope": "diagnostic_only_numeric_comparison_NOT_RUN"}
 
 
+def validate_h100_retention_capability(path: Path, frozen: Mapping[str, Any]) -> dict[str, Any]:
+    capability = frozen["experiment"]["capability_evidence"]
+    _require(path.is_file() and file_sha256(path) == capability["sha256"],
+             "H100 retention capability receipt identity mismatch")
+    value = _object(path)
+    _require(value.get("status") == "PASS_PRIMITIVE_API_ONLY"
+             and value.get("rank_count") == 8 and value.get("launcher_rc") == 0
+             and value.get("cgroup_oom_delta") == {"oom": 0, "oom_kill": 0},
+             "H100 retention capability GPU gate did not pass")
+    rows = value.get("per_rank", [])
+    _require(len(rows) == 8 and sorted(r.get("rank") for r in rows) == list(range(8)),
+             "H100 retention capability requires eight actual rank receipts")
+    for row in rows:
+        state = row.get("persistence", {})
+        _require(row.get("status") == "PASS_BITWISE_HSDP41_NOGRAD_AND_POST_SCOPE_GRAD_UPDATE"
+                 and row.get("mesh") == {"replicate": 2, "shard": 4}
+                 and str(row.get("torch", "")).startswith("2.10.")
+                 and row.get("retained_actual_allgather_calls") == 41
+                 and row.get("baseline_actual_allgather_calls", 0) >= 164
+                 and state.get("restored") is True
+                 and state.get("unsharded_after_exit_count") == 0
+                 and state.get("fsdp_module_count") == 41
+                 and row.get("source_math_changed") is False,
+                 "H100 retention capability topology/output/gradient/lifecycle mismatch")
+    return {"path": str(path.resolve()), "sha256": capability["sha256"],
+            "status": "PASS_LIBRARY_API_ONLY", "real_Helios_capacity": "NOT_RUN_BY_PRIMITIVE"}
+
+
 def prepare_launch(args: argparse.Namespace) -> None:
     frozen = freeze_policy(ROOT, variant=args.variant, arm=args.arm)
+    retention_capability = None
+    if args.arm == "h100-nograd-retain":
+        path = os.environ.get("DISTILLSCHEDULE_HELIOS_H100_RETENTION_API_RECEIPT")
+        _require(bool(path), "H100 retention requires exact capability GPU receipt")
+        retention_capability = validate_h100_retention_capability(Path(path), frozen)
     gate = verify_asset_gate(args.asset_gate, args.asset_gate_sha256, expected_head=args.expected_head, asset_root=args.asset_root, frozen=frozen)
     groups = gate["groups"]
     assets = {name: group["actual_root"] for name, group in groups.items()}
@@ -751,6 +806,7 @@ def prepare_launch(args: argparse.Namespace) -> None:
                 "logical_global_batch": 16, "logical_b1_microbatches_per_rank": 2, "loss_scale_per_logical_b1": .5,
                 "rank_mapping": "slot = physical_rank + microbatch * physical_world_size"},
                 "asset_gate": {"path": gate["path"], "sha256": gate["sha256"]}, "asset_fingerprint": gate["fingerprint"], "assets": assets,
+                "retention_capability": retention_capability,
                 "precast_manifest_sha256s": {"generator": groups["generator_precast"]["precast_manifest_sha256"], "critic": groups["score_precast"]["precast_manifest_sha256"]},
                 "source_provenance": {name: groups[name]["source_path"] for name in ("generator_precast", "score_precast")},
                 "environment": environment, "unset_environment": sorted(unset), "worker_argv": worker, "correctness_gate": correctness,
@@ -799,7 +855,7 @@ def main() -> int:
     parser.add_argument("--expected-head", required=True)
     parser.add_argument("--hardware-profile", choices=(HARDWARE,), default=HARDWARE)
     parser.add_argument("--variant", choices=("no-gan", "gan"))
-    parser.add_argument("--arm", choices=("baseline", "best", "resident", "official-swap"))
+    parser.add_argument("--arm", choices=("baseline", "best", "resident", "official-swap", "h100-nograd-retain"))
     parser.add_argument("--mode", choices=("validate", "correctness", "timing"))
     parser.add_argument("--run-id")
     parser.add_argument("--asset-gate", type=Path)
