@@ -41,6 +41,52 @@ CORE_CALL_KEYS = (
 )
 
 
+def _bound_correctness_hardware(binding: dict[str, Any], *, expected: dict[str, Any],
+                                expected_head: str, identity: dict[str, str],
+                                allowed_root: Path) -> tuple[Any, dict[str, Any]]:
+    """Recover only a legacy Resident omission from the original hash-bound gate.
+
+    Do not infer hardware from timing duration, GPU names or a default profile.
+    Original receipts remain immutable; the returned audit states its provenance.
+    """
+    if "hardware_profile" in binding:
+        return binding["hardware_profile"], {"source": "SERIALIZED_RECEIPT_FIELD"}
+    try:
+        schema = "distillschedule.livewan_baseline_placement_timing_gate.v1"
+        placement = binding["baseline_placement"]
+        if (binding.get("schema_version") != schema
+                or placement.get("name") != "full-resident"
+                or placement.get("teacher_parameter_offload") != "off"
+                or placement.get("hardware_profile") != expected):
+            raise ValueError("not the known Resident redundant-field omission")
+        path = Path(binding["path"]).resolve()
+        if not path.is_relative_to(allowed_root.resolve()):
+            raise ValueError("correctness gate escaped this campaign")
+        raw = path.read_bytes()
+        digest = hashlib.sha256(raw).hexdigest()
+        if digest != binding["sha256"]:
+            raise ValueError("original correctness gate SHA changed")
+        gate = json.loads(raw)
+        if (gate.get("schema_version") != schema or gate.get("status") != "PASS"
+                or gate.get("expected_head") != expected_head
+                or gate.get("hardware_profile") != expected
+                or gate.get("baseline_placement") != placement
+                or gate.get("identity") != identity
+                or gate.get("claimable_for_two_cycle_timing") is not True
+                or gate.get("cycles") != 2 or gate.get("final_versions") != FINAL_VERSIONS
+                or gate.get("numerical_policy") != "REJECT_EXTREME_ONLY_RECORD_ORDINARY_REVIEW"
+                or gate.get("correctness_summary", {}).get("sha256") != binding.get("correctness_summary_sha256")
+                or gate.get("comparison", {}).get("sha256") != binding.get("trajectory_comparison_sha256")):
+            raise ValueError("hash-bound original gate identity or admission changed")
+        return gate["hardware_profile"], {
+            "source": "HASH_VERIFIED_ORIGINAL_RESIDENT_GATE",
+            "path": str(path), "sha256": digest,
+            "original_receipt_field": "MISSING_NOT_BACKFILLED",
+        }
+    except (OSError, ValueError, TypeError, KeyError) as error:
+        return None, {"source": "FAIL_MISSING_OR_CONTRADICTORY_BOUND_HARDWARE",
+                      "error": str(error)}
+
 def _manifest(path: Path) -> dict[str, str]:
     result: dict[str, str] = {}
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -147,6 +193,7 @@ def main() -> int:
     world_size = hardware.physical_world_size
     scope_cycles = 2 * hardware.scope_multiplicity()
     errors: list[str] = []
+    correctness_hardware_audit: list[dict[str, Any]] = []
     try:
         hardware.validate_variant(mode=args.execution_mode, variant=args.pipeline_variant)
     except ValueError as error:
@@ -349,8 +396,15 @@ def main() -> int:
             or binding.get("status") != "PASS"
         ):
             errors.append(f"rank{rank}: correctness evidence binding changed")
-        if hardware.is_h100 and binding.get("hardware_profile") != hardware.to_dict():
-            errors.append(f"rank{rank}: correctness hardware binding changed")
+        if hardware.is_h100:
+            bound_hardware, hardware_audit = _bound_correctness_hardware(
+                binding, expected=hardware.to_dict(), expected_head=args.expected_head,
+                identity={key: row.get(key) for key in
+                          ("bootstrap_sha256", "source_receipt_sha256", "trace_sha256")},
+                allowed_root=args.run_root.resolve().parent)
+            if bound_hardware != hardware.to_dict():
+                errors.append(f"rank{rank}: correctness hardware binding changed")
+            correctness_hardware_audit.append({"rank": rank, **hardware_audit})
         if row.get("effective_plan_sha256") not in effective_plan_shas:
             errors.append(f"rank{rank}: effective plan SHA changed")
 
@@ -535,6 +589,7 @@ def main() -> int:
         "native_unprofiled": True,
         "profiled": False,
         "profiler_status": "NOT_RUN",
+        "correctness_hardware_binding_audit": correctness_hardware_audit,
         "formal_timing_eligible": not errors,
         "claim_boundary": "CYCLE2_ONLY_NATIVE_UNPROFILED",
         "matched_workload_contract": contract,
