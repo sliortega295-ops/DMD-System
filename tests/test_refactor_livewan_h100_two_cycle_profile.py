@@ -194,3 +194,53 @@ def test_literal_unresolved_kernel_is_not_silently_valid(tmp_path):
     module=analyzer();db=tmp_path/"node.sqlite";make_db(db,unresolved=True)
     node=module.analyze_node(db,0,physical_world_size=8)
     assert node["ranks"][0]["unresolved_kernel_duration_ratio"] >= .01
+
+
+def test_collective_phase_event_count_is_not_union_segment_count(tmp_path):
+    module=analyzer();db=tmp_path/'node.sqlite';make_db(db)
+    with sqlite3.connect(db) as c:
+        for rank in range(8):
+            pid=(1000+rank)<<24
+            # The original [20,40] plus these touching/overlapping events
+            # form only one union segment, but all three are real kernels.
+            c.executemany('INSERT INTO CUPTI_ACTIVITY_KIND_KERNEL VALUES (?,?,?,?,?)',
+                          [(30,40,rank,pid,2),(40,50,rank,pid,2)])
+    node=module.analyze_node(db,0,physical_world_size=8)
+    for row in node['ranks']:
+        assert row['collectives']['all_gather']['events']==3
+        assert row['phases'][0]['collectives']['all_gather']['events']==3
+        assert row['phases'][0]['collectives']['all_gather']['union_ns']==30
+
+
+def test_collective_event_intersection_does_not_count_touching_edges():
+    module=analyzer()
+    intervals={kind:[] for kind in module.COLLECTIVES}
+    bounds={kind:([],[]) for kind in module.COLLECTIVES}
+    intervals['all_gather']=[(10,40)]
+    bounds['all_gather']=([0,10,20,30],[10,20,30,40])
+    result=module._collective_metric((10,30),intervals,[],bounds)
+    assert result['all_gather']['events']==2
+    assert result['all_gather']['union_ns']==20
+
+
+def test_h100_human_reports_preserve_occurrence_and_actual_pool_size(tmp_path,monkeypatch):
+    import csv
+    import sys
+    module=analyzer();db=tmp_path/'node.sqlite';make_db(db)
+    with sqlite3.connect(db) as c:
+        for rank in range(8):
+            phase='livewan/pipeline_h100_b16/'+('g/' if rank<4 else 'score/')+'test'
+            tid=((1000+rank)<<24)+1
+            c.execute('DELETE FROM NVTX_EVENTS WHERE text=? AND globalTid=?',(phase,tid))
+            for lo,hi in ((0,45),(45,100)):
+                c.execute('INSERT INTO NVTX_EVENTS VALUES (?,?,?,?,?)',(phase,None,lo,hi,tid))
+    out=tmp_path/'report'
+    monkeypatch.setattr(sys,'argv',['analyzer','--node0-sqlite',str(db),
+                        '--physical-world-size','8','--output-dir',str(out)])
+    assert module.main()==0
+    with (out/'phase_attribution.csv').open() as f: rows=list(csv.DictReader(f))
+    assert len(rows)==4
+    assert sorted(row['occurrence'] for row in rows)==['0','0','1','1']
+    md=(out/'livewan_pipeline_nsys_attribution.md').read_text()
+    assert '4G+4Score' in md and '8G+8Score' not in md
+    assert '| Occurrence |' in md and 'not SM/Tensor utilization or MFU' in md

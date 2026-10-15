@@ -11,6 +11,7 @@ activity from different GPUs into a wall-clock utilization number.
 from __future__ import annotations
 
 import argparse
+import bisect
 from collections import Counter, defaultdict
 import csv
 import heapq
@@ -188,6 +189,7 @@ def _collective_metric(
     window: tuple[int, int],
     collective_intervals: dict[str, list[tuple[int, int]]],
     compute_intervals: list[tuple[int, int]],
+    event_bounds: dict[str, tuple[list[int], list[int]]],
 ) -> dict[str, dict[str, int]]:
     """Attribute exact collective classes inside one process-scoped NVTX range.
 
@@ -204,7 +206,13 @@ def _collective_metric(
         union_ns = sum(end - start for start, end in clipped)
         hidden_ns = _intersection_unioned(clipped, clipped_compute)
         result[kind] = {
-            "events": len(clipped),
+            # Touching/overlapping kernels may merge into one union segment.
+            # Count original events, not segments, with exact open-boundary
+            # intersection and no repeated scan of the full activity table.
+            "events": (
+                bisect.bisect_left(event_bounds[kind][0], window[1])
+                - bisect.bisect_right(event_bounds[kind][1], window[0])
+            ),
             "union_ns": union_ns,
             "hidden_by_compute_ns": hidden_ns,
             "exposed_vs_compute_ns": union_ns - hidden_ns,
@@ -377,6 +385,13 @@ def analyze_node(path: Path, node: int, *, physical_world_size: int = 16) -> dic
                 kind: _union(values)
                 for kind, values in state["collective_intervals"].items()
             }
+            collective_event_bounds = {
+                kind: (
+                    sorted(start for start, _ in values),
+                    sorted(end for _, end in values),
+                )
+                for kind, values in state["collective_intervals"].items()
+            }
             phases = []
             role_prefixes = (
                 ("livewan/pipeline/g/", "livewan/pipeline_runahead/g/", "livewan/pipeline_h100_b16/g/")
@@ -399,6 +414,7 @@ def analyze_node(path: Path, node: int, *, physical_world_size: int = 16) -> dic
                             window,
                             collective_intervals,
                             intervals["compute"],
+                            collective_event_bounds,
                         ),
                     })
                     occurrence[label] += 1
@@ -603,6 +619,7 @@ def main() -> int:
         "formal_speedup_eligible": False,
         "definitions": {
             "denominator": "sum of process-qualified per-rank GPU phase walls; GPU-seconds, not global wall-clock",
+            "compute_union": "non-NCCL CUDA kernel temporal coverage, not SM utilization, Tensor utilization, MFU, or proof of compute-bound execution",
             "nccl_exposed_vs_compute": "NCCL interval union minus overlap with non-NCCL CUDA kernels on the same rank/device",
             "no_traced_gpu_activity": "phase wall not covered by CUDA kernel or memcpy activity; not proof of CPU idle",
         },
@@ -630,6 +647,7 @@ def main() -> int:
     for phase in result["phases"]:
         phase_rows.append({
             "phase": phase["label"],
+            "occurrence": phase["occurrence"],
             "median_wall_s": _seconds(phase["wall_ns"]["median_ns"]),
             "median_compute_s": _seconds(phase["compute_union_ns"]["median_ns"]),
             "median_nccl_s": _seconds(phase["nccl_union_ns"]["median_ns"]),
@@ -649,18 +667,20 @@ def main() -> int:
     _write_csv(args.output_dir / "phase_attribution.csv", phase_rows)
     generator_wall = _seconds(result["by_role"]["generator"]["wall_ns"]["median_ns"])
     score_wall = _seconds(result["by_role"]["score"]["wall_ns"]["median_ns"])
+    pool_size = args.physical_world_size // 2
     lines = [
-        "# LiveWan cross-scale 8G+8Score Nsight attribution",
+        f"# LiveWan cross-scale {pool_size}G+{pool_size}Score Nsight attribution",
         "", f"Status: **{document['status']}** (diagnostic only).", "",
         f"Median Generator-rank outer wall: {generator_wall:.6f} s.",
         f"Median Score-rank outer wall: {score_wall:.6f} s.", "",
         "Profiled wall is not a formal speed denominator. Exposed NCCL is an overlap-aware upper bound, not automatically removable critical-path time.",
-        "", "| Phase | Median wall (s) | Compute (s) | NCCL (s) | NCCL exposed (s) | No traced GPU activity (s) |",
-        "|---|---:|---:|---:|---:|---:|",
+        "Non-NCCL kernel temporal coverage is not SM/Tensor utilization or MFU. Repeated NVTX labels retain their zero-based occurrence.",
+        "", "| Phase | Occurrence | Median wall (s) | Non-NCCL kernels (s) | NCCL (s) | NCCL exposed (s) | No traced GPU activity (s) |",
+        "|---|---:|---:|---:|---:|---:|---:|",
     ]
     for row in phase_rows:
         lines.append(
-            f"| `{row['phase']}` | {row['median_wall_s']:.6f} | {row['median_compute_s']:.6f} | "
+            f"| `{row['phase']}` | {row['occurrence']} | {row['median_wall_s']:.6f} | {row['median_compute_s']:.6f} | "
             f"{row['median_nccl_s']:.6f} | {row['median_nccl_exposed_s']:.6f} | {row['median_no_traced_s']:.6f} |"
         )
     (args.output_dir / "livewan_pipeline_nsys_attribution.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
