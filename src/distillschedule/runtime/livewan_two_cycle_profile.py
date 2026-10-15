@@ -49,7 +49,8 @@ def sha256(path: str | Path) -> str:
 
 
 def load_gate(*, path, expected_sha256, expected_head, mode, pipeline_variant,
-              arm_id, seed, trace, bootstrap, source_receipt) -> dict[str, Any]:
+              arm_id, seed, trace, bootstrap, source_receipt,
+              pipeline_teacher_placement=None) -> dict[str, Any]:
     from .livewan_crossscale_worker import _load_two_cycle_timing_gate
 
     path = Path(path)
@@ -71,7 +72,8 @@ def load_gate(*, path, expected_sha256, expected_head, mode, pipeline_variant,
     binding = _load_two_cycle_timing_gate(
         path=native['path'], expected_sha256=native['sha256'],
         expected_head=s['workload_head'], mode=mode, pipeline_variant=pipeline_variant,
-        arm_id=arm_id, seed=seed, trace=trace, bootstrap=bootstrap, source_receipt=source_receipt)
+        arm_id=arm_id, seed=seed, trace=trace, bootstrap=bootstrap, source_receipt=source_receipt,
+        pipeline_teacher_placement=pipeline_teacher_placement)
     return dict(profile_gate_path=str(path), profile_gate_sha256=expected_sha256,
                 profile_head=expected_head, workload_head=s['workload_head'],
                 native_gate_binding=binding, status='PASS_DIAGNOSTIC_ONLY',

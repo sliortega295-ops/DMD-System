@@ -4080,7 +4080,8 @@ def run_worker(
             expected_head=os.environ.get("LIVEWAN_EXPECTED_HEAD", ""), mode=mode,
             pipeline_variant=os.environ.get("LIVEWAN_PIPELINE_VARIANT", ""),
             arm_id=two_cycle_arm_id, seed=two_cycle_seed, trace=trace,
-            bootstrap=bootstrap, source_receipt=source_receipt)
+            bootstrap=bootstrap, source_receipt=source_receipt,
+            pipeline_teacher_placement=pipeline_teacher_spec)
     configure_python_sources(repo_root=root, source_receipt=source_receipt)
     output_dir = Path(plan["evidence"]["output_dir"]).expanduser().resolve()
     if run_kind == "validate":

@@ -63,7 +63,8 @@ def test_h100_gate_requires_full_hardware_and_c34(monkeypatch, tmp_path):
                  profile_source=dict(profile_head="b"*40, workload_head="a"*40, instrumentation_only=True),
                  native_gate=dict(path="original_gate", sha256="c"*64))
     args = dict(expected_head="b"*40, mode="pipeline", pipeline_variant=profile.H100_VARIANT,
-                arm_id="same", seed=1, trace=None, bootstrap=None, source_receipt={})
+                arm_id="same", seed=1, trace=None, bootstrap=None, source_receipt={},
+                pipeline_teacher_placement=object())
     with mock.patch("distillschedule.runtime.livewan_crossscale_worker._load_two_cycle_timing_gate",
                     return_value={"status": "NATIVE_GATE_UNCHANGED"}) as load:
         p = tmp_path / "valid.json"
@@ -72,6 +73,7 @@ def test_h100_gate_requires_full_hardware_and_c34(monkeypatch, tmp_path):
         assert result["status"] == "PASS_DIAGNOSTIC_ONLY" and not result["formal_timing_eligible"]
         assert load.call_args.kwargs["expected_head"] == "a"*40
         assert load.call_args.kwargs["pipeline_variant"] == profile.H100_VARIANT
+        assert load.call_args.kwargs["pipeline_teacher_placement"] is args['pipeline_teacher_placement']
         for key, change in (("hardware_profile", {}), ("pipeline_variant", profile.VARIANT),
                             ("formal_timing_authorized", True), ("cycles", 3)):
             bad = {**value, key: change}
