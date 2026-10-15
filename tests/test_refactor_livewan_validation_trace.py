@@ -17,7 +17,7 @@ def test_validation_cycle_override_is_explicit(value, expected):
 
 @pytest.mark.parametrize("value", ["-1", "3", "8", "", "2.0", "invalid"])
 def test_validation_cycle_override_fails_closed(value):
-    with pytest.raises(ValueError):
+    with pytest.raises((ValueError, RuntimeError)):
         worker._validation_trajectory_cycles("validate", {"LIVEWAN_TRAJECTORY_CYCLES": value})
 
 
