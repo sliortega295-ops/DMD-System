@@ -8,8 +8,25 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 from types import SimpleNamespace
+
+
+_PREDICTION_ROLE = ContextVar('h100_fa3_prediction_role', default=None)
+
+
+@contextmanager
+def prediction_role_scope(role):
+    """Explicit native prediction identity, never inferred from thread ownership."""
+    if role not in ('student', 'fake_score', 'teacher'):
+        raise ValueError('EXPLICIT_NATIVE_PREDICTION_ROLE_REQUIRED')
+    token = _PREDICTION_ROLE.set(role)
+    try:
+        yield
+    finally:
+        _PREDICTION_ROLE.reset(token)
 
 
 NATIVE_DISPATCH_SHA256 = "1126b2e19184299cbfc611dcf66e46d0fd1a7bfa1d616f2ed38bc60ba19679ae"
@@ -80,7 +97,7 @@ def _sha(path):
 
 def configure_native_attention(backend="native", *, placement, asset_dir=None, record_calls=False,
                                deterministic_backward=False):
-    if backend not in ("native", "fa3", "fa3-nograd"):
+    if backend not in ("native", "fa3", "fa3-nograd", "fa3-rollout"):
         raise ValueError("unknown W6 attention backend")
     if placement not in ("resident", "fsdp", "candidate"):
         raise ValueError("unknown W6 placement")
@@ -127,23 +144,34 @@ def configure_native_attention(backend="native", *, placement, asset_dir=None, r
         kwargs['deterministic'] = bool(deterministic_backward)
         if record_calls:
             key = f"grad{int(torch.is_grad_enabled())}:B{q.shape[0]}:S{q.shape[1]}:H{q.shape[2]}:D{q.shape[3]}"
+            if backend == 'fa3-rollout':
+                key += f":role{_PREDICTION_ROLE.get()}"
             counters[key] = counters.get(key, 0) + 1
         return original(q, k, v, **kwargs)
 
     interface = SimpleNamespace(flash_attn_func=observed_call)
     attention.flash_attn_interface = interface
     attention.ATTENTION_IMPLEMENTATION = "flash_attention_3"
-    if backend == "fa3-nograd":
+    if backend in ("fa3-nograd", "fa3-rollout"):
         import torch
         native_fa3 = attention.flash_attention_3
         native_dispatch = attention.attention_forward
         grad_calls = receipt["native_grad_segment_calls"] = {}
+        score_calls = receipt["native_score_segment_calls"] = {}
 
         def no_grad_only(q, k, v, *args, **kwargs):
-            if torch.is_grad_enabled():
+            grad_enabled = torch.is_grad_enabled()
+            role = _PREDICTION_ROLE.get() if backend == 'fa3-rollout' else None
+            if backend == 'fa3-rollout' and not grad_enabled and role is None:
+                raise ValueError('FA3_ROLLOUT_REQUIRES_EXPLICIT_NATIVE_ROLE')
+            if grad_enabled or (backend == 'fa3-rollout' and role != 'student'):
                 if record_calls:
                     key = f"B{q.shape[0]}:H{q.shape[1]}:S{q.shape[2]}:D{q.shape[3]}"
-                    grad_calls[key] = grad_calls.get(key, 0) + 1
+                    if grad_enabled:
+                        grad_calls[key] = grad_calls.get(key, 0) + 1
+                    else:
+                        key += f":role{role}"
+                        score_calls[key] = score_calls.get(key, 0) + 1
                 # Existing native dispatcher owns mask/scale/layout handling.
                 # Compatibility mode selects its original Torch SDPA path.
                 return native_dispatch(q, k, v, *args, compatibility_mode=True, **kwargs)
@@ -152,6 +180,10 @@ def configure_native_attention(backend="native", *, placement, asset_dir=None, r
         attention.flash_attention_3 = no_grad_only
         receipt["grad_and_checkpoint_replay_backend"] = "native_torch_SDPA"
         receipt["no_grad_backend"] = "isolated_FA3"
+        if backend == 'fa3-rollout':
+            receipt['no_grad_backend'] = 'isolated_FA3_for_student_only'
+            receipt['fake_teacher_score_backend'] = 'native_torch_SDPA'
+            receipt['missing_prediction_role'] = 'FAIL_CLOSED_NO_FALLBACK'
     receipt.update(selected_implementation="flash_attention_3", patch_applied=True,
                    isolated_asset_root=str(root), asset_sha256=dict(FA3_ASSET_SHA256),
                    native_segment_function_unchanged=True, native_FA3_layout_wrapper_unchanged=True,

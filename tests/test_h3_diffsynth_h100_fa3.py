@@ -156,6 +156,52 @@ class FA3BindingTests(unittest.TestCase):
         self.assertTrue(all(r[2]['scale'] == 0.125 for r in calls))
         self.assertEqual(receipt['grad_and_checkpoint_replay_backend'], 'native_torch_SDPA')
 
+    def test_rollout_only_keeps_score_grad_and_replay_native(self):
+        p = self.root / 'flash_attn_interface.py'; p.write_text('test interface')
+        interface = SimpleNamespace(__file__=str(p), flash_attn_func=lambda *a, **kw: None,
+                                    _flash_attn_backward=lambda *a, **kw: None)
+        utils = ModuleType('kernels.utils')
+        utils.get_local_kernel = lambda root, name: SimpleNamespace(flash_attn_interface=interface)
+        fake_torch = ModuleType('torch'); mode = [False]
+        fake_torch.is_grad_enabled = lambda: mode[0]
+        calls = []
+        self.dispatcher.attention_forward = lambda *a, **kw: calls.append(('native', kw)) or 'native'
+        self.dispatcher.flash_attention_3 = lambda *a, **kw: calls.append(('fa3', kw)) or 'fa3'
+        with patch.dict('sys.modules', {'torch': fake_torch, 'kernels': ModuleType('kernels'), 'kernels.utils': utils}), \
+             patch.object(binding, 'FA3_ASSET_SHA256', {p.name: hashlib.sha256(p.read_bytes()).hexdigest()}):
+            receipt = self.configure('fa3-rollout', asset_dir=self.root, record_calls=True)
+            q = SimpleNamespace(shape=(1, 2, 31, 96))
+            call = self.dispatcher.flash_attention_3
+            with self.assertRaisesRegex(ValueError, 'EXPLICIT_NATIVE_ROLE'):
+                call(q, q, q)
+            for role in ('student', 'fake_score', 'teacher'):
+                with binding.prediction_role_scope(role):
+                    self.assertEqual(call(q, q, q), 'fa3' if role == 'student' else 'native')
+            mode[0] = True
+            for role in ('student', 'fake_score'):
+                with binding.prediction_role_scope(role):
+                    self.assertEqual(call(q, q, q), 'native')
+            # Non-reentrant replay may occur after the prediction scope closed.
+            self.assertEqual(call(q, q, q), 'native')
+        self.assertEqual([r[0] for r in calls], ['fa3'] + ['native'] * 5)
+        self.assertTrue(all(r[1]['compatibility_mode'] for r in calls[1:]))
+        self.assertEqual(sum(receipt['native_grad_segment_calls'].values()), 3)
+        self.assertEqual(sum(receipt['native_score_segment_calls'].values()), 2)
+        self.assertEqual(receipt['fake_teacher_score_backend'], 'native_torch_SDPA')
+        self.assertIsNone(binding._PREDICTION_ROLE.get())
+
+    def test_prediction_role_restored_on_exception(self):
+        self.assertIsNone(binding._PREDICTION_ROLE.get())
+        with binding.prediction_role_scope('student'):
+            with self.assertRaisesRegex(RuntimeError, 'intentional'):
+                with binding.prediction_role_scope('teacher'):
+                    raise RuntimeError('intentional')
+            self.assertEqual(binding._PREDICTION_ROLE.get(), 'student')
+        self.assertIsNone(binding._PREDICTION_ROLE.get())
+        with self.assertRaisesRegex(ValueError, 'EXPLICIT_NATIVE_PREDICTION_ROLE'):
+            with binding.prediction_role_scope('unknown'):
+                pass
+
 
 class BackendProbeAdmissionTests(unittest.TestCase):
     def candidate(self, **changes):

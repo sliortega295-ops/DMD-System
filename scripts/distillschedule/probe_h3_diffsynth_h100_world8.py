@@ -140,7 +140,7 @@ def main():
     parser.add_argument('--deterministic-kernels', action='store_true')
     parser.add_argument('--nograd-retain-main-blocks', type=int, default=0)
     parser.add_argument('--audit-rollout-allgathers', action='store_true')
-    parser.add_argument('--attention-backend', choices=('native', 'fa3', 'fa3-nograd'), default='native')
+    parser.add_argument('--attention-backend', choices=('native', 'fa3', 'fa3-nograd', 'fa3-rollout'), default='native')
     parser.add_argument('--fa3-assets', type=Path)
     parser.add_argument('--fa3-deterministic-backward', action='store_true')
     parser.add_argument('--backend-after-native-warmup', action='store_true')
@@ -294,7 +294,12 @@ def main():
             trace = evidence.before_prediction((a, kw), identity={
                 'cycle':cycle+1, 'logical_slot':logical_rng.active, 'role':role,
                 'role_call_in_cycle':census[role], 'grad_enabled':torch.is_grad_enabled()})
-            result=native_predict(*a,**kw)
+            if args.attention_backend == 'fa3-rollout' and cycle == 1:
+                from runtime.h3_diffsynth_h100_fa3 import prediction_role_scope
+                with prediction_role_scope(role):
+                    result=native_predict(*a,**kw)
+            else:
+                result=native_predict(*a,**kw)
             evidence.after_prediction(trace, result)
             if args.mode=='correctness':rec['memory'].append({'phase':'after_'+phase,**memory()})
             return result
