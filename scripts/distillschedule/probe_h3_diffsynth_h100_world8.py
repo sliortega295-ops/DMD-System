@@ -116,11 +116,18 @@ def main():
     parser.add_argument('--tiny', action='store_true')
     parser.add_argument('--attention-cache-gpu-tail-blocks', type=int, default=0)
     parser.add_argument('--attention-cache-gpu-budget-gib', type=int, default=24)
+    parser.add_argument('--export-parity-artifacts', action='store_true')
+    parser.add_argument('--warmup-parity-artifacts', action='store_true')
+    parser.add_argument('--warmup-parity-reference', type=Path)
     args = parser.parse_args()
     require(args.attention_cache_gpu_tail_blocks >= 0 and args.attention_cache_gpu_budget_gib > 0,
             'BOUNDED_NATIVE_GPU_CACHE_POLICY')
     require(args.placement == 'candidate' or args.attention_cache_gpu_tail_blocks == 0,
             'GPU_CACHE_REQUIRES_NATIVE_REUSE_CANDIDATE')
+    require(not args.export_parity_artifacts or args.mode == 'correctness', 'PARITY_EXPORT_CORRECTNESS_ONLY')
+    require(not (args.export_parity_artifacts and args.warmup_parity_artifacts), 'ONE_PARITY_CAPTURE_SCOPE')
+    require(not args.warmup_parity_artifacts or args.mode == 'timing', 'WARMUP_GATE_BEFORE_TIMING_ONLY')
+    require(args.warmup_parity_reference is None or args.warmup_parity_artifacts, 'REFERENCE_REQUIRES_WARMUP_GATE')
     rank, local, world = [int(os.environ[name]) for name in ('RANK', 'LOCAL_RANK', 'WORLD_SIZE')]
     require(world == 8 and local == rank and int(os.environ['LOCAL_WORLD_SIZE']) == 8, 'PHYSICAL_WORLD8_NODE_LOCAL')
     require(os.environ.get('H3_W6_RUN_GPU_LOCK_HELD') == '1', 'EXPLICIT_OWNED_CONTROLLER_REQUIRED')
@@ -224,12 +231,20 @@ def main():
                     'PREVIOUS_AV_CHUNK_REQUIRED')
             batches.append((real,positive,negative))
         native_predict=adapter.predict
+        from runtime.h3_diffsynth_correctness_artifacts import CorrectnessArtifacts
+        evidence = CorrectnessArtifacts(args.receipt_dir/f'rank_{rank:02d}_parity',
+                                        enabled=args.export_parity_artifacts or args.warmup_parity_artifacts,
+                                        mode='correctness' if args.warmup_parity_artifacts else args.mode)
         def predict(*a,**kw):
             nonlocal phase
             roles={layer.role for _,layer in adapter.layers};require(len(roles)==1,'UNIFORM_NATIVE_ROLE')
             role=next(iter(roles));census[role]+=1;phase=role+'_forward'
             if torch.is_grad_enabled():census[role+'_grad']+=1
+            trace = evidence.before_prediction((a, kw), identity={
+                'cycle':cycle+1, 'logical_slot':logical_rng.active, 'role':role,
+                'role_call_in_cycle':census[role], 'grad_enabled':torch.is_grad_enabled()})
             result=native_predict(*a,**kw)
+            evidence.after_prediction(trace, result)
             if args.mode=='correctness':rec['memory'].append({'phase':'after_'+phase,**memory()})
             return result
         adapter.predict=predict
@@ -282,8 +297,43 @@ def main():
                                   'performance_denominator':cycle==1 and not args.tiny,
                                   'actual_census':dict(census),'metrics':metrics,'memory_after_timer':memory(),
                                   'attention_reuse':reuse.finish_cycle()})
+            if cycle == 0 and args.warmup_parity_artifacts:
+                # Original C1 is the excluded warmup. Capture/check its real
+                # values and state only after its timer; C2 stays uninstrumented.
+                warmup = {**evidence.receipt(), 'identities':{key:rec[key] for key in
+                          ('rank','logical_slots','samples','initial_LoRA_sha256','precision')},
+                          'trainable_state':evidence.export_trainable_state(adapter,optimizers,name='warmup_trainable_state.pt')}
+                write(evidence.directory/'warmup_manifest.json',warmup)
+                evidence.active = False
+                valid = True
+                if args.warmup_parity_reference is not None:
+                    from runtime.h3_diffsynth_correctness_artifacts import compare_artifacts
+                    reference = json.loads((args.warmup_parity_reference/f'rank_{rank:02d}_parity/warmup_manifest.json').read_text())
+                    parity = compare_artifacts(reference,warmup)
+                    write(evidence.directory/'warmup_vs_reference.json',parity)
+                    valid = parity['status']=='PASS'
+                    rec['warmup_strict_parity'] = {key:value for key,value in parity.items() if key!='rows'}
+                # All ranks must pass before the original C2 timer can start.
+                valid_tensor = torch.tensor(int(valid),device=device,dtype=torch.int32)
+                dist.all_reduce(valid_tensor,op=dist.ReduceOp.MIN)
+                require(bool(valid_tensor.item()),'FULL_MODEL_WARMUP_STRICT_PARITY_FAILED_NO_TIMING')
             if cycle==0:reuse.begin_next_cycle()
         require(not any(p.grad is not None for n,p in adapter.named_parameters() if '.adapters.' not in n),'FROZEN_BASE_GRADIENT')
+        if args.export_parity_artifacts or args.warmup_parity_artifacts:
+            rec['full_parity_artifacts'] = {**evidence.receipt(),
+                                           'trainable_state': evidence.export_trainable_state(adapter, optimizers)}
+            if args.warmup_parity_artifacts:
+                final = {'identities':{key:rec[key] for key in
+                         ('rank','logical_slots','samples','initial_LoRA_sha256','precision')},
+                         'predictions':[], 'trainable_state':rec['full_parity_artifacts']['trainable_state']}
+                write(evidence.directory/'final_manifest.json',final)
+                if args.warmup_parity_reference is not None:
+                    from runtime.h3_diffsynth_correctness_artifacts import compare_artifacts
+                    reference=json.loads((args.warmup_parity_reference/f'rank_{rank:02d}_parity/final_manifest.json').read_text())
+                    parity=compare_artifacts(reference,final)
+                    write(evidence.directory/'final_vs_reference.json',parity)
+                    rec['final_strict_parity']={key:value for key,value in parity.items() if key!='rows'}
+                    require(parity['status']=='PASS','FINAL_FULL_MODEL_STRICT_PARITY_FAILED_NO_SPEEDUP')
         if args.tiny:
             def local_cpu(value):
                 if hasattr(value,'to_local'):value=value.to_local()
