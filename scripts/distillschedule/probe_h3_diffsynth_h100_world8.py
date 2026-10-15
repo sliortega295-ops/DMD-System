@@ -114,7 +114,13 @@ def main():
     parser.add_argument('--checkpoint', required=True, type=Path)
     parser.add_argument('--receipt-dir', required=True, type=Path)
     parser.add_argument('--tiny', action='store_true')
+    parser.add_argument('--attention-cache-gpu-tail-blocks', type=int, default=0)
+    parser.add_argument('--attention-cache-gpu-budget-gib', type=int, default=24)
     args = parser.parse_args()
+    require(args.attention_cache_gpu_tail_blocks >= 0 and args.attention_cache_gpu_budget_gib > 0,
+            'BOUNDED_NATIVE_GPU_CACHE_POLICY')
+    require(args.placement == 'candidate' or args.attention_cache_gpu_tail_blocks == 0,
+            'GPU_CACHE_REQUIRES_NATIVE_REUSE_CANDIDATE')
     rank, local, world = [int(os.environ[name]) for name in ('RANK', 'LOCAL_RANK', 'WORLD_SIZE')]
     require(world == 8 and local == rank and int(os.environ['LOCAL_WORLD_SIZE']) == 8, 'PHYSICAL_WORLD8_NODE_LOCAL')
     require(os.environ.get('H3_W6_RUN_GPU_LOCK_HELD') == '1', 'EXPLICIT_OWNED_CONTROLLER_REQUIRED')
@@ -249,7 +255,9 @@ def main():
         from runtime.h3_diffsynth_fsdp_attention_reuse import FSDPAttentionReuse
         import h3_dmd2 as native_dmd
         import diffsynth.models.minimax_h3_dit as native_module
-        reuse=FSDPAttentionReuse(native_dmd,native_module,adapter,trainers,slots,enabled=args.placement=='candidate')
+        reuse=FSDPAttentionReuse(native_dmd,native_module,adapter,trainers,slots,enabled=args.placement=='candidate',
+                                gpu_tail_blocks=args.attention_cache_gpu_tail_blocks,
+                                gpu_budget_bytes=args.attention_cache_gpu_budget_gib*(1<<30))
         def slot_scope(slot):
             from contextlib import contextmanager
             @contextmanager

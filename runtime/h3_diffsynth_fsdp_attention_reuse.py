@@ -21,8 +21,12 @@ def _sha(module):
 
 
 class FSDPAttentionReuse:
-    def __init__(self, dmd, native, adapter, trainers, slots, *, enabled=False):
+    def __init__(self, dmd, native, adapter, trainers, slots, *, enabled=False,
+                 gpu_tail_blocks=0, gpu_budget_bytes=24 * (1 << 30)):
         self.enabled = bool(enabled); self.pools = {}; self.views = {}
+        self.gpu_budget = None
+        if gpu_tail_blocks < 0 or (gpu_tail_blocks and not enabled):
+            raise ValueError('GPU cache residency requires the enabled native attention cache')
         if not enabled: return
         import torch
         import native_selected_h2d_prefetch_r1 as prefetch
@@ -39,8 +43,14 @@ class FSDPAttentionReuse:
             raise ValueError('independent logical pool identities required')
         blocks = {id(b): i for i,b in enumerate(adapter.dit.blocks)}
         if len(blocks) not in (2,50): raise ValueError('native tiny2 or real50 blocks required')
+        pool_type = prefetch.PrefetchPool
+        if gpu_tail_blocks:
+            if gpu_tail_blocks > len(blocks): raise ValueError('GPU cache tail exceeds model blocks')
+            from runtime.h3_diffsynth_attention_residency import GPUCacheBudget, resident_pool_type
+            self.gpu_budget = GPUCacheBudget(gpu_budget_bytes)
+            pool_type = resident_pool_type(prefetch, tail_blocks=gpu_tail_blocks, budget=self.gpu_budget)
         for slot,trainer in zip(slots,trainers):
-            pool = prefetch.PrefetchPool(enabled=True); pool.blocks = blocks
+            pool = pool_type(enabled=True); pool.blocks = blocks
             self.pools[slot] = pool; self.views[slot] = RelativeVersionView(trainer)
         original_checkpoint = native.gradient_checkpoint_forward
         original_predict = adapter.predict
@@ -132,11 +142,16 @@ class FSDPAttentionReuse:
     def finish_cycle(self):
         if not self.enabled:return {'enabled':False,'status':'DEFAULT_OFF_NO_PATCH'}
         from native_selected_cycle_scope_r1 import finish_cycle
-        return {'enabled':True,'backend':'FSDP2_EXPLICIT_NONREENTRANT_CONTEXT_NOT_ZERO3_LEAF',
+        result = {'enabled':True,'backend':'FSDP2_EXPLICIT_NONREENTRANT_CONTEXT_NOT_ZERO3_LEAF',
                 'logical_slots':{str(slot):finish_cycle(pool,self.views[slot]) for slot,pool in self.pools.items()},
                 'physical_DiT_not_skipped':True,'native_backward_unchanged':True}
+        if self.gpu_budget is not None and self.gpu_budget.owned_bytes:
+            raise RuntimeError('GPU cache source storage survived complete epoch')
+        return result
 
     def begin_next_cycle(self):
         if not self.enabled:return
         from native_selected_cycle_scope_r1 import begin_next_cycle
-        for slot,pool in self.pools.items():begin_next_cycle(pool,self.views[slot])
+        for slot,pool in self.pools.items():
+            begin_next_cycle(pool,self.views[slot])
+            if hasattr(pool,'reset_residency_epoch'):pool.reset_residency_epoch()
