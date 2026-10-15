@@ -81,14 +81,33 @@ def test_selected_fields_cannot_be_ignored_by_actual_config(change):
         impl.receipt_binding(config, env)
 
 
-def test_actual_native_registration_is_checked_not_only_environment(monkeypatch):
+def _cuda_observer_case(monkeypatch, *, run_kind='correctness'):
     from distillschedule.backends.training.minimax_h3.planner_cycle_observer import H3PlannerCycleObserver
     impl = H3Implementation(cache_policy='cuda_no_trim', request=LOW)
     runtime = impl.lower_profile()['runtime']
+    # The real dispatcher supplies the run kind separately from profile env.
+    # A CPU fixture must not inherit another workload's mode/action controls.
+    monkeypatch.setenv('DISTILLSCHEDULE_RUN_KIND', run_kind)
+    monkeypatch.delenv('H3_PLANNER_ROLLOUT_WINDOW', raising=False)
+    monkeypatch.delenv('H3_PLANNER_EXECUTION_MODE', raising=False)
     for k, v in runtime['environment'].items(): monkeypatch.setenv(k, v)
     trainer = trainer_contract(config=runtime['model_config'], fa3_replay_cache_storage='cuda',
                                fa3_replay_cache_trim_before_backward=False)
     observer = H3PlannerCycleObserver(torch=SimpleNamespace(cuda=FakeCuda()), rank=0, source_head=HEAD)
+    return observer, trainer
+
+
+@pytest.mark.parametrize('inherited_mode', [None, '', 'native', 'two-cycle-timing',
+                                           'calibration', 'diagnostic-timing', 'correctness'])
+def test_actual_native_registration_is_checked_not_only_environment(monkeypatch, inherited_mode):
+    if inherited_mode is None:
+        monkeypatch.delenv('DISTILLSCHEDULE_RUN_KIND', raising=False)
+    else:
+        monkeypatch.setenv('DISTILLSCHEDULE_RUN_KIND', inherited_mode)
+    monkeypatch.setenv('H3_PLANNER_ROLLOUT_WINDOW', '3')
+    monkeypatch.setenv('H3_PLANNER_EXECUTION_MODE', 'old-experiment-mode')
+    observer, trainer = _cuda_observer_case(monkeypatch)
+    assert observer.run_kind == 'correctness'
     observer.validate_start(trainer, current_iter=0, resume_ckpt_path=None)
     trainer.fa3_replay_cache_registration = SimpleNamespace(enabled=True, storage='cpu_staged',
         block_indices=tuple(range(50)), max_d2h_inflight=2, trim_before_backward=True)
@@ -97,6 +116,14 @@ def test_actual_native_registration_is_checked_not_only_environment(monkeypatch)
     trainer.fa3_replay_cache_registration.trim_before_backward = False
     trainer.grid_replay_registration = SimpleNamespace(stats={})
     observer.after_setup(trainer)
+
+
+@pytest.mark.parametrize('mode', ['', 'native', 'two-cycle-timing', 'old-experiment-mode'])
+def test_real_observer_still_rejects_unsupported_run_modes(monkeypatch, mode):
+    observer, trainer = _cuda_observer_case(monkeypatch, run_kind=mode)
+    with pytest.raises(ValueError, match='unsupported H3 native mode'):
+        observer.validate_start(trainer, current_iter=0, resume_ckpt_path=None)
+    assert not observer.torch.cuda.events, 'invalid mode must reject before setup'
 
 
 @pytest.mark.parametrize('change', ['missing', 'storage', 'trim', 'depth', 'blocks', 'cpu_transfer', 'unused', 'rank'])
