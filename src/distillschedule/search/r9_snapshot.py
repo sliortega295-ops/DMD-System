@@ -1,4 +1,4 @@
-"""Refresh an expired worker nvidia-smi snapshot without granting PID authority.
+"""Refresh an expired worker nvidia-smi/ptxas snapshot without granting PID authority.
 
 An FD scan is not atomic with tracker discovery. A short-lived child may exit
 before the tracker ever sees it. Only a same-UID probe whose recorded parent is
@@ -19,7 +19,7 @@ def refresh_finished_probe(r9, helper, tracker, state, owned, controller, ancest
     stat = proc_stat or os.stat
     deadline = time.monotonic() + 5
     proof = dict(status='NOT_PROVEN_ORIGINAL_GUARD_MUST_FAIL', attempts=1,
-        full_FD_rescans=0, scope='ENDED_WORKER_NVIDIA_SMI_FRESH_OBSERVATION_ONLY',
+        full_FD_rescans=0, scope='ENDED_WORKER_NVIDIA_SMI_OR_PTXAS_FRESH_OBSERVATION_ONLY',
         no_signal=True, no_wait=True, no_added_tracker_births=True,
         no_NVML_PID_authority=True, no_deleted_or_filtered_FD_rows=True)
     state['finished_probe_snapshot_rescan'] = proof
@@ -72,10 +72,10 @@ def refresh_finished_probe(r9, helper, tracker, state, owned, controller, ancest
         observations = []
         for handle in unmatched:
             birth = handle['birth']
-            check(handle.get('comm') == 'nvidia-smi' and birth.get('uid') == controller['uid']
+            check(handle.get('comm') in ('nvidia-smi', 'ptxas') and birth.get('uid') == controller['uid']
                   and all(type(birth.get(k)) is int and birth[k] > 0
                           for k in ('pid', 'ppid', 'pgid', 'start_ticks')),
-                  'FINISHED_PROBE_ONLY_RECORDED_WORKER_NVIDIA_SMI')
+                  'FINISHED_PROBE_ONLY_RECORDED_WORKER_NVIDIA_SMI_OR_PTXAS')
             parent = owned.get(birth['ppid'])
             check(isinstance(parent, dict) and birth['pgid'] == parent['pgid']
                   and birth['start_ticks'] >= parent['start_ticks'], 'FINISHED_PROBE_PARENT_NOT_OWNED')
