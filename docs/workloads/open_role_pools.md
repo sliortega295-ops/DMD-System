@@ -4,12 +4,14 @@ The workload provides **training facts**, not a layout: a generator function,
 score objective, optimizer factories, input/condition loading and explicitly
 versioned update boundaries. `RoleTask.program()` compiles producer forward,
 latent transfer, score input VJP, gradient return and generator parameter commit
-using the same versioned `Program` graph. An optional Score optimizer commit is
-strictly after all Generator VJPs; currently the executable Score train path
-supports **one** such update, not arbitrary GAN/DistillSchedule protocols.
+using the same versioned `Program` graph. The supported native update family is
+G1 followed by **0..64** Score commits after all Generator VJPs. More than one
+Score update requires explicit `score_update_input` cycle/update/sample
+semantics; this is not arbitrary GAN/DistillSchedule protocol translation.
 
-`role_program.enumerate_layouts()` derives contiguous G/Score rank splits and
-bounded pipeline-window candidates from **allocated rank capacities**. The
+`role_program.enumerate_layouts()` derives contiguous and bounded balanced
+per-node G/Score rank cuts, plus pipeline-window candidates, from **allocated
+rank capacities and node facts**. The
 factory supplies no 8+8 rule, no optimization rankings and no model-name
 whitelist. Unsupported topology/size combinations are rejected, not remapped.
 
@@ -20,8 +22,8 @@ Score, Score computes `autograd.grad(score_loss, latent_leaf)`, the resulting
 input-gradient is sent back, and G applies `latent.backward(VJP)` to its own
 original forward graph. Generator parameters are never stepped until ALL input
 VJPs have completed. Role-local gradients are SUM-reduced after normalization by
-global logical microbatch count. A separate optional Score parameter update
-runs after the Generator commit. Nonblocking point-to-point sends and a bounded
+global logical microbatch count. The declared optional Score parameter updates
+run after the Generator commit. Nonblocking point-to-point sends and a bounded
 in-flight G window enable G-forward/Score-evaluate overlap on disjoint ranks.
 NCCL requires tag-free send/recv; messages are ordered by each source/target
 pair. Runtime enforces output shapes, dtype, finite values, disjoint physical
@@ -34,12 +36,12 @@ computed single-process global-microbatch reference. These are real PyTorch
 forward, input autograd, backward, Adam and point-to-point collectives, not
 mocked callbacks.
 
-**Not yet:** this primitive is not by itself the common cost-driven selected
-plan. Production factory/CLI onboarding, per-layout cost calibration, measured
-search/selection, native CUDA/NCCL validation, cross-node 16-GPU performance,
-full original model semantics, CPU offload/prefetch, and asynchronous
-communication/copy profiling require their own admission. Do not call the
-supported CPU transport proof a measured A100/H100 speedup.
+**Implemented with CPU/Gloo coverage below:** factory/CLI onboarding, measured
+per-layout common search/selection, saved-activation offload and restricted
+pool-internal FSDP2. **A100/H100 GPU NOT_RUN:** native CUDA/NCCL validity,
+cross-node 16-GPU performance, full original-model semantics and asynchronous
+communication/copy profiling still need their own evidence. CPU transport proof
+is not a measured A100/H100 speedup.
 
 ## Measured common-search integration
 
@@ -107,7 +109,8 @@ complete upper bound for unobserved intermediate autograd/allocator memory.
 For a new conforming two-role training algorithm, implement a trusted local
 `build(parameters)` factory that returns `(RoleTask, RoleFunctions)`. Functions
 specify model constructors, optimizers, data/cohort identity, generator forward,
-Score objective and (optionally) a single later Score parameter update; they do
+Score objective and (optionally) 1..64 later Score parameter updates; more than
+one needs the explicit `score_update_input` provider. These functions do
 **not** prescribe pool sizes, checkpoint/offload policies or scheduler winners.
 `role_storage_estimate_bytes` supplies only conservative per-role static memory
 facts so the planner can reject impossible model placements before execution.
@@ -172,7 +175,8 @@ an offload choice is assumed to be fastest; every admitted choice must be
 calibrated and numerically checked. The remaining legal choices are reported as
 `SEARCH_BUDGET`, not conflated with `ROLE_CAPACITY` or `HOST_CAPACITY`.
 A bigger explicit `max_candidates` budget enumerates all legal combinations.
-Supported physical topology remains contiguous rank cuts; arbitrary role
+Supported physical topology is bounded contiguous and balanced per-node cuts,
+not arbitrary role
 reshuffles, hetero-GPU model remapping and dynamic role migrations are not
 implemented. CUDA/NCCL effectiveness requires real A100/H100 profiling.
 
@@ -198,7 +202,7 @@ global-microbatch reference. `allow_generator_fsdp=True` explicitly enables
 additional search candidates; the existing default family is unchanged.
 
 This does NOT establish A100/H100/NCCL correctness, heterogeneous BF16/FP32
-root grouping, Score sharding, sharded activation offload, or reliable 14B
+root grouping, arbitrary Score sharding, sharded activation offload, or reliable 14B
 allgather capacity. Candidate admission retains the full dense Generator
 footprint until device-specific memory peaks have been measured.
 
@@ -275,8 +279,27 @@ calibration → common selection → persistent two-cycle execution check uses
 unknown-model callables and checks source-bound plan replay. These are CPU
 correctness checks, **not** claims that the chosen configuration wins on A100
 or H100, nor that original Helios/H3/LiveWan protocols have been migrated.
-GPU/NCCL collective ordering, 14B model capacity, BF16 mixed Score precision,
-score-train FSDP, and actual training speedups remain NOT_RUN/unsupported.
+GPU/NCCL collective ordering, 14B model capacity, mixed-precision GPU validity
+and actual training speedups remain NOT_RUN. Restricted trainable-Score FSDP2
+and homogeneous mixed-dtype leaf ownership have CPU/Gloo coverage; arbitrary
+parameter ownership is not admitted.
+
+### Restricted trainable-Score FSDP2 and warm Adam
+
+`fsdp2_train` is implemented for positive Score update counts, equal-size G/Score
+pools, balanced paired calls and the original **no-grad constructed input
+gradient** interface (`score_input_gradient`), not the scalar-loss VJP interface.
+Repeated updates still require `score_update_input`. Existing pointwise Adam
+moments are migrated, not reset; homogeneous mixed-dtype leaf ownership uses
+the same restricted migration contract. Generator FSDP2 can coexist only when
+its own full-local-forward-window/resident-activation constraints also hold.
+
+`test_open_workload_role_trainable_score.py` covers independent two-cycle
+model/Adam references with initialized moments, Score-only and dual-role
+sharding, a restricted BF16/FP32 fixture, and measured common-plan execution on
+four CPU/Gloo processes. `test_open_workload_role_composition.py` covers the
+restricted composition and scalar-VJP rejection. These are CPU/Gloo proofs,
+not A100/H100/NCCL numerical or performance validation (GPU NOT_RUN).
 
 
 ### Collective-safe capability rejection
