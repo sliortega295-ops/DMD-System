@@ -12,7 +12,7 @@ PROJECT_ROOT=$1 RUN_ID=$2 VARIANT=$3 MODE=$4 ARM=$5 EXPECTED_HEAD=$6 ASSET_GATE=
 [[ "$EXPECTED_HEAD" =~ ^[0-9a-f]{40}$ && "$ASSET_GATE_SHA256" =~ ^[0-9a-f]{64}$ ]] || exit 2
 case "$VARIANT" in no-gan|gan) ;; *) exit 2 ;; esac
 case "$MODE" in validate|correctness|timing) ;; *) exit 2 ;; esac
-case "$ARM" in baseline|best|resident|official-swap|h100-nograd-retain) ;; *) exit 2 ;; esac
+case "$ARM" in baseline|best|resident|official-swap|h100-nograd-retain|h100-nograd-retain-nosync) ;; *) exit 2 ;; esac
 REPO=$(cd "$(dirname "$0")/../.." && pwd -P)
 PYTHON=${DISTILLSCHEDULE_PYTHON:?set validated isolated Python executable}
 HELIOS=${HELIOS_RUNTIME_ROOT:?set frozen relocated Helios source root}

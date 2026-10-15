@@ -37,6 +37,32 @@ def test_only_registered_persistence_flag_changes():
     assert "experiment" not in base
 
 
+def test_nosync_changes_only_existing_interior_rollout_fences():
+    base = SUMMARY.freeze_policy(ROOT, variant="no-gan", arm="h100-nograd-retain")
+    candidate = SUMMARY.freeze_policy(ROOT, variant="no-gan", arm="h100-nograd-retain-nosync")
+    expected = dict(base["policy"], elide_explicit_rollout_sync=True)
+    observed = dict(candidate["policy"])
+    expected.pop("id"); observed.pop("id")
+    assert observed == expected
+    assert candidate["policy"]["generator_nograd_persistent_unshard_flush_allocator_cache"] is True
+    for field in ("contract", "trace_hash", "logical_hash", "mesh_shape", "profile_sha256"):
+        assert candidate[field] == base[field]
+    assert candidate["environment"]["DISTILLSCHEDULE_ELIDE_EXPLICIT_ROLLOUT_SYNC"] == "on"
+    assert "--elide-explicit-rollout-sync" in SUMMARY.policy_arguments(candidate["policy"])
+    assert candidate["winner"] == "EXPERIMENT_NOT_PROMOTED:helios-h100-nograd-retain-nosync-v1"
+
+
+def test_nosync_does_not_admit_gan_or_implicit_extra_knobs(monkeypatch):
+    with pytest.raises((ValueError, AssertionError), match="No-GAN only"):
+        SUMMARY.freeze_policy(ROOT, variant="gan", arm="h100-nograd-retain-nosync")
+    original = SUMMARY._object
+    plan = json.loads((ROOT / "configs/distillschedule/experiments/helios_h100_nograd_retain_nosync_v1.json").read_text())
+    plan["overrides"]["generator_nograd_persistent_unshard_flush_allocator_cache"] = False
+    monkeypatch.setattr(SUMMARY, "_object", lambda path: plan if path.name == "helios_h100_nograd_retain_nosync_v1.json" else original(path))
+    with pytest.raises((ValueError, AssertionError), match="unreviewed"):
+        SUMMARY.freeze_policy(ROOT, variant="no-gan", arm="h100-nograd-retain-nosync")
+
+
 def test_cannot_change_gan_policy():
     with pytest.raises((ValueError, AssertionError), match="No-GAN only"):
         SUMMARY.freeze_policy(ROOT, variant="gan", arm="h100-nograd-retain")
