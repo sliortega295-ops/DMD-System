@@ -142,6 +142,7 @@ def main():
     parser.add_argument('--audit-rollout-allgathers', action='store_true')
     parser.add_argument('--nograd-host-bounds', action='store_true')
     parser.add_argument('--lora-input-cast-elision', action='store_true')
+    parser.add_argument('--lora-unit-inplace', action='store_true')
     parser.add_argument('--attention-backend', choices=('native', 'fa3', 'fa3-nograd', 'fa3-rollout'), default='native')
     parser.add_argument('--fa3-assets', type=Path)
     parser.add_argument('--fa3-deterministic-backward', action='store_true')
@@ -155,6 +156,10 @@ def main():
             args.attention_backend == 'native' and not args.nograd_host_bounds and
             not args.nograd_retain_main_blocks and not args.attention_cache_gpu_tail_blocks),
             'LORA_INPUT_CAST_IS_SEPARATE_NATIVE_FA2_RUNTIME_ARM')
+    require(not args.lora_unit_inplace or (args.placement == 'candidate' and
+            args.attention_backend == 'native' and not args.nograd_host_bounds and
+            not args.nograd_retain_main_blocks and not args.attention_cache_gpu_tail_blocks),
+            'LORA_UNIT_SUM_IS_SEPARATE_NATIVE_FA2_RUNTIME_ARM')
     cycle_count = controlled_cycle_count(args.mode, args.one_cycle_correctness)
     require(args.attention_cache_gpu_tail_blocks >= 0 and args.attention_cache_gpu_budget_gib > 0,
             'BOUNDED_NATIVE_GPU_CACHE_POLICY')
@@ -339,6 +344,13 @@ def main():
         import h3_dmd2 as native_dmd
         from runtime.h3_diffsynth_lora_input_cast import install as install_lora_input_cast
         lora_input_cast = install_lora_input_cast(native_dmd, enabled=args.lora_input_cast_elision)
+        lora_sum = None
+        if args.lora_unit_inplace:
+            from runtime.h3_diffsynth_lora_unit_inplace import UnitScaleInplaceLoRA
+            from runtime.h3_diffsynth_lora_input_cast import select_input
+            selector = (None if lora_input_cast is None else
+                        lambda value, weight: select_input(value, weight, lora_input_cast.counts))
+            lora_sum = UnitScaleInplaceLoRA(native_dmd, adapter, enabled=True, input_selector=selector)
         import diffsynth.models.minimax_h3_dit as native_module
         from runtime.h3_diffsynth_nograd_host_bounds import install as install_host_bounds
         host_bounds = install_host_bounds(native_module, dit, enabled=args.nograd_host_bounds)
@@ -397,6 +409,14 @@ def main():
                 require(not any(k.startswith('cpu_') and v for k,v in delta.items()),
                         'NATIVE_LORA_CAST_UNEXPECTED_CPU_EXECUTION')
                 rec['cycles'][-1]['lora_input_cast_elision'] = receipt
+            if lora_sum is not None:
+                receipt = lora_sum.finish_cycle()
+                counts = receipt['counters']
+                require(counts.get('grad_forward', 0) > 0 and counts.get('nograd_forward', 0) > 0,
+                        'NATIVE_LORA_UNIT_SUM_NOT_EXERCISED_IN_BOTH_PATHS')
+                require(counts['elided_unit_multiply'] == counts['inplace_base_add'] ==
+                        counts['physical_dual_lora_forward'], 'NATIVE_LORA_UNIT_SUM_COUNTER_MISMATCH')
+                rec['cycles'][-1]['lora_unit_sum'] = receipt
             if cycle == 0 and args.backend_after_native_warmup:
                 # Diagnostic-only real C1 snapshot, outside all cycle timers.
                 # C2 still exports actual outputs for this functional probe.
