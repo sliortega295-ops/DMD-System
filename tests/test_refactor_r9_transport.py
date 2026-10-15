@@ -414,3 +414,178 @@ def test_rebind_controller_preserves_selected_json_and_rejects_rpc_mutation(tmp_
     result['model_plan']={'changed':True}
     with pytest.raises(ValueError,match='changed the selected'):
         r9_transport.rebind_r9_plan(plan,run_id=result['run_id'],coordinator_output=tmp_path/'bad')
+
+
+def _finished_probe_fixture():
+    """CPU process snapshots, never real GPU handles or PID authority."""
+    from types import SimpleNamespace
+    import errno
+    import os
+    uid = os.getuid()
+    controller = dict(pid=100, start_ticks=10, uid=uid, ppid=1, pgid=100, state='S')
+    root = dict(pid=200, start_ticks=20, uid=uid, ppid=100, pgid=200, state='S')
+    parent = dict(pid=300, start_ticks=30, uid=uid, ppid=200, pgid=300, state='S')
+    probe = dict(pid=400, start_ticks=40, uid=uid, ppid=300, pgid=300, state='D')
+    owned = {r['pid']: r for r in (root, parent)}
+    current = {100: controller, **owned}
+    same = lambda a, b: bool(a and b and all(a[k] == b[k] for k in ('pid','uid','start_ticks')))
+    fresh = {'device_handle_owners': [{'birth': root, 'comm': 'python'}]}
+    calls = []
+    def audit():
+        calls.append('AUDIT'); return copy.deepcopy(fresh)
+    def handles(helper, ancestors, telemetry):
+        calls.append('FULL_FD_SCAN'); return copy.deepcopy(fresh['device_handle_owners'])
+    def live():
+        calls.append('ORIGINAL_TRACKER'); return copy.deepcopy(owned)
+    def absent(path):
+        calls.append(path)
+        raise FileNotFoundError(errno.ENOENT, 'CPU_FIXTURE_ONLY', path)
+    r9 = SimpleNamespace(same_birth=same, audit=audit, device_handles=handles)
+    helper = SimpleNamespace(pid_identity=lambda pid: copy.deepcopy(current.get(pid)))
+    tracker = SimpleNamespace(known=copy.deepcopy(owned), child=SimpleNamespace(pid=200),
+        record={'exec_permit_issued':True,'child_identity':root}, discovery_unresolved=False,
+        adoption_unresolved=False, live=live)
+    state = {'device_handle_owners':[{'birth':probe,'comm':'nvidia-smi','refs':['/dev/nvidiactl']}]}
+    return r9, helper, tracker, state, owned, controller, current, fresh, calls, absent
+
+
+def test_finished_unregistered_worker_probe_uses_fresh_full_snapshot_not_stale_fd_row():
+    from distillschedule.search.r9_snapshot import refresh_finished_probe
+    r9,h,t,state,owned,c,current,fresh,calls,absent = _finished_probe_fixture()
+    assert 400 not in t.known  # This is the historical missing-tracker race.
+    updated, live = refresh_finished_probe(r9,h,t,state,owned,c,[],proc_stat=absent)
+    assert updated is not state and live == owned
+    assert calls.count('FULL_FD_SCAN') == calls.count('ORIGINAL_TRACKER') == 1
+    assert updated['finished_probe_snapshot_rescan']['status'] == 'FRESH_COMPLETE_SCAN_ORIGINAL_EXCLUSIVE_REQUIRED'
+    assert state['device_handle_owners'][0]['birth']['pid'] == 400  # Never filter old evidence.
+    assert 400 not in t.known  # No historical signal/ownership authority granted.
+    assert all(r9.same_birth(live.get(row['birth']['pid']),row['birth']) for row in updated['device_handle_owners'])
+
+
+@pytest.mark.parametrize('mutation', ['live','unreadable','reused','unknown_parent','parent_changed',
+    'wrong_uid','other_command','sticky','no_permit','still_in_fresh_scan','new_foreign_fd'])
+def test_finished_probe_rescan_never_authorizes_unknown_live_or_unreadable_process(mutation):
+    from distillschedule.search.r9_snapshot import refresh_finished_probe
+    import errno
+    r9,h,t,state,owned,c,current,fresh,calls,absent = _finished_probe_fixture()
+    if mutation == 'live':current[400] = copy.deepcopy(state['device_handle_owners'][0]['birth'])
+    elif mutation == 'unreadable':
+        def absent(path):raise PermissionError(errno.EACCES,'CPU_FIXTURE_ONLY',path)
+    elif mutation == 'reused':current[400] = {**state['device_handle_owners'][0]['birth'],'start_ticks':999}
+    elif mutation == 'unknown_parent':state['device_handle_owners'][0]['birth']['ppid'] = 999
+    elif mutation == 'parent_changed':current[300]['start_ticks'] = 999
+    elif mutation == 'wrong_uid':state['device_handle_owners'][0]['birth']['uid'] += 1
+    elif mutation == 'other_command':state['device_handle_owners'][0]['comm'] = 'python'
+    elif mutation == 'sticky':t.discovery_unresolved = True
+    elif mutation == 'no_permit':t.record['exec_permit_issued'] = False
+    elif mutation == 'still_in_fresh_scan':fresh['device_handle_owners'] += copy.deepcopy(state['device_handle_owners'])
+    else:fresh['device_handle_owners'].append({'birth':dict(pid=999,start_ticks=90,uid=c['uid']),'comm':'python'})
+    updated, live = refresh_finished_probe(r9,h,t,state,owned,c,[],proc_stat=absent)
+    # The caller's original exclusive_all8 still rejects every unmatched row.
+    assert not all(r9.same_birth(live.get(row['birth']['pid']),row['birth']) for row in updated['device_handle_owners'])
+    assert 400 not in t.known
+
+
+def test_finished_probe_pid_reuse_during_rescan_does_not_clear_stale_snapshot():
+    from distillschedule.search.r9_snapshot import refresh_finished_probe
+    import os
+    r9,h,t,state,owned,c,current,fresh,calls,absent = _finished_probe_fixture()
+    count = 0
+    def restat(path):
+        nonlocal count
+        count += 1
+        if count <= 2:return absent(path)
+        return os.stat_result((0,)*10)  # PID reappeared between full scan and recheck.
+    updated, live = refresh_finished_probe(r9,h,t,state,owned,c,[],proc_stat=restat)
+    assert updated is state and live is owned
+    assert 'EXISTS' in updated['finished_probe_snapshot_rescan']['reason']
+
+
+@pytest.mark.parametrize(('mutation', 'reason'), [
+    ('parent_zombie', 'ANCHOR_CHANGED_OR_UNREADABLE'),
+    ('parent_ppid', 'ANCHOR_CHANGED_OR_UNREADABLE'),
+    ('parent_pgid', 'ANCHOR_CHANGED_OR_UNREADABLE'),
+    ('controller_reused', 'ANCHOR_CHANGED_OR_UNREADABLE'),
+    ('root_ppid', 'ANCHOR_CHANGED_OR_UNREADABLE'),
+    ('parent_left_tracker', 'PARENT_LEFT_TRACKER'),
+    ('late_discovery_failure', 'STICKY_TRACKER_FAILURE'),
+    ('late_adoption_failure', 'STICKY_TRACKER_FAILURE'),
+])
+def test_finished_probe_revalidates_ancestry_and_tracker_after_full_scan(mutation, reason):
+    from distillschedule.search.r9_snapshot import refresh_finished_probe
+    r9,h,t,state,owned,c,current,fresh,calls,absent = _finished_probe_fixture()
+    known_before = copy.deepcopy(t.known)
+    original_audit, original_live = r9.audit, t.live
+
+    def audit():
+        result = original_audit()
+        if mutation == 'parent_zombie':current[300]['state'] = 'Z'
+        elif mutation == 'parent_ppid':current[300]['ppid'] = 999
+        elif mutation == 'parent_pgid':current[300]['pgid'] = 999
+        elif mutation == 'controller_reused':current[100]['start_ticks'] += 1
+        elif mutation == 'root_ppid':current[200]['ppid'] = 999
+        return result
+
+    def live():
+        result = original_live()
+        if mutation == 'parent_left_tracker':result.pop(300)
+        elif mutation == 'late_discovery_failure':t.discovery_unresolved = True
+        elif mutation == 'late_adoption_failure':t.record['adoption_error'] = 'CPU_FIXTURE_ONLY'
+        return result
+
+    r9.audit, t.live = audit, live
+    updated, live_result = refresh_finished_probe(r9,h,t,state,owned,c,[],proc_stat=absent)
+    assert updated is state and live_result is owned
+    assert reason in updated['finished_probe_snapshot_rescan']['reason']
+    assert t.known == known_before
+    assert calls.count('FULL_FD_SCAN') == calls.count('ORIGINAL_TRACKER') == 1
+    assert not all(r9.same_birth(live_result.get(row['birth']['pid']),row['birth'])
+                   for row in updated['device_handle_owners'])
+
+
+def test_sealed_manifest_competing_publishers_leave_one_complete_winner(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    target = tmp_path/'sealed.json'
+
+    def publish(index):
+        value = {'CPU_FIXTURE_ONLY':True, 'publisher':index, 'payload':'x'*1024}
+        try:
+            r9_native.publish_sealed_json(target, value)
+        except FileExistsError:
+            return None
+        return value
+
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        winners = [value for value in pool.map(publish, range(16)) if value is not None]
+    assert len(winners) == 1
+    assert json.loads(target.read_text()) == winners[0]
+    assert list(tmp_path.iterdir()) == [target]
+
+
+def test_sealed_manifest_is_invisible_until_serialized_and_never_overwritten(tmp_path,monkeypatch):
+    target = tmp_path/'sealed.json'
+    original = r9_native.json.dump
+    def dump(value, stream, **kwargs):
+        assert not target.exists(), 'peer must never observe a partial sealed manifest'
+        original(value,stream,**kwargs)
+    monkeypatch.setattr(r9_native.json,'dump',dump)
+    r9_native.publish_sealed_json(target, {'CPU_FIXTURE_ONLY':True})
+    assert json.loads(target.read_text()) == {'CPU_FIXTURE_ONLY':True}
+    before = target.read_bytes()
+    with pytest.raises(FileExistsError):r9_native.publish_sealed_json(target, {'changed':True})
+    assert target.read_bytes() == before
+    assert list(tmp_path.iterdir()) == [target]
+
+
+def test_failed_sealed_json_serialization_publishes_nothing(tmp_path):
+    target=tmp_path/'sealed.json'
+    with pytest.raises(ValueError):r9_native.publish_sealed_json(target, {'invalid':float('nan')})
+    assert not list(tmp_path.iterdir())
+
+
+def test_repository_owner_bytes_match_the_explicit_allowlisted_binding():
+    path=registry.repository_root()/'scripts/distillschedule/own_h3_native_plan.py'
+    assert registry.file_sha256(path) == contract.OWNER_SHA256
+    source=path.read_text()
+    assert source.index('state,live=refresh_finished_probe(') < source.index('donor.exclusive_all8(')
+    assert "fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)" in source

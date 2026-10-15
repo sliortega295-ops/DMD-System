@@ -19,7 +19,7 @@ from distillschedule.workloads.best_known.registry import (
 
 SCHEMA = 'distillschedule.r9_transport.v1'
 KIND = 'native_h3_serialized_plan_v1'
-OWNER_SHA256 = 'f97a3dca1c777e2ee4f925e99ad7b0626493336476f5bcd92a629297bfeced92'
+OWNER_SHA256 = '5b5369c2e22128403970a998f381ae1cebff97ffd2c89416b63fa72d593201b8'
 MODES = {'correctness', 'calibration', 'diagnostic-timing'}
 WORKER_WRAPPER = 'from distillschedule.search.r9_worker import main\nraise SystemExit(main())\n'
 CONTRACT_WRAPPER = ('from distillschedule.search.r9_contract import '

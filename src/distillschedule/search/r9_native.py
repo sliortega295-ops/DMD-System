@@ -6,9 +6,11 @@ are explicitly R9 evidence, never a synthetic legacy launch_manifest/teardown.
 import copy
 import contextlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 
 from .contracts import require
 from .r9_contract import (SCHEMA, KIND, OWNER_SHA256, WORKER_WRAPPER, CONTRACT_WRAPPER,
@@ -19,6 +21,25 @@ from distillschedule.workloads.best_known.registry import (file_sha256, fingerpr
 
 def binding(path):
     return dict(path=str(Path(path).resolve()), sha256=file_sha256(Path(path)))
+
+
+def publish_sealed_json(path, value):
+    """Expose complete fsynced bytes atomically; never replace an old receipt."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        raise FileExistsError(path)
+    fd, name = tempfile.mkstemp(prefix='.' + path.name + '.publish-', dir=path.parent)
+    temporary = Path(name)
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as stream:
+            json.dump(value, stream, indent=2, sort_keys=True, allow_nan=False)
+            stream.write('\n')
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.link(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def validate_deployment(value, *, local_files=False):
@@ -166,7 +187,7 @@ def seal(draft):
         validate_toolchain_receipt(row['toolchain'])
         ref['sha256'] = file_sha256(Path(ref['path']))
     final = Path(cfg['remote_manifest'])
-    write_new_json(final, cfg)
+    publish_sealed_json(final, cfg)
     return dict(manifest=binding(final), configuration=cfg)
 
 
