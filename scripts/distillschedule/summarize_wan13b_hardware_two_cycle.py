@@ -70,6 +70,19 @@ def summarize(run_root: Path, *, profile_name: str):
             errors.append(f"rank{rank}: invalid timing receipt")
         if row.get("profiled") is not False:
             errors.append(f"rank{rank}: native receipt lacks unprofiled evidence")
+        norm_enabled = row.get("arm_contract", {}).get("modulated_norm_fusion", False)
+        norm_receipt = row.get("modulated_norm_fusion_receipt", {})
+        if norm_receipt.get("enabled") is not norm_enabled:
+            errors.append(f"rank{rank}: missing actual normalization policy receipt")
+        if norm_enabled:
+            # The installer is process-shared; role aliases are not independent
+            # executions and must not be summed into an inflated call count.
+            from distillschedule.runtime.wan13b_norm_policy import validate
+            try:
+                validate({role: {"metadata": {"modulated_norm_fusion": value}}
+                          for role, value in norm_receipt.get("roles", {}).items()}, enabled=True)
+            except AssertionError as error:
+                errors.append(f"rank{rank}: normalization runtime counter gate: {error}")
         if row.get("mode") == "correctness":
             if len(row.get("rollout_evidence", [])) != 2 * profile.microbatch_count:
                 errors.append(f"rank{rank}: missing actual rollout evidence")

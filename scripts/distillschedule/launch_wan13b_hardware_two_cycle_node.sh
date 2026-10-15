@@ -54,6 +54,15 @@ export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 export DISTILLSCHEDULE_WAN13B_EMA_IMPLEMENTATION=reference
 export DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE=0
 export DISTILLSCHEDULE_WAN13B_LORA_OPERATOR_ATTRIBUTION=0
+# Independent, default-off source-pinned width1536 norm experiment. This does
+# not enable compile, CUDA graphs, merged weights, or any LoRA dtype change.
+case "${DISTILLSCHEDULE_WAN13B_MODULATED_NORM_FUSION:-0}" in
+  0|1) export DISTILLSCHEDULE_WAN13B_MODULATED_NORM_FUSION="${DISTILLSCHEDULE_WAN13B_MODULATED_NORM_FUSION:-0}" ;;
+  *) echo invalid_modulated_norm_fusion_flag >&2; exit 2 ;;
+esac
+if [[ "$PLACEMENT" != resident-async128-tree-chunk2048 && "$DISTILLSCHEDULE_WAN13B_MODULATED_NORM_FUSION" != 0 ]]; then
+  echo modulated_norm_fusion_requires_registered_resident_winner >&2; exit 2
+fi
 unset DISTILLSCHEDULE_STATIC_FSDP2_NSYS_EXACT_RANGE
 if [[ "$PLACEMENT" == resident-async128-tree-chunk2048 ]]; then
   export NCCL_ALGO=Tree

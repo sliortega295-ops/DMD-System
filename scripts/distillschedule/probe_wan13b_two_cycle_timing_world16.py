@@ -156,6 +156,11 @@ def _configure_shared_mode_args(args: argparse.Namespace) -> None:
 
 
 def _validate_arm_environment(placement: str) -> dict[str, Any]:
+    from distillschedule.runtime.wan13b_norm_policy import requested as norm_requested
+
+    norm_fused = norm_requested()
+    if norm_fused and placement != RESIDENT_WINNER:
+        raise ValueError("norm fusion requires the registered Resident winner")
     fused = (
         os.environ.get(
             "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE", "0"
@@ -180,6 +185,7 @@ def _validate_arm_environment(placement: str) -> dict[str, Any]:
         "arm_contract": _expected_arm_contract(placement),
         "generator_nograd_lora_fused_epilogue": fused,
         "generator_nograd_lora_cast_cache": cast_cache,
+        "modulated_norm_fusion": norm_fused,
     }
 
 
@@ -828,6 +834,9 @@ def main() -> int:
             for index, raw in enumerate(raw_cycles, start=1)
         ]
         fused_receipt = _validate_fused_receipt(build, placement=args.placement)
+        from distillschedule.runtime.wan13b_norm_policy import validate as validate_norm
+
+        norm_receipt = validate_norm(build, enabled=bool(arm["modulated_norm_fusion"]))
 
         anchors: Any = "NOT_COLLECTED_IN_TIMING_MODE"
         rollout_evidence: Any = "NOT_COLLECTED_IN_TIMING_MODE"
@@ -871,6 +880,7 @@ def main() -> int:
             memory=base._memory(device),
             runtime_cache_keys=(sorted(runtime_cache) if runtime_cache is not None else []),
             fused_epilogue_receipt=fused_receipt,
+            modulated_norm_fusion_receipt=norm_receipt,
             runtime_contract=runtime_contract,
             gradient_sync={
                 "generator_receipt_count": len(
