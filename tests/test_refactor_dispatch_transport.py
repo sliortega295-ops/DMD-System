@@ -457,3 +457,33 @@ def test_local_canonical_launcher_and_environment_checks_still_reject_tampering(
     monkeypatch.setattr(dispatch.subprocess, 'check_output', lambda *a, **kw: '')
     with pytest.raises(ValueError, match='noncanonical launcher|canonical environment override'):
         dispatch.validate_local(receipt, root=tmp_path, node_rank=0)
+
+
+def test_host_ssh_environment_drops_python_loader_overrides_without_mutating_parent(monkeypatch):
+    monkeypatch.setenv('LD_LIBRARY_PATH', '/isolated-python/lib')
+    monkeypatch.setenv('LD_PRELOAD', '/isolated-python/lib/override.so')
+    monkeypatch.setenv('SSH_AUTH_SOCK', '/caller/agent')
+    actual = dispatch.ssh_process_environment()
+    assert 'LD_LIBRARY_PATH' not in actual and 'LD_PRELOAD' not in actual
+    assert actual['SSH_AUTH_SOCK'] == '/caller/agent'
+    import os
+    assert os.environ['LD_LIBRARY_PATH'] == '/isolated-python/lib'
+
+
+@pytest.mark.parametrize('fail', [False, True])
+def test_each_dispatch_ssh_including_collection_and_cancel_has_host_safe_loader(tmp_path, monkeypatch, fail):
+    monkeypatch.setenv('LD_LIBRARY_PATH', '/isolated-python/lib')
+    monkeypatch.setenv('LD_PRELOAD', '/isolated-python/lib/override.so')
+    receipt = _receipt(tmp_path)
+    transport = _Transport(receipt, processes=[_Process(17 if fail else 0), _Process()])
+    if fail:
+        with pytest.raises((RuntimeError, ValueError)):
+            transport.execute(tmp_path)
+        assert transport.cancels
+    else:
+        assert transport.execute(tmp_path) == 0
+        assert transport.collections
+    for _, kwargs in transport.starts + transport.collections + transport.cancels:
+        assert 'LD_LIBRARY_PATH' not in kwargs['env'] and 'LD_PRELOAD' not in kwargs['env']
+    # Remote Python keeps its independently declared environment in argv.
+    assert 'LD_LIBRARY_PATH=/pinned/env/lib' in transport.starts[0][0][-1]

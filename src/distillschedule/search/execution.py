@@ -147,7 +147,7 @@ def native_rpc(*, transport_assets, source_head, output: Path, action: str, _nod
     import shlex
     import subprocess
     import zlib
-    from distillschedule.workloads.best_known.dispatch import ssh_command
+    from distillschedule.workloads.best_known.dispatch import ssh_command, ssh_process_environment
     require(type(_node_rank) is int and _node_rank in (0, 1), "invalid RPC node rank")
     node = transport_assets["nodes"][_node_rank]
     python = str(Path(node["python_env"]) / "bin/python")
@@ -189,7 +189,7 @@ def native_rpc(*, transport_assets, source_head, output: Path, action: str, _nod
                                               "rpc_transport": transport})
     try:
         response = subprocess.run(command, input=stdin_payload, capture_output=True,
-                                  text=True, timeout=900)
+                                  text=True, timeout=900, env=ssh_process_environment())
     except subprocess.TimeoutExpired as error:
         write_new_json(directory / "failure.json", {"status": "FAIL", "failure_type": "TIMEOUT"})
         for name, data in (("stdout", error.stdout), ("stderr", error.stderr)):

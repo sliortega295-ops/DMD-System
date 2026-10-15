@@ -17,6 +17,12 @@ from .registry import (file_sha256, fingerprint, git_head, load_profile, source_
                        verify_python_path_overlays)
 
 
+def ssh_process_environment() -> dict[str, str]:
+    # System OpenSSH must load system OpenSSL, not an isolated Python's copy.
+    # Remote Python library paths stay explicitly bound in the remote argv.
+    return {k: v for k, v in os.environ.items() if k not in {"LD_LIBRARY_PATH", "LD_PRELOAD"}}
+
+
 def clean_environment(node: dict[str, Any]) -> dict[str, str]:
     # Do not inherit shell-resident performance flags, Python paths or profiler
     # variables. Site-specific library paths belong to the selected environment.
@@ -224,7 +230,8 @@ def run_resolved(receipt: dict[str, Any], *, dry_run: bool = False,
             try:
                 proc = subprocess.Popen(command, stdin=(subprocess.PIPE if stdin_payload is not None
                                                         else subprocess.DEVNULL),
-                                        stdout=log, stderr=subprocess.STDOUT, text=True)
+                                        stdout=log, stderr=subprocess.STDOUT, text=True,
+                                        env=ssh_process_environment())
             except BaseException:
                 log.close()
                 raise
@@ -259,10 +266,12 @@ def run_resolved(receipt: dict[str, Any], *, dry_run: bool = False,
             path = out / "ssh-collect.log"
             with path.open("x") as log:
                 subprocess.run(collect_command, stdin=subprocess.DEVNULL, stdout=log,
-                               stderr=subprocess.STDOUT, text=True, check=True, timeout=300)
+                               stderr=subprocess.STDOUT, text=True, check=True, timeout=300,
+                               env=ssh_process_environment())
             _check_worker_frame(path, "_collect")
         else:
-            subprocess.run(collect_command, input=collect_input, text=True, check=True, timeout=300)
+            subprocess.run(collect_command, input=collect_input, text=True, check=True, timeout=300,
+                           env=ssh_process_environment())
         # Do NOT manufacture a correctness PASS or speed number from exit status.
         write_new_json(out / "dispatch-result.json", {
             "status": "DISPATCH_AND_NATIVE_SUMMARY_COMPLETE", "node_exit_codes": codes,
@@ -275,7 +284,7 @@ def run_resolved(receipt: dict[str, Any], *, dry_run: bool = False,
             try:
                 options = {"stdin": subprocess.DEVNULL} if transports[i] == "argv-json-tty-v1" else {}
                 subprocess.run(_cancel_command(node, remote_out / f"owned-node{i}.pid", transport=transports[i]),
-                               timeout=60, check=False, **options)
+                               timeout=60, check=False, env=ssh_process_environment(), **options)
             except (OSError, subprocess.TimeoutExpired):
                 pass
             if proc.poll() is None:

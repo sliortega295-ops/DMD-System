@@ -85,3 +85,20 @@ def test_asset_schema_admits_only_explicit_registered_rpc_modes(mode):
             validate_asset_config(value, profile)
     else:
         assert validate_asset_config(value, profile) == value
+
+
+@pytest.mark.parametrize('transport', ['stdin', 'argv-json-tty-v1'])
+def test_metadata_ssh_does_not_inherit_python_loader_but_remote_python_keeps_it(tmp_path, monkeypatch, transport):
+    import base64
+    monkeypatch.setenv('LD_LIBRARY_PATH', '/isolated-python/lib')
+    monkeypatch.setenv('LD_PRELOAD', '/isolated-python/lib/override.so')
+    output = '{"status":"CPU"}'
+    if transport == 'argv-json-tty-v1':
+        output = 'DMD_NATIVE_RPC_JSON=' + base64.b64encode(output.encode()).decode() + '\n'
+    with patch('subprocess.run', return_value=SimpleNamespace(returncode=0, stdout=output, stderr='')) as called:
+        result = native_rpc(transport_assets=_assets(tmp_path, transport), source_head='head',
+                            output=tmp_path, action='resolve')
+    assert result == {'status':'CPU'}
+    assert 'LD_LIBRARY_PATH' not in called.call_args.kwargs['env']
+    assert 'LD_PRELOAD' not in called.call_args.kwargs['env']
+    assert 'LD_LIBRARY_PATH=' in called.call_args.args[0][-1]
