@@ -22,6 +22,9 @@ def validate_comparison(value):
 def _checked_native(receipt):
     from .native import checked_summary
     out, summary = checked_summary(receipt)
+    if "execution_transport" in receipt:
+        from .r9_native import verify_execution
+        verify_execution(receipt)
     rows, bindings = read_native_receipts(out)
     current = summarize_native_two_cycle(rows, expected_head=receipt["integration_head"],
                                          candidate_id=receipt["search_candidate"]["id"])
@@ -40,6 +43,9 @@ def _unprofiled_launch_evidence(receipt, out, summary, *, mode="diagnostic-timin
     from .native import read, binding
     require(mode in ("diagnostic-timing", "calibration") and receipt["mode"] == mode,
             "H3 direct launch mode mismatch")
+    if "execution_transport" in receipt:
+        from .r9_native import verify_execution
+        return verify_execution(receipt)
     evidence = []
     for node_rank, node in enumerate(receipt["nodes"]):
         env = node["environment"]
@@ -125,10 +131,12 @@ def normalize_native(receipt, preparation, identity):
         for event in ("oom", "oom_kill"):
             counters = [s["cgroup_events"][event] for s in resource["samples"]]
             require(max(counters) == min(counters), "H3 host OOM")
-        path = out / "launcher" / f"node_{node}" / "teardown_status.txt"
-        flags = dict(line.split("=", 1) for line in path.read_text().splitlines() if "=" in line)
-        require(flags == dict(status="PASS", gpu_process_count="0", owner_run_id=receipt["run_id"]), "H3 teardown missing")
-        evidence += [binding(p), binding(path)]
+        evidence.append(binding(p))
+        if "execution_transport" not in receipt:
+            path = out / "launcher" / f"node_{node}" / "teardown_status.txt"
+            flags = dict(line.split("=", 1) for line in path.read_text().splitlines() if "=" in line)
+            require(flags == dict(status="PASS", gpu_process_count="0", owner_run_id=receipt["run_id"]), "H3 teardown missing")
+            evidence.append(binding(path))
         resources.append(resource)
     evidence.extend(bindings)
     ranks = []

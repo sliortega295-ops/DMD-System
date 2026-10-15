@@ -103,7 +103,8 @@ def calibrate(args):
                     semantic_fingerprint=next(iter(semantics)), precision_fingerprint=next(iter(precisions)))
     runner = NativeTrialRunner(workload=args.workload, identity=identity, assets=assets, output=args.output,
         run_prefix=args.run_id, reference_id=args.candidate[0], bootstrap_peer=args.candidate[1],
-        admitted_candidate_ids=set(args.candidate))
+        admitted_candidate_ids=set(args.candidate),
+        transport_config=_object(args.r9_transport) if getattr(args, 'r9_transport', None) else None)
     try:
         probe = runner._rpc("resolve", workload=args.workload, candidate_id=args.candidate[0],
             assets=assets, run_id=args.run_id + "-identity", mode="correctness")
@@ -161,6 +162,7 @@ def main(argv):
     collect.add_argument("--assets-config", type=Path)
     collect.add_argument("--output", type=Path, required=True)
     collect.add_argument("--execute-native", action="store_true")
+    collect.add_argument("--r9-transport", type=Path, help="Opt-in SHA-bound reviewed R9 deployment; H3 cache pair only")
     join = sub.add_parser("assemble-calibration", help="Verify and join native calibration files beside their receipts")
     join.add_argument("--workload", required=True)
     join.add_argument("--result", nargs="+", type=Path, required=True)

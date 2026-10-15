@@ -56,8 +56,13 @@ def validated_profile(receipt: dict[str, Any], *, root: Path) -> dict[str, Any]:
 
 
 def run_plan(receipt: dict[str, Any], *, dry_run: bool = False,
-             coordinator_output: Path | None = None) -> int:
+             coordinator_output: Path | None = None,
+             transport_config: dict[str, Any] | None = None) -> int:
     root = repository_root()
+    if transport_config is not None:
+        from .r9_transport import run_r9_plan
+        return run_r9_plan(receipt, transport_config, output=coordinator_output, dry_run=dry_run)
+    require('execution_transport' not in receipt, 'explicit transport plan cannot fall back to default dispatch')
     validated_profile(receipt, root=root)
     require(receipt.get("integration_head") == git_head(root), "search plan belongs to another HEAD")
     c = get_candidate(receipt["profile_id"], receipt["search_candidate"]["id"])
@@ -80,6 +85,7 @@ def rebind_plan(receipt: dict[str, Any], *, run_id: str,
     recipe must match the searched plan exactly.
     """
     from distillschedule.workloads.best_known.registry import load_assets
+    require('execution_transport' not in receipt, 'explicit transport plan requires its matching replay adapter')
     root = repository_root()
     p = validated_profile(receipt, root=root)
     require(receipt["integration_head"] == git_head(root), "search plan belongs to another HEAD")
@@ -135,6 +141,39 @@ def rebind_plan(receipt: dict[str, Any], *, run_id: str,
     return result
 
 
+def native_rpc(*, transport_assets, source_head, output: Path, action: str, _node_rank: int = 0, **kwargs):
+    import shlex
+    import subprocess
+    from distillschedule.workloads.best_known.dispatch import ssh_command
+    require(type(_node_rank) is int and _node_rank in (0, 1), "invalid RPC node rank")
+    node = transport_assets["nodes"][_node_rank]
+    python = str(Path(node["python_env"]) / "bin/python")
+    worker = str(Path(node["repo_root"]) / "scripts/distillschedule/run_best_known_workload.py")
+    command = [*ssh_command(node), shlex.join(["env", "PYTHONDONTWRITEBYTECODE=1",
+        "LD_LIBRARY_PATH=" + str(Path(node["python_env"]) / "lib"), python, worker, "_search"])]
+    import time
+    logs = output / "rpc"
+    logs.mkdir(exist_ok=True)
+    directory = logs / f"{time.time_ns()}-{action}"
+    directory.mkdir(exist_ok=False)
+    payload = {"action": action, "source_head": source_head, **kwargs}
+    write_new_json(directory / "request.json", {"command": command, "payload": payload})
+    try:
+        response = subprocess.run(command, input=json.dumps(payload), capture_output=True,
+                                  text=True, timeout=900)
+    except subprocess.TimeoutExpired as error:
+        write_new_json(directory / "failure.json", {"status": "FAIL", "failure_type": "TIMEOUT"})
+        for name, data in (("stdout", error.stdout), ("stderr", error.stderr)):
+            (directory / f"{name}.log").write_bytes(data.encode() if isinstance(data, str) else (data or b""))
+        raise
+    (directory / "stdout.log").write_text(response.stdout)
+    (directory / "stderr.log").write_text(response.stderr)
+    write_new_json(directory / "exit.json", {"returncode": response.returncode})
+    if response.returncode:
+        raise RuntimeError(f"native {action} failed ({response.returncode}); evidence: {directory}: {response.stderr[-6000:]}")
+    return json.loads(response.stdout)
+
+
 class NativeTrialRunner:
     """Serial, source-bound native correctness -> measurement controller.
 
@@ -145,7 +184,9 @@ class NativeTrialRunner:
     def __init__(self, *, workload: str, identity: dict[str, str], assets: dict[str, Any],
                  output: Path, run_prefix: str, bootstrap_peer: str,
                  reference_id: str = "fsdp-reference",
-                 admitted_candidate_ids: set[str] | None = None):
+                 admitted_candidate_ids: set[str] | None = None,
+                 transport_config: dict[str, Any] | None = None):
+        self.transport_config = transport_config
         self.workload, self.identity, self.assets = workload, identity, assets
         self.output, self.run_prefix = Path(output), run_prefix
         self.admitted_candidate_ids = None if admitted_candidate_ids is None else frozenset(admitted_candidate_ids)
@@ -172,36 +213,8 @@ class NativeTrialRunner:
         self.trajectories: dict[str, dict[str, Any]] = {}
 
     def _rpc(self, action: str, *, _node_rank: int = 0, **kwargs: Any) -> dict[str, Any]:
-        import shlex
-        import subprocess
-        from distillschedule.workloads.best_known.dispatch import ssh_command
-        require(type(_node_rank) is int and _node_rank in (0, 1), "invalid RPC node rank")
-        node = self.assets["nodes"][_node_rank]
-        python = str(Path(node["python_env"]) / "bin/python")
-        worker = str(Path(node["repo_root"]) / "scripts/distillschedule/run_best_known_workload.py")
-        command = [*ssh_command(node), shlex.join(["env", "PYTHONDONTWRITEBYTECODE=1",
-            "LD_LIBRARY_PATH=" + str(Path(node["python_env"]) / "lib"), python, worker, "_search"])]
-        import time
-        logs = self.output / "rpc"
-        logs.mkdir(exist_ok=True)
-        directory = logs / f"{time.time_ns()}-{action}"
-        directory.mkdir(exist_ok=False)
-        payload = {"action": action, "source_head": self.identity["source_head"], **kwargs}
-        write_new_json(directory / "request.json", {"command": command, "payload": payload})
-        try:
-            response = subprocess.run(command, input=json.dumps(payload), capture_output=True,
-                                      text=True, timeout=900)
-        except subprocess.TimeoutExpired as error:
-            write_new_json(directory / "failure.json", {"status": "FAIL", "failure_type": "TIMEOUT"})
-            for name, data in (("stdout", error.stdout), ("stderr", error.stderr)):
-                (directory / f"{name}.log").write_bytes(data.encode() if isinstance(data, str) else (data or b""))
-            raise
-        (directory / "stdout.log").write_text(response.stdout)
-        (directory / "stderr.log").write_text(response.stderr)
-        write_new_json(directory / "exit.json", {"returncode": response.returncode})
-        if response.returncode:
-            raise RuntimeError(f"native {action} failed ({response.returncode}); evidence: {directory}: {response.stderr[-6000:]}")
-        return json.loads(response.stdout)
+        return native_rpc(transport_assets=self.assets, source_head=self.identity["source_head"],
+            output=self.output, action=action, _node_rank=_node_rank, **kwargs)
 
     def _require_admitted(self, candidate: Candidate) -> None:
         require(self.admitted_candidate_ids is None or candidate.id in self.admitted_candidate_ids,
@@ -223,7 +236,7 @@ class NativeTrialRunner:
             plan = self._rpc("resolve", workload=self.workload, candidate_id=c.id,
                 assets=self.assets, run_id=self.run_prefix + "-gate-" + c.id, mode="correctness")
             write_new_json(directory / "execution-plan.json", plan)
-            run_plan(plan, coordinator_output=directory / "dispatch")
+            run_plan(plan, coordinator_output=directory / "dispatch", transport_config=self.transport_config)
             write_new_json(completed, plan)
         self.trajectories[c.id] = plan
         return plan
@@ -270,7 +283,7 @@ class NativeTrialRunner:
         before = self._observe_model_runtime(candidate, receipt=receipt) if model_based else None
         require(receipt["asset_fingerprint"] == self.identity["asset_fingerprint"], "prepared asset identity changed")
         write_new_json(directory / "execution-plan.json", receipt)
-        run_plan(receipt, coordinator_output=directory / "dispatch")
+        run_plan(receipt, coordinator_output=directory / "dispatch", transport_config=self.transport_config)
         raw = self._rpc("measurement", receipt=receipt, preparation=prepared, identity=self.identity)
         if model_based:
             raw["runtime_identity_evidence"] = {
@@ -306,7 +319,7 @@ class NativeTrialRunner:
             assets=prepared["assets"], run_id=self.run_prefix + "-cal-" + candidate.id, mode="calibration")
         before = self._observe_model_runtime(candidate, receipt=receipt)
         write_new_json(directory / "execution-plan.json", receipt)
-        run_plan(receipt, coordinator_output=directory / "dispatch")
+        run_plan(receipt, coordinator_output=directory / "dispatch", transport_config=self.transport_config)
         after = self._observe_model_runtime(candidate, receipt=receipt)
         action = ("wan_stage_calibration" if candidate.workload == WAN else
                   "helios_calibration" if candidate.id.startswith("joint-helios1-") else "macro_calibration")

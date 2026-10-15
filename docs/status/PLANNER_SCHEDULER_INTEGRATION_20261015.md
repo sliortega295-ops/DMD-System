@@ -104,3 +104,30 @@ constructed child environment, no inherited toolchain PATH, no Torch or CUDA.
 A new packet/source/run identity and fresh imports/toolchain/owner gates remain
 required. The general R9 calibration/search transport adapter is deferred;
 operator-selected smoke must not be described as searched execution.
+
+## Follow-up: opt-in R9 calibrated selection transport
+
+The frozen 1437839 packet was subsequently run by the GPU-owning operator:
+its world collector reported `PASS_OPERATOR_SELECTED_NATIVE_CUDA_PLAN_EXECUTION`
+(16 ranks, two cycles, C2 195.826461578 s). It explicitly reported matched
+reference `NOT_RUN` and measured search closed `false`. That result is not a
+calibration or numerical gate for this follow-up source.
+
+The new independent follow-up provides a bounded H3 low-resolution R9
+transport through unified calibration and saved-plan execution. Native
+correctness, calibration and current-source cost verification reuse the
+existing core. The portable controller does not read absent remote costs;
+full rebinding/validation happens on the receipt host and in each worker.
+R9 terminal/argv/env/rank/resource receipts are consumed as R9 evidence,
+not manufactured legacy shell-launch files. Source/runtime lowering and
+transport markers fail closed; explicit read-only admission retries retain
+history, GPU execution cannot retry, and unknown owner terminal state blocks
+new sessions. The external owner changes only its three workload-kind labels.
+
+Targeted CPU regression: **273 passed**, including the synthetic full-chain
+and negative R9 tests. No Torch installation, remote SSH or GPU launch was
+performed by this implementation agent. New-source cluster compatibility,
+matched numerical comparison, calibration costs and search-selected native
+confirmation remain **Pending cluster validation**. See
+`docs/runbooks/H3_R9_CALIBRATED_SEARCH.md`; no other workload or FA3 split
+candidate is added and no prior source measurement is imported as a cost.

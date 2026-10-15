@@ -305,8 +305,10 @@ def resolve_profile(workload: str, *, root: Path | None = None, assets_path: Pat
 
 
 def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: Path | None = None,
+                          asset_config: dict[str, Any] | None = None,
                           run_id: str = "source-inspection", mode: str = "correctness") -> dict[str, Any]:
     """Shared compiler; dispatcher reconstructs the canonical/registered recipe."""
+    _require(assets_path is None or asset_config is None, "provide file or in-memory assets, not both")
     workload = profile["id"]
     _require(bool(SAFE_ID.fullmatch(run_id)) and run_id not in {".", ".."}, "unsafe run id")
     _require(mode in profile["allowed_run_modes"], f"mode {mode} is not authorized for {workload}")
@@ -332,10 +334,11 @@ def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: P
         "fully_resolved_profile": profile, "nodes": [],
         "asset_fingerprint": None,
     }
-    if assets_path is None:
+    if assets_path is None and asset_config is None:
         receipt["scope"] = "SOURCE_ONLY_NOT_RUNNABLE"
         return receipt
-    assets = load_assets(assets_path, profile)
+    assets = (load_assets(assets_path, profile) if assets_path is not None
+              else validate_asset_config(asset_config, profile))
     receipt["asset_fingerprint"] = fingerprint(asset_identity(assets))
     receipt["asset_config"] = assets
     receipt["scope"] = "RESOLVED_NOT_EXECUTED"

@@ -176,6 +176,18 @@ def handle_request(payload: dict[str, Any]) -> dict[str, Any]:
     dirty = subprocess.check_output(["git", "-C", str(root), "status", "--porcelain"], text=True)
     require(not dirty.strip(), "remote search checkout is dirty")
     action = payload.get("action")
+    if action in {"r9_prepare", "r9_qualify", "r9_seal", "r9_collect", "r9_rebind"}:
+        from . import r9_native
+        if action == "r9_rebind":
+            return r9_native.rebind(payload["receipt"], run_id=payload["run_id"], assets=payload["assets"])
+        if action == "r9_prepare":
+            return r9_native.prepare(payload["receipt"], payload["deployment"])
+        if action == "r9_qualify":
+            require(type(payload["node_rank"]) is int and payload["node_rank"] in (0, 1), "R9 explicit node rank")
+            return r9_native.qualify(payload["draft"], payload["node_rank"])
+        if action == "r9_seal":
+            return r9_native.seal(payload["draft"])
+        return r9_native.collect(payload["manifest"])
     if action == "runtime_identity":
         from .runtime_identity import collect_planned_node_identity
         return collect_planned_node_identity(payload["receipt"], node_rank=payload["node_rank"])

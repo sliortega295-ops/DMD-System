@@ -43,6 +43,10 @@ def assemble_native(receipt, preparation, identity, runtime_identity_evidence):
     require(summary.get("calibration_only") is True, "native summary is not calibration")
     require(summary.get("formal_timing_eligible", summary.get("formal_eligibility")) is False,
             "calibration mislabeled formal timing")
+    r9 = w == H3 and "execution_transport" in receipt
+    if r9:
+        from .r9_native import verify_execution
+        sources += verify_execution(receipt)
     resources = []
     for n in (0, 1):
         p = out / f"search-resources.node{n}.json"
@@ -52,11 +56,13 @@ def assemble_native(receipt, preparation, identity, runtime_identity_evidence):
         for event in ("oom", "oom_kill"):
             counts = [s["cgroup_events"][event] for s in r["samples"]]
             require(max(counts) == min(counts), "cgroup OOM increased")
-        teardown = out / "launcher" / f"node_{n}" / "teardown_status.txt"
-        flags = dict(line.split("=",1) for line in teardown.read_text().splitlines() if "=" in line)
-        require(flags.get("status") == "PASS" and flags.get("gpu_process_count") == "0"
-                and flags.get("owner_run_id") == receipt["run_id"], "native teardown failed")
-        sources += [binding(p), binding(teardown)]
+        sources.append(binding(p))
+        if not r9:
+            teardown = out / "launcher" / f"node_{n}" / "teardown_status.txt"
+            flags = dict(line.split("=",1) for line in teardown.read_text().splitlines() if "=" in line)
+            require(flags.get("status") == "PASS" and flags.get("gpu_process_count") == "0"
+                    and flags.get("owner_run_id") == receipt["run_id"], "native teardown failed")
+            sources.append(binding(teardown))
         resources.append(r)
     require({r["rank"] for r in native} == set(RANKS), "missing native ranks")
     ranks, observations, limits = [], [], {}
@@ -100,6 +106,7 @@ def assemble_native(receipt, preparation, identity, runtime_identity_evidence):
     require(len(observations) == expected_owners, "native operation clock owners incomplete")
     target = out / "macro-costs"
     target.mkdir(exist_ok=False)
+    sources = list({ref["path"]: ref for ref in sources}.values())
     provenance = dict(native_sources=sources, runtime_identity_evidence=runtime_identity_evidence,
         correctness=preparation["correctness"], comparison=preparation["comparison"],
         strict_numerical_gate=preparation["strict_numerical_gate"])
