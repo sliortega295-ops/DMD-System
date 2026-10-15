@@ -83,6 +83,12 @@ def tensor_parity_metrics(
         elif float(raw_ref_l2.cpu()) <= 1e-12 or float(raw_candidate_l2.cpu()) <= 1e-12:
             cosine = torch.tensor(0.0, device=ref.device)
             cosine_policy = "single_zero_defined_as_zero"
+        elif same_dtype and torch.equal(reference.detach(), candidate.detach()):
+            # Long FP32 reductions can report cosine(x, x) below the strict
+            # threshold. Exact finite equality proves cosine1 analytically;
+            # avoid rejecting identical predictions due to reduction rounding.
+            cosine = torch.tensor(1.0, device=ref.device)
+            cosine_policy = "exact_equal_values_defined_as_one"
         else:
             cosine = torch.nn.functional.cosine_similarity(
                 ref.flatten().unsqueeze(0),
