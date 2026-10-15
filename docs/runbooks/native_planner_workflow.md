@@ -91,3 +91,18 @@ it does not download raw files or silently copy metadata from another source.
   files, wrong shape, cost substitution and missing ranks reject before launch.
 - Record prediction error and numerical status honestly. CPU test outputs or
   historical 480x832 cache results are not current-HEAD GPU validation.
+# H3 child toolchain environment
+
+The resolved H3 child environment explicitly exports `PATH=/usr/bin:/bin`.
+It does not inherit the controller's PATH, prepend an environment/CUDA bin
+directory, or install a compiler. A clean allowlisted child may otherwise find
+GCC via Python's executable-search fallback but leave GCC unable to find `ld`.
+Serialized plans with a missing or changed PATH fail the normal plan/local
+validation. Canonical profile files and training semantics are unchanged.
+
+Before a cluster retry, qualify on each node using that exact selected child
+environment: locate GCC and `ld`, compile/link a minimal CPU-only C program and
+execute it. Record tool paths/hashes and return codes. Imports alone do not
+exercise this JIT-toolchain dependency; a CPU linker probe is not CUDA/Triton
+or native workload validation. Preserve the original failed run and generate
+a fresh source-bound plan, run ID, qualification and sealed manifest.

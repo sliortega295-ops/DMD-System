@@ -25,6 +25,10 @@ CANONICAL_IDS = frozenset({
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 HELIOS_SHA = "5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886"
+# The H3 child is launched from an allowlisted environment. GCC may be found
+# by Python's fallback search while its linker still requires an exported PATH.
+# Do not inherit caller/virtualenv/CUDA paths into this system-toolchain search.
+H3_SYSTEM_TOOLCHAIN_PATH = "/usr/bin:/bin"
 
 
 def repository_root() -> Path:
@@ -258,6 +262,9 @@ def validate_resolved_asset_binding(receipt: Mapping[str, Any], profile: Mapping
                  and node["python"] == str(Path(spec["python_env"]) / "bin/python"), "resolved source/python binding changed")
         _require(node["environment"]["PYTHONPATH"] == _python_path(profile, spec, node["environment"]),
                  "resolved dependency PYTHONPATH changed")
+        if profile["id"] == "minimax_h3_grid1000_best":
+            _require(node["environment"].get("PATH") == H3_SYSTEM_TOOLCHAIN_PATH,
+                     "resolved H3 system toolchain PATH changed")
 
 
 def verify_assets(profile: Mapping[str, Any], assets: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -373,6 +380,7 @@ def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: P
             env["DISTILLSCHEDULE_ASSETS"] = str(Path(env["HF_HOME"]).parent)
             env["DISTILLSCHEDULE_GAN_CONFIG"] = str(rr/"configs/distillschedule/templates/helios_stage3_gan_384x640_systems.yaml")
         if workload == "minimax_h3_grid1000_best":
+            env["PATH"] = H3_SYSTEM_TOOLCHAIN_PATH
             env["LIGHTX2V_ROOT"] = str(rr/"third_party/lightx2v")
             env["H3_OUTPUT_DIR"] = str(Path(output)/"h3")
             env["H3_CONFIG"] = str(Path(output)/f"h3-config-node{i}.json")
