@@ -154,7 +154,7 @@ def build_dmd_program(*, hooks: DMDHooks, feed_names: tuple[str, ...], cycles: i
     calls = []; outputs = []
 
     def emit(call_id, binding, named_inputs, *, cycle, phase, fake_index=None,
-             reads=(), writes=(), grad='no_grad', backward_of=(), optimizer=None):
+             reads=(), writes=(), grad='no_grad', backward_of=(), optimizer=None, after=()):
         hook = None if binding == 'detach' else getattr(hooks, binding)
         extra_reads = hook.reads if hook is not None else ()
         extra_writes = hook.writes if hook is not None else ()
@@ -166,7 +166,7 @@ def build_dmd_program(*, hooks: DMDHooks, feed_names: tuple[str, ...], cycles: i
             tuple(dict.fromkeys((*feed_names, *named_inputs.values()))),
             tuple(dict.fromkeys((*reads, *extra_reads))),
             tuple(dict.fromkeys((*writes, *extra_writes))), grad=grad,
-            backward_of=tuple(backward_of),
+            backward_of=tuple(backward_of), after=tuple(after),
             replay_safe=bool(hook is not None and hook.replay_safe and grad == 'grad'),
             attributes=attributes))
         return call_id
@@ -195,7 +195,7 @@ def build_dmd_program(*, hooks: DMDHooks, feed_names: tuple[str, ...], cycles: i
         backward = emit(prefix + '.student_backward', 'student_backward', {'loss': loss},
                         reads=('student_grad',), writes=('student_grad',),
                         grad='grad', backward_of=(loss,), **phase)
-        emit(prefix + '.student_update', 'student_update', {'backward': backward},
+        student_commit = emit(prefix + '.student_update', 'student_update', {'backward': backward},
              reads=('student', 'student_optimizer', 'student_grad'),
              writes=('student', 'student_optimizer', 'student_grad'),
              optimizer='student_optimizer', **phase)
@@ -224,7 +224,8 @@ def build_dmd_program(*, hooks: DMDHooks, feed_names: tuple[str, ...], cycles: i
                             grad='grad', backward_of=(loss,), **fake_phase)
             emit(sub + '.update', 'fake_update', {'backward': backward},
                  reads=('fake', 'fake_optimizer', 'fake_grad'),
-                 writes=('fake', 'fake_optimizer', 'fake_grad'), optimizer='fake_optimizer', **fake_phase)
+                 writes=('fake', 'fake_optimizer', 'fake_grad'), optimizer='fake_optimizer',
+                 after=(student_commit,), **fake_phase)
             outputs.append(loss)
         previous = history
     if previous is not None:
