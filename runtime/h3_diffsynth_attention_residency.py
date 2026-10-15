@@ -104,8 +104,9 @@ def resident_pool_type(prefetch_module, *, tail_blocks, budget):
                     else:
                         values.append(value)
                 ready = None if self.cpu_test else torch.cuda.Event()
+                producer_stream = None if self.cpu_test else torch.cuda.current_stream(device)
                 if not self.cpu_test:
-                    ready.record(torch.cuda.current_stream(device))
+                    ready.record(producer_stream)
                     # Keep the existing source-group/FIFO accounting. This
                     # event is a GPU copy completion, not a D2H completion.
                     self.pending[device].append(ready)
@@ -119,7 +120,8 @@ def resident_pool_type(prefetch_module, *, tail_blocks, budget):
             self.residency["avoided_D2H_logical_bytes"] += logical
             return {"buffers": [], "values": values, "spec": spec, "device": device,
                     "ready": ready, "signature": signature((args, kwargs)),
-                    "GPU_cache_owned_bytes": charged, "GPU_cache_logical_bytes": logical}
+                    "GPU_cache_owned_bytes": charged, "GPU_cache_logical_bytes": logical,
+                    "GPU_cache_producer_stream": None if producer_stream is None else producer_stream.cuda_stream}
 
         def restore(self, entry, args, kwargs):
             resident = "GPU_cache_owned_bytes" in entry
@@ -134,6 +136,18 @@ def resident_pool_type(prefetch_module, *, tail_blocks, budget):
                     saved, values, ready, namespace = self.prefetched[key]
                     values = [value.detach() if isinstance(value, torch.Tensor) else value for value in values]
                     self.prefetched[key] = (saved, values, ready, namespace)
+                if not self.cpu_test:
+                    consume = torch.cuda.current_stream(entry['device'])
+                    # Parent marks prefetched results, but on-demand heads have
+                    # no CPU buffers and bypass that branch. Waiting for the
+                    # producer event guarantees readiness, not allocator lifetime.
+                    for value in entry['values']:
+                        if isinstance(value, torch.Tensor) and value.is_cuda:
+                            value.record_stream(consume)
+                    self.residency['consumer_stream_guards'] += 1
+                    self.residency['on_demand_head_stream_guards'] += int(key not in self.prefetched)
+                    self.residency['producer_consumer_stream_changes'] += int(
+                        consume.cuda_stream != entry['GPU_cache_producer_stream'])
             result = super().restore(entry, args, kwargs)
             if resident:
                 self.residency["consumer_entries"] += 1
@@ -164,6 +178,8 @@ def resident_pool_type(prefetch_module, *, tail_blocks, budget):
                           GPU_cache_peak_owned_bytes_across_logical_slots=budget.peak_owned_bytes,
                           GPU_cache_owned_bytes_at_epoch_finish=budget.owned_bytes,
                           GPU_cache_ownership_scope="cache-held storage; native autograd/allocator live bytes measured separately",
+                          only_H2D_scheduling_changed=False, only_D2H_queue_grouping_changed=False,
+                          change_scope="exact cache storage and lifetime; original native attention and backward",
                           max_D2H_inflight="original one source group; resident groups issue D2D only")
             return result
 
