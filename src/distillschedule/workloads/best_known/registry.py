@@ -161,10 +161,11 @@ def validate_asset_config(value: dict[str, Any], profile: Mapping[str, Any]) -> 
     _require(nodes[0].get("host") != nodes[1].get("host"), "nodes must use different SSH hosts")
     for n in nodes:
         _require({"host", "repo_root", "python_env"}.issubset(n)
-                 and not set(n) - {"host", "repo_root", "python_env", "ssh_port", "address_family", "python_path_overlays"},
+                 and not set(n) - {"host", "repo_root", "python_env", "ssh_port", "address_family", "python_path_overlays", "rpc_transport"},
                  "node must specify host, repo_root, python_env; optional transport and dependency overlays only")
         _require(type(n.get("ssh_port", 22)) is int and 1 <= n.get("ssh_port", 22) <= 65535, "invalid SSH port")
         _require(n.get("address_family", "auto") in {"auto", "ipv4", "ipv6"}, "invalid SSH address family")
+        _require(n.get("rpc_transport", "stdin") in {"stdin", "argv-json-tty-v1"}, "invalid metadata RPC transport")
         _require(bool(re.fullmatch(r"[A-Za-z0-9_.@:-]+", str(n["host"]))) and not n["host"].startswith("-"), "unsafe SSH host")
         for k in ["repo_root", "python_env"]:
             _require(isinstance(n[k], str) and Path(n[k]).is_absolute(), f"node {k} must be absolute")

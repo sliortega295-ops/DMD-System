@@ -142,24 +142,52 @@ def rebind_plan(receipt: dict[str, Any], *, run_id: str,
 
 
 def native_rpc(*, transport_assets, source_head, output: Path, action: str, _node_rank: int = 0, **kwargs):
+    import base64
     import shlex
     import subprocess
+    import zlib
     from distillschedule.workloads.best_known.dispatch import ssh_command
     require(type(_node_rank) is int and _node_rank in (0, 1), "invalid RPC node rank")
     node = transport_assets["nodes"][_node_rank]
     python = str(Path(node["python_env"]) / "bin/python")
     worker = str(Path(node["repo_root"]) / "scripts/distillschedule/run_best_known_workload.py")
-    command = [*ssh_command(node), shlex.join(["env", "PYTHONDONTWRITEBYTECODE=1",
-        "LD_LIBRARY_PATH=" + str(Path(node["python_env"]) / "lib"), python, worker, "_search"])]
+    transport = node.get("rpc_transport", "stdin")
+    require(transport in {"stdin", "argv-json-tty-v1"}, "unsupported metadata RPC transport")
+    payload = {"action": action, "source_head": source_head, **kwargs}
+    stdin_payload = json.dumps(payload)
+    environment = ["env", "PYTHONDONTWRITEBYTECODE=1",
+                   "LD_LIBRARY_PATH=" + str(Path(node["python_env"]) / "lib"), python]
+    if transport == "argv-json-tty-v1":
+        # Some allocated-node gateways keep forwarded stdin open. Never pipe
+        # JSON into a PTY: carry this bounded CPU request in argv instead, and
+        # isolate its result from banners/CRLF with a single framed response.
+        encoded = base64.b64encode(zlib.compress(stdin_payload.encode())).decode()
+        require(len(encoded) <= 100_000, "metadata RPC payload exceeds argv transport bound")
+        boot = ("import base64,contextlib,io,runpy,sys,zlib\n"
+                f"sys.argv=[{worker!r},'_search']\n"
+                f"sys.stdin=io.StringIO(zlib.decompress(base64.b64decode({encoded!r})).decode())\n"
+                "result=io.StringIO()\n"
+                "with contextlib.redirect_stdout(result):\n"
+                " try:\n"
+                f"  runpy.run_path({worker!r},run_name='__main__')\n"
+                " except SystemExit as error:\n"
+                "  if error.code not in (None,0): raise\n"
+                "print('DMD_NATIVE_RPC_JSON='+base64.b64encode(result.getvalue().encode()).decode())\n")
+        ssh = ssh_command(node)
+        command = [*ssh[:-1], "-n", "-tt", ssh[-1],
+                   shlex.join([*environment, "-c", boot]) + "; exit"]
+        stdin_payload = None
+    else:
+        command = [*ssh_command(node), shlex.join([*environment, worker, "_search"])]
     import time
     logs = output / "rpc"
     logs.mkdir(exist_ok=True)
     directory = logs / f"{time.time_ns()}-{action}"
     directory.mkdir(exist_ok=False)
-    payload = {"action": action, "source_head": source_head, **kwargs}
-    write_new_json(directory / "request.json", {"command": command, "payload": payload})
+    write_new_json(directory / "request.json", {"command": command, "payload": payload,
+                                              "rpc_transport": transport})
     try:
-        response = subprocess.run(command, input=json.dumps(payload), capture_output=True,
+        response = subprocess.run(command, input=stdin_payload, capture_output=True,
                                   text=True, timeout=900)
     except subprocess.TimeoutExpired as error:
         write_new_json(directory / "failure.json", {"status": "FAIL", "failure_type": "TIMEOUT"})
@@ -171,6 +199,11 @@ def native_rpc(*, transport_assets, source_head, output: Path, action: str, _nod
     write_new_json(directory / "exit.json", {"returncode": response.returncode})
     if response.returncode:
         raise RuntimeError(f"native {action} failed ({response.returncode}); evidence: {directory}: {response.stderr[-6000:]}")
+    if transport == "argv-json-tty-v1":
+        frames = [line.split("=", 1)[1] for line in response.stdout.splitlines()
+                  if line.startswith("DMD_NATIVE_RPC_JSON=")]
+        require(len(frames) == 1, "metadata RPC must return exactly one framed result")
+        return json.loads(base64.b64decode(frames[0], validate=True))
     return json.loads(response.stdout)
 
 
