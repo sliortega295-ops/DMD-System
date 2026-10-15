@@ -14,6 +14,7 @@ from distillschedule.workloads.best_known.registry import (
 )
 from .contracts import require,semantic_contract
 from .helios_implementation import HeliosImplementation,NO_GAN,GAN
+from .helios_safe_bundle import BUNDLE_ID,HeliosSafeBundle
 from .helios_action_costs import ADAPTER,PRECISION,RANKS,MEMORY,anchors,action_graph,component_contract,observed_work
 from .cost_model import CostModel,OperationCost
 from .plan_ir import PlanningProblem,BindingRule,StateAllocation,Lifetime,validate_binding
@@ -23,9 +24,11 @@ SCHEMA='distillschedule.helios_component_layout.v1'
 FRAGMENT='distillschedule.helios_component_fragment.v1'
 
 
-def capability_report(workload):
+def capability_report(workload, *, include_safe_incumbent=False):
     require(workload in (NO_GAN,GAN),'unknown Helios workload')
-    return dict(workload=workload,adapter=ADAPTER,arbitrary_pool_lowering=False,
+    require(type(include_safe_incumbent) is bool,'safe incumbent opt-in must be boolean')
+    require(not include_safe_incumbent or workload==NO_GAN,'safe incumbent is No-GAN only; GAN is not migrated')
+    report=dict(workload=workload,adapter=ADAPTER,arbitrary_pool_lowering=False,
         placement=['world16-fsdp','node-hsdp'] if workload==NO_GAN else ['world16-fsdp'],
         modulation_chunk_tokens=[512,2048],rollout_window=list(range(1,6)) if workload==NO_GAN else [5],
         persistent_generator_unshard=[False] if workload==NO_GAN else [False,True],
@@ -33,18 +36,32 @@ def capability_report(workload):
         cost_policy='MISSING_NATIVE_COMPONENTS_UNCALIBRATED',
         gan_window_restriction='R_ALL_OWNS_ACQUIRE_FIVE_B1_RELEASE; SPLIT_SCOPE_NOT_ADMITTED',
         gpu_execution='NOT_RUN_BY_CAPABILITY_INVENTORY',historical_timings_used_as_costs=False)
+    if include_safe_incumbent:
+        report['candidate_bundles']={'none':'LEGACY_UNCHANGED',BUNDLE_ID:dict(
+            assignment=safe_incumbent().assignment,fields=HeliosSafeBundle.safe().cost_identity(),
+            calibration='MATCHED_FSDP_C512_K0_AND_HSDP_C512_K1_REQUIRED')}
+    return report
 
 
-def domains(workload):
-    c=capability_report(workload)
-    return dict(variant=('no-gan',) if workload==NO_GAN else ('gan',),mesh=tuple(c['placement']),
+def domains(workload, *, include_safe_incumbent=False):
+    c=capability_report(workload,include_safe_incumbent=include_safe_incumbent)
+    result=dict(variant=('no-gan',) if workload==NO_GAN else ('gan',),mesh=tuple(c['placement']),
         chunk_tokens=('512','2048'),rollout_window=tuple(map(str,c['rollout_window'])),
         persistent_unshard=('off',) if workload==NO_GAN else ('off','on'))
+    if include_safe_incumbent:result['candidate_bundle']=('none',BUNDLE_ID)
+    return result
 
 
-def implementations(workload):
+def safe_incumbent():
+    return HeliosImplementation('no-gan','node-hsdp',512,5,False,HeliosSafeBundle.safe())
+
+
+def implementations(workload, *, include_safe_incumbent=False):
+    require(type(include_safe_incumbent) is bool,'safe incumbent opt-in must be boolean')
+    require(not include_safe_incumbent or workload==NO_GAN,'safe incumbent is No-GAN only; GAN is not migrated')
     d=domains(workload)
-    return tuple(HeliosImplementation.from_assignment(dict(zip(d,values))) for values in product(*d.values()))
+    values=tuple(HeliosImplementation.from_assignment(dict(zip(d,values))) for values in product(*d.values()))
+    return (*values,safe_incumbent()) if include_safe_incumbent else values
 
 
 def _read_fragment(reference,root):
@@ -54,7 +71,8 @@ def _read_fragment(reference,root):
     b=f['binding'];validate_binding(b)
     require(b['source_head']==git_head(root) and b['precision_fingerprint']==PRECISION,'Helios component source/precision differs')
     impl=HeliosImplementation.parse(f['implementation_id']);w=impl.workload
-    require(impl.assignment in [i.assignment for i in implementations(w)],'Helios graph family not admitted')
+    require(impl.assignment in [i.assignment for i in implementations(w,include_safe_incumbent=w==NO_GAN)],
+            'Helios graph family not admitted')
     require(b['semantic_fingerprint']==fingerprint(semantic_contract(load_profile(w))),'Helios workload contract differs')
     plan=bound(f['execution_receipt']);validated_profile(plan,root=root)
     require(plan['mode']=='calibration' and plan['search_candidate']['id']==impl.id,'not this native calibration')
@@ -106,9 +124,15 @@ def _component_samples(impl,rows):
 def build_problem(layout_path,*,root=None):
     root=root or repository_root();layout=_object(layout_path)
     require(layout.get('schema_version')==SCHEMA and layout.get('fragments'),'Helios native component layout required')
+    include_safe=layout.get('include_safe_incumbent_bundle',False)
+    require(type(include_safe) is bool,'safe incumbent layout opt-in must be boolean')
+    measured_ids=set()
     identity=work=workload=limits=None;static={};outputs={};sources=[]
     for reference in layout['fragments']:
         f,impl,rows=_read_fragment(reference,root)
+        require(not impl.candidate_bundle.enabled or include_safe,'safe incumbent fragment requires explicit layout opt-in')
+        require(not include_safe or impl.workload==NO_GAN,'safe incumbent is No-GAN only; GAN is not migrated')
+        measured_ids.add(impl.id)
         require(identity is None or identity==f['binding'],'Helios calibration identities differ')
         require(workload is None or workload==impl.workload,'cannot mix GAN and No-GAN components')
         identity,workload=f['binding'],impl.workload
@@ -127,6 +151,12 @@ def build_problem(layout_path,*,root=None):
                     outputs[key]=max(outputs.get(key,0),life['bytes'])
         sources.append(reference)
     baseline,incumbent=anchors(workload)
+    if include_safe:
+        # Two measured arms suffice: the explicit k1 arm is the mandatory
+        # incumbent, not an uncalibrated old-HSDP k0 seed disguised as measured.
+        incumbent=safe_incumbent()
+        require({baseline.id,incumbent.id}<=measured_ids,
+                'safe incumbent problem requires measured FSDP C512 k0 control and HSDP C512 k1 incumbent')
     require({i.mesh for i in (baseline,incumbent)}<=set(static),'matched mesh construction layouts missing')
     graph=action_graph(baseline,selected=False)
     states=tuple(StateAllocation('native:'+mesh,RANKS,size,('native_runtime',),False,fingerprint(sources))
@@ -137,17 +167,24 @@ def build_problem(layout_path,*,root=None):
         (f'cycle{cycle}.c{steps.index(step)}',),RANKS,size,'producer_exit') for (cycle,step),size in sorted(outputs.items()))
     require(len(lives)==10,'ten measured retained output lifetimes required')
     rules=[];edges=[]
-    for impl in implementations(workload):
+    def assignment(impl):
+        return impl.assignment|({'candidate_bundle':impl.candidate_bundle.id} if include_safe else {})
+    for impl in implementations(workload,include_safe_incumbent=include_safe):
         if impl.mesh not in static:continue
         for op in graph.operations:
             contract=component_contract(op,impl,work[op.operation_id])
-            rules.append(BindingRule(op.operation_id,impl.assignment,contract.digest,RANKS,
+            rules.append(BindingRule(op.operation_id,assignment(impl),contract.digest,RANKS,
                 tuple(f'gpu:{r}' for r in RANKS),('native:'+impl.mesh,),contract.digest))
     for w in domains(workload)['rollout_window']:
         order=action_graph(replace(baseline,rollout_window=int(w))).topological_order()
         edges.extend(dict(when={'rollout_window':w},source=a,target=b) for a,b in zip(order,order[1:]))
-    return PlanningProblem(workload,identity,graph,domains(workload),tuple(rules),states,lives,limits,
-        (baseline.assignment,incumbent.assignment),conditional_dependencies=tuple(edges),evidence_scope='MEASURED',
+    decisions=domains(workload,include_safe_incumbent=include_safe)
+    forbidden=tuple({'candidate_bundle':BUNDLE_ID,key:value}
+        for key,values in decisions.items() if key!='candidate_bundle'
+        for value in values if value!=safe_incumbent().assignment[key]) if include_safe else ()
+    return PlanningProblem(workload,identity,graph,decisions,tuple(rules),states,lives,limits,
+        (assignment(baseline),assignment(incumbent)),forbidden=forbidden,
+        conditional_dependencies=tuple(edges),evidence_scope='MEASURED',
         lowering=dict(adapter=ADAPTER,layout_receipt=str(Path(layout_path).resolve()),layout_sha256=file_sha256(layout_path),
             memory_scope=MEMORY+'; TWO_GIB_MARGIN; NATIVE_CAPACITY_CONFIRMATION_REQUIRED',
             resource_scope='SERIAL_ACTIONS_NO_INVENTED_COMM_OVERLAP',component_sources=sources))
@@ -230,9 +267,10 @@ def validate_component_receipt(raw,cache):
             'Helios component cost differs from native rank observations')
 
 
-def assemble_calibrations(results,*,output,expected_head,root=None):
+def assemble_calibrations(results,*,output,expected_head,root=None,include_safe_incumbent=False):
     from .component_calibration import pool_component_models
     root=root or repository_root();require(git_head(root)==expected_head,'assembly source changed')
+    require(type(include_safe_incumbent) is bool,'safe incumbent assembly opt-in must be boolean')
     fragments=[];models=[]
     for path in results:
         row=_object(path)
@@ -242,7 +280,9 @@ def assemble_calibrations(results,*,output,expected_head,root=None):
         model=CostModel.from_dict(bound(row['operation_costs']));model.verify_receipts()
         fragments.append(row['layout_fragment']);models.append(model)
     output=Path(output);output.mkdir(parents=True,exist_ok=False)
-    layout=output/'layout.json';write_new_json(layout,dict(schema_version=SCHEMA,fragments=fragments))
+    data=dict(schema_version=SCHEMA,fragments=fragments)
+    if include_safe_incumbent:data['include_safe_incumbent_bundle']=True
+    layout=output/'layout.json';write_new_json(layout,data)
     problem=build_problem(layout,root=root);costs=pool_component_models(models,output=output/'components')
     costs.bind(problem.binding,problem_scope=problem.evidence_scope)
     write_new_json(output/'problem.json',problem.to_dict());write_new_json(output/'cost-model.json',costs.to_dict())

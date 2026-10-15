@@ -46,7 +46,14 @@ def summarize(rows,*,expected_head,candidate_id):
                 and r.get('profiled') is False and r.get('profiler_status')=='DISABLED'
                 and r.get('same_process') is True and r.get('initializations')==1,
                 'Helios native source/mode/rank contract failed')
-        require(r['planner_binding']['planner_implementation']==impl.assignment,'effective implementation differs')
+        require(r.get('planner_binding',{}).get('planner_implementation')==impl.assignment,'effective implementation differs')
+        if impl.candidate_bundle.enabled:
+            source = impl.candidate_bundle.cost_identity()
+            binding = r['planner_binding'].get('candidate_bundle', {})
+            require(binding == source, 'safe No-GAN effective flags/source binding differs')
+            effects = r.get('candidate_bundle_effects', {})
+            actual = impl.candidate_bundle.executed_effects(r.get('build', {}), effects.get('before', {}))
+            require(effects == actual, 'safe No-GAN effects differ from actual build/call receipts')
         require(r['source_steps']==contract['logical_steps'] and r['source_cohort_policy']=='fixed_source_cohort_replay',
                 'Helios fixed source cohort changed')
         require(r['initial_versions']==contract['initial_versions'] and r['final_versions']==contract['final_versions'],
@@ -64,7 +71,14 @@ def summarize(rows,*,expected_head,candidate_id):
                 'Helios logical final engine labels differ')
         require(len(r['cycles'])==2,'Helios requires two cycles')
         previous=contract['initial_versions']
+        bundle_previous = r['candidate_bundle_effects']['before'] if impl.candidate_bundle.enabled else None
         for index,c in enumerate(r['cycles'],1):
+            if impl.candidate_bundle.enabled:
+                effect=c.get('candidate_bundle_effects',{})
+                require(effect.get('before')==bundle_previous,'safe No-GAN cycle counter chain differs')
+                require(effect==impl.candidate_bundle.effects_between(effect['before'],effect.get('after',{})),
+                        'safe No-GAN cycle effects differ')
+                bundle_previous=effect['after']
             require(c['cycle']==index and c['status']=='PASS' and c['measured']==(index==2)
                     and c['initial_versions']==previous,'Helios cycle sequence/status differs')
             require(c.get('initial_physical_versions')==physical(c['initial_versions'])
@@ -106,6 +120,9 @@ def summarize(rows,*,expected_head,candidate_id):
                         ('census','versions','finite','dtype','sample_rng')),'native semantic gate failed')
             previous=versions
         require(r['input_reuse']['critic_entries_still_cached']==0,'trace cache not drained')
+        if impl.candidate_bundle.enabled:
+            require(bundle_previous==r['candidate_bundle_effects']['after'],
+                    'safe No-GAN final cycle counters differ from actual build')
     return dict(schema_version=SUMMARY_SCHEMA,status='PASS',rank_count=16,source_head=expected_head,
         run_id=rows[0].get('run_id'),candidate_id=impl.id,mode=mode,profiled=False,
         initial_versions=contract['initial_versions'],final_versions=contract['final_versions'],
@@ -248,6 +265,10 @@ def validate_admission(data,receipt,root=None):
 def validate_launcher_admission(environment):
     impl=current_implementation(environment)
     require(impl is not None,'Helios native identity/mode missing')
+    if impl.candidate_bundle.enabled:
+        require(all(environment.get(k) == v for k,v in impl.environment().items() if k!=MODE_ENV),
+                'safe No-GAN launcher configuration/flags missing or changed')
+        impl.candidate_bundle.source_identity()
     if environment[MODE_ENV]=='correctness':return dict(status='PASS_CORRECTNESS_BOOTSTRAP_ONLY')
     p=environment.get('DISTILLSCHEDULE_FSDP2_CORRECTNESS_SUMMARY','')
     require(bool(p) and Path(p).is_file(),'Helios native gate receipt missing')

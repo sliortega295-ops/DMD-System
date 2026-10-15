@@ -74,8 +74,11 @@ class StaticFSDP2P0Policy:
     generator_nograd_persistent_unshard: bool = False
     generator_nograd_persistent_unshard_flush_allocator_cache: bool = True
     cuda_allocator_expandable_segments: bool = False
+    lora_b_gemm_epilogue: bool = False
 
     def __post_init__(self) -> None:
+        if type(self.lora_b_gemm_epilogue) is not bool:
+            raise ValueError("lora_b_gemm_epilogue must be an explicit boolean")
         if self.mesh_policy not in SUPPORTED_MESH_POLICIES:
             raise ValueError(f"unsupported mesh policy: {self.mesh_policy}")
         if self.rollout_batch_size not in SUPPORTED_ROLLOUT_BATCH_SIZES:
@@ -223,7 +226,37 @@ class StaticFSDP2P0Policy:
                 suffixes.append("generatorpersistnoflush")
         if self.cuda_allocator_expandable_segments:
             suffixes.append("expandablesegments")
+        if self.lora_b_gemm_epilogue:
+            suffixes.append("lorabgemmepilogue")
         return "-".join((base, *suffixes))
+
+
+def validate_nogan_b_gemm_request(
+    *, enabled: bool, checkpoint_replay_scope: bool,
+    all_role_scale1_add: bool, variant: str, rollout_batch_size: int,
+    pack_real_score_pair: bool, attention_backend: str,
+) -> None:
+    """Reject an unqualified port configuration before model construction.
+
+    This is the NoGAN B1 port of the existing N37 kernel, not a new GAN,
+    batching, precision, or placement experiment. The default-off path does
+    not import Torch, Triton, or any new runtime implementation.
+    """
+    if any(type(value) is not bool for value in (
+        enabled, checkpoint_replay_scope, all_role_scale1_add, pack_real_score_pair,
+    )):
+        raise ValueError("LoRA-B port switches must be explicit booleans")
+    if checkpoint_replay_scope and not all_role_scale1_add:
+        raise ValueError("LoRA checkpoint scope requires all-role scale1 add")
+    if enabled and not (
+        all_role_scale1_add and checkpoint_replay_scope and variant == "no-gan"
+        and type(rollout_batch_size) is int and rollout_batch_size == 1
+        and not pack_real_score_pair and attention_backend == "local-fa2"
+    ):
+        raise ValueError(
+            "NoGAN LoRA-B port requires B1, packing OFF, pinned local-fa2, "
+            "all-role scale1 add, and captured checkpoint replay scope"
+        )
 
 
 def mesh_shape_for_policy(policy: str, *, world_size: int = WORLD_SIZE) -> tuple[int, ...]:

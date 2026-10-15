@@ -15,11 +15,13 @@ from typing import Any, Mapping
 
 from distillschedule.workloads.best_known.registry import fingerprint, load_profile
 from .contracts import Candidate, require, semantic_contract
+from .helios_safe_bundle import BUNDLE_ID, HeliosSafeBundle
 
 NO_GAN = "helios14b_nogan_best"
 GAN = "helios14b_gan_best"
 PREFIX = "joint-helios1-"
-PATTERN = re.compile(r"joint-helios1-(nogan|gan)-(fsdp|hsdp)-c(512|2048)-p([01])-w([1-5])")
+PATTERN = re.compile(r"joint-helios1-(nogan|gan)-(fsdp|hsdp)-c(512|2048)-p([01])-w([1-5])"
+                     r"(?:-k(safe-nogan-ed8-v1))?")
 MODES = ("correctness", "calibration", "native")
 MODE_ENV = "DISTILLSCHEDULE_HELIOS_PLANNER_MODE"
 ASSIGNMENT_ENV = "DISTILLSCHEDULE_HELIOS_PLANNER_ASSIGNMENT"
@@ -32,6 +34,7 @@ class HeliosImplementation:
     chunk_tokens: int
     rollout_window: int
     persistent_unshard: bool
+    candidate_bundle: HeliosSafeBundle = HeliosSafeBundle()
 
     def __post_init__(self) -> None:
         require(self.variant in ("no-gan", "gan"), "unsupported Helios variant")
@@ -45,12 +48,15 @@ class HeliosImplementation:
                 "GAN initially supports only world16-fsdp")
         require(not self.persistent_unshard or (self.variant == "gan" and self.rollout_window == 5),
                 "persistent unshard requires GAN and a single five-rollout scope")
+        require(type(self.candidate_bundle) is HeliosSafeBundle, "Helios candidate bundle must be typed")
+        self.candidate_bundle.validate_scope(self)
 
     @property
     def id(self) -> str:
         variant = "nogan" if self.variant == "no-gan" else "gan"
         mesh = "fsdp" if self.mesh == "world16-fsdp" else "hsdp"
-        return f"{PREFIX}{variant}-{mesh}-c{self.chunk_tokens}-p{int(self.persistent_unshard)}-w{self.rollout_window}"
+        base = f"{PREFIX}{variant}-{mesh}-c{self.chunk_tokens}-p{int(self.persistent_unshard)}-w{self.rollout_window}"
+        return base + ("-k" + self.candidate_bundle.id if self.candidate_bundle.enabled else "")
 
     @property
     def workload(self) -> str:
@@ -58,9 +64,12 @@ class HeliosImplementation:
 
     @property
     def assignment(self) -> dict[str, str]:
-        return dict(variant=self.variant, mesh=self.mesh, chunk_tokens=str(self.chunk_tokens),
+        result = dict(variant=self.variant, mesh=self.mesh, chunk_tokens=str(self.chunk_tokens),
                     rollout_window=str(self.rollout_window),
                     persistent_unshard="on" if self.persistent_unshard else "off")
+        if self.candidate_bundle.enabled:
+            result["candidate_bundle"] = self.candidate_bundle.id
+        return result
 
     @classmethod
     def parse(cls, key: str) -> "HeliosImplementation":
@@ -68,24 +77,30 @@ class HeliosImplementation:
         require(match is not None, "malformed/unregistered joint Helios implementation")
         return cls("no-gan" if match[1] == "nogan" else "gan",
                    "world16-fsdp" if match[2] == "fsdp" else "node-hsdp",
-                   int(match[3]), int(match[5]), match[4] == "1")
+                   int(match[3]), int(match[5]), match[4] == "1",
+                   HeliosSafeBundle.parse(match[6] or "none"))
 
     @classmethod
     def from_assignment(cls, assignment: Mapping[str, str]) -> "HeliosImplementation":
-        require(set(assignment) == {"variant", "mesh", "chunk_tokens", "rollout_window", "persistent_unshard"},
+        keys = {"variant", "mesh", "chunk_tokens", "rollout_window", "persistent_unshard"}
+        require(set(assignment) in (keys, keys | {"candidate_bundle"}),
                 "Helios assignment has extra/missing decisions")
         require(assignment["chunk_tokens"] in ("512", "2048")
                 and assignment["rollout_window"] in ("1", "2", "3", "4", "5")
                 and assignment["persistent_unshard"] in ("on", "off"), "invalid Helios decision")
         return cls(assignment["variant"], assignment["mesh"], int(assignment["chunk_tokens"]),
-                   int(assignment["rollout_window"]), assignment["persistent_unshard"] == "on")
+                   int(assignment["rollout_window"]), assignment["persistent_unshard"] == "on",
+                   HeliosSafeBundle.parse(assignment.get("candidate_bundle", "none")))
 
     @property
     def run_modes(self) -> tuple[str, ...]:
         return MODES
 
     def candidate(self) -> Candidate:
-        return Candidate(self.id, self.workload, self.mesh, (f"modulation_chunk{self.chunk_tokens}",),
+        kernels = (f"modulation_chunk{self.chunk_tokens}",)
+        if self.candidate_bundle.enabled:
+            kernels += (BUNDLE_ID,)
+        return Candidate(self.id, self.workload, self.mesh, kernels,
                          ("nccl", "pointwise", "residency"), variant=self.variant,
                          mechanism="native_mesh_chunk_retained_rollout_window_and_bounded_unshard")
 
@@ -101,6 +116,7 @@ class HeliosImplementation:
                     "DISTILLSCHEDULE_HELIOS_SELECTIVE_FLASH_CHECKPOINT_STRIDE": "0",
                     "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_PERSISTENT_UNSHARD":
                         "on" if self.persistent_unshard else "off"})
+        env.update(self.candidate_bundle.environment())
         return env
 
     def lower_profile(self, *, root: Path | None = None) -> dict[str, Any]:
@@ -160,6 +176,10 @@ class HeliosImplementation:
                 "Helios generated plans cannot change frozen residency/attention/residual policies")
         require(args.critic_only_step is None and not args.operation_source,
                 "Helios generated plan is not a single-Critic/profiler diagnostic")
+        if not self.candidate_bundle.enabled:
+            require(getattr(policy, "lora_b_gemm_epilogue", False) is False
+                    and getattr(args, "lora_checkpoint_replay_scope", False) is False,
+                    "Helios bundle-off cannot enable new LoRA-B/replay-scope mechanisms")
         # The launcher translates these canonical environment flags into args
         # and policy fields. Check the effective values as well as the env.
         for key, value in wanted.items():
@@ -169,8 +189,11 @@ class HeliosImplementation:
             for owner in (args, policy):
                 if hasattr(owner, name):
                     require(getattr(owner, name) is (value == "on"), f"Helios effective {name} mismatch")
-        return dict(candidate_id=self.id, planner_implementation=self.assignment, mode=env[MODE_ENV],
-                    effective_configuration_sha256=fingerprint({k: v for k,v in wanted.items() if k != MODE_ENV}))
+        binding = dict(candidate_id=self.id, planner_implementation=self.assignment, mode=env[MODE_ENV],
+                       effective_configuration_sha256=fingerprint({k: v for k,v in wanted.items() if k != MODE_ENV}))
+        if self.candidate_bundle.enabled:
+            binding["candidate_bundle"] = self.candidate_bundle.bind_effective(args=args, policy=policy)
+        return binding
 
 
 def current_implementation(environment: Mapping[str, str] | None = None) -> HeliosImplementation | None:
@@ -181,6 +204,11 @@ def current_implementation(environment: Mapping[str, str] | None = None) -> Heli
         require(mode == "off" and not env.get(ASSIGNMENT_ENV), "Helios planner mode/assignment without generated identity")
         return None
     impl = HeliosImplementation.parse(key)
+    if not impl.candidate_bundle.enabled:
+        require(all(env.get(name, "off") == "off" for name in (
+            "DISTILLSCHEDULE_HELIOS_LORA_B_GEMM_EPILOGUE",
+            "DISTILLSCHEDULE_HELIOS_LORA_CHECKPOINT_REPLAY_SCOPE")),
+            "Helios bundle-off identity cannot enable new LoRA-B/replay-scope environment flags")
     require(mode in MODES, "Helios generated identity requires explicit correctness/calibration/native mode")
     try:
         assignment = json.loads(env.get(ASSIGNMENT_ENV, ""))

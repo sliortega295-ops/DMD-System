@@ -29,12 +29,15 @@ def load_original_backend(root: Path):
 
 class OriginalWanSession:
     def __init__(self, *, task, strategy, fair, bootstrap, model_root, device, rank,
-                 trace, negative, diagnostics):
+                 trace, negative, diagnostics, asset_identity=None):
         strategy.validate_for(task)
         require(trace.variant=='no-gan' and tuple(trace.logical_steps)==task.source_steps,
                 'backend trace does not match task',path='wan.session')
         require(int(bootstrap.manifest['lora_rank'])==task.lora_rank,
                 'bootstrap does not match task rank',path='wan.session')
+        if strategy.candidate_bundle.enabled:
+            require(asset_identity is not None, 'bundle requires validated semantic asset identities', path='wan.session')
+            strategy.candidate_bundle.validate_assets(asset_identity)
         self.task,self.strategy,self.fair=task,strategy,fair
         self.rank,self.device,self.trace=rank,device,trace
         self.negative,self.diagnostics=negative,diagnostics
@@ -55,6 +58,8 @@ class OriginalWanSession:
         return dict(generator=int(self.g.global_steps),critic=int(self.c.global_steps),ema=int(self.ema.optimization_step))
 
     def prepare(self, *, operation_scope=None, operation_order=None):
+        if operation_order is not None:
+            self.strategy.candidate_bundle.validate_order(operation_order)
         return prepare_parameterized_wan_cycle(p0=self.fair.base.p0,
             source_steps=self.task.source_steps,ema_after=self.task.ema_after,
             trace_contract=self.task.trace_contract(),max_live_rollouts=self.strategy.rollout_window,

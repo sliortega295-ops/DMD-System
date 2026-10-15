@@ -7,6 +7,7 @@ from typing import Mapping
 from distillschedule.core.contracts import require
 from distillschedule.search.wan_implementation import WanImplementation, PRECISION
 from .wan_task import OriginalWanTask
+from distillschedule.search.wan_candidate_bundle import WanCandidateBundle, OFF, INCUMBENT
 
 
 @dataclass(frozen=True)
@@ -15,17 +16,18 @@ class WanStrategy:
     chunk_tokens: int
     lora_epilogue: bool
     rollout_window: int = 1
+    candidate_bundle: WanCandidateBundle = OFF
 
     def __post_init__(self):
         # Original native admission remains unchanged. In particular, FSDP only
         # supports its control kernel configuration until another arm is validated.
-        WanImplementation(self.placement, self.chunk_tokens, self.lora_epilogue)
+        WanImplementation(self.placement, self.chunk_tokens, self.lora_epilogue, candidate_bundle=self.candidate_bundle)
         require(type(self.rollout_window) is int and 1 <= self.rollout_window <= 64,
                 'invalid parameterized rollout window', path='wan.strategy')
 
     @property
     def backend(self):
-        return WanImplementation(self.placement, self.chunk_tokens, self.lora_epilogue)
+        return WanImplementation(self.placement, self.chunk_tokens, self.lora_epilogue, candidate_bundle=self.candidate_bundle)
 
     @property
     def id(self):
@@ -36,16 +38,20 @@ class WanStrategy:
         return {**self.backend.assignment, 'rollout_window': str(self.rollout_window)}
 
     def to_dict(self):
-        return dict(placement=self.placement,chunk_tokens=self.chunk_tokens,
+        return dict(**({"candidate_bundle": self.candidate_bundle.to_dict()} if self.candidate_bundle.enabled else {}),
+                    placement=self.placement,chunk_tokens=self.chunk_tokens,
                     lora_epilogue=self.lora_epilogue,rollout_window=self.rollout_window)
 
     @classmethod
     def from_dict(cls, value):
+        value = dict(value)
+        bundle = WanCandidateBundle.from_dict(value.pop('candidate_bundle')) if 'candidate_bundle' in value else OFF
         require(set(value)=={'placement','chunk_tokens','lora_epilogue','rollout_window'},
                 'strategy has unknown or missing fields', path='wan.strategy')
-        return cls(**value)
+        return cls(**value, candidate_bundle=bundle)
 
     def validate_for(self, task):
+        self.candidate_bundle.validate_task(task)
         require(isinstance(task,OriginalWanTask) and self.rollout_window <= task.fake_updates,
                 'window exceeds actual update count', path='wan.strategy')
 
@@ -57,25 +63,33 @@ class WanStrategy:
             'DISTILLSCHEDULE_WAN_ROLLOUT_WINDOW':'',
             'NCCL_ALGO':'Tree' if self.placement=='resident' else '',
             'DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE':str(int(self.lora_epilogue)),
-            'DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE':'0',
+            'DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE':str(int(self.candidate_bundle.generator_nograd_lora_cast_cache)),
             'DISTILLSCHEDULE_WAN13B_EMA_IMPLEMENTATION':'reference',
             'DISTILLSCHEDULE_WAN13B_LORA_OPERATOR_ATTRIBUTION':'0',
             'DISTILLSCHEDULE_NSYS_EXACT_RANGE':'0'}
 
 
-def implementations(task: OriginalWanTask, *, triton_available: bool):
+def implementations(task: OriginalWanTask, *, triton_available: bool, incumbent_bundle_available: bool = False):
     require(type(triton_available) is bool,'explicit capability required',path='wan.strategy')
     result=[WanStrategy('fsdp',512,False)]
     for chunk in (512,1024,2048):
         for fused in ((False,True) if triton_available else (False,)):
             result.append(WanStrategy('resident',chunk,fused))
+    require(type(incumbent_bundle_available) is bool, "explicit bundle capability required", path="wan.strategy")
+    if incumbent_bundle_available:
+        require(triton_available, "incumbent bundle requires Triton", path="wan.strategy")
+        INCUMBENT.validate_task(task)
+        result.append(WanStrategy("resident", 2048, True, candidate_bundle=INCUMBENT))
     return tuple(result)
 
 
-def capability_report(task: OriginalWanTask, *, triton_available: bool):
+def capability_report(task: OriginalWanTask, *, triton_available: bool, incumbent_bundle_available: bool = False):
     return {'schema_version':'distillschedule.original_wan_capabilities.v1',
         'task':task.to_dict(),'latent_shape':list(task.latent_shape),
-        'implementations':[c.to_dict() for c in implementations(task,triton_available=triton_available)],
+        'implementations':[c.to_dict() for c in implementations(task,triton_available=triton_available, incumbent_bundle_available=incumbent_bundle_available)],
+        'opt_in_coupled_bundles':[dict(bundle=INCUMBENT.to_dict(), task_supported=task==OriginalWanTask(),
+            admission='EXACT_ORIGINAL_TASK_AND_IMMUTABLE_ASSETS_ONLY', gpu_execution='NOT_RUN_ON_CURRENT_SOURCE',
+            timing='HISTORICAL_PROVENANCE_NOT_CURRENT_CALIBRATION', precision='CURRENT_GENERATED_POLICY_NO_DRIVER_OVERRIDE')],
         'rollout_windows':list(range(1,task.fake_updates+1)),
         'backend_routes':{'fsdp':'apply_wan13b_fair_fsdp2_policy + build_fair_engine',
                           'resident':'build_fair_engine / GradReadyAsyncResidentEngine / 128 MiB / NCCL Tree'},

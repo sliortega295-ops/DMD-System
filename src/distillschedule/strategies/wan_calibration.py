@@ -32,6 +32,8 @@ def two_cycles(task, initial_versions, window):
 def component(task, action, strategy, *, cycle, work):
     kind=action[0]
     local={'family':kind}
+    if strategy.candidate_bundle.enabled:
+        local.update(strategy.candidate_bundle.component_identity())
     if kind in 'grc':local['chunk_tokens']=strategy.chunk_tokens
     if kind in 'gr':local['lora_nograd_epilogue']=strategy.lora_epilogue
     return ComponentContract(family='original_wan.'+kind,

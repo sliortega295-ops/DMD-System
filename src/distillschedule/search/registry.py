@@ -120,6 +120,8 @@ def candidate_profile(candidate: Candidate, *, root: Path | None = None) -> dict
     if candidate.workload == WAN:
         from .wan_implementation import is_generated, WanImplementation
         joint = WanImplementation.parse(candidate.id) if is_generated(candidate.id) else None
+        require(joint is None or not joint.candidate_bundle.enabled,
+                "incumbent bundle uses task-bound workloads native calibrate/plan/run; legacy profile lowering is not admitted")
         p["topology"]["placement"] = candidate.placement
         if candidate.id == "fsdp-reference" or (joint is not None and joint.placement == "fsdp"):
             p["topology"].update(model_replication="world16_full_shard",

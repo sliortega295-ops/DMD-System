@@ -72,6 +72,9 @@ def component_contract(op,impl,work):
         local['modulation_chunk_tokens']=impl.chunk_tokens
         local['selective_flash_checkpoint_stride']=0
     if kind=='r':local['persistent_generator_unshard']=impl.persistent_unshard
+    if impl.candidate_bundle.enabled:
+        # Even EMA is isolated: source/mechanism cohorts cannot borrow old costs.
+        local['candidate_bundle']=impl.candidate_bundle.cost_identity()
     return ComponentContract(f'helios.{impl.variant}.{action if action=="r_all" else kind}',work,
         {'native_precision_fingerprint':PRECISION},
         {'mesh':impl.mesh,'world_size':16,'placement':'FULL_SHARD','replicate':2 if impl.mesh=='node-hsdp' else 1},

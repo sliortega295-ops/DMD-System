@@ -20,11 +20,13 @@ from .h3_request import H3Request
 from .model_adapters import SUPPORTED_WORKLOADS, adapter_for
 
 
-def candidate_inventory(workload, *, request=None):
+def candidate_inventory(workload, *, request=None, include_helios_safe_incumbent=False):
     require(workload in SUPPORTED_WORKLOADS, "unknown native workload")
     require(request is None or workload == H3, "explicit request currently supported only for H3")
     from .wan_implementation import WAN
     from .helios_implementation import NO_GAN, GAN
+    require(type(include_helios_safe_incumbent) is bool,'safe incumbent opt-in must be boolean')
+    require(not include_helios_safe_incumbent or workload==NO_GAN,'safe incumbent opt-in is No-GAN only')
     if workload == H3:
         from .h3_implementation import implementations
         values = implementations(request=request or H3Request(), explicit_cache=True)
@@ -33,7 +35,7 @@ def candidate_inventory(workload, *, request=None):
         values = tuple(replace(i, rollout_window=w) for i in implementations() for w in range(1, 6))
     elif workload in (NO_GAN, GAN):
         from .helios_model_adapter import implementations
-        values = implementations(workload)
+        values = implementations(workload,include_safe_incumbent=include_helios_safe_incumbent)
     else:
         from .livewan_implementation import implementations
         values = implementations()
@@ -48,7 +50,9 @@ def candidate_inventory(workload, *, request=None):
     return dict(status="PASS_CPU_CAPABILITY_INVENTORY", workload=workload,
         source_head=git_head(repository_root()), candidates=candidates,
         workload_request=request.to_dict() if request is not None else None,
-        native_adapter=adapter_for(workload).capability_report(**({"h3_request": request} if workload == H3 else {})),
+        native_adapter=adapter_for(workload).capability_report(**(
+            {"h3_request": request} if workload == H3 else
+            {"include_safe_incumbent":True} if include_helios_safe_incumbent else {})),
         gpu_execution="NOT_RUN", historical_seconds_are_costs=False, claimable_speedup=False)
 
 
@@ -153,7 +157,10 @@ def assemble(args):
         from .helios_model_adapter import assemble_calibrations
     else:
         from .native_macro_calibration import assemble_calibrations
-    assemble_calibrations(args.result, output=args.output, expected_head=args.expected_head)
+    safe=getattr(args,'include_helios_safe_incumbent',False)
+    require(not safe or args.workload==NO_GAN,'safe incumbent assembly is No-GAN only')
+    assemble_calibrations(args.result, output=args.output, expected_head=args.expected_head,
+                         **({'include_safe_incumbent':True} if safe else {}))
     return dict(status="PASS_CPU_CALIBRATION_ASSEMBLY", workload=args.workload,
         problem=str((args.output / "problem.json").resolve()),
         cost_model=str((args.output / "cost-model.json").resolve()),
@@ -167,6 +174,8 @@ def main(argv):
     inventory.add_argument("--workload", required=True)
     inventory.add_argument("--request", type=Path, help="Explicit bounded H3 request JSON")
     inventory.add_argument("--output", type=Path)
+    inventory.add_argument("--include-helios-safe-incumbent", action="store_true",
+                           help="Opt-in exact No-GAN HSDP/C512/p0/w5 k-bundle; not GAN")
     collect = sub.add_parser("calibrate", help="Default source-only; explicit native matched-pair calibration")
     collect.add_argument("--workload", required=True)
     collect.add_argument("--candidate", nargs="+", required=True)
@@ -183,11 +192,14 @@ def main(argv):
     join.add_argument("--result", nargs="+", type=Path, required=True)
     join.add_argument("--expected-head", required=True)
     join.add_argument("--output", type=Path, required=True)
+    join.add_argument("--include-helios-safe-incumbent", action="store_true",
+                      help="Bind measured FSDP C512 k0 baseline and HSDP C512 k1 incumbent seeds")
     args = parser.parse_args(argv)
     try:
         if args.action == "candidates":
             result = candidate_inventory(args.workload,
-                request=H3Request.from_dict(_object(args.request)) if args.request else None)
+                request=H3Request.from_dict(_object(args.request)) if args.request else None,
+                include_helios_safe_incumbent=args.include_helios_safe_incumbent)
             if args.output:
                 write_new_json(args.output, result)
         else:

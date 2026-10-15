@@ -342,6 +342,13 @@ def _validate_action(row, impl):
         expected_modes = [False, False, False, True] if name == "g" else [False, True] if name.startswith("c") else []
         require(gan_calls == expected_modes, "actual GAN root forward mode/order changed")
     records = [row["helper_record"]["rollout"]] if name == "g" else row.get("rollout_records", [])
+    if impl.candidate_bundle.enabled:
+        for record in records:
+            require(record.get("synchronize_after_rollout") is False,
+                    "safe No-GAN actual rollout fence request differs")
+            if name == "g":
+                require(record.get("empty_cache_before_rollout") is False,
+                        "safe No-GAN actual Generator empty-cache request differs")
     if "helper_record" in row:
         require(row["helper_record"].get("source_rank") == row["source_rank"]
                 and row["helper_record"].get("logical_step") == row["source_steps"][0],
@@ -465,6 +472,8 @@ def run_two_cycles(*, p0: Any, args: Any, policy: Any, result: dict[str, Any], o
     impl = current_implementation()
     require(impl is not None, "native Helios bridge is default-off")
     binding = impl.receipt_binding(args=args, policy=policy)
+    bundle_before = (impl.candidate_bundle.effect_snapshot(result.get("build", {}))
+                     if impl.candidate_bundle.enabled else None)
     mode, torch = binding["mode"], p0.torch
     canonical = impl.lower_profile()["contract"]
     mapping = impl.version_mapping(canonical)
@@ -506,6 +515,8 @@ def run_two_cycles(*, p0: Any, args: Any, policy: Any, result: dict[str, Any], o
         result["outside_timer_probes"].append(dict(boundary="initial", state=_correctness_sketch(
             torch, generator_engine, critic_engine, ema), seconds=time.perf_counter()-started))
     for cycle in (1, 2):
+        cycle_bundle_before = (impl.candidate_bundle.effect_snapshot(result.get("build", {}))
+                               if impl.candidate_bundle.enabled else None)
         observer = _Observer(torch=torch, device=device, rank=rank, impl=impl, generator=generator_engine,
                              critic=critic_engine, ema=ema, mode=mode,
                              version_offsets=mapping["logical_minus_physical"])
@@ -539,6 +550,9 @@ def run_two_cycles(*, p0: Any, args: Any, policy: Any, result: dict[str, Any], o
         if mode == "correctness":
             row["state_sketch"] = _correctness_sketch(torch, generator_engine, critic_engine, ema)
         row["outside_timer_probe_seconds"] = time.perf_counter()-probe_started
+        if impl.candidate_bundle.enabled:
+            row["candidate_bundle_effects"] = impl.candidate_bundle.executed_effects(
+                result.get("build", {}), cycle_bundle_before)
         row["status"] = "PASS"
     final, physical_final = observer.version_snapshot()
     require(final == canonical["final_versions"], "native two-cycle final versions changed")
@@ -546,6 +560,10 @@ def run_two_cycles(*, p0: Any, args: Any, policy: Any, result: dict[str, Any], o
         result["input_reuse"] = trace.receipt()
         require(result["input_reuse"].get("critic_entries_still_cached") == 0,
                 "hardened trace cache retained an unconsumed input")
+    if impl.candidate_bundle.enabled:
+        # Counter reads occur outside both native timers, and exclude warmup.
+        result["candidate_bundle_effects"] = impl.candidate_bundle.executed_effects(
+            result.get("build", {}), bundle_before)
     result.update(status="PASS", semantics_status="PASS", final_versions=final,
                   final_physical_versions=physical_final,
                   cycle_wall_seconds={str(row["cycle"]): row["wall_seconds"] for row in result["cycles"]},

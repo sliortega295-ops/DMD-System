@@ -85,6 +85,7 @@ def native_graph() -> ExecutionGraph:
 def operation_contract(operation: Operation, implementation: WanImplementation) -> dict[str, Any]:
     return {"adapter": ADAPTER, "operation_id": operation.operation_id,
             "stage_inventory": operation.metadata["inventory"], "implementation": implementation.assignment,
+            **(implementation.candidate_bundle.component_identity() if implementation.candidate_bundle.enabled else {}),
             "precision_fingerprint": PRECISION.digest,
             "memory_definition": "MAX_TOTAL_ALLOCATED_DURING_STAGE_MINUS_POST_SETUP_STATIC_BYTES",
             "timing_definition": "SYNCHRONIZED_NATIVE_STAGE_CALIBRATION_NOT_FORMAL_CYCLE_TIMING"}

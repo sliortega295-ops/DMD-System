@@ -3,7 +3,9 @@ from __future__ import annotations
 from distillschedule.core.contracts import require
 
 
-def validate_build(strategy, build, *, executed=False):
+def validate_build(strategy, build, *, executed=False, cycles=0):
+    from distillschedule.runtime.wan_incumbent_evidence import validate_bundle_build
+    bundle_effects = validate_bundle_build(strategy.candidate_bundle, build, executed=executed, cycles=cycles)
     expected_sync = ('WORLD16_GRAD_READY_ASYNC_SUM_THEN_DIVIDE_ALL_REDUCE'
                      if strategy.placement == 'resident' else 'FSDP2_SUM_THEN_DIVIDE_REDUCE_SCATTER')
     for role in ('generator','critic'):
@@ -26,7 +28,7 @@ def validate_build(strategy, build, *, executed=False):
                     'requested fusion executed no elements', path='wan.actual')
     return {'status':'PASS_BACKEND_EFFECTS','gradient_sync':expected_sync,
             'chunk_tokens':strategy.chunk_tokens,'lora_epilogue':strategy.lora_epilogue,
-            'actual_compute_observed':executed}
+            'actual_compute_observed':executed, 'candidate_bundle_effects': bundle_effects}
 
 
 def validate_cycle(task, trace, result):

@@ -162,7 +162,9 @@ def runtime_info(torch):
             'tf32_matmul': torch.backends.cuda.matmul.allow_tf32,
             'tf32_cudnn': torch.backends.cudnn.allow_tf32,
             'matmul_precision': torch.get_float32_matmul_precision(),
-            'deterministic': torch.are_deterministic_algorithms_enabled()}
+            'deterministic': torch.are_deterministic_algorithms_enabled(),
+            'tf32_cublas_override': os.environ.get('TORCH_ALLOW_TF32_CUBLAS_OVERRIDE', 'NOT_SET'),
+            'nvidia_tf32_override': os.environ.get('NVIDIA_TF32_OVERRIDE', 'NOT_SET')}
 
 
 def save_final_state(session, output):
@@ -214,6 +216,8 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
         document = validate_plan(task, plan_path)
         strategy = WanStrategy.from_dict(document['selected']['strategy'])
     strategy.validate_for(task)
+    require(not strategy.candidate_bundle.enabled or (cycles == 2 and stream_path is None),
+            'incumbent literal graph bundle supports only two fixed-trace cycles, not streams', path='wan.worker')
     stream = None
     if stream_path is not None:
         require(mode == 'run', 'cohort training requires a selected plan, not a calibration arm', path='wan.worker')
@@ -239,6 +243,10 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
             require(not dist.is_initialized(), 'strategy must be selected before NCCL initialization', path='wan.worker')
             torch.cuda.set_device(local_rank); device = torch.device('cuda', local_rank)
             bootstrap, trace, negative, asset_identity = load_assets(task, assets, rank=rank)
+            if strategy.candidate_bundle.enabled:
+                strategy.candidate_bundle.validate_model_files(bootstrap.manifest, asset_identity["model_files"])
+                strategy.candidate_bundle.validate_assets({**asset_identity,
+                    'model_identity_sha256': bootstrap.manifest['model_identity_sha256']})
             fair = load_original_backend(repository_root())
             from distillschedule.search.wan_implementation import verify_execution_precision
             verify_execution_precision(torch)
@@ -273,8 +281,10 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
             from distillschedule.profiling.static_profile_diagnostics import StaticProfileDiagnostics
             session = OriginalWanSession(task=task, strategy=strategy, fair=fair, bootstrap=bootstrap,
                 model_root=assets.model_root, device=device, rank=rank, trace=trace, negative=negative_tensor,
-                diagnostics=StaticProfileDiagnostics(enabled=False, rank=rank))
+                diagnostics=StaticProfileDiagnostics(enabled=False, rank=rank),
+                asset_identity={**asset_identity, 'model_identity_sha256': bootstrap.manifest['model_identity_sha256']})
             from .wan_evidence import validate_build, validate_cycle
+            strategy.candidate_bundle.validate_versions(session.versions())
             effects = validate_build(strategy, session.build)
             receipt.update(identity=identity, runtime=runtime, hardware=hardware, build=session.build, backend_effects=effects)
             _json(path, receipt)
@@ -311,7 +321,7 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                 before_cycle=before_cycle, progress=progress,
                 validate_result=lambda raw: validate_cycle(session.task, session.trace, raw))
             receipt.update(result)
-            receipt['backend_effects'] = validate_build(strategy, session.build, executed=True)
+            receipt['backend_effects'] = validate_build(strategy, session.build, executed=True, cycles=cycles)
             if observer is not None:
                 receipt['calibration'] = observer.finish()
             receipt['state_evidence'] = save_final_state(session, root)

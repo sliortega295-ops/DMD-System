@@ -63,6 +63,9 @@ def assemble(task, rank_paths, output, *, reserve_bytes=2**31):
         require(len(row.get('cycles',[]))==2 and all(
             cycle.get('call_census',{}).get('status')=='PASS_TRACE_DERIVED_CALL_CENSUS'
             for cycle in row['cycles']), 'native sampler inventory missing',path='wan.calibration')
+        if strategy.candidate_bundle.enabled:
+            from .wan_evidence import validate_build
+            validate_build(strategy, row['build'], executed=True, cycles=2)
         c=row['calibration']
         require(c['status']=='PASS' and c['evidence_scope']=='MEASURED'
                 and c['pending_output'] is None and c['retained_input_bytes_at_finish']==0,
@@ -165,7 +168,7 @@ def plan(task, paths, *, max_states=50000,beam_width=0,timeout_seconds=60,memory
         lives=tuple(Lifetime(f'output-r{i}',f'r{i}',(f'c{i}',),ranks,v['output_bytes'][f'r{i}'],'producer_exit')
                     for i in range(task.fake_updates))
         state=(StateAllocation('state',ranks,v['static_bytes'],('native_runtime',),False,'original-native-state'),)
-        bound.append(BoundCandidate(strategy.backend.id,strategy.to_dict(),graph,rules,costs,state,lives,
+        bound.append(BoundCandidate(strategy.backend.id,strategy.to_dict(),strategy.candidate_bundle.admit_graph(graph),rules,costs,state,lives,
                      {r:limit for r in ranks},'original-wan-world16'))
     searched=select(bound,max_states=max_states,beam_width=beam_width,timeout_seconds=timeout_seconds)
     for result in searched['rejected']:
@@ -212,6 +215,8 @@ def validate_plan(task, path):
             'selected cost model changed',path='wan.run')
     graph=build_parameterized_cycle_graph(source_steps=task.source_steps,
         initial_versions=doc['warm_initial_versions'],ema_after=task.ema_after)
+    graph = strategy.candidate_bundle.admit_graph(graph)
+    strategy.candidate_bundle.validate_order(tuple(selected['order']))
     from distillschedule.runtime.role_runner import StaticRoleRunner
     from distillschedule.runtime.version_sync import VersionLedger
     handlers={op.kind.value:lambda ctx:None for op in graph.operations}
