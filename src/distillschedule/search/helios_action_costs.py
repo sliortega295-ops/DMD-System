@@ -68,7 +68,9 @@ def component_contract(op,impl,work):
     require(kind in 'grce' and work.get('physical_batch')==1 and work.get('logical_batch')==16,
             'Helios operation work missing')
     local={'family':kind,'variant':impl.variant}
-    if kind in 'grc':local['modulation_chunk_tokens']=impl.chunk_tokens
+    if kind in 'grc':
+        local['modulation_chunk_tokens']=impl.chunk_tokens
+        local['selective_flash_checkpoint_stride']=0
     if kind=='r':local['persistent_generator_unshard']=impl.persistent_unshard
     return ComponentContract(f'helios.{impl.variant}.{action if action=="r_all" else kind}',work,
         {'native_precision_fingerprint':PRECISION},

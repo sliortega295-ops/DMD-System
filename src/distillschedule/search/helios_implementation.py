@@ -95,6 +95,10 @@ class HeliosImplementation:
                     ASSIGNMENT_ENV: json.dumps(self.assignment, sort_keys=True, separators=(",", ":")),
                     MODE_ENV: "off",
                     "DISTILLSCHEDULE_HELIOS_MODULATION_CHUNK_TOKENS": str(self.chunk_tokens),
+                    # The pinned stride2 replay path has measured systematic
+                    # drift. Generated plans use native checkpoint recompute;
+                    # historical canonical recipes remain unchanged.
+                    "DISTILLSCHEDULE_HELIOS_SELECTIVE_FLASH_CHECKPOINT_STRIDE": "0",
                     "DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_PERSISTENT_UNSHARD":
                         "on" if self.persistent_unshard else "off"})
         return env
@@ -113,6 +117,9 @@ class HeliosImplementation:
                        native_run_modes={mode: "timing" for mode in (*self.run_modes, "diagnostic-timing")},
                        native_two_cycle_adapter_available=True, search_two_cycle_ready=False,
                        strict_pair_gate="NOT_RUN")
+        profile["historical"] = dict(formal_speedup_eligible=False,
+            scope="GENERATED_NATIVE_RECOMPUTE_REQUIRES_FRESH_CALIBRATION",
+            parent_canonical_profile_sha256=fingerprint(load_profile(self.workload, root=root)))
         initial = profile["contract"]["initial_versions"]
         updates = profile["contract"]["updates"]
         profile["contract"].update(continuous_cycles=2,
@@ -146,7 +153,8 @@ class HeliosImplementation:
                 "Helios generated plans preserve B1 and unpacked Score calls")
         require(policy.rollout_backend == "native-fsdp2-batch", "Helios rollout backend changed")
         require(type(policy.selective_flash_checkpoint_stride) is int
-                and policy.selective_flash_checkpoint_stride == 2, "Helios effective selective checkpoint policy changed")
+                and policy.selective_flash_checkpoint_stride == 0,
+                "Helios generated checkpoint policy requires native recompute; selective Flash replay is not admitted")
         require(args.ema_device == "cuda" and args.attention_backend == "local-fa2"
                 and args.generator_residual_storage == args.critic_residual_storage == "cuda_out_of_place",
                 "Helios generated plans cannot change frozen residency/attention/residual policies")
