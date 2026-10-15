@@ -59,9 +59,28 @@ def resident_pool_type(prefetch_module, *, tail_blocks, budget):
                 raise RuntimeError("unexpected native cache namespace")
             return index >= len(self.blocks) - tail_blocks
 
-        def store(self, namespace, ordinal, args, kwargs, result):
+        def store_uses(self, namespace, ordinal, args, kwargs, result, uses):
             if not self._resident(namespace):
-                return super().store(namespace, ordinal, args, kwargs, result)
+                return super().store_uses(namespace, ordinal, args, kwargs, result, uses)
+            if uses not in (1, 2) or ordinal not in (0, 1):
+                raise RuntimeError("unexpected native cache source/consumer count")
+            group = self.group
+            if group is None or group['namespace'] != namespace:
+                raise RuntimeError("GPU source must retain the original native block group")
+            entry = self._store_gpu(namespace, ordinal, args, kwargs, result)
+            entry.update(remaining=uses, consumer_limit=uses,
+                         prefetch_namespace=namespace, prefetch_ordinal=ordinal)
+            self.immutable_entries.append(entry)
+            self.counters['source_calls'] += 1
+            if not self.cpu_test:
+                pending = self.pending[entry['device']]
+                if len(pending) != 1 or pending[-1] is not entry['ready']:
+                    raise RuntimeError("original one-block source FIFO was not drained")
+                group['last'] = pending.pop()
+            group['count'] += 1
+            return entry
+
+        def _store_gpu(self, namespace, ordinal, args, kwargs, result):
             leaves, spec = tree_flatten(result)
             tensors = [value for value in leaves if isinstance(value, torch.Tensor)]
             native = [value for value in tensors if value.is_cuda or self.cpu_test]
