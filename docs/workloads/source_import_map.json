@@ -1099,9 +1099,16 @@
           "previous_integrated_sha256": "6d66ec5cc2bf7a9bd2187d11d11b9579df5dcf9e5d0e0ec0328c7081ccb7cb04",
           "reason": "Route unified native candidate/calibration assembly through the existing CLI and preserve action-qualified H3 admission for both legacy and explicit cache/request identities; no new trainer or canonical profile change.",
           "source_commit": "d12334398ca57246adfd1473473affd2184ff03f"
+        },
+        {
+          "base_integration_head": "1437839f3d2d98070de3ead09a4d7282a770721e",
+          "new_integrated_sha256": "f5c75c23ce2e1291c3153d8b87e603b17cdbf1e3d044cb32bf8d294a0ff516e7",
+          "previous_integrated_sha256": "a7e97885c837eede19638079ac265e7528aec8882867f35e19885ad84f137a38",
+          "reason": "Opt-in SHA-bound R9 transport for current-source H3 cache calibration and saved-plan execution. Reuse exact in-memory asset lowering for portable source/runtime validation; remote cost evidence remains fully checked on receipt host and workers. Default profiles, training math and numerical thresholds unchanged.",
+          "source_commit": "040ce410d78248995f365991919da8f98c8c4f92"
         }
       ],
-      "integrated_sha256": "a7e97885c837eede19638079ac265e7528aec8882867f35e19885ad84f137a38",
+      "integrated_sha256": "f5c75c23ce2e1291c3153d8b87e603b17cdbf1e3d044cb32bf8d294a0ff516e7",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/cli.py",
       "source_repository": "integration-pr26",
@@ -1222,9 +1229,16 @@
           "previous_integrated_sha256": "bb73212f3fa370bc1ba10baff4239dc06cc8943a6d37f674174b874a51dc8a8a",
           "reason": "Explicit fixed /usr/bin:/bin H3 child toolchain PATH and serialized tamper rejection. No inherited caller paths, package installation, model/config/math or numerical policy change.",
           "source_commit": "b39766cc8ac063d3fb8e24f89b72359231984e4b"
+        },
+        {
+          "base_integration_head": "1437839f3d2d98070de3ead09a4d7282a770721e",
+          "new_integrated_sha256": "cdcbed682c2c953b0de956266a8e391b86c039de8d0092bc222b2055147f0839",
+          "previous_integrated_sha256": "f387123b8ab4d51b4ef6c188ad3359500d834f94c486a8d4b15086485bb41c23",
+          "reason": "Opt-in SHA-bound R9 transport for current-source H3 cache calibration and saved-plan execution. Reuse exact in-memory asset lowering for portable source/runtime validation; remote cost evidence remains fully checked on receipt host and workers. Default profiles, training math and numerical thresholds unchanged.",
+          "source_commit": "040ce410d78248995f365991919da8f98c8c4f92"
         }
       ],
-      "integrated_sha256": "f387123b8ab4d51b4ef6c188ad3359500d834f94c486a8d4b15086485bb41c23",
+      "integrated_sha256": "cdcbed682c2c953b0de956266a8e391b86c039de8d0092bc222b2055147f0839",
       "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution. | Latest source adds opt-in native planner hooks/gates; exact adaptation hashes below supersede the earlier byte-identical-worker statement where applicable.",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/registry.py",
