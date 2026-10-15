@@ -111,7 +111,7 @@ def _model_identity(module):
 
 class RolePoolExecutor:
     def __init__(self, task:RoleTask, layout:PoolLayout, hardware:AllocatedWorld,
-                 bindings:RoleFunctions, *, device=None):
+                 bindings:RoleFunctions, *, device=None, profile_components=False):
         require(dist.is_available() and dist.is_initialized() and dist.get_world_size()==hardware.world,
                 'explicit initialized world process group required',path='role.runtime')
         layout.validate(task,hardware);bindings.validate(task)
@@ -125,6 +125,13 @@ class RolePoolExecutor:
                 (self.device.type=='cuda' and backend=='nccl' and
                  self.device.index==torch.cuda.current_device()),
                 'CPU/Gloo or one CUDA/NCCL device per rank required',path='role.runtime')
+        require(type(profile_components) is bool and (not profile_components or (
+                    layout.window==1 and layout.activation_policy=='resident' and
+                    layout.generator_parallelism=='replicated' and
+                    layout.score_parallelism=='replicated')),
+                'component profiling requires a replicated resident window-one anchor',
+                path='role.components')
+        self.profile_components=profile_components
         self.role='generator' if self.rank in layout.generator else 'score'
         self.group=None
         self.events=[]
@@ -263,6 +270,8 @@ class RolePoolExecutor:
         gen_group,score_group=self.gen_group,self.score_group
         group_size=len(layout.generator if self.role=='generator' else layout.score)
         self.events=[]
+        from .role_profiling import ComponentRecorder
+        components=ComponentRecorder(self.device,self.profile_components)
         graph=task.program(initial_versions=self._versions).compile()
         from .torch_backend import storage_bytes
         initial_bytes=storage_bytes((module,optimizer))
@@ -288,7 +297,8 @@ class RolePoolExecutor:
                 # input VJP is already divided by GLOBAL logical microbatch
                 # count; compensate once before invoking native autograd.
                 vjp=(grad*group_size if layout.generator_parallelism=='fsdp2_keep_forward' else grad)
-                with torch.enable_grad():latent.backward(vjp)
+                with components.span('backward',i):
+                    with torch.enable_grad():latent.backward(vjp)
                 self._event('generator_vjp_backward',i)
                 if offloader is not None:
                     offload_records.append(offloader.statistics)
@@ -299,11 +309,12 @@ class RolePoolExecutor:
                 while len(inflight)>=layout.window:flush()
                 offloader=(ActivationOffloader(self.device,module,host_budget)
                            if layout.activation_policy=='cpu_offload_prefetch' else None)
-                with torch.enable_grad():
-                    with offloader.hooks() if offloader is not None else nullcontext():
-                        latent=self.bindings.generator_forward(module,self._sample(i,'generator'))
-                _validate_tensor(latent,task,'generator output')
-                require(latent.requires_grad,'generator must produce an autograd-carrying latent',path='role.runtime')
+                with components.saved(module,i), components.span('forward',i):
+                    with torch.enable_grad():
+                        with offloader.hooks() if offloader is not None else nullcontext():
+                            latent=self.bindings.generator_forward(module,self._sample(i,'generator'))
+                    _validate_tensor(latent,task,'generator output')
+                    require(latent.requires_grad,'generator must produce an autograd-carrying latent',path='role.runtime')
                 # Pre-post response receive; NCCL tag-less point-to-point FIFO.
                 grad=torch.empty_like(latent.detach(),memory_format=torch.contiguous_format)
                 received=dist.irecv(grad,src=consumer)
@@ -319,9 +330,11 @@ class RolePoolExecutor:
             while inflight:flush()
             # Sharded FSDP2 gradients have ALREADY been reduce-scattered.
             # A second allreduce would corrupt the Adam update.
-            if layout.generator_parallelism=='replicated':
-                _sync_gradients(module,gen_group,group_size)
-            optimizer.step();optimizer.zero_grad(set_to_none=True)
+            if self.profile_components:dist.barrier(group=gen_group)
+            with components.span('generator_commit'):
+                if layout.generator_parallelism=='replicated':
+                    _sync_gradients(module,gen_group,group_size)
+                optimizer.step();optimizer.zero_grad(set_to_none=True)
             self._event('generator_commit',None)
         else:
             for i in range(task.microbatches):
@@ -330,23 +343,24 @@ class RolePoolExecutor:
                 latent=torch.empty(task.output_shape,device=self.device,dtype=getattr(torch,task.dtype))
                 dist.recv(latent,src=producer)
                 _validate_tensor(latent,task,'received latent')
-                source=latent.detach()
-                if self.bindings.score_input_gradient is not None:
-                    with torch.no_grad():
-                        gradient=self.bindings.score_input_gradient(module,source,self._sample(i,'score'))
-                    _validate_tensor(gradient,task,'constructed latent gradient')
-                    require(not gradient.requires_grad and gradient.grad_fn is None,
-                            'constructed gradient must be detached first-order data',path='role.runtime')
-                else:
-                    with torch.enable_grad():
-                        source.requires_grad_(True)
-                        loss=self.bindings.score_loss(module,source,self._sample(i,'score'))
-                        require(isinstance(loss,torch.Tensor) and loss.ndim==0 and
-                                bool(torch.isfinite(loss)) and loss.requires_grad,
-                                'score must produce a finite differentiable scalar loss',path='role.runtime')
-                        gradient=torch.autograd.grad(loss,source,create_graph=False)[0]
-                gradient=(gradient/task.microbatches).detach().contiguous()
-                _validate_tensor(gradient,task,'score input gradient')
+                with components.span('score',i):
+                    source=latent.detach()
+                    if self.bindings.score_input_gradient is not None:
+                        with torch.no_grad():
+                            gradient=self.bindings.score_input_gradient(module,source,self._sample(i,'score'))
+                        _validate_tensor(gradient,task,'constructed latent gradient')
+                        require(not gradient.requires_grad and gradient.grad_fn is None,
+                                'constructed gradient must be detached first-order data',path='role.runtime')
+                    else:
+                        with torch.enable_grad():
+                            source.requires_grad_(True)
+                            loss=self.bindings.score_loss(module,source,self._sample(i,'score'))
+                            require(isinstance(loss,torch.Tensor) and loss.ndim==0 and
+                                    bool(torch.isfinite(loss)) and loss.requires_grad,
+                                    'score must produce a finite differentiable scalar loss',path='role.runtime')
+                            gradient=torch.autograd.grad(loss,source,create_graph=False)[0]
+                    gradient=(gradient/task.microbatches).detach().contiguous()
+                    _validate_tensor(gradient,task,'score input gradient')
                 send_work.append((dist.isend(gradient,dst=producer),gradient))
                 if task.score_updates:local_score_data.append((latent.detach(),i))
                 self._event('score_receive_vjp_send',i)
@@ -360,12 +374,15 @@ class RolePoolExecutor:
         dist.barrier()
         if self.role=='score' and task.score_updates:
             from .role_score import execute_updates
-            transport_peak=max(transport_peak,execute_updates(self,local_score_data))
+            with components.span('score_updates'):
+                transport_peak=max(transport_peak,execute_updates(self,local_score_data))
         dist.barrier()
         if self.device.type=='cuda':torch.cuda.synchronize(self.device)
         # All-gather small receipts only (no weights or model tensors transmitted).
         cuda_peak=(torch.cuda.max_memory_allocated(self.device)
                    if self.device.type=='cuda' else None)
+        if self.profile_components and self.device.type=='cuda':
+            cuda_peak=max([cuda_peak]+[r['peak_allocated_bytes'] for r in components.records])
         if (self.role=='generator' and layout.generator_parallelism=='fsdp2_keep_forward') or (
              self.role=='score' and layout.score_parallelism in ('fsdp2_frozen','fsdp2_train')):
             from .role_sharding import sharded_model_identity
@@ -373,6 +390,7 @@ class RolePoolExecutor:
         else:
             model_digest=_model_identity(module)
         local={'rank':self.rank,'role':self.role,'events':self.events,
+               'components':components.result(),
                'activation_policy':layout.activation_policy,
                'offload':{'packed_tensors':sum(x['packed_tensors'] for x in offload_records),
                           'host_bytes_packed':sum(x['packed_host_bytes'] for x in offload_records),
