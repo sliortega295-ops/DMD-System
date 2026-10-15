@@ -1083,6 +1083,7 @@ def _load_two_cycle_timing_gate(
     bootstrap: Bootstrap,
     source_receipt: Mapping[str, Any],
     baseline_placement: Any = None,
+    pipeline_teacher_placement: Any = None,
 ) -> dict[str, Any]:
     """Validate the exact-head correctness evidence authorizing native timing."""
 
@@ -1093,6 +1094,9 @@ def _load_two_cycle_timing_gate(
         "two-cycle timing correctness gate SHA256 changed",
     )
     value = json.loads(resolved.read_text(encoding="utf-8"))
+    from distillschedule.runtime.livewan_pipeline_placement import validate_gate_binding
+    validate_gate_binding(value, name=(pipeline_teacher_placement.name
+        if pipeline_teacher_placement is not None else "legacy-sharded"), mode=mode)
     if baseline_placement is not None and baseline_placement.name != "legacy-hybrid":
         from distillschedule.runtime.livewan_baseline_placement import validate_timing_gate
         _require(mode == "baseline" and pipeline_variant == "b1", "placement timing requires B1 sequential")
@@ -1171,6 +1175,8 @@ def _load_two_cycle_timing_gate(
     }
     if livewan_hardware().is_h100:
         result["hardware_profile"] = livewan_hardware().to_dict()
+    if pipeline_teacher_placement is not None and pipeline_teacher_placement.enabled:
+        result["pipeline_teacher_placement"] = pipeline_teacher_placement.receipt()
     return result
 
 
@@ -1365,8 +1371,10 @@ def build_models(
     from wanstreamer.fsdp import shard_model
     from wanstreamer.lora import inject_lora
     from distillschedule.runtime.livewan_baseline_placement import from_plan
+    from distillschedule.runtime.livewan_pipeline_placement import from_plan as pipeline_placement_from_plan
 
     baseline_spec = from_plan(plan)
+    pipeline_teacher_spec = pipeline_placement_from_plan(plan)
 
     _require(mode in {"baseline", "pipeline"}, "unknown execution mode")
     config = WAN_CONFIGS["t2v-1.3B"]
@@ -1426,6 +1434,8 @@ def build_models(
     }
     if baseline_spec.name != "legacy-hybrid":
         metadata["baseline_placement"] = baseline_spec.receipt()
+    if pipeline_teacher_spec.enabled:
+        metadata["pipeline_teacher_placement"] = pipeline_teacher_spec.receipt()
     student = critic = critic_shadow = teacher = None
     opt_g = opt_c = None
     generator_optimizer_parameter_names: dict[int, str] = {}
@@ -1648,7 +1658,8 @@ def build_models(
             )
             teacher_ranks = PIPELINE_6G10S_SCORE_NODE_GROUPS[group_index]
             teacher_group = score_node_groups[group_index]
-        teacher_sharded = mode != "baseline" or baseline_spec.teacher_fsdp
+        teacher_sharded = ((not pipeline_teacher_spec.enabled) if mode == "pipeline"
+                           else baseline_spec.teacher_fsdp)
         if teacher_sharded:
             teacher_mesh = _make_mesh(torch, teacher_ranks, teacher_group)
             shard_model(teacher, mesh=teacher_mesh, reshard_after_forward=True)
@@ -3971,6 +3982,14 @@ def run_worker(
         name=os.environ.get("LIVEWAN_BASELINE_PLACEMENT", "legacy-hybrid"),
         teacher_offload=os.environ.get("LIVEWAN_TEACHER_PARAMETER_OFFLOAD", "off"),
     )
+    from distillschedule.runtime.livewan_pipeline_placement import apply_contract as apply_pipeline_placement
+    pipeline_teacher_spec = apply_pipeline_placement(
+        plan, mode=mode,
+        name=os.environ.get("LIVEWAN_PIPELINE_TEACHER_PLACEMENT", "legacy-sharded"),
+    )
+    if pipeline_teacher_spec.enabled:
+        _require(run_kind in {"validate", "capacity", "correctness", "trajectory", "two-cycle-timing"},
+                 "resident pipeline Teacher requires its two-cycle correctness/timing path")
     _validate_plan_identity(plan, mode=mode)
     continuous_contract = _continuous_pipeline_contract(plan, mode=mode)
     continuous_cycles = (
@@ -4037,6 +4056,7 @@ def run_worker(
             bootstrap=bootstrap,
             source_receipt=source_receipt,
             baseline_placement=baseline_spec,
+            pipeline_teacher_placement=pipeline_teacher_spec,
         )
     if profile_two_cycles:
         from distillschedule.runtime.livewan_two_cycle_profile import load_gate
@@ -4345,6 +4365,11 @@ def run_worker(
     if baseline_spec.name != "legacy-hybrid":
         from distillschedule.runtime.livewan_baseline_placement import verify_models
         bundle.metadata["baseline_placement_runtime"] = verify_models(baseline_spec, bundle)
+    if pipeline_teacher_spec.enabled:
+        from distillschedule.runtime.livewan_pipeline_placement import verify_teacher
+        bundle.metadata["pipeline_teacher_placement_runtime"] = verify_teacher(
+            pipeline_teacher_spec, bundle.teacher, rank=rank,
+            placement=bundle.metadata.get("teacher"))
     bundle.metadata["cuda_library_setup"] = cuda_library_setup
     if _critic_lora_scale_one_enabled(plan, mode=mode):
         lora_model = (

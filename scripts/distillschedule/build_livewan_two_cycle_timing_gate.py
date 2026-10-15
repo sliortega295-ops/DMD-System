@@ -178,6 +178,11 @@ def main() -> int:
         expected_head=args.expected_head,
         hardware=hardware,
     )
+    from distillschedule.runtime.livewan_pipeline_placement import audit_run
+    placement_binding = {}
+    pipeline_run_root = Path(pipeline["run_root"])
+    if (pipeline_run_root / "effective_plan.node0.json").is_file():
+        placement_binding = audit_run(pipeline_run_root, mode="pipeline", hardware=hardware)
     if baseline["seed"] != pipeline["seed"]:
         raise ValueError("trajectory seeds differ")
     if baseline["identity"] != pipeline["identity"]:
@@ -366,6 +371,9 @@ def main() -> int:
     if hardware.is_h100:
         result.update(hardware_profile=hardware.to_dict(),
                       physical_world_size=hardware.physical_world_size, logical_world_size=16)
+    if placement_binding:
+        result["arms"]["pipeline"]["pipeline_teacher_placement"] = placement_binding["pipeline_teacher_placement"]
+        result["arms"]["pipeline"]["teacher_storage_binding"] = placement_binding
     if args.integration_receipt is not None:
         from distillschedule.workloads.best_known.evidence import bind_livewan_gate
         result = bind_livewan_gate(result, _load(args.integration_receipt))

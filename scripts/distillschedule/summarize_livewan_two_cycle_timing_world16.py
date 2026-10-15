@@ -223,6 +223,12 @@ def main() -> int:
         errors.append("two-node correctness gate SHA differs or is invalid")
     if len(effective_plan_shas) != 1:
         errors.append("two-node effective plans differ")
+    from distillschedule.runtime.livewan_pipeline_placement import audit_run
+    placement_binding = {}
+    try:
+        placement_binding = audit_run(args.run_root, mode=args.execution_mode, hardware=hardware)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        errors.append(f"pipeline Teacher placement: {error}")
 
     rows: list[dict[str, Any]] = []
     endpoint_rows: dict[int, dict[str, float]] = {}
@@ -606,6 +612,9 @@ def main() -> int:
     if hardware.is_h100:
         result.update(hardware_profile=hardware.to_dict(), physical_world_size=world_size,
                       logical_world_size=16)
+    if placement_binding:
+        result["pipeline_teacher_placement"] = placement_binding["pipeline_teacher_placement"]
+        result["teacher_storage_binding"] = placement_binding
     atomic_json(args.output, result)
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if not errors else 1

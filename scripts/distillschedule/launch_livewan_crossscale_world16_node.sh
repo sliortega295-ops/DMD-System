@@ -184,7 +184,7 @@ if [[ "${RUN_KIND}" == timing || "${RUN_KIND}" == profile || \
   CORRECTNESS_SHA256="${LIVEWAN_PAIR_CORRECTNESS_SHA256:?run requires LIVEWAN_PAIR_CORRECTNESS_SHA256}"
   [[ -f "${CORRECTNESS_RECEIPT}" && "${CORRECTNESS_SHA256}" =~ ^[0-9a-f]{64}$ ]] || exit 3
   [[ "$(sha256sum "${CORRECTNESS_RECEIPT}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || exit 3
-  "${PYTHON}" - "${CORRECTNESS_RECEIPT}" "${EXPECTED_HEAD}" "${RUN_KIND}" <<'PY'
+  "${PYTHON}" - "${CORRECTNESS_RECEIPT}" "${EXPECTED_HEAD}" "${RUN_KIND}" "${EXECUTION_MODE}" <<'PY'
 import json, os, pathlib, sys
 value = json.loads(pathlib.Path(sys.argv[1]).read_text())
 import os
@@ -201,6 +201,10 @@ if run_kind == "timing":
     if set(value.get("heads", {}).values()) != {expected_head}:
         raise SystemExit("paired correctness gate uses a different source HEAD")
 elif run_kind == "two-cycle-timing":
+    sys.path.insert(0, str(pathlib.Path(os.environ["DMD_SYSTEM_ROOT"]) / "src"))
+    from distillschedule.runtime.livewan_pipeline_placement import validate_gate_binding
+    name = os.environ.get("LIVEWAN_PIPELINE_TEACHER_PLACEMENT", "legacy-sharded")
+    validate_gate_binding(value, name=name, mode=sys.argv[4])
     if os.environ.get("LIVEWAN_BASELINE_PLACEMENT", "legacy-hybrid") != "legacy-hybrid":
         sys.path.insert(0, str(pathlib.Path(os.environ["DMD_SYSTEM_ROOT"]) / "src"))
         from distillschedule.runtime.livewan_baseline_placement import BaselinePlacement, validate_timing_gate
@@ -341,6 +345,7 @@ export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
   fi
   echo "baseline_placement=${LIVEWAN_BASELINE_PLACEMENT:-legacy-hybrid}"
   echo "teacher_parameter_offload=${LIVEWAN_TEACHER_PARAMETER_OFFLOAD:-off}"
+  echo "pipeline_teacher_placement=${LIVEWAN_PIPELINE_TEACHER_PLACEMENT:-legacy-sharded}"
   echo "source_prepare_root=${LIVEWAN_SOURCE_PREPARE_ROOT:-}"
   echo "source_prepare_head=${LIVEWAN_SOURCE_PREPARE_HEAD:-}"
   if [[ "${PROFILE_TWO_CYCLES}" == 1 ]]; then
