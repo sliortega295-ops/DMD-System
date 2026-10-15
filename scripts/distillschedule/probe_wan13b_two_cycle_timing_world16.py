@@ -26,6 +26,44 @@ import traceback
 from pathlib import Path
 from typing import Any
 
+
+def _configure_rank_private_triton_cache(environ: Any = None) -> dict[str, Any]:
+    """Opt-in benchmark compiler isolation, before Torch/Triton import."""
+    env = os.environ if environ is None else environ
+    fast = env.get("DISTILLSCHEDULE_WORKER_FAILFAST_ON_ERROR", "0")
+    if fast not in {"0", "1"}:
+        raise ValueError("invalid worker failure-exit policy")
+    root = env.get("DISTILLSCHEDULE_WAN13B_RANK_CACHE_ROOT", "")
+    receipt = {"enabled": bool(root), "fail_fast_on_error": fast == "1"}
+    if not root:
+        return receipt
+    if env.get("WORLD_SIZE") != "8":
+        raise ValueError("rank-private H100 cache requires eight physical workers")
+    rank = int(env["LOCAL_RANK"])
+    if not 0 <= rank < 8:
+        raise ValueError("invalid local rank for compiler cache")
+    base = Path("/tmp/lyy-experiments/DMD-System")
+    parent = Path(root).resolve()
+    if not parent.is_relative_to(base) or parent == base:
+        raise ValueError("compiler scratch must be inside the named experiment root")
+    cache = parent / f"rank_{rank:02d}"
+    cache.mkdir(parents=True, exist_ok=True)
+    env["TRITON_CACHE_DIR"] = str(cache)
+    return {**receipt, "local_rank": rank, "path": str(cache),
+            "scope": "process-local compilation cache; kernel source/options unchanged"}
+
+
+def _write_failure_receipt_and_maybe_exit(path: Path, result: dict[str, Any],
+                                         *, fail_fast: bool) -> None:
+    _atomic_json(path, result)
+    if fail_fast:
+        # Failed ranks must not block in NCCL finalizers before torchrun can
+        # cancel their peers. Only the failure path exits; success is unchanged.
+        os._exit(1)
+
+
+_RANK_PRIVATE_CACHE = _configure_rank_private_triton_cache()
+
 import torch
 import torch.distributed as dist
 
@@ -645,6 +683,7 @@ def main() -> int:
     torch.cuda.manual_seed_all(runtime_seed)
     output = args.output_dir / "ranks" / f"rank_{rank:02d}.json"
     result: dict[str, Any] = {
+        "rank_private_triton_cache": _RANK_PRIVATE_CACHE,
         "schema_version": "distillschedule.wan13b_two_cycle_timing_rank.v1",
         "status": "RUNNING",
         "run_id": args.run_id,
@@ -915,7 +954,9 @@ def main() -> int:
             result["memory_failure"] = base._memory(device)
         except BaseException:
             pass
-        _atomic_json(output, result)
+        _write_failure_receipt_and_maybe_exit(
+            output, result, fail_fast=_RANK_PRIVATE_CACHE["fail_fast_on_error"]
+        )
         raise
     finally:
         if dist.is_initialized():
