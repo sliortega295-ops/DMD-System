@@ -157,6 +157,11 @@ class CostModel:
                 validate_pooled_receipt(raw)
                 # The flat sources already validate their native provenance.
                 continue
+            if record.evidence.get("component_contract", {}).get("family", "").startswith("hardware_native."):
+                require(raw.get("evidence_scope") == self.scope == "MEASURED",
+                        "fixture native costs cannot be relabeled measured")
+                from .hardware_wan import validate_component_receipt
+                validate_component_receipt(raw, native_component_cache)
             if helios:
                 from .helios_model_adapter import validate_component_receipt
                 validate_component_receipt(raw, native_component_cache)

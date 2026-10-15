@@ -9,6 +9,9 @@ from .registry import list_profiles, load_profile, resolve_profile, verify_asset
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
+    if argv and argv[0] == "hardware":
+        from distillschedule.search.hardware_wan_cli import main as hardware_main
+        return hardware_main(argv[1:])
     if argv and argv[0] == "r9-owner":
         from distillschedule.search.r9_transport import main as r9_main
         return r9_main(argv[1:])

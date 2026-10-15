@@ -106,3 +106,28 @@ execute it. Record tool paths/hashes and return codes. Imports alone do not
 exercise this JIT-toolchain dependency; a CPU linker probe is not CUDA/Triton
 or native workload validation. Preserve the original failed run and generate
 a fresh source-bound plan, run ID, qualification and sealed manifest.
+
+## Allocated-node metadata transport
+
+Node entries in the explicit asset config may set
+`"rpc_transport": "argv-json-tty-v1"` when an SSH gateway cannot forward
+stdin/EOF reliably. The default remains `stdin`. This option changes only
+CPU metadata transport: the compressed JSON request is carried in a bounded
+argument, the worker still reads the same request from a private input stream,
+and exactly one framed JSON result is required. Raw stdout/stderr and the
+request remain in the RPC journal; missing/duplicate frames fail closed.
+
+This is not a GPU retry switch. An interrupted R9 owner still requires both
+existing owner streams to reach a known terminal state before any new SSH.
+Do not amend a failed immutable run directory to switch transports; use a new
+run ID and requalify its source-bound manifest.
+
+## H100 native bridge
+
+`distillctl workloads hardware` connects the pinned eight-H100 Wan runtime to
+the same public problem/cost/search implementation. It keeps physical workers
+and logical B1 samples separate rather than changing global16 to global8.
+The initial domain and unsupported workloads are explicit in
+[hardware-native planning](../workloads/hardware_native_planning.md).
+Its CPU tests are not evidence of H100 GPU execution, and an existing GPU
+reservation must not be preempted to validate a new plan.
