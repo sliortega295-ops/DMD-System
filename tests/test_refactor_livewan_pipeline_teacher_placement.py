@@ -1,5 +1,7 @@
 """CPU contract fixtures only; never substitute for H100 capacity/parity."""
 import copy
+import ast
+import inspect
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -145,3 +147,41 @@ def test_all_rank_gate_binds_storage_and_rejects_missing_or_sharded_teacher(h100
         audit_run(tmp_path, mode="pipeline", hardware=h100)
     path.unlink()
     with pytest.raises(FileNotFoundError): audit_run(tmp_path, mode="pipeline", hardware=h100)
+
+
+@pytest.mark.parametrize("timing,profile,resident,local_rank,expected", [
+    (False, False, True, 0, True),   # real trajectory/capacity admission
+    (False, False, True, 1, False),
+    (False, False, False, 0, False), # preserve all legacy run behavior
+    (True, False, False, 0, True),
+    (False, True, False, 0, True),
+    (True, False, True, 1, False),
+])
+def test_real_worker_writes_resident_effective_plan_before_model_without_cuda(
+        monkeypatch, tmp_path, timing, profile, resident, local_rank, expected):
+    """Execute the actual serialization branch, not a copied condition/mock."""
+    from distillschedule.runtime import livewan_crossscale_worker as worker
+
+    tree = ast.parse(inspect.getsource(worker.run_worker))
+    branches = [node for node in ast.walk(tree) if isinstance(node, ast.If)
+                and "effective_plan.node" in ast.unparse(node)
+                and any(isinstance(child, ast.Call) and
+                        getattr(child.func, "id", None) == "atomic_json"
+                        for statement in node.body for child in ast.walk(statement))]
+    assert len(branches) == 1
+    monkeypatch.setenv("DISTILLSCHEDULE_NODE_RANK", "0")
+    value = {"metadata": {"runtime_placement": "actual-resident-plan"}}
+    namespace = dict(two_cycle_timing=timing, profile_two_cycles=profile,
+                     pipeline_teacher_spec=SimpleNamespace(enabled=resident),
+                     local_rank=local_rank, os=__import__("os"),
+                     _require=worker._require, atomic_json=worker.atomic_json,
+                     output_dir=tmp_path, plan=value,
+                     effective_plan_sha256=worker._effective_plan_sha256(value))
+    code = compile(ast.fix_missing_locations(ast.Module(body=branches, type_ignores=[])),
+                   "actual_worker_effective_plan_branch", "exec")
+    exec(code, namespace)
+    path = tmp_path / "effective_plan.node0.json"
+    assert path.exists() is expected
+    if expected:
+        assert json.loads(path.read_text()) == {
+            **value, "effective_plan_sha256": worker._effective_plan_sha256(value)}

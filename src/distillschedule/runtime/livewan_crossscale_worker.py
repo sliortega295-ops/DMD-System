@@ -4121,7 +4121,7 @@ def run_worker(
     # Shared hardware compatibility, before any model construction/timer.
     cuda_library_setup = materialize_blas_handles(torch, device)
     effective_plan_sha256 = _effective_plan_sha256(plan)
-    if (two_cycle_timing or profile_two_cycles) and local_rank == 0:
+    if (two_cycle_timing or profile_two_cycles or pipeline_teacher_spec.enabled) and local_rank == 0:
         node_rank = int(os.environ.get("DISTILLSCHEDULE_NODE_RANK", "-1"))
         _require(node_rank in {0, 1}, "two-cycle timing node rank is missing")
         atomic_json(
