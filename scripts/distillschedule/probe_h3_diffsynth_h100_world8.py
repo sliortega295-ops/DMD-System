@@ -20,12 +20,21 @@ import time
 import traceback
 from datetime import timedelta
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from runtime.h3_diffsynth_execution_policy import configure_deterministic_runtime
+
+# Private training imports can initialize CUDA. Set the common policy before
+# those imports, not merely before model construction inside main().
+_policy_parser = argparse.ArgumentParser(add_help=False)
+_policy_parser.add_argument('--deterministic-kernels', action='store_true')
+_policy_args, _ = _policy_parser.parse_known_args()
+_EARLY_EXECUTION_POLICY = configure_deterministic_runtime(_policy_args.deterministic_kernels)
+
 import torch
 import torch.distributed as dist
 from torch.distributed.device_mesh import init_device_mesh
 from torch.distributed.fsdp import MixedPrecisionPolicy, fully_shard
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from runtime.h3_diffsynth_logical_microbatches import run_native_microbatches
 
 SOURCE_SHA = '9ca4ad8ca13b0a9e7397f6313e4eca225f10f52802e90423b06f7e786a58b989'
@@ -141,12 +150,13 @@ def main():
     require(args.warmup_parity_reference is None or args.warmup_parity_artifacts, 'REFERENCE_REQUIRES_WARMUP_GATE')
     require(not args.one_cycle_correctness or args.export_parity_artifacts,
             'ONE_CYCLE_REQUIRES_ACTUAL_PARITY_EVIDENCE')
-    from runtime.h3_diffsynth_execution_policy import (configure_deterministic_runtime,
-                                                      validate_deterministic_timing_gate)
+    from runtime.h3_diffsynth_execution_policy import validate_deterministic_timing_gate
     validate_deterministic_timing_gate(args.deterministic_kernels, args.mode,
                                       args.warmup_parity_artifacts,
                                       args.warmup_parity_reference, args.warmup_only_reference)
-    execution_policy = configure_deterministic_runtime(args.deterministic_kernels)
+    execution_policy = _EARLY_EXECUTION_POLICY
+    require(execution_policy['requested'] == args.deterministic_kernels,
+            'EARLY_POLICY_ARGUMENT_MISMATCH')
     rank, local, world = [int(os.environ[name]) for name in ('RANK', 'LOCAL_RANK', 'WORLD_SIZE')]
     require(world == 8 and local == rank and int(os.environ['LOCAL_WORLD_SIZE']) == 8, 'PHYSICAL_WORLD8_NODE_LOCAL')
     require(os.environ.get('H3_W6_RUN_GPU_LOCK_HELD') == '1', 'EXPLICIT_OWNED_CONTROLLER_REQUIRED')

@@ -1,6 +1,9 @@
 """An optional common numerical policy is not a placement optimization."""
 import importlib.util
+import ast
 import os
+from pathlib import Path
+import sys
 import unittest
 from unittest import mock
 
@@ -9,6 +12,30 @@ from runtime.h3_diffsynth_execution_policy import (configure_deterministic_runti
 
 
 class ExecutionPolicyTests(unittest.TestCase):
+    @unittest.skipUnless(importlib.util.find_spec('torch'), 'actual Torch CPU runtime required')
+    def test_actual_worker_bootstrap_precedes_private_cuda_imports(self):
+        import torch
+        worker = Path(__file__).resolve().parents[1] / 'scripts/distillschedule/probe_h3_diffsynth_h100_world8.py'
+        tree = ast.parse(worker.read_text())
+        prefix = []
+        for node in tree.body:
+            if isinstance(node, ast.ImportFrom) and node.module == 'h3_dmd2':
+                break
+            prefix.append(node)
+        previous = torch.are_deterministic_algorithms_enabled()
+        previous_warn = torch.is_deterministic_algorithms_warn_only_enabled()
+        try:
+            with mock.patch.dict(os.environ, {'CUBLAS_WORKSPACE_CONFIG': ':4096:8'}), \
+                 mock.patch.object(sys, 'argv', [str(worker), '--deterministic-kernels']), \
+                 mock.patch.object(sys, 'path', sys.path.copy()):
+                scope = {'__file__': str(worker), '__name__': 'CPU_bootstrap_probe'}
+                exec(compile(ast.Module(body=prefix, type_ignores=[]), str(worker), 'exec'), scope)
+            self.assertTrue(scope['_EARLY_EXECUTION_POLICY']['configured'])
+            self.assertTrue(torch.are_deterministic_algorithms_enabled())
+            self.assertFalse(torch.cuda.is_initialized())
+        finally:
+            torch.use_deterministic_algorithms(previous, warn_only=previous_warn)
+
     def test_default_timing_and_explicit_correctness_policy_remain_available(self):
         validate_deterministic_timing_gate(False, 'timing', False)
         validate_deterministic_timing_gate(True, 'correctness', False)
