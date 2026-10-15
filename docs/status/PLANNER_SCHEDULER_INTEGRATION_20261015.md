@@ -86,3 +86,21 @@ bind calibration, costs, replay and serialized plans. Default canonical profile
 bytes/asset fingerprints remain unchanged. Local targeted validation including
 schema/tamper/local-node/old-cost regressions: **355 passed**. Dependency import
 and GPU execution on the final merged source still require separate real gates.
+
+# Follow-up: explicit H3 child toolchain PATH
+
+The parent executed the acdf48b operator-selected packet: both nodes reached
+native setup, then Triton's CPU helper compilation failed with
+`collect2: fatal error: cannot find 'ld'`. This was **not a completed GPU
+correctness run**. The parent reports owned cleanup PASS and OOM deltas zero
+on both nodes. Its two-node CPU reproduction failed with the original missing
+PATH and passed compile/link/execute with only `PATH=/usr/bin:/bin` added.
+
+Commit `b39766c` fixes only resolved H3 child PATH and checks serialized
+binding; source import-map provenance records its exact bytes. No system
+installation, CUDA-path guess, model or tolerance change. Targeted local CPU
+suite: **89 passed**, including real CPU compile/link/execute with an explicitly
+constructed child environment, no inherited toolchain PATH, no Torch or CUDA.
+A new packet/source/run identity and fresh imports/toolchain/owner gates remain
+required. The general R9 calibration/search transport adapter is deferred;
+operator-selected smoke must not be described as searched execution.

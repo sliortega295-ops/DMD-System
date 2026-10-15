@@ -1215,9 +1215,16 @@
           "previous_integrated_sha256": "7fc6a33383c9a6c10983ae393fbe8c26754af8e6a3056e62a36f6d84ddd4da49",
           "reason": "Explicit SHA-bound node-local dependency overlays for H3; preserve default profiles and invalidate asset/cost/plan identity when dependencies change. No observer, trainer arithmetic or numerical-policy changes.",
           "source_commit": "88fd19dbf767d3b362e825e281b88d4bc365e19d"
+        },
+        {
+          "base_integration_head": "acdf48b3ea74f35dad09ed04b7c19b9c4ea2359b",
+          "new_integrated_sha256": "f387123b8ab4d51b4ef6c188ad3359500d834f94c486a8d4b15086485bb41c23",
+          "previous_integrated_sha256": "bb73212f3fa370bc1ba10baff4239dc06cc8943a6d37f674174b874a51dc8a8a",
+          "reason": "Explicit fixed /usr/bin:/bin H3 child toolchain PATH and serialized tamper rejection. No inherited caller paths, package installation, model/config/math or numerical policy change.",
+          "source_commit": "b39766cc8ac063d3fb8e24f89b72359231984e4b"
         }
       ],
-      "integrated_sha256": "bb73212f3fa370bc1ba10baff4239dc06cc8943a6d37f674174b874a51dc8a8a",
+      "integrated_sha256": "f387123b8ab4d51b4ef6c188ad3359500d834f94c486a8d4b15086485bb41c23",
       "integration_note": "C34 canonical profile dispatch and CPU regression coverage; no training execution. | Latest source adds opt-in native planner hooks/gates; exact adaptation hashes below supersede the earlier byte-identical-worker statement where applicable.",
       "source_commit": "integration-pr26",
       "source_path": "src/distillschedule/workloads/best_known/registry.py",
