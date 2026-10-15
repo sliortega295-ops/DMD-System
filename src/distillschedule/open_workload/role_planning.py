@@ -48,7 +48,7 @@ def code_identity(bindings:RoleFunctions):
 def source_identity():
     root=repository_root()
     files=tuple(root/'src/distillschedule/open_workload'/name for name in
-        ('role_program.py','role_transport.py','role_planning.py','role_offload.py','role_sharding.py','role_score.py','role_profiling.py','role_prediction.py'))
+        ('role_program.py','role_transport.py','role_planning.py','role_offload.py','role_sharding.py','role_score.py','role_profiling.py','role_prediction.py','role_dispatch.py'))
     return fingerprint({p.name:file_sha256(p) for p in files})
 
 
@@ -315,18 +315,21 @@ def run_selected(task,hardware,bindings,plan_path,output,*,device='cpu',cycles=1
               'cost_model_sha256','order','timeline','memory')
     require(all(p['selected'].get(key)==expected['selected'].get(key) for key in required),
             'selected role pool differs from source-bound measured search',path='role.run')
+    require(p.get('producer_dispatch')==expected.get('producer_dispatch'),
+            'selected producer dispatch differs from source-bound search',path='role.run')
     layout=PoolLayout.from_dict(p['selected']['implementation']).validate(task,hardware)
     root=Path(output).resolve()
     if dist.get_rank()==0:root.mkdir(parents=True,exist_ok=False)
     dist.barrier()
-    executor=RolePoolExecutor(task,layout,hardware,bindings,device=device)
+    executor=RolePoolExecutor(task,layout,hardware,bindings,device=device,
+        producer_dispatch=p.get('producer_dispatch'))
     summaries=[]
     try:
         for cycle in range(cycles):
             receipt,module,optimizer=executor.run()
             if p.get('cost_mode')=='components':
                 from .role_prediction import validate_execution,confirm_state
-                gate=validate_execution(task,layout,receipt)
+                gate=validate_execution(task,layout,receipt,dispatch=p.get('producer_dispatch'))
                 predicted=p['selected']['predicted_makespan_ns']
                 observed=receipt['compute_transport_wall_ns']
                 gate.update(predicted_ns=predicted,observed_ns=observed,

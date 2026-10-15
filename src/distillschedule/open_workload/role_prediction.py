@@ -21,7 +21,7 @@ from distillschedule.workloads.best_known.registry import fingerprint, file_sha2
 from .role_program import RoleTask, PoolLayout, AllocatedWorld, enumerate_layouts, transport_bytes_by_rank
 
 SCHEMA = 'distillschedule.role_component_calibration.v1'
-BACKEND = 'native_fifo_from_component_costs_v1'
+BACKEND = 'native_planned_producer_fifo_components_v2'
 
 
 def admission(task, layout, hardware):
@@ -114,8 +114,9 @@ def contract(task, layout, key):
          'network':'isolated_directional_cost_no_contention_discount'})
 
 
-def graph_for(task, layout, hardware):
+def graph_for(task, layout, hardware, *, planned_producer=False):
     admission(task,layout,hardware)
+    require(type(planned_producer) is bool,'invalid producer scheduling mode',path='role.predict')
     specs={};edges=set()
     def add(key, cost_key, ranks, resources):
         specs[key]=(cost_key,tuple(ranks),tuple(resources))
@@ -133,8 +134,18 @@ def graph_for(task, layout, hardware):
         edges.update(zip(chain,chain[1:]))
     for g in layout.generator:
         indices=[i for i in range(task.microbatches) if layout.owners(i)[0]==g]
-        chain=generator_order(indices,layout.window)
-        edges.update(zip(chain,chain[1:]))
+        if planned_producer:
+            # Keep each mathematical forward/backward stream monotone, but let
+            # the common solver choose their interleaving within a live-window
+            # bound. The returned per-rank order is executed, not discarded.
+            for prefix in ('g','b'):
+                chain=[f'{prefix}{i}' for i in indices]
+                edges.update(zip(chain,chain[1:]))
+            for pos in range(layout.window,len(indices)):
+                edges.add((f'b{indices[pos-layout.window]}',f'g{indices[pos]}'))
+        else:
+            chain=generator_order(indices,layout.window)
+            edges.update(zip(chain,chain[1:]))
     for score in layout.score:
         # The native Score loop receives in logical-index order, including
         # when successive inputs come from DIFFERENT producers. A per-producer
@@ -158,7 +169,8 @@ def graph_for(task, layout, hardware):
     graph=ExecutionGraph(operations,tuple(Dependency(a,b) for a,b in sorted(edges)),
         {'semantic_program_sha256':task.program().digest,'lowering':BACKEND,
          'initial_versions':{},'final_versions':{},
-         'timing_scope':'predicted_native_fifo_precedence_not_arbitrary_dispatch'})
+         'timing_scope':'planned_monotone_producer_with_native_score_fifo' if planned_producer else
+                        'predicted_native_fifo_precedence_not_arbitrary_dispatch'})
     return graph,specs
 
 
@@ -330,7 +342,7 @@ def search(calibration_path,*,max_states=50000,beam_width=0,timeout_seconds=60):
             layout=PoolLayout.from_dict(d)
             require(projection(layout)==projection(original) and original.window==1,
                     'cannot project component costs across pools or implementations',path='role.predict')
-            graph,specs=graph_for(task,layout,hardware)
+            graph,specs=graph_for(task,layout,hardware,planned_producer=True)
             states=[];lifetimes=[];rules={}
             transport=transport_bytes_by_rank(task,layout)
             for rank in range(hardware.world):
@@ -360,26 +372,40 @@ def search(calibration_path,*,max_states=50000,beam_width=0,timeout_seconds=60):
     prediction=select(candidates,max_states=max_states,beam_width=beam_width,timeout_seconds=timeout_seconds)
     require(prediction['ranked'],'no feasible component-predicted FIFO plan',path='role.predict')
     selected=prediction['ranked'][0]
+    from .role_dispatch import from_order
+    dispatch=from_order(task,PoolLayout.from_dict(selected['implementation']),selected['order'])
     result={'schema_version':PLAN,'calibration':str(Path(calibration_path).resolve()),
             'calibration_sha256':file_sha256(Path(calibration_path)),
             'identity':m['identity'],'task':m['task'],'selected':selected,'search':prediction,
-            'cost_mode':'components','execution_model':BACKEND,
+            'cost_mode':'components','execution_model':BACKEND,'producer_dispatch':dispatch,
             'search_settings':{'max_states':max_states,'beam_width':beam_width,'timeout_seconds':timeout_seconds},
             'prediction_provenance':provenance,'numerical_reference':'REQUIRES_INDEPENDENT_BASELINE',
             'assumptions':['same indexed compute costs across FIFO windows',
                            'isolated links with conservative Score-receiver FIFO; shared-NIC contention not modeled',
-                           'native FIFO precedences, not arbitrary optimized event dispatch'],
+                           'planned monotone producer interleaving; native Score FIFO; no arbitrary remote dispatch'],
             'claimable_speedup':False,'gpu_execution':'NOT_RUN_BY_SEARCH'}
     result['plan_sha256']=fingerprint(result)
     return result
 
 
-def validate_execution(task, layout, receipt):
+def validate_execution(task, layout, receipt, *, dispatch=None):
     """Prove the runtime followed the graph's producer/Score order, not timings."""
-    for row in receipt['ranks']:
+    ranks=set(layout.generator)|set(layout.score)
+    rows=receipt.get('ranks',[])
+    require(receipt.get('layout')==layout.to_dict() and receipt.get('task_sha256')==task.digest and
+            len(rows)==len(ranks) and {r.get('rank') for r in rows}==ranks,
+            'native projection receipt has missing/duplicate ranks or changed task/layout',path='role.predict')
+    for row in rows:
+        require(row['role']==('generator' if row['rank'] in layout.generator else 'score'),
+                'native projection rank role changed',path='role.predict')
         if row['role']=='generator':
             expected=generator_order([i for i in range(task.microbatches)
                                       if layout.owners(i)[0]==row['rank']],layout.window)
+            if dispatch is not None:
+                from .role_dispatch import validate_dispatch
+                expected=validate_dispatch(task,layout,dispatch)[str(row['rank'])]
+                require(row.get('producer_dispatch')==expected,
+                        'native worker ignored selected producer order',path='role.predict')
             mapping={'generator_forward_send':'g','generator_vjp_backward':'b'}
             observed=[mapping[e['action']]+str(e['microbatch']) for e in row['events']
                       if e['action'] in mapping]

@@ -111,7 +111,7 @@ def _model_identity(module):
 
 class RolePoolExecutor:
     def __init__(self, task:RoleTask, layout:PoolLayout, hardware:AllocatedWorld,
-                 bindings:RoleFunctions, *, device=None, profile_components=False):
+                 bindings:RoleFunctions, *, device=None, profile_components=False, producer_dispatch=None):
         require(dist.is_available() and dist.is_initialized() and dist.get_world_size()==hardware.world,
                 'explicit initialized world process group required',path='role.runtime')
         layout.validate(task,hardware);bindings.validate(task)
@@ -131,6 +131,8 @@ class RolePoolExecutor:
                     layout.score_parallelism=='replicated')),
                 'component profiling requires a replicated resident window-one anchor',
                 path='role.components')
+        self.producer_dispatch=producer_dispatch
+        self._dispatch_identity=fingerprint(producer_dispatch)
         self.profile_components=profile_components
         self.role='generator' if self.rank in layout.generator else 'score'
         self.group=None
@@ -155,6 +157,11 @@ class RolePoolExecutor:
     def _prepare(self):
         if self._prepared:return
         task,layout=self.task,self.layout
+        if self.producer_dispatch is not None:
+            from .replicated import checked
+            from .role_dispatch import validate_dispatch
+            checked(lambda: validate_dispatch(task,layout,self.producer_dispatch),
+                    'role planned producer admission')
         # Collective group creation order MUST be identical on every rank.
         gen_group=dist.new_group(ranks=list(layout.generator))
         score_group=dist.new_group(ranks=list(layout.score))
@@ -229,7 +236,9 @@ class RolePoolExecutor:
                     'bindings changed in live executor',path='role.runtime')
             require(self._cycle==0 or self.bindings.sample_at is not None,
                     'continuous execution requires explicit sample_at',path='role.data')
-            return (self._cycle,self._versions,self.task.digest,self.layout.to_dict())
+            require(fingerprint(self.producer_dispatch)==self._dispatch_identity,
+                    'producer dispatch mutated after admission',path='role.dispatch')
+            return (self._cycle,self._versions,self.task.digest,self.layout.to_dict(),self._dispatch_identity)
         local=checked(admission,'role cycle admission')
         entries=[None]*self.hardware.world;dist.all_gather_object(entries,local)
         require(all(x==entries[0] for x in entries),'rank cycle/version mismatch',path='role.runtime')
@@ -303,10 +312,9 @@ class RolePoolExecutor:
                 if offloader is not None:
                     offload_records.append(offloader.statistics)
                     offloader.close()
-            for i in range(task.microbatches):
+            def produce(i):
+                nonlocal peak,transport_peak
                 owner,consumer=layout.owners(i)
-                if owner!=self.rank:continue
-                while len(inflight)>=layout.window:flush()
                 offloader=(ActivationOffloader(self.device,module,host_budget)
                            if layout.activation_policy=='cpu_offload_prefetch' else None)
                 with components.saved(module,i), components.span('forward',i):
@@ -327,7 +335,23 @@ class RolePoolExecutor:
                     [(x[1],x[2],x[5]) for x in inflight]))
                 # Drop producer-loop aliases; the in-flight entry owns storage.
                 del latent,grad,received,sent,outbound,offloader
-            while inflight:flush()
+            if self.producer_dispatch is None:
+                for i in range(task.microbatches):
+                    if layout.owners(i)[0]!=self.rank:continue
+                    while len(inflight)>=layout.window:flush()
+                    produce(i)
+                while inflight:flush()
+            else:
+                for action in self.producer_dispatch[str(self.rank)]:
+                    index=int(action[1:])
+                    if action[0]=='g':
+                        require(len(inflight)<layout.window,'planned producer exceeded window',path='role.dispatch')
+                        produce(index)
+                    else:
+                        require(inflight and inflight[0][0]==index,
+                                'planned backward lost its forward',path='role.dispatch')
+                        flush()
+                require(not inflight,'planned producer left gradients undrained',path='role.dispatch')
             # Sharded FSDP2 gradients have ALREADY been reduce-scattered.
             # A second allreduce would corrupt the Adam update.
             if self.profile_components:dist.barrier(group=gen_group)
@@ -392,6 +416,8 @@ class RolePoolExecutor:
             model_digest=_model_identity(module)
         local={'rank':self.rank,'role':self.role,'events':self.events,
                'components':components.result(),
+               'producer_dispatch':None if self.producer_dispatch is None else
+                    self.producer_dispatch.get(str(self.rank)),
                'compute_transport_wall_ns':compute_transport_wall_ns,
                'activation_policy':layout.activation_policy,
                'offload':{'packed_tensors':sum(x['packed_tensors'] for x in offload_records),

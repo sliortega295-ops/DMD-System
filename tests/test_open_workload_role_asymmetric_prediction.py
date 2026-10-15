@@ -114,6 +114,7 @@ def _native_worker(rank,world,rdzv,output,n):
         dist.barrier()
         result,model,optimizer=run_selected(task,hw,fn,root/'plan.json',root/'selected')
         assert result['component_prediction_check']['state_check']['status']=='PASS_SAME_ANCHOR_STATE'
+        assert all(r['producer_dispatch'] is not None for r in result['ranks'] if r['role']=='generator')
         layout=PoolLayout.from_dict(result['layout'])
         expected=_oracle(task)
         role='generator' if rank in layout.generator else 'score'
