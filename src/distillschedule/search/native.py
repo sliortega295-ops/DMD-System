@@ -92,13 +92,17 @@ def _command(node: dict[str, Any], args: list[str], log: Path) -> None:
                        stdout=stream, stderr=subprocess.STDOUT, check=True, timeout=600)
 
 
-def prepare_pair(reference: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any]:
+def prepare_pair(reference: dict[str, Any], candidate: dict[str, Any], *,
+                 repeat=None, noise_policy=None) -> dict[str, Any]:
+    require((repeat is None and noise_policy is None) or
+            reference["profile_id"] == "minimax_h3_grid1000_best",
+            "noise diagnostic admission is only supported by the explicit H3 cache adapter")
     if reference["search_candidate"]["id"].startswith("joint-helios1-"):
         from .helios_native import prepare_pair as helios_pair
         return helios_pair(reference,candidate)
     if reference["profile_id"] == "minimax_h3_grid1000_best":
         from .h3_native_bridge import prepare_pair as h3_pair
-        return h3_pair(reference, candidate)
+        return h3_pair(reference, candidate, repeat=repeat, noise_policy=noise_policy)
     from .wan_implementation import is_generated, WanImplementation
     ref_id = reference["search_candidate"]["id"]
     new_ref = reference["profile_id"] == WAN and is_generated(ref_id)
@@ -208,7 +212,12 @@ def handle_request(payload: dict[str, Any]) -> dict[str, Any]:
         return resolve_candidate(candidate.workload, candidate.id, root=root, assets_path=path,
                                  run_id=payload["run_id"], mode=payload["mode"])
     if action == "prepare_pair":
-        return prepare_pair(payload["reference"], payload["candidate"])
+        return prepare_pair(payload["reference"], payload["candidate"],
+                            repeat=payload.get("repeat"), noise_policy=payload.get("noise_policy"))
+    if action == "validate_h3_preparation":
+        from .h3_native_bridge import validate_preparation
+        return validate_preparation(payload["preparation"], expected_head=payload["source_head"],
+                                    candidate_id=payload["candidate_id"], noise_policy=payload.get("noise_policy"))
     if action == "measurement":
         if payload["receipt"]["search_candidate"]["id"].startswith("joint-helios1-"):
             from .helios_native import normalize_native

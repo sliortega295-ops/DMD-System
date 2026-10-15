@@ -34,6 +34,9 @@ def assemble_native(receipt, preparation, identity, runtime_identity_evidence):
     if w == H3:
         from .h3_native_bridge import validate_comparison, _checked_native
         validate_comparison(compare)
+        require(compare["integration_head"] == identity["source_head"]
+                and impl.id in (compare["reference_candidate_id"], compare["candidate_id"]),
+                "H3 comparison does not bind calibration source/candidate")
         out, summary, native, sources = _checked_native(receipt)
     else:
         validate_native_comparison(compare)
@@ -182,6 +185,9 @@ def _read_assembly(results, *, expected_head):
         if workload == H3:
             from .h3_native_bridge import validate_comparison
             validate_comparison(comparison)
+            require(comparison["integration_head"] == expected_head
+                    and cid in (comparison["reference_candidate_id"], comparison["candidate_id"]),
+                    "H3 comparison does not bind assembled source/candidate")
         else:
             from .native import validate_native_comparison
             validate_native_comparison(comparison)

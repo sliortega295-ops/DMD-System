@@ -85,6 +85,14 @@ def calibrate(args):
         require(all(i.rollout_window is None for i in implementations),
                 "unified H3 calibration currently uses native macro evidence, not action receipts")
         require(implementations[0].storage == "cpu_staged", "H3 matched control must retain CPU staged cache")
+    noise_path = getattr(args, "h3_noise_policy", None)
+    noise_policy = _object(noise_path) if noise_path else None
+    if noise_policy is not None:
+        from .h3_noise_admission import validate_policy
+        validate_policy(noise_policy, expected_head=head)
+        require(args.workload == H3 and args.candidate ==
+                [noise_policy["reference_candidate_id"], noise_policy["candidate_id"]],
+                "explicit H3 noise policy requires its exact two cache anchors")
     target = args.output.resolve()
     require(target != root and root not in target.parents, "calibration evidence must be outside source checkout")
     require(not args.execute_native or args.assets_config is not None, "execute-native requires assets-config")
@@ -93,6 +101,10 @@ def calibrate(args):
         candidates=args.candidate, matched_control=args.candidate[0],
         source_only_plans=plans, calibration_runs=len(plans), correctness_runs="UP_TO_ONE_PER_CANDIDATE",
         formal_timing_attempts=0, calibration_only=True, gpu_execution="NOT_RUN", claimable_speedup=False)
+    if noise_policy is not None:
+        intent.update(diagnostic_noise_policy=noise_policy,
+                      correctness_runs="TWO_CONTROL_PLUS_ONE_CANDIDATE", numerical_status="REVIEW")
+        write_new_json(args.output / "diagnostic-noise-policy.json", noise_policy)
     write_new_json(args.output / "intent.json", intent)
     if not args.execute_native:
         return intent
@@ -104,7 +116,8 @@ def calibrate(args):
     runner = NativeTrialRunner(workload=args.workload, identity=identity, assets=assets, output=args.output,
         run_prefix=args.run_id, reference_id=args.candidate[0], bootstrap_peer=args.candidate[1],
         admitted_candidate_ids=set(args.candidate),
-        transport_config=_object(args.r9_transport) if getattr(args, 'r9_transport', None) else None)
+        transport_config=_object(args.r9_transport) if getattr(args, 'r9_transport', None) else None,
+        h3_noise_policy=noise_policy)
     try:
         probe = runner._rpc("resolve", workload=args.workload, candidate_id=args.candidate[0],
             assets=assets, run_id=args.run_id + "-identity", mode="correctness")
@@ -163,6 +176,8 @@ def main(argv):
     collect.add_argument("--output", type=Path, required=True)
     collect.add_argument("--execute-native", action="store_true")
     collect.add_argument("--r9-transport", type=Path, help="Opt-in SHA-bound reviewed R9 deployment; H3 cache pair only")
+    collect.add_argument("--h3-noise-policy", type=Path,
+                         help="Opt-in source-bound cache-only planner diagnostic; requires a control repeat")
     join = sub.add_parser("assemble-calibration", help="Verify and join native calibration files beside their receipts")
     join.add_argument("--workload", required=True)
     join.add_argument("--result", nargs="+", type=Path, required=True)

@@ -13,6 +13,10 @@ from distillschedule.workloads.best_known.registry import fingerprint, file_sha2
 
 
 def validate_comparison(value):
+    from .h3_noise_admission import SCHEMA, validate_admission
+    if value.get("schema_version") == SCHEMA:
+        validate_admission(value)
+        return
     require(value.get("schema_version") == "distillschedule.h3_native_two_cycle_comparison.v1"
             and value.get("status") == "REVIEW_SAMPLED_PARITY_ONLY", "H3 sampled numerical gate failed/incomplete")
     require(all(value.get(k) == "PASS" for k in ("sampled_state_status", "loss_status", "sample_status", "rng_status")),
@@ -71,19 +75,39 @@ def _unprofiled_launch_evidence(receipt, out, summary, *, mode="diagnostic-timin
     return evidence
 
 
-def prepare_pair(reference, candidate):
+def prepare_pair(reference, candidate, *, repeat=None, noise_policy=None):
     from .native import binding
     for name in ("profile_id", "integration_head", "asset_fingerprint", "workload_semantics_hash"):
         require(reference[name] == candidate[name], f"H3 pair {name} differs")
     require(reference["profile_id"] == H3 and reference["mode"] == candidate["mode"] == "correctness",
             "H3 pair must be fresh correctness runs")
-    left, _, rows0, _ = _checked_native(reference)
-    right, _, rows1, _ = _checked_native(candidate)
+    require((repeat is None) == (noise_policy is None), "H3 diagnostic policy requires a control repeat")
+    left, _, rows0, sources0 = _checked_native(reference)
+    right, _, rows1, sources1 = _checked_native(candidate)
     comparison = compare_native_two_cycle(rows0, rows1, expected_head=reference["integration_head"])
     out = right / "search-gate"
     out.mkdir(exist_ok=False)
     path = out / "comparison.json"
     write_new_json(path, comparison)  # Failures are preserved before raising.
+    strict_path = path
+    if noise_policy is not None:
+        from .h3_noise_admission import qualify
+        for key in ("profile_id", "integration_head", "asset_fingerprint", "workload_semantics_hash", "mode"):
+            require(repeat.get(key) == reference[key], "H3 control repeat source/assets/semantics changed")
+        require(repeat["run_id"] not in (reference["run_id"], candidate["run_id"])
+                and repeat["search_candidate"] == reference["search_candidate"],
+                "H3 diagnostic repeat must be an independent run of the control")
+        _, _, repeated, sources2 = _checked_native(repeat)
+        comparison = qualify(rows0, repeated, rows1, policy=noise_policy,
+                             expected_head=reference["integration_head"])
+        comparison["native_evidence"] = dict(reference=sources0, repeat=sources2, candidate=sources1)
+        comparison["execution_plans"] = {}
+        for name, plan in (("reference", reference), ("repeat", repeat), ("candidate", candidate)):
+            saved_plan = out / (name + "-execution-plan.json")
+            write_new_json(saved_plan, plan)
+            comparison["execution_plans"][name] = binding(saved_plan)
+        path = out / "noise-diagnostic-admission.json"
+        write_new_json(path, comparison)
     validate_comparison(comparison)
     result = {}
     for plan, run in ((reference, left), (candidate, right)):
@@ -98,8 +122,37 @@ def prepare_pair(reference, candidate):
         result[cid] = dict(source_head=plan["integration_head"], candidate_id=cid, semantics_status="PASS",
             numerical_status="REVIEW", strict_numerical_gate="NOT_ESTABLISHED_BY_LOCAL_SHARD_SAMPLES",
             comparison=binding(path), correctness=binding(run / "bound-summary.json"), assets=assets)
+        if noise_policy is not None:
+            result[cid].update(diagnostic_admission="NOISE_QUALIFIED_CACHE_ONLY",
+                               diagnostic_noise_policy=copy.deepcopy(noise_policy),
+                               original_strict_comparison=binding(strict_path), formal_timing_eligible=False)
         write_new_json(out / (cid + "-preparation.json"), result[cid])
     return result
+
+
+def validate_preparation(preparation, *, expected_head, candidate_id, noise_policy=None):
+    from .native import read
+    from .h3_noise_admission import SCHEMA, validate_policy
+    require(preparation.get("source_head") == expected_head and preparation.get("candidate_id") == candidate_id,
+            "H3 cached preparation source/candidate changed")
+    require(preparation.get("diagnostic_noise_policy") == noise_policy,
+            "H3 cached preparation admission policy differs from explicit opt-in")
+    for key in ("comparison", "correctness"):
+        ref = preparation[key]
+        require(file_sha256(Path(ref["path"])) == ref["sha256"], "H3 cached preparation witness changed")
+    comparison = read(Path(preparation["comparison"]["path"]))
+    if noise_policy is not None:
+        validate_policy(noise_policy, expected_head=expected_head)
+        require(comparison.get("schema_version") == SCHEMA and comparison.get("policy") == noise_policy,
+                "H3 cached diagnostic comparison does not bind current policy")
+    else:
+        require(comparison.get("schema_version") != SCHEMA, "H3 diagnostic cache requires current explicit opt-in")
+    validate_comparison(comparison)
+    require(comparison["integration_head"] == expected_head
+            and candidate_id in (comparison["reference_candidate_id"], comparison["candidate_id"]),
+            "H3 cached comparison source/candidate changed")
+    return dict(status="VALIDATED_PREPARATION", source_head=expected_head, candidate_id=candidate_id,
+                numerical_status="REVIEW", formal_timing_eligible=False)
 
 
 def normalize_native(receipt, preparation, identity):

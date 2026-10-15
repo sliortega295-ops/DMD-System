@@ -5,6 +5,7 @@ adapters must provide source-bound native correctness/measurement receipts.
 """
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 from typing import Any
@@ -218,8 +219,10 @@ class NativeTrialRunner:
                  output: Path, run_prefix: str, bootstrap_peer: str,
                  reference_id: str = "fsdp-reference",
                  admitted_candidate_ids: set[str] | None = None,
-                 transport_config: dict[str, Any] | None = None):
+                 transport_config: dict[str, Any] | None = None,
+                 h3_noise_policy: dict[str, Any] | None = None):
         self.transport_config = transport_config
+        self.h3_noise_policy = copy.deepcopy(h3_noise_policy)
         self.workload, self.identity, self.assets = workload, identity, assets
         self.output, self.run_prefix = Path(output), run_prefix
         self.admitted_candidate_ids = None if admitted_candidate_ids is None else frozenset(admitted_candidate_ids)
@@ -242,6 +245,13 @@ class NativeTrialRunner:
                     and (ref.cache_policy == "legacy_cpu_staged") == (peer.cache_policy == "legacy_cpu_staged"),
                     "H3 anchor pair must share request/shape and macro/action evidence contract")
         require(fingerprint(asset_identity(assets)) == identity["asset_fingerprint"], "asset identity mismatch")
+        if self.h3_noise_policy is not None:
+            from .h3_noise_admission import validate_policy
+            validate_policy(self.h3_noise_policy, expected_head=identity["source_head"])
+            require(workload == "minimax_h3_grid1000_best"
+                    and self.h3_noise_policy["reference_candidate_id"] == reference_id
+                    and self.h3_noise_policy["candidate_id"] == bootstrap_peer,
+                    "H3 noise policy does not bind the declared anchor pair")
         self.prepared: dict[str, dict[str, Any]] = {}
         self.trajectories: dict[str, dict[str, Any]] = {}
 
@@ -253,10 +263,11 @@ class NativeTrialRunner:
         require(self.admitted_candidate_ids is None or candidate.id in self.admitted_candidate_ids,
                 f"candidate {candidate.id} rejected by prediction; current source-bound preparation required")
 
-    def _trajectory(self, c: Candidate) -> dict[str, Any]:
-        if c.id in self.trajectories:
-            return self.trajectories[c.id]
-        directory = self.output / "preparation" / c.id
+    def _trajectory(self, c: Candidate, *, noise_repeat: bool = False) -> dict[str, Any]:
+        key = c.id + ("-control-noise-repeat" if noise_repeat else "")
+        if key in self.trajectories:
+            return self.trajectories[key]
+        directory = self.output / "preparation" / key
         completed = directory / "completed-plan.json"
         if completed.exists():
             plan = json.loads(completed.read_text())
@@ -267,11 +278,11 @@ class NativeTrialRunner:
             self._require_admitted(c)
             directory.mkdir(parents=True, exist_ok=False)
             plan = self._rpc("resolve", workload=self.workload, candidate_id=c.id,
-                assets=self.assets, run_id=self.run_prefix + "-gate-" + c.id, mode="correctness")
+                assets=self.assets, run_id=self.run_prefix + "-gate-" + key, mode="correctness")
             write_new_json(directory / "execution-plan.json", plan)
             run_plan(plan, coordinator_output=directory / "dispatch", transport_config=self.transport_config)
             write_new_json(completed, plan)
-        self.trajectories[c.id] = plan
+        self.trajectories[key] = plan
         return plan
 
     def _prepare(self, c: Candidate) -> dict[str, Any]:
@@ -284,6 +295,12 @@ class NativeTrialRunner:
                     "preparation asset identity changed")
             self.prepared[c.id] = value
         if c.id in self.prepared:
+            if c.id.startswith("joint-h3"):
+                value = self.prepared[c.id]
+                require(value.get("diagnostic_noise_policy") == self.h3_noise_policy,
+                        "H3 cached preparation admission policy differs from explicit opt-in")
+                self._rpc("validate_h3_preparation", preparation=value,
+                          candidate_id=c.id, noise_policy=self.h3_noise_policy)
             return self.prepared[c.id]
         self._require_admitted(c)
         if c.id == self.reference.id:
@@ -291,7 +308,11 @@ class NativeTrialRunner:
             return self.prepared[c.id]
         ref = self._trajectory(self.reference)
         candidate = self._trajectory(c)
-        ready = self._rpc("prepare_pair", reference=ref, candidate=candidate)
+        noise = {}
+        if self.h3_noise_policy is not None:
+            noise = dict(repeat=self._trajectory(self.reference, noise_repeat=True),
+                         noise_policy=self.h3_noise_policy)
+        ready = self._rpc("prepare_pair", reference=ref, candidate=candidate, **noise)
         for cid, value in ready.items():
             if cid not in self.prepared:
                 path = self.output / "preparation" / (cid + "-ready.json")
