@@ -45,3 +45,25 @@ this is not a guarantee that GPU timing matches the model. A100/H100 CUDA/NCCL,
 full original video models, shared-state/sharded composition, production
 checkpoint/restart and independent end-to-end speedups remain NOT_RUN or outside
 this slice. Passing CPU tests does not close the complete MLSys evidence gap.
+
+## Dispatch safety and a non-preset scheduling example
+
+A further synthetic test assigns different activation sizes to logical calls.
+The flexible graph finds a feasible hybrid forward/backward order whose modeled
+makespan is below every feasible fixed-window preset; this proves a decision
+beyond selecting a preset, not a real-GPU acceleration claim. The independent
+native non-preset test checks that such orders are actually lowerable.
+
+Real two-process negative tests provide different individually valid orders on
+the two ranks, mutate one rank's order after admission, and provide an unsafe
+order on both ranks. Every case rejects before the model constructor is called,
+and both ranks reach a subsequent test barrier. Receipt validation additionally
+rejects a missing rank and a worker that omitted the selected dispatch. The
+expanded dispatch suite passed 13 tests locally; it overlaps earlier counts.
+
+A prediction may choose the same producer sequence as the window-one anchor,
+especially under tight capacity. Merely admitting a larger window is not proof
+that the executed sequence is novel. Read the recorded producer_dispatch and
+native events, not only the legacy was_full_cycle_measured layout flag, when
+classifying a plan as a held-out execution order. No claim requires every
+selected order to differ from an anchor or from an existing manual optimum.
