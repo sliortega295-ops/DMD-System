@@ -84,7 +84,7 @@ class CorrectnessArtifacts:
         with path.open('xb') as handle:
             torch.save(state, handle)
         return {'path': str(path), 'sha256': file_sha(path), 'bytes': path.stat().st_size,
-                'scope': 'after both cycles and outside timer; local FSDP shards only'}
+                'scope': 'outside cycle timers; local FSDP shards only; cycle identity in enclosing receipt'}
 
     def receipt(self):
         return {'enabled': self.enabled, 'active': self.active, 'mode': 'CORRECTNESS_ONLY_EXCLUDED_FROM_PERFORMANCE',

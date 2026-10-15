@@ -105,6 +105,13 @@ class SlotRNG:
         return scoped()
 
 
+def controlled_cycle_count(mode, one_cycle_correctness):
+    """Bound diagnosis without altering the default warmup+C2 timing contract."""
+    if one_cycle_correctness and mode != 'correctness':
+        raise ValueError('ONE_CYCLE_IS_CORRECTNESS_ONLY_NOT_FORMAL_TIMING')
+    return 1 if one_cycle_correctness else 2
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--placement', choices=('resident', 'fsdp', 'candidate'), required=True)
@@ -119,7 +126,9 @@ def main():
     parser.add_argument('--export-parity-artifacts', action='store_true')
     parser.add_argument('--warmup-parity-artifacts', action='store_true')
     parser.add_argument('--warmup-parity-reference', type=Path)
+    parser.add_argument('--one-cycle-correctness', action='store_true')
     args = parser.parse_args()
+    cycle_count = controlled_cycle_count(args.mode, args.one_cycle_correctness)
     require(args.attention_cache_gpu_tail_blocks >= 0 and args.attention_cache_gpu_budget_gib > 0,
             'BOUNDED_NATIVE_GPU_CACHE_POLICY')
     require(args.placement == 'candidate' or args.attention_cache_gpu_tail_blocks == 0,
@@ -128,6 +137,8 @@ def main():
     require(not (args.export_parity_artifacts and args.warmup_parity_artifacts), 'ONE_PARITY_CAPTURE_SCOPE')
     require(not args.warmup_parity_artifacts or args.mode == 'timing', 'WARMUP_GATE_BEFORE_TIMING_ONLY')
     require(args.warmup_parity_reference is None or args.warmup_parity_artifacts, 'REFERENCE_REQUIRES_WARMUP_GATE')
+    require(not args.one_cycle_correctness or args.export_parity_artifacts,
+            'ONE_CYCLE_REQUIRES_ACTUAL_PARITY_EVIDENCE')
     rank, local, world = [int(os.environ[name]) for name in ('RANK', 'LOCAL_RANK', 'WORLD_SIZE')]
     require(world == 8 and local == rank and int(os.environ['LOCAL_WORLD_SIZE']) == 8, 'PHYSICAL_WORLD8_NODE_LOCAL')
     require(os.environ.get('H3_W6_RUN_GPU_LOCK_HELD') == '1', 'EXPLICIT_OWNED_CONTROLLER_REQUIRED')
@@ -141,6 +152,7 @@ def main():
            'worker_sha256': sha(__file__), 'source_receipt_sha256': SOURCE_SHA,
            'comparison_boundary': 'H100_INTERNAL_CPU_FP32_LORA_COMMON_START_NOT_A100_ZER03_REPLAY',
            'mode': 'TINY_NATIVE_INTEGRATION_ONLY' if args.tiny else args.mode,
+           'cycles_requested': cycle_count, 'one_cycle_correctness_only': args.one_cycle_correctness,
            'status': 'NOT_RUN', 'memory': [], 'cycles': [], 'census': {}, 'phase': 'setup',
            'parameter_offload': False, 'activation_offload': False, 'model_swap': False,
            'sigma_distribution': 'UNCHANGED_CONTINUOUS_SHIFTED_LOGIT_NORMAL', 'EMA_updates': 0,
@@ -282,7 +294,7 @@ def main():
         rec['precision']={'base_storage':'BF16','LoRA_storage':'FP32','autocast':'BF16_cache_enabled_false','reduction':'FP32_SUM_then_div8'}
         rec['memory'].append({'phase':'after_setup',**memory()});write(args.receipt_dir/f'rank_{rank:02d}_setup.json',rec)
         expected={'student':18,'fake_score':4,'teacher':2,'student_grad':2,'fake_score_grad':2,'student_backward':2,'critic_backward':2}
-        for cycle in range(2):
+        for cycle in range(cycle_count):
             census.clear();before_commits=dict(commits);torch.cuda.reset_peak_memory_stats(device)
             dist.barrier();torch.cuda.synchronize(device);start=time.perf_counter()
             with torch.autocast(device_type='cuda',dtype=torch.bfloat16,cache_enabled=False):
@@ -294,7 +306,7 @@ def main():
                     'FINAL_NATIVE_ROLE_VERSION_OR_GAN_PREDICATE')
             require({r:commits[r]-before_commits.get(r,0) for r in ('student','critic')}=={'student':1,'critic':1},'ONE_COMMIT_PER_LOGICAL_ROLE')
             rec['cycles'].append({'cycle':cycle+1,'timer':{'start':start,'stop':stop,'seconds':stop-start},
-                                  'performance_denominator':cycle==1 and not args.tiny,
+                                  'performance_denominator':cycle==1 and not args.tiny and args.mode=='timing',
                                   'actual_census':dict(census),'metrics':metrics,'memory_after_timer':memory(),
                                   'attention_reuse':reuse.finish_cycle()})
             if cycle == 0 and args.warmup_parity_artifacts:
@@ -317,7 +329,7 @@ def main():
                 valid_tensor = torch.tensor(int(valid),device=device,dtype=torch.int32)
                 dist.all_reduce(valid_tensor,op=dist.ReduceOp.MIN)
                 require(bool(valid_tensor.item()),'FULL_MODEL_WARMUP_STRICT_PARITY_FAILED_NO_TIMING')
-            if cycle==0:reuse.begin_next_cycle()
+            if cycle+1<cycle_count:reuse.begin_next_cycle()
         require(not any(p.grad is not None for n,p in adapter.named_parameters() if '.adapters.' not in n),'FROZEN_BASE_GRADIENT')
         if args.export_parity_artifacts or args.warmup_parity_artifacts:
             rec['full_parity_artifacts'] = {**evidence.receipt(),
@@ -344,11 +356,13 @@ def main():
             state_path=args.receipt_dir/f'rank_{rank:02d}_tiny_trainable_state.pt'
             require(not state_path.exists(),'IMMUTABLE_TINY_STATE_PATH');torch.save(states,state_path)
             rec['tiny_state_sha256']=sha(state_path)
-            rec['tiny_state_scope']='remote small architecture only; after both timer boundaries; not a full-model checkpoint'
+            rec['tiny_state_scope']='remote small architecture only; after executed cycle timers; not a full-model checkpoint'
         rec.update(status='PASS_REAL_NATIVE_AR8_G1F1_LOGICAL_B16' if not args.tiny else 'PASS_TINY_NATIVE_INTEGRATION_ONLY',
-                   actual_optimizer_counts=dict(commits),final_versions={'student':2,'fake':2,'ema':0},
+                   actual_optimizer_counts=dict(commits),
+                   final_versions={'student':trainers[0].generator_step,'fake':trainers[0].critic_step,'ema':0},
                    actual_runtime_dtype_receipts=list(dtype_rows.values()),
-                   formal_seconds=rec['cycles'][1]['timer']['seconds'] if not args.tiny else None)
+                   formal_seconds=rec['cycles'][1]['timer']['seconds']
+                   if not args.tiny and args.mode=='timing' else None)
         write(args.receipt_dir/f'rank_{rank:02d}.json',rec)
     except BaseException as exc:
         rec.update(status='FAIL',failure_type='CUDA_OOM' if isinstance(exc,torch.OutOfMemoryError) else 'OTHER_RUNTIME_ERROR',
