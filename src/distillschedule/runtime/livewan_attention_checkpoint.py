@@ -126,9 +126,12 @@ class AttentionCheckpointContexts:
             except Exception:
                 ledger["failures"] += 1
                 raise
-            return CheckpointPolicy.MUST_SAVE
+            return self._attention_policy(CheckpointPolicy)
 
         return create_selective_checkpoint_contexts(policy, allow_cache_entry_mutation=False)
+
+    def _attention_policy(self, CheckpointPolicy: Any):
+        return CheckpointPolicy.MUST_SAVE
 
     def receipt(self) -> dict[str, Any]:
         return {"name": self.receipt_name,

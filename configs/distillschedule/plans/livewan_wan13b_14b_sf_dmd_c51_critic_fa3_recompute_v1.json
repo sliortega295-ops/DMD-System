@@ -1,0 +1,35 @@
+{
+  "include": [
+    "livewan_wan13b_14b_sf_dmd_c51_generator_fused_rms.json"
+  ],
+  "id": "livewan_wan13b_14b_sf_dmd_c51_critic_fa3_recompute_v1",
+  "metadata": {
+    "checkpoint_replay_ablation": {
+      "schema": "livewan_c51_checkpoint_replay_ablation_v1",
+      "parent_variant": "c51-continuous-b16-generator-fused-rms",
+      "parent_source_head": "aa30527db5d048e2ab23222eef587cb7cfe909f6",
+      "parent_plan_sources_sha256": "919db26012f4dee2429e434ffc1c6508957b149cdeb2427e1e9c674035e4152d",
+      "factor": "critic_grad_self_attention_output_reuse",
+      "reuse_enabled": false,
+      "replacement": "same_pinned_fa3_forward_recompute",
+      "preserve_rng_state": true,
+      "application_calls_unchanged": true,
+      "optimizer_placement_and_schedule_unchanged": true,
+      "scope": "conditional_on_full_c51_not_layout_only"
+    },
+    "critic_attention_checkpoint": {
+      "enabled": true,
+      "name": "critic_fa3_checkpoint_recompute_ablation_v1",
+      "scope": "score_rank_critic_grad_self_attention_only",
+      "interface_sha256": "cb46c3d89606305817ea20eb7b7cc9376b013eeabfd7637a328e7967e1d008d4",
+      "operator": "_flash_attn3_cuda_373a45c::_flash_attn_forward",
+      "cache_location": "none_recompute",
+      "query_tokens": 19320,
+      "key_tokens": 19320,
+      "allow_cache_entry_mutation": false,
+      "preserve_rng_state": true,
+      "application_calls_unchanged": true,
+      "cross_attention_recomputed": true
+    }
+  }
+}

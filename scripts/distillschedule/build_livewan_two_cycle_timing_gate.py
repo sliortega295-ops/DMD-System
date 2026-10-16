@@ -146,16 +146,21 @@ def main() -> int:
     parser.add_argument("--pipeline-trajectory-summary", type=Path, required=True)
     parser.add_argument("--trajectory-comparison", type=Path, required=True)
     parser.add_argument("--expected-head", required=True)
-    parser.add_argument("--pipeline-variant", choices=("c24-continuous-b16-score-modulation", "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'), default="c24-continuous-b16-score-modulation")
+    parser.add_argument("--pipeline-variant", choices=("c24-continuous-b16-score-modulation", "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'), default="c24-continuous-b16-score-modulation")
+    parser.add_argument("--reference-variant", choices=(BASELINE_VARIANT, "c51-continuous-b16-generator-fused-rms"), default=BASELINE_VARIANT)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if len(args.expected_head) != 40:
         raise ValueError("--expected-head must be a full Git SHA")
 
+    conditional = args.reference_variant != BASELINE_VARIANT
+    if conditional != (args.pipeline_variant == "c51-critic-fa3-recompute-v1"):
+        raise ValueError("C51 timing reference is only registered for its replay ablation")
+    reference_mode = "pipeline" if conditional else "baseline"
     baseline = _trajectory(
         args.baseline_trajectory_summary,
-        mode="baseline",
-        variant=BASELINE_VARIANT,
+        mode=reference_mode,
+        variant=args.reference_variant,
         expected_head=args.expected_head,
     )
     pipeline = _trajectory(
@@ -348,6 +353,18 @@ def main() -> int:
             },
         },
     }
+    if conditional:
+        if (source_binding.get("reference_execution_mode") != "pipeline"
+            or source_binding.get("reference_variant") != args.reference_variant
+            or source_binding.get("candidate_variant") != args.pipeline_variant):
+            raise ValueError("conditional replay comparison binding changed")
+        reference_arm = result["arms"]["baseline"]
+        reference_arm["pipeline_variant"] = args.reference_variant
+        result.update(
+            schema_version="distillschedule.livewan_conditional_replay_timing_gate.v1",
+            claim_boundary="SAME_HEAD_FULL_C51_VS_REPLAY_RECOMPUTE_DIAGNOSTIC_ONLY",
+            heads={"reference": args.expected_head, "candidate": args.expected_head},
+            arms={"reference": reference_arm, "candidate": result["arms"]["pipeline"]})
     _atomic_json(args.output, result)
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
