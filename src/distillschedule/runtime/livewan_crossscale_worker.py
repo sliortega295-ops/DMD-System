@@ -1008,6 +1008,25 @@ def _effective_plan_sha256(plan: Mapping[str, Any]) -> str:
     ).hexdigest()
 
 
+def _publish_effective_plan(
+    plan: Mapping[str, Any], output_dir: Path, *,
+    run_kind: str, profile_two_cycles: bool, local_rank: int, node_rank: int,
+) -> Path | None:
+    """Publish this worker's actual lowered plan before model work or timing.
+
+    Qualification consumes the same flat plan-plus-digest format as timing.
+    Only each node's local rank zero writes; no reconstruction after the run.
+    """
+    if local_rank != 0 or (
+        run_kind not in {"trajectory", "two-cycle-timing"} and not profile_two_cycles
+    ):
+        return None
+    _require(node_rank in {0, 1}, "effective-plan node rank is missing")
+    path = output_dir / f"effective_plan.node{node_rank}.json"
+    atomic_json(path, {**plan, "effective_plan_sha256": _effective_plan_sha256(plan)})
+    return path
+
+
 def _record_two_cycle_endpoint(
     torch: Any,
     *,
@@ -4091,13 +4110,10 @@ def run_worker(
     # Shared hardware compatibility, before any model construction/timer.
     cuda_library_setup = materialize_blas_handles(torch, device)
     effective_plan_sha256 = _effective_plan_sha256(plan)
-    if (two_cycle_timing or profile_two_cycles) and local_rank == 0:
-        node_rank = int(os.environ.get("DISTILLSCHEDULE_NODE_RANK", "-1"))
-        _require(node_rank in {0, 1}, "two-cycle timing node rank is missing")
-        atomic_json(
-            output_dir / f"effective_plan.node{node_rank}.json",
-            {**plan, "effective_plan_sha256": effective_plan_sha256},
-        )
+    _publish_effective_plan(
+        plan, output_dir, run_kind=run_kind, profile_two_cycles=profile_two_cycles,
+        local_rank=local_rank, node_rank=int(os.environ.get("DISTILLSCHEDULE_NODE_RANK", "-1")),
+    )
     critic_lora_kernel = {
         "enabled": False,
         "name": "native_livewan_lora",
