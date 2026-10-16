@@ -157,6 +157,11 @@ class CostModel:
                 validate_pooled_receipt(raw)
                 # The flat sources already validate their native provenance.
                 continue
+            if record.evidence.get("component_contract", {}).get("family") == "helios_h100_native.coupled_cycle":
+                require(raw.get("evidence_scope") == self.scope == "MEASURED",
+                        "fixture C2 costs cannot be relabeled measured")
+                from .hardware_helios_c2 import validate_component_receipt
+                validate_component_receipt(raw, native_component_cache)
             if record.evidence.get("component_contract", {}).get("family", "").startswith("hardware_native."):
                 require(raw.get("evidence_scope") == self.scope == "MEASURED",
                         "fixture native costs cannot be relabeled measured")

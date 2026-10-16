@@ -9,6 +9,9 @@ from .registry import list_profiles, load_profile, resolve_profile, verify_asset
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
+    if argv and argv[0] == "hardware-helios-c2":
+        from distillschedule.search.hardware_helios_c2_cli import main as helios_c2_main
+        return helios_c2_main(argv[1:])
     if argv and argv[0] == "hardware-helios":
         from distillschedule.search.hardware_helios_cli import main as helios_hardware_main
         return helios_hardware_main(argv[1:])
