@@ -25,8 +25,10 @@ class H3Request:
         require(self.schema_version == SCHEMA, "unsupported H3 request schema")
         require(all(type(v) is int for v in (self.height, self.width, self.frames)),
                 "H3 request dimensions must be integers")
-        require((self.height, self.width) in ((768, 1344), (480, 832)) and self.frames == 124,
-                "H3 request supports only 768x1344x124 or 480x832x124; other semantics are not admitted")
+        # Pinned LightX2V H3 packing uses 17*n+5, not Wan's frame lattice.
+        # Admit only these bounded requests, not every native packing length.
+        require((self.height, self.width) in ((768, 1344), (480, 832)) and self.frames in (56, 124),
+                "H3 request supports only 768x1344 or 480x832 with 56 or 124 frames; other semantics are not admitted")
 
     @property
     def id(self):
@@ -53,8 +55,10 @@ class H3Request:
             return profile
         profile["display_name"] = f"Unvalidated H3 Grid1000 request: {self.id}"
         profile["contract"]["resolution"] = [self.height, self.width]
+        profile["contract"]["frames"] = self.frames
         profile["contract"]["request"] = self.to_dict()
-        profile["runtime"]["model_config"]["training"]["dmd"].update(height=self.height, width=self.width)
+        profile["runtime"]["model_config"]["training"]["dmd"].update(
+            height=self.height, width=self.width, num_frames=self.frames)
         profile["historical"] = dict(formal_speedup_eligible=False,
             scope="NO_MATCHING_INTEGRATION_MEASUREMENT; PARENT_CANONICAL_SECONDS_NOT_TRANSFERABLE",
             parent_canonical_profile_sha256=fingerprint(load_profile(H3, root=root)))

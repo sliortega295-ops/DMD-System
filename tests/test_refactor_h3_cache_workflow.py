@@ -24,24 +24,34 @@ from test_refactor_h3_planner_cycle_observer import FakeCuda, trainer_contract
 LOW = H3Request(480, 832)
 
 
-@pytest.mark.parametrize("task", [H3Request(), LOW])
+@pytest.mark.parametrize("height,width,frames", [(768, 1344, 124), (480, 832, 124),
+                                               (768, 1344, 56), (480, 832, 56)])
 @pytest.mark.parametrize("policy", ["cpu_staged_trim", "cuda_no_trim"])
-def test_request_cache_roundtrip_lowering_and_default_preservation(task, policy):
+def test_request_cache_roundtrip_lowering_and_default_preservation(height, width, frames, policy):
+    task = H3Request(height, width, frames)
     canonical = registry.load_profile(H3)
     before = deepcopy(canonical)
+    assert H3Request.parse(task.id) == H3Request.from_dict(task.to_dict()) == task
+    assert H3Request().profile() == canonical
     impl = H3Implementation(cache_policy=policy, request=task)
     assert H3Implementation.parse(impl.id) == impl
     assert H3Implementation.from_assignment(impl.assignment) == impl
     profile = impl.lower_profile()
     assert registry.load_profile(H3) == before
     assert profile['contract']['resolution'] == [task.height, task.width]
+    assert profile['contract']['frames'] == task.frames
     assert profile['runtime']['model_config']['training']['dmd']['height'] == task.height
+    assert profile['runtime']['model_config']['training']['dmd']['width'] == task.width
+    assert profile['runtime']['model_config']['training']['dmd']['num_frames'] == task.frames
     assert semantic_contract(profile) == semantic_contract(task.profile())
+    assert profile['semantics'] == 'approximate_grid1000'
+    assert profile['hardware'] == canonical['hardware']
     runtime = profile['runtime']
     assert runtime['model_config']['training']['a100']['fa3_replay_cache']['storage'] == impl.storage
     assert runtime['environment']['H3_FA3_REPLAY_CACHE_TRIM_BEFORE_BACKWARD'] == str(int(impl.trim_before_backward))
     impl.receipt_binding(runtime['model_config'], runtime['environment'])
-    if task == LOW:
+    if task != H3Request():
+        assert profile['contract']['request'] == task.to_dict()
         assert 'seconds' not in profile['historical']
         assert semantic_contract(profile) != semantic_contract(canonical)
     assert H3Implementation().id == 'joint-h3v1-d2-n128'
@@ -49,7 +59,9 @@ def test_request_cache_roundtrip_lowering_and_default_preservation(task, policy)
 
 
 @pytest.mark.parametrize("change", [dict(height=481), dict(width=1344), dict(frames=125),
-                                     dict(height=True), dict(schema_version='unknown'), dict(fake_update_ratio=4)])
+                                     dict(frames=60), dict(frames=90), dict(frames=True), dict(frames=56.0),
+                                     dict(height=True), dict(schema_version='unknown'), dict(fake_update_ratio=4),
+                                     dict(world_size=8)])
 def test_request_unknown_semantics_fail_closed(change):
     with pytest.raises(ValueError):
         H3Request.from_dict({**LOW.to_dict(), **change})
@@ -67,14 +79,19 @@ def test_inactive_cuda_prefetch_is_not_an_invented_candidate():
         H3Implementation(request=LOW)
 
 
-@pytest.mark.parametrize('change', ['environment', 'shape', 'config_storage', 'config_trim'])
-def test_selected_fields_cannot_be_ignored_by_actual_config(change):
-    impl = H3Implementation(cache_policy='cuda_no_trim', request=LOW)
+@pytest.mark.parametrize('frames', [124, 56])
+@pytest.mark.parametrize('change', ['environment', 'shape', 'frames', 'world_size', 'config_storage', 'config_trim'])
+def test_selected_fields_cannot_be_ignored_by_actual_config(change, frames):
+    impl = H3Implementation(cache_policy='cuda_no_trim', request=replace(LOW, frames=frames))
     runtime = impl.lower_profile()['runtime']
     config, env = deepcopy(runtime['model_config']), dict(runtime['environment'])
     cache = config['training']['a100']['fa3_replay_cache']
     if change == 'environment': env['H3_FA3_REPLAY_CACHE_STORAGE'] = 'cpu_staged'
     if change == 'shape': config['training']['dmd']['width'] = 1344
+    if change == 'frames': config['training']['dmd']['num_frames'] = 124 if frames == 56 else 56
+    if change == 'world_size':
+        config['distributed']['fsdp2']['size'] = 8
+        config['training']['a100']['matched_compute']['expected_world_size'] = 8
     if change == 'config_storage': cache['storage'] = 'cpu_staged'
     if change == 'config_trim': cache['trim_before_backward'] = True
     with pytest.raises(ValueError):
@@ -150,13 +167,20 @@ def test_shape_and_storage_costs_and_comparisons_are_not_reused():
     cpu = H3Implementation(cache_policy='cpu_staged_trim', request=LOW)
     gpu = replace(cpu, cache_policy='cuda_no_trim')
     large = replace(cpu, request=H3Request())
+    short = replace(cpu, request=replace(LOW, frames=56))
+    short_large = replace(large, request=H3Request(768, 1344, 56))
+    values = (cpu, gpu, large, short, short_large)
+    assert len({i.id for i in values}) == 5
+    assert len({tuple(sorted(i.assignment.items())) for i in values}) == 5
     op = native_graph(H3).operations[0]
-    assert len({cost_key(H3, op, i) for i in (cpu, gpu, large)}) == 3
+    assert len({cost_key(H3, op, i) for i in values}) == 5
     op = action_graph().operations[0]
     work = dict(physical_batch=1, logical_batch=16, fixture='not measured')
-    assert len({component_contract(op, replace(i, rollout_window=3), work).digest for i in (cpu,gpu,large)}) == 3
+    assert len({component_contract(op, replace(i, rollout_window=3), work).digest for i in values}) == 5
     with pytest.raises(ValueError, match='requests/shapes'):
         compare_native_two_cycle(_receipts(cpu), _receipts(large), expected_head=HEAD)
+    with pytest.raises(ValueError, match='requests/shapes'):
+        compare_native_two_cycle(_receipts(cpu), _receipts(short), expected_head=HEAD)
 
 
 @pytest.mark.parametrize('workload', sorted(SUPPORTED_WORKLOADS))
