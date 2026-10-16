@@ -31,6 +31,11 @@ SOURCE_FILES = tuple(RUNTIME_DIR + p for p in (
     'scripts/distillschedule/probe_static_fsdp2_p0_world16_hardened.py',
     'scripts/distillschedule/launch_static_fsdp2_p0_world16_node.sh',
 )
+LORA_INVENTORY = {
+    'generator': {'linear': 406, 'conv3d_names': ['patch_long', 'patch_mid', 'patch_short']},
+    'critic': {'linear': 406, 'conv3d_names': []},
+}
+LORA_LAYER_COUNT = sum(v['linear'] + len(v['conv3d_names']) for v in LORA_INVENTORY.values())
 
 
 @dataclass(frozen=True)
@@ -100,8 +105,9 @@ class HeliosGANBundle:
                     FA3_PINS['_flash_attn3_cuda_373a45c.abi3.so'],
                 'manual GAN actual public/autograd/library identity not attested')
         require(actual.get('merge_count') == 0 and actual.get('merged_layer_count') == 0
-                and actual.get('lora_layer_count') == 812
-                and actual.get('merge_attempt_count') == 0 and actual.get('guarded_merge_methods') == 812,
+                and actual.get('lora_layer_count') == LORA_LAYER_COUNT
+                and actual.get('lora_inventory') == LORA_INVENTORY
+                and actual.get('merge_attempt_count') == 0 and actual.get('guarded_merge_methods') == LORA_LAYER_COUNT,
                 'manual GAN merged execution or shadow is forbidden')
         require(build.get('critic', {}).get('fsdp2', {}).get('separate_gan_head_fsdp', {}).get('requested') is True,
                 'manual GAN five independent head FSDP units missing')

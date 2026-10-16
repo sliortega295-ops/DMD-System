@@ -541,14 +541,28 @@
         ]
       },
       "effective_attention_backend": "pinned-sm80-fa3",
-      "guarded_merge_methods": 812,
+      "guarded_merge_methods": 815,
       "installed": true,
-      "lora_layer_count": 812,
+      "lora_layer_count": 815,
       "merge_attempt_count": 0,
       "merge_count": 0,
       "merged_layer_count": 0,
       "public_backend_call_count": 9440,
-      "unsupported_request_count": 0
+      "unsupported_request_count": 0,
+      "lora_inventory": {
+        "generator": {
+          "linear": 406,
+          "conv3d_names": [
+            "patch_long",
+            "patch_mid",
+            "patch_short"
+          ]
+        },
+        "critic": {
+          "linear": 406,
+          "conv3d_names": []
+        }
+      }
     },
     "generator": {
       "all_role_lora_scale1_add": {

@@ -60,6 +60,11 @@ class GANManualBundleTests(unittest.TestCase):
             else: bad['generator']['generator_nograd_cross_kv_cache']['cached_tensor_mutation_count']=1
             with self.subTest(mutation=mutation), self.assertRaises(ValueError):
                 bundle.effect_snapshot(bad)
+        for key, value in (('lora_layer_count', 812), ('guarded_merge_methods', 812),
+                           ('lora_inventory', {})):
+            bad = deepcopy(build); bad['gan_manual_runtime'][key] = value
+            with self.subTest(inventory=key), self.assertRaises(ValueError):
+                bundle.effect_snapshot(bad)
         after['critic.shape.M13680_N5120_R256'] -= 1
         with self.assertRaises(ValueError):
             bundle.effects_between(dict.fromkeys(after,0),after)
@@ -108,31 +113,55 @@ class GANManualBundleTests(unittest.TestCase):
                     self.fail('unexpected backend execution')
         self.assertEqual(calls, [('set_device', 3), ('capability', 3)])
 
-    def test_each_role_has_406_layers_and_merge_guards_restore(self):
-        from distillschedule.runtime.helios_gan_manual.runtime import _audit_unmerged, _forbid_merges
+    @staticmethod
+    def _lora_engines():
         class Layer:
             lora_A = lora_B = object()
             merged = False
             merged_adapters = ()
             def merge(self):
                 return 'original'
-        engines = [NS(module=NS(modules=lambda rows=[Layer() for _ in range(406)]: iter(rows)))
-                   for _ in range(2)]
+        class Linear(Layer):
+            pass
+        class Conv3d(Layer):
+            pass
+        rows = [[(f'linear.{i}', Linear()) for i in range(406)] for _ in range(2)]
+        rows[0] += [(name, Conv3d()) for name in ('patch_short','patch_mid','patch_long')]
+        engines = [NS(module=NS(named_modules=lambda row=row: iter(row),
+                               modules=lambda row=row: (m for _,m in row))) for row in rows]
+        return engines, rows, (Linear,Conv3d,Layer)
+
+    def test_all_real_lora_layers_not_only_406_linears_are_guarded(self):
+        from distillschedule.runtime.helios_gan_manual.runtime import _audit_unmerged, _forbid_merges
+        engines, rows, types = self._lora_engines()
         state = {}
-        _audit_unmerged(state, engines, 'AFTER_SETUP_BEFORE_BOTH_TIMERS')
-        self.assertEqual(state['lora_layer_count'], 812)
-        self.assertEqual([s['LoRA_count'] for s in state['model_metadata_samples']], [406,406])
-        layer = next(engines[0].module.modules())
-        with ExitStack() as stack:
-            _forbid_merges(stack, state, engines)
-            self.assertEqual(state['guarded_merge_methods'], 812)
-            with self.assertRaises(ValueError):
-                layer.merge()
-            self.assertEqual(state['merge_attempt_count'], 1)
-        self.assertEqual(layer.merge(), 'original')
-        bad = [engines[0], NS(module=NS(modules=lambda: iter([Layer()] * 405)))]
-        with self.assertRaises(ValueError):
-            _audit_unmerged({}, bad, 'bad')
+        with patch('distillschedule.runtime.helios_gan_manual.runtime._peft_lora_types',
+                   return_value=types, create=True):
+            _audit_unmerged(state, engines, 'AFTER_SETUP_BEFORE_BOTH_TIMERS')
+            self.assertEqual(state['lora_layer_count'], 815)
+            self.assertEqual([s['LoRA_count'] for s in state['model_metadata_samples']], [409,406])
+            with ExitStack() as stack:
+                _forbid_merges(stack, state, engines)
+                self.assertEqual(state['guarded_merge_methods'], 815)
+                for row in rows:
+                    for _, layer in row:
+                        with self.assertRaises(ValueError): layer.merge()
+                self.assertEqual(state['merge_attempt_count'], 815)
+            self.assertTrue(all(layer.merge() == 'original' for row in rows for _,layer in row))
+
+    def test_inventory_rejects_missing_unknown_misnamed_and_merged_layers(self):
+        from distillschedule.runtime.helios_gan_manual.runtime import _audit_unmerged
+        for mutation in ('missing','unknown','misnamed','critic_conv','merged','partial'):
+            engines, rows, types = self._lora_engines()
+            if mutation == 'missing': rows[0].pop()
+            elif mutation == 'unknown': rows[0].append(('other', types[2]()))
+            elif mutation == 'misnamed': rows[0][-1] = ('other_patch', rows[0][-1][1])
+            elif mutation == 'critic_conv': rows[1].append(('patch_short',types[1]()))
+            elif mutation == 'merged': rows[0][-1][1].merged = True
+            else: rows[0].append(('partial',NS(lora_A={})))
+            with patch('distillschedule.runtime.helios_gan_manual.runtime._peft_lora_types',
+                       return_value=types, create=True), self.subTest(mutation=mutation):
+                with self.assertRaises(ValueError): _audit_unmerged({},engines,'before')
 
     def test_launch_gate_admits_only_explicit_complete_gan_tuple(self):
         from distillschedule.search.helios_model_adapter import gan_manual_incumbent

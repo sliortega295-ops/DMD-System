@@ -16,6 +16,7 @@ from .contracts import finite_number, require, semantic_contract
 from .execution import validated_profile
 from .helios_action_costs import observed_work
 from .helios_implementation import HeliosImplementation
+from .helios_gan_bundle import LORA_INVENTORY, LORA_LAYER_COUNT
 from .helios_native import bound, checked, launch_evidence, normalize_native
 from .plan_ir import validate_binding
 from .runtime_identity import verify_measurement_runtime
@@ -81,14 +82,21 @@ def _nomerge(rows, *, candidate_id=None):
                     and witness.get('effective_attention_backend') == 'pinned-sm80-fa3',
                     'new no-merge runtime/backend/restoration missing or failed')
             for key, expected in (('unsupported_request_count', 0), ('merge_attempt_count', 0),
-                                  ('guarded_merge_methods', 812), ('lora_layer_count', 812),
+                                  ('guarded_merge_methods', LORA_LAYER_COUNT), ('lora_layer_count', LORA_LAYER_COUNT),
                                   ('merged_layer_count', 0)):
                 require(type(witness.get(key)) is int and witness[key] == expected,
                         'new no-merge actual observation missing/failed: ' + key)
             _unmerged_samples(witness)
-            require(all(type(s.get('LoRA_count')) is int and s['LoRA_count'] == 406
-                        for s in witness['model_metadata_samples']),
-                    'new no-merge per-role LoRA inventory missing/different')
+            require(witness.get('lora_inventory') == LORA_INVENTORY,
+                    'new no-merge typed LoRA inventory missing/different')
+            for sample in witness['model_metadata_samples']:
+                expected = LORA_INVENTORY[sample['role']]
+                require(type(sample.get('LoRA_count')) is int
+                        and sample['LoRA_count'] == expected['linear'] + len(expected['conv3d_names'])
+                        and type(sample.get('LoRA_linear_count')) is int
+                        and sample['LoRA_linear_count'] == expected['linear']
+                        and sample.get('LoRA_conv3d_names') == expected['conv3d_names'],
+                        'new no-merge per-role LoRA inventory missing/different')
             if 'no_merge_audit' not in row:
                 continue
         # Preserve strict historical validation when that witness is present.

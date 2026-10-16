@@ -275,9 +275,11 @@ class GANBundleNomergeWitnessTests(unittest.TestCase):
             self.skipTest('requires the separately owned GAN bundle integration')
         self.witness = dict(installed=True, restored=True,
             effective_attention_backend='pinned-sm80-fa3', unsupported_request_count=0,
-            merge_attempt_count=0, guarded_merge_methods=812, lora_layer_count=812,
+            merge_attempt_count=0, guarded_merge_methods=815, lora_layer_count=815,
+            lora_inventory=deepcopy(match.LORA_INVENTORY),
             merged_layer_count=0,
-            model_metadata_samples=[dict(point=p, role=r, LoRA_count=406,
+            model_metadata_samples=[dict(point=p, role=r, LoRA_count=409 if r == 'generator' else 406,
+                LoRA_linear_count=406, LoRA_conv3d_names=match.LORA_INVENTORY[r]['conv3d_names'],
                 N70_model_state_present=False, PEFT_merged_layers=0)
                 for p in ('AFTER_SETUP_BEFORE_BOTH_TIMERS', 'AFTER_BOTH_TIMERS') for r in ('generator', 'critic')])
         self.row = dict(candidate_id=self.cid,
@@ -313,6 +315,16 @@ class GANBundleNomergeWitnessTests(unittest.TestCase):
                            ('effective_attention_backend', 'pinned-local-fa2')):
             changed = deepcopy(self.row); changed['build']['gan_manual_runtime'][key] = value
             with self.subTest(changed=key), self.assertRaises(ValueError):
+                match._nomerge([changed], candidate_id=self.cid)
+        for key, value in (('LoRA_linear_count', None), ('LoRA_linear_count', 409),
+                           ('LoRA_conv3d_names', None), ('LoRA_conv3d_names', [])):
+            changed = deepcopy(self.row)
+            sample = changed['build']['gan_manual_runtime']['model_metadata_samples'][0]
+            if value is None:
+                del sample[key]
+            else:
+                sample[key] = value
+            with self.subTest(sample_field=key, value=value), self.assertRaises(ValueError):
                 match._nomerge([changed], candidate_id=self.cid)
         for count in (None, 405, 812):
             changed = deepcopy(self.row)

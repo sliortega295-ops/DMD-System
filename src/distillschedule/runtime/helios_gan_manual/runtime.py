@@ -11,7 +11,9 @@ import os
 from pathlib import Path
 
 from distillschedule.search.contracts import require
-from distillschedule.search.helios_gan_bundle import HeliosGANBundle, ROW_SHA256
+from distillschedule.search.helios_gan_bundle import (
+    HeliosGANBundle, ROW_SHA256, LORA_INVENTORY, LORA_LAYER_COUNT,
+)
 from distillschedule.workloads.best_known.registry import file_sha256
 from . import backend_abi, backend_library
 from .down_replay import NativeDownSAC, replace
@@ -44,40 +46,68 @@ def _rows(rank):
     return result
 
 
+def _peft_lora_types():
+    from peft.tuners.lora.layer import Linear, Conv3d, LoraLayer
+    return Linear, Conv3d, LoraLayer
+
+
+def _lora_inventory(engine, role):
+    linear_type, conv_type, lora_type = _peft_lora_types()
+    modules, conv_names = [], []
+    linears = 0
+    for name, module in engine.module.named_modules():
+        if not (isinstance(module, lora_type) or any(hasattr(module, key) for key in
+                ('lora_A', 'lora_B', 'lora_embedding_A', 'lora_embedding_B'))):
+            continue
+        require(hasattr(module, 'lora_A') and hasattr(module, 'lora_B'),
+                'manual GAN unknown or partial LoRA layer: ' + role + '/' + name)
+        if isinstance(module, linear_type):
+            linears += 1
+        elif isinstance(module, conv_type):
+            conv_names.append(name)
+        else:
+            raise ValueError('manual GAN unsupported LoRA layer type: ' + role + '/' + name)
+        modules.append(module)
+    inventory = dict(linear=linears, conv3d_names=sorted(conv_names))
+    require(inventory == LORA_INVENTORY[role], 'manual GAN exact LoRA inventory differs: ' + role)
+    return modules, inventory
+
+
 def _audit_unmerged(state, engines, point):
     count = merged = 0
+    inventories = {}
     for role, engine in zip(('generator','critic'), engines, strict=True):
         require(not hasattr(engine.module, '_distillschedule_merged_execution_state'),
                 'manual GAN N70 execution state is forbidden')
-        local_count = 0
-        for module in engine.module.modules():
-            if hasattr(module, 'lora_A') and hasattr(module, 'lora_B'):
-                count += 1
-                local_count += 1
-                require(type(module.merged) is bool, 'manual GAN PEFT merge state unavailable')
-                merged += int(module.merged)
-                require(not getattr(module, 'merged_adapters', []), 'manual GAN merged adapter is forbidden')
-        require(local_count == 406, 'manual GAN needs 406 LoRA layers in each physical role')
+        modules, inventory = _lora_inventory(engine, role)
+        inventories[role] = inventory
+        for module in modules:
+            require(type(module.merged) is bool, 'manual GAN PEFT merge state unavailable')
+            merged += int(module.merged)
+            require(not module.merged and not getattr(module, 'merged_adapters', []),
+                    'manual GAN merged adapter is forbidden')
+        count += len(modules)
         state.setdefault('model_metadata_samples', []).append(dict(
-            point=point, role=role, LoRA_count=local_count, PEFT_merged_layers=0,
-            N70_model_state_present=False))
-    require(count == 812 and merged == 0, 'manual GAN needs 812 unmerged LoRA layers across two roles')
-    state.update(lora_layer_count=count, merged_layer_count=merged, merge_count=0)
+            point=point, role=role, LoRA_count=len(modules),
+            LoRA_linear_count=inventory['linear'], LoRA_conv3d_names=inventory['conv3d_names'],
+            PEFT_merged_layers=0, N70_model_state_present=False))
+    require(count == LORA_LAYER_COUNT and merged == 0, 'manual GAN full unmerged LoRA inventory differs')
+    state.update(lora_layer_count=count, lora_inventory=inventories, merged_layer_count=merged, merge_count=0)
 
 
 def _forbid_merges(stack, state, engines):
     state['merge_attempt_count'] = 0
     state['guarded_merge_methods'] = 0
-    for engine in engines:
-        for module in engine.module.modules():
-            if hasattr(module, 'lora_A') and hasattr(module, 'lora_B'):
-                require(callable(getattr(module, 'merge', None)), 'manual GAN LoRA merge method unavailable')
-                def forbidden(*args, **kwargs):
-                    state['merge_attempt_count'] += 1
-                    raise ValueError('manual GAN plan forbids every merged-LoRA execution')
-                replace(stack,module,'merge',lambda original,fn=forbidden:fn)
-                state['guarded_merge_methods'] += 1
-    require(state['guarded_merge_methods'] == 812, 'manual GAN merge guards incomplete')
+    for role, engine in zip(('generator','critic'), engines, strict=True):
+        modules, _ = _lora_inventory(engine, role)
+        for module in modules:
+            require(callable(getattr(module, 'merge', None)), 'manual GAN LoRA merge method unavailable')
+            def forbidden(*args, **kwargs):
+                state['merge_attempt_count'] += 1
+                raise ValueError('manual GAN plan forbids every merged-LoRA execution')
+            replace(stack,module,'merge',lambda original,fn=forbidden:fn)
+            state['guarded_merge_methods'] += 1
+    require(state['guarded_merge_methods'] == LORA_LAYER_COUNT, 'manual GAN merge guards incomplete')
 
 
 @contextmanager
