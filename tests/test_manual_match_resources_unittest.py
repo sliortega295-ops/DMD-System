@@ -82,6 +82,56 @@ class ManualMatchResourceTests(unittest.TestCase):
         return resources.ResourceObserver(self.tmp / 'resources.json', 'CPU_NO_GPU', 0,
             source_root=self.repo, capacity_policy=self.policy if capacity else None)
 
+    def test_global_root_without_memory_max_retains_finite_child_cap(self):
+        self.telemetry()
+        (self.cgroup / 'memory.max').unlink()
+        current, capacity = resources._capacity_observation()
+        self.assertEqual(current, self.child)
+        self.assertEqual(capacity['cgroup_hard_limit_bytes'], 3072 * 2**20)
+        self.assertEqual(capacity['effective_host_limit_bytes'], 3072 * 2**20)
+        self.policy['host_limits']['0'] = 3072 * 2**20 + 1
+        with self.assertRaisesRegex(ValueError, 'host budget exceeds'):
+            with self.observer():
+                self.fail('finite child cap must prevent admission')
+
+    def test_missing_nonroot_memory_max_fails_closed(self):
+        self.telemetry()
+        (self.child / 'memory.max').unlink()
+        with self.assertRaises(FileNotFoundError):
+            resources._capacity_observation()
+
+    def test_unreadable_global_root_memory_max_fails_closed(self):
+        self.telemetry()
+        original_read = Path.read_text
+        def read(path, *args, **kwargs):
+            if path == self.cgroup / 'memory.max':
+                raise PermissionError('unreadable root control')
+            return original_read(path, *args, **kwargs)
+        with patch.object(Path, 'read_text', read):
+            with self.assertRaises(PermissionError):
+                resources._capacity_observation()
+
+    def test_global_root_without_memory_max_still_uses_physical_cap(self):
+        self.telemetry()
+        (self.cgroup / 'memory.max').unlink()
+        (self.child / 'memory.max').write_text('max')
+        _, capacity = resources._capacity_observation()
+        self.assertIsNone(capacity['cgroup_hard_limit_bytes'])
+        self.assertEqual(capacity['effective_host_limit_bytes'], 4194304 * 1024)
+
+    def test_missing_delegated_mount_root_memory_max_fails_closed(self):
+        self.telemetry()
+        (self.cgroup / 'memory.max').unlink()
+        original_read = Path.read_text
+        def read(path, *args, **kwargs):
+            if str(path) == '/proc/self/cgroup': return '0::/delegated/job\n'
+            if str(path) == '/proc/self/mountinfo':
+                return f'1 0 0:1 /delegated {self.cgroup} rw - cgroup2 cgroup rw\n'
+            return original_read(path, *args, **kwargs)
+        with patch.object(Path, 'read_text', read):
+            with self.assertRaises(FileNotFoundError):
+                resources._capacity_observation()
+
     def test_actual_git_clean_dirty_untracked_and_missing_are_not_echoed(self):
         clean = resources.observe_source_identity(self.repo)
         self.assertEqual(clean['identity'], dict(head=self.head, dirty=False,

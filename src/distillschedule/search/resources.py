@@ -73,7 +73,15 @@ def _capacity_observation() -> tuple[Path, dict]:
     require(current.is_relative_to(mount), 'cgroup escaped mounted hierarchy')
     limits = []
     for directory in (current, *current.parents):
-        raw = (directory / 'memory.max').read_text().strip()
+        try:
+            raw = (directory / 'memory.max').read_text().strip()
+        except FileNotFoundError:
+            # The global cgroup-v2 root has no resource-control files. A
+            # delegated mount root is still a constrained cgroup: do not
+            # mistake missing controls there (or below it) for no limit.
+            if base != Path('/') or directory != mount:
+                raise
+            raw = 'max'
         require(raw == 'max' or raw.isdecimal(), 'unknown cgroup memory.max')
         value = None if raw == 'max' else int(raw)
         require(value is None or value > 0, 'invalid cgroup memory.max')
