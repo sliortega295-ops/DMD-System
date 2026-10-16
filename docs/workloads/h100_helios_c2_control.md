@@ -33,9 +33,10 @@ the inherited-variable scrub. The sole extra environment hardening pins
 `LD_LIBRARY_PATH` to the selected Python environment's `lib` directory rather
 than inheriting an unbound loader path; its H100 runtime compatibility is NOT_RUN.
 
-## Public integration (two root-owned seams)
+## Public integration
 
-Apply the small registration patch in this directory to the integration source:
+The following two registrations are present in the integration source. They are
+not pending manual patch steps for users of this checkout:
 
 1. `distillschedule.workloads.best_known.cli.main`: route
    `hardware-helios-c2` to `distillschedule.search.hardware_helios_c2_cli.main`.
@@ -44,15 +45,14 @@ Apply the small registration patch in this directory to the integration source:
    `hardware_helios_c2.validate_component_receipt`. This is distinct from the
    Wan-only `hardware_native.*` dispatch and from the A100 `helios.*` family.
 
-The adapter already calls its deep validator before common search/lowering.
-The central registration is still necessary to protect arbitrary generic
-`CostModel` consumers. The two seams were applied **temporarily in the isolated
-source**, exercised through the actual public CLI and generic cost verifier,
-then restored. Root alone integrates canonical source.
+The adapter calls its deep validator before common search/lowering. The central
+registration also protects arbitrary generic `CostModel` consumers; regression
+tests exercise this actual registration with invalid measured-scope claims.
+CPU fixtures remain invalid as native measured costs.
 
 ## Minimal CPU-only usage
 
-After the two registrations, use the normal entry point:
+Use the normal entry point:
 
 ```bash
 python -m distillschedule.cli workloads hardware-helios-c2 --help
@@ -143,7 +143,10 @@ manual-best proximity, or successful H100 execution.
 
 ## CPU evidence and remaining work
 
-22/22 focused stdlib tests pass, plus two public integration checks. Tests call
+24/24 focused source-qualified stdlib tests pass, plus public integration checks.
+The precision identity distinguishes FP32 master LoRA storage, BF16 unsharded
+parameter compute and FP32 reduction; old ambiguous identities cannot be reused.
+Tests call
 the actual 8fc logical helper bodies with explicitly labeled CPU model fixtures;
 asset access and raw health are test doubles. Fixtures cannot be relabeled as
 native measured costs. The earlier 17 Full5 bridge and 13 C2-runtime tests are

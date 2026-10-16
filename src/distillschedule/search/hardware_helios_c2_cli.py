@@ -4,6 +4,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import json
+import subprocess
+import sys
 
 from . import hardware_helios_c2 as adapter
 from .model_search import search_plans
@@ -60,45 +62,49 @@ def main(argv=None):
     search.add_argument("--enable-native-c2", action="store_true")
     search.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
-    if args.action == "prepare-source":
-        result = adapter.prepare_source(args.parent_root, args.destination, allow_local_provenance_commit=args.allow_local_provenance_commit)
-    elif args.action == "bind-deployment":
-        result = adapter.bind_deployment(c.read(args.legacy_deployment), c.reference(args.source_proof), repo_root=args.repo_root)
-    elif args.action == "rebind-assets":
-        result = adapter._native_cpu(args.source_root, "rebind-assets", {"legacy_gate": c.reference(args.legacy_gate), "asset_root": str(args.asset_root.resolve()), "arm": args.arm})
-    elif args.action == "inspect":
-        result = adapter.inspect_deployment(c.read(args.deployment))
-    elif args.action == "compile":
-        result = adapter.compile_plan(c.read(args.deployment), arm=args.arm, mode=args.mode, run_id=args.run_id,
-            explicit_opt_in=args.enable_native_c2, correctness=c.reference(args.correctness) if args.correctness else None)
-    elif args.action == "validate":
-        plan = adapter.validate_plan(c.read(args.plan))
-        result = {"status": "PASS_CPU_SOURCE_AND_MODEL_BINDING", "plan_sha256": plan["plan_sha256"], "gpu_execution": "NOT_RUN"}
-    elif args.action == "dry-run":
-        result = adapter.dry_run(c.reference(args.plan), verify_assets=args.verify_assets)
-    elif args.action == "admit":
-        plan = adapter.validate_plan(c.read(args.plan))
-        observation = {"plan": c.reference(args.plan), "summary": c.reference(args.summary)}
-        result = adapter.audit_plan_run(observation["plan"], observation["summary"])
-    elif args.action == "assemble-costs":
-        problem, costs = adapter.assemble_problem_and_costs(c.read(args.deployment), c.read(args.observations)["observations"], output_dir=args.output_dir / "components")
-        result = {"problem": problem.to_dict(), "cost_model": costs.to_dict(), "gpu_execution": "NOT_RUN", "claimable_speedup": False}
-        c.write_new(args.output_dir / "model.json", result)
-    else:
-        d, model = c.read(args.deployment), c.read(args.model)
-        problem, costs = adapter.PlanningProblem.from_dict(model["problem"]), adapter.CostModel.from_dict(model["cost_model"])
-        adapter.validate_model(problem, costs, d)
-        prediction = search_plans(problem, costs, algorithm="hierarchical")
-        c.require(prediction.get("predicted_best"), "UNCALIBRATED: no native C2 candidate has admissible costs")
-        arm = prediction["predicted_best"]["assignment"]["arm"]
-        result = adapter.lower_selection(prediction, problem, costs, d, run_id=args.run_id,
-            correctness=c.read(args.correctness_map)[arm], explicit_opt_in=args.enable_native_c2)
-    if getattr(args, "output", None):
-        c.write_new(args.output, result)
-        print(json.dumps({"output": str(args.output.resolve()), "sha256": c.sha(args.output), "gpu_execution": "NOT_RUN"}))
-    else:
-        print(json.dumps(result, sort_keys=True, indent=2, allow_nan=False))
-    return 0
+    try:
+        if args.action == "prepare-source":
+            result = adapter.prepare_source(args.parent_root, args.destination, allow_local_provenance_commit=args.allow_local_provenance_commit)
+        elif args.action == "bind-deployment":
+            result = adapter.bind_deployment(c.read(args.legacy_deployment), c.reference(args.source_proof), repo_root=args.repo_root)
+        elif args.action == "rebind-assets":
+            result = adapter._native_cpu(args.source_root, "rebind-assets", {"legacy_gate": c.reference(args.legacy_gate), "asset_root": str(args.asset_root.resolve()), "arm": args.arm})
+        elif args.action == "inspect":
+            result = adapter.inspect_deployment(c.read(args.deployment))
+        elif args.action == "compile":
+            result = adapter.compile_plan(c.read(args.deployment), arm=args.arm, mode=args.mode, run_id=args.run_id,
+                explicit_opt_in=args.enable_native_c2, correctness=c.reference(args.correctness) if args.correctness else None)
+        elif args.action == "validate":
+            plan = adapter.validate_plan(c.read(args.plan))
+            result = {"status": "PASS_CPU_SOURCE_AND_MODEL_BINDING", "plan_sha256": plan["plan_sha256"], "gpu_execution": "NOT_RUN"}
+        elif args.action == "dry-run":
+            result = adapter.dry_run(c.reference(args.plan), verify_assets=args.verify_assets)
+        elif args.action == "admit":
+            plan = adapter.validate_plan(c.read(args.plan))
+            observation = {"plan": c.reference(args.plan), "summary": c.reference(args.summary)}
+            result = adapter.audit_plan_run(observation["plan"], observation["summary"])
+        elif args.action == "assemble-costs":
+            problem, costs = adapter.assemble_problem_and_costs(c.read(args.deployment), c.read(args.observations)["observations"], output_dir=args.output_dir / "components")
+            result = {"problem": problem.to_dict(), "cost_model": costs.to_dict(), "gpu_execution": "NOT_RUN", "claimable_speedup": False}
+            c.write_new(args.output_dir / "model.json", result)
+        else:
+            d, model = c.read(args.deployment), c.read(args.model)
+            problem, costs = adapter.PlanningProblem.from_dict(model["problem"]), adapter.CostModel.from_dict(model["cost_model"])
+            adapter.validate_model(problem, costs, d)
+            prediction = search_plans(problem, costs, algorithm="hierarchical")
+            c.require(prediction.get("predicted_best"), "UNCALIBRATED: no native C2 candidate has admissible costs")
+            arm = prediction["predicted_best"]["assignment"]["arm"]
+            result = adapter.lower_selection(prediction, problem, costs, d, run_id=args.run_id,
+                correctness=c.read(args.correctness_map)[arm], explicit_opt_in=args.enable_native_c2)
+        if getattr(args, "output", None):
+            c.write_new(args.output, result)
+            print(json.dumps({"output": str(args.output.resolve()), "sha256": c.sha(args.output), "gpu_execution": "NOT_RUN"}))
+        else:
+            print(json.dumps(result, sort_keys=True, indent=2, allow_nan=False))
+        return 0
+    except (ValueError, TypeError, KeyError, OSError, RuntimeError, subprocess.SubprocessError) as error:
+        print(f"ERROR: {error}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":
