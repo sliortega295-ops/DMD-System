@@ -466,6 +466,7 @@ def test_persisted_actual_pyramid_metadata_cannot_relabel_stale_work(monkeypatch
         if call["root_module"] == "generator": generator_calls.append(call)
     for call, stage in zip(generator_calls, schedule, strict=True):
         call["inputs"]["hidden_states"]["shape"] = list(stage["latent_shape"])
+        call["inputs"]["timestep"] = dict(shape=[1], dtype="torch.bfloat16")
         call["timestep"] = stage["timestep"][0]
     _validate_action(row, impl)
     if mutation == "stage":
@@ -475,3 +476,126 @@ def test_persisted_actual_pyramid_metadata_cannot_relabel_stale_work(monkeypatch
         schedule[0].update(denoising_step_budget=2, timestep_grid=[1000., 500.])
     if mutation == "timestep": generator_calls[0]["timestep"] = 123.
     with pytest.raises(ValueError): _validate_action(row, impl)
+
+
+def _real_timestep_observer(*, raw_timesteps=(998.4970114182303, 897.5469382610918, 742.7147682074888),
+                            native_cast=True, input_dtype="float64", timestep_shape=(1,), omit_timestep=False):
+    """CPU hook/finish evidence with real tensors, not a distributed training run."""
+    torch = pytest.importorskip("torch")
+    from torch.distributed.fsdp import MixedPrecisionPolicy
+    from distillschedule.runtime.helios_planner_cycle import _Observer, _COUNTS
+
+    request = OriginalHeliosRequest(video_frames=17, stage2_inference_steps=(1,)*3)
+    impl = implementation(request)
+    schedule = controls(request)[0].operation("step/10/critic/rollout")["control"]["pyramid_stage_call_sequence"]
+    for stage, raw in zip(schedule, raw_timesteps, strict=True):
+        stage.update(timestep_grid=[raw], timestep=[raw])
+    entry = dict(source_rank=0, source_step=10, trace_identity_sha256="cpu-real-timestep",
+                 rollout_operation="step/10/critic/rollout", expected_call_count=3,
+                 expected_stage_call_count={0: 1, 1: 1, 2: 1}, stage_schedule=schedule,
+                 stage_schedule_policy=request.stage_schedule_policy, all_history_zero=False,
+                 **{TRACE_HASH_KEY: request.digest})
+    row = dict(action_id="r0", source_steps=[10], source_rank=0, counts=dict.fromkeys(_COUNTS, 0),
+               trace_entries=[entry], forwards=[], produced=[], losses=[], rollout_records=[dict(
+                   call_count=3, stage_call_count={0: 1, 1: 1, 2: 1},
+                   output_shape=list(request.latent_shape), logical_steps=[10], batch_size=1,
+                   member_trace_identities=[entry["trace_identity_sha256"]])])
+
+    class Model(torch.nn.Module):
+        adapters_enabled = True
+
+        def enable_adapters(self): self.adapters_enabled = True
+        def disable_adapters(self): self.adapters_enabled = False
+        def forward(self, *, hidden_states, timestep=None): return (hidden_states,)
+
+    policy = MixedPrecisionPolicy(param_dtype=torch.bfloat16, reduce_dtype=torch.float32)
+    assert policy.cast_forward_inputs is True
+
+    def cast_inputs(module, args, kwargs):
+        # FSDP2's prepended pre-hook casts floating inputs before the observer.
+        return args, {key: value.to(policy.param_dtype) if torch.is_floating_point(value) else value
+                      for key, value in kwargs.items()}
+
+    def engine():
+        model = Model()
+        if native_cast:
+            model.register_forward_pre_hook(cast_inputs, prepend=True, with_kwargs=True)
+        return NS(module=model, global_steps=0, optimizer=NS(step=lambda: None),
+                  backward=lambda loss: None, step=lambda: None)
+
+    generator, critic = engine(), engine()
+    observer = _Observer(torch=torch, device="cpu", rank=0, impl=impl, generator=generator,
+                         critic=critic, ema=NS(optimization_step=0), mode="native",
+                         version_offsets=dict(generator=0, critic=0, ema=0))
+    observer.actions.append(row)
+    observer.current, observer.current_entry = row, entry
+    with observer.installed():
+        for stage, raw in zip(schedule, raw_timesteps, strict=True):
+            kwargs = dict(hidden_states=torch.empty(stage["latent_shape"], dtype=torch.bfloat16))
+            if not omit_timestep:
+                kwargs["timestep"] = torch.full(timestep_shape, raw, dtype=getattr(torch, input_dtype))
+            generator.module(**kwargs)
+    observer.current, observer.current_entry = None, None
+    # Supply the unrelated finish finite-loss precondition without a training step.
+    observer.losses.append((row, "generator", torch.tensor(1.)))
+    return observer, row, impl
+
+
+@pytest.mark.parametrize("raw_timesteps", [
+    (998.4970114182303, 897.5469382610918, 742.7147682074888),
+    (623.1242597886123, 385.3111935203593, 305.52198382516355),
+    (1000., 500., 250.),
+])
+def test_actual_helios_timestep_audit_projects_fp64_grid_to_native_bf16(raw_timesteps):
+    torch = pytest.importorskip("torch")
+    observer, row, _ = _real_timestep_observer(raw_timesteps=raw_timesteps)
+    assert observer.finish()["census"] == "PASS"
+    assert [call["timestep"] for call in row["forwards"]] == torch.tensor(
+        raw_timesteps, dtype=torch.float64).to(torch.bfloat16).tolist()
+    assert all(call["inputs"]["timestep"]["dtype"] == "torch.bfloat16" for call in row["forwards"])
+    assert [stage["timestep_grid"][0] for stage in row["trace_entries"][0]["stage_schedule"]] == list(raw_timesteps)
+    assert not observer._timesteps
+
+
+@pytest.mark.parametrize("input_dtype", ["float16", "float32", "float64", "int64"])
+def test_actual_helios_timestep_audit_rejects_wrong_dtype_even_at_exact_grid_values(input_dtype):
+    observer, _, _ = _real_timestep_observer(raw_timesteps=(1000., 500., 250.), native_cast=False,
+                                            input_dtype=input_dtype)
+    with pytest.raises(ValueError, match="timestep"):
+        observer.finish()
+
+
+@pytest.mark.parametrize("shape", [(), (1, 1), (0,), (2,), (1, 2)])
+def test_actual_helios_timestep_audit_requires_native_b1_vector_shape(shape):
+    with pytest.raises(ValueError, match="timestep"):
+        observer, _, _ = _real_timestep_observer(raw_timesteps=(1000., 500., 250.), timestep_shape=shape)
+        observer.finish()
+
+
+def test_actual_helios_timestep_audit_requires_observed_tensor():
+    with pytest.raises(ValueError, match="timestep"):
+        _real_timestep_observer(omit_timestep=True)
+
+
+@pytest.mark.parametrize("mutation", ["raw", "next_ulp", "previous_ulp", "sub_ulp", "nan", "inf",
+                                    "missing_value", "missing_metadata", "wrong_metadata_dtype"])
+def test_persisted_helios_model_timestep_audit_is_exact_and_fail_closed(mutation):
+    torch = pytest.importorskip("torch")
+    from distillschedule.runtime.helios_planner_cycle import _validate_action
+    observer, row, impl = _real_timestep_observer()
+    observer.finish()
+    call = row["forwards"][0]
+    if mutation == "raw":
+        call["timestep"] = row["trace_entries"][0]["stage_schedule"][0]["timestep"][0]
+    elif mutation in ("next_ulp", "previous_ulp"):
+        direction = float("inf") if mutation == "next_ulp" else -float("inf")
+        call["timestep"] = torch.nextafter(torch.tensor(call["timestep"], dtype=torch.bfloat16),
+                                         torch.tensor(direction, dtype=torch.bfloat16)).item()
+    elif mutation == "sub_ulp": call["timestep"] += 1e-7
+    elif mutation == "nan": call["timestep"] = float("nan")
+    elif mutation == "inf": call["timestep"] = float("inf")
+    elif mutation == "missing_value": call.pop("timestep")
+    elif mutation == "missing_metadata": call["inputs"].pop("timestep")
+    elif mutation == "wrong_metadata_dtype": call["inputs"]["timestep"]["dtype"] = "torch.float64"
+    with pytest.raises(ValueError, match="timestep"):
+        _validate_action(row, impl)

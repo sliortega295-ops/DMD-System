@@ -431,16 +431,27 @@ def _validate_action(row, impl):
                  and x["trace"]["rollout_operation"] == entry["rollout_operation"]]
         require(len(calls) == record["call_count"], "actual root forwards differ from helper rollout records")
         if impl.request is not None:
+            import torch
             schedule = entry.get("stage_schedule", [])
             expected_calls = [(item["latent_shape"], timestep)
                               for item in schedule for timestep in item["timestep"]]
             require(len(expected_calls) == len(calls), "Helios request native stage inventory differs")
-            for call, (shape, timestep) in zip(calls, expected_calls, strict=True):
+            # The native FP64 schedule is checked before model construction by
+            # validate_native_stage_grids. FSDP2's fixed BF16 input policy casts
+            # that schedule before this observer's root hook runs. Project only
+            # the audit expectation, outside timers, never the scientific grid.
+            model_timesteps = torch.tensor([t for _, t in expected_calls], dtype=torch.float64).to(
+                dtype=torch.bfloat16).tolist()
+            for call, (shape, _), timestep in zip(calls, expected_calls, model_timesteps, strict=True):
                 require(call["inputs"]["hidden_states"]["shape"] == shape,
                         "actual Helios pyramid geometry differs from request trace")
+                metadata = call["inputs"].get("timestep")
+                require(isinstance(metadata, dict) and metadata.get("shape") == [1]
+                        and metadata.get("dtype") == "torch.bfloat16",
+                        "actual Helios model timestep must be native B1 BF16")
                 require(type(call.get("timestep")) in (float, int)
-                        and abs(call["timestep"]-timestep) <= 1e-4+1e-6*abs(timestep),
-                        "actual Helios native timestep differs from per-rank request grid")
+                        and call["timestep"] == timestep,
+                        "actual Helios model timestep differs from BF16-projected per-rank request grid")
     if impl.request is not None:
         require(all(entry.get(TRACE_HASH_KEY) == impl.request.digest for entry in row["trace_entries"]),
                 "Helios action uses another request trace")
