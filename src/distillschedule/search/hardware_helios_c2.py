@@ -29,7 +29,10 @@ digest = control.digest
 DEPLOYMENT = "distillschedule.helios_h100_c2_deployment.v1"
 FAMILY = "helios_h100_native.coupled_cycle"
 WORKLOAD = "helios14b_nogan_h100_c2"
-PRECISION = {"frozen_base": "torch.bfloat16", "trainable_lora": "torch.float32", "reduce_dtype": "torch.float32",
+# Identity metadata only: FP32 master/sharded storage is not FSDP compute dtype.
+# The pinned native policy unshards parameters to BF16; no precision override.
+PRECISION = {"frozen_base": "torch.bfloat16", "trainable_lora_master_storage": "torch.float32",
+    "fsdp_unsharded_param_compute_dtype": "torch.bfloat16", "reduce_dtype": "torch.float32",
     "loss_scale_per_logical_b1": .5, "ema": "NATIVE_GPU_LOCAL_SHARD_REFERENCE_RECURRENCE"}
 MEMORY = "WHOLE_GPU_CAPACITY_EXCLUSIVE_RESERVATION_NOT_MEASURED_PEAK"
 

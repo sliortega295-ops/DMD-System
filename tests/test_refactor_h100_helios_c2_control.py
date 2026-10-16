@@ -30,6 +30,57 @@ PROOF = EVIDENCE / "source-proof.json"
 NATIVE = os.environ.get("DMD_HELIOS_H100_NATIVE_ROOT")
 
 
+class PrecisionMetadataTests(unittest.TestCase):
+    @staticmethod
+    def deployment():
+        # Pure identity fixture; it is never source-inspected or launched.
+        d = legacy_deployment()
+        d.update(schema_version=h.DEPLOYMENT,
+            native_source=dict(d["native_source"], head="1" * 40),
+            source_proof={"path": "/fixture/source-proof.json", "sha256": "c" * 64},
+            evidence_scope="CPU_FIXTURE_ONLY")
+        d["binding"] = h._binding(d)
+        return h.validate_deployment(d)
+
+    def test_precision_separates_master_storage_and_unsharded_compute(self):
+        expected = {"frozen_base": "torch.bfloat16", "trainable_lora_master_storage": "torch.float32",
+            "fsdp_unsharded_param_compute_dtype": "torch.bfloat16", "reduce_dtype": "torch.float32",
+            "loss_scale_per_logical_b1": .5, "ema": "NATIVE_GPU_LOCAL_SHARD_REFERENCE_RECURRENCE"}
+        self.assertEqual(h.PRECISION, expected)
+        d = self.deployment()
+        self.assertEqual(d["binding"]["precision_fingerprint"], c.digest(expected))
+        for arm in h.runtime.POLICIES:
+            for cycle in (1, 2):
+                self.assertEqual(h.component_contract(d, arm, cycle).precision, expected)
+        for key in ("trainable_lora_master_storage", "fsdp_unsharded_param_compute_dtype", "reduce_dtype"):
+            with self.subTest(field=key):
+                changed = dict(expected, **{key: "torch.bfloat16" if expected[key] == "torch.float32" else "torch.float32"})
+                with patch.object(h, "PRECISION", changed):
+                    self.assertNotEqual(h._binding(d)["precision_fingerprint"], d["binding"]["precision_fingerprint"])
+                    with self.assertRaisesRegex(ValueError, "binding changed"):
+                        h.validate_deployment(d)
+
+    def test_ambiguous_legacy_precision_identity_cannot_reuse_costs(self):
+        legacy = {"frozen_base": "torch.bfloat16", "trainable_lora": "torch.float32", "reduce_dtype": "torch.float32",
+            "loss_scale_per_logical_b1": .5, "ema": "NATIVE_GPU_LOCAL_SHARD_REFERENCE_RECURRENCE"}
+        with patch.object(h, "PRECISION", legacy):
+            old = self.deployment()
+            old_problem = h.planning_problem(old)
+            old_contract = h.component_contract(old, "best", 2)
+            record = h.OperationCost(old_contract.digest, (1,), old["allocation"]["devices"][0]["capacity_bytes"],
+                {"component_contract": old_contract.to_dict(), "fixture_scope": "CPU_FIXTURE_ONLY"})
+            old_costs = h.CostModel(old["binding"], (record,), "CPU_FIXTURE_ONLY")
+        fresh = self.deployment()
+        self.assertNotEqual(old["binding"]["precision_fingerprint"], fresh["binding"]["precision_fingerprint"])
+        self.assertNotEqual(old_contract.digest, h.component_contract(fresh, "best", 2).digest)
+        with self.assertRaisesRegex(ValueError, "binding changed"):
+            h.validate_deployment(old)
+        with self.assertRaisesRegex(ValueError, "precision mismatch"):
+            old_costs.bind(fresh["binding"], problem_scope="CPU_FIXTURE_ONLY")
+        with self.assertRaisesRegex(ValueError, "registered native C2 graph"):
+            h.validate_model(old_problem, old_costs, fresh)
+
+
 @unittest.skipUnless(NATIVE and SOURCE.is_dir() and PROOF.is_file(), "explicit native 8fc and prepared C2 source required")
 class SourceAndPlanTests(unittest.TestCase):
     def deployment(self, scope="MEASURED"):
@@ -223,7 +274,10 @@ class RawC2AuditTests(unittest.TestCase):
     def test_missing_actual_fields_shape_dtype_and_FA3_never_fallback(self):
         changes = [lambda r: r[0]["cycles"][1].pop("census"), lambda r: r[0]["cycles"][0]["rollout_batches"][0].update(output_dtype="torch.float32"),
             lambda r: r[0]["cycles"][0]["generator"]["microbatches"][0]["rollout"].update(output_shape=[1,16,9,24,40]),
-            lambda r: r[0]["attention_backend"].update(runtime="fa3"), lambda r: r[0]["build"]["generator"]["fsdp2"].update(world_size=16)]
+            lambda r: r[0]["attention_backend"].update(runtime="fa3"), lambda r: r[0]["build"]["generator"]["fsdp2"].update(world_size=16),
+            lambda r: r[0]["build"]["generator"]["metadata"].update(trainable_dtype_inventory=["torch.bfloat16"]),
+            lambda r: r[0]["build"]["generator"]["fsdp2"].update(param_compute_dtype="torch.float32"),
+            lambda r: r[0]["build"]["generator"]["fsdp2"].update(reduce_dtype="torch.bfloat16")]
         for mutate in changes:
             rows = copy.deepcopy(self.rows); mutate(rows)
             with self.assertRaises((ValueError, KeyError)): self.audit(rows)
