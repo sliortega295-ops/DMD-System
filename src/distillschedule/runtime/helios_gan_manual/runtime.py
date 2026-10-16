@@ -94,6 +94,9 @@ def manual_runtime_scope(p0):
             'manual GAN requires the exact A100 world16 rank map')
     require(torch.__version__ == '2.10.0+cu128' and torch.version.cuda == '12.8',
             'manual GAN pinned Torch/CUDA runtime differs')
+    # This scope precedes the native setup. Select the owned local device
+    # before a query/backend import can initialize CUDA on the default GPU.
+    torch.cuda.set_device(local_rank)
     require(torch.cuda.get_device_capability(local_rank) == (8,0)
             and 'A100' in torch.cuda.get_device_name(local_rank),
             'manual GAN SM80 package is not H100 kernel admission')

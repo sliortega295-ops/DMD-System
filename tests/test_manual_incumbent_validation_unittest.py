@@ -111,6 +111,17 @@ class SavedNativePlanTests(unittest.TestCase):
         directory = next((self.tmp / 'session/trials').iterdir())
         lowering = json.loads((directory / 'model-lowering.json').read_text())
         actual = json.loads((directory / 'execution-plan.json').read_text())
+        self.assertIsNotNone(lowering['asset_fingerprint'])
+        self.assertEqual(lowering['asset_fingerprint'], self.problem.binding['asset_fingerprint'])
+        self.assertEqual(lowering['mode'], 'diagnostic-timing')
+        asset_path = directory / 'assets-config.json'
+        self.assertEqual(json.loads(asset_path.read_text()), self.assets)
+        with self.assertRaises(FileExistsError):
+            registry.write_new_json(asset_path, self.assets)
+        for key in ('integration_head', 'workload_semantics_hash', 'asset_fingerprint',
+                    'profile_sha256', 'search_candidate', 'mode'):
+            self.assertEqual(actual[key], lowering[key])
+        self.assertEqual(lowering['model_plan']['problem']['binding'], self.problem.binding)
         self.assertTrue('model_plan' in actual, 'actual serialized execution-plan lost model_plan')
         self.assertEqual(actual['model_plan'], lowering['model_plan'])
         self.assertEqual(actual['model_plan_source'], dict(path=str((directory / 'model-lowering.json').resolve()),
@@ -180,6 +191,31 @@ class SavedNativePlanTests(unittest.TestCase):
         with self.assertRaises(StopBeforeGPU):
             self.session._trial(self.cid, 'candidate', legacy)
         self.assertEqual(len(called), 1)
+        directory = called[0][2]
+        lowering = json.loads((directory / 'model-lowering.json').read_text())
+        self.assertIsNone(lowering['asset_fingerprint'])
+        self.assertEqual(lowering['mode'], 'correctness')
+        self.assertFalse((directory / 'assets-config.json').exists())
+
+    def test_replaced_runner_factory_remains_a_three_argument_cpu_callback(self):
+        called = []
+        class CPUReceiptProducer:
+            def __call__(producer, candidate, phase, directory):
+                called.append((candidate.id, phase, directory))
+                raise StopBeforeGPU('legacy CPU callback factory, not a native runner')
+        with patch.object(execution, 'NativeTrialRunner', CPUReceiptProducer):
+            with self.assertRaises(StopBeforeGPU):
+                self.session._trial(self.cid, 'candidate', CPUReceiptProducer())
+        self.assertEqual(len(called), 1)
+        self.assertFalse((called[0][2] / 'assets-config.json').exists())
+
+    def test_native_session_asset_drift_is_rejected_by_real_lowering_before_prepare(self):
+        self.runner.assets = deepcopy(self.assets)
+        self.runner.assets['assets']['model']['sha256'] = 'f'*64
+        with patch.object(self.runner, '_prepare', side_effect=AssertionError('must not prepare')):
+            with self.assertRaisesRegex(ValueError, 'assets differ'):
+                self.session._trial(self.cid, 'candidate', self.runner)
+        self.assertFalse(self.launched)
 
 
 class MatchAuditMissingEvidenceTests(unittest.TestCase):

@@ -87,6 +87,27 @@ class GANManualBundleTests(unittest.TestCase):
             with manual_runtime_scope(None):
                 pass
 
+    def test_device_selected_before_any_cuda_identity_query(self):
+        from distillschedule.runtime.helios_gan_manual.runtime import manual_runtime_scope
+        from distillschedule.search.helios_model_adapter import gan_manual_incumbent
+        calls = []
+        def capability(device):
+            self.assertEqual(calls, [('set_device', 3)])
+            calls.append(('capability', device))
+            return (8, 0)
+        def stop(device):
+            raise ValueError('CPU_TEST_STOP_BEFORE_BACKEND_LOAD')
+        fake = NS(torch=NS(__version__='2.10.0+cu128', version=NS(cuda='12.8'),
+            cuda=NS(set_device=lambda d: calls.append(('set_device', d)),
+                    get_device_capability=capability, get_device_name=stop)))
+        with patch('distillschedule.search.helios_implementation.current_implementation',
+                   return_value=gan_manual_incumbent()), patch.dict(os.environ,
+                       RANK='11', LOCAL_RANK='3', WORLD_SIZE='16'):
+            with self.assertRaisesRegex(ValueError, 'CPU_TEST_STOP'):
+                with manual_runtime_scope(fake):
+                    self.fail('unexpected backend execution')
+        self.assertEqual(calls, [('set_device', 3), ('capability', 3)])
+
     def test_each_role_has_406_layers_and_merge_guards_restore(self):
         from distillschedule.runtime.helios_gan_manual.runtime import _audit_unmerged, _forbid_merges
         class Layer:

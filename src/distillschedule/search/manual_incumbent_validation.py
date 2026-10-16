@@ -48,6 +48,14 @@ def _capacity(policy):
         require(type(policy.get(field)) is int and policy[field] >= 0, f'common {field} missing')
 
 
+def _require_protocol_reference(receipt, registered):
+    lowering = receipt.get('model_plan', {}).get('problem', {}).get('lowering', {})
+    references = [container['manual_match_protocol'] for container in (receipt, lowering)
+                  if 'manual_match_protocol' in container]
+    require(bool(references) and all(ref == registered for ref in references),
+            'native arm does not reference the same exact preregistration')
+
+
 def _unmerged_samples(witness):
     samples = witness.get('model_metadata_samples', [])
     require(len(samples) == 4 and {(s['point'], s['role']) for s in samples} ==
@@ -118,6 +126,8 @@ def validate_manual_incumbent_match(evidence: Mapping[str, Any]) -> dict[str, An
         require(type(registered) is int and registered > 0, 'preregistration time missing')
         policy = protocol['capacity_policy']; _capacity(policy)
         manual, selected = data['manual_execution'], data['selected_execution']
+        for receipt in (manual, selected):
+            _require_protocol_reference(receipt, evidence['preregistration'])
         require(manual['search_candidate'] == protocol['manual_candidate'], 'manual incumbent identity changed')
         manual_impl = HeliosImplementation.parse(manual['search_candidate']['id'])
         require(manual_impl.candidate_bundle.enabled, 'manual arm is not a named complete incumbent bundle')
