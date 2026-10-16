@@ -113,13 +113,17 @@ class SavedNativePlanTests(unittest.TestCase):
         actual = json.loads((directory / 'execution-plan.json').read_text())
         self.assertIsNotNone(lowering['asset_fingerprint'])
         self.assertEqual(lowering['asset_fingerprint'], self.problem.binding['asset_fingerprint'])
-        self.assertEqual(lowering['mode'], 'diagnostic-timing')
+        self.assertEqual(lowering['mode'], 'correctness')
+        self.assertEqual(actual['mode'], 'diagnostic-timing')
         asset_path = directory / 'assets-config.json'
-        self.assertEqual(json.loads(asset_path.read_text()), self.assets)
+        self.assertEqual(json.loads(asset_path.read_text()), {key: value
+            for key, value in self.assets.items()
+            if key not in ('correctness', 'trajectory_comparison')})
+        self.assertEqual(actual['asset_config'], self.assets)
         with self.assertRaises(FileExistsError):
             registry.write_new_json(asset_path, self.assets)
         for key in ('integration_head', 'workload_semantics_hash', 'asset_fingerprint',
-                    'profile_sha256', 'search_candidate', 'mode'):
+                    'profile_sha256', 'search_candidate', 'execution_fingerprint'):
             self.assertEqual(actual[key], lowering[key])
         self.assertEqual(lowering['model_plan']['problem']['binding'], self.problem.binding)
         self.assertTrue('model_plan' in actual, 'actual serialized execution-plan lost model_plan')
@@ -128,6 +132,120 @@ class SavedNativePlanTests(unittest.TestCase):
             sha256=registry.file_sha256(directory / 'model-lowering.json')))
         self.assertEqual(actual, self.launched[0])
         execution.validated_profile(actual, root=ROOT)
+
+    def _raw_assets_with_cached_preparation(self):
+        raw = deepcopy(self.assets)
+        del raw['correctness'], raw['trajectory_comparison']
+        prepared = deepcopy(self.assets)
+        self.runner.assets = raw
+        self.runner.prepared[self.cid] = dict(source_head=HEAD, candidate_id=self.cid,
+                                              assets=prepared)
+        return raw, prepared
+
+    def test_raw_assets_lowering_keeps_selection_and_prepares_after_runtime_preflight(self):
+        raw, prepared = self._raw_assets_with_cached_preparation()
+        order = []
+
+        def observe(candidate, *, receipt=None):
+            self.assertEqual(candidate, self.candidate)
+            if receipt is None:
+                self.assertEqual(order, [])
+                order.append('runtime-preflight')
+            else:
+                self.assertEqual(order[-1], 'timing-resolve')
+                self.assertEqual(receipt['mode'], 'diagnostic-timing')
+                order.append('timing-runtime-identity')
+            return []  # External runtime acquisition only; no GPU evidence.
+
+        def cached_prepare(candidate):
+            self.assertEqual(order, ['runtime-preflight'])
+            order.append('cached-preparation')
+            ready = execution.NativeTrialRunner._prepare(self.runner, candidate)
+            self.assertIs(ready, self.runner.prepared[self.cid])
+            self.assertIs(ready['assets'], prepared)
+            self.assertIsNot(ready['assets'], raw)
+            return ready
+
+        def resolve(action, **kwargs):
+            self.assertEqual(order[-1], 'cached-preparation')
+            self.assertIs(kwargs['assets'], prepared)
+            self.assertEqual(kwargs['mode'], 'diagnostic-timing')
+            order.append('timing-resolve')
+            return self._resolve_rpc(action, **kwargs)
+
+        def stop(receipt, **kwargs):
+            self.assertEqual(order[-1], 'timing-runtime-identity')
+            order.append('dispatch-boundary')
+            self._stop_before_gpu(receipt, **kwargs)
+
+        with patch.object(self.runner, '_observe_model_runtime', side_effect=observe), \
+                patch.object(self.runner, '_prepare', side_effect=cached_prepare), \
+                patch.object(self.runner, '_rpc', side_effect=resolve), \
+                patch.object(execution, 'run_plan', side_effect=stop):
+            with self.assertRaises(StopBeforeGPU):
+                self.session._trial(self.cid, 'candidate', self.runner)
+
+        directory = next((self.tmp / 'session/trials').iterdir())
+        path = directory / 'model-lowering.json'
+        saved = json.loads(path.read_text())
+        actual = json.loads((directory / 'execution-plan.json').read_text())
+        self.assertEqual(saved['mode'], 'correctness')
+        self.assertEqual(saved['asset_config'], raw)
+        self.assertEqual(actual['mode'], 'diagnostic-timing')
+        self.assertEqual(actual['asset_config'], prepared)
+        for key in ('model_plan', 'execution_fingerprint', 'search_candidate',
+                    'integration_head', 'profile_sha256', 'workload_semantics_hash',
+                    'asset_fingerprint'):
+            self.assertEqual(actual[key], saved[key])
+        self.assertEqual(actual['model_plan_source'], dict(path=str(path.resolve()),
+            sha256=registry.file_sha256(path)))
+        self.assertEqual(actual, self.launched[0])
+        self.assertEqual(order, ['runtime-preflight', 'cached-preparation',
+            'timing-resolve', 'timing-runtime-identity', 'dispatch-boundary'])
+        self.assertNotIn('correctness', raw)
+        self.assertNotIn('trajectory_comparison', raw)
+        execution.validated_profile(saved, root=ROOT)
+        execution.validated_profile(actual, root=ROOT)
+
+    def test_raw_assets_failed_runtime_admission_never_prepares_or_dispatches(self):
+        self._raw_assets_with_cached_preparation()
+        with patch.object(self.runner, '_observe_model_runtime',
+                          side_effect=ValueError('runtime admission rejected')) as observed, \
+                patch.object(self.runner, '_prepare') as prepare, \
+                patch.object(execution, 'run_plan') as dispatch:
+            with self.assertRaisesRegex(ValueError, 'runtime admission rejected'):
+                self.session._trial(self.cid, 'candidate', self.runner)
+        observed.assert_called_once_with(self.candidate)
+        prepare.assert_not_called()
+        dispatch.assert_not_called()
+        self.assertFalse(self.launched)
+
+    def test_raw_assets_missing_prepared_timing_gate_never_dispatches(self):
+        _, prepared = self._raw_assets_with_cached_preparation()
+        del prepared['correctness']
+        path = self.tmp / 'missing-prepared-correctness.json'
+        path.write_text(json.dumps(prepared))
+
+        def resolve(action, **kwargs):
+            self.assertEqual(action, 'resolve')
+            self.assertIs(kwargs['assets'], prepared)
+            return execution.resolve_candidate(kwargs['workload'], kwargs['candidate_id'],
+                assets_path=path, run_id=kwargs['run_id'], mode=kwargs['mode'])
+
+        def cached_prepare(candidate):
+            return execution.NativeTrialRunner._prepare(self.runner, candidate)
+
+        with patch.object(self.runner, '_prepare', side_effect=cached_prepare) as prepare, \
+                patch.object(self.runner, '_rpc', side_effect=resolve), \
+                patch.object(execution, 'run_plan') as dispatch:
+            with self.assertRaisesRegex(ValueError, 'timing requires an explicit correctness'):
+                self.session._trial(self.cid, 'candidate', self.runner)
+        prepare.assert_called_once_with(self.candidate)
+        dispatch.assert_not_called()
+        self.assertFalse(self.launched)
+        directory = next((self.tmp / 'session/trials').iterdir())
+        self.assertTrue((directory / 'model-lowering.json').is_file())
+        self.assertFalse((directory / 'execution-plan.json').exists())
 
     def test_legacy_runner_without_lowering_does_not_invent_model_plan(self):
         directory = self.tmp / 'legacy'; directory.mkdir()

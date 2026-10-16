@@ -140,11 +140,14 @@ class ModelValidationSession:
         native_executor = isinstance(execute, NativeTrialRunner)
         lowering_options = {}
         if native_executor:
-            # Resolve the saved plan against the same real assets as execution;
-            # never fill a source-only plan's fingerprint by hand.
+            # Bind the saved selection to real assets before native preparation.
+            # Timing-only gates belong to the runner's candidate-specific
+            # prepared assets, not this initial correctness-mode lowering.
             assets_path = (directory / "assets-config.json").resolve()
-            write_new_json(assets_path, execute.assets)
-            lowering_options = {"assets_path": assets_path, "mode": "diagnostic-timing"}
+            assets = {key: value for key, value in execute.assets.items()
+                      if key not in ("correctness", "trajectory_comparison")}
+            write_new_json(assets_path, assets)
+            lowering_options = {"assets_path": assets_path, "mode": "correctness"}
         plan = self.adapter.lower_prediction(selection, self.problem, self.costs,
             run_id=directory.name, **lowering_options)
         require(plan["search_candidate"] == self.candidates[cid].to_dict(), "lowering changed candidate")
