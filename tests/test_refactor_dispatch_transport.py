@@ -444,7 +444,8 @@ def test_execute_node_still_validates_then_uses_clean_environment_and_owned_wrap
 @pytest.mark.parametrize('tamper', ['launcher', 'environment'])
 def test_local_canonical_launcher_and_environment_checks_still_reject_tampering(tmp_path, monkeypatch, tamper):
     receipt = _receipt(tmp_path)
-    profile = {'runtime': {'environment': {'DECLARED_NATIVE_FLAG': 'canonical'},
+    profile = {'id': receipt['profile_id'], 'contract': {},
+               'runtime': {'environment': {'DECLARED_NATIVE_FLAG': 'canonical'},
                            'launcher': 'scripts/canonical.sh'}}
     receipt.update(mode='correctness', profile_sha256=dispatch.fingerprint(profile))
     if tamper == 'launcher':

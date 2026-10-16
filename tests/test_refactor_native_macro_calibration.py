@@ -99,6 +99,9 @@ def _fixture(tmp_path, monkeypatch, workload, impl):
     receipt = dict(profile_id=workload, mode="calibration", run_id=run.name,
         integration_head=HEAD, asset_fingerprint=identity["asset_fingerprint"],
         workload_semantics_hash=identity["semantic_fingerprint"], search_candidate={"id": impl.id})
+    if workload == LIVEWAN:
+        receipt["nodes"] = [dict(resolved_native_plan=dict(fixture_scope="CPU_ONLY_NOT_LAUNCHED", node_rank=n,
+            request=impl.request.to_dict(), implementation=impl.id)) for n in (0, 1)]
     runtime = dict(before=_observations(), after=_observations())
     raw_paths, cal_paths = [], []
     raw_rows = _receipts(impl) if workload == H3 else [dict(rank=r) for r in range(16)]
@@ -107,11 +110,14 @@ def _fixture(tmp_path, monkeypatch, workload, impl):
         peak = 600 if rank == 3 else 200 + rank
         cal = _calibration(workload, impl, rank)
         if workload == LIVEWAN:
+            cal["installed_plan_sha256"] = fingerprint(receipt["nodes"][rank//8]["resolved_native_plan"])
             path = run / "operation_calibration" / f"rank_{rank:03d}.json"
             _write(path, cal)
             cal_paths.append(path)
             # The real worker does NOT emit a top-level run_id here.
-            raw.update(status="PASS", final_versions=dict(generator=2, critic=10, ema=0),
+            raw.update(status="PASS", workload_request=impl.request.to_dict(),
+                actual_latent_shapes=[list(impl.request.latent_shape)], installed_plan_sha256=cal["installed_plan_sha256"],
+                final_versions=dict(generator=2, critic=10, ema=0),
                 peak_memory=dict(max_reserved_bytes=peak), operation_calibration=dict(
                     enabled=True, status="PASS", path=str(path), calibration_only=True,
                     formal_timing_eligible=False))
@@ -336,12 +342,38 @@ def test_h3_raw_reconciliation_rejects_changed_receipt_hash(tmp_path, monkeypatc
 
 
 @pytest.mark.parametrize('key,value', [('workload_request',LiveWanRequest().to_dict()),
-    ('actual_latent_shapes',[[1,16,21,46,80]]),('actual_latent_shapes',[]),('installed_plan_sha256',None)])
+    ('actual_latent_shapes',[[1,16,21,46,80]]),('actual_latent_shapes',[]),('installed_plan_sha256',None),
+    ('installed_plan_sha256','e'*64)])
 def test_new_request_cannot_reuse_old_native_calibration(tmp_path,monkeypatch,key,value):
     f=_fixture(tmp_path,monkeypatch,LIVEWAN,LiveWanImplementation('pipeline',request=LiveWanRequest(frames=69)))
     _mutate_calibration(f,key,value)
     with pytest.raises(ValueError,match='request/actual shape'):_assemble(f)
     assert not (f.run/'macro-costs').exists()
+
+
+def test_rehashed_calibration_cannot_switch_plan_after_cost_serialization(tmp_path, monkeypatch):
+    from distillschedule.search.native_macro_calibration import _read_assembly
+    f = _fixture(tmp_path, monkeypatch, LIVEWAN, LiveWanImplementation('pipeline',request=LiveWanRequest(frames=69)))
+    result = _assemble(f)
+    _mutate_calibration(f, 'installed_plan_sha256', 'e'*64)
+    provenance_path = Path(result['provenance']['path'])
+    provenance = native.read(provenance_path)
+    provenance['native_sources'] = [native.binding(Path(ref['path'])) for ref in provenance['native_sources']]
+    provenance_ref = _write(provenance_path, provenance)
+    fragment_path = Path(result['layout_fragment']['path'])
+    fragment = native.read(fragment_path); fragment['provenance'] = provenance_ref
+    result['layout_fragment'] = _write(fragment_path, fragment)
+    costs_path = Path(result['operation_costs']['path'])
+    costs = native.read(costs_path)
+    for record in costs['records']:
+        path = Path(record['evidence']['source_receipt'])
+        payload = native.read(path); payload['provenance'] = provenance_ref
+        record['evidence']['source_receipt_sha256'] = _write(path, payload)['sha256']
+    result['operation_costs'] = _write(costs_path, costs)
+    result['provenance'] = provenance_ref
+    result_path = tmp_path / 'result.json'; _write(result_path, result)
+    with pytest.raises(ValueError, match='source calibration request/actual shape'):
+        _read_assembly([result_path], expected_head=HEAD)
 
 
 @pytest.mark.parametrize("workload,impl", CASES)

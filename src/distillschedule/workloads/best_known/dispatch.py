@@ -14,7 +14,8 @@ import zlib
 
 from .registry import (file_sha256, fingerprint, git_head, load_profile, source_layout, repository_root,
                        verify_assets, write_new_json, _require, validate_resolved_asset_binding,
-                       verify_python_path_overlays, _original_helios_trace_hash_environment)
+                       verify_python_path_overlays, _original_helios_trace_hash_environment,
+                       validate_request_configuration)
 
 
 def ssh_process_environment() -> dict[str, str]:
@@ -64,13 +65,14 @@ def validate_local(receipt: dict[str, Any], *, root: Path, node_rank: int | None
         profile = load_profile(receipt["profile_id"], root=root)
     _require(fingerprint(profile) == receipt["profile_sha256"], "resolved profile changed")
     validate_resolved_asset_binding(receipt, profile)
+    validate_request_configuration(receipt, profile, root=root, verify_physical=True)
     _require(git_head(root) == receipt["integration_head"], "integration HEAD changed")
     # Legacy workers reject tracked dirt too; include untracked Python/configs
     # so an uncommitted module cannot shadow the validated checkout.
     dirty = subprocess.check_output(["git", "-C", str(root), "status", "--porcelain", "--untracked-files=normal"], text=True)
     _require(not dirty.strip(), "run requires a clean committed integration checkout")
     # Explicit native Helios requests bind a new input bundle, not the
-    # canonical cohort. validate_resolved_asset_binding above has checked its
+    # canonical cohort. Physical request readmission above has checked its
     # file SHA, embedded bundle hash, request and every lowered node hash.
     from distillschedule.search.helios_request import TRACE_KEY, OriginalHeliosRequest
     request_trace_key = None

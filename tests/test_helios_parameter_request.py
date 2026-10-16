@@ -385,6 +385,40 @@ def test_effective_request_receipt_cannot_reuse_another_launch_trace(monkeypatch
         impl.receipt_binding(args=f.kwargs["args"], policy=f.kwargs["policy"], environment=env)
 
 
+@pytest.mark.parametrize('variant', ['no-gan', 'gan'])
+@pytest.mark.parametrize('mutation', ['digest', 'path', 'request'])
+def test_direct_launcher_binds_admitted_request_trace(tmp_path, monkeypatch, variant, mutation):
+    from distillschedule.search import helios_native as n
+    from distillschedule.workloads.best_known.registry import file_sha256
+    request = OriginalHeliosRequest(variant=variant, video_frames=17)
+    impl = implementation(request)
+    trace_key = load_profile(impl.workload)['required_assets']['trace']['environment']
+    plan = dict(integration_head='a'*40, search_candidate={'id':impl.id},
+        asset_config={'assets':{'trace':{'path':'/asset-host/admitted-trace'}}},
+        original_helios_trace_binding=dict(bundle_hash='b'*64, request_sha256=request.digest))
+    path = tmp_path/'plan.json'; path.write_text(json.dumps(plan))
+    gate = dict(execution_receipt=dict(path=str(path), sha256=file_sha256(path)))
+    gate_path = tmp_path/'gate.json'; gate_path.write_text(json.dumps(gate))
+    env = impl.environment() | {n.MODE_ENV:'native', impl.trace_hash_environment:'b'*64,
+        trace_key:'/asset-host/admitted-trace',
+        'DISTILLSCHEDULE_FSDP2_CORRECTNESS_SUMMARY':str(gate_path),
+        'DISTILLSCHEDULE_FSDP2_CORRECTNESS_SHA256':file_sha256(gate_path)}
+    monkeypatch.setattr(n, 'git_head', lambda root:'a'*40)
+    # Isolate the direct-launch join: the source/rank-comparison gate already
+    # has its own real negative coverage; it is not a physical asset check.
+    admitted=[]; monkeypatch.setattr(n, 'validate_admission', lambda *args:admitted.append(args))
+    assert n.validate_launcher_admission(env)['status']=='PASS_NATIVE_SOURCE_BOUND_ADMISSION'
+    assert len(admitted)==1
+    if mutation=='digest': env[impl.trace_hash_environment]='c'*64
+    if mutation=='path': env[trace_key]='/asset-host/other-trace'
+    if mutation=='request':
+        plan['original_helios_trace_binding']['request_sha256']='d'*64
+        path.write_text(json.dumps(plan)); gate['execution_receipt']['sha256']=file_sha256(path)
+        gate_path.write_text(json.dumps(gate)); env['DISTILLSCHEDULE_FSDP2_CORRECTNESS_SHA256']=file_sha256(gate_path)
+    with pytest.raises(ValueError, match='admitted.*trace|trace.*admitted'):
+        n.validate_launcher_admission(env)
+
+
 def test_request_assembly_preserves_request_and_rejects_mixed_cohorts(tmp_path, monkeypatch):
     from distillschedule.search import helios_model_adapter as m
     from distillschedule.search import component_calibration

@@ -106,7 +106,29 @@ def validate_teacher_sample(value, request):
         raise RuntimeError("sample latent shape differs from LiveWan request; prefix cropping is forbidden")
 
 
-def lower_native_plan(template, request, *, trace=None):
+def routing_trace_metadata(trace, request):
+    """Small load derivation, not an attestation of physical trace admission."""
+    value = dict(request_sha256=fingerprint(request.to_dict()), trace_sha256=trace.sha256,
+        world_frames_by_step=[[trace.row(step, slot).world_frames for slot in range(16)]
+                              for step in range(trace.cycles*5)])
+    return {**value, "sha256": fingerprint(value)}
+
+
+def validate_routing_trace_metadata(value, request, trace_sha256):
+    require(isinstance(value, dict) and set(value) == {
+        "request_sha256", "trace_sha256", "world_frames_by_step", "sha256"}, "LiveWan routing derivation fields changed")
+    require(value["sha256"] == fingerprint({k:v for k,v in value.items() if k != "sha256"})
+            and value["request_sha256"] == fingerprint(request.to_dict())
+            and value["trace_sha256"] == trace_sha256, "LiveWan routing derivation binding changed")
+    rows = value["world_frames_by_step"]
+    require(isinstance(rows, list) and len(rows) == 10
+            and all(isinstance(r, list) and len(r) == 16
+                    and all(type(w) is int and w in (3, 6, 9) for w in r) for r in rows)
+            and rows[:5] == rows[5:], "LiveWan routing derivation shape/cycle differs")
+    return rows
+
+
+def lower_native_plan(template, request, *, trace=None, routing_metadata=None):
     """Expand a copy; source templates, cache/max frames and protocol stay fixed."""
     plan = copy.deepcopy(template)
     if request == LiveWanRequest():
@@ -124,20 +146,24 @@ def lower_native_plan(template, request, *, trace=None):
     if "slot_pairs_by_lane" in metadata:
         # Never copy old 21-frame load claims. A runnable plan must derive both
         # vectors from its own request-qualified immutable trace.
-        if trace is None:
+        require(trace is None or routing_metadata is None, "provide native trace or portable routing derivation, not both")
+        if trace is not None:
+            routing_metadata = routing_trace_metadata(trace, request)
+        if routing_metadata is None:
             metadata.pop("current_step_max_new_blocks", None)
             metadata.pop("candidate_step_max_new_blocks", None)
         else:
+            rows = validate_routing_trace_metadata(routing_metadata, request, routing_metadata["trace_sha256"])
             groups = metadata["slot_pairs_by_lane"]
             def loads(pairs, offset):
-                return [max(sum(request.new_blocks(trace.row(offset+s, slot).world_frames)
+                return [max(sum(request.new_blocks(rows[offset+s][slot])
                                 for slot in pair) for pair in pairs) for s in range(5)]
             current = [(i, i+8) for i in range(8)]
             a, b = loads(current, 0), loads(groups, 0)
-            require(all(loads(current, c*5) == a and loads(groups, c*5) == b for c in range(trace.cycles)),
+            require(all(loads(current, c*5) == a and loads(groups, c*5) == b for c in range(len(rows)//5)),
                     "LiveWan trace changes per-cycle routing load")
             require(sum(b) < sum(a), "LiveWan registered routing does not balance this new trace")
             metadata.update(current_step_max_new_blocks=a, candidate_step_max_new_blocks=b,
-                            request_trace_sha256=trace.sha256)
+                            request_trace_sha256=routing_metadata["trace_sha256"])
     request_from_plan(plan)
     return plan

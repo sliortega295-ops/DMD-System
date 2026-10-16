@@ -5,7 +5,7 @@ import json
 import math
 
 from distillschedule.workloads.best_known.registry import (
-    _object, fingerprint, file_sha256, write_new_json, repository_root, git_head,
+    _object, fingerprint, file_sha256, write_new_json, repository_root, git_head, load_profile,
 )
 from .contracts import require, finite_number, MEASUREMENT_SCHEMA, validate_measurement
 from .helios_implementation import HeliosImplementation, current_implementation, MODE_ENV
@@ -306,6 +306,13 @@ def validate_launcher_admission(environment):
     require(git_head(repository_root())==plan['integration_head'] and plan['search_candidate']['id']==impl.id,
             'Helios launcher source/identity differs from native gate')
     validate_admission(data,plan)
+    if impl.request is not None:
+        trace=plan.get('original_helios_trace_binding',{})
+        key=load_profile(impl.workload)['required_assets']['trace']['environment']
+        require(trace.get('request_sha256')==impl.request.digest
+                and environment.get(impl.trace_hash_environment)==trace.get('bundle_hash')
+                and environment.get(key)==plan['asset_config']['assets']['trace']['path'],
+                'Helios launcher differs from admitted request trace')
     return dict(status='PASS_NATIVE_SOURCE_BOUND_ADMISSION',numerical_status='REVIEW')
 
 

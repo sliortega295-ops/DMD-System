@@ -12,7 +12,7 @@ from typing import Any
 
 from distillschedule.workloads.best_known.registry import (
     fingerprint, git_head, load_profile, repository_root, resolve_configuration,
-    write_new_json, file_sha256, asset_identity, validate_resolved_asset_binding,
+    write_new_json, file_sha256, asset_identity, validate_resolved_asset_binding, validate_request_configuration,
 )
 from .contracts import Candidate, require, semantic_contract, validate_measurement
 from .registry import WAN, candidate_profile, get_candidate
@@ -51,21 +51,12 @@ def validated_profile(receipt: dict[str, Any], *, root: Path) -> dict[str, Any]:
     require(receipt.get("workload_semantics_hash") == fingerprint(semantic_contract(p)), "search semantics changed")
     require(receipt.get("execution_fingerprint") == fingerprint(c.to_dict()), "search execution identity changed")
     require(fingerprint(receipt["fully_resolved_profile"]) == fingerprint(p), "serialized profile was altered")
-    if c.workload == "livewan_crossscale_pipeline_best" and "request" in p["contract"]:
-        rebuilt = resolve_configuration(p, root=root, asset_config=receipt.get("asset_config"),
-                                        run_id=receipt["run_id"], mode=receipt["mode"])
-        require(receipt.get("native_plan") == rebuilt["native_plan"], "LiveWan request native plan changed")
-        require(receipt.get("livewan_request_trace_binding") == rebuilt.get("livewan_request_trace_binding"),
-                "LiveWan request trace binding changed")
-        require(len(receipt["nodes"]) == len(rebuilt["nodes"]), "LiveWan launch node inventory changed")
-        for actual, expected in zip(receipt["nodes"], rebuilt["nodes"]):
-            require(actual.get("resolved_native_plan") == expected["resolved_native_plan"], "LiveWan actual native shape/config changed")
-            require(actual.get("resolved_native_plan_sha256") == expected["resolved_native_plan_sha256"],
-                    "LiveWan expanded native plan SHA changed")
-            for key in ("DISTILLSCHEDULE_LIVEWAN_LAUNCH_PLAN", "DISTILLSCHEDULE_LIVEWAN_LAUNCH_PLAN_SHA256", "DISTILLSCHEDULE_LIVEWAN_REQUEST_ID"):
-                require(actual["environment"].get(key) == expected["environment"][key], "LiveWan launch plan binding changed")
     if "asset_config" in receipt:
         validate_resolved_asset_binding(receipt, p)
+        validate_request_configuration(receipt, p, root=root)
+    elif c.workload == "livewan_crossscale_pipeline_best" and "request" in p["contract"]:
+        rebuilt = resolve_configuration(p, root=root, run_id=receipt["run_id"], mode=receipt["mode"])
+        require(receipt.get("native_plan") == rebuilt["native_plan"], "LiveWan request native plan changed")
     return p
 
 

@@ -246,11 +246,15 @@ def test_real_resolver_binds_trace_bootstrap_expansion_and_launcher(tmp_path):
     from distillschedule.search.livewan_request import LiveWanRequest
     from distillschedule.search.execution import resolve_candidate,validated_profile
     from distillschedule.runtime.livewan_launch_plan import checked_launch_plan
-    from distillschedule.runtime.livewan_crossscale_worker import FormalTrace,_validate_trace_balanced_pairing
+    from distillschedule.runtime.livewan_crossscale_worker import (FormalTrace,_validate_trace_balanced_pairing,
+        LIVEWAN_COMMIT,WAN21_COMMIT)
     from distillschedule.workloads.best_known.registry import file_sha256,repository_root
     path,trace=request_trace(tmp_path);req=LiveWanRequest(frames=69)
     source=tmp_path/'source-receipt.json'
-    sv=dict(status='PASS',source_root='/cpu/unused/wan21',source_receipt_sha256='a'*64)
+    prepared=tmp_path/'prepared.py';prepared.write_text('# CPU source identity fixture\n')
+    sv=dict(status='PASS',source_root='/cpu/unused/wan21',livewan_commit=LIVEWAN_COMMIT,wan21_commit=WAN21_COMMIT,
+        files={'prepared':dict(path=str(prepared),sha256=file_sha256(prepared))})
+    sv['source_receipt_sha256']=fingerprint(sv)
     source.write_text(json.dumps(sv))
     boot=tmp_path/'bootstrap.json'
     bv=dict(kind='systems_only_livewan_crossscale_bootstrap',trace=dict(path=str(path),sha256=trace['trace_sha256']),

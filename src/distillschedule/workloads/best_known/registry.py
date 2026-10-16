@@ -254,14 +254,12 @@ def _python_path(profile: Mapping[str, Any], node: Mapping[str, Any], env: Mappi
 
 
 def validate_resolved_asset_binding(receipt: Mapping[str, Any], profile: Mapping[str, Any]) -> None:
-    """Recheck serialized dependency metadata without importing any package."""
+    """Portable consistency only; physical admission belongs to the asset host."""
     assets = validate_asset_config(receipt["asset_config"], profile)
     _require(receipt["asset_fingerprint"] == fingerprint(asset_identity(assets)), "resolved asset/dependency identity changed")
     _require(len(receipt["nodes"]) == len(assets["nodes"]), "resolved node count changed")
-    helios_trace = _original_helios_trace_binding(profile, assets)
-    if helios_trace is not None:
-        _require(receipt.get("original_helios_trace_binding") == helios_trace,
-                 "resolved ORIGINAL Helios trace binding changed")
+    bindings = _portable_request_bindings(receipt, profile, assets)
+    helios_trace = bindings.get("original_helios_trace_binding")
     for node, spec in zip(receipt["nodes"], assets["nodes"]):
         _require(node["repo_root"] == spec["repo_root"]
                  and node["python"] == str(Path(spec["python_env"]) / "bin/python"), "resolved source/python binding changed")
@@ -319,6 +317,92 @@ def _original_helios_trace_binding(profile, assets):
     return dict(bundle_hash=trace.bundle_hash, bundle_file_sha256=spec["sha256"], request_sha256=request.digest)
 
 
+def _livewan_request_trace_binding(profile, assets, *, root):
+    """Always reread physical request assets on RPC resolution/local admission."""
+    from distillschedule.search.livewan_request import LiveWanRequest, routing_trace_metadata
+    from distillschedule.runtime.livewan_crossscale_worker import FormalTrace, Bootstrap, validate_source_receipt
+    request = LiveWanRequest.from_dict(profile["contract"]["request"])
+    spec = assets["assets"]["trace"]
+    _require(file_sha256(Path(spec["path"])) == spec["sha256"], "LiveWan request trace file SHA mismatch")
+    trace = FormalTrace.load(spec["path"], expected_cycles=2, expected_global_batch=16, request=request)
+    boot_spec, source_spec = assets["assets"]["bootstrap"], assets["assets"]["source_receipt"]
+    _require(file_sha256(Path(boot_spec["path"])) == boot_spec["sha256"], "LiveWan request bootstrap file SHA mismatch")
+    boot = Bootstrap.load(boot_spec["path"], trace=trace)
+    _require(boot.value["trace"]["path"] == str(trace.path)
+             and boot.value["source_receipt"]["path"] == source_spec["path"],
+             "LiveWan request bootstrap/trace/source asset paths differ")
+    _require(file_sha256(Path(source_spec["path"])) == source_spec["sha256"], "LiveWan request source file SHA mismatch")
+    source = validate_source_receipt(boot, repo_root=root)
+    _require(Path(source["source_root"]).is_absolute(), "prepared Wan source must be absolute")
+    return dict(request=request.to_dict(), request_sha256=fingerprint(request.to_dict()),
+        trace_sha256=trace.sha256, trace_file_sha256=spec["sha256"],
+        routing_metadata=routing_trace_metadata(trace, request),
+        bootstrap=dict(path=boot_spec["path"], file_sha256=boot_spec["sha256"], sha256=boot.sha256,
+                       trace=dict(boot.value["trace"]), source_receipt=dict(boot.value["source_receipt"])),
+        source_receipt=dict(path=source_spec["path"], file_sha256=source_spec["sha256"],
+                            sha256=source["source_receipt_sha256"], source_root=source["source_root"]))
+
+
+def _portable_request_bindings(receipt, profile, assets):
+    """Check serialized facts, not caller claims of successful file validation.
+
+    Digests and the routing derivation are bound to the recipe/asset inventory.
+    Only the asset host can prove these facts against the original file bytes.
+    """
+    from distillschedule.search.helios_request import TRACE_KEY, OriginalHeliosRequest
+    bindings = {}
+    if profile["id"] in {"helios14b_nogan_best", "helios14b_gan_best"} and TRACE_KEY in profile["contract"]:
+        request = OriginalHeliosRequest.from_dict(profile["contract"][TRACE_KEY])
+        spec = assets["assets"]["trace"]
+        trace = receipt.get("original_helios_trace_binding")
+        _require(isinstance(trace, dict) and set(trace) == {"bundle_hash", "bundle_file_sha256", "request_sha256"}
+                 and bool(SHA256_RE.fullmatch(str(trace.get("bundle_hash", ""))))
+                 and trace["request_sha256"] == request.digest and trace["bundle_file_sha256"] == spec["sha256"]
+                 and spec.get("identity_file") == "bundle.json", "resolved ORIGINAL Helios trace binding changed")
+        bindings["original_helios_trace_binding"] = trace
+    if profile["id"] == "livewan_crossscale_pipeline_best" and "request" in profile["contract"]:
+        from distillschedule.search.livewan_request import LiveWanRequest, validate_routing_trace_metadata
+        request = LiveWanRequest.from_dict(profile["contract"]["request"])
+        trace = receipt.get("livewan_request_trace_binding")
+        _require(isinstance(trace, dict) and set(trace) == {"request", "request_sha256", "trace_sha256",
+            "trace_file_sha256", "routing_metadata", "bootstrap", "source_receipt"}, "LiveWan request trace binding fields changed")
+        a = assets["assets"]
+        _require(trace["request"] == request.to_dict() and trace["request_sha256"] == fingerprint(request.to_dict())
+                 and trace["trace_file_sha256"] == a["trace"]["sha256"]
+                 and bool(SHA256_RE.fullmatch(str(trace["trace_sha256"]))), "LiveWan request trace binding changed")
+        validate_routing_trace_metadata(trace["routing_metadata"], request, trace["trace_sha256"])
+        boot, source = trace["bootstrap"], trace["source_receipt"]
+        _require(isinstance(boot, dict) and set(boot) == {"path", "file_sha256", "sha256", "trace", "source_receipt"}
+                 and isinstance(source, dict) and set(source) == {"path", "file_sha256", "sha256", "source_root"},
+                 "LiveWan bootstrap/source metadata fields changed")
+        for name, meta in (("bootstrap", boot), ("source_receipt", source)):
+            _require(meta["path"] == a[name]["path"] and meta["file_sha256"] == a[name]["sha256"]
+                     and bool(SHA256_RE.fullmatch(str(meta["sha256"]))), "LiveWan bootstrap/source asset binding changed")
+        _require(boot["trace"] == dict(path=a["trace"]["path"], sha256=trace["trace_sha256"])
+                 and boot["source_receipt"] == dict(path=source["path"], sha256=source["sha256"])
+                 and isinstance(source["source_root"], str) and Path(source["source_root"]).is_absolute(),
+                 "LiveWan bootstrap/trace/source metadata differ")
+        bindings["livewan_request_trace_binding"] = trace
+    return bindings
+
+
+def validate_request_configuration(receipt, profile, *, root, verify_physical=False):
+    """Rebuild the complete request launch, with filesystem proof only locally."""
+    bindings = _portable_request_bindings(receipt, profile, receipt["asset_config"])
+    if not bindings:
+        return
+    assets = validate_asset_config(receipt["asset_config"], profile)
+    rebuilt = (resolve_configuration(profile, root=root, asset_config=assets,
+                    run_id=receipt["run_id"], mode=receipt["mode"]) if verify_physical else
+               _resolve_configuration(profile, root=root, asset_config=assets,
+                    run_id=receipt["run_id"], mode=receipt["mode"], request_bindings=bindings))
+    # Search adds these descriptive fields/semantics hash after compilation;
+    # validated_profile independently checks the candidate's exact semantics.
+    for key, value in rebuilt.items():
+        if key not in {"canonical_status", "canonical_scope", "workload_semantics_hash"}:
+            _require(receipt.get(key) == value, f"request launch configuration changed: {key}")
+
+
 def _substitute(value: Any, replacements: Mapping[str, str]) -> Any:
     if isinstance(value, str):
         for k, v in replacements.items():
@@ -342,8 +426,23 @@ def resolve_profile(workload: str, *, root: Path | None = None, assets_path: Pat
 def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: Path | None = None,
                           asset_config: dict[str, Any] | None = None,
                           run_id: str = "source-inspection", mode: str = "correctness") -> dict[str, Any]:
-    """Shared compiler; dispatcher reconstructs the canonical/registered recipe."""
+    """Asset-host resolver: request asset verification is never optional."""
     _require(assets_path is None or asset_config is None, "provide file or in-memory assets, not both")
+    assets = (load_assets(assets_path, profile) if assets_path is not None else
+              validate_asset_config(asset_config, profile) if asset_config is not None else None)
+    bindings = {}
+    if assets is not None:
+        helios_trace = _original_helios_trace_binding(profile, assets)
+        if helios_trace is not None:
+            bindings["original_helios_trace_binding"] = helios_trace
+        if profile["id"] == "livewan_crossscale_pipeline_best" and "request" in profile["contract"]:
+            bindings["livewan_request_trace_binding"] = _livewan_request_trace_binding(profile, assets, root=root)
+    return _resolve_configuration(profile, root=root, asset_config=assets, run_id=run_id, mode=mode,
+                                  request_bindings=bindings)
+
+
+def _resolve_configuration(profile, *, root, asset_config, run_id, mode, request_bindings):
+    """Shared compiler; dispatcher reconstructs the canonical/registered recipe."""
     workload = profile["id"]
     _require(bool(SAFE_ID.fullmatch(run_id)) and run_id not in {".", ".."}, "unsafe run id")
     _require(mode in profile["allowed_run_modes"], f"mode {mode} is not authorized for {workload}")
@@ -375,12 +474,11 @@ def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: P
         "fully_resolved_profile": profile, "nodes": [],
         "asset_fingerprint": None,
     }
-    if assets_path is None and asset_config is None:
+    if asset_config is None:
         receipt["scope"] = "SOURCE_ONLY_NOT_RUNNABLE"
         return receipt
-    assets = (load_assets(assets_path, profile) if assets_path is not None
-              else validate_asset_config(asset_config, profile))
-    helios_trace = _original_helios_trace_binding(profile, assets)
+    assets = validate_asset_config(asset_config, profile)
+    helios_trace = request_bindings.get("original_helios_trace_binding")
     if helios_trace is not None:
         receipt["original_helios_trace_binding"] = helios_trace
     receipt["asset_fingerprint"] = fingerprint(asset_identity(assets))
@@ -388,24 +486,12 @@ def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: P
     receipt["scope"] = "RESOLVED_NOT_EXECUTED"
     if workload == "livewan_crossscale_pipeline_best" and "request" in profile["contract"]:
         from distillschedule.search.livewan_request import LiveWanRequest, lower_native_plan
-        from distillschedule.runtime.livewan_crossscale_worker import FormalTrace, Bootstrap
         request = LiveWanRequest.from_dict(profile["contract"]["request"])
-        spec = assets["assets"]["trace"]
-        _require(file_sha256(Path(spec["path"])) == spec["sha256"], "LiveWan request trace file SHA mismatch")
-        trace = FormalTrace.load(spec["path"], expected_cycles=2, expected_global_batch=16, request=request)
-        boot_spec, source_spec = assets["assets"]["bootstrap"], assets["assets"]["source_receipt"]
-        _require(file_sha256(Path(boot_spec["path"])) == boot_spec["sha256"], "LiveWan request bootstrap file SHA mismatch")
-        boot = Bootstrap.load(boot_spec["path"], trace=trace)
-        _require(boot.value["trace"]["path"] == str(trace.path)
-                 and boot.value["source_receipt"]["path"] == source_spec["path"],
-                 "LiveWan request bootstrap/trace/source asset paths differ")
-        _require(file_sha256(Path(source_spec["path"])) == source_spec["sha256"], "LiveWan request source file SHA mismatch")
-        _require(_object(Path(source_spec["path"])).get("source_receipt_sha256") == boot.value["source_receipt"]["sha256"],
-                 "LiveWan request bootstrap/source receipt differs")
-        native_plan["template"] = lower_native_plan(native_plan["template"], request, trace=trace)
+        trace_binding = request_bindings["livewan_request_trace_binding"]
+        native_plan["template"] = lower_native_plan(native_plan["template"], request,
+            routing_metadata=trace_binding["routing_metadata"])
         native_plan["digest"] = fingerprint(native_plan["template"])
-        receipt["livewan_request_trace_binding"] = dict(request=request.to_dict(), trace_sha256=trace.sha256,
-                                                      trace_file_sha256=spec["sha256"])
+        receipt["livewan_request_trace_binding"] = trace_binding
     correctness = assets.get("correctness")
     comparison = assets.get("trajectory_comparison")
     if workload.startswith("wan13b") and native_mode in {"two-cycle-timing", "two-cycle-calibration"}:
@@ -461,8 +547,10 @@ def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: P
                 env.update(USE_TF="0", TRANSFORMERS_NO_TF="1", PYTHONNOUSERSITE="1")
         if workload == "livewan_crossscale_pipeline_best":
             # Source overlay is generated from pinned submodules, never an old experimental worktree.
-            source_receipt = _object(Path(env["LIVEWAN_SOURCE_RECEIPT"]))
-            _require(source_receipt.get("status") == "PASS", "LiveWan source receipt is not PASS")
+            source_receipt = (request_bindings["livewan_request_trace_binding"]["source_receipt"]
+                              if "request" in profile["contract"] else _object(Path(env["LIVEWAN_SOURCE_RECEIPT"])))
+            if "request" not in profile["contract"]:
+                _require(source_receipt.get("status") == "PASS", "LiveWan source receipt is not PASS")
             env["LIVEWAN_WAN21_SOURCE"] = str(source_receipt["source_root"])
             _require(Path(env["LIVEWAN_WAN21_SOURCE"]).is_absolute(), "prepared Wan source must be absolute")
         if correctness:

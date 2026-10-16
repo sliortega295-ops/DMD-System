@@ -83,7 +83,9 @@ def assemble_native(receipt, preparation, identity, runtime_identity_evidence):
                     "native rank/calibration run binding failed")
             cal = read(p)
             from distillschedule.runtime.livewan_geometry import receipt_errors
-            require(not receipt_errors(cal, impl.request), "LiveWan calibration request/actual shape differs")
+            require(not receipt_errors(cal, impl.request,
+                expected_plan_sha256=fingerprint(receipt['nodes'][rank//8]['resolved_native_plan'])),
+                "LiveWan calibration request/actual shape differs")
             sources.append(binding(p))
             peak = raw["peak_memory"]["max_reserved_bytes"]
         else:
@@ -195,7 +197,7 @@ def _read_assembly(results, *, expected_head):
             from .native import validate_native_comparison
             validate_native_comparison(comparison)
         # Resource/teardown files may be non-JSON; hash every original source.
-        observations, native_h3_rows = {}, []
+        observations, native_h3_rows, native_livewan_rows, calibrations = {}, [], {}, []
         for ref in provenance["native_sources"]:
             source = Path(ref["path"])
             require(source.is_file() and file_sha256(source) == ref["sha256"], "native source receipt changed")
@@ -204,13 +206,34 @@ def _read_assembly(results, *, expected_head):
             raw = _object(source)
             if workload == H3 and raw.get("schema_version") == "distillschedule.h3_native_two_cycle.v1":
                 native_h3_rows.append(raw)
+            if workload == LIVEWAN and isinstance(raw.get('operation_calibration'), dict):
+                rank = raw['rank']
+                require(type(rank) is int and rank in RANKS and rank not in native_livewan_rows,
+                        'duplicate/invalid native LiveWan rank')
+                marker = raw['operation_calibration']
+                require(raw.get('status') == 'PASS' and marker.get('enabled') is True
+                        and marker.get('status') == 'PASS' and marker.get('calibration_only') is True
+                        and marker.get('formal_timing_eligible') is False,
+                        'LiveWan native rank/calibration marker changed')
+                native_livewan_rows[rank] = raw
             cal = raw.get("stage_calibration") if workload == H3 else raw
             if not isinstance(cal, dict) or cal.get("schema_version") != "distillschedule.async_range_calibration.v1":
                 continue
+            calibrations.append((source, cal))
+        if workload == LIVEWAN:
+            require(set(native_livewan_rows) == set(RANKS), 'native LiveWan rank evidence incomplete')
+        for source, cal in calibrations:
             rank = cal["rank"]
             if workload == LIVEWAN:
                 from distillschedule.runtime.livewan_geometry import receipt_errors
-                require(not receipt_errors(cal, impl.request), "LiveWan source calibration request/actual shape differs")
+                require(type(rank) is int and rank in native_livewan_rows, 'invalid LiveWan calibration owner')
+                raw = native_livewan_rows[rank]
+                require(raw['operation_calibration'].get('path') == str(source),
+                        'LiveWan source calibration does not belong to native rank')
+                require(not receipt_errors(raw, impl.request)
+                        and not receipt_errors(cal, impl.request,
+                            expected_plan_sha256=raw.get('installed_plan_sha256')),
+                        "LiveWan source calibration request/actual shape differs")
             require(cal["source_head"] == expected_head and cal["implementation"] == cid,
                     "native calibration rank source/implementation changed")
             if workload == LIVEWAN and impl.placement == "pipeline" and rank < 8:
