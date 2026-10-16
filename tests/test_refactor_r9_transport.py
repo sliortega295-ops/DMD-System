@@ -589,3 +589,33 @@ def test_repository_owner_bytes_match_the_explicit_allowlisted_binding():
     source=path.read_text()
     assert source.index('state,live=refresh_finished_probe(') < source.index('donor.exclusive_all8(')
     assert "fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)" in source
+
+
+@pytest.mark.parametrize('cache_policy', ['cpu_staged_trim', 'cuda_no_trim'])
+@pytest.mark.parametrize('mode', ['correctness', 'calibration', 'diagnostic-timing'])
+def test_r9_native_56_frame_request_retains_full_binding(tmp_path, monkeypatch, cache_policy, mode):
+    impl = H3Implementation(request=H3Request(480, 832, 56), cache_policy=cache_policy)
+    plan, cfg, manifest, _ = fixture(tmp_path, monkeypatch, impl=impl, mode=mode)
+    assert cfg['resolution']['frames'] == 56
+    for node in plan['nodes']:
+        assert node['resolved_model_config']['training']['dmd']['num_frames'] == 56
+    populate(plan, cfg, manifest, calibration=mode == 'calibration')
+    assert r9_native.collect(manifest)['status'] == 'PASS_NATIVE_R9_EXECUTION'
+    assert r9_native.verify_execution(plan)
+
+
+def test_r9_56_frame_request_rejects_stale_model_config(tmp_path, monkeypatch):
+    impl = H3Implementation(request=H3Request(480, 832, 56), cache_policy='cuda_no_trim')
+    plan, cfg, _, _ = fixture(tmp_path, monkeypatch, impl=impl)
+    p = Path(cfg['environment_by_node'][0]['H3_CONFIG'])
+    stale = json.loads(p.read_text())
+    stale['training']['dmd']['num_frames'] = 124
+    p.write_text(json.dumps(stale))
+    with pytest.raises(ValueError):
+        contract.validate_config(cfg)
+
+
+def test_r9_remains_narrow_low_resolution_transport(tmp_path, monkeypatch):
+    with pytest.raises(ValueError, match='bounded low-resolution'):
+        fixture(tmp_path, monkeypatch,
+                impl=H3Implementation(request=H3Request(768, 1344, 56), cache_policy='cuda_no_trim'))

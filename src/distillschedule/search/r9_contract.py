@@ -45,7 +45,8 @@ def _validate_scope(plan):
     require(plan['profile_id'] == H3 and plan['mode'] in MODES
             and plan['native_mode'] == plan['mode'], 'R9 only explicit H3 native modes supported')
     impl = H3Implementation.parse(plan['search_candidate']['id'])
-    require(impl.request == H3Request(height=480, width=832) and impl.rollout_window is None
+    require(impl.request in {H3Request(height=480, width=832, frames=f) for f in (56, 124)}
+            and impl.rollout_window is None
             and impl.prefetch_depth == 2 and impl.lora_epilogue_block_n == 128
             and impl.cache_policy in {'cpu_staged_trim', 'cuda_no_trim'},
             'R9 adapter is only the bounded low-resolution CPU/CUDA cache subspace')
