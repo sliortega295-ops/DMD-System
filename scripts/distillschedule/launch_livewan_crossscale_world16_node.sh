@@ -336,7 +336,7 @@ if [[ "${RUN_KIND}" == timing || "${RUN_KIND}" == profile || \
   CORRECTNESS_SHA256="${LIVEWAN_PAIR_CORRECTNESS_SHA256:?run requires LIVEWAN_PAIR_CORRECTNESS_SHA256}"
   [[ -f "${CORRECTNESS_RECEIPT}" && "${CORRECTNESS_SHA256}" =~ ^[0-9a-f]{64}$ ]] || exit 3
   [[ "$(sha256sum "${CORRECTNESS_RECEIPT}" | awk '{print $1}')" == "${CORRECTNESS_SHA256}" ]] || exit 3
-  "${PYTHON}" - "${CORRECTNESS_RECEIPT}" "${EXPECTED_HEAD}" "${RUN_KIND}" <<'PY'
+  PYTHONPATH="${ROOT}/src" "${PYTHON}" - "${CORRECTNESS_RECEIPT}" "${EXPECTED_HEAD}" "${RUN_KIND}" "${EXECUTION_MODE}" "${PIPELINE_VARIANT}" <<'PY'
 import json, pathlib, sys
 value = json.loads(pathlib.Path(sys.argv[1]).read_text())
 expected_head = sys.argv[2]
@@ -347,8 +347,25 @@ if run_kind == "timing":
     if set(value.get("heads", {}).values()) != {expected_head}:
         raise SystemExit("paired correctness gate uses a different source HEAD")
 elif run_kind == "two-cycle-timing":
+    from distillschedule.runtime.livewan_replay_ablation import PARENT_VARIANT, VARIANT
+    execution_mode, pipeline_variant = sys.argv[4:6]
+    conditional_schema = "distillschedule.livewan_conditional_replay_timing_gate.v1"
+    conditional = value.get("schema_version") == conditional_schema
+    if pipeline_variant == VARIANT and not conditional:
+        raise SystemExit("C51 replay ablation requires its same-layout conditional gate")
+    if conditional:
+        arms = value.get("arms", {})
+        if not (
+            execution_mode == "pipeline"
+            and pipeline_variant in {PARENT_VARIANT, VARIANT}
+            and set(arms) == {"reference", "candidate"}
+            and arms["reference"].get("pipeline_variant") == PARENT_VARIANT
+            and arms["candidate"].get("pipeline_variant") == VARIANT
+            and value.get("heads") == {"reference": expected_head, "candidate": expected_head}
+        ):
+            raise SystemExit("conditional replay gate pair/source changed")
     required = {
-        "schema_version": "distillschedule.livewan_two_cycle_timing_gate.v2",
+        "schema_version": conditional_schema if conditional else "distillschedule.livewan_two_cycle_timing_gate.v2",
         "status": "PASS",
         "claimable_for_two_cycle_timing": True,
         "expected_head": expected_head,

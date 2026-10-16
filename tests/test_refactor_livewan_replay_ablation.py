@@ -262,6 +262,9 @@ def test_conditional_pair_comparator_gate_and_worker_loading(tmp_path, monkeypat
              '--reference-variant',ablation.PARENT_VARIANT,'--pipeline-variant',ablation.VARIANT,'--output',str(gate)]
     subprocess.run(builder,check=True,capture_output=True,text=True)
     value=json.loads(gate.read_text())
+    for variant in (ablation.PARENT_VARIANT, ablation.VARIANT):
+        node_header = _node_timing_header(gate, variant=variant, mode='pipeline', head=fixture.HEAD)
+        assert node_header.returncode == 0, 'VALID_CONDITIONAL_GATE_REJECTED: ' + node_header.stderr
     assert value['schema_version']=='distillschedule.livewan_conditional_replay_timing_gate.v1'
     assert value['numerical_review']['extreme_thresholds'] == _script('build_livewan_two_cycle_timing_gate.py').EXTREME_NUMERIC_THRESHOLDS
     digest=hashlib.sha256(gate.read_bytes()).hexdigest()
@@ -313,3 +316,58 @@ def test_frozen_parent_dependency_digest_cannot_drift(plans, monkeypatch):
     monkeypatch.setattr(ablation, 'PARENT_PLAN_SOURCES_SHA256', '0' * 64)
     with pytest.raises(RuntimeError, match='frozen parent plan/include source changed'):
         ablation.enabled(candidate, mode='pipeline')
+
+
+def _node_timing_header(gate, *, variant, mode, head='a'*40):
+    """Execute the actual node launcher's pre-lock Python gate, not a mock."""
+    import os, subprocess, sys
+    source = (ROOT/'scripts/distillschedule/launch_livewan_crossscale_world16_node.sh').read_text()
+    anchor = '"${PYTHON}" - "${CORRECTNESS_RECEIPT}" "${EXPECTED_HEAD}" "${RUN_KIND}"'
+    script = source[source.index(anchor):].split("<<'PY'\n", 1)[1].split('\nPY\n', 1)[0]
+    return subprocess.run([sys.executable, '-', str(gate), head, 'two-cycle-timing', mode, variant],
+        input=script + '\nassert "torch" not in sys.modules\n',
+        env=dict(os.environ, PYTHONPATH=str(ROOT/'src')), capture_output=True, text=True, timeout=15)
+
+
+def _header_fixture(conditional):
+    value = dict(schema_version='distillschedule.livewan_two_cycle_timing_gate.v2',
+        status='PASS',claimable_for_two_cycle_timing=True,expected_head='a'*40,cycles=2,
+        final_versions=dict(generator=2,critic=10,ema=0),
+        heads=dict(baseline='a'*40,pipeline='a'*40),
+        numerical_review=dict(policy='REJECT_EXTREME_ONLY_RECORD_ORDINARY_REVIEW',extreme_failure_count=0),
+        trajectory_comparison=dict(contract_status='PASS',complete=True))
+    if conditional:
+        value.update(schema_version='distillschedule.livewan_conditional_replay_timing_gate.v1',
+                     heads=dict(reference='a'*40,candidate='a'*40),
+                     arms=dict(reference=dict(pipeline_variant=ablation.PARENT_VARIANT),
+                               candidate=dict(pipeline_variant=ablation.VARIANT)))
+    return value
+
+
+@pytest.mark.parametrize('variant,mode', [('b1','baseline'), (ablation.PARENT_VARIANT,'pipeline')])
+def test_node_header_preserves_legacy_v2(tmp_path, variant, mode):
+    gate = tmp_path/'gate.json'; gate.write_text(json.dumps(_header_fixture(False)))
+    result = _node_timing_header(gate, variant=variant, mode=mode)
+    assert result.returncode == 0, result.stderr
+
+
+def test_node_header_rejects_recompute_with_legacy_gate(tmp_path):
+    gate = tmp_path/'gate.json'; gate.write_text(json.dumps(_header_fixture(False)))
+    result = _node_timing_header(gate, variant=ablation.VARIANT, mode='pipeline')
+    assert result.returncode != 0
+
+
+@pytest.mark.parametrize('mutation', ['head','pair','mode','extreme','status','cycles','comparison','unknown_schema'])
+def test_node_conditional_header_remains_fail_closed(tmp_path, mutation):
+    value = _header_fixture(True); mode='pipeline'
+    if mutation == 'head': value['heads']['reference']='b'*40
+    elif mutation == 'pair': value['arms']['candidate']['pipeline_variant']='c34-continuous-b16-residual-layout'
+    elif mutation == 'mode': mode='baseline'
+    elif mutation == 'extreme': value['numerical_review']['extreme_failure_count']=1
+    elif mutation == 'status': value['status']='FAIL'
+    elif mutation == 'cycles': value['cycles']=1
+    elif mutation == 'comparison': value['trajectory_comparison']['contract_status']='FAIL'
+    elif mutation == 'unknown_schema': value['schema_version']='unregistered-gate'
+    gate=tmp_path/'gate.json';gate.write_text(json.dumps(value))
+    result=_node_timing_header(gate,variant=ablation.VARIANT,mode=mode)
+    assert result.returncode != 0
