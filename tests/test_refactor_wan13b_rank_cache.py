@@ -52,4 +52,17 @@ class TestCache(unittest.TestCase):
         self.assertEqual(hashlib.sha256(source.encode()).hexdigest(),hashlib.sha256(expected.encode()).hexdigest())
     def test_cache_config_precedes_torch_import(self):
         text=SOURCE.read_text();self.assertLess(text.index("_RANK_PRIVATE_CACHE ="),text.index("import torch\n"))
+    def test_canary_uses_production_offline_import_before_native_norm(self):
+        source=ROOT/"scripts/distillschedule/canary_wan13b_rank_private_cache.py"
+        tree=ast.parse(source.read_text())
+        node=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=="load_native_rmsnorm")
+        statements=node.body[1:]
+        self.assertIsInstance(statements[0],ast.ImportFrom)
+        self.assertEqual(statements[0].module,"runtime.critic_pool_helios")
+        self.assertEqual(statements[0].names[0].name,"configure_offline_helios")
+        self.assertEqual(ast.unparse(statements[1]),"configure_offline_helios()")
+        self.assertIsInstance(statements[2],ast.ImportFrom)
+        self.assertEqual(statements[2].module,"helios.modules.helios_kernels.triton_norm")
+        self.assertEqual(ast.unparse(statements[3]),"return flash_rms_layernorm")
+        self.assertIn("flash_rms_layernorm = load_native_rmsnorm()",source.read_text())
 if __name__=="__main__":unittest.main()

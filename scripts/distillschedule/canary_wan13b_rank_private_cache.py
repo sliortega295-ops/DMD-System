@@ -3,6 +3,13 @@
 from __future__ import annotations
 import argparse,json,os,runpy,sys,pathlib,hashlib,traceback
 ROOT=pathlib.Path(__file__).resolve().parents[2]
+def load_native_rmsnorm():
+    """Use the production offline import policy, without constructing a model."""
+    from runtime.critic_pool_helios import configure_offline_helios
+    configure_offline_helios()
+    from helios.modules.helios_kernels.triton_norm import flash_rms_layernorm
+    return flash_rms_layernorm
+
 def main():
     p=argparse.ArgumentParser();p.add_argument("--output",type=pathlib.Path,required=True);args=p.parse_args()
     rank=int(os.environ["RANK"]);assert os.environ["WORLD_SIZE"]=="8"
@@ -13,7 +20,7 @@ def main():
         import torch,torch.distributed as dist
         torch.cuda.set_device(rank);device=torch.device("cuda",rank)
         dist.init_process_group("gloo")
-        from helios.modules.helios_kernels.triton_norm import flash_rms_layernorm
+        flash_rms_layernorm = load_native_rmsnorm()
         import inspect
         source=hashlib.sha256(inspect.getsource(flash_rms_layernorm).encode()).hexdigest()
         norm=torch.nn.RMSNorm(128,eps=1e-6).to(device=device,dtype=torch.bfloat16)
