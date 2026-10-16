@@ -24,6 +24,13 @@ from .helios_native import bound,ref,summarize,launch_evidence,validate_admissio
 
 SCHEMA='distillschedule.helios_component_layout.v1'
 FRAGMENT='distillschedule.helios_component_fragment.v1'
+DEFAULT_ALLOCATOR_MARGIN_BYTES = 2 * 2**30
+
+
+def _allocator_margin(value):
+    require(type(value) is int and value >= 0,
+            'Helios allocator_margin_bytes must be a nonnegative integer')
+    return value
 
 
 def capability_report(workload, *, include_safe_incumbent=False, include_gan_manual=False, request=None):
@@ -178,6 +185,7 @@ def _manual_match_lowering(layout, identity, limits, incumbent):
 def build_problem(layout_path,*,root=None):
     root=root or repository_root();layout=_object(layout_path)
     require(layout.get('schema_version')==SCHEMA and layout.get('fragments'),'Helios native component layout required')
+    allocator_margin = _allocator_margin(layout.get('allocator_margin_bytes', DEFAULT_ALLOCATOR_MARGIN_BYTES))
     include_safe=layout.get('include_safe_incumbent_bundle',False)
     include_gan=layout.get('include_gan_manual_incumbent_bundle',False)
     request=(OriginalHeliosRequest.from_dict(layout[TRACE_KEY]) if TRACE_KEY in layout else None)
@@ -205,7 +213,7 @@ def build_problem(layout_path,*,root=None):
         for r in rows:
             memories=[r['post_setup_memory'],*[a[k] for c in r['cycles'] for a in c['actions'] for k in ('memory_before','memory_after')]]
             overhead=max(max(0,m['driver_total_bytes']-m['driver_free_bytes']-m['reserved_bytes']) for m in memories)
-            limit=r['post_setup_memory']['driver_total_bytes']-overhead-2*2**30
+            limit=r['post_setup_memory']['driver_total_bytes']-overhead-allocator_margin
             require(limit>0,'invalid observed capacity')
             limits[r['rank']]=min(limits.get(r['rank'],limit),limit)
             for c in r['cycles']:
@@ -255,7 +263,8 @@ def build_problem(layout_path,*,root=None):
         (assignment(baseline),assignment(incumbent)),forbidden=forbidden,
         conditional_dependencies=tuple(edges),evidence_scope='MEASURED',
         lowering=dict(adapter=ADAPTER,layout_receipt=str(Path(layout_path).resolve()),layout_sha256=file_sha256(layout_path),
-            memory_scope=MEMORY+'; TWO_GIB_MARGIN; NATIVE_CAPACITY_CONFIRMATION_REQUIRED',
+            memory_scope=MEMORY+('; TWO_GIB_MARGIN' if allocator_margin == DEFAULT_ALLOCATOR_MARGIN_BYTES
+                else f'; EXPLICIT_ALLOCATOR_MARGIN_BYTES={allocator_margin}')+'; NATIVE_CAPACITY_CONFIRMATION_REQUIRED',
             resource_scope='SERIAL_ACTIONS_NO_INVENTED_COMM_OVERLAP',component_sources=sources,
             **_manual_match_lowering(layout,identity,limits,incumbent)))
 
@@ -338,8 +347,10 @@ def validate_component_receipt(raw,cache):
 
 
 def assemble_calibrations(results,*,output,expected_head,root=None,include_safe_incumbent=False,
-                          include_gan_manual=False,request=None):
+                          include_gan_manual=False,request=None,allocator_margin_bytes=None):
     from .component_calibration import pool_component_models
+    if allocator_margin_bytes is not None:
+        _allocator_margin(allocator_margin_bytes)
     root=root or repository_root();require(git_head(root)==expected_head,'assembly source changed')
     require(type(include_safe_incumbent) is bool,'safe incumbent assembly opt-in must be boolean')
     require(type(include_gan_manual) is bool and not (include_gan_manual and include_safe_incumbent),
@@ -358,6 +369,7 @@ def assemble_calibrations(results,*,output,expected_head,root=None,include_safe_
         fragments.append(row['layout_fragment']);models.append(model)
     output=Path(output);output.mkdir(parents=True,exist_ok=False)
     data=dict(schema_version=SCHEMA,fragments=fragments)
+    if allocator_margin_bytes is not None:data['allocator_margin_bytes']=allocator_margin_bytes
     if request is not None:data[TRACE_KEY]=request.to_dict()
     if include_safe_incumbent:data['include_safe_incumbent_bundle']=True
     if include_gan_manual:data['include_gan_manual_incumbent_bundle']=True

@@ -157,6 +157,11 @@ def assemble(args):
     from .helios_implementation import NO_GAN, GAN, HeliosImplementation
     require(args.workload in SUPPORTED_WORKLOADS, "unknown native workload")
     # Resolve each calibration ID through the requested family before assembly.
+    margin_mib = getattr(args, 'helios_allocator_margin_mib', None)
+    if margin_mib is not None:
+        require(args.workload in (NO_GAN, GAN), 'allocator margin is Helios only')
+        require(type(margin_mib) is int and margin_mib >= 0,
+                'Helios allocator margin MiB must be a nonnegative integer')
     from .registry import get_candidate
     helios_requests=[]
     for path in args.result:
@@ -174,6 +179,7 @@ def assemble(args):
     gan_manual=getattr(args,'include_helios_gan_manual',False)
     require(not safe or args.workload==NO_GAN,'safe incumbent assembly is No-GAN only')
     options={'include_safe_incumbent':True} if safe else {}
+    if margin_mib is not None:options['allocator_margin_bytes']=margin_mib * 2**20
     require(not gan_manual or args.workload==GAN,'GAN manual assembly is GAN only')
     if gan_manual:options['include_gan_manual']=True
     if helios_requests:
@@ -218,6 +224,8 @@ def main(argv):
                       help="Bind measured FSDP C512 k0 baseline and HSDP C512 k1 incumbent seeds")
     join.add_argument('--include-helios-gan-manual', action='store_true',
                       help='Bind measured canonical GAN baseline and complete manual incumbent seeds')
+    join.add_argument('--helios-allocator-margin-mib', type=int,
+                      help='Explicit Helios allocator margin in MiB; omitted keeps exactly 2048 MiB. Independent of driver-free reserve.')
     args = parser.parse_args(argv)
     try:
         if args.action == "candidates":
