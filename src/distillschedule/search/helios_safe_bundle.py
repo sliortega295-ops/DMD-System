@@ -94,6 +94,11 @@ class HeliosSafeBundle:
 
     def validate_scope(self, impl):
         if self.enabled:
+            # The pinned LoRA-B kernel is qualified only for canonical shapes.
+            # Fallback calls cannot establish admission for a new request.
+            require(impl.request is None,
+                    "safe No-GAN bundle requires canonical request=None; "
+                    "parameterized requests need separate new-shape kernel admission")
             require((impl.variant, impl.mesh, impl.chunk_tokens, impl.rollout_window,
                      impl.persistent_unshard) == ("no-gan", "node-hsdp", 512, 5, False),
                     "safe No-GAN bundle requires exactly HSDP/C512/p0/w5; GAN is not migrated")

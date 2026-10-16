@@ -79,7 +79,8 @@ def _read_fragment(reference,root):
     b=f['binding'];validate_binding(b)
     require(b['source_head']==git_head(root) and b['precision_fingerprint']==PRECISION,'Helios component source/precision differs')
     impl=HeliosImplementation.parse(f['implementation_id']);w=impl.workload
-    require(impl.assignment in [i.assignment for i in implementations(w,include_safe_incumbent=w==NO_GAN,request=impl.request)],
+    require(impl.assignment in [i.assignment for i in implementations(w,
+            include_safe_incumbent=impl.candidate_bundle.enabled,request=impl.request)],
             'Helios graph family not admitted')
     semantics=impl.lower_profile() if impl.request is not None else load_profile(w)
     require(b['semantic_fingerprint']==fingerprint(semantic_contract(semantics)),'Helios workload contract differs')
@@ -136,6 +137,7 @@ def build_problem(layout_path,*,root=None):
     include_safe=layout.get('include_safe_incumbent_bundle',False)
     request=(OriginalHeliosRequest.from_dict(layout[TRACE_KEY]) if TRACE_KEY in layout else None)
     require(type(include_safe) is bool,'safe incumbent layout opt-in must be boolean')
+    if include_safe:safe_incumbent(request=request)
     measured_ids=set()
     identity=work=workload=limits=None;static={};outputs={};sources=[]
     for reference in layout['fragments']:
@@ -283,6 +285,7 @@ def assemble_calibrations(results,*,output,expected_head,root=None,include_safe_
     root=root or repository_root();require(git_head(root)==expected_head,'assembly source changed')
     require(type(include_safe_incumbent) is bool,'safe incumbent assembly opt-in must be boolean')
     require(request is None or type(request) is OriginalHeliosRequest,'typed Helios assembly request required')
+    if include_safe_incumbent:safe_incumbent(request=request)
     fragments=[];models=[]
     for path in results:
         row=_object(path)

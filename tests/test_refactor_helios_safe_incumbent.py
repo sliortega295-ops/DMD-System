@@ -74,6 +74,125 @@ def test_inventory_optin_adds_one_tuple_only_and_no_precision_override():
     assert safe_incumbent().environment()['OMP_NUM_THREADS']==baseline['OMP_NUM_THREADS']
 
 
+@pytest.mark.parametrize('frames,horizon', [(17,1),(17,2),(33,1),(33,2)])
+@pytest.mark.parametrize('policy', ['source_normal_only','benchmark_v4_strict_global'])
+@pytest.mark.parametrize('entrypoint', ['safe_incumbent','constructor','parse','assignment',
+                                      'capability','domains','implementations','inventory','lowering'])
+def test_parameterized_safe_bundle_rejected_before_source_identity_or_lowering(
+        monkeypatch,frames,horizon,policy,entrypoint):
+    from distillschedule.search import execution,helios_model_adapter as m
+    from distillschedule.search.helios_request import OriginalHeliosRequest
+    from distillschedule.search.workflow_cli import candidate_inventory
+    request=OriginalHeliosRequest(video_frames=frames,stage2_inference_steps=(horizon,)*3,
+                                  stage_schedule_policy=policy)
+    ordinary=HeliosImplementation('no-gan','node-hsdp',512,5,False,request=request)
+    key=safe_incumbent().id+'-q'+request.id
+    def forbidden(*args,**kwargs):
+        pytest.fail('unadmitted request reached safe source identity or launch resolution')
+    monkeypatch.setattr(HeliosSafeBundle,'source_identity',forbidden)
+    monkeypatch.setattr(execution,'resolve_configuration',forbidden)
+    calls={
+        'safe_incumbent':lambda:m.safe_incumbent(request=request),
+        'constructor':lambda:HeliosImplementation('no-gan','node-hsdp',512,5,False,
+                                                  HeliosSafeBundle.safe(),request),
+        'parse':lambda:HeliosImplementation.parse(key),
+        'assignment':lambda:HeliosImplementation.from_assignment(
+            ordinary.assignment|{'candidate_bundle':BUNDLE_ID}),
+        'capability':lambda:m.capability_report(NO_GAN,include_safe_incumbent=True,request=request),
+        'domains':lambda:m.domains(NO_GAN,include_safe_incumbent=True,request=request),
+        'implementations':lambda:m.implementations(NO_GAN,include_safe_incumbent=True,request=request),
+        'inventory':lambda:candidate_inventory(NO_GAN,include_helios_safe_incumbent=True,request=request),
+        'lowering':lambda:execution.resolve_candidate(NO_GAN,key,mode='correctness'),
+    }
+    with pytest.raises(ValueError,match='canonical request=None.*new-shape kernel admission'):
+        calls[entrypoint]()
+
+
+@pytest.mark.parametrize('frames,horizon', [(17,1),(17,2),(33,1),(33,2)])
+@pytest.mark.parametrize('entrypoint', ['layout','assembly'])
+def test_parameterized_safe_optin_rejected_before_receipt_reads_or_output(
+        tmp_path,monkeypatch,frames,horizon,entrypoint):
+    from distillschedule.search import helios_model_adapter as m
+    from distillschedule.search.helios_request import OriginalHeliosRequest,TRACE_KEY
+    request=OriginalHeliosRequest(video_frames=frames,stage2_inference_steps=(horizon,)*3)
+    def forbidden(*args,**kwargs):
+        pytest.fail('unadmitted safe request reached native receipt acquisition')
+    monkeypatch.setattr(m,'_read_fragment',forbidden)
+    monkeypatch.setattr(HeliosSafeBundle,'source_identity',forbidden)
+    output=tmp_path/'must-not-create'
+    if entrypoint=='layout':
+        path=tmp_path/'layout.json'
+        path.write_text(json.dumps(dict(schema_version=m.SCHEMA,fragments=[{'CPU_FIXTURE_ONLY':True}],
+            include_safe_incumbent_bundle=True,**{TRACE_KEY:request.to_dict()})))
+        call=lambda:m.build_problem(path,root=ROOT)
+    else:
+        monkeypatch.setattr(m,'_object',forbidden)
+        call=lambda:m.assemble_calibrations([tmp_path/'must-not-read.json'],output=output,
+            expected_head=m.git_head(ROOT),root=ROOT,include_safe_incumbent=True,request=request)
+    with pytest.raises(ValueError,match='canonical request=None.*new-shape kernel admission'):
+        call()
+    assert not output.exists()
+
+
+@pytest.mark.parametrize('frames,horizon', [(17,1),(17,2),(33,1),(33,2)])
+@pytest.mark.parametrize('policy', ['source_normal_only','benchmark_v4_strict_global'])
+def test_parameterized_bundle_off_keeps_all_native_mesh_chunk_window_candidates(frames,horizon,policy):
+    from distillschedule.search import helios_model_adapter as m
+    from distillschedule.search.helios_request import OriginalHeliosRequest,TRACE_KEY
+    from distillschedule.search.workflow_cli import candidate_inventory
+    request=OriginalHeliosRequest(video_frames=frames,stage2_inference_steps=(horizon,)*3,
+                                  stage_schedule_policy=policy)
+    values=m.implementations(NO_GAN,request=request)
+    assert len(values)==20 and all(i.request==request and not i.candidate_bundle.enabled for i in values)
+    assert {i.mesh for i in values}=={'world16-fsdp','node-hsdp'}
+    assert {i.chunk_tokens for i in values}=={512,2048}
+    assert {i.rollout_window for i in values}==set(range(1,6))
+    assert all(HeliosImplementation.parse(i.id)==HeliosImplementation.from_assignment(i.assignment)==i
+               for i in values)
+    assert 'candidate_bundle' not in m.domains(NO_GAN,request=request)
+    report=m.capability_report(NO_GAN,request=request)
+    assert report[TRACE_KEY]==request.to_dict() and 'candidate_bundles' not in report
+    inventory=candidate_inventory(NO_GAN,request=request)
+    assert [r['id'] for r in inventory['candidates']]==[i.id for i in values]
+
+
+@pytest.mark.parametrize('frames,horizon,enabled', [
+    (None,None,False),(None,None,True),(17,1,False),(17,2,False),(33,1,False),(33,2,False),
+])
+def test_fragment_enumerates_safe_incumbent_only_when_its_bundle_is_enabled(
+        tmp_path,monkeypatch,frames,horizon,enabled):
+    from distillschedule.search import execution,helios_model_adapter as m
+    from distillschedule.search.contracts import semantic_contract
+    from distillschedule.search.helios_request import OriginalHeliosRequest
+    from test_refactor_model_planning import BINDING
+    request=(OriginalHeliosRequest(video_frames=frames,stage2_inference_steps=(horizon,)*3)
+             if frames is not None else None)
+    impl=(safe_incumbent() if enabled else
+          HeliosImplementation('no-gan','node-hsdp',2048,3,False,request=request))
+    binding={**BINDING,'source_head':m.git_head(ROOT),'precision_fingerprint':m.PRECISION,
+             'semantic_fingerprint':fingerprint(semantic_contract(impl.lower_profile()))}
+    plan=tmp_path/'plan.json';plan.write_text(json.dumps({'CPU_FIXTURE_ONLY':True}))
+    fragment=tmp_path/'fragment.json'
+    fragment.write_text(json.dumps(dict(schema_version=m.FRAGMENT,binding=binding,
+        implementation_id=impl.id,execution_receipt=m.ref(plan))))
+    enumerated=[];implementations=m.implementations
+    def inventory(*args,**kwargs):
+        enumerated.append(kwargs['include_safe_incumbent'])
+        return implementations(*args,**kwargs)
+    def forbidden(*args,**kwargs):
+        pytest.fail('bundle-off fragment constructed a forbidden safe incumbent')
+    # Stop at the existing profile gate: fixture metadata is not native evidence.
+    def profile_boundary(receipt,*,root):
+        assert receipt=={'CPU_FIXTURE_ONLY':True} and root==ROOT
+        assert enumerated==[enabled]
+        raise RuntimeError('CPU_ONLY_PROFILE_VALIDATION_BOUNDARY')
+    monkeypatch.setattr(m,'implementations',inventory)
+    if not enabled:monkeypatch.setattr(m,'safe_incumbent',forbidden)
+    monkeypatch.setattr(execution,'validated_profile',profile_boundary)
+    with pytest.raises(RuntimeError,match='CPU_ONLY_PROFILE_VALIDATION_BOUNDARY'):
+        m._read_fragment(m.ref(fragment),ROOT)
+
+
 def test_every_action_including_ema_binds_full_fields_and_actual_sources():
     from distillschedule.search.helios_action_costs import component_contract,action_graph
     i=safe_incumbent();off=replace(i,candidate_bundle=HeliosSafeBundle())
