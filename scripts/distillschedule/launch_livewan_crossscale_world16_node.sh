@@ -351,8 +351,19 @@ monitor &
 monitor_pid=$!
 
 RESOLVED="${RUN_ROOT}/resolved_plan.node${NODE_RANK}.json"
-"${PYTHON}" -m distillschedule.cli render "${PLAN}" --output "${RESOLVED}" \
-  >"${NODE_LOG}/render.log" 2>&1
+if [[ -n "${DISTILLSCHEDULE_LIVEWAN_REQUEST_ID:-}" ]]; then
+  # Explicit requests execute the exact serialized native plan. Re-rendering
+  # the variant template here would silently restore the historical 21 frames.
+  "${PYTHON}" -m distillschedule.runtime.livewan_launch_plan \
+    --input "${DISTILLSCHEDULE_LIVEWAN_LAUNCH_PLAN:?missing request launch plan}" \
+    --sha256 "${DISTILLSCHEDULE_LIVEWAN_LAUNCH_PLAN_SHA256:?missing request launch SHA}" \
+    --request "${DISTILLSCHEDULE_LIVEWAN_REQUEST_ID}" --output "${RESOLVED}" \
+    >"${NODE_LOG}/render.log" 2>&1
+else
+  [[ -z "${DISTILLSCHEDULE_LIVEWAN_LAUNCH_PLAN:-}${DISTILLSCHEDULE_LIVEWAN_LAUNCH_PLAN_SHA256:-}" ]] || exit 2
+  "${PYTHON}" -m distillschedule.cli render "${PLAN}" --output "${RESOLVED}" \
+    >"${NODE_LOG}/render.log" 2>&1
+fi
 
 # Fail before 14B construction if the two hosts accidentally form split worlds
 # or the default NCCL communicator is unusable.  The probe is intentionally

@@ -17,6 +17,7 @@ from distillschedule.workloads.best_known.registry import (
 from .contracts import require, semantic_contract
 from .h3_implementation import H3, H3Implementation
 from .h3_request import H3Request
+from .livewan_request import LIVEWAN, LiveWanRequest
 from .model_adapters import SUPPORTED_WORKLOADS, adapter_for
 
 
@@ -24,8 +25,8 @@ def candidate_inventory(workload, *, request=None, include_helios_safe_incumbent
     require(workload in SUPPORTED_WORKLOADS, "unknown native workload")
     from .wan_implementation import WAN
     from .helios_implementation import NO_GAN, GAN
-    require(request is None or workload in (H3,NO_GAN,GAN),
-            "explicit request currently supported only for H3 and ORIGINAL Helios")
+    require(request is None or workload in (H3,NO_GAN,GAN,LIVEWAN),
+            "explicit request currently supported only for H3, ORIGINAL Helios and ORIGINAL LiveWan")
     require(type(include_helios_safe_incumbent) is bool,'safe incumbent opt-in must be boolean')
     require(not include_helios_safe_incumbent or workload==NO_GAN,'safe incumbent opt-in is No-GAN only')
     if workload == H3:
@@ -39,7 +40,7 @@ def candidate_inventory(workload, *, request=None, include_helios_safe_incumbent
         values = implementations(workload,include_safe_incumbent=include_helios_safe_incumbent,request=request)
     else:
         from .livewan_implementation import implementations
-        values = implementations()
+        values = implementations(request=request)
     from .registry import candidate_profile
     candidates = []
     for impl in values:
@@ -51,6 +52,7 @@ def candidate_inventory(workload, *, request=None, include_helios_safe_incumbent
     adapter_options=({"h3_request":request} if workload==H3 else
                      {"include_safe_incumbent":True} if include_helios_safe_incumbent else {})
     if workload in (NO_GAN,GAN) and request is not None:adapter_options['request']=request
+    if workload == LIVEWAN: adapter_options['livewan_request'] = request
     return dict(status="PASS_CPU_CAPABILITY_INVENTORY", workload=workload,
         source_head=git_head(repository_root()), candidates=candidates,
         workload_request=request.to_dict() if request is not None else None,
@@ -67,7 +69,8 @@ def _precision(workload, impl):
         from .helios_action_costs import PRECISION
         return PRECISION
     from .native_macro_adapter import precision_contract
-    return fingerprint(precision_contract(workload, h3_request=impl.request if workload == H3 else None))
+    return fingerprint(precision_contract(workload, h3_request=impl.request if workload == H3 else None,
+                                         livewan_request=impl.request if workload == LIVEWAN else None))
 
 
 def calibrate(args):
@@ -181,7 +184,7 @@ def main(argv):
     sub = parser.add_subparsers(dest="action", required=True)
     inventory = sub.add_parser("candidates", help="List actual native implementation bindings, never guessed costs")
     inventory.add_argument("--workload", required=True)
-    inventory.add_argument("--request", type=Path, help="Explicit bounded H3 or ORIGINAL Helios request JSON")
+    inventory.add_argument("--request", type=Path, help="Explicit bounded H3, ORIGINAL Helios or ORIGINAL LiveWan request JSON")
     inventory.add_argument("--output", type=Path)
     inventory.add_argument("--include-helios-safe-incumbent", action="store_true",
                            help="Opt-in exact No-GAN HSDP/C512/p0/w5 k-bundle; not GAN")
@@ -210,8 +213,9 @@ def main(argv):
             if args.request:
                 from .helios_implementation import NO_GAN,GAN
                 from .helios_request import OriginalHeliosRequest
-                require(args.workload in (H3,NO_GAN,GAN),'request JSON not supported for this workload')
-                request=(H3Request if args.workload==H3 else OriginalHeliosRequest).from_dict(_object(args.request))
+                require(args.workload in (H3,NO_GAN,GAN,LIVEWAN),'request JSON not supported for this workload')
+                Request = H3Request if args.workload==H3 else LiveWanRequest if args.workload==LIVEWAN else OriginalHeliosRequest
+                request=Request.from_dict(_object(args.request))
             result = candidate_inventory(args.workload,
                 request=request,
                 include_helios_safe_incumbent=args.include_helios_safe_incumbent)

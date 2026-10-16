@@ -51,6 +51,19 @@ def validated_profile(receipt: dict[str, Any], *, root: Path) -> dict[str, Any]:
     require(receipt.get("workload_semantics_hash") == fingerprint(semantic_contract(p)), "search semantics changed")
     require(receipt.get("execution_fingerprint") == fingerprint(c.to_dict()), "search execution identity changed")
     require(fingerprint(receipt["fully_resolved_profile"]) == fingerprint(p), "serialized profile was altered")
+    if c.workload == "livewan_crossscale_pipeline_best" and "request" in p["contract"]:
+        rebuilt = resolve_configuration(p, root=root, asset_config=receipt.get("asset_config"),
+                                        run_id=receipt["run_id"], mode=receipt["mode"])
+        require(receipt.get("native_plan") == rebuilt["native_plan"], "LiveWan request native plan changed")
+        require(receipt.get("livewan_request_trace_binding") == rebuilt.get("livewan_request_trace_binding"),
+                "LiveWan request trace binding changed")
+        require(len(receipt["nodes"]) == len(rebuilt["nodes"]), "LiveWan launch node inventory changed")
+        for actual, expected in zip(receipt["nodes"], rebuilt["nodes"]):
+            require(actual.get("resolved_native_plan") == expected["resolved_native_plan"], "LiveWan actual native shape/config changed")
+            require(actual.get("resolved_native_plan_sha256") == expected["resolved_native_plan_sha256"],
+                    "LiveWan expanded native plan SHA changed")
+            for key in ("DISTILLSCHEDULE_LIVEWAN_LAUNCH_PLAN", "DISTILLSCHEDULE_LIVEWAN_LAUNCH_PLAN_SHA256", "DISTILLSCHEDULE_LIVEWAN_REQUEST_ID"):
+                require(actual["environment"].get(key) == expected["environment"][key], "LiveWan launch plan binding changed")
     if "asset_config" in receipt:
         validate_resolved_asset_binding(receipt, p)
     return p
@@ -112,7 +125,8 @@ def rebind_plan(receipt: dict[str, Any], *, run_id: str,
         window = 5 if WanImplementation.parse(candidate_id).rollout_window is not None else None
         reference_id, peer = WanImplementation("fsdp", 512, False, window).id, WanImplementation("resident", 2048, True, window).id
     elif candidate_id.startswith(LIVEWAN_PREFIX):
-        reference_id, peer = LiveWanImplementation("fsdp").id, LiveWanImplementation("pipeline").id
+        request = LiveWanImplementation.parse(candidate_id).request
+        reference_id, peer = LiveWanImplementation("fsdp", request=request).id, LiveWanImplementation("pipeline", request=request).id
     elif candidate_id.startswith("joint-h3"):
         from dataclasses import replace
         impl = H3Implementation.parse(candidate_id)
@@ -240,6 +254,11 @@ class NativeTrialRunner:
         for family in ("joint-livewan1-", "joint-h3", "joint-helios1-"):
             require(self.reference.id.startswith(family) == self.bootstrap_peer.id.startswith(family),
                     "cannot mix generated native family and legacy arms")
+        if self.reference.id.startswith("joint-livewan1-"):
+            from .livewan_implementation import LiveWanImplementation
+            require(LiveWanImplementation.parse(self.reference.id).request ==
+                    LiveWanImplementation.parse(self.bootstrap_peer.id).request,
+                    "LiveWan anchor pair must share request/shape")
         if self.reference.id.startswith("joint-h3"):
             from .h3_implementation import H3Implementation
             ref, peer = (H3Implementation.parse(c.id) for c in (self.reference, self.bootstrap_peer))

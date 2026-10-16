@@ -192,7 +192,7 @@ def test_uniform_inventory_resolves_existing_family_bindings(workload):
     for row in result['candidates']:
         assert get_candidate(workload, row['id']).workload == workload
     if workload != H3:
-        with pytest.raises(ValueError, match='only for H3'): candidate_inventory(workload, request=LOW)
+        with pytest.raises(ValueError, match='request'): candidate_inventory(workload, request=LOW)
 
 
 def test_unified_calibrate_default_is_source_only_and_preserves_request(tmp_path, monkeypatch):

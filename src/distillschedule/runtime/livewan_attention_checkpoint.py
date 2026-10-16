@@ -30,6 +30,12 @@ PLAN_CONTRACT = {
 }
 
 
+def plan_contract(query_tokens: int = 19320):
+    if type(query_tokens) is not int or query_tokens not in (19320, 16560):
+        raise RuntimeError("unregistered ORIGINAL LiveWan attention geometry")
+    return {**PLAN_CONTRACT, "query_tokens": query_tokens, "key_tokens": query_tokens}
+
+
 def discover_flash_forward(flash_module: Any) -> tuple[Any, dict[str, Any]]:
     """Follow the actual public function to its registered op; reject drift."""
     function = flash_module.flash_attn_func
@@ -81,11 +87,13 @@ class AttentionCheckpointContexts:
     Our ledger additionally verifies operation metadata at each replay position.
     It stores no tensors. Production installation is intentionally separate.
     """
-    def __init__(self, torch: Any, op: Any, identity: dict[str, Any], *, self_attention_only: bool = False):
+    def __init__(self, torch: Any, op: Any, identity: dict[str, Any], *, self_attention_only: bool = False,
+                 query_tokens: int = 19320):
         self.torch = torch
         self.op = op
         self.identity = identity
         self.self_attention_only = self_attention_only
+        self.query_tokens = plan_contract(query_tokens)["query_tokens"]
         self.checkpoints: list[dict[str, Any]] = []
 
     def __call__(self):
@@ -101,7 +109,7 @@ class AttentionCheckpointContexts:
                 metadata = attention_metadata(self.torch, args, kwargs)
                 if self.self_attention_only:
                     q_shape, k_shape = metadata[0][0], metadata[1][0]
-                    if q_shape[1] != 19320 or k_shape[1] not in (19320, 512):
+                    if q_shape[1] != self.query_tokens or k_shape[1] not in (self.query_tokens, 512):
                         raise RuntimeError("C26 unregistered Critic attention sequence shape")
                     if k_shape[1] == 512:
                         return CheckpointPolicy.PREFER_RECOMPUTE
@@ -128,15 +136,16 @@ class AttentionCheckpointContexts:
                 "allow_cache_entry_mutation": False, "cpu_offload": False,
                 "rng_preservation": "UNCHANGED_CHECKPOINT_DEFAULT_TRUE",
                 "self_attention_only": self.self_attention_only,
+                "query_tokens": self.query_tokens, "key_tokens": self.query_tokens,
                 "production_installed": False}
 
 
 class CriticAttentionCheckpointProxy:
     """Opt-in process-local blockcausal.ckpt proxy; never patch global Torch."""
-    def __init__(self, checkpoint_module: Any, torch: Any, flash_module: Any):
+    def __init__(self, checkpoint_module: Any, torch: Any, flash_module: Any, *, query_tokens: int = 19320):
         self.module = checkpoint_module
         op, identity = discover_flash_forward(flash_module)
-        self.contexts = AttentionCheckpointContexts(torch, op, identity, self_attention_only=True)
+        self.contexts = AttentionCheckpointContexts(torch, op, identity, self_attention_only=True, query_tokens=query_tokens)
 
     def checkpoint(self, function: Any, *args: Any, **kwargs: Any):
         if (kwargs.get("use_reentrant") is not False or "context_fn" in kwargs
@@ -148,15 +157,16 @@ class CriticAttentionCheckpointProxy:
         r = self.contexts.receipt()
         r.update(enabled=True, execution_status="PASS", production_installed=True,
                  expected_checkpoint_calls=expected_calls)
-        if runtime_receipt_errors(r, rank=8, expected_calls=expected_calls):
+        if runtime_receipt_errors(r, rank=8, expected_calls=expected_calls, query_tokens=self.contexts.query_tokens):
             raise RuntimeError(f"C26 checkpoint replay census failed: {r}")
         return r
 
 
-def runtime_receipt_errors(r: dict[str, Any], *, rank: int, expected_calls: int) -> list[str]:
+def runtime_receipt_errors(r: dict[str, Any], *, rank: int, expected_calls: int, query_tokens: int = 19320) -> list[str]:
     if rank < 8:
         return [] if r.get("execution_status") == "NOT_APPLICABLE" and r.get("checkpoint_calls") == 0 else ["Generator SAC changed"]
     if (expected_calls <= 0 or r.get("name") != PLAN_CONTRACT["name"]
+        or (query_tokens != 19320 and (r.get("query_tokens") != query_tokens or r.get("key_tokens") != query_tokens))
         or r.get("source", {}).get("interface_sha256") != INTERFACE_SHA256
         or r.get("execution_status") != "PASS" or r.get("production_installed") is not True
         or r.get("self_attention_only") is not True or r.get("contract_failures") != 0

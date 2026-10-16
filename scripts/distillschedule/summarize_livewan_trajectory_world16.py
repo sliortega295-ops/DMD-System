@@ -42,6 +42,8 @@ def main() -> int:
     if args.cycles not in {1, 2, 5, 50}:
         raise ValueError("trajectory cycles must be one of 1, 2, 5, or 50")
     errors: list[str] = []
+    from distillschedule.runtime.livewan_geometry import launch_binding, receipt_errors
+    request, launch_plan_shas = launch_binding(args.run_root)
     rank_rows: dict[int, list[Any]] = {}
     final_receipts: dict[int, dict[str, Any]] = {}
     launch_modes: set[str] = set()
@@ -134,6 +136,7 @@ def main() -> int:
 
             errors.extend(f"rank{rank}: {error}" for error in rms_epilogue_errors(
                 dict(final.get("generator_rms_epilogue", {})), rank=rank, cycles=args.cycles,
+                request=request,
                 fuse_cast_square=pipeline_variant in {"c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"}))
         if pipeline_variant in {"c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"}:
             from distillschedule.runtime.livewan_rollout_cast_cache import runtime_receipt_errors as cast_errors
@@ -144,12 +147,13 @@ def main() -> int:
             from distillschedule.runtime.livewan_generator_modulation import runtime_receipt_errors as modulation_errors
 
             errors.extend(f"rank{rank}: {error}" for error in modulation_errors(
-                dict(final.get("generator_modulation", {})), rank=rank, cycles=args.cycles))
+                dict(final.get("generator_modulation", {})), rank=rank, cycles=args.cycles, request=request))
         if pipeline_variant in {"c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout"}:
             from distillschedule.runtime.livewan_generator_gate import runtime_receipt_errors as gate_errors
 
             errors.extend(f"rank{rank}: {error}" for error in gate_errors(
                 dict(final.get("generator_gate", {})), rank=rank, cycles=args.cycles,
+                request=request,
                 output_layout="row_major" if pipeline_variant == "c34-continuous-b16-residual-layout" else "native"))
         if pipeline_variant == "c27-continuous-b16-pinned-prompt-staging":
             from distillschedule.runtime.livewan_context_staging import runtime_receipt_errors as staging_errors
@@ -161,7 +165,7 @@ def main() -> int:
 
             errors.extend(f"rank{rank}: {error}" for error in sac_errors(
                 dict(final.get("critic_attention_checkpoint", {})), rank=rank,
-                expected_calls=args.cycles * 5 * 30))
+                expected_calls=args.cycles * 5 * 30, query_tokens=request.attention_tokens))
         if final.get("final_versions") != {
             "generator": args.cycles,
             "critic": 5 * args.cycles,
@@ -182,6 +186,10 @@ def main() -> int:
             errors.append(f"rank{rank}: trajectory incorrectly claims formal timing")
         if final.get("trajectory", {}).get("arm_id") != arm_id:
             errors.append(f"rank{rank}: trajectory arm identity changed")
+        errors.extend(f"rank{rank}: {error}" for error in receipt_errors(
+            final, request, expected_plan_sha256=launch_plan_shas.get(rank//8)))
+        if final.get("workload_request") not in (None, request.to_dict()):
+            errors.append(f"rank{rank}: request has no matching immutable launch plan")
         final_receipts[rank] = final
 
     identities = {
@@ -351,6 +359,8 @@ def main() -> int:
         "ordinary_numerical_drift_early_stop": False,
         "errors": errors,
     }
+    if launch_plan_shas:
+        result["workload_request"] = request.to_dict()
     atomic_json(args.output, result)
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if not errors else 1

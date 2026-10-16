@@ -32,25 +32,31 @@ def implementation_type(workload):
     return LiveWanImplementation if workload == LIVEWAN else H3Implementation
 
 
-def implementations(workload, *, h3_request=None, explicit_cache=False):
+def implementations(workload, *, h3_request=None, livewan_request=None, explicit_cache=False):
     implementation_type(workload)
     if workload == LIVEWAN:
         from .livewan_implementation import implementations as values
-        return values()
+        return values(request=livewan_request)
     from .h3_implementation import implementations as h3_implementations
     from .h3_request import H3Request
     return h3_implementations(request=h3_request or H3Request(), explicit_cache=explicit_cache)
 
 
-def precision_contract(workload, *, h3_request=None):
+def precision_contract(workload, *, h3_request=None, livewan_request=None):
     """Pin native precision source/config; do not pretend this is a dtype probe."""
     p = h3_request.profile() if workload == H3 and h3_request is not None else load_profile(workload)
     source = ("src/distillschedule/runtime/livewan_crossscale_worker.py" if workload == LIVEWAN
               else "src/distillschedule/backends/training/minimax_h3/grid_entrypoint.py")
-    return dict(workload=workload, native_precision_source_sha256=file_sha256(repository_root()/source),
+    result = dict(workload=workload, native_precision_source_sha256=file_sha256(repository_root()/source),
                 dependency_contract=p.get("dependency_contract"),
                 model_config=p["runtime"].get("model_config"),
                 scope="SOURCE_BOUND_NATIVE_PRECISION_NOT_NEW_DTYPE_POLICY")
+    if workload == LIVEWAN and livewan_request is not None:
+        from .livewan_request import LiveWanRequest
+        if livewan_request != LiveWanRequest():
+            result.update(workload_request=livewan_request.to_dict(), latent_shape=list(livewan_request.latent_shape),
+                          attention_tokens=livewan_request.attention_tokens)
+    return result
 
 
 def native_graph(workload):
@@ -87,7 +93,8 @@ def native_graph(workload):
 def operation_contract(workload, op, impl, *, precision_fingerprint=None):
     return dict(adapter=ADAPTER, workload=workload, operation_id=op.operation_id,
         implementation=impl.assignment, precision_fingerprint=(precision_fingerprint or fingerprint(
-            precision_contract(workload, h3_request=impl.request if workload == H3 else None))),
+            precision_contract(workload, h3_request=impl.request if workload == H3 else None,
+                               livewan_request=impl.request if workload == LIVEWAN else None))),
         memory_definition=MEMORY, timing_definition="CONTEXTUAL_CUDA_STREAM_ENVELOPE_NOT_FORMAL_WALL",
         aggregation="MAX_LOCAL_DURATION_PER_PARTITION_NOT_CROSS_DEVICE_CLOCK_UNION")
 
@@ -117,11 +124,11 @@ def observed_operations(workload, raw):
     return rows
 
 
-def capability_report(workload, *, h3_request=None):
-    values = implementations(workload, h3_request=h3_request, explicit_cache=workload == H3)
+def capability_report(workload, *, h3_request=None, livewan_request=None):
+    values = implementations(workload, h3_request=h3_request, livewan_request=livewan_request, explicit_cache=workload == H3)
     return dict(adapter=ADAPTER, workload=workload,
         native_implementations=[dict(id=i.id, assignment=i.assignment) for i in values],
-        precision_fingerprint=fingerprint(precision_contract(workload, h3_request=h3_request)),
+        precision_fingerprint=fingerprint(precision_contract(workload, h3_request=h3_request, livewan_request=livewan_request)),
         arbitrary_pool_dag_lowering=False, gpu_execution="NOT_RUN", cost_calibration="REQUIRED",
         limitation="FIXED_SOURCE_NATIVE_SCHEDULES_ONLY; NO_INDEPENDENT_G_SCORE_OR_LINK_PREDICTION")
 
@@ -146,7 +153,7 @@ def build_problem(layout_path, *, root=None):
     rows = layout["implementations"]
     require(isinstance(rows, dict) and bool(rows), "native layout implementation inventory missing")
     parsed = [implementation_type(w).parse(k) for k in rows]
-    request = parsed[0].request if w == H3 else None
+    request = parsed[0].request
     explicit_cache = w == H3 and parsed[0].cache_policy != "legacy_cpu_staged"
     if w == H3:
         require(all(i.request == request and (i.cache_policy != "legacy_cpu_staged") == explicit_cache for i in parsed),
@@ -154,14 +161,19 @@ def build_problem(layout_path, *, root=None):
         require(all(i.rollout_window is None for i in parsed), "H3 action candidates require action-qualified layout")
         require(not explicit_cache or bool(layout.get("calibration_results")),
                 "H3 v3 requires joined source-qualified calibration results; hand-written cost layouts are not admitted")
-    precision = fingerprint(precision_contract(w, h3_request=request))
+    if w == LIVEWAN:
+        require(all(i.request == request for i in parsed), "LiveWan layout cannot mix requests/shapes")
+    precision = fingerprint(precision_contract(w, h3_request=request if w == H3 else None,
+                                              livewan_request=request if w == LIVEWAN else None))
     semantic_profile = request.profile() if request is not None else load_profile(w)
     require(binding["semantic_fingerprint"] == fingerprint(semantic_contract(semantic_profile))
             and binding["precision_fingerprint"] == precision, "native workload/precision changed")
-    all_impls = implementations(w, h3_request=request, explicit_cache=explicit_cache)
+    all_impls = implementations(w, h3_request=request if w == H3 else None,
+                               livewan_request=request if w == LIVEWAN else None, explicit_cache=explicit_cache)
     require(set(rows) <= {i.id for i in all_impls} and len(rows) >= 2, "invalid calibrated implementation inventory")
     graph, states, rules = native_graph(w), [], []
-    if explicit_cache:
+    from .livewan_request import LiveWanRequest
+    if explicit_cache or (w == LIVEWAN and request != LiveWanRequest()):
         from dataclasses import replace
         graph = replace(graph, metadata={**graph.metadata, "workload_request": request.to_dict(),
                                          "workload_request_sha256": fingerprint(request.to_dict())})

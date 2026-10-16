@@ -14,7 +14,7 @@ import zlib
 
 from .registry import (file_sha256, fingerprint, git_head, load_profile, source_layout, repository_root,
                        verify_assets, write_new_json, _require, validate_resolved_asset_binding,
-                       verify_python_path_overlays)
+                       verify_python_path_overlays, _original_helios_trace_hash_environment)
 
 
 def ssh_process_environment() -> dict[str, str]:
@@ -78,8 +78,7 @@ def validate_local(receipt: dict[str, Any], *, root: Path, node_rank: int | None
         request = OriginalHeliosRequest.from_dict(profile["contract"][TRACE_KEY])
         trace_binding = receipt["original_helios_trace_binding"]
         _require(trace_binding["request_sha256"] == request.digest, "Helios admission request differs")
-        request_trace_key = ("DISTILLSCHEDULE_GAN_TRACE_HASH" if request.variant == "gan"
-                             else "DISTILLSCHEDULE_TRACE_BUNDLE_HASH")
+        request_trace_key = _original_helios_trace_hash_environment(profile)
     for node in receipt["nodes"]:
         for key, expected in profile["runtime"]["environment"].items():
             if key == request_trace_key:
@@ -194,6 +193,14 @@ def execute_node(payload: dict[str, Any]) -> int:
     write_new_json(out / f"effective-contract.node{index}.json", {**receipt, "local_validation": checked})
     if "resolved_model_config" in node:
         write_new_json(Path(node["environment"]["H3_CONFIG"]), node["resolved_model_config"])
+    if receipt["profile_id"] == "livewan_crossscale_pipeline_best" and "request" in receipt["fully_resolved_profile"]["contract"]:
+        from distillschedule.search.livewan_request import LiveWanRequest, request_from_plan
+        request = LiveWanRequest.from_dict(receipt["fully_resolved_profile"]["contract"]["request"])
+        _require(request_from_plan(node["resolved_native_plan"]) == request,
+                 "LiveWan selected plan and actual launcher shape differ")
+        _require(node["environment"].get("DISTILLSCHEDULE_LIVEWAN_LAUNCH_PLAN_SHA256") == fingerprint(node["resolved_native_plan"]),
+                 "LiveWan launcher plan digest changed")
+        write_new_json(Path(node["environment"]["DISTILLSCHEDULE_LIVEWAN_LAUNCH_PLAN"]), node["resolved_native_plan"])
     # Everything above is CPU-only. The explicit `run` command alone gets here.
     env = clean_environment(node)
     wrapper = root / "scripts/distillschedule/remote_stage_wrapper.sh"

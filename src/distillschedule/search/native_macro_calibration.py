@@ -23,7 +23,8 @@ def assemble_native(receipt, preparation, identity, runtime_identity_evidence):
     for field, key in (("source_head", "integration_head"), ("asset_fingerprint", "asset_fingerprint"),
                        ("semantic_fingerprint", "workload_semantics_hash")):
         require(identity[field] == receipt[key], "calibration source/assets/semantics changed")
-    precision = fingerprint(precision_contract(w, h3_request=impl.request if w == H3 else None))
+    precision = fingerprint(precision_contract(w, h3_request=impl.request if w == H3 else None,
+                                              livewan_request=impl.request if w == LIVEWAN else None))
     require(identity["precision_fingerprint"] == precision, "calibration precision changed")
     verify_measurement_runtime({"runtime_identity_evidence": runtime_identity_evidence}, identity)
     require(preparation["source_head"] == identity["source_head"] and preparation["candidate_id"] == impl.id,
@@ -81,6 +82,8 @@ def assemble_native(receipt, preparation, identity, runtime_identity_evidence):
                     and marker.get("formal_timing_eligible") is False,
                     "native rank/calibration run binding failed")
             cal = read(p)
+            from distillschedule.runtime.livewan_geometry import receipt_errors
+            require(not receipt_errors(cal, impl.request), "LiveWan calibration request/actual shape differs")
             sources.append(binding(p))
             peak = raw["peak_memory"]["max_reserved_bytes"]
         else:
@@ -205,6 +208,9 @@ def _read_assembly(results, *, expected_head):
             if not isinstance(cal, dict) or cal.get("schema_version") != "distillschedule.async_range_calibration.v1":
                 continue
             rank = cal["rank"]
+            if workload == LIVEWAN:
+                from distillschedule.runtime.livewan_geometry import receipt_errors
+                require(not receipt_errors(cal, impl.request), "LiveWan source calibration request/actual shape differs")
             require(cal["source_head"] == expected_head and cal["implementation"] == cid,
                     "native calibration rank source/implementation changed")
             if workload == LIVEWAN and impl.placement == "pipeline" and rank < 8:

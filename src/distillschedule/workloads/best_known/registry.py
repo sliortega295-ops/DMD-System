@@ -354,7 +354,13 @@ def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: P
         from distillschedule.core.config import _load_with_includes
         files: list[Path] = []
         raw_plan = _load_with_includes(root / profile["runtime"]["typed_plan"], stack=(), sources=files)
-        native_plan = {"template": raw_plan, "digest": fingerprint(raw_plan), "source_files": [str(f.relative_to(root)) for f in dict.fromkeys(files)]}
+        template_digest = fingerprint(raw_plan)
+        if workload == "livewan_crossscale_pipeline_best" and "request" in profile["contract"]:
+            from distillschedule.search.livewan_request import LiveWanRequest, lower_native_plan
+            raw_plan = lower_native_plan(raw_plan, LiveWanRequest.from_dict(profile["contract"]["request"]))
+        native_plan = {"template": raw_plan, "digest": fingerprint(raw_plan), "template_digest": template_digest,
+                       "template_file_sha256": file_sha256(root / profile["runtime"]["typed_plan"]),
+                       "source_files": [str(f.relative_to(root)) for f in dict.fromkeys(files)]}
     receipt = {
         "schema_version": "distillschedule.best_known.receipt.v1", "integration_head": head,
         "profile_id": workload, "profile_version": profile["profile_version"],
@@ -380,6 +386,26 @@ def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: P
     receipt["asset_fingerprint"] = fingerprint(asset_identity(assets))
     receipt["asset_config"] = assets
     receipt["scope"] = "RESOLVED_NOT_EXECUTED"
+    if workload == "livewan_crossscale_pipeline_best" and "request" in profile["contract"]:
+        from distillschedule.search.livewan_request import LiveWanRequest, lower_native_plan
+        from distillschedule.runtime.livewan_crossscale_worker import FormalTrace, Bootstrap
+        request = LiveWanRequest.from_dict(profile["contract"]["request"])
+        spec = assets["assets"]["trace"]
+        _require(file_sha256(Path(spec["path"])) == spec["sha256"], "LiveWan request trace file SHA mismatch")
+        trace = FormalTrace.load(spec["path"], expected_cycles=2, expected_global_batch=16, request=request)
+        boot_spec, source_spec = assets["assets"]["bootstrap"], assets["assets"]["source_receipt"]
+        _require(file_sha256(Path(boot_spec["path"])) == boot_spec["sha256"], "LiveWan request bootstrap file SHA mismatch")
+        boot = Bootstrap.load(boot_spec["path"], trace=trace)
+        _require(boot.value["trace"]["path"] == str(trace.path)
+                 and boot.value["source_receipt"]["path"] == source_spec["path"],
+                 "LiveWan request bootstrap/trace/source asset paths differ")
+        _require(file_sha256(Path(source_spec["path"])) == source_spec["sha256"], "LiveWan request source file SHA mismatch")
+        _require(_object(Path(source_spec["path"])).get("source_receipt_sha256") == boot.value["source_receipt"]["sha256"],
+                 "LiveWan request bootstrap/source receipt differs")
+        native_plan["template"] = lower_native_plan(native_plan["template"], request, trace=trace)
+        native_plan["digest"] = fingerprint(native_plan["template"])
+        receipt["livewan_request_trace_binding"] = dict(request=request.to_dict(), trace_sha256=trace.sha256,
+                                                      trace_file_sha256=spec["sha256"])
     correctness = assets.get("correctness")
     comparison = assets.get("trajectory_comparison")
     if workload.startswith("wan13b") and native_mode in {"two-cycle-timing", "two-cycle-calibration"}:
@@ -461,7 +487,7 @@ def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: P
         if "model_config" in profile["runtime"]:
             node["resolved_model_config"] = _substitute(profile["runtime"]["model_config"],repl)
         if native_plan is not None:
-            _require(native_plan["digest"] == profile["runtime"]["typed_plan_template_sha256"], "LiveWan typed plan changed without canonical update")
+            _require(native_plan["template_digest"] == profile["runtime"]["typed_plan_template_sha256"], "LiveWan typed plan changed without canonical update")
             def expand_native(value: Any) -> Any:
                 if isinstance(value, str):
                     def subst(match: Any) -> str:
@@ -474,6 +500,11 @@ def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: P
                 return value
             from distillschedule.core.plan import ExecutionPlan
             node["resolved_native_plan"] = ExecutionPlan.from_mapping(expand_native(native_plan["template"])).to_dict()
+            node["resolved_native_plan_sha256"] = fingerprint(node["resolved_native_plan"])
+            if workload == "livewan_crossscale_pipeline_best" and "request" in profile["contract"]:
+                env["DISTILLSCHEDULE_LIVEWAN_LAUNCH_PLAN"] = str(Path(output) / f"launch-native-plan.node{i}.json")
+                env["DISTILLSCHEDULE_LIVEWAN_LAUNCH_PLAN_SHA256"] = fingerprint(node["resolved_native_plan"])
+                env["DISTILLSCHEDULE_LIVEWAN_REQUEST_ID"] = request.id
         receipt["nodes"].append(node)
     return receipt
 

@@ -59,6 +59,15 @@ def checked_summary(receipt: dict[str, Any]) -> tuple[Path, dict[str, Any]]:
     require(all(summary.get("integration_binding", {}).get(k) == v for k, v in expected.items()),
             "native summary does not bind this execution")
     require(summary.get("status") == "PASS" and not summary.get("errors"), "native summary failed")
+    if receipt["profile_id"] == LIVEWAN and "request" in receipt.get("fully_resolved_profile", {}).get("contract", {}):
+        from .livewan_request import LiveWanRequest
+        from distillschedule.runtime.livewan_geometry import receipt_errors
+        request = LiveWanRequest.from_dict(receipt["fully_resolved_profile"]["contract"]["request"])
+        require(summary.get("workload_request") == request.to_dict(), "native summary LiveWan request differs")
+        for rank in range(16):
+            raw = read(out / "receipts" / f"rank_{rank:03d}.json")
+            errors = receipt_errors(raw, request, expected_plan_sha256=fingerprint(receipt["nodes"][rank//8]["resolved_native_plan"]))
+            require(not errors, f"rank{rank} native request/actual shape failed: {errors}")
     if receipt["profile_id"] == LIVEWAN and receipt["native_mode"] == "trajectory":
         # This native writer counts rank-cycle rows, not ranks. Do not invent
         # rank_count or accept 32 rows without checking the sixteen owners.
@@ -106,7 +115,9 @@ def prepare_pair(reference: dict[str, Any], candidate: dict[str, Any], *,
     from .wan_implementation import is_generated, WanImplementation
     ref_id = reference["search_candidate"]["id"]
     new_ref = reference["profile_id"] == WAN and is_generated(ref_id)
-    require(ref_id == "fsdp-reference" or ref_id == "joint-livewan1-fsdp-m0-g0-r0"
+    from .livewan_implementation import LiveWanImplementation
+    livewan_ref = reference["profile_id"] == LIVEWAN and ref_id.startswith("joint-livewan1-")
+    require(ref_id == "fsdp-reference" or (livewan_ref and LiveWanImplementation.parse(ref_id).placement == "fsdp")
             or (new_ref and WanImplementation.parse(ref_id).placement == "fsdp"),
             "unregistered baseline")
     require(new_ref == is_generated(candidate["search_candidate"]["id"]),

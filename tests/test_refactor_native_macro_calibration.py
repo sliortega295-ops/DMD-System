@@ -23,6 +23,7 @@ from distillschedule.search.h3_native import (
     compare_native_two_cycle, read_native_receipts, summarize_native_two_cycle,
 )
 from distillschedule.search.livewan_implementation import LIVEWAN, LiveWanImplementation
+from distillschedule.search.livewan_request import LiveWanRequest
 from distillschedule.search.native_macro_adapter import (
     ADAPTER, MEMORY, native_graph, operation_contract, precision_contract,
 )
@@ -35,6 +36,8 @@ from test_refactor_h3_search_native import HEAD, _receipts, _with_rng
 CASES = (
     pytest.param(LIVEWAN, LiveWanImplementation("fsdp"), id="livewan-fsdp"),
     pytest.param(LIVEWAN, LiveWanImplementation("pipeline", True, True, True), id="livewan-pipeline"),
+    pytest.param(LIVEWAN, LiveWanImplementation("fsdp",request=LiveWanRequest(frames=69)), id="livewan69-fsdp"),
+    pytest.param(LIVEWAN, LiveWanImplementation("pipeline",True,True,True,request=LiveWanRequest(frames=69)), id="livewan69-pipeline"),
     pytest.param(H3, H3Implementation(1, 64), id="h3"),
 )
 CAPACITY = 4096
@@ -69,6 +72,8 @@ def _calibration(workload, impl, rank):
         calibration_only=True, formal_timing_eligible=False, profiled=False,
         extra_synchronizations=0, extra_collectives=0, tensor_value_reads=0,
         post_setup_static_bytes=100 + rank, rows=rows, commit_boundaries=boundaries,
+        **(dict(workload_request=impl.request.to_dict(),actual_latent_shapes=[list(impl.request.latent_shape)],
+                installed_plan_sha256='f'*64) if workload==LIVEWAN else {}),
         fixture_scope="CPU_FIXTURE_ONLY_NOT_GPU_OBSERVATIONS")
 
 
@@ -87,8 +92,9 @@ def _fixture(tmp_path, monkeypatch, workload, impl):
     run = tmp_path / "cpu-calibration"
     run.mkdir()
     identity = dict(source_head=HEAD, asset_fingerprint="a" * 64,
-        semantic_fingerprint=fingerprint(semantic_contract(impl.request.profile() if workload == H3 else load_profile(workload))),
-        precision_fingerprint=fingerprint(precision_contract(workload, h3_request=impl.request if workload == H3 else None)),
+        semantic_fingerprint=fingerprint(semantic_contract(impl.request.profile())),
+        precision_fingerprint=fingerprint(precision_contract(workload, h3_request=impl.request if workload == H3 else None,
+            livewan_request=impl.request if workload == LIVEWAN else None)),
         **observed_binding(_observations(), source_head=HEAD))
     receipt = dict(profile_id=workload, mode="calibration", run_id=run.name,
         integration_head=HEAD, asset_fingerprint=identity["asset_fingerprint"],
@@ -327,6 +333,15 @@ def test_h3_raw_reconciliation_rejects_changed_receipt_hash(tmp_path, monkeypatc
     with pytest.raises(ValueError, match="H3 native evidence changed after summary"):
         _assemble(f)
     assert not (f.run / "macro-costs").exists()
+
+
+@pytest.mark.parametrize('key,value', [('workload_request',LiveWanRequest().to_dict()),
+    ('actual_latent_shapes',[[1,16,21,46,80]]),('actual_latent_shapes',[]),('installed_plan_sha256',None)])
+def test_new_request_cannot_reuse_old_native_calibration(tmp_path,monkeypatch,key,value):
+    f=_fixture(tmp_path,monkeypatch,LIVEWAN,LiveWanImplementation('pipeline',request=LiveWanRequest(frames=69)))
+    _mutate_calibration(f,key,value)
+    with pytest.raises(ValueError,match='request/actual shape'):_assemble(f)
+    assert not (f.run/'macro-costs').exists()
 
 
 @pytest.mark.parametrize("workload,impl", CASES)

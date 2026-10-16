@@ -265,6 +265,27 @@ def test_action_bijection_versions_and_copies_reconcile_but_are_not_a_cost_model
     assert g[0]['count'] == 10
 
 
+def test_request_qualified_actions_reject_old_actual_shape():
+    from math import prod
+    from distillschedule.search.livewan_request import LiveWanRequest
+    from distillschedule.search.livewan_implementation import LiveWanImplementation
+    from distillschedule.search.livewan_action_observation import validate_action_observations
+    req=LiveWanRequest(frames=69);raws=action_fixture();nbytes=prod(req.latent_shape)*4
+    for raw in raws:
+        raw.update(implementation=LiveWanImplementation('pipeline',True,True,True,request=req).id,
+            workload_request=req.to_dict(),actual_latent_shapes=[list(req.latent_shape)],installed_plan_sha256='a'*64)
+        for row in raw['rows'][1:]:row['metadata'].update(workload_request=req.to_dict(),latent_shape=list(req.latent_shape))
+        transport=raw['native_transport_contract']['runahead']
+        transport.update(payload_shape=list(req.latent_shape),payload_bytes=nbytes,
+            d2h_bytes=nbytes*17 if raw['rank']<8 else 0,h2d_bytes=0 if raw['rank']<8 else nbytes*17)
+        for row in raw['transport_observation']['rows']:
+            if not row['kind'].startswith('shadow_'):row['bytes']=nbytes
+    assert validate_action_observations(raws,expected_head='a'*40)['rank_count']==16
+    raws[0]['actual_latent_shapes']=[[1,16,21,46,80]]
+    with pytest.raises(ValueError,match='request|shape'):
+        validate_action_observations(raws,expected_head='a'*40)
+
+
 @pytest.mark.parametrize('failure', ['rank','source','version','sample','bytes','parent','helpers',
                                    'backward_rng','backward_duplicate','shadow_missing','shadow_layout','cycle_distribution',
                                    'host_missing','paired_bytes','arithmetic_lane'])

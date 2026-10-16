@@ -20,6 +20,9 @@ import sys
 import time
 from typing import Any, Mapping, Sequence
 
+from distillschedule.search.livewan_request import LiveWanRequest, request_from_plan, validate_teacher_sample
+from distillschedule.runtime.livewan_geometry import geometry, install_geometry, latent_shape
+
 from distillschedule.evidence.trajectory_coarse import (
     AppendOnlyTrajectoryWriter,
     TrajectoryCycleReceipt,
@@ -142,6 +145,16 @@ def _require(condition: bool, message: str) -> None:
 
 
 _operation_calibrator = None  # process-local, explicit diagnostic opt-in only
+_observed_latent_shapes: set[tuple[int, ...]] = set()
+
+
+def _record_latent_metadata(value):
+    if value is None:
+        return
+    shape = tuple(int(v) for v in value.shape)
+    _require(shape[0] in (1, 2) and shape[1:] == latent_shape()[1:],
+             f"actual native latent shape differs from request: {shape}")
+    _observed_latent_shapes.add(shape)
 
 
 def _observe_native_action(kind: str):
@@ -154,8 +167,14 @@ def _observe_native_action(kind: str):
     def decorate(function):
         @wraps(function)
         def call(*args, **kwargs):
+            x0 = kwargs.get('x0')
+            if x0 is not None:
+                _record_latent_metadata(x0)
             if _operation_calibrator is None:
-                return function(*args, **kwargs)
+                result = function(*args, **kwargs)
+                if isinstance(result, PreparedRollout):
+                    _record_latent_metadata(result.x0)
+                return result
             rows = kwargs.get('rows')
             if rows is None:
                 row = kwargs.get('row')
@@ -163,10 +182,14 @@ def _observe_native_action(kind: str):
                     row = kwargs['prepared'].row
                 rows = () if row is None else (row,)
             metadata = dict(action_kind=kind, source_function=function.__name__,
+                workload_request=geometry().request.to_dict(), latent_shape=list(latent_shape()),
                 rows=[dict(operation_key=r.operation_key, logical_step=r.logical_step,
                            logical_slot=r.logical_slot, seeds=dict(r.seeds)) for r in rows])
             with _operation_calibrator.range('livewan/native/' + kind, metadata=metadata):
-                return function(*args, **kwargs)
+                result = function(*args, **kwargs)
+                if isinstance(result, PreparedRollout):
+                    _record_latent_metadata(result.x0)
+                return result
         return call
     return decorate
 
@@ -210,6 +233,7 @@ class OperationTraceRow:
     seeds: Mapping[str, int]
     generator_update: bool
     critic_update: bool
+    request: LiveWanRequest = LiveWanRequest()
 
     @classmethod
     def from_mapping(
@@ -219,6 +243,7 @@ class OperationTraceRow:
         total_steps: int = FULL5_STEPS,
         cycle_length: int = FULL5_STEPS,
         global_batch: int = GLOBAL_BATCH,
+        request: LiveWanRequest = LiveWanRequest(),
     ) -> "OperationTraceRow":
         required_seeds = {
             "rollout",
@@ -242,6 +267,7 @@ class OperationTraceRow:
             seeds=seeds,
             generator_update=bool(value["generator_update"]),
             critic_update=bool(value["critic_update"]),
+            request=request,
         )
         cycle_index = row.logical_step // cycle_length
         cycle_step = row.logical_step % cycle_length
@@ -280,7 +306,7 @@ class OperationTraceRow:
 
     @property
     def new_blocks(self) -> int:
-        return (LATENT_SHAPE[2] - self.world_frames) // BLOCK_FRAMES
+        return self.request.new_blocks(self.world_frames)
 
 
 @dataclass(frozen=True)
@@ -294,6 +320,7 @@ class FormalTrace:
     steps: int = FULL5_STEPS
     cycles: int = 1
     source_reuse_across_cycles: bool = False
+    request: LiveWanRequest = LiveWanRequest()
 
     @classmethod
     def load(
@@ -302,9 +329,22 @@ class FormalTrace:
         *,
         expected_cycles: int = 1,
         expected_global_batch: int = GLOBAL_BATCH,
+        request: LiveWanRequest | None = None,
     ) -> "FormalTrace":
         resolved = Path(path).expanduser().resolve()
         value = json.loads(resolved.read_text(encoding="utf-8"))
+        declared = value.get("workload_request")
+        actual_request = LiveWanRequest.from_dict(declared) if declared is not None else LiveWanRequest()
+        _require(request is None or request == actual_request, "trace workload request/shape mismatch")
+        if actual_request != LiveWanRequest():
+            from distillschedule.workloads.best_known.registry import fingerprint
+            _require(expected_cycles == 2 and expected_global_batch == 16, "new LiveWan request requires two cycles/world16/B16")
+            _require(value.get("workload_request_sha256") == fingerprint(actual_request.to_dict()),
+                     "trace request SHA mismatch")
+            _require(value.get("sample_generation") == {
+                "method": "gen_teacher", "livewan_commit": LIVEWAN_COMMIT,
+                "frames": actual_request.frames, "steps": 40, "size": "1.3B"},
+                "trace requires fresh ORIGINAL gen_teacher 40-step 1.3B samples")
         _require(value.get("livewan_commit") == LIVEWAN_COMMIT, "trace LiveWan revision mismatch")
         _require(value.get("wan21_commit") == WAN21_COMMIT, "trace Wan2.1 revision mismatch")
         _require(int(value.get("world_size", -1)) == WORLD_SIZE, "trace is not world16")
@@ -335,6 +375,7 @@ class FormalTrace:
                 total_steps=steps,
                 cycle_length=cycle_length,
                 global_batch=global_batch,
+                request=actual_request,
             )
             for row in value["rows"]
         )
@@ -346,6 +387,21 @@ class FormalTrace:
             len(rows) == steps * global_batch and pairs == expected,
             "trace is not a steps x global-batch bijection",
         )
+        if actual_request != LiveWanRequest():
+            _require([(r.logical_step, r.logical_slot) for r in rows] == sorted(pairs),
+                     "new LiveWan trace row order differs from step/slot indexing")
+            _require(len({r.sample_path for r in rows}) == 80
+                     and len({r.sample_sha256 for r in rows}) == 80
+                     and all(r.sample_sha256 is not None and len(r.sample_sha256) == 64 for r in rows),
+                     "new LiveWan trace requires 80 unique hash-bound fresh samples")
+            by_key = {(r.logical_step, r.logical_slot): r for r in rows}
+            _require(all((r.sample_path, r.sample_sha256, r.dataset_index, r.world_frames, r.rope_gap) ==
+                         (by_key[(r.logical_step % 5, r.logical_slot)].sample_path,
+                          by_key[(r.logical_step % 5, r.logical_slot)].sample_sha256,
+                          by_key[(r.logical_step % 5, r.logical_slot)].dataset_index,
+                          by_key[(r.logical_step % 5, r.logical_slot)].world_frames,
+                          by_key[(r.logical_step % 5, r.logical_slot)].rope_gap) for r in rows),
+                     "new LiveWan trace source reuse differs across cycles")
         prompts = dict(value["prompts"])
         prompts_path = Path(prompts["path"]).expanduser().resolve()
         _require(prompts_path.is_file(), "trace prompt bundle is missing")
@@ -360,6 +416,7 @@ class FormalTrace:
             steps,
             cycles,
             source_reuse,
+            actual_request,
         )
 
     def row(self, step: int, slot: int) -> OperationTraceRow:
@@ -1320,7 +1377,7 @@ def _generator_runahead_transport_enabled(
         "logical_steps": [1, 2, 3, 4],
         "waves_per_step": waves_per_step,
         "payload_dtype": "float32",
-        "payload_shape": list(LATENT_SHAPE),
+        "payload_shape": list(latent_shape()),
         "pinned_host": True,
         "background_sender_threads_per_rank": 1,
         "preposted_receives": True,
@@ -2000,15 +2057,24 @@ class InputLoader:
         return self.prompts["neg"][0].float().unsqueeze(0)
 
     def load(self, row: OperationTraceRow) -> tuple[Any, Any, int]:
+        if self.trace.request != LiveWanRequest():
+            _require(row.request == self.trace.request, "input row request/shape differs from trace")
+            _require(row.sample_sha256 is not None and sha256_file(Path(row.sample_path)) == row.sample_sha256,
+                     f"actual sample SHA mismatch for {row.operation_key}")
         value = self.torch.load(row.sample_path, map_location="cpu", weights_only=False)
-        latent = value["latents"].float()[:, : LATENT_SHAPE[2]]
+        request = self.trace.request
+        latent = value["latents"].float()
+        if request == LiveWanRequest():
+            latent = latent[:, : request.latent_shape[2]]  # historical default prefix contract
+        else:
+            validate_teacher_sample(value, request)
         prompt_index = int(value["prompt_idx"])
         _require(
             prompt_index == row.dataset_index,
             f"trace/sample prompt identity mismatch for {row.operation_key}",
         )
         context = self.prompts["pos"][prompt_index].float()
-        _require(tuple(latent.shape) == LATENT_SHAPE[1:], f"latent shape mismatch for {row.operation_key}")
+        _require(tuple(latent.shape) == request.latent_shape[1:], f"latent shape mismatch for {row.operation_key}")
         _require(tuple(context.shape) == TEXT_SHAPE[1:], f"text shape mismatch for {row.operation_key}")
         return latent, context, prompt_index
 
@@ -2085,7 +2151,7 @@ def prepare_rollout(
         blocks, recs = streamer.rollout_record(row.new_blocks, generator=generator)
     new = torch.cat([value.detach() for value in blocks], dim=2)
     x0 = torch.cat([z_teacher[:, :, : row.world_frames], new], dim=2)
-    _require(tuple(x0.shape) == LATENT_SHAPE, f"rollout shape mismatch at {row.operation_key}")
+    _require(tuple(x0.shape) == latent_shape(), f"rollout shape mismatch at {row.operation_key}")
     return PreparedRollout(
         row=row,
         streamer=streamer,
@@ -2117,7 +2183,7 @@ def build_score_context(torch: Any, *, bundle: ModelBundle, loader: InputLoader,
     )
     _require(critic_model is not None, "Critic model bundle is incomplete")
     _, _, hp, wp = latent_geometry(640, 368)
-    rope = make_rope_table(critic_model, hp, wp, LATENT_SHAPE[2] + 8, device)
+    rope = make_rope_table(critic_model, hp, wp, latent_shape()[2] + 8, device)
     negative = None
     if bundle.teacher is not None:
         with torch.no_grad():
@@ -3066,7 +3132,7 @@ def _append_trajectory_cycle_receipt(
             gradient_norms=gradient_norms,
             tensor_contracts={
                 "rollout_latent": {
-                    "shape": list(LATENT_SHAPE),
+                    "shape": list(latent_shape()),
                     "dtype": "torch.float32",
                 }
             },
@@ -3372,7 +3438,8 @@ def _score_rmsnorm_kernel_enabled(plan: Mapping[str, Any], *, mode: str) -> bool
 
 def _c30_checkpoint_composition_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
     from distillschedule.runtime.livewan_c30_contract import PLAN_CONTRACT, C31_PLAN_CONTRACT, C32_PLAN_CONTRACT, C33_PLAN_CONTRACT, C34_PLAN_CONTRACT
-    from distillschedule.runtime.livewan_attention_checkpoint import PLAN_CONTRACT as SAC
+    from distillschedule.runtime.livewan_attention_checkpoint import plan_contract
+    SAC = plan_contract(request_from_plan(plan).attention_tokens)
     from distillschedule.runtime.livewan_generator_rms_epilogue import PLAN_CONTRACT as RMS
     from distillschedule.runtime.livewan_generator_rms_epilogue import CAST_SQUARE_PLAN_CONTRACT
     from distillschedule.runtime.livewan_rollout_cast_cache import PLAN_CONTRACT as CAST
@@ -3501,12 +3568,12 @@ def _score_prompt_staging_enabled(plan: Mapping[str, Any], *, mode: str) -> bool
 
 
 def _critic_attention_checkpoint_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
-    from distillschedule.runtime.livewan_attention_checkpoint import PLAN_CONTRACT
+    from distillschedule.runtime.livewan_attention_checkpoint import plan_contract
 
     value = plan.get("metadata", {}).get("critic_attention_checkpoint")
     if value is None:
         return False
-    _require(mode == "pipeline" and value == PLAN_CONTRACT, "C26 SAC contract changed")
+    _require(mode == "pipeline" and value == plan_contract(request_from_plan(plan).attention_tokens), "C26 SAC contract changed")
     _require(_score_rmsnorm_kernel_enabled(plan, mode=mode), "C26 requires C25 parent")
     _require(_continuous_pipeline_contract(plan, mode=mode) is not None, "C26 requires continuous B16")
     _require(_critic_physical_batch_size(plan, mode=mode) == 2, "C26 Critic B2 changed")
@@ -3764,6 +3831,15 @@ def _prefetch_score_sample_contexts(
 
 
 def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
+    request = request_from_plan(plan)
+    if request != LiveWanRequest():
+        metadata = plan["workload"]["metadata"]
+        _require(plan["workload"]["shape"]["batch_size"] == GLOBAL_BATCH
+                 and metadata["world_choices"] == list(WORLD_CHOICES)
+                 and metadata["block_frames"] == BLOCK_FRAMES
+                 and metadata["steps_per_block"] == STEPS_PER_BLOCK
+                 and metadata["grad_blocks"] == GRAD_BLOCKS,
+                 "new LiveWan request changed ORIGINAL training protocol")
     _require(int(plan["hardware"]["world_size"]) == WORLD_SIZE, "plan is not world16")
     batch = int(plan["workload"]["shape"]["batch_size"])
     _require(batch in {GLOBAL_BATCH, 32}, "plan is not registered global-B16/B32")
@@ -3846,6 +3922,9 @@ def _validate_only(
         _require(path.is_file(), f"trace sample is missing: {path}")
         if row.sample_sha256 is not None:
             _require(sha256_file(path) == row.sample_sha256, f"trace sample SHA mismatch: {path}")
+        if trace.request != LiveWanRequest():
+            import torch  # CPU-only deserialization, never CUDA/model construction.
+            validate_teacher_sample(torch.load(path, map_location="cpu", weights_only=False), trace.request)
     return {
         "status": "PASS",
         "stage": "validate_only",
@@ -3866,6 +3945,9 @@ def run_worker(
 ) -> dict[str, Any]:
     plan_path = Path(plan_path).expanduser().resolve()
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    # Immutable, exact-plan installation BEFORE any model/Torch/CUDA setup.
+    request = request_from_plan(plan)
+    install_geometry(request, plan_sha256=_effective_plan_sha256(plan))
     from distillschedule.runtime.livewan_two_cycle_profile import enabled as profile_two_enabled
     profile_two_cycles = profile_two_enabled(run_kind)
     critic_b1_attribution = _trajectory_critic_batch_ablation_enabled(
@@ -3921,6 +4003,7 @@ def run_worker(
         plan["evidence"]["operation_trace"],
         expected_cycles=trace_cycles,
         expected_global_batch=registered_batch,
+        request=request,
     )
     _validate_trace_balanced_pairing(plan, trace)
     bootstrap = Bootstrap.load(plan["evidence"]["checkpoint"], trace=trace)
@@ -4366,7 +4449,7 @@ def run_worker(
             peer=rank + 8 if rank < 8 else rank - 8,
             device=device,
             is_generator=rank < 8,
-            shape=LATENT_SHAPE,
+            shape=latent_shape(),
             dtype=torch.float32,
             cycles=continuous_cycles,
             cross_cycle_lookahead=continuous_cycles > 1,
@@ -4507,7 +4590,7 @@ def run_worker(
             from distillschedule.runtime.livewan_attention_checkpoint import CriticAttentionCheckpointProxy
 
             flash_module, _ = _load_flash_attn2()
-            critic_attention_proxy = CriticAttentionCheckpointProxy(bc.ckpt, torch, flash_module)
+            critic_attention_proxy = CriticAttentionCheckpointProxy(bc.ckpt, torch, flash_module, query_tokens=request.attention_tokens)
             bc.ckpt = critic_attention_proxy
         else:
             critic_attention_receipt = {"enabled": True, "execution_status": "NOT_APPLICABLE", "checkpoint_calls": 0}
@@ -4766,6 +4849,9 @@ def run_worker(
     operation_calibration = None
     if _operation_calibrator is not None:
         operation_calibration = _operation_calibrator.finish()
+        operation_calibration.update(workload_request=request.to_dict(),
+            actual_latent_shapes=[list(s) for s in sorted(_observed_latent_shapes)],
+            installed_plan_sha256=geometry().plan_sha256)
         operation_calibration['native_run_kind'] = run_kind
         operation_calibration['service_cost_eligible'] = False
         if transport_observer is not None:
@@ -4807,6 +4893,7 @@ def run_worker(
             else {"enabled": True, "execution_status": "NOT_APPLICABLE"}
         )
         _require(not rms_epilogue_errors(generator_rms_epilogue_receipt, rank=rank, cycles=continuous_cycles,
+                     request=request,
                      fuse_cast_square=_generator_rms_cast_square_enabled(plan, mode=mode)),
                  "C29 Generator no-grad RMS epilogue scope/call contract failed")
     score_prompt_staging_receipt = {"enabled": False, "execution_status": "DISABLED"}
@@ -4816,7 +4903,7 @@ def run_worker(
 
         generator_modulation_receipt = (generator_modulation.receipt() if generator_modulation is not None
             else {"enabled": True, "execution_status": "NOT_APPLICABLE"})
-        _require(not modulation_errors(generator_modulation_receipt, rank=rank, cycles=continuous_cycles),
+        _require(not modulation_errors(generator_modulation_receipt, rank=rank, cycles=continuous_cycles, request=request),
                  "C32 Generator no-grad modulation scope/call contract failed")
     generator_gate_receipt = {"enabled": False, "execution_status": "DISABLED"}
     if _generator_gate_enabled(plan, mode=mode):
@@ -4825,6 +4912,7 @@ def run_worker(
         generator_gate_receipt = (generator_gate.receipt() if generator_gate is not None
             else {"enabled": True, "execution_status": "NOT_APPLICABLE"})
         _require(not gate_errors(generator_gate_receipt, rank=rank, cycles=continuous_cycles,
+                   request=request,
                    output_layout="row_major" if _generator_residual_layout_enabled(plan, mode=mode) else "native"),
                  "C33 Generator no-grad residual gate scope/call contract failed")
     if _score_prompt_staging_enabled(plan, mode=mode):
@@ -5018,6 +5106,9 @@ def run_worker(
         "local_rank": local_rank,
         "mode": mode,
         "run_kind": run_kind,
+        "workload_request": request.to_dict(),
+        "actual_latent_shapes": [list(s) for s in sorted(_observed_latent_shapes)],
+        "installed_plan_sha256": geometry().plan_sha256,
         "trace_sha256": trace.sha256,
         "bootstrap_sha256": bootstrap.sha256,
         "source_receipt_sha256": source_receipt["source_receipt_sha256"],
@@ -5431,7 +5522,7 @@ def _recv_pair(
     torch: Any, *, source: int, device: Any, receive_context: bool = True
 ) -> tuple[Any, Any | None]:
     import torch.distributed as dist
-    x0 = torch.empty(LATENT_SHAPE, device=device, dtype=torch.float32)
+    x0 = torch.empty(latent_shape(), device=device, dtype=torch.float32)
     dist.recv(x0, src=source)
     context = None
     if receive_context:
@@ -5507,7 +5598,7 @@ def _exchange_routed_inputs(
                 )
             )
         elif rank == score_rank:
-            x0 = torch.empty(LATENT_SHAPE, device=device, dtype=torch.float32)
+            x0 = torch.empty(latent_shape(), device=device, dtype=torch.float32)
             context = torch.empty(TEXT_SHAPE, device=device, dtype=torch.float32)
             received[slot] = (x0, context)
             operations.extend(
@@ -5558,7 +5649,7 @@ def _exchange_routed_gradients(
             retained.append(gradient)
             operations.append(dist.P2POp(dist.isend, gradient, generator_rank))
         elif rank == generator_rank:
-            gradient = torch.empty(LATENT_SHAPE, device=device, dtype=torch.float32)
+            gradient = torch.empty(latent_shape(), device=device, dtype=torch.float32)
             received[slot] = gradient
             operations.append(dist.P2POp(dist.irecv, gradient, score_rank))
     _require(
@@ -5610,7 +5701,7 @@ def _run_pipeline_8x8(
         else tuple((index, index + 8) for index in range(8))
     )
     lane_slots = slot_pairs[lane]
-    pair_bytes = math.prod(LATENT_SHAPE) * 4
+    pair_bytes = math.prod(latent_shape()) * 4
     if not score_context_from_trace:
         pair_bytes += math.prod(TEXT_SHAPE) * 4
     if is_generator:
@@ -6485,7 +6576,7 @@ def _run_pipeline_8x8_b32(
     )[lane]
     _require(len(streamers) == 2 if is_generator else not streamers, "B32 streamer residency changed")
     _require(step_offset == cycle_index * FULL5_STEPS, "B32 cycle offset changed")
-    pair_bytes = math.prod(LATENT_SHAPE) * 4
+    pair_bytes = math.prod(latent_shape()) * 4
 
     if not evidence.split_dmd_shadow:
         evidence.split_dmd_shadow = {
@@ -6975,7 +7066,7 @@ def _run_pipeline_8x8_continuous(
         not critic_b1_attribution or (trajectory_mode and not batch32),
         "C24 Critic-B1 attribution is restricted to trajectory B16",
     )
-    latent_bytes = math.prod(LATENT_SHAPE) * 4
+    latent_bytes = math.prod(latent_shape()) * 4
     started = time.perf_counter()
     cycle_events: list[dict[str, Any]] = []
     precomputed_first: PreparedRollout | None = None
@@ -7363,7 +7454,7 @@ def _run_pipeline_phase_expanded_critic16(
     lane = rank if is_generator else peer
     lane_slots = validate_slot_pairs(slot_pairs_by_lane)[lane]
     remote_slot, generator_local_slot = lane_slots
-    latent_bytes = math.prod(LATENT_SHAPE) * 4
+    latent_bytes = math.prod(latent_shape()) * 4
     _require(
         bundle.critic is not None
         and bundle.critic_optimizer is not None
@@ -7569,7 +7660,7 @@ def _run_pipeline_phase_expanded_critic16(
                 label=f"livewan/phase_expanded/score/step_{step}/recv_remote",
             ):
                 remote_x0 = torch.empty(
-                    LATENT_SHAPE, device=device, dtype=torch.float32
+                    latent_shape(), device=device, dtype=torch.float32
                 )
                 dist.recv(remote_x0, src=peer)
             evidence.transport_bytes += latent_bytes
@@ -7605,7 +7696,7 @@ def _run_pipeline_phase_expanded_critic16(
                     label="livewan/phase_expanded/score/step_0/recv_local_for_dmd",
                 ):
                     local_x0 = torch.empty(
-                        LATENT_SHAPE, device=device, dtype=torch.float32
+                        latent_shape(), device=device, dtype=torch.float32
                     )
                     dist.recv(local_x0, src=peer)
                 evidence.transport_bytes += latent_bytes
@@ -7744,7 +7835,7 @@ def _run_pipeline_8x8_score_b2(
 
     is_generator = rank < 8
     peer = rank + 8 if is_generator else rank - 8
-    pair_bytes = (math.prod(LATENT_SHAPE) + math.prod(TEXT_SHAPE)) * 4
+    pair_bytes = (math.prod(latent_shape()) + math.prod(TEXT_SHAPE)) * 4
     if is_generator:
         _require(bundle.student is not None and len(streamers) == 2, "pipeline G role is incomplete")
     else:
@@ -7803,7 +7894,7 @@ def _run_pipeline_8x8_score_b2(
 
             if step == 0:
                 gradient_batch = torch.empty(
-                    (2, *LATENT_SHAPE[1:]), device=device, dtype=torch.float32
+                    (2, *latent_shape()[1:]), device=device, dtype=torch.float32
                 )
                 with _profile_range(
                     torch,
@@ -8030,8 +8121,8 @@ def _run_pipeline_6g10score(
             "6G+10Score role is incomplete",
         )
 
-    pair_bytes = (math.prod(LATENT_SHAPE) + math.prod(TEXT_SHAPE)) * 4
-    gradient_bytes = math.prod(LATENT_SHAPE) * 4
+    pair_bytes = (math.prod(latent_shape()) + math.prod(TEXT_SHAPE)) * 4
+    gradient_bytes = math.prod(latent_shape()) * 4
     for step in range(FULL5_STEPS):
         prepared_by_slot: dict[int, PreparedRollout] = {}
         if is_generator:
