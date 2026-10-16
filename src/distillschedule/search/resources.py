@@ -10,6 +10,8 @@ import time
 
 from distillschedule.workloads.best_known.registry import write_new_json
 
+DRIVER_QUERY_TIMEOUT_SECONDS = 30
+
 
 class ResourceObserver:
     """Two-second driver/cgroup samples spanning construction through teardown.
@@ -28,7 +30,7 @@ class ResourceObserver:
         try:
             raw = subprocess.check_output([
                 "nvidia-smi", "--query-gpu=index,uuid,memory.total,memory.free",
-                "--format=csv,noheader,nounits"], text=True, timeout=10)
+                "--format=csv,noheader,nounits"], text=True, timeout=DRIVER_QUERY_TIMEOUT_SECONDS)
             gpus = [{"device": int(i), "uuid": uuid.strip(),
                      "total_bytes": int(total) * 2**20, "free_bytes": int(free) * 2**20}
                     for i, uuid, total, free in csv.reader(io.StringIO(raw))]
@@ -53,7 +55,7 @@ class ResourceObserver:
 
     def __exit__(self, *_):
         self.stop_event.set()
-        self.thread.join(timeout=12)
+        self.thread.join(timeout=DRIVER_QUERY_TIMEOUT_SECONDS + 2)
         self.sample()
         write_new_json(self.path, {"schema_version": "distillschedule.search.resources.v1",
             "status": "PASS" if self.rows and not self.errors and not self.thread.is_alive() else "FAIL",
