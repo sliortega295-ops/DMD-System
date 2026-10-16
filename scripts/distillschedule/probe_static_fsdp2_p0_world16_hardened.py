@@ -431,7 +431,9 @@ def main() -> int:
     enabled = "--profile-mode" in sys.argv
     with install_fsdp2_operation_markers(enabled=enabled) as session:
         _OPERATION_MARKERS = session
-        return int(impl.main())
+        from distillschedule.runtime.helios_gan_manual.runtime import manual_runtime_scope
+        with manual_runtime_scope(impl):
+            return int(impl.main())
 
 
 if __name__ == "__main__":

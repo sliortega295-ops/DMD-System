@@ -111,9 +111,19 @@ EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORME
 [[ "${LORA_CHECKPOINT_REPLAY_SCOPE}" == on || "${LORA_CHECKPOINT_REPLAY_SCOPE}" == off ]] || exit 2
 [[ "${LORA_CHECKPOINT_REPLAY_SCOPE}" != on || "${ALL_ROLE_LORA_SCALE1_ADD}" == on ]] || exit 2
 if [[ "${LORA_B_GEMM_EPILOGUE}" == on ]]; then
-  [[ "${VARIANT}" == no-gan && "${ROLLOUT_BATCH_SIZE}" == 1 && "${PACK_REAL_SCORE_PAIR}" == off &&
-     "${ALL_ROLE_LORA_SCALE1_ADD}" == on && "${LORA_CHECKPOINT_REPLAY_SCOPE}" == on &&
-     "${ATTENTION_BACKEND}" == local-fa2 && "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" == 0 ]] || exit 2
+  if [[ "${DISTILLSCHEDULE_HELIOS_GAN_MANUAL_BUNDLE:-}" == gan-fa3-down40-nomerge-v1 ]]; then
+    [[ "${DISTILLSCHEDULE_SEARCH_CANDIDATE_ID:-}" == joint-helios1-gan-fsdp-c2048-p1-w5-kgan-fa3-down40-nomerge-v1 &&
+       "${VARIANT}" == gan && "${MESH_POLICY}" == world16-fsdp &&
+       "${ROLLOUT_BATCH_SIZE}" == 1 && "${PACK_REAL_SCORE_PAIR}" == off &&
+       "${ALL_ROLE_LORA_SCALE1_ADD}" == on && "${LORA_CHECKPOINT_REPLAY_SCOPE}" == on &&
+       "${ATTENTION_BACKEND}" == local-fa2 && "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" == 2 &&
+       "${MODULATION_CHUNK_TOKENS}" == 2048 && "${GENERATOR_NOGRAD_PERSISTENT_UNSHARD}" == on &&
+       "${DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_MERGED_EXECUTION:-}" == off ]] || exit 2
+  else
+    [[ "${VARIANT}" == no-gan && "${ROLLOUT_BATCH_SIZE}" == 1 && "${PACK_REAL_SCORE_PAIR}" == off &&
+       "${ALL_ROLE_LORA_SCALE1_ADD}" == on && "${LORA_CHECKPOINT_REPLAY_SCOPE}" == on &&
+       "${ATTENTION_BACKEND}" == local-fa2 && "${SELECTIVE_FLASH_CHECKPOINT_STRIDE}" == 0 ]] || exit 2
+  fi
 fi
 [[ "${OPTIMIZER_DISPATCH_WARMUP}" == on || "${OPTIMIZER_DISPATCH_WARMUP}" == off ]] || exit 2
 [[ "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" == on || "${GENERATOR_NOGRAD_RESIDUAL_FUSION}" == off ]] || exit 2

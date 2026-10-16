@@ -131,9 +131,9 @@ class ModelValidationSession:
         require(index < self.max_trials, "total timing budget exhausted")
         directory = self.output / "trials" / f"{index:02d}-{phase}-{cid}"
         directory.mkdir(parents=True, exist_ok=False)
-        # This is the graph-to-native binding proof. NativeTrialRunner resolves
-        # the same typed implementation with fresh run IDs and native gates;
-        # calibration paths need not be copied to every GPU worker filesystem.
+        # Preserve the actual saved graph/cost/prediction through the native
+        # runner. Its receipt references must remain readable where the normal
+        # dispatcher/collector revalidates the embedded model_plan.
         selection = {"problem_sha256": self.problem.digest, "cost_model_sha256": self.costs.digest,
                      "predicted_best": self.predictions[cid]}
         plan = self.adapter.lower_prediction(selection, self.problem, self.costs, run_id=directory.name)
@@ -142,7 +142,15 @@ class ModelValidationSession:
         self._append({"type": "START", "trial_id": directory.name, "candidate_id": cid, "phase": phase})
         started = time.monotonic()
         try:
-            raw = execute(self.candidates[cid], phase, directory)
+            from .execution import NativeTrialRunner
+            if isinstance(execute, NativeTrialRunner):
+                path = directory / "model-lowering.json"
+                raw = execute(self.candidates[cid], phase, directory,
+                    lowered_plan={"path": str(path.resolve()), "sha256": file_sha256(path)})
+            else:
+                # Existing CPU protocol executors keep the three-argument API;
+                # they are not evidence of saved-plan native execution.
+                raw = execute(self.candidates[cid], phase, directory)
             path = directory / "executor-receipt.json"
             write_new_json(path, raw)
             result = self._validate_raw(raw, self.candidates[cid])

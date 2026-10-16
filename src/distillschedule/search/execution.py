@@ -145,6 +145,10 @@ def rebind_plan(receipt: dict[str, Any], *, run_id: str,
     if "model_plan" in receipt:
         result["model_plan"] = receipt["model_plan"]
         validated_profile(result, root=root)
+    if "manual_match_protocol" in receipt:
+        # Preserve explicit evidence, not an environment override. The worker's
+        # read_manual_match_protocol still checks the reference and live source.
+        result["manual_match_protocol"] = copy.deepcopy(receipt["manual_match_protocol"])
     write_new_json(coordinator_output / "execution-plan.json", result)
     return result
 
@@ -335,8 +339,29 @@ class NativeTrialRunner:
                 self.prepared[cid] = value
         return self.prepared[c.id]
 
-    def __call__(self, candidate: Candidate, phase: str, directory: Path) -> dict[str, Any]:
+    def __call__(self, candidate: Candidate, phase: str, directory: Path, *,
+                 lowered_plan: dict[str, str] | None = None) -> dict[str, Any]:
         self._require_admitted(candidate)
+        # Model-validation opts in with the actual saved lowering, not only an
+        # implementation ID. Legacy registered callers retain their old path.
+        lowering = None
+        if lowered_plan is not None:
+            from .plan_ir import validate_binding
+            require(set(lowered_plan) == {"path", "sha256"}, "lowered plan reference fields differ")
+            path = Path(lowered_plan["path"])
+            require(path.is_absolute() and path.is_file()
+                    and file_sha256(path) == lowered_plan["sha256"], "saved lowering hash changed/missing")
+            lowering = json.loads(path.read_text())
+            require(bool(lowering.get("model_plan")), "saved lowering lacks model_plan")
+            binding = lowering["model_plan"]["problem"]["binding"]
+            validate_binding(binding)
+            require(all(self.identity.get(k) == v for k, v in binding.items()),
+                    "saved lowering and native runtime identity differ")
+            require(lowering["integration_head"] == self.identity["source_head"] == git_head(repository_root()),
+                    "saved lowering source HEAD differs")
+            require(lowering["profile_id"] == self.workload
+                    and lowering["search_candidate"] == candidate.to_dict(), "saved lowering candidate differs")
+            validated_profile(lowering, root=repository_root())
         model_based = "environment_fingerprint" in self.identity
         if model_based:
             # Check both allocations/environments before even a correctness
@@ -346,6 +371,17 @@ class NativeTrialRunner:
         receipt = self._rpc("resolve", workload=self.workload, candidate_id=candidate.id,
             assets=prepared["assets"], run_id=self.run_prefix + "-" + directory.name,
             mode="diagnostic-timing")
+        if lowering is not None:
+            for key in ("integration_head", "profile_id", "profile_sha256", "workload_semantics_hash",
+                        "execution_fingerprint", "search_candidate"):
+                require(receipt[key] == lowering[key], f"resolved native plan changed lowering {key}")
+            require(receipt["asset_fingerprint"] == binding["asset_fingerprint"],
+                    "resolved native assets differ from saved lowering")
+            receipt["model_plan"] = copy.deepcopy(lowering["model_plan"])
+            receipt["model_plan_source"] = dict(lowered_plan)
+            # The normal dispatcher and worker-side collector will recheck the
+            # embedded graph, calibrated receipts and saved prediction too.
+            validated_profile(receipt, root=repository_root())
         before = self._observe_model_runtime(candidate, receipt=receipt) if model_based else None
         require(receipt["asset_fingerprint"] == self.identity["asset_fingerprint"], "prepared asset identity changed")
         write_new_json(directory / "execution-plan.json", receipt)

@@ -16,6 +16,7 @@ from typing import Any, Mapping
 from distillschedule.workloads.best_known.registry import fingerprint, load_profile
 from .contracts import Candidate, require, semantic_contract
 from .helios_safe_bundle import BUNDLE_ID, HeliosSafeBundle
+from .helios_gan_bundle import GAN_BUNDLE_ID, GAN_BUNDLE_ENV, HeliosGANBundle
 from .helios_request import (OriginalHeliosRequest, TRACE_KEY, TRACE_HASH_KEY,
                              REQUEST_ENV, REQUEST_HASH_ENV)
 
@@ -23,7 +24,7 @@ NO_GAN = "helios14b_nogan_best"
 GAN = "helios14b_gan_best"
 PREFIX = "joint-helios1-"
 PATTERN = re.compile(r"joint-helios1-(nogan|gan)-(fsdp|hsdp)-c(512|2048)-p([01])-w([1-5])"
-                     r"(?:-k(safe-nogan-ed8-v1))?(?:-qf(17|33)-s(111|222)(-b4)?)?")
+                     r"(?:-k(safe-nogan-ed8-v1|gan-fa3-down40-nomerge-v1))?(?:-qf(17|33)-s(111|222)(-b4)?)?")
 MODES = ("correctness", "calibration", "native")
 MODE_ENV = "DISTILLSCHEDULE_HELIOS_PLANNER_MODE"
 ASSIGNMENT_ENV = "DISTILLSCHEDULE_HELIOS_PLANNER_ASSIGNMENT"
@@ -36,7 +37,7 @@ class HeliosImplementation:
     chunk_tokens: int
     rollout_window: int
     persistent_unshard: bool
-    candidate_bundle: HeliosSafeBundle = HeliosSafeBundle()
+    candidate_bundle: HeliosSafeBundle | HeliosGANBundle = HeliosSafeBundle()
     request: OriginalHeliosRequest | None = None
 
     def __post_init__(self) -> None:
@@ -51,7 +52,7 @@ class HeliosImplementation:
                 "GAN initially supports only world16-fsdp")
         require(not self.persistent_unshard or (self.variant == "gan" and self.rollout_window == 5),
                 "persistent unshard requires GAN and a single five-rollout scope")
-        require(type(self.candidate_bundle) is HeliosSafeBundle, "Helios candidate bundle must be typed")
+        require(type(self.candidate_bundle) in (HeliosSafeBundle, HeliosGANBundle), "Helios candidate bundle must be typed")
         require(self.request is None or (type(self.request) is OriginalHeliosRequest
                 and self.request.variant == self.variant), "Helios request must be typed and match variant")
         self.candidate_bundle.validate_scope(self)
@@ -90,7 +91,7 @@ class HeliosImplementation:
         return cls("no-gan" if match[1] == "nogan" else "gan",
                    "world16-fsdp" if match[2] == "fsdp" else "node-hsdp",
                    int(match[3]), int(match[5]), match[4] == "1",
-                   HeliosSafeBundle.parse(match[6] or "none"),
+                   _parse_bundle(match[6] or "none"),
                    OriginalHeliosRequest(variant="no-gan" if match[1] == "nogan" else "gan",
                        video_frames=int(match[7]), stage2_inference_steps=tuple(map(int, match[8])),
                        stage_schedule_policy="benchmark_v4_strict_global" if match[9] else "source_normal_only")
@@ -114,7 +115,7 @@ class HeliosImplementation:
                     "Helios original request assignment must be complete/canonical")
         return cls(assignment["variant"], assignment["mesh"], int(assignment["chunk_tokens"]),
                    int(assignment["rollout_window"]), assignment["persistent_unshard"] == "on",
-                   HeliosSafeBundle.parse(assignment.get("candidate_bundle", "none")), request)
+                   _parse_bundle(assignment.get("candidate_bundle", "none")), request)
 
     @property
     def run_modes(self) -> tuple[str, ...]:
@@ -123,7 +124,7 @@ class HeliosImplementation:
     def candidate(self) -> Candidate:
         kernels = (f"modulation_chunk{self.chunk_tokens}",)
         if self.candidate_bundle.enabled:
-            kernels += (BUNDLE_ID,)
+            kernels += (self.candidate_bundle.id,)
         return Candidate(self.id, self.workload, self.mesh, kernels,
                          ("nccl", "pointwise", "residency"), variant=self.variant,
                          mechanism="native_mesh_chunk_retained_rollout_window_and_bounded_unshard")
@@ -212,9 +213,10 @@ class HeliosImplementation:
         require(policy.rollout_batch_size == 1 and not policy.pack_real_score_pair,
                 "Helios generated plans preserve B1 and unpacked Score calls")
         require(policy.rollout_backend == "native-fsdp2-batch", "Helios rollout backend changed")
+        stride = 2 if type(self.candidate_bundle) is HeliosGANBundle else 0
         require(type(policy.selective_flash_checkpoint_stride) is int
-                and policy.selective_flash_checkpoint_stride == 0,
-                "Helios generated checkpoint policy requires native recompute; selective Flash replay is not admitted")
+                and policy.selective_flash_checkpoint_stride == stride,
+                "Helios effective checkpoint policy differs from the explicit bundle")
         require(args.ema_device == "cuda" and args.attention_backend == "local-fa2"
                 and args.generator_residual_storage == args.critic_residual_storage == "cuda_out_of_place",
                 "Helios generated plans cannot change frozen residency/attention/residual policies")
@@ -251,10 +253,13 @@ def current_implementation(environment: Mapping[str, str] | None = None) -> Heli
     mode = env.get(MODE_ENV, "off")
     if not key.startswith("joint-helios"):
         require(mode == "off" and not env.get(ASSIGNMENT_ENV)
-                and not env.get(REQUEST_ENV) and not env.get(REQUEST_HASH_ENV),
+                and not env.get(REQUEST_ENV) and not env.get(REQUEST_HASH_ENV)
+                and not env.get(GAN_BUNDLE_ENV),
                 "Helios planner mode/assignment/request without generated identity")
         return None
     impl = HeliosImplementation.parse(key)
+    require(env.get(GAN_BUNDLE_ENV, "") == (GAN_BUNDLE_ID if type(impl.candidate_bundle) is HeliosGANBundle else ""),
+            "GAN manual runtime opt-in differs from generated identity")
     if impl.request is None:
         require(not env.get(REQUEST_ENV) and not env.get(REQUEST_HASH_ENV),
                 "Helios original request requires explicit request-qualified identity")
@@ -274,3 +279,7 @@ def current_implementation(environment: Mapping[str, str] | None = None) -> Heli
         raise ValueError("Helios generated assignment is missing/malformed") from error
     require(assignment == impl.assignment, "Helios assignment differs from generated identity")
     return impl
+
+
+def _parse_bundle(value):
+    return HeliosGANBundle.manual() if value == GAN_BUNDLE_ID else HeliosSafeBundle.parse(value)

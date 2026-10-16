@@ -21,7 +21,8 @@ from .livewan_request import LIVEWAN, LiveWanRequest
 from .model_adapters import SUPPORTED_WORKLOADS, adapter_for
 
 
-def candidate_inventory(workload, *, request=None, include_helios_safe_incumbent=False):
+def candidate_inventory(workload, *, request=None, include_helios_safe_incumbent=False,
+                        include_helios_gan_manual=False):
     require(workload in SUPPORTED_WORKLOADS, "unknown native workload")
     from .wan_implementation import WAN
     from .helios_implementation import NO_GAN, GAN
@@ -29,6 +30,8 @@ def candidate_inventory(workload, *, request=None, include_helios_safe_incumbent
             "explicit request currently supported only for H3, ORIGINAL Helios and ORIGINAL LiveWan")
     require(type(include_helios_safe_incumbent) is bool,'safe incumbent opt-in must be boolean')
     require(not include_helios_safe_incumbent or workload==NO_GAN,'safe incumbent opt-in is No-GAN only')
+    require(type(include_helios_gan_manual) is bool and (not include_helios_gan_manual or workload==GAN),
+            'GAN manual opt-in is GAN only')
     if workload == H3:
         from .h3_implementation import implementations
         values = implementations(request=request or H3Request(), explicit_cache=True)
@@ -37,7 +40,8 @@ def candidate_inventory(workload, *, request=None, include_helios_safe_incumbent
         values = tuple(replace(i, rollout_window=w) for i in implementations() for w in range(1, 6))
     elif workload in (NO_GAN, GAN):
         from .helios_model_adapter import implementations
-        values = implementations(workload,include_safe_incumbent=include_helios_safe_incumbent,request=request)
+        values = implementations(workload,include_safe_incumbent=include_helios_safe_incumbent,
+                                  include_gan_manual=include_helios_gan_manual,request=request)
     else:
         from .livewan_implementation import implementations
         values = implementations(request=request)
@@ -52,6 +56,7 @@ def candidate_inventory(workload, *, request=None, include_helios_safe_incumbent
     adapter_options=({"h3_request":request} if workload==H3 else
                      {"include_safe_incumbent":True} if include_helios_safe_incumbent else {})
     if workload in (NO_GAN,GAN) and request is not None:adapter_options['request']=request
+    if include_helios_gan_manual:adapter_options['include_gan_manual']=True
     if workload == LIVEWAN: adapter_options['livewan_request'] = request
     return dict(status="PASS_CPU_CAPABILITY_INVENTORY", workload=workload,
         source_head=git_head(repository_root()), candidates=candidates,
@@ -166,8 +171,11 @@ def assemble(args):
     else:
         from .native_macro_calibration import assemble_calibrations
     safe=getattr(args,'include_helios_safe_incumbent',False)
+    gan_manual=getattr(args,'include_helios_gan_manual',False)
     require(not safe or args.workload==NO_GAN,'safe incumbent assembly is No-GAN only')
     options={'include_safe_incumbent':True} if safe else {}
+    require(not gan_manual or args.workload==GAN,'GAN manual assembly is GAN only')
+    if gan_manual:options['include_gan_manual']=True
     if helios_requests:
         require(all(r==helios_requests[0] for r in helios_requests),'cannot assemble mixed Helios request cohorts')
         if helios_requests[0] is not None:options['request']=helios_requests[0]
@@ -188,6 +196,8 @@ def main(argv):
     inventory.add_argument("--output", type=Path)
     inventory.add_argument("--include-helios-safe-incumbent", action="store_true",
                            help="Opt-in exact No-GAN HSDP/C512/p0/w5 k-bundle; not GAN")
+    inventory.add_argument('--include-helios-gan-manual', action='store_true',
+                           help='Opt-in canonical GAN FA3/down40/unmerged manual cohort; fresh costs required')
     collect = sub.add_parser("calibrate", help="Default source-only; explicit native matched-pair calibration")
     collect.add_argument("--workload", required=True)
     collect.add_argument("--candidate", nargs="+", required=True)
@@ -206,6 +216,8 @@ def main(argv):
     join.add_argument("--output", type=Path, required=True)
     join.add_argument("--include-helios-safe-incumbent", action="store_true",
                       help="Bind measured FSDP C512 k0 baseline and HSDP C512 k1 incumbent seeds")
+    join.add_argument('--include-helios-gan-manual', action='store_true',
+                      help='Bind measured canonical GAN baseline and complete manual incumbent seeds')
     args = parser.parse_args(argv)
     try:
         if args.action == "candidates":
@@ -218,7 +230,8 @@ def main(argv):
                 request=Request.from_dict(_object(args.request))
             result = candidate_inventory(args.workload,
                 request=request,
-                include_helios_safe_incumbent=args.include_helios_safe_incumbent)
+                include_helios_safe_incumbent=args.include_helios_safe_incumbent,
+                include_helios_gan_manual=args.include_helios_gan_manual)
             if args.output:
                 write_new_json(args.output, result)
         else:

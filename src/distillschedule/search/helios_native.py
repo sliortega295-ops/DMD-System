@@ -356,7 +356,8 @@ def normalize_native(receipt,preparation,identity):
             peak_allocated_bytes=max(m['max_allocated_bytes'] for m in mem),
             peak_reserved_bytes=max(m['max_reserved_bytes'] for m in mem),
             min_driver_free_bytes=min(g['free_bytes'] for s in sample for g in s['gpus'] if g['device']==rank%8),
-            host_peak_bytes=max(s['cgroup_current_bytes'] for s in sample)))
+            host_peak_bytes=max(s['cgroup_current_bytes'] for s in sample),
+            host_peak_scope='MAX_SAMPLED_CGROUP_CURRENT_NOT_CONTINUOUS_PEAK'))
     result=dict(schema_version=MEASUREMENT_SCHEMA,status='PASS',**identity,candidate_id=impl.id,
         execution_fingerprint=fingerprint(impl.candidate().to_dict()),profiled=False,same_process=True,initializations=1,
         semantics_status='PASS',numerical_status='REVIEW',strict_numerical_gate='NOT_RUN',formal_timing_eligible=False,

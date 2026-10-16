@@ -57,6 +57,50 @@ def _correctness_binding(receipt: dict[str, Any]) -> None:
         validate_admission(data, receipt, repository_root())
 
 
+def read_manual_match_protocol(receipt: dict[str, Any], *, root: Path) -> dict[str, Any] | None:
+    """Read the opt-in common declaration; physical capacities are observed later.
+
+    This supplements, not replaces, validate_local's plan/assets/native gates.
+    Runtime hardware/environment identities remain independently measured by the
+    existing before/after runtime gate, never inferred from this declaration.
+    """
+    problem = receipt.get('model_plan', {}).get('problem', {})
+    refs = [container['manual_match_protocol'] for container in
+            (receipt, problem.get('lowering', {})) if 'manual_match_protocol' in container]
+    if not refs:
+        return None
+    _require(all(ref == refs[0] for ref in refs), 'manual-match protocol references disagree')
+    ref = refs[0]
+    _require(isinstance(ref, dict) and set(ref) == {'path', 'sha256'}, 'invalid manual-match protocol reference')
+    path = Path(ref['path'])
+    _require(path.is_absolute() and path.is_file() and file_sha256(path) == ref['sha256'],
+             'manual-match protocol hash changed/missing')
+    protocol = json.loads(path.read_text())
+    from distillschedule.search.plan_ir import validate_binding
+    from distillschedule.search.resources import observe_source_identity, validate_capacity_policy
+    _require(protocol.get('scope') == 'MANUAL_NATIVE_VS_SAVED_SELECTED_PLAN_NATIVE'
+             and receipt.get('mode') == 'diagnostic-timing', 'manual-match protocol scope/mode differs')
+    identity = protocol['identity']; validate_binding(identity)
+    _require(protocol.get('max_planner_overhead') == 0.03, 'manual-match target must remain 0.03')
+    registered = protocol.get('registered_unix_ns')
+    _require(type(registered) is int and 0 < registered < time.time_ns(), 'manual-match preregistration time invalid')
+    policy = protocol['capacity_policy']; validate_capacity_policy(policy)
+    for key, field in (('source_head', 'integration_head'), ('asset_fingerprint', 'asset_fingerprint'),
+                       ('semantic_fingerprint', 'workload_semantics_hash')):
+        _require(identity[key] == receipt.get(field), 'manual-match receipt identity differs: ' + key)
+    if problem:
+        _require(problem.get('binding') == identity, 'manual-match saved problem binding differs')
+        _require(problem.get('memory_limits') == policy['memory_limits'], 'manual-match planner GPU budgets differ')
+    else:
+        _require(receipt.get('search_candidate') == protocol.get('manual_candidate')
+                 and isinstance(protocol.get('manual_candidate'), dict),
+                 'manual-match non-model arm is not the declared manual candidate')
+    actual = observe_source_identity(root)
+    _require(actual['status'] == 'PASS' and actual['identity']['head'] == identity['source_head']
+             and actual['identity']['dirty'] is False, 'manual-match actual source unknown/dirty/different')
+    return protocol
+
+
 def validate_local(receipt: dict[str, Any], *, root: Path, node_rank: int | None = None) -> dict[str, Any]:
     if "search_candidate" in receipt:
         from distillschedule.search.execution import validated_profile
@@ -118,8 +162,12 @@ def validate_local(receipt: dict[str, Any], *, root: Path, node_rank: int | None
         for row in source["files"].values():
             p = Path(row["path"])
             _require(p.is_file() and file_sha256(p) == row["sha256"], "LiveWan prepared source bytes changed")
-    return {"status": "PASS", "source_layout": layout, "assets": verified, "python_path_overlays": dependencies,
-            "scope": "CPU_SOURCE_AND_ASSET_ONLY", "gpu": "NOT_RUN_ON_INTEGRATION_BRANCH"}
+    result = {"status": "PASS", "source_layout": layout, "assets": verified, "python_path_overlays": dependencies,
+              "scope": "CPU_SOURCE_AND_ASSET_ONLY", "gpu": "NOT_RUN_ON_INTEGRATION_BRANCH"}
+    protocol = read_manual_match_protocol(receipt, root=root)
+    if protocol is not None:
+        result['manual_match_protocol'] = protocol
+    return result
 
 
 def ssh_command(node: dict[str, Any]) -> list[str]:
@@ -210,7 +258,9 @@ def execute_node(payload: dict[str, Any]) -> int:
     command = ["bash", str(wrapper), str(pid), *node["command"]]
     if "search_candidate" in receipt:
         from distillschedule.search.resources import ResourceObserver
-        with ResourceObserver(out / f"search-resources.node{index}.json", receipt["run_id"], index):
+        policy = checked.get('manual_match_protocol', {}).get('capacity_policy')
+        with ResourceObserver(out / f"search-resources.node{index}.json", receipt["run_id"], index,
+                              source_root=root, capacity_policy=policy):
             code = subprocess.call(command, cwd=root, env=env)
     else:
         code = subprocess.call(command, cwd=root, env=env)

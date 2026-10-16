@@ -13,7 +13,7 @@ ADAPTER = 'helios_prepared_actions_v1'
 RANKS = tuple(range(16))
 PRECISION = fingerprint(dict(base_compute='BF16',lora_master='FP32',
     fsdp_unsharded_param_dtype='BF16',reduce_dtype='FP32',ema='cuda_reference',
-    attention='pinned_local_fa2',scope='CANONICAL_NATIVE_FSDP_POLICY_NOT_WAN_FP32_POLICY'))
+    attention='BACKEND_EXPLICIT_IN_COMPONENT_CONTRACT',scope='CANONICAL_NATIVE_FSDP_POLICY_NOT_WAN_FP32_POLICY'))
 MEMORY = 'PEAK_MINUS_STATIC_MINUS_ENTRY_LATENTS; RETAINED_TRACE_AND_STATE_GROWTH_IN_WORKSPACE'
 
 
@@ -74,7 +74,10 @@ def component_contract(op,impl,work):
         local.update({TRACE_KEY:impl.request.to_dict(), TRACE_HASH_KEY:impl.request.digest})
     if kind in 'grc':
         local['modulation_chunk_tokens']=impl.chunk_tokens
-        local['selective_flash_checkpoint_stride']=0
+        from .helios_gan_bundle import HeliosGANBundle
+        manual=type(impl.candidate_bundle) is HeliosGANBundle
+        local['selective_flash_checkpoint_stride']=2 if manual else 0
+        local['effective_attention_backend']='pinned-sm80-fa3' if manual else 'pinned-local-fa2'
     if kind=='r':local['persistent_generator_unshard']=impl.persistent_unshard
     if impl.candidate_bundle.enabled:
         # Even EMA is isolated: source/mechanism cohorts cannot borrow old costs.

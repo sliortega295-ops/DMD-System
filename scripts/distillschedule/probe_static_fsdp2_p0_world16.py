@@ -312,6 +312,8 @@ def _build_static_model(
         model,
         mesh_policy=policy.mesh_policy,
         world_size=WORLD_SIZE,
+        **({'separate_gan_heads': True}
+           if getattr(args, '_planner_gan_manual_bundle', False) and role == 'critic' else {}),
     )
     if role == "generator":
         warmup_generator_nograd_residual_fusion(
@@ -1149,6 +1151,11 @@ def _parser() -> Any:
 
 def main() -> int:
     args = _parser().parse_args()
+    from distillschedule.search.helios_implementation import current_implementation
+    from distillschedule.search.helios_gan_bundle import HeliosGANBundle
+    planner_impl = current_implementation()
+    args._planner_gan_manual_bundle = (
+        planner_impl is not None and type(planner_impl.candidate_bundle) is HeliosGANBundle)
     from distillschedule.runtime.fsdp2_p0 import validate_nogan_b_gemm_request
     validate_nogan_b_gemm_request(
         enabled=bool(args.lora_b_gemm_epilogue),
@@ -1157,6 +1164,7 @@ def main() -> int:
         variant=args.variant, rollout_batch_size=args.rollout_batch_size,
         pack_real_score_pair=bool(args.pack_real_score_pair),
         attention_backend=args.attention_backend,
+        gan_manual_bundle=args._planner_gan_manual_bundle,
     )
     if args.timing_mode and args.profile_mode:
         raise ValueError("profiled runs are diagnostic and cannot be formal timing runs")

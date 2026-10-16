@@ -16,6 +16,7 @@ from .contracts import require,semantic_contract
 from .helios_implementation import HeliosImplementation,NO_GAN,GAN
 from .helios_request import OriginalHeliosRequest,TRACE_KEY
 from .helios_safe_bundle import BUNDLE_ID,HeliosSafeBundle
+from .helios_gan_bundle import GAN_BUNDLE_ID, HeliosGANBundle
 from .helios_action_costs import ADAPTER,PRECISION,RANKS,MEMORY,anchors,action_graph,component_contract,observed_work
 from .cost_model import CostModel,OperationCost
 from .plan_ir import PlanningProblem,BindingRule,StateAllocation,Lifetime,validate_binding
@@ -25,10 +26,13 @@ SCHEMA='distillschedule.helios_component_layout.v1'
 FRAGMENT='distillschedule.helios_component_fragment.v1'
 
 
-def capability_report(workload, *, include_safe_incumbent=False, request=None):
+def capability_report(workload, *, include_safe_incumbent=False, include_gan_manual=False, request=None):
     require(workload in (NO_GAN,GAN),'unknown Helios workload')
     require(type(include_safe_incumbent) is bool,'safe incumbent opt-in must be boolean')
     require(not include_safe_incumbent or workload==NO_GAN,'safe incumbent is No-GAN only; GAN is not migrated')
+    require(type(include_gan_manual) is bool and (not include_gan_manual or workload==GAN),
+            'GAN manual bundle opt-in is GAN only')
+    require(not include_gan_manual or request is None, 'GAN manual bundle requires canonical shape')
     require(request is None or (type(request) is OriginalHeliosRequest
             and request.variant==('no-gan' if workload==NO_GAN else 'gan')), 'typed matching Helios request required')
     report=dict(workload=workload,adapter=ADAPTER,arbitrary_pool_lowering=False,
@@ -43,18 +47,24 @@ def capability_report(workload, *, include_safe_incumbent=False, request=None):
         report['candidate_bundles']={'none':'LEGACY_UNCHANGED',BUNDLE_ID:dict(
             assignment=safe_incumbent(request=request).assignment,fields=HeliosSafeBundle.safe().cost_identity(),
             calibration='MATCHED_FSDP_C512_K0_AND_HSDP_C512_K1_REQUIRED')}
+    if include_gan_manual:
+        report['candidate_bundles']={'none':'LEGACY_UNCHANGED',GAN_BUNDLE_ID:dict(
+            assignment=gan_manual_incumbent().assignment,fields=HeliosGANBundle.manual().cost_identity(),
+            calibration='FRESH_NATIVE_MANUAL_TUPLE_REQUIRED; NO_HISTORICAL_SECONDS')}
     if request is not None:
         report[TRACE_KEY]=request.to_dict()
         report['request_scope']='FRESH_EXACT_HASH_QUALIFIED_TRACE_AND_COMPONENT_CALIBRATION_REQUIRED'
     return report
 
 
-def domains(workload, *, include_safe_incumbent=False, request=None):
-    c=capability_report(workload,include_safe_incumbent=include_safe_incumbent,request=request)
+def domains(workload, *, include_safe_incumbent=False, include_gan_manual=False, request=None):
+    c=capability_report(workload,include_safe_incumbent=include_safe_incumbent,
+                        include_gan_manual=include_gan_manual,request=request)
     result=dict(variant=('no-gan',) if workload==NO_GAN else ('gan',),mesh=tuple(c['placement']),
         chunk_tokens=('512','2048'),rollout_window=tuple(map(str,c['rollout_window'])),
         persistent_unshard=('off',) if workload==NO_GAN else ('off','on'))
     if include_safe_incumbent:result['candidate_bundle']=('none',BUNDLE_ID)
+    if include_gan_manual:result['candidate_bundle']=('none',GAN_BUNDLE_ID)
     if request is not None:
         result['original_request']=(anchors(workload,request=request)[0].assignment['original_request'],)
     return result
@@ -64,12 +74,21 @@ def safe_incumbent(*, request=None):
     return HeliosImplementation('no-gan','node-hsdp',512,5,False,HeliosSafeBundle.safe(),request)
 
 
-def implementations(workload, *, include_safe_incumbent=False, request=None):
+def gan_manual_incumbent():
+    return HeliosImplementation('gan','world16-fsdp',2048,5,True,HeliosGANBundle.manual())
+
+
+def implementations(workload, *, include_safe_incumbent=False, include_gan_manual=False, request=None):
     require(type(include_safe_incumbent) is bool,'safe incumbent opt-in must be boolean')
     require(not include_safe_incumbent or workload==NO_GAN,'safe incumbent is No-GAN only; GAN is not migrated')
+    require(type(include_gan_manual) is bool and (not include_gan_manual or workload==GAN),
+            'GAN manual bundle opt-in is GAN only')
+    require(not include_gan_manual or request is None, 'GAN manual bundle requires canonical shape')
     d=domains(workload,request=request)
     values=tuple(HeliosImplementation.from_assignment(dict(zip(d,values))) for values in product(*d.values()))
-    return (*values,safe_incumbent(request=request)) if include_safe_incumbent else values
+    if include_safe_incumbent:return (*values,safe_incumbent(request=request))
+    if include_gan_manual:return (*values,gan_manual_incumbent())
+    return values
 
 
 def _read_fragment(reference,root):
@@ -80,7 +99,8 @@ def _read_fragment(reference,root):
     require(b['source_head']==git_head(root) and b['precision_fingerprint']==PRECISION,'Helios component source/precision differs')
     impl=HeliosImplementation.parse(f['implementation_id']);w=impl.workload
     require(impl.assignment in [i.assignment for i in implementations(w,
-            include_safe_incumbent=impl.candidate_bundle.enabled,request=impl.request)],
+            include_safe_incumbent=impl.candidate_bundle.enabled and w==NO_GAN,
+            include_gan_manual=impl.candidate_bundle.enabled and w==GAN,request=impl.request)],
             'Helios graph family not admitted')
     semantics=impl.lower_profile() if impl.request is not None else load_profile(w)
     require(b['semantic_fingerprint']==fingerprint(semantic_contract(semantics)),'Helios workload contract differs')
@@ -131,19 +151,49 @@ def _component_samples(impl,rows):
     return grouped
 
 
+def _manual_match_lowering(layout, identity, limits, incumbent):
+    """Bind an optional common admission budget without altering old layouts."""
+    if 'manual_match_protocol' not in layout:
+        return {}
+    from .resources import validate_capacity_policy
+    reference = layout['manual_match_protocol']
+    require(isinstance(reference, dict) and set(reference) == {'path', 'sha256'}
+            and Path(reference['path']).is_absolute(), 'invalid manual-match protocol reference')
+    protocol = bound(reference)
+    require(protocol.get('scope') == 'MANUAL_NATIVE_VS_SAVED_SELECTED_PLAN_NATIVE',
+            'manual-match protocol scope differs')
+    require(protocol.get('identity') == identity, 'manual-match planning identity differs')
+    require(protocol.get('max_planner_overhead') == 0.03, 'manual-match target must remain 0.03')
+    registered = protocol.get('registered_unix_ns')
+    require(type(registered) is int and registered > 0, 'manual-match preregistration time invalid')
+    policy = protocol['capacity_policy']; validate_capacity_policy(policy)
+    require(policy['memory_limits'] == {str(k): v for k,v in limits.items()},
+            'manual-match planner GPU budgets differ')
+    require(incumbent.candidate_bundle.enabled
+            and protocol.get('manual_candidate') == incumbent.candidate().to_dict(),
+            'manual-match requires the complete named manual incumbent')
+    return {'manual_match_protocol': dict(reference)}
+
+
 def build_problem(layout_path,*,root=None):
     root=root or repository_root();layout=_object(layout_path)
     require(layout.get('schema_version')==SCHEMA and layout.get('fragments'),'Helios native component layout required')
     include_safe=layout.get('include_safe_incumbent_bundle',False)
+    include_gan=layout.get('include_gan_manual_incumbent_bundle',False)
     request=(OriginalHeliosRequest.from_dict(layout[TRACE_KEY]) if TRACE_KEY in layout else None)
     require(type(include_safe) is bool,'safe incumbent layout opt-in must be boolean')
+    require(type(include_gan) is bool,'GAN manual layout opt-in must be boolean')
+    require(not (include_safe and include_gan),'cannot mix GAN and No-GAN bundles')
+    require(not include_gan or request is None,'GAN manual bundle requires canonical shape')
     if include_safe:safe_incumbent(request=request)
     measured_ids=set()
     identity=work=workload=limits=None;static={};outputs={};sources=[]
     for reference in layout['fragments']:
         f,impl,rows=_read_fragment(reference,root)
         require(impl.request==request,'Helios fragment request differs from explicit layout request')
-        require(not impl.candidate_bundle.enabled or include_safe,'safe incumbent fragment requires explicit layout opt-in')
+        require(not impl.candidate_bundle.enabled or (include_safe if impl.workload==NO_GAN else include_gan),
+                'incumbent fragment requires explicit layout opt-in')
+        require(not include_gan or impl.workload==GAN,'GAN manual layout is GAN only')
         require(not include_safe or impl.workload==NO_GAN,'safe incumbent is No-GAN only; GAN is not migrated')
         measured_ids.add(impl.id)
         require(identity is None or identity==f['binding'],'Helios calibration identities differ')
@@ -170,6 +220,10 @@ def build_problem(layout_path,*,root=None):
         incumbent=safe_incumbent(request=request)
         require({baseline.id,incumbent.id}<=measured_ids,
                 'safe incumbent problem requires measured FSDP C512 k0 control and HSDP C512 k1 incumbent')
+    if include_gan:
+        incumbent=gan_manual_incumbent()
+        require({baseline.id,incumbent.id}<=measured_ids,
+                'GAN manual problem requires measured baseline and complete manual incumbent')
     require({i.mesh for i in (baseline,incumbent)}<=set(static),'matched mesh construction layouts missing')
     graph=action_graph(baseline,selected=False)
     states=tuple(StateAllocation('native:'+mesh,RANKS,size,('native_runtime',),False,fingerprint(sources))
@@ -181,8 +235,8 @@ def build_problem(layout_path,*,root=None):
     require(len(lives)==10,'ten measured retained output lifetimes required')
     rules=[];edges=[]
     def assignment(impl):
-        return impl.assignment|({'candidate_bundle':impl.candidate_bundle.id} if include_safe else {})
-    for impl in implementations(workload,include_safe_incumbent=include_safe,request=request):
+        return impl.assignment|({'candidate_bundle':impl.candidate_bundle.id} if include_safe or include_gan else {})
+    for impl in implementations(workload,include_safe_incumbent=include_safe,include_gan_manual=include_gan,request=request):
         if impl.mesh not in static:continue
         for op in graph.operations:
             contract=component_contract(op,impl,work[op.operation_id])
@@ -191,16 +245,19 @@ def build_problem(layout_path,*,root=None):
     for w in domains(workload,request=request)['rollout_window']:
         order=action_graph(replace(baseline,rollout_window=int(w))).topological_order()
         edges.extend(dict(when={'rollout_window':w},source=a,target=b) for a,b in zip(order,order[1:]))
-    decisions=domains(workload,include_safe_incumbent=include_safe,request=request)
-    forbidden=tuple({'candidate_bundle':BUNDLE_ID,key:value}
+    decisions=domains(workload,include_safe_incumbent=include_safe,include_gan_manual=include_gan,request=request)
+    selected_bundle=GAN_BUNDLE_ID if include_gan else BUNDLE_ID
+    frozen_incumbent=gan_manual_incumbent() if include_gan else safe_incumbent(request=request) if include_safe else None
+    forbidden=tuple({'candidate_bundle':selected_bundle,key:value}
         for key,values in decisions.items() if key!='candidate_bundle'
-        for value in values if value!=safe_incumbent(request=request).assignment[key]) if include_safe else ()
+        for value in values if value!=frozen_incumbent.assignment[key]) if include_safe or include_gan else ()
     return PlanningProblem(workload,identity,graph,decisions,tuple(rules),states,lives,limits,
         (assignment(baseline),assignment(incumbent)),forbidden=forbidden,
         conditional_dependencies=tuple(edges),evidence_scope='MEASURED',
         lowering=dict(adapter=ADAPTER,layout_receipt=str(Path(layout_path).resolve()),layout_sha256=file_sha256(layout_path),
             memory_scope=MEMORY+'; TWO_GIB_MARGIN; NATIVE_CAPACITY_CONFIRMATION_REQUIRED',
-            resource_scope='SERIAL_ACTIONS_NO_INVENTED_COMM_OVERLAP',component_sources=sources))
+            resource_scope='SERIAL_ACTIONS_NO_INVENTED_COMM_OVERLAP',component_sources=sources,
+            **_manual_match_lowering(layout,identity,limits,incumbent)))
 
 
 def validate_native_problem(problem):
@@ -280,10 +337,14 @@ def validate_component_receipt(raw,cache):
             'Helios component cost differs from native rank observations')
 
 
-def assemble_calibrations(results,*,output,expected_head,root=None,include_safe_incumbent=False,request=None):
+def assemble_calibrations(results,*,output,expected_head,root=None,include_safe_incumbent=False,
+                          include_gan_manual=False,request=None):
     from .component_calibration import pool_component_models
     root=root or repository_root();require(git_head(root)==expected_head,'assembly source changed')
     require(type(include_safe_incumbent) is bool,'safe incumbent assembly opt-in must be boolean')
+    require(type(include_gan_manual) is bool and not (include_gan_manual and include_safe_incumbent),
+            'GAN manual assembly opt-in must be boolean and exclusive')
+    require(not include_gan_manual or request is None,'GAN manual bundle requires canonical shape')
     require(request is None or type(request) is OriginalHeliosRequest,'typed Helios assembly request required')
     if include_safe_incumbent:safe_incumbent(request=request)
     fragments=[];models=[]
@@ -299,6 +360,7 @@ def assemble_calibrations(results,*,output,expected_head,root=None,include_safe_
     data=dict(schema_version=SCHEMA,fragments=fragments)
     if request is not None:data[TRACE_KEY]=request.to_dict()
     if include_safe_incumbent:data['include_safe_incumbent_bundle']=True
+    if include_gan_manual:data['include_gan_manual_incumbent_bundle']=True
     layout=output/'layout.json';write_new_json(layout,data)
     problem=build_problem(layout,root=root);costs=pool_component_models(models,output=output/'components')
     costs.bind(problem.binding,problem_scope=problem.evidence_scope)
