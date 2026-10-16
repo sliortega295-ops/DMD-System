@@ -30,6 +30,10 @@ owned cleanup and unchanged cgroup OOM counters. Saved plans revalidate these
 references and reject editing or cross-allocation reuse. Numerical comparison
 is separate; slot/census PASS alone is not numerical parity.
 
+The default NCCL algorithm is selected by leaving `NCCL_ALGO` unset after
+clearing inherited NCCL recipe knobs. The native receipt labels this automatic
+choice `AUTO`, but that label is not a valid NCCL environment-variable token.
+
 The public `workloads hardware` CLI remains H100-v1-only. This adapter does
 **not** widen its hardware admission, borrow its H100 launcher, or claim that
 all workloads accept arbitrary device counts. A caller must use the explicit

@@ -149,7 +149,7 @@ def command_lowering(deployment, *, run_id, placement):
         "--expected-bootstrap-hash", SEMANTICS["bootstrap_hash"], "--trace-bundle", str(assets / "m0/traces/syn_feature_trace_rank16_v4_strict_sync_steps20"),
         "--expected-trace-hash", SEMANTICS["trace_bundle_hash"], "--negative-prompt", str(assets / "m1/negative_prompt_official_v1")]
     env = {"PYTHONPATH": f"{native}/src:{native}:{site['helios_root']}", "OMP_NUM_THREADS": "1", "HF_HOME": str(assets / "hf_home_official_torch210"),
-        "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1", "NCCL_ALGO": "AUTO", "DISTILLSCHEDULE_HARDWARE_PROFILE": d["profile"],
+        "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1", "DISTILLSCHEDULE_HARDWARE_PROFILE": d["profile"],
         "DISTILLSCHEDULE_WAN13B_EMA_IMPLEMENTATION": "reference", "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE": "0",
         "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE": "0", "DISTILLSCHEDULE_WAN13B_LORA_OPERATOR_ATTRIBUTION": "0",
         "DISTILLSCHEDULE_STATIC_FSDP2_NSYS_EXACT_RANGE": "0", **site.get("launch_environment", {})}

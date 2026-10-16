@@ -28,6 +28,15 @@ SCRATCH = Path(tempfile.gettempdir()) / "lyy-experiments/DMD-System/allocation-p
 
 
 class ImportContractTests(unittest.TestCase):
+    def test_native_nccl_default_is_unset_not_the_invalid_auto_token(self):
+        SCRATCH.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=SCRATCH) as root:
+            for world in (8, 16):
+                d = deployment(Path(root), world)
+                for row in bridge.command_lowering(d, run_id="CPU_FIXTURE_env", placement="resident"):
+                    self.assertNotIn("NCCL_ALGO", row["environment"])
+                    self.assertIn("NCCL_", row["clear_environment_prefixes"])
+
     def test_import_does_not_import_torch_in_fresh_interpreter(self):
         code = ("import sys; assert 'torch' not in sys.modules; "
                 "import distillschedule.search.a100_allocation; "
