@@ -10,6 +10,7 @@ from contextlib import ExitStack, contextmanager
 from dataclasses import replace
 import math
 import platform
+import struct
 import sys
 import time
 from typing import Any
@@ -28,6 +29,20 @@ SCHEMA = "distillschedule.helios_native_two_cycle.v1"
 COHORT_POLICY = "fixed_source_cohort_replay"
 _COUNTS = ("generator_forward", "critic_forward", "teacher_forward", "generator_backward",
            "critic_backward", "generator_commit", "critic_commit", "generator_optimizer", "critic_optimizer")
+
+
+def _bf16_timestep(value):
+    """Native Torch FP64-to-BF16 projection, including its FP32 intermediate."""
+    try:
+        bits = struct.unpack(">I", struct.pack(">f", value))[0]
+    except OverflowError:
+        return math.copysign(math.inf, value)
+    if (bits & 0x7FFFFFFF) > 0x7F800000:
+        return math.nan
+    # Torch's BF16 constructor takes float and rounds to nearest, ties to even.
+    # Dropping binary64 bits directly would disagree near FP32 rounding ties.
+    bits = (bits + 0x7FFF + ((bits >> 16) & 1)) & 0xFFFF0000
+    return struct.unpack(">f", struct.pack(">I", bits))[0]
 
 
 def _versions(generator, critic, ema):
@@ -431,7 +446,6 @@ def _validate_action(row, impl):
                  and x["trace"]["rollout_operation"] == entry["rollout_operation"]]
         require(len(calls) == record["call_count"], "actual root forwards differ from helper rollout records")
         if impl.request is not None:
-            import torch
             schedule = entry.get("stage_schedule", [])
             expected_calls = [(item["latent_shape"], timestep)
                               for item in schedule for timestep in item["timestep"]]
@@ -440,8 +454,7 @@ def _validate_action(row, impl):
             # validate_native_stage_grids. FSDP2's fixed BF16 input policy casts
             # that schedule before this observer's root hook runs. Project only
             # the audit expectation, outside timers, never the scientific grid.
-            model_timesteps = torch.tensor([t for _, t in expected_calls], dtype=torch.float64).to(
-                dtype=torch.bfloat16).tolist()
+            model_timesteps = [_bf16_timestep(t) for _, t in expected_calls]
             for call, (shape, _), timestep in zip(calls, expected_calls, model_timesteps, strict=True):
                 require(call["inputs"]["hidden_states"]["shape"] == shape,
                         "actual Helios pyramid geometry differs from request trace")

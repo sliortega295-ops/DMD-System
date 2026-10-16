@@ -1,8 +1,11 @@
 """Original Helios parameter binding; CPU metadata fixtures are not GPU evidence."""
 from copy import deepcopy
 from dataclasses import replace
+import builtins
 import json
+import math
 from pathlib import Path
+import struct
 from types import SimpleNamespace as NS
 
 import pytest
@@ -476,6 +479,127 @@ def test_persisted_actual_pyramid_metadata_cannot_relabel_stale_work(monkeypatch
         schedule[0].update(denoising_step_budget=2, timestep_grid=[1000., 500.])
     if mutation == "timestep": generator_calls[0]["timestep"] = 123.
     with pytest.raises(ValueError): _validate_action(row, impl)
+
+
+def _persisted_request_rows(monkeypatch):
+    """Qualify CPU metadata fixtures, not observations from native training."""
+    from test_refactor_helios_search_bridge import native_rows
+    from distillschedule.runtime.helios_planner_cycle import _cycle_graph
+
+    rows, legacy = native_rows(monkeypatch)
+    request = OriginalHeliosRequest(stage2_inference_steps=(1,)*3)
+    impl = replace(legacy, request=request)
+    schedule = controls(request)[0].operation("step/10/critic/rollout")["control"]["pyramid_stage_call_sequence"]
+    raw = (998.4970114182303, 897.5469382610918, 742.7147682074888)
+    for stage, timestep in zip(schedule, raw, strict=True):
+        stage.update(timestep_grid=[timestep], timestep=[timestep])
+    for row in rows:
+        row["candidate_id"] = impl.id
+        row["planner_binding"].update(planner_implementation=impl.assignment,
+            expected_trace_hash="b"*64, **{TRACE_KEY: request.to_dict(), TRACE_HASH_KEY: request.digest})
+        row.setdefault("identities", {}).update(trace_bundle_hash="b"*64, original_helios_native_grid=dict(
+            status="PASS", request_sha256=request.digest, operation_count=6))
+        for cycle in row["cycles"]:
+            graph, _ = _cycle_graph(impl, request.source_steps, cycle["initial_versions"])
+            cycle["graph"] = graph.to_dict()
+            for action in cycle["actions"]:
+                retained = []
+                for entry in action["trace_entries"]:
+                    entry.update(expected_call_count=3, expected_stage_call_count={0: 1, 1: 1, 2: 1},
+                        stage_schedule=deepcopy(schedule), stage_schedule_policy=request.stage_schedule_policy,
+                        all_history_zero=False, **{TRACE_HASH_KEY: request.digest})
+                    calls = [call for call in action["forwards"] if call["application_forward"]
+                        and call["root_module"] == "generator"
+                        and call["trace"]["rollout_operation"] == entry["rollout_operation"]][:3]
+                    for call, stage, timestep in zip(calls, schedule if calls else [],
+                                                    (1000., 896., 744.) if calls else [], strict=True):
+                        call["inputs"]["hidden_states"]["shape"] = stage["latent_shape"]
+                        call["inputs"]["timestep"] = dict(shape=[1], dtype="torch.bfloat16")
+                        call["timestep"] = timestep
+                    retained.extend(calls)
+                action["forwards"] = [call for call in action["forwards"]
+                    if not (call["application_forward"] and call["root_module"] == "generator")
+                    or any(call is kept for kept in retained)]
+                action["counts"]["generator_forward"] = len(retained)
+                records = ([action["helper_record"]["rollout"]] if action["action_id"] == "g"
+                           else action.get("rollout_records", []))
+                for record in records:
+                    record.update(call_count=3, stage_call_count={0: 1, 1: 1, 2: 1},
+                        logical_call_count=3, logical_stage_call_count={0: 1, 1: 1, 2: 1}, calls=[{} for _ in range(3)])
+    return json.loads(json.dumps(rows)), impl
+
+
+@pytest.mark.parametrize("request_qualified", [False, True])
+@pytest.mark.parametrize("scope", ["action", "summarize"])
+def test_persisted_timestep_audit_and_summary_require_no_torch(monkeypatch, request_qualified, scope):
+    from test_refactor_helios_search_bridge import native_rows
+    from distillschedule.runtime.helios_planner_cycle import _validate_action
+    from distillschedule.search.helios_native import summarize
+
+    rows, impl = (_persisted_request_rows(monkeypatch) if request_qualified
+                  else native_rows(monkeypatch))
+    rows = json.loads(json.dumps(rows))
+    original_import = builtins.__import__
+    def no_torch(name, *args, **kwargs):
+        if name == "torch" or name.startswith("torch."):
+            raise ModuleNotFoundError("Torch deliberately unavailable on lean CPU controller")
+        return original_import(name, *args, **kwargs)
+    monkeypatch.setattr(builtins, "__import__", no_torch)
+    with pytest.raises(ModuleNotFoundError, match="deliberately unavailable"):
+        __import__("torch")
+    if scope == "action":
+        action = rows[0]["cycles"][0]["actions"][0]
+        _validate_action(action, impl)
+        if request_qualified:
+            action["forwards"][0]["timestep"] += 1e-7
+            with pytest.raises(ValueError, match="timestep"):
+                _validate_action(action, impl)
+    else:
+        report = summarize(rows, expected_head=rows[0]["source_head"], candidate_id=impl.id)
+        assert report["status"] == "PASS" and report["rank_count"] == 16
+        assert report["calibration_only"] and not report["formal_timing_eligible"]
+
+
+def test_timestep_projection_matches_torch_at_bf16_and_fp32_rounding_boundaries():
+    torch = pytest.importorskip("torch")
+    from distillschedule.runtime.helios_planner_cycle import _bf16_timestep
+
+    values = [998.4970114182303, 897.5469382610918, 742.7147682074888,
+              623.1242597886123, 385.3111935203593, 305.52198382516355]
+    # Both parities of the BF16 tie; include the much narrower FP32 rounding
+    # cells, whose double rounding differs from a direct FP64-to-BF16 round.
+    for midpoint in (251.5, 252.5, 305., 307., 385., 387., 501., 503.,
+                     622., 626., 742., 746., 894., 898., 998., 1002.):
+        half_fp32_ulp = math.ldexp(1., math.frexp(midpoint)[1]-25)
+        for boundary in (midpoint-half_fp32_ulp, midpoint, midpoint+half_fp32_ulp):
+            values.extend((math.nextafter(boundary, -math.inf), boundary,
+                           math.nextafter(boundary, math.inf)))
+    expected = torch.tensor(values, dtype=torch.float64).to(torch.bfloat16).tolist()
+    assert [_bf16_timestep(value) for value in values] == expected
+    assert _bf16_timestep(998.) == 1000.  # Odd lower BF16 mantissa rounds up.
+    assert _bf16_timestep(1002.) == 1000.  # Even lower BF16 mantissa stays down.
+    assert _bf16_timestep(math.nextafter(998., -math.inf)) == 1000.
+    assert _bf16_timestep(math.nextafter(1002., math.inf)) == 1000.
+    assert _bf16_timestep(998.-math.ldexp(1., -14)) == 996.
+    assert _bf16_timestep(1002.+math.ldexp(1., -14)) == 1004.
+
+
+def test_timestep_projection_matches_torch_float_range_and_nonfinite_values():
+    torch = pytest.importorskip("torch")
+    from distillschedule.runtime.helios_planner_cycle import _bf16_timestep
+
+    # Native grid validation rejects non-finite source values and its actual
+    # scheduler stays near [0, 1000]; the scalar helper still mirrors IEEE range.
+    values = [0., -0., math.ldexp(1., -134), math.ldexp(1., -133),
+              math.ldexp(3., -134), math.ldexp(1., -126),
+              struct.unpack(">f", struct.pack(">I", 0x7F7FFFFF))[0],
+              1e100, -1e100, math.inf, -math.inf, math.nan]
+    expected = torch.tensor(values, dtype=torch.float64).to(torch.bfloat16).tolist()
+    for value, native in zip(values, expected, strict=True):
+        actual = _bf16_timestep(value)
+        assert math.isnan(actual) if math.isnan(native) else actual == native
+        if native == 0.:
+            assert math.copysign(1., actual) == math.copysign(1., native)
 
 
 def _real_timestep_observer(*, raw_timesteps=(998.4970114182303, 897.5469382610918, 742.7147682074888),
