@@ -51,6 +51,10 @@ def validate_rank_controls(task, controls):
                     require(d.get("shape") == list(task.latent_shape) and d.get("dtype") == "bfloat16",
                             "trace latent tensor shape/dtype mismatch", path="wan.trace")
                 control = trace.operation(f"step/{step}/{phase}/rollout")["control"]
+                if task.stage_schedule_policy == 'benchmark_v4_strict_global':
+                    require(control.get('stage_schedule_policy') == task.stage_schedule_policy
+                            and type(control.get('all_history_zero')) is bool,
+                            'explicit benchmark branch scope/predicate missing', path='wan.trace')
                 schedule = control.get("pyramid_stage_call_sequence", [])
                 require(len(schedule) == 3 and {s.get("stage") for s in schedule} == {0, 1, 2},
                         "three-stage native schedule required", path="wan.trace")
@@ -60,6 +64,10 @@ def validate_rank_controls(task, controls):
                             "stage geometry mismatch", path="wan.trace")
                     require(type(item.get("call_count")) is int and 1 <= item["call_count"] <= task.stage2_inference_steps[stage],
                             "stage call count exceeds declared denoising horizon", path="wan.trace")
+                    if task.stage_schedule_policy == 'benchmark_v4_strict_global':
+                        expected_budget = task.stage2_inference_steps[stage] * (2 if control['all_history_zero'] else 1)
+                        require(item.get('denoising_step_budget') == expected_budget,
+                                'history-dependent native timestep budget changed', path='wan.trace')
                     # Native simulator horizon/exit is independently checked across all ranks below.
     checked = validate_official_rank_stage_schedule_semantics(controls)
     from runtime.static_world16_trace import StaticWorld16Trace
