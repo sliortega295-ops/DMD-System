@@ -69,8 +69,21 @@ def validate_local(receipt: dict[str, Any], *, root: Path, node_rank: int | None
     # so an uncommitted module cannot shadow the validated checkout.
     dirty = subprocess.check_output(["git", "-C", str(root), "status", "--porcelain", "--untracked-files=normal"], text=True)
     _require(not dirty.strip(), "run requires a clean committed integration checkout")
+    # Explicit native Helios requests bind a new input bundle, not the
+    # canonical cohort. validate_resolved_asset_binding above has checked its
+    # file SHA, embedded bundle hash, request and every lowered node hash.
+    from distillschedule.search.helios_request import TRACE_KEY, OriginalHeliosRequest
+    request_trace_key = None
+    if profile["id"] in {"helios14b_nogan_best", "helios14b_gan_best"} and TRACE_KEY in profile["contract"]:
+        request = OriginalHeliosRequest.from_dict(profile["contract"][TRACE_KEY])
+        trace_binding = receipt["original_helios_trace_binding"]
+        _require(trace_binding["request_sha256"] == request.digest, "Helios admission request differs")
+        request_trace_key = ("DISTILLSCHEDULE_GAN_TRACE_HASH" if request.variant == "gan"
+                             else "DISTILLSCHEDULE_TRACE_BUNDLE_HASH")
     for node in receipt["nodes"]:
         for key, expected in profile["runtime"]["environment"].items():
+            if key == request_trace_key:
+                expected = trace_binding["bundle_hash"]
             if key == "DISTILLSCHEDULE_HELIOS_PLANNER_MODE" and "search_candidate" in receipt:
                 _require(expected == "off", "Helios planner must default off")
                 expected = "native" if receipt["mode"] == "diagnostic-timing" else receipt["mode"]

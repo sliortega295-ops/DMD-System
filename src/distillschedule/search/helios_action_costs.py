@@ -7,6 +7,7 @@ from distillschedule.workloads.best_known.registry import fingerprint, load_prof
 from .contracts import require
 from .cost_model import ComponentContract
 from .helios_implementation import HeliosImplementation, NO_GAN, GAN
+from .helios_request import TRACE_KEY, TRACE_HASH_KEY
 
 ADAPTER = 'helios_prepared_actions_v1'
 RANKS = tuple(range(16))
@@ -16,15 +17,15 @@ PRECISION = fingerprint(dict(base_compute='BF16',lora_master='FP32',
 MEMORY = 'PEAK_MINUS_STATIC_MINUS_ENTRY_LATENTS; RETAINED_TRACE_AND_STATE_GROWTH_IN_WORKSPACE'
 
 
-def anchors(workload):
+def anchors(workload, *, request=None):
     require(workload in (NO_GAN,GAN),'not a Helios workload')
     variant='no-gan' if workload==NO_GAN else 'gan'
     p=load_profile(workload)
     env=p['runtime']['environment']
-    return (HeliosImplementation(variant,'world16-fsdp',512,5,False),
+    return (HeliosImplementation(variant,'world16-fsdp',512,5,False,request=request),
             HeliosImplementation(variant,p['topology']['placement'],
                 int(env['DISTILLSCHEDULE_HELIOS_MODULATION_CHUNK_TOKENS']),5,
-                env['DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_PERSISTENT_UNSHARD']=='on'))
+                env['DISTILLSCHEDULE_HELIOS_GENERATOR_NOGRAD_PERSISTENT_UNSHARD']=='on',request=request))
 
 
 def action_graph(impl, *, selected=True):
@@ -47,7 +48,8 @@ def action_graph(impl, *, selected=True):
         initial_versions=p['initial_versions'],final_versions=versions,cycle_ends=ends,
         source_cohort_policy='fixed_source_cohort_replay',
         canonical_profile_sha256=fingerprint(load_profile(impl.workload)),
-        scope='SERIAL_WORLD16_ACTIONS_INTERNAL_OVERLAP_IN_MEASURED_ENVELOPE'))
+        scope='SERIAL_WORLD16_ACTIONS_INTERNAL_OVERLAP_IN_MEASURED_ENVELOPE',
+        **({TRACE_KEY:impl.request.to_dict(), TRACE_HASH_KEY:impl.request.digest} if impl.request is not None else {})))
 
 
 def observed_work(ranks):
@@ -68,6 +70,8 @@ def component_contract(op,impl,work):
     require(kind in 'grce' and work.get('physical_batch')==1 and work.get('logical_batch')==16,
             'Helios operation work missing')
     local={'family':kind,'variant':impl.variant}
+    if impl.request is not None:
+        local.update({TRACE_KEY:impl.request.to_dict(), TRACE_HASH_KEY:impl.request.digest})
     if kind in 'grc':
         local['modulation_chunk_tokens']=impl.chunk_tokens
         local['selective_flash_checkpoint_stride']=0

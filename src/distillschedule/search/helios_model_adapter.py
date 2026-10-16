@@ -14,6 +14,7 @@ from distillschedule.workloads.best_known.registry import (
 )
 from .contracts import require,semantic_contract
 from .helios_implementation import HeliosImplementation,NO_GAN,GAN
+from .helios_request import OriginalHeliosRequest,TRACE_KEY
 from .helios_safe_bundle import BUNDLE_ID,HeliosSafeBundle
 from .helios_action_costs import ADAPTER,PRECISION,RANKS,MEMORY,anchors,action_graph,component_contract,observed_work
 from .cost_model import CostModel,OperationCost
@@ -24,10 +25,12 @@ SCHEMA='distillschedule.helios_component_layout.v1'
 FRAGMENT='distillschedule.helios_component_fragment.v1'
 
 
-def capability_report(workload, *, include_safe_incumbent=False):
+def capability_report(workload, *, include_safe_incumbent=False, request=None):
     require(workload in (NO_GAN,GAN),'unknown Helios workload')
     require(type(include_safe_incumbent) is bool,'safe incumbent opt-in must be boolean')
     require(not include_safe_incumbent or workload==NO_GAN,'safe incumbent is No-GAN only; GAN is not migrated')
+    require(request is None or (type(request) is OriginalHeliosRequest
+            and request.variant==('no-gan' if workload==NO_GAN else 'gan')), 'typed matching Helios request required')
     report=dict(workload=workload,adapter=ADAPTER,arbitrary_pool_lowering=False,
         placement=['world16-fsdp','node-hsdp'] if workload==NO_GAN else ['world16-fsdp'],
         modulation_chunk_tokens=[512,2048],rollout_window=list(range(1,6)) if workload==NO_GAN else [5],
@@ -38,30 +41,35 @@ def capability_report(workload, *, include_safe_incumbent=False):
         gpu_execution='NOT_RUN_BY_CAPABILITY_INVENTORY',historical_timings_used_as_costs=False)
     if include_safe_incumbent:
         report['candidate_bundles']={'none':'LEGACY_UNCHANGED',BUNDLE_ID:dict(
-            assignment=safe_incumbent().assignment,fields=HeliosSafeBundle.safe().cost_identity(),
+            assignment=safe_incumbent(request=request).assignment,fields=HeliosSafeBundle.safe().cost_identity(),
             calibration='MATCHED_FSDP_C512_K0_AND_HSDP_C512_K1_REQUIRED')}
+    if request is not None:
+        report[TRACE_KEY]=request.to_dict()
+        report['request_scope']='FRESH_EXACT_HASH_QUALIFIED_TRACE_AND_COMPONENT_CALIBRATION_REQUIRED'
     return report
 
 
-def domains(workload, *, include_safe_incumbent=False):
-    c=capability_report(workload,include_safe_incumbent=include_safe_incumbent)
+def domains(workload, *, include_safe_incumbent=False, request=None):
+    c=capability_report(workload,include_safe_incumbent=include_safe_incumbent,request=request)
     result=dict(variant=('no-gan',) if workload==NO_GAN else ('gan',),mesh=tuple(c['placement']),
         chunk_tokens=('512','2048'),rollout_window=tuple(map(str,c['rollout_window'])),
         persistent_unshard=('off',) if workload==NO_GAN else ('off','on'))
     if include_safe_incumbent:result['candidate_bundle']=('none',BUNDLE_ID)
+    if request is not None:
+        result['original_request']=(anchors(workload,request=request)[0].assignment['original_request'],)
     return result
 
 
-def safe_incumbent():
-    return HeliosImplementation('no-gan','node-hsdp',512,5,False,HeliosSafeBundle.safe())
+def safe_incumbent(*, request=None):
+    return HeliosImplementation('no-gan','node-hsdp',512,5,False,HeliosSafeBundle.safe(),request)
 
 
-def implementations(workload, *, include_safe_incumbent=False):
+def implementations(workload, *, include_safe_incumbent=False, request=None):
     require(type(include_safe_incumbent) is bool,'safe incumbent opt-in must be boolean')
     require(not include_safe_incumbent or workload==NO_GAN,'safe incumbent is No-GAN only; GAN is not migrated')
-    d=domains(workload)
+    d=domains(workload,request=request)
     values=tuple(HeliosImplementation.from_assignment(dict(zip(d,values))) for values in product(*d.values()))
-    return (*values,safe_incumbent()) if include_safe_incumbent else values
+    return (*values,safe_incumbent(request=request)) if include_safe_incumbent else values
 
 
 def _read_fragment(reference,root):
@@ -71,9 +79,10 @@ def _read_fragment(reference,root):
     b=f['binding'];validate_binding(b)
     require(b['source_head']==git_head(root) and b['precision_fingerprint']==PRECISION,'Helios component source/precision differs')
     impl=HeliosImplementation.parse(f['implementation_id']);w=impl.workload
-    require(impl.assignment in [i.assignment for i in implementations(w,include_safe_incumbent=w==NO_GAN)],
+    require(impl.assignment in [i.assignment for i in implementations(w,include_safe_incumbent=w==NO_GAN,request=impl.request)],
             'Helios graph family not admitted')
-    require(b['semantic_fingerprint']==fingerprint(semantic_contract(load_profile(w))),'Helios workload contract differs')
+    semantics=impl.lower_profile() if impl.request is not None else load_profile(w)
+    require(b['semantic_fingerprint']==fingerprint(semantic_contract(semantics)),'Helios workload contract differs')
     plan=bound(f['execution_receipt']);validated_profile(plan,root=root)
     require(plan['mode']=='calibration' and plan['search_candidate']['id']==impl.id,'not this native calibration')
     for field,key in (('source_head','integration_head'),('asset_fingerprint','asset_fingerprint'),
@@ -125,11 +134,13 @@ def build_problem(layout_path,*,root=None):
     root=root or repository_root();layout=_object(layout_path)
     require(layout.get('schema_version')==SCHEMA and layout.get('fragments'),'Helios native component layout required')
     include_safe=layout.get('include_safe_incumbent_bundle',False)
+    request=(OriginalHeliosRequest.from_dict(layout[TRACE_KEY]) if TRACE_KEY in layout else None)
     require(type(include_safe) is bool,'safe incumbent layout opt-in must be boolean')
     measured_ids=set()
     identity=work=workload=limits=None;static={};outputs={};sources=[]
     for reference in layout['fragments']:
         f,impl,rows=_read_fragment(reference,root)
+        require(impl.request==request,'Helios fragment request differs from explicit layout request')
         require(not impl.candidate_bundle.enabled or include_safe,'safe incumbent fragment requires explicit layout opt-in')
         require(not include_safe or impl.workload==NO_GAN,'safe incumbent is No-GAN only; GAN is not migrated')
         measured_ids.add(impl.id)
@@ -150,11 +161,11 @@ def build_problem(layout_path,*,root=None):
                     key=(c['cycle'],life['source_step'])
                     outputs[key]=max(outputs.get(key,0),life['bytes'])
         sources.append(reference)
-    baseline,incumbent=anchors(workload)
+    baseline,incumbent=anchors(workload,request=request)
     if include_safe:
         # Two measured arms suffice: the explicit k1 arm is the mandatory
         # incumbent, not an uncalibrated old-HSDP k0 seed disguised as measured.
-        incumbent=safe_incumbent()
+        incumbent=safe_incumbent(request=request)
         require({baseline.id,incumbent.id}<=measured_ids,
                 'safe incumbent problem requires measured FSDP C512 k0 control and HSDP C512 k1 incumbent')
     require({i.mesh for i in (baseline,incumbent)}<=set(static),'matched mesh construction layouts missing')
@@ -169,19 +180,19 @@ def build_problem(layout_path,*,root=None):
     rules=[];edges=[]
     def assignment(impl):
         return impl.assignment|({'candidate_bundle':impl.candidate_bundle.id} if include_safe else {})
-    for impl in implementations(workload,include_safe_incumbent=include_safe):
+    for impl in implementations(workload,include_safe_incumbent=include_safe,request=request):
         if impl.mesh not in static:continue
         for op in graph.operations:
             contract=component_contract(op,impl,work[op.operation_id])
             rules.append(BindingRule(op.operation_id,assignment(impl),contract.digest,RANKS,
                 tuple(f'gpu:{r}' for r in RANKS),('native:'+impl.mesh,),contract.digest))
-    for w in domains(workload)['rollout_window']:
+    for w in domains(workload,request=request)['rollout_window']:
         order=action_graph(replace(baseline,rollout_window=int(w))).topological_order()
         edges.extend(dict(when={'rollout_window':w},source=a,target=b) for a,b in zip(order,order[1:]))
-    decisions=domains(workload,include_safe_incumbent=include_safe)
+    decisions=domains(workload,include_safe_incumbent=include_safe,request=request)
     forbidden=tuple({'candidate_bundle':BUNDLE_ID,key:value}
         for key,values in decisions.items() if key!='candidate_bundle'
-        for value in values if value!=safe_incumbent().assignment[key]) if include_safe else ()
+        for value in values if value!=safe_incumbent(request=request).assignment[key]) if include_safe else ()
     return PlanningProblem(workload,identity,graph,decisions,tuple(rules),states,lives,limits,
         (assignment(baseline),assignment(incumbent)),forbidden=forbidden,
         conditional_dependencies=tuple(edges),evidence_scope='MEASURED',
@@ -267,20 +278,23 @@ def validate_component_receipt(raw,cache):
             'Helios component cost differs from native rank observations')
 
 
-def assemble_calibrations(results,*,output,expected_head,root=None,include_safe_incumbent=False):
+def assemble_calibrations(results,*,output,expected_head,root=None,include_safe_incumbent=False,request=None):
     from .component_calibration import pool_component_models
     root=root or repository_root();require(git_head(root)==expected_head,'assembly source changed')
     require(type(include_safe_incumbent) is bool,'safe incumbent assembly opt-in must be boolean')
+    require(request is None or type(request) is OriginalHeliosRequest,'typed Helios assembly request required')
     fragments=[];models=[]
     for path in results:
         row=_object(path)
         require(row['status']=='PASS_NATIVE_COMPONENT_CALIBRATION' and row['source_head']==expected_head,
                 'invalid Helios calibration result')
-        _read_fragment(row['layout_fragment'],root)
+        _,impl,_=_read_fragment(row['layout_fragment'],root)
+        require(impl.request==request,'Helios assembly request differs from calibrated fragment')
         model=CostModel.from_dict(bound(row['operation_costs']));model.verify_receipts()
         fragments.append(row['layout_fragment']);models.append(model)
     output=Path(output);output.mkdir(parents=True,exist_ok=False)
     data=dict(schema_version=SCHEMA,fragments=fragments)
+    if request is not None:data[TRACE_KEY]=request.to_dict()
     if include_safe_incumbent:data['include_safe_incumbent_bundle']=True
     layout=output/'layout.json';write_new_json(layout,data)
     problem=build_problem(layout,root=root);costs=pool_component_models(models,output=output/'components')

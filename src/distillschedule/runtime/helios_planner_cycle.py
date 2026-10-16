@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from contextlib import ExitStack, contextmanager
 from dataclasses import replace
+import math
 import platform
 import sys
 import time
@@ -17,6 +18,7 @@ from distillschedule.core.enums import OperationKind as Kind
 from distillschedule.core.graph import ExecutionGraph
 from distillschedule.search.contracts import require
 from distillschedule.search.helios_implementation import current_implementation
+from distillschedule.search.helios_request import TRACE_KEY, TRACE_HASH_KEY
 from distillschedule.workloads.best_known.registry import git_head, repository_root
 from .cycle_plan import build_cycle_graph, rollout_window_order
 from .role_runner import StaticRoleRunner
@@ -84,6 +86,10 @@ def _include_helper_peaks(memory, value):
 def _cycle_graph(impl, steps, versions):
     graph = build_cycle_graph(source_steps=steps, initial_versions=versions,
                               ema_after=(0,) if impl.variant == "gan" else (0,1,2,3,4))
+    if impl.request is not None:
+        require(tuple(steps) == impl.request.source_steps, "Helios request source cohort differs")
+        graph = replace(graph, metadata={**graph.metadata, TRACE_KEY: impl.request.to_dict(),
+                                       TRACE_HASH_KEY: impl.request.digest})
     order = rollout_window_order(graph, max_live_rollouts=impl.rollout_window)
     if not (impl.variant == "gan" and impl.rollout_window == 5):
         return graph, order
@@ -140,6 +146,7 @@ class _Observer:
         self.live, self.lifetimes = {}, []
         self.peak_live = 0
         self.in_backward = False
+        self._timesteps = []
 
     def version_snapshot(self):
         physical = _versions(self.generator, self.critic, self.ema)
@@ -163,6 +170,12 @@ class _Observer:
                     expected_call_count=int(control["call_count"]),
                     expected_stage_call_count={int(row["stage"]): int(row["call_count"])
                                                for row in control["pyramid_stage_call_sequence"]})
+        if self.impl.request is not None:
+            self.impl.request.validate_trace_metadata(value.operation_trace)
+            item.update({TRACE_HASH_KEY: self.impl.request.digest,
+                         "stage_schedule": control["pyramid_stage_call_sequence"],
+                         "stage_schedule_policy": self.impl.request.stage_schedule_policy,
+                         "all_history_zero": control.get("all_history_zero", False)})
         self.current["trace_entries"].append(item)
         self.current_entry = item
         self.last_entries[step] = item
@@ -223,6 +236,13 @@ class _Observer:
                                 gan_mode=bool(kwargs.get("gan_mode", False)),
                                 versions=self.versions(), trace=dict(self.current_entry),
                                 inputs=_tensor_metadata(kwargs if kwargs else args, self.torch))
+                    if application and role == "generator" and self.impl.request is not None:
+                        timestep = kwargs.get("timestep")
+                        require(self.torch.is_tensor(timestep) and timestep.numel() == 1,
+                                "Helios request requires an observed B1 model timestep")
+                        # Retain tiny device tensors; inspect values only after
+                        # the fenced native cycle, never synchronize per call.
+                        self._timesteps.append((item, timestep.detach().reshape(-1)[0]))
                     if application:
                         self.current["counts"][f"{physical_role}_forward"] += 1
                     self.current["forwards"].append(item)
@@ -269,7 +289,8 @@ class _Observer:
     def produced(self, step, value):
         require(step not in self.live, "rollout tensor produced twice")
         metadata = _tensor_metadata(value, self.torch)
-        require(metadata["shape"] == [1,16,9,48,80] and metadata["dtype"] == "torch.bfloat16"
+        shape = list(self.impl.request.latent_shape) if self.impl.request is not None else [1,16,9,48,80]
+        require(metadata["shape"] == shape and metadata["dtype"] == "torch.bfloat16"
                 and not metadata["requires_grad"], "retained Helios rollout must be physical B1 BF16 no-grad")
         physical_step = int(self.generator.global_steps)
         item = dict(source_step=step, producer=self.current["action_id"],
@@ -296,6 +317,11 @@ class _Observer:
         for action, role, scalar in self.losses:
             action["losses"].append(dict(role=role, value=float(scalar.float().cpu().item())))
         self.losses.clear()
+        if self._timesteps:
+            observed = self.torch.stack([value for _, value in self._timesteps]).cpu().tolist()
+            for (call, _), value in zip(self._timesteps, observed, strict=True):
+                call["timestep"] = float(value)
+            self._timesteps.clear()
         for row in self.actions:
             _validate_action(row, self.impl)
         return dict(census="PASS", versions="PASS", finite="PASS", dtype="PASS", sample_rng="PASS",
@@ -321,6 +347,33 @@ def _validate_action(row, impl):
     require([entry["source_step"] for entry in row["trace_entries"]] == row["source_steps"],
             "actual action source step identity/order changed")
     require(counts == expected, f"{name}: actual root/backward/optimizer counts differ: {counts} != {expected}")
+    if impl.request is not None:
+        request=impl.request
+        for entry in row['trace_entries']:
+            require(entry.get(TRACE_HASH_KEY)==request.digest
+                    and entry.get('stage_schedule_policy')==request.stage_schedule_policy
+                    and type(entry.get('all_history_zero')) is bool,
+                    'Helios action request/schedule binding differs')
+            zero=entry['all_history_zero']
+            require(not zero or request.stage_schedule_policy=='benchmark_v4_strict_global',
+                    'normal Helios action cannot use amplified native history')
+            schedule=entry.get('stage_schedule',[])
+            require(len(schedule)==3 and [s.get('stage') for s in schedule]==[0,1,2],
+                    'Helios action stage inventory differs')
+            for index,item in enumerate(schedule):
+                horizon=request.stage2_inference_steps[index];budget=horizon*(2 if zero else 1)
+                count=item.get('call_count');grid=item.get('timestep_grid',[])
+                require(item.get('latent_shape')==[*request.latent_shape[:3],*request.stage_spatial_shapes[index]]
+                        and type(count) is int and 1<=count<=horizon
+                        and item.get('denoising_exit')==count-1
+                        and count==entry['expected_stage_call_count'].get(index,
+                            entry['expected_stage_call_count'].get(str(index)))
+                        and item.get('denoising_step_budget')==budget
+                        and len(grid)==budget and all(type(v) in (int,float) and math.isfinite(v) for v in grid)
+                        and item.get('timestep')==grid[:count],
+                        'Helios action native geometry/horizon/grid differs from request')
+            require(sum(s['call_count'] for s in schedule)==entry['expected_call_count'],
+                    'Helios action stage/total call count differs')
     gan_calls = []
     for call in row["forwards"]:
         if not call["application_forward"]:
@@ -330,12 +383,18 @@ def _validate_action(row, impl):
         if packed_gan_d:
             # Logical B1 GAN-D is an official physical fake/real/R1 B3 pack,
             # spatially cropped by 0.5. This is NOT a searched batch increase.
-            require(call["role"] == "critic" and hidden["shape"] == [3,16,9,24,40],
+            shape = list(impl.request.gan_d_shape) if impl.request is not None else [3,16,9,24,40]
+            require(call["role"] == "critic" and hidden["shape"] == shape,
                     "official GAN-D fake/real/R1 packed input shape changed")
         else:
             require(isinstance(hidden, dict) and hidden["shape"][0] == 1,
                     "actual root forward violated the logical B1 physical call contract")
         require(hidden["dtype"] == "torch.bfloat16", "actual root forward violated BF16")
+        if impl.request is not None and call["root_module"] == "critic" and not packed_gan_d:
+            shape = list(impl.request.latent_shape)
+            if call["gan_mode"]:
+                shape[-2:] = [s//2 for s in shape[-2:]]
+            require(hidden["shape"] == shape, "actual Helios Score/Teacher geometry differs from request")
         if call["root_module"] == "critic":
             gan_calls.append(call["gan_mode"])
     if impl.variant == "gan":
@@ -354,6 +413,11 @@ def _validate_action(row, impl):
                 and row["helper_record"].get("logical_step") == row["source_steps"][0],
                 "helper source rank/step identity changed")
     for entry, record in zip(row["trace_entries"], records, strict=bool(records)):
+        if impl.request is not None:
+            require(entry.get(TRACE_HASH_KEY) == impl.request.digest,
+                    "actual Helios trace request binding differs")
+            require(record.get("output_shape") == list(impl.request.latent_shape),
+                    "actual Helios helper output geometry differs from request")
         identities = [record.get("trace_identity_sha256")] if name == "g" else record.get("member_trace_identities")
         require(identities == [entry["trace_identity_sha256"]], "helper member trace identity changed")
         if name != "g":
@@ -366,6 +430,22 @@ def _validate_action(row, impl):
         calls = [x for x in row["forwards"] if x["application_forward"] and x["root_module"] == "generator"
                  and x["trace"]["rollout_operation"] == entry["rollout_operation"]]
         require(len(calls) == record["call_count"], "actual root forwards differ from helper rollout records")
+        if impl.request is not None:
+            schedule = entry.get("stage_schedule", [])
+            expected_calls = [(item["latent_shape"], timestep)
+                              for item in schedule for timestep in item["timestep"]]
+            require(len(expected_calls) == len(calls), "Helios request native stage inventory differs")
+            for call, (shape, timestep) in zip(calls, expected_calls, strict=True):
+                require(call["inputs"]["hidden_states"]["shape"] == shape,
+                        "actual Helios pyramid geometry differs from request trace")
+                require(type(call.get("timestep")) in (float, int)
+                        and abs(call["timestep"]-timestep) <= 1e-4+1e-6*abs(timestep),
+                        "actual Helios native timestep differs from per-rank request grid")
+    if impl.request is not None:
+        require(all(entry.get(TRACE_HASH_KEY) == impl.request.digest for entry in row["trace_entries"]),
+                "Helios action uses another request trace")
+        require(all(value["shape"] == list(impl.request.latent_shape) for value in row["produced"]),
+                "Helios produced metadata differs from request")
 
 
 def _prepare_cycle(*, observer, p0, args, policy, steps, trace, negative, cfg, diagnostics,
@@ -472,6 +552,10 @@ def run_two_cycles(*, p0: Any, args: Any, policy: Any, result: dict[str, Any], o
     impl = current_implementation()
     require(impl is not None, "native Helios bridge is default-off")
     binding = impl.receipt_binding(args=args, policy=policy)
+    if impl.request is not None:
+        require(getattr(trace, "request", None) == impl.request, "Helios runtime trace request differs")
+        impl.request.validate_rank_controls(trace._control)
+        if impl.variant == "gan": impl.request.validate_official_config(cfg)
     bundle_before = (impl.candidate_bundle.effect_snapshot(result.get("build", {}))
                      if impl.candidate_bundle.enabled else None)
     mode, torch = binding["mode"], p0.torch

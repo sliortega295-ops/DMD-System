@@ -1,0 +1,443 @@
+"""Original Helios parameter binding; CPU metadata fixtures are not GPU evidence."""
+from copy import deepcopy
+from dataclasses import replace
+import json
+from pathlib import Path
+from types import SimpleNamespace as NS
+
+import pytest
+
+from distillschedule.search.helios_implementation import HeliosImplementation
+from distillschedule.search.helios_request import OriginalHeliosRequest, TRACE_KEY, TRACE_HASH_KEY
+from distillschedule.search.contracts import semantic_contract
+from distillschedule.workloads.best_known.registry import fingerprint, load_profile
+
+
+def implementation(request=None):
+    return HeliosImplementation(request.variant if request else "no-gan", "world16-fsdp", 512, 5, False,
+                                request=request)
+
+
+def controls(request):
+    from runtime.static_world16_trace import _generator_keys, _critic_keys
+    from runtime.operation_trace import OperationTrace
+    operations, tensors = [], {}
+    for step in request.source_steps:
+        operations.append(dict(key=f"step/{step}/branch", control=dict(global_step=step,
+            dfake_gen_update_ratio=5, train_generator=step == request.source_steps[0],
+            train_critic=True, gan=request.variant == "gan", reward=False, vae_decode=False)))
+        phases = [("critic", _critic_keys(step, gan=request.variant == "gan"))]
+        if step == request.source_steps[0]:
+            phases.append(("generator", _generator_keys(step, gan=request.variant == "gan")))
+        for phase, keys in phases:
+            for key in keys.values():
+                tensors[key] = {"shape": list(request.latent_shape), "dtype": "bfloat16"}
+            sequence = [dict(stage=i, call_count=1, denoising_exit=0, timestep=[1000.],
+                denoising_step_budget=request.stage2_inference_steps[i],
+                timestep_grid=[1000., 500.][:request.stage2_inference_steps[i]],
+                latent_shape=[*request.latent_shape[:3], *hw])
+                for i, hw in enumerate(request.stage_spatial_shapes)]
+            operations.append(dict(key=f"step/{step}/{phase}/rollout", control=dict(call_count=3,
+                pyramid_stage_call_sequence=sequence, initial_synchronized_pyramid_stage_exit=[0, 0, 0],
+                stage_schedule_scope="global_rank0_broadcast_equivalent")))
+            operations.append(dict(key=f"step/{step}/{phase}/{'train' if phase == 'critic' else 'dmd'}", control={}))
+            if request.variant == "gan":
+                operations.append(dict(key=f"step/{step}/{phase}/{'gan_d' if phase == 'critic' else 'gan_g'}", control={}))
+    contract = request.trace_contract()
+    return {rank: OperationTrace(Path(f"/fixture/rank{rank}"),
+                deepcopy(dict(contract=contract, tensors=tensors, operations=operations, trace_hash="0"*64)), {})
+            for rank in range(16)}
+
+
+@pytest.mark.parametrize("variant", ["no-gan", "gan"])
+@pytest.mark.parametrize("frames,horizon", [(33, 2), (17, 2), (33, 1), (17, 1)])
+def test_request_roundtrip_lowering_graph_and_cost_identity(variant, frames, horizon):
+    from distillschedule.search.execution import resolve_candidate, validated_profile
+    from distillschedule.search.helios_action_costs import action_graph, component_contract
+    from distillschedule.workloads.best_known.registry import repository_root
+    request = OriginalHeliosRequest(variant=variant, video_frames=frames,
+                                   stage2_inference_steps=(horizon,)*3)
+    impl = implementation(request)
+    assert OriginalHeliosRequest.from_dict(request.to_dict()) == request
+    assert HeliosImplementation.parse(impl.id) == impl
+    assert HeliosImplementation.from_assignment(impl.assignment) == impl
+    profile = impl.lower_profile()
+    assert profile["contract"][TRACE_KEY] == request.to_dict()
+    assert profile["contract"]["full_latent_shape"] == list(request.latent_shape)
+    assert semantic_contract(profile) != semantic_contract(load_profile(impl.workload))
+    plan = resolve_candidate(impl.workload, impl.id, mode="correctness")
+    assert validated_profile(plan, root=repository_root()) == profile
+    graph = action_graph(impl)
+    assert graph.metadata[TRACE_KEY] == request.to_dict()
+    assert graph.metadata[TRACE_HASH_KEY] == request.digest
+    legacy = replace(impl, request=None)
+    work = dict(physical_batch=1, logical_batch=16)
+    assert component_contract(graph.operations[0], impl, work).digest != component_contract(
+        action_graph(legacy).operations[0], legacy, work).digest
+    assert impl.version_mapping(profile["contract"]) == legacy.version_mapping(legacy.lower_profile()["contract"])
+
+
+def test_default_identity_and_serialization_are_untouched():
+    impl = implementation()
+    assert impl.id == "joint-helios1-nogan-fsdp-c512-p0-w5"
+    assert set(impl.assignment) == {"variant", "mesh", "chunk_tokens", "rollout_window", "persistent_unshard"}
+    assert TRACE_KEY not in impl.lower_profile()["contract"]
+    assert semantic_contract(impl.lower_profile()) == semantic_contract(load_profile(impl.workload))
+    assert "DISTILLSCHEDULE_HELIOS_REQUEST" not in impl.environment()
+
+
+@pytest.mark.parametrize("change", [dict(video_frames=1), dict(video_frames=21), dict(world_size=8),
+    dict(fake_updates=1), dict(physical_batch=8), dict(global_batch=8), dict(video_height=320),
+    dict(stage2_inference_steps=(1, 2, 1)), dict(stage2_inference_steps=(0, 0, 0)),
+    dict(stage2_inference_steps=(True, True, True)), dict(variant="wan")])
+def test_unimplemented_workload_dimensions_fail_closed(change):
+    with pytest.raises(ValueError):
+        OriginalHeliosRequest(**change)
+    with pytest.raises(ValueError):
+        OriginalHeliosRequest.from_dict({"unknown": 1})
+
+
+@pytest.mark.parametrize("variant", ["no-gan", "gan"])
+def test_exact_request_trace_binding_and_stale_f33_rejection(variant):
+    request = OriginalHeliosRequest(variant=variant, video_frames=17, stage2_inference_steps=(1,)*3)
+    rows = controls(request)
+    assert request.validate_rank_controls(rows)["status"] == "PASS"
+    stale = controls(replace(request, video_frames=33))
+    with pytest.raises(ValueError, match="request|shape"):
+        request.validate_rank_controls(stale)
+    # A rehashed/relabelled manifest is still rejected by tensor/stage metadata.
+    for row in stale.values():
+        row.manifest["contract"] = request.trace_contract()
+    with pytest.raises(ValueError, match="shape|geometry"):
+        request.validate_rank_controls(stale)
+
+
+@pytest.mark.parametrize("mutation", ["digest", "horizon", "budget", "rank", "branch", "local", "unknown"])
+def test_trace_control_tampering_is_rejected(mutation):
+    request = OriginalHeliosRequest(video_frames=17, stage2_inference_steps=(1,)*3)
+    rows = controls(request)
+    row = rows[0]
+    if mutation == "digest": row.manifest["contract"][TRACE_HASH_KEY] = "f"*64
+    if mutation == "horizon": row.manifest["contract"][TRACE_KEY]["stage2_inference_steps"] = [2]*3
+    if mutation == "unknown": row.manifest["contract"][TRACE_KEY]["ignored"] = True
+    if mutation == "rank": rows.pop(15)
+    if mutation == "branch": row.operation("step/10/branch")["control"]["dfake_gen_update_ratio"] = 1
+    control = row.operation("step/10/critic/rollout")["control"]
+    if mutation == "budget": control["pyramid_stage_call_sequence"][0]["denoising_step_budget"] = 2
+    if mutation == "local": control["stage_schedule_scope"] = "rank_local"
+    with pytest.raises(ValueError): request.validate_rank_controls(rows)
+
+
+def test_explicit_runtime_identity_requires_matching_request_env_and_config(monkeypatch):
+    from distillschedule.search.helios_implementation import current_implementation
+    request = OriginalHeliosRequest(variant="gan", video_frames=17, stage2_inference_steps=(1,)*3)
+    impl = implementation(request)
+    env = impl.environment() | {"DISTILLSCHEDULE_HELIOS_PLANNER_MODE": "native"}
+    assert current_implementation(env) == impl
+    assert json.loads(env["DISTILLSCHEDULE_HELIOS_REQUEST"]) == request.to_dict()
+    for field in ("DISTILLSCHEDULE_HELIOS_REQUEST", "DISTILLSCHEDULE_HELIOS_REQUEST_SHA256"):
+        with pytest.raises(ValueError): current_implementation({k: v for k, v in env.items() if k != field})
+    with pytest.raises(ValueError): current_implementation(implementation().environment() | {
+        "DISTILLSCHEDULE_HELIOS_PLANNER_MODE": "native", "DISTILLSCHEDULE_HELIOS_REQUEST": "{}"})
+    cfg = NS(training_config=NS(num_critic_input_frames=9, is_enable_stage2=True, stage2_num_stages=3),
+             validation_config=NS(stage2_simulated_inference_steps=[2]*3))
+    bound = request.bind_official_config(cfg)
+    assert cfg.training_config.num_critic_input_frames == 9
+    assert bound.training_config.num_critic_input_frames == 5
+    assert bound.validation_config.stage2_simulated_inference_steps == [1]*3
+    request.validate_official_config(bound)
+    with pytest.raises(ValueError): request.validate_official_config(cfg)
+
+
+def test_original_helper_geometry_is_helios_not_a_wan_model():
+    from distillschedule.runtime.rollout_geometry import rollout_geometry
+    request = OriginalHeliosRequest(video_frames=17, stage2_inference_steps=(1,)*3)
+    trace = controls(request)[0]
+    geometry = rollout_geometry(trace)
+    assert geometry == request
+    assert geometry.model_family == "helios14b"
+    trace.manifest["contract"][TRACE_HASH_KEY] = "stale"
+    with pytest.raises(ValueError): rollout_geometry(trace)
+
+
+def test_real_fake_tensor_metadata_rejects_stale_f33():
+    torch = pytest.importorskip("torch")
+    from distillschedule.runtime.helios_planner_cycle import _Observer
+    request = OriginalHeliosRequest(video_frames=17)
+    observer = _Observer(torch=torch, device="meta", rank=0, impl=implementation(request),
+        generator=NS(global_steps=2), critic=NS(global_steps=10), ema=NS(optimization_step=10),
+        mode="native", version_offsets=dict(generator=0, critic=0, ema=0))
+    observer.current = dict(action_id="r0", produced=[])
+    observer.actions = [observer.current]
+    with pytest.raises(ValueError, match="rollout"):
+        observer.produced(10, torch.empty((1, 16, 9, 48, 80), device="meta", dtype=torch.bfloat16))
+    observer.produced(10, torch.empty(request.latent_shape, device="meta", dtype=torch.bfloat16))
+    assert observer.live[10]["shape"] == [1, 16, 5, 48, 80]
+
+
+def test_p0_request_binding_precedes_trace_construction_and_gan_call():
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "scripts/distillschedule/probe_static_fsdp2_p0_world16.py").read_text()
+    assert source.index("helios_request =") < source.index("trace = StaticWorld16Trace(")
+    assert "request=helios_request" in source
+    assert "helios_request.bind_official_config(cfg)" in source
+    for path in ("runtime/gst_pool_helios.py", "runtime/static_fsdp2_p0_helios.py"):
+        assert "from distillschedule.runtime.rollout_geometry import rollout_geometry" in (root/path).read_text()
+
+
+def write_bundle(request, root):
+    from runtime.operation_trace import _manifest_hash, write_operation_trace_bundle_manifest
+    entries = []
+    for rank, trace in controls(request).items():
+        path = root / f"rank_{rank:02d}"
+        path.mkdir(parents=True)
+        trace.manifest["trace_hash"] = _manifest_hash(trace.manifest)
+        (path / "trace.json").write_text(json.dumps(trace.manifest))
+        entries.append(dict(rank=rank, path=path.name, trace_hash=trace.trace_hash))
+    return write_operation_trace_bundle_manifest(root, entries)
+
+
+@pytest.mark.parametrize("variant", ["no-gan", "gan"])
+def test_compiler_exact_fresh_trace_hash_binding_and_default_regression(tmp_path, monkeypatch, variant):
+    from distillschedule.search.execution import resolve_candidate, validated_profile
+    from distillschedule.workloads.best_known.registry import file_sha256, repository_root
+    request = OriginalHeliosRequest(variant=variant, video_frames=17, stage2_inference_steps=(1,)*3)
+    impl = implementation(request)
+    bundle = write_bundle(request, tmp_path / "trace")
+    assets = json.loads((repository_root()/f"configs/distillschedule/best_known/assets_examples/{impl.workload}.json").read_text())
+    assets["assets"]["trace"] = dict(path=str(tmp_path/"trace"), identity_file="bundle.json",
+                                     sha256=file_sha256(tmp_path/"trace/bundle.json"))
+    path = tmp_path/"assets.json"
+    path.write_text(json.dumps(assets))
+    plan = resolve_candidate(impl.workload, impl.id, mode="correctness", assets_path=path)
+    env_key = "DISTILLSCHEDULE_GAN_TRACE_HASH" if variant == "gan" else "DISTILLSCHEDULE_TRACE_BUNDLE_HASH"
+    assert plan["nodes"][0]["environment"][env_key] == bundle["bundle_hash"]
+    assert plan["original_helios_trace_binding"] == dict(bundle_hash=bundle["bundle_hash"],
+        bundle_file_sha256=assets["assets"]["trace"]["sha256"], request_sha256=request.digest)
+    validated_profile(plan, root=repository_root())
+    # Exercise the real compiler -> local-launch admission seam. Only missing
+    # external assets and the intentionally dirty host checkout are fixtures;
+    # effective environment/request/trace gates below are not stubbed.
+    from distillschedule.workloads.best_known import dispatch
+    monkeypatch.setattr(dispatch, "source_layout", lambda *a, **k: {})
+    monkeypatch.setattr(dispatch, "verify_assets", lambda *a, **k: [])
+    real_output = dispatch.subprocess.check_output
+    def checkout_output(argv, **kwargs):
+        if "status" in argv:
+            return ""
+        return real_output(argv, **kwargs)
+    monkeypatch.setattr(dispatch.subprocess, "check_output", checkout_output)
+    dispatch.validate_local(plan, root=repository_root(), node_rank=0)
+    old = resolve_candidate(impl.workload, replace(impl, request=None).id, mode="correctness", assets_path=path)
+    assert old["nodes"][0]["environment"][env_key] == load_profile(impl.workload)["runtime"]["environment"][env_key]
+    assert "original_helios_trace_binding" not in old
+    bad = deepcopy(plan)
+    bad["nodes"][0]["environment"][env_key] = "0"*64
+    with pytest.raises(ValueError): validated_profile(bad, root=repository_root())
+
+
+@pytest.mark.parametrize("mutation", ["file_sha", "bundle_hash", "old_request", "wrong_identity"])
+def test_compiler_rejects_trace_sha_bundle_hash_or_request_drift(tmp_path, mutation):
+    from distillschedule.search.execution import resolve_candidate
+    from distillschedule.workloads.best_known.registry import file_sha256, repository_root
+    request = OriginalHeliosRequest(video_frames=17, stage2_inference_steps=(1,)*3)
+    write_bundle(replace(request, video_frames=33) if mutation == "old_request" else request, tmp_path/"trace")
+    if mutation == "bundle_hash":
+        path = tmp_path/"trace/bundle.json"
+        raw = json.loads(path.read_text()); raw["bundle_hash"] = "f"*64
+        path.write_text(json.dumps(raw))
+    impl = implementation(request)
+    assets = json.loads((repository_root()/f"configs/distillschedule/best_known/assets_examples/{impl.workload}.json").read_text())
+    assets["assets"]["trace"] = dict(path=str(tmp_path/"trace"), identity_file="bundle.json",
+        sha256="0"*64 if mutation == "file_sha" else file_sha256(tmp_path/"trace/bundle.json"))
+    if mutation == "wrong_identity": assets["assets"]["trace"]["identity_file"] = "IDENTITY.sha256"
+    path = tmp_path/"assets.json"; path.write_text(json.dumps(assets))
+    with pytest.raises(ValueError): resolve_candidate(impl.workload, impl.id, mode="correctness", assets_path=path)
+
+
+def test_benchmark_scope_preserves_rank_native_grids_and_strict_call_parity():
+    request = OriginalHeliosRequest(video_frames=17, stage2_inference_steps=(1,)*3,
+                                   stage_schedule_policy="benchmark_v4_strict_global")
+    rows = controls(request)
+    for rank, trace in rows.items():
+        for op in trace.manifest["operations"]:
+            control = op["control"]
+            if "pyramid_stage_call_sequence" not in control: continue
+            control.update(stage_schedule_policy=request.stage_schedule_policy, all_history_zero=rank % 2 == 0)
+            for stage in control["pyramid_stage_call_sequence"]:
+                stage.update(denoising_step_budget=2 if rank % 2 == 0 else 1,
+                             timestep_grid=[1000., 500.] if rank % 2 == 0 else [1000.])
+    result = request.validate_rank_controls(rows)
+    assert result["cross_rank_call_count_parity"]
+    assert result["upstream_local_amplified_exit_distribution"] == "NOT_CLAIMED"
+    assert "-b4" in implementation(request).id
+    assert HeliosImplementation.parse(implementation(request).id).request == request
+    # A rank-local extra call is still rejected even on a doubled native grid.
+    stage = rows[0].operation("step/10/critic/rollout")["control"]["pyramid_stage_call_sequence"][0]
+    stage.update(call_count=2, denoising_exit=1, timestep=[1000., 500.])
+    with pytest.raises(ValueError): request.validate_rank_controls(rows)
+
+
+def test_request_native_grid_recomputed_from_original_source_and_history_predicate(monkeypatch):
+    """CPU-only original scheduler math; optional text utilities are not imported."""
+    import ast
+    import importlib.util
+    import math
+    import sys
+    import types
+    torch = pytest.importorskip("torch")
+    pytest.importorskip("diffusers")
+    from distillschedule.workloads.best_known.registry import repository_root
+    root = repository_root()/"third_party/helios_compat/source"
+    schedpath = root/"helios/scheduler/scheduling_helios.py"
+    spec = importlib.util.spec_from_file_location("helios.scheduler.scheduling_helios", schedpath)
+    scheduler = importlib.util.module_from_spec(spec)
+    monkeypatch.setitem(sys.modules, spec.name, scheduler)
+    spec.loader.exec_module(scheduler)
+    # Execute unchanged source definitions, not a numerical substitute. The
+    # runtime imports the complete native module in its validated environment.
+    basepath = root/"helios/utils/utils_base.py"
+    base = types.ModuleType("helios.utils.utils_base"); base.__file__ = str(basepath)
+    base.__dict__.update(torch=torch, math=math, Literal=__import__("typing").Literal)
+    selected = [node for node in ast.parse(basepath.read_text()).body
+                if isinstance(node, ast.FunctionDef) and node.name in ("calculate_shift", "apply_schedule_shift")]
+    exec(compile(ast.Module(body=selected, type_ignores=[]), str(basepath), "exec"), base.__dict__)
+    monkeypatch.setitem(sys.modules, base.__name__, base)
+    request = OriginalHeliosRequest(video_frames=17, stage2_inference_steps=(1,)*3,
+                                   stage_schedule_policy="benchmark_v4_strict_global")
+    trace = controls(request)[0]
+    for op in trace.manifest["operations"]:
+        c = op["control"]
+        if "pyramid_stage_call_sequence" not in c: continue
+        c.update(stage_schedule_policy=request.stage_schedule_policy, all_history_zero=True)
+        for stage in c["pyramid_stage_call_sequence"]:
+            s = scheduler.HeliosScheduler(shift=1., stages=3, stage_range=[0, 1/3, 2/3, 1], gamma=1/3)
+            index = stage["stage"]; s.set_timesteps(3, index, device="cpu")
+            s.sigmas = torch.cat([s.sigmas[:-2], s.sigmas[-1:]])
+            sigmas, _ = base.apply_schedule_shift(s.sigmas,
+                torch.empty(stage["latent_shape"], device="meta"), sigmas_two=s.sigmas_per_stage[index],
+                base_seq_len=256, max_seq_len=4096, base_shift=.5, max_shift=1.15, time_shift_type="linear")
+            t = s.timesteps_per_stage[index]
+            grid = (t.min()+sigmas[:-1]*(t.max()-t.min())).tolist()
+            stage.update(denoising_step_budget=2, timestep_grid=grid, timestep=grid[:1])
+    assert request.validate_native_stage_grids(trace)["status"] == "PASS"
+    trace.operation("step/10/critic/rollout")["control"]["pyramid_stage_call_sequence"][0]["timestep_grid"][1] += 10.
+    with pytest.raises(ValueError, match="native.*grid|grid.*native"):
+        request.validate_native_stage_grids(trace)
+    # Actual tensor sums, not an unaudited control label, decide the native
+    # amplified budget. These are small test tensors, not real video features.
+    for op in trace.manifest["operations"]:
+        if not op["key"].endswith("/rollout"): continue
+        prefix = op["key"].removesuffix("/rollout")
+        for role in ("history_short", "history_mid", "history_long"):
+            trace.tensors[prefix+"/"+role] = torch.zeros((1,))
+    request.validate_loaded_history(trace)
+    trace.tensors["step/10/critic/history_short"].fill_(1.)
+    with pytest.raises(ValueError, match="history"):
+        request.validate_loaded_history(trace)
+
+
+def test_request_inventory_and_real_typed_component_problem(tmp_path, monkeypatch):
+    from distillschedule.search import helios_model_adapter as m
+    from distillschedule.search.workflow_cli import candidate_inventory
+    from distillschedule.search.helios_action_costs import anchors, PRECISION
+    from test_refactor_helios_search_bridge import native_rows
+    from test_refactor_model_planning import BINDING
+    request = OriginalHeliosRequest(video_frames=17, stage2_inference_steps=(1,)*3)
+    impl = implementation(request)
+    inventory = candidate_inventory(impl.workload, request=request)
+    assert inventory["workload_request"] == request.to_dict()
+    assert all(HeliosImplementation.parse(i["id"]).request == request for i in inventory["candidates"])
+    assert inventory["native_adapter"][TRACE_KEY] == request.to_dict()
+    rows, _ = native_rows(monkeypatch, window=5)
+    for row in rows:
+        for mem in [row["post_setup_memory"], *[a[k] for c in row["cycles"] for a in c["actions"]
+                    for k in ("memory_before", "memory_after")]]:
+            mem.update(driver_total_bytes=40*2**30, driver_free_bytes=35*2**30)
+    pair = anchors(impl.workload, request=request)
+    identity = {**BINDING, "source_head": rows[0]["source_head"], "precision_fingerprint": PRECISION,
+                "semantic_fingerprint": fingerprint(semantic_contract(impl.lower_profile()))}
+    monkeypatch.setattr(m, "_read_fragment", lambda ref, root: ({"binding": identity}, pair[ref["index"]], deepcopy(rows)))
+    path = tmp_path/"layout.json"
+    path.write_text(json.dumps(dict(schema_version=m.SCHEMA, fragments=[{"index": 0}, {"index": 1}],
+                                   **{TRACE_KEY: request.to_dict()})))
+    problem = m.build_problem(path)
+    assert problem.graph.metadata[TRACE_HASH_KEY] == request.digest
+    assert len(problem.decisions["original_request"]) == 1
+    assert all(HeliosImplementation.from_assignment(seed).request == request for seed in problem.seeds)
+    data = json.loads(path.read_text()); data.pop(TRACE_KEY); path.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="request"): m.build_problem(path)
+
+
+def test_effective_request_receipt_cannot_reuse_another_launch_trace(monkeypatch):
+    from test_refactor_helios_planner_native import _fixture
+    f = _fixture(monkeypatch)
+    request = OriginalHeliosRequest(video_frames=17)
+    impl = implementation(request)
+    env = impl.environment() | {"DISTILLSCHEDULE_HELIOS_PLANNER_MODE": "native",
+                               impl.trace_hash_environment: "b"*64}
+    f.kwargs["args"].original_helios_request = request
+    f.kwargs["args"].expected_trace_hash = "b"*64
+    binding = impl.receipt_binding(args=f.kwargs["args"], policy=f.kwargs["policy"], environment=env)
+    assert binding["expected_trace_hash"] == "b"*64
+    f.kwargs["args"].expected_trace_hash = "c"*64
+    with pytest.raises(ValueError, match="trace hash"):
+        impl.receipt_binding(args=f.kwargs["args"], policy=f.kwargs["policy"], environment=env)
+
+
+def test_request_assembly_preserves_request_and_rejects_mixed_cohorts(tmp_path, monkeypatch):
+    from distillschedule.search import helios_model_adapter as m
+    from distillschedule.search import component_calibration
+    from test_refactor_model_planning import BINDING
+    request = OriginalHeliosRequest(video_frames=17)
+    impl = implementation(request)
+    result = dict(status="PASS_NATIVE_COMPONENT_CALIBRATION", source_head=m.git_head(m.repository_root()),
+                  implementation_id=impl.id, layout_fragment={"path": "fixture", "sha256": "0"*64},
+                  operation_costs={"path": "fixture-costs", "sha256": "1"*64})
+    path = tmp_path/"result.json"; path.write_text(json.dumps(result))
+    model = NS(verify_receipts=lambda: None, bind=lambda *a, **k: None, to_dict=lambda: {})
+    monkeypatch.setattr(m, "_read_fragment", lambda *a: ({"binding": BINDING}, impl, []))
+    monkeypatch.setattr(m, "bound", lambda *a: {})
+    monkeypatch.setattr(m.CostModel, "from_dict", lambda *a: model)
+    monkeypatch.setattr(component_calibration, "pool_component_models", lambda *a, **k: model)
+    seen = []
+    def build(path, **kwargs):
+        seen.append(json.loads(path.read_text()))
+        return NS(binding=BINDING, evidence_scope="CPU_FIXTURE_ONLY", to_dict=lambda: {})
+    monkeypatch.setattr(m, "build_problem", build)
+    m.assemble_calibrations([path], output=tmp_path/"assembled", expected_head=result["source_head"], request=request)
+    assert seen[0][TRACE_KEY] == request.to_dict()
+    with pytest.raises(ValueError, match="request"):
+        m.assemble_calibrations([path], output=tmp_path/"mixed", expected_head=result["source_head"],
+                                request=replace(request, video_frames=33))
+
+
+@pytest.mark.parametrize("mutation", ["stage", "budget", "timestep"])
+def test_persisted_actual_pyramid_metadata_cannot_relabel_stale_work(monkeypatch, mutation):
+    from test_refactor_helios_planner_native import _fixture
+    from distillschedule.runtime.helios_planner_cycle import run_two_cycles, _validate_action
+    f = _fixture(monkeypatch)
+    run_two_cycles(**f.kwargs)
+    request = OriginalHeliosRequest(video_frames=17, stage2_inference_steps=(1,)*3)
+    impl = implementation(request)
+    row = deepcopy(f.result["cycles"][0]["actions"][0])
+    schedule = controls(request)[0].operation("step/10/generator/rollout")["control"]["pyramid_stage_call_sequence"]
+    row["trace_entries"][0].update({TRACE_HASH_KEY: request.digest, "stage_schedule": schedule,
+                                  "stage_schedule_policy": request.stage_schedule_policy, "all_history_zero": False})
+    row["helper_record"]["rollout"]["output_shape"] = list(request.latent_shape)
+    generator_calls = []
+    for call in row["forwards"]:
+        hidden = call["inputs"]["hidden_states"]
+        hidden["shape"] = list(request.latent_shape)
+        if call["root_module"] == "generator": generator_calls.append(call)
+    for call, stage in zip(generator_calls, schedule, strict=True):
+        call["inputs"]["hidden_states"]["shape"] = list(stage["latent_shape"])
+        call["timestep"] = stage["timestep"][0]
+    _validate_action(row, impl)
+    if mutation == "stage":
+        schedule[0]["latent_shape"][2] = 9
+        generator_calls[0]["inputs"]["hidden_states"]["shape"][2] = 9
+    if mutation == "budget":
+        schedule[0].update(denoising_step_budget=2, timestep_grid=[1000., 500.])
+    if mutation == "timestep": generator_calls[0]["timestep"] = 123.
+    with pytest.raises(ValueError): _validate_action(row, impl)

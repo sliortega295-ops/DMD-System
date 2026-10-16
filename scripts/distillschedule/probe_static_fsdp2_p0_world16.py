@@ -1424,9 +1424,15 @@ def main() -> int:
         )
         if args.expected_logical_hash and logical.manifest_hash != args.expected_logical_hash:
             raise ValueError("logical checkpoint identity changed")
-        trace = StaticWorld16Trace(args.trace_bundle, variant=args.variant)
+        from distillschedule.search.helios_implementation import current_implementation
+        helios_implementation = current_implementation()
+        helios_request = helios_implementation.request if helios_implementation is not None else None
+        args.original_helios_request = helios_request
+        trace = StaticWorld16Trace(args.trace_bundle, variant=args.variant, request=helios_request)
         if args.expected_trace_hash and trace.bundle_hash != args.expected_trace_hash:
             raise ValueError("trace bundle identity changed")
+        helios_native_grid = (helios_request.validate_native_stage_grids(trace._control[rank])
+                              if helios_request is not None else None)
         control_entries = [
             trace.load_critic_entry(rank=rank, step=step, device="cpu")
             for step in contract.logical_steps
@@ -1444,6 +1450,8 @@ def main() -> int:
             "rank_control_validation": trace.rank_control_validation,
             "cross_step_rollout_batchability": "PASS",
         }
+        if helios_native_grid is not None:
+            result["identities"]["original_helios_native_grid"] = helios_native_grid
         if args.validate_only:
             result.update(status="PASS", validate_only=True)
             base._atomic_json(output, result)
@@ -1455,6 +1463,8 @@ def main() -> int:
             device=device, dtype=torch.bfloat16
         )
         cfg = load_official_config(args.gan_config) if args.variant == "gan" else None
+        if helios_request is not None and cfg is not None:
+            cfg = helios_request.bind_official_config(cfg)
         generator_engine, critic_engine, build = _build_engines(
             args=args,
             package=logical,

@@ -122,7 +122,9 @@ def rebind_plan(receipt: dict[str, Any], *, run_id: str,
                 if impl.cache_policy == "legacy_cpu_staged" or impl.id == reference_id else impl.id)
     elif candidate_id.startswith("joint-helios1-"):
         from .helios_action_costs import anchors
-        reference_id, peer = (i.id for i in anchors(receipt["profile_id"]))
+        from .helios_implementation import HeliosImplementation
+        request = HeliosImplementation.parse(candidate_id).request
+        reference_id, peer = (i.id for i in anchors(receipt["profile_id"], request=request))
     else:
         reference_id = "fsdp-reference"
         peer = next(c.id for c in candidates(receipt["profile_id"]) if c.executable and c.id != reference_id)

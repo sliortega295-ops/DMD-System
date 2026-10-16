@@ -258,11 +258,19 @@ def validate_resolved_asset_binding(receipt: Mapping[str, Any], profile: Mapping
     assets = validate_asset_config(receipt["asset_config"], profile)
     _require(receipt["asset_fingerprint"] == fingerprint(asset_identity(assets)), "resolved asset/dependency identity changed")
     _require(len(receipt["nodes"]) == len(assets["nodes"]), "resolved node count changed")
+    helios_trace = _original_helios_trace_binding(profile, assets)
+    if helios_trace is not None:
+        _require(receipt.get("original_helios_trace_binding") == helios_trace,
+                 "resolved ORIGINAL Helios trace binding changed")
     for node, spec in zip(receipt["nodes"], assets["nodes"]):
         _require(node["repo_root"] == spec["repo_root"]
                  and node["python"] == str(Path(spec["python_env"]) / "bin/python"), "resolved source/python binding changed")
         _require(node["environment"]["PYTHONPATH"] == _python_path(profile, spec, node["environment"]),
                  "resolved dependency PYTHONPATH changed")
+        if helios_trace is not None:
+            key = _original_helios_trace_hash_environment(profile)
+            _require(node["environment"].get(key) == helios_trace["bundle_hash"],
+                     "resolved ORIGINAL Helios expected trace hash changed")
         if profile["id"] == "minimax_h3_grid1000_best":
             _require(node["environment"].get("PATH") == H3_SYSTEM_TOOLCHAIN_PATH,
                      "resolved H3 system toolchain PATH changed")
@@ -283,6 +291,32 @@ def verify_assets(profile: Mapping[str, Any], assets: Mapping[str, Any]) -> list
         result.append({"name": name, "path": str(path), "identity_file": str(identity), "sha256": item["sha256"],
                        "scope": "IDENTITY_FILE_ONLY_PAYLOADS_CHECKED_BY_NATIVE_WORKER"})
     return result
+
+
+def _original_helios_trace_hash_environment(profile):
+    return ("DISTILLSCHEDULE_GAN_TRACE_HASH" if profile["contract"]["variant"] == "gan"
+            else "DISTILLSCHEDULE_TRACE_BUNDLE_HASH")
+
+
+def _original_helios_trace_binding(profile, assets):
+    """Only explicit ORIGINAL requests replace canonical trace hashes.
+
+    The bundle file SHA is the existing asset fingerprint, not a caller env
+    override. Its embedded content hash and every request-qualified rank
+    manifest are independently checked before constructing a launch.
+    """
+    from distillschedule.search.helios_request import TRACE_KEY, OriginalHeliosRequest
+    if profile["id"] not in {"helios14b_nogan_best", "helios14b_gan_best"} or TRACE_KEY not in profile["contract"]:
+        return None
+    from runtime.static_world16_trace import StaticWorld16Trace
+    request = OriginalHeliosRequest.from_dict(profile["contract"][TRACE_KEY])
+    spec = assets["assets"]["trace"]
+    _require(spec.get("identity_file") == "bundle.json", "ORIGINAL Helios trace identity must be bundle.json")
+    identity = Path(spec["path"]) / "bundle.json"
+    _require(identity.is_file() and file_sha256(identity) == spec["sha256"],
+             "ORIGINAL Helios trace bundle file SHA256 mismatch")
+    trace = StaticWorld16Trace(spec["path"], variant=request.variant, request=request)
+    return dict(bundle_hash=trace.bundle_hash, bundle_file_sha256=spec["sha256"], request_sha256=request.digest)
 
 
 def _substitute(value: Any, replacements: Mapping[str, str]) -> Any:
@@ -340,6 +374,9 @@ def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: P
         return receipt
     assets = (load_assets(assets_path, profile) if assets_path is not None
               else validate_asset_config(asset_config, profile))
+    helios_trace = _original_helios_trace_binding(profile, assets)
+    if helios_trace is not None:
+        receipt["original_helios_trace_binding"] = helios_trace
     receipt["asset_fingerprint"] = fingerprint(asset_identity(assets))
     receipt["asset_config"] = assets
     receipt["scope"] = "RESOLVED_NOT_EXECUTED"
@@ -361,6 +398,8 @@ def resolve_configuration(profile: dict[str, Any], *, root: Path, assets_path: P
     for i, n in enumerate(assets["nodes"]):
         rr = Path(n["repo_root"])
         env = dict(profile["runtime"]["environment"])
+        if helios_trace is not None:
+            env[_original_helios_trace_hash_environment(profile)] = helios_trace["bundle_hash"]
         if profile["id"].startswith("helios14b_") and "planner_implementation" in profile["runtime"]:
             _require(env.get("DISTILLSCHEDULE_HELIOS_PLANNER_MODE") == "off", "Helios planner must default off")
             env["DISTILLSCHEDULE_HELIOS_PLANNER_MODE"] = "native" if mode == "diagnostic-timing" else mode

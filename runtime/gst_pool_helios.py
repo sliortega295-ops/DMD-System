@@ -53,7 +53,7 @@ def run_generator_update_trace_rollout(
     from helios.scheduler.scheduling_helios import HeliosScheduler
     from helios.utils.utils_helios_post import run_generator
 
-    from distillschedule.strategies.wan_task import rollout_geometry
+    from distillschedule.runtime.rollout_geometry import rollout_geometry
     geometry = rollout_geometry(entry.operation_trace)
     tensors = entry.tensors
     operation = entry.operation_trace.operation(entry.rollout_operation)
