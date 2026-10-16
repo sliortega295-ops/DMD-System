@@ -3,12 +3,24 @@
 from __future__ import annotations
 import argparse,json,os,runpy,sys,pathlib,hashlib,traceback
 ROOT=pathlib.Path(__file__).resolve().parents[2]
+NATIVE_NORM_SHA256="25b8bc708e0b7c1f41d49b27e2a645817fb603423390d8d83a689c8777501cb7"
 def load_native_rmsnorm():
     """Use the production offline import policy, without constructing a model."""
     from runtime.critic_pool_helios import configure_offline_helios
     configure_offline_helios()
     from helios.modules.helios_kernels.triton_norm import flash_rms_layernorm
     return flash_rms_layernorm
+
+def native_source_receipt(function):
+    """Identify native code underneath the unchanged torch.compile-disable wrapper."""
+    import inspect
+    native=inspect.unwrap(function)
+    path=pathlib.Path(inspect.getsourcefile(native)).resolve()
+    digest=hashlib.sha256(path.read_bytes()).hexdigest()
+    if digest!=NATIVE_NORM_SHA256:
+        raise ValueError("NATIVE_RMSNORM_SOURCE_IDENTITY_CHANGED")
+    return dict(path=str(path),file_sha256=digest,
+                callable_source_sha256=hashlib.sha256(inspect.getsource(native).encode()).hexdigest())
 
 def main():
     p=argparse.ArgumentParser();p.add_argument("--output",type=pathlib.Path,required=True);args=p.parse_args()
@@ -21,8 +33,7 @@ def main():
         torch.cuda.set_device(rank);device=torch.device("cuda",rank)
         dist.init_process_group("gloo")
         flash_rms_layernorm = load_native_rmsnorm()
-        import inspect
-        source=hashlib.sha256(inspect.getsource(flash_rms_layernorm).encode()).hexdigest()
+        native_source=native_source_receipt(flash_rms_layernorm)
         norm=torch.nn.RMSNorm(128,eps=1e-6).to(device=device,dtype=torch.bfloat16)
         dist.barrier()
         for rows in (540,2160,8640):
@@ -36,7 +47,8 @@ def main():
         for f in metadata:
             json.loads(f.read_text());hashes[str(f.relative_to(path))]=hashlib.sha256(f.read_bytes()).hexdigest()
         result.update(status="PASS_ACTUAL_NATIVE_RMSNORM_FW_BW_PRIVATE_COMPILE_CACHE",cache=cache,
-            metadata_sha256=hashes,native_function_source_sha256=source,
+            metadata_sha256=hashes,native_function_source_sha256=native_source["callable_source_sha256"],
+            native_source=native_source,
             real_forward_backward_layouts=[540,2160,8640],physical_GPUs=8,
             peak_allocated=torch.cuda.max_memory_allocated(),peak_reserved=torch.cuda.max_memory_reserved(),
             minimum_free="NOT_CONTINUOUSLY_MEASURED",driver_free_after=torch.cuda.mem_get_info()[0],

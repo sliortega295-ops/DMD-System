@@ -2,6 +2,8 @@
 import ast,os,pathlib,tempfile,types,unittest
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 SOURCE=ROOT/"scripts/distillschedule/probe_wan13b_two_cycle_timing_world16.py"
+def native_norm_identity_fixture(value):
+    return value
 def helpers():
     tree=ast.parse(SOURCE.read_text())
     names={"_configure_rank_private_triton_cache","_write_failure_receipt_and_maybe_exit"}
@@ -65,4 +67,21 @@ class TestCache(unittest.TestCase):
         self.assertEqual(statements[2].module,"helios.modules.helios_kernels.triton_norm")
         self.assertEqual(ast.unparse(statements[3]),"return flash_rms_layernorm")
         self.assertIn("flash_rms_layernorm = load_native_rmsnorm()",source.read_text())
+    def test_canary_identity_unwraps_decorator_and_rejects_other_source(self):
+        import functools,hashlib,inspect
+        source=ROOT/"scripts/distillschedule/canary_wan13b_rank_private_cache.py"
+        tree=ast.parse(source.read_text())
+        node=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=="native_source_receipt")
+        expected=hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest()
+        ns=dict(pathlib=pathlib,hashlib=hashlib,NATIVE_NORM_SHA256=expected)
+        exec(compile(ast.Module(body=[node],type_ignores=[]),str(source),"exec"),ns)
+        @functools.wraps(native_norm_identity_fixture)
+        def wrapper(value):
+            return native_norm_identity_fixture(value)
+        receipt=ns["native_source_receipt"](wrapper)
+        self.assertEqual(receipt["file_sha256"],expected)
+        self.assertEqual(receipt["callable_source_sha256"],hashlib.sha256(inspect.getsource(native_norm_identity_fixture).encode()).hexdigest())
+        ns["NATIVE_NORM_SHA256"]="0"*64
+        with self.assertRaisesRegex(ValueError,"NATIVE_RMSNORM_SOURCE_IDENTITY_CHANGED"):
+            ns["native_source_receipt"](wrapper)
 if __name__=="__main__":unittest.main()
