@@ -223,12 +223,17 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
     """Called under torchrun; no implicit launch, external commands, or downloads."""
     require(isinstance(task, OriginalWanTask) and isinstance(assets, OriginalWanAssets),
             'validated task/assets required', path='wan.worker')
-    require(mode in {'calibrate', 'run'}, 'invalid worker mode', path='wan.worker')
+    require(mode in {'calibrate', 'run', 'manual'}, 'invalid worker mode', path='wan.worker')
     rank, local_rank = topology(os.environ)
     document = None
     if mode == 'calibrate':
         require(plan_path is None and isinstance(strategy, WanStrategy) and strategy.rollout_window == 1
                 and cycles == 2, 'calibration is one primitive arm, two cycles, window1', path='wan.worker')
+    elif mode == 'manual':
+        require(plan_path is None and isinstance(strategy, WanStrategy) and cycles == 2
+                and stream_path is None,
+                'manual reference requires explicit strategy, exactly two fixed-trace cycles and no plan/stream',
+                path='wan.worker')
     else:
         require(plan_path is not None and strategy is None, 'run must use a validated selected plan', path='wan.worker')
         document = validate_plan(task, plan_path)
@@ -250,6 +255,10 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
     receipt = {'status': 'STARTED_ORIGINAL_WAN_WORK', 'mode': mode, 'rank': rank,
                'task': task.to_dict(), 'strategy': strategy.to_dict(), 'gpu_execution': 'NOT_RUN',
                'claimable_speedup': False, 'host': socket.gethostname()}
+    if mode == 'manual':
+        receipt.update(execution_kind='MANUAL_REFERENCE_DIRECT_NATIVE_ORDER',
+                       manual_strategy_sha256=fingerprint(strategy.to_dict()),
+                       search_performed=False)
     _json(path, receipt)
     observer = None; initialized = False; metadata_group = None
     try:
@@ -312,7 +321,7 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                 observer = OriginalWanCalibrator(task=task, initial_versions=session.versions(),
                     work=trace_work(task, trace), torch=torch, distributed=dist, device=device,
                     rank=rank, implementation=strategy, source_head=source_head)
-            elif stream is None:
+            elif document is not None and stream is None:
                 free, _ = torch.cuda.mem_get_info(device)
                 predicted = next(r for r in document['selected']['memory'] if r['rank'] == rank)
                 require(predicted['peak_bytes'] <= free + torch.cuda.memory_allocated(device),
@@ -335,7 +344,7 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                         'order': event['operation_order']}, metadata_group)
                     require(all(p == peers[0] for p in peers), 'rank cohort/order/version mismatch', path='wan.worker')
                     return event
-            result = execute_cycles(session, cycles=cycles, mode=mode, torch=torch, distributed=dist,
+            result = execute_cycles(session, cycles=cycles, mode='run' if mode == 'manual' else mode, torch=torch, distributed=dist,
                 observer=observer, operation_order=None if document is None else tuple(document['selected']['order']),
                 before_cycle=before_cycle, progress=progress,
                 validate_result=lambda raw: validate_cycle(session.task, session.trace, raw))
