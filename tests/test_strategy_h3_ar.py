@@ -149,23 +149,24 @@ def test_input_profile_file_itself_is_strongly_bound_and_old_task_refused(tmp_pa
     with pytest.raises(ValueError, match='contract file changed'): H3ARTask()
 
 
-def test_parser_pins_cover_both_original_prepare_functions():
-    import ast
-    from pathlib import Path
-    from distillschedule.strategies.h3_ar_inputs import validate_parser
-    original = Path('/home/lyy/Helios/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/artifacts/reference_source_snapshot/examples/minimax_h3/model_training')
+def test_parser_file_identity_gate_covers_both_prepare_functions(tmp_path, monkeypatch):
+    import importlib.util
+    import distillschedule.strategies.h3_ar_inputs as inputs
+    from distillschedule.workloads.best_known.registry import file_sha256
+    pins = {}
     functions = {}
     for filename, name in [('h3_dmd2.py', 'prepare_batch'), ('train_ours.py', 'prepare_cached_inputs')]:
-        path = original/filename
-        definition = next(n for n in ast.parse(path.read_text()).body if isinstance(n, ast.FunctionDef) and n.name == name)
-        namespace = {}
-        # Definition only; original body is not invoked or reimplemented here.
-        exec(compile(ast.Module(body=[definition], type_ignores=[]), str(path), 'exec'), namespace)
-        functions[name] = namespace[name]
-    validate_parser(SimpleNamespace(**functions))
-    functions['prepare_cached_inputs'] = lambda value: value
+        path = tmp_path/filename
+        path.write_text('def '+name+'(value):\n    return value  # synthetic source-identity fixture only\n')
+        pins['examples/minimax_h3/model_training/'+filename] = file_sha256(path)
+        spec = importlib.util.spec_from_file_location('fixture_'+name, path)
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        functions[name] = getattr(module, name)
+    monkeypatch.setattr(inputs, 'input_contract', lambda: dict(parser_sources=pins))
+    inputs.validate_parser(SimpleNamespace(**functions))
+    (tmp_path/'train_ours.py').write_text('CHANGED = True\n')
     with pytest.raises(ValueError, match='parser source changed'):
-        validate_parser(SimpleNamespace(**functions))
+        inputs.validate_parser(SimpleNamespace(**functions))
 
 
 @pytest.mark.parametrize('field,value', [('schema_version', 'distillschedule.original_h3_ar_task.v1'),
