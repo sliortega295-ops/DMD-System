@@ -18,6 +18,7 @@ class WanStrategy:
     rollout_window: int = 1
     candidate_bundle: WanCandidateBundle = OFF
     retained_critic_blocks: tuple[int, ...] = ()
+    retention_policy: str = 'retain4.v1'
 
     def __post_init__(self):
         # Original native admission remains unchanged. In particular, FSDP only
@@ -29,9 +30,13 @@ class WanStrategy:
                 and all(type(i) is int and 0 <= i < 30 for i in self.retained_critic_blocks)
                 and tuple(sorted(set(self.retained_critic_blocks))) == self.retained_critic_blocks,
                 'retained Critic indices must be sorted unique block integers', path='wan.strategy')
+        require(self.retention_policy in ('retain4.v1', 'tail8.v1'),
+                'unknown experimental retention policy', path='wan.strategy')
+        require(self.retention_policy != 'tail8.v1' or self.retained_critic_blocks == tuple(range(22,30)),
+                'tail8.v1 requires the exact eight final Critic blocks', path='wan.strategy')
         require(not self.retained_critic_blocks or
                 (self.placement == 'resident' and self.candidate_bundle.enabled
-                 and len(self.retained_critic_blocks) <= 4),
+                 and (len(self.retained_critic_blocks) <= 4 or self.retention_policy == 'tail8.v1')),
                 'experimental retention requires the incumbent Resident bundle and at most4 blocks', path='wan.strategy')
 
     @property
@@ -41,6 +46,7 @@ class WanStrategy:
     @property
     def id(self):
         suffix = '-retainC' + '_'.join(map(str,self.retained_critic_blocks)) if self.retained_critic_blocks else ''
+        if self.retention_policy != 'retain4.v1': suffix += '-tail8v1'
         return f'{self.backend.id}-original-w{self.rollout_window}{suffix}'
 
     @property
@@ -49,6 +55,7 @@ class WanStrategy:
 
     def to_dict(self):
         return dict(**({"candidate_bundle": self.candidate_bundle.to_dict()} if self.candidate_bundle.enabled else {}),
+                    **({'retention_policy':self.retention_policy} if self.retention_policy != 'retain4.v1' else {}),
                     **({'retained_critic_blocks': list(self.retained_critic_blocks)} if self.retained_critic_blocks else {}),
                     placement=self.placement,chunk_tokens=self.chunk_tokens,
                     lora_epilogue=self.lora_epilogue,rollout_window=self.rollout_window)
@@ -58,10 +65,11 @@ class WanStrategy:
         value = dict(value)
         bundle = WanCandidateBundle.from_dict(value.pop('candidate_bundle')) if 'candidate_bundle' in value else OFF
         retained = value.pop('retained_critic_blocks', [])
+        retention_policy = value.pop('retention_policy', 'retain4.v1')
         require(isinstance(retained,list), 'retained_critic_blocks must be a JSON list', path='wan.strategy')
         require(set(value)=={'placement','chunk_tokens','lora_epilogue','rollout_window'},
                 'strategy has unknown or missing fields', path='wan.strategy')
-        return cls(**value, candidate_bundle=bundle, retained_critic_blocks=tuple(retained))
+        return cls(**value, candidate_bundle=bundle, retained_critic_blocks=tuple(retained), retention_policy=retention_policy)
 
     def validate_for(self, task):
         self.candidate_bundle.validate_task(task)
