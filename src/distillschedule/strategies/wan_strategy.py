@@ -30,13 +30,15 @@ class WanStrategy:
                 and all(type(i) is int and 0 <= i < 30 for i in self.retained_critic_blocks)
                 and tuple(sorted(set(self.retained_critic_blocks))) == self.retained_critic_blocks,
                 'retained Critic indices must be sorted unique block integers', path='wan.strategy')
-        require(self.retention_policy in ('retain4.v1', 'tail8.v1'),
+        require(self.retention_policy in ('retain4.v1', 'tail8.v1', 'tail6.v1'),
                 'unknown experimental retention policy', path='wan.strategy')
         require(self.retention_policy != 'tail8.v1' or self.retained_critic_blocks == tuple(range(22,30)),
                 'tail8.v1 requires the exact eight final Critic blocks', path='wan.strategy')
+        require(self.retention_policy != 'tail6.v1' or self.retained_critic_blocks == tuple(range(24,30)),
+                'tail6.v1 requires the exact six final Critic blocks', path='wan.strategy')
         require(not self.retained_critic_blocks or
                 (self.placement == 'resident' and self.candidate_bundle.enabled
-                 and (len(self.retained_critic_blocks) <= 4 or self.retention_policy == 'tail8.v1')),
+                 and (len(self.retained_critic_blocks) <= 4 or self.retention_policy in ('tail8.v1', 'tail6.v1'))),
                 'experimental retention requires the incumbent Resident bundle and at most4 blocks', path='wan.strategy')
 
     @property
@@ -46,7 +48,7 @@ class WanStrategy:
     @property
     def id(self):
         suffix = '-retainC' + '_'.join(map(str,self.retained_critic_blocks)) if self.retained_critic_blocks else ''
-        if self.retention_policy != 'retain4.v1': suffix += '-tail8v1'
+        if self.retention_policy != 'retain4.v1': suffix += '-' + self.retention_policy.replace('.', '')
         return f'{self.backend.id}-original-w{self.rollout_window}{suffix}'
 
     @property
