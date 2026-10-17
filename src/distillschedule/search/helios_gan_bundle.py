@@ -12,6 +12,7 @@ from .helios_safe_bundle import (PINNED_HELPERS, LORA_COUNTERS, NORM_COUNTERS,
                                 B_GEMM_IMPLEMENTATION, _counter)
 
 GAN_BUNDLE_ID = 'gan-fa3-down40-nomerge-v1'
+GAN_UP_BUNDLE_ID = 'gan-fa3-down40-up2-nomerge-v1'
 GAN_BUNDLE_ENV = 'DISTILLSCHEDULE_HELIOS_GAN_MANUAL_BUNDLE'
 SOURCE_HEAD = 'ba52a2446b7f090cd31af9504679e68770d32603'
 ROW_SHA256 = '924e758545a97e6e7e7de1ae7ad3db6733b00a7a6f4797c86ebc4699e886229b'
@@ -41,17 +42,25 @@ LORA_LAYER_COUNT = sum(v['linear'] + len(v['conv3d_names']) for v in LORA_INVENT
 @dataclass(frozen=True)
 class HeliosGANBundle:
     enabled: bool = False
+    up_blocks: tuple[int, ...] = ()
 
     def __post_init__(self):
         require(type(self.enabled) is bool, 'GAN manual opt-in must be boolean')
+        require(type(self.up_blocks) is tuple and all(type(i)is int for i in self.up_blocks)
+                and self.up_blocks in ((),(38,39)) and (self.enabled or not self.up_blocks),
+                'GAN frozen-up retention is an explicit two-block versioned candidate')
 
     @property
     def id(self):
-        return GAN_BUNDLE_ID if self.enabled else 'none'
+        return (GAN_UP_BUNDLE_ID if self.up_blocks else GAN_BUNDLE_ID) if self.enabled else 'none'
 
     @classmethod
     def manual(cls):
         return cls(True)
+
+    @classmethod
+    def with_up_retention(cls):
+        return cls(True,(38,39))
 
     def validate_scope(self, impl):
         require(self.enabled, 'use legacy empty bundle for the off path')
@@ -63,7 +72,7 @@ class HeliosGANBundle:
     def environment(self):
         require(self.enabled, 'GAN manual bundle is explicit opt-in')
         return {
-            GAN_BUNDLE_ENV: GAN_BUNDLE_ID,
+            GAN_BUNDLE_ENV: self.id,
             'DISTILLSCHEDULE_HELIOS_SELECTIVE_FLASH_CHECKPOINT_STRIDE': '2',
             'DISTILLSCHEDULE_HELIOS_LORA_B_GEMM_EPILOGUE': 'on',
             'DISTILLSCHEDULE_HELIOS_LORA_CHECKPOINT_REPLAY_SCOPE': 'on',
@@ -82,6 +91,7 @@ class HeliosGANBundle:
 
     def cost_identity(self, *, root=None):
         return dict(id=self.id, source=self.source_identity(root=root),
+                    **(dict(frozen_up_replay_blocks=list(self.up_blocks),derivative_contract='ORIGINAL_FINITE_DIFFERENCE_R1_SINGLE_BACKWARD') if self.up_blocks else {}),
                     backend='pinned-sm80-fa3', critic_attention_stride=2,
                     frozen_down_replay_blocks=40, separate_gan_head_fsdp=True,
                     merged_lora=False, numerical_status='REVIEW_REQUIRES_FRESH_COMPARISON')
@@ -126,6 +136,10 @@ class HeliosGANBundle:
         values = dict(public_backend_call_count=actual.get('public_backend_call_count'),
                       down_original=down.get('extra_down', {}).get('original'),
                       down_replay=down.get('extra_down', {}).get('replay'))
+        if self.up_blocks:
+            require(down.get('up_blocks') == list(self.up_blocks), 'selected frozen-up cache not installed')
+            values.update(up_original=down.get('extra_up',{}).get('original'),
+                          up_replay=down.get('extra_up',{}).get('replay'))
         require(all(type(v) is int and v >= 0 for v in values.values()),
                 'manual GAN runtime call counters missing')
         for role in ('generator','critic'):
@@ -186,6 +200,7 @@ class HeliosGANBundle:
 
     def effects_between(self, before, after):
         expected = dict(public_backend_call_count=4720, down_original=400, down_replay=400)
+        if self.up_blocks:expected.update(up_original=10*len(self.up_blocks),up_replay=10*len(self.up_blocks))
         for role, selected, grad, nograd, wraps, scope in (
                 ('generator',2400,480,1920,132,263), ('critic',4640,4400,240,514,985)):
             expected.update({role + '.' + k:selected for k in (

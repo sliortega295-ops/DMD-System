@@ -16,7 +16,7 @@ from typing import Any, Mapping
 from distillschedule.workloads.best_known.registry import fingerprint, load_profile
 from .contracts import Candidate, require, semantic_contract
 from .helios_safe_bundle import BUNDLE_ID, HeliosSafeBundle
-from .helios_gan_bundle import GAN_BUNDLE_ID, GAN_BUNDLE_ENV, HeliosGANBundle
+from .helios_gan_bundle import GAN_BUNDLE_ID, GAN_UP_BUNDLE_ID, GAN_BUNDLE_ENV, HeliosGANBundle
 from .helios_request import (OriginalHeliosRequest, TRACE_KEY, TRACE_HASH_KEY,
                              REQUEST_ENV, REQUEST_HASH_ENV)
 
@@ -24,7 +24,7 @@ NO_GAN = "helios14b_nogan_best"
 GAN = "helios14b_gan_best"
 PREFIX = "joint-helios1-"
 PATTERN = re.compile(r"joint-helios1-(nogan|gan)-(fsdp|hsdp)-c(512|2048)-p([01])-w([1-5])"
-                     r"(?:-k(safe-nogan-ed8-v1|gan-fa3-down40-nomerge-v1))?(?:-qf(17|33)-s(111|222)(-b4)?)?"
+                     r"(?:-k(safe-nogan-ed8-v1|gan-fa3-down40-nomerge-v1|gan-fa3-down40-up2-nomerge-v1))?(?:-qf(17|33)-s(111|222)(-b4)?)?"
                      r"(?:-rc([0-9]+(?:_[0-9]+)*))?")
 MODES = ("correctness", "calibration", "native")
 MODE_ENV = "DISTILLSCHEDULE_HELIOS_PLANNER_MODE"
@@ -278,7 +278,7 @@ def current_implementation(environment: Mapping[str, str] | None = None) -> Heli
     impl = HeliosImplementation.parse(key)
     require(not impl.retained_critic_blocks or mode in ('correctness','native'),
             'uncalibrated retention candidate cannot inherit old calibration costs')
-    require(env.get(GAN_BUNDLE_ENV, "") == (GAN_BUNDLE_ID if type(impl.candidate_bundle) is HeliosGANBundle else ""),
+    require(env.get(GAN_BUNDLE_ENV, "") == (impl.candidate_bundle.id if type(impl.candidate_bundle) is HeliosGANBundle else ""),
             "GAN manual runtime opt-in differs from generated identity")
     if impl.request is None:
         require(not env.get(REQUEST_ENV) and not env.get(REQUEST_HASH_ENV),
@@ -302,4 +302,5 @@ def current_implementation(environment: Mapping[str, str] | None = None) -> Heli
 
 
 def _parse_bundle(value):
+    if value == GAN_UP_BUNDLE_ID:return HeliosGANBundle.with_up_retention()
     return HeliosGANBundle.manual() if value == GAN_BUNDLE_ID else HeliosSafeBundle.parse(value)

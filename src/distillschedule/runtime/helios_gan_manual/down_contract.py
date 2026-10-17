@@ -67,6 +67,27 @@ def select_down(key,leaf,args,kwargs,*,rows):
     require(not mat2.requires_grad,'NO_TRAINABLE_WEIGHT_CACHE')
     return True
 
+def select_frozen_up(key,leaf,args,kwargs,*,rows):
+    """Exact source-owned frozen FFN-up addmm, never the trainable LoRA path."""
+    key.validate()
+    require(type(rows)is int and rows>0,'SOURCE_ATTESTED_UP_ROWS_REQUIRED')
+    require(type(leaf)is Leaf and leaf.module=='critic.blocks.'+str(key.block)+'.ffn.net.0.proj.base_layer','ACTUAL_NAMED_UP_OWNERSHIP')
+    require(len(args)==3 and set(kwargs)<={'alpha','beta','out'}and not kwargs.get('out'),'FUNCTIONAL_UP_ADDMM_ABI')
+    require(kwargs.get('alpha',1)==kwargs.get('beta',1)==1,'ORIGINAL_UP_ADDMM_SCALING')
+    require(leaf.weight.shape==(13824,5120)and leaf.bias.shape==(13824,),'NAMED_UP_BASE_GEOMETRY')
+    require(not leaf.weight.requires_grad and not leaf.bias.requires_grad,'FROZEN_UP_BASE_ONLY')
+    require(leaf.weight.device==f'cuda:{key.rank%8}','EXACT_UP_LOCAL_RANK_CUDA_DEVICE')
+    bias,value,mat2=args
+    require(value.shape==(rows,5120)and mat2.shape==(5120,13824),'SOURCE_UP_OPERAND_ROWS_GEOMETRY')
+    require(bias==leaf.bias,'ACTUAL_UP_BIAS_BINDING')
+    require(mat2.storage_id==leaf.weight.storage_id and mat2.storage_offset==leaf.weight.storage_offset
+        and mat2.stride==tuple(reversed(leaf.weight.stride)),'FROZEN_UP_TRANSPOSE_VIEW_BINDING')
+    require(value.storage_id==leaf.input.storage_id and value.storage_offset==leaf.input.storage_offset
+        and value.shape[-1]==leaf.input.shape[-1],'ACTUAL_UP_INPUT_STORAGE_BINDING')
+    require(all(m.dtype=='torch.bfloat16'and m.device==leaf.weight.device for m in(*args,leaf.input,leaf.weight,leaf.bias)),'ONE_DEVICE_BF16_UP_REQUIRED')
+    require(not mat2.requires_grad,'NO_TRAINABLE_UP_WEIGHT_CACHE')
+    return True
+
 def plan():
     return dict(status='PLAN_SOURCE_ONLY_DEFAULT_OFF_NOT_ADMITTED',source_head=HEAD,default_enabled=False,
         versions=list(range(10,20)),cycles=2,C_updates=10,graphs=20,combined_contexts=800,

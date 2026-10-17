@@ -7,7 +7,7 @@ FA3 scope/checkpoint receipts, LoRA wrapper, update/EMA/timer bodies are delegat
 from __future__ import annotations
 import contextlib,contextvars,functools,hashlib,inspect,json,os,threading
 from pathlib import Path
-from .down_contract import HEAD,FA3,GRAPHS,MIN_DRIVER_FREE,ScopeKey,TensorMeta,Leaf,require,select_down
+from .down_contract import HEAD,FA3,GRAPHS,MIN_DRIVER_FREE,ScopeKey,TensorMeta,Leaf,require,select_down,select_frozen_up
 
 FSDP_SHA='f9af12208185d9891f94e107fbfe7b0fc12c750115d82d9d9f0b4cda8757e4ff'
 CHECKPOINT_SHA='b6ac0745d58fc891f0f741b433e4fdd59efb1e9fe991c6b3f2b8fc460f7d5d7a'
@@ -15,12 +15,12 @@ CRITIC_BODY_SHA='7078d12bb1c59913bf5f8438785fe097cf22114796f53a489394d3645db4c28
 
 def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 def meta(t):return TensorMeta(tuple(t.shape),tuple(t.stride()),str(t.dtype),str(t.device),bool(t.requires_grad),int(t.untyped_storage().data_ptr()),int(t.storage_offset()))
-def verify_store(store,key,tensor_type):
+def verify_store(store,key,tensor_type,*,extra_up=False):
     wanted={'aten.addmm.default'}|({FA3}if key.block%2==0 else set())
     require({str(op)for op in store}==wanted,'ONLY_ORIGINAL_EVEN_FA3_PLUS_FROZEN_DOWN_STORE')
     for op,queue in store.items():
         attention=str(op)==FA3
-        require(type(queue)is list and len(queue)==(2 if attention else 1),'EXACT_NATIVE_CACHE_FIFO_LENGTH')
+        require(type(queue)is list and len(queue)==(2 if attention else 1+int(extra_up)),'EXACT_NATIVE_CACHE_FIFO_LENGTH')
         for value in queue:
             whole=value if attention else(value,)
             require(type(whole)in(tuple,list)and len(whole)==(4 if attention else 1),'WHOLE4_ORIGINAL_FA3_RETURN_ABI')
@@ -33,11 +33,13 @@ def replace(stack,obj,name,factory):
     setattr(obj,name,factory(old));stack.callback(setattr,obj,name,raw)if own else stack.callback(delattr,obj,name)
 
 class NativeDownSAC:
-    def __init__(self,*,torch,rank,enabled,rows,diagnostic_capacity=False,snapshot_dir=None,run_id=None):
+    def __init__(self,*,torch,rank,enabled,rows,diagnostic_capacity=False,snapshot_dir=None,run_id=None,up_blocks=()):
         require(type(enabled)is bool and type(diagnostic_capacity)is bool,'EXPLICIT_PLAIN_BOOL_GATES')
         require(type(rank)is int and 0<=rank<16,'EXACT_WORLD16_RANK')
         require(not diagnostic_capacity or enabled and snapshot_dir is not None,'DIAGNOSTIC_CAPACITY_BOUND_OUTPUT_REQUIRED')
         self.torch,self.rank,self.enabled,self.rows=torch,rank,enabled,dict(rows)
+        require(type(up_blocks)is tuple and all(type(x)is int for x in up_blocks)and up_blocks in ((),(38,39)),'EXPLICIT_VERSIONED_UP_TWO_BLOCKS_ONLY')
+        self.up_blocks=up_blocks
         self.diagnostic_capacity,self.snapshot_dir,self.run_id=diagnostic_capacity,snapshot_dir,run_id
         self.active=contextvars.ContextVar('native_C_down_execution',default=None)
         self.leaf=contextvars.ContextVar('native_C_actual_named_down',default=None)
@@ -49,6 +51,7 @@ class NativeDownSAC:
             additional_device_fences=0,additional_collectives=0,G_policy_changed=False,restored=False,
             formal_eligible=False,numerical_parity='NOT_RUN',raw_counts='NOT_MEASURED_UNPROFILED')
         self._restore_targets=[]
+        if up_blocks:self.state.update(up_blocks=list(up_blocks),extra_up=dict(original=0,replay=0),analytic_second_backward_supported=False)
 
     def replace_owned(self,stack,obj,name,factory):
         self._restore_targets.append((obj,name,name in vars(obj),vars(obj).get(name),getattr(obj,name)))
@@ -76,13 +79,16 @@ class NativeDownSAC:
             if str(op)=='aten.addmm.default'and leaf is not None:
                 require(leaf[0]==key,'ACTUAL_NAMED_LINEAR_SCOPE_KEY')
                 values=tuple(meta(t)for t in args)
-                if select_down(key,leaf[1],values,kwargs,rows=self.rows[(key.logical_step,key.graph)]):
+                is_up=leaf[1].module.endswith('.ffn.net.0.proj.base_layer')
+                require(not is_up or key.block in self.up_blocks,'UP_LEAF_REQUIRES_EXPLICIT_SELECTED_BLOCK')
+                select=select_frozen_up if is_up else select_down
+                if select(key,leaf[1],values,kwargs,rows=self.rows[(key.logical_step,key.graph)]):
                     signature=tuple((m.shape,m.stride,m.dtype,m.device)for m in values)
                     if context.is_recompute:
                         require(position[0]<len(signatures)and signatures[position[0]]==signature,'DOWN_REPLAY_FIFO_ABI')
                         position[0]+=1
                     else:signatures.append(signature)
-                    self.state['extra_down'][label]+=1
+                    self.state['extra_up'if is_up else'extra_down'][label]+=1
                     return cp.CheckpointPolicy.MUST_SAVE
             return old_policy(context,op,*args,**kwargs)if old_policy is not None else cp.CheckpointPolicy.PREFER_RECOMPUTE
         f,r=cp.create_selective_checkpoint_contexts(policy,allow_cache_entry_mutation=False)
@@ -98,9 +104,9 @@ class NativeDownSAC:
                 try:
                     self.check_key(key)
                     if label=='original':
-                        require(len(signatures)==1,'ONE_ORIGINAL_DOWN_RESULT')
-                        verify_store(f.storage,key,self.torch.Tensor)
-                    else:require(position[0]==len(signatures)==1 and all(not q for q in r.storage.values()),'WHOLE_STORE_FIFO_DRAINED_PER_BLOCK')
+                        require(len(signatures)==1+int(key.block in self.up_blocks),'EXACT_ORIGINAL_FROZEN_RESULTS')
+                        verify_store(f.storage,key,self.torch.Tensor,extra_up=key.block in self.up_blocks)
+                    else:require(position[0]==len(signatures)==1+int(key.block in self.up_blocks) and all(not q for q in r.storage.values()),'WHOLE_STORE_FIFO_DRAINED_PER_BLOCK')
                     if self.diagnostic_capacity:self.capacity_boundary(key,label,f.storage)
                 except BaseException as error:
                     self.state['audit_errors'].append(dict(key=key.__dict__,execution=label,error_type=type(error).__name__,error=str(error)[:400]))
@@ -157,10 +163,12 @@ class NativeDownSAC:
         blocks=tuple(critic.module.blocks);require(len(blocks)==40 and len({id(b)for b in blocks})==40,'UNIQUE_ACTUAL_C_BLOCK_OWNERS')
         self.block_ids={id(b):i for i,b in enumerate(blocks)}
         named=dict(critic.module.named_modules())
-        for i in range(40):
-            name=f'blocks.{i}.ffn.net.2.base_layer';module=named.get(name)
-            require(isinstance(module,self.torch.nn.Linear)and tuple(module.weight.shape)==(5120,13824)
-                and module.bias is not None and tuple(module.bias.shape)==(5120,),'ALL40_SOURCE_NAMED_DOWN_LINEAR')
+        leaves=[(i,f'blocks.{i}.ffn.net.2.base_layer',(5120,13824),(5120,)) for i in range(40)]
+        leaves += [(i,f'blocks.{i}.ffn.net.0.proj.base_layer',(13824,5120),(13824,)) for i in self.up_blocks]
+        for i,name,weight_shape,bias_shape in leaves:
+            module=named.get(name)
+            require(isinstance(module,self.torch.nn.Linear)and tuple(module.weight.shape)==weight_shape
+                and module.bias is not None and tuple(module.bias.shape)==bias_shape,'ALL40_SOURCE_NAMED_DOWN_LINEAR')
             require(not module.weight.requires_grad and not module.bias.requires_grad,'ALL40_FROZEN_DOWN_BASE')
             def before(module,args,kwargs,index=i,name=name):
                 active=self.active.get()
@@ -265,6 +273,7 @@ class NativeDownSAC:
         require(self.calls==10 and self.current is None and not self.stores and len(self.state['graph_drains'])==20,'COMPLETE10_UPDATES20_DRAINED_GRAPHS')
         require(self.state['combined_context_count']==800 and self.state['extra_FA3']==dict(original=0,replay=0)
             and self.state['extra_down']==dict(original=800,replay=800)and not self.state['audit_errors'],'EXACT_DOWNONLY_TRAINING_COUNTERS')
+        if self.up_blocks:require(self.state['extra_up']==dict(original=20*len(self.up_blocks),replay=20*len(self.up_blocks)),'EXACT_FROZEN_UP_RESULT_REUSE_COUNTS')
         require((int(self.generator.global_steps),int(self.critic.global_steps),int(self.ema.optimization_step))==(4,20,802),'FINAL_NATIVE_G4C20EMA802')
 
     def restored(self):

@@ -203,7 +203,8 @@ def manual_runtime_scope(p0):
                 generator,critic,ema = (kwargs[k] for k in ('generator_engine','critic_engine','ema'))
                 _audit_unmerged(state,(generator,critic),'AFTER_SETUP_BEFORE_BOTH_TIMERS')
                 _forbid_merges(stack,state,(generator,critic))
-                core = NativeDownSAC(torch=torch,rank=rank,enabled=True,rows=_rows(rank))
+                core = NativeDownSAC(torch=torch,rank=rank,enabled=True,rows=_rows(rank),
+                                     up_blocks=impl.candidate_bundle.up_blocks)
                 state['down40'] = core.state
                 kwargs['result']['build']['gan_manual_runtime'] = state
                 core.bind(stack,p0=p0,native=native,fsdp=fsdp,checkpoint=checkpoint,
