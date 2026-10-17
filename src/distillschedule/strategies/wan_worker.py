@@ -349,6 +349,15 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                 before_cycle=before_cycle, progress=progress,
                 validate_result=lambda raw: validate_cycle(session.task, session.trace, raw))
             receipt.update(result)
+            # Host metadata after both native timers, before CPU state export.
+            # Cumulative highwater includes cold setup; do not call it a C2-only peak.
+            free, total = torch.cuda.mem_get_info(device)
+            receipt['gpu_memory'] = dict(allocated_bytes=torch.cuda.memory_allocated(device),
+                reserved_bytes=torch.cuda.memory_reserved(device),
+                peak_allocated_bytes=torch.cuda.max_memory_allocated(device),
+                peak_reserved_bytes=torch.cuda.max_memory_reserved(device),
+                driver_free_bytes=free, total_bytes=total,
+                scope='PROCESS_CUMULATIVE_INCLUDING_SETUP_AND_BOTH_CYCLES_NOT_C2_ONLY')
             receipt['backend_effects'] = validate_build(strategy, session.build, executed=True, cycles=cycles)
             if observer is not None:
                 receipt['calibration'] = observer.finish()
