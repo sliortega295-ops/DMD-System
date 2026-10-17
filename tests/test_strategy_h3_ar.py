@@ -9,8 +9,12 @@ from distillschedule.strategies.h3_ar_worker import capacity_ok, execute_cycles,
 from distillschedule.workloads.best_known.registry import fingerprint, write_new_json
 
 POLICY = dict(gpu_limit_bytes=1000, gpu_reserve_bytes=10, host_limit_bytes=3000, host_reserve_bytes=100)
-MEMORY = dict(peak_allocated_bytes=400, driver_free_bytes=20, host_peak_bytes=1000,
-              oom_event_delta=dict(oom=0, oom_kill=0))
+MEMORY = dict(peak_allocated_bytes=400, driver_free_bytes=20, host_current_bytes=900, host_peak_bytes=1000,
+    host_peak_status='OBSERVED', host_peak_scope='CGROUP_LIFETIME_NOT_RESET_BY_OBSERVER',
+    host_capacity_evidence='OBSERVED_CGROUP_LIFETIME_PEAK', cgroup_events=dict(oom=0, oom_kill=0),
+    capacity_observation=dict(cgroup_path='/cpu_test_fixture', physical_host_bytes=4000, cgroup_hard_limit_bytes=3000,
+        effective_host_limit_bytes=3000, scope='OBSERVED_PROCESS_CGROUP_HIERARCHY_AND_NODE_MEMTOTAL'),
+    oom_event_delta=dict(oom=0, oom_kill=0))
 
 
 def test_contract_is_original_and_frozen():
@@ -281,13 +285,16 @@ def test_original_startup_reserve_is_separate_from_sustained_policy(tmp_path):
     from distillschedule.strategies.h3_ar_worker import host_admission
     (tmp_path/'memory.max').write_text(str(512 << 30))
     (tmp_path/'memory.current').write_text(str(400 << 30))
+    (tmp_path/'memory.events').write_text('oom 0\noom_kill 0\n')
     policy = {**POLICY, 'host_limit_bytes': 512 << 30, 'host_reserve_bytes': 0}
-    observed = host_admission(policy, tmp_path)
+    capacity = dict(cgroup_path=str(tmp_path), physical_host_bytes=512 << 30, cgroup_hard_limit_bytes=512 << 30,
+        effective_host_limit_bytes=512 << 30, scope='OBSERVED_PROCESS_CGROUP_HIERARCHY_AND_NODE_MEMTOTAL')
+    observed = host_admission(policy, tmp_path, capacity=capacity)
     assert observed['startup_reserve_bytes'] == 64 << 30
     assert policy['host_reserve_bytes'] == 0
     (tmp_path/'memory.current').write_text(str(460 << 30))
     with pytest.raises(ValueError, match='startup cgroup reserve64GiB'):
-        host_admission(policy, tmp_path)
+        host_admission(policy, tmp_path, capacity=capacity)
 
 
 def test_wrong_torch_runtime_is_rejected_before_model_work():
@@ -324,3 +331,167 @@ def test_saved_selection_changes_actual_native_config_and_cache_install_branch(t
         assert (installed, pool, view) == (epoch, 'pool', 'view')
     else:
         assert calls == [] and (installed, pool, view) == (None, None, None)
+
+
+@pytest.mark.parametrize('change_capacity', [False, True])
+def test_worker_completes_without_memory_peak_using_exact_hardcap_not_current_as_peak(tmp_path, monkeypatch, change_capacity):
+    """Execute run_worker's actual observation branch with CPU-only native stand-ins."""
+    import sys
+    from types import ModuleType
+    import distillschedule.strategies.h3_ar_worker as worker
+    import distillschedule.strategies.h3_ar_session as native_session
+    from distillschedule.runtime.version_sync import VersionLedger
+    from distillschedule.workloads.best_known.registry import file_sha256
+    cgroup = tmp_path/'cgroup'; cgroup.mkdir()
+    (cgroup/'memory.current').write_text('1000')
+    (cgroup/'memory.max').write_text(str(512 << 30))
+    (cgroup/'memory.events').write_text('oom 7\noom_kill 3\n')
+    assert not (cgroup/'memory.peak').exists()
+    capacity = dict(cgroup_path=str(cgroup), cgroup_limits=[dict(path=str(cgroup), memory_max=str(512 << 30), limit_bytes=512 << 30)],
+        physical_host_bytes=600 << 30, cgroup_hard_limit_bytes=512 << 30, effective_host_limit_bytes=512 << 30,
+        scope='OBSERVED_PROCESS_CGROUP_HIERARCHY_AND_NODE_MEMTOTAL')
+    observations = []
+    def actual_capacity():
+        observations.append(True)
+        return cgroup, {**capacity, 'physical_host_bytes': (601 if change_capacity and len(observations) > 1 else 600) << 30}
+    monkeypatch.setattr(worker, '_capacity_observation', actual_capacity)
+    monkeypatch.setattr(worker, 'runtime_identity', lambda torch: {'cpu_test_fixture': True})
+    order = []; visible = [f'GPU-test-{i}' for i in range(8)]
+    startup = tmp_path/'startup.json'; write_new_json(startup, dict(ordered_gpu_uuids=visible))
+    startup_ref = dict(path=str(startup), sha256=file_sha256(startup))
+    environment = ModuleType('accelerate.utils.environment')
+    environment.patch_installed = False
+    def install_gpu_probe(module, path):
+        assert module is environment; module.patch_installed = True; order.append('install_gpu_probe')
+    assets = SimpleNamespace(validate=lambda: {}, digest='a'*64, install_import_paths=lambda: None,
+        startup_gpu_info={'0': startup_ref, '1': startup_ref}, audit_imports=lambda: None,
+        helper=lambda name: SimpleNamespace(install=install_gpu_probe if name == 'native_accelerate_gpu_info_cache_r1' else lambda **kw: None))
+    torch = ModuleType('torch')
+    def set_device(local):
+        assert environment.patch_installed; order.append('set_device')
+    torch.cuda = SimpleNamespace(set_device=set_device, get_device_properties=lambda local: SimpleNamespace(
+        name='cpu_test_fixture', total_memory=2000, major=8, minor=0, uuid='GPU-test-0'),
+        mem_get_info=lambda local: (20, 2000), max_memory_allocated=lambda local: 400,
+        max_memory_reserved=lambda local: 500, synchronize=lambda device: None)
+    dist = ModuleType('torch.distributed')
+    dist.init_process_group = lambda *a, **kw: None
+    dist.destroy_process_group = lambda: None
+    dist.barrier = lambda: None
+    torch.distributed = dist
+    accelerate = ModuleType('accelerate'); accelerate.__path__ = []
+    def accelerator(**kwargs):
+        assert environment.patch_installed; order.append('Accelerator')
+        return SimpleNamespace(distributed_type='deepspeed')
+    accelerate.Accelerator = accelerator; accelerate.DeepSpeedPlugin = lambda **kw: None
+    utils = ModuleType('accelerate.utils'); utils.__path__ = []
+    utils.DistributedType = SimpleNamespace(DEEPSPEED='deepspeed'); utils.environment = environment
+    accelerate.utils = utils
+    for name, module in {'torch': torch, 'torch.distributed': dist, 'accelerate': accelerate,
+                         'accelerate.utils': utils, 'accelerate.utils.environment': environment}.items():
+        monkeypatch.setitem(sys.modules, name, module)
+    class NativeFixture(native_session.H3ARSession):
+        def __init__(self, task, assets, implementation, **kwargs):
+            self.task = task; self.device = 'cpu_test_fixture'; self.static_bytes = 100
+            self.build = {}; self.input_identity = {'cpu_test_fixture': True}
+            self.ledger = VersionLedger(dict(student=0, fake=0, ema=0))
+            self.census = self.updates = self.adam = __import__('collections').Counter()
+            self.pool = self.leaf = None; self.real = self.positive = self.negative = object()
+            self.torch = SimpleNamespace(bfloat16='bf16', autocast=lambda **kw: nullcontext())
+            self.trainer = SimpleNamespace(generator_step=0, critic_step=0, update=self.update)
+        def update(self, *_):
+            self.trainer.generator_step += 1; self.trainer.critic_step += 1
+            return dict(loss=1.0)
+        def finish(self, cycle):
+            return dict(census=self.task.census, updates=dict(student=1, critic=1),
+                adam_updates=dict(student=1, critic=1), final_versions=self.versions(), metrics=dict(loss=1.0))
+        def state_metadata(self, cycle):
+            return dict(cpu_test_fixture=True)
+    monkeypatch.setattr(native_session, 'H3ARSession', NativeFixture)
+    for key, value in dict(RANK='0', LOCAL_RANK='0', WORLD_SIZE='16', LOCAL_WORLD_SIZE='8',
+        CUDA_VISIBLE_DEVICES=','.join(visible), DIFFSYNTH_ATTENTION_IMPLEMENTATION='torch',
+        PYTORCH_CUDA_ALLOC_CONF='expandable_segments:True', PYTORCH_ALLOC_CONF='expandable_segments:True').items():
+        monkeypatch.setenv(key, value)
+    def execute():
+        return worker.run_worker(H3ARTask(), assets, tmp_path/'execution', mode='calibrate',
+            capacity_policy={**POLICY, 'host_limit_bytes': 512 << 30, 'host_reserve_bytes': 0},
+            implementation=H3ARImplementation('zero3-native'))
+    if change_capacity:
+        with pytest.raises(ValueError, match='capacity/capability changed during native execution'):
+            execute()
+        assert (tmp_path/'execution'/'failure_000.json').is_file()
+        return
+    result = execute()
+    assert order == ['install_gpu_probe', 'set_device', 'Accelerator']
+    for cycle in result['cycles']:
+        assert cycle['memory']['host_peak_bytes'] is None
+        assert cycle['memory']['host_peak_status'] == 'UNAVAILABLE'
+        assert cycle['memory']['host_current_bytes'] == 1000
+        assert cycle['memory']['host_capacity_evidence'] == 'FINITE_CGROUP_HARD_LIMIT_AND_UNCHANGED_OOM_NOT_OBSERVED_PEAK'
+
+
+@pytest.mark.parametrize('invalid', ['reserve', 'stricter_budget', 'no_finite_cap', 'missing_oom', 'current_over_budget'])
+def test_unavailable_host_peak_never_relaxes_capacity_policy(tmp_path, invalid):
+    from distillschedule.strategies.h3_ar_worker import observe_host_memory
+    (tmp_path/'memory.current').write_text('1000')
+    (tmp_path/'memory.events').write_text('oom 0\noom_kill 0\n')
+    capacity = dict(cgroup_path=str(tmp_path), physical_host_bytes=4000, cgroup_hard_limit_bytes=3000,
+        effective_host_limit_bytes=3000, scope='OBSERVED_PROCESS_CGROUP_HIERARCHY_AND_NODE_MEMTOTAL')
+    policy = {**POLICY, 'host_reserve_bytes': 0}
+    if invalid == 'reserve': policy['host_reserve_bytes'] = 1
+    elif invalid == 'stricter_budget': policy['host_limit_bytes'] = 2999
+    elif invalid == 'no_finite_cap':
+        capacity['cgroup_hard_limit_bytes'] = None; capacity['effective_host_limit_bytes'] = 4000
+    elif invalid == 'missing_oom': (tmp_path/'memory.events').write_text('oom 0\n')
+    elif invalid == 'current_over_budget': (tmp_path/'memory.current').write_text('3001')
+    with pytest.raises(ValueError, match='host capacity unproved'):
+        observe_host_memory(policy, root=tmp_path, capacity=capacity)
+
+
+def test_missing_peak_capacity_witness_rejects_oom_and_peak_substitution(tmp_path):
+    from distillschedule.strategies.h3_ar_worker import observe_host_memory
+    (tmp_path/'memory.current').write_text('1000')
+    (tmp_path/'memory.events').write_text('oom 7\noom_kill 3\n')
+    capacity = dict(cgroup_path=str(tmp_path), physical_host_bytes=4000, cgroup_hard_limit_bytes=3000,
+        effective_host_limit_bytes=3000, scope='OBSERVED_PROCESS_CGROUP_HIERARCHY_AND_NODE_MEMTOTAL')
+    policy = {**POLICY, 'host_reserve_bytes': 0}
+    memory = {**MEMORY, **observe_host_memory(policy, root=tmp_path, capacity=capacity)}
+    assert capacity_ok(memory, policy)
+    assert not capacity_ok({**memory, 'host_peak_bytes': memory['host_current_bytes']}, policy)
+    assert not capacity_ok({**memory, 'oom_event_delta': dict(oom=1, oom_kill=0)}, policy)
+    assert not capacity_ok({**memory, 'oom_event_delta': dict(oom=0)}, policy)
+
+
+def test_observed_host_peak_still_enforces_declared_reserve_and_peak_validity(tmp_path):
+    from distillschedule.strategies.h3_ar_worker import observe_host_memory
+    (tmp_path/'memory.current').write_text('1000')
+    (tmp_path/'memory.events').write_text('oom 0\noom_kill 0\n')
+    (tmp_path/'memory.peak').write_text('1200')
+    capacity = dict(cgroup_path=str(tmp_path), physical_host_bytes=4000, cgroup_hard_limit_bytes=3000,
+        effective_host_limit_bytes=3000, scope='OBSERVED_PROCESS_CGROUP_HIERARCHY_AND_NODE_MEMTOTAL')
+    observed = observe_host_memory(POLICY, root=tmp_path, capacity=capacity)
+    assert observed['host_peak_bytes'] == 1200 and observed['host_peak_status'] == 'OBSERVED'
+    for invalid in ('900', '2901'):
+        (tmp_path/'memory.peak').write_text(invalid)
+        with pytest.raises(ValueError):
+            observe_host_memory(POLICY, root=tmp_path, capacity=capacity)
+
+
+def test_assembler_and_saved_plan_bind_unavailable_peak_capability(tmp_path):
+    paths = calibration_rows(tmp_path, 'zero3-native', 100)
+    for path in paths:
+        row = json.loads(path.read_text()); row['capacity_policy']['host_reserve_bytes'] = 0
+        for cycle in row['cycles']:
+            cycle['memory'].update(host_peak_bytes=None, host_peak_status='UNAVAILABLE',
+                host_peak_scope='UNAVAILABLE_CGROUP_V2_MEMORY_PEAK',
+                host_capacity_evidence='FINITE_CGROUP_HARD_LIMIT_AND_UNCHANGED_OOM_NOT_OBSERVED_PEAK')
+        path.write_text(json.dumps(row))
+    output = tmp_path/'assembled'
+    collection = assemble(H3ARTask(), paths, output)
+    assert collection['host_capacity_bindings'][0][0]['host_peak_status'] == 'UNAVAILABLE'
+    document = plan(H3ARTask(), [output/'collection.json'])
+    saved = tmp_path/'saved.json'; write_new_json(saved, document)
+    assert validate_plan(H3ARTask(), saved)[1]['host_capacity_bindings'] == collection['host_capacity_bindings']
+    collection['host_capacity_bindings'][0][0]['host_peak_status'] = 'OBSERVED'
+    (output/'collection.json').write_text(json.dumps(collection))
+    with pytest.raises(ValueError, match='capacity/capability changed'):
+        plan(H3ARTask(), [output/'collection.json'])

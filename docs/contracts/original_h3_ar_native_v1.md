@@ -89,8 +89,16 @@ current capacity are validated before or during the original native path.
 No SSH, GPU allocation, cleanup of foreign processes, download, installation,
 or new launch scheduler exists in the adapter. An external authorized owner
 must coordinate the two-node torchrun and resource sampling. Internal cgroup
-`memory.peak` is conservative lifetime highwater, not an isolated workload host
-peak; sampled driver-free checks do not prove an unsampled reserve minimum.
+`memory.peak`, when available, is conservative lifetime highwater, not an
+isolated workload host peak. Missing `memory.peak` is **None/UNAVAILABLE**,
+never sampled `memory.current` relabeled as peak. The identical common
+ResourceObserver policy admits that capability only with the **exact observed
+finite cgroup hard limit**, zero maintained host reserve and unchanged observed
+OOM/oom_kill counters. A stricter budget or nonzero reserve without a real peak
+is rejected before model construction. Each receipt records the observed
+cgroup hierarchy/physical capacity, current separately, peak capability and
+evidence scope; assembly and the saved plan bind that capability. Sampled
+driver-free checks do not prove an unsampled reserve minimum.
 
 ## Validation status
 

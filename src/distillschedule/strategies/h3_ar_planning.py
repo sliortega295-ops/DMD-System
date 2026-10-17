@@ -30,7 +30,7 @@ def source_fingerprint():
     root = repository_root()
     paths = list((root/'src/distillschedule/strategies').glob('h3_ar_*.py'))
     paths += [root/'src/distillschedule'/p for p in ('native/cli.py', 'search/service.py',
-        'search/frontier_schedule.py', 'search/plan_ir.py', 'search/cost_model.py',
+        'search/frontier_schedule.py', 'search/plan_ir.py', 'search/cost_model.py', 'search/resources.py',
         'runtime/role_runner.py', 'runtime/version_sync.py', 'core/graph.py', 'core/contracts.py')]
     return fingerprint({str(p.relative_to(root)): file_sha256(p) for p in sorted(paths)})
 
@@ -53,7 +53,7 @@ def component(task, implementation):
 
 
 def _rank_rows(task, rank_paths):
-    from .h3_ar_worker import capacity_ok
+    from .h3_ar_worker import capacity_ok, host_capacity_signature
     require(len(rank_paths) == 16, 'all 16 native rank receipts required', path='h3_ar.calibration')
     rows = [read(p) for p in rank_paths]
     require({r.get('rank') for r in rows} == set(RANKS), 'missing/duplicate native rank', path='h3_ar.calibration')
@@ -113,12 +113,20 @@ def _rank_rows(task, rank_paths):
                         'native attention cache lifetime/version mismatch', path='h3_ar.calibration')
         require(row['cycles'][0]['state'] and row['cycles'][1]['state'],
                 'native optimizer/RNG metadata missing', path='h3_ar.calibration')
+        require(host_capacity_signature(row['cycles'][0]['memory']) == host_capacity_signature(row['cycles'][1]['memory']),
+                'host capacity/capability changed between native cycles', path='h3_ar.calibration')
     return rows, implementation
+
+
+def _host_capacity_bindings(rows):
+    from .h3_ar_worker import host_capacity_signature
+    return [[host_capacity_signature(cycle['memory']) for cycle in row['cycles']] for row in rows]
 
 
 def _binding(task, identity, rows, implementation):
     return dict(source_head=identity['source']['source_head'], semantic_fingerprint=task.digest,
-        hardware_fingerprint=fingerprint([r['hardware'] for r in rows]),
+        hardware_fingerprint=fingerprint(dict(gpus=[r['hardware'] for r in rows],
+            host_capacity=_host_capacity_bindings(rows))),
         environment_fingerprint=fingerprint(dict(source=identity['source'], runtimes=[r['runtime'] for r in rows])),
         asset_fingerprint=identity['assets_sha256'], precision_fingerprint=fingerprint(component(task, implementation).precision))
 
@@ -157,6 +165,7 @@ def assemble(task, rank_paths, output):
         implementation=implementation.to_dict(), static_bytes=static, capacity_policy=limits,
         cost_model=dict(path=str(root/'costs.json'), sha256=file_sha256(root/'costs.json')),
         rank_sources=raw_sources, runtimes=[r['runtime'] for r in rows], hardware=[r['hardware'] for r in rows],
+        host_capacity_bindings=_host_capacity_bindings(rows),
         evidence_scope='MEASURED', numerical_status='REVIEW_REQUIRES_MATCHED_REFERENCE',
         historical_scalar_costs_used=False, claimable_speedup=False)
     write_new_json(root/'collection.json', manifest)
@@ -178,6 +187,8 @@ def load_collections(task, paths):
                 'collection identity binding changed', path='h3_ar.plan')
         require(doc['runtimes'] == [r['runtime'] for r in rows] and doc['hardware'] == [r['hardware'] for r in rows],
                 'collection environment/hardware changed', path='h3_ar.plan')
+        require(doc['host_capacity_bindings'] == _host_capacity_bindings(rows),
+                'collection host capacity/capability changed', path='h3_ar.plan')
         costs = CostModel.from_dict(read(checked(doc['cost_model']))); costs.verify_receipts()
         costs.bind(doc['binding'], problem_scope='MEASURED')
         contract = component(task, implementation); cost = costs.get_component(contract)
@@ -191,7 +202,7 @@ def load_collections(task, paths):
         if first is None:
             first = doc
         else:
-            require(all(doc[k] == first[k] for k in ('identity', 'binding', 'runtimes', 'hardware', 'capacity_policy')),
+            require(all(doc[k] == first[k] for k in ('identity', 'binding', 'runtimes', 'hardware', 'capacity_policy', 'host_capacity_bindings')),
                     'incompatible native calibration cohorts', path='h3_ar.plan')
         result.append((doc, implementation, costs))
     require(result and len({s.id for _, s, _ in result}) == len(result), 'empty/duplicate calibration candidates', path='h3_ar.plan')

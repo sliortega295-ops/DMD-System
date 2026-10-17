@@ -11,6 +11,7 @@ from datetime import timedelta
 
 from distillschedule.core.contracts import require
 from distillschedule.workloads.best_known.registry import file_sha256, write_new_json
+from distillschedule.search.resources import _capacity_observation
 from .h3_ar_assets import checked
 from .h3_ar_task import H3ARImplementation
 from .h3_ar_planning import source_identity, validate_plan, validate_policy
@@ -42,21 +43,78 @@ def runtime_identity(torch):
 
 def capacity_ok(memory, policy):
     validate_policy(policy)
+    deltas = memory.get('oom_event_delta', {})
     return (memory['peak_allocated_bytes'] <= policy['gpu_limit_bytes']
             and memory['driver_free_bytes'] >= policy['gpu_reserve_bytes']
-            and memory['host_peak_bytes'] + policy['host_reserve_bytes'] <= policy['host_limit_bytes']
-            and all(v == 0 for v in memory['oom_event_delta'].values()))
+            and host_capacity_ok(memory, policy)
+            and set(deltas) == {'oom', 'oom_kill'} and all(type(v) is int and v == 0 for v in deltas.values()))
 
 
-def host_admission(policy, root=Path('/sys/fs/cgroup')):
-    """Original owner entry gate, not a sustained 64 GiB headroom claim."""
+def host_capacity_ok(memory, policy):
+    """Same evidence policy as the common ResourceObserver; never invent a peak."""
+    cap = memory.get('capacity_observation', {})
+    current = memory.get('host_current_bytes')
+    effective = cap.get('effective_host_limit_bytes')
+    if (type(current) is not int or not 0 <= current <= policy['host_limit_bytes']
+            or type(effective) is not int or effective < policy['host_limit_bytes']
+            or cap.get('scope') != 'OBSERVED_PROCESS_CGROUP_HIERARCHY_AND_NODE_MEMTOTAL'):
+        return False
+    events = memory.get('cgroup_events', {})
+    if not all(type(events.get(k)) is int and events[k] >= 0 for k in ('oom', 'oom_kill')):
+        return False
+    peak = memory.get('host_peak_bytes')
+    if memory.get('host_peak_status') == 'UNAVAILABLE':
+        return (peak is None and policy['host_reserve_bytes'] == 0
+            and type(cap.get('cgroup_hard_limit_bytes')) is int
+            and cap['cgroup_hard_limit_bytes'] == policy['host_limit_bytes']
+            and memory.get('host_peak_scope') == 'UNAVAILABLE_CGROUP_V2_MEMORY_PEAK'
+            and memory.get('host_capacity_evidence') == 'FINITE_CGROUP_HARD_LIMIT_AND_UNCHANGED_OOM_NOT_OBSERVED_PEAK')
+    return (memory.get('host_peak_status') == 'OBSERVED' and type(peak) is int and peak >= current
+        and peak + policy['host_reserve_bytes'] <= policy['host_limit_bytes']
+        and memory.get('host_peak_scope') == 'CGROUP_LIFETIME_NOT_RESET_BY_OBSERVER'
+        and memory.get('host_capacity_evidence') == 'OBSERVED_CGROUP_LIFETIME_PEAK')
+
+
+def host_capacity_signature(memory):
+    return {key: memory[key] for key in ('capacity_observation', 'host_peak_status',
+                                        'host_peak_scope', 'host_capacity_evidence')}
+
+
+def observe_host_memory(policy, *, root=None, capacity=None):
+    if root is None:
+        root, capacity = _capacity_observation()
+    require(isinstance(capacity, dict) and capacity.get('cgroup_path') == str(root),
+            'actual cgroup capacity observation required', path='h3_ar.worker')
     current = int((root/'memory.current').read_text())
-    maximum = int((root/'memory.max').read_text())
+    events = {k: int(v) for k, v in (line.split() for line in (root/'memory.events').read_text().splitlines())}
+    try:
+        peak = int((root/'memory.peak').read_text())
+    except FileNotFoundError:
+        peak = None
+    result = dict(host_current_bytes=current, host_peak_bytes=peak, cgroup_events=events,
+        capacity_observation=capacity,
+        host_peak_status='UNAVAILABLE' if peak is None else 'OBSERVED',
+        host_peak_scope='UNAVAILABLE_CGROUP_V2_MEMORY_PEAK' if peak is None else 'CGROUP_LIFETIME_NOT_RESET_BY_OBSERVER',
+        host_capacity_evidence='FINITE_CGROUP_HARD_LIMIT_AND_UNCHANGED_OOM_NOT_OBSERVED_PEAK' if peak is None else 'OBSERVED_CGROUP_LIFETIME_PEAK')
+    require(host_capacity_ok(result, policy),
+            'host capacity unproved: unavailable peak requires zero reserve and exact finite cgroup hard limit', path='h3_ar.worker')
+    return result
+
+
+def host_admission(policy, root=None, *, capacity=None):
+    """Original owner entry gate, not a sustained 64 GiB headroom claim."""
+    observation = observe_host_memory(policy, root=root, capacity=capacity)
+    current = observation['host_current_bytes']
+    maximum = observation['capacity_observation']['cgroup_hard_limit_bytes']
+    require(type(maximum) is int, 'original startup requires observed finite cgroup cap', path='h3_ar.worker')
     require(maximum-current >= 64 << 30, 'original startup cgroup reserve64GiB not met', path='h3_ar.worker')
     require(current + policy['host_reserve_bytes'] <= policy['host_limit_bytes'] <= maximum,
             'configured host capacity/reserve not admitted by actual cgroup', path='h3_ar.worker')
     return dict(current_bytes=current, maximum_bytes=maximum, startup_reserve_bytes=64 << 30,
-                scope='ENTRY_ONLY_ORIGINAL_OWNER_GATE_NOT_SUSTAINED_RESERVE')
+                scope='ENTRY_ONLY_ORIGINAL_OWNER_GATE_NOT_SUSTAINED_RESERVE',
+                initial_events={key: observation['cgroup_events'][key] for key in ('oom', 'oom_kill')},
+                cgroup_path=observation['capacity_observation']['cgroup_path'],
+                host_capacity=host_capacity_signature(observation))
 
 
 def execute_cycles(session, *, mode, torch, distributed, capacity_policy, memory, order=('native_update',), clock=time.perf_counter_ns):
@@ -101,6 +159,9 @@ def run_worker(task, assets, output, *, mode, capacity_policy, implementation=No
         require(mode in ('calibrate', 'manual') and isinstance(implementation, H3ARImplementation)
                 and plan_path is None, 'explicit measured implementation required', path='h3_ar.worker')
     host_entry = host_admission(capacity_policy)
+    if saved is not None:
+        require(all(host_entry['host_capacity'] == capability for capability in collection['host_capacity_bindings'][rank]),
+                'actual host capacity/capability differs from measured plan', path='h3_ar.worker')
     asset_validation = assets.validate()
     identity = dict(source=source_identity(), assets_sha256=assets.digest, task_sha256=task.digest)
     if saved is not None:
@@ -141,10 +202,7 @@ def run_worker(task, assets, output, *, mode, capacity_policy, implementation=No
     target = root/f'rank_{rank:03d}.json'
     require(not target.exists(), 'refuse overwriting another native receipt', path='h3_ar.worker')
     initialized = False
-    events_path = Path('/sys/fs/cgroup/memory.events')
-    def events():
-        return {k: int(v) for k, v in (line.split() for line in events_path.read_text().splitlines()) if k in ('oom', 'oom_kill')}
-    before = events()
+    before = host_entry['initial_events']
     try:
         dist.init_process_group('nccl', timeout=timedelta(seconds=300)); initialized = True
         plugin = DeepSpeedPlugin(gradient_accumulation_steps=1, zero_stage=3,
@@ -156,14 +214,18 @@ def run_worker(task, assets, output, *, mode, capacity_policy, implementation=No
         from .h3_ar_session import H3ARSession
         session = H3ARSession(task, assets, implementation, rank=rank, local_rank=local, torch=torch, accelerator=accelerator)
         def memory():
-            free, _ = torch.cuda.mem_get_info(local); now = events()
+            free, _ = torch.cuda.mem_get_info(local)
+            host = observe_host_memory(capacity_policy)
+            require(host_capacity_signature(host) == host_entry['host_capacity'],
+                    'host capacity/capability changed during native execution', path='h3_ar.worker')
+            now = host['cgroup_events']
             peak = torch.cuda.max_memory_allocated(local)
             if saved is not None:
                 require(peak <= next(r['limit_bytes'] for r in saved['selected']['memory'] if r['rank'] == rank),
                         'observed native allocation exceeds selected tighter capacity', path='h3_ar.worker')
             return dict(peak_allocated_bytes=peak,
                 peak_reserved_bytes=torch.cuda.max_memory_reserved(local), driver_free_bytes=free,
-                host_peak_bytes=int(Path('/sys/fs/cgroup/memory.peak').read_text()),
+                **host,
                 oom_event_delta={k: now[k]-before[k] for k in before})
         executed = execute_cycles(session, mode=mode, torch=torch, distributed=dist,
             capacity_policy=capacity_policy, memory=memory, order=order)

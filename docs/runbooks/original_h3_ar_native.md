@@ -42,6 +42,10 @@ Freeze a common `capacity.json` with exactly `gpu_limit_bytes`,
 bytes, not silently inferred device totals. Both implementations and selected/
 manual runs use the same policy. Driver reserve is sampled at cycle boundaries;
 external owner sampling is still required for stronger capacity claims.
+On kernels without `memory.peak`, the host policy must use the exact observed
+finite cgroup hard limit and maintained host reserve 0, with unchanged OOM
+counters. A tighter declared host budget or positive maintained reserve cannot
+be proved from sampled current values and is rejected, not silently relaxed.
 
 ## 2. Calibrate both native implementations
 
