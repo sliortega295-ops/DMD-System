@@ -219,7 +219,8 @@ def save_final_state(session, output):
     return evidence
 
 
-def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cycles=2, stream_path=None):
+def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cycles=2, stream_path=None,
+               record_memory_highwater=False):
     """Called under torchrun; no implicit launch, external commands, or downloads."""
     require(isinstance(task, OriginalWanTask) and isinstance(assets, OriginalWanAssets),
             'validated task/assets required', path='wan.worker')
@@ -260,7 +261,8 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                        manual_strategy_sha256=fingerprint(strategy.to_dict()),
                        search_performed=False)
     _json(path, receipt)
-    observer = None; initialized = False; metadata_group = None
+    require(type(record_memory_highwater) is bool, 'explicit memory recorder boolean required', path='wan.worker')
+    observer = None; initialized = False; metadata_group = None; highwater = None
     try:
         with strategy_environment(strategy):
             import torch
@@ -269,6 +271,10 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                     'eight visible CUDA devices per node required', path='wan.worker')
             require(not dist.is_initialized(), 'strategy must be selected before NCCL initialization', path='wan.worker')
             torch.cuda.set_device(local_rank); device = torch.device('cuda', local_rank)
+            if record_memory_highwater:
+                from .wan_memory import CudaHighwater
+                highwater = CudaHighwater(torch.cuda, device)
+                highwater.start()
             bootstrap, trace, negative, asset_identity = load_assets(task, assets, rank=rank)
             if strategy.candidate_bundle.enabled:
                 strategy.candidate_bundle.validate_model_files(bootstrap.manifest, asset_identity["model_files"])
@@ -350,14 +356,16 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                 validate_result=lambda raw: validate_cycle(session.task, session.trace, raw))
             receipt.update(result)
             # Host metadata after both native timers, before CPU state export.
-            # Cumulative highwater includes cold setup; do not call it a C2-only peak.
+            # Native helpers may reset counters; only the opt-in recorder spans them.
             free, total = torch.cuda.mem_get_info(device)
             receipt['gpu_memory'] = dict(allocated_bytes=torch.cuda.memory_allocated(device),
                 reserved_bytes=torch.cuda.memory_reserved(device),
                 peak_allocated_bytes=torch.cuda.max_memory_allocated(device),
                 peak_reserved_bytes=torch.cuda.max_memory_reserved(device),
                 driver_free_bytes=free, total_bytes=total,
-                scope='PROCESS_CUMULATIVE_INCLUDING_SETUP_AND_BOTH_CYCLES_NOT_C2_ONLY')
+                scope='SINCE_LAST_NATIVE_RESET_NOT_PROCESS_CUMULATIVE')
+            if highwater is not None:
+                receipt['gpu_memory'].update(highwater.close())
             receipt['backend_effects'] = validate_build(strategy, session.build, executed=True, cycles=cycles)
             if observer is not None:
                 receipt['calibration'] = observer.finish()
@@ -378,6 +386,8 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
         _json(path, receipt)
         raise
     finally:
+        if highwater is not None:
+            highwater.close()
         if initialized:
             import torch.distributed as dist
             destroy_process_groups(dist, metadata_group)

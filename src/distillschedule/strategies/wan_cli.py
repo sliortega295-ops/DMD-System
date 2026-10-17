@@ -28,6 +28,9 @@ def main(argv=None):
         if name in ('calibrate', 'run', 'train-stream', 'benchmark-manual'):
             p.add_argument('--assets', type=Path, required=True)
             p.add_argument('--execute', action='store_true')
+            if name != 'train-stream':
+                p.add_argument('--record-memory-highwater', action='store_true',
+                               help='host-only opt-in accounting across native peak-counter resets')
             if name in ('calibrate', 'benchmark-manual'):
                 p.add_argument('--implementation', type=Path, required=True,
                                help='admitted primitive strategy JSON from validate, not a recipe name')
@@ -150,7 +153,8 @@ def main(argv=None):
             strategy = WanStrategy.from_dict(json.loads(args.implementation.read_text())) if args.command in ('calibrate', 'benchmark-manual') else None
             mode = 'manual' if args.command == 'benchmark-manual' else args.command
             result = run_worker(task, assets, output=args.output, mode=mode, strategy=strategy,
-                                plan_path=getattr(args, 'plan', None), cycles=getattr(args, 'cycles', 2))
+                                plan_path=getattr(args, 'plan', None), cycles=getattr(args, 'cycles', 2),
+                                **({'record_memory_highwater': True} if args.record_memory_highwater else {}))
         print(json.dumps(result, sort_keys=True, indent=2, allow_nan=False))
         return 0
     except (ValueError, TypeError, KeyError, OSError, RuntimeError) as exc:
