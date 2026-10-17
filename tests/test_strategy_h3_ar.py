@@ -18,6 +18,36 @@ MEMORY = dict(peak_allocated_bytes=400, driver_free_bytes=20, host_current_bytes
     oom_event_delta=dict(oom=0, oom_kill=0))
 
 
+def test_effective_deepspeed_logging_infinity_has_strict_json_receipt_without_runtime_mutation(tmp_path):
+    from distillschedule.strategies.h3_ar_session import deepspeed_config_receipt
+    runtime_config = dict(steps_per_print=float('inf'), bf16=dict(enabled=True),
+                          gradient_clipping=1.0, zero_optimization=dict(stage=3, overlap_comm=False))
+    view = deepspeed_config_receipt(runtime_config)
+    assert runtime_config['steps_per_print'] == float('inf')
+    assert runtime_config['zero_optimization'] == dict(stage=3, overlap_comm=False)
+    assert view['steps_per_print'] == dict(value_type='float', value='+Infinity', meaning='logging_disabled')
+    target = tmp_path/'native-result.json'
+    write_new_json(target, dict(build=dict(deepspeed_config=view), finite=True))
+    assert json.loads(target.read_text())['build']['deepspeed_config'] == view
+    runtime_config['zero_optimization']['overlap_comm'] = True
+    assert view['zero_optimization']['overlap_comm'] is False
+
+
+@pytest.mark.parametrize('config', [dict(steps_per_print=float('-inf')),
+    dict(steps_per_print=float('nan')), dict(steps_per_print=10, gradient_clipping=float('inf'))])
+def test_config_receipt_never_hides_unknown_nonfinite_configuration(config):
+    from distillschedule.strategies.h3_ar_session import deepspeed_config_receipt
+    with pytest.raises(ValueError): deepspeed_config_receipt(config)
+
+
+def test_finite_native_config_receipt_keeps_values_and_scalar_types():
+    from distillschedule.strategies.h3_ar_session import deepspeed_config_receipt
+    runtime_config = dict(steps_per_print=10, gradient_clipping=1.0, bf16=dict(enabled=True))
+    result = deepspeed_config_receipt(runtime_config)
+    assert result == runtime_config and result is not runtime_config
+    assert type(result['steps_per_print']) is int and type(result['gradient_clipping']) is float
+
+
 def test_contract_is_original_and_frozen():
     task = H3ARTask()
     assert task.video_frames == task.previous_frames == 56

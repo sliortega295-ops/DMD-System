@@ -6,7 +6,10 @@ Imports and model construction occur only after worker admission.
 """
 from collections import Counter
 import contextlib
+import copy
 import hashlib
+import json
+import math
 from pathlib import Path
 
 from distillschedule.core.contracts import require
@@ -15,6 +18,21 @@ from distillschedule.runtime.version_sync import VersionLedger
 from .h3_ar_task import native_config, native_graph
 from .h3_ar_assets import checked
 from .h3_ar_inputs import prepare_rank_input
+
+
+def deepspeed_config_receipt(config):
+    """Snapshot metadata only; keep Accelerate's disabled-print infinity live.
+
+    Accelerate mutates the shared effective config during engine preparation.
+    Only its known logging sentinel is tagged; every other nonfinite value
+    remains a strict JSON error, never a silently accepted training metric.
+    """
+    result = copy.deepcopy(config)
+    value = result.get('steps_per_print')
+    if type(value) is float and value == math.inf:
+        result['steps_per_print'] = dict(value_type='float', value='+Infinity', meaning='logging_disabled')
+    json.dumps(result, allow_nan=False)
+    return result
 
 
 def move(value, device, torch):
@@ -78,7 +96,6 @@ class H3ARSession:
                 assets.helper(name).load_verified(str(checked(ref)), ref['sha256'])
         training.seed_all(42)
         ds_config = configure_native_execution(implementation, zero.configure(accelerator, self.config))
-        self.build['deepspeed_config'] = ds_config
         self.dit, architecture, checkpoint = training.load_teacher(Path(assets.checkpoint_root), self.device, ds_config=ds_config)
         require(len(self.dit.blocks) == 50, 'real native H3 50-block model required', path='h3_ar.session')
         self.adapter = self.native.H3Adapter(self.dit, self.config)
@@ -144,6 +161,7 @@ class H3ARSession:
         self.real = (self.positive.pop('input_latents'), self.positive.pop('audio_input_latents'))
         self.build.update(input_shapes=shapes, input_validation=input_validation, architecture=architecture, checkpoint=checkpoint,
                           native_implementation_installed=True)
+        self.build['deepspeed_config'] = deepspeed_config_receipt(ds_config)
         training.seed_all(42 + rank)
         self.static_bytes = torch.cuda.memory_allocated(self.device)
         self.previous_leaf, self.previous_lifetime = Counter(), Counter()
