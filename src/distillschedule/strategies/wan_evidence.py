@@ -6,6 +6,17 @@ from distillschedule.core.contracts import require
 def validate_build(strategy, build, *, executed=False, cycles=0):
     from distillschedule.runtime.wan_incumbent_evidence import validate_bundle_build
     bundle_effects = validate_bundle_build(strategy.candidate_bundle, build, executed=executed, cycles=cycles)
+    if strategy.retained_critic_blocks:
+        g = build['generator']['metadata'].get('checkpoint_block_retention', {})
+        c = build['critic']['metadata'].get('checkpoint_block_retention', {})
+        require(g.get('enabled') is False and c.get('enabled') is True
+                and c.get('block_indices') == list(strategy.retained_critic_blocks)
+                and c.get('weights_merged') is False and c.get('parameter_dtype_changed') is False,
+                'explicit retained-block candidate was not installed as planned', path='wan.actual')
+        if executed:
+            require(c['retained_forward_calls'] > 0 and c['checkpoint_forward_calls'] > 0
+                    and all(c['block_forward_counts'][str(i)] > 0 for i in strategy.retained_critic_blocks),
+                    'retained blocks did not execute during original graph capture', path='wan.actual')
     expected_sync = ('WORLD16_GRAD_READY_ASYNC_SUM_THEN_DIVIDE_ALL_REDUCE'
                      if strategy.placement == 'resident' else 'FSDP2_SUM_THEN_DIVIDE_REDUCE_SCATTER')
     for role in ('generator','critic'):

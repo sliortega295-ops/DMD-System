@@ -48,6 +48,12 @@ class OriginalWanSession:
         from distillschedule.search.wan_implementation import current_implementation
         require(current_implementation()==strategy.backend,'strategy environment not applied before construction',path='wan.session')
         self.g,self.c,self.ema,self.build=fair.base._build_engines(args=args,bootstrap=bootstrap,device=device)
+        if strategy.retained_critic_blocks:
+            from distillschedule.runtime.checkpoint_block_retention import install
+            for role, engine in (('generator', self.g), ('critic', self.c)):
+                self.build[role]['metadata']['checkpoint_block_retention'] = install(
+                    engine.module, role=role, expected_block_count=30,
+                    indices=strategy.retained_critic_blocks if role == 'critic' else ())
         from distillschedule.runtime.fsdp2_p0 import StaticFSDP2P0Policy
         self.policy=StaticFSDP2P0Policy(mesh_policy='world16-fsdp',rollout_batch_size=1,pack_real_score_pair=False)
         self.clean=strategy.placement=='resident'

@@ -17,6 +17,7 @@ class WanStrategy:
     lora_epilogue: bool
     rollout_window: int = 1
     candidate_bundle: WanCandidateBundle = OFF
+    retained_critic_blocks: tuple[int, ...] = ()
 
     def __post_init__(self):
         # Original native admission remains unchanged. In particular, FSDP only
@@ -24,6 +25,14 @@ class WanStrategy:
         WanImplementation(self.placement, self.chunk_tokens, self.lora_epilogue, candidate_bundle=self.candidate_bundle)
         require(type(self.rollout_window) is int and 1 <= self.rollout_window <= 64,
                 'invalid parameterized rollout window', path='wan.strategy')
+        require(isinstance(self.retained_critic_blocks, tuple)
+                and all(type(i) is int and 0 <= i < 30 for i in self.retained_critic_blocks)
+                and tuple(sorted(set(self.retained_critic_blocks))) == self.retained_critic_blocks,
+                'retained Critic indices must be sorted unique block integers', path='wan.strategy')
+        require(not self.retained_critic_blocks or
+                (self.placement == 'resident' and self.candidate_bundle.enabled
+                 and len(self.retained_critic_blocks) <= 4),
+                'experimental retention requires the incumbent Resident bundle and at most4 blocks', path='wan.strategy')
 
     @property
     def backend(self):
@@ -31,7 +40,8 @@ class WanStrategy:
 
     @property
     def id(self):
-        return f'{self.backend.id}-original-w{self.rollout_window}'
+        suffix = '-retainC' + '_'.join(map(str,self.retained_critic_blocks)) if self.retained_critic_blocks else ''
+        return f'{self.backend.id}-original-w{self.rollout_window}{suffix}'
 
     @property
     def assignment(self):
@@ -39,6 +49,7 @@ class WanStrategy:
 
     def to_dict(self):
         return dict(**({"candidate_bundle": self.candidate_bundle.to_dict()} if self.candidate_bundle.enabled else {}),
+                    **({'retained_critic_blocks': list(self.retained_critic_blocks)} if self.retained_critic_blocks else {}),
                     placement=self.placement,chunk_tokens=self.chunk_tokens,
                     lora_epilogue=self.lora_epilogue,rollout_window=self.rollout_window)
 
@@ -46,9 +57,11 @@ class WanStrategy:
     def from_dict(cls, value):
         value = dict(value)
         bundle = WanCandidateBundle.from_dict(value.pop('candidate_bundle')) if 'candidate_bundle' in value else OFF
+        retained = value.pop('retained_critic_blocks', [])
+        require(isinstance(retained,list), 'retained_critic_blocks must be a JSON list', path='wan.strategy')
         require(set(value)=={'placement','chunk_tokens','lora_epilogue','rollout_window'},
                 'strategy has unknown or missing fields', path='wan.strategy')
-        return cls(**value, candidate_bundle=bundle)
+        return cls(**value, candidate_bundle=bundle, retained_critic_blocks=tuple(retained))
 
     def validate_for(self, task):
         self.candidate_bundle.validate_task(task)
@@ -57,6 +70,7 @@ class WanStrategy:
 
     def environment(self):
         return {**self.backend.environment(),
+            'DISTILLSCHEDULE_WAN13B_RETAIN_CRITIC_BLOCKS': ','.join(map(str,self.retained_critic_blocks)),
             'DISTILLSCHEDULE_SEARCH_CANDIDATE_ID':self.backend.id,
             # Legacy generated-window dispatch is not used. The task-bound v2
             # order is passed directly to the original prepared action handlers.

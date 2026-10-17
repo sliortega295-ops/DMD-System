@@ -240,6 +240,9 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
         document = validate_plan(task, plan_path)
         strategy = WanStrategy.from_dict(document['selected']['strategy'])
     strategy.validate_for(task)
+    require(not strategy.retained_critic_blocks or mode == 'manual',
+            'experimental block retention requires an explicit manual candidate; no uncalibrated saved-plan fallback',
+            path='wan.worker')
     require(not strategy.candidate_bundle.enabled or (cycles == 2 and stream_path is None),
             'incumbent literal graph bundle supports only two fixed-trace cycles, not streams', path='wan.worker')
     stream = None
