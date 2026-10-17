@@ -30,7 +30,7 @@ from loguru import logger
 from torch.utils._python_dispatch import TorchDispatchMode
 from torch.utils.checkpoint import checkpoint, create_selective_checkpoint_contexts
 
-from .divergence_probe import capture_fa3
+from .divergence_probe import capture_fa3, capture_raw_backward
 
 
 EXPECTED_BLOCK_COUNT = 50
@@ -203,6 +203,7 @@ class _CompactFA3Autograd(torch.autograd.Function):
             False,
             0,
         )
+        capture_raw_backward(torch, runtime, int(ctx.block_index), (dout, q, k, v, out, softmax_lse), (dq, dk, dv), ctx.scale)
         capture_fa3("backward", int(ctx.block_index), (dq, dk, dv))
         runtime.stats.compact_backward_calls += 1
         if runtime.staged_pool is not None:

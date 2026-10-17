@@ -48,14 +48,20 @@ def helper_sha256():
     return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
-def bind_plan(receipt, arm):
+def bind_plan(receipt, arm, *, raw_repeat=False):
     """Explicit opt-in after ordinary candidate lowering; no assets/math edits."""
     _require(arm in ARMS and "h3_divergence" not in receipt, "invalid/already-bound diagnostic plan")
+    _require(type(raw_repeat) is bool, "raw-repeat opt-in must be a plain bool")
     value = copy.deepcopy(receipt)
     value["h3_divergence"] = dict(schema_version=PLAN_SCHEMA, arm=arm, source_head=value["integration_head"],
                                   helper_sha256=helper_sha256())
     for node in value["nodes"]:
         node["environment"].update(H3_PLANNER_DIVERGENCE="1", H3_PLANNER_DIVERGENCE_ARM=arm)
+    if raw_repeat:
+        from .raw_backward_probe import CONTRACT
+        value["h3_divergence"]["raw_repeat"] = dict(CONTRACT)
+        for node in value["nodes"]:
+            node["environment"]["H3_PLANNER_RAW_BACKWARD_REPEAT"] = "1"
     is_diagnostic_plan(value)
     return value
 
@@ -65,11 +71,16 @@ def is_diagnostic_plan(receipt):
     nodes = receipt.get("nodes", [])
     flags = [n.get("environment", {}).get("H3_PLANNER_DIVERGENCE", "0") for n in nodes]
     if marker is None and not any(f != "0" for f in flags):
+        _require(not any(n.get("environment", {}).get("H3_PLANNER_RAW_BACKWARD_REPEAT", "0") != "0" for n in nodes), "orphan raw-repeat diagnostic")
         _require(not any(n.get("environment", {}).get("H3_PLANNER_DIVERGENCE_ARM") for n in nodes),
                  "orphan diagnostic arm")
         return False
-    _require(isinstance(marker, dict) and set(marker) == {"schema_version", "arm", "source_head", "helper_sha256"},
+    _require(isinstance(marker, dict) and set(marker) in ({"schema_version", "arm", "source_head", "helper_sha256"}, {"schema_version", "arm", "source_head", "helper_sha256", "raw_repeat"}),
              "diagnostic plan requires exact explicit binding")
+    from .raw_backward_probe import CONTRACT as RAW
+    raw = "raw_repeat" in marker
+    _require(not raw or marker["raw_repeat"] == RAW, "raw-repeat contract changed")
+    _require(all(n.get("environment", {}).get("H3_PLANNER_RAW_BACKWARD_REPEAT", "0") == ("1" if raw else "0") for n in nodes), "raw-repeat node/plan binding differs")
     arm = marker["arm"]
     _require(marker["schema_version"] == PLAN_SCHEMA and arm in ARMS and marker["source_head"] == receipt.get("integration_head")
              and marker["helper_sha256"] == helper_sha256() and receipt.get("profile_id") == "minimax_h3_grid1000_best"
@@ -153,6 +164,8 @@ def from_environment(*, torch, rank, source_head, environ=None):
     env = os.environ if environ is None else environ
     flag = env.get("H3_PLANNER_DIVERGENCE", "0")
     _require(flag in ("0", "1"), "H3 divergence requires explicit 0/1")
+    raw = env.get("H3_PLANNER_RAW_BACKWARD_REPEAT", "0")
+    _require(raw in ("0", "1") and (raw == "0" or flag == "1"), "raw-repeat requires the bound divergence diagnostic")
     if flag == "0":
         _require(not env.get("H3_PLANNER_DIVERGENCE_ARM"), "disabled divergence has an arm")
         return None
@@ -173,8 +186,21 @@ def from_environment(*, torch, rank, source_head, environ=None):
     _require(root.is_absolute() and re.fullmatch(r"[A-Za-z0-9._-]{1,128}", run_id) is not None
              and run_id not in (".", "..") and type(rank) is int and 0 <= rank < 16,
              "divergence run identity/rank invalid")
-    return FirstFakeProbe(torch=torch, rank=rank, source_head=source_head,
+    result = FirstFakeProbe(torch=torch, rank=rank, source_head=source_head,
                           run_root=root, run_id=run_id, arm=arm, candidate_id=ARMS[arm])
+    result.raw_repeat_enabled = raw == "1"
+    result.raw_repeat_result = None
+    return result
+
+
+def capture_raw_backward(torch, runtime, block, inputs, primary, scale):
+    probe = _ACTIVE
+    if probe is None or not getattr(probe, 'raw_repeat_enabled', False) or not probe.active:
+        return
+    from .raw_backward_probe import CONTRACT, run
+    if probe.rank == CONTRACT['rank'] and block == CONTRACT['block']:
+        _require(probe.raw_repeat_result is None, 'raw backward probe repeated beyond one actual graph')
+        probe.raw_repeat_result = run(torch, runtime.raw_backward, inputs, primary, scale)
 
 
 def capture_fa3(stage, block, values):
@@ -357,6 +383,12 @@ class FirstFakeProbe:
                        formal_timing_eligible=False, numerical_admission=False,
                        limits=dict(blocks=list(BLOCKS), parameter_count=len(PARAMETERS), samples=SAMPLES,
                                    max_rows=MAX_ROWS, max_input_tensors=MAX_INPUT_TENSORS))
+        if getattr(self, 'raw_repeat_enabled', False):
+            from .raw_backward_probe import CONTRACT, finalize
+            _require((self.raw_repeat_result is not None) == (self.rank == CONTRACT['rank']), 'raw-repeat actual owner/count missing')
+            payload['same_input_raw_backward'] = (finalize(self.raw_repeat_result) if self.raw_repeat_result is not None else
+                dict(status='NOT_APPLICABLE', owner_rank=CONTRACT['rank'], actual_extra_calls=0))
+            payload['claim_boundary'] += '; raw backward comparisons cover full gradient outputs of one actual first-Fake block'
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("x") as handle:
             json.dump(payload, handle, indent=2, sort_keys=True, allow_nan=False)
