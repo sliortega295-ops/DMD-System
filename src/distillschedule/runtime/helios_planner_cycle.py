@@ -607,6 +607,12 @@ def run_two_cycles(*, p0: Any, args: Any, policy: Any, result: dict[str, Any], o
         if hasattr(engine, "train_batch_size"):
             require(engine.train_batch_size() == 16 and engine.train_micro_batch_size_per_gpu() == 1,
                     "actual engine batch contract differs from B1/B16")
+    if impl.retained_critic_blocks:
+        from distillschedule.runtime.checkpoint_block_retention import install
+        result['checkpoint_block_retention'] = {
+            role: install(engine.module, indices=impl.retained_critic_blocks if role == 'critic' else (),
+                          role=role, expected_block_count=40)
+            for role,engine in (('generator',generator_engine),('critic',critic_engine))}
     result.update(schema_version=SCHEMA, mode=mode, profiled=False, profiler_status="DISABLED",
                   source_head=git_head(repository_root()),
                   runtime_identity=dict(python_executable=sys.executable, python_version=platform.python_version(),
@@ -663,6 +669,11 @@ def run_two_cycles(*, p0: Any, args: Any, policy: Any, result: dict[str, Any], o
                 result.get("build", {}), cycle_bundle_before)
         row["status"] = "PASS"
     final, physical_final = observer.version_snapshot()
+    if impl.retained_critic_blocks:
+        retained = result['checkpoint_block_retention']['critic']
+        require(retained['retained_forward_calls'] == 2*5*len(impl.retained_critic_blocks)
+                and all(retained['block_forward_counts'][str(i)] == 10 for i in impl.retained_critic_blocks),
+                'actual retained Helios block forward census differs from native C5 twice')
     require(final == canonical["final_versions"], "native two-cycle final versions changed")
     if hasattr(trace, "receipt"):
         result["input_reuse"] = trace.receipt()

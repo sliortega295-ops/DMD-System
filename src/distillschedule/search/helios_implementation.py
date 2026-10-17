@@ -24,7 +24,8 @@ NO_GAN = "helios14b_nogan_best"
 GAN = "helios14b_gan_best"
 PREFIX = "joint-helios1-"
 PATTERN = re.compile(r"joint-helios1-(nogan|gan)-(fsdp|hsdp)-c(512|2048)-p([01])-w([1-5])"
-                     r"(?:-k(safe-nogan-ed8-v1|gan-fa3-down40-nomerge-v1))?(?:-qf(17|33)-s(111|222)(-b4)?)?")
+                     r"(?:-k(safe-nogan-ed8-v1|gan-fa3-down40-nomerge-v1))?(?:-qf(17|33)-s(111|222)(-b4)?)?"
+                     r"(?:-rc([0-9]+(?:_[0-9]+)*))?")
 MODES = ("correctness", "calibration", "native")
 MODE_ENV = "DISTILLSCHEDULE_HELIOS_PLANNER_MODE"
 ASSIGNMENT_ENV = "DISTILLSCHEDULE_HELIOS_PLANNER_ASSIGNMENT"
@@ -39,6 +40,7 @@ class HeliosImplementation:
     persistent_unshard: bool
     candidate_bundle: HeliosSafeBundle | HeliosGANBundle = HeliosSafeBundle()
     request: OriginalHeliosRequest | None = None
+    retained_critic_blocks: tuple[int, ...] = ()
 
     def __post_init__(self) -> None:
         require(self.variant in ("no-gan", "gan"), "unsupported Helios variant")
@@ -56,6 +58,14 @@ class HeliosImplementation:
         require(self.request is None or (type(self.request) is OriginalHeliosRequest
                 and self.request.variant == self.variant), "Helios request must be typed and match variant")
         self.candidate_bundle.validate_scope(self)
+        require(isinstance(self.retained_critic_blocks, tuple)
+                and all(type(i) is int and 0 <= i < 40 for i in self.retained_critic_blocks)
+                and tuple(sorted(set(self.retained_critic_blocks))) == self.retained_critic_blocks,
+                "retained Helios blocks must be sorted unique integers",)
+        require(not self.retained_critic_blocks or
+                (self.variant == 'no-gan' and type(self.candidate_bundle) is HeliosSafeBundle
+                 and self.candidate_bundle.enabled and len(self.retained_critic_blocks) <= 2),
+                "retention is bounded to at most2 canonical safe No-GAN Critic blocks; GAN needs separate lifecycle admission")
 
     @property
     def id(self) -> str:
@@ -63,7 +73,8 @@ class HeliosImplementation:
         mesh = "fsdp" if self.mesh == "world16-fsdp" else "hsdp"
         base = f"{PREFIX}{variant}-{mesh}-c{self.chunk_tokens}-p{int(self.persistent_unshard)}-w{self.rollout_window}"
         return (base + ("-k" + self.candidate_bundle.id if self.candidate_bundle.enabled else "")
-                + ("-q" + self.request.id if self.request is not None else ""))
+                + ("-q" + self.request.id if self.request is not None else "")
+                + ('-rc' + '_'.join(map(str,self.retained_critic_blocks)) if self.retained_critic_blocks else ''))
 
     @property
     def workload(self) -> str:
@@ -82,6 +93,8 @@ class HeliosImplementation:
             result["candidate_bundle"] = self.candidate_bundle.id
         if self.request is not None:
             result["original_request"] = json.dumps(self.request.to_dict(), sort_keys=True, separators=(",", ":"))
+        if self.retained_critic_blocks:
+            result['retained_critic_blocks'] = ','.join(map(str,self.retained_critic_blocks))
         return result
 
     @classmethod
@@ -95,12 +108,13 @@ class HeliosImplementation:
                    OriginalHeliosRequest(variant="no-gan" if match[1] == "nogan" else "gan",
                        video_frames=int(match[7]), stage2_inference_steps=tuple(map(int, match[8])),
                        stage_schedule_policy="benchmark_v4_strict_global" if match[9] else "source_normal_only")
-                   if match[7] is not None else None)
+                   if match[7] is not None else None,
+                   tuple(map(int, match[10].split('_'))) if match[10] is not None else ())
 
     @classmethod
     def from_assignment(cls, assignment: Mapping[str, str]) -> "HeliosImplementation":
         keys = {"variant", "mesh", "chunk_tokens", "rollout_window", "persistent_unshard"}
-        require(keys <= set(assignment) <= keys | {"candidate_bundle", "original_request"},
+        require(keys <= set(assignment) <= keys | {"candidate_bundle", "original_request", "retained_critic_blocks"},
                 "Helios assignment has extra/missing decisions")
         require(assignment["chunk_tokens"] in ("512", "2048")
                 and assignment["rollout_window"] in ("1", "2", "3", "4", "5")
@@ -113,9 +127,13 @@ class HeliosImplementation:
                 raise ValueError("malformed Helios original request assignment") from error
             require(assignment["original_request"] == json.dumps(request.to_dict(), sort_keys=True, separators=(",", ":")),
                     "Helios original request assignment must be complete/canonical")
+        retained_text = assignment.get('retained_critic_blocks', '')
+        require(isinstance(retained_text,str), 'retained Helios assignment must be canonical text')
+        retained = tuple(map(int,retained_text.split(','))) if retained_text else ()
+        require(','.join(map(str,retained)) == retained_text, 'retained Helios assignment is not canonical')
         return cls(assignment["variant"], assignment["mesh"], int(assignment["chunk_tokens"]),
                    int(assignment["rollout_window"]), assignment["persistent_unshard"] == "on",
-                   _parse_bundle(assignment.get("candidate_bundle", "none")), request)
+                   _parse_bundle(assignment.get("candidate_bundle", "none")), request, retained)
 
     @property
     def run_modes(self) -> tuple[str, ...]:
@@ -258,6 +276,8 @@ def current_implementation(environment: Mapping[str, str] | None = None) -> Heli
                 "Helios planner mode/assignment/request without generated identity")
         return None
     impl = HeliosImplementation.parse(key)
+    require(not impl.retained_critic_blocks or mode in ('correctness','native'),
+            'uncalibrated retention candidate cannot inherit old calibration costs')
     require(env.get(GAN_BUNDLE_ENV, "") == (GAN_BUNDLE_ID if type(impl.candidate_bundle) is HeliosGANBundle else ""),
             "GAN manual runtime opt-in differs from generated identity")
     if impl.request is None:

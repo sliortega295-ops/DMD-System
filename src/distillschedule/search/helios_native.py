@@ -48,6 +48,16 @@ def summarize(rows,*,expected_head,candidate_id):
                 and r.get('same_process') is True and r.get('initializations')==1,
                 'Helios native source/mode/rank contract failed')
         require(r.get('planner_binding',{}).get('planner_implementation')==impl.assignment,'effective implementation differs')
+        if impl.retained_critic_blocks:
+            retention = r.get('checkpoint_block_retention', {})
+            g, c = retention.get('generator', {}), retention.get('critic', {})
+            require(g.get('enabled') is False and c.get('enabled') is True
+                    and c.get('block_indices') == list(impl.retained_critic_blocks)
+                    and c.get('retained_forward_calls') == 10*len(impl.retained_critic_blocks)
+                    and all(c.get('block_forward_counts', {}).get(str(i)) == 10
+                            for i in impl.retained_critic_blocks)
+                    and c.get('parameter_dtype_changed') is False and c.get('weights_merged') is False,
+                    'native retained-block source/census/effects differ')
         if impl.request is not None:
             require(r['planner_binding'].get(TRACE_KEY)==impl.request.to_dict()
                     and r['planner_binding'].get(TRACE_HASH_KEY)==impl.request.digest,
