@@ -11,6 +11,13 @@ from distillschedule.workloads.best_known.registry import write_new_json
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv == ['list-adapters']:
+        print(json.dumps(dict(adapters=[
+            dict(schema_version='distillschedule.native_flow_task.v1', scope='new explicit flow protocol; not historical W6'),
+            dict(schema_version='distillschedule.original_wan_task.v1', scope='original Wan pyramid no-GAN'),
+            dict(schema_version='distillschedule.original_h3_ar_task.v1', scope='W6 original DiffSynth previous/current AV DMD2')],
+            canonical_profiles='UNCHANGED_FIVE_FROZEN_PROFILES', gpu_execution='NOT_RUN'), indent=2))
+        return 0
     if argv and argv[0] == "program":
         from distillschedule.open_workload.cli import main as program_main
         return program_main(argv[1:])
@@ -23,10 +30,14 @@ def main(argv=None):
             if isinstance(raw, dict) and raw.get("schema_version") == "distillschedule.original_wan_task.v1":
                 from distillschedule.strategies.wan_cli import main as original_wan_main
                 return original_wan_main(argv)
+            if isinstance(raw, dict) and raw.get("schema_version") == "distillschedule.original_h3_ar_task.v1":
+                from distillschedule.strategies.h3_ar_cli import main as original_h3_ar_main
+                return original_h3_ar_main(argv)
         except (OSError, ValueError) as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 2
-    parser=argparse.ArgumentParser(prog="distillctl workloads native")
+    parser=argparse.ArgumentParser(prog="distillctl workloads native",
+        description="Task-schema routed native adapters; use list-adapters for read-only discovery.")
     sub=parser.add_subparsers(dest="command",required=True)
     for name in ("validate","calibrate","plan","run"):
         p=sub.add_parser(name)
