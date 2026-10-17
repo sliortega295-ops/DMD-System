@@ -37,9 +37,13 @@ for the campaign. Startup GPU-info receipts must be fresh, owner-qualified and
 match each node's exact CUDA UUID ordering. If hosts/devices changed, regenerate
 those small native metadata receipts through the existing owner first.
 
-Freeze a common `capacity.json` with exactly `gpu_limit_bytes`,
-`gpu_reserve_bytes`, `host_limit_bytes`, `host_reserve_bytes`; these are integer
-bytes, not silently inferred device totals. Both implementations and selected/
+Freeze a common `capacity.json`. The original scalar-v1 form has exactly
+`gpu_limit_bytes`, `gpu_reserve_bytes`, `host_limit_bytes`, `host_reserve_bytes`.
+For different node host limits use `schema_version` equal to
+`distillschedule.original_h3_ar_capacity.v2`, shared `gpu_limit_bytes`,
+`gpu_reserve_bytes`, `host_reserve_bytes`, and `host_limits` with exactly string
+keys `"0"` and `"1"`. Limits are explicit integer bytes, never historical raw
+memory.max or inferred device totals. See the capacity-v2 contract. Both implementations and selected/
 manual runs use the same policy. Driver reserve is sampled at cycle boundaries;
 external owner sampling is still required for stronger capacity claims.
 On kernels without `memory.peak`, the host policy must use the exact observed

@@ -18,6 +18,7 @@ from .h3_ar_task import H3ARImplementation, native_graph
 COLLECTION = 'distillschedule.original_h3_ar_calibration.v1'
 PLAN = 'distillschedule.original_h3_ar_plan.v1'
 RANKS = tuple(range(16))
+CAPACITY_V2 = 'distillschedule.original_h3_ar_capacity.v2'
 
 
 def read(path):
@@ -95,7 +96,7 @@ def _rank_rows(task, rank_paths):
                     'native census/version/dispatch mismatch', path='h3_ar.calibration')
             require(type(cycle['duration_ns']) is int and cycle['duration_ns'] > 0,
                     'invalid native elapsed time', path='h3_ar.calibration')
-            require(cycle['capacity_pass'] is True and capacity_ok(cycle['memory'], row['capacity_policy']),
+            require(cycle['capacity_pass'] is True and capacity_ok(cycle['memory'], row['capacity_policy'], node_rank=row['rank']//8),
                     'native capacity policy failed', path='h3_ar.calibration')
             require(cycle['memory']['peak_allocated_bytes'] >= row['static_bytes'],
                     'invalid native memory envelope', path='h3_ar.calibration')
@@ -126,16 +127,34 @@ def _host_capacity_bindings(rows):
 def _binding(task, identity, rows, implementation):
     return dict(source_head=identity['source']['source_head'], semantic_fingerprint=task.digest,
         hardware_fingerprint=fingerprint(dict(gpus=[r['hardware'] for r in rows],
-            host_capacity=_host_capacity_bindings(rows))),
+            host_capacity=_host_capacity_bindings(rows), capacity_policy=rows[0]['capacity_policy'])),
         environment_fingerprint=fingerprint(dict(source=identity['source'], runtimes=[r['runtime'] for r in rows])),
         asset_fingerprint=identity['assets_sha256'], precision_fingerprint=fingerprint(component(task, implementation).precision))
 
 
 def validate_policy(policy):
-    require(isinstance(policy, dict) and set(policy) == {'gpu_limit_bytes', 'gpu_reserve_bytes', 'host_limit_bytes', 'host_reserve_bytes'},
+    shared = {'gpu_limit_bytes', 'gpu_reserve_bytes', 'host_reserve_bytes'}
+    require(isinstance(policy, dict) and (set(policy) == shared | {'host_limit_bytes'}
+            or (set(policy) == shared | {'schema_version', 'host_limits'} and policy['schema_version'] == CAPACITY_V2)),
             'explicit common GPU/host capacity policy required', path='h3_ar.capacity')
-    for key, value in policy.items():
+    for key in shared:
+        value = policy[key]
         require(type(value) is int and value >= (0 if 'reserve' in key else 1), 'invalid capacity policy', path='h3_ar.capacity')
+    limits = policy.get('host_limits', {'0': policy.get('host_limit_bytes'), '1': policy.get('host_limit_bytes')})
+    require(isinstance(limits, dict) and set(limits) == {'0', '1'}
+            and all(type(v) is int and v > 0 for v in limits.values()), 'explicit host limits for nodes 0 and 1 required', path='h3_ar.capacity')
+
+
+def policy_for_node(policy, node_rank=None):
+    """Resolve one observed node without replacing the full frozen policy."""
+    validate_policy(policy)
+    if 'schema_version' not in policy:
+        require(node_rank is None or (type(node_rank) is int and node_rank in (0, 1)),
+                'invalid capacity node', path='h3_ar.capacity')
+        return dict(policy)
+    require(type(node_rank) is int and node_rank in (0, 1), 'v2 capacity requires explicit node 0 or 1', path='h3_ar.capacity')
+    return {**{key: policy[key] for key in ('gpu_limit_bytes', 'gpu_reserve_bytes', 'host_reserve_bytes')},
+            'host_limit_bytes': policy['host_limits'][str(node_rank)]}
 
 
 def assemble(task, rank_paths, output):

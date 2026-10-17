@@ -56,3 +56,19 @@ before `set_device`/`Accelerator`. Focused W6 + common resource verification:
 500 passed / 11 subtests passed; compileall passed. Target Torch 2.10 execution,
 full native math parity, two-node GPU work and manual timing matching remain
 **NOT_RUN** by this worker; the coordinator owns those gates.
+
+## W6-only per-node capacity metadata follow-up
+
+Existing two-node preflight snapshots have different process `memory.max`
+values. They are not fresh hierarchy capacity witnesses. The coordinator
+authorized explicit capacity-v2 `host_limits` for nodes0/1 rather than taking a
+minimum or weakening unavailable-peak policy. V1 scalar compatibility remains.
+The actual worker resolves global-rank//8 before model construction, records
+node/limit bindings, and retains the full common policy through assembly,
+saved plan and runtime. This metadata-only source change does not alter math,
+timing, another workload, or prior per-workload source/budget/GPU evidence.
+CPU targeted regression: 519 passed / 11 subtests passed, including original
+scalar-v1 cases, distinct-node unavailable-peak evidence, explicit wrong-node
+early rejection, and the actual saved-plan worker branch on each node with
+CPU-only training/CUDA stand-ins. Target source/ABI qualification and all W6
+GPU work remain NOT_RUN by this worker.

@@ -14,7 +14,7 @@ from distillschedule.workloads.best_known.registry import file_sha256, write_new
 from distillschedule.search.resources import _capacity_observation
 from .h3_ar_assets import checked
 from .h3_ar_task import H3ARImplementation
-from .h3_ar_planning import source_identity, validate_plan, validate_policy
+from .h3_ar_planning import source_identity, validate_plan, validate_policy, policy_for_node
 
 
 def topology(environment):
@@ -41,17 +41,24 @@ def runtime_identity(torch):
         cudnn_tf32=torch.backends.cudnn.allow_tf32, matmul_precision=torch.get_float32_matmul_precision())
 
 
-def capacity_ok(memory, policy):
+def capacity_ok(memory, policy, *, node_rank=None):
     validate_policy(policy)
     deltas = memory.get('oom_event_delta', {})
     return (memory['peak_allocated_bytes'] <= policy['gpu_limit_bytes']
             and memory['driver_free_bytes'] >= policy['gpu_reserve_bytes']
-            and host_capacity_ok(memory, policy)
+            and host_capacity_ok(memory, policy, node_rank=node_rank)
             and set(deltas) == {'oom', 'oom_kill'} and all(type(v) is int and v == 0 for v in deltas.values()))
 
 
-def host_capacity_ok(memory, policy):
+def host_capacity_ok(memory, policy, *, node_rank=None):
     """Same evidence policy as the common ResourceObserver; never invent a peak."""
+    resolved = policy_for_node(policy, node_rank)
+    if ('schema_version' in policy or 'policy_node_rank' in memory):
+        if (type(memory.get('policy_node_rank')) is not int or memory['policy_node_rank'] != node_rank
+                or type(memory.get('policy_host_limit_bytes')) is not int
+                or memory['policy_host_limit_bytes'] != resolved['host_limit_bytes']):
+            return False
+    policy = resolved
     cap = memory.get('capacity_observation', {})
     current = memory.get('host_current_bytes')
     effective = cap.get('effective_host_limit_bytes')
@@ -77,10 +84,11 @@ def host_capacity_ok(memory, policy):
 
 def host_capacity_signature(memory):
     return {key: memory[key] for key in ('capacity_observation', 'host_peak_status',
-                                        'host_peak_scope', 'host_capacity_evidence')}
+        'host_peak_scope', 'host_capacity_evidence', 'policy_node_rank', 'policy_host_limit_bytes') if key in memory}
 
 
-def observe_host_memory(policy, *, root=None, capacity=None):
+def observe_host_memory(policy, *, node_rank=None, root=None, capacity=None):
+    resolved = policy_for_node(policy, node_rank)
     if root is None:
         root, capacity = _capacity_observation()
     require(isinstance(capacity, dict) and capacity.get('cgroup_path') == str(root),
@@ -96,14 +104,17 @@ def observe_host_memory(policy, *, root=None, capacity=None):
         host_peak_status='UNAVAILABLE' if peak is None else 'OBSERVED',
         host_peak_scope='UNAVAILABLE_CGROUP_V2_MEMORY_PEAK' if peak is None else 'CGROUP_LIFETIME_NOT_RESET_BY_OBSERVER',
         host_capacity_evidence='FINITE_CGROUP_HARD_LIMIT_AND_UNCHANGED_OOM_NOT_OBSERVED_PEAK' if peak is None else 'OBSERVED_CGROUP_LIFETIME_PEAK')
-    require(host_capacity_ok(result, policy),
+    if node_rank is not None:
+        result.update(policy_node_rank=node_rank, policy_host_limit_bytes=resolved['host_limit_bytes'])
+    require(host_capacity_ok(result, policy, node_rank=node_rank),
             'host capacity unproved: unavailable peak requires zero reserve and exact finite cgroup hard limit', path='h3_ar.worker')
     return result
 
 
-def host_admission(policy, root=None, *, capacity=None):
+def host_admission(policy, root=None, *, node_rank=None, capacity=None):
     """Original owner entry gate, not a sustained 64 GiB headroom claim."""
-    observation = observe_host_memory(policy, root=root, capacity=capacity)
+    observation = observe_host_memory(policy, node_rank=node_rank, root=root, capacity=capacity)
+    policy = policy_for_node(policy, node_rank)
     current = observation['host_current_bytes']
     maximum = observation['capacity_observation']['cgroup_hard_limit_bytes']
     require(type(maximum) is int, 'original startup requires observed finite cgroup cap', path='h3_ar.worker')
@@ -117,7 +128,7 @@ def host_admission(policy, root=None, *, capacity=None):
                 host_capacity=host_capacity_signature(observation))
 
 
-def execute_cycles(session, *, mode, torch, distributed, capacity_policy, memory, order=('native_update',), clock=time.perf_counter_ns):
+def execute_cycles(session, *, mode, torch, distributed, capacity_policy, memory, node_rank=None, order=('native_update',), clock=time.perf_counter_ns):
     """Tested common dispatcher. Setup and state hashing are outside both timers."""
     require(mode in ('calibrate', 'run', 'manual'), 'invalid native mode', path='h3_ar.worker')
     initial = session.versions(); records = []
@@ -136,7 +147,7 @@ def execute_cycles(session, *, mode, torch, distributed, capacity_policy, memory
                 'native runtime census/versions failed', path='h3_ar.worker')
         finite = all(type(v) not in (float, int) or math.isfinite(v) for v in checks['metrics'].values())
         require(finite, 'native nonfinite metric', path='h3_ar.worker')
-        mem = memory(); passed = capacity_ok(mem, capacity_policy)
+        mem = memory(); passed = capacity_ok(mem, capacity_policy, node_rank=node_rank)
         require(passed, 'common GPU/host/reserve/OOM capacity policy failed', path='h3_ar.worker')
         records.append(dict(cycle=cycle, duration_ns=duration, **checks, memory=mem, capacity_pass=passed,
             timing_scope='warmup_first_update' if cycle == 1 else 'steady_second_native_update',
@@ -158,7 +169,7 @@ def run_worker(task, assets, output, *, mode, capacity_policy, implementation=No
     else:
         require(mode in ('calibrate', 'manual') and isinstance(implementation, H3ARImplementation)
                 and plan_path is None, 'explicit measured implementation required', path='h3_ar.worker')
-    host_entry = host_admission(capacity_policy)
+    host_entry = host_admission(capacity_policy, node_rank=rank//8)
     if saved is not None:
         require(all(host_entry['host_capacity'] == capability for capability in collection['host_capacity_bindings'][rank]),
                 'actual host capacity/capability differs from measured plan', path='h3_ar.worker')
@@ -215,7 +226,7 @@ def run_worker(task, assets, output, *, mode, capacity_policy, implementation=No
         session = H3ARSession(task, assets, implementation, rank=rank, local_rank=local, torch=torch, accelerator=accelerator)
         def memory():
             free, _ = torch.cuda.mem_get_info(local)
-            host = observe_host_memory(capacity_policy)
+            host = observe_host_memory(capacity_policy, node_rank=rank//8)
             require(host_capacity_signature(host) == host_entry['host_capacity'],
                     'host capacity/capability changed during native execution', path='h3_ar.worker')
             now = host['cgroup_events']
@@ -228,7 +239,7 @@ def run_worker(task, assets, output, *, mode, capacity_policy, implementation=No
                 **host,
                 oom_event_delta={k: now[k]-before[k] for k in before})
         executed = execute_cycles(session, mode=mode, torch=torch, distributed=dist,
-            capacity_policy=capacity_policy, memory=memory, order=order)
+            capacity_policy=capacity_policy, memory=memory, node_rank=rank//8, order=order)
         assets.audit_imports()
         require(runtime_identity(torch) == runtime and source_identity() == identity['source'],
                 'source/runtime changed during native work', path='h3_ar.worker')

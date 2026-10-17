@@ -133,5 +133,10 @@ reject a previously accepted implementation. The new receipt records the
 actual startup current/maximum and does not reset native GPU peak counters
 between setup, C1 and C2.
 
+The four-field scalar form remains supported. For nodes with different host
+hard limits, use the explicit W6-only capacity-v2 map described in
+`original_h3_ar_capacity_v2.md`; it preserves the same numeric gates and binds
+each rank's actual node while retaining one complete common policy.
+
 Sources: `h3_diffsynth_dmd2_world16_20261010/zero3_200s_r2/steady_two_cycle_20261012_r1/reports/remote_closeout_r1/{world16_two_cycle_result_r2,node_0_lifecycle,node_1_lifecycle}.json`
 and `scripts/native_zero3_node_owner_two_cycle_r1.py:89-90` in that same run.
