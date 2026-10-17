@@ -96,13 +96,13 @@ def main() -> int:
         else {
             "c24-continuous-b16-score-modulation",
             "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap",
-            "c24-continuous-b16-score-modulation-b1-attribution", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache',
+            "c24-continuous-b16-score-modulation-b1-attribution", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c52-c51-critic-ffn-down-retention-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache',
         }
     )
     if len(launch_variants) != 1 or pipeline_variant not in allowed_variants:
         errors.append("two-node trajectory physical-batch variant is invalid")
     conditional_plan_shas: set[str] = set()
-    if pipeline_variant == "c51-critic-fa3-recompute-v1":
+    if pipeline_variant in ("c51-critic-fa3-recompute-v1", "c52-c51-critic-ffn-down-retention-v1"):
         from distillschedule.runtime.livewan_replay_ablation import validate_effective_policy
         from distillschedule.runtime.livewan_crossscale_worker import _effective_plan_sha256
         if args.cycles != 2:
@@ -154,12 +154,12 @@ def main() -> int:
             errors.extend(step0_errors(final.get("step0_delivery", {}), rank=rank, cycles=args.cycles))
             errors.extend(step0_transport_errors(
                 final.get("generator_runahead_transport", {}), rank=rank, cycles=args.cycles))
-        if pipeline_variant in {"c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}:
+        if pipeline_variant in {"c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c52-c51-critic-ffn-down-retention-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}:
             from distillschedule.runtime.livewan_score_gate import runtime_receipt_errors as score_gate_errors
             errors.extend(f"rank{rank}: {error}" for error in score_gate_errors(
                 dict(final.get("score_residual_gate", {})), rank=rank,
                 inventory=dict(final.get("physical_call_inventory", {}))))
-        if pipeline_variant in {"c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}:
+        if pipeline_variant in {"c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c52-c51-critic-ffn-down-retention-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}:
             from distillschedule.runtime.livewan_score_layernorm import runtime_receipt_errors as score_ln_errors
             errors.extend(f"rank{rank}: {error}" for error in score_ln_errors(
                 dict(final.get("score_layernorm", {})), rank=rank,
@@ -169,40 +169,40 @@ def main() -> int:
             errors.extend(f"rank{rank}: {error}" for error in step1_errors(
                 dict(final.get("continuous_pipeline", {})), rank=rank, cycles=args.cycles,
                 inventory=dict(final.get("physical_call_inventory", {}))))
-        if pipeline_variant in {"c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}:
+        if pipeline_variant in {"c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c52-c51-critic-ffn-down-retention-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}:
             from distillschedule.runtime.livewan_score_rmsnorm import runtime_receipt_errors
 
             errors.extend(f"rank{rank}: {error}" for error in runtime_receipt_errors(
                 dict(final.get("score_rmsnorm_kernel", {})), rank=rank))
-        if pipeline_variant in {"c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}:
+        if pipeline_variant in {"c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c52-c51-critic-ffn-down-retention-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}:
             from distillschedule.runtime.livewan_generator_rms_epilogue import runtime_receipt_errors as rms_epilogue_errors
 
             errors.extend(f"rank{rank}: {error}" for error in rms_epilogue_errors(
                 dict(final.get("generator_rms_epilogue", {})), rank=rank, cycles=args.cycles,
                 fuse_cast_square=pipeline_variant in {"c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}))
-        if pipeline_variant in {"c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}:
+        if pipeline_variant in {"c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c52-c51-critic-ffn-down-retention-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}:
             from distillschedule.runtime.livewan_rollout_cast_cache import runtime_receipt_errors as cast_errors
 
             errors.extend(f"rank{rank}: {error}" for error in cast_errors(
                 dict(final.get("generator_rollout_cast_cache", {})), rank=rank, cycles=args.cycles))
-        if pipeline_variant in {"c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}:
+        if pipeline_variant in {"c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c52-c51-critic-ffn-down-retention-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}:
             from distillschedule.runtime.livewan_generator_modulation import runtime_receipt_errors as modulation_errors
 
             errors.extend(f"rank{rank}: {error}" for error in modulation_errors(
                 dict(final.get("generator_modulation", {})), rank=rank, cycles=args.cycles))
-        if pipeline_variant in {"c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}:
+        if pipeline_variant in {"c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c52-c51-critic-ffn-down-retention-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}:
             from distillschedule.runtime.livewan_generator_gate import runtime_receipt_errors as gate_errors
 
             errors.extend(f"rank{rank}: {error}" for error in gate_errors(
                 dict(final.get("generator_gate", {})), rank=rank, cycles=args.cycles,
-                output_layout="row_major" if pipeline_variant in {"c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'} else "native"))
+                output_layout="row_major" if pipeline_variant in {"c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c52-c51-critic-ffn-down-retention-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'} else "native"))
         if pipeline_variant == "c27-continuous-b16-pinned-prompt-staging":
             from distillschedule.runtime.livewan_context_staging import runtime_receipt_errors as staging_errors
 
             errors.extend(f"rank{rank}: {error}" for error in staging_errors(
                 dict(final.get("score_prompt_staging", {})), rank=rank, cycles=args.cycles))
-        if pipeline_variant in {"c26-continuous-b16-critic-attention-checkpoint", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}:
-            if pipeline_variant in {"c38-continuous-b16-score-fa3", 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', "c39-continuous-b16-step0-delivery", 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}:
+        if pipeline_variant in {"c26-continuous-b16-critic-attention-checkpoint", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c52-c51-critic-ffn-down-retention-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}:
+            if pipeline_variant in {"c38-continuous-b16-score-fa3", 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c52-c51-critic-ffn-down-retention-v1', "c39-continuous-b16-step0-delivery", 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}:
                 from distillschedule.runtime.livewan_score_fa3 import runtime_receipt_errors as sac_errors, backend_receipt_errors
                 errors.extend(f"rank{rank}: {error}" for error in backend_receipt_errors(
                     dict(final.get("score_attention_backend", {})), rank=rank))
@@ -217,13 +217,13 @@ def main() -> int:
                 # Its independent per-step census gate still rejects bad totals.
                 expected_calls=int(dict(final.get("physical_call_inventory", {}))
                                    .get("critic/grad/checkpoint", -1)) * 30))
-        if pipeline_variant in {'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1'}:
+        if pipeline_variant in {'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c52-c51-critic-ffn-down-retention-v1'}:
             from distillschedule.runtime.livewan_generator_splitkv import runtime_receipt_errors as splitkv_errors
             attention = dict(final.get("generator_attention_backend", {}))
             errors.extend(f"rank{rank}: {error}" for error in splitkv_errors(
                 dict(attention.get("readonly_splitkv", {})), rank=rank,
                 total_calls=int(attention.get("invocation_count", 0))))
-        if pipeline_variant == "c44-continuous-b16-critic-ffn-down-cache":
+        if pipeline_variant in ("c44-continuous-b16-critic-ffn-down-cache", "c52-c51-critic-ffn-down-retention-v1"):
             from distillschedule.runtime.livewan_ffn_down_checkpoint import runtime_receipt_errors as ffn_errors
             errors.extend(f"rank{rank}: {error}" for error in ffn_errors(
                 dict(final.get("critic_ffn_down_checkpoint", {})), rank=rank,
@@ -250,7 +250,7 @@ def main() -> int:
         if final.get("trajectory", {}).get("arm_id") != arm_id:
             errors.append(f"rank{rank}: trajectory arm identity changed")
         final_receipts[rank] = final
-        if pipeline_variant == "c51-critic-fa3-recompute-v1" and final.get("effective_plan_sha256") not in conditional_plan_shas:
+        if pipeline_variant in ("c51-critic-fa3-recompute-v1", "c52-c51-critic-ffn-down-retention-v1") and final.get("effective_plan_sha256") not in conditional_plan_shas:
             errors.append(f"rank{rank}: effective replay plan binding changed")
 
     identities = {

@@ -1,0 +1,47 @@
+{
+  "include": [
+    "livewan_wan13b_14b_sf_dmd_c51_generator_fused_rms.json"
+  ],
+  "id": "livewan_wan13b_14b_sf_dmd_c52_c51_critic_ffn_down_retention_v1",
+  "metadata": {
+    "c51_ffn_retention": {
+      "schema": "livewan_c51_ffn_retention_v1",
+      "parent_variant": "c51-continuous-b16-generator-fused-rms",
+      "parent_source_head": "aa30527db5d048e2ab23222eef587cb7cfe909f6",
+      "parent_plan_sources_sha256": "919db26012f4dee2429e434ffc1c6508957b149cdeb2427e1e9c674035e4152d",
+      "factor": "critic_frozen_ffn_down_checkpoint_output_reuse",
+      "reuse_enabled": true,
+      "application_calls_unchanged": true,
+      "optimizer_placement_and_schedule_unchanged": true,
+      "scope": "conditional_on_full_c51_not_layout_only"
+    },
+    "critic_ffn_down_checkpoint": {
+      "enabled": true,
+      "name": "critic_frozen_ffn_down_exact_gpu_checkpoint_output_v1",
+      "scope": "score_rank_critic_grad_only",
+      "operator": "aten.addmm.default",
+      "source_blockcausal_sha256": "bde44405af4f38ee05ed911c9ab0f626c41ca14c5ad95539f2a3ccf47ca4ce96",
+      "cache_location": "cuda_per_checkpoint",
+      "bias_shape": [
+        1536
+      ],
+      "input_shape": [
+        38640,
+        8960
+      ],
+      "transposed_weight_shape": [
+        8960,
+        1536
+      ],
+      "dtype": "bfloat16",
+      "alpha": 1,
+      "beta": 1,
+      "frozen_base_only": true,
+      "allow_cache_entry_mutation": false,
+      "preserve_rng_state": true,
+      "application_calls_unchanged": true,
+      "lora_and_backward_unchanged": true,
+      "cpu_offload": false
+    }
+  }
+}

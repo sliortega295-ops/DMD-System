@@ -308,7 +308,7 @@ def main() -> int:
     parser.add_argument("--baseline-summary", type=Path, required=True)
     parser.add_argument("--pipeline-summary", type=Path, required=True)
     parser.add_argument("--expected-head", required=True)
-    parser.add_argument("--pipeline-variant", choices=(PIPELINE_VARIANT, "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'), default=PIPELINE_VARIANT)
+    parser.add_argument("--pipeline-variant", choices=(PIPELINE_VARIANT, "c25-continuous-b16-score-rmsnorm", "c26-continuous-b16-critic-attention-checkpoint", "c27-continuous-b16-pinned-prompt-staging", "c28-continuous-b16-rollout-cast-cache", "c29-continuous-b16-generator-rms-epilogue", "c30-continuous-b16-generator-rms-critic-checkpoint", "c31-continuous-b16-generator-rms-cast-square", "c32-continuous-b16-generator-modulation", "c33-continuous-b16-generator-gate", "c34-continuous-b16-residual-layout", "c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c52-c51-critic-ffn-down-retention-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'), default=PIPELINE_VARIANT)
     parser.add_argument("--reference-variant", choices=(BASELINE_VARIANT, "c51-continuous-b16-generator-fused-rms"), default=BASELINE_VARIANT,
                         help="C51 reference is allowed only for its versioned replay ablation")
     parser.add_argument("--output", type=Path, required=True)
@@ -317,7 +317,7 @@ def main() -> int:
         raise ValueError("--expected-head must be a full Git SHA")
 
     conditional = args.reference_variant != BASELINE_VARIANT
-    if conditional != (args.pipeline_variant == "c51-critic-fa3-recompute-v1"):
+    if conditional != (args.pipeline_variant in ("c51-critic-fa3-recompute-v1", "c52-c51-critic-ffn-down-retention-v1")):
         raise ValueError("C51 reference is only registered for the replay ablation")
     reference_mode = "pipeline" if conditional else "baseline"
     baseline = _validate_arm(
@@ -450,7 +450,7 @@ def main() -> int:
         result["source_binding"]["reference_execution_mode"] = "pipeline"
         result["source_binding"]["reference_variant"] = args.reference_variant
         result["source_binding"]["candidate_variant"] = args.pipeline_variant
-        result["claim_boundary"] = "CONDITIONAL_ON_FULL_C51_REPLAY_REUSE_ONLY"
+        result["claim_boundary"] = ("CONDITIONAL_ON_FULL_C51_FROZEN_FFN_REUSE_ONLY" if args.pipeline_variant == "c52-c51-critic-ffn-down-retention-v1" else "CONDITIONAL_ON_FULL_C51_REPLAY_REUSE_ONLY")
     _atomic_json(args.output, result)
     print(json.dumps(result, indent=2, sort_keys=True))
     return (

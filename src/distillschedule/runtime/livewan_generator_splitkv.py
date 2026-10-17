@@ -27,6 +27,10 @@ EXPECTED_KVCACHE_SOURCE_SHA256 = "bb57b5afc7ac164376fd8c43921488a70f3c6a05568607
 
 
 def enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    if 'c51_ffn_retention' in plan.get('metadata', {}):
+        # Only a fully authenticated C51 child may compose independent C-side reuse.
+        from distillschedule.runtime.livewan_c51_ffn_retention import parent_plan
+        plan = parent_plan(plan, mode=mode)
     value = plan.get("metadata", {}).get("generator_readonly_splitkv")
     if value is None:
         return False

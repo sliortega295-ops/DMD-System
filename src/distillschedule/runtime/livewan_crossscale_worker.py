@@ -1082,16 +1082,18 @@ def _load_two_cycle_timing_gate(
     value = json.loads(resolved.read_text(encoding="utf-8"))
     conditional_schema = "distillschedule.livewan_conditional_replay_timing_gate.v1"
     conditional = value.get("schema_version") == conditional_schema
-    _require(pipeline_variant != "c51-critic-fa3-recompute-v1" or conditional,
+    _require(pipeline_variant not in ("c51-critic-fa3-recompute-v1", "c52-c51-critic-ffn-down-retention-v1") or conditional,
              "C51 replay ablation requires its same-layout conditional gate")
     if conditional:
         from distillschedule.runtime.livewan_replay_ablation import PARENT_VARIANT, VARIANT
-        _require(mode == "pipeline" and pipeline_variant in {PARENT_VARIANT, VARIANT},
+        from distillschedule.runtime.livewan_c51_ffn_retention import VARIANT as RETENTION_VARIANT
+        _require(mode == "pipeline" and pipeline_variant in {PARENT_VARIANT, VARIANT, RETENTION_VARIANT},
                  "conditional replay gate cannot authorize another physical implementation")
         arms = value.get("arms", {})
         _require(set(arms) == {"reference", "candidate"}
                  and arms["reference"].get("pipeline_variant") == PARENT_VARIANT
-                 and arms["candidate"].get("pipeline_variant") == VARIANT
+                 and arms["candidate"].get("pipeline_variant") in {VARIANT, RETENTION_VARIANT}
+                 and (pipeline_variant == PARENT_VARIANT or pipeline_variant == arms["candidate"].get("pipeline_variant"))
                  and value.get("heads") == {"reference": expected_head, "candidate": expected_head},
                  "conditional replay gate pair/source changed")
     required = {
@@ -3851,6 +3853,8 @@ def _prefetch_score_sample_contexts(
 
 
 def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
+    from distillschedule.runtime.livewan_c51_ffn_retention import enabled as retention_enabled
+    retention_enabled(plan, mode=mode)
     from distillschedule.runtime.livewan_replay_ablation import enabled as replay_ablation_enabled
     replay_ablation_enabled(plan, mode=mode)
     _require(int(plan["hardware"]["world_size"]) == WORLD_SIZE, "plan is not world16")
