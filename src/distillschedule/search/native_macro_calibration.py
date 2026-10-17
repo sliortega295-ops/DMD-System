@@ -74,6 +74,10 @@ def assemble_native(receipt, preparation, identity, runtime_identity_evidence):
         rank = raw["rank"]
         require(raw["final_versions"] == dict(generator=2, critic=10, ema=0), "native versions failed")
         if w == LIVEWAN:
+            if impl.bundle == "c51_full_v1":
+                from distillschedule.runtime.livewan_c51_bundle import runtime_receipt_errors
+                require(not runtime_receipt_errors(raw, rank=rank, cycles=2),
+                        "C51 calibration lacks actual full-bundle runtime counters/source")
             p = out / "operation_calibration" / f"rank_{rank:03d}.json"
             marker = raw.get("operation_calibration", {})
             require(raw["status"] == "PASS" and marker.get("enabled") is True
@@ -216,6 +220,10 @@ def _read_assembly(results, *, expected_head):
                         and marker.get('formal_timing_eligible') is False,
                         'LiveWan native rank/calibration marker changed')
                 native_livewan_rows[rank] = raw
+                if impl.bundle == "c51_full_v1":
+                    from distillschedule.runtime.livewan_c51_bundle import runtime_receipt_errors
+                    require(not runtime_receipt_errors(raw, rank=rank, cycles=2),
+                            "C51 source calibration full-bundle runtime counters/source changed")
             cal = raw.get("stage_calibration") if workload == H3 else raw
             if not isinstance(cal, dict) or cal.get("schema_version") != "distillschedule.async_range_calibration.v1":
                 continue

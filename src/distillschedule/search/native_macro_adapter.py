@@ -32,11 +32,13 @@ def implementation_type(workload):
     return LiveWanImplementation if workload == LIVEWAN else H3Implementation
 
 
-def implementations(workload, *, h3_request=None, livewan_request=None, explicit_cache=False):
+def implementations(workload, *, h3_request=None, livewan_request=None, explicit_cache=False,
+                    include_livewan_c51=False):
     implementation_type(workload)
     if workload == LIVEWAN:
         from .livewan_implementation import implementations as values
-        return values(request=livewan_request)
+        return values(request=livewan_request, include_c51=include_livewan_c51)
+    require(not include_livewan_c51, "C51 bundle opt-in is LiveWan only")
     from .h3_implementation import implementations as h3_implementations
     from .h3_request import H3Request
     return h3_implementations(request=h3_request or H3Request(), explicit_cache=explicit_cache)
@@ -124,8 +126,9 @@ def observed_operations(workload, raw):
     return rows
 
 
-def capability_report(workload, *, h3_request=None, livewan_request=None):
-    values = implementations(workload, h3_request=h3_request, livewan_request=livewan_request, explicit_cache=workload == H3)
+def capability_report(workload, *, h3_request=None, livewan_request=None, include_livewan_c51=False):
+    values = implementations(workload, h3_request=h3_request, livewan_request=livewan_request,
+                             explicit_cache=workload == H3, include_livewan_c51=include_livewan_c51)
     return dict(adapter=ADAPTER, workload=workload,
         native_implementations=[dict(id=i.id, assignment=i.assignment) for i in values],
         precision_fingerprint=fingerprint(precision_contract(workload, h3_request=h3_request, livewan_request=livewan_request)),
@@ -155,6 +158,7 @@ def build_problem(layout_path, *, root=None):
     parsed = [implementation_type(w).parse(k) for k in rows]
     request = parsed[0].request
     explicit_cache = w == H3 and parsed[0].cache_policy != "legacy_cpu_staged"
+    livewan_bundle = w == LIVEWAN and parsed[0].bundle != "legacy"
     if w == H3:
         require(all(i.request == request and (i.cache_policy != "legacy_cpu_staged") == explicit_cache for i in parsed),
                 "H3 layout cannot mix requests/shapes or legacy and v3 decision schemas")
@@ -163,13 +167,18 @@ def build_problem(layout_path, *, root=None):
                 "H3 v3 requires joined source-qualified calibration results; hand-written cost layouts are not admitted")
     if w == LIVEWAN:
         require(all(i.request == request for i in parsed), "LiveWan layout cannot mix requests/shapes")
+        require(all((i.bundle != "legacy") == livewan_bundle for i in parsed),
+                "LiveWan layout cannot mix legacy and versioned bundle decision schemas")
+        require(not livewan_bundle or bool(layout.get("calibration_results")),
+                "C51 bundle cohort requires joined source-qualified calibration results; historical/hand-written costs are not admitted")
     precision = fingerprint(precision_contract(w, h3_request=request if w == H3 else None,
                                               livewan_request=request if w == LIVEWAN else None))
     semantic_profile = request.profile() if request is not None else load_profile(w)
     require(binding["semantic_fingerprint"] == fingerprint(semantic_contract(semantic_profile))
             and binding["precision_fingerprint"] == precision, "native workload/precision changed")
     all_impls = implementations(w, h3_request=request if w == H3 else None,
-                               livewan_request=request if w == LIVEWAN else None, explicit_cache=explicit_cache)
+                               livewan_request=request if w == LIVEWAN else None, explicit_cache=explicit_cache,
+                               include_livewan_c51=livewan_bundle)
     require(set(rows) <= {i.id for i in all_impls} and len(rows) >= 2, "invalid calibrated implementation inventory")
     graph, states, rules = native_graph(w), [], []
     from .livewan_request import LiveWanRequest

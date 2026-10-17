@@ -22,7 +22,7 @@ from .model_adapters import SUPPORTED_WORKLOADS, adapter_for
 
 
 def candidate_inventory(workload, *, request=None, include_helios_safe_incumbent=False,
-                        include_helios_gan_manual=False):
+                        include_helios_gan_manual=False, include_livewan_c51=False):
     require(workload in SUPPORTED_WORKLOADS, "unknown native workload")
     from .wan_implementation import WAN
     from .helios_implementation import NO_GAN, GAN
@@ -32,6 +32,8 @@ def candidate_inventory(workload, *, request=None, include_helios_safe_incumbent
     require(not include_helios_safe_incumbent or workload==NO_GAN,'safe incumbent opt-in is No-GAN only')
     require(type(include_helios_gan_manual) is bool and (not include_helios_gan_manual or workload==GAN),
             'GAN manual opt-in is GAN only')
+    require(type(include_livewan_c51) is bool and (not include_livewan_c51 or workload == LIVEWAN),
+            "C51 full-bundle opt-in is LiveWan only")
     if workload == H3:
         from .h3_implementation import implementations
         values = implementations(request=request or H3Request(), explicit_cache=True)
@@ -44,7 +46,7 @@ def candidate_inventory(workload, *, request=None, include_helios_safe_incumbent
                                   include_gan_manual=include_helios_gan_manual,request=request)
     else:
         from .livewan_implementation import implementations
-        values = implementations(request=request)
+        values = implementations(request=request, include_c51=include_livewan_c51)
     from .registry import candidate_profile
     candidates = []
     for impl in values:
@@ -57,7 +59,8 @@ def candidate_inventory(workload, *, request=None, include_helios_safe_incumbent
                      {"include_safe_incumbent":True} if include_helios_safe_incumbent else {})
     if workload in (NO_GAN,GAN) and request is not None:adapter_options['request']=request
     if include_helios_gan_manual:adapter_options['include_gan_manual']=True
-    if workload == LIVEWAN: adapter_options['livewan_request'] = request
+    if workload == LIVEWAN:
+        adapter_options.update(livewan_request=request, include_livewan_c51=include_livewan_c51)
     return dict(status="PASS_CPU_CAPABILITY_INVENTORY", workload=workload,
         source_head=git_head(repository_root()), candidates=candidates,
         workload_request=request.to_dict() if request is not None else None,
@@ -204,6 +207,8 @@ def main(argv):
                            help="Opt-in exact No-GAN HSDP/C512/p0/w5 k-bundle; not GAN")
     inventory.add_argument('--include-helios-gan-manual', action='store_true',
                            help='Opt-in canonical GAN FA3/down40/unmerged manual cohort; fresh costs required')
+    inventory.add_argument('--include-livewan-c51', action='store_true',
+                           help='Opt-in exact versioned C51 full-bundle cohort; fresh native calibration required')
     collect = sub.add_parser("calibrate", help="Default source-only; explicit native matched-pair calibration")
     collect.add_argument("--workload", required=True)
     collect.add_argument("--candidate", nargs="+", required=True)
@@ -239,7 +244,8 @@ def main(argv):
             result = candidate_inventory(args.workload,
                 request=request,
                 include_helios_safe_incumbent=args.include_helios_safe_incumbent,
-                include_helios_gan_manual=args.include_helios_gan_manual)
+                include_helios_gan_manual=args.include_helios_gan_manual,
+                include_livewan_c51=args.include_livewan_c51)
             if args.output:
                 write_new_json(args.output, result)
         else:

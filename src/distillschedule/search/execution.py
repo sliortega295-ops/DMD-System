@@ -116,8 +116,11 @@ def rebind_plan(receipt: dict[str, Any], *, run_id: str,
         window = 5 if WanImplementation.parse(candidate_id).rollout_window is not None else None
         reference_id, peer = WanImplementation("fsdp", 512, False, window).id, WanImplementation("resident", 2048, True, window).id
     elif candidate_id.startswith(LIVEWAN_PREFIX):
-        request = LiveWanImplementation.parse(candidate_id).request
-        reference_id, peer = LiveWanImplementation("fsdp", request=request).id, LiveWanImplementation("pipeline", request=request).id
+        impl = LiveWanImplementation.parse(candidate_id)
+        bundle = "legacy" if impl.bundle == "legacy" else "control_v1"
+        reference_id = LiveWanImplementation("fsdp", request=impl.request, bundle=bundle).id
+        peer = (impl.id if impl.bundle == "c51_full_v1" else
+                LiveWanImplementation("pipeline", request=impl.request, bundle=bundle).id)
     elif candidate_id.startswith("joint-h3"):
         from dataclasses import replace
         impl = H3Implementation.parse(candidate_id)
@@ -251,9 +254,10 @@ class NativeTrialRunner:
                     "cannot mix generated native family and legacy arms")
         if self.reference.id.startswith("joint-livewan1-"):
             from .livewan_implementation import LiveWanImplementation
-            require(LiveWanImplementation.parse(self.reference.id).request ==
-                    LiveWanImplementation.parse(self.bootstrap_peer.id).request,
-                    "LiveWan anchor pair must share request/shape")
+            reference, peer = (LiveWanImplementation.parse(c.id) for c in (self.reference, self.bootstrap_peer))
+            require(reference.request == peer.request and
+                    (reference.bundle == "legacy") == (peer.bundle == "legacy"),
+                    "LiveWan anchor pair must share request/shape and bundle decision schema")
         if self.reference.id.startswith("joint-h3"):
             from .h3_implementation import H3Implementation
             ref, peer = (H3Implementation.parse(c.id) for c in (self.reference, self.bootstrap_peer))
