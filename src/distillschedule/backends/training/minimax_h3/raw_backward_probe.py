@@ -5,7 +5,7 @@ at the original diagnostic finish fence. This cannot authorize native timing.
 """
 from __future__ import annotations
 
-CONTRACT = dict(schema='h3.same_inputs_raw_backward.v1', rank=0, block=49,
+CONTRACT = dict(schema='h3.same_inputs_raw_backward.block10.v1', rank=0, block=10,
     nondeterministic_extra_calls=3, deterministic_calls=2,
     training_gradients='ORIGINAL_UNMODIFIED', full_tensor_metrics=True,
     copies='NO_EXTRA_HOST_TENSOR_VALUE_READS_INSIDE_CYCLE', timing_eligible=False)

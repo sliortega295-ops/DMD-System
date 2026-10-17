@@ -61,3 +61,21 @@ def test_real_plan_binding_keeps_default_and_rejects_orphan_raw_flag():
  with pytest.raises(ValueError):d.is_diagnostic_plan(bad)
  with pytest.raises(ValueError):d.bind_plan(base,'d2A',raw_repeat=1)
  assert not torch.cuda.is_initialized()
+
+
+def test_new_block10_source_is_distinct_and_only_dispatches_actual_selected_block(monkeypatch):
+ from types import SimpleNamespace
+ from distillschedule.backends.training.minimax_h3 import divergence_probe as d
+ assert probe.CONTRACT['block']==10 and probe.CONTRACT['schema']=='h3.same_inputs_raw_backward.block10.v1'
+ assert probe.CONTRACT['training_gradients']=='ORIGINAL_UNMODIFIED' and not probe.CONTRACT['timing_eligible']
+ seen=[]
+ owner=SimpleNamespace(raw_repeat_enabled=True,active=True,rank=0,raw_repeat_result=None)
+ monkeypatch.setattr(d,'_ACTIVE',owner)
+ from distillschedule.backends.training.minimax_h3 import raw_backward_probe as real
+ monkeypatch.setattr(real,'run',lambda *args:seen.append(args) or {'SYNTHETIC_TEST_ONLY':True})
+ for block in (49,48,11):d.capture_raw_backward(None,None,block,(),(),1.)
+ assert not seen and owner.raw_repeat_result is None
+ runtime=SimpleNamespace(raw_backward=object())
+ d.capture_raw_backward(None,runtime,10,(),(),1.)
+ assert len(seen)==1 and owner.raw_repeat_result=={'SYNTHETIC_TEST_ONLY':True}
+ with pytest.raises(ValueError,match='beyond one actual graph'):d.capture_raw_backward(None,runtime,10,(),(),1.)
