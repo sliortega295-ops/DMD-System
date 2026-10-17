@@ -254,6 +254,9 @@ class H3A100LoopMixin:
 
     def _apply_one_fake_group(self, group: list[PreparedFakeUpdate]) -> list[torch.Tensor]:
         self.fake_optimizer.zero_grad(set_to_none=True)
+        diagnostic = getattr(getattr(self, "planner_cycle_observer", None), "divergence", None)
+        if diagnostic is not None:
+            diagnostic.before_fake_group(self, group)
         fake_loss_metrics: list[torch.Tensor] = []
         for micro_idx, item in enumerate(group):
             self._set_shared_gradient_sync(micro_idx == len(group) - 1)
@@ -264,6 +267,8 @@ class H3A100LoopMixin:
                 with self._activation_offload_scope(f"fake_{micro_idx}") as offload:
                     self._log_residency(f"before_fake_{micro_idx}_grad_forward")
                     loss_fake = self.fake_loss(item)
+                    if diagnostic is not None:
+                        diagnostic.loss(loss_fake)
                     self._log_residency(f"after_fake_{micro_idx}_grad_forward")
                     self._maybe_trim_fa3_replay_cache_before_backward()
                     if offload is not None:
@@ -286,15 +291,25 @@ class H3A100LoopMixin:
             self.shared_model.drop_adaln_key(item.cache_key)
             fake_loss_metrics.append(loss_fake.detach())
 
+        if diagnostic is not None:
+            diagnostic.gradients("post_backward_after_fsdp", self)
         sync_sequence_parallel_gradients(self.fake_trainable_params)
-        torch.nn.utils.clip_grad_norm_(self.fake_trainable_params, self.max_grad_norm)
+        if diagnostic is not None:
+            diagnostic.gradients("post_explicit_sp_sync_pre_clip", self)
+        clip_norm = torch.nn.utils.clip_grad_norm_(self.fake_trainable_params, self.max_grad_norm)
+        if diagnostic is not None:
+            diagnostic.after_clip(self, clip_norm)
         self._log_residency("before_fake_optimizer")
         self.fake_optimizer.step()
+        if diagnostic is not None:
+            diagnostic.after_step(self)
         planner_observer = getattr(self, "planner_cycle_observer", None)
         if planner_observer is not None:
             planner_observer.note_update("fake")
         self.fake_lr_scheduler.step()
         self._log_residency("after_fake_optimizer")
+        if diagnostic is not None:
+            diagnostic.after_fake_group()
         self.fake_optimizer.zero_grad(set_to_none=True)
         return fake_loss_metrics
 

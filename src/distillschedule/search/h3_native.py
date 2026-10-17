@@ -28,9 +28,13 @@ _SHA = re.compile(r"[0-9a-f]{64}")
 
 
 def summarize_native_two_cycle(receipts: Sequence[Mapping[str, Any]], *, expected_head: str,
-                               candidate_id: str) -> dict[str, Any]:
+                               candidate_id: str, _diagnostic_contracts_only: bool = False) -> dict[str, Any]:
     require(isinstance(expected_head, str) and re.fullmatch(r"[0-9a-f]{40}", expected_head) is not None,
             "H3 summary requires exact source HEAD")
+    diagnostic = any(row.get("divergence_diagnostic") is not None for row in receipts)
+    require(type(_diagnostic_contracts_only) is bool and diagnostic == _diagnostic_contracts_only
+            and (not diagnostic or all(row.get("divergence_diagnostic") is not None for row in receipts)),
+            "H3 divergence probes cannot enter numerical admission/calibration/timing")
     impl = H3Implementation.parse(candidate_id)
     runtime = impl.lower_profile()["runtime"]
     binding = impl.receipt_binding(runtime["model_config"], runtime["environment"])
@@ -79,8 +83,12 @@ def summarize_native_two_cycle(receipts: Sequence[Mapping[str, Any]], *, expecte
                 require(item.get(key) == expected, f"H3 rank{rank} cycle{cycle} {key} mismatch")
             require(all(item.get("grid_replay", {}).get(k) == v * cycle for k, v in _GRID.items()),
                     f"H3 rank{rank} cumulative Grid1000 mismatch")
-            finite_number(item.get("native_wall_seconds"), "native_wall_seconds", positive=True)
-            finite_number(item.get("gpu_completion_elapsed_s"), "gpu_completion_elapsed_s", positive=True)
+            if diagnostic:
+                require("native_wall_seconds" not in item and "gpu_completion_elapsed_s" not in item,
+                        "H3 diagnostic cannot retain native performance durations")
+            else:
+                finite_number(item.get("native_wall_seconds"), "native_wall_seconds", positive=True)
+                finite_number(item.get("gpu_completion_elapsed_s"), "gpu_completion_elapsed_s", positive=True)
             require(item.get("census", {}).get("fixed_end_step_idx") == 3, "H3 fixed end step changed")
             samples = item["census"].get("samples", [])
             require(all(isinstance(s.get("identity"), str) and bool(s["identity"]) for s in samples),
@@ -116,6 +124,9 @@ def summarize_native_two_cycle(receipts: Sequence[Mapping[str, Any]], *, expecte
         errors = validate_global_snapshots([row["cycles"][index]["census"] for row in rows],
                                           expected_world_size=16, require_unique_samples=True)
         require(not errors, f"H3 cycle{index + 1} census failed: {errors}")
+    if diagnostic:
+        return dict(status="VALIDATED_NATIVE_CONTRACTS_FOR_DIAGNOSTIC_ONLY", rank_count=16,
+                    native_timing="NOT_RUN", numerical_admission=False, formal_timing_eligible=False)
     wall = {str(c + 1): max(float(r["cycles"][c]["native_wall_seconds"]) for r in rows) for c in range(2)}
     cuda = {str(c + 1): max(float(r["cycles"][c]["gpu_completion_elapsed_s"]) for r in rows) for c in range(2)}
     return {"schema_version": "distillschedule.h3_native_two_cycle_summary.v1", "status": "PASS",

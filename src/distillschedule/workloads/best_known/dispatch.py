@@ -102,6 +102,8 @@ def read_manual_match_protocol(receipt: dict[str, Any], *, root: Path) -> dict[s
 
 
 def validate_local(receipt: dict[str, Any], *, root: Path, node_rank: int | None = None) -> dict[str, Any]:
+    from distillschedule.backends.training.minimax_h3.divergence_probe import is_diagnostic_plan
+    is_diagnostic_plan(receipt)
     if "search_candidate" in receipt:
         from distillschedule.search.execution import validated_profile
         profile = validated_profile(receipt, root=root)
@@ -274,6 +276,8 @@ def execute_node(payload: dict[str, Any]) -> int:
 
 def run_resolved(receipt: dict[str, Any], *, dry_run: bool = False,
                  coordinator_output: Path | None = None) -> int:
+    from distillschedule.backends.training.minimax_h3.divergence_probe import is_diagnostic_plan
+    diagnostic = is_diagnostic_plan(receipt)
     _require(len(receipt.get("nodes", [])) == 2, "run requires an assets config")
     if dry_run:
         print(json.dumps(receipt, indent=2, sort_keys=True))
@@ -346,10 +350,14 @@ def run_resolved(receipt: dict[str, Any], *, dry_run: bool = False,
                            env=ssh_process_environment())
         # Do NOT manufacture a correctness PASS or speed number from exit status.
         write_new_json(out / "dispatch-result.json", {
-            "status": "DISPATCH_AND_NATIVE_SUMMARY_COMPLETE", "node_exit_codes": codes,
+            "status": ("DIAGNOSTIC_CAPTURE_COMPLETE_NOT_ADMISSION" if diagnostic else
+                       "DISPATCH_AND_NATIVE_SUMMARY_COMPLETE"), "node_exit_codes": codes,
             "integration_head": receipt["integration_head"], "formal_speedup_eligible": False,
         })
-        print(f"Dispatch completed. Native/bound summaries written in {out}; no historical speedup is reasserted.")
+        if diagnostic:
+            print(f"Diagnostic captures collected in {out}; no numerical admission or timing summaries.")
+        else:
+            print(f"Dispatch completed. Native/bound summaries written in {out}; no historical speedup is reasserted.")
         return 0
     except BaseException:
         for i, (proc, _, node) in enumerate(jobs):

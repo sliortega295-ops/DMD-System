@@ -30,6 +30,8 @@ from loguru import logger
 from torch.utils._python_dispatch import TorchDispatchMode
 from torch.utils.checkpoint import checkpoint, create_selective_checkpoint_contexts
 
+from .divergence_probe import capture_fa3
+
 
 EXPECTED_BLOCK_COUNT = 50
 EXPECTED_GRAD_TRANSFORMER_FORWARDS = 6
@@ -201,6 +203,7 @@ class _CompactFA3Autograd(torch.autograd.Function):
             False,
             0,
         )
+        capture_fa3("backward", int(ctx.block_index), (dq, dk, dv))
         runtime.stats.compact_backward_calls += 1
         if runtime.staged_pool is not None:
             runtime.staged_pool.prefetch_after_backward(int(ctx.block_index))
@@ -567,6 +570,7 @@ class _PageableStagingPool:
                 "H3 staged FA3 cache observed an unexpected production shape: "
                 f"{shapes[0]}/{shapes[1]}"
             )
+        capture_fa3("original", int(block_index), values)
         self._throttle_forward()
         pair = self._acquire_stage()
         pages = (
@@ -690,6 +694,7 @@ class _PageableStagingPool:
         self.stats.cpu_h2d_entries += 1
         self.stats.cpu_h2d_tensors += len(entry.pages)
         self.stats.cpu_h2d_bytes += logical_bytes
+        capture_fa3("replay", int(entry.block_index), values)
         self._entries.pop(entry.block_index, None)
         return values  # type: ignore[return-value]
 

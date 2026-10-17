@@ -104,6 +104,9 @@ def summary_command(receipt: dict[str, Any]) -> list[str] | None:
 
 
 def collect(receipt: dict[str, Any]) -> int:
+    from distillschedule.backends.training.minimax_h3.divergence_probe import is_diagnostic_plan, collect_diagnostic
+    if is_diagnostic_plan(receipt):
+        return collect_diagnostic(receipt)
     from .dispatch import clean_environment
     node = receipt["nodes"][0]
     root = Path(node["repo_root"])

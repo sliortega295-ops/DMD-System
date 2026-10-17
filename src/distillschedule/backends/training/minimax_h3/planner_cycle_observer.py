@@ -161,6 +161,7 @@ class H3PlannerCycleObserver:
         self._original_nvtx = None
         self.finished = False
         self.host_fenced_clock = host_fenced_clock
+        self.divergence = None
         self.action_trace = None
         self.action_program = None
         self.run_kind = os.environ.get("DISTILLSCHEDULE_RUN_KIND", "correctness")
@@ -203,6 +204,8 @@ class H3PlannerCycleObserver:
                 raise ValueError("H3 native planner seed must be 20260817")
         self.frozen_contract = frozen | {"fa3_replay_cache_blocks": list(range(50)),
                                          "attention_backend": "_flash_3_hub"}
+        from .divergence_probe import from_environment
+        self.divergence = from_environment(torch=self.torch, rank=self.rank, source_head=self.source_head)
 
     def after_setup(self, trainer) -> None:
         if not self.torch.cuda.is_available():
@@ -249,6 +252,8 @@ class H3PlannerCycleObserver:
                         yield
 
             trainer._nvtx = observed_nvtx
+        if self.divergence is not None:
+            self.divergence.initial(trainer, self._rng_fingerprints())
 
     def before_cycle(self, trainer, current_iter: int) -> None:
         if self.active is not None or current_iter != len(self.cycles) or current_iter not in (0, 1):
@@ -258,6 +263,8 @@ class H3PlannerCycleObserver:
                             memory_before=self.memory_probe(self.torch, self.device))
         if self.host_fenced_clock:
             self.pending["rng_before"] = self._rng_fingerprints()
+        if self.divergence is not None:
+            self.divergence.begin_cycle(current_iter + 1, self.pending["rng_before"])
         if self.collector is not None:
             self.collector.cycle = current_iter + 1
         if self.action_trace is not None:
@@ -337,6 +344,8 @@ class H3PlannerCycleObserver:
             row["fa3_replay_cache_registration"] = actual
         if self.host_fenced_clock:
             row["rng_after"] = self._rng_fingerprints()
+        if self.divergence is not None:
+            self.divergence.after_cycle(current_iter + 1, row["rng_after"])
         if self.action_trace is not None:
             row["action_execution"] = self.action_trace.finish_cycle(
                 self.action_program.receipt(), self.updates, row["census"])
@@ -363,6 +372,12 @@ class H3PlannerCycleObserver:
                 if labels != _STAGES:
                     raise RuntimeError(f"H3 calibration expected seven native stages at cycle {cycle}")
         final_state = self.state_probe(trainer, torch=self.torch, rank=self.rank)
+        diagnostic = self.divergence.finish() if self.divergence is not None else None
+        if diagnostic is not None:
+            for row in self.cycles:
+                for field in ("native_wall_seconds", "gpu_completion_elapsed_s",
+                              "host_start_monotonic_ns", "host_stop_monotonic_ns"):
+                    row.pop(field, None)
         self.finished = True
         rng_binding = {}
         if self.host_fenced_clock:
@@ -371,6 +386,7 @@ class H3PlannerCycleObserver:
                 final_sha256=hashlib.sha256(json.dumps(self.cycles[-1]["rng_after"], sort_keys=True).encode()).hexdigest(),
                 scope="NATIVE_RNG_STATE_BEFORE_AND_AFTER_TWO_CYCLES")}
         return {"schema_version": "distillschedule.h3_native_two_cycle.v1", **self.implementation_binding, **rng_binding,
+                **({"divergence_diagnostic": diagnostic} if diagnostic is not None else {}),
                 "status": "PASS_NATIVE_RUNTIME_CONTRACTS", "rank": self.rank,
                 "integration_head": self.source_head, "semantics": "approximate_grid1000",
                 "cycles": self.cycles, "updates": dict(self.updates),
@@ -402,6 +418,8 @@ class H3PlannerCycleObserver:
                     or key == "DISTILLSCHEDULE_SEARCH_CANDIDATE_ID"}}
 
     def close(self, trainer) -> None:
+        if self.divergence is not None:
+            self.divergence.close()
         if self.calibration_enabled and self.action_trace is not None and self.collector is not None:
             self.collector.close()
         if self.action_trace is not None:
