@@ -15,7 +15,7 @@ def main(argv=None):
         print(json.dumps(dict(adapters=[
             dict(schema_version='distillschedule.native_flow_task.v1', scope='new explicit flow protocol; not historical W6'),
             dict(schema_version='distillschedule.original_wan_task.v1', scope='original Wan pyramid no-GAN'),
-            dict(schema_version='distillschedule.original_h3_ar_task.v1', scope='W6 original DiffSynth previous/current AV DMD2')],
+            dict(schema_version='distillschedule.original_h3_ar_task.v2', scope='W6 original DiffSynth rank-qualified previous/current AV DMD2')],
             canonical_profiles='UNCHANGED_FIVE_FROZEN_PROFILES', gpu_execution='NOT_RUN'), indent=2))
         return 0
     if argv and argv[0] == "program":
@@ -30,7 +30,7 @@ def main(argv=None):
             if isinstance(raw, dict) and raw.get("schema_version") == "distillschedule.original_wan_task.v1":
                 from distillschedule.strategies.wan_cli import main as original_wan_main
                 return original_wan_main(argv)
-            if isinstance(raw, dict) and raw.get("schema_version") == "distillschedule.original_h3_ar_task.v1":
+            if isinstance(raw, dict) and raw.get("schema_version") in ("distillschedule.original_h3_ar_task.v1", "distillschedule.original_h3_ar_task.v2"):
                 from distillschedule.strategies.h3_ar_cli import main as original_h3_ar_main
                 return original_h3_ar_main(argv)
         except (OSError, ValueError) as exc:

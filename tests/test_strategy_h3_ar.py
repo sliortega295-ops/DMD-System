@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from distillschedule.strategies.h3_ar_task import H3ARTask, H3ARImplementation, native_graph
 from distillschedule.strategies.h3_ar_planning import assemble, plan, validate_plan, source_identity
 from distillschedule.strategies.h3_ar_worker import capacity_ok, execute_cycles, topology
+from distillschedule.strategies.h3_ar_inputs import expected_validation
 from distillschedule.workloads.best_known.registry import fingerprint, write_new_json
 
 POLICY = dict(gpu_limit_bytes=1000, gpu_reserve_bytes=10, host_limit_bytes=3000, host_reserve_bytes=100)
@@ -21,7 +22,7 @@ def test_contract_is_original_and_frozen():
     task = H3ARTask()
     assert task.video_frames == task.previous_frames == 56
     assert (task.video_height, task.video_width) == (768, 1344)
-    assert task.input_shapes['video'] == [1, 24, 17, 48, 84]
+    assert task.input_shapes(0)['video'] == [1, 24, 17, 48, 84]
     assert task.census == dict(student=9, fake_score=2, teacher=1, student_grad=1,
                               fake_score_grad=1, student_backward=1, critic_backward=1)
     assert H3ARTask.from_dict(task.to_dict()) == task
@@ -31,6 +32,151 @@ def test_contract_is_original_and_frozen():
             H3ARTask.from_dict({**task.to_dict(), key: value})
     with pytest.raises(ValueError):
         H3ARTask.from_dict({'ignored_flag': True})
+
+
+def test_rank6_original_audio94_is_bound_to_its_sample_not_a_global_shape():
+    """The real original parser has one longer audio sample; never pad/crop it."""
+    task = H3ARTask()
+    assert task.schema_version == 'distillschedule.original_h3_ar_task.v2'
+    assert task.input_shapes(6)['audio'] == [2, 32, 94]
+    assert task.input_shapes(6)['previous_audio'] == [188, 32]
+    for rank in set(range(16)) - {6}:
+        assert task.input_shapes(rank)['audio'] == [2, 32, 93]
+        assert task.input_shapes(rank)['previous_audio'] == [186, 32]
+    assert len({task.expected_input(r)['input_identity']['sha256'] for r in range(16)}) == 16
+    with pytest.raises(ValueError):
+        H3ARTask.from_dict({**task.to_dict(), 'schema_version': 'distillschedule.original_h3_ar_task.v1'})
+
+
+def input_tensor_fixture(metadata, torch):
+    """Shape-only meta tensors: no original values, no CUDA, no GPU evidence."""
+    if isinstance(metadata, dict):
+        if set(metadata) == {'shape', 'dtype'}:
+            return torch.empty(metadata['shape'], dtype=getattr(torch, metadata['dtype'].split('.')[1]), device='meta')
+        return {k: input_tensor_fixture(v, torch) for k, v in metadata.items()}
+    if isinstance(metadata, list):
+        return [input_tensor_fixture(v, torch) for v in metadata]
+    assert metadata is None
+
+
+@pytest.mark.parametrize('rank', range(16))
+def test_same_session_validator_accepts_exact_original_per_rank_tensor_metadata(rank):
+    import torch
+    from distillschedule.strategies.h3_ar_inputs import validate_prepared_input
+    task = H3ARTask(); row = task.expected_input(rank)
+    raw = input_tensor_fixture(row['raw_tensors'], torch)
+    positive = {**input_tensor_fixture(row['positive_tensors'], torch), **row['positive_scalars']}
+    assert validate_prepared_input(task, rank, row['input_identity'], raw, positive, None, torch) == expected_validation(task, rank)
+    assert not torch.cuda.is_initialized()
+
+
+@pytest.mark.parametrize('change', ['wrong_rank', 'sample_path', 'sample_sha', 'audio93_on_rank6',
+    'audio94_on_rank5', 'packed_dtype', 'packed_length', 'positive_dtype', 'raw_dtype', 'negative', 'conditioning'])
+def test_rank_input_validator_rejects_sample_shape_packing_and_dtype_substitution(change):
+    import torch
+    from distillschedule.strategies.h3_ar_inputs import validate_prepared_input
+    task = H3ARTask(); rank = 5 if change == 'audio94_on_rank5' else 6
+    row = task.expected_input(rank); identity = dict(row['input_identity'])
+    raw = input_tensor_fixture(row['raw_tensors'], torch)
+    positive = {**input_tensor_fixture(row['positive_tensors'], torch), **row['positive_scalars']}; negative = None
+    if change == 'wrong_rank': rank = 5
+    elif change == 'sample_path': identity['path'] = task.expected_input(5)['input_identity']['path']
+    elif change == 'sample_sha': identity['sha256'] = 'f'*64
+    elif change in ('audio93_on_rank6', 'audio94_on_rank5'):
+        positive['audio_input_latents'] = torch.empty((2, 32, 93 if rank == 6 else 94), device='meta', dtype=torch.bfloat16)
+    elif change == 'packed_dtype': positive['packed']['cu_seqlens'] = positive['packed']['cu_seqlens'].to(torch.int64)
+    elif change == 'packed_length': positive['packed']['audio_pos'] = torch.empty(372, device='meta', dtype=torch.int64)
+    elif change == 'positive_dtype': positive['input_latents'] = positive['input_latents'].float()
+    elif change == 'raw_dtype': raw[1]['text_token_tags'] = raw[1]['text_token_tags'].int()
+    elif change == 'negative': negative = {}
+    elif change == 'conditioning': positive['audio_cond_noise_aug'] = 0.0
+    with pytest.raises(ValueError, match='rank-qualified|conditioning'):
+        validate_prepared_input(task, rank, identity, raw, positive, negative, torch)
+
+
+def test_actual_session_constructor_enters_shared_rank6_validator_before_model(tmp_path, monkeypatch):
+    """Actual constructor/parser handoff, using explicitly synthetic meta inputs."""
+    import torch
+    import distillschedule.strategies.h3_ar_inputs as inputs
+    from distillschedule.strategies.h3_ar_session import H3ARSession
+    task = H3ARTask(); row = task.expected_input(6); contract = inputs.input_contract()
+    raw = input_tensor_fixture(row['raw_tensors'], torch)
+    positive = {**input_tensor_fixture(row['positive_tensors'], torch), **row['positive_scalars']}
+    manifest = tmp_path/'cache.json'; write_new_json(manifest, dict(status='PASS_CACHE_SOURCE_AND_SCHEMA',
+        rows=[task.expected_input(r)['input_identity'] for r in range(16)]))
+    payload = tmp_path/'synthetic-shape-only.pth'; payload.write_text('NOT_NATIVE_CACHE_VALUES')
+    calls = []
+    def load(path, **kwargs):
+        assert path == payload and kwargs == dict(map_location='cpu', weights_only=True)
+        calls.append('load'); return raw
+    def prepare(value, cfg):
+        assert value is raw and cfg == 1.0
+        calls.append('original_parser_handoff_fixture'); return positive, None
+    class BeforeModel(Exception): pass
+    def helper(name):
+        assert name == 'native_mechanisms_r3'; calls.append('validated_before_helper_or_model'); raise BeforeModel
+    native = SimpleNamespace(DMD2Config=lambda **kwargs: SimpleNamespace(teacher_cfg_scale=kwargs['teacher_cfg_scale']), prepare_batch=prepare)
+    assets = SimpleNamespace(cache_manifest=contract['cache_manifest'], source_module=lambda name: native, helper=helper)
+    monkeypatch.setattr(inputs, 'checked', lambda ref: manifest if ref == contract['cache_manifest'] else payload)
+    monkeypatch.setattr(inputs, 'validate_parser', lambda module: calls.append('source_pins_fixture'))
+    monkeypatch.setattr(torch, 'load', load)
+    with pytest.raises(BeforeModel):
+        H3ARSession(task, assets, H3ARImplementation('zero3-native'), rank=6, local_rank=6, torch=torch, accelerator=None)
+    assert calls == ['source_pins_fixture', 'load', 'original_parser_handoff_fixture', 'validated_before_helper_or_model']
+    assert positive['audio_input_latents'].shape[-1] == 94 and not torch.cuda.is_initialized()
+
+
+@pytest.mark.parametrize('change', ['wrong_identity', 'old_global93', 'missing_witness', 'wrong_dtype', 'profile_sha'])
+def test_assembler_and_saved_plan_recheck_exact_rank_input_witness(tmp_path, change):
+    paths = calibration_rows(tmp_path, 'zero3-ap', 100)
+    row = json.loads(paths[6].read_text())
+    if change == 'wrong_identity': row['input_identity'] = H3ARTask().expected_input(5)['input_identity']
+    elif change == 'old_global93': row['build']['input_shapes']['audio'][-1] = 93
+    elif change == 'missing_witness': del row['build']['input_validation']
+    elif change == 'wrong_dtype': row['build']['input_validation']['positive_tensors']['packed']['cu_seqlens']['dtype'] = 'torch.int64'
+    elif change == 'profile_sha': row['build']['input_validation']['input_contract_sha256'] = 'f'*64
+    paths[6].write_text(json.dumps(row))
+    with pytest.raises(ValueError):
+        assemble(H3ARTask(), paths, tmp_path/'bad')
+
+
+def test_input_profile_file_itself_is_strongly_bound_and_old_task_refused(tmp_path, monkeypatch):
+    import distillschedule.strategies.h3_ar_inputs as inputs
+    task = H3ARTask(); changed = task.to_dict(); changed['input_contract_sha256'] = 'f'*64
+    with pytest.raises(ValueError): H3ARTask.from_dict(changed)
+    profile = tmp_path/inputs.CONTRACT_PATH; profile.parent.mkdir(parents=True); profile.write_text('{}')
+    monkeypatch.setattr(inputs, 'repository_root', lambda: tmp_path)
+    with pytest.raises(ValueError, match='contract file changed'): H3ARTask()
+
+
+def test_parser_pins_cover_both_original_prepare_functions():
+    import ast
+    from pathlib import Path
+    from distillschedule.strategies.h3_ar_inputs import validate_parser
+    original = Path('/home/lyy/Helios/research_artifacts/DMD-System/h3_diffsynth_dmd2_world16_20261010/artifacts/reference_source_snapshot/examples/minimax_h3/model_training')
+    functions = {}
+    for filename, name in [('h3_dmd2.py', 'prepare_batch'), ('train_ours.py', 'prepare_cached_inputs')]:
+        path = original/filename
+        definition = next(n for n in ast.parse(path.read_text()).body if isinstance(n, ast.FunctionDef) and n.name == name)
+        namespace = {}
+        # Definition only; original body is not invoked or reimplemented here.
+        exec(compile(ast.Module(body=[definition], type_ignores=[]), str(path), 'exec'), namespace)
+        functions[name] = namespace[name]
+    validate_parser(SimpleNamespace(**functions))
+    functions['prepare_cached_inputs'] = lambda value: value
+    with pytest.raises(ValueError, match='parser source changed'):
+        validate_parser(SimpleNamespace(**functions))
+
+
+@pytest.mark.parametrize('field,value', [('schema_version', 'distillschedule.original_h3_ar_task.v1'),
+    ('input_contract_sha256', 'f'*64)])
+def test_saved_plan_cannot_rehash_away_rank_input_contract(tmp_path, field, value):
+    task = H3ARTask(); observed = collection(tmp_path, 'zero3-ap', 100)
+    document = plan(task, [observed]); document['task'][field] = value
+    document.pop('plan_sha256'); document['plan_sha256'] = fingerprint(document)
+    path = tmp_path/'bad-task-plan.json'; write_new_json(path, document)
+    with pytest.raises(ValueError, match='saved W6 plan/task changed'):
+        validate_plan(task, path)
 
 
 def test_only_native_baseline_and_accepted_bundle_are_candidates():
@@ -65,8 +211,9 @@ def calibration_rows(tmp_path, implementation, duration, *, memory_peak=400):
             task=task.to_dict(), implementation=impl.to_dict(),
             identity=dict(source=source_identity(), assets_sha256='a'*64, task_sha256=task.digest),
             gpu_execution='NATIVE_CUDA_RUN', profiled=False, finite=True, capacity_policy=POLICY,
-            build=dict(native_implementation_installed=True, implementation=impl.to_dict(), input_shapes=task.input_shapes),
-            input_identity=dict(sha256=f'{rank:064x}'),
+            build=dict(native_implementation_installed=True, implementation=impl.to_dict(),
+                       input_shapes=task.input_shapes(rank), input_validation=expected_validation(task, rank)),
+            input_identity=task.expected_input(rank)['input_identity'],
             cycles=cycles, static_bytes=100, initial_versions=dict(student=0, fake=0, ema=0),
             final_versions=dict(student=2, fake=2, ema=0), runtime={'synthetic_fixture': True},
             hardware=dict(name='synthetic_fixture', total_memory=2000))
@@ -211,7 +358,7 @@ def test_cli_routing_is_opt_in_and_does_not_import_torch(tmp_path, capsys):
     before = 'torch' in sys.modules
     assert main(['validate', '--task', str(path)]) == 0
     result = json.loads(capsys.readouterr().out)
-    assert result['task']['schema_version'] == 'distillschedule.original_h3_ar_task.v1'
+    assert result['task']['schema_version'] == 'distillschedule.original_h3_ar_task.v2'
     assert result['gpu_execution'] == 'NOT_RUN'
     assert ('torch' in sys.modules) == before
 

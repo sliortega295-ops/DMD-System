@@ -14,6 +14,7 @@ from distillschedule.search.service import BoundCandidate, select
 from distillschedule.workloads.best_known.registry import file_sha256, fingerprint, git_head, repository_root, write_new_json
 from .h3_ar_assets import checked
 from .h3_ar_task import H3ARImplementation, native_graph
+from .h3_ar_inputs import CONTRACT_PATH, validate_input_receipt
 
 COLLECTION = 'distillschedule.original_h3_ar_calibration.v1'
 PLAN = 'distillschedule.original_h3_ar_plan.v1'
@@ -30,6 +31,7 @@ def read(path):
 def source_fingerprint():
     root = repository_root()
     paths = list((root/'src/distillschedule/strategies').glob('h3_ar_*.py'))
+    paths += [root/CONTRACT_PATH]
     paths += [root/'src/distillschedule'/p for p in ('native/cli.py', 'search/service.py',
         'search/frontier_schedule.py', 'search/plan_ir.py', 'search/cost_model.py', 'search/resources.py',
         'runtime/role_runner.py', 'runtime/version_sync.py', 'core/graph.py', 'core/contracts.py')]
@@ -42,7 +44,7 @@ def source_identity():
 
 def component(task, implementation):
     return ComponentContract(family='original_h3_ar.native_update',
-        work=dict(task=task.to_dict(), actual_input_shapes=task.input_shapes, census=task.census,
+        work=dict(task=task.to_dict(), rank_inputs=[task.expected_input(r) for r in RANKS], census=task.census,
                   logical_updates=dict(student=1, fake=1, ema=0)),
         precision=dict(autocast='bfloat16', cache_enabled=False, base='native', lora='native_fp32_master_adam'),
         placement=dict(world_size=16, local_world_size=8, zero_stage=3, parameter_optimizer_offload='none',
@@ -80,9 +82,9 @@ def _rank_rows(task, rank_paths):
         require(type(row['static_bytes']) is int and row['static_bytes'] > 0,
                 'missing actual static allocation', path='h3_ar.calibration')
         require(row['build']['native_implementation_installed'] is True
-                and row['build']['implementation'] == implementation.to_dict()
-                and row['build']['input_shapes'] == task.input_shapes,
+                and row['build']['implementation'] == implementation.to_dict(),
                 'requested implementation was not installed', path='h3_ar.calibration')
+        validate_input_receipt(task, row['rank'], row['input_identity'], row['build'])
         require(len(row['cycles']) == 2 and row['initial_versions'] == dict(student=0, fake=0, ema=0)
                 and row['final_versions'] == dict(student=2, fake=2, ema=0),
                 'not consecutive two-cycle native work', path='h3_ar.calibration')

@@ -12,7 +12,8 @@ from distillschedule.core.enums import GradientMode, OperationKind
 from distillschedule.core.graph import ExecutionGraph, Operation
 from distillschedule.workloads.best_known.registry import fingerprint
 
-SCHEMA = 'distillschedule.original_h3_ar_task.v1'
+SCHEMA = 'distillschedule.original_h3_ar_task.v2'
+INPUT_CONTRACT_SHA256 = 'c12a59eff4ac2907f06645a4132d5f0dea58458729546083041b98c53c173d82'
 SOURCE_RECEIPT = '9ca4ad8ca13b0a9e7397f6313e4eca225f10f52802e90423b06f7e786a58b989'
 SOURCE_PINS = {
     'examples/minimax_h3/model_training/h3_dmd2.py': '77744f5ec391be813d42ebaf6a2692c18ea58f5ca7fb41398fd287d2a177ca62',
@@ -25,6 +26,7 @@ SOURCE_PINS = {
 @dataclass(frozen=True)
 class H3ARTask:
     schema_version: str = SCHEMA
+    input_contract_sha256: str = INPUT_CONTRACT_SHA256
     protocol: str = 'diffsynth_native_previous_current_av_dmd2_v1'
     video_frames: int = 56
     previous_frames: int = 56
@@ -43,17 +45,20 @@ class H3ARTask:
         defaults = {k: f.default for k, f in self.__dataclass_fields__.items()}
         require(asdict(self) == defaults and all(type(getattr(self, k)) is type(v) for k, v in defaults.items()),
                 'W6 frozen native contract changed; no Grid/fullseq/precision/update substitution', path='h3_ar.task')
+        from .h3_ar_inputs import input_contract
+        input_contract()
 
     @property
     def census(self):
         return dict(student=9, fake_score=2, teacher=1, student_grad=1,
                     fake_score_grad=1, student_backward=1, critic_backward=1)
 
-    @property
-    def input_shapes(self):
-        # Original cache + native README, not Wan VAE compression inference.
-        return dict(video=[1, 24, 17, 48, 84], audio=[2, 32, 93],
-                    previous_video=[17136, 96], previous_audio=[186, 32])
+    def expected_input(self, rank):
+        from .h3_ar_inputs import expected_input
+        return expected_input(self, rank)
+
+    def input_shapes(self, rank):
+        return self.expected_input(rank)['input_shapes']
 
     @property
     def digest(self):

@@ -14,6 +14,7 @@ from distillschedule.runtime.role_runner import StaticRoleRunner
 from distillschedule.runtime.version_sync import VersionLedger
 from .h3_ar_task import native_config, native_graph
 from .h3_ar_assets import checked
+from .h3_ar_inputs import prepare_rank_input
 
 
 def move(value, device, torch):
@@ -55,22 +56,11 @@ class H3ARSession:
         zero = assets.source_module('dmd2_zero3')
         module = assets.source_module('diffsynth.models.minimax_h3_dit')
         self.config = self.native.DMD2Config(**native_config())
-        import json
-        cache = json.loads(checked(assets.cache_manifest).read_text())
-        require(cache.get('status') == 'PASS_CACHE_SOURCE_AND_SCHEMA' and len(cache.get('rows', [])) == 16,
-                'native previous/current cache manifest rejected', path='h3_ar.session')
-        require(len({row['sha256'] for row in cache['rows']}) == 16,
-                'native rank samples must be distinct', path='h3_ar.session')
-        self.input_identity = cache['rows'][rank]
-        raw_path = checked({k: self.input_identity[k] for k in ('path', 'sha256')})
-        raw = torch.load(raw_path, map_location='cpu', weights_only=True)
         # The ORIGINAL deterministic parser runs before the large construction:
         # reject wrong history/geometry/masks without loading a 50-block model.
-        positive, negative = self.native.prepare_batch(raw, self.config.teacher_cfg_scale)
-        shapes = dict(video=list(positive['input_latents'].shape), audio=list(positive['audio_input_latents'].shape),
-            previous_video=list(positive['ref_visual_anchor'].shape), previous_audio=list(positive['ref_audio_anchor'].shape))
-        require(shapes == task.input_shapes,
-                'W6 original 56+previous cache shape mismatch; no fullseq/current4s substitution', path='h3_ar.session')
+        positive, negative, self.input_identity, input_validation = prepare_rank_input(
+            task, assets.cache_manifest, self.native, rank, torch, teacher_cfg_scale=self.config.teacher_cfg_scale)
+        shapes = input_validation['input_shapes']
         self.mechanism = assets.helper('native_mechanisms_r3').NativeMechanisms(lora_inplace=implementation.optimized)
         self.mechanism.install(module)
         replay = assets.helper('zero3_checkpoint_tensor_identity_r2').install()
@@ -152,7 +142,7 @@ class H3ARSession:
             implementation, assets, self.native, module, self.adapter, self.trainer)
         self.positive, self.negative = move(positive, self.device, torch), move(negative, self.device, torch)
         self.real = (self.positive.pop('input_latents'), self.positive.pop('audio_input_latents'))
-        self.build.update(input_shapes=shapes, architecture=architecture, checkpoint=checkpoint,
+        self.build.update(input_shapes=shapes, input_validation=input_validation, architecture=architecture, checkpoint=checkpoint,
                           native_implementation_installed=True)
         training.seed_all(42 + rank)
         self.static_bytes = torch.cuda.memory_allocated(self.device)
