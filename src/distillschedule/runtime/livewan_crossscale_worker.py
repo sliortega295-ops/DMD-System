@@ -1099,6 +1099,25 @@ def _effective_plan_sha256(plan: Mapping[str, Any]) -> str:
     ).hexdigest()
 
 
+def _publish_effective_plan(
+    plan: Mapping[str, Any], output_dir: Path, *,
+    run_kind: str, profile_two_cycles: bool, local_rank: int, node_rank: int,
+) -> Path | None:
+    """Publish this worker's actual lowered plan before model work or timing.
+
+    Qualification consumes the same flat plan-plus-digest format as timing.
+    Only each node's local rank zero writes; no reconstruction after the run.
+    """
+    if local_rank != 0 or (
+        run_kind not in {"trajectory", "two-cycle-timing"} and not profile_two_cycles
+    ):
+        return None
+    _require(node_rank in {0, 1}, "effective-plan node rank is missing")
+    path = output_dir / f"effective_plan.node{node_rank}.json"
+    atomic_json(path, {**plan, "effective_plan_sha256": _effective_plan_sha256(plan)})
+    return path
+
+
 def _record_two_cycle_endpoint(
     torch: Any,
     *,
@@ -1202,6 +1221,9 @@ def _load_two_cycle_timing_gate(
         and len(str(comparison["sha256"])) == 64,
         "two-cycle cross-arm trajectory comparison is not PASS",
     )
+    if pipeline_variant == "c51-continuous-b16-generator-fused-rms":
+        from distillschedule.runtime.livewan_c51_bundle import validate_timing_gate_binding
+        validate_timing_gate_binding(value)
     return {
         "path": str(resolved),
         "sha256": expected_sha256,
@@ -3447,12 +3469,26 @@ def _c30_checkpoint_composition_enabled(plan: Mapping[str, Any], *, mode: str) -
     from distillschedule.runtime.livewan_generator_gate import PLAN_CONTRACT as GATE, LAYOUT_PLAN_CONTRACT as LAYOUT
 
     metadata = plan.get("metadata", {})
+    if metadata.get("score_attention_backend", {}).get("name") == "score_flash_attn3_unmasked_bf16_split1_v1":
+        from distillschedule.runtime.livewan_score_fa3 import SAC_CONTRACT
+        # Same GPU-only SAC mechanism; a different pinned attention operator.
+        # No C37 early-wave schedule is mixed into this C36-parent experiment.
+        _require(metadata.get("critic_step1_overlap") is None
+                 and metadata.get("score_layernorm") is not None,
+                 "C38 requires unchanged C36 scheduling/kernel parent")
+        SAC = SAC_CONTRACT
     value = metadata.get("checkpoint_composition")
     if value is None:
         return False
     _require(mode == "pipeline" and value in (PLAN_CONTRACT, C31_PLAN_CONTRACT, C32_PLAN_CONTRACT, C33_PLAN_CONTRACT, C34_PLAN_CONTRACT),
              "C30 explicit composition contract changed")
     expected_rms = RMS if value == PLAN_CONTRACT else CAST_SQUARE_PLAN_CONTRACT
+    from distillschedule.runtime.livewan_generator_fused_rms import (
+        CONTRACT as FUSED_RMS, enabled as fused_rms_enabled)
+    if metadata.get("generator_rms_epilogue") == FUSED_RMS:
+        _require(value == C34_PLAN_CONTRACT and fused_rms_enabled(plan, mode=mode),
+                 "C51 requires C49 checkpoint/layout parent unchanged")
+        expected_rms = FUSED_RMS
     _require(metadata.get("critic_attention_checkpoint") == SAC
              and metadata.get("generator_rms_epilogue") == expected_rms
              and metadata.get("generator_rollout_cast_cache") == CAST
@@ -3488,13 +3524,16 @@ def _generator_rollout_cast_cache_enabled(plan: Mapping[str, Any], *, mode: str)
 def _generator_rms_epilogue_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
     from distillschedule.runtime.livewan_generator_rms_epilogue import (
         PLAN_CONTRACT, CAST_SQUARE_PLAN_CONTRACT)
+    from distillschedule.runtime.livewan_generator_fused_rms import CONTRACT as FUSED_RMS, enabled as fused_rms_enabled
 
     value = plan.get("metadata", {}).get("generator_rms_epilogue")
     if value is None:
         return False
-    _require(mode == "pipeline" and dict(value) in (PLAN_CONTRACT, CAST_SQUARE_PLAN_CONTRACT),
+    _require(mode == "pipeline" and dict(value) in (PLAN_CONTRACT, CAST_SQUARE_PLAN_CONTRACT, FUSED_RMS),
              "C29 Generator RMS epilogue contract changed")
-    if value == CAST_SQUARE_PLAN_CONTRACT:
+    if value == FUSED_RMS:
+        _require(fused_rms_enabled(plan, mode=mode), "C51 fused RMS parent changed")
+    if value in (CAST_SQUARE_PLAN_CONTRACT, FUSED_RMS):
         _require(_c30_checkpoint_composition_enabled(plan, mode=mode),
                  "C31 requires explicit C30 plus cast-square composition")
     _require(_generator_rollout_cast_cache_enabled(plan, mode=mode),
@@ -3511,6 +3550,7 @@ def _generator_rms_cast_square_enabled(plan: Mapping[str, Any], *, mode: str) ->
 
 def _generator_modulation_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
     from distillschedule.runtime.livewan_generator_modulation import PLAN_CONTRACT
+    from distillschedule.runtime.livewan_generator_fused_rms import enabled as fused_rms_enabled
 
     value = plan.get("metadata", {}).get("generator_modulation")
     if value is None:
@@ -3518,7 +3558,8 @@ def _generator_modulation_enabled(plan: Mapping[str, Any], *, mode: str) -> bool
     _require(mode == "pipeline" and value == PLAN_CONTRACT,
              "C32 Generator modulation contract changed")
     _require(_c30_checkpoint_composition_enabled(plan, mode=mode)
-             and _generator_rms_cast_square_enabled(plan, mode=mode),
+             and (_generator_rms_cast_square_enabled(plan, mode=mode)
+                  or fused_rms_enabled(plan, mode=mode)),
              "C32 requires explicit unchanged C31 parent")
     return True
 
@@ -3550,6 +3591,32 @@ def _generator_residual_layout_enabled(plan: Mapping[str, Any], *, mode: str) ->
     return True
 
 
+def _score_residual_gate_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_score_gate import PLAN_CONTRACT
+
+    value = plan.get("metadata", {}).get("score_residual_gate")
+    if value is None:
+        return False
+    _require(mode == "pipeline" and value == PLAN_CONTRACT,
+             "C35 Score residual gate contract changed")
+    _require(_generator_residual_layout_enabled(plan, mode=mode),
+             "C35 requires unchanged C34 parent")
+    return True
+
+
+def _score_layernorm_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
+    from distillschedule.runtime.livewan_score_layernorm import PLAN_CONTRACT
+
+    value = plan.get("metadata", {}).get("score_layernorm")
+    if value is None:
+        return False
+    _require(mode == "pipeline" and value == PLAN_CONTRACT,
+             "C36 Score LayerNorm contract changed")
+    _require(_score_residual_gate_enabled(plan, mode=mode),
+             "C36 requires unchanged C35 parent")
+    return True
+
+
 def _score_prompt_staging_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
     from distillschedule.runtime.livewan_context_staging import PLAN_CONTRACT
 
@@ -3573,7 +3640,11 @@ def _critic_attention_checkpoint_enabled(plan: Mapping[str, Any], *, mode: str) 
     value = plan.get("metadata", {}).get("critic_attention_checkpoint")
     if value is None:
         return False
-    _require(mode == "pipeline" and value == plan_contract(request_from_plan(plan).attention_tokens), "C26 SAC contract changed")
+    expected = plan_contract(request_from_plan(plan).attention_tokens)
+    if plan.get("metadata", {}).get("score_attention_backend", {}).get("name") == "score_flash_attn3_unmasked_bf16_split1_v1":
+        from distillschedule.runtime.livewan_score_fa3 import SAC_CONTRACT
+        expected = SAC_CONTRACT
+    _require(mode == "pipeline" and value == expected, "C26 SAC contract changed")
     _require(_score_rmsnorm_kernel_enabled(plan, mode=mode), "C26 requires C25 parent")
     _require(_continuous_pipeline_contract(plan, mode=mode) is not None, "C26 requires continuous B16")
     _require(_critic_physical_batch_size(plan, mode=mode) == 2, "C26 Critic B2 changed")
@@ -3627,6 +3698,14 @@ def _score_attention_backend_enabled(plan: Mapping[str, Any], *, mode: str) -> b
         and metadata.get("score_rope_kernel", {}).get("enabled") is True,
         "Score attention backend requires the validated C15 substrate",
     )
+    if backend.get("name") == "score_flash_attn3_unmasked_bf16_split1_v1":
+        from distillschedule.runtime.livewan_score_fa3 import BACKEND_CONTRACT, SAC_CONTRACT
+        _require(dict(backend) == BACKEND_CONTRACT
+                 and metadata.get("critic_attention_checkpoint") == SAC_CONTRACT
+                 and metadata.get("critic_step1_overlap") is None
+                 and _score_layernorm_enabled(plan, mode=mode),
+                 "C38 pinned Score FA3/C36 parent contract changed")
+        return True
     expected = {
         "enabled": True,
         "name": "score_flash_attn2_unmasked_bf16_v1",
@@ -3869,6 +3948,12 @@ def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
     _generator_modulation_enabled(plan, mode=mode)
     _generator_gate_enabled(plan, mode=mode)
     _generator_residual_layout_enabled(plan, mode=mode)
+    _score_residual_gate_enabled(plan, mode=mode)
+    _score_layernorm_enabled(plan, mode=mode)
+    from distillschedule.runtime.livewan_generator_splitkv import enabled as splitkv_enabled
+    splitkv_enabled(plan, mode=mode)
+    from distillschedule.runtime.livewan_c51_bundle import validate_plan as validate_c51_plan
+    validate_c51_plan(plan, mode=mode)
     _score_rope_kernel_enabled(plan, mode=mode)
     _score_attention_backend_enabled(plan, mode=mode)
     _generator_cross_kv_cache_enabled(plan, mode=mode)
@@ -4087,13 +4172,10 @@ def run_worker(
     # Shared hardware compatibility, before any model construction/timer.
     cuda_library_setup = materialize_blas_handles(torch, device)
     effective_plan_sha256 = _effective_plan_sha256(plan)
-    if (two_cycle_timing or profile_two_cycles) and local_rank == 0:
-        node_rank = int(os.environ.get("DISTILLSCHEDULE_NODE_RANK", "-1"))
-        _require(node_rank in {0, 1}, "two-cycle timing node rank is missing")
-        atomic_json(
-            output_dir / f"effective_plan.node{node_rank}.json",
-            {**plan, "effective_plan_sha256": effective_plan_sha256},
-        )
+    _publish_effective_plan(
+        plan, output_dir, run_kind=run_kind, profile_two_cycles=profile_two_cycles,
+        local_rank=local_rank, node_rank=int(os.environ.get("DISTILLSCHEDULE_NODE_RANK", "-1")),
+    )
     critic_lora_kernel = {
         "enabled": False,
         "name": "native_livewan_lora",
@@ -4158,6 +4240,20 @@ def run_worker(
         else:
             score_rmsnorm_kernel = {"enabled": True, "role": "generator",
                 "execution_status": "NOT_APPLICABLE", "forward_calls": 0, "backward_calls": 0}
+    score_residual_gate = {"enabled": False, "execution_status": "DISABLED"}
+    if _score_residual_gate_enabled(plan, mode=mode):
+        if rank >= 8:
+            from distillschedule.runtime.livewan_score_gate import install_score_gate
+            score_residual_gate = install_score_gate(torch)
+        else:
+            score_residual_gate = {"enabled": True, "execution_status": "NOT_APPLICABLE"}
+    score_layernorm = {"enabled": False, "execution_status": "DISABLED"}
+    if _score_layernorm_enabled(plan, mode=mode):
+        if rank >= 8:
+            from distillschedule.runtime.livewan_score_layernorm import install_frozen_score_layernorm
+            score_layernorm = install_frozen_score_layernorm(torch)
+        else:
+            score_layernorm = {"enabled": True, "execution_status": "NOT_APPLICABLE"}
     score_rope_kernel = {
         "enabled": False,
         "name": "native_livewan_score_rope",
@@ -4204,12 +4300,17 @@ def run_worker(
     }
     if _score_attention_backend_enabled(plan, mode=mode):
         _, score_ranks = _plan_role_ranks(plan, mode=mode)
+        is_score_fa3 = plan["metadata"]["score_attention_backend"]["name"] == "score_flash_attn3_unmasked_bf16_split1_v1"
         if rank in score_ranks:
             from distillschedule.runtime.livewan_attention_backend import (
                 install_score_flash_attn2,
             )
 
-            score_attention_backend = install_score_flash_attn2(torch)
+            if is_score_fa3:
+                from distillschedule.runtime.livewan_score_fa3 import install_score_flash_attn3
+                score_attention_backend = install_score_flash_attn3(torch)
+            else:
+                score_attention_backend = install_score_flash_attn2(torch)
             score_attention_backend.update(
                 role="score",
                 execution_status="PASS",
@@ -4241,6 +4342,9 @@ def run_worker(
                 "shape_histogram": {},
                 "contract_failure_count": 0,
             }
+            if is_score_fa3:
+                from distillschedule.runtime.livewan_score_fa3 import BACKEND_CONTRACT
+                score_attention_backend.update(BACKEND_CONTRACT)
     generator_cross_kv_cache = {
         "enabled": False,
         "name": "native_livewan_generator_cross_kv",
@@ -4300,7 +4404,9 @@ def run_worker(
                 install_generator_flash_attn2,
             )
 
-            generator_attention_backend = install_generator_flash_attn2(torch)
+            from distillschedule.runtime.livewan_generator_splitkv import enabled as splitkv_enabled
+            generator_attention_backend = install_generator_flash_attn2(
+                torch, readonly_splitkv=splitkv_enabled(plan, mode=mode))
             generator_attention_backend.update(
                 role="generator",
                 execution_status="PASS",
@@ -4335,6 +4441,14 @@ def run_worker(
                 "output_cast_count": 0,
                 "contract_failure_count": 0,
             }
+    from distillschedule.runtime.livewan_generator_splitkv import enabled as splitkv_enabled
+    if splitkv_enabled(plan, mode=mode) and rank not in generator_ranks:
+        from distillschedule.runtime.livewan_generator_splitkv import CONTRACT as SPLITKV
+        generator_attention_backend["readonly_splitkv"] = {
+            "enabled": True, "name": SPLITKV["name"], "contract": dict(SPLITKV),
+            "execution_status": "NOT_APPLICABLE", "production_installed": False,
+            "eligible_nograd_calls": 0,
+        }
     before_oom = cgroup_oom_counts()
     torch.cuda.reset_peak_memory_stats(device)
     build_started = time.perf_counter()
@@ -4388,10 +4502,14 @@ def run_worker(
         rollout_cast_cache = install_rollout_cast_cache(torch, bundle.student)
     generator_rms_epilogue = None
     if _generator_rms_epilogue_enabled(plan, mode=mode) and rank < 8:
-        from distillschedule.runtime.livewan_generator_rms_epilogue import install as install_generator_rms
-
-        generator_rms_epilogue = install_generator_rms(torch, bundle.student,
-            fuse_cast_square=_generator_rms_cast_square_enabled(plan, mode=mode))
+        from distillschedule.runtime.livewan_generator_fused_rms import enabled as fused_rms_enabled
+        if fused_rms_enabled(plan, mode=mode):
+            from distillschedule.runtime.livewan_generator_fused_rms import install as install_fused_rms
+            generator_rms_epilogue = install_fused_rms(torch, bundle.student)
+        else:
+            from distillschedule.runtime.livewan_generator_rms_epilogue import install as install_generator_rms
+            generator_rms_epilogue = install_generator_rms(torch, bundle.student,
+                fuse_cast_square=_generator_rms_cast_square_enabled(plan, mode=mode))
     generator_modulation = None
     if _generator_modulation_enabled(plan, mode=mode) and rank < 8:
         from distillschedule.runtime.livewan_generator_modulation import install as install_g_modulation
@@ -4589,8 +4707,13 @@ def run_worker(
             from distillschedule.runtime.livewan_attention_backend import _load_flash_attn2
             from distillschedule.runtime.livewan_attention_checkpoint import CriticAttentionCheckpointProxy
 
-            flash_module, _ = _load_flash_attn2()
-            critic_attention_proxy = CriticAttentionCheckpointProxy(bc.ckpt, torch, flash_module, query_tokens=request.attention_tokens)
+            if plan["metadata"]["score_attention_backend"]["name"] == "score_flash_attn3_unmasked_bf16_split1_v1":
+                from distillschedule.runtime.livewan_score_fa3 import load_flash_attn3, CriticFA3CheckpointProxy
+                flash_module, _ = load_flash_attn3()
+                critic_attention_proxy = CriticFA3CheckpointProxy(bc.ckpt, torch, flash_module)
+            else:
+                flash_module, _ = _load_flash_attn2()
+                critic_attention_proxy = CriticAttentionCheckpointProxy(bc.ckpt, torch, flash_module, query_tokens=request.attention_tokens)
             bc.ckpt = critic_attention_proxy
         else:
             critic_attention_receipt = {"enabled": True, "execution_status": "NOT_APPLICABLE", "checkpoint_calls": 0}
@@ -4873,6 +4996,19 @@ def run_worker(
 
         _require(not runtime_receipt_errors(score_rmsnorm_kernel, rank=rank),
                  "Score RMSNorm runtime contract/counters incomplete")
+    if _score_residual_gate_enabled(plan, mode=mode):
+        from distillschedule.runtime.livewan_score_gate import runtime_receipt_errors as score_gate_errors
+        _require(not score_gate_errors(score_residual_gate, rank=rank, inventory=inventory.counts),
+                 "C51 Score residual gate source/rounding/call contract failed")
+    if _score_layernorm_enabled(plan, mode=mode):
+        from distillschedule.runtime.livewan_score_layernorm import runtime_receipt_errors as score_ln_errors
+        _require(not score_ln_errors(score_layernorm, rank=rank, inventory=inventory.counts),
+                 "C51 Score LayerNorm source/scope/operation census failed")
+    if splitkv_enabled(plan, mode=mode):
+        from distillschedule.runtime.livewan_generator_splitkv import runtime_receipt_errors as splitkv_errors
+        _require(not splitkv_errors(generator_attention_backend.get("readonly_splitkv", {}), rank=rank,
+                    total_calls=generator_attention_backend.get("invocation_count") if rank < 8 else None),
+                 "C51 read-only splitKV actual execution/source/census failed")
     local_final_versions = dict(versions)
     rollout_cast_cache_receipt = {"enabled": False, "execution_status": "DISABLED"}
     if _generator_rollout_cast_cache_enabled(plan, mode=mode):
@@ -5148,6 +5284,8 @@ def run_worker(
         "critic_lora_kernel": critic_lora_kernel,
         "score_modulation_kernel": score_modulation_kernel,
         "score_rmsnorm_kernel": score_rmsnorm_kernel,
+        "score_residual_gate": score_residual_gate,
+        "score_layernorm": score_layernorm,
         "score_rope_kernel": score_rope_kernel,
         "score_attention_backend": score_attention_backend,
         "generator_cross_attention_kv_cache": generator_cross_kv_cache,
@@ -5192,6 +5330,11 @@ def run_worker(
         "build": bundle.metadata,
         "ema": {"updates_in_full5": 0, "status": "NOT_RUN_SEPARATE_GATE"},
     }
+    if plan.get("metadata", {}).get("generator_rms_epilogue", {}).get("name") == "generator_nograd_fused_rms_row_v1":
+        from distillschedule.runtime.livewan_c51_bundle import receipt_contract, runtime_receipt_errors as c51_errors
+        receipt["planner_c51_bundle"] = dict(receipt_contract(), execution_status="PASS")
+        _require(not c51_errors(receipt, rank=rank, cycles=workload_cycles),
+                 "C51 full-bundle actual per-rank source/operator/census failed")
     if run_kind == "trajectory":
         receipt["trajectory"] = {
             "schema": "trajectory_coarse_v1",

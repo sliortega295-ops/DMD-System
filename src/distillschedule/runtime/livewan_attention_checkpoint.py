@@ -88,11 +88,14 @@ class AttentionCheckpointContexts:
     It stores no tensors. Production installation is intentionally separate.
     """
     def __init__(self, torch: Any, op: Any, identity: dict[str, Any], *, self_attention_only: bool = False,
-                 query_tokens: int = 19320):
+                 query_tokens: int = 19320, metadata_reader: Any = None,
+                 receipt_name: str = PLAN_CONTRACT["name"]):
         self.torch = torch
         self.op = op
         self.identity = identity
         self.self_attention_only = self_attention_only
+        self.metadata_reader = attention_metadata if metadata_reader is None else metadata_reader
+        self.receipt_name = receipt_name
         self.query_tokens = plan_contract(query_tokens)["query_tokens"]
         self.checkpoints: list[dict[str, Any]] = []
 
@@ -106,7 +109,7 @@ class AttentionCheckpointContexts:
             if op != self.op:
                 return CheckpointPolicy.PREFER_RECOMPUTE
             try:
-                metadata = attention_metadata(self.torch, args, kwargs)
+                metadata = self.metadata_reader(self.torch, args, kwargs)
                 if self.self_attention_only:
                     q_shape, k_shape = metadata[0][0], metadata[1][0]
                     if q_shape[1] != self.query_tokens or k_shape[1] not in (self.query_tokens, 512):
@@ -128,7 +131,7 @@ class AttentionCheckpointContexts:
         return create_selective_checkpoint_contexts(policy, allow_cache_entry_mutation=False)
 
     def receipt(self) -> dict[str, Any]:
-        return {"name": "critic_fa2_exact_gpu_checkpoint_outputs_v1",
+        return {"name": self.receipt_name,
                 "source": self.identity, "checkpoint_calls": len(self.checkpoints),
                 "original_fa_calls": sum(len(x["original"]) for x in self.checkpoints),
                 "replay_fa_cache_reads": sum(x["replay_calls"] for x in self.checkpoints),
@@ -146,6 +149,7 @@ class CriticAttentionCheckpointProxy:
         self.module = checkpoint_module
         op, identity = discover_flash_forward(flash_module)
         self.contexts = AttentionCheckpointContexts(torch, op, identity, self_attention_only=True, query_tokens=query_tokens)
+        self.receipt_errors = runtime_receipt_errors
 
     def checkpoint(self, function: Any, *args: Any, **kwargs: Any):
         if (kwargs.get("use_reentrant") is not False or "context_fn" in kwargs
@@ -157,7 +161,7 @@ class CriticAttentionCheckpointProxy:
         r = self.contexts.receipt()
         r.update(enabled=True, execution_status="PASS", production_installed=True,
                  expected_checkpoint_calls=expected_calls)
-        if runtime_receipt_errors(r, rank=8, expected_calls=expected_calls, query_tokens=self.contexts.query_tokens):
+        if self.receipt_errors(r, rank=8, expected_calls=expected_calls, query_tokens=self.contexts.query_tokens):
             raise RuntimeError(f"C26 checkpoint replay census failed: {r}")
         return r
 
