@@ -38,7 +38,8 @@ MODULES = ('wan13b_lora_grad_epilogue', 'wan13b_norm_policy',
     'wan13b_modulated_norm_fusion', 'wan13b_modulated_norm_kernel',
     'wan13b_fused_layernorm_kernel', 'wan13b_fused_layernorm_backward_kernel',
     'wan13b_rollout_cuda_graph', 'wan13b_critic_grad_graph',
-    'wan13b_cast_graph_composition', 'wan13b_lora_cast', 'wan13b_lora_epilogue')
+    'wan13b_cast_graph_composition', 'wan13b_lora_cast', 'wan13b_lora_epilogue',
+    'wan13b_rollout_graph_pool')
 
 
 @dataclass(frozen=True)

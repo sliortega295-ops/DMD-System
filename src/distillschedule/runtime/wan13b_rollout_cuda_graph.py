@@ -76,7 +76,10 @@ def copy_tree(destination: Any, source: Any) -> None:
 
 class RolloutCudaGraph:
     def __init__(self, source: Any) -> None:
+        from .wan13b_rollout_graph_pool import IndependentRolloutPool
+
         self.source = source
+        self.graph_pool = IndependentRolloutPool()
         self._audit_source()
         self._version: int | None = None
         self._pointer_contract = self._parameter_identity()
@@ -98,6 +101,7 @@ class RolloutCudaGraph:
             "cold_capture_scope": "FIRST_CYCLE_ONLY_WARMUP_DIAGNOSTIC",
             "cold_calls_are_extra_not_application_forward": True,
             "rng_ops": "NONE_REQUIRE_ZERO_DROPOUT_PINNED_SOURCE",
+            "scratch_pool": self.graph_pool.receipt,
         }
 
     def _audit_source(self) -> None:
@@ -150,7 +154,8 @@ class RolloutCudaGraph:
         import torch
 
         static_args, static_kwargs = clone_tree(args), clone_tree(kwargs)
-        stream = torch.cuda.Stream()
+        options = self.graph_pool.capture_options(torch)
+        stream = options.get("stream") or torch.cuda.Stream()
         stream.wait_stream(torch.cuda.current_stream())
         with torch.cuda.stream(stream):
             for _ in range(WARMUP_CALLS):
@@ -160,8 +165,10 @@ class RolloutCudaGraph:
         # Cold, first-cycle capture only. No synchronization in steady replay.
         torch.cuda.synchronize()
         graph = torch.cuda.CUDAGraph()
-        with torch.cuda.graph(graph, stream=stream):
+        with torch.cuda.graph(graph, stream=stream,
+                              **{k: v for k, v in options.items() if k != "stream"}):
             output = self.source(*static_args, **static_kwargs)
+        self.graph_pool.verify_capture(graph)
         self.receipt["capture_model_call_count"] += 1
         return static_args, static_kwargs, graph, output
 
@@ -170,6 +177,7 @@ class RolloutCudaGraph:
 
         if torch.is_grad_enabled() or not self.receipt["active"]:
             raise ValueError("CUDA Graph can execute only post-G no-grad B1")
+        self.graph_pool.before_call(torch)
         key = signature((args, kwargs))
         if key not in self._cache:
             if self._version != 3:

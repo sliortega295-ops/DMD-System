@@ -19,11 +19,19 @@ class WanStrategy:
     candidate_bundle: WanCandidateBundle = OFF
     retained_critic_blocks: tuple[int, ...] = ()
     retention_policy: str = 'retain4.v1'
+    rollout_graph_pool_policy: str = 'isolated.v1'
 
     def __post_init__(self):
         # Original native admission remains unchanged. In particular, FSDP only
         # supports its control kernel configuration until another arm is validated.
         WanImplementation(self.placement, self.chunk_tokens, self.lora_epilogue, candidate_bundle=self.candidate_bundle)
+        require(self.rollout_graph_pool_policy in ('isolated.v1', 'shared-scratch.v1'),
+                'unknown rollout graph pool policy', path='wan.strategy')
+        require(self.rollout_graph_pool_policy == 'isolated.v1' or
+                (self.candidate_bundle.enabled and self.placement == 'resident'
+                 and self.retained_critic_blocks == (26,27,28,29)
+                 and self.retention_policy == 'retain4.v1'),
+                'shared scratch experiment requires exact incumbent retainC26-29', path='wan.strategy')
         require(type(self.rollout_window) is int and 1 <= self.rollout_window <= 64,
                 'invalid parameterized rollout window', path='wan.strategy')
         require(isinstance(self.retained_critic_blocks, tuple)
@@ -49,6 +57,7 @@ class WanStrategy:
     def id(self):
         suffix = '-retainC' + '_'.join(map(str,self.retained_critic_blocks)) if self.retained_critic_blocks else ''
         if self.retention_policy != 'retain4.v1': suffix += '-' + self.retention_policy.replace('.', '')
+        if self.rollout_graph_pool_policy != 'isolated.v1': suffix += '-rollout-shared-scratch-v1'
         return f'{self.backend.id}-original-w{self.rollout_window}{suffix}'
 
     @property
@@ -58,6 +67,7 @@ class WanStrategy:
     def to_dict(self):
         return dict(**({"candidate_bundle": self.candidate_bundle.to_dict()} if self.candidate_bundle.enabled else {}),
                     **({'retention_policy':self.retention_policy} if self.retention_policy != 'retain4.v1' else {}),
+                    **({'rollout_graph_pool_policy':self.rollout_graph_pool_policy} if self.rollout_graph_pool_policy != 'isolated.v1' else {}),
                     **({'retained_critic_blocks': list(self.retained_critic_blocks)} if self.retained_critic_blocks else {}),
                     placement=self.placement,chunk_tokens=self.chunk_tokens,
                     lora_epilogue=self.lora_epilogue,rollout_window=self.rollout_window)
@@ -68,10 +78,12 @@ class WanStrategy:
         bundle = WanCandidateBundle.from_dict(value.pop('candidate_bundle')) if 'candidate_bundle' in value else OFF
         retained = value.pop('retained_critic_blocks', [])
         retention_policy = value.pop('retention_policy', 'retain4.v1')
+        pool_policy = value.pop('rollout_graph_pool_policy', 'isolated.v1')
         require(isinstance(retained,list), 'retained_critic_blocks must be a JSON list', path='wan.strategy')
         require(set(value)=={'placement','chunk_tokens','lora_epilogue','rollout_window'},
                 'strategy has unknown or missing fields', path='wan.strategy')
-        return cls(**value, candidate_bundle=bundle, retained_critic_blocks=tuple(retained), retention_policy=retention_policy)
+        return cls(**value, candidate_bundle=bundle, retained_critic_blocks=tuple(retained), retention_policy=retention_policy,
+                   rollout_graph_pool_policy=pool_policy)
 
     def validate_for(self, task):
         self.candidate_bundle.validate_task(task)
@@ -80,6 +92,7 @@ class WanStrategy:
 
     def environment(self):
         return {**self.backend.environment(),
+            'DISTILLSCHEDULE_WAN13B_GENERATOR_GRAPH_POOL': self.rollout_graph_pool_policy,
             'DISTILLSCHEDULE_WAN13B_RETAIN_CRITIC_BLOCKS': ','.join(map(str,self.retained_critic_blocks)),
             'DISTILLSCHEDULE_SEARCH_CANDIDATE_ID':self.backend.id,
             # Legacy generated-window dispatch is not used. The task-bound v2
