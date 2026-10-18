@@ -44,6 +44,8 @@ def generator_nograd_persistent_unshard_scope(
     module: Any,
     *,
     enabled: bool,
+    retained_block_count: int = 0,
+    parameter_version_reader: Callable[[], int] | None = None,
     flush_allocator_cache: bool = True,
     module_type: type[Any] | tuple[type[Any], ...] | None = None,
     empty_cache: Callable[[], None] | None = None,
@@ -55,6 +57,20 @@ def generator_nograd_persistent_unshard_scope(
     for repeated eval forwards.  The private ``is_unsharded`` state is read
     only as a version-pinned fail-closed audit; no private state is mutated.
     """
+
+    if type(retained_block_count) is not int or retained_block_count not in (0, 24):
+        raise ValueError("unregistered partial Generator parameter retention")
+    if retained_block_count:
+        if enabled:
+            raise ValueError("full and partial Generator parameter scopes cannot be combined")
+        from .fsdp2_partial_nograd_persistence import partial_generator_nograd_scope
+        with partial_generator_nograd_scope(
+            module, retained_block_count=retained_block_count,
+            parameter_version_reader=parameter_version_reader,
+            module_type=module_type, memory_snapshot=memory_snapshot,
+        ) as receipt:
+            yield receipt
+        return
 
     if not enabled:
         yield {

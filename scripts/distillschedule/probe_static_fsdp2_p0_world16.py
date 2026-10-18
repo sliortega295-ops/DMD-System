@@ -635,12 +635,16 @@ def _precompute_critic_rollouts(
     clean_runtime: bool = False,
     runtime_cache: dict[str, Any] | None = None,
     entry_outputs: dict[int, Any] | None = None,
+    partial_generator_parameter_blocks: int = 0,
 ) -> tuple[dict[int, torch.Tensor], list[dict[str, Any]], dict[str, Any]]:
     outputs: dict[int, torch.Tensor] = {}
     records: list[dict[str, Any]] = []
     with generator_nograd_persistent_unshard_scope(
         generator_engine.module,
         enabled=policy.generator_nograd_persistent_unshard,
+        retained_block_count=partial_generator_parameter_blocks,
+        parameter_version_reader=(lambda: int(generator_engine.global_steps))
+            if partial_generator_parameter_blocks else None,
         flush_allocator_cache=(
             policy.generator_nograd_persistent_unshard_flush_allocator_cache
         ),

@@ -106,7 +106,8 @@ def _cycle_graph(impl, steps, versions):
         graph = replace(graph, metadata={**graph.metadata, TRACE_KEY: impl.request.to_dict(),
                                        TRACE_HASH_KEY: impl.request.digest})
     order = rollout_window_order(graph, max_live_rollouts=impl.rollout_window)
-    if not (impl.variant == "gan" and impl.rollout_window == 5):
+    if not ((impl.variant == "gan" and impl.rollout_window == 5)
+            or impl.partial_generator_parameter_blocks is not None):
         return graph, order
     # One native helper call owns acquire, ALL five B1 rollouts, and release.
     # Five singleton scopes would not be the same persistence implementation.
@@ -355,6 +356,12 @@ def _validate_action(row, impl):
     elif name.startswith("r"):
         expected["generator_forward"] = sum(e["expected_call_count"] for e in row["trace_entries"])
         require(len(row["trace_entries"]) == len(row["source_steps"]), "rollout entry census changed")
+        if impl.partial_generator_parameter_blocks:
+            from .fsdp2_partial_nograd_persistence import validate_receipt
+            validate_receipt(row.get("persistence", {}), expected_calls=counts["generator_forward"])
+        else:
+            require("partial_parameter_retention" not in row.get("persistence", {}),
+                    "unrequested partial Generator parameter retention")
     elif name.startswith("c"):
         expected.update(critic_forward=2 if impl.variant == "gan" else 1,
                         critic_backward=2 if impl.variant == "gan" else 1, critic_commit=1, critic_optimizer=1)
@@ -498,7 +505,9 @@ def _prepare_cycle(*, observer, p0, args, policy, steps, trace, negative, cfg, d
         with observer.action(ctx.operation, source_steps=selected) as row:
             outputs, records, persistence = p0._precompute_critic_rollouts(**common, steps=selected,
                 generator_engine=observer.generator, policy=policy,
-                rollout_parity_check=(not args.timing_mode) and (not args.profile_mode))
+                rollout_parity_check=(not args.timing_mode) and (not args.profile_mode),
+                **({"partial_generator_parameter_blocks": observer.impl.partial_generator_parameter_blocks}
+                   if observer.impl.partial_generator_parameter_blocks else {}))
             require(set(outputs) == set(selected) and len(records) == len(selected), "native B1 rollout inventory changed")
             require(persistence.get("enabled") is observer.impl.persistent_unshard and persistence.get("restored") is True,
                     "native persistence scope did not restore its original policy")

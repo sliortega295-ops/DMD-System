@@ -25,7 +25,7 @@ GAN = "helios14b_gan_best"
 PREFIX = "joint-helios1-"
 PATTERN = re.compile(r"joint-helios1-(nogan|gan)-(fsdp|hsdp)-c(512|2048)-p([01])-w([1-5])"
                      r"(?:-k(safe-nogan-ed8-v1|gan-fa3-down40-nomerge-v1))?(?:-qf(17|33)-s(111|222)(-b4)?)?"
-                     r"(?:-rc([0-9]+(?:_[0-9]+)*))?(?:-rp-(tail4-v1))?")
+                     r"(?:-rc([0-9]+(?:_[0-9]+)*))?(?:-rp-(tail4-v1))?(?:-pg(0|24)-v1)?")
 MODES = ("correctness", "calibration", "native")
 MODE_ENV = "DISTILLSCHEDULE_HELIOS_PLANNER_MODE"
 ASSIGNMENT_ENV = "DISTILLSCHEDULE_HELIOS_PLANNER_ASSIGNMENT"
@@ -42,6 +42,7 @@ class HeliosImplementation:
     request: OriginalHeliosRequest | None = None
     retained_critic_blocks: tuple[int, ...] = ()
     retention_policy: str = "bounded2.v1"
+    partial_generator_parameter_blocks: int | None = None
 
     def __post_init__(self) -> None:
         require(self.variant in ("no-gan", "gan"), "unsupported Helios variant")
@@ -74,6 +75,19 @@ class HeliosImplementation:
                   else self.retained_critic_blocks == (36, 37, 38, 39))),
                 "retention is bounded to at most2 canonical safe No-GAN Critic blocks; GAN needs separate lifecycle admission")
 
+        require(self.partial_generator_parameter_blocks is None or
+                (type(self.partial_generator_parameter_blocks) is int
+                 and self.partial_generator_parameter_blocks in (0, 24)),
+                "unregistered partial Generator parameter policy")
+        if self.partial_generator_parameter_blocks is not None:
+            require(self.variant == "no-gan" and self.mesh == "node-hsdp"
+                    and self.chunk_tokens == 512 and self.rollout_window == 5
+                    and not self.persistent_unshard and self.request is None
+                    and type(self.candidate_bundle) is HeliosSafeBundle and self.candidate_bundle.enabled
+                    and self.retention_policy == "tail4.v1"
+                    and self.retained_critic_blocks == (36, 37, 38, 39),
+                    "manual partial parameter reuse requires the exact admitted No-GAN HSDP tail4 control")
+
     @property
     def id(self) -> str:
         variant = "nogan" if self.variant == "no-gan" else "gan"
@@ -82,7 +96,9 @@ class HeliosImplementation:
         return (base + ("-k" + self.candidate_bundle.id if self.candidate_bundle.enabled else "")
                 + ("-q" + self.request.id if self.request is not None else "")
                 + ('-rc' + '_'.join(map(str,self.retained_critic_blocks)) if self.retained_critic_blocks else '')
-                + ('-rp-tail4-v1' if self.retention_policy == "tail4.v1" else ''))
+                + ('-rp-tail4-v1' if self.retention_policy == "tail4.v1" else '')
+                + (f"-pg{self.partial_generator_parameter_blocks}-v1"
+                   if self.partial_generator_parameter_blocks is not None else ""))
 
     @property
     def workload(self) -> str:
@@ -105,6 +121,8 @@ class HeliosImplementation:
             result['retained_critic_blocks'] = ','.join(map(str,self.retained_critic_blocks))
         if self.retention_policy != "bounded2.v1":
             result['retention_policy'] = self.retention_policy
+        if self.partial_generator_parameter_blocks is not None:
+            result["partial_generator_parameter_blocks"] = str(self.partial_generator_parameter_blocks)
         return result
 
     @classmethod
@@ -120,12 +138,13 @@ class HeliosImplementation:
                        stage_schedule_policy="benchmark_v4_strict_global" if match[9] else "source_normal_only")
                    if match[7] is not None else None,
                    tuple(map(int, match[10].split('_'))) if match[10] is not None else (),
-                   "tail4.v1" if match[11] is not None else "bounded2.v1")
+                   "tail4.v1" if match[11] is not None else "bounded2.v1",
+                   int(match[12]) if match[12] is not None else None)
 
     @classmethod
     def from_assignment(cls, assignment: Mapping[str, str]) -> "HeliosImplementation":
         keys = {"variant", "mesh", "chunk_tokens", "rollout_window", "persistent_unshard"}
-        require(keys <= set(assignment) <= keys | {"candidate_bundle", "original_request", "retained_critic_blocks", "retention_policy"},
+        require(keys <= set(assignment) <= keys | {"candidate_bundle", "original_request", "retained_critic_blocks", "retention_policy", "partial_generator_parameter_blocks"},
                 "Helios assignment has extra/missing decisions")
         require(assignment["chunk_tokens"] in ("512", "2048")
                 and assignment["rollout_window"] in ("1", "2", "3", "4", "5")
@@ -142,10 +161,14 @@ class HeliosImplementation:
         require(isinstance(retained_text,str), 'retained Helios assignment must be canonical text')
         retained = tuple(map(int,retained_text.split(','))) if retained_text else ()
         require(','.join(map(str,retained)) == retained_text, 'retained Helios assignment is not canonical')
+        require(assignment.get("partial_generator_parameter_blocks", "0") in ("0", "24"),
+                "partial Generator assignment must be absent or canonical0/24")
         return cls(assignment["variant"], assignment["mesh"], int(assignment["chunk_tokens"]),
                    int(assignment["rollout_window"]), assignment["persistent_unshard"] == "on",
                    _parse_bundle(assignment.get("candidate_bundle", "none")), request, retained,
-                   assignment.get("retention_policy", "bounded2.v1"))
+                   assignment.get("retention_policy", "bounded2.v1"),
+                   int(assignment["partial_generator_parameter_blocks"])
+                   if "partial_generator_parameter_blocks" in assignment else None)
 
     @property
     def run_modes(self) -> tuple[str, ...]:
@@ -288,6 +311,8 @@ def current_implementation(environment: Mapping[str, str] | None = None) -> Heli
                 "Helios planner mode/assignment/request without generated identity")
         return None
     impl = HeliosImplementation.parse(key)
+    require(impl.partial_generator_parameter_blocks is None or mode in ("correctness", "native"),
+            "manual partial parameter reuse has no search calibration/cost identity")
     require(not impl.retained_critic_blocks or mode in ('correctness','native'),
             'uncalibrated retention candidate cannot inherit old calibration costs')
     require(env.get(GAN_BUNDLE_ENV, "") == (GAN_BUNDLE_ID if type(impl.candidate_bundle) is HeliosGANBundle else ""),
