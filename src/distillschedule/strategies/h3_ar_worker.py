@@ -155,7 +155,10 @@ def execute_cycles(session, *, mode, torch, distributed, capacity_policy, memory
     return dict(initial_versions=initial, final_versions=session.versions(), cycles=records, finite=True)
 
 
-def run_worker(task, assets, output, *, mode, capacity_policy, implementation=None, plan_path=None):
+def run_worker(task, assets, output, *, mode, capacity_policy, implementation=None, plan_path=None, manual_policy_id=None):
+    if manual_policy_id is not None:
+        from .h3_ar_manual_frozen_bank import validate_manual_policy
+        validate_manual_policy(manual_policy_id, mode=mode, implementation=implementation, plan_path=plan_path)
     validate_policy(capacity_policy)
     rank, local = topology(os.environ)
     saved = collection = None
@@ -223,7 +226,12 @@ def run_worker(task, assets, output, *, mode, capacity_policy, implementation=No
         require(accelerator.distributed_type == DistributedType.DEEPSPEED, 'original native DeepSpeed plugin not active', path='h3_ar.worker')
         assets.helper('native_ptxas_fd_isolation_r1').install(enabled=True)
         from .h3_ar_session import H3ARSession
-        session = H3ARSession(task, assets, implementation, rank=rank, local_rank=local, torch=torch, accelerator=accelerator)
+        manual_kwargs = {}
+        if manual_policy_id == 'exact-frozen-adaln-bank-v1':
+            from .h3_ar_manual_frozen_bank import ManualFrozenAdaLNPolicy
+            manual_kwargs['manual_state_policy'] = ManualFrozenAdaLNPolicy()
+        session = H3ARSession(task, assets, implementation, rank=rank, local_rank=local,
+                              torch=torch, accelerator=accelerator, **manual_kwargs)
         def memory():
             free, _ = torch.cuda.mem_get_info(local)
             host = observe_host_memory(capacity_policy, node_rank=rank//8)
@@ -251,10 +259,24 @@ def run_worker(task, assets, output, *, mode, capacity_policy, implementation=No
             plan_sha256=saved['plan_sha256'] if saved else None, selected_order=list(order),
             gpu_execution='NATIVE_CUDA_RUN', profiled=False, numerical_status='REVIEW_REQUIRES_MATCHED_REFERENCE',
             claimable_speedup=False, quality_validation='NOT_RUN')
+        if manual_policy_id is not None:
+            result.update(schema_version='distillschedule.manual_h3_ar_execution.v1',
+                          manual_policy_id=manual_policy_id, automatic_planning_eligible=False,
+                          weights_merged=False)
         write_new_json(target, result)
         return result
     except BaseException as exc:
-        write_new_json(root/f'failure_{rank:03d}.json', dict(status='FAIL', mode=mode, error=str(exc), rank=rank, identity=identity))
+        failure = dict(status='FAIL', mode=mode, error=str(exc), rank=rank, identity=identity)
+        if manual_policy_id is not None:
+            import traceback
+            free, total = torch.cuda.mem_get_info(local)
+            failure.update(manual_policy_id=manual_policy_id, traceback=traceback.format_exc(),
+                           memory=dict(allocated=torch.cuda.memory_allocated(local),
+                                       reserved=torch.cuda.memory_reserved(local),
+                                       peak_allocated=torch.cuda.max_memory_allocated(local),
+                                       peak_reserved=torch.cuda.max_memory_reserved(local),
+                                       driver_free=free, total=total))
+        write_new_json(root/f'failure_{rank:03d}.json', failure)
         raise
     finally:
         if initialized:

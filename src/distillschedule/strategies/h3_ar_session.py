@@ -64,7 +64,8 @@ def install_native_attention_cache(implementation, assets, native, module, adapt
 
 
 class H3ARSession:
-    def __init__(self, task, assets, implementation, *, rank, local_rank, torch, accelerator):
+    def __init__(self, task, assets, implementation, *, rank, local_rank, torch, accelerator, manual_state_policy=None):
+        self.manual_state_policy = manual_state_policy
         self.task, self.assets, self.implementation = task, assets, implementation
         self.rank, self.torch, self.device = rank, torch, torch.device('cuda', local_rank)
         self.ledger = VersionLedger(dict(student=0, fake=0, ema=0))
@@ -100,6 +101,9 @@ class H3ARSession:
         require(len(self.dit.blocks) == 50, 'real native H3 50-block model required', path='h3_ar.session')
         self.adapter = self.native.H3Adapter(self.dit, self.config)
         self.discriminator = self.native.VelocityDiscriminator(self.config)
+        if manual_state_policy is not None:
+            require(implementation.id == 'zero3-ap', 'manual bank requires original AP control', path='h3_ar.session')
+            manual_state_policy.install_model(self.dit)
         self.leaf = self.pool = self.view = None
         self.rms = self.cutlass = None
         if implementation.optimized:
@@ -120,8 +124,11 @@ class H3ARSession:
             self.leaf_api.install_replay_lifetime(module, self.engine, self.leaf)
             self.prefetch_api = assets.helper('zero3_unit_prefetch_audit_r1')
             self.prefetch = self.prefetch_api.install(self.engine)
-            require(all(b['logical_parameter_numel'] == 657499392 for b in self.leaf['leaf_blocks']),
+            expected_leaf = manual_state_policy.leaf_numel if manual_state_policy is not None else 657499392
+            require(all(b['logical_parameter_numel'] == expected_leaf for b in self.leaf['leaf_blocks']),
                     'native prefetch block identity changed', path='h3_ar.session')
+        if manual_state_policy is not None:
+            manual_state_policy.bind_engine(self.engine)
         old_adam = self.optimizer.step
 
         def observed_adam(*args, **kwargs):
@@ -157,6 +164,8 @@ class H3ARSession:
         self.trainer = self.native.DMD2Trainer(self.adapter, self.discriminator, self.config, step)
         self.epoch, self.pool, self.view = install_native_attention_cache(
             implementation, assets, self.native, module, self.adapter, self.trainer)
+        if manual_state_policy is not None:
+            manual_state_policy.attach(self.adapter, self.trainer)
         self.positive, self.negative = move(positive, self.device, torch), move(negative, self.device, torch)
         self.real = (self.positive.pop('input_latents'), self.positive.pop('audio_input_latents'))
         self.build.update(input_shapes=shapes, input_validation=input_validation, architecture=architecture, checkpoint=checkpoint,
@@ -174,6 +183,8 @@ class H3ARSession:
                 'actual native versions diverged before dispatch', path='h3_ar.session')
         if cycle == 2 and self.pool is not None:
             self.epoch.begin_next_cycle(self.pool, self.view)
+        if getattr(self, 'manual_state_policy', None) is not None:
+            self.manual_state_policy.begin_cycle(cycle)
         self.before = (self.census.copy(), self.updates.copy(), self.adam.copy())
         self.metrics = None
 
@@ -231,6 +242,8 @@ class H3ARSession:
                 cutlass=dict(self.cutlass['counters']), unit_prefetch=self.prefetch_api.receipt(self.prefetch))
         require(self.replay_compatibility['counters']['detached_frozen_recompute_tensors'] > 0,
                 'native checkpoint zero-copy replay compatibility not observed', path='h3_ar.session')
+        if getattr(self, 'manual_state_policy', None) is not None:
+            backend_effects['manual_frozen_adaln_bank'] = self.manual_state_policy.finish_cycle(cycle)
         return dict(census=census, updates=updates, adam_updates=adam, final_versions=self.versions(),
                     metrics=dict(self.metrics), selected_cache=cache, leaf_runtime=leaf,
                     backend_effects=backend_effects)
