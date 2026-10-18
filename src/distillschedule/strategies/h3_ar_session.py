@@ -64,7 +64,10 @@ def install_native_attention_cache(implementation, assets, native, module, adapt
 
 
 class H3ARSession:
-    def __init__(self, task, assets, implementation, *, rank, local_rank, torch, accelerator, manual_state_policy=None):
+    def __init__(self, task, assets, implementation, *, rank, local_rank, torch, accelerator, manual_state_policy=None, manual_attention_policy=None):
+        require(not (manual_state_policy is not None and manual_attention_policy is not None),
+                'manual mechanisms must not be silently combined', path='h3_ar.session')
+        self.manual_attention_policy = manual_attention_policy
         self.manual_state_policy = manual_state_policy
         self.task, self.assets, self.implementation = task, assets, implementation
         self.rank, self.torch, self.device = rank, torch, torch.device('cuda', local_rank)
@@ -168,6 +171,9 @@ class H3ARSession:
             manual_state_policy.attach(self.adapter, self.trainer)
         self.positive, self.negative = move(positive, self.device, torch), move(negative, self.device, torch)
         self.real = (self.positive.pop('input_latents'), self.positive.pop('audio_input_latents'))
+        if manual_attention_policy is not None:
+            require(implementation.id == 'zero3-ap', 'manual FA3 requires original AP cache', path='h3_ar.session')
+            manual_attention_policy.attach(module, self.adapter, self.pool, self.positive)
         self.build.update(input_shapes=shapes, input_validation=input_validation, architecture=architecture, checkpoint=checkpoint,
                           native_implementation_installed=True)
         self.build['deepspeed_config'] = deepspeed_config_receipt(ds_config)
@@ -244,6 +250,8 @@ class H3ARSession:
                 'native checkpoint zero-copy replay compatibility not observed', path='h3_ar.session')
         if getattr(self, 'manual_state_policy', None) is not None:
             backend_effects['manual_frozen_adaln_bank'] = self.manual_state_policy.finish_cycle(cycle)
+        if getattr(self, 'manual_attention_policy', None) is not None:
+            backend_effects['manual_uncached_rollout_attention'] = self.manual_attention_policy.finish_cycle(cycle)
         return dict(census=census, updates=updates, adam_updates=adam, final_versions=self.versions(),
                     metrics=dict(self.metrics), selected_cache=cache, leaf_runtime=leaf,
                     backend_effects=backend_effects)

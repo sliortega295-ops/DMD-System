@@ -155,10 +155,16 @@ def execute_cycles(session, *, mode, torch, distributed, capacity_policy, memory
     return dict(initial_versions=initial, final_versions=session.versions(), cycles=records, finite=True)
 
 
-def run_worker(task, assets, output, *, mode, capacity_policy, implementation=None, plan_path=None, manual_policy_id=None):
+def run_worker(task, assets, output, *, mode, capacity_policy, implementation=None, plan_path=None, manual_policy_id=None, manual_backend_root=None):
     if manual_policy_id is not None:
         from .h3_ar_manual_frozen_bank import validate_manual_policy
         validate_manual_policy(manual_policy_id, mode=mode, implementation=implementation, plan_path=plan_path)
+    if manual_policy_id == 'uncached-rollout-fa3-varlen-v1':
+        from .h3_ar_manual_attention import validate_backend_root
+        require(manual_backend_root is not None, 'explicit pinned FA3 root required', path='h3_ar.worker')
+        validate_backend_root(manual_backend_root)
+    else:
+        require(manual_backend_root is None, 'backend root forbidden outside manual FA3 arm', path='h3_ar.worker')
     validate_policy(capacity_policy)
     rank, local = topology(os.environ)
     saved = collection = None
@@ -230,6 +236,9 @@ def run_worker(task, assets, output, *, mode, capacity_policy, implementation=No
         if manual_policy_id == 'exact-frozen-adaln-bank-v1':
             from .h3_ar_manual_frozen_bank import ManualFrozenAdaLNPolicy
             manual_kwargs['manual_state_policy'] = ManualFrozenAdaLNPolicy()
+        if manual_policy_id == 'uncached-rollout-fa3-varlen-v1':
+            from .h3_ar_manual_attention import ManualNoGradAttention
+            manual_kwargs['manual_attention_policy'] = ManualNoGradAttention(manual_backend_root)
         session = H3ARSession(task, assets, implementation, rank=rank, local_rank=local,
                               torch=torch, accelerator=accelerator, **manual_kwargs)
         def memory():

@@ -150,7 +150,7 @@ def validate_manual_policy(policy_id, *, mode, implementation, plan_path):
     """Explicit manual-only opt-in. Never admit calibration or saved-plan use."""
     if policy_id is None:
         return
-    if (policy_id not in ('off', POLICY_ID) or mode != 'manual' or plan_path is not None
+    if (policy_id not in ('off', POLICY_ID, 'uncached-rollout-fa3-varlen-v1') or mode != 'manual' or plan_path is not None
             or getattr(implementation, 'id', None) != 'zero3-ap'):
         raise ValueError('MANUAL_ONLY_ZERO3_AP_NO_SAVED_PLAN_REQUIRED')
 
