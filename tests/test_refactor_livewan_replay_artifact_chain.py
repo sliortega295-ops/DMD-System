@@ -16,6 +16,7 @@ from distillschedule.core.config import load_plan
 from distillschedule.runtime import livewan_crossscale_worker as worker
 from distillschedule.runtime import livewan_replay_ablation as ablation
 from distillschedule.runtime import livewan_c51_ffn_retention as retention
+from distillschedule.runtime import livewan_block_retention as block_retention
 from test_refactor_livewan_replay_ablation import _script, _node_timing_header
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,7 +33,7 @@ def _plan(run, variant, kind, trace="/SYNTHETIC_TEST_ONLY/trace.json", *, shape_
             mp.setenv(name, "/SYNTHETIC_TEST_ONLY/" + name)
         mp.setenv("LIVEWAN_OPERATION_TRACE", str(trace))
         mp.setenv("DISTILLSCHEDULE_OUTPUT_DIR", str(run))
-        filename = retention.PLAN_FILE if variant == retention.VARIANT else (ablation.PLAN_FILE if variant == ablation.VARIANT else ablation.PARENT_FILE)
+        filename = block_retention.PLAN_FILE if variant == block_retention.VARIANT else retention.PLAN_FILE if variant == retention.VARIANT else (ablation.PLAN_FILE if variant == ablation.VARIANT else ablation.PARENT_FILE)
         value = load_plan(ROOT / "configs/distillschedule/plans" / filename).plan.to_dict()
         if kind == "trajectory":
             worker._apply_trajectory_contract(value, cycles=2, mode="pipeline")
@@ -199,6 +200,15 @@ def _policy_row(rank, variant):
                  original_ffn_down_calls=300,replay_ffn_down_cache_reads=300,contract_failures=0,
                  all_checkpoint_ledgers_one_to_one=True,cumulative_cached_output_bytes=300*38640*1536*2,
                  cache_location='cuda_per_checkpoint',cpu_offload=False,allow_cache_entry_mutation=False))
+    if variant == block_retention.VARIANT and rank >= 8:
+        row['critic_attention_checkpoint'].update(
+            checkpoint_calls=260,expected_checkpoint_calls=260,
+            original_fa_calls=260,replay_fa_cache_reads=260,
+            block_retention=dict(contract=copy.deepcopy(block_retention.CONTRACT),
+                production_installed=True,original_block_calls=300,direct_retained_calls=40,
+                retained_backward_calls=40,original_calls_by_block=[10]*30,
+                retained_calls_by_block=[0]*26+[10]*4,
+                backward_calls_by_block=[0]*26+[10]*4,contract_failures=0))
     return dict(row, evidence_scope=SCOPE, rank=rank, status="PASS", mode="pipeline",
                 logical_generator_updates=2, logical_critic_updates=10,
                 physical_generator_commits=2 if rank < 8 else 0,
@@ -289,7 +299,7 @@ def _load_gate(gate, arm, trace, **overrides):
     return worker._load_two_cycle_timing_gate(**args)
 
 
-@pytest.fixture(scope="module", params=[ablation.VARIANT, retention.VARIANT])
+@pytest.fixture(scope="module", params=[ablation.VARIANT, retention.VARIANT, block_retention.VARIANT])
 def chain(tmp_path_factory, request):
     root = tmp_path_factory.mktemp(SCOPE + "_producer_consumer_chain")
     trace = _trace(root)
@@ -406,8 +416,9 @@ def test_native_timing_summary_and_collector_file_contract(chain, role, record_p
                 "construction_wall_seconds", "critic_attention_checkpoint"} <= set(row)
         if rank >= 8:
             checkpoint = row["critic_attention_checkpoint"]
-            assert checkpoint["original_fa_calls"] == 300 and checkpoint["contract_failures"] == 0
-            assert checkpoint["replay_fa_cache_reads"] == (0 if chain[role]["variant"] == ablation.VARIANT else 300)
+            expected_calls = 260 if chain[role]["variant"] == block_retention.VARIANT else 300
+            assert checkpoint["original_fa_calls"] == expected_calls and checkpoint["contract_failures"] == 0
+            assert checkpoint["replay_fa_cache_reads"] == (0 if chain[role]["variant"] == ablation.VARIANT else expected_calls)
             if chain[role]["variant"] == ablation.VARIANT:
                 assert checkpoint["replay_fa_recompute_calls"] == 300
             elif chain[role]["variant"] == retention.VARIANT:
@@ -448,7 +459,9 @@ def test_real_trajectory_consumer_rejects_broken_producer_artifacts(chain, tmp_p
         path = run / "receipts/rank_008.json"
         value = json.loads(path.read_text())
         if mutation == "bad_census":
-            if chain['child']['variant'] == retention.VARIANT:
+            if chain['child']['variant'] == block_retention.VARIANT:
+                value['critic_attention_checkpoint']['block_retention']['direct_retained_calls'] = 39
+            elif chain['child']['variant'] == retention.VARIANT:
                 value['critic_ffn_down_checkpoint']['replay_ffn_down_cache_reads'] = 299
             else:
                 value["critic_attention_checkpoint"]["replay_fa_recompute_calls"] = 299
@@ -520,7 +533,9 @@ def test_real_timing_consumer_rejects_incomplete_or_wrong_evidence(chain, tmp_pa
     else:
         path = run / "receipts/rank_008.json"; value = json.loads(path.read_text())
         if mutation == "bad_census":
-            if chain['child']['variant'] == retention.VARIANT:
+            if chain['child']['variant'] == block_retention.VARIANT:
+                value['critic_attention_checkpoint']['block_retention']['direct_retained_calls'] = 39
+            elif chain['child']['variant'] == retention.VARIANT:
                 value['critic_ffn_down_checkpoint']['replay_ffn_down_cache_reads'] = 299
             else:
                 value["critic_attention_checkpoint"]["replay_fa_recompute_calls"] = 299

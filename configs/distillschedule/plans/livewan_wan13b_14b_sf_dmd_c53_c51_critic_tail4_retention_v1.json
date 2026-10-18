@@ -1,0 +1,30 @@
+{
+  "include": [
+    "livewan_wan13b_14b_sf_dmd_c51_generator_fused_rms.json"
+  ],
+  "id": "livewan_wan13b_14b_sf_dmd_c53_c51_critic_tail4_retention_v1",
+  "metadata": {
+    "critic_block_retention": {
+      "schema": "livewan_c51_critic_block_retention_v1",
+      "parent_variant": "c51-continuous-b16-generator-fused-rms",
+      "parent_source_head": "aa30527db5d048e2ab23222eef587cb7cfe909f6",
+      "parent_plan_sources_sha256": "919db26012f4dee2429e434ffc1c6508957b149cdeb2427e1e9c674035e4152d",
+      "source_blockcausal_sha256": "bde44405af4f38ee05ed911c9ab0f626c41ca14c5ad95539f2a3ccf47ca4ce96",
+      "factor": "critic_grad_block_autograd_retention",
+      "blocks": [
+        26,
+        27,
+        28,
+        29
+      ],
+      "other_blocks": "unchanged_pinned_fa3_selective_checkpoint",
+      "cache_location": "cuda_native_autograd_saved_tensors",
+      "release": "native_backward_graph_release_each_critic_update",
+      "application_calls_unchanged": true,
+      "optimizer_placement_and_schedule_unchanged": true,
+      "preserve_rng_state": true,
+      "cpu_offload": false,
+      "scope": "conditional_on_full_c51_not_layout_only"
+    }
+  }
+}

@@ -53,6 +53,9 @@ def validate_effective_policy(plan: Mapping[str, Any]) -> None:
     if plan.get('id') == 'livewan_wan13b_14b_sf_dmd_c52_c51_critic_ffn_down_retention_v1' or 'c51_ffn_retention' in plan.get('metadata', {}):
         from distillschedule.runtime.livewan_c51_ffn_retention import validate_effective_policy as validate_retention
         return validate_retention(plan)
+    if plan.get('id') == 'livewan_wan13b_14b_sf_dmd_c53_c51_critic_tail4_retention_v1' or 'critic_block_retention' in plan.get('metadata', {}):
+        from distillschedule.runtime.livewan_block_retention import validate_effective_policy as validate_retention
+        return validate_retention(plan)
     metadata = plan.get('metadata', {})
     if (plan.get('id') != PLAN_ID
         or metadata.get('checkpoint_replay_ablation') != CONTRACT

@@ -80,7 +80,7 @@ TWO_CYCLE_ARM_ID="${LIVEWAN_TWO_CYCLE_ARM_ID:-}"
 	   "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation || \
        "${PIPELINE_VARIANT}" == c25-continuous-b16-score-rmsnorm || \
        "${PIPELINE_VARIANT}" == c26-continuous-b16-critic-attention-checkpoint || \
-       "${PIPELINE_VARIANT}" == c27-continuous-b16-pinned-prompt-staging || "${PIPELINE_VARIANT}" == c28-continuous-b16-rollout-cast-cache || "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue || "${PIPELINE_VARIANT}" == c30-continuous-b16-generator-rms-critic-checkpoint || "${PIPELINE_VARIANT}" == c31-continuous-b16-generator-rms-cast-square || "${PIPELINE_VARIANT}" == c32-continuous-b16-generator-modulation || "${PIPELINE_VARIANT}" == c33-continuous-b16-generator-gate || "${PIPELINE_VARIANT}" == c34-continuous-b16-residual-layout || "${PIPELINE_VARIANT}" == c35-continuous-b16-score-gate || "${PIPELINE_VARIANT}" == c36-continuous-b16-score-layernorm || "${PIPELINE_VARIANT}" == c37-continuous-b16-step1-overlap || "${PIPELINE_VARIANT}" == c38-continuous-b16-score-fa3 || "${PIPELINE_VARIANT}" == c49-continuous-b16-generator-readonly-splitkv || "${PIPELINE_VARIANT}" == c51-continuous-b16-generator-fused-rms || "${PIPELINE_VARIANT}" == c51-critic-fa3-recompute-v1 || "${PIPELINE_VARIANT}" == c52-c51-critic-ffn-down-retention-v1 || "${PIPELINE_VARIANT}" == c39-continuous-b16-step0-delivery || "${PIPELINE_VARIANT}" == c40-continuous-b16-score-shared-input || "${PIPELINE_VARIANT}" == c44-continuous-b16-critic-ffn-down-cache || \
+       "${PIPELINE_VARIANT}" == c27-continuous-b16-pinned-prompt-staging || "${PIPELINE_VARIANT}" == c28-continuous-b16-rollout-cast-cache || "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue || "${PIPELINE_VARIANT}" == c30-continuous-b16-generator-rms-critic-checkpoint || "${PIPELINE_VARIANT}" == c31-continuous-b16-generator-rms-cast-square || "${PIPELINE_VARIANT}" == c32-continuous-b16-generator-modulation || "${PIPELINE_VARIANT}" == c33-continuous-b16-generator-gate || "${PIPELINE_VARIANT}" == c34-continuous-b16-residual-layout || "${PIPELINE_VARIANT}" == c35-continuous-b16-score-gate || "${PIPELINE_VARIANT}" == c36-continuous-b16-score-layernorm || "${PIPELINE_VARIANT}" == c37-continuous-b16-step1-overlap || "${PIPELINE_VARIANT}" == c38-continuous-b16-score-fa3 || "${PIPELINE_VARIANT}" == c49-continuous-b16-generator-readonly-splitkv || "${PIPELINE_VARIANT}" == c51-continuous-b16-generator-fused-rms || "${PIPELINE_VARIANT}" == c51-critic-fa3-recompute-v1 || "${PIPELINE_VARIANT}" == c53-c51-critic-tail4-retention-v1 || "${PIPELINE_VARIANT}" == c52-c51-critic-ffn-down-retention-v1 || "${PIPELINE_VARIANT}" == c39-continuous-b16-step0-delivery || "${PIPELINE_VARIANT}" == c40-continuous-b16-score-shared-input || "${PIPELINE_VARIANT}" == c44-continuous-b16-critic-ffn-down-cache || \
 	   "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation-b1-attribution || \
    "${PIPELINE_VARIANT}" == phase-expanded-critic16 || \
    "${PIPELINE_VARIANT}" == phase-expanded-critic16-fused-lora-elision || \
@@ -98,7 +98,7 @@ if [[ "${RUN_KIND}" == trajectory ]]; then
     [[ "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation || \
        "${PIPELINE_VARIANT}" == c25-continuous-b16-score-rmsnorm || \
        "${PIPELINE_VARIANT}" == c26-continuous-b16-critic-attention-checkpoint || \
-       "${PIPELINE_VARIANT}" == c27-continuous-b16-pinned-prompt-staging || "${PIPELINE_VARIANT}" == c28-continuous-b16-rollout-cast-cache || "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue || "${PIPELINE_VARIANT}" == c30-continuous-b16-generator-rms-critic-checkpoint || "${PIPELINE_VARIANT}" == c31-continuous-b16-generator-rms-cast-square || "${PIPELINE_VARIANT}" == c32-continuous-b16-generator-modulation || "${PIPELINE_VARIANT}" == c33-continuous-b16-generator-gate || "${PIPELINE_VARIANT}" == c34-continuous-b16-residual-layout || "${PIPELINE_VARIANT}" == c35-continuous-b16-score-gate || "${PIPELINE_VARIANT}" == c36-continuous-b16-score-layernorm || "${PIPELINE_VARIANT}" == c37-continuous-b16-step1-overlap || "${PIPELINE_VARIANT}" == c38-continuous-b16-score-fa3 || "${PIPELINE_VARIANT}" == c49-continuous-b16-generator-readonly-splitkv || "${PIPELINE_VARIANT}" == c51-continuous-b16-generator-fused-rms || "${PIPELINE_VARIANT}" == c51-critic-fa3-recompute-v1 || "${PIPELINE_VARIANT}" == c52-c51-critic-ffn-down-retention-v1 || "${PIPELINE_VARIANT}" == c39-continuous-b16-step0-delivery || "${PIPELINE_VARIANT}" == c40-continuous-b16-score-shared-input || "${PIPELINE_VARIANT}" == c44-continuous-b16-critic-ffn-down-cache || \
+       "${PIPELINE_VARIANT}" == c27-continuous-b16-pinned-prompt-staging || "${PIPELINE_VARIANT}" == c28-continuous-b16-rollout-cast-cache || "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue || "${PIPELINE_VARIANT}" == c30-continuous-b16-generator-rms-critic-checkpoint || "${PIPELINE_VARIANT}" == c31-continuous-b16-generator-rms-cast-square || "${PIPELINE_VARIANT}" == c32-continuous-b16-generator-modulation || "${PIPELINE_VARIANT}" == c33-continuous-b16-generator-gate || "${PIPELINE_VARIANT}" == c34-continuous-b16-residual-layout || "${PIPELINE_VARIANT}" == c35-continuous-b16-score-gate || "${PIPELINE_VARIANT}" == c36-continuous-b16-score-layernorm || "${PIPELINE_VARIANT}" == c37-continuous-b16-step1-overlap || "${PIPELINE_VARIANT}" == c38-continuous-b16-score-fa3 || "${PIPELINE_VARIANT}" == c49-continuous-b16-generator-readonly-splitkv || "${PIPELINE_VARIANT}" == c51-continuous-b16-generator-fused-rms || "${PIPELINE_VARIANT}" == c51-critic-fa3-recompute-v1 || "${PIPELINE_VARIANT}" == c53-c51-critic-tail4-retention-v1 || "${PIPELINE_VARIANT}" == c52-c51-critic-ffn-down-retention-v1 || "${PIPELINE_VARIANT}" == c39-continuous-b16-step0-delivery || "${PIPELINE_VARIANT}" == c40-continuous-b16-score-shared-input || "${PIPELINE_VARIANT}" == c44-continuous-b16-critic-ffn-down-cache || \
        "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation-b1-attribution ]] || {
       echo trajectory_pipeline_requires_exact_c24 >&2; exit 2;
     }
@@ -113,7 +113,7 @@ elif [[ "${RUN_KIND}" == two-cycle-timing ]]; then
       echo two_cycle_baseline_requires_b1 >&2; exit 2;
     }
   else
-    [[ "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation || "${PIPELINE_VARIANT}" == c25-continuous-b16-score-rmsnorm || "${PIPELINE_VARIANT}" == c26-continuous-b16-critic-attention-checkpoint || "${PIPELINE_VARIANT}" == c27-continuous-b16-pinned-prompt-staging || "${PIPELINE_VARIANT}" == c28-continuous-b16-rollout-cast-cache || "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue || "${PIPELINE_VARIANT}" == c30-continuous-b16-generator-rms-critic-checkpoint || "${PIPELINE_VARIANT}" == c31-continuous-b16-generator-rms-cast-square || "${PIPELINE_VARIANT}" == c32-continuous-b16-generator-modulation || "${PIPELINE_VARIANT}" == c33-continuous-b16-generator-gate || "${PIPELINE_VARIANT}" == c34-continuous-b16-residual-layout || "${PIPELINE_VARIANT}" == c35-continuous-b16-score-gate || "${PIPELINE_VARIANT}" == c36-continuous-b16-score-layernorm || "${PIPELINE_VARIANT}" == c37-continuous-b16-step1-overlap || "${PIPELINE_VARIANT}" == c38-continuous-b16-score-fa3 || "${PIPELINE_VARIANT}" == c49-continuous-b16-generator-readonly-splitkv || "${PIPELINE_VARIANT}" == c51-continuous-b16-generator-fused-rms || "${PIPELINE_VARIANT}" == c51-critic-fa3-recompute-v1 || "${PIPELINE_VARIANT}" == c52-c51-critic-ffn-down-retention-v1 || "${PIPELINE_VARIANT}" == c39-continuous-b16-step0-delivery || "${PIPELINE_VARIANT}" == c40-continuous-b16-score-shared-input || "${PIPELINE_VARIANT}" == c44-continuous-b16-critic-ffn-down-cache ]] || {
+    [[ "${PIPELINE_VARIANT}" == c24-continuous-b16-score-modulation || "${PIPELINE_VARIANT}" == c25-continuous-b16-score-rmsnorm || "${PIPELINE_VARIANT}" == c26-continuous-b16-critic-attention-checkpoint || "${PIPELINE_VARIANT}" == c27-continuous-b16-pinned-prompt-staging || "${PIPELINE_VARIANT}" == c28-continuous-b16-rollout-cast-cache || "${PIPELINE_VARIANT}" == c29-continuous-b16-generator-rms-epilogue || "${PIPELINE_VARIANT}" == c30-continuous-b16-generator-rms-critic-checkpoint || "${PIPELINE_VARIANT}" == c31-continuous-b16-generator-rms-cast-square || "${PIPELINE_VARIANT}" == c32-continuous-b16-generator-modulation || "${PIPELINE_VARIANT}" == c33-continuous-b16-generator-gate || "${PIPELINE_VARIANT}" == c34-continuous-b16-residual-layout || "${PIPELINE_VARIANT}" == c35-continuous-b16-score-gate || "${PIPELINE_VARIANT}" == c36-continuous-b16-score-layernorm || "${PIPELINE_VARIANT}" == c37-continuous-b16-step1-overlap || "${PIPELINE_VARIANT}" == c38-continuous-b16-score-fa3 || "${PIPELINE_VARIANT}" == c49-continuous-b16-generator-readonly-splitkv || "${PIPELINE_VARIANT}" == c51-continuous-b16-generator-fused-rms || "${PIPELINE_VARIANT}" == c51-critic-fa3-recompute-v1 || "${PIPELINE_VARIANT}" == c53-c51-critic-tail4-retention-v1 || "${PIPELINE_VARIANT}" == c52-c51-critic-ffn-down-retention-v1 || "${PIPELINE_VARIANT}" == c39-continuous-b16-step0-delivery || "${PIPELINE_VARIANT}" == c40-continuous-b16-score-shared-input || "${PIPELINE_VARIANT}" == c44-continuous-b16-critic-ffn-down-cache ]] || {
       echo two_cycle_pipeline_requires_production_c24_b2 >&2; exit 2;
     }
   fi
@@ -217,14 +217,16 @@ elif [[ "${PIPELINE_VARIANT}" == c26-continuous-b16-critic-attention-checkpoint 
   [[ -f "${DISTILLSCHEDULE_FLASH_ATTN_KERNEL}/_flash_attn2_cuda_a511a4c.abi3.so" ]] || {
     echo "missing_flash_attn2_artifact=${DISTILLSCHEDULE_FLASH_ATTN_KERNEL}" >&2; exit 3;
   }
-elif [[ "${PIPELINE_VARIANT}" == c51-critic-fa3-recompute-v1 || "${PIPELINE_VARIANT}" == c52-c51-critic-ffn-down-retention-v1 ]]; then
+elif [[ "${PIPELINE_VARIANT}" == c51-critic-fa3-recompute-v1 || "${PIPELINE_VARIANT}" == c53-c51-critic-tail4-retention-v1 || "${PIPELINE_VARIANT}" == c52-c51-critic-ffn-down-retention-v1 ]]; then
   [[ "${RUN_KIND}" == trajectory || "${RUN_KIND}" == two-cycle-timing ]] || {
     echo c51_recompute_requires_qualified_native_or_trajectory >&2; exit 2;
   }
   [[ "${RUN_KIND}" != trajectory || "${TRAJECTORY_CYCLES}" == 2 ]] || {
     echo c51_recompute_requires_two_cycles >&2; exit 2;
   }
-  if [[ "${PIPELINE_VARIANT}" == c52-c51-critic-ffn-down-retention-v1 ]]; then
+  if [[ "${PIPELINE_VARIANT}" == c53-c51-critic-tail4-retention-v1 ]]; then
+    PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c53_c51_critic_tail4_retention_v1.json"
+  elif [[ "${PIPELINE_VARIANT}" == c52-c51-critic-ffn-down-retention-v1 ]]; then
     PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c52_c51_critic_ffn_down_retention_v1.json"
   else
     PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c51_critic_fa3_recompute_v1.json"
@@ -353,19 +355,20 @@ if run_kind == "timing":
 elif run_kind == "two-cycle-timing":
     from distillschedule.runtime.livewan_replay_ablation import PARENT_VARIANT, VARIANT
     from distillschedule.runtime.livewan_c51_ffn_retention import VARIANT as RETENTION_VARIANT
+    from distillschedule.runtime.livewan_block_retention import VARIANT as BLOCK_VARIANT
     execution_mode, pipeline_variant = sys.argv[4:6]
     conditional_schema = "distillschedule.livewan_conditional_replay_timing_gate.v1"
     conditional = value.get("schema_version") == conditional_schema
-    if pipeline_variant in {VARIANT, RETENTION_VARIANT} and not conditional:
+    if pipeline_variant in {VARIANT, RETENTION_VARIANT, BLOCK_VARIANT} and not conditional:
         raise SystemExit("C51 replay ablation requires its same-layout conditional gate")
     if conditional:
         arms = value.get("arms", {})
         if not (
             execution_mode == "pipeline"
-            and pipeline_variant in {PARENT_VARIANT, VARIANT, RETENTION_VARIANT}
+            and pipeline_variant in {PARENT_VARIANT, VARIANT, RETENTION_VARIANT, BLOCK_VARIANT}
             and set(arms) == {"reference", "candidate"}
             and arms["reference"].get("pipeline_variant") == PARENT_VARIANT
-            and arms["candidate"].get("pipeline_variant") in {VARIANT, RETENTION_VARIANT}
+            and arms["candidate"].get("pipeline_variant") in {VARIANT, RETENTION_VARIANT, BLOCK_VARIANT}
             and (pipeline_variant == PARENT_VARIANT or pipeline_variant == arms["candidate"].get("pipeline_variant"))
             and value.get("heads") == {"reference": expected_head, "candidate": expected_head}
         ):

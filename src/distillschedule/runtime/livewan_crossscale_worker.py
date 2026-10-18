@@ -1082,17 +1082,18 @@ def _load_two_cycle_timing_gate(
     value = json.loads(resolved.read_text(encoding="utf-8"))
     conditional_schema = "distillschedule.livewan_conditional_replay_timing_gate.v1"
     conditional = value.get("schema_version") == conditional_schema
-    _require(pipeline_variant not in ("c51-critic-fa3-recompute-v1", "c52-c51-critic-ffn-down-retention-v1") or conditional,
+    _require(pipeline_variant not in ("c51-critic-fa3-recompute-v1", "c52-c51-critic-ffn-down-retention-v1", 'c53-c51-critic-tail4-retention-v1') or conditional,
              "C51 replay ablation requires its same-layout conditional gate")
     if conditional:
         from distillschedule.runtime.livewan_replay_ablation import PARENT_VARIANT, VARIANT
         from distillschedule.runtime.livewan_c51_ffn_retention import VARIANT as RETENTION_VARIANT
-        _require(mode == "pipeline" and pipeline_variant in {PARENT_VARIANT, VARIANT, RETENTION_VARIANT},
+        from distillschedule.runtime.livewan_block_retention import VARIANT as BLOCK_VARIANT
+        _require(mode == "pipeline" and pipeline_variant in {PARENT_VARIANT, VARIANT, RETENTION_VARIANT, BLOCK_VARIANT},
                  "conditional replay gate cannot authorize another physical implementation")
         arms = value.get("arms", {})
         _require(set(arms) == {"reference", "candidate"}
                  and arms["reference"].get("pipeline_variant") == PARENT_VARIANT
-                 and arms["candidate"].get("pipeline_variant") in {VARIANT, RETENTION_VARIANT}
+                 and arms["candidate"].get("pipeline_variant") in {VARIANT, RETENTION_VARIANT, BLOCK_VARIANT}
                  and (pipeline_variant == PARENT_VARIANT or pipeline_variant == arms["candidate"].get("pipeline_variant"))
                  and value.get("heads") == {"reference": expected_head, "candidate": expected_head},
                  "conditional replay gate pair/source changed")
@@ -3583,11 +3584,16 @@ def _critic_attention_checkpoint_enabled(plan: Mapping[str, Any], *, mode: str) 
     return True
 
 
-def _build_critic_fa3_checkpoint_proxy(plan: Mapping[str, Any], checkpoint_module: Any, torch: Any):
+def _build_critic_fa3_checkpoint_proxy(plan: Mapping[str, Any], checkpoint_module: Any, torch: Any, *, blocks: Any = None):
     """Actual worker installation seam; backend loading remains SHA-pinned."""
     from distillschedule.runtime.livewan_score_fa3 import load_flash_attn3
     from distillschedule.runtime.livewan_ffn_down_checkpoint import enabled as ffn_down_enabled
     flash_module, _ = load_flash_attn3()
+    from distillschedule.runtime.livewan_block_retention import enabled as blocks_enabled, CriticBlockRetentionProxy
+    if blocks_enabled(plan, mode="pipeline"):
+        if blocks is None:
+            raise RuntimeError("C53 requires the actual resident Critic blocks")
+        return CriticBlockRetentionProxy(checkpoint_module, torch, flash_module, blocks=blocks)
     if ffn_down_enabled(plan, mode="pipeline"):
         from distillschedule.runtime.livewan_ffn_down_checkpoint import CriticFFNDownCheckpointProxy
         return CriticFFNDownCheckpointProxy(checkpoint_module, torch, flash_module)
@@ -3853,6 +3859,8 @@ def _prefetch_score_sample_contexts(
 
 
 def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
+    from distillschedule.runtime.livewan_block_retention import enabled as blocks_enabled
+    blocks_enabled(plan, mode=mode)
     from distillschedule.runtime.livewan_c51_ffn_retention import enabled as retention_enabled
     retention_enabled(plan, mode=mode)
     from distillschedule.runtime.livewan_replay_ablation import enabled as replay_ablation_enabled
@@ -4658,7 +4666,7 @@ def run_worker(
             from distillschedule.runtime.livewan_attention_checkpoint import CriticAttentionCheckpointProxy
 
             if plan["metadata"]["score_attention_backend"]["name"] == "score_flash_attn3_unmasked_bf16_split1_v1":
-                critic_attention_proxy = _build_critic_fa3_checkpoint_proxy(plan, bc.ckpt, torch)
+                critic_attention_proxy = _build_critic_fa3_checkpoint_proxy(plan, bc.ckpt, torch, blocks=bundle.critic.blocks)
             else:
                 flash_module, _ = _load_flash_attn2()
                 critic_attention_proxy = CriticAttentionCheckpointProxy(bc.ckpt, torch, flash_module)
