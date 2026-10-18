@@ -400,11 +400,10 @@ class FirstFakeProbe:
             path.parent.mkdir(parents=True, exist_ok=True)
             write_new_json(path, dict(result, source_head=self.source_head, rank=self.rank, run_id=self.run_id,
                 numerical_admission=False, formal_timing_eligible=False))
-            import torch.distributed as dist
-            bad = self.torch.tensor(int(result["mismatches"] > 0), device=next(iter(self.parameters.values())).device)
-            if dist.is_initialized():
-                dist.all_reduce(bad, op=dist.ReduceOp.MAX)
-            _require(int(bad.cpu()) == 0, "ROUNDTRIP_PAYLOAD_FINGERPRINT_MISMATCH_SAVED_NO_NUMERICAL_ADMISSION")
+            # Preserve the native collective inventory. A local mismatch is a
+            # worker failure handled by the existing owned launcher, not a new
+            # distributed gate or a hidden collective in the runtime receipt.
+            _require(result["mismatches"] == 0, "ROUNDTRIP_PAYLOAD_FINGERPRINT_MISMATCH_SAVED_NO_NUMERICAL_ADMISSION")
 
     def finish(self):
         _require(self.cycle == 2 and not self.pending and not self.active, "diagnostic capture unfinished")

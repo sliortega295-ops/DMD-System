@@ -17,7 +17,8 @@ Coverage is both native cycles, six grad graphs per cycle, 50 blocks per graph,
 out plus LSE: 1200 pairs/rank. CUDA known-bit tests (including NaNs, signed zero,
 strides and a changed value) execute before cycle1 and must pass. Host reads
 occur only after the existing cycle stop fences; each cycle produces an
-immutable rank record before the collective mismatch check. A mismatch stops
+immutable rank record before the local mismatch check. No collective is added.
+A mismatch is handled by the existing owned launcher and stops
 the diagnostic and preserves the record. GPU self-test/compilation and all
 diagnostic overhead are not native training performance evidence.
 

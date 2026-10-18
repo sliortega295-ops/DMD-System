@@ -105,3 +105,10 @@ def test_gpu_hash_wrapper_has_no_host_tensor_reads_or_rng_calls():
     banned={'cpu','item','tolist','numpy','rand','randn','manual_seed','synchronize'}
     assert not any(isinstance(n,ast.Call)and isinstance(n.func,ast.Attribute)and n.func.attr in banned for n in ast.walk(tree))
     assert set(p.source_contract()['source_sha256'])=={'cache_roundtrip_probe.py','cache_roundtrip_kernels.py'}
+
+
+def test_diagnostic_does_not_silently_add_collectives_to_native_receipt():
+    from distillschedule.backends.training.minimax_h3 import divergence_probe as d
+    tree=ast.parse(Path(d.__file__).read_text())
+    method=next(n for n in ast.walk(tree)if isinstance(n,ast.FunctionDef)and n.name=='after_cycle')
+    assert not any(isinstance(n,ast.Call)and isinstance(n.func,ast.Attribute)and n.func.attr in ('all_reduce','barrier','broadcast')for n in ast.walk(method))
