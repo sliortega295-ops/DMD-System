@@ -25,6 +25,8 @@ def main(argv=None):
         p.add_argument('--output', type=Path, required=name not in ('validate','campaign'))
         if name == 'validate':
             p.add_argument('--include-incumbent-bundle', action='store_true')
+            p.add_argument('--include-critic-retention', action='store_true',
+                           help='Opt-in bounded retainC26-29 inventory; needs incumbent capability and fresh calibration')
         if name in ('calibrate', 'run', 'train-stream', 'benchmark-manual'):
             p.add_argument('--assets', type=Path, required=True)
             p.add_argument('--execute', action='store_true')
@@ -90,7 +92,9 @@ def main(argv=None):
         except importlib.metadata.PackageNotFoundError:
             has_triton = False
         if args.command == 'validate' or (args.command in {'calibrate', 'run', 'train-stream', 'benchmark-manual'} and not args.execute):
-            result = capability_report(task, triton_available=has_triton, incumbent_bundle_available=getattr(args, "include_incumbent_bundle", False))
+            result = capability_report(task, triton_available=has_triton,
+                incumbent_bundle_available=getattr(args, "include_incumbent_bundle", False),
+                critic_retention_available=getattr(args, "include_critic_retention", False))
             result['native_execution'] = 'NOT_RUN_REQUIRES_EXPLICIT_EXECUTE'
             if args.command == 'validate' and args.output:
                 write_new_json(args.output, result)

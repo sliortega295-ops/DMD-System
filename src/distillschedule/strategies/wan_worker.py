@@ -240,7 +240,8 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
         document = validate_plan(task, plan_path)
         strategy = WanStrategy.from_dict(document['selected']['strategy'])
     strategy.validate_for(task)
-    require(not strategy.retained_critic_blocks or mode == 'manual',
+    require(not strategy.retained_critic_blocks or mode == 'manual'
+            or strategy.retention_execution == 'planner-retain4.v1',
             'experimental block retention requires an explicit manual candidate; no uncalibrated saved-plan fallback',
             path='wan.worker')
     require(not strategy.candidate_bundle.enabled or (cycles == 2 and stream_path is None),
@@ -301,9 +302,9 @@ def run_worker(task, assets, *, output, mode, strategy=None, plan_path=None, cyc
                         'host': socket.gethostname(), 'local_rank': local_rank}
             if document is not None:
                 require(document['identity'] == identity, 'source/assets differ from planned calibration', path='wan.worker')
-                from .wan_planning import load_collections, _read
+                from .wan_planning import load_collections, calibrated_variant, _read
                 _, variants = load_collections(task, [c['path'] for c in document['collections']])
-                variant = next(v for s, v, _ in variants if s.backend == strategy.backend)
+                variant, _ = calibrated_variant(strategy, variants)
                 observed = [_read(s['path']) for s in variant['rank_sources']]
                 old = next(v for v in observed if v['rank'] == rank)
                 require(old['runtime'] == runtime and old['hardware'] == hardware,

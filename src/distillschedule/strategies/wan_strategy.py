@@ -8,6 +8,7 @@ from distillschedule.core.contracts import require
 from distillschedule.search.wan_implementation import WanImplementation, PRECISION
 from .wan_task import OriginalWanTask
 from distillschedule.search.wan_candidate_bundle import WanCandidateBundle, OFF, INCUMBENT
+from distillschedule.workloads.best_known.registry import fingerprint
 
 
 @dataclass(frozen=True)
@@ -20,6 +21,7 @@ class WanStrategy:
     retained_critic_blocks: tuple[int, ...] = ()
     retention_policy: str = 'retain4.v1'
     rollout_graph_pool_policy: str = 'isolated.v1'
+    retention_execution: str = 'manual-only.v1'
 
     def __post_init__(self):
         # Original native admission remains unchanged. In particular, FSDP only
@@ -48,6 +50,11 @@ class WanStrategy:
                 (self.placement == 'resident' and self.candidate_bundle.enabled
                  and (len(self.retained_critic_blocks) <= 4 or self.retention_policy in ('tail8.v1', 'tail6.v1'))),
                 'experimental retention requires the incumbent Resident bundle and at most4 blocks', path='wan.strategy')
+        require(self.retention_execution in ('manual-only.v1', 'planner-retain4.v1')
+                and (self.retention_execution == 'manual-only.v1'
+                     or (self.retained_critic_blocks == (26, 27, 28, 29)
+                         and self.retention_policy == 'retain4.v1')),
+                'planner retention requires explicit versioned retainC26-29 policy', path='wan.strategy')
 
     @property
     def backend(self):
@@ -58,14 +65,39 @@ class WanStrategy:
         suffix = '-retainC' + '_'.join(map(str,self.retained_critic_blocks)) if self.retained_critic_blocks else ''
         if self.retention_policy != 'retain4.v1': suffix += '-' + self.retention_policy.replace('.', '')
         if self.rollout_graph_pool_policy != 'isolated.v1': suffix += '-rollout-shared-scratch-v1'
+        if self.retention_execution != 'manual-only.v1': suffix += '-planner-retain4-v1'
         return f'{self.backend.id}-original-w{self.rollout_window}{suffix}'
 
     @property
     def assignment(self):
-        return {**self.backend.assignment, 'rollout_window': str(self.rollout_window)}
+        return {**self.backend.assignment, 'rollout_window': str(self.rollout_window),
+                **({'state_policy_sha256': fingerprint(self.compute_policy)} if self.compute_policy else {})}
+
+    @property
+    def compute_policy(self):
+        """State choices affecting measured compute/workspace, not DAG order.
+
+        Empty preserves the legacy component identity byte-for-byte. Retention
+        and CUDA Graph scratch allocation are not captured by backend.id; they
+        must not borrow each other's measurements or runtime evidence.
+        """
+        if (not self.retained_critic_blocks and self.retention_policy == 'retain4.v1'
+                and self.rollout_graph_pool_policy == 'isolated.v1'):
+            return {}
+        return dict(schema_version='distillschedule.wan_compute_state_policy.v1',
+                    retained_critic_blocks=list(self.retained_critic_blocks),
+                    retention_policy=self.retention_policy,
+                    rollout_graph_pool_policy=self.rollout_graph_pool_policy,
+                    retention_execution=self.retention_execution)
+
+    @property
+    def compute_key(self):
+        return (self.backend.id + '-state-' + fingerprint(self.compute_policy)
+                if self.compute_policy else self.backend.id)
 
     def to_dict(self):
         return dict(**({"candidate_bundle": self.candidate_bundle.to_dict()} if self.candidate_bundle.enabled else {}),
+                    **({'retention_execution': self.retention_execution} if self.retention_execution != 'manual-only.v1' else {}),
                     **({'retention_policy':self.retention_policy} if self.retention_policy != 'retain4.v1' else {}),
                     **({'rollout_graph_pool_policy':self.rollout_graph_pool_policy} if self.rollout_graph_pool_policy != 'isolated.v1' else {}),
                     **({'retained_critic_blocks': list(self.retained_critic_blocks)} if self.retained_critic_blocks else {}),
@@ -79,11 +111,12 @@ class WanStrategy:
         retained = value.pop('retained_critic_blocks', [])
         retention_policy = value.pop('retention_policy', 'retain4.v1')
         pool_policy = value.pop('rollout_graph_pool_policy', 'isolated.v1')
+        execution = value.pop('retention_execution', 'manual-only.v1')
         require(isinstance(retained,list), 'retained_critic_blocks must be a JSON list', path='wan.strategy')
         require(set(value)=={'placement','chunk_tokens','lora_epilogue','rollout_window'},
                 'strategy has unknown or missing fields', path='wan.strategy')
         return cls(**value, candidate_bundle=bundle, retained_critic_blocks=tuple(retained), retention_policy=retention_policy,
-                   rollout_graph_pool_policy=pool_policy)
+                   rollout_graph_pool_policy=pool_policy, retention_execution=execution)
 
     def validate_for(self, task):
         self.candidate_bundle.validate_task(task)
@@ -106,24 +139,35 @@ class WanStrategy:
             'DISTILLSCHEDULE_NSYS_EXACT_RANGE':'0'}
 
 
-def implementations(task: OriginalWanTask, *, triton_available: bool, incumbent_bundle_available: bool = False):
+def implementations(task: OriginalWanTask, *, triton_available: bool, incumbent_bundle_available: bool = False,
+                    critic_retention_available: bool = False):
     require(type(triton_available) is bool,'explicit capability required',path='wan.strategy')
     result=[WanStrategy('fsdp',512,False)]
     for chunk in (512,1024,2048):
         for fused in ((False,True) if triton_available else (False,)):
             result.append(WanStrategy('resident',chunk,fused))
     require(type(incumbent_bundle_available) is bool, "explicit bundle capability required", path="wan.strategy")
+    require(type(critic_retention_available) is bool
+            and (not critic_retention_available or incumbent_bundle_available),
+            "Critic retention requires explicit incumbent bundle capability", path="wan.strategy")
     if incumbent_bundle_available:
         require(triton_available, "incumbent bundle requires Triton", path="wan.strategy")
         INCUMBENT.validate_task(task)
         result.append(WanStrategy("resident", 2048, True, candidate_bundle=INCUMBENT))
+        if critic_retention_available:
+            # Only the already-executed bounded four-block mechanism enters
+            # inventory. Failed tail6/tail8 and unqualified SAC are not added.
+            result.append(WanStrategy("resident", 2048, True, candidate_bundle=INCUMBENT,
+                                      retained_critic_blocks=(26, 27, 28, 29), retention_execution='planner-retain4.v1'))
     return tuple(result)
 
 
-def capability_report(task: OriginalWanTask, *, triton_available: bool, incumbent_bundle_available: bool = False):
+def capability_report(task: OriginalWanTask, *, triton_available: bool, incumbent_bundle_available: bool = False,
+                      critic_retention_available: bool = False):
     return {'schema_version':'distillschedule.original_wan_capabilities.v1',
         'task':task.to_dict(),'latent_shape':list(task.latent_shape),
-        'implementations':[c.to_dict() for c in implementations(task,triton_available=triton_available, incumbent_bundle_available=incumbent_bundle_available)],
+        'implementations':[c.to_dict() for c in implementations(task,triton_available=triton_available,
+            incumbent_bundle_available=incumbent_bundle_available, critic_retention_available=critic_retention_available)],
         'opt_in_coupled_bundles':[dict(bundle=INCUMBENT.to_dict(), task_supported=task==OriginalWanTask(),
             admission='EXACT_ORIGINAL_TASK_AND_IMMUTABLE_ASSETS_ONLY', gpu_execution='NOT_RUN_ON_CURRENT_SOURCE',
             timing='HISTORICAL_PROVENANCE_NOT_CURRENT_CALIBRATION', precision='CURRENT_GENERATED_POLICY_NO_DRIVER_OVERRIDE')],
@@ -134,6 +178,10 @@ def capability_report(task: OriginalWanTask, *, triton_available: bool, incumben
         'protocol':'ORIGINAL_WAN_HELIOS_PYRAMID_NOGAN',
         'status':'SOURCE_CAPABILITIES_REQUIRE_MATCHED_CALIBRATION',
         'gpu_execution':'NOT_RUN','claimable_speedup':False,
+        **({'opt_in_compute_state_policy': dict(version='planner-retain4.v1',
+            retained_critic_blocks=[26,27,28,29], runtime='OriginalWanSession/checkpoint_block_retention.install',
+            admission='FRESH_SOURCE_BOUND_CALIBRATION_AND_MATCHED_NUMERICAL_REVIEW_REQUIRED',
+            gpu_execution='NOT_RUN_ON_CURRENT_SOURCE')} if critic_retention_available else {}),
         'limitations':['world16/B1','one model family','no new backbone sharing',
                        'no arbitrary pool topology','task-matching native trace/bootstrap required']}
 
