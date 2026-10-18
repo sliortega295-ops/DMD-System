@@ -48,10 +48,11 @@ def helper_sha256():
     return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
-def bind_plan(receipt, arm, *, raw_repeat=False):
+def bind_plan(receipt, arm, *, raw_repeat=False, cache_roundtrip=False):
     """Explicit opt-in after ordinary candidate lowering; no assets/math edits."""
     _require(arm in ARMS and "h3_divergence" not in receipt, "invalid/already-bound diagnostic plan")
     _require(type(raw_repeat) is bool, "raw-repeat opt-in must be a plain bool")
+    _require(type(cache_roundtrip) is bool and not (raw_repeat and cache_roundtrip), "exclusive bounded diagnostics required")
     value = copy.deepcopy(receipt)
     value["h3_divergence"] = dict(schema_version=PLAN_SCHEMA, arm=arm, source_head=value["integration_head"],
                                   helper_sha256=helper_sha256())
@@ -62,6 +63,11 @@ def bind_plan(receipt, arm, *, raw_repeat=False):
         value["h3_divergence"]["raw_repeat"] = dict(CONTRACT)
         for node in value["nodes"]:
             node["environment"]["H3_PLANNER_RAW_BACKWARD_REPEAT"] = "1"
+    if cache_roundtrip:
+        from .cache_roundtrip_probe import source_contract
+        value["h3_divergence"]["cache_roundtrip"] = source_contract()
+        for node in value["nodes"]:
+            node["environment"]["H3_PLANNER_CACHE_ROUNDTRIP"] = "1"
     is_diagnostic_plan(value)
     return value
 
@@ -71,16 +77,21 @@ def is_diagnostic_plan(receipt):
     nodes = receipt.get("nodes", [])
     flags = [n.get("environment", {}).get("H3_PLANNER_DIVERGENCE", "0") for n in nodes]
     if marker is None and not any(f != "0" for f in flags):
+        _require(not any(n.get("environment", {}).get("H3_PLANNER_CACHE_ROUNDTRIP", "0") != "0" for n in nodes), "orphan roundtrip diagnostic")
         _require(not any(n.get("environment", {}).get("H3_PLANNER_RAW_BACKWARD_REPEAT", "0") != "0" for n in nodes), "orphan raw-repeat diagnostic")
         _require(not any(n.get("environment", {}).get("H3_PLANNER_DIVERGENCE_ARM") for n in nodes),
                  "orphan diagnostic arm")
         return False
-    _require(isinstance(marker, dict) and set(marker) in ({"schema_version", "arm", "source_head", "helper_sha256"}, {"schema_version", "arm", "source_head", "helper_sha256", "raw_repeat"}),
+    _require(isinstance(marker, dict) and set(marker) in ({"schema_version", "arm", "source_head", "helper_sha256"}, {"schema_version", "arm", "source_head", "helper_sha256", "raw_repeat"}, {"schema_version", "arm", "source_head", "helper_sha256", "cache_roundtrip"}),
              "diagnostic plan requires exact explicit binding")
     from .raw_backward_probe import CONTRACT as RAW
     raw = "raw_repeat" in marker
     _require(not raw or marker["raw_repeat"] == RAW, "raw-repeat contract changed")
     _require(all(n.get("environment", {}).get("H3_PLANNER_RAW_BACKWARD_REPEAT", "0") == ("1" if raw else "0") for n in nodes), "raw-repeat node/plan binding differs")
+    from .cache_roundtrip_probe import source_contract
+    roundtrip = "cache_roundtrip" in marker
+    _require(not roundtrip or marker["cache_roundtrip"] == source_contract(), "roundtrip source/contract changed")
+    _require(all(n.get("environment", {}).get("H3_PLANNER_CACHE_ROUNDTRIP", "0") == ("1" if roundtrip else "0") for n in nodes), "roundtrip node/plan binding differs")
     arm = marker["arm"]
     _require(marker["schema_version"] == PLAN_SCHEMA and arm in ARMS and marker["source_head"] == receipt.get("integration_head")
              and marker["helper_sha256"] == helper_sha256() and receipt.get("profile_id") == "minimax_h3_grid1000_best"
@@ -149,6 +160,15 @@ def collect_diagnostic(receipt):
         for cycle in raw.get("cycles", []):
             _require("native_wall_seconds" not in cycle and "gpu_completion_elapsed_s" not in cycle,
                      "diagnostic run retained misleading native durations")
+        if "cache_roundtrip" in receipt["h3_divergence"]:
+            audit = capture.get("cache_roundtrip_audit", {})
+            _require(audit.get("contract") == receipt["h3_divergence"]["cache_roundtrip"]
+                and audit.get("status") == "MATCHED_FINGERPRINTS_NOT_NUMERICAL_ADMISSION"
+                and audit.get("pairs") == 1200 and len(audit.get("cycles", [])) == 2
+                and all(c.get("pairs") == 600 and c.get("mismatches") == 0 for c in audit["cycles"])
+                and audit.get("selftest", {}).get("status") == "PASS_GPU_KNOWN_BITS_AND_STRIDES"
+                and audit.get("numerical_admission") is False and audit.get("formal_timing_eligible") is False,
+                "roundtrip diagnostic missing/source/census/mismatch")
         captures.append(dict(path=str(path), sha256=ref["sha256"]))
     summarize_native_two_cycle(rows, expected_head=receipt["integration_head"],
                                candidate_id=receipt["search_candidate"]["id"], _diagnostic_contracts_only=True)
@@ -166,6 +186,8 @@ def from_environment(*, torch, rank, source_head, environ=None):
     _require(flag in ("0", "1"), "H3 divergence requires explicit 0/1")
     raw = env.get("H3_PLANNER_RAW_BACKWARD_REPEAT", "0")
     _require(raw in ("0", "1") and (raw == "0" or flag == "1"), "raw-repeat requires the bound divergence diagnostic")
+    roundtrip = env.get("H3_PLANNER_CACHE_ROUNDTRIP", "0")
+    _require(roundtrip in ("0", "1") and (roundtrip == "0" or (flag == "1" and raw == "0")), "roundtrip requires exclusive bound divergence diagnostic")
     if flag == "0":
         _require(not env.get("H3_PLANNER_DIVERGENCE_ARM"), "disabled divergence has an arm")
         return None
@@ -190,6 +212,7 @@ def from_environment(*, torch, rank, source_head, environ=None):
                           run_root=root, run_id=run_id, arm=arm, candidate_id=ARMS[arm])
     result.raw_repeat_enabled = raw == "1"
     result.raw_repeat_result = None
+    result.roundtrip_enabled = roundtrip == "1"
     return result
 
 
@@ -204,6 +227,8 @@ def capture_raw_backward(torch, runtime, block, inputs, primary, scale):
 
 
 def capture_fa3(stage, block, values):
+    if _ACTIVE is not None and getattr(_ACTIVE, 'roundtrip', None) is not None:
+        _ACTIVE.roundtrip.capture(stage, block, values)
     if _ACTIVE is not None and _ACTIVE.active and block in BLOCKS:
         _ACTIVE.fa3(stage, block, values)
 
@@ -215,6 +240,7 @@ class FirstFakeProbe:
         self.pending, self.rows, self.keys = [], [], set()
         self.cycle, self.fake_index, self.active = 0, 0, False
         self.counts, self.rng, self.optimizer_groups = {}, {}, {}
+        self.roundtrip = None
 
     def queue(self, boundary, name, value):
         """Metadata plus <=16 device elements; no full flatten/contiguous copy."""
@@ -295,12 +321,18 @@ class FirstFakeProbe:
                 {k: g[k] for k in ("lr", "eps", "betas", "weight_decay", "foreach", "fused") if k in g}
                 for g in optimizer.param_groups]
         self.flush(outside_cycle=True)
+        if getattr(self, "roundtrip_enabled", False):
+            from .cache_roundtrip_probe import RoundTripProbe, gpu_selftest
+            self.roundtrip = RoundTripProbe(self.torch)
+            self.roundtrip.selftest = gpu_selftest(self.torch, next(iter(self.parameters.values())).device)
         _ACTIVE = self
 
     def begin_cycle(self, cycle, rng):
         _require(cycle in (1, 2) and cycle == self.cycle + 1 and not self.active, "divergence cycle order")
         self.cycle, self.fake_index = cycle, 0
         self.rng[f"cycle{cycle}_before"] = dict(rng)
+        if self.roundtrip is not None:
+            self.roundtrip.begin(cycle)
 
     def before_fake_group(self, trainer, group):
         self.active = self.cycle == 1 and self.fake_index == 0
@@ -361,6 +393,18 @@ class FirstFakeProbe:
         _require(cycle == self.cycle and self.fake_index == 5 and not self.active, "first-Fake cycle incomplete")
         self.rng[f"cycle{cycle}_after"] = dict(rng)
         self.flush(outside_cycle=True)
+        if self.roundtrip is not None:
+            result = self.roundtrip.finish_cycle(outside_cycle=True)
+            from distillschedule.workloads.best_known.registry import write_new_json
+            path = self.run_root / "execution/roundtrip" / f"cycle_{cycle}" / f"rank_{self.rank:03d}.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            write_new_json(path, dict(result, source_head=self.source_head, rank=self.rank, run_id=self.run_id,
+                numerical_admission=False, formal_timing_eligible=False))
+            import torch.distributed as dist
+            bad = self.torch.tensor(int(result["mismatches"] > 0), device=next(iter(self.parameters.values())).device)
+            if dist.is_initialized():
+                dist.all_reduce(bad, op=dist.ReduceOp.MAX)
+            _require(int(bad.cpu()) == 0, "ROUNDTRIP_PAYLOAD_FINGERPRINT_MISMATCH_SAVED_NO_NUMERICAL_ADMISSION")
 
     def finish(self):
         _require(self.cycle == 2 and not self.pending and not self.active, "diagnostic capture unfinished")
@@ -383,6 +427,9 @@ class FirstFakeProbe:
                        formal_timing_eligible=False, numerical_admission=False,
                        limits=dict(blocks=list(BLOCKS), parameter_count=len(PARAMETERS), samples=SAMPLES,
                                    max_rows=MAX_ROWS, max_input_tensors=MAX_INPUT_TENSORS))
+        if self.roundtrip is not None:
+            payload["cache_roundtrip_audit"] = self.roundtrip.receipt()
+            payload["claim_boundary"] += "; full cache payload fingerprints match is not a full bitwise/trajectory equivalence proof"
         if getattr(self, 'raw_repeat_enabled', False):
             from .raw_backward_probe import CONTRACT, finalize
             _require((self.raw_repeat_result is not None) == (self.rank == CONTRACT['rank']), 'raw-repeat actual owner/count missing')
