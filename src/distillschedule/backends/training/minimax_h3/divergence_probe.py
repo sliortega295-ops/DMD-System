@@ -48,11 +48,13 @@ def helper_sha256():
     return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
-def bind_plan(receipt, arm, *, raw_repeat=False, cache_roundtrip=False):
+def bind_plan(receipt, arm, *, raw_repeat=False, cache_roundtrip=False, full_local_state=False):
     """Explicit opt-in after ordinary candidate lowering; no assets/math edits."""
     _require(arm in ARMS and "h3_divergence" not in receipt, "invalid/already-bound diagnostic plan")
     _require(type(raw_repeat) is bool, "raw-repeat opt-in must be a plain bool")
-    _require(type(cache_roundtrip) is bool and not (raw_repeat and cache_roundtrip), "exclusive bounded diagnostics required")
+    _require(type(cache_roundtrip) is bool and type(full_local_state) is bool
+             and sum((raw_repeat, cache_roundtrip, full_local_state)) <= 1,
+             "exclusive bounded diagnostics required")
     value = copy.deepcopy(receipt)
     value["h3_divergence"] = dict(schema_version=PLAN_SCHEMA, arm=arm, source_head=value["integration_head"],
                                   helper_sha256=helper_sha256())
@@ -68,6 +70,11 @@ def bind_plan(receipt, arm, *, raw_repeat=False, cache_roundtrip=False):
         value["h3_divergence"]["cache_roundtrip"] = source_contract()
         for node in value["nodes"]:
             node["environment"]["H3_PLANNER_CACHE_ROUNDTRIP"] = "1"
+    if full_local_state:
+        from .local_state_probe import source_contract
+        value["h3_divergence"]["full_local_state"] = source_contract()
+        for node in value["nodes"]:
+            node["environment"]["H3_PLANNER_FULL_LOCAL_STATE"] = "1"
     is_diagnostic_plan(value)
     return value
 
@@ -77,12 +84,13 @@ def is_diagnostic_plan(receipt):
     nodes = receipt.get("nodes", [])
     flags = [n.get("environment", {}).get("H3_PLANNER_DIVERGENCE", "0") for n in nodes]
     if marker is None and not any(f != "0" for f in flags):
+        _require(not any(n.get("environment", {}).get("H3_PLANNER_FULL_LOCAL_STATE", "0") != "0" for n in nodes), "orphan full-state diagnostic")
         _require(not any(n.get("environment", {}).get("H3_PLANNER_CACHE_ROUNDTRIP", "0") != "0" for n in nodes), "orphan roundtrip diagnostic")
         _require(not any(n.get("environment", {}).get("H3_PLANNER_RAW_BACKWARD_REPEAT", "0") != "0" for n in nodes), "orphan raw-repeat diagnostic")
         _require(not any(n.get("environment", {}).get("H3_PLANNER_DIVERGENCE_ARM") for n in nodes),
                  "orphan diagnostic arm")
         return False
-    _require(isinstance(marker, dict) and set(marker) in ({"schema_version", "arm", "source_head", "helper_sha256"}, {"schema_version", "arm", "source_head", "helper_sha256", "raw_repeat"}, {"schema_version", "arm", "source_head", "helper_sha256", "cache_roundtrip"}),
+    _require(isinstance(marker, dict) and set(marker) in ({"schema_version", "arm", "source_head", "helper_sha256"}, {"schema_version", "arm", "source_head", "helper_sha256", "raw_repeat"}, {"schema_version", "arm", "source_head", "helper_sha256", "cache_roundtrip"}, {"schema_version", "arm", "source_head", "helper_sha256", "full_local_state"}),
              "diagnostic plan requires exact explicit binding")
     from .raw_backward_probe import CONTRACT as RAW
     raw = "raw_repeat" in marker
@@ -92,6 +100,10 @@ def is_diagnostic_plan(receipt):
     roundtrip = "cache_roundtrip" in marker
     _require(not roundtrip or marker["cache_roundtrip"] == source_contract(), "roundtrip source/contract changed")
     _require(all(n.get("environment", {}).get("H3_PLANNER_CACHE_ROUNDTRIP", "0") == ("1" if roundtrip else "0") for n in nodes), "roundtrip node/plan binding differs")
+    from .local_state_probe import source_contract as full_state_contract
+    full_state = "full_local_state" in marker
+    _require(not full_state or marker["full_local_state"] == full_state_contract(), "full-state source/contract changed")
+    _require(all(n.get("environment", {}).get("H3_PLANNER_FULL_LOCAL_STATE", "0") == ("1" if full_state else "0") for n in nodes), "full-state node/plan binding differs")
     arm = marker["arm"]
     _require(marker["schema_version"] == PLAN_SCHEMA and arm in ARMS and marker["source_head"] == receipt.get("integration_head")
              and marker["helper_sha256"] == helper_sha256() and receipt.get("profile_id") == "minimax_h3_grid1000_best"
@@ -169,6 +181,11 @@ def collect_diagnostic(receipt):
                 and audit.get("selftest", {}).get("status") == "PASS_GPU_KNOWN_BITS_AND_STRIDES"
                 and audit.get("numerical_admission") is False and audit.get("formal_timing_eligible") is False,
                 "roundtrip diagnostic missing/source/census/mismatch")
+        if "full_local_state" in receipt["h3_divergence"]:
+            from .local_state_probe import verify_receipt
+            verify_receipt(capture.get("full_local_state_audit"), root=root, rank=rank,
+                           source_head=receipt["integration_head"], run_id=receipt["run_id"],
+                           arm=receipt["h3_divergence"]["arm"])
         captures.append(dict(path=str(path), sha256=ref["sha256"]))
     summarize_native_two_cycle(rows, expected_head=receipt["integration_head"],
                                candidate_id=receipt["search_candidate"]["id"], _diagnostic_contracts_only=True)
@@ -188,6 +205,9 @@ def from_environment(*, torch, rank, source_head, environ=None):
     _require(raw in ("0", "1") and (raw == "0" or flag == "1"), "raw-repeat requires the bound divergence diagnostic")
     roundtrip = env.get("H3_PLANNER_CACHE_ROUNDTRIP", "0")
     _require(roundtrip in ("0", "1") and (roundtrip == "0" or (flag == "1" and raw == "0")), "roundtrip requires exclusive bound divergence diagnostic")
+    full_state = env.get("H3_PLANNER_FULL_LOCAL_STATE", "0")
+    _require(full_state in ("0", "1") and (full_state == "0" or (flag == "1" and raw == roundtrip == "0")),
+             "full-state requires exclusive bound divergence diagnostic")
     if flag == "0":
         _require(not env.get("H3_PLANNER_DIVERGENCE_ARM"), "disabled divergence has an arm")
         return None
@@ -213,6 +233,7 @@ def from_environment(*, torch, rank, source_head, environ=None):
     result.raw_repeat_enabled = raw == "1"
     result.raw_repeat_result = None
     result.roundtrip_enabled = roundtrip == "1"
+    result.full_state_enabled = full_state == "1"
     return result
 
 
@@ -241,6 +262,7 @@ class FirstFakeProbe:
         self.cycle, self.fake_index, self.active = 0, 0, False
         self.counts, self.rng, self.optimizer_groups = {}, {}, {}
         self.roundtrip = None
+        self.full_state = None
 
     def queue(self, boundary, name, value):
         """Metadata plus <=16 device elements; no full flatten/contiguous copy."""
@@ -325,6 +347,18 @@ class FirstFakeProbe:
             from .cache_roundtrip_probe import RoundTripProbe, gpu_selftest
             self.roundtrip = RoundTripProbe(self.torch)
             self.roundtrip.selftest = gpu_selftest(self.torch, next(iter(self.parameters.values())).device)
+        if getattr(self, "full_state_enabled", False):
+            from .local_state_probe import FullLocalStateProbe
+
+            def snapshot_rng():
+                return {name: hashlib.sha256(value.numpy().tobytes()).hexdigest() for name, value in (
+                    ("torch_cpu", self.torch.get_rng_state()),
+                    ("torch_cuda", self.torch.cuda.get_rng_state(trainer.shared_model.device)))}
+
+            self.full_state = FullLocalStateProbe(torch=self.torch, rank=self.rank,
+                source_head=self.source_head, run_root=self.run_root, run_id=self.run_id,
+                arm=self.arm, rng_snapshot=snapshot_rng)
+            self.full_state.capture(trainer, "initial", outside_cycle=True)
         _ACTIVE = self
 
     def begin_cycle(self, cycle, rng):
@@ -389,7 +423,7 @@ class FirstFakeProbe:
         for name, value in zip(names, values):
             self.queue(f"fa3_{stage}", f"fa3/block{block}/{name}", value)
 
-    def after_cycle(self, cycle, rng):
+    def after_cycle(self, cycle, rng, *, trainer=None):
         _require(cycle == self.cycle and self.fake_index == 5 and not self.active, "first-Fake cycle incomplete")
         self.rng[f"cycle{cycle}_after"] = dict(rng)
         self.flush(outside_cycle=True)
@@ -404,6 +438,9 @@ class FirstFakeProbe:
             # worker failure handled by the existing owned launcher, not a new
             # distributed gate or a hidden collective in the runtime receipt.
             _require(result["mismatches"] == 0, "ROUNDTRIP_PAYLOAD_FINGERPRINT_MISMATCH_SAVED_NO_NUMERICAL_ADMISSION")
+        if self.full_state is not None:
+            _require(trainer is not None, "full-state cycle requires the native trainer")
+            self.full_state.capture(trainer, f"cycle{cycle}", outside_cycle=True)
 
     def finish(self):
         _require(self.cycle == 2 and not self.pending and not self.active, "diagnostic capture unfinished")
@@ -429,6 +466,9 @@ class FirstFakeProbe:
         if self.roundtrip is not None:
             payload["cache_roundtrip_audit"] = self.roundtrip.receipt()
             payload["claim_boundary"] += "; full cache payload fingerprints match is not a full bitwise/trajectory equivalence proof"
+        if self.full_state is not None:
+            payload["full_local_state_audit"] = self.full_state.receipt()
+            payload["claim_boundary"] += "; full local LoRA/Adam captured at initial/C1/C2, not an unbiased-noise or global equivalence proof"
         if getattr(self, 'raw_repeat_enabled', False):
             from .raw_backward_probe import CONTRACT, finalize
             _require((self.raw_repeat_result is not None) == (self.rank == CONTRACT['rank']), 'raw-repeat actual owner/count missing')

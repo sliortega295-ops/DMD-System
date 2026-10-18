@@ -345,7 +345,10 @@ class H3PlannerCycleObserver:
         if self.host_fenced_clock:
             row["rng_after"] = self._rng_fingerprints()
         if self.divergence is not None:
-            self.divergence.after_cycle(current_iter + 1, row["rng_after"])
+            if getattr(self.divergence, "full_state_enabled", False):
+                self.divergence.after_cycle(current_iter + 1, row["rng_after"], trainer=trainer)
+            else:
+                self.divergence.after_cycle(current_iter + 1, row["rng_after"])
         if self.action_trace is not None:
             row["action_execution"] = self.action_trace.finish_cycle(
                 self.action_program.receipt(), self.updates, row["census"])
