@@ -209,6 +209,13 @@ def _policy_row(rank, variant):
                 retained_backward_calls=40,original_calls_by_block=[10]*30,
                 retained_calls_by_block=[0]*26+[10]*4,
                 backward_calls_by_block=[0]*26+[10]*4,contract_failures=0))
+    if variant == block_retention.VARIANT and rank >= 8:
+        # SYNTHETIC_TEST_ONLY physical replay counts: original/backward unchanged.
+        gate=row['score_residual_gate'];gate['forward_calls']-=80
+        norm=row['score_layernorm'];norm['total_norm_calls']-=120
+        norm['selected_entries']-=80;norm['forward_calls']-=80
+        norm['native_fallback_calls']-=40
+        norm['native_fallback_histogram']['affine_preserved']-=40
     return dict(row, evidence_scope=SCOPE, rank=rank, status="PASS", mode="pipeline",
                 logical_generator_updates=2, logical_critic_updates=10,
                 physical_generator_commits=2 if rank < 8 else 0,

@@ -156,14 +156,26 @@ def main() -> int:
                 final.get("generator_runahead_transport", {}), rank=rank, cycles=args.cycles))
         if pipeline_variant in {"c35-continuous-b16-score-gate", "c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c52-c51-critic-ffn-down-retention-v1', 'c53-c51-critic-tail4-retention-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}:
             from distillschedule.runtime.livewan_score_gate import runtime_receipt_errors as score_gate_errors
+            kernel_kwargs = {}
+            if pipeline_variant == "c53-c51-critic-tail4-retention-v1":
+                from functools import partial
+                from distillschedule.runtime.livewan_block_retention import score_kernel_receipt_errors
+                score_gate_errors = partial(score_kernel_receipt_errors, "gate")
+                kernel_kwargs = {"attention_receipt": dict(final.get("critic_attention_checkpoint", {}))}
             errors.extend(f"rank{rank}: {error}" for error in score_gate_errors(
                 dict(final.get("score_residual_gate", {})), rank=rank,
-                inventory=dict(final.get("physical_call_inventory", {}))))
+                inventory=dict(final.get("physical_call_inventory", {})), **kernel_kwargs))
         if pipeline_variant in {"c36-continuous-b16-score-layernorm", "c37-continuous-b16-step1-overlap", 'c38-continuous-b16-score-fa3', 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c51-critic-fa3-recompute-v1', 'c52-c51-critic-ffn-down-retention-v1', 'c53-c51-critic-tail4-retention-v1', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}:
             from distillschedule.runtime.livewan_score_layernorm import runtime_receipt_errors as score_ln_errors
+            kernel_kwargs = {}
+            if pipeline_variant == "c53-c51-critic-tail4-retention-v1":
+                from functools import partial
+                from distillschedule.runtime.livewan_block_retention import score_kernel_receipt_errors
+                score_ln_errors = partial(score_kernel_receipt_errors, "norm")
+                kernel_kwargs = {"attention_receipt": dict(final.get("critic_attention_checkpoint", {}))}
             errors.extend(f"rank{rank}: {error}" for error in score_ln_errors(
                 dict(final.get("score_layernorm", {})), rank=rank,
-                inventory=dict(final.get("physical_call_inventory", {}))))
+                inventory=dict(final.get("physical_call_inventory", {})), **kernel_kwargs))
         if pipeline_variant == "c37-continuous-b16-step1-overlap":
             from distillschedule.runtime.livewan_step1_overlap import runtime_receipt_errors as step1_errors
             errors.extend(f"rank{rank}: {error}" for error in step1_errors(

@@ -84,14 +84,30 @@ def test_real_original_module_hooks_checkpoint_autograd_rng_adam(plans,monkeypat
     monkeypatch.setattr(fa3,'discover_flash_forward',lambda _:(op,{'interface_sha256':fa3.INTERFACE_SHA256,'operator':fa3.OP_NAME.replace('::','.')+'.default'}))
     monkeypatch.setattr(fa3,'attention_metadata',lambda t,args,kw:(((2,19320,12,128),'CPU_FIXTURE'),)*3)
     monkeypatch.setattr(fa3,'load_flash_attn3',lambda:(object(),None))
+    gate_counts = {'forward': 0, 'backward': 0}
+    class CountedGate(torch.autograd.Function):
+        @staticmethod
+        def forward(ctx,x,y,scale):
+            value=x+y*scale
+            gate_counts['forward']+=1
+            ctx.save_for_backward(scale)
+            return value
+        @staticmethod
+        def backward(ctx,grad):
+            scale,=ctx.saved_tensors
+            gate_counts['backward']+=1
+            return grad,grad*scale,None
     class Block(torch.nn.Module):
         def __init__(self):
             super().__init__();self.w=torch.nn.Parameter(torch.randn(6,6)*0.01)
         def forward(self,x):
-            return x+0.1*(attention(x)@self.w)*torch.rand_like(x)
+            scale=x.new_full((),0.1)
+            x=CountedGate.apply(x,attention(x)@self.w,scale)
+            return CountedGate.apply(x,(x.sin()@self.w)*torch.rand_like(x),scale)
     def call_original_module(block,x):return block(x)
     results=[]
     for plan in plans:
+        gate_counts.update(forward=0,backward=0)
         torch.manual_seed(5301)
         blocks=torch.nn.ModuleList([Block()for _ in range(30)])
         hooks=[0]*30
@@ -105,7 +121,7 @@ def test_real_original_module_hooks_checkpoint_autograd_rng_adam(plans,monkeypat
         states=[p.detach().clone()for p in blocks.parameters()]
         moments=[(opt.state[p]['exp_avg'].clone(),opt.state[p]['exp_avg_sq'].clone())for p in blocks.parameters()]
         receipt=proxy.receipt(expected_calls=30) if pinned_census else proxy.contexts.receipt()
-        results.append((out,grads,rng,states,moments,receipt,hooks,proxy))
+        results.append((out,grads,rng,states,moments,receipt,hooks,proxy,dict(gate_counts)))
     a,b=results
     assert torch.equal(a[0],b[0]) and torch.equal(a[2],b[2])
     assert all(torch.equal(x,y)for x,y in zip(a[1],b[1]))
@@ -115,6 +131,13 @@ def test_real_original_module_hooks_checkpoint_autograd_rng_adam(plans,monkeypat
     assert sum(b[7].direct_calls)==sum(b[7].backward_calls)==4
     assert b[6][26:]==[1]*4 and min(a[6][26:])>=2
     if pinned_census:
+        assert a[8]==dict(forward=120,backward=60)
+        assert b[8]==dict(forward=112,backward=60)
+        from distillschedule.runtime.livewan_score_gate import PLAN_CONTRACT
+        observed=dict(PLAN_CONTRACT,install_status='PASS',execution_status='PASS',contract_failures=0,
+                      forward_calls=b[8]['forward'],backward_calls=b[8]['backward'])
+        assert not feature.score_kernel_receipt_errors('gate',observed,rank=8,
+                inventory={'critic/grad/checkpoint':1},attention_receipt=b[5])
         assert b[5]['block_retention']['direct_retained_calls']==4
         assert b[5]['block_retention']['retained_backward_calls']==4
         bad=copy.deepcopy(b[5]);bad['block_retention']['retained_backward_calls']=0
@@ -138,3 +161,53 @@ def test_transport_and_timing_node_gate_rejects_wrong_candidate(tmp_path):
     p=ROOT/'scripts/distillschedule/probe_livewan_crossscale_transport.py'
     spec=importlib.util.spec_from_file_location('retention_transport',p);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
     assert m.build_parser().parse_args(['--output-dir',str(tmp_path),'--pipeline-variant',feature.VARIANT]).pipeline_variant==feature.VARIANT
+
+
+def test_c53_kernel_census_requires_actual_proxy_proof_and_keeps_canonical_strict():
+    from test_refactor_livewan_replay_artifact_chain import _policy_row
+    from distillschedule.runtime import livewan_score_gate as gate,livewan_score_layernorm as norm
+    row=_policy_row(8,feature.VARIANT)  # Explicit SYNTHETIC_TEST_ONLY whole chain fixture.
+    inventory=row['physical_call_inventory'];proof=row['critic_attention_checkpoint']
+    for kind,key,parent in [('gate','score_residual_gate',gate),('norm','score_layernorm',norm)]:
+        r=row[key]
+        assert not feature.score_kernel_receipt_errors(kind,r,rank=8,inventory=inventory,attention_receipt=proof)
+        assert parent.runtime_receipt_errors(r,rank=8,inventory=inventory)
+        for field in ('forward_calls','backward_calls'):
+            bad=copy.deepcopy(r);bad[field]-=1
+            # Norm backward has the unchanged original bounded count contract;
+            # its total-forward census remains exact.
+            if kind=='norm'and field=='backward_calls':continue
+            assert feature.score_kernel_receipt_errors(kind,bad,rank=8,inventory=inventory,attention_receipt=proof)
+        wrong=copy.deepcopy(proof);wrong['block_retention']['retained_backward_calls']=39
+        assert feature.score_kernel_receipt_errors(kind,r,rank=8,inventory=inventory,attention_receipt=wrong)
+        assert feature.score_kernel_receipt_errors(kind,r,rank=8,inventory=inventory,attention_receipt={})
+        bad=copy.deepcopy(r);bad['source_sha256']='0'*64
+        assert feature.score_kernel_receipt_errors(kind,bad,rank=8,inventory=inventory,attention_receipt=proof)
+
+
+def test_actual_post_timer_audit_producer_executes_before_any_composite_rejection(tmp_path,plans):
+    import ast,inspect
+    function=ast.parse(inspect.getsource(worker.run_worker)).body[0]
+    branch=next(n for n in function.body if isinstance(n,ast.If)and
+        'blocks_enabled(plan, mode=mode)'in ast.unparse(n.test))
+    calls=[n for n in ast.walk(branch)if isinstance(n,ast.Call)]
+    audit=next(n for n in calls if isinstance(n.func,ast.Name)and n.func.id=='atomic_json')
+    stop=next(n for n in ast.walk(function)if isinstance(n,ast.Assign)and
+        any(isinstance(t,ast.Name)and t.id=='timing_stop_ns'for t in n.targets))
+    gates=[n for n in ast.walk(function)if isinstance(n,ast.Call)and
+        isinstance(n.func,ast.Name)and n.func.id=='score_gate_errors']
+    assert stop.lineno<audit.lineno<min(n.lineno for n in gates)
+    proof={'evidence_scope':'SYNTHETIC_TEST_ONLY','checkpoint_calls':260}
+    class Proxy:
+        def receipt(self,*,expected_calls):assert expected_calls==300;return proof
+    from types import SimpleNamespace as NS
+    env=dict(vars(worker),blocks_enabled=feature.enabled,plan=plans[1],mode='pipeline',critic_attention_proxy=Proxy(),
+        inventory=NS(counts={'critic/grad/checkpoint':10}),rank=8,device=None,output_dir=tmp_path,
+        effective_plan_sha256='a'*64,score_residual_gate={'SYNTHETIC_TEST_ONLY':True},
+        score_layernorm={'SYNTHETIC_TEST_ONLY':True},
+        torch=NS(cuda=NS(max_memory_allocated=lambda _:0,max_memory_reserved=lambda _:0)))
+    module=ast.Module(body=[branch],type_ignores=[]);ast.fix_missing_locations(module)
+    exec(compile(module,inspect.getsourcefile(worker),'exec'),env)
+    value=json.loads((tmp_path/'c53_kernel_census.rank008.json').read_text())
+    assert value['attention']==proof and value['scope']=='ACTUAL_POST_TIMER_METADATA_NOT_NATIVE_TIMING'
+    assert value['inventory']=={'critic/grad/checkpoint':10}

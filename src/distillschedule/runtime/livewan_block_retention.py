@@ -144,3 +144,45 @@ def runtime_receipt_errors(r: dict, *, rank: int, expected_calls: int) -> list[s
     if any(value.get(k) != v for k, v in required.items()):
         errors.append("C53 retained block forward/backward/source census changed")
     return errors
+
+
+def score_kernel_receipt_errors(kind, receipt, *, rank, inventory, attention_receipt):
+    """Exact new-child physical census, never weaken the canonical validators.
+
+    Every retained block removes two gate and three norm *replay* forwards.
+    Original forwards and all backward work must remain present. Bind this
+    adjustment to the actual proxy's complete original/direct/backward ledger.
+    """
+    from distillschedule.runtime import livewan_score_gate as gate
+    from distillschedule.runtime import livewan_score_layernorm as norm
+    if kind not in ("gate", "norm"):
+        return ["C53 unknown kernel census"]
+    if rank < 8:
+        module = gate if kind == "gate" else norm
+        return module.runtime_receipt_errors(receipt, rank=rank, inventory=inventory)
+    grad = int(inventory.get("critic/grad/checkpoint", 0))
+    errors = runtime_receipt_errors(attention_receipt, rank=rank, expected_calls=grad * 30)
+    if errors:
+        return errors
+    teacher = int(inventory.get("teacher/nograd/plain", 0))
+    critic_ng = int(inventory.get("critic/nograd/plain", 0))
+    common = (any(receipt.get(k) != v for k, v in
+                  (gate if kind == "gate" else norm).PLAN_CONTRACT.items())
+              or receipt.get("install_status") != "PASS"
+              or receipt.get("execution_status") != "PASS"
+              or receipt.get("contract_failures") != 0)
+    if kind == "gate":
+        expected = teacher * 80 + critic_ng * 60 + grad * (120 - 2 * len(BLOCKS))
+        bad = (receipt.get("forward_calls") != expected
+               or receipt.get("backward_calls") != grad * 60)
+    else:
+        expected = teacher * 121 + critic_ng * 91 + grad * (181 - 3 * len(BLOCKS))
+        selected = receipt.get("selected_entries", 0)
+        fallback = receipt.get("native_fallback_calls", 0)
+        bad = (receipt.get("total_norm_calls") != expected or selected <= 0
+               or receipt.get("forward_calls") != selected
+               or selected + fallback != expected
+               or sum(receipt.get("native_fallback_histogram", {}).values()) != fallback
+               or not 0 < receipt.get("backward_calls", 0) <= grad * 61)
+    return [f"C53 Score {kind} source/physical recompute census failed"] if (
+        common or bad or expected <= 0 or grad <= 0) else []

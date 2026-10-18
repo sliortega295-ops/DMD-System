@@ -33,3 +33,14 @@ receipts in chain tests are SYNTHETIC_TEST_ONLY, never GPU evidence. Target
 Torch2.10 CPU checks, complete world16 qualification, capacity and numerical
 comparison are mandatory before a matched unprofiled C2 pair. Numerical REVIEW
 is not strict equivalence. GPU execution: NOT_RUN at source preparation.
+
+## Source correction after b7a0 post-workload failure
+
+The old C35/C36 canonical gates assume all30 Critic blocks replay. C53 must
+instead validate its physical forwards against the actual retained-block proof:
+80 fewer gate forwards and120 fewer norm forwards per Score rank/two cycles;
+original calls and600 gate backward calls do not change. The canonical source
+validators and their defaults remain untouched. C53 uses its own exact-count
+validator tied to the proxy's actual300 original/260 SAC/40 direct/40 backward
+ledger. Post-timer metadata is published before these checks, not fabricated
+after a failure. b7a0's failed GPU run remains FAIL and has no native C2.

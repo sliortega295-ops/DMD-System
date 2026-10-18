@@ -4908,6 +4908,23 @@ def run_worker(
     if is_profile:
         dist.barrier()
         torch.cuda.cudart().cudaProfilerStop()
+    from distillschedule.runtime.livewan_block_retention import enabled as blocks_enabled
+    c53_kernel_kwargs = {}
+    if blocks_enabled(plan, mode=mode) and critic_attention_proxy is not None:
+        proof = critic_attention_proxy.receipt(
+            expected_calls=int(inventory.counts.get("critic/grad/checkpoint", 0)) * 30)
+        c53_kernel_kwargs = {"attention_receipt": proof}
+        # Outside both cycle endpoints. Preserve actual counters even if a
+        # subsequent inherited/composite contract rejects this run.
+        atomic_json(output_dir / f"c53_kernel_census.rank{rank:03d}.json", {
+            "schema": "livewan_c53_post_timer_kernel_census.v1", "rank": rank,
+            "source_head": os.environ.get("LIVEWAN_EXPECTED_HEAD", ""),
+            "effective_plan_sha256": effective_plan_sha256,
+            "inventory": dict(inventory.counts), "attention": proof,
+            "score_gate": dict(score_residual_gate), "score_norm": dict(score_layernorm),
+            "scope": "ACTUAL_POST_TIMER_METADATA_NOT_NATIVE_TIMING",
+            "peak_allocated_bytes": torch.cuda.max_memory_allocated(device),
+            "peak_reserved_bytes": torch.cuda.max_memory_reserved(device)})
     if _score_rmsnorm_kernel_enabled(plan, mode=mode):
         from distillschedule.runtime.livewan_score_rmsnorm import runtime_receipt_errors
 
@@ -4915,12 +4932,20 @@ def run_worker(
                  "Score RMSNorm runtime contract/counters incomplete")
     if _score_residual_gate_enabled(plan, mode=mode):
         from distillschedule.runtime.livewan_score_gate import runtime_receipt_errors as score_gate_errors
-        _require(not score_gate_errors(score_residual_gate, rank=rank, inventory=inventory.counts),
+        if c53_kernel_kwargs:
+            from functools import partial
+            from distillschedule.runtime.livewan_block_retention import score_kernel_receipt_errors
+            score_gate_errors = partial(score_kernel_receipt_errors, "gate")
+        _require(not score_gate_errors(score_residual_gate, rank=rank, inventory=inventory.counts, **c53_kernel_kwargs),
                  "C35 Score residual gate source/rounding/call contract failed")
     local_final_versions = dict(versions)
     if _score_layernorm_enabled(plan, mode=mode):
         from distillschedule.runtime.livewan_score_layernorm import runtime_receipt_errors as score_ln_errors
-        _require(not score_ln_errors(score_layernorm, rank=rank, inventory=inventory.counts),
+        if c53_kernel_kwargs:
+            from functools import partial
+            from distillschedule.runtime.livewan_block_retention import score_kernel_receipt_errors
+            score_ln_errors = partial(score_kernel_receipt_errors, "norm")
+        _require(not score_ln_errors(score_layernorm, rank=rank, inventory=inventory.counts, **c53_kernel_kwargs),
                  "C36 Score LayerNorm source/scope/operation census failed")
     if _critic_step1_overlap_enabled(plan, mode=mode):
         from distillschedule.runtime.livewan_step1_overlap import runtime_receipt_errors as step1_errors
