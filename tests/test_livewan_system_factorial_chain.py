@@ -128,10 +128,10 @@ def execute_mock_rank(monkeypatch, *, plan, trace, rank, arm):
             slot_pairs_by_lane=w._pipeline_8x8_slot_pairs(plan),
             full_context_lens_elision=arm == 'full', critic_step1_split_overlap=False,
             critic_b1_attribution=False, inventory=inv, cycle_endpoint_records=records,
-            factorial_timing=True, explicit_full_context=arm == 'only_A')
+            factorial_timing=True, explicit_full_context=arm in r2.A_ARMS)
         assert all(x['rollout_runahead'] and x['split_dmd_shadow'] and x['critic_b2_only']
                    and not x['finalize_host_transport']
-                   and x['explicit_full_context'] == (arm == 'only_A') for x in calls)
+                   and x['explicit_full_context'] == (arm in r2.A_ARMS) for x in calls)
         # The mock hot-sync source exists only in Score; G receives inside the math leaf.
         if rank < 8:
             ev.critic_shadow_hot_sync['events'] = [dict(version=x) for x in (5, 10, 15)]
@@ -175,10 +175,24 @@ def produce_run(monkeypatch, env, arm):
             continuous_pipeline=ev.continuous_pipeline, critic_shadow_hot_sync=ev.critic_shadow_hot_sync,
             generator_runahead_transport=ev.generator_runahead_transport,
             peak_memory=dict(max_allocated_bytes=0, max_reserved_bytes=0, driver_free_bytes=0))
-        if arm == 'only_A' and not is_g:
+        if arm in r2.A_ARMS and not is_g:
             calls = inv.counts['critic/grad/checkpoint'] * 30
             row['system_factorial_recompute'] = dict(checkpoint_calls=calls, function_entries=2*calls,
                 replay_entries=calls, cache_reads=0, saved_tensor_policy='ORIGINAL', rng_policy='ORIGINAL')
+        if arm == r2.CAPACITY_ARM:
+            row['build']={'capacity_offload':dict(r2.CAPACITY_POLICY,
+                execution_status='PASS' if is_g else 'NOT_APPLICABLE_SCORE_RANK')}
+            if is_g:
+                n=r2.CAPACITY_POLICY['generator_numel']
+                row['build']['student']={'cpu_optimizer':dict(name='replicated_cpu_foreach_adamw',
+                    state_device='cpu',execution_parameter_device=f'cuda:{rank%8}',steps=4,
+                    moment_bytes=8*n,cpu_parameter_mirror_bytes=4*n,cpu_gradient_buffer_bytes=4*n,
+                    pinned_parameter_mirror_bytes=4*n,pinned_gradient_buffer_bytes=4*n,
+                    cpu_consumption_fences=4,transfers_and_cpu_update_inside_timer=True,
+                    gradient_mean_and_clip_unchanged=True,original_parameter_dtype_preserved=True,
+                    gradient_d2h_bytes=16*n,updated_parameter_h2d_bytes=16*n,
+                    gradient_d2h_events=3300,updated_parameter_h2d_events=3300)}
+            else:row['build']['critic']={'optimizer':{'state_device':'cuda'}}
         w._write_rank_receipt(output_dir=env, rank=rank, value=row)
     return trace
 

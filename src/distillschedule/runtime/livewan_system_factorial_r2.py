@@ -21,6 +21,15 @@ SCHEMA = "distillschedule.livewan_system_factorial_r2.v1"
 RUN_KIND = "system-factorial-timing"
 CONTINUOUS_NAME = "system_factorial_c51_depth1_c4_v1"
 ARMS = ("baseline", "only_A", "full")
+CAPACITY_ARM = "only_A_with_capacity_offload"
+CAPACITY_KEY = "system_factorial_capacity_offload_v1"
+ARMS = (*ARMS, CAPACITY_ARM)
+A_ARMS = ("only_A", CAPACITY_ARM)
+CAPACITY_POLICY = dict(name="generator_cpu_foreach_adamw_v1",
+    scope="GENERATOR_OPTIMIZER_ONLY", generator_optimizer_device="cpu",
+    critic_optimizer_device="cuda", parameter_offload=False,
+    activation_offload=False, generator_numel=1418996800,
+    transfers_and_cpu_update_inside_timer=True)
 CYCLES = 4
 SEED = 20260830
 BASE_PLAN = "configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_g1c5_world16_fsdp2.json"
@@ -69,13 +78,15 @@ def make_plan(repo_root: str | Path, *, arm: str, source_head: str,
         apply_contract(plan, mode="baseline", name="world16-fsdp", teacher_offload="off",
                        optimizer_device="cuda", student_padding="max-noop")
     else:
-        if arm == "only_A":
+        if arm in A_ARMS:
             for key in B_METADATA:
                 plan["metadata"].pop(key, None)
             plan["metadata"]["full_context_lens_elision"] = False
             plan["training_backends"]["generator"]["options"]["optimizer_impl"] = "foreach_adamw"
         plan["metadata"]["continuous_pipeline"].update(
             name=CONTINUOUS_NAME, cycles=CYCLES, critic_shadow_sync_versions=[5, 10, 15])
+    if arm == CAPACITY_ARM:
+        plan["metadata"][CAPACITY_KEY] = dict(CAPACITY_POLICY)
     plan["id"] = f"livewan-full-system-factorial-r2-{arm}-c4"
     plan["evidence"]["steps"] = 20
     plan["metadata"][KEY] = dict(
@@ -109,7 +120,36 @@ def active(plan: Mapping[str, Any]) -> bool:
 def only_a(plan: Mapping[str, Any], *, mode: str) -> bool:
     if not active(plan):
         return False
-    return validate(plan, mode=mode)["arm"] == "only_A"
+    return validate(plan, mode=mode)["arm"] in A_ARMS
+
+
+def generator_optimizer_cpu(plan: Mapping[str, Any], *, mode: str) -> bool:
+    """Independent capacity fallback; global baseline placement stays unchanged."""
+    if not active(plan):
+        return False
+    return validate(plan, mode=mode)["arm"] == CAPACITY_ARM
+
+
+def attach_capacity_optimizer_receipt(bundle: Any, *, plan: Mapping[str, Any],
+                                      mode: str, rank: int) -> None:
+    """Read actual optimizer placement after all four timing endpoints."""
+    if not generator_optimizer_cpu(plan, mode=mode):
+        return
+    import resource
+    observed = dict(CAPACITY_POLICY)
+    if rank < 8:
+        from .livewan_cpu_optimizer import CPUAdamW
+        opt = bundle.generator_optimizer
+        require(isinstance(opt, CPUAdamW), "capacity arm did not execute CPUAdamW")
+        proof = opt.receipt()
+        proof.update(cpu_gradient_buffer_bytes=sum(p.numel() * p.element_size() for p in opt.grad_buffers),
+            pinned_parameter_mirror_bytes=sum(p.numel() * p.element_size() for p in opt.mirrors if p.is_pinned()),
+            pinned_gradient_buffer_bytes=sum(p.numel() * p.element_size() for p in opt.grad_buffers if p.is_pinned()))
+        bundle.metadata["student"]["cpu_optimizer"] = proof
+        observed.update(execution_status="PASS", process_peak_rss_bytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024)
+    else:
+        observed["execution_status"] = "NOT_APPLICABLE_SCORE_RANK"
+    bundle.metadata["capacity_offload"] = observed
 
 
 def lower_parent(parent: Mapping[str, Any], *, repo_root: str | Path,

@@ -580,6 +580,14 @@ def _configure_fsdp_reduction(model: Any, *, group_size: int) -> int:
     return count
 
 
+def _generator_optimizer_factory(torch: Any, *, plan: Mapping[str, Any], mode: str,
+                                 baseline_spec: Any) -> Any:
+    if baseline_spec.optimizer_device == "cpu" or system_r2.generator_optimizer_cpu(plan, mode=mode):
+        from distillschedule.runtime.livewan_cpu_optimizer import CPUAdamW
+        return lambda parameters, **kw: CPUAdamW(torch, parameters, **kw)
+    return torch.optim.AdamW
+
+
 def materialize_adam_state(torch: Any, optimizer: Any, *, step: int = 0) -> dict[str, int]:
     if hasattr(optimizer, "materialize_state"):
         return optimizer.materialize_state(step=step)
@@ -1471,11 +1479,11 @@ def build_models(
             {"fused": True} if optimizer_impl == "fused_adamw" else {"foreach": True}
         )
         generator_named_parameters = list(student.named_parameters())
-        if baseline_spec.optimizer_device == "cpu":
-            from distillschedule.runtime.livewan_cpu_optimizer import CPUAdamW
-            optimizer_factory = lambda parameters, **kw: CPUAdamW(torch, parameters, **kw)
-        else:
-            optimizer_factory = torch.optim.AdamW
+        optimizer_factory = _generator_optimizer_factory(torch, plan=plan, mode=mode,
+                                                         baseline_spec=baseline_spec)
+        if system_r2.generator_optimizer_cpu(plan, mode=mode):
+            _require(sum(p.numel() for _, p in generator_named_parameters) ==
+                     system_r2.CAPACITY_POLICY["generator_numel"], "capacity G parameter inventory changed")
         opt_g = optimizer_factory(
             [parameter for _name, parameter in generator_named_parameters],
             lr=2e-6, betas=(0.0, 0.99),
@@ -5267,6 +5275,7 @@ def run_worker(
     if baseline_spec.optimizer_device == "cpu":
         bundle.metadata["student"]["cpu_optimizer"] = bundle.generator_optimizer.receipt()
         bundle.metadata["critic"]["cpu_optimizer"] = bundle.critic_optimizer.receipt()
+    system_r2.attach_capacity_optimizer_receipt(bundle, plan=plan, mode=mode, rank=rank)
     if baseline_spec.name != "legacy-hybrid":
         bundle.metadata["baseline_placement"] = baseline_spec.receipt()
     receipt = {

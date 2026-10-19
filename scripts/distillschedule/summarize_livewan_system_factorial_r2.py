@@ -13,7 +13,7 @@ from distillschedule.runtime.livewan_system_factorial_collect import collect
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--run-root", type=Path, required=True)
-    p.add_argument("--arm", choices=("baseline", "only_A", "full"), required=True)
+    p.add_argument("--arm", choices=("baseline", "only_A", "full", "only_A_with_capacity_offload"), required=True)
     p.add_argument("--trace", type=Path, required=True)
     p.add_argument("--expected-head", required=True)
     p.add_argument("--output", type=Path, required=True)

@@ -62,7 +62,7 @@ if [[ "${RUN_KIND}" == system-factorial-timing ]]; then
     baseline) [[ "${EXECUTION_MODE}" == baseline && "${PIPELINE_VARIANT}" == b1 && \
       "${LIVEWAN_BASELINE_PLACEMENT:-}" == world16-fsdp && \
       "${LIVEWAN_STUDENT_ROLLOUT_PADDING:-}" == max-noop ]] || exit 2 ;;
-    only_A|full) [[ "${EXECUTION_MODE}" == pipeline && \
+    only_A|full|only_A_with_capacity_offload) [[ "${EXECUTION_MODE}" == pipeline && \
       "${PIPELINE_VARIANT}" == c51-continuous-b16-generator-fused-rms ]] || exit 2 ;;
     *) echo r2_only_B_BLOCKED_or_invalid_arm >&2; exit 2 ;;
   esac

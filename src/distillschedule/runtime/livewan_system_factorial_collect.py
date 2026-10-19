@@ -7,7 +7,7 @@ import math
 from pathlib import Path
 import statistics
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, Mapping
 
 from . import livewan_system_factorial_r2 as r2
 from .livewan_crossscale_worker import FormalTrace
@@ -32,7 +32,7 @@ def mechanism_errors(row: dict[str, Any], *, arm: str, rank: int) -> list[str]:
     if arm != "full":
         errors.extend(f"unrequested B mechanism executed: {key}" for key in keys
                       if row.get(key, {}).get("enabled") is True)
-        if arm == "only_A" and rank >= 8:
+        if arm in r2.A_ARMS and rank >= 8:
             audit = row.get("system_factorial_recompute", {})
             calls = int(row.get("physical_call_inventory", {}).get("critic/grad/checkpoint", -1)) * 30
             if (audit.get("checkpoint_calls") != calls or audit.get("function_entries") != 2 * calls
@@ -63,6 +63,37 @@ def mechanism_errors(row: dict[str, Any], *, arm: str, rank: int) -> list[str]:
     attention = row.get("generator_attention_backend", {})
     errors += split_errors(attention.get("readonly_splitkv", {}), rank=rank,
                            total_calls=int(attention.get("invocation_count", 0)))
+    return errors
+
+
+def capacity_optimizer_errors(row: Mapping[str, Any], *, arm: str, rank: int) -> list[str]:
+    build = row.get("build", {})
+    observed = build.get("capacity_offload", {})
+    if arm != r2.CAPACITY_ARM:
+        return ["unrequested capacity offload executed"] if observed else []
+    errors = []
+    if any(observed.get(k) != v for k, v in r2.CAPACITY_POLICY.items()):
+        errors.append("capacity offload policy receipt changed")
+    if rank >= 8:
+        if observed.get("execution_status") != "NOT_APPLICABLE_SCORE_RANK" or build.get("critic", {}).get("cpu_optimizer"):
+            errors.append("capacity offload must not affect Critic/Teacher")
+        return errors
+    opt = build.get("student", {}).get("cpu_optimizer", {})
+    numel = r2.CAPACITY_POLICY["generator_numel"]
+    expected = dict(name="replicated_cpu_foreach_adamw", state_device="cpu", steps=4,
+        moment_bytes=8 * numel, cpu_parameter_mirror_bytes=4 * numel,
+        cpu_gradient_buffer_bytes=4 * numel, pinned_parameter_mirror_bytes=4 * numel,
+        pinned_gradient_buffer_bytes=4 * numel, cpu_consumption_fences=4,
+        transfers_and_cpu_update_inside_timer=True, gradient_mean_and_clip_unchanged=True,
+        original_parameter_dtype_preserved=True)
+    if observed.get("execution_status") != "PASS" or not str(opt.get("execution_parameter_device", "")).startswith("cuda"):
+        errors.append("Generator CPU optimizer execution not observed")
+    for k, v in expected.items():
+        if opt.get(k) != v:errors.append("capacity optimizer receipt mismatch: " + k)
+    for left, right in (("gradient_d2h_bytes", "updated_parameter_h2d_bytes"),
+                        ("gradient_d2h_events", "updated_parameter_h2d_events")):
+        if type(opt.get(left)) is not int or opt[left] <= 0 or opt.get(right) != opt[left]:
+            errors.append("capacity optimizer transfer census changed: " + left)
     return errors
 
 
@@ -144,6 +175,7 @@ def collect(run_root: str | Path, *, arm: str, expected_head: str, trace: Formal
             r2.require(cycle.get("local_versions") == expected, "per-cycle role version mismatch")
             previous = offset
         errors += [f"rank{rank}: {e}" for e in mechanism_errors(row, arm=arm, rank=rank)]
+        errors += [f"rank{rank}: {e}" for e in capacity_optimizer_errors(row, arm=arm, rank=rank)]
         if mode == "pipeline":
             continuous = row.get("continuous_pipeline", {})
             hot = row.get("critic_shadow_hot_sync", {})
