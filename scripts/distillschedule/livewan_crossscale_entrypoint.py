@@ -62,7 +62,7 @@ def parser() -> argparse.ArgumentParser:
         "--run-kind",
         choices=(
             "validate", "capacity", "correctness", "timing", "profile",
-            "trajectory", "two-cycle-timing",
+            "trajectory", "two-cycle-timing", "system-factorial-timing",
         ),
         default=os.environ.get("DISTILLSCHEDULE_RUN_KIND", "validate"),
     )

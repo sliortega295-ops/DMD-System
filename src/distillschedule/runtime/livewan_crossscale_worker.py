@@ -19,6 +19,8 @@ import sys
 import time
 from typing import Any, Mapping, Sequence
 
+from distillschedule.runtime import livewan_system_factorial_r2 as system_r2
+
 from distillschedule.evidence.trajectory_coarse import (
     AppendOnlyTrajectoryWriter,
     TrajectoryCycleReceipt,
@@ -768,6 +770,9 @@ def _plan_critic_ranks(
 def _split_dmd_shadow_enabled(plan: Mapping[str, Any], *, mode: str) -> bool:
     """Validate the exact C14 split-DMD execution-graph contract."""
 
+    if system_r2.only_a(plan, mode=mode):
+        return True  # Versioned full A routing; not a C14 parent-contract edit.
+
     metadata = plan.get("metadata", {})
     contract = metadata.get("split_dmd_shadow")
     if contract is None:
@@ -799,6 +804,10 @@ def _continuous_pipeline_contract(
     plan: Mapping[str, Any], *, mode: str
 ) -> Mapping[str, Any] | None:
     """Validate the C21 continuous-B16 execution contract."""
+
+    if system_r2.active(plan):
+        system_r2.validate(plan, mode=mode)
+        return plan["metadata"].get("continuous_pipeline")
 
     value = plan.get("metadata", {}).get("continuous_pipeline")
     if value is None:
@@ -1017,6 +1026,19 @@ def _effective_plan_sha256(plan: Mapping[str, Any]) -> str:
     return hashlib.sha256(
         json.dumps(plan, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
+
+
+def _write_effective_plan_for_run(*, plan: Mapping[str, Any], output_dir: Path,
+                                  run_kind: str, local_rank: int, node_rank: int,
+                                  profile_two_cycles: bool = False) -> bool:
+    """The real worker producer, before model construction or timer start."""
+    enabled = run_kind in {"two-cycle-timing", system_r2.RUN_KIND} or profile_two_cycles
+    if not enabled or local_rank != 0:
+        return False
+    _require(node_rank in {0, 1}, "two-cycle timing node rank is missing")
+    atomic_json(output_dir / f"effective_plan.node{node_rank}.json",
+                {**plan, "effective_plan_sha256": _effective_plan_sha256(plan)})
+    return True
 
 
 def _record_two_cycle_endpoint(
@@ -1276,6 +1298,9 @@ def _generator_runahead_transport_enabled(
     plan: Mapping[str, Any], *, mode: str
 ) -> bool:
     """Validate the exact C19 Critic-only latent transport contract."""
+
+    if system_r2.only_a(plan, mode=mode):
+        return True  # Same pinned payload/transport, original text computation.
 
     metadata = plan.get("metadata", {})
     contract = metadata.get("generator_runahead_transport")
@@ -3175,6 +3200,17 @@ def _record_optimizer_diagnostics(
     clip_norm: Any,
     gradient_before_clip: Mapping[str, float | int] | None,
 ) -> None:
+    if run_kind == system_r2.RUN_KIND:
+        # C1 only, device-side until the final C4 sync. No Python tensor read
+        # or extra collective is introduced between steady-state endpoints.
+        if step < FULL5_STEPS:
+            value = clip_norm.full_tensor() if hasattr(clip_norm, "full_tensor") else clip_norm
+            checks = getattr(evidence, "system_factorial_c1_checks", None)
+            if checks is None:
+                checks = []
+                evidence.system_factorial_c1_checks = checks
+            checks.append(torch.isfinite(value).all())
+        return
     trajectory_mode = run_kind == "trajectory"
     # Keep the historical correctness-only branch explicit.  Trajectory is an
     # additional low-volume diagnostic consumer; all other legacy run kinds
@@ -3885,6 +3921,8 @@ def _prefetch_score_sample_contexts(
 
 
 def _validate_plan_identity(plan: Mapping[str, Any], *, mode: str) -> None:
+    if system_r2.active(plan):
+        system_r2.validate(plan, mode=mode)
     _require(int(plan["hardware"]["world_size"]) == WORLD_SIZE, "plan is not world16")
     batch = int(plan["workload"]["shape"]["batch_size"])
     _require(batch in {GLOBAL_BATCH, 32}, "plan is not registered global-B16/B32")
@@ -3996,6 +4034,16 @@ def run_worker(
 ) -> dict[str, Any]:
     plan_path = Path(plan_path).expanduser().resolve()
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    factorial_timing = run_kind == system_r2.RUN_KIND
+    if factorial_timing:
+        system_r2.validate_native_environment(repo_root=repo_root, mode=mode)
+        plan = system_r2.lower_parent(
+            plan, repo_root=repo_root,
+            arm=os.environ["LIVEWAN_SYSTEM_FACTORIAL_ARM"],
+            source_head=os.environ["LIVEWAN_EXPECTED_HEAD"],
+            seed=int(os.environ["LIVEWAN_SYSTEM_FACTORIAL_SEED"]))
+    else:
+        _require(not system_r2.active(plan), "R2 plan requires its explicit native entry kind")
     from distillschedule.runtime.livewan_two_cycle_profile import enabled as profile_two_enabled
     profile_two_cycles = profile_two_enabled(run_kind)
     critic_b1_attribution = _trajectory_critic_batch_ablation_enabled(
@@ -4050,9 +4098,9 @@ def run_worker(
         else 1
     )
     trace_cycles = (
-        trajectory_cycles
-        if run_kind == "trajectory"
-        else (TWO_CYCLE_TIMING_CYCLES if two_cycle_timing else continuous_cycles)
+        system_r2.CYCLES if factorial_timing else (
+            trajectory_cycles if run_kind == "trajectory" else
+            TWO_CYCLE_TIMING_CYCLES if two_cycle_timing else continuous_cycles)
     )
     registered_batch = int(plan["workload"]["shape"]["batch_size"])
     trace = FormalTrace.load(
@@ -4063,11 +4111,12 @@ def run_worker(
     _validate_trace_balanced_pairing(plan, trace)
     check_collective_trace(baseline_spec, trace.rows)
     bootstrap = Bootstrap.load(plan["evidence"]["checkpoint"], trace=trace)
-    if run_kind == "trajectory" or two_cycle_timing or profile_two_cycles:
+    if run_kind == "trajectory" or two_cycle_timing or profile_two_cycles or factorial_timing:
         trace_payload = json.loads(trace.path.read_text(encoding="utf-8"))
         _require(
             int(trace_payload.get("seed", -1))
-            == (two_cycle_seed if two_cycle_timing or profile_two_cycles else trajectory_seed),
+            == (system_r2.SEED if factorial_timing else two_cycle_seed
+                if two_cycle_timing or profile_two_cycles else trajectory_seed),
             "run seed differs from the immutable trace seed",
         )
         diagnostic = dict(bootstrap.value.get("continuous_diagnostic", {}))
@@ -4123,7 +4172,7 @@ def run_worker(
         return result
     _require(
         run_kind in {"capacity", "correctness", "timing", "profile"}
-        or run_kind in {"trajectory", "two-cycle-timing"},
+        or run_kind in {"trajectory", "two-cycle-timing", system_r2.RUN_KIND},
         "invalid run kind",
     )
 
@@ -4141,18 +4190,17 @@ def run_worker(
         dist.init_process_group("nccl")
     torch.cuda.set_device(local_rank)
     device = torch.device(f"cuda:{local_rank}")
+    if factorial_timing:
+        system_r2.validate_native_topology(torch, dist, rank=rank, local_rank=local_rank)
     from distillschedule.runtime.livewan_cuda_setup import materialize_blas_handles
 
     # Shared hardware compatibility, before any model construction/timer.
     cuda_library_setup = materialize_blas_handles(torch, device)
     effective_plan_sha256 = _effective_plan_sha256(plan)
-    if (two_cycle_timing or profile_two_cycles) and local_rank == 0:
-        node_rank = int(os.environ.get("DISTILLSCHEDULE_NODE_RANK", "-1"))
-        _require(node_rank in {0, 1}, "two-cycle timing node rank is missing")
-        atomic_json(
-            output_dir / f"effective_plan.node{node_rank}.json",
-            {**plan, "effective_plan_sha256": effective_plan_sha256},
-        )
+    _write_effective_plan_for_run(
+        plan=plan, output_dir=output_dir, run_kind=run_kind, local_rank=local_rank,
+        node_rank=int(os.environ.get("DISTILLSCHEDULE_NODE_RANK", "-1")),
+        profile_two_cycles=profile_two_cycles)
     critic_lora_kernel = {
         "enabled": False,
         "name": "native_livewan_lora",
@@ -4691,6 +4739,10 @@ def run_worker(
             "checkpoint_calls": 0,
         }
     critic_attention_proxy = None
+    recompute_audit = None
+    if factorial_timing and system_r2.only_a(plan, mode=mode) and rank >= 8:
+        recompute_audit = system_r2.RecomputeCheckpointAudit(bc.ckpt)
+        bc.ckpt = recompute_audit
     critic_attention_receipt = {"enabled": False, "execution_status": "DISABLED"}
     from distillschedule.runtime.livewan_ffn_down_checkpoint import enabled as ffn_down_enabled
     critic_ffn_down_enabled = ffn_down_enabled(plan, mode=mode)
@@ -4761,7 +4813,7 @@ def run_worker(
     # Diagnostic-only emit_nvtx entry fence is outside the Full5 boundary.
     operation_markers.start(torch)
     torch.cuda.synchronize(device)
-    timing_start_event = torch.cuda.Event(enable_timing=True) if two_cycle_timing else None
+    timing_start_event = torch.cuda.Event(enable_timing=True) if (two_cycle_timing or factorial_timing) else None
     if timing_start_event is not None:
         timing_start_event.record(torch.cuda.current_stream(device))
     timing_start_ns = time.perf_counter_ns()
@@ -4771,7 +4823,14 @@ def run_worker(
     ):
         with inventory.install(torch=torch, blockcausal=bc, roles=roles):
             if mode == "baseline":
-                if run_kind == "trajectory":
+                if factorial_timing:
+                    system_r2.run_baseline_cycles(
+                        sys.modules[__name__], torch=torch, rank=rank, trace=trace,
+                        loader=loader, bundle=bundle, streamers=generator_streamers,
+                        score_context=score_context, evidence=evidence, versions=versions,
+                        device=device, inventory=inventory,
+                        cycle_endpoint_records=cycle_endpoint_records)
+                elif run_kind == "trajectory":
                     _require(
                         trajectory_writer is not None and score_context is not None,
                         "baseline trajectory evidence configuration is incomplete",
@@ -4853,8 +4912,10 @@ def run_worker(
                         output_dir if run_kind == "trajectory" else None
                     ),
                     cycle_endpoint_records=(
-                        cycle_endpoint_records if two_cycle_timing else None
+                        cycle_endpoint_records if (two_cycle_timing or factorial_timing) else None
                     ),
+                    factorial_timing=factorial_timing,
+                    explicit_full_context=(factorial_timing and system_r2.only_a(plan, mode=mode)),
                 )
             elif (
                 plan.get("metadata", {}).get("pool_policy")
@@ -5301,6 +5362,16 @@ def run_worker(
         "build": bundle.metadata,
         "ema": {"updates_in_full5": 0, "status": "NOT_RUN_SEPARATE_GATE"},
     }
+    if factorial_timing:
+        receipt["run_id"] = plan["evidence"]["run_id"]
+        receipt["system_factorial_timing"] = system_r2.finish_timing(
+            torch=torch, start_event=timing_start_event, records=cycle_endpoint_records,
+            plan=plan, mode=mode, rank=rank)
+        receipt["system_factorial_recompute"] = (
+            recompute_audit.receipt() if recompute_audit is not None
+            else {"execution_status": "NOT_APPLICABLE"})
+        receipt["system_factorial_c1_finite"] = system_r2.finish_finite(torch, evidence, rank=rank, mode=mode)
+        receipt["head"] = os.environ["LIVEWAN_EXPECTED_HEAD"]
     if run_kind == "trajectory":
         receipt["trajectory"] = {
             "schema": "trajectory_coarse_v1",
@@ -5807,10 +5878,13 @@ def _run_pipeline_8x8(
     critic_shadow_hot_sync: Any | None = None,
     finalize_host_transport: bool = True,
     step0_early_delivery: bool = False,
+    explicit_full_context: bool = False,
 ) -> None:
     import torch.distributed as dist
 
     is_generator = rank < 8
+    _require(not explicit_full_context or (run_kind == system_r2.RUN_KIND
+             and not full_context_lens_elision), "explicit context scope is R2 only_A only")
     peer = rank + 8 if is_generator else rank - 8
     lane = rank if is_generator else peer
     slot_pairs = validate_slot_pairs(
@@ -5875,7 +5949,7 @@ def _run_pipeline_8x8(
         _require(
             rollout_runahead
             and score_context_from_trace
-            and full_context_lens_elision,
+            and (full_context_lens_elision or explicit_full_context),
             "host run-ahead transport requires the exact run-ahead/local-context graph",
         )
     if critic_step1_split_overlap and not is_generator:
@@ -7199,12 +7273,17 @@ def _run_pipeline_8x8_continuous(
     trajectory_arm_id: str | None = None,
     trajectory_output_dir: Path | None = None,
     cycle_endpoint_records: list[dict[str, Any]] | None = None,
+    factorial_timing: bool = False,
+    explicit_full_context: bool = False,
 ) -> None:
     """Run exact C24 cycles with one next-cycle rollout wave in flight."""
 
     trajectory_mode = run_kind == "trajectory"
     two_cycle_timing = run_kind == "two-cycle-timing"
-    if trajectory_mode:
+    if factorial_timing:
+        _require(run_kind == system_r2.RUN_KIND and trace.cycles == system_r2.CYCLES
+                 and cycle_endpoint_records is not None, "R2 four-cycle endpoints missing")
+    elif trajectory_mode:
         _require(
             trace.cycles in TRAJECTORY_ALLOWED_CYCLES,
             "trajectory trace cycles must be one of 1, 2, 5, or 50",
@@ -7324,9 +7403,10 @@ def _run_pipeline_8x8_continuous(
                     critic_shadow_hot_sync=critic_shadow_hot_sync,
                     finalize_host_transport=False,
                     step0_early_delivery=step0_early_delivery,
+                    explicit_full_context=explicit_full_context,
                 )
         role_returned = time.perf_counter()
-        if two_cycle_timing:
+        if two_cycle_timing or factorial_timing:
             # The endpoint is immediately after this rank's terminal work for
             # the logical cycle.  For cycle 1 it is intentionally before the
             # next-cycle lookahead/hot-sync below, so the cycle-2 endpoint delta
@@ -7548,8 +7628,8 @@ def _run_pipeline_8x8_continuous(
     evidence.continuous_pipeline = {
         "enabled": True,
         "name": (
-            TRAJECTORY_CONTINUOUS_NAME
-            if trajectory_mode
+            system_r2.CONTINUOUS_NAME if factorial_timing else
+            TRAJECTORY_CONTINUOUS_NAME if trajectory_mode
             else (
                 TWO_CYCLE_TIMING_CONTINUOUS_NAME
                 if two_cycle_timing

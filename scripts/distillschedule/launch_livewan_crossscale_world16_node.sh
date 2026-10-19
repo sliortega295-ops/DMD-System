@@ -15,7 +15,7 @@ MASTER_PORT="${7:?rendezvous port}"
    "${RUN_KIND}" == correctness || \
    "${RUN_KIND}" == timing || "${RUN_KIND}" == profile || \
    "${RUN_KIND}" == trajectory || \
-   "${RUN_KIND}" == two-cycle-timing ]] || exit 2
+   "${RUN_KIND}" == two-cycle-timing || "${RUN_KIND}" == system-factorial-timing ]] || exit 2
 [[ "${EXECUTION_MODE}" == baseline || "${EXECUTION_MODE}" == pipeline ]] || exit 2
 [[ "${RUN_ID}" =~ ^[A-Za-z0-9._-]+$ ]] || exit 2
 [[ "${EXPECTED_HEAD}" =~ ^[0-9a-f]{40}$ ]] || exit 2
@@ -55,6 +55,18 @@ TRAJECTORY_SEED="${LIVEWAN_TRAJECTORY_SEED:-0}"
 TRAJECTORY_ARM_ID="${LIVEWAN_TRAJECTORY_ARM_ID:-}"
 TWO_CYCLE_SEED="${LIVEWAN_TWO_CYCLE_SEED:--1}"
 TWO_CYCLE_ARM_ID="${LIVEWAN_TWO_CYCLE_ARM_ID:-}"
+if [[ "${RUN_KIND}" == system-factorial-timing ]]; then
+  [[ "${LIVEWAN_SYSTEM_FACTORIAL_SEED:-}" == 20260830 && "${PROFILE_TWO_CYCLES}" == 0 && \
+     -z "${DISTILLSCHEDULE_NSYS_BIN:-}" && -z "${DISTILLSCHEDULE_NCU_BIN:-}" ]] || exit 2
+  case "${LIVEWAN_SYSTEM_FACTORIAL_ARM:-}" in
+    baseline) [[ "${EXECUTION_MODE}" == baseline && "${PIPELINE_VARIANT}" == b1 && \
+      "${LIVEWAN_BASELINE_PLACEMENT:-}" == world16-fsdp && \
+      "${LIVEWAN_STUDENT_ROLLOUT_PADDING:-}" == max-noop ]] || exit 2 ;;
+    only_A|full) [[ "${EXECUTION_MODE}" == pipeline && \
+      "${PIPELINE_VARIANT}" == c51-continuous-b16-generator-fused-rms ]] || exit 2 ;;
+    *) echo r2_only_B_BLOCKED_or_invalid_arm >&2; exit 2 ;;
+  esac
+fi
 [[ "${PIPELINE_VARIANT}" == b1 || "${PIPELINE_VARIANT}" == b1-runahead || \
    "${PIPELINE_VARIANT}" == b1-runahead-critic-b2 || \
    "${PIPELINE_VARIANT}" == b1-runahead-critic-b2-local-context || \
@@ -218,7 +230,8 @@ elif [[ "${PIPELINE_VARIANT}" == c26-continuous-b16-critic-attention-checkpoint 
     echo "missing_flash_attn2_artifact=${DISTILLSCHEDULE_FLASH_ATTN_KERNEL}" >&2; exit 3;
   }
 elif [[ "${PIPELINE_VARIANT}" == c51-continuous-b16-generator-fused-rms ]]; then
-  [[ "${RUN_KIND}" == trajectory || "${RUN_KIND}" == two-cycle-timing ]] || {
+  [[ "${RUN_KIND}" == trajectory || "${RUN_KIND}" == two-cycle-timing || \
+     "${RUN_KIND}" == system-factorial-timing ]] || {
     echo c51_requires_qualified_native_or_trajectory >&2; exit 2;
   }
   PLAN="${ROOT}/configs/distillschedule/plans/livewan_wan13b_14b_sf_dmd_c51_generator_fused_rms.json"
@@ -317,6 +330,13 @@ done
 git -C "${ROOT}" diff --quiet && git -C "${ROOT}" diff --cached --quiet || {
   echo source_worktree_dirty >&2; exit 4;
 }
+if [[ "${RUN_KIND}" == system-factorial-timing ]]; then
+  PYTHONPATH="${ROOT}/src" "${PYTHON}" - "${ROOT}" "${EXECUTION_MODE}" <<'PY'
+import sys
+from distillschedule.runtime.livewan_system_factorial_r2 import validate_native_environment
+validate_native_environment(repo_root=sys.argv[1], mode=sys.argv[2])
+PY
+fi
 [[ "$(git -C "${ROOT}/third_party/livewan" rev-parse HEAD)" == \
   1eabf43c777bc5b2816926ca998cd4e4c2dfa3d5 ]] || exit 4
 [[ "$(git -C "${ROOT}/third_party/wan21" rev-parse HEAD)" == \
@@ -466,6 +486,13 @@ export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
   echo "run_kind=${RUN_KIND}"
   echo "execution_mode=${EXECUTION_MODE}"
   echo "pipeline_variant=${PIPELINE_VARIANT}"
+  if [[ "${RUN_KIND}" == system-factorial-timing ]]; then
+    echo "system_factorial_arm=${LIVEWAN_SYSTEM_FACTORIAL_ARM}"
+    echo "system_factorial_seed=${LIVEWAN_SYSTEM_FACTORIAL_SEED}"
+    echo "system_factorial_cycles=4"
+    echo "system_factorial_qualification=C1_OBSERVED_WITH_DEFERRED_EXTRACTION"
+    echo "profiled=false"
+  fi
   echo "baseline_placement=${LIVEWAN_BASELINE_PLACEMENT:-legacy-hybrid}"
   echo "teacher_parameter_offload=${LIVEWAN_TEACHER_PARAMETER_OFFLOAD:-off}"
   echo "optimizer_device=${LIVEWAN_OPTIMIZER_DEVICE:-cuda}"
@@ -544,6 +571,7 @@ RESOLVED="${RUN_ROOT}/resolved_plan.node${NODE_RANK}.json"
 # Fail before 14B construction if the two hosts accidentally form split worlds
 # or the default NCCL communicator is unusable.  The probe is intentionally
 # model-free and the node lock remains held throughout it.
+if [[ "${RUN_KIND}" != system-factorial-timing ]]; then
 TOPOLOGY="${RUN_ROOT}/preflight/topology.json"
 mkdir -p "${RUN_ROOT}/preflight"
 set +e
@@ -567,6 +595,7 @@ if [[ "${EXECUTION_MODE}" == pipeline ]]; then
   set -e
   [[ ${transport_status} -eq 0 ]] || { echo transport_probe_failed >&2; exit "${transport_status}"; }
 fi
+fi  # R2 uses the same native worker's topology/warmup, never extra GPU torchruns.
 
 set +e
 if [[ "${RUN_KIND}" == validate ]]; then
@@ -809,7 +838,8 @@ nvidia-smi --query-gpu=index,name,memory.total,memory.free --format=csv,noheader
 [[ -z "$(nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | sed '/^[[:space:]]*$/d')" ]] || {
   echo gpu_processes_remain >&2; exit 88;
 }
-if [[ "${RUN_KIND}" == two-cycle-timing || "${PROFILE_TWO_CYCLES}" == 1 ]]; then
+if [[ "${RUN_KIND}" == two-cycle-timing || "${PROFILE_TWO_CYCLES}" == 1 || \
+      "${RUN_KIND}" == system-factorial-timing ]]; then
   teardown_tmp="${NODE_LOG}/teardown_status.txt.$$.tmp"
   {
     echo "status=PASS"

@@ -116,7 +116,7 @@ def parser() -> argparse.ArgumentParser:
         "--run-kind",
         choices=(
             "validate", "capacity", "correctness", "timing", "profile",
-            "trajectory", "two-cycle-timing",
+            "trajectory", "two-cycle-timing", "system-factorial-timing",
         ),
         required=True,
     )
@@ -211,6 +211,8 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--trajectory-arm-id")
     value.add_argument("--two-cycle-seed", type=int)
     value.add_argument("--two-cycle-arm-id")
+    value.add_argument("--system-factorial-arm", choices=("baseline", "only_A", "full", "only_B"))
+    value.add_argument("--system-factorial-seed", type=int, default=20260830)
     value.add_argument("--master-addr")
     value.add_argument("--master-port", type=int, default=29930)
     value.add_argument("--timeout-seconds", type=int, default=21600)
@@ -249,6 +251,13 @@ def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "LIVEWAN_OPTIMIZER_DEVICE": args.optimizer_device,
         "LIVEWAN_STUDENT_ROLLOUT_PADDING": args.student_rollout_padding,
     }
+    if args.run_kind == "system-factorial-timing":
+        from distillschedule.runtime.livewan_system_factorial_r2 import validate_runner
+        validate_runner(args)
+        exports.update(LIVEWAN_SYSTEM_FACTORIAL_ARM=args.system_factorial_arm,
+                       LIVEWAN_SYSTEM_FACTORIAL_SEED=args.system_factorial_seed)
+    elif getattr(args, "system_factorial_arm", None) is not None:
+        raise ValueError("R2 arm requires its independent system-factorial-timing entry")
     if args.flash_attn_kernel is not None:
         exports["DISTILLSCHEDULE_FLASH_ATTN_KERNEL"] = args.flash_attn_kernel
     if args.source_prepare_root is not None or args.source_prepare_head is not None:
@@ -262,7 +271,7 @@ def command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         exports["LIVEWAN_PAIR_CORRECTNESS_RECEIPT"] = args.correctness_receipt
         exports["LIVEWAN_PAIR_CORRECTNESS_SHA256"] = args.correctness_sha256
     if (args.pipeline_variant in {"c37-continuous-b16-step1-overlap", "c38-continuous-b16-score-fa3", 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', 'c39-continuous-b16-step0-delivery', 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'}
-        and args.run_kind not in {"trajectory", "two-cycle-timing"}
+        and args.run_kind not in {"trajectory", "two-cycle-timing", "system-factorial-timing"}
         and not (args.profile_two_cycles and args.run_kind == "profile"
                  and args.pipeline_variant in {"c38-continuous-b16-score-fa3", 'c49-continuous-b16-generator-readonly-splitkv', 'c51-continuous-b16-generator-fused-rms', "c39-continuous-b16-step0-delivery", 'c40-continuous-b16-score-shared-input', 'c44-continuous-b16-critic-ffn-down-cache'})):
         raise ValueError("C37 is restricted to qualification trajectory and native two-cycle timing")
@@ -375,6 +384,7 @@ def summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
     run_root = args.remote_output_root / args.run_id
     summary = run_root / "summary.json"
     summary_name = (
+        "summarize_livewan_system_factorial_r2.py" if args.run_kind == "system-factorial-timing" else
         "summarize_livewan_two_cycle_timing_world16.py"
         if args.run_kind == "two-cycle-timing"
         else (
@@ -395,7 +405,14 @@ def summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         )
     )
     script = args.remote_root / "scripts/distillschedule" / summary_name
-    if args.run_kind == "trajectory":
+    if args.run_kind == "system-factorial-timing":
+        summary_arguments = (
+            f"--run-root {shlex.quote(str(run_root))} "
+            f"--arm {shlex.quote(args.system_factorial_arm)} "
+            f"--trace {shlex.quote(str(args.trace))} "
+            f"--expected-head {shlex.quote(args.expected_head)} "
+            f"--output {shlex.quote(str(summary))}")
+    elif args.run_kind == "trajectory":
         summary_arguments = (
             f"--run-root {shlex.quote(str(run_root))} "
             f"--cycles {args.trajectory_cycles} "
@@ -423,10 +440,24 @@ def summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
         )
         if args.profile_two_cycles:
             summary_arguments += " --diagnostic-two-cycle"
+    # The R2 collector re-lowers the exact frozen template. Give this fresh
+    # SSH process the SAME rendering inputs as the native node producer.
+    collector_exports = {}
+    if args.run_kind == "system-factorial-timing":
+        collector_exports = dict(
+            DMD_SYSTEM_ROOT=args.remote_root, DISTILLSCHEDULE_RUN_ID=args.run_id,
+            DISTILLSCHEDULE_OUTPUT_DIR=run_root, DISTILLSCHEDULE_PYTHON=args.pyenv / "bin/python",
+            LIVEWAN_STUDENT_CHECKPOINT=args.student_checkpoint,
+            LIVEWAN_CRITIC_CHECKPOINT=args.critic_checkpoint,
+            LIVEWAN_TEACHER_CHECKPOINT=args.teacher_checkpoint,
+            LIVEWAN_OPERATION_TRACE=args.trace, LIVEWAN_SYSTEMS_BOOTSTRAP=args.bootstrap)
+    environment = "".join(f"export {key}={shlex.quote(str(value))}; "
+                          for key, value in collector_exports.items())
     remote = (
-        f"export PYTHONPATH={shlex.quote(str(args.remote_root / 'src'))}:{shlex.quote(str(args.remote_root))}; "
-        f"{shlex.quote(str(args.pyenv / 'bin/python'))} {shlex.quote(str(script))} "
-        f"{summary_arguments}"
+        environment
+        + f"export PYTHONPATH={shlex.quote(str(args.remote_root / 'src'))}:{shlex.quote(str(args.remote_root))}; "
+        + f"{shlex.quote(str(args.pyenv / 'bin/python'))} {shlex.quote(str(script))} "
+        + f"{summary_arguments}"
     )
     completed = subprocess.run(
         ssh(args.hosts[0], remote, port=args.ssh_port), check=False, timeout=900
