@@ -29,6 +29,11 @@ def mechanism_errors(row: dict[str, Any], *, arm: str, rank: int) -> list[str]:
             "generator_cross_attention_kv_cache", "generator_attention_backend",
             "generator_rollout_cast_cache", "generator_rms_epilogue", "generator_modulation",
             "generator_gate", "critic_attention_checkpoint")
+    if arm == r2.COMPATIBLE_ARM:
+        errors += r2.compatible_mechanism_errors(row)
+        errors.extend(f"unrequested A-dependent B mechanism executed: {key}" for key in keys
+                      if key not in r2.COMPATIBLE_OPERATORS and row.get(key, {}).get("enabled") is True)
+        return errors
     if arm != "full":
         errors.extend(f"unrequested B mechanism executed: {key}" for key in keys
                       if row.get(key, {}).get("enabled") is True)
@@ -103,7 +108,7 @@ def collect(run_root: str | Path, *, arm: str, expected_head: str, trace: Formal
     r2.require(trace.cycles == 4 and trace.global_batch == 16, "wrong trace geometry/cycles")
     root = Path(run_root)
     helper = _parent_helpers()
-    mode = "baseline" if arm == "baseline" else "pipeline"
+    mode = r2.mode_for_arm(arm)
     errors: list[str] = []
     plans = []
     for node in (0, 1):

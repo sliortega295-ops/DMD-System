@@ -8,12 +8,13 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 from distillschedule.runtime.livewan_crossscale_worker import FormalTrace, atomic_json
 from distillschedule.runtime.livewan_system_factorial_collect import collect
+from distillschedule.runtime.livewan_system_factorial_r2 import ARMS
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--run-root", type=Path, required=True)
-    p.add_argument("--arm", choices=("baseline", "only_A", "full", "only_A_with_capacity_offload"), required=True)
+    p.add_argument("--arm", choices=ARMS, required=True)
     p.add_argument("--trace", type=Path, required=True)
     p.add_argument("--expected-head", required=True)
     p.add_argument("--output", type=Path, required=True)

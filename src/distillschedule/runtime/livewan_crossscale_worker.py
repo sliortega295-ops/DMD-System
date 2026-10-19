@@ -2282,7 +2282,7 @@ def _dmd_teacher_velocity(
         score_context.negative_teacher_context is not None,
         "DMD requires negative Teacher context",
     )
-    with torch.no_grad(), lora_enabled(bundle.teacher, False):
+    with torch.no_grad(), lora_enabled(bundle.teacher, False), system_r2.score_scope(bundle.teacher, role="teacher"):
         if context_lens is None:
             velocity = _cfg_velocity_full_context(
                 torch,
@@ -2327,7 +2327,7 @@ def _dmd_fake_velocity(
 
     _require(critic_model is not None, "DMD Fake-Score model is missing")
     _require(critic_context is not None, "DMD Fake-Score context is missing")
-    with torch.no_grad(), lora_enabled(critic_model, True):
+    with torch.no_grad(), lora_enabled(critic_model, True), system_r2.score_scope(critic_model, role="critic"):
         velocity = D.bidirectional_velocity(
             critic_model,
             flow.z_t.to(torch.bfloat16),
@@ -4490,6 +4490,13 @@ def run_worker(
     bundle = build_models(
         torch=torch, plan=plan, bootstrap=bootstrap, mode=mode, rank=rank, device=device,
     )
+    if system_r2.only_b_compatible(plan, mode=mode):
+        compatible_kernels = system_r2.install_fsdp_compatible_score_kernels(
+            torch, bundle=bundle, plan=plan, mode=mode)
+        critic_lora_kernel = compatible_kernels["critic_lora_kernel"]
+        score_modulation_kernel = compatible_kernels["score_modulation_kernel"]
+        score_rmsnorm_kernel = compatible_kernels["score_rmsnorm_kernel"]
+        score_rope_kernel = compatible_kernels["score_rope_kernel"]
     if baseline_spec.name != "legacy-hybrid":
         from distillschedule.runtime.livewan_baseline_placement import verify_models
         bundle.metadata["baseline_placement_runtime"] = verify_models(baseline_spec, bundle)
@@ -4750,6 +4757,10 @@ def run_worker(
     recompute_audit = None
     if factorial_timing and system_r2.only_a(plan, mode=mode) and rank >= 8:
         recompute_audit = system_r2.RecomputeCheckpointAudit(bc.ckpt)
+        bc.ckpt = recompute_audit
+    elif system_r2.only_b_compatible(plan, mode=mode):
+        recompute_audit = system_r2.ScopedRecomputeCheckpointAudit(
+            bc.ckpt, bundle.system_factorial_score_scope)
         bc.ckpt = recompute_audit
     critic_attention_receipt = {"enabled": False, "execution_status": "DISABLED"}
     from distillschedule.runtime.livewan_ffn_down_checkpoint import enabled as ffn_down_enabled
@@ -5381,6 +5392,14 @@ def run_worker(
             else {"execution_status": "NOT_APPLICABLE"})
         receipt["system_factorial_c1_finite"] = system_r2.finish_finite(torch, evidence, rank=rank, mode=mode)
         receipt["head"] = os.environ["LIVEWAN_EXPECTED_HEAD"]
+        if system_r2.only_b_compatible(plan, mode=mode):
+            receipt[system_r2.COMPATIBLE_KEY] = bundle.system_factorial_score_scope.receipt()
+            receipt[system_r2.COMPATIBLE_KEY]["observed_generator_optimizer_fused"] = (
+                bundle.generator_optimizer.defaults.get("fused") is True)
+            receipt[system_r2.COMPATIBLE_KEY]["observed_generator_optimizer_dtensor_parameters"] = all(
+                hasattr(p, "to_local") for group in bundle.generator_optimizer.param_groups for p in group["params"])
+            _require(not system_r2.compatible_mechanism_errors(receipt),
+                     "compatible B scoped operators/optimizer/native checkpoint execution failed")
     if run_kind == "trajectory":
         receipt["trajectory"] = {
             "schema": "trajectory_coarse_v1",
@@ -5493,7 +5512,7 @@ def _run_baseline(
             with _profile_range(
                 torch, run_kind=run_kind,
                 label=f"livewan/baseline/step_{step}/critic_backward",
-            ):
+            ), system_r2.score_scope(bundle.critic, role="critic"):
                 critic_loss = critic_backward_for_sample(
                     torch, bundle=bundle, score_context=score_context, row=row,
                     x0=prepared.x0, sample_context=sample_context,

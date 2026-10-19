@@ -1,12 +1,13 @@
 """Bounded, opt-in full-system factorial integration; never a new trainer.
 
-The original Cxx/two-cycle contracts remain immutable. Only baseline, complete
-layout/scheduling, and complete C51 are admitted here. The fourth cell is
-explicitly blocked until its scientific definition is confirmed.
+The original Cxx/two-cycle contracts remain immutable. Full only_B remains
+blocked; its separately named compatible subset does not claim the complete B.
 """
 from __future__ import annotations
 
 from pathlib import Path
+from contextlib import contextmanager, nullcontext
+from contextvars import ContextVar
 import hashlib
 import json
 import math
@@ -21,9 +22,29 @@ SCHEMA = "distillschedule.livewan_system_factorial_r2.v1"
 RUN_KIND = "system-factorial-timing"
 CONTINUOUS_NAME = "system_factorial_c51_depth1_c4_v1"
 ARMS = ("baseline", "only_A", "full")
+COMPATIBLE_ARM = "only_B_fsdp_compatible"
+COMPATIBLE_KEY = "system_factorial_fsdp_compatible_B_v1"
+BASELINE_ARMS = ("baseline", COMPATIBLE_ARM)
+COMPATIBLE_OPERATORS = ("critic_lora_kernel", "score_modulation_kernel",
+                        "score_rmsnorm_kernel", "score_rope_kernel")
+COMPATIBLE_OFF = {
+    "generator_rollout_cast_cache": "A_X_B_RESIDENT_NON_DTENSOR_INSTALLER",
+    "generator_rms_epilogue": "A_X_B_RESIDENT_FP32_GENERATOR_INSTALLER",
+    "critic_attention_checkpoint": "A_X_B_SCORE_B2_QUERY19320_FA3_REPLAY_CONTRACT",
+    "generator_cross_attention_kv_cache": "A_X_B_UNADAPTED_FSDP_PARAMETER_LIFETIME",
+    "generator_attention_backend": "A_X_B_UNADAPTED_CAUSAL_LAYER_SCOPE",
+    "score_attention_backend": "A_X_B_PINNED_FA3_CHECKPOINT_COMPOSITION",
+    "generator_modulation": "A_X_B_RESIDENT_GENERATOR_SCOPE",
+    "generator_gate": "A_X_B_RESIDENT_GENERATOR_SCOPE",
+    "generator_residual_layout": "A_X_B_RESIDENT_GENERATOR_SCOPE",
+    "score_residual_gate": "A_X_B_PINNED_C34_COMPOSITION",
+    "score_layernorm": "A_X_B_PINNED_C35_COMPOSITION",
+    "generator_readonly_splitkv": "A_X_B_UNADAPTED_GENERATOR_BACKEND_SCOPE",
+    "full_context_lens_elision": "ORIGINAL_512_LENGTHS_PRESERVED",
+}
 CAPACITY_ARM = "only_A_with_capacity_offload"
 CAPACITY_KEY = "system_factorial_capacity_offload_v1"
-ARMS = (*ARMS, CAPACITY_ARM)
+ARMS = (*ARMS, CAPACITY_ARM, COMPATIBLE_ARM)
 A_ARMS = ("only_A", CAPACITY_ARM)
 CAPACITY_POLICY = dict(name="generator_cpu_foreach_adamw_v1",
     scope="GENERATOR_OPTIMIZER_ONLY", generator_optimizer_device="cpu",
@@ -56,7 +77,7 @@ def digest(value: Any) -> str:
 
 def _template(root: Path, arm: str) -> dict[str, Any]:
     from distillschedule.core.config import load_plan
-    loaded = load_plan(root / (BASE_PLAN if arm == "baseline" else FULL_PLAN))
+    loaded = load_plan(root / (BASE_PLAN if arm in BASELINE_ARMS else FULL_PLAN))
     for path in loaded.source_files:
         rel = str(path.relative_to(root))
         require(rel in PINNED_PLANS and hashlib.sha256(path.read_bytes()).hexdigest() == PINNED_PLANS[rel],
@@ -73,10 +94,20 @@ def make_plan(repo_root: str | Path, *, arm: str, source_head: str,
     root = Path(repo_root).resolve()
     plan = _template(root, arm)
     template_sha = digest(plan)
-    if arm == "baseline":
+    if arm in BASELINE_ARMS:
         from distillschedule.runtime.livewan_baseline_placement import apply_contract
         apply_contract(plan, mode="baseline", name="world16-fsdp", teacher_offload="off",
                        optimizer_device="cuda", student_padding="max-noop")
+        if arm == COMPATIBLE_ARM:
+            parent = _template(root, "full")
+            plan["metadata"][COMPATIBLE_KEY] = dict(
+                name="fsdp_scoped_score_operators_v1",
+                scope="explicit_critic_teacher_calls_all_ranks",
+                operators={key: parent["metadata"][key] for key in COMPATIBLE_OPERATORS},
+                disabled=dict(COMPATIBLE_OFF), generator_optimizer_impl="fused_adamw",
+                checkpoint="ORIGINAL_RECOMPUTE_ORIGINAL_RNG", complete_B=False,
+                parameter_placement="UNCHANGED_WORLD16_FULL_SHARD")
+            plan["training_backends"]["generator"]["options"]["optimizer_impl"] = "fused_adamw"
     else:
         if arm in A_ARMS:
             for key in B_METADATA:
@@ -108,13 +139,21 @@ def validate(plan: Mapping[str, Any], *, mode: str,
     require(binding.get("source_head") == expected_head, "source HEAD binding changed")
     arm = binding.get("arm")
     expected = make_plan(root, arm=arm, source_head=expected_head, seed=binding.get("seed"))
-    require(mode == ("baseline" if arm == "baseline" else "pipeline"), "wrong execution mode")
+    require(mode == mode_for_arm(arm), "wrong execution mode")
     require(dict(plan) == expected, "lowered plan/shape/flags/source binding changed")
     return binding
 
 
 def active(plan: Mapping[str, Any]) -> bool:
     return KEY in plan.get("metadata", {})
+
+
+def mode_for_arm(arm: str) -> str:
+    return "baseline" if arm in BASELINE_ARMS else "pipeline"
+
+
+def only_b_compatible(plan: Mapping[str, Any], *, mode: str) -> bool:
+    return active(plan) and validate(plan, mode=mode)["arm"] == COMPATIBLE_ARM
 
 
 def only_a(plan: Mapping[str, Any], *, mode: str) -> bool:
@@ -163,14 +202,14 @@ def validate_native_environment(*, repo_root: str | Path, mode: str) -> None:
     root = Path(repo_root).resolve()
     arm = os.environ.get("LIVEWAN_SYSTEM_FACTORIAL_ARM")
     require(arm in ARMS, "only_B BLOCKED or missing/unknown arm")
-    require(mode == ("baseline" if arm == "baseline" else "pipeline"), "arm/mode mismatch")
+    require(mode == mode_for_arm(arm), "arm/mode mismatch")
     require(os.environ.get("LIVEWAN_SYSTEM_FACTORIAL_SEED") == str(SEED), "seed missing/changed")
     require(not any(os.environ.get(k) for k in ("DISTILLSCHEDULE_NSYS_BIN", "DISTILLSCHEDULE_NCU_BIN")),
             "native factorial forbids profilers")
     require(os.environ.get("LIVEWAN_BASELINE_PLACEMENT", "legacy-hybrid") ==
-            ("world16-fsdp" if arm == "baseline" else "legacy-hybrid"), "baseline placement changed")
+            ("world16-fsdp" if arm in BASELINE_ARMS else "legacy-hybrid"), "baseline placement changed")
     require(os.environ.get("LIVEWAN_STUDENT_ROLLOUT_PADDING", "off") ==
-            ("max-noop" if arm == "baseline" else "off"), "collective padding changed")
+            ("max-noop" if arm in BASELINE_ARMS else "off"), "collective padding changed")
     require(os.environ.get("LIVEWAN_OPTIMIZER_DEVICE", "cuda") == "cuda"
             and os.environ.get("LIVEWAN_TEACHER_PARAMETER_OFFLOAD", "off") == "off", "offload changed")
     observed = subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
@@ -183,11 +222,11 @@ def validate_runner(args: Any) -> None:
     arm = args.system_factorial_arm
     require(arm != "only_B", "only_B BLOCKED pending explicit user definition")
     require(arm in ARMS and args.system_factorial_seed == SEED, "arm/seed missing or changed")
-    require(args.execution_mode == ("baseline" if arm == "baseline" else "pipeline"), "arm/mode mismatch")
-    require(args.pipeline_variant == ("b1" if arm == "baseline"
+    require(args.execution_mode == mode_for_arm(arm), "arm/mode mismatch")
+    require(args.pipeline_variant == ("b1" if arm in BASELINE_ARMS
             else "c51-continuous-b16-generator-fused-rms"), "wrong canonical parent")
-    require(args.baseline_placement == ("world16-fsdp" if arm == "baseline" else "legacy-hybrid")
-            and args.student_rollout_padding == ("max-noop" if arm == "baseline" else "off"),
+    require(args.baseline_placement == ("world16-fsdp" if arm in BASELINE_ARMS else "legacy-hybrid")
+            and args.student_rollout_padding == ("max-noop" if arm in BASELINE_ARMS else "off"),
             "strict FSDP baseline or pipeline placement missing")
     require(args.teacher_parameter_offload == "off" and args.optimizer_device == "cuda",
             "offload contract changed")
@@ -250,6 +289,183 @@ class RecomputeCheckpointAudit:
                     function_entries=self.entries, replay_entries=self.entries - self.calls,
                     cache_reads=0, saved_tensor_policy="ORIGINAL", rng_policy="ORIGINAL",
                     counter_scope="CHECKPOINT_BODY_ENTRIES_NOT_ATTENTION_KERNEL_EVENTS")
+
+
+class ScopedScoreKernels:
+    """Dispatch existing kernels only inside entered Critic/Teacher calls.
+
+    FSDP still owns unshard/reshard. No parameter or full-weight view is cached.
+    The caller must keep the Critic scope open through checkpoint backward.
+    Outside a scope (including every Student call), invoke the exact original.
+    """
+    def __init__(self, targets: Mapping[str, tuple[Any, str, Any, Any]]):
+        self._role = ContextVar("livewan_r2_score_role", default=None)
+        self.entries = dict(critic=0, teacher=0)
+        self.failures = 0
+        self.calls = {role: {key: 0 for key in targets} for role in self.entries}
+        self.original_calls = {key: 0 for key in targets}
+        for key, (owner, attribute, original, optimized) in targets.items():
+            def dispatch(*args: Any, _key=key, _original=original,
+                         _optimized=optimized, **kwargs: Any):
+                role = self.current_role
+                if role is None:
+                    self.original_calls[_key] += 1
+                    return _original(*args, **kwargs)
+                self.calls[role][_key] += 1
+                return _optimized(*args, **kwargs)
+            setattr(owner, attribute, dispatch)
+
+    @property
+    def current_role(self):
+        return self._role.get()
+
+    @contextmanager
+    def role(self, role: str):
+        require(role in self.entries, "unsupported Score kernel scope")
+        token = self._role.set(role)
+        self.entries[role] += 1
+        try:
+            yield
+        except Exception:
+            self.failures += 1
+            raise
+        finally:
+            self._role.reset(token)
+
+    def receipt(self) -> dict[str, Any]:
+        return dict(name="fsdp_scoped_score_operators_v1",
+                    scope="explicit_critic_teacher_calls_all_ranks",
+                    current_role=self.current_role, scope_entries=dict(self.entries),
+                    scope_failures=self.failures,
+                    role_kernel_calls={k: dict(v) for k, v in self.calls.items()},
+                    counter_scope="DISPATCH_ATTEMPTS_INCLUDING_CHECKPOINT_EARLY_STOP",
+                    original_outside_scope_calls=dict(self.original_calls),
+                    parameter_views_cached=0, complete_B=False)
+
+
+class ScopedRecomputeCheckpointAudit(RecomputeCheckpointAudit):
+    def __init__(self, checkpoint_module: Any, scope: ScopedScoreKernels):
+        super().__init__(checkpoint_module)
+        self.scope = scope
+
+    def checkpoint(self, function: Any, *args: Any, **kwargs: Any):
+        if self.scope.current_role != "critic":
+            return self.module.checkpoint(function, *args, **kwargs)
+        return super().checkpoint(function, *args, **kwargs)
+
+
+def score_scope(model: Any, *, role: str):
+    scope = getattr(model, "_livewan_fsdp_score_scope", None)
+    return scope.role(role) if scope is not None else nullcontext()
+
+
+def install_fsdp_compatible_score_kernels(torch: Any, *, bundle: Any,
+                                        plan: Mapping[str, Any], mode: str) -> dict[str, Any]:
+    """Reuse original guarded operators; isolate their global patches from G."""
+    require(only_b_compatible(plan, mode=mode), "compatible installer needs its exact opt-in plan")
+    from wanstreamer import blockcausal
+    from wanstreamer.lora import LoRALinear
+    from wan.modules.model import WanRMSNorm
+    from .livewan_lora_kernel import install_scale_one_lora_epilogue
+    from .livewan_modulation_kernel import install_score_modulation_kernel
+    from .livewan_score_rmsnorm import install_frozen_score_rmsnorm
+    from .livewan_rope_kernel import install_score_rope_kernel
+    require(bundle.student is not None and bundle.critic is not None and bundle.teacher is not None,
+            "compatible B needs all-role FSDP models")
+    loras = [m for m in bundle.critic.modules() if isinstance(m, LoRALinear)]
+    require(len(loras) == 180 and all(m.scale == 1.0 for m in loras),
+            "compatible Critic LoRA count/scale changed")
+    definitions = {
+        "critic_lora_kernel": (LoRALinear, "forward", lambda: install_scale_one_lora_epilogue(
+            torch, autocast_input_elision=True)),
+        "score_modulation_kernel": (blockcausal, "_modulate", lambda: install_score_modulation_kernel(torch)),
+        "score_rmsnorm_kernel": (WanRMSNorm, "forward", lambda: install_frozen_score_rmsnorm(torch)),
+        "score_rope_kernel": (blockcausal, "apply_rope", lambda: install_score_rope_kernel(torch)),
+    }
+    targets, receipts = {}, {}
+    for key, (owner, attribute, install) in definitions.items():
+        original = getattr(owner, attribute)
+        receipts[key] = install()  # Original source/dtype/shape guards remain intact.
+        targets[key] = (owner, attribute, original, getattr(owner, attribute))
+    receipts["critic_lora_kernel"].update(module_count=len(loras), all_scales_one=True,
+                                          role="score", execution_status="PASS")
+    scope = ScopedScoreKernels(targets)
+    for model in (bundle.critic, bundle.teacher):
+        object.__setattr__(model, "_livewan_fsdp_score_scope", scope)
+    bundle.system_factorial_score_scope = scope
+    return receipts
+
+
+def compatible_mechanism_errors(row: Mapping[str, Any]) -> list[str]:
+    """Require real scoped hits, native recompute and the actual optimizer flag."""
+    from .livewan_score_rmsnorm import runtime_receipt_errors
+    from .livewan_lora_kernel import EXPECTED_FORWARD_SHA256
+    from .livewan_modulation_kernel import EXPECTED_MODULATE_SHA256
+    from .livewan_rope_kernel import EXPECTED_APPLY_ROPE_SHA256
+    from .livewan_baseline_placement import BaselinePlacement
+    errors = runtime_receipt_errors(dict(row.get("score_rmsnorm_kernel", {})), rank=8)
+    scope = row.get(COMPATIBLE_KEY, {})
+    if (scope.get("name") != "fsdp_scoped_score_operators_v1"
+            or scope.get("scope") != "explicit_critic_teacher_calls_all_ranks"
+            or scope.get("scope_entries") != dict(critic=24, teacher=4)
+            or scope.get("current_role") is not None or scope.get("parameter_views_cached") != 0
+            or scope.get("scope_failures") != 0
+            or scope.get("counter_scope") != "DISPATCH_ATTEMPTS_INCLUDING_CHECKPOINT_EARLY_STOP"
+            or scope.get("complete_B") is not False):
+        errors.append("compatible B explicit role scope census changed")
+    for key, counter in (("critic_lora_kernel", "autocast_input_elision_invocation_count"),
+                         ("score_modulation_kernel", "invocation_count"),
+                         ("score_rmsnorm_kernel", "forward_calls"),
+                         ("score_rope_kernel", "invocation_count")):
+        receipt = row.get(key, {})
+        calls = scope.get("role_kernel_calls", {})
+        critic = calls.get("critic", {}).get(key, 0)
+        teacher = calls.get("teacher", {}).get(key, 0)
+        if (type(critic) is not int or critic <= 0 or type(teacher) is not int
+                or (teacher != 0 if key == "critic_lora_kernel" else teacher <= 0)
+                # Native checkpoint may stop after entering a wrapper but
+                # before the optimized leaf (e.g. inside LoRA's base Linear).
+                or type(receipt.get(counter)) is not int or not 0 < receipt[counter] <= critic + teacher
+                or receipt.get("enabled") is not True or receipt.get("install_status") != "PASS"):
+            errors.append("compatible B kernel not observed in exact role scope: " + key)
+        if key != "critic_lora_kernel" and scope.get("original_outside_scope_calls", {}).get(key, 0) <= 0:
+            errors.append("Student original operator dispatch not observed: " + key)
+    lora = row.get("critic_lora_kernel", {})
+    if (lora.get("autocast_contract_failure_count") != 0 or lora.get("module_count") != 180
+            or lora.get("all_scales_one") is not True or lora.get("autocast_input_elision") is not True):
+        errors.append("compatible B original LoRA guard/census failed")
+    if row.get("score_rope_kernel", {}).get("contract_failure_count") != 0:
+        errors.append("compatible B original RoPE guard failed")
+    for key, name, source_key, source in (
+        ("critic_lora_kernel", "scale_one_autocast_bf16_input_elision_v1", "source_forward_sha256", EXPECTED_FORWARD_SHA256),
+        ("score_modulation_kernel", "score_bf16_modulation_fusion_v1", "source_modulate_sha256", EXPECTED_MODULATE_SHA256),
+        ("score_rope_kernel", "score_bf16_rope_fusion_v1", "source_apply_rope_sha256", EXPECTED_APPLY_ROPE_SHA256),
+    ):
+        receipt = row.get(key, {})
+        if receipt.get("name") != name or receipt.get(source_key) != source:
+            errors.append("compatible B source-bound operator changed: " + key)
+    for key in ("score_modulation_kernel", "score_rope_kernel"):
+        if int(row.get(key, {}).get("backward_invocation_count", 0)) <= 0:
+            errors.append("compatible B original autograd not observed: " + key)
+    build = row.get("build", {})
+    runtime = build.get("baseline_placement_runtime", {})
+    if (build.get("baseline_placement") != BaselinePlacement("world16-fsdp", student_padding="max-noop").receipt()
+            or runtime.get("status") != "PASS"
+            or any(runtime.get("roles", {}).get(role, {}).get("sharded") is not True
+                   or runtime.get("roles", {}).get(role, {}).get("storage_device") != "cuda"
+                   for role in ("student", "critic", "teacher"))):
+        errors.append("compatible B changed original all-role FULL_SHARD placement")
+    if (row.get("build", {}).get("student", {}).get("optimizer_impl") != "fused_adamw"
+            or scope.get("observed_generator_optimizer_fused") is not True
+            or scope.get("observed_generator_optimizer_dtensor_parameters") is not True):
+        errors.append("compatible B fused Generator AdamW not observed")
+    calls = int(row.get("physical_call_inventory", {}).get("critic/grad/checkpoint", -1)) * 30
+    audit = row.get("system_factorial_recompute", {})
+    if (audit.get("checkpoint_calls") != calls or audit.get("function_entries") != 2 * calls
+            or audit.get("replay_entries") != calls or audit.get("cache_reads") != 0
+            or audit.get("saved_tensor_policy") != "ORIGINAL" or audit.get("rng_policy") != "ORIGINAL"):
+        errors.append("compatible B native Critic checkpoint recompute census changed")
+    return errors
 
 
 def run_baseline_cycles(worker: Any, *, torch: Any, rank: int, trace: Any, loader: Any,
