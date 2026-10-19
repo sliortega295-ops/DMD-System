@@ -1,0 +1,106 @@
+name: repository-cleanup-once
+on:
+  push:
+    branches: [agent/general-workload-planning-20261012]
+    paths: [.github/workflows/repository-cleanup-once.yml]
+permissions:
+  contents: write
+jobs:
+  prepare-reviewed-tree:
+    if: github.repository == 'sliortega295-ops/DMD-System'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EXPECTED_PARENT: 7b2c5a0d3b372cb1ae18b1d862783ff095b8c85e
+      EXPECTED_TREE: 987cd7b68b512cde9e1ff7cff3ecf57a5d38b337
+      PYTHONPATH: src:.
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Verify starting source
+        run: test "$(git rev-parse HEAD^)" = "$EXPECTED_PARENT"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Lightweight dependencies only
+        run: python -m pip install -e '.[test]' wheel
+      - name: Apply reviewed source-only organization
+        run: python .github/maintenance/reorganize_once.py
+      - name: Source closure and canonical contracts
+        run: |
+          set -euo pipefail
+          python scripts/distillschedule/check_best_known_integration.py | tee /tmp/cleanup-integration.log
+          python -m pytest -q tests/test_repository_layout.py tests/test_refactor_best_known*.py tests/test_refactor_config.py tests/test_refactor_adapter.py | tee /tmp/cleanup-tests.log
+          git diff --check
+      - name: Wheel isolation check
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip wheel . --no-deps --no-build-isolation --wheel-dir /tmp/dmd-wheel
+          python -m venv /tmp/dmd-package-test
+          /tmp/dmd-package-test/bin/python -m pip install --no-deps /tmp/dmd-wheel/*.whl
+          cd /tmp
+          /tmp/dmd-package-test/bin/python -I -c "import distillschedule, runtime, runtime.host_admission; assert '/site-packages/' in runtime.__file__"
+      - name: Prepare exact reviewed tree and commit objects without moving any branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json, os, subprocess, urllib.request
+          from pathlib import Path
+          def git(*args):
+              return subprocess.check_output(['git', *args])
+          subprocess.run(['git', 'add', '-A'], check=True)
+          manifest = json.loads(Path('docs/architecture/repository_cleanup.json').read_text())
+          # Four previously tracked diagnostic logs are ignored by the global
+          # pattern; preserve only these source-pinned existing records.
+          for row in manifest['relocations']:
+              if row['to'].endswith('.log'):
+                  subprocess.run(['git', 'add', '-f', '--', row['to']], check=True)
+          tree = git('write-tree').decode().strip()
+          if tree != os.environ['EXPECTED_TREE']:
+              raise SystemExit(f'Refusing unreviewed output tree: {tree}')
+          existing = set(git('ls-tree', '-r', '--format=%(objectname)', 'HEAD').decode().splitlines())
+          entries = []
+          for line in git('ls-files', '--stage', '-z').split(b'\0'):
+              if not line:
+                  continue
+              meta, path = line.split(b'\t', 1)
+              mode, sha, stage = meta.decode().split()
+              assert stage == '0'
+              entry = {'path': path.decode(), 'mode': mode, 'type': 'commit' if mode == '160000' else 'blob'}
+              if sha in existing or mode == '160000':
+                  entry['sha'] = sha
+              else:
+                  entry['content'] = git('cat-file', 'blob', sha).decode('utf-8')
+              entries.append(entry)
+          api = 'https://api.github.com/repos/' + os.environ['GITHUB_REPOSITORY']
+          def post(endpoint, data):
+              request = urllib.request.Request(api + endpoint, data=json.dumps(data).encode(), method='POST',
+                  headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json',
+                           'Content-Type': 'application/json', 'X-GitHub-Api-Version': '2022-11-28'})
+              with urllib.request.urlopen(request, timeout=120) as response:
+                  return json.load(response)
+          created = post('/git/trees', {'tree': entries})
+          assert created['sha'] == tree, 'Remote tree differs from local reviewed source'
+          commit = post('/git/commits', {'message': 'refactor: organize canonical DMD workloads, package compatibility runtime, and isolate benchmarks',
+              'tree': tree, 'parents': [os.environ['GITHUB_SHA']]})
+          result = {'commit_sha': commit['sha'], 'tree_sha': tree, 'parent_sha': os.environ['GITHUB_SHA'],
+                    'branch_updated': False, 'source_layout_validation': 'PASS', 'gpu_validation': 'NOT_RUN',
+                    'relocations': len(manifest['relocations']), 'canonical_profiles': 5}
+          Path('/tmp/cleanup-result.json').write_text(json.dumps(result, indent=2) + '\n')
+          print(json.dumps(result, sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: repository-cleanup-review-${{ github.sha }}
+          path: |
+            /tmp/cleanup-result.json
+            /tmp/cleanup-integration.log
+            /tmp/cleanup-tests.log
+          retention-days: 7
+          if-no-files-found: warn
