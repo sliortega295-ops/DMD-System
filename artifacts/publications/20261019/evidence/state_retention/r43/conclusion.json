@@ -1,0 +1,44 @@
+{
+  "status": "MEASURED_SAME_SOURCE_MANUAL_NATIVE_C2_REVIEW",
+  "utc": "2026-10-18T12:41:27.678720+00:00",
+  "source": "69a9464997de16deafd5786338f538ba7930d9a5",
+  "values": {
+    "manual-control": {
+      "C1_s": 261.255513877,
+      "C2_s": 255.528302602,
+      "ranks": 16,
+      "peak_allocated_GiB": 33.728214263916016,
+      "peak_reserved_GiB": 38.486328125,
+      "min_sampled_driver_free_bytes": 2097152,
+      "CUDA_OOM": false,
+      "host_OOM_delta": 0
+    },
+    "manual-child": {
+      "C1_s": 258.457772047,
+      "C2_s": 257.709695683,
+      "ranks": 16,
+      "peak_allocated_GiB": 33.728214263916016,
+      "peak_reserved_GiB": 38.490234375,
+      "min_sampled_driver_free_bytes": 2097152,
+      "CUDA_OOM": false,
+      "host_OOM_delta": 0
+    }
+  },
+  "control_C2_s": 255.528302602,
+  "candidate_C2_s": 257.709695683,
+  "saved_s": -2.18139308100001,
+  "speedup": 0.9915354636727239,
+  "all16_census_versions_inputs_RNG": true,
+  "original_checkpoint_attention_cache_gate": true,
+  "actual_FA3_calls_per_cycle_per_rank": 350,
+  "grad_and_selected_attention_unchanged": true,
+  "frozen_AdaLN_bank_enabled": false,
+  "parameters_eliminated": false,
+  "weights_merged": false,
+  "scheduler_integration": false,
+  "numerical_status": "REVIEW_REQUIRES_MATCHED_FULL_STATE_OR_TRAJECTORY",
+  "formal_speedup_eligible": false,
+  "claim_scope": "single native C2 descriptive paired mechanism timing, not long convergence",
+  "charged_owner_phases": 101,
+  "raw_root": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r43/native"
+}

@@ -1,0 +1,68 @@
+{
+  "utc": "2026-10-17T15:34:12.649554+00:00",
+  "status": "DIAGNOSED_FIRST_OBSERVED_BACKWARD_DIFFERENCE_SAMPLED_GATE_FAIL_PAIR_NOT_RUN",
+  "source": "07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1",
+  "manual_C2": null,
+  "selected_C2": null,
+  "gap_percent": null,
+  "details": "Three additional two-cycle diagnostics completed16/16 each: depth2 independent repeat and depth1. Initial/input/forward/cache samples match; first observed difference in backward; default sampled numerical gate FAIL retained. Not a unique-root-cause or unbiased-noise proof. No H3 native timing or REVIEW-only bypass. Used5/6; three-arm diagnostic series closed.",
+  "comparison": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_fullseq/runs/h3full-07fcc0-r1-gate-joint-h3v1-d2-n128/search-gate/comparison.json",
+    "sha256": "21c9bc726fa0abcd8d703c0df1f76a65be79fedd8045f906f0791d55a066eea9",
+    "bytes": 1692711
+  },
+  "comparison_summary": {
+    "candidate_id": "joint-h3v1-d2-n128",
+    "claim_boundary": "BOUNDED_LOCAL_SHARD_SAMPLES_NOT_FULL_STATE_OR_STRICT_PAIR_GATE",
+    "cycles": 2,
+    "formal_timing_eligible": false,
+    "full_state_comparison": "NOT_RUN",
+    "integration_head": "07fcc0ba1ec28b810b50cac92ec41c1a5232d3e1",
+    "loss_status": "FAIL",
+    "rank_count": 16,
+    "reference_candidate_id": "joint-h3v1-d1-n128",
+    "rng_scope": "TORCH_DEFAULT_CPU_AND_RANK_CUDA_BOUNDARIES_ONLY; OTHER_GENERATORS_NOT_OBSERVED",
+    "rng_status": "PASS",
+    "sample_status": "PASS",
+    "sampled_state_status": "FAIL",
+    "schema_version": "distillschedule.h3_native_two_cycle_comparison.v1",
+    "search_ready": false,
+    "status": "FAIL",
+    "strict_numerical_gate": "NOT_RUN",
+    "thresholds": {
+      "max_abs_atol": 0.05,
+      "max_abs_rtol": 0.01,
+      "mean_relative": 0.005,
+      "min_cosine": 0.9999,
+      "normalized_l2": 0.005
+    }
+  },
+  "qualification_native_attempts": 2,
+  "remaining_native_attempts": 1,
+  "formal_speedup_eligible": false,
+  "numerical_status": "FAIL_SAMPLED_GATE_NOT_CLASSIFIED_AS_NOISE",
+  "cleanup": {
+    "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_fullseq_cpu/artifacts/terminal-reconcile-calibration.json",
+    "sha256": "b434082eed81547ea7b38d6152e86bdb519a0c59f69ddd688ca6e0e725c48c3f"
+  },
+  "failure_details": {
+    "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_fullseq_cpu/artifacts/prepare-pair-failure-details.json",
+    "sha256": "e3bad7fee137c76285814c94e398dfff2bada0d3e25112c37e03ab8936ac80b0"
+  },
+  "original_conclusion": {
+    "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_fullseq/reports/conclusion.json",
+    "sha256": "c0d14e1bd1b93665bce899005bd1adc4c1041c0648cf8c1eec265a4fdd419f80",
+    "bytes": 2610
+  },
+  "diagnosis": {
+    "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/h3_fullseq_divergence_cpu/reports/numerical_diagnosis.json",
+    "sha256": "b7334618b52f8b5404384bf6228f507c3fc5af265a9380af2a7118ae57971616",
+    "bytes": 36934
+  },
+  "diagnostic_source": "493a2ee108cdec4038df3cfc0130f98479149fe8",
+  "diagnostic_native_attempts": 3,
+  "total_native_attempts": 5,
+  "diagnostic_series_closed": true,
+  "sampled_numerical_gate": "FAIL_PRESERVED",
+  "full_state_strict_numerical_gate": "NOT_RUN"
+}

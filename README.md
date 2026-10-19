@@ -1,3 +1,5 @@
+> **2026-10-19 source/evidence snapshot:** [latest optimization, planner and scheduler index](docs/status/GITHUB_SOURCE_SNAPSHOT_20261019.md). This branch is a research source archive, not a merge into `main`. Measured source commits and REVIEW/FAIL/NOT_RUN boundaries are preserved.
+
 # DMD-System
 
 **DMD-System** is a research runtime for scheduling and executing compound diffusion-distillation workloads. It grew out of Helios Stage-3 DMD training, but its public boundary is model-agnostic: workload semantics, model roles, shapes, update frequencies, rank topology, training backend, rollout provider and memory lifecycle are represented explicitly rather than hidden inside one training script.

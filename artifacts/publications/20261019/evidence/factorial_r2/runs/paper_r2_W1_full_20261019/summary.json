@@ -1,0 +1,51 @@
+{
+  "C1_excluded": true,
+  "C2_C4_mean_seconds": 20.522099448367953,
+  "C2_seconds": 20.378441675566137,
+  "cell": "full",
+  "configuration_fingerprint": "8888fd2de9d5c842ed12de5d63aa93d395c543b2be22dccc6db28cb2805d5c41",
+  "cycle_world_max_seconds": {
+    "1": 32.46500942390412,
+    "2": 20.378441675566137,
+    "3": 20.81563069485128,
+    "4": 20.372225974686444
+  },
+  "errors": [],
+  "expected_head": "a337d15428c487ca4b3fac28935014d01e6a557a",
+  "final_versions": {
+    "critic": 30,
+    "ema": 30,
+    "generator": 6
+  },
+  "formal_timing_eligible": false,
+  "host_topology": {
+    "job-1ffc9909-2967-4e2b-8c91-a0c1e871e158-master-0": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "job-c6cfcde5-db4b-4527-8eb8-7518319a0277-master-0": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ]
+  },
+  "native_data_status": "OBSERVED_DIAGNOSTIC",
+  "numerical_status": "NOT_RUN",
+  "rank_count": 16,
+  "run_id": "paper_r2_W1_full_20261019",
+  "schema_version": "distillschedule.wan13b_factorial_r2.v1.summary",
+  "status": "PASS",
+  "synthetic_test_only": false,
+  "timing_aggregation": "RAW_C2_RANK_MAX_AND_MEAN_OF_C2_C3_C4_RANK_MAX; N_INDEPENDENT_RUNS=1"
+}

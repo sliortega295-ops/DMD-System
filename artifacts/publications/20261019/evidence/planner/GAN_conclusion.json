@@ -1,0 +1,441 @@
+{
+  "schema_version": "dmd.manual_incumbent_match_progress.v2",
+  "utc": "2026-10-16T20:09:56.568028+00:00",
+  "source_head": "5d5b354d48a0eca728ce61e2c98b61fcb5ce26ed",
+  "branch": "agent/planner-a100-h100-20261015",
+  "status": "MATCHED_DIAGNOSTIC_TARGET_MET",
+  "scope": "A100_HELIOS_GAN_ORIGINAL_CONTRACT_FULL_NO_MERGE_BUNDLE_MANUAL_VS_SAVED_NATIVE_SINGLE_PAIR",
+  "automatic_controller_completion": false,
+  "original_controller_status": "OUTER_WRAPPER_2400_SECOND_TIMEOUT_PRESERVED",
+  "cpu_finalization_status": "CPU_RECOVERY_COMPLETE",
+  "gpu_relaunches_for_finalization": 0,
+  "native": {
+    "manual": {
+      "cycle1_seconds": 122.65153238363564,
+      "cycle2_seconds": 116.8055245699361,
+      "rank_count": 16,
+      "peak_allocated_gib": 37.00692939758301,
+      "peak_reserved_gib": 38.52734375,
+      "numerical_status": "REVIEW",
+      "initial_versions": {
+        "critic": 1000,
+        "ema": 800,
+        "generator": 200
+      },
+      "final_versions": {
+        "critic": 1010,
+        "ema": 802,
+        "generator": 202
+      },
+      "initial_physical_versions": {
+        "critic": 10,
+        "ema": 800,
+        "generator": 2
+      },
+      "final_physical_versions": {
+        "critic": 20,
+        "ema": 802,
+        "generator": 4
+      },
+      "summary": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/runs/gan-5d5b354d48a0-r1/ganmatch-5d5b354d-r1-manual-native/bound-summary.json",
+        "sha256": "8a5f0d1314f9e9f1ffeb29c0c9d24d11cf0da0a993a6074b4cf61d120c9ed80c"
+      },
+      "sampled_min_driver_free_bytes_by_cycle": {
+        "1": 511705088,
+        "2": 509607936
+      },
+      "max_sampled_host_cgroup_current_bytes": 121661640704
+    },
+    "selected": {
+      "cycle1_seconds": 122.57607030309737,
+      "cycle2_seconds": 118.76466009393334,
+      "rank_count": 16,
+      "peak_allocated_gib": 37.00692939758301,
+      "peak_reserved_gib": 38.52734375,
+      "numerical_status": "REVIEW",
+      "initial_versions": {
+        "critic": 1000,
+        "ema": 800,
+        "generator": 200
+      },
+      "final_versions": {
+        "critic": 1010,
+        "ema": 802,
+        "generator": 202
+      },
+      "initial_physical_versions": {
+        "critic": 10,
+        "ema": 800,
+        "generator": 2
+      },
+      "final_physical_versions": {
+        "critic": 20,
+        "ema": 802,
+        "generator": 4
+      },
+      "summary": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/runs/gan-5d5b354d48a0-r1/ganmatch-5d5b354d-r1-match-selected-native/bound-summary.json",
+        "sha256": "69c56b7bad67a94d5329828fb82bf3790535b40396a43be9b4b7ffbcbe08d686"
+      },
+      "sampled_min_driver_free_bytes_by_cycle": {
+        "1": 6291456,
+        "2": 509607936
+      },
+      "max_sampled_host_cgroup_current_bytes": 121440432128
+    }
+  },
+  "selected_over_manual": 1.0167726272469606,
+  "selected_extra_seconds": 1.9591355239972472,
+  "max_overhead_fraction": 0.03,
+  "formal_speedup_eligible": false,
+  "statistical_equivalence": "NOT_ESTABLISHED",
+  "global_optimum": "NOT_CLAIMED",
+  "explicit_capacity_policy": {
+    "allocator_margin_bytes": 1073741824,
+    "sampled_driver_free_reserve_bytes": 0,
+    "default_allocator_margin_bytes": 2147483648,
+    "changed_default": false,
+    "original_strict2gib_status": "NOT_ESTABLISHED_PRESERVED",
+    "host_peak_scope": "MAX_SAMPLED_CGROUP_CURRENT_NOT_CONTINUOUS_PEAK; memory.peak UNAVAILABLE",
+    "capacity_detail": {
+      "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/artifacts/gan-5d-capacity-policy-and-sampling-r1.json",
+      "sha256": "85208aef94ef52152a879ff8db3c4b1a59bb0ad4627eebf5c4f4aed582297f8a",
+      "size_bytes": 41010
+    }
+  },
+  "search": {
+    "hierarchical": {
+      "reference": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/native-match-5d5b354d48a0-r1/match-phase/hierarchical/prediction.json",
+        "sha256": "b3cd7a84aa0326d4af12690161c9644ac6cbf980d49dd2ae0d73e77a034ed331"
+      },
+      "status": "PASS_CPU_SEARCH",
+      "algorithm": "hierarchical",
+      "exhaustive": false,
+      "best_assignment": {
+        "candidate_bundle": "gan-fa3-down40-nomerge-v1",
+        "chunk_tokens": "2048",
+        "mesh": "world16-fsdp",
+        "persistent_unshard": "on",
+        "rollout_window": "5",
+        "variant": "gan"
+      },
+      "predicted_cycle2_ns": 116834810475,
+      "search_diagnostics": {
+        "beam_dropped": 0,
+        "beam_width": 0,
+        "bound_pruned": 1,
+        "bound_scope": "DECLARED_COST_MODEL_ONLY; EARLY_CYCLE2_USES_ZERO_TIME_BOUND",
+        "capacity_pruned": 0,
+        "contract_pruned": 2,
+        "decision_order": [
+          "mesh",
+          "candidate_bundle",
+          "chunk_tokens",
+          "persistent_unshard",
+          "rollout_window",
+          "variant"
+        ],
+        "dp_scope": "EQUIVALENT_RESIDUAL_BINDING_DOMAINS_NOT_NATIVE_EVENT_REORDERING",
+        "equivalent_pruned": 0,
+        "expanded": 19,
+        "generated": 21,
+        "native_optimality": "NOT_CLAIMED",
+        "optimality": "CALIBRATED_SUBSET_OPTIMAL",
+        "remaining_frontier": 0,
+        "safe_pruning": true,
+        "structural_decisions": [
+          "mesh"
+        ],
+        "termination": "COMPLETE",
+        "unfenced_bounds": 0
+      },
+      "rejections": [
+        {
+          "assignment": {
+            "candidate_bundle": "none",
+            "chunk_tokens": "2048",
+            "mesh": "world16-fsdp",
+            "persistent_unshard": "off",
+            "rollout_window": "5",
+            "variant": "gan"
+          },
+          "status": "UNCALIBRATED"
+        },
+        {
+          "assignment": {
+            "candidate_bundle": "none",
+            "chunk_tokens": "2048",
+            "mesh": "world16-fsdp",
+            "persistent_unshard": "on",
+            "rollout_window": "5",
+            "variant": "gan"
+          },
+          "status": "UNCALIBRATED"
+        },
+        {
+          "assignment": {
+            "candidate_bundle": "none",
+            "chunk_tokens": "512",
+            "mesh": "world16-fsdp",
+            "persistent_unshard": "on",
+            "rollout_window": "5",
+            "variant": "gan"
+          },
+          "status": "UNCALIBRATED"
+        },
+        {
+          "status": "PRUNED_CONTRACT"
+        },
+        {
+          "status": "PRUNED_CONTRACT"
+        }
+      ]
+    },
+    "oracle": {
+      "reference": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/native-match-5d5b354d48a0-r1/match-phase/oracle/prediction.json",
+        "sha256": "dc1514adf482f40494934cf14d333f8d765dbcb70ad5d59ca56ab40bdedcd2e3"
+      },
+      "status": "PASS_CPU_SEARCH",
+      "algorithm": null,
+      "exhaustive": true,
+      "best_assignment": {
+        "candidate_bundle": "gan-fa3-down40-nomerge-v1",
+        "chunk_tokens": "2048",
+        "mesh": "world16-fsdp",
+        "persistent_unshard": "on",
+        "rollout_window": "5",
+        "variant": "gan"
+      },
+      "predicted_cycle2_ns": 116834810475,
+      "search_diagnostics": null,
+      "rejections": [
+        {
+          "assignment": {
+            "candidate_bundle": "none",
+            "chunk_tokens": "512",
+            "mesh": "world16-fsdp",
+            "persistent_unshard": "on",
+            "rollout_window": "5",
+            "variant": "gan"
+          },
+          "status": "UNCALIBRATED"
+        },
+        {
+          "assignment": {
+            "candidate_bundle": "none",
+            "chunk_tokens": "2048",
+            "mesh": "world16-fsdp",
+            "persistent_unshard": "off",
+            "rollout_window": "5",
+            "variant": "gan"
+          },
+          "status": "UNCALIBRATED"
+        },
+        {
+          "assignment": {
+            "candidate_bundle": "none",
+            "chunk_tokens": "2048",
+            "mesh": "world16-fsdp",
+            "persistent_unshard": "on",
+            "rollout_window": "5",
+            "variant": "gan"
+          },
+          "status": "UNCALIBRATED"
+        },
+        {
+          "assignment": {
+            "candidate_bundle": "gan-fa3-down40-nomerge-v1",
+            "chunk_tokens": "512",
+            "mesh": "world16-fsdp",
+            "persistent_unshard": "off",
+            "rollout_window": "5",
+            "variant": "gan"
+          },
+          "status": "REJECTED_CONTRACT"
+        },
+        {
+          "assignment": {
+            "candidate_bundle": "gan-fa3-down40-nomerge-v1",
+            "chunk_tokens": "512",
+            "mesh": "world16-fsdp",
+            "persistent_unshard": "on",
+            "rollout_window": "5",
+            "variant": "gan"
+          },
+          "status": "REJECTED_CONTRACT"
+        },
+        {
+          "assignment": {
+            "candidate_bundle": "gan-fa3-down40-nomerge-v1",
+            "chunk_tokens": "2048",
+            "mesh": "world16-fsdp",
+            "persistent_unshard": "off",
+            "rollout_window": "5",
+            "variant": "gan"
+          },
+          "status": "REJECTED_CONTRACT"
+        }
+      ]
+    },
+    "saved_native_binding": {
+      "saved_plan": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/native-match-5d5b354d48a0-r1/match-phase/hierarchical/selected-plan.json",
+        "sha256": "e80adbb15d51b05b1c0b1253951eab49e8751f86a42c64f7dd596ff260ecf6b0"
+      },
+      "execution_plan": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/native-match-5d5b354d48a0-r1/match-phase/selected-native/execution-plan.json",
+        "sha256": "16b59b01304b339a7a4b358b43de6672756f984a388425fccf03449fa1b0fb68"
+      },
+      "selected_model_plan_source": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/native-match-5d5b354d48a0-r1/match-phase/hierarchical/selected-plan.json",
+        "sha256": "e80adbb15d51b05b1c0b1253951eab49e8751f86a42c64f7dd596ff260ecf6b0"
+      },
+      "saved_model_plan_equal": true,
+      "effective_nodes": [
+        {
+          "node": 0,
+          "reference": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/runs/gan-5d5b354d48a0-r1/ganmatch-5d5b354d-r1-match-selected-native/effective-contract.node0.json",
+            "sha256": "1c40429f96e77ca5541de44ae3c8c5b61dc135f8e6c657442a2f7e79f65d1880"
+          },
+          "model_plan_source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/native-match-5d5b354d48a0-r1/match-phase/hierarchical/selected-plan.json",
+            "sha256": "e80adbb15d51b05b1c0b1253951eab49e8751f86a42c64f7dd596ff260ecf6b0"
+          },
+          "model_plan_equal": true,
+          "source_head": "5d5b354d48a0eca728ce61e2c98b61fcb5ce26ed"
+        },
+        {
+          "node": 1,
+          "reference": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/runs/gan-5d5b354d48a0-r1/ganmatch-5d5b354d-r1-match-selected-native/effective-contract.node1.json",
+            "sha256": "1c40429f96e77ca5541de44ae3c8c5b61dc135f8e6c657442a2f7e79f65d1880"
+          },
+          "model_plan_source": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/native-match-5d5b354d48a0-r1/match-phase/hierarchical/selected-plan.json",
+            "sha256": "e80adbb15d51b05b1c0b1253951eab49e8751f86a42c64f7dd596ff260ecf6b0"
+          },
+          "model_plan_equal": true,
+          "source_head": "5d5b354d48a0eca728ce61e2c98b61fcb5ce26ed"
+        }
+      ]
+    },
+    "evidence_scope": "CURRENT_HEAD_MEASURED_CALIBRATED_SUBSET_ONLY"
+  },
+  "verification": {
+    "cpu": {
+      "passed": 2193,
+      "skipped": 85,
+      "gpu_initialized": false,
+      "receipt": {
+        "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/artifacts/full-cpu-5d5b354d48a0.json",
+        "sha256": "fd634f487ef81e436260a74d242129a9517cc1c506c4c673fa88fc735656de27",
+        "size_bytes": 3398
+      }
+    },
+    "cpu_recovery_tests": 11,
+    "future_metadata_envelope_tests": 4,
+    "native_pair_validator": {
+      "reference": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/native-match-5d5b354d48a0-r1/match-recovery-cpu-r3/manual_incumbent_validation.json",
+        "sha256": "3f7e3ede6eec09be76d39faccfe0c4c7b1cc114b385f38f1f44bacf59f39c02d"
+      },
+      "value": {
+        "claim_boundary": "DESCRIPTIVE_SINGLE_PAIR_ONLY",
+        "cycle2_seconds": {
+          "manual": 116.8055245699361,
+          "selected": 118.76466009393334
+        },
+        "evidence": {
+          "manual_execution": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/native-match-5d5b354d48a0-r1/match-phase/manual-native/execution-plan.json",
+            "sha256": "ea554f24869a2a7e73fa0e5ccc4d26125bd6c20bc37a3ddfd5219152854350ba"
+          },
+          "manual_measurement": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/native-match-5d5b354d48a0-r1/match-phase/manual-native/measurement.json",
+            "sha256": "bf6d6d893dfaeb48884e92082e7328d10727fd84a55bcb29591a3827da43dafd"
+          },
+          "preregistration": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/native-match-5d5b354d48a0-r1/match-phase/manual_match_protocol.json",
+            "sha256": "ffa7ea09e3e4f60846a90ef3634d2de8bc277e372425336fb014c29b6fe8201b"
+          },
+          "selected_execution": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/native-match-5d5b354d48a0-r1/match-phase/selected-native/execution-plan.json",
+            "sha256": "16b59b01304b339a7a4b358b43de6672756f984a388425fccf03449fa1b0fb68"
+          },
+          "selected_measurement": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/native-match-5d5b354d48a0-r1/match-recovery-cpu-r3/selected-measurement.json",
+            "sha256": "8e0c5e535c6647aeee443b86d8ee408970398228b4baeb36c100ed511e14ed39"
+          },
+          "selected_plan": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/native-match-5d5b354d48a0-r1/match-phase/hierarchical/selected-plan.json",
+            "sha256": "e80adbb15d51b05b1c0b1253951eab49e8751f86a42c64f7dd596ff260ecf6b0"
+          }
+        },
+        "formal_timing_eligible": false,
+        "global_optimum": "NOT_CLAIMED",
+        "independent_pairs": 1,
+        "max_planner_overhead": 0.03,
+        "numerical_status": {
+          "manual": "REVIEW",
+          "selected": "REVIEW"
+        },
+        "planner_overhead_fraction": 0.016772627246960603,
+        "selected_over_manual": 1.0167726272469606,
+        "source_head": "5d5b354d48a0eca728ce61e2c98b61fcb5ce26ed",
+        "statistical_equivalence": "NOT_ESTABLISHED",
+        "status": "MATCHED_DIAGNOSTIC_TARGET_MET"
+      }
+    },
+    "source_clean": true,
+    "main_defaults_changed": false,
+    "pushed_this_task": false
+  },
+  "budget": {
+    "new_cohort_native_launches": 6,
+    "all_started_including_preserved_failures": 12,
+    "remaining_gpu_launches": 0,
+    "pending_gpu_runs": 0
+  },
+  "cleanup": {
+    "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/artifacts/final-gpu-cleanup-5d-r1.json",
+    "sha256": "f4877eabd248786e331a6e657def84536868e2c6a65bfdc008e2cee9cb3953f8",
+    "size_bytes": 1556
+  },
+  "h100": {
+    "status": "SOURCE_CPU_INTEGRATED_NATIVE_C2_GPU_NOT_RUN",
+    "contacted": false,
+    "resumed": false,
+    "native_source": "b524bf148a692c92384e54705df6ec403713a745",
+    "backend": "local-fa2; not A100 pinned-sm80-fa3",
+    "report": {
+      "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/reports/h100-current-readiness-5d.md",
+      "sha256": "b0f4feef5eded8e5f352a73ccc6d3a717ab7969696cc73817dea16fb7590bb62",
+      "size_bytes": 12859
+    }
+  },
+  "remaining": [
+    "Fresh same-current-HEAD manual-vs-saved native pairs for Wan/NoGAN/H3/LiveWan not established by this GAN study; historical evidence remains per original HEAD.",
+    "H100 fresh native C2 correctness/cost calibration/saved selected execution and paired performance remain NOT_RUN under existing CPU-only permission.",
+    "Automatic outer controller did not complete; a future wrapper includes CPU source/cost/evidence overhead budget and has CPU tests only, no rerun.",
+    "Original strict2GiB capacity rejection and numericalREVIEW not promoted by this new policy study."
+  ],
+  "preserved_previous_report": {
+    "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/reports/conclusion.md",
+    "sha256": "75a05a9d88b4e5c5707f11918a7f15a0bb3ff21ea8e25b1b1ee68bad14596336",
+    "size_bytes": 4939
+  },
+  "derived_evidence": {
+    "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/artifacts/gan-calibration-and-selection-final-5d-r1.json",
+    "sha256": "b9c270b900ee28471c2af7da728364ec7ab742bf5bc84226064429d15bbb2a5b",
+    "size_bytes": 75296
+  },
+  "historical_five_workload_audit": {
+    "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261016/parallel_incumbent_r1/reports/five-workload-manual-match-status.json",
+    "sha256": "35c892ba6886032b1b238da4b3e925074f8d62f60e4eccebbae6e98fb4c8dfe3",
+    "size_bytes": 26344
+  }
+}

@@ -1,0 +1,450 @@
+{
+  "actual": {
+    "manual": {
+      "candidate_id": "joint-livewan1-pipeline-m1-g1-r1-bundle1-c51",
+      "cgroup_oom_delta_by_node": {
+        "0": 0,
+        "1": 0
+      },
+      "cuda_oom_delta": 0,
+      "cycle_wall_seconds": {
+        "1": 49.3452109375,
+        "2": 42.558984374999994
+      },
+      "effective_nodes": [
+        {
+          "effective_contract": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-manual-native/effective-contract.node0.json",
+            "sha256": "585eb757615c7b6ca7e6f678f542e0070b79417f0d02ad8f0ef2d3b44112c274"
+          },
+          "effective_plan": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-manual-native/effective_plan.node0.json",
+            "sha256": "5606077fb7176b7bd4ce6b0d24022d7043651969de2cfb3d5c71ccc603a1a0dd"
+          },
+          "effective_plan_sha256": "e81b222272d08b6fbd50c7906d24a185e2221f4f4a2a4d1b853d8de7b29283d9",
+          "installed_plan_sha256": "b9a8d150c2a4366278831cdd50af9e43fae669fa5b868f2ca17db9047a85e0ad",
+          "node": 0
+        },
+        {
+          "effective_contract": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-manual-native/effective-contract.node1.json",
+            "sha256": "585eb757615c7b6ca7e6f678f542e0070b79417f0d02ad8f0ef2d3b44112c274"
+          },
+          "effective_plan": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-manual-native/effective_plan.node1.json",
+            "sha256": "5606077fb7176b7bd4ce6b0d24022d7043651969de2cfb3d5c71ccc603a1a0dd"
+          },
+          "effective_plan_sha256": "e81b222272d08b6fbd50c7906d24a185e2221f4f4a2a4d1b853d8de7b29283d9",
+          "installed_plan_sha256": "b9a8d150c2a4366278831cdd50af9e43fae669fa5b868f2ca17db9047a85e0ad",
+          "node": 1
+        }
+      ],
+      "execution": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/match-phase/manual-native/execution-plan.json",
+        "sha256": "c55eeb7309244ccef44e51589dea60bd8823d90a915216b97a26ede867278b25"
+      },
+      "final_versions": {
+        "critic": 10,
+        "ema": 0,
+        "generator": 2
+      },
+      "full_bundle_runtime_validation": "PASS_ACTUAL_COUNTERS",
+      "host_sampled_current_bytes": {
+        "0": 82016391168,
+        "1": 490028257280
+      },
+      "measurement": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/match-phase/manual-native/measurement.json",
+        "sha256": "6fcd81f71af865a39e14e123fb064a17e922c1901eebcd0d2a2273640aa8a6db"
+      },
+      "min_sampled_driver_free_bytes": 18874368,
+      "numerical_status": "REVIEW",
+      "owned_cleanup": [
+        {
+          "launch_manifest": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-manual-native/launcher/node_0/launch_manifest.txt",
+            "sha256": "68fec80495e30a6ecad4bf895776252a260fd6431149a34bf96f2cf846246063"
+          },
+          "node": 0,
+          "status": "PASS",
+          "teardown": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-manual-native/launcher/node_0/teardown_status.txt",
+            "sha256": "7a18c17cfa10531550938102d363efee62ae21970e41b4ead58cc03088455be2"
+          }
+        },
+        {
+          "launch_manifest": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-manual-native/launcher/node_1/launch_manifest.txt",
+            "sha256": "52e51e5019947f20c74e1f720c3df30b16eb1802d8e7d58e1d22e6663f928605"
+          },
+          "node": 1,
+          "status": "PASS",
+          "teardown": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-manual-native/launcher/node_1/teardown_status.txt",
+            "sha256": "7a18c17cfa10531550938102d363efee62ae21970e41b4ead58cc03088455be2"
+          }
+        }
+      ],
+      "peak_allocated_bytes": 37744473088,
+      "peak_reserved_bytes": 40877686784,
+      "rank_count": 16,
+      "resources": [
+        {
+          "node": 0,
+          "reference": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-manual-native/search-resources.node0.json",
+            "sha256": "7274d3ba942fca9f4780edd4eb129889c028828b61346acc2ff26226d73fbe5e"
+          },
+          "sample_count": 173,
+          "status": "PASS"
+        },
+        {
+          "node": 1,
+          "reference": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-manual-native/search-resources.node1.json",
+            "sha256": "df07a2605d48ed0cea0465079261806cbfa58666005f2848cb2caf27a433127d"
+          },
+          "sample_count": 174,
+          "status": "PASS"
+        }
+      ],
+      "run_id": "c51-5cd-261017-r1-manual-native",
+      "runtime_counters": {
+        "generator_gate_calls": 247200,
+        "generator_modulation_calls": 251320,
+        "generator_rms_calls": 375600,
+        "generator_splitkv_calls": 111000,
+        "sac_checkpoint_calls": 2400,
+        "sac_replay_fa_cache_reads": 2400,
+        "score_fa3_calls": 12160,
+        "score_gate_backward_calls": 4800,
+        "score_gate_forward_calls": 12160,
+        "score_layernorm_forward_calls": 12080
+      },
+      "runtime_observations": {
+        "after": {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/match-phase/manual-native/runtime-after.json",
+          "sha256": "b1de81debc8aa192f7065672a880307970c6ddba58823faa9e3618a82bfea8fd"
+        },
+        "before": {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/match-phase/manual-native/runtime-before.json",
+          "sha256": "b1de81debc8aa192f7065672a880307970c6ddba58823faa9e3618a82bfea8fd"
+        }
+      },
+      "summary": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-manual-native/bound-summary.json",
+        "sha256": "d6c2bc9ccf60f821dafd685f9444e3ef2068552af6200cf8e12434a9e4b07cbc"
+      }
+    },
+    "selected": {
+      "candidate_id": "joint-livewan1-pipeline-m1-g1-r1-bundle1-c51",
+      "cgroup_oom_delta_by_node": {
+        "0": 0,
+        "1": 0
+      },
+      "cuda_oom_delta": 0,
+      "cycle_wall_seconds": {
+        "1": 49.29991796875,
+        "2": 42.49630078124999
+      },
+      "effective_nodes": [
+        {
+          "effective_contract": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-match-selected-native/effective-contract.node0.json",
+            "sha256": "c99d467c39874b4cbb422c39503994059207e41b44133e5a9adc0dab0f9a64da"
+          },
+          "effective_plan": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-match-selected-native/effective_plan.node0.json",
+            "sha256": "27455885ed5c3246f872329c1eb4099e6911d245b2af3da45e1893b8ba729ebd"
+          },
+          "effective_plan_sha256": "ae02a411e9861a65ac0834d4ed8291160c10421f5d0a22a9a1dde4d31c8eaad7",
+          "installed_plan_sha256": "3710adacbf884ebf271f74978a8601647bbbf3059a37ec81db24701547b0b02a",
+          "node": 0
+        },
+        {
+          "effective_contract": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-match-selected-native/effective-contract.node1.json",
+            "sha256": "c99d467c39874b4cbb422c39503994059207e41b44133e5a9adc0dab0f9a64da"
+          },
+          "effective_plan": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-match-selected-native/effective_plan.node1.json",
+            "sha256": "27455885ed5c3246f872329c1eb4099e6911d245b2af3da45e1893b8ba729ebd"
+          },
+          "effective_plan_sha256": "ae02a411e9861a65ac0834d4ed8291160c10421f5d0a22a9a1dde4d31c8eaad7",
+          "installed_plan_sha256": "3710adacbf884ebf271f74978a8601647bbbf3059a37ec81db24701547b0b02a",
+          "node": 1
+        }
+      ],
+      "execution": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/match-phase/selected-native/execution-plan.json",
+        "sha256": "c21ce3d29deae8e25fb97f3d069dbffd6e61a8b8b138f02e8f4e9d986658f599"
+      },
+      "final_versions": {
+        "critic": 10,
+        "ema": 0,
+        "generator": 2
+      },
+      "full_bundle_runtime_validation": "PASS_ACTUAL_COUNTERS",
+      "host_sampled_current_bytes": {
+        "0": 82764713984,
+        "1": 490633981952
+      },
+      "measurement": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/match-phase/selected-native/measurement.json",
+        "sha256": "9845b290631bc58abaaa7d6ba1a84365c7239ddb45ae5ef7f9ef85206b455d82"
+      },
+      "min_sampled_driver_free_bytes": 18874368,
+      "numerical_status": "REVIEW",
+      "owned_cleanup": [
+        {
+          "launch_manifest": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-match-selected-native/launcher/node_0/launch_manifest.txt",
+            "sha256": "7a9e0e24861272d0bcfa46989c4bd311468972d896902bb4971e20f3012e6917"
+          },
+          "node": 0,
+          "status": "PASS",
+          "teardown": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-match-selected-native/launcher/node_0/teardown_status.txt",
+            "sha256": "49bb3a92b3c0e0b39dc601c52463f037162f58a3b8af2595af45b8c9456fc1bc"
+          }
+        },
+        {
+          "launch_manifest": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-match-selected-native/launcher/node_1/launch_manifest.txt",
+            "sha256": "808d89f3ecd18d59bf56f31c07a627e1afccced60bf29d0e809c67e1ce643a6f"
+          },
+          "node": 1,
+          "status": "PASS",
+          "teardown": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-match-selected-native/launcher/node_1/teardown_status.txt",
+            "sha256": "49bb3a92b3c0e0b39dc601c52463f037162f58a3b8af2595af45b8c9456fc1bc"
+          }
+        }
+      ],
+      "peak_allocated_bytes": 37744473088,
+      "peak_reserved_bytes": 40877686784,
+      "rank_count": 16,
+      "resources": [
+        {
+          "node": 0,
+          "reference": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-match-selected-native/search-resources.node0.json",
+            "sha256": "486451158930bf514c7f66923b782ebaddd50a3728ea5a7e135121af5f96d151"
+          },
+          "sample_count": 178,
+          "status": "PASS"
+        },
+        {
+          "node": 1,
+          "reference": {
+            "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-match-selected-native/search-resources.node1.json",
+            "sha256": "3e0e0618a8174145f26088f5ebfabf283271241ba7811e45ea53090a9ae15aa9"
+          },
+          "sample_count": 178,
+          "status": "PASS"
+        }
+      ],
+      "run_id": "c51-5cd-261017-r1-match-selected-native",
+      "runtime_counters": {
+        "generator_gate_calls": 247200,
+        "generator_modulation_calls": 251320,
+        "generator_rms_calls": 375600,
+        "generator_splitkv_calls": 111000,
+        "sac_checkpoint_calls": 2400,
+        "sac_replay_fa_cache_reads": 2400,
+        "score_fa3_calls": 12160,
+        "score_gate_backward_calls": 4800,
+        "score_gate_forward_calls": 12160,
+        "score_layernorm_forward_calls": 12080
+      },
+      "runtime_observations": {
+        "after": {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/match-phase/selected-native/runtime-after.json",
+          "sha256": "b1de81debc8aa192f7065672a880307970c6ddba58823faa9e3618a82bfea8fd"
+        },
+        "before": {
+          "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/match-phase/selected-native/runtime-before.json",
+          "sha256": "b1de81debc8aa192f7065672a880307970c6ddba58823faa9e3618a82bfea8fd"
+        }
+      },
+      "summary": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/native-runs/c51-5cd-261017-r1-match-selected-native/bound-summary.json",
+        "sha256": "e5db61c3a35640325bf1b0e7f90d552b0fb2879c4aa86d1b9b1b2bed4c69c88a"
+      }
+    }
+  },
+  "assembled": {
+    "cost-model.json": {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/match-phase/assembled/cost-model.json",
+      "sha256": "9610fbb28e9552b742cc8d49649fdb03fcec1c62caf2833b42ecfdd25e6b9936"
+    },
+    "layout.json": {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/match-phase/assembled/layout.json",
+      "sha256": "fea3344447524b09b5e000a0d2bc4f610b51879e741fda4f91b58ea161ea830c"
+    },
+    "problem.json": {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/match-phase/assembled/problem.json",
+      "sha256": "faddb0b7e467b4b3b0507421d6cede2483fa29a48e7e3ae94b8e97de0423eb7b"
+    }
+  },
+  "budget": {
+    "all_attempts_charged": true,
+    "automatic_retry": false,
+    "by_mode": {
+      "calibration": 2,
+      "correctness": 2,
+      "diagnostic-timing": 2
+    },
+    "completed": 6,
+    "failed": 0,
+    "limit": 6,
+    "over_budget": false,
+    "started": 6,
+    "unfinished": 0
+  },
+  "calibration": {
+    "completion": {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/calibration-phase/complete.json",
+      "sha256": "e77f7897cecb992e38257030e8f53cf6fd3946a358fcad2dfb40508c2329c105"
+    },
+    "observed_binding": {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/calibration/observed-binding.json",
+      "sha256": "ee561444adfe57042bfd5fca620f848283cac228253a7ba59db68a54d58447d3"
+    },
+    "results": [
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/calibration/calibration-0/result.json",
+        "sha256": "e44e7122cac7e42dfd3a6e03aff9d53f89baa085d74a6ef1c77ca76fa71785bc"
+      },
+      {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/calibration/calibration-1/result.json",
+        "sha256": "7422a7e2a533c7364aa19180a62ce9e1f67c0db3db363da61b14f8de8ecae91c"
+      }
+    ]
+  },
+  "cleanup_scope": "ORIGINAL_NATIVE_OWNED_TEARDOWN_ONLY; CURRENT_GPU_IDLE_NOT_PROBED",
+  "collection_gpu_execution": "NOT_RUN",
+  "collector": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/scripts/collect_c51.py",
+    "sha256": "2be33feaf5869e35b1df638b0f231c15291a10c579ef1e469015e7e3eee11e47"
+  },
+  "completion": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/match-phase/complete.json",
+    "sha256": "fe8248db09ae8212a6b6df43db6dfdd1012d2ca0e8261701de768b4f9546c615"
+  },
+  "config": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/configs/controller.json",
+    "sha256": "d95ecab8a45669fed261ec041f3d6c504b855c02b6046194b641f5bc06518f99"
+  },
+  "details": "ORIGINAL 368x640x81 globalB16 G1/C5/EMA0 continuous sigma; same-source full C51 manual vs actual saved selected plan. Canonical v2/capacity unchanged. Numerical REVIEW is not strict equivalence or a statistical speedup claim. Cleanup is original owned-teardown evidence; current GPU idle was not probed.",
+  "final_native_starts": 2,
+  "formal_speedup_eligible": false,
+  "gap_percent": -0.14728639480133715,
+  "host_peak_status": "UNKNOWN_CONTINUOUS_PEAK; MAX_SAMPLED_CGROUP_CURRENT_ONLY",
+  "launch_ledger": [
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/launch-ledger/01-start.json",
+      "sha256": "5e628bb6e276b1139c61e04c5bc25cace6aa33449f45abd89f97188fde666e74"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/launch-ledger/01-finish.json",
+      "sha256": "36f200ec60864c1a14626fc56da04220f6c1225594c6a371104eaf331447d919"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/launch-ledger/02-start.json",
+      "sha256": "7ba3d87c3693837020dc0ee3f4fd5bd247570afe8d133545d764472dfee05041"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/launch-ledger/02-finish.json",
+      "sha256": "30f4fdd1f226037a1783cefd61d51b829cf28e1b357705f27c375287d4146d64"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/launch-ledger/03-start.json",
+      "sha256": "523d31c7ec2b27a28c35dfa132bda69bbaf9ebadae93bfc3e3bc9c7435c8c99b"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/launch-ledger/03-finish.json",
+      "sha256": "475c3fa62ec4f4ba1dc0b3c38fab5d96b27b1b59235b4ff045a26838b3e20a04"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/launch-ledger/04-start.json",
+      "sha256": "b0217995e76e82a6c8e289eb5f8fe4f1f00fac5a71d041640ef6d61664b17d8d"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/launch-ledger/04-finish.json",
+      "sha256": "e09bb03dccaff2cafa1570ebafb396a3fe2cfb49ee9b77054118e9da0fae4f28"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/launch-ledger/05-start.json",
+      "sha256": "56ce939bab357eaedcdb52159cbf4c00ad640ba64281cd92d669fa5a11021e25"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/launch-ledger/05-finish.json",
+      "sha256": "818c75dc5eef106f984db4542df25c99b4351e64fff91cc9cba50a368b3df9ba"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/launch-ledger/06-start.json",
+      "sha256": "16b0c3fcbda129c8f3271ade2d607699b0a83b4159b24076ddd467eb906bace1"
+    },
+    {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/launch-ledger/06-finish.json",
+      "sha256": "49ea1312861da01ce2fe66b09dd2c7aef6a2cd4353e73155a0a76dddb360d6f5"
+    }
+  ],
+  "manual_C2": 42.558984374999994,
+  "no_retry_no_repair": true,
+  "numerical_status": "REVIEW",
+  "preregistration": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/match-phase/manual_match_protocol.json",
+    "sha256": "2a8ed282cd96edebfd0bb48dd69df63f15d206c2dbf36590d83fb2d76b3ffcc8"
+  },
+  "qualification_calibration_native_starts": 4,
+  "schema_version": "dmd.livewan_c51_compact_collection.v1",
+  "search": {
+    "hierarchical": {
+      "assignment": {
+        "bundle": "c51_full_v1",
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "on"
+      },
+      "predicted_cycle2_ns": 42589402344,
+      "reference": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/match-phase/hierarchical/prediction.json",
+        "sha256": "c5188cfa2c937d24393dc17bde40269a3209361508eafba871faeb5903cd85b0"
+      }
+    },
+    "oracle": {
+      "assignment": {
+        "bundle": "c51_full_v1",
+        "gate": "on",
+        "modulation": "on",
+        "placement": "pipeline",
+        "row_major": "on"
+      },
+      "predicted_cycle2_ns": 42589402344,
+      "reference": {
+        "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/match-phase/oracle/prediction.json",
+        "sha256": "12259c4dd0d5fc6ff20ebaf8078f3189effac97fc0ee2b2b12a0885df8461578"
+      }
+    }
+  },
+  "selected_C2": 42.49630078124999,
+  "selected_plan": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/match-phase/hierarchical/selected-plan.json",
+    "sha256": "9be28ec74ebbcd96aa92aadbaa0ac2fe1e50f905e500fb38e780f9b1c4e7e435"
+  },
+  "source": "5cdffc2efab969ad35a8f69dd7b94ad061cc8c86",
+  "status": "MATCHED_DIAGNOSTIC_TARGET_MET",
+  "strict_equivalence": "NOT_ESTABLISHED",
+  "total_native_starts": 6,
+  "validation": {
+    "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/campaign/match-phase/livewan_pair_validation.json",
+    "sha256": "ec4f7d16cf812e06df4861c5f6632e77daddc3cd24c522585f940af2afdd2f93"
+  },
+  "fresh_cleanup": {
+    "path": "/home/lyy/Helios/research_artifacts/DMD-System/planner_manual_best_match_20261017/all_six/livewan_c51/artifacts/cleanup.json",
+    "sha256": "48197324b1c286e8c676daf90f8b81bfaddb145119e718991e993be79336ce6d"
+  }
+}

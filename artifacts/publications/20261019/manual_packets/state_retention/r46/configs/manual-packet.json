@@ -1,0 +1,14 @@
+{
+  "schema": "dmd.h3_ar_manual_metadata_barrier.v1",
+  "source_head": "69a9464997de16deafd5786338f538ba7930d9a5",
+  "scripts": {
+    "worker": {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/scripts/native_r2/metadata_barrier_worker.py",
+      "sha256": "8812bed6a7c7b9eda2beb4b58b32cd3264ed2e5e0affa3ec8e092713e47c4590"
+    },
+    "counter": {
+      "path": "/share/project/shuchenweng/yongyan_liu/research_artifacts/DMD-System/state_retention_six_workloads_20261017/r46/scripts/native_r2/native_metadata_barrier.py",
+      "sha256": "54e7ba603730347e12f9dbead850cd921bc886db1161cfe2c72ce525b8e99833"
+    }
+  }
+}

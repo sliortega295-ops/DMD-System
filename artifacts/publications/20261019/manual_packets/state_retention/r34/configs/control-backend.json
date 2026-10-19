@@ -1,0 +1,18 @@
+{
+  "schema_version": "distillschedule.wan_fa3_manual_backend_experiment.v1",
+  "source_head": "a5b550af56b3eb7e8b5f570be94540134fc49ad5",
+  "arm": "fa3-large-v1",
+  "run_id": "wan-exact-ema-control-20261018-r34",
+  "cycles": 2,
+  "task_sha256": "a3ad1a57875185753315d31c7c53afac8f2288a02035ef27c5bd1eeca7516f42",
+  "assets_sha256": "f76d6ce0b3d9f4e1057de31259dfa9121a28f4fbe59a37ba3faa5061ae0e1a1f",
+  "strategy_sha256": "f3a47b3dc410c0f5f8b33342379a213eaea8bf8b540849329aead259ad7cb80f",
+  "kernel_path": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home/hub/models--kernels-community--flash-attn3/snapshots/acb0f42e6901d3e9effa8a83bd32bc2bf0cfdfc2/build/torch210-cxx11-cu128-x86_64-linux",
+  "kernel_files": {
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home/hub/models--kernels-community--flash-attn3/snapshots/acb0f42e6901d3e9effa8a83bd32bc2bf0cfdfc2/build/torch210-cxx11-cu128-x86_64-linux/__init__.py": "29756640933e2a159cd94a9625eb2ea4268ffa6a80bd3c7bc86b9e1404e09471",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home/hub/models--kernels-community--flash-attn3/snapshots/acb0f42e6901d3e9effa8a83bd32bc2bf0cfdfc2/build/torch210-cxx11-cu128-x86_64-linux/metadata.json": "f1b4b0ef991c0966f7d848777154c0591c4580968fb6da33f6b2a2829a109309",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home/hub/models--kernels-community--flash-attn3/snapshots/acb0f42e6901d3e9effa8a83bd32bc2bf0cfdfc2/build/torch210-cxx11-cu128-x86_64-linux/flash_attn_interface.py": "cb46c3d89606305817ea20eb7b7cc9376b013eeabfd7637a328e7967e1d008d4",
+    "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/hf_home/hub/models--kernels-community--flash-attn3/snapshots/acb0f42e6901d3e9effa8a83bd32bc2bf0cfdfc2/build/torch210-cxx11-cu128-x86_64-linux/_flash_attn3_cuda_373a45c.abi3.so": "8aa9bb49e174872be4e2cb8c2608f2d66de29b513f704fb8d91771f9cd39df56"
+  },
+  "kernel_import_root": "/share/project/shuchenweng/yongyan_liu/DMD-System_assets/lightx2v_minimax_dmd_20260817/env/lib/python3.10/site-packages"
+}
