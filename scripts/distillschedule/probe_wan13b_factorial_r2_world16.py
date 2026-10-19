@@ -15,6 +15,7 @@ import random
 import socket
 import sys
 import time
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Callable
 
@@ -60,6 +61,36 @@ def _cold_counts(build: dict[str, Any]) -> dict[str, Any]:
     c = build['critic']['metadata'].get('critic_grad_cuda_graph', {})
     return {'generator': {k: g.get(k) for k in ('cache_entry_count', 'capture_model_call_count', 'warmup_model_call_count')},
             'critic': {k: c.get(k) for k in ('capture_entries', 'cold_original_forward_calls', 'cold_original_backward_calls')}}
+
+
+def gather_resident_c1_metadata(observation: dict[str, Any], *, world: int,
+                               audit: dict[str, Any], distributed: Any = None) -> list[dict[str, Any]]:
+    """Create/use/release a CPU control group entirely inside C1 qualification.
+
+    Mirrors the existing Wan trajectory evidence-group pattern. All ranks call
+    once in identical order; Tree training collectives stay on default NCCL.
+    No control group or transport remains alive when C2 starts.
+    """
+    if world != 16:
+        raise ValueError('R2 C1 metadata exchange requires world16')
+    d = dist if distributed is None else distributed
+    audit.update(scope='C1_QUALIFICATION_ONLY', world_size=world,
+                 training_nccl_algo=os.environ.get('NCCL_ALGO', 'AUTO'),
+                 default_training_backend=str(d.get_backend()),
+                 created_count=0, gather_count=0, destroyed_count=0)
+    group = d.new_group(ranks=list(range(world)), backend='gloo', timeout=timedelta(seconds=180))
+    audit['created_count'] += 1
+    try:
+        audit['metadata_backend'] = str(d.get_backend(group))
+        if audit['metadata_backend'] != 'gloo':
+            raise AssertionError('R2 C1 metadata group must use gloo')
+        observations: list[Any] = [None] * world
+        audit['gather_count'] += 1
+        d.all_gather_object(observations, observation, group=group)
+        return observations
+    finally:
+        d.destroy_process_group(group)
+        audit['destroyed_count'] += 1
 
 
 def run_four_cycles(*, cfg: dict[str, Any], args: Any, legacy: Any,
@@ -219,7 +250,11 @@ def main() -> int:
         construction_seconds = time.perf_counter() - started
         torch.cuda.reset_peak_memory_stats(device)
 
+        c1_control_audit: dict[str, Any] = {}
+
         def gather(observation: dict[str, Any]) -> list[dict[str, Any]]:
+            if cfg['placement'] == r2.RESIDENT:
+                return gather_resident_c1_metadata(observation, world=world, audit=c1_control_audit)
             observations: list[Any] = [None] * 16
             dist.all_gather_object(observations, observation)
             return observations
@@ -231,6 +266,8 @@ def main() -> int:
         result.update(hostname=socket.gethostname(), local_rank=local_rank,
                       construction_seconds=construction_seconds, memory=base._memory(device),
                       configuration_file_sha256=args.factorial_config_sha256)
+        if cfg['placement'] == r2.RESIDENT:
+            result['c1_control_transport'] = c1_control_audit
         legacy._atomic_json(output, result)
         dist.barrier()
     except BaseException as error:
