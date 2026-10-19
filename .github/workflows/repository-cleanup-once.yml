@@ -8,10 +8,10 @@ permissions:
 jobs:
   prepare-reviewed-tree:
     if: github.repository == 'sliortega295-ops/DMD-System'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     env:
-      EXPECTED_PARENT: 7b2c5a0d3b372cb1ae18b1d862783ff095b8c85e
+      EXPECTED_PARENT: b1819f6859e5a4327721e7eb047e65aaa998bf00
       EXPECTED_TREE: 987cd7b68b512cde9e1ff7cff3ecf57a5d38b337
       PYTHONPATH: src:.
     steps:
@@ -55,8 +55,6 @@ jobs:
               return subprocess.check_output(['git', *args])
           subprocess.run(['git', 'add', '-A'], check=True)
           manifest = json.loads(Path('docs/architecture/repository_cleanup.json').read_text())
-          # Four previously tracked diagnostic logs are ignored by the global
-          # pattern; preserve only these source-pinned existing records.
           for row in manifest['relocations']:
               if row['to'].endswith('.log'):
                   subprocess.run(['git', 'add', '-f', '--', row['to']], check=True)
