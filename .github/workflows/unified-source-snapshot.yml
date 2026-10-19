@@ -1,20 +1,31 @@
 name: unified-source-snapshot
 on:
   push:
-    branches: [agent/unified-strategy-planner-20261012]
+    branches:
+      - agent/unified-strategy-planner-20261012
+      - agent/general-workload-planning-20261012
     paths: [.github/workflows/unified-source-snapshot.yml]
 permissions:
   contents: read
 jobs:
   snapshot:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - run: git archive --format=tar.gz HEAD > /tmp/unified-source.tar.gz
+      - name: Archive tracked source only
+        run: |
+          git archive --format=tar.gz HEAD > /tmp/unified-source.tar.gz
+          git rev-parse HEAD > /tmp/source-commit.txt
+          sha256sum /tmp/unified-source.tar.gz > /tmp/source-sha256.txt
       - uses: actions/upload-artifact@v4
         with:
           name: unified-source-${{ github.sha }}
-          path: /tmp/unified-source.tar.gz
-          retention-days: 3
+          path: |
+            /tmp/unified-source.tar.gz
+            /tmp/source-commit.txt
+            /tmp/source-sha256.txt
+          if-no-files-found: error
+          retention-days: 7
