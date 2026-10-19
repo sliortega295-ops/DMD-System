@@ -2185,7 +2185,7 @@ def prepare_rollout(
     if r3_helper is not None:
         elide_full_context_lens = True  # Exact source-bound 512-valid-token proof in R3 plan.
         context_lens = None
-    with torch.no_grad(), (r3_helper.scope(torch, student) if r3_helper is not None else nullcontext()), model_rollout_cast_cache_scope(torch, student), generator_rms_scope(torch, student), generator_modulation_scope(torch, student), generator_gate_scope(torch, student):
+    with torch.no_grad(), model_rollout_cast_cache_scope(torch, student), generator_rms_scope(torch, student), generator_modulation_scope(torch, student), generator_gate_scope(torch, student), (r3_helper.scope(torch, student) if r3_helper is not None else nullcontext()):
         student_context = student.text_embedding(raw_context)
         streamer.set_text(student_context, context_lens)
         streamer.rope_gap = row.rope_gap
