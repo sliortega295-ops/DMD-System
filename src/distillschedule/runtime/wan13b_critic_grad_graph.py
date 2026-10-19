@@ -149,12 +149,12 @@ def install(source: Any, *, role: str, placement: str,
 
 
 def validate_build(build: dict[str, Any], *, cycles: int,
-                   reference_checks: bool) -> dict[str, Any]:
+                   reference_checks: bool, enabled: bool | None = None) -> dict[str, Any]:
     g = build.get("generator", {}).get("metadata", {}).get("critic_grad_cuda_graph", {})
     c = build.get("critic", {}).get("metadata", {}).get("critic_grad_cuda_graph", {})
     if g.get("enabled"):
         raise AssertionError("Critic graph must not enter Generator")
-    if not requested():
+    if not (requested() if enabled is None else enabled):
         if c.get("enabled"):
             raise AssertionError("Unrequested Critic grad graph executed")
         return dict(generator=g, critic=c)

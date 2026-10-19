@@ -33,15 +33,21 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-_FAIR_PATH = ROOT / "scripts/distillschedule/probe_wan13b_fair_world16.py"
-_SPEC = importlib.util.spec_from_file_location("wan13b_two_cycle_fair_worker", _FAIR_PATH)
-if _SPEC is None or _SPEC.loader is None:
-    raise RuntimeError(f"cannot import {_FAIR_PATH}")
-fair = importlib.util.module_from_spec(_SPEC)
-sys.modules[_SPEC.name] = fair
-_SPEC.loader.exec_module(fair)
-base = fair.base
-p0 = base.p0
+def _load_native_runtime() -> None:
+    """Defer model dependencies so CPU control-flow tests can inject math seams."""
+    global fair, base, p0
+    if "fair" in globals():
+        return
+    path = ROOT / "scripts/distillschedule/probe_wan13b_fair_world16.py"
+    spec = importlib.util.spec_from_file_location("wan13b_two_cycle_fair_worker", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot import {path}")
+    fair = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = fair
+    spec.loader.exec_module(fair)
+    base = fair.base
+    p0 = base.p0
+
 
 from distillschedule.profiling.static_profile_diagnostics import (  # noqa: E402
     StaticProfileDiagnostics,
@@ -92,6 +98,7 @@ def _trace_rollout_contract(trace: StaticWorld16Trace) -> list[dict[str, Any]]:
 
 
 def parser() -> argparse.ArgumentParser:
+    _load_native_runtime()
     value = argparse.ArgumentParser(description=__doc__)
     value.add_argument("--run-id", required=True)
     value.add_argument("--output-dir", type=Path, required=True)
@@ -477,7 +484,8 @@ def _cycle_census(
 
 
 def _validate_fused_receipt(
-    build: dict[str, Any], *, placement: str
+    build: dict[str, Any], *, placement: str, cycles: int = 2,
+    layout_only: bool | None = None,
 ) -> dict[str, Any]:
     generator = (
         build.get("generator", {})
@@ -492,7 +500,7 @@ def _validate_fused_receipt(
     if not isinstance(generator, dict) or not isinstance(critic, dict):
         raise AssertionError("missing fused-epilogue runtime receipt")
     from distillschedule.runtime.wan13b_layout_ablation import requested as layout_requested, check as check_layout
-    if layout_requested():
+    if layout_requested() if layout_only is None else layout_only:
         check_layout(placement, enabled=True, flags={})
         for role, receipt in (("generator", generator), ("critic", critic)):
             if receipt.get("requested") is not False or receipt.get("enabled") is not False:
@@ -512,7 +520,7 @@ def _validate_fused_receipt(
         graph_receipt = build.get("generator", {}).get("metadata", {}).get(
             "generator_rollout_cuda_graph", {})
         expected_counts = expected_epilogue_counts(
-            cycles=2, shadow_enabled=shadow_enabled, graph_receipt=graph_receipt)
+            cycles=cycles, shadow_enabled=shadow_enabled, graph_receipt=graph_receipt)
         for key, expected in expected_counts.items():
             if generator.get(key) != expected:
                 raise AssertionError(f"training-model epilogue census changed {key}")
@@ -529,7 +537,8 @@ def _validate_fused_receipt(
 
 
 def _validate_build_contract(
-    build: dict[str, Any], *, placement: str, ema: Any
+    build: dict[str, Any], *, placement: str, ema: Any,
+    nccl_algo: str | None = None,
 ) -> dict[str, Any]:
     runtime_hashes: set[str] = set()
     for role in ("generator", "critic"):
@@ -585,7 +594,7 @@ def _validate_build_contract(
     if getattr(ema, "implementation", None) != "reference":
         raise AssertionError("two-cycle arms require reference GPU EMA")
     expected_algo = "Tree" if placement == RESIDENT_WINNER else "AUTO"
-    observed_algo = os.environ.get("NCCL_ALGO", "AUTO")
+    observed_algo = os.environ.get("NCCL_ALGO", "AUTO") if nccl_algo is None else nccl_algo
     if observed_algo != expected_algo:
         raise AssertionError(
             f"NCCL algorithm changed: {observed_algo!r} != {expected_algo!r}"

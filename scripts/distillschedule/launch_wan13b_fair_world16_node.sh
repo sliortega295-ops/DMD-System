@@ -13,7 +13,8 @@ PLACEMENT="${7:?resident, resident-clean, resident-async128, resident-async128-t
 [[ "${NODE_RANK}" == 0 || "${NODE_RANK}" == 1 ]] || exit 2
 [[ "${MODE}" == validate || "${MODE}" == correctness || "${MODE}" == timing || \
    "${MODE}" == diagnostic-timing || "${MODE}" == profile || \
-   "${MODE}" == trajectory || "${MODE}" == two-cycle-timing ]] || exit 2
+   "${MODE}" == trajectory || "${MODE}" == two-cycle-timing || \
+   "${MODE}" == four-cycle-factorial-r2 ]] || exit 2
 [[ "${PLACEMENT}" == resident || "${PLACEMENT}" == resident-ddp || \
    "${PLACEMENT}" == resident-clean || "${PLACEMENT}" == resident-async128 || \
    "${PLACEMENT}" == resident-async128-tree || \
@@ -66,6 +67,14 @@ fi
 if [[ "${MODE}" == two-cycle-timing ]]; then
   WORKER="${ROOT}/scripts/distillschedule/probe_wan13b_two_cycle_timing_world16.py"
   [[ "${TWO_CYCLE_SEED}" =~ ^[0-9]+$ && -n "${TWO_CYCLE_ARM_ID}" ]] || exit 2
+fi
+FACTORIAL_CONFIG="${DISTILLSCHEDULE_WAN13B_FACTORIAL_CONFIG:-}"
+FACTORIAL_CONFIG_SHA256="${DISTILLSCHEDULE_WAN13B_FACTORIAL_CONFIG_SHA256:-}"
+if [[ "${MODE}" == four-cycle-factorial-r2 ]]; then
+  WORKER="${ROOT}/scripts/distillschedule/probe_wan13b_factorial_r2_world16.py"
+  [[ -f "${FACTORIAL_CONFIG}" && "${FACTORIAL_CONFIG_SHA256}" =~ ^[0-9a-f]{64}$ ]] || {
+    echo factorial_r2_config_missing >&2; exit 3;
+  }
 fi
 EXPECTED_HELIOS_TRANSFORMER_SHA256="${DISTILLSCHEDULE_EXPECTED_HELIOS_TRANSFORMER_SHA256:-5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886}"
 CORRECTNESS_RECEIPT="${DISTILLSCHEDULE_WAN13B_FAIR_CORRECTNESS_RECEIPT:-}"
@@ -279,6 +288,24 @@ elif mode != "two-cycle-timing":
 PY
 fi
 
+if [[ "${MODE}" == four-cycle-factorial-r2 ]]; then
+  # New contract, before the allocation lock; canonical correctness gates above
+  # are neither removed nor reused as an invented four-cycle qualification.
+  export DISTILLSCHEDULE_WAN13B_EMA_IMPLEMENTATION=reference
+  if [[ "${PLACEMENT}" == resident-async128-tree-chunk2048 ]]; then
+    export NCCL_ALGO=Tree
+  else
+    unset NCCL_ALGO
+  fi
+  PYTHONPATH="${ROOT}/src:${ROOT}" "${PYTHON}" "${WORKER}" \
+    --validate-config-only --run-id "${RUN_ID}" --output-dir "${EXECUTION}" \
+    --placement "${PLACEMENT}" --bootstrap "${BOOTSTRAP}" \
+    --expected-bootstrap-hash "${BOOTSTRAP_HASH}" --model-root "${MODEL_ROOT}" \
+    --trace-bundle "${TRACE}" --expected-trace-hash "${TRACE_HASH}" \
+    --negative-prompt "${NEGATIVE}" --expected-head "${EXPECTED_HEAD}" \
+    --factorial-config "${FACTORIAL_CONFIG}" --factorial-config-sha256 "${FACTORIAL_CONFIG_SHA256}"
+fi
+
 mkdir -p "${NODE_LOG}" "${EXECUTION}"
 [[ ! -e "${NODE_LOG}/launch_manifest.txt" ]] || { echo run_id_already_used >&2; exit 82; }
 exec 9>"${LOCK_FILE}"
@@ -379,7 +406,7 @@ optimizer_offload=false
 parameter_streaming=false
 model_swap=false
 python_runtime_lib_path=${PYENV}/lib
-claim_boundary=$( if [[ "${MODE}" == two-cycle-timing ]]; then echo STEADY_STATE_CYCLE2_UNPROFILED; elif [[ "${MODE}" == diagnostic-timing || "${MODE}" == profile || "${MODE}" == trajectory ]]; then echo DIAGNOSTIC_ONLY; else echo FORMAL_GATE_BOUND; fi )
+claim_boundary=$( if [[ "${MODE}" == two-cycle-timing ]]; then echo STEADY_STATE_CYCLE2_UNPROFILED; elif [[ "${MODE}" == four-cycle-factorial-r2 ]]; then echo R2_C1_QUALIFIED_C2_C4_DIAGNOSTIC; elif [[ "${MODE}" == diagnostic-timing || "${MODE}" == profile || "${MODE}" == trajectory ]]; then echo DIAGNOSTIC_ONLY; else echo FORMAL_GATE_BOUND; fi )
 EOF
 if [[ "${MODE}" == trajectory ]]; then
   cat >>"${NODE_LOG}/launch_manifest.txt" <<EOF
@@ -399,6 +426,22 @@ two_cycle_correctness_receipt=${CORRECTNESS_RECEIPT}
 two_cycle_correctness_sha256=${CORRECTNESS_SHA256}
 two_cycle_trajectory_comparison_receipt=${TRAJECTORY_COMPARISON_RECEIPT}
 two_cycle_trajectory_comparison_sha256=${TRAJECTORY_COMPARISON_SHA256}
+EOF
+fi
+
+if [[ "${MODE}" == four-cycle-factorial-r2 ]]; then
+  "${PYTHON}" - "${FACTORIAL_CONFIG}" >>"${NODE_LOG}/launch_manifest.txt" <<'PYR2'
+import json, pathlib, sys
+from distillschedule.runtime.wan13b_factorial_r2 import digest
+value = json.loads(pathlib.Path(sys.argv[1]).read_text())
+print("factorial_cell=" + value["cell"])
+print("factorial_configuration_fingerprint=" + digest(value))
+PYR2
+  cat >>"${NODE_LOG}/launch_manifest.txt" <<EOF
+factorial_config_sha256=${FACTORIAL_CONFIG_SHA256}
+factorial_cycles=4
+factorial_measurement_cycles=2,3,4
+factorial_numerical_status=NOT_RUN
 EOF
 fi
 
@@ -434,6 +477,11 @@ if [[ "${MODE}" == two-cycle-timing ]]; then
     --trajectory-comparison-receipt "${TRAJECTORY_COMPARISON_RECEIPT}"
     --expected-trajectory-comparison-hash "${TRAJECTORY_COMPARISON_SHA256}"
   )
+fi
+
+if [[ "${MODE}" == four-cycle-factorial-r2 ]]; then
+  WORKER_ARGS+=(--expected-head "${EXPECTED_HEAD}" --factorial-config "${FACTORIAL_CONFIG}"
+                --factorial-config-sha256 "${FACTORIAL_CONFIG_SHA256}")
 fi
 
 set +e

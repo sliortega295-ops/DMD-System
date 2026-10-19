@@ -129,6 +129,7 @@ def parser() -> argparse.ArgumentParser:
             "profile",
             "trajectory",
             "two-cycle-timing",
+            "four-cycle-factorial-r2",
         ),
         required=True,
     )
@@ -159,6 +160,8 @@ def parser() -> argparse.ArgumentParser:
         "--expected-helios-transformer-sha256",
         default="5d3ffe37cdea3c04a156106f6246c82f91010a1eaf0dd61529cd74083065a886",
     )
+    value.add_argument("--factorial-config", type=Path)
+    value.add_argument("--factorial-config-sha256")
     value.add_argument("--layout-only-ablation", action="store_true")
     value.add_argument("--correctness-receipt", type=Path)
     value.add_argument("--correctness-sha256")
@@ -204,6 +207,30 @@ def parser() -> argparse.ArgumentParser:
     return value
 
 
+def _prepare_factorial_r2(args: argparse.Namespace) -> dict[str, Any] | None:
+    if args.mode != "four-cycle-factorial-r2":
+        return None
+    from distillschedule.runtime import wan13b_factorial_r2 as r2
+    if args.factorial_config is None or not args.factorial_config_sha256:
+        raise ValueError("R2 requires a pinned versioned configuration")
+    cfg = r2.load_configuration(args.factorial_config,
+            expected_hash=args.factorial_config_sha256, expected_head=args.expected_head)
+    if args.placement != cfg["placement"] or args.bootstrap_hash != r2.MATCHED["bootstrap_hash"]:
+        raise ValueError("R2 controller asset/placement binding changed")
+    if args.expected_helios_transformer_sha256 != cfg["expected_helios_transformer_sha256"]:
+        raise ValueError("R2 requires the frozen external Helios runtime identity")
+    if args.tf32_cublas_override not in (None, "1"):
+        raise ValueError("R2 requires matched TF32=1 in every cell")
+    # One exact config lowers every runtime flag; no old CLI flag can leak in.
+    for key, enabled in cfg["operator_flags"].items():
+        if getattr(args, key, False) and not enabled:
+            raise ValueError(f"R2 unregistered CLI mechanism: {key}")
+        setattr(args, key, enabled)
+    args.layout_only_ablation = cfg["cell"] == "only_A"
+    args.tf32_cublas_override = "1"
+    return cfg
+
+
 def _pid_file(args: argparse.Namespace, node: int) -> Path:
     return (
         args.remote_root
@@ -215,6 +242,7 @@ def _pid_file(args: argparse.Namespace, node: int) -> Path:
 
 
 def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
+    factorial = _prepare_factorial_r2(args)
     launcher = (
         args.remote_root
         / "scripts/distillschedule/launch_wan13b_fair_world16_node.sh"
@@ -244,6 +272,12 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
         "DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE="
         + ("1" if args.generator_nograd_lora_fused_epilogue else "0"),
     ]
+    if factorial is not None:
+        exports.extend((
+            "DISTILLSCHEDULE_WAN13B_FACTORIAL_CONFIG=" + shlex.quote(str(args.factorial_config)),
+            "DISTILLSCHEDULE_WAN13B_FACTORIAL_CONFIG_SHA256=" + shlex.quote(args.factorial_config_sha256),
+            "DISTILLSCHEDULE_WAN13B_LORA_OPERATOR_ATTRIBUTION=0",
+        ))
     exports.append("DISTILLSCHEDULE_WAN13B_LAYOUT_ONLY_ABLATION=" + ("1" if getattr(args,"layout_only_ablation",False) else "0"))
     if args.tf32_cublas_override is not None:
         exports.append("TORCH_ALLOW_TF32_CUBLAS_OVERRIDE=" + args.tf32_cublas_override)
@@ -392,6 +426,8 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
             else "summarize_wan13b_fair_world16.py"
         )
     )
+    if args.mode == "four-cycle-factorial-r2":
+        summarizer_name = "summarize_wan13b_factorial_r2_world16.py"
     summarizer = args.remote_root / "scripts/distillschedule" / summarizer_name
     mode_args = (
         f"--cycles {args.trajectory_cycles} "
@@ -403,6 +439,10 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
             else f"--mode {shlex.quote(args.mode)} "
         )
     )
+    if args.mode == "four-cycle-factorial-r2":
+        mode_args = (f"--expected-head {shlex.quote(args.expected_head)} "
+                     f"--factorial-config {shlex.quote(str(args.factorial_config))} "
+                     f"--factorial-config-sha256 {shlex.quote(args.factorial_config_sha256)} ")
     command = (
         f"export PYTHONPATH={shlex.quote(str(args.remote_root / 'src'))}:"
         f"{shlex.quote(str(args.remote_root))}; "
@@ -447,6 +487,7 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
 
 def main() -> int:
     args = parser().parse_args()
+    _prepare_factorial_r2(args)
     if not args.run_id.replace("-", "").replace("_", "").replace(".", "").isalnum():
         raise ValueError("unsafe run id")
     if len(args.expected_head) != 40:

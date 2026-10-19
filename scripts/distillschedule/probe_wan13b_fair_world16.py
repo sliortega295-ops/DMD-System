@@ -210,7 +210,7 @@ def _build_model_fair(
         raise ValueError(args.placement)
 
     clean_model_state = None
-    if args.placement in {
+    legacy_clean_model_state = args.placement in {
         CLEAN_RESIDENT,
         ASYNC_128_RESIDENT,
         ASYNC_128_TREE_RESIDENT,
@@ -222,7 +222,9 @@ def _build_model_fair(
         FLAT_512_RESIDENT,
         LORA_ZERO2_RESIDENT,
         ROLLOUT_FUSED_RESIDENT,
-    }:
+    }
+    from distillschedule.runtime.wan13b_factorial_r2 import builder_clean_model_state
+    if builder_clean_model_state(args, legacy_requested=legacy_clean_model_state):
         clean_model_state = install_resident_clean_model_state(model)
 
     compile_runtime = install_generator_nograd_block_compile(
