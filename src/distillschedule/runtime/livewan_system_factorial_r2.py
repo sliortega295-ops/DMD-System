@@ -295,7 +295,7 @@ class ScopedScoreKernels:
     """Dispatch existing kernels only inside entered Critic/Teacher calls.
 
     FSDP still owns unshard/reshard. No parameter or full-weight view is cached.
-    The caller must keep the Critic scope open through checkpoint backward.
+    Checkpoint functions bind this role explicitly for cross-thread replay.
     Outside a scope (including every Student call), invoke the exact original.
     """
     def __init__(self, targets: Mapping[str, tuple[Any, str, Any, Any]]):
@@ -332,6 +332,22 @@ class ScopedScoreKernels:
         finally:
             self._role.reset(token)
 
+    @contextmanager
+    def captured_role(self, role: str | None):
+        """Restore a checkpoint's original dispatch, not a new logical call.
+
+        Autograd workers do not inherit the creating Python thread's ContextVar.
+        None is an explicit Student binding, not permission to inherit Score.
+        Native checkpoint early-stop may leave through this context; always
+        restore the replay thread's previous role without counting a failure.
+        """
+        require(role is None or role in self.entries, "unsupported captured checkpoint role")
+        token = self._role.set(role)
+        try:
+            yield
+        finally:
+            self._role.reset(token)
+
     def receipt(self) -> dict[str, Any]:
         return dict(name="fsdp_scoped_score_operators_v1",
                     scope="explicit_critic_teacher_calls_all_ranks",
@@ -349,9 +365,15 @@ class ScopedRecomputeCheckpointAudit(RecomputeCheckpointAudit):
         self.scope = scope
 
     def checkpoint(self, function: Any, *args: Any, **kwargs: Any):
-        if self.scope.current_role != "critic":
-            return self.module.checkpoint(function, *args, **kwargs)
-        return super().checkpoint(function, *args, **kwargs)
+        role = self.scope.current_role
+
+        def captured(*values: Any, **options: Any):
+            with self.scope.captured_role(role):
+                return function(*values, **options)
+
+        if role != "critic":
+            return self.module.checkpoint(captured, *args, **kwargs)
+        return super().checkpoint(captured, *args, **kwargs)
 
 
 def score_scope(model: Any, *, role: str):

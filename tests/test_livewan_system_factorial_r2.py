@@ -196,6 +196,67 @@ def test_score_scope_is_nested_exception_safe_and_preserves_G_and_checkpoint():
     assert not torch.cuda.is_initialized()
 
 
+@pytest.mark.parametrize("forward_role,backward_role", [("critic", None), (None, "critic"), ("critic", "teacher")])
+def test_checkpoint_replay_in_another_thread_preserves_captured_role_including_Student(forward_role, backward_role):
+    """Real CPU autograd thread boundary, not a simulated outer-scope reset.
+
+    The two operators have identical values/gradients but different saved-tensor
+    sequences, as do the production fused and original RMS paths. Losing the
+    role during real checkpoint re-entry must therefore fail determinism checks.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+    from contextlib import nullcontext
+    from threading import get_ident
+    from types import SimpleNamespace as NS
+    torch = pytest.importorskip("torch")
+    from torch.utils import checkpoint
+    seen = []
+    class SavedSquare(torch.autograd.Function):
+        @staticmethod
+        def forward(ctx, x):
+            ctx.save_for_backward(x, torch.ones(1))
+            return x.square()
+        @staticmethod
+        def backward(ctx, gradient):
+            x, _ = ctx.saved_tensors
+            return gradient * 2 * x
+    def original(x):
+        seen.append(("original", scope.current_role, get_ident()))
+        return x.square()
+    def optimized(x):
+        seen.append(("optimized", scope.current_role, get_ident()))
+        return SavedSquare.apply(x)
+    target = NS(op=original)
+    scope = r2.ScopedScoreKernels({"score_rmsnorm_kernel": (target, "op", original, optimized)})
+    proxy = r2.ScopedRecomputeCheckpointAudit(checkpoint, scope)
+    x = torch.tensor([.2, .4, .6], requires_grad=True)
+    owner_thread = get_ident()
+    with scope.role(forward_role) if forward_role is not None else nullcontext():
+        y = proxy.checkpoint(target.op, x, use_reentrant=False)
+    assert scope.current_role is None
+    def backward():
+        assert get_ident() != owner_thread and scope.current_role is None
+        with scope.role(backward_role) if backward_role is not None else nullcontext():
+            y.sum().backward()
+            assert scope.current_role == backward_role
+        assert scope.current_role is None
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(backward).result()
+    assert torch.equal(x.grad, 2 * x.detach())
+    expected_operator = "original" if forward_role is None else "optimized"
+    assert [operator for operator, role, thread in seen] == [expected_operator, expected_operator]
+    assert [role for operator, role, thread in seen] == [forward_role, forward_role]
+    assert seen[0][2] == owner_thread and seen[1][2] != owner_thread
+    assert scope.current_role is None and scope.failures == 0
+    # Captured replay scopes are physical context restoration, not extra
+    # logical Critic/Teacher calls; the existing scope census stays exact.
+    assert scope.entries == {role: int(forward_role == role) + int(backward_role == role)
+                             for role in ("critic", "teacher")}
+    audit = proxy.receipt()
+    assert audit["checkpoint_calls"] == audit["replay_entries"] == int(forward_role == "critic")
+    assert not torch.cuda.is_initialized()
+
+
 def test_real_CPU_checkpoint_early_stop_has_dispatch_without_completed_leaf():
     torch = pytest.importorskip("torch")
     from torch.utils import checkpoint

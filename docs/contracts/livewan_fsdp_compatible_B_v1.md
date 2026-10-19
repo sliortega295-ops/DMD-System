@@ -33,6 +33,12 @@ The Critic scope surrounds the complete forward and backward, including native
 checkpoint re-entry. Nested scopes and exceptional exits restore the previous
 role. No FSDP parameter view is retained, pinned or cached across calls.
 
+The checkpoint function itself captures the creating role, including explicit
+`None` for Student. Both original evaluation and every native recomputation
+restore that captured role, independently of the autograd worker thread's outer
+ContextVar. This context restoration is not a new logical Score call and does
+not change checkpoint/RNG/determinism options or the Critic body-entry census.
+
 ## Disabled and interaction-dependent mechanisms
 
 Original computation is retained for text-K/V caching, rollout cast caching,
