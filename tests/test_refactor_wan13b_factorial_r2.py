@@ -551,12 +551,13 @@ def test_controller_lowers_config_and_keeps_original_guards(tmp_path):
     subprocess.run(['bash', '-n', str(ROOT / 'scripts/distillschedule/launch_wan13b_fair_world16_node.sh')], check=True)
 
 
-def test_versioned_launcher_preflight_before_lock_and_training(tmp_path):
+@pytest.mark.parametrize('cell', ['baseline', 'only_A', 'full', 'only_B_fsdp_compatible'])
+def test_versioned_launcher_preflight_before_lock_and_training(tmp_path, cell):
     """Synthetic executables: real shell routing, zero CUDA/GPU/SSH invocation."""
     import hashlib
     import os
     import subprocess
-    cfg = configuration('only_A')
+    cfg = configuration(cell)
     config_path = tmp_path / 'only_a.json'
     config_path.write_text(json.dumps(cfg))
     sha = hashlib.sha256(config_path.read_bytes()).hexdigest()
@@ -601,6 +602,45 @@ def test_versioned_launcher_preflight_before_lock_and_training(tmp_path):
     assert not lock.exists()
     assert not marker.exists()
     env['DISTILLSCHEDULE_WAN13B_FACTORIAL_CONFIG_SHA256'] = sha
+    if cell == 'only_B_fsdp_compatible':
+        # Exact B header execution, not just rendered commands. Each invalid
+        # request must fail before taking the synthetic node lock/GPU boundary.
+        for key, value in (
+                ('DISTILLSCHEDULE_WAN13B_MODULATED_NORM_FUSION', '0'),
+                ('DISTILLSCHEDULE_WAN13B_GRAD_LORA_FUSED_EPILOGUE', '0'),
+                ('DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_CAST_CACHE', '1')):
+            bad_env = {**env, key: value}
+            failed = subprocess.run(command, capture_output=True, text=True, env=bad_env)
+            assert failed.returncode != 0 and 'lowered runtime flag changed' in failed.stderr
+            assert not lock.exists() and not marker.exists()
+        for mutate in (
+                lambda c: c['matched_contract'].__setitem__('global_batch', 8),
+                lambda c: c['matched_contract'].__setitem__('seed', 42),
+                lambda c: c['geometry'].__setitem__('video_frames', 32),
+                lambda c: c['source'].__setitem__('expected_head', '3' * 40),
+                lambda c: c['source']['files_sha256'].__setitem__(r2.SOURCE_PATHS[0], '0' * 64),
+                lambda c: c.__setitem__('cell', 'only_B')):
+            changed = copy.deepcopy(cfg)
+            mutate(changed)
+            config_path.write_text(json.dumps(changed))
+            failed = subprocess.run(command, capture_output=True, text=True, env={
+                **env, 'DISTILLSCHEDULE_WAN13B_FACTORIAL_CONFIG_SHA256':
+                hashlib.sha256(config_path.read_bytes()).hexdigest()})
+            assert failed.returncode != 0
+            assert not lock.exists() and not marker.exists()
+        config_path.write_text(json.dumps(cfg))
+        assert hashlib.sha256(config_path.read_bytes()).hexdigest() == sha
+        # MODE and an ambient token cannot unlock the canonical FSDP path.
+        canonical = list(command)
+        canonical[4] = 'validate'
+        for norm, expected in (('1', 'norm_fusion_requires_registered_resident_control'),
+                               ('0', 'grad_epilogue_requires_registered_resident')):
+            failed = subprocess.run(canonical, capture_output=True, text=True, env={
+                **env, 'MODULATED_NORM_FUSION': norm,
+                'DISTILLSCHEDULE_WAN13B_MODULATED_NORM_FUSION': norm,
+                'FACTORIAL_R2_VALIDATED': '1'})
+            assert failed.returncode == 2 and expected in failed.stderr
+            assert not lock.exists() and not marker.exists()
     valid_preflight = subprocess.run(command, capture_output=True, text=True, env=env)
     assert valid_preflight.returncode == 81, valid_preflight.stderr
     assert 'gpu_processes_present' in valid_preflight.stderr

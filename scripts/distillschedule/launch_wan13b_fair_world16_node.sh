@@ -112,12 +112,32 @@ if [[ "${GENERATOR_ROLLOUT_MERGED_SHADOW}" == 1 ]]; then
   }
 fi
 [[ "${MODULATED_NORM_FUSION}" == 0 || "${MODULATED_NORM_FUSION}" == 1 ]] || exit 2
-if [[ "${MODULATED_NORM_FUSION}" == 1 && "${PLACEMENT}" != resident-async128-tree-chunk2048 ]]; then
+# Run the existing exact source/config/environment preflight before the legacy
+# placement bundle checks. Only this successful call can admit R2's explicit
+# FSDP-compatible B subset; an ambient flag or MODE alone is not an exemption.
+FACTORIAL_R2_VALIDATED=0
+if [[ "${MODE}" == four-cycle-factorial-r2 ]]; then
+  export DISTILLSCHEDULE_WAN13B_EMA_IMPLEMENTATION=reference
+  if [[ "${PLACEMENT}" == resident-async128-tree-chunk2048 ]]; then
+    export NCCL_ALGO=Tree
+  else
+    unset NCCL_ALGO
+  fi
+  PYTHONPATH="${ROOT}/src:${ROOT}" "${PYTHON}" "${WORKER}" \
+    --validate-config-only --run-id "${RUN_ID}" --output-dir "${EXECUTION}" \
+    --placement "${PLACEMENT}" --bootstrap "${BOOTSTRAP}" \
+    --expected-bootstrap-hash "${BOOTSTRAP_HASH}" --model-root "${MODEL_ROOT}" \
+    --trace-bundle "${TRACE}" --expected-trace-hash "${TRACE_HASH}" \
+    --negative-prompt "${NEGATIVE}" --expected-head "${EXPECTED_HEAD}" \
+    --factorial-config "${FACTORIAL_CONFIG}" --factorial-config-sha256 "${FACTORIAL_CONFIG_SHA256}"
+  FACTORIAL_R2_VALIDATED=1
+fi
+if [[ "${MODULATED_NORM_FUSION}" == 1 && "${PLACEMENT}" != resident-async128-tree-chunk2048 && "${FACTORIAL_R2_VALIDATED}" != 1 ]]; then
   echo norm_fusion_requires_registered_resident_control >&2
   exit 2
 fi
 [[ "${GRAD_LORA_FUSED_EPILOGUE}" == 0 || "${GRAD_LORA_FUSED_EPILOGUE}" == 1 ]] || exit 2
-if [[ "${GRAD_LORA_FUSED_EPILOGUE}" == 1 && "${PLACEMENT}" != resident-async128-tree-chunk2048 ]]; then
+if [[ "${GRAD_LORA_FUSED_EPILOGUE}" == 1 && "${PLACEMENT}" != resident-async128-tree-chunk2048 && "${FACTORIAL_R2_VALIDATED}" != 1 ]]; then
   echo grad_epilogue_requires_registered_resident >&2; exit 2
 fi
 
@@ -286,24 +306,6 @@ elif mode != "two-cycle-timing":
         if workload.get(key) != expected_value:
             raise SystemExit(f"diagnostic semantic contract drift: {key}")
 PY
-fi
-
-if [[ "${MODE}" == four-cycle-factorial-r2 ]]; then
-  # New contract, before the allocation lock; canonical correctness gates above
-  # are neither removed nor reused as an invented four-cycle qualification.
-  export DISTILLSCHEDULE_WAN13B_EMA_IMPLEMENTATION=reference
-  if [[ "${PLACEMENT}" == resident-async128-tree-chunk2048 ]]; then
-    export NCCL_ALGO=Tree
-  else
-    unset NCCL_ALGO
-  fi
-  PYTHONPATH="${ROOT}/src:${ROOT}" "${PYTHON}" "${WORKER}" \
-    --validate-config-only --run-id "${RUN_ID}" --output-dir "${EXECUTION}" \
-    --placement "${PLACEMENT}" --bootstrap "${BOOTSTRAP}" \
-    --expected-bootstrap-hash "${BOOTSTRAP_HASH}" --model-root "${MODEL_ROOT}" \
-    --trace-bundle "${TRACE}" --expected-trace-hash "${TRACE_HASH}" \
-    --negative-prompt "${NEGATIVE}" --expected-head "${EXPECTED_HEAD}" \
-    --factorial-config "${FACTORIAL_CONFIG}" --factorial-config-sha256 "${FACTORIAL_CONFIG_SHA256}"
 fi
 
 mkdir -p "${NODE_LOG}" "${EXECUTION}"
