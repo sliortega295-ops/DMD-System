@@ -223,10 +223,11 @@ def cpu_chain(monkeypatch, cell, rank=0, *, gather=synthetic_gather, drift=None)
             receipt = dict(enabled=True, role=role, placement=placement,
                            cached_parameter_bytes=0, contract_failures=0,
                            instrumented_module_count=1, parameter_check_calls=0,
-                           grad_enabled_calls=0, no_grad_calls=0,
+                           grad_enabled_calls=0, no_grad_calls=0, adapter_disabled_calls=0,
                            evidence_kind='SYNTHETIC_TEST_ONLY')
             def check(module, args):
                 receipt['parameter_check_calls'] += 1
+                receipt['adapter_disabled_calls'] += int(not getattr(module, 'adapter_enabled', True))
                 receipt['grad_enabled_calls' if torch.is_grad_enabled() else 'no_grad_calls'] += 1
             model.register_forward_pre_hook(check)
             norm_receipts[role].update(native_chunk_tokens=512, fsdp_compatible_b=True)

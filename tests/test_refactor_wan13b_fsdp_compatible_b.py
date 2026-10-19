@@ -45,8 +45,11 @@ def test_real_checkpoint_scope_no_tensor_retention_and_stale_param_rejected():
             self.base = torch.nn.Linear(4, 4, bias=False, dtype=torch.bfloat16).requires_grad_(False)
             self.a = torch.nn.Linear(4, 2, bias=False)
             self.b = torch.nn.Linear(2, 4, bias=False)
+            self.disable_adapters = False
 
         def forward(self, x):
+            if self.disable_adapters:
+                return self.base(x)
             return (self.base(x) + self.b(self.a(x.float())) * 0.3).to(x.dtype)
 
     torch.manual_seed(20260903)
@@ -70,6 +73,14 @@ def test_real_checkpoint_scope_no_tensor_retention_and_stale_param_rejected():
     with torch.no_grad():
         candidate(y)
     assert receipt['no_grad_calls'] == 1 and receipt['cached_parameter_bytes'] == 0
+    candidate.disable_adapters = True
+    candidate.a.requires_grad_(False)
+    candidate.b.requires_grad_(False)
+    with torch.no_grad():
+        assert torch.equal(candidate(y), candidate.base(y))
+    candidate.disable_adapters = False
+    candidate.a.requires_grad_(True)
+    candidate.b.requires_grad_(True)
     candidate.a.weight.device_mesh = 'SYNTHETIC_SHARDED_SENTINEL'
     with pytest.raises(RuntimeError, match='materialization/dtype'):
         candidate(y)
@@ -162,3 +173,61 @@ def test_norm_registration_uses_512_and_rejects_wrong_shared_scope(monkeypatch):
     assert g is c and g['native_chunk_tokens'] == g['test_warmup_tokens'] == 512
     with pytest.raises(RuntimeError, match='scope differs'):
         policy.install(role='critic', placement=r2.RESIDENT, device=None)
+
+
+def test_real_peft_adapter_transitions_checkpoint_grad_rng_and_adam(monkeypatch):
+    """Real target PEFT + CPU checkpoint; only Triton arithmetic is an eager seam."""
+    import torch
+    pytest.importorskip('peft')
+    from peft.tuners.lora.layer import Linear
+    from torch.utils.checkpoint import checkpoint
+    from distillschedule.runtime import wan13b_lora_grad_epilogue as grad
+    from distillschedule.runtime.wan13b_lora_cast import install_generator_nograd_lora_fused_epilogue
+    from distillschedule.runtime.wan13b_fsdp_compatible_b import install
+    torch.manual_seed(20260903)
+    layer = Linear(torch.nn.Linear(4, 4, bias=False, dtype=torch.bfloat16).requires_grad_(False),
+                   adapter_name='default', r=2, lora_alpha=2, lora_dropout=0.0)
+    layer.lora_A.default.float()
+    layer.lora_B.default.float()
+    torch.nn.init.normal_(layer.lora_B.default.weight)
+    a = torch.nn.Sequential(layer)
+    b = copy.deepcopy(a)
+    native = lambda x, y, scale: (x + y * scale).to(x.dtype)
+    eager_function = grad.make_epilogue_autograd_function(native)
+    monkeypatch.setattr(grad, 'fused_lora_epilogue_with_grad', lambda x, y, scale: eager_function.apply(x, y, scale))
+    monkeypatch.setenv('DISTILLSCHEDULE_WAN13B_GENERATOR_NOGRAD_LORA_FUSED_EPILOGUE', '1')
+    monkeypatch.setenv(grad.GRAD_EPILOGUE_ENV, '1')
+    for flag in ('GENERATOR_NOGRAD_LORA_CAST_CACHE', 'LORA_OPERATOR_ATTRIBUTION',
+                 'GENERATOR_ROLLOUT_CUDA_GRAPH', 'FUSED_INPUT_LORA_A'):
+        monkeypatch.setenv('DISTILLSCHEDULE_WAN13B_' + flag, '0')
+    ep = install_generator_nograd_lora_fused_epilogue(b, role='generator', fused_epilogue=native)
+    gp = grad.install_grad_lora_fused_epilogue(b, role='generator')
+    receipt = install(b, role='critic', placement=r2.FSDP)
+    oa = torch.optim.AdamW([p for p in a.parameters() if p.requires_grad], lr=1e-4)
+    ob = torch.optim.AdamW([p for p in b.parameters() if p.requires_grad], lr=1e-4)
+    x = torch.randn(3, 4, dtype=torch.bfloat16)
+    for _ in range(2):
+        for enabled in (False, True):
+            a[0].enable_adapters(enabled)
+            b[0].enable_adapters(enabled)
+            with torch.no_grad():
+                # Teacher uses Critic's PEFT path, never the Generator-only
+                # root ContextVar. Exercise both scopes without faking a cache.
+                assert torch.equal(a(x), b(x)) if enabled else torch.equal(a[0](x), b[0](x))
+        before = torch.get_rng_state().clone()
+        lhs = checkpoint(a, x, use_reentrant=False)
+        lhs.float().square().sum().backward()
+        after = torch.get_rng_state().clone()
+        torch.set_rng_state(before)
+        rhs = checkpoint(b, x, use_reentrant=False)
+        rhs.float().square().sum().backward()
+        assert torch.equal(lhs, rhs) and torch.equal(torch.get_rng_state(), after)
+        oa.step(); ob.step()
+        oa.zero_grad(set_to_none=True); ob.zero_grad(set_to_none=True)
+        for p, q in zip(a.parameters(), b.parameters(), strict=True):
+            assert torch.equal(p, q)
+            if p in oa.state:
+                for key in oa.state[p]:
+                    assert torch.equal(oa.state[p][key], ob.state[q][key])
+    assert ep['fused_invocation_count'] > 0 and gp['fused_invocation_count'] > 0
+    assert receipt['adapter_disabled_calls'] > 0 and receipt['contract_failures'] == 0
