@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from typing import Any, Mapping
 
 from . import livewan_system_factorial_r2 as r2
+from . import livewan_factorial_r3 as r3
 from .livewan_crossscale_worker import FormalTrace
 
 
@@ -24,6 +25,10 @@ def _parent_helpers():
 def mechanism_errors(row: dict[str, Any], *, arm: str, rank: int) -> list[str]:
     """Reuse original receipt checkers; no count is filled from a plan flag."""
     errors: list[str] = []
+    if arm in r3.ARMS:
+        errors += r3.mechanism_errors(row, arm=arm, rank=rank)
+        if arm == r3.B_ARM:
+            return errors
     keys = ("critic_lora_kernel", "score_modulation_kernel", "score_rmsnorm_kernel",
             "score_rope_kernel", "score_attention_backend", "score_residual_gate", "score_layernorm",
             "generator_cross_attention_kv_cache", "generator_attention_backend",

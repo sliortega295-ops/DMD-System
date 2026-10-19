@@ -7,7 +7,7 @@ math helpers; only placement, rank routing, transport, and legal overlap differ.
 
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass, field
 import gc
 import hashlib
@@ -20,6 +20,7 @@ import time
 from typing import Any, Mapping, Sequence
 
 from distillschedule.runtime import livewan_system_factorial_r2 as system_r2
+from distillschedule.runtime import livewan_factorial_r3 as system_r3
 
 from distillschedule.evidence.trajectory_coarse import (
     AppendOnlyTrajectoryWriter,
@@ -578,6 +579,17 @@ def _configure_fsdp_reduction(model: Any, *, group_size: int) -> int:
             count += 1
     _require(count > 0, "FSDP2 model has no configured shard groups")
     return count
+
+
+def pipeline_generator_gradient_sync(torch: Any, bundle: Any) -> dict[str, Any]:
+    if getattr(bundle.student, "_livewan_r3_fsdp8", False):
+        _require(bundle.generator_group_size == 8, "R3 Generator shard group changed")
+        _require(all(hasattr(p, "to_local") for p in bundle.student.parameters()),
+                 "R3 FSDP8 parameters became replicated before commit")
+        return {"policy": "fsdp2_reduce_scatter_sum_divide_8"}
+    return _mean_replicated_gradients(
+        torch, list(bundle.student.parameters()), group=bundle.generator_group,
+        group_size=bundle.generator_group_size, bucket_mib=256)
 
 
 def _generator_optimizer_factory(torch: Any, *, plan: Mapping[str, Any], mode: str,
@@ -1459,9 +1471,10 @@ def build_models(
             state_receipt["load_policy"] = "complete_stage1_direct_mmap"
         fsdp_groups = 0
         phase_expanded = pool_policy == PHASE_EXPANDED_CRITIC16_POOL_POLICY
-        if mode == "baseline" and baseline_spec.student_fsdp:
+        if (mode == "baseline" and baseline_spec.student_fsdp) or system_r3.generator_fsdp8(plan, mode=mode):
             mesh = _make_mesh(torch, generator_ranks, generator_group)
-            shard_model(student, mesh=mesh, reshard_after_forward=baseline_spec.student_reshard)
+            shard_model(student, mesh=mesh, reshard_after_forward=(
+                True if system_r3.generator_fsdp8(plan, mode=mode) else baseline_spec.student_reshard))
             student.to(device)
             fsdp_groups = _configure_fsdp_reduction(student, group_size=len(generator_ranks))
         else:
@@ -1506,6 +1519,19 @@ def build_models(
             "optimizer_impl": optimizer_impl,
             "optimizer": materialize_adam_state(torch, opt_g, step=int(bootstrap.value["optimizer"]["generator_step"])),
         }
+        if system_r3.generator_fsdp8(plan, mode=mode):
+            params = tuple(student.parameters())
+            optimizer_params = tuple(p for group in opt_g.param_groups for p in group["params"])
+            _require(fsdp_groups == 35 and len(generator_ranks) == 8
+                     and all(hasattr(p, "to_local") for p in params)
+                     and len(params) == len(optimizer_params)
+                     and all(p is q for p, q in zip(params, optimizer_params)),
+                     "R3 FSDP8 original unit/optimizer binding changed")
+            object.__setattr__(student, "_livewan_r3_fsdp8", True)
+            metadata["student"].update(
+                placement="generator_pool8_fsdp2_full_shard", r3_fsdp_group_size=len(generator_ranks),
+                r3_fsdp_unit_count=fsdp_groups, r3_registered_dtensor_parameters=True,
+                r3_optimizer_parameters_bound=True)
         gc.collect()
 
     if owns_critic:
@@ -2155,7 +2181,11 @@ def prepare_rollout(
         if elide_full_context_lens
         else torch.tensor([raw_context.shape[1]], device=device, dtype=torch.long)
     )
-    with torch.no_grad(), model_rollout_cast_cache_scope(torch, student), generator_rms_scope(torch, student), generator_modulation_scope(torch, student), generator_gate_scope(torch, student):
+    r3_helper = getattr(student, "_livewan_factorial_r3_b", None)
+    if r3_helper is not None:
+        elide_full_context_lens = True  # Exact source-bound 512-valid-token proof in R3 plan.
+        context_lens = None
+    with torch.no_grad(), (r3_helper.scope(torch, student) if r3_helper is not None else nullcontext()), model_rollout_cast_cache_scope(torch, student), generator_rms_scope(torch, student), generator_modulation_scope(torch, student), generator_gate_scope(torch, student):
         student_context = student.text_embedding(raw_context)
         streamer.set_text(student_context, context_lens)
         streamer.rope_gap = row.rope_gap
@@ -2690,19 +2720,20 @@ def generator_backward_for_sample(
         : min(GRAD_BLOCKS, prepared.new_blocks)
     ].tolist()
     losses: list[Any] = []
-    for block_index in block_indices:
-        record = prepared.recs[block_index][-1]
-        _require(prepared.streamer.prefix_intact(record), "recorded rollout prefix was evicted")
-        offset = prepared.base_offset + block_index * BLOCK_FRAMES
-        x0_hat = prepared.streamer.recompute_step(record, prefix)
-        loss = D.dmd_surrogate(
-            x0_hat,
-            dmd_gradient[:, :, offset : offset + BLOCK_FRAMES],
-            scale=sample_weight / len(block_indices),
-        )
-        loss.backward()
-        losses.append(loss.detach())
-        del x0_hat, loss
+    with system_r2.score_scope(prepared.streamer.model, role="student"):
+        for block_index in block_indices:
+            record = prepared.recs[block_index][-1]
+            _require(prepared.streamer.prefix_intact(record), "recorded rollout prefix was evicted")
+            offset = prepared.base_offset + block_index * BLOCK_FRAMES
+            x0_hat = prepared.streamer.recompute_step(record, prefix)
+            loss = D.dmd_surrogate(
+                x0_hat,
+                dmd_gradient[:, :, offset : offset + BLOCK_FRAMES],
+                scale=sample_weight / len(block_indices),
+            )
+            loss.backward()
+            losses.append(loss.detach())
+            del x0_hat, loss
     return losses
 
 
@@ -3306,6 +3337,11 @@ def _full_context_lens_elision(plan: Mapping[str, Any], *, mode: str) -> bool:
     """Validate the exact full-text mask elision candidate."""
 
     metadata = plan.get("metadata", {})
+    if system_r3.complete_b(plan, mode=mode):
+        contracts = metadata[system_r3.KEY]["mechanism_contracts"]
+        _require(contracts.get("full_context_lens_elision") is True,
+                 "R3 full-context equivalence proof missing")
+        return True
     enabled = metadata.get("full_context_lens_elision", False)
     _require(isinstance(enabled, bool), "full-context lens elision must be boolean")
     if not enabled:
@@ -4490,6 +4526,9 @@ def run_worker(
     bundle = build_models(
         torch=torch, plan=plan, bootstrap=bootstrap, mode=mode, rank=rank, device=device,
     )
+    if system_r3.complete_b(plan, mode=mode):
+        from distillschedule.runtime.livewan_factorial_r3_b import install as install_complete_b
+        install_complete_b(torch, bundle=bundle)
     if system_r2.only_b_compatible(plan, mode=mode):
         compatible_kernels = system_r2.install_fsdp_compatible_score_kernels(
             torch, bundle=bundle, plan=plan, mode=mode)
@@ -4500,7 +4539,7 @@ def run_worker(
     if baseline_spec.name != "legacy-hybrid":
         from distillschedule.runtime.livewan_baseline_placement import verify_models
         bundle.metadata["baseline_placement_runtime"] = verify_models(baseline_spec, bundle)
-    if baseline_spec.student_padding == "max-noop":
+    if baseline_spec.student_padding == "max-noop" or (system_r3.generator_fsdp8(plan, mode=mode) and rank < 8):
         from distillschedule.runtime.livewan_collective_padding import StudentRolloutPadding
         _require(bundle.student is not None, "padding Student missing")
         object.__setattr__(bundle.student, "_livewan_collective_padding",
@@ -5278,7 +5317,7 @@ def run_worker(
     if bundle.teacher_cpu_staging is not None:
         bundle.metadata["teacher"]["cpu_staging"] = bundle.teacher_cpu_staging.receipt()
     student_padding_receipt = None
-    if baseline_spec.student_padding == "max-noop":
+    if baseline_spec.student_padding == "max-noop" or (system_r3.generator_fsdp8(plan, mode=mode) and rank < 8):
         student_padding_receipt = bundle.student._livewan_collective_padding.receipt()
         _require(student_padding_receipt["extra_physical_forward_calls"] ==
                  inventory.padding_counts.get("student/nograd/plain", 0),
@@ -5392,6 +5431,17 @@ def run_worker(
             else {"execution_status": "NOT_APPLICABLE"})
         receipt["system_factorial_c1_finite"] = system_r2.finish_finite(torch, evidence, rank=rank, mode=mode)
         receipt["head"] = os.environ["LIVEWAN_EXPECTED_HEAD"]
+        if system_r3.is_arm(plan, system_r3.A_ARM):
+            receipt[system_r3.KEY] = dict(complete_B=False)
+        elif system_r3.is_arm(plan, system_r3.B_ARM):
+            receipt[system_r3.KEY] = dict(
+                complete_B=True, runtime=bundle.system_factorial_r3_b.receipt(),
+                observed_generator_optimizer_fused=bundle.generator_optimizer.defaults.get("fused") is True,
+                observed_generator_optimizer_dtensor_parameters=all(
+                    hasattr(p, "to_local") for group in bundle.generator_optimizer.param_groups for p in group["params"]))
+            _require(not system_r3.mechanism_errors(receipt, arm=system_r3.B_ARM, rank=rank),
+                     "R3 complete B runtime/mechanism census failed: " + str(
+                         system_r3.mechanism_errors(receipt, arm=system_r3.B_ARM, rank=rank)))
         if system_r2.only_b_compatible(plan, mode=mode):
             receipt[system_r2.COMPATIBLE_KEY] = bundle.system_factorial_score_scope.receipt()
             receipt[system_r2.COMPATIBLE_KEY]["observed_generator_optimizer_fused"] = (
@@ -5546,6 +5596,9 @@ def _run_baseline(
                     )
                     bundle.generator_optimizer.step()
                     versions["generator"] += 1
+                    r3_helper = getattr(bundle.student, "_livewan_factorial_r3_b", None)
+                    if r3_helper is not None:
+                        r3_helper.generator_committed(versions["generator"])
             with _profile_range(
                 torch, run_kind=run_kind,
                 label=f"livewan/baseline/step_{step}/critic_commit",
@@ -6381,10 +6434,7 @@ def _run_pipeline_8x8(
                     torch, run_kind=run_kind,
                     label="livewan/pipeline/g/step_0/generator_commit",
                 ):
-                    sync = _mean_replicated_gradients(
-                        torch, list(bundle.student.parameters()), group=bundle.generator_group,
-                        group_size=bundle.generator_group_size, bucket_mib=256,
-                    )
+                    sync = pipeline_generator_gradient_sync(torch, bundle)
                     evidence.gradient_sync.append({"step": global_step, "role": "generator", **sync})
                     generator_parameters = list(bundle.student.parameters())
                     generator_pre_clip = (

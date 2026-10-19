@@ -16,6 +16,7 @@ import re
 import subprocess
 import socket
 from typing import Any, Mapping
+from . import livewan_factorial_r3 as r3
 
 KEY = "system_factorial_r2"
 SCHEMA = "distillschedule.livewan_system_factorial_r2.v1"
@@ -24,7 +25,7 @@ CONTINUOUS_NAME = "system_factorial_c51_depth1_c4_v1"
 ARMS = ("baseline", "only_A", "full")
 COMPATIBLE_ARM = "only_B_fsdp_compatible"
 COMPATIBLE_KEY = "system_factorial_fsdp_compatible_B_v1"
-BASELINE_ARMS = ("baseline", COMPATIBLE_ARM)
+BASELINE_ARMS = ("baseline", COMPATIBLE_ARM, r3.B_ARM)
 COMPATIBLE_OPERATORS = ("critic_lora_kernel", "score_modulation_kernel",
                         "score_rmsnorm_kernel", "score_rope_kernel")
 COMPATIBLE_OFF = {
@@ -44,8 +45,8 @@ COMPATIBLE_OFF = {
 }
 CAPACITY_ARM = "only_A_with_capacity_offload"
 CAPACITY_KEY = "system_factorial_capacity_offload_v1"
-ARMS = (*ARMS, CAPACITY_ARM, COMPATIBLE_ARM)
-A_ARMS = ("only_A", CAPACITY_ARM)
+ARMS = (*ARMS, CAPACITY_ARM, COMPATIBLE_ARM, *r3.ARMS)
+A_ARMS = ("only_A", CAPACITY_ARM, r3.A_ARM)
 CAPACITY_POLICY = dict(name="generator_cpu_foreach_adamw_v1",
     scope="GENERATOR_OPTIMIZER_ONLY", generator_optimizer_device="cpu",
     critic_optimizer_device="cuda", parameter_offload=False,
@@ -118,6 +119,8 @@ def make_plan(repo_root: str | Path, *, arm: str, source_head: str,
             name=CONTINUOUS_NAME, cycles=CYCLES, critic_shadow_sync_versions=[5, 10, 15])
     if arm == CAPACITY_ARM:
         plan["metadata"][CAPACITY_KEY] = dict(CAPACITY_POLICY)
+    if arm in r3.ARMS:
+        r3.lower(plan, arm=arm, full=_template(root, "full"))
     plan["id"] = f"livewan-full-system-factorial-r2-{arm}-c4"
     plan["evidence"]["steps"] = 20
     plan["metadata"][KEY] = dict(

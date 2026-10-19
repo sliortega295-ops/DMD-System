@@ -211,7 +211,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--trajectory-arm-id")
     value.add_argument("--two-cycle-seed", type=int)
     value.add_argument("--two-cycle-arm-id")
-    value.add_argument("--system-factorial-arm", choices=("baseline", "only_A", "full", "only_B", "only_A_with_capacity_offload", "only_B_fsdp_compatible"))
+    value.add_argument("--system-factorial-arm", choices=("baseline", "only_A", "full", "only_B", "only_A_with_capacity_offload", "only_B_fsdp_compatible", "only_A_g8_fsdp8_v1", "only_B_full_fsdp16_v1"))
     value.add_argument("--system-factorial-seed", type=int, default=20260830)
     value.add_argument("--master-addr")
     value.add_argument("--master-port", type=int, default=29930)

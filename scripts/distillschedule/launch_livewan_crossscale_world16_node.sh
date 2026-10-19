@@ -59,10 +59,10 @@ if [[ "${RUN_KIND}" == system-factorial-timing ]]; then
   [[ "${LIVEWAN_SYSTEM_FACTORIAL_SEED:-}" == 20260830 && "${PROFILE_TWO_CYCLES}" == 0 && \
      -z "${DISTILLSCHEDULE_NSYS_BIN:-}" && -z "${DISTILLSCHEDULE_NCU_BIN:-}" ]] || exit 2
   case "${LIVEWAN_SYSTEM_FACTORIAL_ARM:-}" in
-    baseline|only_B_fsdp_compatible) [[ "${EXECUTION_MODE}" == baseline && "${PIPELINE_VARIANT}" == b1 && \
+    baseline|only_B_fsdp_compatible|only_B_full_fsdp16_v1) [[ "${EXECUTION_MODE}" == baseline && "${PIPELINE_VARIANT}" == b1 && \
       "${LIVEWAN_BASELINE_PLACEMENT:-}" == world16-fsdp && \
       "${LIVEWAN_STUDENT_ROLLOUT_PADDING:-}" == max-noop ]] || exit 2 ;;
-    only_A|full|only_A_with_capacity_offload) [[ "${EXECUTION_MODE}" == pipeline && \
+    only_A|full|only_A_with_capacity_offload|only_A_g8_fsdp8_v1) [[ "${EXECUTION_MODE}" == pipeline && \
       "${PIPELINE_VARIANT}" == c51-continuous-b16-generator-fused-rms ]] || exit 2 ;;
     *) echo r2_only_B_BLOCKED_or_invalid_arm >&2; exit 2 ;;
   esac
