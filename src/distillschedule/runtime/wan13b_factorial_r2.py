@@ -23,6 +23,7 @@ INITIAL = {'generator': 2, 'critic': 10, 'ema': 10}
 UPDATES = {'generator': 1, 'critic': 5, 'ema': 5}
 SOURCE_PATHS = (
     'src/distillschedule/runtime/wan13b_factorial_r2.py',
+    'src/distillschedule/runtime/wan13b_fsdp_compatible_b.py',
     'scripts/distillschedule/probe_wan13b_factorial_r2_world16.py',
     'scripts/distillschedule/summarize_wan13b_factorial_r2_world16.py',
     'scripts/distillschedule/run_wan13b_fair_world16.py',
@@ -43,6 +44,7 @@ SOURCE_PATHS = (
     'runtime/gst_pool_helios.py',
     'runtime/static_world16_trace.py',
     'docs/contracts/wan13b_factorial_r2.md',
+    'docs/contracts/wan13b_factorial_r2_fsdp_compatible_b.md',
 )
 FLAGS = (
     'generator_nograd_lora_fused_epilogue', 'grad_lora_fused_epilogue',
@@ -76,21 +78,22 @@ def source_hashes(root: Path) -> dict[str, str]:
 def make_configuration(cell: str, *, expected_head: str, source_hashes: Mapping[str, str]) -> dict[str, Any]:
     if cell == 'only_B':
         raise ValueError('only_B BLOCKED: user definition pending; full graphs/cast cache require Resident addresses')
-    if cell not in {'baseline', 'only_A', 'full'}:
+    if cell not in {'baseline', 'only_A', 'full', 'only_B_fsdp_compatible'}:
         raise ValueError('unregistered W1 R2 cell')
-    b = cell == 'full'
+    compatible = cell == 'only_B_fsdp_compatible'
+    b = cell == 'full' or compatible
     return {
         'schema_version': SCHEMA, 'cell': cell,
         'source': {'audited_parent': PARENT, 'expected_head': expected_head,
                    'files_sha256': dict(source_hashes)},
-        'placement': FSDP if cell == 'baseline' else RESIDENT,
+        'placement': FSDP if cell == 'baseline' or compatible else RESIDENT,
         'expected_helios_transformer_sha256': HELIOS_SHA256,
         'cycles': {'count': 4, 'warmup': [1], 'measurement': [2, 3, 4]},
         'geometry': {'video_height': 384, 'video_width': 640, 'video_frames': 33,
                      'latent_spatial_shapes': [[12, 20], [24, 40], [48, 80]], 'lora_rank': 256},
         'matched_contract': dict(MATCHED),
         'initial_versions': dict(INITIAL), 'updates_per_cycle': dict(UPDATES),
-        'operator_flags': {name: b and index < 6 for index, name in enumerate(FLAGS)},
+        'operator_flags': {name: b and index < (3 if compatible else 6) for index, name in enumerate(FLAGS)},
         'runtime_policy': {'clean_runtime': b, 'runtime_constants_cache': b,
                            'resident_clean_model_state': b},
         'optimizer_implementation': 'PYTORCH_DEFAULT', 'ema_implementation': 'reference',
@@ -167,6 +170,14 @@ def builder_clean_model_state(args: Any, *, legacy_requested: bool) -> bool:
     return cfg['runtime_policy']['resident_clean_model_state']
 
 
+def fsdp_compatible_b(cfg: dict[str, Any] | None) -> bool:
+    """No ambient flag can waive the canonical FSDP control's rejection."""
+    if cfg is None:
+        return False
+    validate_configuration(cfg, expected_head=cfg['source']['expected_head'])
+    return cfg['cell'] == 'only_B_fsdp_compatible'
+
+
 def expected_versions(cycle: int) -> dict[str, int]:
     return {key: INITIAL[key] + cycle * UPDATES[key] for key in INITIAL}
 
@@ -182,7 +193,8 @@ def validate_mechanisms(legacy: Any, build: dict[str, Any], cfg: dict[str, Any],
     flags = cfg['operator_flags']
     result = {
         'fused_epilogue': legacy._validate_fused_receipt(build, placement=cfg['placement'],
-                        cycles=cycles, layout_only=cfg['cell'] == 'only_A'),
+                        cycles=cycles, layout_only=cfg['cell'] == 'only_A',
+                        fsdp_compatible=fsdp_compatible_b(cfg)),
         'grad_epilogue': validate_grad_epilogue_receipts(build, requested=flags['grad_lora_fused_epilogue']),
         'norm': validate_norm(build, enabled=flags['modulated_norm_fusion']),
         'graph': validate_graph(build, enabled=flags['generator_rollout_cuda_graph'], cycles=cycles),
@@ -214,6 +226,9 @@ def validate_mechanisms(legacy: Any, build: dict[str, Any], cfg: dict[str, Any],
         if resident and (engine.get('async_gradient_bucket_mb') != 128 or
                          engine.get('gradient_sync') != 'WORLD16_GRAD_READY_ASYNC_SUM_THEN_DIVIDE_ALL_REDUCE'):
             raise AssertionError(f'{role}: complete A async128 reducer changed')
+    if fsdp_compatible_b(cfg):
+        from .wan13b_fsdp_compatible_b import validate
+        result['fsdp_compatible_scope'] = validate(build)
     return result
 
 

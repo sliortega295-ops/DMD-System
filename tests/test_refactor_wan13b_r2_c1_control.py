@@ -74,5 +74,20 @@ def test_cycle_math_timer_rng_and_qualification_gate_unchanged():
     assert "cfg['placement'] == r2.RESIDENT"in ast.unparse(gather)
     # The FSDP branch keeps the original default NCCL gather; only Resident calls the helper.
     assert any(isinstance(n,ast.Call)and ast.unparse(n.func)=='dist.all_gather_object'for n in ast.walk(gather))
-    policy=(ROOT/'src/distillschedule/runtime/wan13b_factorial_r2.py').read_bytes()
-    assert policy==subprocess.check_output(['git','-C',str(ROOT),'show','45fcff74cd30a57903b30b2fddf124a95fb11682:src/distillschedule/runtime/wan13b_factorial_r2.py'])
+    # A newly authorized opt-in cell extends the policy, not C1 transport/math.
+    # Freeze the old cells' effective definitions and every original C1 helper,
+    # instead of requiring the entire (now version-extended) file byte-identical.
+    rel='src/distillschedule/runtime/wan13b_factorial_r2.py'
+    old_policy=subprocess.check_output(['git','-C',str(ROOT),'show','45fcff74cd30a57903b30b2fddf124a95fb11682:'+rel],text=True)
+    current=(ROOT/rel).read_text()
+    for name in ('digest','source_hashes','validate_configuration','load_configuration',
+                 'lower_environment','assert_runtime_environment','builder_clean_model_state',
+                 'expected_versions','validate_census','qualify_c1'):
+        assert funcs(ast.parse(old_policy))[name]==funcs(ast.parse(current))[name],name
+    namespace={}
+    exec(compile(old_policy, 'PRESERVED_45fc_POLICY', 'exec'), namespace)
+    from distillschedule.runtime import wan13b_factorial_r2 as r2
+    for cell in ('baseline','only_A','full'):
+        before=namespace['make_configuration'](cell,expected_head='2'*40,source_hashes={})
+        after=r2.make_configuration(cell,expected_head='2'*40,source_hashes={})
+        assert before==after

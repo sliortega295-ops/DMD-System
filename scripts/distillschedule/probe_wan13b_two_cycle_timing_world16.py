@@ -157,7 +157,14 @@ def _configure_shared_mode_args(args: argparse.Namespace) -> None:
     args.validate_only = False
 
 
-def _validate_arm_environment(placement: str) -> dict[str, Any]:
+def _validate_arm_environment(placement: str, *, factorial_configuration: dict[str, Any] | None = None) -> dict[str, Any]:
+    from distillschedule.runtime.wan13b_factorial_r2 import fsdp_compatible_b
+    compatible = fsdp_compatible_b(factorial_configuration)
+    if compatible:
+        from distillschedule.runtime.wan13b_factorial_r2 import assert_runtime_environment
+        assert_runtime_environment(factorial_configuration)
+    if compatible and placement != FSDP_BASELINE:
+        raise ValueError('compatible B requires the original world16 FSDP placement')
     grad_fused = grad_epilogue_requested()
     from distillschedule.runtime.wan13b_norm_policy import requested as norm_requested
 
@@ -172,7 +179,7 @@ def _validate_arm_environment(placement: str) -> dict[str, Any]:
         raise ValueError("CUDA Graph requires Resident without merged weights")
     if shadow_enabled and placement != RESIDENT_WINNER:
         raise ValueError("merged shadow requires the registered Resident control")
-    if norm_fused and placement != RESIDENT_WINNER:
+    if norm_fused and placement != RESIDENT_WINNER and not compatible:
         raise ValueError("FSDP control cannot enable Resident normalization fusion")
     fused = (
         os.environ.get(
@@ -195,7 +202,7 @@ def _validate_arm_environment(placement: str) -> dict[str, Any]:
         raise ValueError(
             "two-cycle Resident winner requires fused epilogue ON and cast cache OFF"
         )
-    if placement == FSDP_BASELINE and (fused or cast_cache or grad_fused):
+    if placement == FSDP_BASELINE and (fused or cast_cache or grad_fused) and not compatible:
         raise ValueError(
             "two-cycle world16-FSDP baseline requires fused epilogue and cast cache OFF"
         )
@@ -486,7 +493,10 @@ def _cycle_census(
 def _validate_fused_receipt(
     build: dict[str, Any], *, placement: str, cycles: int = 2,
     layout_only: bool | None = None,
+    fsdp_compatible: bool = False,
 ) -> dict[str, Any]:
+    if fsdp_compatible and placement != FSDP_BASELINE:
+        raise AssertionError('compatible B epilogue requires FSDP placement')
     generator = (
         build.get("generator", {})
         .get("metadata", {})
@@ -510,7 +520,7 @@ def _validate_fused_receipt(
             )):
                 raise AssertionError(f"layout-only {role} unexpectedly executed fused epilogue")
         return {"generator": generator, "critic": critic}
-    if placement == RESIDENT_WINNER:
+    if placement == RESIDENT_WINNER or fsdp_compatible:
         if generator.get("requested") is not True or generator.get("enabled") is not True:
             raise AssertionError("Resident winner fused epilogue is not enabled")
         shadow_enabled = bool(build.get("generator", {}).get("metadata", {}).get(

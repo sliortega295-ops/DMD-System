@@ -212,7 +212,7 @@ def main() -> int:
     legacy._load_native_runtime()
     args.factorial_configuration = cfg  # Consumed by the real shared model builder.
     legacy._configure_shared_mode_args(args)
-    legacy._validate_arm_environment(args.placement)
+    legacy._validate_arm_environment(args.placement, factorial_configuration=cfg)
     dist.init_process_group('nccl')
     rank, world = dist.get_rank(), dist.get_world_size()
     if world != 16:

@@ -254,6 +254,8 @@ def _pid_file(args: argparse.Namespace, node: int) -> Path:
 
 def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
     factorial = _prepare_factorial_r2(args)
+    from distillschedule.runtime.wan13b_factorial_r2 import fsdp_compatible_b
+    compatible_b = fsdp_compatible_b(factorial)
     launcher = (
         args.remote_root
         / "scripts/distillschedule/launch_wan13b_fair_world16_node.sh"
@@ -292,9 +294,9 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
     exports.append("DISTILLSCHEDULE_WAN13B_LAYOUT_ONLY_ABLATION=" + ("1" if getattr(args,"layout_only_ablation",False) else "0"))
     if args.tf32_cublas_override is not None:
         exports.append("TORCH_ALLOW_TF32_CUBLAS_OVERRIDE=" + args.tf32_cublas_override)
-    if args.grad_lora_fused_epilogue and args.placement != "resident-async128-tree-chunk2048":
+    if args.grad_lora_fused_epilogue and args.placement != "resident-async128-tree-chunk2048" and not compatible_b:
         raise ValueError("grad epilogue is registered only for the Resident winner")
-    if getattr(args, "modulated_norm_fusion", False) and args.placement != "resident-async128-tree-chunk2048":
+    if getattr(args, "modulated_norm_fusion", False) and args.placement != "resident-async128-tree-chunk2048" and not compatible_b:
         raise ValueError("norm fusion is registered only for the Resident control")
     if getattr(args, "generator_rollout_merged_shadow", False):
         if args.placement != "resident-async128-tree-chunk2048":

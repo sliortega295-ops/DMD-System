@@ -83,7 +83,9 @@ def _build_model_fair(
     bootstrap: Any,
     device: torch.device,
 ) -> tuple[torch.nn.Module, dict[str, Any]]:
-    if grad_epilogue_requested() and args.placement != ASYNC_128_TREE_CHUNK2048_RESIDENT:
+    from distillschedule.runtime.wan13b_factorial_r2 import fsdp_compatible_b
+    compatible_b = fsdp_compatible_b(getattr(args, 'factorial_configuration', None))
+    if grad_epilogue_requested() and args.placement != ASYNC_128_TREE_CHUNK2048_RESIDENT and not compatible_b:
         raise ValueError("grad epilogue canary is registered only for the Resident winner")
     seed = int(bootstrap.component(role)["seed"])
     with torch.random.fork_rng(devices=[]):
@@ -246,9 +248,13 @@ def _build_model_fair(
     metadata["grad_lora_fused_epilogue"] = install_grad_lora_fused_epilogue(model, role=role)
     from distillschedule.runtime.wan13b_norm_policy import install as install_norm_policy
 
+    norm_kwargs = {'fsdp_compatible': True} if compatible_b else {}
     metadata["modulated_norm_fusion"] = install_norm_policy(
-        role=role, placement=args.placement, device=device
+        role=role, placement=args.placement, device=device, **norm_kwargs
     )
+    if compatible_b:
+        from distillschedule.runtime.wan13b_fsdp_compatible_b import install
+        metadata['fsdp_compatible_b'] = install(model, role=role, placement=args.placement)
     from distillschedule.runtime.wan13b_rollout_cuda_graph import install as install_graph
 
     # Captures are lazy and see the existing instance-local clean/LoRA/norm path.

@@ -113,7 +113,7 @@ def cpu_chain(monkeypatch, cell, rank=0, *, gather=synthetic_gather, drift=None)
         monkeypatch.setenv(key, value)
     monkeypatch.delenv('NCCL_ALGO', raising=False)
     monkeypatch.delenv('DISTILLSCHEDULE_WAN13B_COMPILE_CACHE_ROOT', raising=False)
-    if cell != 'baseline':
+    if cfg['placement'] == r2.RESIDENT:
         monkeypatch.setenv('NCCL_ALGO', 'Tree')
     # An unused configuration loader is the only missing optional import.
     monkeypatch.setitem(sys.modules, 'omegaconf', types.SimpleNamespace(OmegaConf=types.SimpleNamespace()))
@@ -215,6 +215,23 @@ def cpu_chain(monkeypatch, cell, rank=0, *, gather=synthetic_gather, drift=None)
         norm_receipts[role] = nr
         return nr
     monkeypatch.setattr(norm, 'install', norm_install)
+    if cell == 'only_B_fsdp_compatible':
+        from distillschedule.runtime import wan13b_fsdp_compatible_b as compatible
+
+        def synthetic_scope_install(model, *, role, placement):
+            # Explicit math/placement seam: actual unshard is a GPU obligation.
+            receipt = dict(enabled=True, role=role, placement=placement,
+                           cached_parameter_bytes=0, contract_failures=0,
+                           instrumented_module_count=1, parameter_check_calls=0,
+                           grad_enabled_calls=0, no_grad_calls=0,
+                           evidence_kind='SYNTHETIC_TEST_ONLY')
+            def check(module, args):
+                receipt['parameter_check_calls'] += 1
+                receipt['grad_enabled_calls' if torch.is_grad_enabled() else 'no_grad_calls'] += 1
+            model.register_forward_pre_hook(check)
+            norm_receipts[role].update(native_chunk_tokens=512, fsdp_compatible_b=True)
+            return receipt
+        monkeypatch.setattr(compatible, 'install', synthetic_scope_install)
     monkeypatch.setattr(graph.RolloutCudaGraph, '_audit_source', lambda self: None)
 
     def cpu_capture(self, args, kwargs):
@@ -259,8 +276,8 @@ def cpu_chain(monkeypatch, cell, rank=0, *, gather=synthetic_gather, drift=None)
 
     def build_engine(*, module, physical_step, **kwargs):
         return Engine(module, physical_step), dict(optimizer_implementation='PYTORCH_DEFAULT',
-                    gradient_sync='FSDP2_SUM_THEN_DIVIDE_REDUCE_SCATTER' if cell == 'baseline'
-                    else 'WORLD16_GRAD_READY_ASYNC_SUM_THEN_DIVIDE_ALL_REDUCE', async_gradient_bucket_mb=None if cell == 'baseline' else 128)
+                    gradient_sync='FSDP2_SUM_THEN_DIVIDE_REDUCE_SCATTER' if cfg['placement'] == r2.FSDP
+                    else 'WORLD16_GRAD_READY_ASYNC_SUM_THEN_DIVIDE_ALL_REDUCE', async_gradient_bucket_mb=None if cfg['placement'] == r2.FSDP else 128)
     monkeypatch.setattr(base, 'build_fresh_engine', build_engine)
 
     class EMA:
@@ -349,7 +366,7 @@ def cpu_chain(monkeypatch, cell, rank=0, *, gather=synthetic_gather, drift=None)
     args = types.SimpleNamespace(run_id='SYNTHETIC_TEST_ONLY', expected_head=HEAD, placement=cfg['placement'],
                                  model_root=Path('/SYNTHETIC_TEST_ONLY'), factorial_configuration=cfg)
     legacy._configure_shared_mode_args(args)
-    legacy._validate_arm_environment(args.placement)
+    legacy._validate_arm_environment(args.placement, factorial_configuration=cfg)
     g, c, ema, build = base._build_engines(args=args, bootstrap=bootstrap, device=torch.device('cpu'))
     if drift:
         drift(cfg, build)

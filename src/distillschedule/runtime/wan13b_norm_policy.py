@@ -15,11 +15,13 @@ def requested() -> bool:
     return value == "1"
 
 
-def install(*, role: str, placement: str, device: Any) -> dict[str, Any]:
+def install(*, role: str, placement: str, device: Any, fsdp_compatible: bool = False) -> dict[str, Any]:
     enabled = requested()
     if not enabled:
         return {"requested": False, "enabled": False, "disabled_reason": "NOT_REQUESTED"}
-    if placement != "resident-async128-tree-chunk2048":
+    if fsdp_compatible and placement != 'world16-fsdp':
+        raise ValueError('compatible B normalization requires world16 FSDP')
+    if placement != "resident-async128-tree-chunk2048" and not fsdp_compatible:
         raise ValueError("width1536 fusion is registered only for the Resident control")
     from helios.modules import transformer_helios as transformer
     from .wan13b_modulated_norm_fusion import (
@@ -34,13 +36,17 @@ def install(*, role: str, placement: str, device: Any) -> dict[str, Any]:
             fuse_layernorm=True, fuse_backward_kernel=True,
         )
         receipt["registered_width"] = 1536
-        receipt["native_chunk_tokens"] = 2048
+        receipt["native_chunk_tokens"] = 512 if fsdp_compatible else 2048
         receipt["scope"] = "PROCESS_SHARED_GENERATOR_AND_CRITIC_WIDTH1536_B1"
-        warmup_exact_modulated_norm_epilogue(receipt, device=device, chunk_tokens=2048)
+        receipt['fsdp_compatible_b'] = fsdp_compatible
+        warmup_exact_modulated_norm_epilogue(receipt, device=device, chunk_tokens=receipt['native_chunk_tokens'])
     elif role == "critic":
         receipt = getattr(transformer, "_distillschedule_modulated_norm_receipt", None)
         if not isinstance(receipt, dict) or not receipt.get("enabled"):
             raise RuntimeError("Critic fusion has no source-qualified Generator installation")
+        if (receipt.get('native_chunk_tokens') != (512 if fsdp_compatible else 2048)
+                or receipt.get('fsdp_compatible_b', False) is not fsdp_compatible):
+            raise RuntimeError('Critic normalization source/placement scope differs from Generator')
     else:
         raise ValueError(f"unregistered Wan role {role!r}")
     return receipt
