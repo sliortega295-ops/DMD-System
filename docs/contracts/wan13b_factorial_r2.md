@@ -40,7 +40,9 @@ The production controller's separate mode is `four-cycle-factorial-r2` with
 external run artifacts created after source review, all cells bound to one new
 clean descendant HEAD and the same executable file hash inventory. The
 historical parent HEAD itself is rejected. The controller lowers every flag;
-the node launcher retains executable, source, external Helios runtime, asset,
+the controller may use `--remote-factorial-config` for the node-visible copy
+when its local `--factorial-config` path differs; the same content SHA is
+required by worker and collector. The node launcher retains executable, source, external Helios runtime, asset,
 atomic ownership lock and capacity/process gates. It validates the versioned
 config before acquiring the allocation lock. The native worker revalidates the
 config, source files, effective flags and actual loaded assets before models.

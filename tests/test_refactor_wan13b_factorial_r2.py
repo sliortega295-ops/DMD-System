@@ -607,3 +607,29 @@ def test_complete_full_bundle_requires_each_actual_mechanism(monkeypatch):
         build[role]['metadata'][mechanism][field] = value
         with pytest.raises(AssertionError):
             r2.validate_mechanisms(legacy, build, cfg, cycles=4)
+
+
+def test_controller_separates_local_and_remote_config_paths_for_real_transport(tmp_path, monkeypatch):
+    """Local config is hashed locally; native worker AND collector read remote copy."""
+    import hashlib
+    import subprocess
+    c = load_script('w1_r2_distinct_config_controller', 'scripts/distillschedule/run_wan13b_fair_world16.py')
+    cfg = configuration('baseline')
+    local = tmp_path / 'baseline.json'; local.write_text(json.dumps(cfg))
+    sha = hashlib.sha256(local.read_bytes()).hexdigest()
+    remote = '/share/project/shuchenweng/yongyan_liu/research_artifacts/R2_CPU_TEST/baseline.json'
+    args = c.parser().parse_args(['--run-id','CPU_TEST_ONLY','--mode','four-cycle-factorial-r2',
+        '--placement','world16-fsdp','--expected-head',HEAD,'--model-root','/CPU_TEST_ONLY',
+        '--bootstrap','/CPU_TEST_ONLY','--bootstrap-hash',r2.MATCHED['bootstrap_hash'],
+        '--factorial-config',str(local),'--remote-factorial-config',remote,'--factorial-config-sha256',sha,
+        '--master-addr','192.0.2.1'])
+    command = ' '.join(c._command(args,0,'192.0.2.1'))
+    assert 'DISTILLSCHEDULE_WAN13B_FACTORIAL_CONFIG='+remote in command
+    assert 'DISTILLSCHEDULE_WAN13B_FACTORIAL_CONFIG='+str(local) not in command
+    observed=[]
+    monkeypatch.setattr(c.subprocess,'run',lambda command,**kw:(observed.append(command)or type('P',(),{'returncode':0})()))
+    monkeypatch.setattr(c.subprocess,'check_output',lambda *a,**kw:b'{"status":"PASS","evidence_kind":"SYNTHETIC_TEST_ONLY"}')
+    c._summarize(args,tmp_path/'local_output')
+    text=' '.join(observed[0])
+    assert '--factorial-config '+remote in text and '--factorial-config '+str(local) not in text
+    assert '--factorial-config-sha256 '+sha in text

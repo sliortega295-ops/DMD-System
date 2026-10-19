@@ -162,6 +162,8 @@ def parser() -> argparse.ArgumentParser:
     )
     value.add_argument("--factorial-config", type=Path)
     value.add_argument("--factorial-config-sha256")
+    value.add_argument("--remote-factorial-config", type=Path,
+                       help="Node path of the same SHA-pinned R2 config; local controller still reads --factorial-config.")
     value.add_argument("--layout-only-ablation", action="store_true")
     value.add_argument("--correctness-receipt", type=Path)
     value.add_argument("--correctness-sha256")
@@ -209,6 +211,8 @@ def parser() -> argparse.ArgumentParser:
 
 def _prepare_factorial_r2(args: argparse.Namespace) -> dict[str, Any] | None:
     if args.mode != "four-cycle-factorial-r2":
+        if getattr(args, "remote_factorial_config", None) is not None:
+            raise ValueError("remote factorial config is R2-only")
         return None
     from distillschedule.runtime import wan13b_factorial_r2 as r2
     if args.factorial_config is None or not args.factorial_config_sha256:
@@ -229,6 +233,13 @@ def _prepare_factorial_r2(args: argparse.Namespace) -> dict[str, Any] | None:
     args.layout_only_ablation = cfg["cell"] == "only_A"
     args.tf32_cublas_override = "1"
     return cfg
+
+
+def _factorial_config_on_node(args: argparse.Namespace) -> Path:
+    path = getattr(args, "remote_factorial_config", None) or args.factorial_config
+    if path is None or not path.is_absolute():
+        raise ValueError("R2 node configuration path must be absolute")
+    return path
 
 
 def _pid_file(args: argparse.Namespace, node: int) -> Path:
@@ -274,7 +285,7 @@ def _command(args: argparse.Namespace, node: int, master: str) -> list[str]:
     ]
     if factorial is not None:
         exports.extend((
-            "DISTILLSCHEDULE_WAN13B_FACTORIAL_CONFIG=" + shlex.quote(str(args.factorial_config)),
+            "DISTILLSCHEDULE_WAN13B_FACTORIAL_CONFIG=" + shlex.quote(str(_factorial_config_on_node(args))),
             "DISTILLSCHEDULE_WAN13B_FACTORIAL_CONFIG_SHA256=" + shlex.quote(args.factorial_config_sha256),
             "DISTILLSCHEDULE_WAN13B_LORA_OPERATOR_ATTRIBUTION=0",
         ))
@@ -441,7 +452,7 @@ def _summarize(args: argparse.Namespace, local: Path) -> dict[str, Any]:
     )
     if args.mode == "four-cycle-factorial-r2":
         mode_args = (f"--expected-head {shlex.quote(args.expected_head)} "
-                     f"--factorial-config {shlex.quote(str(args.factorial_config))} "
+                     f"--factorial-config {shlex.quote(str(_factorial_config_on_node(args)))} "
                      f"--factorial-config-sha256 {shlex.quote(args.factorial_config_sha256)} ")
     command = (
         f"export PYTHONPATH={shlex.quote(str(args.remote_root / 'src'))}:"
