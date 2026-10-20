@@ -23,6 +23,7 @@ jobs:
           PLANNER: ea29129342741b54e59c4773e07454f541fadcc7
         run: |
           set -euo pipefail
+          git fsck --connectivity-only --no-dangling
           git cat-file -e "$INDEX^{commit}"
           git cat-file -e "$PLANNER^{commit}"
           git update-ref refs/heads/review-six-source "$INDEX"
